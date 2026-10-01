@@ -1,0 +1,8 @@
+modified  src/text/slug.ts#slugify ← src/old-utils.ts#slugify [moved]
+added     src/text/slug.ts#titleCase
+modified  src/user.ts#User [signature]
+modified  src/user.ts#findUser [signature, body]
+modified  src/user.ts#formatUser [body]
+unchanged src/user.ts#unchanged
+modified  src/user.ts#normalizeId ← src/user.ts#legacyLookup [signature, moved]
+added     src/user.ts#greet

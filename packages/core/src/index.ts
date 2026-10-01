@@ -21,3 +21,20 @@ export { checkoutRevision, defaultCacheDir, type CheckoutOptions } from './git/w
 export type { Position, Range, SymbolDecl, SymbolId, SymbolKind } from './model.js';
 export type { LanguageAdapter, LoadOptions } from './adapter.js';
 export { typescriptAdapter, type TsRevision } from './lang/typescript/index.js';
+export {
+  diffSymbols,
+  MIN_MOVE_BODY_SIZE,
+  type ChangeStatus,
+  type Delta,
+  type DiffInput,
+  type SymbolChange,
+} from './diff.js';
+export { listChangedFilesInDirectories } from './fs-diff.js';
+export {
+  analyzeDirectories,
+  analyzeGit,
+  type Analysis,
+  type AnalyzeGitOptions,
+  type AnalyzeOptions,
+  type RevisionsInfo,
+} from './pipeline.js';

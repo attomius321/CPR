@@ -1,16 +1,7 @@
 import { createRequire } from 'node:module';
-import { parseArgs } from 'node:util';
-import {
-  CprError,
-  listChangedFiles,
-  NoMergeBaseError,
-  openRepo,
-  resolveRevisions,
-  SCHEMA_VERSION,
-  type ChangedFile,
-  type FileChangeStatus,
-  type ResolvedRevisions,
-} from '@cpr/core';
+import { parseArgs, type ParseArgsConfig } from 'node:util';
+import { analyzeGit, CprError, NoMergeBaseError, SCHEMA_VERSION, type Analysis } from '@cpr/core';
+import { formatAnalysis } from './format.js';
 
 const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
 
@@ -39,11 +30,11 @@ Options:
 const DIFF_HELP = `Usage: cpr diff <base> [head] [options]
 
 Compares head (default: HEAD) against the merge-base of base and head,
-like a GitHub pull request. Lists changed files for now; symbol analysis
-comes in later milestones.
+like a GitHub pull request, and lists the changed symbols in each file.
 
 Options:
   --no-merge-base      Compare against base directly
+  --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   -h, --help           Show this help
 `;
 
@@ -91,7 +82,7 @@ class UsageError extends Error {
   }
 }
 
-function parse<T extends Parameters<typeof parseArgs>[0]>(config: T, help: string) {
+function parse<const T extends ParseArgsConfig>(config: T, help: string) {
   try {
     return parseArgs(config);
   } catch (error) {
@@ -114,6 +105,7 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
       allowPositionals: true,
       options: {
         'no-merge-base': { type: 'boolean', default: false },
+        project: { type: 'string' },
         help: { type: 'boolean', short: 'h', default: false },
       },
     },
@@ -124,15 +116,18 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
     return 0;
   }
 
-  const [baseRef, headRef = 'HEAD', ...extra] = positionals;
-  if (baseRef === undefined) throw new UsageError('missing <base>', DIFF_HELP);
+  const [base, head = 'HEAD', ...extra] = positionals;
+  if (base === undefined) throw new UsageError('missing <base>', DIFF_HELP);
   if (extra.length > 0) throw new UsageError(`unexpected argument '${extra[0]}'`, DIFF_HELP);
 
-  const repo = await openRepo(ctx.cwd);
-  let revisions: ResolvedRevisions;
+  let analysis: Analysis;
   try {
-    revisions = await resolveRevisions(repo, baseRef, headRef, {
+    analysis = await analyzeGit({
+      cwd: ctx.cwd,
+      base,
+      head,
       mergeBase: !values['no-merge-base'],
+      ...(values.project === undefined ? {} : { project: values.project }),
     });
   } catch (error) {
     if (error instanceof NoMergeBaseError) {
@@ -143,33 +138,6 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
     throw error;
   }
 
-  const files = await listChangedFiles(repo, revisions.from, revisions.head.sha);
-  ctx.stdout(formatDiff(revisions, files));
+  ctx.stdout(formatAnalysis(analysis));
   return 0;
-}
-
-const LETTER: Record<FileChangeStatus, string> = {
-  added: 'A',
-  deleted: 'D',
-  modified: 'M',
-  renamed: 'R',
-  copied: 'C',
-  'type-changed': 'T',
-};
-
-const short = (sha: string) => sha.slice(0, 7);
-
-function formatDiff({ base, head }: ResolvedRevisions, files: ChangedFile[]): string {
-  const mergeBase = base.mergeBase ? `, merge-base ${short(base.mergeBase)}` : '';
-  const lines = [
-    `${base.ref} (${short(base.sha)}) → ${head.ref} (${short(head.sha)})${mergeBase}`,
-    files.length === 0
-      ? 'no files changed'
-      : `${files.length} file${files.length === 1 ? '' : 's'} changed`,
-    ...files.map(
-      ({ status, path, previousPath }) =>
-        `  ${LETTER[status]}  ${previousPath === undefined ? path : `${previousPath} → ${path}`}`,
-    ),
-  ];
-  return `${lines.join('\n')}\n`;
 }

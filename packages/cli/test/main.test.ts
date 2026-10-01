@@ -1,6 +1,7 @@
 import { SCHEMA_VERSION } from '@cpr/core';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createBranchedRepo } from '../../core/test/helpers/git-repo.js';
+import { rmSync } from 'node:fs';
+import { createBranchedRepo, tempDir } from '../../core/test/helpers/git-repo.js';
 import { run } from '../src/main.js';
 
 async function cpr(argv: string[], cwd = process.cwd()) {
@@ -38,19 +39,32 @@ describe('cpr', () => {
 
 describe('cpr diff', () => {
   const { repo, shas } = createBranchedRepo();
-  afterAll(() => repo.cleanup());
+  // Keep worktree slots out of the real cache.
+  const cacheDir = tempDir();
+  const previousCacheDir = process.env.CPR_CACHE_DIR;
+  process.env.CPR_CACHE_DIR = cacheDir;
+  afterAll(() => {
+    repo.cleanup();
+    rmSync(cacheDir, { recursive: true, force: true });
+    if (previousCacheDir === undefined) delete process.env.CPR_CACHE_DIR;
+    else process.env.CPR_CACHE_DIR = previousCacheDir;
+  });
 
-  it('lists files changed since the merge-base', async () => {
+  it('lists symbols changed since the merge-base, by file', async () => {
     const { code, stdout } = await cpr(['diff', 'main', 'feature'], repo.root);
     expect(code).toBe(0);
     expect(stdout).toBe(
       [
         `main (${shas.main.slice(0, 7)}) → feature (${shas.feature.slice(0, 7)}), merge-base ${shas.root.slice(0, 7)}`,
-        '4 files changed',
-        '  M  src/a.ts',
-        '  A  src/added.ts',
-        '  D  src/gone.ts',
-        '  R  src/old.ts → src/new.ts',
+        '4 files changed · 3 symbols changed: 1 added, 2 modified',
+        '',
+        'M  src/a.ts',
+        '     ~ variable    a  (signature, body)',
+        'A  src/added.ts',
+        '     + variable    added',
+        'D  src/gone.ts',
+        'R  src/old.ts → src/new.ts',
+        '     → function    old  (moved from src/old.ts#old)',
         '',
       ].join('\n'),
     );
@@ -66,7 +80,7 @@ describe('cpr diff', () => {
   it('can skip the merge-base', async () => {
     const { stdout } = await cpr(['diff', 'main', 'feature', '--no-merge-base'], repo.root);
     expect(stdout).not.toContain('merge-base');
-    expect(stdout).toContain('  D  src/main-only.ts');
+    expect(stdout).toContain('\nD  src/main-only.ts\n');
   });
 
   it('fails on unknown revisions', async () => {

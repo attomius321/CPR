@@ -122,8 +122,12 @@ resolve refs → changed files → load projects → extract → hash → diff
 4. **Extract declarations** in changed files, both sides, with stable IDs (§6).
 5. **Hash** each symbol twice: `signatureHash` and `bodyHash` (§6.3).
 6. **Diff by ID** into `added`, `removed`, `modified{signature, body}`, `unchanged`.
-7. **Match moves and renames.** Pair `removed` with `added` symbols that have the same
-   `bodyHash` (exact first, fuzzy later). Pairs become `modified{moved}` with `previousId`.
+7. **Match moves and renames.** Pair `removed` with `added` symbols, same kind only, in order:
+   (a) git file renames keep the qualified name, (b) an identical declaration with the same
+   name in another file, (c) an identical body of at least 10 normalized tokens. Members follow
+   their container (`C.m` → `D.m` when `C` → `D`). A candidate must be unique on both sides;
+   ambiguous cases stay added + removed. Pairs become `modified{moved}` with `previousId`.
+   Similarity (non-exact) matching comes later.
 8. **References, changed symbols only.**
    - Incoming (callers): in `head` for added/modified, in `base` for removed.
    - Outgoing (callees): walk the changed symbol's body and resolve call targets.
@@ -193,7 +197,7 @@ the declared text only. Runs on changed symbols only, so the cost is small.
 | **Monorepo tsconfigs** | Find all `tsconfig.json` files with project `references` or one per workspace package. v1: load all into one `Project` with combined root files. Later: one project per package, linked by references. |
 | **Renames and moves** | §5 step 7. Exact body-hash match in v1; similarity matching later. |
 | **Dynamic JS calls** | `obj[name]()`, `any`-typed receivers, `require(var)`, `eval`: emit an edge with `resolution: "unknown"` and a text-based guess when a name is visible. Never silently drop them. |
-| **JS without types** | Enable `allowJs` + `checkJs: false`. Resolution is weaker; mark low-confidence edges as `unknown`. |
+| **JS without types** | Always load with `allowJs` + `checkJs: false`, even when the tsconfig doesn't, so changed `.js` files are part of the program. Resolution is weaker; mark low-confidence edges as `unknown`. |
 | **Project's own TS version** | CPR analyzes with ts-morph's bundled compiler (TS 6.0), not the version the project installs. Older configs (`baseUrl`, `moduleResolution: node`, `target: es5`) still work in 6.0 but warn, so projects are loaded with `ignoreDeprecations: "6.0"`. ts-morph is pinned exactly: a release built on TS 7 would drop those options. |
 | **Generated files** | Skip `.d.ts` and files matching `.cprignore` / common globs (`dist/`, `build/`, `*.generated.ts`). |
 
@@ -279,7 +283,7 @@ or oxc in the long run.
 | M0 ✅ | Scaffolding | pnpm workspace, TS strict, vitest, eslint, prettier, CI on push |
 | M1 ✅ | Git layer | ref resolve, merge-base, changed files, worktree cache |
 | M2 ✅ | Extraction | symbol IDs + both hashes, fixture tests |
-| M3 | Diff + moves | change classification, exact move matching |
+| M3 ✅ | Diff + moves | change classification, exact move matching |
 | M4 | References | incoming/outgoing edges, alias resolution, context nodes |
 | S1 | TS 7 spike | Prototype adapter on `typescript/unstable/sync`; compare speed and results with ts-morph on fixtures and dogfood repos |
 | M5 | Detectors | the three v1 rules |

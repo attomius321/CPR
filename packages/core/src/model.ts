@@ -40,4 +40,6 @@ export interface SymbolDecl {
   signature: string;
   /** Change detection: formatting and comments do not affect either hash. */
   hashes: { signature: string; body: string };
+  /** Normalized body tokens; 0 without a body. Tiny bodies are too common to match moves on. */
+  bodySize: number;
 }
