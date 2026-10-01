@@ -433,3 +433,10 @@ The analysis (~7 s) dominates `cpr view` startup; the UI itself is fast at this 
   are module-level code). Informative, but they inflate "untouched" counts; a later option
   could separate test users.
 - Closing the panel keeps the zoomed viewport; the fit-view button returns to the overview.
+
+## Phase 3 kickoff — GitHub **and** GitLab (2026-10-01)
+
+Request: "It should also work with GitLab." Phase 3 now targets both forges through a forge
+adapter (PLAN §12, Phase 3 milestones). This session can only reach the GitHub API for
+`attomius321/CPR` (no PRs there), and no GitLab instance, so both adapters are tested against
+local mock servers; `GITHUB_API_URL` / `GITLAB_API_URL` point the CLI at them.
