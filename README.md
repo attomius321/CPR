@@ -46,6 +46,14 @@ comment, approve, or request changes. They arrive as inline comments on those li
 
 ![Review tab: two draft comments on symbols, a summary, and "Request changes" ready to submit](docs/images/viewer-review.png)
 
+In CI, post the findings instead of opening the viewer; findings already posted by an earlier
+run are not repeated:
+
+```sh
+cpr pr "$PR_NUMBER" --post-findings warning --fail-on error   # GitHub (GITHUB_TOKEN)
+cpr mr "$CI_MERGE_REQUEST_IID" --post-findings warning         # GitLab (GITLAB_TOKEN, api scope)
+```
+
 TypeScript and JavaScript for now. Symbols in `fixtures/`, `generated/` and similar folders are not analyzed; add a `.cprignore` (gitignore syntax) to change that.
 
 - [Plan](docs/PLAN.md) · [Journal](docs/JOURNAL.md) · [Graph schema](docs/graph-schema.md)

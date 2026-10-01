@@ -264,6 +264,10 @@ the same diff the forge shows (GitHub: merge-base of base and head; GitLab: `dif
 mentions and read with `git show`. Every request must carry the server's own `Host`
 (127.0.0.1 or localhost with its port), so a rebinding DNS name cannot read sources.
 
+`cpr pr <n> --post-findings <level>` skips the viewer and posts the findings at or above the
+level that no earlier run posted (see G3), then prints the summary and applies `--fail-on`, so
+one command serves CI on both forges.
+
 Under `cpr pr`, the viewer can also post a review: `POST /api/review` (`{event, body,
 comments[]}`) needs `content-type: application/json`, an `x-cpr-review: 1` header and, when the
 browser sends one, a same-origin `Origin` — a request other sites cannot make without a CORS
@@ -337,9 +341,9 @@ or oxc in the long run.
 |---|---|---|
 | **1. Engine** | `cpr diff base head` → JSON + findings | All fixture cases pass; runs within budget on the dogfood repos. |
 | **2. Viewer** | `cpr view` serves a local graph UI with per-symbol diffs | You can review a real PR from the graph alone: click a node → see its diff, callers, findings. |
-| **3. GitHub & GitLab** | `cpr pr 123`: review, comment, approve — pull requests and merge requests | Comments land on the right lines; approve/request-changes works like `gh pr review`, on GitHub and GitLab. |
+| **3. GitHub & GitLab** ✅ | `cpr pr 123`: review, comment, approve — pull requests and merge requests | Comments land on the right lines; approve/request-changes works like `gh pr review`, on GitHub and GitLab. |
 | **4. Interdiff** | Show only what changed between PR versions | Re-review after a force-push shows only the new deltas. |
-| **5. CI** | GitHub Action that posts findings | Action runs on a PR and posts a summary + inline findings. |
+| **5. CI** | GitHub Action and GitLab CI template that post findings | A pipeline runs on a PR/MR and posts a summary + inline findings, on both forges. |
 
 ### Phase 2 milestones (viewer)
 
@@ -360,7 +364,7 @@ GitHub and a GitLab implementation; the CLI and viewer only see "a change reques
 |---|---|---|
 | G1 ✅ | `cpr pr <n>` | Detect the forge and project from the `origin` remote (`--forge github\|gitlab` for self-hosted hosts), read the PR/MR through its API, fetch its head (`pull/<n>/head`, `merge-requests/<n>/head`) and base, analyze, open the viewer (or `--json`). `cpr mr` is an alias. |
 | G2 ✅ | Review from the viewer | Draft comments on symbols (anchored to their first changed line, or a picked +/− line; removed lines on the base side), then submit: comment, approve, or request changes. GitHub: one review call. GitLab: draft notes + bulk publish, approve/unapprove. Local POST endpoint guarded against cross-site requests and DNS rebinding. |
-| G3 | Findings as comments | `cpr pr <n> --post-findings`: findings become inline comments on their symbols, never posted twice. |
+| G3 ✅ | Findings as comments | `cpr pr <n> --post-findings <level>`: new findings become inline comments on their symbols' first changed line (`git diff -U0`, the forge's own lines), the rest go into the summary; a hidden marker per rule + symbol means nothing is posted twice. If the forge refuses the inline comments, all go into the summary. |
 
 | | GitHub | GitLab |
 |---|---|---|
@@ -368,10 +372,25 @@ GitHub and a GitLab implementation; the CLI and viewer only see "a change reques
 | Read | `GET /repos/:o/:r/pulls/:n` | `GET /projects/:id/merge_requests/:iid` (`diff_refs`) |
 | Head ref | `refs/pull/<n>/head` | `refs/merge-requests/<iid>/head` |
 | Review | `POST …/pulls/:n/reviews` with `commit_id`, `event`, `comments[]` (`path`, `line`, `side` `RIGHT`/`LEFT`) | `POST …/draft_notes` (position: base/start/head SHA, `old_path`/`new_path`, `new_line` or `old_line`) → `POST …/draft_notes/bulk_publish`; `POST …/approve` (request changes: a marked note + `POST …/unapprove`) |
-| Token | `GITHUB_TOKEN`, `GH_TOKEN`, `gh auth token` | `GITLAB_TOKEN`, `CI_JOB_TOKEN` |
+| Existing comments | `GET …/pulls/:n/comments`, `…/pulls/:n/reviews`, `…/issues/:n/comments` (paged) | `GET …/merge_requests/:iid/notes` (paged) |
+| Token | `GITHUB_TOKEN`, `GH_TOKEN`, `gh auth token` | `GITLAB_TOKEN`, `CI_JOB_TOKEN` (reads only: job tokens cannot post notes) |
 | API base | `GITHUB_API_URL` or `https://api.github.com` (GHE: `https://<host>/api/v3`) | `GITLAB_API_URL` or `https://<host>/api/v4` |
 
 Tests run against local mock APIs for both forges (no network, no tokens).
+
+### Phase 4 milestones (interdiff)
+
+| # | Milestone | Output |
+|---|---|---|
+| I1 | Review state per change request | Reviewed marks and drafts keyed by PR/MR and the head they were made on. Re-opening at a new head keeps marks on symbols whose hashes did not change and flags the others "changed since your review". |
+| I2 | `--since <sha>` | `cpr pr <n> --since <old head>` (and `cpr diff … --since`): a graph of the symbols that changed between two versions of the change, by symbol hashes, so a rebase that touched nothing in the change shows nothing. |
+
+### Phase 5 milestones (CI, both forges)
+
+| # | Milestone | Output |
+|---|---|---|
+| C1 | GitHub Action | `action.yml` running `cpr pr <n> --post-findings warning --fail-on error` on `pull_request`, with `pull-requests: write`. |
+| C2 | GitLab CI template | A `.gitlab-ci.yml` include doing the same on merge request pipelines (`GITLAB_TOKEN` with api scope; the job token cannot post). |
 
 **Later:** more languages via adapters, a faster core (TS 7 adapter or Rust/oxc), self-hosted team mode.
 
@@ -419,3 +438,5 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | 12 | What to load | Ignore `examples/` and `playground/` by default (also for loading); without a root tsconfig, load the configs below it instead of every file | vite: 2,724 → 932 program files, 15–20 s → 4.5–7 s per commit. |
 | 13 | Where a symbol's comment goes | **Its first added line, else its first removed line**; the reviewer can pick another +/− line; no changed line (moved unchanged, context, classes) → quoted in the review summary | Forges accept inline comments only inside diff hunks; changed lines always are, unchanged lines of a long symbol may not be. |
 | 14 | GitLab "request changes" | **A note marked "Changes requested" + withdraw own approval** | GitLab's REST API has no stable request-changes call; this keeps the MR unapproved by the reviewer and says why. |
+| 15 | When a finding counts as "already posted" | **Same rule and symbol** (a hidden `<!-- cpr:finding … -->` marker), not the same wording | A finding's message changes as callers come and go; reposting it on every push would bury the thread. Resolved findings are not withdrawn. |
+| 16 | Where a posted finding goes | **The first changed line of its symbol per `git diff -U0`**, head side first, else base (removed symbols); else the summary | The forge's diff is git's, so its changed lines are always commentable; if the forge still refuses, everything is posted in the summary instead of failing the CI job. |

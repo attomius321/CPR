@@ -49,6 +49,8 @@ export interface Forge {
   getChangeRequest(number: number): Promise<ChangeRequest>;
   /** Publishes a review with inline comments; returns where to see it. */
   submitReview(request: ChangeRequest, review: Review): Promise<{ url: string }>;
+  /** The text of every comment, review and note on the change request so far. */
+  commentBodies(request: ChangeRequest): Promise<string[]>;
 }
 
 /** What a forge adapter reads from the environment: tokens and API URL overrides. */
