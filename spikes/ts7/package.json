@@ -1,0 +1,9 @@
+{
+  "name": "cpr-spike-ts7",
+  "private": true,
+  "type": "module",
+  "description": "Spike S1: can the TypeScript 7 (Go) compiler API replace ts-morph for CPR's reference search?",
+  "dependencies": {
+    "typescript": "7.0.2"
+  }
+}

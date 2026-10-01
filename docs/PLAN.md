@@ -297,7 +297,7 @@ or oxc in the long run.
 | M2 ✅ | Extraction | symbol IDs + both hashes, fixture tests |
 | M3 ✅ | Diff + moves | change classification, exact move matching |
 | M4 ✅ | References | incoming/outgoing edges, alias resolution, context nodes |
-| S1 | TS 7 spike | Prototype adapter on `typescript/unstable/sync`; compare speed and results with ts-morph on fixtures and dogfood repos |
+| S1 ✅ | TS 7 spike | Prototype adapter on `typescript/unstable/sync`; compare speed and results with ts-morph on fixtures and dogfood repos |
 | M5 | Detectors | the three v1 rules |
 | M6 | Output + CLI | graph JSON v0.1, human summary, `--fail-on` |
 | M7 | Dogfood | measured runtime + false-positive notes on 3 repos |
@@ -326,3 +326,4 @@ or oxc in the long run.
 | 6 | Minimum Node | **22.12** | Node 20 is EOL; Vitest 5 requires ≥ 22.12. CI runs Node 22 and 24. |
 | 7 | TypeScript for our own code | **6.0.x**, not 7 | TS 7 (the Go port) is `latest`, but typescript-eslint supports `<6.1`. ts-morph bundles its own compiler, so the engine is unaffected. Revisit when lint tooling supports 7. |
 | 8 | Compiler behind the engine | **ts-morph (bundles TS 6.0)** for v1; TS 7 adapter as spike S1 after M4 | TS 7's compiler API is `unstable` and ts-morph doesn't support it yet. The adapter boundary lets us swap later. |
+| 9 | After spike S1 | **Stay on ts-morph for v1** | TS 7 matched results (99.9 % of use sites) and loaded 4–7× faster, but reference search was only 1.6–3.5× faster over IPC, the API is unstable, and an adapter means porting extraction and hashing to a new AST. See [spikes/ts7](../spikes/ts7/README.md). |
