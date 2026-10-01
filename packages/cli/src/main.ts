@@ -10,6 +10,7 @@ import {
   CprError,
   defaultCacheDir,
   fetchRefs,
+  listChangedLines,
   NoMergeBaseError,
   openRepo,
   readFileAtRevision,
@@ -17,11 +18,13 @@ import {
   resolveCommit,
   SCHEMA_VERSION,
   type Analysis,
+  type ChangedLines,
   type Graph,
   type Severity,
 } from '@cpr/core';
-import { detectForge } from '@cpr/forge';
+import { detectForge, type ChangeRequest, type Forge } from '@cpr/forge';
 import { formatAnalysis } from './format.js';
+import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { startViewServer, type ReviewTarget } from './server.js';
 
 const require = createRequire(import.meta.url);
@@ -125,6 +128,10 @@ Options:
   --json               Print the graph JSON instead of opening the viewer
   --out <file>         Also write the graph JSON to a file
   --fail-on <level>    Exit 1 if a finding is at least: error, warning, info
+  --post-findings <level>
+                       Post new findings at or above the level (error, warning, info) as
+                       review comments on their lines, instead of opening the viewer;
+                       findings posted by an earlier run are not repeated
   --forge <name>       github or gitlab, for hosts whose name doesn't say
   --remote <name>      Remote to read and fetch from (default: origin)
   --port <n>           Viewer port (default: any free port)
@@ -389,6 +396,7 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
         ...REPORT_OPTIONS,
         ...SERVE_OPTIONS,
         summary: { type: 'boolean', default: false },
+        'post-findings': { type: 'string' },
         forge: { type: 'string' },
         remote: { type: 'string', default: 'origin' },
       },
@@ -413,6 +421,10 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
   }
   checkFailOn(values['fail-on'], PR_HELP);
   checkPort(values.port, PR_HELP);
+  const post = values['post-findings'];
+  if (post !== undefined && !SEVERITIES.includes(post as Severity)) {
+    throw new UsageError(`--post-findings must be error, warning or info, got '${post}'`, PR_HELP);
+  }
 
   const repo = await openRepo(ctx.cwd);
   const forge = detectForge(await remoteUrl(repo, values.remote), ctx.env, values.forge);
@@ -463,19 +475,58 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
     },
   });
 
-  const reportOnly = values.summary || values.json || values['fail-on'] !== undefined;
-  if (reportOnly) return report(analysis, graph, values, ctx);
-  if (values.out !== undefined)
-    await writeFile(resolve(ctx.cwd, values.out), `${JSON.stringify(graph, null, 2)}\n`);
   // Comments are anchored to the analyzed commits, which may predate a newer push.
   const reviewed = {
     ...request,
     head: { ...request.head, sha: analysis.revisions.head.sha ?? request.head.sha },
   };
+  if (post !== undefined) {
+    const lines = await listChangedLines(repo, analysis.revisions.from ?? base, reviewed.head.sha);
+    await postFindings(forge, reviewed, graph, lines, post as Severity, ctx);
+  }
+
+  const reportOnly =
+    values.summary || values.json || values['fail-on'] !== undefined || post !== undefined;
+  if (reportOnly) return report(analysis, graph, values, ctx);
+  if (values.out !== undefined)
+    await writeFile(resolve(ctx.cwd, values.out), `${JSON.stringify(graph, null, 2)}\n`);
   return serve(analysis, graph, values, ctx, PR_HELP, {
     forge: forge.kind,
     submit: (review) => forge.submitReview(reviewed, review),
   });
+}
+
+/**
+ * Posts the findings no earlier run posted, as one review: inline on their symbols' changed
+ * lines, the rest in the summary. If the forge refuses the inline comments (a line outside its
+ * diff), everything goes into the summary instead.
+ */
+async function postFindings(
+  forge: Forge,
+  request: ChangeRequest,
+  graph: Graph,
+  lines: ChangedLines,
+  level: Severity,
+  ctx: CliContext,
+): Promise<void> {
+  const plan = planFindings(graph, lines, level, postedMarkers(await forge.commentBodies(request)));
+  const count = plan.inline.length + plan.summary.length;
+  const already = plan.skipped.length > 0 ? ` (${plan.skipped.length} already posted)` : '';
+  if (count === 0) {
+    ctx.stderr(`No new findings to post${already}\n`);
+    return;
+  }
+  let result: { url: string };
+  try {
+    result = await forge.submitReview(request, findingsReview(plan));
+  } catch (error) {
+    if (plan.inline.length === 0) throw error;
+    ctx.stderr(
+      `warning: inline comments were refused (${(error as Error).message}); posting the findings in the summary\n`,
+    );
+    result = await forge.submitReview(request, findingsReview(plan, { inline: false }));
+  }
+  ctx.stderr(`Posted ${count} finding${count === 1 ? '' : 's'}${already}: ${result.url}\n`);
 }
 
 /** The built viewer that ships with the CLI (`CPR_VIEWER_DIR` overrides, e.g. for tests). */

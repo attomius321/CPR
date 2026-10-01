@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { api } from './http.js';
+import { api, paged } from './http.js';
 import type { ChangeRequest, Env, Forge, Review } from './types.js';
 
 const TOKEN_HINT = 'GITHUB_TOKEN or GH_TOKEN, or log in with gh auth login';
@@ -72,6 +72,22 @@ export class GitHubForge implements Forge {
       },
     );
     return { url: created?.html_url ?? request.url };
+  }
+
+  /** Inline comments, review summaries and conversation comments. */
+  async commentBodies(request: ChangeRequest): Promise<string[]> {
+    const lists = await Promise.all(
+      [
+        `pulls/${request.number}/comments`,
+        `pulls/${request.number}/reviews`,
+        `issues/${request.number}/comments`,
+      ].map((list) =>
+        paged((query) =>
+          this.request<{ body?: string | null }[]>(`/repos/${this.project}/${list}?${query}`),
+        ),
+      ),
+    );
+    return lists.flat().flatMap((item) => (item.body ? [item.body] : []));
   }
 
   private request<T>(path: string, method: 'GET' | 'POST' = 'GET', body?: unknown): Promise<T> {

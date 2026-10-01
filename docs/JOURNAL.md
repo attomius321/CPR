@@ -501,3 +501,33 @@ the commit that was analyzed, not the PR's newest head, so lines match what the 
 
 **Open**: GitHub rejects approving or requesting changes on one's own PR (the error is shown);
 multi-line comments (`start_line`) and suggestions are not offered yet.
+
+## G3 — Findings as comments (2026-10-01)
+
+**What landed**
+- `cpr pr <n> --post-findings <level>` (GitHub and GitLab): reads the existing comments, works
+  out which findings at the level are new, posts them as one `comment` review, prints the
+  summary, applies `--fail-on`. No viewer, so it is the CI building block for phase 5.
+- Core: `listChangedLines` (`git diff -U0 -M`, explicit `a/`/`b/` prefixes so user config
+  can't change them, C-quoted path names, `---` content lines after the first hunk are not
+  mistaken for headers).
+- Forges: `commentBodies` — GitHub inline comments, review summaries and conversation comments;
+  GitLab notes; `per_page=100` pages until a short page (50-page cap).
+- A finding goes on the first changed line of its symbol (head first, base for removed
+  symbols); without one it is listed in the summary. Each carries
+  `<!-- cpr:finding <rule:symbol, URI-encoded, dashes too> -->`.
+- If the forge refuses the inline comments, the same findings are posted in the summary, with a
+  warning, so a CI job still reports them.
+
+**Decisions**: 15 (what "already posted" means), 16 (where a finding goes).
+
+**Learned**
+- The viewer anchors comments on its jsdiff of symbol excerpts; the CLI has no browser and the
+  repo at hand, so it asks git — the same diff the forges render. Exact, and no new dependency.
+- GitLab's `CI_JOB_TOKEN` can read an MR but not post notes; CI needs `GITLAB_TOKEN`.
+
+**Testing**: planning/anchoring/marker units on the detectors golden graph; full CLI runs
+against mock GitHub and GitLab APIs that list back what was posted: posts once, the second run
+posts nothing, the GitHub 422 fallback, and `--fail-on` still failing after posting.
+
+**Phase 3 is done.** Next: phase 4 (interdiff, I1–I2), then phase 5 (CI on both forges, C1–C2).

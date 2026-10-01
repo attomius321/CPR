@@ -1,5 +1,5 @@
 import { CprError } from '@cpr/core';
-import { api } from './http.js';
+import { api, paged } from './http.js';
 import type { ChangeRequest, Env, Forge, Review } from './types.js';
 
 const TOKEN_HINT = 'GITLAB_TOKEN (a personal or project access token with api scope)';
@@ -108,6 +108,14 @@ export class GitLabForge implements Forge {
       await this.unapprove(path);
     }
     return { url: request.url };
+  }
+
+  /** All notes: diff notes, summaries, and system notes (which never carry markers). */
+  async commentBodies(request: ChangeRequest): Promise<string[]> {
+    const notes = await paged((query) =>
+      this.request<{ body?: string | null }[]>(`/merge_requests/${request.number}/notes?${query}`),
+    );
+    return notes.flatMap((note) => (note.body ? [note.body] : []));
   }
 
   /** Withdraws the token owner's approval; fine if there was none. */

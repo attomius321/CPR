@@ -261,3 +261,41 @@ describe('submitReview', () => {
     });
   });
 });
+
+describe('commentBodies', () => {
+  const pr = { number: 7 } as ChangeRequest;
+
+  it('reads every page of GitHub comments, reviews and conversation', async () => {
+    const full = Array.from({ length: 100 }, (_, i) => ({ body: `c${i}` }));
+    const api = await mockApi({
+      'GET /repos/acme/widgets/pulls/7/comments?per_page=100&page=1': { body: full },
+      'GET /repos/acme/widgets/pulls/7/comments?per_page=100&page=2': { body: [{ body: 'last' }] },
+      'GET /repos/acme/widgets/pulls/7/reviews?per_page=100&page=1': {
+        body: [{ body: 'summary' }, { body: '' }, { body: null }],
+      },
+      'GET /repos/acme/widgets/issues/7/comments?per_page=100&page=1': { body: [{ body: 'talk' }] },
+    });
+    const forge = new GitHubForge('github.com', 'acme/widgets', {
+      GITHUB_API_URL: api.url,
+      GITHUB_TOKEN: 't',
+    });
+    const bodies = await forge.commentBodies(pr);
+    await api.close();
+    expect(bodies).toHaveLength(103);
+    expect(bodies.slice(99)).toEqual(['c99', 'last', 'summary', 'talk']);
+  });
+
+  it('reads GitLab notes', async () => {
+    const api = await mockApi({
+      'GET /projects/acme%2Fwidgets/merge_requests/7/notes?per_page=100&page=1': {
+        body: [{ body: 'one' }, { body: 'approved this merge request' }],
+      },
+    });
+    const forge = new GitLabForge('gitlab.example.com', 'acme/widgets', {
+      GITLAB_API_URL: api.url,
+      GITLAB_TOKEN: 't',
+    });
+    expect(await forge.commentBodies(pr)).toEqual(['one', 'approved this merge request']);
+    await api.close();
+  });
+});

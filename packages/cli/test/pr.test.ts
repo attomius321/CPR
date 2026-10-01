@@ -32,6 +32,11 @@ describe('cpr pr', () => {
   const cache = tempDir();
   const dirs: string[] = [bare, cache];
   let api: Awaited<ReturnType<typeof mockApi>>;
+  /** What the "forges" received as reviews; listed back as existing comments. */
+  const reviews: { github: string[]; gitlab: string[] } = { github: [], gitlab: [] };
+  /** Makes the mock GitHub refuse inline comments, like lines outside its diff. */
+  let refuseInline = false;
+  const asComments = (bodies: string[]) => ({ body: bodies.map((body) => ({ body })) });
 
   beforeAll(async () => {
     git(bare, 'clone', '--quiet', '--bare', repo.root, '.');
@@ -64,6 +69,28 @@ describe('cpr pr', () => {
           sha: shas.feature,
           diff_refs: { base_sha: shas.root, head_sha: shas.feature, start_sha: shas.main },
         },
+      },
+      'GET /repos/acme/widgets/pulls/7/comments?per_page=100&page=1': () =>
+        asComments(reviews.github),
+      'GET /repos/acme/widgets/pulls/7/reviews?per_page=100&page=1': () => asComments([]),
+      'GET /repos/acme/widgets/issues/7/comments?per_page=100&page=1': () => asComments([]),
+      'POST /repos/acme/widgets/pulls/7/reviews': (request) => {
+        const review = request.body as { body: string; comments: { body: string }[] };
+        if (refuseInline && review.comments.length > 0) {
+          return { status: 422, body: { message: 'Line could not be resolved' } };
+        }
+        reviews.github.push(review.body, ...review.comments.map((c) => c.body));
+        return { body: { html_url: 'https://github.com/acme/widgets/pull/7#pullrequestreview-1' } };
+      },
+      'GET /projects/acme%2Ftools%2Fwidgets/merge_requests/7/notes?per_page=100&page=1': () =>
+        asComments(reviews.gitlab),
+      'POST /projects/acme%2Ftools%2Fwidgets/merge_requests/7/draft_notes': (request) => {
+        reviews.gitlab.push((request.body as { note: string }).note);
+        return { body: { id: reviews.gitlab.length } };
+      },
+      'POST /projects/acme%2Ftools%2Fwidgets/merge_requests/7/draft_notes/bulk_publish': {
+        status: 204,
+        body: '',
       },
     });
   });
@@ -130,12 +157,90 @@ describe('cpr pr', () => {
     expect(graph.stats.filesChanged).toBe(4);
   });
 
+  const posts = (path: string) =>
+    api.requests.filter((r) => r.method === 'POST' && r.path.startsWith(path));
+  const marker = '<!-- cpr:finding orphan%2Dadded%3Asrc%2Fadded.ts%23added -->';
+
+  it('posts new findings to a GitHub pull request, once', async () => {
+    const local = cloneAs(bare, 'https://github.com/acme/widgets.git');
+    dirs.push(local);
+    const first = await cpr(local, 'pr', '7', '--post-findings', 'warning');
+    expect(first.code).toBe(0);
+    expect(first.stdout).toContain('orphan-added  src/added.ts#added'); // the summary, as usual
+    expect(first.stderr).toContain(
+      'Posted 1 finding: https://github.com/acme/widgets/pull/7#pullrequestreview-1',
+    );
+    const [review] = posts('/repos/acme/widgets/pulls/7/reviews');
+    expect(review?.body).toEqual({
+      commit_id: shas.feature,
+      event: 'COMMENT',
+      body: '**CPR** · 1 new finding (1 warning)',
+      comments: [
+        {
+          path: 'src/added.ts',
+          line: 1,
+          side: 'RIGHT',
+          body: `**⚠ warning · orphan-added**\n\nadded is new and nothing references it\n\n${marker}`,
+        },
+      ],
+    });
+
+    const second = await cpr(local, 'pr', '7', '--post-findings', 'warning');
+    expect(second.stderr).toContain('No new findings to post (1 already posted)');
+    expect(posts('/repos/acme/widgets/pulls/7/reviews')).toHaveLength(1);
+  });
+
+  it('falls back to the summary when GitHub refuses the inline comments', async () => {
+    reviews.github = [];
+    refuseInline = true;
+    const local = cloneAs(bare, 'https://github.com/acme/widgets.git');
+    dirs.push(local);
+    const { stderr } = await cpr(local, 'pr', '7', '--post-findings', 'warning');
+    refuseInline = false;
+    expect(stderr).toContain('warning: inline comments were refused');
+    expect(stderr).toContain('Posted 1 finding');
+    expect(reviews.github).toEqual([
+      '**CPR** · 1 new finding (1 warning)\n\n' +
+        `- ⚠ **orphan-added** \`src/added.ts#added\`: added is new and nothing references it ${marker}`,
+    ]);
+  });
+
+  it('posts new findings to a GitLab merge request, then fails the job', async () => {
+    const local = cloneAs(bare, 'https://gitlab.example.com/acme/tools/widgets.git');
+    dirs.push(local);
+    const args = ['mr', '7', '--post-findings', 'warning', '--fail-on', 'warning'];
+    const first = await cpr(local, ...args);
+    expect(first.code).toBe(1);
+    const drafts = posts('/projects/acme%2Ftools%2Fwidgets/merge_requests/7/draft_notes');
+    expect(drafts.map((r) => r.path.split('/').pop())).toEqual([
+      'draft_notes',
+      'draft_notes',
+      'bulk_publish',
+    ]);
+    expect(drafts[1]?.body).toMatchObject({
+      position: {
+        new_path: 'src/added.ts',
+        new_line: 1,
+        base_sha: shas.root,
+        head_sha: shas.feature,
+      },
+    });
+
+    const second = await cpr(local, ...args);
+    expect(second).toMatchObject({ code: 1 });
+    expect(second.stderr).toContain('No new findings to post (1 already posted)');
+    expect(posts('/projects/acme%2Ftools%2Fwidgets/merge_requests/7/draft_notes')).toHaveLength(3);
+  });
+
   it('reports usage errors and missing remotes', async () => {
     expect((await cpr(repo.root, 'pr')).code).toBe(2);
     expect((await cpr(repo.root, 'pr', 'abc')).stderr).toContain(
       "not a pull/merge request number: 'abc'",
     );
     expect((await cpr(repo.root, 'pr', '7', '--forge', 'bitbucket')).code).toBe(2);
+    expect((await cpr(repo.root, 'pr', '7', '--post-findings', 'all')).stderr).toContain(
+      "--post-findings must be error, warning or info, got 'all'",
+    );
     const noRemote = await cpr(repo.root, 'pr', '7');
     expect(noRemote).toMatchObject({ code: 1, stderr: "cpr: no git remote named 'origin'\n" });
   });

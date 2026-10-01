@@ -51,3 +51,18 @@ export async function api<T>(
   const text = await response.text();
   return (text ? JSON.parse(text) : undefined) as T;
 }
+
+export const PER_PAGE = 100;
+/** A safety stop: 5,000 comments is more than any review thread worth reading. */
+const MAX_PAGES = 50;
+
+/** Every item of a paginated list (`?per_page=100&page=n`): pages until a short one. */
+export async function paged<T>(get: (query: string) => Promise<T[]>): Promise<T[]> {
+  const items: T[] = [];
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const batch = await get(`per_page=${PER_PAGE}&page=${page}`);
+    items.push(...batch);
+    if (batch.length < PER_PAGE) break;
+  }
+  return items;
+}

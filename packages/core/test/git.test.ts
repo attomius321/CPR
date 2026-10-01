@@ -2,8 +2,10 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   CprError,
   listChangedFiles,
+  listChangedLines,
   NoMergeBaseError,
   openRepo,
+  parseChangedLines,
   parseNameStatus,
   resolveRevisions,
   type ChangedFile,
@@ -104,5 +106,50 @@ describe('parseNameStatus', () => {
 
   it('rejects unknown status codes', () => {
     expect(() => parseNameStatus('X\0file\0')).toThrow("unexpected git diff status 'X'");
+  });
+});
+
+describe('listChangedLines', () => {
+  const { repo, shas } = createBranchedRepo();
+  afterAll(() => repo.cleanup());
+
+  it('lists removed and added lines per side, renames under their own paths', async () => {
+    const lines = await listChangedLines(await openRepo(repo.root), shas.root, shas.feature);
+    expect(Object.fromEntries(lines.base)).toEqual({ 'src/a.ts': [1], 'src/gone.ts': [1] });
+    expect(Object.fromEntries(lines.head)).toEqual({ 'src/a.ts': [1], 'src/added.ts': [1] });
+  });
+});
+
+describe('parseChangedLines', () => {
+  const patch = [
+    'diff --git a/src/x.ts b/src/y.ts',
+    'similarity index 80%',
+    'rename from src/x.ts',
+    'rename to src/y.ts',
+    '--- a/src/x.ts',
+    '+++ b/src/y.ts',
+    '@@ -3,2 +3 @@ function f() {',
+    '--- a removed SQL comment, not a header',
+    '-  old();',
+    '+  next();',
+    '@@ -10,0 +10,2 @@',
+    '+a',
+    '+b',
+    String.raw`diff --git "a/caf\303\251 \"q\".ts" "b/caf\303\251 \"q\".ts"`,
+    'new file mode 100644',
+    '--- /dev/null',
+    String.raw`+++ "b/caf\303\251 \"q\".ts"`,
+    '@@ -0,0 +1 @@',
+    '+x',
+    '',
+  ].join('\n');
+
+  it('reads hunks, renames, new files and quoted names', () => {
+    const lines = parseChangedLines(patch);
+    expect(Object.fromEntries(lines.base)).toEqual({ 'src/x.ts': [3, 4] });
+    expect(Object.fromEntries(lines.head)).toEqual({
+      'src/y.ts': [3, 10, 11],
+      'café "q".ts': [1],
+    });
   });
 });

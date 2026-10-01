@@ -14,6 +14,7 @@ export {
   type ChangedFile,
   type FileChangeStatus,
 } from './git/changed-files.js';
+export { listChangedLines, parseChangedLines, type ChangedLines } from './git/changed-lines.js';
 export { checkoutRevision, defaultCacheDir, type CheckoutOptions } from './git/worktree.js';
 export type {
   Dangling,
