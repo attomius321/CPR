@@ -407,3 +407,29 @@ parameter in the signature and the exact changed lines.
   the node set changes, one animation frame later (nodes must be measured first).
 - Selecting a class showed its entire body (1,000+ lines in ky's `Ky`); its members are
   separate symbols, so the class shows its changed members instead.
+
+## V5 — Viewer dogfood (2026-10-01)
+
+**What landed**
+- Playwright end-to-end suite (`pnpm test:e2e`, `packages/viewer/e2e`): builds a git repo from
+  the detectors fixture (base and head commits), starts the built `cpr view`, and checks the
+  summary badges, node tones, finding → panel → code diff → neighbour navigation, `j`/`k`/`r`
+  with reviewed marks surviving a reload, and focus mode. Any page error fails a test.
+- CI runs it on the Linux / Node 24 job (`playwright install --with-deps chromium`); locally the
+  preinstalled `/opt/pw-browsers/chromium` is used when present.
+- File box labels truncate from the start (`…/v4/mini/index.ts`), keeping the file name.
+
+**Viewer performance on real commits** (headless Chromium, 4 cores)
+
+| Commit | Symbol nodes | First render | Click → panel | Focus toggle |
+|---|---|---|---|---|
+| zod 413cce9a | 212 | 510 ms | 309 ms | 88 ms |
+| vite 744269e5 | 192 | 432 ms | 214 ms | 111 ms |
+
+The analysis (~7 s) dominates `cpr view` startup; the UI itself is fast at this size.
+
+**Observed while reviewing**
+- Test files often show up as `… (top level)` users of a changed signature (describe/it blocks
+  are module-level code). Informative, but they inflate "untouched" counts; a later option
+  could separate test users.
+- Closing the panel keeps the zoomed viewport; the fit-view button returns to the overview.

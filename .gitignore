@@ -4,3 +4,5 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 cpr-graph.json
+test-results/
+playwright-report/

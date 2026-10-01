@@ -41,3 +41,8 @@ jobs:
         run: node packages/cli/dist/bin.js --version
       - name: Dogfood (cpr reviews this commit)
         run: node packages/cli/dist/bin.js diff HEAD~1 --out cpr-graph.json
+      - name: Viewer end-to-end tests
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 24
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm run test:e2e
