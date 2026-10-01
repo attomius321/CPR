@@ -17,7 +17,7 @@ at the risky parts. It runs locally and needs no server.
 - TypeScript and JavaScript (`.ts .tsx .js .jsx .mts .cts .mjs .cjs`)
 - Compare two git revisions in one repository
 - Output a versioned graph JSON and a list of findings
-- Run as a CLI (`cpr diff`) on macOS and Linux, Node ≥ 20
+- Run as a CLI (`cpr diff`) on macOS and Linux, Node ≥ 22.12
 
 **v1 does not**
 - Support other languages (they come later through adapters)
@@ -195,6 +195,8 @@ cpr diff <base> <head> [options]
   --fail-on <severity>  exit 1 if any finding is at or above this level (for CI)
 ```
 
+Exit codes: `0` ok, `1` failure or `--fail-on` hit, `2` usage error.
+
 Human summary example:
 
 ```
@@ -244,7 +246,7 @@ build a per-file identifier index to prefilter reference search, then oxc in the
 
 | # | Milestone | Output |
 |---|---|---|
-| M0 | Scaffolding | pnpm workspace, TS strict, vitest, eslint, CI on push |
+| M0 ✅ | Scaffolding | pnpm workspace, TS strict, vitest, eslint, prettier, CI on push |
 | M1 | Git layer | ref resolve, merge-base, changed files, worktree cache |
 | M2 | Extraction | symbol IDs + both hashes, fixture tests |
 | M3 | Diff + moves | change classification, exact move matching |
@@ -272,3 +274,5 @@ build a per-file identifier index to prefilter reference search, then oxc in the
 | 3 | Type-only references | **Always collected, hidden by default** in the UI | Needed for blast radius when an interface or type changes. |
 | 4 | Context depth | **1 hop**, `--depth n` to widen | Small graphs by default, more context on demand. |
 | 5 | Worktree cache location | **`$XDG_CACHE_HOME/cpr`** (outside the repo) | Worktrees inside the repo would be picked up by tsc, eslint, test runners and file watchers. |
+| 6 | Minimum Node | **22.12** | Node 20 is EOL; Vitest 5 requires ≥ 22.12. CI runs Node 22 and 24. |
+| 7 | TypeScript for our own code | **6.0.x**, not 7 | TS 7 (the Go port) is `latest`, but typescript-eslint supports `<6.1`. ts-morph bundles its own compiler, so the engine is unaffected. Revisit when lint tooling supports 7. |

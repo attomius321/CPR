@@ -1,0 +1,19 @@
+{
+  "name": "@cpr/core",
+  "version": "0.0.0",
+  "description": "CPR analysis engine: symbols, diff, references, detectors, graph JSON.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}
