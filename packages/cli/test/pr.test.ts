@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Graph } from '@cpr/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -267,6 +267,47 @@ describe('cpr pr', () => {
     jobEnv = {};
     expect(code).toBe(0);
     expect(stderr).toContain('#7 Add widgets');
+  });
+
+  it('reviews in a GitLab merge request pipeline without a token or the API', async () => {
+    // GitLab CI clones with the job token in the URL.
+    const local = cloneAs(
+      bare,
+      'https://gitlab-ci-token:job-1@gitlab.example.com/acme/tools/widgets.git',
+    );
+    dirs.push(local);
+    jobEnv = {
+      GITLAB_TOKEN: '',
+      CI_JOB_TOKEN: 'job-1',
+      CI_MERGE_REQUEST_IID: '7',
+      CI_MERGE_REQUEST_TITLE: 'Add widgets',
+      CI_MERGE_REQUEST_PROJECT_URL: 'https://gitlab.example.com/acme/tools/widgets',
+      CI_MERGE_REQUEST_DIFF_BASE_SHA: shas.root,
+      CI_MERGE_REQUEST_TARGET_BRANCH_NAME: 'main',
+      CI_MERGE_REQUEST_SOURCE_BRANCH_NAME: 'feature',
+      CI_COMMIT_SHA: shas.feature,
+    };
+    const before = api.requests.length;
+    const report = join(local, 'gl-code-quality-report.json');
+    const run = await cpr(local, 'mr', '--summary', '--codequality', report);
+    const posting = await cpr(local, 'mr', '--post-findings', 'warning');
+    jobEnv = {};
+
+    expect(run.code).toBe(0);
+    expect(run.stdout).toContain(
+      '!7 Add widgets  https://gitlab.example.com/acme/tools/widgets/-/merge_requests/7',
+    );
+    expect(api.requests.length).toBe(before);
+    expect(JSON.parse(readFileSync(report, 'utf8'))).toMatchObject([
+      {
+        check_name: 'orphan-added',
+        severity: 'major',
+        description: 'added is new and nothing references it',
+        location: { path: 'src/added.ts', lines: { begin: 1 } },
+      },
+    ]);
+    expect(posting.code).toBe(1);
+    expect(posting.stderr).toContain('CI_JOB_TOKEN cannot comment on merge requests');
   });
 
   it('reports usage errors and missing remotes', async () => {

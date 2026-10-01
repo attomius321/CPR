@@ -74,6 +74,19 @@ describe('action/run.sh', () => {
     expect(output).toBe(`graph=${join(dir, 'cpr', 'graph.json')}\n`);
   });
 
+  it('writes where GitLab wants its Code Quality report', () => {
+    const report = join(dir, 'gl-code-quality-report.json');
+    const { args } = run({ CPR_OUT: join(dir, 'out'), CPR_CODEQUALITY: report });
+    expect(args).toEqual([
+      'pr',
+      '--summary',
+      '--out',
+      join(dir, 'out', 'graph.json'),
+      '--codequality',
+      report,
+    ]);
+  });
+
   it('passes a number and keeps the exit status of cpr', () => {
     const { status, args } = run({ CPR_PULL_REQUEST: '7', STUB_EXIT: '1' });
     expect(status).toBe(1);

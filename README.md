@@ -82,6 +82,17 @@ jobs:
 The action builds CPR, runs it, writes the summary to the run's page, and outputs the graph
 JSON's path (`steps.<id>.outputs.graph`) for upload.
 
+On GitLab, include the template:
+
+```yaml
+include:
+  - remote: https://raw.githubusercontent.com/attomius321/CPR/main/ci/gitlab/cpr.yml
+```
+
+Its `cpr` job runs on merge request pipelines. Without a token, findings appear in the merge
+request's Code Quality widget; add a masked `GITLAB_TOKEN` variable (api scope) to also get them
+as comments on their lines.
+
 TypeScript and JavaScript for now. Symbols in `fixtures/`, `generated/` and similar folders are not analyzed; add a `.cprignore` (gitignore syntax) to change that.
 
 - [Plan](docs/PLAN.md) · [Journal](docs/JOURNAL.md) · [Graph schema](docs/graph-schema.md)
