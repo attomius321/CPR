@@ -1,19 +1,26 @@
 import { SCHEMA_VERSION } from '@cpr/core';
 import { afterAll, describe, expect, it } from 'vitest';
-import { readFileSync, rmSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createBranchedRepo, tempDir } from '../../core/test/helpers/git-repo.js';
 import { run } from '../src/main.js';
 
-async function cpr(argv: string[], cwd = process.cwd()) {
+async function cpr(
+  argv: string[],
+  cwd = process.cwd(),
+  whileRunning: (stdout: () => string) => Promise<void> = () => Promise.resolve(),
+) {
   let stdout = '';
   let stderr = '';
+  const opened: string[] = [];
   const code = await run(argv, {
     cwd,
     stdout: (text) => (stdout += text),
     stderr: (text) => (stderr += text),
+    openUrl: (url) => opened.push(url),
+    waitForExit: () => whileRunning(() => stdout),
   });
-  return { code, stdout, stderr };
+  return { code, stdout, stderr, opened };
 }
 
 describe('cpr', () => {
@@ -108,6 +115,50 @@ describe('cpr diff', () => {
     expect(warning.code).toBe(1);
     expect(warning.stderr).toContain("1 finding at or above 'warning'");
     expect((await cpr(['diff', 'main', 'feature', '--fail-on', 'loud'], repo.root)).code).toBe(2);
+  });
+
+  it('serves the graph and sources with cpr view', async () => {
+    const viewer = tempDir();
+    writeFileSync(join(viewer, 'index.html'), '<!doctype html><title>viewer</title>');
+    process.env.CPR_VIEWER_DIR = viewer;
+    try {
+      const seen: Record<string, string> = {};
+      const result = await cpr(['view', 'main', 'feature'], repo.root, async (stdout) => {
+        const url = /CPR viewer: (\S+)/.exec(stdout())?.[1] ?? '';
+        for (const path of [
+          '',
+          'api/graph',
+          'api/source?side=head&file=src/a.ts',
+          'api/source?side=base&file=src/a.ts',
+        ]) {
+          const response = await fetch(new URL(path, url));
+          seen[path] = `${response.status} ${(await response.text()).slice(0, 40)}`;
+        }
+      });
+      expect(result.code).toBe(0);
+      expect(result.stdout).toContain('4 files · 3 symbols changed · 1 findings');
+      expect(result.opened).toHaveLength(1);
+      expect(seen['']).toBe('200 <!doctype html><title>viewer</title>');
+      expect(seen['api/graph']).toMatch(/^200 \{"schemaVersion":"0\.1\.0"/);
+      expect(seen['api/source?side=head&file=src/a.ts']).toBe('200 export const a = 2;\n');
+      expect(seen['api/source?side=base&file=src/a.ts']).toBe('200 export const a = 1;\n');
+    } finally {
+      delete process.env.CPR_VIEWER_DIR;
+      rmSync(viewer, { recursive: true, force: true });
+    }
+  });
+
+  it('does not open the browser with --no-open', async () => {
+    const viewer = tempDir();
+    writeFileSync(join(viewer, 'index.html'), '');
+    process.env.CPR_VIEWER_DIR = viewer;
+    try {
+      const result = await cpr(['view', 'main', 'feature', '--no-open'], repo.root);
+      expect(result.opened).toEqual([]);
+    } finally {
+      delete process.env.CPR_VIEWER_DIR;
+      rmSync(viewer, { recursive: true, force: true });
+    }
   });
 
   it('fails on unknown revisions', async () => {

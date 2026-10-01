@@ -343,3 +343,26 @@ No `removed-still-referenced` or `orphan-added` false positives showed up on the
 **Observed**
 - A real ky commit (25 changed symbols, 58 context) is readable when zoomed, but the overview
   is dense → V4 adds focus (jump to finding, neighbourhood only).
+
+## V2 — `cpr view` (2026-10-01)
+
+**What landed**
+- `cpr view <base> [head] [--port] [--no-open]`: runs the same analysis as `diff`, serves the
+  built viewer + `/api/graph` + `/api/source` on `127.0.0.1`, opens the browser, stops on
+  Ctrl+C. Startup line: `15 files · 25 symbols changed · 3 findings` + URL.
+- `startViewServer` (testable without a CLI process): static files confined to the viewer
+  folder (`..` and `%2e%2e` refused), sources only for files the graph mentions, read with
+  `git show <sha>:<path>` (`readFileAtRevision` in core).
+- `CliContext` gained `openUrl` and `waitForExit` so tests drive the long-running command;
+  `CPR_VIEWER_DIR` points at another viewer build (tests, development).
+- `diff` and `view` share option parsing and the analysis call.
+
+**Decisions**
+- Bind to `127.0.0.1` only and never serve arbitrary files: the server holds the repository's
+  source.
+- Context nodes carry only their head side, so base sources are served only for files that
+  changed (or base-side symbols).
+
+**Verified**: `cpr view` on a ky commit served the viewer, the graph and the head/base sources.
+
+**Gotcha**: `pkill -f "bin.js view"` also matches the shell running the command; kill by PID.
