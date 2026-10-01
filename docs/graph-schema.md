@@ -77,15 +77,20 @@ One per symbol in the graph: every changed symbol, plus unchanged **context** sy
 
 | Field | Type | Notes |
 |---|---|---|
-| `kind` | enum | `function` `class` `method` `constructor` `accessor` `property` `interface` `type` `enum` `variable` `namespace` `external` `unknown` |
+| `kind` | enum | `function` `class` `method` `constructor` `accessor` `property` `interface` `type` `enum` `variable` `namespace` `module` `external` `unknown` |
 | `status` | enum | `added` `removed` `modified` `unchanged` |
 | `delta` | object \| absent | Present only when `status` is `modified`. At least one flag is `true`. |
 | `base` / `head` | object \| null | `base` is null for `added`, `head` is null for `removed`. |
 | `previousId` | string \| null | The base ID when the symbol was moved or renamed. |
 | `hashes` | object | `signature` and `body`, 16 hex chars each. `body` is `""` when the symbol has no body (interfaces, types, enums, abstract methods). |
 
-`unchanged` nodes are context only. `external` nodes are symbols from `node_modules` or
-the standard library; they are leaves with no `base`/`head` ranges.
+`unchanged` nodes are context only. Special node IDs, all leaves without `base`/`head`:
+
+| Kind | ID | Meaning |
+|---|---|---|
+| `module` | `src/app.ts#(module)` | Top-level code of a file, outside any declaration. |
+| `external` | `react#useState`, `node:fs#readFileSync`, `express#Response.json` | A package symbol: package name, then its dotted name. Standard-library globals are not included. |
+| `unknown` | `unknown:obj[name]`, `unknown:target.go` | A call the checker cannot resolve (dynamic or `any`); the ID holds the callee text. |
 
 ## Edge
 
@@ -103,7 +108,7 @@ A directed relation `from` → `to` ("from uses to").
     "base": [{ "file": "src/api/routes.ts", "line": 40, "col": 18 }],
     "head": [{ "file": "src/api/routes.ts", "line": 42, "col": 18 }]
   },
-  "via": ["src/user/index.ts"]   // barrel / re-export hops, if any
+  "via": ["src/user/index.ts"]   // barrel / re-export hops (not emitted yet)
 }
 ```
 

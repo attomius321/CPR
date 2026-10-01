@@ -41,6 +41,35 @@ describe('analyzeDirectories', () => {
   });
 });
 
+describe('edges and context', () => {
+  it('connects changed symbols to callers and callees on both sides', async () => {
+    const analysis = await analyzeDirectories(
+      fixture('callers', 'base'),
+      fixture('callers', 'head'),
+    );
+    expect(analysis.changes.filter((c) => c.status !== 'unchanged').map(describeChange)).toEqual([
+      'modified  src/math.ts#add [signature, body]',
+      'removed   src/math.ts#legacy',
+      'added     src/math.ts#triple',
+    ]);
+    expect(analysis.edges.map((e) => `${e.from} -${e.kind}-> ${e.to} (${e.side})`)).toEqual([
+      'src/app.ts#old -call-> src/math.ts#legacy (base)',
+      'src/app.ts#total -call-> src/math.ts#add (both)',
+      'src/math.ts#legacy -call-> src/math.ts#add (base)',
+      'src/math.ts#triple -call-> src/math.ts#add (head)',
+    ]);
+    expect(analysis.context.map((c) => `${c.kind} ${c.id}`)).toEqual([
+      'function src/app.ts#old',
+      'function src/app.ts#total',
+    ]);
+    const total = analysis.edges.find((e) => e.from === 'src/app.ts#total');
+    expect(total?.sites).toEqual({
+      base: [{ file: 'src/app.ts', line: 4, col: 40 }],
+      head: [{ file: 'src/app.ts', line: 4, col: 40 }],
+    });
+  });
+});
+
 describe('listChangedFilesInDirectories', () => {
   it('reports nothing for identical folders', async () => {
     const base = fixture('service', 'base');

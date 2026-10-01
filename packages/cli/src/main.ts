@@ -35,6 +35,7 @@ like a GitHub pull request, and lists the changed symbols in each file.
 Options:
   --no-merge-base      Compare against base directly
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
+  --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   -h, --help           Show this help
 `;
 
@@ -106,6 +107,7 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
       options: {
         'no-merge-base': { type: 'boolean', default: false },
         project: { type: 'string' },
+        depth: { type: 'string', default: '1' },
         help: { type: 'boolean', short: 'h', default: false },
       },
     },
@@ -120,6 +122,11 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
   if (base === undefined) throw new UsageError('missing <base>', DIFF_HELP);
   if (extra.length > 0) throw new UsageError(`unexpected argument '${extra[0]}'`, DIFF_HELP);
 
+  const depth = Number(values.depth);
+  if (!Number.isInteger(depth) || depth < 1) {
+    throw new UsageError(`--depth must be a positive integer, got '${values.depth}'`, DIFF_HELP);
+  }
+
   let analysis: Analysis;
   try {
     analysis = await analyzeGit({
@@ -127,6 +134,7 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
       base,
       head,
       mergeBase: !values['no-merge-base'],
+      depth,
       ...(values.project === undefined ? {} : { project: values.project }),
     });
   } catch (error) {
@@ -139,5 +147,6 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
   }
 
   ctx.stdout(formatAnalysis(analysis));
+  for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
   return 0;
 }

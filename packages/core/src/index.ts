@@ -18,7 +18,17 @@ export {
   type FileChangeStatus,
 } from './git/changed-files.js';
 export { checkoutRevision, defaultCacheDir, type CheckoutOptions } from './git/worktree.js';
-export type { Position, Range, SymbolDecl, SymbolId, SymbolKind } from './model.js';
+export type {
+  Edge,
+  EdgeKind,
+  EdgeRef,
+  Position,
+  Range,
+  Site,
+  SymbolDecl,
+  SymbolId,
+  SymbolKind,
+} from './model.js';
 export type { LanguageAdapter, LoadOptions } from './adapter.js';
 export { typescriptAdapter, type TsRevision } from './lang/typescript/index.js';
 export {
@@ -36,5 +46,7 @@ export {
   type Analysis,
   type AnalyzeGitOptions,
   type AnalyzeOptions,
+  type ContextSymbol,
   type RevisionsInfo,
 } from './pipeline.js';
+export { linkNodeModules } from './deps.js';

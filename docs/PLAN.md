@@ -116,9 +116,13 @@ resolve refs → changed files → load projects → extract → hash → diff
    User-supplied refs are passed after `--end-of-options`; everything after uses resolved SHAs.
 2. **Changed files.** `git diff --name-status -M <mergeBase> <head>`. Only these files can
    contain changed symbols, so extraction runs on them only. This is the main speedup.
-3. **Load projects.** One ts-morph `Project` per side, built from the repo's `tsconfig.json`
-   (see §7 for monorepos). Worktrees have no `node_modules`; we symlink the main
-   checkout's `node_modules` in, and treat external symbols as opaque leaves.
+3. **Load projects.** One ts-morph `Project` per side: the root `tsconfig.json`, every config it
+   `references`, and every other `tsconfig.json` in the repo (depth ≤ 5), all with the root's
+   options; no tsconfig → all sources with defaults. Workspace packages (from `workspaces` or
+   `pnpm-workspace.yaml`) are mapped to their **sources in this revision** through `paths`, so
+   cross-package references work even when `types` point at an unbuilt `dist/`. Changed files
+   are added up front, so the program never changes after loading. Worktree slots get
+   symlinks to the user's `node_modules` folders; package symbols are external leaves.
 4. **Extract declarations** in changed files, both sides, with stable IDs (§6).
 5. **Hash** each symbol twice: `signatureHash` and `bodyHash` (§6.3).
 6. **Diff by ID** into `added`, `removed`, `modified{signature, body}`, `unchanged`.
@@ -128,11 +132,19 @@ resolve refs → changed files → load projects → extract → hash → diff
    their container (`C.m` → `D.m` when `C` → `D`). A candidate must be unique on both sides;
    ambiguous cases stay added + removed. Pairs become `modified{moved}` with `previousId`.
    Similarity (non-exact) matching comes later.
-8. **References, changed symbols only.**
-   - Incoming (callers): in `head` for added/modified, in `base` for removed.
-   - Outgoing (callees): walk the changed symbol's body and resolve call targets.
-   - Map each reference site to its enclosing symbol to get the caller ID.
-   - Unchanged callers and callees join the graph as **context nodes** (1 hop by default, `--depth n`).
+8. **References, changed symbols only**, on each side where the symbol exists (base for
+   removed and modified, head for added and modified):
+   - Incoming (users): language-service `findReferences` from the declaration name; follows
+     imports, barrels and renamed re-exports. Each site maps to its enclosing symbol, named
+     exactly like extraction; top-level code is `file#(module)`.
+   - Outgoing: resolve every identifier in the declaration (aliases followed to the real
+     declaration). Package symbols become `<package>#<name>`; calls the checker cannot resolve
+     (`obj[name]()`, `any` receivers) become `unknown:<callee>`; lib globals, locals, params and
+     type-literal members are skipped.
+   - Base IDs of moved symbols are renamed to head IDs; edges merge by (from, to, kind) into
+     `side: base | head | both` with sites per side.
+   - Unchanged neighbours join as **context nodes** (1 hop by default, `--depth n` widens on the
+     head side, capped at 2000 symbols).
    - Type-only references are always collected as `type-reference` edges. The UI hides them by default.
 9. **Detectors** (§8).
 10. **Emit** `graph.json` + a human summary on stdout.
@@ -192,9 +204,9 @@ the declared text only. Runs on changed symbols only, so the cost is small.
 
 | Trap | Plan |
 |---|---|
-| **Barrels and re-exports** | Resolve every reference through `getAliasedSymbol()` until we reach the real declaration. Re-export hops are recorded on the edge, not as nodes. |
-| **Path aliases** | Use the real `tsconfig` (`paths`, `baseUrl`) when loading the project, so the compiler resolves them. |
-| **Monorepo tsconfigs** | Find all `tsconfig.json` files with project `references` or one per workspace package. v1: load all into one `Project` with combined root files. Later: one project per package, linked by references. |
+| **Barrels and re-exports** | Incoming: the language service follows them. Outgoing: `getAliasedSymbol()` to the real declaration. Re-export hops (`via`) are not recorded yet. |
+| **Path aliases** | The root config's `paths` (made absolute) merged with generated workspace-package paths. |
+| **Monorepo tsconfigs** | All tsconfigs in the repo load into **one** project with the root's options. Limitation: per-package `paths`/options are lost (seen in CPR's own fixtures). Later: one project per config, references searched across them. |
 | **Renames and moves** | §5 step 7. Exact body-hash match in v1; similarity matching later. |
 | **Dynamic JS calls** | `obj[name]()`, `any`-typed receivers, `require(var)`, `eval`: emit an edge with `resolution: "unknown"` and a text-based guess when a name is visible. Never silently drop them. |
 | **JS without types** | Always load with `allowJs` + `checkJs: false`, even when the tsconfig doesn't, so changed `.js` files are part of the program. Resolution is weaker; mark low-confidence edges as `unknown`. |
@@ -284,7 +296,7 @@ or oxc in the long run.
 | M1 ✅ | Git layer | ref resolve, merge-base, changed files, worktree cache |
 | M2 ✅ | Extraction | symbol IDs + both hashes, fixture tests |
 | M3 ✅ | Diff + moves | change classification, exact move matching |
-| M4 | References | incoming/outgoing edges, alias resolution, context nodes |
+| M4 ✅ | References | incoming/outgoing edges, alias resolution, context nodes |
 | S1 | TS 7 spike | Prototype adapter on `typescript/unstable/sync`; compare speed and results with ts-morph on fixtures and dogfood repos |
 | M5 | Detectors | the three v1 rules |
 | M6 | Output + CLI | graph JSON v0.1, human summary, `--fail-on` |

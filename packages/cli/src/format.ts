@@ -1,4 +1,4 @@
-import type { Analysis, ChangedFile, FileChangeStatus, SymbolChange } from '@cpr/core';
+import type { Analysis, ChangedFile, Edge, FileChangeStatus, SymbolChange } from '@cpr/core';
 
 const LETTER: Record<FileChangeStatus, string> = {
   added: 'A',
@@ -13,7 +13,7 @@ const short = (sha: string | null) => (sha ? sha.slice(0, 7) : '');
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Human summary: revisions, then each changed file with its changed symbols. */
-export function formatAnalysis({ revisions, files, changes }: Analysis): string {
+export function formatAnalysis({ revisions, files, changes, edges }: Analysis): string {
   const { base, head } = revisions;
   const side = (ref: string, sha: string | null) => (sha ? `${ref} (${short(sha)})` : ref);
   const mergeBase = base.mergeBase ? `, merge-base ${short(base.mergeBase)}` : '';
@@ -39,12 +39,23 @@ export function formatAnalysis({ revisions, files, changes }: Analysis): string 
   for (const file of files) {
     const from = file.previousPath === undefined ? '' : `${file.previousPath} → `;
     lines.push(`${LETTER[file.status]}  ${from}${file.path}`);
-    for (const change of byFile.get(file.path) ?? []) lines.push(`     ${formatChange(change)}`);
+    for (const change of byFile.get(file.path) ?? []) {
+      lines.push(`     ${formatChange(change, users(change, edges))}`);
+    }
   }
   return `${lines.join('\n')}\n`;
 }
 
-function formatChange(change: SymbolChange): string {
+/** Distinct symbols that reference a change: in head, or in base for removed symbols. */
+function users(change: SymbolChange, edges: Edge[]): number {
+  const side = change.status === 'removed' ? 'base' : 'head';
+  const from = edges
+    .filter((e) => e.to === change.id && (e.side === side || e.side === 'both'))
+    .map((e) => e.from);
+  return new Set(from).size;
+}
+
+function formatChange(change: SymbolChange, usedBy: number): string {
   const symbol = (change.head ?? change.base)!;
   const name = symbol.id.slice(symbol.id.indexOf('#') + 1);
   const { delta } = change;
@@ -55,7 +66,8 @@ function formatChange(change: SymbolChange): string {
     delta?.body ? 'body' : '',
     change.previousId ? `moved from ${change.previousId}` : '',
   ].filter(Boolean);
-  return `${marker} ${symbol.kind.padEnd(11)} ${name}${details.length ? `  (${details.join(', ')})` : ''}`;
+  const use = usedBy > 0 ? `  · used by ${usedBy}` : '';
+  return `${marker} ${symbol.kind.padEnd(11)} ${name}${details.length ? `  (${details.join(', ')})` : ''}${use}`;
 }
 
 /** Changes per head file path; removed symbols of renamed files go under the new path. */

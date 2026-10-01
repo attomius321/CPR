@@ -139,3 +139,50 @@ merge commit.
 - Worktrees have no `node_modules`, so types from dependencies infer as `any` (M4).
 - Files the program drops are skipped silently; surface them as analysis warnings (M6).
 - Orphan slots of deleted repos accumulate in the cache → `cpr cache clean`.
+
+## M4 — References and edges (2026-10-01)
+
+**What landed**
+- `LanguageAdapter.incoming / outgoing / warnings`; `EdgeRef` (one side) and `Edge` (merged,
+  `side: base | head | both`, sites per side).
+- Incoming via the language service's `findReferences`; outgoing by resolving every identifier.
+  Kinds: `call` (incl. JSX elements, decorators, tagged templates), `new`, `extends`,
+  `implements`, `type-reference`, `reference`.
+- Enclosing-symbol naming (`enclosingSymbolId`) shares helpers with extraction (`syntax.ts`), so
+  reference endpoints always match extracted IDs. Top-level code is `file#(module)`.
+- Externals `<package>#<name>`, unresolved calls `unknown:<callee>`, lib globals skipped.
+- Pipeline: both sides' references, base→head ID renaming for moves, context nodes,
+  `--depth`, warnings. `cpr diff` shows `· used by N` per changed symbol.
+- Loader: all tsconfigs in the repo, workspace packages → sources via `paths`, `node_modules`
+  symlinked into slots, changed files added before the program is built.
+
+**Decisions**
+- Workspace packages come only from declared workspaces (`package.json#workspaces`,
+  `pnpm-workspace.yaml`). Mapping every `package.json` would let a fixture named like a real
+  package hijack imports.
+- Externals are named by the resolved declaration's package (`@ts-morph/common#ts…` for
+  `import { ts } from 'ts-morph'`); simple, but not the specifier the user wrote.
+- ts-morph's `resolutionHost` only exposes the legacy `resolveModuleNames` (no ESM/CJS mode), so
+  we generate `paths` instead of hooking resolution.
+
+**Bugs caught by tests**
+- `ts.isObjectLiteralElementLike` also matches class `MethodDeclaration`: method calls vanished
+  from outgoing edges. Check `ts.isObjectLiteralExpression(decl.parent)` instead.
+- `extract()` used to add missing files on demand; that rebuilds the program and invalidates
+  every node held so far. Files now go to `load({ files })`.
+
+**Dogfood (CPR on itself, M3 → M4 branch: 38 files, 115 changed symbols, 606 edges)**
+- 3.7 s end to end. Per side: load 1.4 s (301 program files, mostly lib + ts-morph `.d.ts`),
+  extract 0.17 s, incoming 0.6 s (549 refs), outgoing 0.3 s (1334 refs).
+- Cross-package edge `packages/cli/src/main.ts#diff → packages/core/src/pipeline.ts#analyzeGit`
+  works through the workspace `paths` mapping.
+- Moves `extract.ts#hasModifier → syntax.ts#hasModifier` detected (signature changed: now
+  exported).
+
+**Open**
+- One option set per repo: fixture tsconfig path aliases (`@app/*`) don't apply → their imports
+  show up as externals. Per-config projects would fix it.
+- Many external type-reference nodes (`@ts-morph/common#ts.ArrowFunction`, …); the viewer
+  should group externals by package.
+- `via` (barrel hops) not recorded.
+- TS 6.0 `types` default: still unverified whether `@types/*` load automatically.
