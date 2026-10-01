@@ -239,6 +239,17 @@ cpr diff <base> [head] [options]        head defaults to HEAD
   --no-merge-base       compare base and head directly
 ```
 
+```
+cpr view <base> [head] [options]        same analysis, reviewed in the browser
+
+  --port <n>            port on 127.0.0.1 (default: any free port)
+  --no-open             don't open the browser
+  (plus --no-merge-base, --project, --depth)
+```
+
+`cpr view` serves the built viewer, `/api/graph` and `/api/source?side=base|head&file=…` on
+localhost only; sources are limited to files the graph mentions and read with `git show`.
+
 Exit codes: `0` ok, `1` failure or `--fail-on` hit, `2` usage error. Warnings (configs that failed to
 load, files the program skipped) go to stderr.
 
@@ -315,7 +326,7 @@ or oxc in the long run.
 | # | Milestone | Output |
 |---|---|---|
 | V1 ✅ | Viewer app | Vite + React + React Flow app rendering a graph JSON: changed symbols colored by status, context dimmed, edges by side, finding badges, layered layout. Load by URL or drag & drop. |
-| V2 | `cpr view` | CLI runs the analysis, serves the built viewer plus `/api/graph` and `/api/source`, opens the browser. |
+| V2 ✅ | `cpr view` | CLI runs the analysis, serves the built viewer plus `/api/graph` and `/api/source`, opens the browser. |
 | V3 | Symbol detail | Click a node → base/head source of the symbol side by side, what changed, users and callees, findings. |
 | V4 | Review flow | Findings list, filters (type references hidden by default, externals grouped by package), mark symbols reviewed, keyboard navigation. |
 | V5 | Viewer dogfood | Playwright end-to-end tests; review real commits of ky/zod/vite in the viewer. |

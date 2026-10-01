@@ -65,3 +65,4 @@ export {
   type GraphSide,
 } from './graph.js';
 export { compareShapes, compatibility, type Compatibility } from './compat.js';
+export { readFileAtRevision } from './git/show.js';

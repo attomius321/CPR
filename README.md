@@ -6,6 +6,7 @@ Local-first code review that turns a change into a graph of changed symbols and 
 cpr diff main            # what changed on this branch, symbol by symbol, with findings
 cpr diff main --json     # the graph as JSON (docs/graph-schema.md)
 cpr diff main --fail-on error   # for CI
+cpr view main            # review it as a graph in the browser
 ```
 
 ```
@@ -27,7 +28,8 @@ M  src/math.ts
 ![CPR viewer: changed symbols boxed by file, colored by status, with finding badges](docs/images/viewer.png)
 
 The viewer (`packages/viewer`) draws the same graph: one box per file, symbols colored by what
-changed, findings as badges, removed edges dashed. Open it with a graph from `cpr diff --out`.
+changed, findings as badges, removed edges dashed. `cpr view main` opens it; it also accepts a
+graph file from `cpr diff --out` (drag and drop).
 
 TypeScript and JavaScript for now. Symbols in `fixtures/`, `generated/` and similar folders are not analyzed; add a `.cprignore` (gitignore syntax) to change that.
 

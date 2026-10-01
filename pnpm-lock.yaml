@@ -199,6 +199,9 @@ importers:
       '@cpr/core':
         specifier: workspace:*
         version: link:../core
+      '@cpr/viewer':
+        specifier: workspace:*
+        version: link:../viewer
 
   packages/core:
     dependencies:
