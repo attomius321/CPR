@@ -44,6 +44,10 @@ Under `cpr pr` you can review without leaving the graph: write comments on symbo
 click a +/− line to choose where it lands), then submit them from the Review tab as one review —
 comment, approve, or request changes. They arrive as inline comments on those lines.
 
+Your reviewed marks and drafts are kept per pull request. When the author pushes again, run
+`cpr pr` again: symbols you reviewed that didn't change stay reviewed, the ones that did are
+flagged ↻, and your drafts follow their code to its new lines.
+
 ![Review tab: two draft comments on symbols, a summary, and "Request changes" ready to submit](docs/images/viewer-review.png)
 
 In CI, post the findings instead of opening the viewer; findings already posted by an earlier

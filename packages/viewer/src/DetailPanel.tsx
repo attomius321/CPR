@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import type { Finding, Graph, GraphNode } from '@cpr/core';
-import { anchorFor, defaultAnchor, describeAnchor, type Anchor, type Draft } from './comments.js';
+import {
+  anchorFor,
+  defaultAnchor,
+  describeAnchor,
+  describeDraft,
+  type Anchor,
+  type Draft,
+} from './comments.js';
 import { diffRows, excerpt, symbolDetail, type DiffRow, type Neighbour } from './detail.js';
 import { label, tone } from './flow.js';
 
@@ -52,6 +59,8 @@ interface Props {
   sources: boolean;
   /** Whether the reviewer marked it reviewed; only changed symbols can be. */
   reviewed: boolean;
+  /** Reviewed before, but changed since. */
+  stale: boolean;
   onToggleReviewed: () => void;
   onSelect: (id: string) => void;
   onClose: () => void;
@@ -72,6 +81,7 @@ export function DetailPanel({
   id,
   sources: hasSources,
   reviewed,
+  stale,
   onToggleReviewed,
   onSelect,
   onClose,
@@ -113,6 +123,7 @@ export function DetailPanel({
             {(node.head ?? node.base)?.file ?? node.id}
             {moved}
           </div>
+          {stale && <div className="stale-note">↻ Changed since you reviewed it</div>}
         </div>
         <div className="panel-actions">
           {node.status !== 'unchanged' && (
@@ -281,7 +292,7 @@ function CommentBox({
       {comments.drafts.map((draft) => (
         <div key={draft.id} className="draft">
           <div className="draft-where">
-            <span className="muted">{describeAnchor(draft.anchor)}</span>
+            <span className="muted">{describeDraft(draft)}</span>
             <button className="link" onClick={() => comments.onRemove(draft.id)}>
               Delete
             </button>

@@ -259,7 +259,9 @@ cpr pr <number> [options]               a GitHub pull request or GitLab merge re
 `refs/merge-requests/<n>/head`) and target branch into `refs/cpr/<forge>/<n>/…`, and analyzes
 the same diff the forge shows (GitHub: merge-base of base and head; GitLab: `diff_refs.base_sha`).
 
-`cpr view` serves the built viewer, `/api/graph`, `/api/capabilities` and
+`cpr view` serves the built viewer, `/api/graph`, `/api/capabilities`,
+`/api/state/review|drafts` (reviewed marks and draft comments, stored under
+`<cache>/state/<repo>/<change>/` so they survive restarts on another port) and
 `/api/source?side=base|head&file=…` on localhost only; sources are limited to files the graph
 mentions and read with `git show`. Every request must carry the server's own `Host`
 (127.0.0.1 or localhost with its port), so a rebinding DNS name cannot read sources.
@@ -269,8 +271,9 @@ level that no earlier run posted (see G3), then prints the summary and applies `
 one command serves CI on both forges.
 
 Under `cpr pr`, the viewer can also post a review: `POST /api/review` (`{event, body,
-comments[]}`) needs `content-type: application/json`, an `x-cpr-review: 1` header and, when the
-browser sends one, a same-origin `Origin` — a request other sites cannot make without a CORS
+comments[]}`). Writes (`POST /api/review`, `PUT /api/state/…`) need
+`content-type: application/json`, an `x-cpr: 1` header and, when the browser sends one, a
+same-origin `Origin` — a request other sites cannot make without a CORS
 preflight the server never grants. Comments must be on files of the change. The forge's error
 (no access, a line outside the diff, approving one's own PR) is shown in the viewer.
 
@@ -382,7 +385,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 
 | # | Milestone | Output |
 |---|---|---|
-| I1 | Review state per change request | Reviewed marks and drafts keyed by PR/MR and the head they were made on. Re-opening at a new head keeps marks on symbols whose hashes did not change and flags the others "changed since your review". |
+| I1 ✅ | Review state per change request | Reviewed marks and drafts kept by the CLI per PR/MR (else per revision pair), each with the symbol's fingerprint (both sides' hashes). After a new push, marks on symbols whose fingerprint is the same stay; the others are flagged "↻ changed since you reviewed it". Drafts on unchanged symbols follow them to their new lines; drafts on changed symbols become outdated and go into the summary. |
 | I2 | `--since <sha>` | `cpr pr <n> --since <old head>` (and `cpr diff … --since`): a graph of the symbols that changed between two versions of the change, by symbol hashes, so a rebase that touched nothing in the change shows nothing. |
 
 ### Phase 5 milestones (CI, both forges)
@@ -440,3 +443,4 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | 14 | GitLab "request changes" | **A note marked "Changes requested" + withdraw own approval** | GitLab's REST API has no stable request-changes call; this keeps the MR unapproved by the reviewer and says why. |
 | 15 | When a finding counts as "already posted" | **Same rule and symbol** (a hidden `<!-- cpr:finding … -->` marker), not the same wording | A finding's message changes as callers come and go; reposting it on every push would bury the thread. Resolved findings are not withdrawn. |
 | 16 | Where a posted finding goes | **The first changed line of its symbol per `git diff -U0`**, head side first, else base (removed symbols); else the summary | The forge's diff is git's, so its changed lines are always commentable; if the forge still refuses, everything is posted in the summary instead of failing the CI job. |
+| 17 | Where review state lives | **In the CLI's cache, per change request** (`/api/state`); browser storage only for dropped graph files | Each run takes a free port and browser storage is per origin, so marks kept in the browser vanished on the next run. Per change request (not per head) so a new push keeps the review. |

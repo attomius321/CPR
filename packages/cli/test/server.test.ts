@@ -5,7 +5,14 @@ import type { Graph } from '@cpr/core';
 import type { Review } from '@cpr/forge';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
-import { parseReview, sourceFiles, startViewServer, type ViewServer } from '../src/server.js';
+import {
+  parseReview,
+  sourceFiles,
+  startViewServer,
+  type StateStore,
+  type ViewServer,
+} from '../src/server.js';
+import { fileStateStore, stateDir } from '../src/state.js';
 
 const graph = JSON.parse(
   readFileSync(
@@ -90,10 +97,11 @@ describe('startViewServer', () => {
     expect(JSON.parse((await get('/api/capabilities')).body)).toEqual({
       sources: true,
       review: null,
+      state: false,
     });
     const response = await fetch(new URL('/api/review', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr-review': '1' },
+      headers: { 'content-type': 'application/json', 'x-cpr': '1' },
       body: '{}',
     });
     expect(response.status).toBe(404);
@@ -148,13 +156,17 @@ describe('POST /api/review', () => {
   const post = (headers: Record<string, string>, body: unknown = review) =>
     fetch(new URL('/api/review', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr-review': '1', ...headers },
+      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
       body: JSON.stringify(body),
     });
 
   it('announces the forge', async () => {
     const response = await fetch(new URL('/api/capabilities', server.url));
-    expect(await response.json()).toEqual({ sources: true, review: { forge: 'github' } });
+    expect(await response.json()).toEqual({
+      sources: true,
+      review: { forge: 'github' },
+      state: false,
+    });
   });
 
   it('posts a review from the viewer', async () => {
@@ -168,7 +180,7 @@ describe('POST /api/review', () => {
 
   it('refuses requests other sites could send', async () => {
     expect((await post({ origin: 'https://attacker.example' })).status).toBe(403);
-    expect((await post({ 'x-cpr-review': '' })).status).toBe(403);
+    expect((await post({ 'x-cpr': '' })).status).toBe(403);
     expect((await post({ 'content-type': 'text/plain' })).status).toBe(403);
     expect((await fetch(new URL('/api/review', server.url))).status).toBe(405);
     expect(submitted).toHaveLength(1);
@@ -185,6 +197,72 @@ describe('POST /api/review', () => {
     fail = false;
     expect(failed.status).toBe(502);
     expect(await failed.json()).toEqual({ error: 'Can not approve your own pull request' });
+  });
+});
+
+describe('/api/state', () => {
+  const viewer = tempDir();
+  const dir = tempDir();
+  let server: ViewServer;
+  let store: StateStore;
+
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    store = fileStateStore(join(dir, 'nested'));
+    server = await startViewServer({
+      graph,
+      viewerDir: viewer,
+      readSource: () => Promise.resolve(''),
+      state: store,
+    });
+  });
+
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const put = (name: string, value: unknown, headers: Record<string, string> = {}) =>
+    fetch(new URL(`/api/state/${name}`, server.url), {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      body: JSON.stringify(value),
+    });
+  const read = async (name: string) =>
+    (await fetch(new URL(`/api/state/${name}`, server.url))).json();
+
+  it('keeps reviewed marks and drafts on disk', async () => {
+    expect(await read('review')).toBeNull();
+    expect((await put('review', { 'src/math.ts#add': 'x|y' })).status).toBe(204);
+    expect(await read('review')).toEqual({ 'src/math.ts#add': 'x|y' });
+    expect(await store.read('review')).toEqual({ 'src/math.ts#add': 'x|y' });
+    expect(JSON.parse((await get('/api/capabilities')).body)).toMatchObject({ state: true });
+  });
+
+  it('refuses unknown names and writes other sites could send', async () => {
+    expect((await put('secrets', {})).status).toBe(404);
+    expect((await put('drafts', {}, { origin: 'https://attacker.example' })).status).toBe(403);
+    expect((await put('drafts', {}, { 'x-cpr': '' })).status).toBe(403);
+    expect(await read('drafts')).toBeNull();
+  });
+
+  async function get(path: string) {
+    const response = await fetch(new URL(path, server.url));
+    return { status: response.status, body: await response.text() };
+  }
+});
+
+describe('stateDir', () => {
+  it('is per change request, else per pair of revisions', () => {
+    const request = { ...graph, changeRequest: { url: 'https://github.com/a/b/pull/7' } } as Graph;
+    const pushed = {
+      ...request,
+      revisions: { ...request.revisions, head: { ref: 'x', sha: 'other' } },
+    } as Graph;
+    expect(stateDir('/c', 'repo', request)).toBe(stateDir('/c', 'repo', pushed));
+    expect(stateDir('/c', 'repo', graph)).not.toBe(stateDir('/c', 'repo', request));
+    expect(stateDir('/c', 'repo', graph)).toMatch(/^\/c\/state\/repo\/[0-9a-f]{16}$/);
   });
 });
 

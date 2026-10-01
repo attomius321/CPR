@@ -7,6 +7,16 @@ import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
 
 export type Side = 'base' | 'head';
 
+/** What the viewer keeps between sessions: reviewed marks and draft comments. */
+export type StateName = 'review' | 'drafts';
+const STATE_NAMES: readonly StateName[] = ['review', 'drafts'];
+
+export interface StateStore {
+  /** The saved value, or null. */
+  read(name: StateName): Promise<unknown>;
+  write(name: StateName, value: unknown): Promise<void>;
+}
+
 /** Posts reviews to the change request being viewed (`cpr pr` only). */
 export interface ReviewTarget {
   forge: 'github' | 'gitlab';
@@ -23,6 +33,8 @@ export interface ViewServerOptions {
   port?: number;
   /** Enables `POST /api/review`. */
   review?: ReviewTarget;
+  /** Enables `/api/state/<name>`; without it the viewer keeps state in the browser. */
+  state?: StateStore;
 }
 
 export interface ViewServer {
@@ -40,15 +52,16 @@ const TYPES: Record<string, string> = {
   '.woff2': 'font/woff2',
 };
 
-/** Largest review the viewer may post. */
-const MAX_REVIEW_BYTES = 1 << 20;
+/** Largest review or state the viewer may send. */
+const MAX_BODY_BYTES = 1 << 20;
 const EVENTS: readonly ReviewEvent[] = ['comment', 'approve', 'request-changes'];
 
 /**
  * Serves the viewer, `/api/graph` and `/api/source` on localhost only. Sources are limited to
  * files the graph mentions, so the server never exposes anything else from the machine.
- * Requests must name the server itself as host, which defeats DNS rebinding; posting a review
- * also needs a same-origin JSON request with a custom header, which other sites cannot send.
+ * Requests must name the server itself as host, which defeats DNS rebinding; writes (a review,
+ * saved state) also need a same-origin JSON request with a custom header, which other sites
+ * cannot send.
  */
 export async function startViewServer(options: ViewServerOptions): Promise<ViewServer> {
   const allowed = sourceFiles(options.graph);
@@ -61,11 +74,15 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (!hosts.has(req.headers.host ?? '')) return send(res, 421, 'unknown host');
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname === '/api/review') return postReview(req, res);
+    if (url.pathname.startsWith('/api/state/')) {
+      return state(req, res, url.pathname.slice('/api/state/'.length));
+    }
     if (req.method !== 'GET') return send(res, 405, 'method not allowed');
 
     if (url.pathname === '/api/capabilities') {
       const review = options.review ? { forge: options.review.forge } : null;
-      return send(res, 200, JSON.stringify({ sources: true, review }), TYPES['.json']);
+      const capabilities = { sources: true, review, state: options.state !== undefined };
+      return send(res, 200, JSON.stringify(capabilities), TYPES['.json']);
     }
     if (url.pathname === '/api/graph') {
       return send(res, 200, JSON.stringify(options.graph), TYPES['.json']);
@@ -102,18 +119,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     const target = options.review;
     if (!target) return send(res, 404, 'reviews are posted from cpr pr');
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    const origin = req.headers.origin;
-    if (
-      req.headers['x-cpr-review'] !== '1' ||
-      !req.headers['content-type']?.startsWith('application/json') ||
-      (origin !== undefined && !hosts.has(origin.replace(/^http:\/\//, '')))
-    ) {
-      return send(res, 403, 'forbidden');
-    }
+    if (!writable(req)) return send(res, 403, 'forbidden');
 
     let review: Review;
     try {
-      review = parseReview(await readBody(req, MAX_REVIEW_BYTES), allowed);
+      review = parseReview(await readBody(req, MAX_BODY_BYTES), allowed);
     } catch (error) {
       return send(res, 400, (error as Error).message);
     }
@@ -123,6 +133,35 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       // The forge's own words: no access, a line outside the diff, approving one's own PR…
       return send(res, 502, JSON.stringify({ error: (error as Error).message }), TYPES['.json']);
     }
+  }
+
+  async function state(req: IncomingMessage, res: ServerResponse, name: string): Promise<void> {
+    const store = options.state;
+    if (!store || !STATE_NAMES.includes(name as StateName)) return send(res, 404, 'not found');
+    if (req.method === 'GET') {
+      return send(res, 200, JSON.stringify(await store.read(name as StateName)), TYPES['.json']);
+    }
+    if (req.method !== 'PUT') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let value: unknown;
+    try {
+      value = JSON.parse(await readBody(req, MAX_BODY_BYTES));
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    await store.write(name as StateName, value);
+    res.writeHead(204, { 'cache-control': 'no-store' });
+    res.end();
+  }
+
+  /** A write from the viewer itself: JSON, the custom header, and (if sent) our own origin. */
+  function writable(req: IncomingMessage): boolean {
+    const origin = req.headers.origin;
+    return (
+      req.headers['x-cpr'] === '1' &&
+      !!req.headers['content-type']?.startsWith('application/json') &&
+      (origin === undefined || hosts.has(origin.replace(/^http:\/\//, '')))
+    );
   }
 
   await new Promise<void>((resolve, reject) => {

@@ -10,6 +10,8 @@ interface Props {
   graph: Graph;
   changes: FileChanges[];
   reviewed: ReadonlySet<string>;
+  /** Reviewed before, but changed since (a new push). */
+  stale: ReadonlySet<string>;
   selected: string | null;
   onSelect: (id: string) => void;
   onToggleReviewed: (id: string) => void;
@@ -25,6 +27,7 @@ export function Sidebar({
   graph,
   changes,
   reviewed,
+  stale,
   selected,
   onSelect,
   onToggleReviewed,
@@ -67,6 +70,12 @@ export function Sidebar({
 
       {tab === 'changes' ? (
         <div className="list">
+          {stale.size > 0 && (
+            <p className="stale-note">
+              ↻ {stale.size} symbol{stale.size === 1 ? '' : 's'} changed since you reviewed{' '}
+              {stale.size === 1 ? 'it' : 'them'}
+            </p>
+          )}
           {changes.map(({ file, symbols }) => (
             <div key={file} className="list-file">
               <div className="list-file-name" title={file}>
@@ -75,7 +84,7 @@ export function Sidebar({
               {symbols.map((node) => (
                 <div
                   key={node.id}
-                  className={`list-item tone-${tone(node)}${node.id === selected ? ' current' : ''}${reviewed.has(node.id) ? ' done' : ''}`}
+                  className={`list-item tone-${tone(node)}${node.id === selected ? ' current' : ''}${reviewed.has(node.id) ? ' done' : ''}${stale.has(node.id) ? ' stale' : ''}`}
                 >
                   <input
                     type="checkbox"
@@ -87,6 +96,11 @@ export function Sidebar({
                     <span className="dot" />
                     {label(node)}
                   </button>
+                  {stale.has(node.id) && (
+                    <span className="stale-mark" title="Changed since you reviewed it">
+                      ↻
+                    </span>
+                  )}
                   {commented.has(node.id) && (
                     <span className="commented" title="Comments on this symbol">
                       💬 {commented.get(node.id)}
