@@ -5,3 +5,4 @@ packages/*/test/fixtures
 # Docs keep hand-written table layout.
 *.md
 **/__snapshots__
+spikes

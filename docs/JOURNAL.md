@@ -186,3 +186,30 @@ merge commit.
   should group externals by package.
 - `via` (barrel hops) not recorded.
 - TS 6.0 `types` default: still unverified whether `@types/*` load automatically.
+
+## S1 — TypeScript 7 spike (2026-10-01)
+
+Full write-up: [spikes/ts7/README.md](../spikes/ts7/README.md).
+
+**Numbers**
+
+| Project | Files | Symbols | Load ts-morph → TS 7 | Search ts-morph → TS 7 | Use sites agree |
+|---|---|---|---|---|---|
+| CPR `packages/core` | 226 | 156 | 1075 → 156 ms | 496 → 141 ms | 588 vs 587 |
+| zod `packages/zod` | 380 | 2517 | 1521 → 404 ms | 13 858 → 8 721 ms | 30 421 vs 30 396 |
+
+**Discoveries**
+- `new API({ cwd })` spawns the bundled `tsgo`; `updateSnapshot({ openProjects: [tsconfig] })`
+  gives projects with `program` and `checker`.
+- `checker.getReferencedSymbolsForNode(node, pos)` needs the **identifier** node
+  (`getTouchingToken` from `typescript/unstable/ast`); a `SourceFile` returns nothing.
+- References come back as `NodeHandle`s; `handle.resolve()` fetches the AST node lazily.
+- ts-morph reports JSDoc `{@link X}` references; TS 7 does not.
+- Per-symbol search cost on zod: ~5.5 ms (ts-morph, in-process) vs ~3.5 ms (TS 7, IPC).
+
+**Decision:** stay on ts-morph for v1 (PLAN decision #9). Revisit when the API is stable or
+offers batched reference search; load time is where TS 7 wins most.
+
+**Also learned:** CPR's own reference search cost scales with symbols × files; on zod a
+whole-package sweep (2.5k symbols) takes ~14 s with ts-morph. Real PRs touch far fewer
+symbols, but M7 must measure big PRs.
