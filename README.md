@@ -56,12 +56,31 @@ cpr pr 123 --since 3c2b1a0   # each changed symbol: new, updated, or same as in 
 ![Review tab: two draft comments on symbols, a summary, and "Request changes" ready to submit](docs/images/viewer-review.png)
 
 In CI, post the findings instead of opening the viewer; findings already posted by an earlier
-run are not repeated:
+run are not repeated. Inside a pull/merge request job, `cpr pr` finds the number itself:
 
 ```sh
-cpr pr "$PR_NUMBER" --post-findings warning --fail-on error   # GitHub (GITHUB_TOKEN)
-cpr mr "$CI_MERGE_REQUEST_IID" --post-findings warning         # GitLab (GITLAB_TOKEN, api scope)
+cpr pr --post-findings warning --fail-on error   # GitHub (GITHUB_TOKEN) or GitLab (GITLAB_TOKEN)
 ```
+
+On GitHub, use the action:
+
+```yaml
+on: pull_request
+permissions: { contents: read, pull-requests: write }
+jobs:
+  cpr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - uses: attomius321/CPR@main
+        with:
+          post-findings: warning   # empty: don't post
+          fail-on: error           # empty: never fail
+```
+
+The action builds CPR, runs it, writes the summary to the run's page, and outputs the graph
+JSON's path (`steps.<id>.outputs.graph`) for upload.
 
 TypeScript and JavaScript for now. Symbols in `fixtures/`, `generated/` and similar folders are not analyzed; add a `.cprignore` (gitignore syntax) to change that.
 

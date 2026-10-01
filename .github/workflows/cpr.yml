@@ -1,0 +1,26 @@
+name: CPR review
+
+# CPR reviews its own pull requests with the action in this repository (`uses: ./`).
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: cpr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./
+        with:
+          # Pull requests from forks get a read-only token: review them without posting.
+          post-findings: ${{ github.event.pull_request.head.repo.full_name == github.repository && 'warning' || '' }}
+          fail-on: error

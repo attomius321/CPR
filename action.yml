@@ -1,0 +1,64 @@
+name: CPR code review
+description: >-
+  Reviews a pull request as a graph of changed symbols and posts the findings (a removed symbol
+  still in use, new code nothing calls, breaking signature changes) as review comments.
+author: attomius321
+branding:
+  icon: git-pull-request
+  color: blue
+
+inputs:
+  token:
+    description: Token to read the pull request and post comments (needs pull-requests write).
+    default: ${{ github.token }}
+  pull-request:
+    description: Pull request number. Default — the one that triggered the workflow.
+    default: ''
+  post-findings:
+    description: Post new findings at or above this level (error, warning, info). Empty — don't post.
+    default: warning
+  fail-on:
+    description: Fail the job if a finding is at least this level (error, warning, info). Empty — never.
+    default: error
+  project:
+    description: tsconfig to load, relative to the repository root.
+    default: ''
+  depth:
+    description: Hops of unchanged callers and callees to include.
+    default: '1'
+  working-directory:
+    description: Where the repository is checked out.
+    default: .
+  setup-node:
+    description: Install Node 22 first. Set to false when the job already has Node 22.12 or newer.
+    default: 'true'
+
+outputs:
+  graph:
+    description: Path of the graph JSON (docs/graph-schema.md), e.g. to upload as an artifact.
+    value: ${{ steps.review.outputs.graph }}
+
+runs:
+  using: composite
+  steps:
+    - if: inputs.setup-node == 'true'
+      uses: actions/setup-node@v5
+      with:
+        node-version: 22
+    - name: Install CPR
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: bash action/install.sh
+    - name: Review the pull request
+      id: review
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        CPR_PULL_REQUEST: ${{ inputs.pull-request }}
+        CPR_POST_FINDINGS: ${{ inputs.post-findings }}
+        CPR_FAIL_ON: ${{ inputs.fail-on }}
+        CPR_PROJECT: ${{ inputs.project }}
+        CPR_DEPTH: ${{ inputs.depth }}
+        CPR_CLI: node ${{ github.action_path }}/packages/cli/dist/bin.js
+      run: bash "$GITHUB_ACTION_PATH/action/run.sh"
