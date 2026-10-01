@@ -1,0 +1,107 @@
+# CPR Journal
+
+Everything we run into while building CPR: discoveries, decisions made on the way, gotchas,
+measurements and open issues. Newest milestone last. The plan ([PLAN.md](./PLAN.md)) holds the
+settled design; this file holds the story and the evidence.
+
+Branch flow: each milestone is built on `milestone/<id>-<name>`, then merged into `main` with a
+merge commit.
+
+---
+
+## M0 — Scaffolding (2026-10-01)
+
+**Discoveries**
+- TypeScript `latest` on npm is **7.0** (the Go port). typescript-eslint 8.x supports only
+  `typescript >=4.8.4 <6.1.0`, so our own toolchain is pinned to **TS 6.0.x**.
+- **Vitest 5** requires Node `^22.12 || ^24 || >=26`. Node 20 is EOL (April 2026). Minimum Node
+  is now 22.12.
+- **pnpm 12** is a rewrite with a stricter CLI: `pnpm -s` (silent) is rejected
+  (`error: unexpected argument '-s'`). Use `pnpm run <script>`.
+- `pnpm/action-setup` is superseded by **`pnpm/setup`** for pnpm ≥ 11; it installs pnpm, Node
+  (`runtime: node@<v>`) and runs a frozen install in one step. Current majors:
+  `actions/checkout@v7`, `pnpm/setup@v3`.
+- **ESLint 10** enables `preserve-caught-error`: errors thrown inside `catch` must pass
+  `{ cause }`.
+- TS 6.0 deprecates `baseUrl`, `moduleResolution: node`, `target: es5` (errors unless
+  `ignoreDeprecations: "6.0"`); TS 7 removes them.
+
+**Decisions**
+- Dev typecheck uses `paths` to point `@cpr/core` at its sources (no build needed); the build
+  config resolves through `node_modules` like at runtime. Vitest uses an alias for the same.
+- Prettier ignores Markdown so the docs keep hand-written tables.
+
+## M1 — Git layer (2026-10-01)
+
+**Discoveries**
+- ts-morph 28 bundles **TypeScript 6.0.2**. Tested a TS 4–style project (`target: es5`,
+  `moduleResolution: node`, `baseUrl` + `paths`): it loads, path aliases resolve, but the three
+  options raise deprecation diagnostics → load projects with `ignoreDeprecations: "6.0"`.
+- TS 7.0 ships its compiler API only under `typescript/unstable/*` (`sync`, `async`, `ast`).
+  It has `Checker.getSymbolAtLocation`, `getAliasedSymbol`, `getReferencesToSymbolInFile`,
+  talking to the Go binary over IPC. ts-morph does not support it → spike S1 after M4.
+
+**Decisions**
+- Worktrees are a **slot pool** (`<cache>/worktrees/<repo-id>/<role>-<n>`) instead of one
+  checkout per SHA: bounded disk, and `git checkout --detach` only rewrites changed files.
+  Slots are locked with pid files; dead-pid locks are taken over.
+- `cpr diff` resolves user refs with `rev-parse --verify --end-of-options <ref>^{commit}`, so a
+  ref can never be read as an option; every later git call uses resolved SHAs.
+
+**Gotchas**
+- `git worktree prune` is global: it would also clear the user's own stale worktree entries.
+  `git worktree add --force` replaces the stale registration of *our* path only.
+- `child_process` reports a missing `cwd` and a missing `git` binary both as `ENOENT`.
+- Git prints real paths; on macOS `/var` → `/private/var`. Compare slot paths after `realpath`.
+- Parse `git diff --name-status -z` by index, not `Array.shift()` (quadratic on big diffs).
+- Pass `--no-relative --no-ext-diff --no-color` so user git config (`diff.relative`,
+  `diff.external`, `color.ui=always`) cannot change the output we parse.
+
+**Open**
+- Slots appear in `git worktree list` of the user's repo. Consider a `cpr cache clean` command.
+- Stale-lock takeover has a narrow race if two runs recover the same dead lock at once.
+
+## M2 — Symbol extraction (2026-10-01)
+
+**What landed**
+- `LanguageAdapter` interface (`load`, `extract`, `matches`) and the TypeScript adapter on
+  ts-morph **28.0.0** (pinned exact).
+- Project loading: root `tsconfig.json` (following `references` recursively), or, with no
+  tsconfig, every source file with default options (`allowJs`, `moduleResolution: Bundler`).
+  Every project gets `ignoreDeprecations: "6.0"` and `noEmit`.
+- Extraction walks the compiler AST directly (not ts-morph wrappers) for speed.
+
+**Decisions**
+- Interfaces, type aliases and enums put their **whole declaration in the signature hash** and
+  have no body: changing a type's shape is a contract change, so it should feed the
+  `signature-changed` blast radius (North Star: "who is affected").
+- Static members are always `Class.static:name` (stable IDs).
+- `exported` is hashed as a flag, not the `export` keyword, so `export function f` and
+  `function f; export { f }` hash the same.
+- A class's body hash is its sorted member-name list plus static blocks/index signatures; member
+  edits show on the member, not the class.
+- Hashes are the first 16 hex chars of SHA-256 over the token stream.
+
+**Discoveries**
+- `typeToString` with `UseAliasDefinedOutsideCurrentScope` prints `User`, not
+  `import("/abs/path").User`. We still strip the revision root from type text, because base and
+  head live in different checkout folders.
+- `node.getChildren()` includes JSDoc nodes as children; they must be skipped explicitly.
+- ts-morph's `getSourceFile('relative/path')` resolves against the process cwd, not the project.
+- Building a ts-morph project with lib files costs ~0.3–0.5 s even for one file; the extraction
+  test file takes ~9 s for 15 projects.
+
+**Gotchas**
+- Prettier was reformatting Vitest file snapshots → `**/__snapshots__` is now in
+  `.prettierignore`.
+- `typescript-eslint`'s `no-unsafe-assignment` flags destructuring `ts.readConfigFile` results
+  (`config: any`); cast the result type.
+
+**Open**
+- Redundant parentheses (e.g. Prettier wrapping multi-line JSX in `return (…)`) count as body
+  changes. Fine while both sides use the same formatter.
+- TS 6.0 may default `types` to `[]` (no automatic `@types/*`); verify in M4 when
+  `node_modules` is linked into worktrees.
+- CommonJS export patterns are not extracted yet.
+- One project for the whole repo uses the root config's options; per-package path aliases in
+  monorepos may resolve poorly (revisit in M4).

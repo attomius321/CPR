@@ -1,0 +1,56 @@
+interface   export src/user.ts#UserDto @1:1-4:2 (no body)
+    interface UserDto
+type        export src/user.ts#UserId @6:1-6:36 (no body)
+    type UserId = UserDto['id']
+enum        export src/user.ts#Role @8:1-11:2 (no body)
+    enum Role
+class       export src/user.ts#UserService @14:1-49:2
+    class UserService
+property    export src/user.ts#UserService.static:instances @15:3-15:24
+    static instances: number
+property           src/user.ts#UserService.#cache @16:3-16:39
+    #cache: Map<string, UserDto>
+property           src/user.ts#UserService.prefix @17:3-17:35 (no body)
+    private readonly prefix: string
+constructor export src/user.ts#UserService.constructor @19:3-23:4
+    constructor(prefix: string) (+1 overload)
+accessor    export src/user.ts#UserService.size @25:3-30:4
+    get size(): number (get/set)
+method      export src/user.ts#UserService.getUser @32:3-34:4
+    async getUser(id: UserId): Promise<UserDto | undefined>
+method      export src/user.ts#UserService.static:create @36:3-38:4
+    static create(): UserService
+method      export src/user.ts#UserService.create @40:3-42:4
+    create(): UserDto
+method      export src/user.ts#UserService.handle @44:3-44:44
+    handle(event: string): number
+method      export src/user.ts#UserService.[Symbol.iterator] @46:3-48:4
+    [Symbol.iterator](): MapIterator<UserDto>
+function    export src/user.ts#parse @51:1-55:2
+    parse(input: string): number (+1 overload)
+function    export src/user.ts#double @57:1-57:44
+    double(n: number): number
+variable    export src/user.ts#config @58:1-58:38
+    const config: { retries: number; }
+variable           src/user.ts#a @59:1-59:40
+    const a: number
+variable           src/user.ts#c @59:1-59:40
+    const c: number
+variable           src/user.ts#counter @60:1-60:17
+    let counter: number
+function    export src/user.ts#helper @62:1-64:2
+    helper(): number
+namespace   export src/user.ts#Utils @66:1-74:2
+    namespace Utils
+function    export src/user.ts#Utils.slugify @67:3-69:4
+    slugify(s: string): string
+function           src/user.ts#Utils.hidden @70:3-70:23
+    hidden(): void
+namespace   export src/user.ts#Utils.Deep @71:3-73:4
+    namespace Deep
+namespace   export src/user.ts#Utils.Deep.Er @71:25-73:4
+    namespace Er
+variable    export src/user.ts#Utils.Deep.Er.x @72:5-72:24
+    const x: 1
+function    export src/user.ts#default @78:1-80:2
+    default(): number
