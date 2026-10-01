@@ -1,0 +1,335 @@
+{
+  "schemaVersion": "0.1.0",
+  "generator": {
+    "name": "cpr",
+    "version": "test"
+  },
+  "revisions": {
+    "base": {
+      "ref": "base",
+      "sha": null,
+      "mergeBase": null
+    },
+    "head": {
+      "ref": "head",
+      "sha": null
+    },
+    "from": null
+  },
+  "files": [
+    {
+      "status": "modified",
+      "path": "src/math.ts"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "src/math.ts#add",
+      "kind": "function",
+      "name": "add",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": true,
+        "body": true,
+        "moved": false
+      },
+      "previousId": null,
+      "base": {
+        "file": "src/math.ts",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 3,
+            "col": 2
+          }
+        },
+        "signature": "add(a: number, b: number): number",
+        "hashes": {
+          "signature": "d24792e9f159de0b",
+          "body": "bcab78af04a3ae18"
+        }
+      },
+      "head": {
+        "file": "src/math.ts",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 3,
+            "col": 2
+          }
+        },
+        "signature": "add(a: number, b: number, c = 0): number",
+        "hashes": {
+          "signature": "20b3a48d63592bd8",
+          "body": "0d30f80dd9300a94"
+        }
+      }
+    },
+    {
+      "id": "src/math.ts#legacy",
+      "kind": "function",
+      "name": "legacy",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "removed",
+      "previousId": null,
+      "base": {
+        "file": "src/math.ts",
+        "range": {
+          "start": {
+            "line": 5,
+            "col": 1
+          },
+          "end": {
+            "line": 7,
+            "col": 2
+          }
+        },
+        "signature": "legacy(): number",
+        "hashes": {
+          "signature": "d81427235474ca6f",
+          "body": "301c309a2b6905ea"
+        }
+      },
+      "head": null
+    },
+    {
+      "id": "src/math.ts#triple",
+      "kind": "function",
+      "name": "triple",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "added",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/math.ts",
+        "range": {
+          "start": {
+            "line": 5,
+            "col": 1
+          },
+          "end": {
+            "line": 7,
+            "col": 2
+          }
+        },
+        "signature": "triple(a: number): number",
+        "hashes": {
+          "signature": "a88a314eb607a621",
+          "body": "84181aca98ff0c1b"
+        }
+      }
+    },
+    {
+      "id": "src/app.ts#old",
+      "kind": "function",
+      "name": "old",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "unchanged",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/app.ts",
+        "range": {
+          "start": {
+            "line": 7,
+            "col": 1
+          },
+          "end": {
+            "line": 9,
+            "col": 2
+          }
+        },
+        "signature": "old(): number",
+        "hashes": {
+          "signature": "4c0280c61a050316",
+          "body": "57dae4a8270c6b07"
+        }
+      }
+    },
+    {
+      "id": "src/app.ts#total",
+      "kind": "function",
+      "name": "total",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "unchanged",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/app.ts",
+        "range": {
+          "start": {
+            "line": 3,
+            "col": 1
+          },
+          "end": {
+            "line": 5,
+            "col": 2
+          }
+        },
+        "signature": "total(values: number[]): number",
+        "hashes": {
+          "signature": "e4d508dc93c9a079",
+          "body": "26474ab5f96c6af7"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "src/app.ts#old",
+      "to": "src/math.ts#legacy",
+      "kind": "call",
+      "side": "base",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "src/app.ts",
+            "line": 8,
+            "col": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "from": "src/app.ts#total",
+      "to": "src/math.ts#add",
+      "kind": "call",
+      "side": "both",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "src/app.ts",
+            "line": 4,
+            "col": 40
+          }
+        ],
+        "head": [
+          {
+            "file": "src/app.ts",
+            "line": 4,
+            "col": 40
+          }
+        ]
+      }
+    },
+    {
+      "id": "e3",
+      "from": "src/math.ts#legacy",
+      "to": "src/math.ts#add",
+      "kind": "call",
+      "side": "base",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "src/math.ts",
+            "line": 6,
+            "col": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "e4",
+      "from": "src/math.ts#triple",
+      "to": "src/math.ts#add",
+      "kind": "call",
+      "side": "head",
+      "resolution": "resolved",
+      "sites": {
+        "head": [
+          {
+            "file": "src/math.ts",
+            "line": 6,
+            "col": 10
+          }
+        ]
+      }
+    }
+  ],
+  "findings": [
+    {
+      "rule": "removed-still-referenced",
+      "severity": "error",
+      "symbol": "src/math.ts#legacy",
+      "related": [
+        "src/app.ts#old"
+      ],
+      "message": "legacy was removed but is still used by 1 symbol: old",
+      "data": {
+        "referencedBy": [
+          "src/app.ts#old"
+        ],
+        "certainty": "resolved",
+        "sites": [
+          {
+            "file": "src/app.ts",
+            "line": 8,
+            "col": 10
+          }
+        ]
+      },
+      "id": "f1"
+    },
+    {
+      "rule": "orphan-added",
+      "severity": "warning",
+      "symbol": "src/math.ts#triple",
+      "related": [],
+      "message": "triple is new and nothing references it",
+      "data": {
+        "exportedFromEntry": false,
+        "exposure": null
+      },
+      "id": "f2"
+    },
+    {
+      "rule": "signature-changed",
+      "severity": "warning",
+      "symbol": "src/math.ts#add",
+      "related": [
+        "src/app.ts#total",
+        "src/math.ts#triple"
+      ],
+      "message": "add changed its signature; 1 of 2 users not updated: total",
+      "data": {
+        "callers": 2,
+        "updated": 1,
+        "untouched": 1
+      },
+      "id": "f3"
+    }
+  ],
+  "stats": {
+    "filesChanged": 1,
+    "symbols": {
+      "added": 1,
+      "removed": 1,
+      "modified": 1,
+      "context": 2
+    },
+    "edges": 4
+  },
+  "warnings": []
+}

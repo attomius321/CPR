@@ -8,15 +8,20 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./schema/graph.schema.json": "./schema/graph.schema.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "schema"
   ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "ts-morph": "28.0.0"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0"
   }
 }

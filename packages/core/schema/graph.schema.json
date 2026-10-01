@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/attomius321/CPR/packages/core/schema/graph.schema.json",
+  "title": "CPR graph",
+  "description": "Changed symbols, their neighbours, the edges between them and findings. Consumers must ignore unknown fields.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "generator",
+    "revisions",
+    "files",
+    "nodes",
+    "edges",
+    "findings",
+    "stats",
+    "warnings"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "pattern": "^0\\.\\d+\\.\\d+$" },
+    "generator": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": { "name": { "type": "string" }, "version": { "type": "string" } }
+    },
+    "revisions": {
+      "type": "object",
+      "required": ["base", "head", "from"],
+      "properties": {
+        "base": {
+          "type": "object",
+          "required": ["ref", "sha", "mergeBase"],
+          "properties": {
+            "ref": { "type": "string" },
+            "sha": { "type": ["string", "null"] },
+            "mergeBase": { "type": ["string", "null"] }
+          }
+        },
+        "head": {
+          "type": "object",
+          "required": ["ref", "sha"],
+          "properties": { "ref": { "type": "string" }, "sha": { "type": ["string", "null"] } }
+        },
+        "from": { "type": ["string", "null"] }
+      }
+    },
+    "files": { "type": "array", "items": { "$ref": "#/$defs/file" } },
+    "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } },
+    "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
+    "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "stats": {
+      "type": "object",
+      "required": ["filesChanged", "symbols", "edges"],
+      "properties": {
+        "filesChanged": { "type": "integer", "minimum": 0 },
+        "symbols": {
+          "type": "object",
+          "required": ["added", "removed", "modified", "context"],
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "edges": { "type": "integer", "minimum": 0 },
+        "durationMs": { "type": "number", "minimum": 0 }
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "symbolId": { "type": "string", "minLength": 1 },
+    "position": {
+      "type": "object",
+      "required": ["line", "col"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "col": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "range": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "$ref": "#/$defs/position" },
+        "end": { "$ref": "#/$defs/position" }
+      }
+    },
+    "site": {
+      "type": "object",
+      "required": ["file", "line", "col"],
+      "properties": {
+        "file": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 },
+        "col": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "file": {
+      "type": "object",
+      "required": ["status", "path"],
+      "properties": {
+        "status": { "enum": ["added", "deleted", "modified", "renamed", "copied", "type-changed"] },
+        "path": { "type": "string" },
+        "previousPath": { "type": "string" },
+        "similarity": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "ignored": { "const": true }
+      }
+    },
+    "side": {
+      "type": ["object", "null"],
+      "required": ["file", "range", "signature", "hashes"],
+      "properties": {
+        "file": { "type": "string" },
+        "range": { "$ref": "#/$defs/range" },
+        "signature": { "type": "string" },
+        "hashes": {
+          "type": "object",
+          "required": ["signature", "body"],
+          "properties": {
+            "signature": { "type": "string", "pattern": "^[0-9a-f]{16}$" },
+            "body": { "type": "string", "pattern": "^([0-9a-f]{16})?$" }
+          }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "name",
+        "container",
+        "language",
+        "exported",
+        "status",
+        "previousId",
+        "base",
+        "head"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/symbolId" },
+        "kind": {
+          "enum": [
+            "function",
+            "class",
+            "method",
+            "constructor",
+            "accessor",
+            "property",
+            "interface",
+            "type",
+            "enum",
+            "variable",
+            "namespace",
+            "module",
+            "external",
+            "unknown"
+          ]
+        },
+        "name": { "type": "string" },
+        "container": { "type": ["string", "null"] },
+        "language": { "type": "string" },
+        "exported": { "type": "boolean" },
+        "status": { "enum": ["added", "removed", "modified", "unchanged"] },
+        "delta": {
+          "type": "object",
+          "required": ["signature", "body", "moved"],
+          "properties": {
+            "signature": { "type": "boolean" },
+            "body": { "type": "boolean" },
+            "moved": { "type": "boolean" }
+          }
+        },
+        "previousId": { "type": ["string", "null"] },
+        "base": { "$ref": "#/$defs/side" },
+        "head": { "$ref": "#/$defs/side" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "added" } } },
+          "then": { "properties": { "base": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "removed" } } },
+          "then": { "properties": { "head": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "modified" } } },
+          "then": { "required": ["delta"] }
+        }
+      ]
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "from", "to", "kind", "side", "resolution", "sites"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^e\\d+$" },
+        "from": { "$ref": "#/$defs/symbolId" },
+        "to": { "$ref": "#/$defs/symbolId" },
+        "kind": { "enum": ["call", "new", "reference", "type-reference", "extends", "implements"] },
+        "side": { "enum": ["base", "head", "both"] },
+        "resolution": { "enum": ["resolved", "unknown"] },
+        "sites": {
+          "type": "object",
+          "properties": {
+            "base": { "type": "array", "items": { "$ref": "#/$defs/site" } },
+            "head": { "type": "array", "items": { "$ref": "#/$defs/site" } }
+          }
+        },
+        "via": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["id", "rule", "severity", "symbol", "related", "message", "data"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^f\\d+$" },
+        "rule": { "type": "string" },
+        "severity": { "enum": ["error", "warning", "info"] },
+        "symbol": { "$ref": "#/$defs/symbolId" },
+        "related": { "type": "array", "items": { "$ref": "#/$defs/symbolId" } },
+        "message": { "type": "string" },
+        "data": { "type": "object" }
+      }
+    }
+  }
+}

@@ -1,0 +1,786 @@
+{
+  "schemaVersion": "0.1.0",
+  "generator": {
+    "name": "cpr",
+    "version": "test"
+  },
+  "revisions": {
+    "base": {
+      "ref": "base",
+      "sha": null,
+      "mergeBase": null
+    },
+    "head": {
+      "ref": "head",
+      "sha": null
+    },
+    "from": null
+  },
+  "files": [
+    {
+      "status": "modified",
+      "path": "src/index.ts"
+    },
+    {
+      "status": "modified",
+      "path": "src/shapes.ts"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "src/shapes.ts#Shape",
+      "kind": "interface",
+      "name": "Shape",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": true,
+        "body": false,
+        "moved": false
+      },
+      "previousId": null,
+      "base": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 4,
+            "col": 2
+          }
+        },
+        "signature": "interface Shape",
+        "hashes": {
+          "signature": "04e00dda27f28f36",
+          "body": ""
+        }
+      },
+      "head": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 5,
+            "col": 2
+          }
+        },
+        "signature": "interface Shape",
+        "hashes": {
+          "signature": "df983c9609f83470",
+          "body": ""
+        }
+      }
+    },
+    {
+      "id": "src/shapes.ts#perimeter",
+      "kind": "function",
+      "name": "perimeter",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "added",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 11,
+            "col": 1
+          },
+          "end": {
+            "line": 13,
+            "col": 2
+          }
+        },
+        "signature": "perimeter(shape: Shape): number",
+        "hashes": {
+          "signature": "dbe1d993088b0725",
+          "body": "2e1bc2f89bb2dba8"
+        }
+      }
+    },
+    {
+      "id": "src/shapes.ts#volume",
+      "kind": "function",
+      "name": "volume",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "added",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 15,
+            "col": 1
+          },
+          "end": {
+            "line": 17,
+            "col": 2
+          }
+        },
+        "signature": "volume(shape: Shape): number",
+        "hashes": {
+          "signature": "0019221251e321af",
+          "body": "5a716f7b9ca0d893"
+        }
+      }
+    },
+    {
+      "id": "src/shapes.ts#Canvas.clear",
+      "kind": "method",
+      "name": "clear",
+      "container": "src/shapes.ts#Canvas",
+      "language": "typescript",
+      "exported": true,
+      "status": "removed",
+      "previousId": null,
+      "base": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 15,
+            "col": 3
+          },
+          "end": {
+            "line": 15,
+            "col": 19
+          }
+        },
+        "signature": "clear(): void",
+        "hashes": {
+          "signature": "9d9eb5f3385b16c4",
+          "body": "98c745f2f8511d66"
+        }
+      },
+      "head": null
+    },
+    {
+      "id": "src/shapes.ts#Canvas",
+      "kind": "class",
+      "name": "Canvas",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": false,
+        "body": true,
+        "moved": false
+      },
+      "previousId": null,
+      "base": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 10,
+            "col": 1
+          },
+          "end": {
+            "line": 16,
+            "col": 2
+          }
+        },
+        "signature": "class Canvas",
+        "hashes": {
+          "signature": "3be559d2f2752a1c",
+          "body": "bac8cbfe64655001"
+        }
+      },
+      "head": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 19,
+            "col": 1
+          },
+          "end": {
+            "line": 23,
+            "col": 2
+          }
+        },
+        "signature": "class Canvas",
+        "hashes": {
+          "signature": "3be559d2f2752a1c",
+          "body": "4ae69d3045afb0a1"
+        }
+      }
+    },
+    {
+      "id": "src/shapes.ts#Pen",
+      "kind": "class",
+      "name": "Pen",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "added",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 29,
+            "col": 1
+          },
+          "end": {
+            "line": 33,
+            "col": 2
+          }
+        },
+        "signature": "class Pen extends Tool",
+        "hashes": {
+          "signature": "9946fcf226003345",
+          "body": "6b35d414a400e5e7"
+        }
+      }
+    },
+    {
+      "id": "src/shapes.ts#Pen.use",
+      "kind": "method",
+      "name": "use",
+      "container": "src/shapes.ts#Pen",
+      "language": "typescript",
+      "exported": true,
+      "status": "added",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 30,
+            "col": 3
+          },
+          "end": {
+            "line": 32,
+            "col": 4
+          }
+        },
+        "signature": "use(): string",
+        "hashes": {
+          "signature": "7d63ee8e1abcbe11",
+          "body": "6570144161017d5d"
+        }
+      }
+    },
+    {
+      "id": "src/shapes.ts#tools",
+      "kind": "variable",
+      "name": "tools",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "added",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 35,
+            "col": 1
+          },
+          "end": {
+            "line": 35,
+            "col": 34
+          }
+        },
+        "signature": "const tools: Pen[]",
+        "hashes": {
+          "signature": "2adcde7dbc51442d",
+          "body": "928f593e51d12631"
+        }
+      }
+    },
+    {
+      "id": "src/app.ts#render",
+      "kind": "function",
+      "name": "render",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "unchanged",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/app.ts",
+        "range": {
+          "start": {
+            "line": 3,
+            "col": 1
+          },
+          "end": {
+            "line": 7,
+            "col": 2
+          }
+        },
+        "signature": "render(): string",
+        "hashes": {
+          "signature": "0fcabdeb3e7420fa",
+          "body": "46869e77d1be37d7"
+        }
+      }
+    },
+    {
+      "id": "src/shapes.ts#area",
+      "kind": "function",
+      "name": "area",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "unchanged",
+      "previousId": null,
+      "base": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 6,
+            "col": 1
+          },
+          "end": {
+            "line": 8,
+            "col": 2
+          }
+        },
+        "signature": "area(shape: Shape): number",
+        "hashes": {
+          "signature": "3bdfdc59a51453bd",
+          "body": "04c8b32d32c04452"
+        }
+      },
+      "head": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 7,
+            "col": 1
+          },
+          "end": {
+            "line": 9,
+            "col": 2
+          }
+        },
+        "signature": "area(shape: Shape): number",
+        "hashes": {
+          "signature": "3bdfdc59a51453bd",
+          "body": "04c8b32d32c04452"
+        }
+      }
+    },
+    {
+      "id": "src/shapes.ts#Canvas.draw",
+      "kind": "method",
+      "name": "draw",
+      "container": "src/shapes.ts#Canvas",
+      "language": "typescript",
+      "exported": true,
+      "status": "unchanged",
+      "previousId": null,
+      "base": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 11,
+            "col": 3
+          },
+          "end": {
+            "line": 13,
+            "col": 4
+          }
+        },
+        "signature": "draw(shape: Shape): string",
+        "hashes": {
+          "signature": "0205a618308fbb9d",
+          "body": "58e173c9b1924c79"
+        }
+      },
+      "head": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 20,
+            "col": 3
+          },
+          "end": {
+            "line": 22,
+            "col": 4
+          }
+        },
+        "signature": "draw(shape: Shape): string",
+        "hashes": {
+          "signature": "0205a618308fbb9d",
+          "body": "58e173c9b1924c79"
+        }
+      }
+    },
+    {
+      "id": "src/shapes.ts#Tool",
+      "kind": "class",
+      "name": "Tool",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "unchanged",
+      "previousId": null,
+      "base": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 18,
+            "col": 1
+          },
+          "end": {
+            "line": 20,
+            "col": 2
+          }
+        },
+        "signature": "abstract class Tool",
+        "hashes": {
+          "signature": "3b905f84e1f40e72",
+          "body": "6b35d414a400e5e7"
+        }
+      },
+      "head": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 25,
+            "col": 1
+          },
+          "end": {
+            "line": 27,
+            "col": 2
+          }
+        },
+        "signature": "abstract class Tool",
+        "hashes": {
+          "signature": "3b905f84e1f40e72",
+          "body": "6b35d414a400e5e7"
+        }
+      }
+    },
+    {
+      "id": "src/shapes.ts#Tool.use",
+      "kind": "method",
+      "name": "use",
+      "container": "src/shapes.ts#Tool",
+      "language": "typescript",
+      "exported": true,
+      "status": "unchanged",
+      "previousId": null,
+      "base": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 19,
+            "col": 3
+          },
+          "end": {
+            "line": 19,
+            "col": 26
+          }
+        },
+        "signature": "abstract use(): string",
+        "hashes": {
+          "signature": "3f7e654db79a7ea1",
+          "body": ""
+        }
+      },
+      "head": {
+        "file": "src/shapes.ts",
+        "range": {
+          "start": {
+            "line": 26,
+            "col": 3
+          },
+          "end": {
+            "line": 26,
+            "col": 26
+          }
+        },
+        "signature": "abstract use(): string",
+        "hashes": {
+          "signature": "3f7e654db79a7ea1",
+          "body": ""
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "src/app.ts#render",
+      "to": "src/shapes.ts#Canvas",
+      "kind": "new",
+      "side": "both",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "src/app.ts",
+            "line": 4,
+            "col": 22
+          }
+        ],
+        "head": [
+          {
+            "file": "src/app.ts",
+            "line": 4,
+            "col": 22
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "from": "src/app.ts#render",
+      "to": "src/shapes.ts#Canvas.clear",
+      "kind": "call",
+      "side": "base",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "src/app.ts",
+            "line": 5,
+            "col": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "e3",
+      "from": "src/shapes.ts#area",
+      "to": "src/shapes.ts#Shape",
+      "kind": "type-reference",
+      "side": "both",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "src/shapes.ts",
+            "line": 6,
+            "col": 29
+          }
+        ],
+        "head": [
+          {
+            "file": "src/shapes.ts",
+            "line": 7,
+            "col": 29
+          }
+        ]
+      }
+    },
+    {
+      "id": "e4",
+      "from": "src/shapes.ts#Canvas.draw",
+      "to": "src/shapes.ts#Shape",
+      "kind": "type-reference",
+      "side": "both",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "src/shapes.ts",
+            "line": 11,
+            "col": 15
+          }
+        ],
+        "head": [
+          {
+            "file": "src/shapes.ts",
+            "line": 20,
+            "col": 15
+          }
+        ]
+      }
+    },
+    {
+      "id": "e5",
+      "from": "src/shapes.ts#Pen",
+      "to": "src/shapes.ts#Tool",
+      "kind": "extends",
+      "side": "head",
+      "resolution": "resolved",
+      "sites": {
+        "head": [
+          {
+            "file": "src/shapes.ts",
+            "line": 29,
+            "col": 26
+          }
+        ]
+      }
+    },
+    {
+      "id": "e6",
+      "from": "src/shapes.ts#perimeter",
+      "to": "src/shapes.ts#Shape",
+      "kind": "type-reference",
+      "side": "head",
+      "resolution": "resolved",
+      "sites": {
+        "head": [
+          {
+            "file": "src/shapes.ts",
+            "line": 11,
+            "col": 34
+          }
+        ]
+      }
+    },
+    {
+      "id": "e7",
+      "from": "src/shapes.ts#Tool.use",
+      "to": "src/shapes.ts#Pen.use",
+      "kind": "reference",
+      "side": "head",
+      "resolution": "resolved",
+      "sites": {
+        "head": [
+          {
+            "file": "src/shapes.ts",
+            "line": 26,
+            "col": 12
+          }
+        ]
+      }
+    },
+    {
+      "id": "e8",
+      "from": "src/shapes.ts#tools",
+      "to": "src/shapes.ts#Pen",
+      "kind": "new",
+      "side": "head",
+      "resolution": "resolved",
+      "sites": {
+        "head": [
+          {
+            "file": "src/shapes.ts",
+            "line": 35,
+            "col": 27
+          }
+        ]
+      }
+    },
+    {
+      "id": "e9",
+      "from": "src/shapes.ts#volume",
+      "to": "src/shapes.ts#Shape",
+      "kind": "type-reference",
+      "side": "head",
+      "resolution": "resolved",
+      "sites": {
+        "head": [
+          {
+            "file": "src/shapes.ts",
+            "line": 15,
+            "col": 31
+          }
+        ]
+      }
+    }
+  ],
+  "findings": [
+    {
+      "rule": "removed-still-referenced",
+      "severity": "error",
+      "symbol": "src/shapes.ts#Canvas.clear",
+      "related": [
+        "src/app.ts#render"
+      ],
+      "message": "Canvas.clear was removed but is still used by 1 symbol: render",
+      "data": {
+        "referencedBy": [
+          "src/app.ts#render"
+        ],
+        "certainty": "resolved",
+        "sites": [
+          {
+            "file": "src/app.ts",
+            "line": 5,
+            "col": 10
+          }
+        ]
+      },
+      "id": "f1"
+    },
+    {
+      "rule": "orphan-added",
+      "severity": "warning",
+      "symbol": "src/shapes.ts#perimeter",
+      "related": [],
+      "message": "perimeter is new and nothing references it",
+      "data": {
+        "exportedFromEntry": false,
+        "exposure": null
+      },
+      "id": "f2"
+    },
+    {
+      "rule": "orphan-added",
+      "severity": "warning",
+      "symbol": "src/shapes.ts#tools",
+      "related": [],
+      "message": "tools is new and nothing references it",
+      "data": {
+        "exportedFromEntry": false,
+        "exposure": null
+      },
+      "id": "f3"
+    },
+    {
+      "rule": "signature-changed",
+      "severity": "warning",
+      "symbol": "src/shapes.ts#Shape",
+      "related": [
+        "src/shapes.ts#Canvas.draw",
+        "src/shapes.ts#area",
+        "src/shapes.ts#perimeter",
+        "src/shapes.ts#volume"
+      ],
+      "message": "Shape changed its signature; 2 of 4 users not updated: Canvas.draw, area",
+      "data": {
+        "callers": 4,
+        "updated": 2,
+        "untouched": 2
+      },
+      "id": "f4"
+    },
+    {
+      "rule": "orphan-added",
+      "severity": "info",
+      "symbol": "src/shapes.ts#volume",
+      "related": [],
+      "message": "volume is new public API; nothing in the repo uses it yet",
+      "data": {
+        "exportedFromEntry": true,
+        "exposure": "entry-export"
+      },
+      "id": "f5"
+    }
+  ],
+  "stats": {
+    "filesChanged": 2,
+    "symbols": {
+      "added": 5,
+      "removed": 1,
+      "modified": 2,
+      "context": 5
+    },
+    "edges": 9
+  },
+  "warnings": []
+}
