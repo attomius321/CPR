@@ -108,7 +108,7 @@ A directed relation `from` → `to` ("from uses to").
 
 | Field | Type | Notes |
 |---|---|---|
-| `kind` | enum | `call` `new` `reference` `type-reference` `extends` `implements` |
+| `kind` | enum | `call` `new` `reference` `type-reference` `extends` `implements`. `type-reference` edges are always emitted; viewers should hide them by default. |
 | `side` | enum | `base` (edge removed), `head` (edge added), `both` (kept) |
 | `resolution` | enum | `resolved` — the checker found the target. `unknown` — dynamic call or untyped JS; `to` is a best guess and may be an `unknown` node. |
 | `sites` | object | Call/reference locations per side. Missing side = no sites there. |

@@ -1,6 +1,6 @@
 # CPR — Plan (draft v0.1)
 
-> Status: first planning draft. Decisions marked **(open)** still need a call.
+> Status: first planning draft. Settled decisions are listed in §14.
 
 ## 1. Why
 
@@ -82,7 +82,8 @@ Diffing, move detection, detectors and graph output are shared code.
 interface RevisionSource { root: string; sha?: string; dispose(): Promise<void> }
 ```
 
-- `GitWorktreeSource` — `git worktree add --detach <cache>/<sha> <sha>`; cached by SHA.
+- `GitWorktreeSource` — `git worktree add --detach <cache>/<sha> <sha>`; cached by SHA under
+  `$XDG_CACHE_HOME/cpr/worktrees/<repo-id>/` (fallback `~/.cache/cpr`, macOS `~/Library/Caches/cpr`).
 - `DirectorySource` — a plain folder. Used by test fixtures and for quick experiments.
 
 ## 5. Engine pipeline
@@ -108,7 +109,8 @@ resolve refs → changed files → load projects → extract → hash → diff
    - Incoming (callers): in `head` for added/modified, in `base` for removed.
    - Outgoing (callees): walk the changed symbol's body and resolve call targets.
    - Map each reference site to its enclosing symbol to get the caller ID.
-   - Unchanged callers and callees join the graph as **context nodes** (1 hop).
+   - Unchanged callers and callees join the graph as **context nodes** (1 hop by default, `--depth n`).
+   - Type-only references are always collected as `type-reference` edges. The UI hides them by default.
 9. **Detectors** (§8).
 10. **Emit** `graph.json` + a human summary on stdout.
 
@@ -150,8 +152,10 @@ so formatting-only edits do not count as changes.
 
 A class's own change comes from its heritage and member list. Member edits show on the members.
 
-**(open)** Should the *inferred* return type (from the checker) also feed the signature hash?
-It catches real contract changes with no annotation, but is slower and noisier.
+**Inferred return types:** when a function or method has **no declared return type**, the
+checker's inferred return type is normalized and added to the signature hash. This catches
+`return user` turning into `return user ?? null` with no annotation. Annotated symbols use
+the declared text only. Runs on changed symbols only, so the cost is small.
 
 ## 7. TypeScript traps
 
@@ -187,6 +191,7 @@ cpr diff <base> <head> [options]
   --out <file>          write graph JSON to a file (default: stdout when --json)
   --json                print JSON instead of the human summary
   --no-merge-base       compare base and head directly
+  --depth <n>           hops of unchanged context around changed symbols (default: 1)
   --fail-on <severity>  exit 1 if any finding is at or above this level (for CI)
 ```
 
@@ -258,10 +263,12 @@ build a per-file identifier index to prefilter reference search, then oxc in the
 | Graph too big to read | UI collapses context nodes and groups by file/package by default. |
 | ts-morph memory use with two projects | Load sides one after the other and keep only extracted data, not both ASTs. |
 
-## 14. Open questions
+## 14. Decisions
 
-1. **(open)** Package manager: pnpm (proposed) vs npm workspaces.
-2. **(open)** Inferred return types in the signature hash (§6.3)?
-3. **(open)** Include type-only references (`type-reference` edges) in the default view, or hide them?
-4. **(open)** Depth of context: 1 hop (proposed) or configurable?
-5. **(open)** Worktree cache location: `$XDG_CACHE_HOME/cpr` (proposed) or `.cpr/` in the repo?
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 1 | Package manager | **pnpm** workspaces | Fast, strict about undeclared deps, standard for TS monorepos. |
+| 2 | Inferred return type in signature hash | **Only when unannotated** (§6.3) | Catches silent contract changes without noise on annotated code. |
+| 3 | Type-only references | **Always collected, hidden by default** in the UI | Needed for blast radius when an interface or type changes. |
+| 4 | Context depth | **1 hop**, `--depth n` to widen | Small graphs by default, more context on demand. |
+| 5 | Worktree cache location | **`$XDG_CACHE_HOME/cpr`** (outside the repo) | Worktrees inside the repo would be picked up by tsc, eslint, test runners and file watchers. |
