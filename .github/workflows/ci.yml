@@ -24,6 +24,9 @@ jobs:
           - { os: macos-latest, node: 24 }
     steps:
       - uses: actions/checkout@v7
+        with:
+          # One parent commit, so CPR can review the change it is being tested on.
+          fetch-depth: 2
       # Installs pnpm (from packageManager), Node, and runs a frozen `pnpm install`.
       - uses: pnpm/setup@v3
         with:
@@ -36,3 +39,5 @@ jobs:
       - run: pnpm run build
       - name: CLI smoke test
         run: node packages/cli/dist/bin.js --version
+      - name: Dogfood (cpr reviews this commit)
+        run: node packages/cli/dist/bin.js diff HEAD~1 --out cpr-graph.json

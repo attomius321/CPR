@@ -1,6 +1,7 @@
 import { SCHEMA_VERSION } from '@cpr/core';
 import { afterAll, describe, expect, it } from 'vitest';
-import { rmSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
 import { createBranchedRepo, tempDir } from '../../core/test/helpers/git-repo.js';
 import { run } from '../src/main.js';
 
@@ -85,6 +86,28 @@ describe('cpr diff', () => {
     const { stdout } = await cpr(['diff', 'main', 'feature', '--no-merge-base'], repo.root);
     expect(stdout).not.toContain('merge-base');
     expect(stdout).toContain('\nD  src/main-only.ts\n');
+  });
+
+  it('prints the graph JSON with --json and writes it with --out', async () => {
+    const { code, stdout } = await cpr(
+      ['diff', 'main', 'feature', '--json', '--out', 'graph.json'],
+      repo.root,
+    );
+    expect(code).toBe(0);
+    const graph = JSON.parse(stdout) as { schemaVersion: string; stats: { durationMs: number } };
+    expect(graph.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(graph.stats.durationMs).toBeGreaterThan(0);
+    expect(readFileSync(join(repo.root, 'graph.json'), 'utf8')).toBe(stdout);
+    rmSync(join(repo.root, 'graph.json'));
+  });
+
+  it('fails with --fail-on when a finding is severe enough', async () => {
+    // The branch adds an unused export: one orphan-added warning.
+    expect((await cpr(['diff', 'main', 'feature', '--fail-on', 'error'], repo.root)).code).toBe(0);
+    const warning = await cpr(['diff', 'main', 'feature', '--fail-on', 'warning'], repo.root);
+    expect(warning.code).toBe(1);
+    expect(warning.stderr).toContain("1 finding at or above 'warning'");
+    expect((await cpr(['diff', 'main', 'feature', '--fail-on', 'loud'], repo.root)).code).toBe(2);
   });
 
   it('fails on unknown revisions', async () => {

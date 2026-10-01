@@ -20,8 +20,10 @@ TypeScript-specific except the `language` value.
 | New optional field, new enum value consumers can ignore | minor |
 | Removed/renamed field, changed meaning | major |
 
-A consumer accepts any version with the same major. A JSON Schema file will live at
-`packages/core/schema/graph.schema.json` and is the source of truth once it exists.
+A consumer accepts any version with the same major. The JSON Schema at
+[`packages/core/schema/graph.schema.json`](../packages/core/schema/graph.schema.json) (draft
+2020-12, exported as `@cpr/core/schema/graph.schema.json`) is the source of truth; tests validate
+every golden graph against it.
 
 ## Top level
 
@@ -31,18 +33,35 @@ A consumer accepts any version with the same major. A JSON Schema file will live
   "generator": { "name": "cpr", "version": "0.1.0" },
   "revisions": {
     "base": { "ref": "main", "sha": "a1b2c3d", "mergeBase": "9f8e7d6" },
-    "head": { "ref": "feature/users", "sha": "d4e5f6a" }
+    "head": { "ref": "feature/users", "sha": "d4e5f6a" },
+    "from": "9f8e7d6"            // the commit head was compared against
   },
+  "files": [ /* changed files, like git diff --name-status */ ],
   "nodes": [ /* Node */ ],
   "edges": [ /* Edge */ ],
   "findings": [ /* Finding */ ],
   "stats": {
     "filesChanged": 6,
     "symbols": { "added": 3, "removed": 1, "modified": 10, "context": 12 },
+    "edges": 31,
     "durationMs": 4210
-  }
+  },
+  "warnings": []
 }
 ```
+
+When comparing folders instead of commits, `sha`, `mergeBase` and `from` are `null` and `ref` is
+the folder path.
+
+## File
+
+```jsonc
+{ "status": "renamed", "path": "src/new.ts", "previousPath": "src/old.ts", "similarity": 92 }
+{ "status": "added", "path": "test/fixtures/x.ts", "ignored": true }
+```
+
+`status`: `added` `deleted` `modified` `renamed` `copied` `type-changed`. `ignored: true` marks
+files left out of symbol analysis (default ignores and `.cprignore`).
 
 ## Node
 
@@ -84,7 +103,9 @@ One per symbol in the graph: every changed symbol, plus unchanged **context** sy
 | `previousId` | string \| null | The base ID when the symbol was moved or renamed. |
 | `hashes` | object | `signature` and `body`, 16 hex chars each. `body` is `""` when the symbol has no body (interfaces, types, enums, abstract methods). |
 
-`unchanged` nodes are context only. Special node IDs, all leaves without `base`/`head`:
+`unchanged` nodes are context only. A context node carries the side(s) it was resolved on:
+`head` for symbols that exist after the change, both sides for unchanged symbols in changed
+files. Special node IDs, all leaves without `base`/`head`:
 
 | Kind | ID | Meaning |
 |---|---|---|

@@ -229,28 +229,38 @@ Later candidates: `exported-api-changed`, `new-cycle`, `caller-not-updated-for-n
 ## 9. CLI (phase 1)
 
 ```
-cpr diff <base> <head> [options]
+cpr diff <base> [head] [options]        head defaults to HEAD
 
-  --project <path>      tsconfig to use (default: auto-detect)
-  --out <file>          write graph JSON to a file (default: stdout when --json)
-  --json                print JSON instead of the human summary
+  --json                print the graph JSON instead of the summary
+  --out <file>          also write the graph JSON to a file
+  --fail-on <level>     exit 1 if any finding is at least error | warning | info (for CI)
+  --project <path>      tsconfig to use, relative to the repo root (default: tsconfig.json)
+  --depth <n>           hops of unchanged context (default: 1)
   --no-merge-base       compare base and head directly
-  --depth <n>           hops of unchanged context around changed symbols (default: 1)
-  --fail-on <severity>  exit 1 if any finding is at or above this level (for CI)
 ```
 
-Exit codes: `0` ok, `1` failure or `--fail-on` hit, `2` usage error.
+Exit codes: `0` ok, `1` failure or `--fail-on` hit, `2` usage error. Warnings (configs that failed to
+load, files the program skipped) go to stderr.
 
-Human summary example:
+Human summary (real output shape):
 
 ```
-cpr: 14 symbols changed (3 added, 1 removed, 10 modified) in 6 files
+main (273c27a) → HEAD (b769925), merge-base 273c27a
+4 files changed · 3 symbols changed: 1 removed, 1 added, 1 modified
 
- ✖ removed-still-referenced  src/user/service.ts#UserService.find
-     still called from src/api/routes.ts#listUsers
- ⚠ signature-changed         src/user/service.ts#UserService.getUser
-     5 callers · 2 updated · 3 untouched
- ⚠ orphan-added              src/util/date.ts#toIsoWeek
+Findings
+  ✖ removed-still-referenced  src/math.ts#legacy
+      legacy was removed but is still used by 1 symbol: old
+  ⚠ signature-changed         src/math.ts#add
+      add changed its signature; 1 of 2 users not updated: total
+
+M  src/math.ts
+     ~ function    add  (signature, body)  · used by 2
+     - function    legacy  · used by 1
+     + function    triple
+R  src/old.ts → src/new.ts
+     → function    old  (moved from src/old.ts#old)
+A  test/fixtures/x.ts  (ignored)
 ```
 
 ## 10. Testing
@@ -299,7 +309,7 @@ or oxc in the long run.
 | M4 ✅ | References | incoming/outgoing edges, alias resolution, context nodes |
 | S1 ✅ | TS 7 spike | Prototype adapter on `typescript/unstable/sync`; compare speed and results with ts-morph on fixtures and dogfood repos |
 | M5 ✅ | Detectors | the three v1 rules |
-| M6 | Output + CLI | graph JSON v0.1, human summary, `--fail-on` |
+| M6 ✅ | Output + CLI | graph JSON v0.1, human summary, `--fail-on` |
 | M7 | Dogfood | measured runtime + false-positive notes on 3 repos |
 
 ## 13. Risks

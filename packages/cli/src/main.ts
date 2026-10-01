@@ -1,6 +1,16 @@
 import { createRequire } from 'node:module';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { analyzeGit, CprError, NoMergeBaseError, SCHEMA_VERSION, type Analysis } from '@cpr/core';
+import { writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import {
+  analyzeGit,
+  buildGraph,
+  CprError,
+  NoMergeBaseError,
+  SCHEMA_VERSION,
+  type Analysis,
+  type Severity,
+} from '@cpr/core';
 import { formatAnalysis } from './format.js';
 
 const { version } = createRequire(import.meta.url)('../package.json') as { version: string };
@@ -16,6 +26,9 @@ const processContext = (): CliContext => ({
   stdout: (text) => process.stdout.write(text),
   stderr: (text) => process.stderr.write(text),
 });
+
+/** Most severe first. */
+const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
 
 const HELP = `Usage: cpr <command> [options]
 
@@ -33,6 +46,9 @@ Compares head (default: HEAD) against the merge-base of base and head,
 like a GitHub pull request, and lists the changed symbols in each file.
 
 Options:
+  --json               Print the graph JSON instead of the summary
+  --out <file>         Also write the graph JSON to a file
+  --fail-on <level>    Exit 1 if a finding is at least: error, warning, info (default: never)
   --no-merge-base      Compare against base directly
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
@@ -108,6 +124,9 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
         'no-merge-base': { type: 'boolean', default: false },
         project: { type: 'string' },
         depth: { type: 'string', default: '1' },
+        json: { type: 'boolean', default: false },
+        out: { type: 'string' },
+        'fail-on': { type: 'string' },
         help: { type: 'boolean', short: 'h', default: false },
       },
     },
@@ -127,6 +146,12 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
     throw new UsageError(`--depth must be a positive integer, got '${values.depth}'`, DIFF_HELP);
   }
 
+  const failOn = values['fail-on'];
+  if (failOn !== undefined && !SEVERITIES.includes(failOn as Severity)) {
+    throw new UsageError(`--fail-on must be error, warning or info, got '${failOn}'`, DIFF_HELP);
+  }
+
+  const started = performance.now();
   let analysis: Analysis;
   try {
     analysis = await analyzeGit({
@@ -146,7 +171,24 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
     throw error;
   }
 
-  ctx.stdout(formatAnalysis(analysis));
+  const graph = buildGraph(analysis, {
+    generator: { name: 'cpr', version },
+    durationMs: Math.round(performance.now() - started),
+  });
+  const json = `${JSON.stringify(graph, null, 2)}\n`;
+  if (values.out !== undefined) await writeFile(resolve(ctx.cwd, values.out), json);
+  ctx.stdout(values.json ? json : formatAnalysis(analysis));
   for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
+
+  if (failOn !== undefined) {
+    const threshold = SEVERITIES.indexOf(failOn as Severity);
+    const failing = analysis.findings.filter((f) => SEVERITIES.indexOf(f.severity) <= threshold);
+    if (failing.length > 0) {
+      ctx.stderr(
+        `cpr: ${failing.length} finding${failing.length === 1 ? '' : 's'} at or above '${failOn}'\n`,
+      );
+      return 1;
+    }
+  }
   return 0;
 }

@@ -247,3 +247,22 @@ symbols, but M7 must measure big PRs.
   changes still cost a checkout).
 - The dangling scan reads every head file containing the name; fine for removed symbols with
   distinctive names, slower for `get`/`run`.
+
+## M6 — Graph JSON and CLI (2026-10-01)
+
+**What landed**
+- `buildGraph(analysis)` → graph JSON v0.1.0: `revisions` (+ `from`), `files` (with
+  `ignored`), `nodes` (changed + context), `edges` (`e1…`), `findings`, `stats` (+ `edges`,
+  `durationMs`), `warnings`.
+- JSON Schema (draft 2020-12) at `packages/core/schema/graph.schema.json`, exported from the
+  package; golden graphs for three fixture pairs are validated with Ajv and snapshotted.
+- CLI: `--json`, `--out <file>`, `--fail-on <error|warning|info>`; exit codes 0/1/2.
+- CI dogfoods every push: `cpr diff HEAD~1` on CPR itself (`fetch-depth: 2`).
+
+**Decisions**
+- Folder comparisons keep `sha`/`mergeBase`/`from` as `null` rather than inventing values.
+- Context nodes carry only the side they were resolved on (head when possible); unchanged
+  symbols in changed files carry both.
+- Ajv's 2020 build: `import { Ajv2020 } from 'ajv/dist/2020.js'` (named export) works with
+  NodeNext; the default import is the CJS namespace.
+- `SCHEMA_VERSION` moved into `graph.ts` next to the types it versions.
