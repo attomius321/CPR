@@ -22,7 +22,7 @@ import {
 } from '@cpr/core';
 import { detectForge } from '@cpr/forge';
 import { formatAnalysis } from './format.js';
-import { startViewServer } from './server.js';
+import { startViewServer, type ReviewTarget } from './server.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -114,7 +114,8 @@ Options:
 const PR_HELP = `Usage: cpr pr <number> [options]      (alias: cpr mr)
 
 Reviews a GitHub pull request or GitLab merge request of the \`origin\` remote: reads it
-through the forge's API, fetches its head and target branch, and opens the viewer.
+through the forge's API, fetches its head and target branch, and opens the viewer, where
+comments on symbols are submitted as one review (comment, approve, or request changes).
 
 Tokens: GITHUB_TOKEN / GH_TOKEN (or gh auth login) · GITLAB_TOKEN.
 API overrides: GITHUB_API_URL · GITLAB_API_URL.
@@ -314,6 +315,7 @@ async function serve(
   args: ServeArgs,
   ctx: CliContext,
   help: string,
+  review?: ReviewTarget,
 ): Promise<number> {
   const port = checkPort(args.port, help);
   const repo = await openRepo(ctx.cwd);
@@ -327,6 +329,7 @@ async function serve(
       if (!sha) return Promise.reject(new Error(`no ${side} revision`));
       return readFileAtRevision(repo, sha, path);
     },
+    ...(review ? { review } : {}),
   });
   const changed =
     graph.stats.symbols.added + graph.stats.symbols.removed + graph.stats.symbols.modified;
@@ -464,7 +467,15 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
   if (reportOnly) return report(analysis, graph, values, ctx);
   if (values.out !== undefined)
     await writeFile(resolve(ctx.cwd, values.out), `${JSON.stringify(graph, null, 2)}\n`);
-  return serve(analysis, graph, values, ctx, PR_HELP);
+  // Comments are anchored to the analyzed commits, which may predate a newer push.
+  const reviewed = {
+    ...request,
+    head: { ...request.head, sha: analysis.revisions.head.sha ?? request.head.sha },
+  };
+  return serve(analysis, graph, values, ctx, PR_HELP, {
+    forge: forge.kind,
+    submit: (review) => forge.submitReview(reviewed, review),
+  });
 }
 
 /** The built viewer that ships with the CLI (`CPR_VIEWER_DIR` overrides, e.g. for tests). */

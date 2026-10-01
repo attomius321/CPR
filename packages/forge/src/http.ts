@@ -1,7 +1,7 @@
 import { CprError } from '@cpr/core';
 
 export interface ApiOptions {
-  method?: 'GET' | 'POST' | 'PUT';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
   headers: Record<string, string>;
   /** Names the token variables, for the authentication error message. */

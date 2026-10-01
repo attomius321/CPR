@@ -628,8 +628,9 @@ code {
 }
 
 .tabs button {
-  flex: 1;
-  padding: 10px 8px;
+  flex: 1 1 auto;
+  padding: 10px 6px;
+  white-space: nowrap;
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;
@@ -843,4 +844,126 @@ kbd {
 
 .request:hover {
   text-decoration: underline;
+}
+
+/* ---- comments and the review to post ------------------------------------------------ */
+
+.row.pickable {
+  cursor: pointer;
+}
+
+.row.pickable:hover {
+  outline: 1px solid var(--moved);
+  outline-offset: -1px;
+}
+
+.row.anchored {
+  box-shadow: inset 3px 0 0 var(--moved);
+}
+
+.comment-input {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.comment-input:focus {
+  outline: 2px solid color-mix(in srgb, var(--moved) 50%, transparent);
+  border-color: var(--moved);
+}
+
+.comment-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.review:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.draft,
+.draft-row {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--moved);
+  background: color-mix(in srgb, var(--moved) 6%, transparent);
+}
+
+.draft-row {
+  margin: 0 12px 8px;
+}
+
+.draft-where {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.draft-body {
+  margin: 4px 0 0;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.small {
+  font-size: 12px;
+}
+
+.commented {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.submit-review {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.submit-review .button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.events {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 13px;
+}
+
+.events label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.posted {
+  margin: 0;
+  color: var(--added);
+  font-size: 13px;
 }

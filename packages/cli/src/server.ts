@@ -3,8 +3,15 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { AddressInfo } from 'node:net';
 import { extname, join, normalize, sep } from 'node:path';
 import type { Graph } from '@cpr/core';
+import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
 
 export type Side = 'base' | 'head';
+
+/** Posts reviews to the change request being viewed (`cpr pr` only). */
+export interface ReviewTarget {
+  forge: 'github' | 'gitlab';
+  submit(review: Review): Promise<{ url: string }>;
+}
 
 export interface ViewServerOptions {
   graph: Graph;
@@ -14,6 +21,8 @@ export interface ViewServerOptions {
   readSource: (side: Side, path: string) => Promise<string>;
   /** Default: a free port. */
   port?: number;
+  /** Enables `POST /api/review`. */
+  review?: ReviewTarget;
 }
 
 export interface ViewServer {
@@ -31,20 +40,33 @@ const TYPES: Record<string, string> = {
   '.woff2': 'font/woff2',
 };
 
+/** Largest review the viewer may post. */
+const MAX_REVIEW_BYTES = 1 << 20;
+const EVENTS: readonly ReviewEvent[] = ['comment', 'approve', 'request-changes'];
+
 /**
  * Serves the viewer, `/api/graph` and `/api/source` on localhost only. Sources are limited to
  * files the graph mentions, so the server never exposes anything else from the machine.
+ * Requests must name the server itself as host, which defeats DNS rebinding; posting a review
+ * also needs a same-origin JSON request with a custom header, which other sites cannot send.
  */
 export async function startViewServer(options: ViewServerOptions): Promise<ViewServer> {
   const allowed = sourceFiles(options.graph);
+  let hosts: Set<string> = new Set();
   const server = createServer((req, res) => {
     handle(req, res).catch((error: unknown) => send(res, 500, String(error)));
   });
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (!hosts.has(req.headers.host ?? '')) return send(res, 421, 'unknown host');
     const url = new URL(req.url ?? '/', 'http://localhost');
+    if (url.pathname === '/api/review') return postReview(req, res);
     if (req.method !== 'GET') return send(res, 405, 'method not allowed');
 
+    if (url.pathname === '/api/capabilities') {
+      const review = options.review ? { forge: options.review.forge } : null;
+      return send(res, 200, JSON.stringify({ sources: true, review }), TYPES['.json']);
+    }
     if (url.pathname === '/api/graph') {
       return send(res, 200, JSON.stringify(options.graph), TYPES['.json']);
     }
@@ -76,11 +98,39 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
   }
 
+  async function postReview(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const target = options.review;
+    if (!target) return send(res, 404, 'reviews are posted from cpr pr');
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    const origin = req.headers.origin;
+    if (
+      req.headers['x-cpr-review'] !== '1' ||
+      !req.headers['content-type']?.startsWith('application/json') ||
+      (origin !== undefined && !hosts.has(origin.replace(/^http:\/\//, '')))
+    ) {
+      return send(res, 403, 'forbidden');
+    }
+
+    let review: Review;
+    try {
+      review = parseReview(await readBody(req, MAX_REVIEW_BYTES), allowed);
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    try {
+      return send(res, 200, JSON.stringify(await target.submit(review)), TYPES['.json']);
+    } catch (error) {
+      // The forge's own words: no access, a line outside the diff, approving one's own PR…
+      return send(res, 502, JSON.stringify({ error: (error as Error).message }), TYPES['.json']);
+    }
+  }
+
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
     server.listen(options.port ?? 0, '127.0.0.1', () => resolve());
   });
   const { port } = server.address() as AddressInfo;
+  hosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
   return {
     url: `http://127.0.0.1:${port}/`,
     close: () => new Promise<void>((resolve) => server.close(() => resolve())),
@@ -109,4 +159,54 @@ export function sourceFiles(graph: Graph): Record<Side, Set<string>> {
     if (file.status !== 'deleted') files.head.add(file.path);
   }
   return files;
+}
+
+function readBody(req: IncomingMessage, limit: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > limit) {
+        reject(new Error('review too large'));
+        req.destroy();
+      } else chunks.push(chunk);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+
+/** Checks a review from the viewer: known event, comments only on files of this change. */
+export function parseReview(text: string, allowed: Record<Side, Set<string>>): Review {
+  const value = JSON.parse(text) as Partial<Record<keyof Review, unknown>>;
+  if (!value || typeof value !== 'object') throw new Error('not a review');
+  const { event, body, comments } = value;
+  if (!EVENTS.includes(event as ReviewEvent)) throw new Error(`unknown event '${String(event)}'`);
+  if (typeof body !== 'string') throw new Error('body must be a string');
+  if (!Array.isArray(comments)) throw new Error('comments must be a list');
+  return {
+    event: event as ReviewEvent,
+    body,
+    comments: comments.map((raw: unknown, i): ReviewComment => {
+      const c = (raw ?? {}) as Partial<Record<keyof ReviewComment, unknown>>;
+      const where = `comment ${i + 1}`;
+      if (c.side !== 'base' && c.side !== 'head') throw new Error(`${where}: side`);
+      const other = c.side === 'head' ? 'base' : 'head';
+      if (typeof c.path !== 'string' || !allowed[c.side].has(c.path)) {
+        throw new Error(`${where}: ${String(c.path)} is not part of this change`);
+      }
+      if (
+        typeof c.otherPath !== 'string' ||
+        !(c.otherPath === c.path || allowed[other].has(c.otherPath))
+      ) {
+        throw new Error(`${where}: otherPath`);
+      }
+      if (typeof c.line !== 'number' || !Number.isInteger(c.line) || c.line < 1) {
+        throw new Error(`${where}: line`);
+      }
+      if (typeof c.body !== 'string' || c.body.trim() === '') throw new Error(`${where}: empty`);
+      return { side: c.side, path: c.path, otherPath: c.otherPath, line: c.line, body: c.body };
+    }),
+  };
 }
