@@ -1,3 +1,4 @@
+import { compatibility } from './compat.js';
 import type { SymbolChange } from './diff.js';
 import type { ChangedFile } from './git/changed-files.js';
 import type { Dangling, Edge, Exposure, Finding, RuleId, Severity, SymbolId } from './model.js';
@@ -63,7 +64,11 @@ function removedStillReferenced({ changes, edges, dangling }: DetectorInput): Dr
   return drafts;
 }
 
-/** A changed signature, with its users split into those updated in this change and the rest. */
+/**
+ * A changed signature, with its users split into those updated in this change and the rest.
+ * It is a warning only when the change may break users (not `compatible`/`additive`) and some
+ * untouched user lives in another file: same-file users are already in front of the reviewer.
+ */
 function signatureChanged({ changes, edges, files }: DetectorInput): Draft[] {
   const changed = new Set(
     changes.filter((c) => c.status === 'added' || c.status === 'modified').map((c) => c.id),
@@ -74,30 +79,62 @@ function signatureChanged({ changes, edges, files }: DetectorInput): Draft[] {
 
   const drafts: Draft[] = [];
   for (const change of changes) {
-    if (change.status !== 'modified' || !change.delta?.signature) continue;
+    if (change.status !== 'modified' || !change.delta?.signature || !change.base || !change.head) {
+      continue;
+    }
     const all = [...users(edges, change.id, 'head')];
     if (all.length === 0) continue;
     const updated = all.filter(isUpdated).sort();
     const untouched = all.filter((id) => !isUpdated(id)).sort();
+    const file = change.head.file;
+    const elsewhere = untouched.filter((id) => !id.startsWith(`${file}#`));
+    const compat =
+      change.delta.moved && change.base.name !== change.head.name
+        ? 'breaking'
+        : compatibility(change.base, change.head);
+    const risky = (compat === 'breaking' || compat === 'unknown') && elsewhere.length > 0;
+
     drafts.push(
       draft(
         'signature-changed',
-        untouched.length > 0 ? 'warning' : 'info',
+        risky ? 'warning' : 'info',
         change.id,
         [...untouched, ...updated],
         {
-          message:
-            untouched.length > 0
-              ? `${name(change.id)} changed its signature; ${untouched.length} of ${plural(all.length, 'user')} not updated: ${untouched.map(name).join(', ')}`
-              : all.length === 1
-                ? `${name(change.id)} changed its signature; its only user was updated`
-                : `${name(change.id)} changed its signature; all ${all.length} users were updated`,
-          data: { callers: all.length, updated: updated.length, untouched: untouched.length },
+          message: signatureMessage(name(change.id), compat, all.length, untouched),
+          data: {
+            callers: all.length,
+            updated: updated.length,
+            untouched: untouched.length,
+            untouchedElsewhere: elsewhere.length,
+            compatibility: compat,
+          },
         },
       ),
     );
   }
   return drafts;
+}
+
+function signatureMessage(
+  symbol: string,
+  compat: string,
+  users: number,
+  untouched: SymbolId[],
+): string {
+  const counts = `${plural(users, 'user')}, ${untouched.length} untouched`;
+  if (compat === 'compatible') {
+    return `${symbol} changed its signature compatibly; existing users keep working (${counts})`;
+  }
+  if (compat === 'additive') {
+    return `${symbol} gained required members; code that creates it must add them (${counts})`;
+  }
+  if (untouched.length === 0) {
+    return users === 1
+      ? `${symbol} changed its signature; its only user was updated`
+      : `${symbol} changed its signature; all ${users} users were updated`;
+  }
+  return `${symbol} changed its signature; ${untouched.length} of ${plural(users, 'user')} not updated: ${untouched.map(name).join(', ')}`;
 }
 
 /**

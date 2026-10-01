@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { ts } from 'ts-morph';
-import type { Range, SymbolDecl, SymbolId, SymbolKind } from '../../model.js';
+import type { Range, Shape, SymbolDecl, SymbolId, SymbolKind } from '../../model.js';
 import { isTsSource } from './files.js';
 import type { TsRevision } from './project.js';
 import {
@@ -43,6 +43,7 @@ interface Part {
   signature: string[];
   body: string[];
   display: string;
+  shape?: Shape;
 }
 
 interface Builder {
@@ -130,6 +131,7 @@ class FileExtractor {
           signature: withoutExportTokens(tokens(statement, this.sf)),
           body: [],
           display: this.shapeDisplay(statement),
+          shape: this.typeShape(statement),
         });
       } else if (ts.isVariableStatement(statement)) {
         this.addVariables(statement, container);
@@ -341,16 +343,14 @@ class FileExtractor {
     name: string,
     { head, prefix }: { head?: string[]; prefix?: string[] } = {},
   ): Part {
-    const signature = [
+    const lead = [
       ...(head ? [...head, ...this.modifierTokens(fn)] : [...this.modifierTokens(fn), name]),
       ...tokens((fn as { asteriskToken?: ts.Node }).asteriskToken, this.sf),
       ...tokens((fn as { questionToken?: ts.Node }).questionToken, this.sf),
       ...angle(listTokens(fn.typeParameters, this.sf)),
-      '(',
-      ...listTokens(fn.parameters, this.sf),
-      ')',
-      ...this.returnTokens(fn),
     ];
+    const returns = this.returnTokens(fn);
+    const signature = [...lead, '(', ...listTokens(fn.parameters, this.sf), ')', ...returns];
     const body = (fn as { body?: ts.Node }).body;
     return {
       kind,
@@ -358,7 +358,57 @@ class FileExtractor {
       signature,
       body: tokens(body, this.sf),
       display: this.functionDisplay(fn, name, prefix ?? this.memberPrefix(fn)),
+      shape: {
+        params: fn.parameters.map((p) => ({
+          optional: Boolean(p.questionToken ?? p.initializer ?? p.dotDotDotToken),
+          type: p.type ? tokens(p.type, this.sf).join(' ') : this.inferred(p),
+        })),
+        returns: returns.slice(1).join(' '),
+        rest: lead.join(' '),
+      },
     };
+  }
+
+  /** Members of interfaces, object type aliases (and their intersections) and enums. */
+  private typeShape(
+    node: ts.InterfaceDeclaration | ts.TypeAliasDeclaration | ts.EnumDeclaration,
+  ): Shape {
+    const text = (n: ts.Node | undefined) => tokens(n, this.sf).join(' ');
+    const rest = [...this.modifierTokens(node), node.name.text];
+    const members: NonNullable<Shape['members']> = {};
+
+    if (ts.isEnumDeclaration(node)) {
+      for (const member of node.members) {
+        members[member.name.getText(this.sf)] = { optional: false, type: text(member.initializer) };
+      }
+      return { members, rest: rest.join(' ') };
+    }
+
+    rest.push(...angle(listTokens(node.typeParameters, this.sf)));
+    const literals: (readonly ts.TypeElement[])[] = [];
+    if (ts.isInterfaceDeclaration(node)) {
+      rest.push(...listTokens(node.heritageClauses, this.sf));
+      literals.push(node.members);
+    } else {
+      const parts = ts.isIntersectionTypeNode(node.type) ? node.type.types : [node.type];
+      const others: string[] = [];
+      for (const part of parts) {
+        if (ts.isTypeLiteralNode(part)) literals.push(part.members);
+        else others.push(text(part));
+      }
+      rest.push(...others.sort());
+    }
+    literals.flat().forEach((member, i) => {
+      const name = member.name
+        ? `${member.name.getText(this.sf)}${ts.isMethodSignature(member) ? '()' : ''}`
+        : `[${ts.SyntaxKind[member.kind]}]`;
+      const key = name in members ? `${name}#${i}` : name;
+      members[key] = {
+        optional: Boolean(member.questionToken),
+        type: text(ts.isPropertySignature(member) ? member.type : member),
+      };
+    });
+    return { members, rest: rest.join(' ') };
   }
 
   private returnTokens(fn: ts.SignatureDeclaration): string[] {
@@ -491,6 +541,8 @@ class FileExtractor {
         body: bodies.every((b) => b === '') ? '' : hash(bodies),
       },
       bodySize: parts.reduce((sum, p) => sum + p.body.length, 0),
+      // Overloads, accessor pairs and merged declarations: too many forms to compare.
+      ...(parts.length === 1 && parts[0]?.shape ? { shape: parts[0].shape } : {}),
     };
   }
 

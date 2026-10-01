@@ -42,6 +42,19 @@ export interface SymbolDecl {
   hashes: { signature: string; body: string };
   /** Normalized body tokens; 0 without a body. Tiny bodies are too common to match moves on. */
   bodySize: number;
+  /** Pieces of the contract, to judge whether a signature change is backward compatible. */
+  shape?: Shape;
+}
+
+/** Normalized type texts; equal text means equal type. */
+export interface Shape {
+  /** Function parameters in order. Names don't matter to callers. */
+  params?: { optional: boolean; type: string }[];
+  returns?: string;
+  /** Members of interfaces and object types. */
+  members?: Record<string, { optional: boolean; type: string }>;
+  /** Everything else that must stay equal: name, modifiers, type parameters, heritage. */
+  rest: string;
 }
 
 export type EdgeKind = 'call' | 'new' | 'reference' | 'type-reference' | 'extends' | 'implements';
