@@ -8,21 +8,31 @@ export interface Recorded {
   body: unknown;
 }
 
-/** A tiny JSON API: `routes['GET /path']` answers; every request is recorded. */
-export async function mockApi(routes: Record<string, { status?: number; body: unknown }>) {
+export interface Reply {
+  status?: number;
+  body: unknown;
+}
+
+/**
+ * A tiny JSON API: `routes['GET /path']` answers, with a fixed reply or one computed from the
+ * request; every request is recorded.
+ */
+export async function mockApi(routes: Record<string, Reply | ((request: Recorded) => Reply)>) {
   const requests: Recorded[] = [];
   const server = createServer((req, res) => {
     let raw = '';
     req.on('data', (chunk: Buffer) => (raw += chunk.toString()));
     req.on('end', () => {
       const path = req.url ?? '/';
-      requests.push({
+      const request: Recorded = {
         method: req.method ?? 'GET',
         path,
         headers: req.headers,
         body: raw ? (JSON.parse(raw) as unknown) : undefined,
-      });
-      const route = routes[`${req.method} ${path}`];
+      };
+      requests.push(request);
+      const handler = routes[`${request.method} ${path}`];
+      const route = typeof handler === 'function' ? handler(request) : handler;
       res.writeHead(route?.status ?? (route ? 200 : 404), { 'content-type': 'application/json' });
       res.end(JSON.stringify(route?.body ?? { message: 'Not Found' }));
     });

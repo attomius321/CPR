@@ -1,9 +1,11 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { request } from 'node:http';
 import { join } from 'node:path';
 import type { Graph } from '@cpr/core';
+import type { Review } from '@cpr/forge';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
-import { sourceFiles, startViewServer, type ViewServer } from '../src/server.js';
+import { parseReview, sourceFiles, startViewServer, type ViewServer } from '../src/server.js';
 
 const graph = JSON.parse(
   readFileSync(
@@ -69,6 +71,34 @@ describe('startViewServer', () => {
     expect((JSON.parse(body) as Graph).nodes).toHaveLength(graph.nodes.length);
   });
 
+  it('answers only requests addressed to itself (no DNS rebinding)', async () => {
+    const status = await new Promise<number | undefined>((resolve, reject) => {
+      const req = request(new URL('/api/graph', server.url), {
+        headers: { host: 'attacker.example:80' },
+      });
+      req.on('response', (res) => {
+        res.resume();
+        resolve(res.statusCode);
+      });
+      req.on('error', reject);
+      req.end();
+    });
+    expect(status).toBe(421);
+  });
+
+  it('says what it can do: sources, but no reviews outside cpr pr', async () => {
+    expect(JSON.parse((await get('/api/capabilities')).body)).toEqual({
+      sources: true,
+      review: null,
+    });
+    const response = await fetch(new URL('/api/review', server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-cpr-review': '1' },
+      body: '{}',
+    });
+    expect(response.status).toBe(404);
+  });
+
   it('serves only sources the graph mentions', async () => {
     expect(await get('/api/source?side=head&file=src/math.ts')).toMatchObject({
       status: 200,
@@ -77,6 +107,107 @@ describe('startViewServer', () => {
     expect((await get('/api/source?side=head&file=../../etc/passwd')).status).toBe(404);
     expect((await get('/api/source?side=elsewhere&file=src/math.ts')).status).toBe(404);
     expect(reads).toEqual(['head:src/math.ts']);
+  });
+});
+
+describe('POST /api/review', () => {
+  const viewer = tempDir();
+  const submitted: Review[] = [];
+  let server: ViewServer;
+  let fail = false;
+
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      graph,
+      viewerDir: viewer,
+      readSource: () => Promise.resolve(''),
+      review: {
+        forge: 'github',
+        submit: (review) => {
+          if (fail) return Promise.reject(new Error('Can not approve your own pull request'));
+          submitted.push(review);
+          return Promise.resolve({ url: 'https://github.com/acme/widgets/pull/7#review-1' });
+        },
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+
+  const review: Review = {
+    event: 'approve',
+    body: 'Nice',
+    comments: [
+      { side: 'head', path: 'src/math.ts', otherPath: 'src/math.ts', line: 2, body: 'ok' },
+    ],
+  };
+  const post = (headers: Record<string, string>, body: unknown = review) =>
+    fetch(new URL('/api/review', server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-cpr-review': '1', ...headers },
+      body: JSON.stringify(body),
+    });
+
+  it('announces the forge', async () => {
+    const response = await fetch(new URL('/api/capabilities', server.url));
+    expect(await response.json()).toEqual({ sources: true, review: { forge: 'github' } });
+  });
+
+  it('posts a review from the viewer', async () => {
+    const response = await post({ origin: server.url.replace(/\/$/, '') });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      url: 'https://github.com/acme/widgets/pull/7#review-1',
+    });
+    expect(submitted).toEqual([review]);
+  });
+
+  it('refuses requests other sites could send', async () => {
+    expect((await post({ origin: 'https://attacker.example' })).status).toBe(403);
+    expect((await post({ 'x-cpr-review': '' })).status).toBe(403);
+    expect((await post({ 'content-type': 'text/plain' })).status).toBe(403);
+    expect((await fetch(new URL('/api/review', server.url))).status).toBe(405);
+    expect(submitted).toHaveLength(1);
+  });
+
+  it('refuses comments outside the change and reports forge errors', async () => {
+    const outside = { ...review, comments: [{ ...review.comments[0], path: '/etc/passwd' }] };
+    const refused = await post({}, outside);
+    expect(refused.status).toBe(400);
+    expect(await refused.text()).toBe('comment 1: /etc/passwd is not part of this change');
+
+    fail = true;
+    const failed = await post({});
+    fail = false;
+    expect(failed.status).toBe(502);
+    expect(await failed.json()).toEqual({ error: 'Can not approve your own pull request' });
+  });
+});
+
+describe('parseReview', () => {
+  const allowed = { base: new Set(['old.ts']), head: new Set(['new.ts', 'a.ts']) };
+  const comment = { side: 'base', path: 'old.ts', otherPath: 'new.ts', line: 3, body: 'x' };
+
+  it('accepts comments on either side of a renamed file', () => {
+    const text = JSON.stringify({ event: 'comment', body: '', comments: [comment] });
+    expect(parseReview(text, allowed).comments).toEqual([comment]);
+  });
+
+  it.each([
+    [{ event: 'merge', body: '', comments: [] }, "unknown event 'merge'"],
+    [{ event: 'comment', body: 1, comments: [] }, 'body must be a string'],
+    [{ event: 'comment', body: '', comments: [{ ...comment, line: 0 }] }, 'comment 1: line'],
+    [{ event: 'comment', body: '', comments: [{ ...comment, body: ' ' }] }, 'comment 1: empty'],
+    [
+      { event: 'comment', body: '', comments: [{ ...comment, otherPath: 'x.ts' }] },
+      'comment 1: otherPath',
+    ],
+  ])('rejects %j', (value, message) => {
+    expect(() => parseReview(JSON.stringify(value), allowed)).toThrow(message);
   });
 });
 

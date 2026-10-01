@@ -1,5 +1,6 @@
+import { CprError } from '@cpr/core';
 import { api } from './http.js';
-import type { ChangeRequest, Env, Forge } from './types.js';
+import type { ChangeRequest, Env, Forge, Review } from './types.js';
 
 const TOKEN_HINT = 'GITLAB_TOKEN (a personal or project access token with api scope)';
 
@@ -55,8 +56,75 @@ export class GitLabForge implements Forge {
     };
   }
 
+  /**
+   * GitLab's review: draft notes (inline ones carry a text position on the diff), published
+   * together, then the verdict. The REST API has no stable "request changes", so that event
+   * publishes the review marked as such and withdraws a previous approval.
+   */
+  async submitReview(request: ChangeRequest, review: Review): Promise<{ url: string }> {
+    if (!request.mergeBase) throw new CprError(`!${request.number} has no diff refs yet`);
+    const path = `/merge_requests/${request.number}`;
+    const marker = review.event === 'request-changes' ? '**Changes requested.**' : '';
+    const summary = [marker, review.body].filter(Boolean).join('\n\n');
+
+    const drafts: number[] = [];
+    const draft = async (note: Record<string, unknown>) => {
+      const created = await this.request<{ id: number }>(`${path}/draft_notes`, 'POST', note);
+      drafts.push(created.id);
+    };
+    try {
+      if (summary) await draft({ note: summary });
+      for (const comment of review.comments) {
+        const [oldPath, newPath] =
+          comment.side === 'head'
+            ? [comment.otherPath, comment.path]
+            : [comment.path, comment.otherPath];
+        await draft({
+          note: comment.body,
+          position: {
+            position_type: 'text',
+            base_sha: request.mergeBase,
+            start_sha: request.base.sha,
+            head_sha: request.head.sha,
+            old_path: oldPath,
+            new_path: newPath,
+            ...(comment.side === 'head' ? { new_line: comment.line } : { old_line: comment.line }),
+          },
+        });
+      }
+    } catch (error) {
+      // Leave no half review behind in the reviewer's pending drafts.
+      await Promise.allSettled(
+        drafts.map((id) => this.request(`${path}/draft_notes/${id}`, 'DELETE')),
+      );
+      throw error;
+    }
+    if (summary || review.comments.length > 0) {
+      await this.request(`${path}/draft_notes/bulk_publish`, 'POST');
+    }
+    if (review.event === 'approve') {
+      await this.request(`${path}/approve`, 'POST', { sha: request.head.sha });
+    } else if (review.event === 'request-changes') {
+      await this.unapprove(path);
+    }
+    return { url: request.url };
+  }
+
+  /** Withdraws the token owner's approval; fine if there was none. */
+  private async unapprove(path: string): Promise<void> {
+    try {
+      await this.request(`${path}/unapprove`, 'POST');
+    } catch {
+      // not approved before
+    }
+  }
+
   /** Project-scoped API path; the project is addressed by its URL-encoded full path. */
-  private request<T>(path: string, method: 'GET' | 'POST' = 'GET', body?: unknown): Promise<T> {
+  private request<T>(
+    path: string,
+    method: 'GET' | 'POST' | 'DELETE' = 'GET',
+    body?: unknown,
+  ): Promise<T> {
     const project = encodeURIComponent(this.project);
     return api<T>(`${this.apiBase}/projects/${project}${path}`, {
       method,

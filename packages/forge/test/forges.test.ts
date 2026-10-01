@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { GitHubForge, GitLabForge } from '../src/index.js';
+import { GitHubForge, GitLabForge, type ChangeRequest, type ReviewComment } from '../src/index.js';
 import { mockApi } from './mock-api.js';
 
 const BASE = 'a'.repeat(40);
@@ -117,5 +117,147 @@ describe('GitLabForge', () => {
     });
     await forge.getChangeRequest(7);
     expect(api.requests.at(-1)?.headers['job-token']).toBe('job-1');
+  });
+});
+
+describe('submitReview', () => {
+  const request = (forge: 'github' | 'gitlab'): ChangeRequest => ({
+    forge,
+    number: 7,
+    title: 'Add widgets',
+    url: `https://${forge}.example.com/acme/widgets/7`,
+    author: 'ada',
+    state: 'open',
+    draft: false,
+    base: { ref: 'main', sha: START },
+    head: { ref: 'feature', sha: HEAD },
+    mergeBase: forge === 'gitlab' ? BASE : null,
+    refs: { base: 'refs/heads/main', head: 'refs/pull/7/head' },
+  });
+  const comments: ReviewComment[] = [
+    { side: 'head', path: 'src/a.ts', otherPath: 'src/a.ts', line: 3, body: 'Why here?' },
+    // A removed line of a renamed file: base path old.ts, head path new.ts.
+    { side: 'base', path: 'src/old.ts', otherPath: 'src/new.ts', line: 9, body: 'Still needed' },
+  ];
+
+  it('posts a GitHub review with inline comments in one call', async () => {
+    const api = await mockApi({
+      'POST /repos/acme/widgets/pulls/7/reviews': {
+        body: { html_url: 'https://github.com/acme/widgets/pull/7#pullrequestreview-1' },
+      },
+    });
+    const forge = new GitHubForge('github.com', 'acme/widgets', {
+      GITHUB_API_URL: api.url,
+      GITHUB_TOKEN: 't',
+    });
+    const result = await forge.submitReview(request('github'), {
+      event: 'request-changes',
+      body: 'A few things.',
+      comments,
+    });
+    await api.close();
+
+    expect(result.url).toBe('https://github.com/acme/widgets/pull/7#pullrequestreview-1');
+    expect(api.requests).toHaveLength(1);
+    expect(api.requests[0]?.body).toEqual({
+      commit_id: HEAD,
+      event: 'REQUEST_CHANGES',
+      body: 'A few things.',
+      comments: [
+        { path: 'src/a.ts', line: 3, side: 'RIGHT', body: 'Why here?' },
+        { path: 'src/old.ts', line: 9, side: 'LEFT', body: 'Still needed' },
+      ],
+    });
+  });
+
+  describe('GitLab', () => {
+    const mr = '/projects/acme%2Fwidgets/merge_requests/7';
+    async function gitlab(failDraft?: number) {
+      let next = 0;
+      const api = await mockApi({
+        [`POST ${mr}/draft_notes`]: () => {
+          next += 1;
+          return next === failDraft
+            ? { status: 400, body: { message: 'line_code is invalid' } }
+            : { body: { id: 100 + next } };
+        },
+        [`DELETE ${mr}/draft_notes/101`]: { status: 204, body: '' },
+        [`POST ${mr}/draft_notes/bulk_publish`]: { status: 204, body: '' },
+        [`POST ${mr}/approve`]: { body: {} },
+      });
+      const forge = new GitLabForge('gitlab.example.com', 'acme/widgets', {
+        GITLAB_API_URL: api.url,
+        GITLAB_TOKEN: 't',
+      });
+      return { api, forge };
+    }
+    const calls = (api: Awaited<ReturnType<typeof mockApi>>) =>
+      api.requests.map((r) => `${r.method} ${r.path.slice(mr.length)}`);
+
+    it('publishes draft notes positioned on the diff, then approves', async () => {
+      const { api, forge } = await gitlab();
+      await forge.submitReview(request('gitlab'), { event: 'approve', body: 'LGTM', comments });
+      await api.close();
+
+      expect(calls(api)).toEqual([
+        'POST /draft_notes',
+        'POST /draft_notes',
+        'POST /draft_notes',
+        'POST /draft_notes/bulk_publish',
+        'POST /approve',
+      ]);
+      const position = { position_type: 'text', base_sha: BASE, start_sha: START, head_sha: HEAD };
+      expect(api.requests.map((r) => r.body)).toEqual([
+        { note: 'LGTM' },
+        {
+          note: 'Why here?',
+          position: { ...position, old_path: 'src/a.ts', new_path: 'src/a.ts', new_line: 3 },
+        },
+        {
+          note: 'Still needed',
+          position: { ...position, old_path: 'src/old.ts', new_path: 'src/new.ts', old_line: 9 },
+        },
+        undefined,
+        { sha: HEAD },
+      ]);
+    });
+
+    it('marks requested changes and withdraws an approval, if any', async () => {
+      const { api, forge } = await gitlab();
+      await forge.submitReview(request('gitlab'), {
+        event: 'request-changes',
+        body: 'Please split this.',
+        comments: [],
+      });
+      await api.close();
+      expect(calls(api)).toEqual([
+        'POST /draft_notes',
+        'POST /draft_notes/bulk_publish',
+        'POST /unapprove', // 404 here: there was no approval, which is fine
+      ]);
+      expect(api.requests[0]?.body).toEqual({
+        note: '**Changes requested.**\n\nPlease split this.',
+      });
+    });
+
+    it('deletes its drafts when one is rejected', async () => {
+      const { api, forge } = await gitlab(2);
+      await expect(
+        forge.submitReview(request('gitlab'), { event: 'comment', body: 'Hm', comments }),
+      ).rejects.toThrow('line_code is invalid');
+      await api.close();
+      expect(calls(api)).toEqual([
+        'POST /draft_notes',
+        'POST /draft_notes',
+        'DELETE /draft_notes/101',
+      ]);
+    });
+
+    it('approves without notes when there is nothing to say', async () => {
+      const { api, forge } = await gitlab();
+      await forge.submitReview(request('gitlab'), { event: 'approve', body: '', comments: [] });
+      await api.close();
+      expect(calls(api)).toEqual(['POST /approve']);
+    });
   });
 });

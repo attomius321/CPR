@@ -40,6 +40,12 @@ Click a symbol to see what changed in it, its findings, and who uses it:
 reads the forge from the `origin` remote; tokens come from `GITHUB_TOKEN`/`GH_TOKEN` (or
 `gh auth login`) and `GITLAB_TOKEN`.
 
+Under `cpr pr` you can review without leaving the graph: write comments on symbols (press `c`;
+click a +/− line to choose where it lands), then submit them from the Review tab as one review —
+comment, approve, or request changes. They arrive as inline comments on those lines.
+
+![Review tab: two draft comments on symbols, a summary, and "Request changes" ready to submit](docs/images/viewer-review.png)
+
 TypeScript and JavaScript for now. Symbols in `fixtures/`, `generated/` and similar folders are not analyzed; add a `.cprignore` (gitignore syntax) to change that.
 
 - [Plan](docs/PLAN.md) · [Journal](docs/JOURNAL.md) · [Graph schema](docs/graph-schema.md)

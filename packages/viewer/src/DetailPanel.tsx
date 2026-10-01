@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import type { Finding, Graph, GraphNode } from '@cpr/core';
+import { anchorFor, defaultAnchor, describeAnchor, type Anchor, type Draft } from './comments.js';
 import { diffRows, excerpt, symbolDetail, type DiffRow, type Neighbour } from './detail.js';
 import { label, tone } from './flow.js';
 
@@ -21,10 +22,10 @@ function fetchSource(side: 'base' | 'head', file: string): Promise<string> {
 type SourceState =
   { status: 'loading' } | { status: 'none' } | { status: 'ready'; rows: DiffRow[] };
 
-function useSymbolDiff(node: GraphNode, enabled: boolean): SourceState {
+function useSymbolDiff(node: GraphNode | undefined, enabled: boolean): SourceState {
   const [state, setState] = useState<SourceState>({ status: 'loading' });
   useEffect(() => {
-    if (!enabled || (!node.base && !node.head)) {
+    if (!node || !enabled || (!node.base && !node.head)) {
       setState({ status: 'none' });
       return;
     }
@@ -54,8 +55,18 @@ interface Props {
   onToggleReviewed: () => void;
   onSelect: (id: string) => void;
   onClose: () => void;
+  /** Present when the review can be posted to the forge (`cpr pr`). */
+  comments?: Comments | undefined;
 }
 
+export interface Comments {
+  /** This symbol's drafts. */
+  drafts: Draft[];
+  onAdd: (anchor: Anchor | null, body: string) => void;
+  onRemove: (id: string) => void;
+}
+
+/** The panel is keyed by symbol, so its state (picked line, comment text) starts fresh per symbol. */
 export function DetailPanel({
   graph,
   id,
@@ -64,10 +75,20 @@ export function DetailPanel({
   onToggleReviewed,
   onSelect,
   onClose,
+  comments,
 }: Props) {
   const detail = useMemo(() => symbolDetail(graph, id), [graph, id]);
+  const shown = detail?.node;
+  // A class's members are symbols of their own: its code would repeat them.
+  const showsCode =
+    !!shown && !!(shown.base || shown.head) && shown.kind !== 'class' && shown.kind !== 'namespace';
+  const diff = useSymbolDiff(shown, hasSources && showsCode);
+  /** The line picked for the next comment; undefined: the first changed line. */
+  const [picked, setPicked] = useState<Anchor | null>();
   if (!detail) return null;
   const { node, users, callees, findings, mentions } = detail;
+  const rows = diff.status === 'ready' ? diff.rows : [];
+  const anchor = picked !== undefined ? picked : defaultAnchor(graph, node, rows);
   const members = graph.nodes.filter((n) => n.container === node.id && n.status !== 'unchanged');
   const moved = node.previousId ? ` (from ${node.previousId})` : '';
   const signatures = [node.base?.signature, node.head?.signature].filter(Boolean);
@@ -149,12 +170,26 @@ export function DetailPanel({
         </section>
       )}
 
-      {/* A class's members are symbols of their own: its code would repeat them. */}
-      {(node.base || node.head) && node.kind !== 'class' && node.kind !== 'namespace' && (
+      {showsCode && (
         <section>
           <h3>Code</h3>
-          <SymbolDiff node={node} enabled={hasSources} />
+          <SymbolDiff
+            state={diff}
+            anchor={comments ? anchor : null}
+            {...(comments
+              ? { onPick: (row: DiffRow) => setPicked(anchorFor(graph, node, row)) }
+              : {})}
+          />
         </section>
+      )}
+
+      {comments && (
+        <CommentBox
+          comments={comments}
+          anchor={anchor}
+          ready={!showsCode || !hasSources || diff.status !== 'loading'}
+          pickable={rows.some((r) => r.type !== 'same')}
+        />
       )}
 
       <Neighbours title="Used by" items={users} onSelect={onSelect} />
@@ -166,8 +201,15 @@ export function DetailPanel({
 /** Long symbols show this many rows until expanded. */
 const MAX_ROWS = 300;
 
-function SymbolDiff({ node, enabled }: { node: GraphNode; enabled: boolean }) {
-  const state = useSymbolDiff(node, enabled);
+interface SymbolDiffProps {
+  state: SourceState;
+  /** The line the next comment goes on, highlighted. */
+  anchor: Anchor | null;
+  /** Picks a changed line for the next comment. */
+  onPick?: (row: DiffRow) => void;
+}
+
+function SymbolDiff({ state, anchor, onPick }: SymbolDiffProps) {
   const [all, setAll] = useState(false);
   if (state.status === 'loading') return <p className="muted">Loading source…</p>;
   if (state.status === 'none') {
@@ -177,7 +219,14 @@ function SymbolDiff({ node, enabled }: { node: GraphNode; enabled: boolean }) {
   return (
     <div className="code" role="table">
       {rows.map((row, i) => (
-        <div key={i} className={`row row-${row.type}`} role="row">
+        <div
+          key={i}
+          className={`row row-${row.type}${onPick && row.type !== 'same' ? ' pickable' : ''}${isAnchor(row, anchor) ? ' anchored' : ''}`}
+          role="row"
+          {...(onPick && row.type !== 'same'
+            ? { onClick: () => onPick(row), title: 'Comment on this line' }
+            : {})}
+        >
           <span className="ln">{row.base ?? ''}</span>
           <span className="ln">{row.head ?? ''}</span>
           <span className="mark">{row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}</span>
@@ -190,6 +239,76 @@ function SymbolDiff({ node, enabled }: { node: GraphNode; enabled: boolean }) {
         </button>
       )}
     </div>
+  );
+}
+
+function isAnchor(row: DiffRow, anchor: Anchor | null): boolean {
+  if (!anchor) return false;
+  return anchor.side === 'head'
+    ? row.type === 'add' && row.head === anchor.line
+    : row.type === 'del' && row.base === anchor.line;
+}
+
+function CommentBox({
+  comments,
+  anchor,
+  ready,
+  pickable,
+}: {
+  comments: Comments;
+  anchor: Anchor | null;
+  /** False while the code (and so the default line) is loading. */
+  ready: boolean;
+  pickable: boolean;
+}) {
+  const [text, setText] = useState('');
+  const add = () => {
+    if (!ready || !text.trim()) return;
+    comments.onAdd(anchor, text);
+    setText('');
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      add();
+    }
+  };
+  return (
+    <section className="comments">
+      <h3>
+        Comments <span className="muted">({comments.drafts.length})</span>
+      </h3>
+      {comments.drafts.map((draft) => (
+        <div key={draft.id} className="draft">
+          <div className="draft-where">
+            <span className="muted">{describeAnchor(draft.anchor)}</span>
+            <button className="link" onClick={() => comments.onRemove(draft.id)}>
+              Delete
+            </button>
+          </div>
+          <p className="draft-body">{draft.body}</p>
+        </div>
+      ))}
+      <textarea
+        id="comment-input"
+        className="comment-input"
+        aria-label="Comment"
+        placeholder="Leave a comment (sent with the review)"
+        rows={3}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={onKeyDown}
+      />
+      <div className="comment-actions">
+        <span className="muted">
+          {describeAnchor(anchor)}
+          {pickable ? ' · click a +/− line to move it' : ''}
+        </span>
+        <button className="review" onClick={add} disabled={!ready || !text.trim()}>
+          Add comment
+        </button>
+      </div>
+    </section>
   );
 }
 

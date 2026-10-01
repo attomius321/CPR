@@ -468,3 +468,36 @@ local mock servers; `GITHUB_API_URL` / `GITLAB_API_URL` point the CLI at them.
 
 **Open**: self-hosted forges on non-standard ports need `GITHUB_API_URL` / `GITLAB_API_URL`
 (the remote's SSH port says nothing about the API's).
+
+## G2 — Review from the viewer (2026-10-01)
+
+**What landed**
+- Forge adapters gained `submitReview(request, {event, body, comments[]})`. GitHub: one
+  `POST …/reviews` (`commit_id` = the analyzed head, `side` RIGHT/LEFT). GitLab: a draft note
+  per comment (text position with base/start/head SHAs and old/new path + line), the summary as
+  a draft note, `bulk_publish`, then `approve` (with the head `sha`) or, for request changes, a
+  "**Changes requested.**" marker and `unapprove`. If GitLab rejects a draft midway, the drafts
+  already created are deleted, so no half review lingers.
+- Server: `GET /api/capabilities` (`{sources, review: {forge} | null}`) and `POST /api/review`
+  (`cpr pr` only), with a JSON body limit and validation (event, sides, files of the change,
+  positive lines, non-empty bodies). All endpoints now check `Host` (DNS rebinding).
+- Viewer: a Comments section in the detail panel (drafts, a box, `Ctrl/⌘+Enter`, `c` to focus),
+  clickable +/− lines that move the anchor, a Review tab (drafts, summary, verdict, submit, the
+  forge's link or error), 💬 counts in the Changes list. Drafts live in localStorage per
+  revision pair, like reviewed marks. Esc in a text field now leaves the field instead of
+  closing the panel; checkboxes no longer swallow `j`/`k`.
+- E2E: `cpr pr 7` against a mock GitHub API; two comments (an added line, a removed line), a
+  reload, request changes, and the exact review GitHub receives.
+
+**Decisions**: anchors (PLAN decision 13), GitLab request changes (decision 14). Comments go on
+the commit that was analyzed, not the PR's newest head, so lines match what the reviewer saw.
+
+**Learned**
+- Forges only take inline comments inside diff hunks. The symbol diff comes from jsdiff on the
+  symbol's excerpts while forges diff whole files; their changed lines nearly always coincide, and
+  when they don't, the forge's 422 is shown instead of losing the review.
+- GitHub needs no ordering of comments; GitLab's `bulk_publish` publishes *all* the user's
+  pending drafts on the MR — the same as its own "Submit review" button.
+
+**Open**: GitHub rejects approving or requesting changes on one's own PR (the error is shown);
+multi-line comments (`start_line`) and suggestions are not offered yet.

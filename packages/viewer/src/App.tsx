@@ -10,6 +10,14 @@ import {
 } from '@xyflow/react';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import type { Graph } from '@cpr/core';
+import {
+  draftId,
+  draftsKey,
+  loadDrafts,
+  saveDrafts,
+  type Anchor,
+  type ReviewDraft,
+} from './comments.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
 import { toFlow, type FlowEdge, type FlowNode, type SymbolData } from './flow.js';
@@ -29,8 +37,18 @@ const nodeTypes = { symbol: SymbolNode, file: FileNode };
 type State =
   | { status: 'loading' }
   | { status: 'empty'; error?: string }
-  /** `sources`: opened through `cpr view`, so `/api/source` exists. */
-  | { status: 'ready'; graph: Graph; sources: boolean };
+  /**
+   * `sources`: opened through `cpr view`, so `/api/source` exists. `forge`: opened through
+   * `cpr pr`, which posts reviews there.
+   */
+  | { status: 'ready'; graph: Graph; sources: boolean; forge: Forge | null };
+
+type Forge = 'github' | 'gitlab';
+
+interface Capabilities {
+  sources: boolean;
+  review: { forge: Forge } | null;
+}
 
 /** Where the graph comes from: `?graph=<url>`, else `cpr view`'s API. */
 function graphUrl(): string {
@@ -44,12 +62,28 @@ export function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [focus, setFocus] = useState(false);
   const [reviewed, setReviewed] = useState<ReadonlySet<string>>(new Set());
+  const [draft, setDraft] = useState<ReviewDraft>({ drafts: [], body: '' });
 
   const graph = state.status === 'ready' ? state.graph : undefined;
+  const forge = state.status === 'ready' ? state.forge : null;
   const changes = useMemo(() => (graph ? changeList(graph) : []), [graph]);
   useEffect(() => {
-    if (graph) setReviewed(loadReviewed(reviewKey(graph)));
+    if (!graph) return;
+    setReviewed(loadReviewed(reviewKey(graph)));
+    setDraft(loadDrafts(draftsKey(graph)));
   }, [graph]);
+
+  const updateDraft = useCallback(
+    (change: (current: ReviewDraft) => ReviewDraft) => {
+      if (!graph) return;
+      setDraft((current) => {
+        const next = change(current);
+        saveDrafts(draftsKey(graph), next);
+        return next;
+      });
+    },
+    [graph],
+  );
 
   const toggleReviewed = useCallback(
     (id: string) => {
@@ -64,18 +98,24 @@ export function App() {
     [graph],
   );
 
-  // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, Esc closes.
+  // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, c comments, Esc closes.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
+      const target = event.target;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (
-        target &&
-        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) &&
-        event.key !== 'Escape'
-      )
+      const typing =
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLInputElement && !['checkbox', 'radio'].includes(target.type));
+      if (typing) {
+        // Esc leaves the field (keeping what was typed) instead of closing the panel.
+        if (event.key === 'Escape') target.blur();
         return;
-      if (event.key === 'j') setSelected((id) => stepChange(changes, id, 1));
+      }
+      if (event.key === 'c' && document.getElementById('comment-input')) {
+        event.preventDefault();
+        document.getElementById('comment-input')?.focus();
+      } else if (event.key === 'j') setSelected((id) => stepChange(changes, id, 1));
       else if (event.key === 'k') setSelected((id) => stepChange(changes, id, -1));
       else if (event.key === 'r' && selected) toggleReviewed(selected);
       else if (event.key === 'f') setFocus((on) => !on);
@@ -87,11 +127,18 @@ export function App() {
 
   useEffect(() => {
     const url = graphUrl();
+    const served = url === './api/graph';
     fetch(url)
       .then(async (response) => {
         if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
         const graph = (await response.json()) as Graph;
-        setState({ status: 'ready', graph, sources: url === './api/graph' });
+        const capabilities = served ? await fetchCapabilities() : null;
+        setState({
+          status: 'ready',
+          graph,
+          sources: served,
+          forge: capabilities?.review?.forge ?? null,
+        });
       })
       .catch(() => setState({ status: 'empty' }));
   }, []);
@@ -99,7 +146,7 @@ export function App() {
   const load = useCallback(async (file: File) => {
     try {
       const graph = JSON.parse(await file.text()) as Graph;
-      setState({ status: 'ready', graph, sources: false });
+      setState({ status: 'ready', graph, sources: false, forge: null });
       setSelected(null);
     } catch (error) {
       setState({ status: 'empty', error: `Not a CPR graph: ${(error as Error).message}` });
@@ -113,6 +160,19 @@ export function App() {
       if (file) void load(file);
     },
     [load],
+  );
+
+  const addDraft = useCallback(
+    (symbol: string, anchor: Anchor | null, body: string) =>
+      updateDraft((d) => ({
+        ...d,
+        drafts: [...d.drafts, { id: draftId(), symbol, anchor, body: body.trim() }],
+      })),
+    [updateDraft],
+  );
+  const removeDraft = useCallback(
+    (id: string) => updateDraft((d) => ({ ...d, drafts: d.drafts.filter((x) => x.id !== id) })),
+    [updateDraft],
   );
 
   const flow = useMemo(() => {
@@ -171,6 +231,17 @@ export function App() {
               selected={selected}
               onSelect={setSelected}
               onToggleReviewed={toggleReviewed}
+              review={
+                forge
+                  ? {
+                      forge,
+                      draft,
+                      onBody: (body) => updateDraft((d) => ({ ...d, body })),
+                      onRemove: removeDraft,
+                      onPosted: () => updateDraft(() => ({ drafts: [], body: '' })),
+                    }
+                  : undefined
+              }
             />
             <Canvas
               nodes={flow.nodes}
@@ -181,6 +252,7 @@ export function App() {
             />
             {selected && (
               <DetailPanel
+                key={selected}
                 graph={state.graph}
                 id={selected}
                 sources={state.sources}
@@ -188,6 +260,15 @@ export function App() {
                 onToggleReviewed={() => toggleReviewed(selected)}
                 onSelect={setSelected}
                 onClose={() => setSelected(null)}
+                comments={
+                  forge
+                    ? {
+                        drafts: draft.drafts.filter((d) => d.symbol === selected),
+                        onAdd: (anchor, body) => addDraft(selected, anchor, body),
+                        onRemove: removeDraft,
+                      }
+                    : undefined
+                }
               />
             )}
           </ReactFlowProvider>
@@ -250,6 +331,16 @@ function Canvas({ nodes, edges, selected, focus, onSelect }: CanvasProps) {
       />
     </ReactFlow>
   );
+}
+
+/** What the server offers; `cpr view` builds before this endpoint existed answer nothing. */
+async function fetchCapabilities(): Promise<Capabilities | null> {
+  try {
+    const response = await fetch('./api/capabilities');
+    return response.ok ? ((await response.json()) as Capabilities) : null;
+  } catch {
+    return null;
+  }
 }
 
 function Summary({ graph }: { graph: Graph }) {

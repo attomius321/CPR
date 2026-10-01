@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { api } from './http.js';
-import type { ChangeRequest, Env, Forge } from './types.js';
+import type { ChangeRequest, Env, Forge, Review } from './types.js';
 
 const TOKEN_HINT = 'GITHUB_TOKEN or GH_TOKEN, or log in with gh auth login';
 
@@ -49,6 +49,29 @@ export class GitHubForge implements Forge {
       mergeBase: null,
       refs: { base: `refs/heads/${pull.base.ref}`, head: `refs/pull/${pull.number}/head` },
     };
+  }
+
+  /** One call: GitHub reviews carry their inline comments and the verdict together. */
+  async submitReview(request: ChangeRequest, review: Review): Promise<{ url: string }> {
+    const event = { comment: 'COMMENT', approve: 'APPROVE', 'request-changes': 'REQUEST_CHANGES' }[
+      review.event
+    ];
+    const created = await this.request<{ html_url?: string }>(
+      `/repos/${this.project}/pulls/${request.number}/reviews`,
+      'POST',
+      {
+        commit_id: request.head.sha,
+        event,
+        ...(review.body ? { body: review.body } : {}),
+        comments: review.comments.map((comment) => ({
+          path: comment.path,
+          line: comment.line,
+          side: comment.side === 'head' ? 'RIGHT' : 'LEFT',
+          body: comment.body,
+        })),
+      },
+    );
+    return { url: created?.html_url ?? request.url };
   }
 
   private request<T>(path: string, method: 'GET' | 'POST' = 'GET', body?: unknown): Promise<T> {

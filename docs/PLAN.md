@@ -259,8 +259,16 @@ cpr pr <number> [options]               a GitHub pull request or GitLab merge re
 `refs/merge-requests/<n>/head`) and target branch into `refs/cpr/<forge>/<n>/…`, and analyzes
 the same diff the forge shows (GitHub: merge-base of base and head; GitLab: `diff_refs.base_sha`).
 
-`cpr view` serves the built viewer, `/api/graph` and `/api/source?side=base|head&file=…` on
-localhost only; sources are limited to files the graph mentions and read with `git show`.
+`cpr view` serves the built viewer, `/api/graph`, `/api/capabilities` and
+`/api/source?side=base|head&file=…` on localhost only; sources are limited to files the graph
+mentions and read with `git show`. Every request must carry the server's own `Host`
+(127.0.0.1 or localhost with its port), so a rebinding DNS name cannot read sources.
+
+Under `cpr pr`, the viewer can also post a review: `POST /api/review` (`{event, body,
+comments[]}`) needs `content-type: application/json`, an `x-cpr-review: 1` header and, when the
+browser sends one, a same-origin `Origin` — a request other sites cannot make without a CORS
+preflight the server never grants. Comments must be on files of the change. The forge's error
+(no access, a line outside the diff, approving one's own PR) is shown in the viewer.
 
 Exit codes: `0` ok, `1` failure or `--fail-on` hit, `2` usage error. Warnings (configs that failed to
 load, files the program skipped) go to stderr.
@@ -351,7 +359,7 @@ GitHub and a GitLab implementation; the CLI and viewer only see "a change reques
 | # | Milestone | Output |
 |---|---|---|
 | G1 ✅ | `cpr pr <n>` | Detect the forge and project from the `origin` remote (`--forge github\|gitlab` for self-hosted hosts), read the PR/MR through its API, fetch its head (`pull/<n>/head`, `merge-requests/<n>/head`) and base, analyze, open the viewer (or `--json`). `cpr mr` is an alias. |
-| G2 | Review from the viewer | Draft comments on symbols (anchored to head lines), then submit: comment, approve, or request changes. GitHub: one review call. GitLab: draft notes + bulk publish, approve endpoint. Local POST endpoint guarded against cross-site requests. |
+| G2 ✅ | Review from the viewer | Draft comments on symbols (anchored to their first changed line, or a picked +/− line; removed lines on the base side), then submit: comment, approve, or request changes. GitHub: one review call. GitLab: draft notes + bulk publish, approve/unapprove. Local POST endpoint guarded against cross-site requests and DNS rebinding. |
 | G3 | Findings as comments | `cpr pr <n> --post-findings`: findings become inline comments on their symbols, never posted twice. |
 
 | | GitHub | GitLab |
@@ -359,7 +367,7 @@ GitHub and a GitLab implementation; the CLI and viewer only see "a change reques
 | Project from remote | `github.com/<owner>/<repo>` | `gitlab.com/<group>/<subgroup…>/<project>` (URL-encoded path as project id) |
 | Read | `GET /repos/:o/:r/pulls/:n` | `GET /projects/:id/merge_requests/:iid` (`diff_refs`) |
 | Head ref | `refs/pull/<n>/head` | `refs/merge-requests/<iid>/head` |
-| Review | `POST …/pulls/:n/reviews` with `comments[]` and `event` | `POST …/draft_notes` (position: base/start/head SHA, `new_path`, `new_line`) → `POST …/draft_notes/bulk_publish`; `POST …/approve` |
+| Review | `POST …/pulls/:n/reviews` with `commit_id`, `event`, `comments[]` (`path`, `line`, `side` `RIGHT`/`LEFT`) | `POST …/draft_notes` (position: base/start/head SHA, `old_path`/`new_path`, `new_line` or `old_line`) → `POST …/draft_notes/bulk_publish`; `POST …/approve` (request changes: a marked note + `POST …/unapprove`) |
 | Token | `GITHUB_TOKEN`, `GH_TOKEN`, `gh auth token` | `GITLAB_TOKEN`, `CI_JOB_TOKEN` |
 | API base | `GITHUB_API_URL` or `https://api.github.com` (GHE: `https://<host>/api/v3`) | `GITLAB_API_URL` or `https://<host>/api/v4` |
 
@@ -409,3 +417,5 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | 10 | Signature-change severity | **By compatibility and reach**: warn only for possibly-breaking changes with untouched users in other files | Dogfood on ky/zod: adding an optional field to an interface warned on every type user. Same-file users are already in the line diff. |
 | 11 | Type inference cost | **Infer only for symbols whose syntax changed** (two-pass extraction), truncate long type text | Inference was 75 % of extraction on zod. A drifted inferred type of an unchanged symbol is covered by the callee's own finding. |
 | 12 | What to load | Ignore `examples/` and `playground/` by default (also for loading); without a root tsconfig, load the configs below it instead of every file | vite: 2,724 → 932 program files, 15–20 s → 4.5–7 s per commit. |
+| 13 | Where a symbol's comment goes | **Its first added line, else its first removed line**; the reviewer can pick another +/− line; no changed line (moved unchanged, context, classes) → quoted in the review summary | Forges accept inline comments only inside diff hunks; changed lines always are, unchanged lines of a long symbol may not be. |
+| 14 | GitLab "request changes" | **A note marked "Changes requested" + withdraw own approval** | GitLab's REST API has no stable request-changes call; this keeps the MR unapproved by the reviewer and says why. |
