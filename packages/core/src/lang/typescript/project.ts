@@ -17,6 +17,9 @@ const IGNORED_DIRS = ['node_modules', 'dist', 'build', 'coverage', 'out', '.git'
 /** Options we force on every project, whatever its tsconfig says. */
 const OVERRIDES: ts.CompilerOptions = {
   noEmit: true,
+  // Analyze JS files too, even in TS projects; without this the program drops them.
+  allowJs: true,
+  checkJs: false,
   // Old configs (baseUrl, moduleResolution node, target es5) still work in TS 6.0 but warn.
   ignoreDeprecations: '6.0',
 };

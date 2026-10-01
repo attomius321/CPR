@@ -105,3 +105,37 @@ merge commit.
 - CommonJS export patterns are not extracted yet.
 - One project for the whole repo uses the root config's options; per-package path aliases in
   monorepos may resolve poorly (revisit in M4).
+
+## M3 — Symbol diff and moves (2026-10-01)
+
+**What landed**
+- `diffSymbols` (language-neutral): added / removed / modified{signature, body, moved} /
+  unchanged, with move matching by git file rename → identical declaration → identical
+  non-trivial body (≥ 10 tokens), and members following their container.
+- `analyzeGit` / `analyzeDirectories` pipeline: changed files → slots → projects → extract →
+  diff. Projects are skipped entirely when no source file changed.
+- `listChangedFilesInDirectories` for fixtures (exact-content rename detection).
+- `cpr diff` now prints changed symbols per file (`+` added, `-` removed, `~` modified,
+  `→` moved) and takes `--project`.
+
+**Decisions**
+- Moves require a unique candidate on both sides (North Star: precise beats complete).
+- A rename is a signature change (the name is part of the contract); a pure file move is not.
+- `SymbolDecl.bodySize` (normalized body tokens) exists so tiny bodies (`{}`) never prove a move.
+
+**Dogfood (CPR on itself, M1 → M2: 25 files, 106 symbols)**: ~1.0 s end to end.
+
+**Bugs found by dogfooding**
+- Crash `Cannot read properties of undefined (reading 'escapedName')` in
+  `getSignatureFromDeclaration`: a `.js` file in a TS project without `allowJs` is not part of
+  the program, so its node was never bound. Fixes: force `allowJs: true, checkJs: false`, and
+  read source files back from the built program (only the program's copy is bound). Checker
+  queries now degrade to `?` instead of crashing. Regression test:
+  `fixtures/extract/esm-outside-config`.
+- CLI tests wrote worktree slots into the real `~/.cache/cpr`, leaving orphans for deleted temp
+  repos. Tests now set `CPR_CACHE_DIR`.
+
+**Open**
+- Worktrees have no `node_modules`, so types from dependencies infer as `any` (M4).
+- Files the program drops are skipped silently; surface them as analysis warnings (M6).
+- Orphan slots of deleted repos accumulate in the cache → `cpr cache clean`.

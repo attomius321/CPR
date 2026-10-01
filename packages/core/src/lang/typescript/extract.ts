@@ -59,17 +59,23 @@ interface Container {
 /** Extracts declarations from repo-relative files. Missing and non-source files are skipped. */
 export function extractTs(revision: TsRevision, files: readonly string[]): SymbolDecl[] {
   const { project, root } = revision;
-  const sources: [string, ts.SourceFile][] = [];
+  const paths: [string, string][] = [];
   for (const file of files) {
     if (!isTsSource(file)) continue;
     const path = join(root, file);
-    const sf = project.getSourceFile(path) ?? project.addSourceFileAtPathIfExists(path);
-    if (sf) sources.push([file, sf.compilerNode]);
+    if (project.getSourceFile(path) ?? project.addSourceFileAtPathIfExists(path)) {
+      paths.push([file, path]);
+    }
   }
 
-  // Ask for the checker after adding files, so it covers them.
-  const checker = project.getTypeChecker().compilerObject;
-  return sources.flatMap(([file, sf]) => new FileExtractor(file, sf, checker, root).run());
+  // Build the program after adding files, and read files back from it: the program may
+  // re-create a source file (e.g. with another module format), and only its copy is bound.
+  const program = project.getProgram().compilerObject;
+  const checker = program.getTypeChecker();
+  return paths.flatMap(([file, path]) => {
+    const sf = program.getSourceFile(path);
+    return sf ? new FileExtractor(file, sf, checker, root).run() : [];
+  });
 }
 
 class FileExtractor {
@@ -394,18 +400,29 @@ class FileExtractor {
   }
 
   private inferred(node: ts.Node): string {
-    return this.typeString(this.checker.getTypeAtLocation(node), node);
+    return this.safely(() => this.typeString(this.checker.getTypeAtLocation(node), node));
   }
 
   private inferredReturn(fn: ts.SignatureDeclaration): string {
-    const signature = this.checker.getSignatureFromDeclaration(fn);
-    if (!signature) return 'any';
-    return this.typeString(this.checker.getReturnTypeOfSignature(signature), fn);
+    return this.safely(() => {
+      const signature = this.checker.getSignatureFromDeclaration(fn);
+      if (!signature) return 'any';
+      return this.typeString(this.checker.getReturnTypeOfSignature(signature), fn);
+    });
   }
 
   /** Type text with revision roots removed, so base and head checkouts print the same. */
   private typeString(type: ts.Type, at: ts.Node): string {
     return this.checker.typeToString(type, at, TYPE_FLAGS).split(`${this.root}/`).join('');
+  }
+
+  /** Runs a checker query; a checker failure on odd code degrades to an unknown type. */
+  private safely(query: () => string): string {
+    try {
+      return query();
+    } catch {
+      return '?';
+    }
   }
 
   // ---- helpers ---------------------------------------------------------------------------
@@ -459,6 +476,7 @@ class FileExtractor {
         ]),
         body: bodies.every((b) => b === '') ? '' : hash(bodies),
       },
+      bodySize: parts.reduce((sum, p) => sum + p.body.length, 0),
     };
   }
 
