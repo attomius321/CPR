@@ -157,19 +157,21 @@ function signatureMessage(symbol: string, compat: string, counts: UserCounts): s
   const testNote =
     tests === 0
       ? ''
-      : ` · ${plural(tests, 'test user')}${untouchedTests > 0 ? `, ${untouchedTests} not updated` : ''}`;
+      : `${plural(tests, 'test user')}${untouchedTests > 0 ? `, ${untouchedTests} not updated` : ''}`;
+  const withTests = testNote ? ` · ${testNote}` : '';
   if (compat === 'compatible' || compat === 'additive') {
-    const total = `${plural(code, 'user')}, ${untouchedCode.length} untouched${testNote}`;
+    const codeNote = code > 0 ? `${plural(code, 'user')}, ${untouchedCode.length} untouched` : '';
+    const total = [codeNote, testNote].filter(Boolean).join(' · ');
     return compat === 'compatible'
       ? `${symbol} changed its signature compatibly; existing users keep working (${total})`
       : `${symbol} gained required members; code that creates it must add them (${total})`;
   }
-  if (code === 0) return `${symbol} changed its signature; only tests use it${testNote}`;
+  if (code === 0) return `${symbol} changed its signature; only tests use it${withTests}`;
   if (untouchedCode.length === 0) {
     const all = code === 1 ? 'its only user was updated' : `all ${code} users were updated`;
-    return `${symbol} changed its signature; ${all}${testNote}`;
+    return `${symbol} changed its signature; ${all}${withTests}`;
   }
-  return `${symbol} changed its signature; ${untouchedCode.length} of ${plural(code, 'user')} not updated: ${list(untouchedCode)}${testNote}`;
+  return `${symbol} changed its signature; ${untouchedCode.length} of ${plural(code, 'user')} not updated: ${list(untouchedCode)}${withTests}`;
 }
 
 /**
