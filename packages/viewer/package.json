@@ -1,0 +1,7 @@
+{
+  "name": "@cpr/viewer",
+  "version": "0.0.0",
+  "description": "CPR graph UI (phase 2).",
+  "private": true,
+  "type": "module"
+}

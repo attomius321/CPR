@@ -1,0 +1,278 @@
+# CPR — Plan (draft v0.1)
+
+> Status: first planning draft. Settled decisions are listed in §14.
+
+## 1. Why
+
+Line diffs show *what text moved*. Reviewers need *what decisions were made*:
+which functions were added, which contracts changed, and who is affected.
+
+CPR turns a change set into a **graph of changed symbols** (functions, classes,
+methods, types) and the **calls between them**, then runs detectors that point
+at the risky parts. It runs locally and needs no server.
+
+## 2. Scope
+
+**v1 does**
+- TypeScript and JavaScript (`.ts .tsx .js .jsx .mts .cts .mjs .cjs`)
+- Compare two git revisions in one repository
+- Output a versioned graph JSON and a list of findings
+- Run as a CLI (`cpr diff`) on macOS and Linux, Node ≥ 22.12
+
+**v1 does not**
+- Support other languages (they come later through adapters)
+- Analyze types from `node_modules` beyond what the TS checker gives for free
+- Do runtime or dataflow analysis
+- Host anything, or require GitHub (that is phase 3)
+
+## 3. Core concepts
+
+| Term | Meaning |
+|---|---|
+| **Revision** | A source tree for one side of the diff (`base` or `head`). |
+| **Symbol** | A named declaration with a stable ID, e.g. `src/user/service.ts#UserService.getUser`. |
+| **Change** | How a symbol differs between sides: added, removed, or modified (signature, body, moved). |
+| **Edge** | A relation between two symbols (call, reference, extends, implements). |
+| **Finding** | A detector result attached to a symbol, with a severity. |
+| **Graph** | Nodes + edges + findings. The contract between engine and UI ([graph-schema.md](./graph-schema.md)). |
+
+## 4. Architecture
+
+```
+            ┌──────────────┐      graph.json      ┌──────────────┐
+ git refs → │  @cpr/core   │ ───────────────────→ │ @cpr/viewer  │
+            │  (engine)    │                      │ (React Flow) │
+            └──────▲───────┘                      └──────▲───────┘
+                   │                                     │
+            ┌──────┴─────────────────────────────────────┴──────┐
+            │                     @cpr/cli                      │
+            │        cpr diff · cpr view · (later) cpr pr       │
+            └───────────────────────────────────────────────────┘
+```
+
+### Packages
+
+| Package | Role | Key deps |
+|---|---|---|
+| `packages/core` | Engine: revisions, extraction, diff, references, detectors, graph output | `ts-morph` |
+| `packages/cli` | Argument parsing, git plumbing, output formatting | `@cpr/core` |
+| `packages/viewer` | Graph UI (phase 2) | `react`, `@xyflow/react` |
+
+### Language adapter boundary
+
+The pipeline is language-neutral. Everything TS-specific lives behind one interface,
+so other languages (and a possible Rust/oxc core) can plug in later.
+
+```ts
+interface LanguageAdapter {
+  id: string;                                   // "typescript"
+  matches(path: string): boolean;
+  load(rev: Revision): Promise<LoadedRevision>; // build the program/project
+  extract(rev: LoadedRevision, files: string[]): SymbolDecl[];
+  incoming(rev: LoadedRevision, id: SymbolId): EdgeRef[]; // who uses it
+  outgoing(rev: LoadedRevision, id: SymbolId): EdgeRef[]; // what it uses
+}
+```
+
+Diffing, move detection, detectors and graph output are shared code.
+
+### Revision sources
+
+```ts
+interface RevisionSource { root: string; sha?: string; dispose(): Promise<void> }
+```
+
+- `GitWorktreeSource` — `git worktree add --detach <cache>/<sha> <sha>`; cached by SHA under
+  `$XDG_CACHE_HOME/cpr/worktrees/<repo-id>/` (fallback `~/.cache/cpr`, macOS `~/Library/Caches/cpr`).
+- `DirectorySource` — a plain folder. Used by test fixtures and for quick experiments.
+
+## 5. Engine pipeline
+
+```
+resolve refs → changed files → load projects → extract → hash → diff
+            → match moves → references (changed only) → detectors → graph.json
+```
+
+1. **Resolve revisions.** `git rev-parse` both refs. Use `merge-base(base, head)` as the
+   real base, the same way GitHub computes a PR diff. Flag `--no-merge-base` to compare directly.
+2. **Changed files.** `git diff --name-status -M <mergeBase> <head>`. Only these files can
+   contain changed symbols, so extraction runs on them only. This is the main speedup.
+3. **Load projects.** One ts-morph `Project` per side, built from the repo's `tsconfig.json`
+   (see §7 for monorepos). Worktrees have no `node_modules`; we symlink the main
+   checkout's `node_modules` in, and treat external symbols as opaque leaves.
+4. **Extract declarations** in changed files, both sides, with stable IDs (§6).
+5. **Hash** each symbol twice: `signatureHash` and `bodyHash` (§6.3).
+6. **Diff by ID** into `added`, `removed`, `modified{signature, body}`, `unchanged`.
+7. **Match moves and renames.** Pair `removed` with `added` symbols that have the same
+   `bodyHash` (exact first, fuzzy later). Pairs become `modified{moved}` with `previousId`.
+8. **References, changed symbols only.**
+   - Incoming (callers): in `head` for added/modified, in `base` for removed.
+   - Outgoing (callees): walk the changed symbol's body and resolve call targets.
+   - Map each reference site to its enclosing symbol to get the caller ID.
+   - Unchanged callers and callees join the graph as **context nodes** (1 hop by default, `--depth n`).
+   - Type-only references are always collected as `type-reference` edges. The UI hides them by default.
+9. **Detectors** (§8).
+10. **Emit** `graph.json` + a human summary on stdout.
+
+## 6. Symbols
+
+### 6.1 What counts as a symbol (v1)
+
+| Included | ID example |
+|---|---|
+| Top-level function | `src/a.ts#parse` |
+| Exported or top-level `const` arrow / function expression | `src/a.ts#handler` |
+| Class, its methods, constructor, accessors, properties | `src/a.ts#User`, `src/a.ts#User.save`, `src/a.ts#User.constructor` |
+| Interface, type alias, enum | `src/a.ts#UserDto` |
+| Namespace members | `src/a.ts#Utils.slugify` |
+| Default export | `src/a.ts#default` (or its name, if it has one) |
+
+Nested functions and callbacks are **folded into their parent's body** in v1.
+A change inside them shows up as a body change of the parent.
+
+### 6.2 Stable IDs
+
+Format: `<repo-relative POSIX path>#<qualified name>`.
+
+- Function overloads are one symbol; all overload signatures go into its signature hash.
+- Static and instance members with the same name: `User.save` vs `User.static:save`.
+- Computed or symbol-keyed members: `User.[Symbol.iterator]`.
+- Anonymous default export: `#default`.
+- Declaration merging (interface + namespace with one name): one ID, kinds listed together.
+
+### 6.3 Hashing
+
+Both hashes are computed from **normalized AST text**: comments and whitespace removed,
+so formatting-only edits do not count as changes.
+
+| Hash | Input |
+|---|---|
+| `signatureHash` | name, modifiers (`export`, `async`, `static`, visibility, `abstract`), type params, params (name, optional, type), declared return type, heritage clauses for classes |
+| `bodyHash` | function/method body; initializer for variables; member list for interfaces/types/enums |
+
+A class's own change comes from its heritage and member list. Member edits show on the members.
+
+**Inferred return types:** when a function or method has **no declared return type**, the
+checker's inferred return type is normalized and added to the signature hash. This catches
+`return user` turning into `return user ?? null` with no annotation. Annotated symbols use
+the declared text only. Runs on changed symbols only, so the cost is small.
+
+## 7. TypeScript traps
+
+| Trap | Plan |
+|---|---|
+| **Barrels and re-exports** | Resolve every reference through `getAliasedSymbol()` until we reach the real declaration. Re-export hops are recorded on the edge, not as nodes. |
+| **Path aliases** | Use the real `tsconfig` (`paths`, `baseUrl`) when loading the project, so the compiler resolves them. |
+| **Monorepo tsconfigs** | Find all `tsconfig.json` files with project `references` or one per workspace package. v1: load all into one `Project` with combined root files. Later: one project per package, linked by references. |
+| **Renames and moves** | §5 step 7. Exact body-hash match in v1; similarity matching later. |
+| **Dynamic JS calls** | `obj[name]()`, `any`-typed receivers, `require(var)`, `eval`: emit an edge with `resolution: "unknown"` and a text-based guess when a name is visible. Never silently drop them. |
+| **JS without types** | Enable `allowJs` + `checkJs: false`. Resolution is weaker; mark low-confidence edges as `unknown`. |
+| **Generated files** | Skip `.d.ts` and files matching `.cprignore` / common globs (`dist/`, `build/`, `*.generated.ts`). |
+
+## 8. Detectors (v1)
+
+| Rule ID | Fires when | Severity | Notes |
+|---|---|---|---|
+| `removed-still-referenced` | A removed symbol still has callers in `head`. | error | Found via base callers that still exist in head, plus head diagnostics like "Cannot find name" / "has no exported member". Text-match fallback for JS → marked `unknown`. |
+| `orphan-added` | An added symbol has no references in `head`. | warning | Downgraded to `info` if it is exported from a package entry point (it may be public API). |
+| `signature-changed` | A symbol's signature hash changed. | warning | **Blast radius** = all head callers, split into *updated in this PR* and *untouched*. Untouched callers are the ones to check. |
+
+Every finding links to a symbol ID and its related IDs, so the UI can highlight them.
+
+Later candidates: `exported-api-changed`, `new-cycle`, `caller-not-updated-for-new-param`,
+`test-not-touched-for-changed-symbol`.
+
+## 9. CLI (phase 1)
+
+```
+cpr diff <base> <head> [options]
+
+  --project <path>      tsconfig to use (default: auto-detect)
+  --out <file>          write graph JSON to a file (default: stdout when --json)
+  --json                print JSON instead of the human summary
+  --no-merge-base       compare base and head directly
+  --depth <n>           hops of unchanged context around changed symbols (default: 1)
+  --fail-on <severity>  exit 1 if any finding is at or above this level (for CI)
+```
+
+Exit codes: `0` ok, `1` failure or `--fail-on` hit, `2` usage error.
+
+Human summary example:
+
+```
+cpr: 14 symbols changed (3 added, 1 removed, 10 modified) in 6 files
+
+ ✖ removed-still-referenced  src/user/service.ts#UserService.find
+     still called from src/api/routes.ts#listUsers
+ ⚠ signature-changed         src/user/service.ts#UserService.getUser
+     5 callers · 2 updated · 3 untouched
+ ⚠ orphan-added              src/util/date.ts#toIsoWeek
+```
+
+## 10. Testing
+
+- **Fixture pairs:** `packages/core/test/fixtures/<case>/{base,head}/`, loaded with
+  `DirectorySource`. One case per behavior (rename, barrel, path alias, overload, dynamic call…).
+- **Golden snapshots:** each case has an expected `graph.json`; tests diff against it.
+- **Git integration tests:** a small script builds a temp repo with commits to test
+  worktrees, merge-base and rename detection.
+- **Dogfood:** run on real PRs from 3 open-source TS repos of different sizes; record
+  runtime and false positives.
+
+## 11. Performance budget (v1)
+
+| Repo size | Changed symbols | Target |
+|---|---|---|
+| ~1k files | 20 | < 5 s |
+| ~10k files | 50 | < 30 s |
+
+Main costs are type-checker setup (2 programs) and `findReferences`. Levers if we miss:
+cache worktrees and `.tsbuildinfo` by SHA, load only the affected workspace packages,
+build a per-file identifier index to prefilter reference search, then oxc in the long run.
+
+## 12. Roadmap
+
+| Phase | Deliverable | Done when |
+|---|---|---|
+| **1. Engine** | `cpr diff base head` → JSON + findings | All fixture cases pass; runs within budget on the dogfood repos. |
+| **2. Viewer** | `cpr view` serves a local graph UI with per-symbol diffs | You can review a real PR from the graph alone: click a node → see its diff, callers, findings. |
+| **3. GitHub** | `cpr pr 123`: review, comment, approve | Comments land on the right lines; approve/request-changes works like `gh pr review`. |
+| **4. Interdiff** | Show only what changed between PR versions | Re-review after a force-push shows only the new deltas. |
+| **5. CI** | GitHub Action that posts findings | Action runs on a PR and posts a summary + inline findings. |
+
+**Later:** more languages via adapters, Rust/oxc core, self-hosted team mode.
+
+### Phase 1 milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| M0 ✅ | Scaffolding | pnpm workspace, TS strict, vitest, eslint, prettier, CI on push |
+| M1 | Git layer | ref resolve, merge-base, changed files, worktree cache |
+| M2 | Extraction | symbol IDs + both hashes, fixture tests |
+| M3 | Diff + moves | change classification, exact move matching |
+| M4 | References | incoming/outgoing edges, alias resolution, context nodes |
+| M5 | Detectors | the three v1 rules |
+| M6 | Output + CLI | graph JSON v0.1, human summary, `--fail-on` |
+| M7 | Dogfood | measured runtime + false-positive notes on 3 repos |
+
+## 13. Risks
+
+| Risk | Mitigation |
+|---|---|
+| `findReferences` too slow on big repos | Only changed symbols; prefilter by identifier index; per-package loading. |
+| Missing `node_modules` in worktrees breaks types | Symlink from main checkout; external symbols are leaves; base/head lockfile drift is accepted in v1. |
+| Symbol IDs unstable across refactors | Move matching by body hash; `previousId` on the node. |
+| Graph too big to read | UI collapses context nodes and groups by file/package by default. |
+| ts-morph memory use with two projects | Load sides one after the other and keep only extracted data, not both ASTs. |
+
+## 14. Decisions
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 1 | Package manager | **pnpm** workspaces | Fast, strict about undeclared deps, standard for TS monorepos. |
+| 2 | Inferred return type in signature hash | **Only when unannotated** (§6.3) | Catches silent contract changes without noise on annotated code. |
+| 3 | Type-only references | **Always collected, hidden by default** in the UI | Needed for blast radius when an interface or type changes. |
+| 4 | Context depth | **1 hop**, `--depth n` to widen | Small graphs by default, more context on demand. |
+| 5 | Worktree cache location | **`$XDG_CACHE_HOME/cpr`** (outside the repo) | Worktrees inside the repo would be picked up by tsc, eslint, test runners and file watchers. |
+| 6 | Minimum Node | **22.12** | Node 20 is EOL; Vitest 5 requires ≥ 22.12. CI runs Node 22 and 24. |
+| 7 | TypeScript for our own code | **6.0.x**, not 7 | TS 7 (the Go port) is `latest`, but typescript-eslint supports `<6.1`. ts-morph bundles its own compiler, so the engine is unaffected. Revisit when lint tooling supports 7. |
