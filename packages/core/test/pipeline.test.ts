@@ -1,4 +1,4 @@
-import { rmSync, writeFileSync } from 'node:fs';
+import { cpSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -6,6 +6,7 @@ import {
   analyzeDirectories,
   analyzeGit,
   buildGraph,
+  isTestFile,
   listChangedFilesInDirectories,
   type SymbolChange,
 } from '../src/index.js';
@@ -95,6 +96,8 @@ describe('detectors', () => {
       updated: 2,
       untouched: 2,
       untouchedElsewhere: 0,
+      tests: 0,
+      untouchedTests: 0,
       compatibility: 'compatible',
     });
     expect(signature?.related).toEqual([
@@ -123,6 +126,64 @@ describe('detectors', () => {
       'orphan-added src/math.ts#triple',
       'signature-changed src/math.ts#add',
     ]);
+  });
+});
+
+describe('public API and test users', () => {
+  it('flags public API that breaks outside the repo, and sets stale tests apart', async () => {
+    const analysis = await analyzeDirectories(
+      fixture('public-api', 'base'),
+      fixture('public-api', 'head'),
+    );
+    expect(
+      analysis.findings.map((f) => `${f.severity} ${f.rule} ${f.symbol}: ${f.message}`),
+    ).toEqual([
+      "warning exported-api-changed src/legacy.ts#legacy: legacy was removed from the package's public API",
+      'warning exported-api-changed src/parse.ts#parse: parse is public API and its new signature may break code outside the repo',
+      // A private member is not public API, so removing Parser.cache is fine.
+      "warning exported-api-changed src/parse.ts#Parser.reset: Parser.reset was removed from the package's public API",
+      // main (production code) was not updated: still a warning.
+      'warning signature-changed src/parse.ts#parse: parse changed its signature; 1 of 2 users not updated: main · 1 test user, 1 not updated',
+      // Only a test is stale, and the test run will say so: information.
+      'info signature-changed src/parse.ts#internalHelper: internalHelper changed its signature; its only user was updated · 1 test user, 1 not updated',
+    ]);
+  });
+
+  it('leaves packages that are not published alone', async () => {
+    const dirs = (['base', 'head'] as const).map((side) => {
+      const dir = tempDir();
+      cpSync(fixture('public-api', side), dir, { recursive: true });
+      writeFileSync(
+        join(dir, 'package.json'),
+        '{ "name": "app", "private": true, "main": "src/index.ts" }',
+      );
+      return dir;
+    });
+    const analysis = await analyzeDirectories(dirs[0] as string, dirs[1] as string);
+    for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+    expect(analysis.findings.map((f) => f.rule)).toEqual([
+      'signature-changed',
+      'signature-changed',
+    ]);
+  });
+});
+
+describe('isTestFile', () => {
+  it('knows test files by their path', () => {
+    for (const path of [
+      'src/a.test.ts',
+      'src/a.spec.tsx',
+      'src/a.test-d.ts',
+      'src/__tests__/a.ts',
+      'test/a.ts',
+      'packages/x/tests/a.mjs',
+      'e2e/flow.ts',
+    ]) {
+      expect(isTestFile(path), path).toBe(true);
+    }
+    for (const path of ['src/testing.ts', 'src/contest/a.ts', 'src/latest.ts', 'src/attest.ts']) {
+      expect(isTestFile(path), path).toBe(false);
+    }
   });
 });
 

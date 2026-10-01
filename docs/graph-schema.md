@@ -1,4 +1,4 @@
-# CPR Graph Schema (draft v0.2.0)
+# CPR Graph Schema (draft v0.3.0)
 
 The graph JSON is the contract between the engine (`@cpr/core`) and every consumer
 (viewer, CLI summary, GitHub Action). It is **language-neutral**: nothing in it is
@@ -20,7 +20,8 @@ TypeScript-specific except the `language` value.
 | New optional field, new enum value consumers can ignore | minor |
 | Removed/renamed field, changed meaning | major |
 
-History: `0.2.0` added `since` (top level and on nodes); `changeRequest` arrived in 0.1.0
+History: `0.3.0` added the `exported-api-changed` rule and test-user counts in
+`signature-changed` data; `0.2.0` added `since` (top level and on nodes); `changeRequest` arrived in 0.1.0
 before any release.
 
 A consumer accepts any version with the same major. The JSON Schema at
@@ -32,7 +33,7 @@ every golden graph against it.
 
 ```jsonc
 {
-  "schemaVersion": "0.2.0",
+  "schemaVersion": "0.3.0",
   "generator": { "name": "cpr", "version": "0.1.0" },
   "changeRequest": {             // only from `cpr pr`
     "forge": "gitlab", "number": 7, "title": "Add widgets",
@@ -185,4 +186,5 @@ A directed relation `from` → `to` ("from uses to").
 |---|---|
 | `removed-still-referenced` | `{ "referencedBy": string[], "certainty": "resolved" \| "unknown", "sites": Site[] }` |
 | `orphan-added` | `{ "exportedFromEntry": boolean, "exposure": "entry-export" \| "default-export" \| null }` |
-| `signature-changed` | `{ "callers": number, "updated": number, "untouched": number }` — `related` lists untouched users first |
+| `signature-changed` | `{ "callers", "updated", "untouched", "untouchedElsewhere", "tests", "untouchedTests": number, "compatibility": "compatible" \| "additive" \| "breaking" \| "unknown" }` — counts include test users (`tests` of them); `related` lists untouched production users, then untouched test users, then updated ones |
+| `exported-api-changed` | `{ "change": "removed" \| "unexported" \| "signature", "compatibility"?: "breaking" \| "unknown" }` |

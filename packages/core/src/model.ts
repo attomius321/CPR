@@ -92,7 +92,8 @@ export interface Edge {
 
 export type Severity = 'error' | 'warning' | 'info';
 
-export type RuleId = 'removed-still-referenced' | 'orphan-added' | 'signature-changed';
+export type RuleId =
+  'removed-still-referenced' | 'orphan-added' | 'signature-changed' | 'exported-api-changed';
 
 export interface Finding {
   /** `f1`, `f2`, … in severity order. */

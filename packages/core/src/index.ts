@@ -57,7 +57,7 @@ export {
   type SinceStatus,
 } from './pipeline.js';
 export { linkNodeModules } from './deps.js';
-export { runDetectors, type DetectorInput } from './detectors.js';
+export { isTestFile, runDetectors, type DetectorInput } from './detectors.js';
 export { DEFAULT_IGNORES, ignoreMatcher, loadIgnores, type IgnoreMatcher } from './ignore.js';
 export {
   buildGraph,

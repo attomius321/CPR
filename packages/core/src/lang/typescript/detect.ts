@@ -4,7 +4,7 @@ import { ts } from 'ts-morph';
 import type { Dangling, Exposure, SymbolDecl } from '../../model.js';
 import { isTsSource } from './files.js';
 import { readJson, repoPath, sourceEntry, type TsRevision } from './project.js';
-import { enclosingSymbolId, isDefaultExport } from './syntax.js';
+import { enclosingSymbolId, hasModifier, isDefaultExport } from './syntax.js';
 
 const MEMBER_KINDS = new Set(['method', 'property', 'accessor', 'constructor']);
 
@@ -125,8 +125,32 @@ export function exposureTs(revision: TsRevision, symbol: SymbolDecl): Exposure |
     return 'default-export';
   }
   if (!symbol.exported) return undefined;
+  return exportedFromEntry(revision, symbol, nodes) ? 'entry-export' : undefined;
+}
 
-  // A class member is public API when its class is.
+/**
+ * Whether code outside the repository can use the symbol: it is exported from the entry point
+ * of a package that is published (not `"private": true`), and is not a private class member.
+ */
+export function publicApiTs(revision: TsRevision, symbol: SymbolDecl): boolean {
+  if (!symbol.exported) return false;
+  const nodes = revision.declarations.get(symbol.id) ?? [];
+  const isPrivate = (node: ts.Node) => {
+    const name = (node as { name?: ts.Node }).name;
+    return (
+      hasModifier(node, ts.SyntaxKind.PrivateKeyword) ||
+      (name !== undefined && ts.isPrivateIdentifier(name))
+    );
+  };
+  if (nodes.some(isPrivate)) return false;
+  const pkg = nearestPackage(revision, symbol.file);
+  if (!pkg || pkg.manifest.private === true) return false;
+  return exportedFromEntry(revision, symbol, nodes);
+}
+
+/** Exported (directly or re-exported) by its package's entry; class members through their class. */
+function exportedFromEntry(revision: TsRevision, symbol: SymbolDecl, nodes: ts.Node[]): boolean {
+  const checker = revision.program.getTypeChecker();
   const owner = MEMBER_KINDS.has(symbol.kind) && nodes[0]?.parent ? [nodes[0].parent] : nodes;
   for (const entry of packageEntries(revision, symbol.file)) {
     const sf = revision.program.getSourceFile(entry);
@@ -136,11 +160,11 @@ export function exposureTs(revision: TsRevision, symbol: SymbolDecl): Exposure |
       const target =
         exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
       if (target.declarations?.some((d) => owner.some((n) => n === d || n === d.parent))) {
-        return 'entry-export';
+        return true;
       }
     }
   }
-  return undefined;
+  return false;
 }
 
 function overridesInherited(
@@ -155,20 +179,29 @@ function overridesInherited(
   return bases.some((base) => base.getProperty(name) !== undefined);
 }
 
-/** Source entry files of the package that contains `file` (nearest package.json). */
+/** Source entry files of the package that contains `file`. */
 function packageEntries(revision: TsRevision, file: string): string[] {
+  const pkg = nearestPackage(revision, file);
+  const entry = pkg && sourceEntry(pkg.dir, pkg.manifest);
+  return entry ? [entry] : [];
+}
+
+/** The nearest package.json above `file`, within the revision. */
+function nearestPackage(
+  revision: TsRevision,
+  file: string,
+): { dir: string; manifest: Record<string, unknown> } | undefined {
   for (
     let dir = dirname(join(revision.root, file));
     dir.startsWith(revision.root);
     dir = dirname(dir)
   ) {
-    const manifest = join(dir, 'package.json');
-    if (existsSync(manifest)) {
-      const pkg = readJson(manifest) as Record<string, unknown> | undefined;
-      const entry = pkg && sourceEntry(dir, pkg);
-      return entry ? [entry] : [];
+    const path = join(dir, 'package.json');
+    if (existsSync(path)) {
+      const manifest = readJson(path) as Record<string, unknown> | undefined;
+      return manifest ? { dir, manifest } : undefined;
     }
     if (dir === revision.root) break;
   }
-  return [];
+  return undefined;
 }
