@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import type { LanguageAdapter, LoadOptions } from './adapter.js';
+import { linkNodeModules } from './deps.js';
 import { diffSymbols, type SymbolChange } from './diff.js';
 import { listChangedFilesInDirectories } from './fs-diff.js';
 import { listChangedFiles, type ChangedFile } from './git/changed-files.js';
@@ -7,6 +8,7 @@ import { openRepo } from './git/repo.js';
 import { resolveRevisions } from './git/revisions.js';
 import { checkoutRevision } from './git/worktree.js';
 import { typescriptAdapter } from './lang/typescript/index.js';
+import type { Edge, EdgeRef, SymbolDecl, SymbolId, SymbolKind } from './model.js';
 import { directorySource, type RevisionSource } from './revision.js';
 
 /** What was compared. `sha` and `from` are null when comparing folders. */
@@ -16,16 +18,32 @@ export interface RevisionsInfo {
   from: string | null;
 }
 
+/** An unchanged symbol, package export, dynamic target or top-level code next to a change. */
+export interface ContextSymbol {
+  id: SymbolId;
+  kind: SymbolKind | 'module' | 'external' | 'unknown';
+  /** The declaration, for repo symbols (from head when it exists there). */
+  decl: SymbolDecl | null;
+}
+
 export interface Analysis {
   revisions: RevisionsInfo;
   files: ChangedFile[];
   changes: SymbolChange[];
+  edges: Edge[];
+  context: ContextSymbol[];
+  warnings: string[];
 }
 
-export interface AnalyzeOptions extends LoadOptions {
+export interface AnalyzeOptions extends Omit<LoadOptions, 'files'> {
   /** Default: the TypeScript adapter. */
   adapter?: LanguageAdapter;
+  /** Hops of unchanged context around changed symbols. Default: 1. */
+  depth?: number;
 }
+
+/** Stop widening context past this many symbols. */
+const MAX_CONTEXT = 2000;
 
 export interface AnalyzeGitOptions extends AnalyzeOptions {
   cwd: string;
@@ -45,7 +63,7 @@ export async function analyzeGit(options: AnalyzeGitOptions): Promise<Analysis> 
   });
   const files = await listChangedFiles(repo, revisions.from, revisions.head.sha);
   if (!files.some((file) => isRelevant(file, options.adapter ?? typescriptAdapter))) {
-    return { revisions, files, changes: [] };
+    return { revisions, files, ...EMPTY };
   }
 
   const checkout = (sha: string, role: string) =>
@@ -57,7 +75,10 @@ export async function analyzeGit(options: AnalyzeGitOptions): Promise<Analysis> 
   try {
     const head = await checkout(revisions.head.sha, 'head');
     try {
-      return { revisions, files, changes: await analyzeSources(base, head, files, options) };
+      // Slots have no installed dependencies; borrow the user's.
+      await linkNodeModules(repo.root, base.root);
+      await linkNodeModules(repo.root, head.root);
+      return { revisions, files, ...(await analyzeSources(base, head, files, options)) };
     } finally {
       await head.dispose();
     }
@@ -82,18 +103,22 @@ export async function analyzeDirectories(
       from: null,
     },
     files,
-    changes: await analyzeSources(base, head, files, options),
+    ...(await analyzeSources(base, head, files, options)),
   };
 }
+
+type SourceAnalysis = Pick<Analysis, 'changes' | 'edges' | 'context' | 'warnings'>;
+
+const EMPTY: SourceAnalysis = { changes: [], edges: [], context: [], warnings: [] };
 
 async function analyzeSources(
   base: RevisionSource,
   head: RevisionSource,
   files: readonly ChangedFile[],
-  { adapter = typescriptAdapter, ...load }: AnalyzeOptions,
-): Promise<SymbolChange[]> {
+  { adapter = typescriptAdapter, depth = 1, ...load }: AnalyzeOptions,
+): Promise<SourceAnalysis> {
   const relevant = files.filter((file) => isRelevant(file, adapter));
-  if (relevant.length === 0) return [];
+  if (relevant.length === 0) return EMPTY;
 
   const baseFiles = relevant.flatMap((file) =>
     file.status === 'added' || file.status === 'copied'
@@ -109,10 +134,162 @@ async function analyzeSources(
     ),
   );
 
-  // One side at a time keeps only one program in memory.
-  const baseSymbols = adapter.extract(await adapter.load(base, load), baseFiles);
-  const headSymbols = adapter.extract(await adapter.load(head, load), headFiles);
-  return diffSymbols({ base: baseSymbols, head: headSymbols, renames });
+  const baseRev = await adapter.load(base, { ...load, files: baseFiles });
+  const headRev = await adapter.load(head, { ...load, files: headFiles });
+  const changes = diffSymbols({
+    base: adapter.extract(baseRev, baseFiles),
+    head: adapter.extract(headRev, headFiles),
+    renames,
+  });
+
+  // References around every changed symbol, on the side(s) where it exists.
+  const refs = { base: [] as EdgeRef[], head: [] as EdgeRef[] };
+  for (const change of changes) {
+    if (change.status === 'unchanged') continue;
+    if (change.base) refs.base.push(...references(adapter, baseRev, change.base));
+    if (change.head) refs.head.push(...references(adapter, headRev, change.head));
+  }
+
+  // Base IDs of moved symbols become their head IDs, so both sides meet in one graph.
+  const toHead = new Map(changes.flatMap((c) => (c.previousId ? [[c.previousId, c.id]] : [])));
+  const rename = (id: SymbolId) => toHead.get(id) ?? id;
+  const baseRefs = refs.base.map((r) => ({ ...r, from: rename(r.from), to: rename(r.to) }));
+
+  const changedIds = new Set(changes.filter((c) => c.status !== 'unchanged').map((c) => c.id));
+  const known = new Map<SymbolId, SymbolDecl>(); // unchanged symbols already extracted
+  for (const change of changes)
+    if (change.status === 'unchanged' && change.head) known.set(change.id, change.head);
+
+  const resolver = new ContextResolver(adapter, { base: baseRev, head: headRev }, known);
+  // Widen context hop by hop on the head side (depth 1 = direct neighbours only).
+  let frontier = endpoints(refs.head, changedIds);
+  for (let hop = 1; hop < depth && frontier.length > 0 && resolver.size < MAX_CONTEXT; hop++) {
+    const next: EdgeRef[] = [];
+    for (const id of frontier) {
+      const decl = resolver.decl(id, 'head');
+      if (decl) next.push(...references(adapter, headRev, decl));
+    }
+    refs.head.push(...next);
+    frontier = endpoints(next, changedIds).filter((id) => !resolver.has(id));
+  }
+
+  const edges = mergeEdges(baseRefs, refs.head);
+  const targets = new Map(
+    [...baseRefs, ...refs.head].flatMap((r) => (r.target ? [[r.to, r.target] as const] : [])),
+  );
+  const headIds = new Set(refs.head.flatMap((r) => [r.from, r.to]));
+  const context: ContextSymbol[] = [];
+  for (const id of new Set(edges.flatMap((e) => [e.from, e.to]))) {
+    if (changedIds.has(id)) continue;
+    const target = targets.get(id);
+    if (target) context.push({ id, kind: target, decl: null });
+    else if (id.endsWith('#(module)')) context.push({ id, kind: 'module', decl: null });
+    else {
+      const decl = resolver.decl(id, headIds.has(id) ? 'head' : 'base');
+      context.push({ id, kind: decl?.kind ?? 'unknown', decl: decl ?? null });
+    }
+  }
+  context.sort((a, b) => a.id.localeCompare(b.id));
+
+  const warnings = [...new Set([...adapter.warnings(baseRev), ...adapter.warnings(headRev)])];
+  return { changes, edges, context, warnings };
+}
+
+function references<L>(adapter: LanguageAdapter<L>, revision: L, symbol: SymbolDecl): EdgeRef[] {
+  return [...adapter.incoming(revision, symbol), ...adapter.outgoing(revision, symbol)];
+}
+
+/** Repo symbols referenced by `refs` that are not themselves changed. */
+function endpoints(refs: EdgeRef[], changed: Set<SymbolId>): SymbolId[] {
+  const ids = new Set<SymbolId>();
+  for (const ref of refs) {
+    for (const id of [ref.from, ref.to]) {
+      if (!changed.has(id) && !id.endsWith('#(module)') && !(id === ref.to && ref.target)) {
+        ids.add(id);
+      }
+    }
+  }
+  return [...ids];
+}
+
+/** Merges per-side references into edges keyed by (from, to, kind). */
+function mergeEdges(base: EdgeRef[], head: EdgeRef[]): Edge[] {
+  const edges = new Map<string, Edge & { inBase: boolean; inHead: boolean }>();
+  const add = (ref: EdgeRef, side: 'base' | 'head') => {
+    const key = `${ref.from}\0${ref.to}\0${ref.kind}`;
+    let edge = edges.get(key);
+    if (!edge) {
+      edge = {
+        from: ref.from,
+        to: ref.to,
+        kind: ref.kind,
+        side: side,
+        resolution: ref.resolution,
+        sites: {},
+        inBase: false,
+        inHead: false,
+      };
+      edges.set(key, edge);
+    }
+    if (side === 'base') edge.inBase = true;
+    else edge.inHead = true;
+    const sites = (edge.sites[side] ??= []);
+    if (
+      !sites.some(
+        (s) => s.file === ref.site.file && s.line === ref.site.line && s.col === ref.site.col,
+      )
+    ) {
+      sites.push(ref.site);
+    }
+  };
+  for (const ref of base) add(ref, 'base');
+  for (const ref of head) add(ref, 'head');
+
+  return [...edges.values()]
+    .map(({ inBase, inHead, ...edge }): Edge => ({
+      ...edge,
+      side: inBase && inHead ? 'both' : inBase ? 'base' : 'head',
+    }))
+    .sort(
+      (a, b) =>
+        a.from.localeCompare(b.from) || a.to.localeCompare(b.to) || a.kind.localeCompare(b.kind),
+    );
+}
+
+/** Finds declarations of context symbols, extracting each file at most once per side. */
+class ContextResolver<L> {
+  private readonly files = {
+    base: new Map<string, Map<SymbolId, SymbolDecl>>(),
+    head: new Map<string, Map<SymbolId, SymbolDecl>>(),
+  };
+
+  constructor(
+    private readonly adapter: LanguageAdapter<L>,
+    private readonly revisions: { base: L; head: L },
+    private readonly known: Map<SymbolId, SymbolDecl>,
+  ) {}
+
+  get size(): number {
+    return this.known.size;
+  }
+
+  has(id: SymbolId): boolean {
+    return this.known.has(id);
+  }
+
+  decl(id: SymbolId, side: 'base' | 'head'): SymbolDecl | undefined {
+    const cached = this.known.get(id);
+    if (cached) return cached;
+    const file = id.slice(0, id.indexOf('#'));
+    let symbols = this.files[side].get(file);
+    if (!symbols) {
+      symbols = new Map(this.adapter.extract(this.revisions[side], [file]).map((s) => [s.id, s]));
+      this.files[side].set(file, symbols);
+    }
+    const decl = symbols.get(id);
+    if (decl) this.known.set(id, decl);
+    return decl;
+  }
 }
 
 function isRelevant(file: ChangedFile, adapter: LanguageAdapter): boolean {

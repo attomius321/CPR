@@ -1,18 +1,27 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { Project, ts } from 'ts-morph';
-import { CprError } from '../../errors.js';
 import type { LoadOptions } from '../../adapter.js';
+import { CprError } from '../../errors.js';
+import type { SymbolId } from '../../model.js';
 import type { RevisionSource } from '../../revision.js';
+import { isTsSource } from './files.js';
 
 export interface TsRevision {
   /** Absolute revision root, without a trailing slash. */
   root: string;
   project: Project;
+  /** Language service; every node, the checker and reference search share its program. */
+  service: ts.LanguageService;
+  program: ts.Program;
+  /** Declaration nodes of extracted symbols, for reference search. */
+  declarations: Map<SymbolId, ts.Node[]>;
+  warnings: string[];
 }
 
 const SOURCE_GLOB = '**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
-const IGNORED_DIRS = ['node_modules', 'dist', 'build', 'coverage', 'out', '.git'];
+const SKIPPED_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', 'out', '.git']);
+const MAX_DEPTH = 5;
 
 /** Options we force on every project, whatever its tsconfig says. */
 const OVERRIDES: ts.CompilerOptions = {
@@ -29,46 +38,80 @@ const DEFAULTS: ts.CompilerOptions = {
   target: ts.ScriptTarget.ESNext,
   module: ts.ModuleKind.ESNext,
   moduleResolution: ts.ModuleResolutionKind.Bundler,
-  allowJs: true,
-  checkJs: false,
   jsx: ts.JsxEmit.Preserve,
   allowImportingTsExtensions: true,
   skipLibCheck: true,
 };
 
 /**
- * Loads a revision as one ts-morph project: the root tsconfig (following its `references`), or
- * every source file with default options when there is none.
+ * Loads a revision as one ts-morph project: the root tsconfig plus every tsconfig it references
+ * or that lives in the repo, or every source file with default options when there is none.
+ * Workspace packages resolve to their sources in this revision through `paths`. `files` are
+ * added up front, so the program never changes after loading.
  */
-export function loadTsProject(source: RevisionSource, { project }: LoadOptions = {}): TsRevision {
+export function loadTsProject(
+  source: RevisionSource,
+  { project, files = [] }: LoadOptions = {},
+): TsRevision {
   const root = resolve(source.root);
+  const warnings: string[] = [];
   const configPath = project ? join(root, project) : join(root, 'tsconfig.json');
   if (project && !existsSync(configPath)) throw new CprError(`project file not found: ${project}`);
+  const workspace = workspacePaths(root);
 
+  let tsProject: Project;
   if (!existsSync(configPath)) {
-    const tsProject = new Project({ compilerOptions: { ...DEFAULTS, ...OVERRIDES } });
+    tsProject = new Project({ compilerOptions: { ...DEFAULTS, ...OVERRIDES, paths: workspace } });
     tsProject.addSourceFilesAtPaths([
       join(root, SOURCE_GLOB),
-      ...IGNORED_DIRS.map((dir) => `!${join(root, '**', dir, '**')}`),
+      ...[...SKIPPED_DIRS].map((dir) => `!${join(root, '**', dir, '**')}`),
     ]);
-    return { root, project: tsProject };
+  } else {
+    tsProject = new Project({
+      tsConfigFilePath: configPath,
+      compilerOptions: { ...OVERRIDES, paths: { ...workspace, ...configPaths(configPath) } },
+    });
+    const others = project
+      ? referencedConfigs(configPath)
+      : [...new Set([...referencedConfigs(configPath), ...findFiles(root, 'tsconfig.json')])];
+    for (const config of others) {
+      if (config === configPath) continue;
+      try {
+        tsProject.addSourceFilesFromTsConfig(config);
+      } catch (error) {
+        warnings.push(`could not load ${repoPath(root, config)}: ${(error as Error).message}`);
+      }
+    }
   }
 
-  const tsProject = new Project({ tsConfigFilePath: configPath, compilerOptions: OVERRIDES });
-  for (const reference of referencedConfigs(configPath)) {
-    tsProject.addSourceFilesFromTsConfig(reference);
+  for (const file of files) {
+    if (isTsSource(file)) tsProject.addSourceFileAtPathIfExists(join(root, file));
   }
-  return { root, project: tsProject };
+
+  const service = tsProject.getLanguageService().compilerObject;
+  const program = service.getProgram();
+  if (!program) throw new Error('TypeScript did not create a program');
+  for (const file of files) {
+    const path = join(root, file);
+    if (isTsSource(file) && existsSync(path) && !program.getSourceFile(path)) {
+      warnings.push(`${file}: not part of the TypeScript program, skipped`);
+    }
+  }
+  return { root, project: tsProject, service, program, declarations: new Map(), warnings };
+}
+
+/** Repo-relative POSIX path, or undefined outside the root. */
+export function repoPath(root: string, path: string): string | undefined {
+  const rel = relative(root, path);
+  if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) return undefined;
+  return rel.split(sep).join('/');
 }
 
 /** All tsconfig files reachable through `references`, depth first, without repeats. */
 function referencedConfigs(configPath: string, seen = new Set<string>([configPath])): string[] {
-  const { config } = ts.readConfigFile(configPath, (path) => readFileSync(path, 'utf8')) as {
-    config?: { references?: { path?: unknown }[] };
-  };
-  const references = config?.references;
+  const config = readJson(configPath) as { references?: { path?: unknown }[] } | undefined;
   const found: string[] = [];
-  for (const { path } of references ?? []) {
+  for (const { path } of config?.references ?? []) {
     if (typeof path !== 'string') continue;
     let target = resolve(dirname(configPath), path);
     if (!target.endsWith('.json')) target = join(target, 'tsconfig.json');
@@ -77,4 +120,164 @@ function referencedConfigs(configPath: string, seen = new Set<string>([configPat
     found.push(target, ...referencedConfigs(target, seen));
   }
   return found;
+}
+
+/** The config's own `paths`, made absolute, so they can be merged with workspace paths. */
+function configPaths(configPath: string): Record<string, string[]> {
+  const parsed = ts.getParsedCommandLineOfConfigFile(
+    configPath,
+    {},
+    {
+      ...ts.sys,
+      onUnRecoverableConfigFileDiagnostic: () => undefined,
+    },
+  );
+  const options = parsed?.options;
+  if (!options?.paths) return {};
+  const base =
+    options.baseUrl ?? (options as { pathsBasePath?: string }).pathsBasePath ?? dirname(configPath);
+  return Object.fromEntries(
+    Object.entries(options.paths).map(([pattern, targets]) => [
+      pattern,
+      targets.map((target) => resolve(base, target)),
+    ]),
+  );
+}
+
+/**
+ * `paths` entries mapping each workspace package (a package.json below the root) to its
+ * sources in this revision, so cross-package imports resolve here even when the package's
+ * `types` point at an unbuilt `dist/` or `node_modules` links to another checkout.
+ */
+function workspacePaths(root: string): Record<string, string[]> {
+  const patterns = workspacePatterns(root);
+  if (patterns.length === 0) return {};
+  const include = patterns.filter((p) => !p.startsWith('!')).map(globRegExp);
+  const exclude = patterns.filter((p) => p.startsWith('!')).map((p) => globRegExp(p.slice(1)));
+
+  const paths: Record<string, string[]> = {};
+  for (const manifest of findFiles(root, 'package.json')) {
+    const dir = dirname(manifest);
+    const rel = repoPath(root, dir);
+    if (!rel || !include.some((r) => r.test(rel)) || exclude.some((r) => r.test(rel))) continue;
+    const pkg = readJson(manifest) as Record<string, unknown> | undefined;
+    if (typeof pkg?.name !== 'string') continue;
+    const entry = sourceEntry(dir, pkg);
+    if (!entry) continue;
+    paths[pkg.name] = [entry];
+    paths[`${pkg.name}/*`] = [join(dir, 'src', '*'), join(dir, '*')];
+  }
+  return paths;
+}
+
+/** Workspace globs from package.json `workspaces` or pnpm-workspace.yaml `packages`. */
+function workspacePatterns(root: string): string[] {
+  const pkg = readJson(join(root, 'package.json')) as { workspaces?: unknown } | undefined;
+  const workspaces = pkg?.workspaces;
+  const list = Array.isArray(workspaces)
+    ? workspaces
+    : (workspaces as { packages?: unknown } | undefined)?.packages;
+  const patterns = Array.isArray(list)
+    ? list.filter((p): p is string => typeof p === 'string')
+    : [];
+
+  const pnpm = join(root, 'pnpm-workspace.yaml');
+  if (existsSync(pnpm)) {
+    let inPackages = false;
+    for (const line of readFileSync(pnpm, 'utf8').split('\n')) {
+      if (/^\S/.test(line)) inPackages = /^packages\s*:/.test(line);
+      const item = inPackages ? /^\s*-\s*['"]?([^'"#]+?)['"]?\s*(?:#.*)?$/.exec(line) : null;
+      if (item?.[1]) patterns.push(item[1]);
+    }
+  }
+  return patterns.map((p) => p.replace(/^\.\//, '').replace(/\/$/, ''));
+}
+
+/** `packages/*` → matches `packages/a`; `**` matches any depth. */
+function globRegExp(glob: string): RegExp {
+  const source = glob
+    .split('/')
+    .map((part) =>
+      part === '**' ? '.*' : part.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*'),
+    )
+    .join('/');
+  return new RegExp(`^${source}$`);
+}
+
+function sourceEntry(dir: string, pkg: Record<string, unknown>): string | undefined {
+  const candidates = [
+    pkg.source,
+    exportsEntry(pkg.exports),
+    pkg.types,
+    pkg.typings,
+    pkg.module,
+    pkg.main,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue;
+    for (const path of sourceCandidates(candidate)) {
+      if (existsSync(join(dir, path))) return join(dir, path);
+    }
+  }
+  for (const path of ['src/index.ts', 'src/index.tsx', 'index.ts', 'src/index.js', 'index.js']) {
+    if (existsSync(join(dir, path))) return join(dir, path);
+  }
+  return undefined;
+}
+
+function exportsEntry(exports: unknown, depth = 0): unknown {
+  if (typeof exports === 'string' || depth > 3 || !exports || typeof exports !== 'object') {
+    return exports;
+  }
+  const map = exports as Record<string, unknown>;
+  const main = '.' in map ? map['.'] : map;
+  if (typeof main === 'string' || !main || typeof main !== 'object') return main;
+  const conditions = main as Record<string, unknown>;
+  for (const key of ['source', 'types', 'import', 'default', 'require']) {
+    if (key in conditions) return exportsEntry(conditions[key], depth + 1);
+  }
+  return undefined;
+}
+
+/** `./dist/index.d.ts` → `src/index.ts`, `src/index.tsx`, …: where the source probably is. */
+function sourceCandidates(path: string): string[] {
+  const clean = path.replace(/^\.\//, '');
+  if (/\.(?:[cm]?ts|tsx)$/.test(clean) && !/\.d\.[cm]?ts$/.test(clean)) return [clean];
+  const stem = clean.replace(/(?:\.d)?\.[cm]?[jt]s$/, '');
+  const inSrc = stem.replace(/^(?:dist|build|lib|out|esm|cjs)\//, 'src/');
+  return [...new Set([inSrc, stem])].flatMap((s) => [`${s}.ts`, `${s}.tsx`, `${s}.js`]);
+}
+
+/** Files with this name under `root`, skipping dependency, build and hidden folders. */
+function findFiles(root: string, name: string): string[] {
+  const found: string[] = [];
+  const walk = (dir: string, depth: number) => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name === name) found.push(join(dir, entry.name));
+      else if (
+        entry.isDirectory() &&
+        depth < MAX_DEPTH &&
+        !SKIPPED_DIRS.has(entry.name) &&
+        !entry.name.startsWith('.')
+      ) {
+        walk(join(dir, entry.name), depth + 1);
+      }
+    }
+  };
+  walk(root, 0);
+  return found.sort();
+}
+
+function readJson(path: string): unknown {
+  try {
+    return ts.parseConfigFileTextToJson(path, readFileSync(path, 'utf8')).config as unknown;
+  } catch {
+    return undefined;
+  }
 }

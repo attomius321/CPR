@@ -57,11 +57,9 @@ describe('typescriptAdapter.extract', () => {
 
   it('extracts TS and JS files outside the tsconfig', async () => {
     // Regression: a JS file in a project without allowJs crashed the checker.
-    const revision = await typescriptAdapter.load(fixture('esm-outside-config'));
-    const symbols = typescriptAdapter.extract(revision, [
-      'packages/x/src/a.ts',
-      'packages/x/src/b.js',
-    ]);
+    const files = ['packages/x/src/a.ts', 'packages/x/src/b.js'];
+    const revision = await typescriptAdapter.load(fixture('esm-outside-config'), { files });
+    const symbols = typescriptAdapter.extract(revision, files);
     expect(symbols.map((s) => s.signature)).toEqual(['f(n: number): number', 'g(n): number']);
   });
 

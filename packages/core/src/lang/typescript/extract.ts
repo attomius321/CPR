@@ -2,16 +2,17 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { ts } from 'ts-morph';
 import type { Range, SymbolDecl, SymbolId, SymbolKind } from '../../model.js';
+import { isTsSource } from './files.js';
 import type { TsRevision } from './project.js';
+import {
+  bindingNames,
+  functionValue,
+  hasModifier,
+  isDefaultExport,
+  memberName,
+  unwrap,
+} from './syntax.js';
 import { listTokens, tokens } from './tokens.js';
-
-const SOURCE_FILE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
-const SKIPPED_FILE = /\.d\.[cm]?ts$|\.min\.js$/;
-
-/** Files the TypeScript adapter analyzes: TS and JS sources, but not declarations or bundles. */
-export function isTsSource(path: string): boolean {
-  return SOURCE_FILE.test(path) && !SKIPPED_FILE.test(path);
-}
 
 /** Merged declarations (overloads, declaration merging) take the kind that comes first. */
 const KIND_ORDER: SymbolKind[] = [
@@ -35,6 +36,8 @@ const MAX_DISPLAY = 300;
 
 interface Part {
   kind: SymbolKind;
+  /** The declaration node: references are searched from it and outgoing ones inside it. */
+  node: ts.Node;
   start: number;
   end: number;
   signature: string[];
@@ -56,26 +59,25 @@ interface Container {
   exported: boolean;
 }
 
-/** Extracts declarations from repo-relative files. Missing and non-source files are skipped. */
+/**
+ * Extracts declarations from repo-relative files and records their nodes in
+ * `revision.declarations`. Files that are missing or not in the program are skipped.
+ */
 export function extractTs(revision: TsRevision, files: readonly string[]): SymbolDecl[] {
-  const { project, root } = revision;
-  const paths: [string, string][] = [];
+  const { program, root } = revision;
+  const checker = program.getTypeChecker();
+  const symbols: SymbolDecl[] = [];
   for (const file of files) {
     if (!isTsSource(file)) continue;
-    const path = join(root, file);
-    if (project.getSourceFile(path) ?? project.addSourceFileAtPathIfExists(path)) {
-      paths.push([file, path]);
+    const sf = program.getSourceFile(join(root, file));
+    if (!sf) continue;
+    const extractor = new FileExtractor(file, sf, checker, root);
+    for (const [symbol, nodes] of extractor.run()) {
+      symbols.push(symbol);
+      revision.declarations.set(symbol.id, nodes);
     }
   }
-
-  // Build the program after adding files, and read files back from it: the program may
-  // re-create a source file (e.g. with another module format), and only its copy is bound.
-  const program = project.getProgram().compilerObject;
-  const checker = program.getTypeChecker();
-  return paths.flatMap(([file, path]) => {
-    const sf = program.getSourceFile(path);
-    return sf ? new FileExtractor(file, sf, checker, root).run() : [];
-  });
+  return symbols;
 }
 
 class FileExtractor {
@@ -89,10 +91,13 @@ class FileExtractor {
     private readonly root: string,
   ) {}
 
-  run(): SymbolDecl[] {
+  run(): [SymbolDecl, ts.Node[]][] {
     this.collectExportedNames();
     this.visitStatements(this.sf.statements, null);
-    return [...this.symbols.values()].map((builder) => this.finish(builder));
+    return [...this.symbols.values()].map((builder) => [
+      this.finish(builder),
+      builder.parts.map((part) => part.node),
+    ]);
   }
 
   // ---- traversal -------------------------------------------------------------------------
@@ -551,8 +556,8 @@ class FileExtractor {
     return `${open}${nodes.map((n) => n.getText(this.sf)).join(', ')}${close}`;
   }
 
-  private span(node: ts.Node): { start: number; end: number } {
-    return { start: node.getStart(this.sf), end: node.getEnd() };
+  private span(node: ts.Node): { node: ts.Node; start: number; end: number } {
+    return { node, start: node.getStart(this.sf), end: node.getEnd() };
   }
 
   private range(start: number, end: number): Range {
@@ -597,62 +602,8 @@ function angle(inner: string[]): string[] {
   return inner.length > 0 ? ['<', ...inner, '>'] : [];
 }
 
-function hasModifier(node: ts.Node, kind: ts.SyntaxKind): boolean {
-  return ts.canHaveModifiers(node) && (ts.getModifiers(node) ?? []).some((m) => m.kind === kind);
-}
-
-function isDefaultExport(node: ts.Node): boolean {
-  return (
-    hasModifier(node, ts.SyntaxKind.ExportKeyword) &&
-    hasModifier(node, ts.SyntaxKind.DefaultKeyword)
-  );
-}
-
 function withoutExportTokens(list: string[]): string[] {
   let i = 0;
   while (list[i] === 'export' || list[i] === 'default') i++;
   return list.slice(i);
-}
-
-/** Strips wrappers that do not change what a value is: parentheses, `as`, `satisfies`, `!`. */
-function unwrap(node: ts.Expression): ts.Expression;
-function unwrap(node: ts.Expression | undefined): ts.Expression | undefined;
-function unwrap(node: ts.Expression | undefined): ts.Expression | undefined {
-  let current = node;
-  while (
-    current &&
-    (ts.isParenthesizedExpression(current) ||
-      ts.isAsExpression(current) ||
-      ts.isSatisfiesExpression(current) ||
-      ts.isTypeAssertionExpression(current) ||
-      ts.isNonNullExpression(current))
-  ) {
-    current = current.expression;
-  }
-  return current;
-}
-
-function functionValue(
-  node: ts.Expression | undefined,
-): ts.ArrowFunction | ts.FunctionExpression | undefined {
-  const value = unwrap(node);
-  return value && (ts.isArrowFunction(value) || ts.isFunctionExpression(value)) ? value : undefined;
-}
-
-function bindingNames(name: ts.BindingName): ts.Identifier[] {
-  if (ts.isIdentifier(name)) return [name];
-  return name.elements.flatMap((element) =>
-    ts.isOmittedExpression(element) ? [] : bindingNames(element.name),
-  );
-}
-
-/** Name of a class member that is a symbol; undefined for static blocks, index signatures, `;`. */
-function memberName(member: ts.ClassElement, sf: ts.SourceFile): string | undefined {
-  if (ts.isConstructorDeclaration(member)) return 'constructor';
-  const { name } = member;
-  if (!name) return undefined;
-  if (ts.isComputedPropertyName(name)) {
-    return `[${name.expression.getText(sf).replace(/\s+/g, ' ')}]`;
-  }
-  return name.text;
 }
