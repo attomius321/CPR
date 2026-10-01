@@ -366,3 +366,23 @@ No `removed-still-referenced` or `orphan-added` false positives showed up on the
 **Verified**: `cpr view` on a ky commit served the viewer, the graph and the head/base sources.
 
 **Gotcha**: `pkill -f "bin.js view"` also matches the shell running the command; kill by PID.
+
+## V3 — Symbol detail panel (2026-10-01)
+
+**What landed**
+- Clicking a symbol opens a side panel: kind, status and delta tags, file (and where it moved
+  from), findings about it and findings that mention it, old/new signature, a **line diff of
+  just that symbol** (both line numbers, common indentation removed, tabs at width 2), and its
+  users and callees as links that select and center the other symbol. Esc or a click on the
+  canvas closes it.
+- Pure helpers with tests: `symbolDetail` (neighbours by edge side, findings, mentions),
+  `excerpt` (range → whole lines, dedented), `diffRows` (unified rows via the `diff` package).
+- Sources come from `cpr view`'s `/api/source`, fetched once per side and file; a graph opened
+  from a file shows a hint instead.
+
+**Verified end to end** (Playwright + Chromium against a real `cpr view` on ky): an added method
+shows its code as all-added rows; a modified method (`Ky.#retry`) shows the removed type
+parameter in the signature and the exact changed lines.
+
+**Gotcha**: Prettier collapses short import lists to one line, so scripted string edits of
+`App.tsx` stopped matching; rewriting the file whole was simpler and clearer.
