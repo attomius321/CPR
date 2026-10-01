@@ -2,10 +2,13 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * Paths that are code but not product decisions. Changes in them are listed, but their
- * symbols are not analyzed. Extend or override (`!pattern`) with a `.cprignore` file.
+ * Paths that are code but not product decisions: examples, playgrounds, fixtures, generated
+ * code. Changes in them are listed but not analyzed, and they are left out of the program
+ * (faster loads). Extend or override (`!pattern`) with a `.cprignore` file.
  */
 export const DEFAULT_IGNORES = [
+  '**/examples/**',
+  '**/playground/**',
   '**/fixtures/**',
   '**/__fixtures__/**',
   '**/__snapshots__/**',

@@ -80,15 +80,22 @@ describe('detectors', () => {
       'f1 error removed-still-referenced src/shapes.ts#Canvas.clear',
       'f2 warning orphan-added src/shapes.ts#perimeter',
       'f3 warning orphan-added src/shapes.ts#tools',
-      'f4 warning signature-changed src/shapes.ts#Shape',
-      'f5 info orphan-added src/shapes.ts#volume',
+      'f4 info orphan-added src/shapes.ts#volume',
+      // Only an optional member was added: compatible, so not a warning.
+      'f5 info signature-changed src/shapes.ts#Shape',
     ]);
 
-    const [removed, , , signature] = analysis.findings;
+    const [removed, , , , signature] = analysis.findings;
     // legacy.js calls an untyped `canvas.clear()` it never resolved: not counted.
     expect(removed?.related).toEqual(['src/app.ts#render']);
     expect(removed?.data).toMatchObject({ certainty: 'resolved' });
-    expect(signature?.data).toEqual({ callers: 4, updated: 2, untouched: 2 });
+    expect(signature?.data).toEqual({
+      callers: 4,
+      updated: 2,
+      untouched: 2,
+      untouchedElsewhere: 0,
+      compatibility: 'compatible',
+    });
     expect(signature?.related).toEqual([
       'src/shapes.ts#Canvas.draw',
       'src/shapes.ts#area',

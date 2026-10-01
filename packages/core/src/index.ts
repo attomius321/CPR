@@ -24,6 +24,7 @@ export type {
   Finding,
   RuleId,
   Severity,
+  Shape,
   Position,
   Range,
   Site,
@@ -63,3 +64,4 @@ export {
   type GraphNode,
   type GraphSide,
 } from './graph.js';
+export { compareShapes, compatibility, type Compatibility } from './compat.js';

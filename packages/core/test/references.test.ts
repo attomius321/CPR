@@ -21,6 +21,7 @@ beforeAll(async () => {
     'src/dynamic.ts',
     'src/ext.ts',
     'src/view.tsx',
+    'src/namespace.ts',
   ];
   revision = await typescriptAdapter.load(directorySource(root), { files });
   for (const symbol of typescriptAdapter.extract(revision, files)) symbols.set(symbol.id, symbol);
@@ -44,7 +45,11 @@ describe('incoming references', () => {
   it('follows barrels and renamed re-exports', () => {
     expect(
       show(typescriptAdapter.incoming(revision, get('src/user.ts#formatUser')), 'from'),
-    ).toEqual(['call src/alias.ts#describe', 'call src/api.ts#handler']);
+    ).toEqual([
+      'call src/alias.ts#describe',
+      'call src/api.ts#handler',
+      'call src/namespace.ts#describeUser',
+    ]);
   });
 
   it('classifies extends, static calls, type references and top-level calls', () => {
@@ -94,6 +99,13 @@ describe('outgoing references', () => {
     const refs = typescriptAdapter.outgoing(revision, get('src/ext.ts#load'));
     expect(show(refs, 'to')).toEqual(['call node:fs#readFileSync', 'reference lodash#default']);
     expect(refs.every((r) => r.target === 'external')).toBe(true);
+  });
+
+  it('resolves members of namespace imports', () => {
+    // Regression: `users` resolves to the module (a SourceFile without a parent) and crashed.
+    expect(
+      show(typescriptAdapter.outgoing(revision, get('src/namespace.ts#describeUser')), 'to'),
+    ).toEqual(['call src/user.ts#formatUser', 'type-reference src/user.ts#User']);
   });
 
   it('treats JSX elements as calls', () => {

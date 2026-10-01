@@ -3,6 +3,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { Project, ts } from 'ts-morph';
 import type { LoadOptions } from '../../adapter.js';
 import { CprError } from '../../errors.js';
+import { loadIgnores } from '../../ignore.js';
 import type { SymbolId } from '../../model.js';
 import type { RevisionSource } from '../../revision.js';
 import { isTsSource } from './files.js';
@@ -19,7 +20,6 @@ export interface TsRevision {
   warnings: string[];
 }
 
-const SOURCE_GLOB = '**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
 const SKIPPED_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', 'out', '.git']);
 const MAX_DEPTH = 5;
 
@@ -45,7 +45,8 @@ const DEFAULTS: ts.CompilerOptions = {
 
 /**
  * Loads a revision as one ts-morph project: the root tsconfig plus every tsconfig it references
- * or that lives in the repo, or every source file with default options when there is none.
+ * or that lives in the repo (outside ignored folders). Without a root tsconfig, the configs
+ * below it are loaded with default options; without any, every source file is.
  * Workspace packages resolve to their sources in this revision through `paths`. `files` are
  * added up front, so the program never changes after loading.
  */
@@ -58,30 +59,42 @@ export function loadTsProject(
   const configPath = project ? join(root, project) : join(root, 'tsconfig.json');
   if (project && !existsSync(configPath)) throw new CprError(`project file not found: ${project}`);
   const workspace = workspacePaths(root);
-
-  let tsProject: Project;
-  if (!existsSync(configPath)) {
-    tsProject = new Project({ compilerOptions: { ...DEFAULTS, ...OVERRIDES, paths: workspace } });
-    tsProject.addSourceFilesAtPaths([
-      join(root, SOURCE_GLOB),
-      ...[...SKIPPED_DIRS].map((dir) => `!${join(root, '**', dir, '**')}`),
-    ]);
-  } else {
-    tsProject = new Project({
-      tsConfigFilePath: configPath,
-      compilerOptions: { ...OVERRIDES, paths: { ...workspace, ...configPaths(configPath) } },
-    });
-    const others = project
-      ? referencedConfigs(configPath)
-      : [...new Set([...referencedConfigs(configPath), ...findFiles(root, 'tsconfig.json')])];
-    for (const config of others) {
-      if (config === configPath) continue;
+  const ignored = loadIgnores(root);
+  // Folders are passed with a trailing `/`, so `**/playground/**` prunes the whole folder.
+  const notIgnored = (path: string) => {
+    const rel = repoPath(root, path);
+    return rel === undefined || !ignored(path.endsWith('/') ? `${rel}/` : rel);
+  };
+  const addConfigs = (tsProject: Project, configs: string[]) => {
+    for (const config of configs) {
       try {
         tsProject.addSourceFilesFromTsConfig(config);
       } catch (error) {
         warnings.push(`could not load ${repoPath(root, config)}: ${(error as Error).message}`);
       }
     }
+  };
+
+  let tsProject: Project;
+  if (existsSync(configPath)) {
+    tsProject = new Project({
+      tsConfigFilePath: configPath,
+      compilerOptions: { ...OVERRIDES, paths: { ...workspace, ...configPaths(configPath) } },
+    });
+    const others = project
+      ? referencedConfigs(configPath)
+      : [...referencedConfigs(configPath), ...findFiles(root, isConfig, notIgnored)];
+    addConfigs(
+      tsProject,
+      [...new Set(others)].filter((c) => c !== configPath),
+    );
+  } else {
+    tsProject = new Project({ compilerOptions: { ...DEFAULTS, ...OVERRIDES, paths: workspace } });
+    const configs = findFiles(root, isConfig, notIgnored);
+    if (configs.length > 0) addConfigs(tsProject, configs);
+    else
+      for (const file of findFiles(root, isTsSource, notIgnored))
+        tsProject.addSourceFileAtPath(file);
   }
 
   for (const file of files) {
@@ -156,7 +169,7 @@ function workspacePaths(root: string): Record<string, string[]> {
   const exclude = patterns.filter((p) => p.startsWith('!')).map((p) => globRegExp(p.slice(1)));
 
   const paths: Record<string, string[]> = {};
-  for (const manifest of findFiles(root, 'package.json')) {
+  for (const manifest of findFiles(root, (name) => name === 'package.json')) {
     const dir = dirname(manifest);
     const rel = repoPath(root, dir);
     if (!rel || !include.some((r) => r.test(rel)) || exclude.some((r) => r.test(rel))) continue;
@@ -248,8 +261,17 @@ function sourceCandidates(path: string): string[] {
   return [...new Set([inSrc, stem])].flatMap((s) => [`${s}.ts`, `${s}.tsx`, `${s}.js`]);
 }
 
-/** Files with this name under `root`, skipping dependency, build and hidden folders. */
-function findFiles(root: string, name: string): string[] {
+const isConfig = (name: string) => name === 'tsconfig.json';
+
+/**
+ * Files under `root` whose name matches, skipping dependency, build and hidden folders and
+ * paths `keep` rejects (checked for folders and files).
+ */
+function findFiles(
+  root: string,
+  match: (name: string) => boolean,
+  keep: (path: string) => boolean = () => true,
+): string[] {
   const found: string[] = [];
   const walk = (dir: string, depth: number) => {
     let entries;
@@ -259,14 +281,16 @@ function findFiles(root: string, name: string): string[] {
       return;
     }
     for (const entry of entries) {
-      if (entry.isFile() && entry.name === name) found.push(join(dir, entry.name));
+      const path = join(dir, entry.name);
+      if (entry.isFile() && match(entry.name) && keep(path)) found.push(path);
       else if (
         entry.isDirectory() &&
         depth < MAX_DEPTH &&
         !SKIPPED_DIRS.has(entry.name) &&
-        !entry.name.startsWith('.')
+        !entry.name.startsWith('.') &&
+        keep(`${path}/`)
       ) {
-        walk(join(dir, entry.name), depth + 1);
+        walk(path, depth + 1);
       }
     }
   };

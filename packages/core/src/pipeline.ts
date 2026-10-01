@@ -46,6 +46,8 @@ export interface Analysis {
   /** Changed files left out of symbol analysis (`.cprignore` and default ignores). */
   ignored: string[];
   warnings: string[];
+  /** Milliseconds per phase, for performance work. */
+  timings: Record<string, number>;
 }
 
 export interface AnalyzeOptions extends Omit<LoadOptions, 'files'> {
@@ -122,7 +124,7 @@ export async function analyzeDirectories(
 
 type SourceAnalysis = Pick<
   Analysis,
-  'changes' | 'edges' | 'context' | 'findings' | 'ignored' | 'warnings'
+  'changes' | 'edges' | 'context' | 'findings' | 'ignored' | 'warnings' | 'timings'
 >;
 
 const EMPTY: SourceAnalysis = {
@@ -132,6 +134,7 @@ const EMPTY: SourceAnalysis = {
   findings: [],
   ignored: [],
   warnings: [],
+  timings: {},
 };
 
 async function analyzeSources(
@@ -163,13 +166,29 @@ async function analyzeSources(
     ),
   );
 
+  const timings: Record<string, number> = {};
+  let mark = performance.now();
+  const lap = (phase: string) => {
+    const now = performance.now();
+    timings[phase] = Math.round(now - mark);
+    mark = now;
+  };
+
   const baseRev = await adapter.load(base, { ...load, files: baseFiles });
+  lap('loadBase');
   const headRev = await adapter.load(head, { ...load, files: headFiles });
-  const changes = diffSymbols({
-    base: adapter.extract(baseRev, baseFiles),
-    head: adapter.extract(headRev, headFiles),
-    renames,
-  });
+  lap('loadHead');
+  // Pass 1 without type inference (the costly part); pass 2 infers only for symbols whose
+  // syntax differs. An unchanged symbol whose inferred type drifted because something it
+  // calls changed is covered by that callee's own signature change.
+  const syntactic = (rev: unknown, files: string[]) =>
+    adapter.extract(rev, files, { infer: () => false });
+  const needsTypes = differing(syntactic(baseRev, baseFiles), syntactic(headRev, headFiles));
+  const infer = (id: SymbolId) => needsTypes.has(id);
+  const baseSymbols = adapter.extract(baseRev, baseFiles, { infer });
+  const headSymbols = adapter.extract(headRev, headFiles, { infer });
+  const changes = diffSymbols({ base: baseSymbols, head: headSymbols, renames });
+  lap('extract');
 
   // References around every changed symbol, on the side(s) where it exists.
   const refs = { base: [] as EdgeRef[], head: [] as EdgeRef[] };
@@ -203,6 +222,7 @@ async function analyzeSources(
   }
 
   const edges = mergeEdges(baseRefs, refs.head);
+  lap('references');
   const targets = new Map(
     [...baseRefs, ...refs.head].flatMap((r) => (r.target ? [[r.to, r.target] as const] : [])),
   );
@@ -219,6 +239,7 @@ async function analyzeSources(
     }
   }
   context.sort((a, b) => a.id.localeCompare(b.id));
+  lap('context');
 
   const removed = changes.flatMap((c) => (c.status === 'removed' && c.base ? [c.base] : []));
   const exposure = new Map<SymbolId, Exposure>();
@@ -234,8 +255,29 @@ async function analyzeSources(
     exposure,
   });
 
+  lap('detectors');
+
   const warnings = [...new Set([...adapter.warnings(baseRev), ...adapter.warnings(headRev)])];
-  return { changes, edges, context, findings, ignored, warnings };
+  return { changes, edges, context, findings, ignored, warnings, timings };
+}
+
+/** IDs present on one side only, or whose hashes differ between the sides. */
+function differing(base: SymbolDecl[], head: SymbolDecl[]): Set<SymbolId> {
+  const before = new Map(base.map((s) => [s.id, s]));
+  const ids = new Set<SymbolId>();
+  for (const symbol of head) {
+    const old = before.get(symbol.id);
+    before.delete(symbol.id);
+    if (
+      !old ||
+      old.hashes.signature !== symbol.hashes.signature ||
+      old.hashes.body !== symbol.hashes.body
+    ) {
+      ids.add(symbol.id);
+    }
+  }
+  for (const id of before.keys()) ids.add(id);
+  return ids;
 }
 
 function references<L>(adapter: LanguageAdapter<L>, revision: L, symbol: SymbolDecl): EdgeRef[] {
@@ -326,7 +368,9 @@ class ContextResolver<L> {
     const file = id.slice(0, id.indexOf('#'));
     let symbols = this.files[side].get(file);
     if (!symbols) {
-      symbols = new Map(this.adapter.extract(this.revisions[side], [file]).map((s) => [s.id, s]));
+      // Context symbols are shown, not compared: skip type inference.
+      const extracted = this.adapter.extract(this.revisions[side], [file], { infer: () => false });
+      symbols = new Map(extracted.map((s) => [s.id, s]));
       this.files[side].set(file, symbols);
     }
     const decl = symbols.get(id);

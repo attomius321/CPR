@@ -742,24 +742,6 @@
       "id": "f3"
     },
     {
-      "rule": "signature-changed",
-      "severity": "warning",
-      "symbol": "src/shapes.ts#Shape",
-      "related": [
-        "src/shapes.ts#Canvas.draw",
-        "src/shapes.ts#area",
-        "src/shapes.ts#perimeter",
-        "src/shapes.ts#volume"
-      ],
-      "message": "Shape changed its signature; 2 of 4 users not updated: Canvas.draw, area",
-      "data": {
-        "callers": 4,
-        "updated": 2,
-        "untouched": 2
-      },
-      "id": "f4"
-    },
-    {
       "rule": "orphan-added",
       "severity": "info",
       "symbol": "src/shapes.ts#volume",
@@ -768,6 +750,26 @@
       "data": {
         "exportedFromEntry": true,
         "exposure": "entry-export"
+      },
+      "id": "f4"
+    },
+    {
+      "rule": "signature-changed",
+      "severity": "info",
+      "symbol": "src/shapes.ts#Shape",
+      "related": [
+        "src/shapes.ts#Canvas.draw",
+        "src/shapes.ts#area",
+        "src/shapes.ts#perimeter",
+        "src/shapes.ts#volume"
+      ],
+      "message": "Shape changed its signature compatibly; existing users keep working (4 users, 2 untouched)",
+      "data": {
+        "callers": 4,
+        "updated": 2,
+        "untouched": 2,
+        "untouchedElsewhere": 0,
+        "compatibility": "compatible"
       },
       "id": "f5"
     }

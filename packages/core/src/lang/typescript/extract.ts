@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { ts } from 'ts-morph';
-import type { Range, SymbolDecl, SymbolId, SymbolKind } from '../../model.js';
+import type { ExtractOptions } from '../../adapter.js';
+import type { Range, Shape, SymbolDecl, SymbolId, SymbolKind } from '../../model.js';
 import { isTsSource } from './files.js';
 import type { TsRevision } from './project.js';
 import {
@@ -29,8 +30,12 @@ const KIND_ORDER: SymbolKind[] = [
   'variable',
 ];
 
-const TYPE_FLAGS =
-  ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
+/**
+ * Long inferred types are truncated (`…`): printing them in full dominated extraction on
+ * generic-heavy code (zod). A change hidden in a truncated tail is still caught as the callee's
+ * own signature change.
+ */
+const TYPE_FLAGS = ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
 
 const MAX_DISPLAY = 300;
 
@@ -43,6 +48,7 @@ interface Part {
   signature: string[];
   body: string[];
   display: string;
+  shape?: Shape;
 }
 
 interface Builder {
@@ -63,7 +69,11 @@ interface Container {
  * Extracts declarations from repo-relative files and records their nodes in
  * `revision.declarations`. Files that are missing or not in the program are skipped.
  */
-export function extractTs(revision: TsRevision, files: readonly string[]): SymbolDecl[] {
+export function extractTs(
+  revision: TsRevision,
+  files: readonly string[],
+  { infer = () => true }: ExtractOptions = {},
+): SymbolDecl[] {
   const { program, root } = revision;
   const checker = program.getTypeChecker();
   const symbols: SymbolDecl[] = [];
@@ -71,7 +81,7 @@ export function extractTs(revision: TsRevision, files: readonly string[]): Symbo
     if (!isTsSource(file)) continue;
     const sf = program.getSourceFile(join(root, file));
     if (!sf) continue;
-    const extractor = new FileExtractor(file, sf, checker, root);
+    const extractor = new FileExtractor(file, sf, checker, root, infer);
     for (const [symbol, nodes] of extractor.run()) {
       symbols.push(symbol);
       revision.declarations.set(symbol.id, nodes);
@@ -89,6 +99,7 @@ class FileExtractor {
     private readonly sf: ts.SourceFile,
     private readonly checker: ts.TypeChecker,
     private readonly root: string,
+    private readonly infer: (id: SymbolId) => boolean,
   ) {}
 
   run(): [SymbolDecl, ts.Node[]][] {
@@ -130,6 +141,7 @@ class FileExtractor {
           signature: withoutExportTokens(tokens(statement, this.sf)),
           body: [],
           display: this.shapeDisplay(statement),
+          shape: this.typeShape(statement),
         });
       } else if (ts.isVariableStatement(statement)) {
         this.addVariables(statement, container);
@@ -341,16 +353,14 @@ class FileExtractor {
     name: string,
     { head, prefix }: { head?: string[]; prefix?: string[] } = {},
   ): Part {
-    const signature = [
+    const lead = [
       ...(head ? [...head, ...this.modifierTokens(fn)] : [...this.modifierTokens(fn), name]),
       ...tokens((fn as { asteriskToken?: ts.Node }).asteriskToken, this.sf),
       ...tokens((fn as { questionToken?: ts.Node }).questionToken, this.sf),
       ...angle(listTokens(fn.typeParameters, this.sf)),
-      '(',
-      ...listTokens(fn.parameters, this.sf),
-      ')',
-      ...this.returnTokens(fn),
     ];
+    const returns = this.returnTokens(fn);
+    const signature = [...lead, '(', ...listTokens(fn.parameters, this.sf), ')', ...returns];
     const body = (fn as { body?: ts.Node }).body;
     return {
       kind,
@@ -358,7 +368,57 @@ class FileExtractor {
       signature,
       body: tokens(body, this.sf),
       display: this.functionDisplay(fn, name, prefix ?? this.memberPrefix(fn)),
+      shape: {
+        params: fn.parameters.map((p) => ({
+          optional: Boolean(p.questionToken ?? p.initializer ?? p.dotDotDotToken),
+          type: p.type ? tokens(p.type, this.sf).join(' ') : this.inferred(p),
+        })),
+        returns: returns.slice(1).join(' '),
+        rest: lead.join(' '),
+      },
     };
+  }
+
+  /** Members of interfaces, object type aliases (and their intersections) and enums. */
+  private typeShape(
+    node: ts.InterfaceDeclaration | ts.TypeAliasDeclaration | ts.EnumDeclaration,
+  ): Shape {
+    const text = (n: ts.Node | undefined) => tokens(n, this.sf).join(' ');
+    const rest = [...this.modifierTokens(node), node.name.text];
+    const members: NonNullable<Shape['members']> = {};
+
+    if (ts.isEnumDeclaration(node)) {
+      for (const member of node.members) {
+        members[member.name.getText(this.sf)] = { optional: false, type: text(member.initializer) };
+      }
+      return { members, rest: rest.join(' ') };
+    }
+
+    rest.push(...angle(listTokens(node.typeParameters, this.sf)));
+    const literals: (readonly ts.TypeElement[])[] = [];
+    if (ts.isInterfaceDeclaration(node)) {
+      rest.push(...listTokens(node.heritageClauses, this.sf));
+      literals.push(node.members);
+    } else {
+      const parts = ts.isIntersectionTypeNode(node.type) ? node.type.types : [node.type];
+      const others: string[] = [];
+      for (const part of parts) {
+        if (ts.isTypeLiteralNode(part)) literals.push(part.members);
+        else others.push(text(part));
+      }
+      rest.push(...others.sort());
+    }
+    literals.flat().forEach((member, i) => {
+      const name = member.name
+        ? `${member.name.getText(this.sf)}${ts.isMethodSignature(member) ? '()' : ''}`
+        : `[${ts.SyntaxKind[member.kind]}]`;
+      const key = name in members ? `${name}#${i}` : name;
+      members[key] = {
+        optional: Boolean(member.questionToken),
+        type: text(ts.isPropertySignature(member) ? member.type : member),
+      };
+    });
+    return { members, rest: rest.join(' ') };
   }
 
   private returnTokens(fn: ts.SignatureDeclaration): string[] {
@@ -409,7 +469,7 @@ class FileExtractor {
    * holding `'a'` has type `'a'`, but editing the value is a body change, not a new contract.
    */
   private inferred(node: ts.Node): string {
-    return this.safely(() =>
+    return this.later(() =>
       this.typeString(
         this.checker.getBaseTypeOfLiteralType(this.checker.getTypeAtLocation(node)),
         node,
@@ -417,11 +477,43 @@ class FileExtractor {
     );
   }
 
+  private readonly returnTypes = new Map<ts.Node, string>();
+
+  /** One placeholder per function: the signature hash and the display both use it. */
   private inferredReturn(fn: ts.SignatureDeclaration): string {
-    return this.safely(() => {
-      const signature = this.checker.getSignatureFromDeclaration(fn);
-      if (!signature) return 'any';
-      return this.typeString(this.checker.getReturnTypeOfSignature(signature), fn);
+    let placeholder = this.returnTypes.get(fn);
+    if (placeholder === undefined) {
+      placeholder = this.later(() => {
+        const signature = this.checker.getSignatureFromDeclaration(fn);
+        if (!signature) return 'any';
+        return this.typeString(this.checker.getReturnTypeOfSignature(signature), fn);
+      });
+      this.returnTypes.set(fn, placeholder);
+    }
+    return placeholder;
+  }
+
+  // Inference is the expensive part of extraction, and its result only matters for symbols
+  // the caller wants (`infer`). Inferred types are recorded as placeholders and computed in
+  // `finish()`, once the symbol's ID is known; skipped ones become empty.
+  private readonly deferred: (() => string)[] = [];
+  private readonly computed = new Map<number, string>();
+
+  private later(compute: () => string): string {
+    return `${PLACEHOLDER}${this.deferred.push(compute) - 1}${PLACEHOLDER}`;
+  }
+
+  private resolve(text: string, infer: boolean): string {
+    if (!text.includes(PLACEHOLDER)) return text;
+    return text.replace(PLACEHOLDERS, (_, index: string) => {
+      if (!infer) return '';
+      const i = Number(index);
+      let value = this.computed.get(i);
+      if (value === undefined) {
+        value = this.safely(this.deferred[i] ?? (() => '?'));
+        this.computed.set(i, value);
+      }
+      return value;
     });
   }
 
@@ -464,7 +556,15 @@ class FileExtractor {
   }
 
   private finish(builder: Builder): SymbolDecl {
-    const { parts } = builder;
+    const infer = this.infer(builder.id);
+    const resolve = (text: string) => this.resolve(text, infer);
+    const parts = builder.parts.map((part) => ({
+      ...part,
+      signature: part.signature.map(resolve),
+      // Without inference, `f(): ` and `const x: ` lose their dangling colon.
+      display: resolve(part.display).replace(/:\s*$/, ''),
+      ...(part.shape ? { shape: resolveShape(part.shape, resolve) } : {}),
+    }));
     const kind = KIND_ORDER.find((k) => parts.some((p) => p.kind === k)) ?? 'variable';
     const primary = parts.filter((p) => p.kind === kind);
     const first = primary[0] ?? parts[0];
@@ -482,7 +582,7 @@ class FileExtractor {
         Math.min(...parts.map((p) => p.start)),
         Math.max(...parts.map((p) => p.end)),
       ),
-      signature: `${first?.display ?? builder.name}${extra}`,
+      signature: truncate(`${first?.display ?? builder.name}${extra}`),
       hashes: {
         signature: hash([
           `exported:${builder.exported}`,
@@ -491,6 +591,8 @@ class FileExtractor {
         body: bodies.every((b) => b === '') ? '' : hash(bodies),
       },
       bodySize: parts.reduce((sum, p) => sum + p.body.length, 0),
+      // Overloads, accessor pairs and merged declarations: too many forms to compare.
+      ...(parts.length === 1 && parts[0]?.shape ? { shape: parts[0].shape } : {}),
     };
   }
 
@@ -578,13 +680,32 @@ class FileExtractor {
     };
   }
 
+  /** Collapses whitespace; truncation happens after placeholders are resolved. */
   private text(value: string): string {
-    const flat = value.replace(/\s+/g, ' ').trim();
-    return flat.length > MAX_DISPLAY ? `${flat.slice(0, MAX_DISPLAY - 1)}…` : flat;
+    return value.replace(/\s+/g, ' ').trim();
   }
 }
 
 // ---- pure helpers --------------------------------------------------------------------------
+
+/** Private-use character: never appears in source tokens. */
+const PLACEHOLDER = '\uE000';
+const PLACEHOLDERS = /\uE000(\d+)\uE000/g;
+
+function resolveShape(shape: Shape, resolve: (text: string) => string): Shape {
+  return {
+    rest: resolve(shape.rest),
+    ...(shape.params
+      ? { params: shape.params.map((p) => ({ optional: p.optional, type: resolve(p.type) })) }
+      : {}),
+    ...(shape.returns === undefined ? {} : { returns: resolve(shape.returns) }),
+    ...(shape.members ? { members: shape.members } : {}),
+  };
+}
+
+function truncate(text: string): string {
+  return text.length > MAX_DISPLAY ? `${text.slice(0, MAX_DISPLAY - 1)}…` : text;
+}
 
 function hash(parts: string[]): string {
   return createHash('sha256').update(parts.join('\u0000')).digest('hex').slice(0, 16);

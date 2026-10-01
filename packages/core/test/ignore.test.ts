@@ -20,6 +20,8 @@ describe('ignoreMatcher', () => {
     ['keep/fixtures/x.ts', false],
     ['src/fixture.ts', false],
     ['src/user.ts', false],
+    ['playground/vue/main.ts', true],
+    ['packages/a/examples/', true],
   ])('%s → %s', (path, expected) => {
     expect(ignored(path)).toBe(expected);
   });

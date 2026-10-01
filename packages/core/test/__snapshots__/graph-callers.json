@@ -306,17 +306,19 @@
     },
     {
       "rule": "signature-changed",
-      "severity": "warning",
+      "severity": "info",
       "symbol": "src/math.ts#add",
       "related": [
         "src/app.ts#total",
         "src/math.ts#triple"
       ],
-      "message": "add changed its signature; 1 of 2 users not updated: total",
+      "message": "add changed its signature compatibly; existing users keep working (2 users, 1 untouched)",
       "data": {
         "callers": 2,
         "updated": 1,
-        "untouched": 1
+        "untouched": 1,
+        "untouchedElsewhere": 1,
+        "compatibility": "compatible"
       },
       "id": "f3"
     }

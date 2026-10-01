@@ -450,11 +450,13 @@
         "src/user.ts#formatUser",
         "src/user.ts#greet"
       ],
-      "message": "User changed its signature; all 3 users were updated",
+      "message": "User changed its signature compatibly; existing users keep working (3 users, 0 untouched)",
       "data": {
         "callers": 3,
         "updated": 3,
-        "untouched": 0
+        "untouched": 0,
+        "untouchedElsewhere": 0,
+        "compatibility": "compatible"
       },
       "id": "f3"
     }
