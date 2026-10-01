@@ -23,6 +23,7 @@ import {
   type Severity,
 } from '@cpr/core';
 import { detectForge, type ChangeRequest, type Forge } from '@cpr/forge';
+import { ciChangeRequestNumber } from './ci.js';
 import { formatAnalysis } from './format.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { startViewServer, type ReviewTarget } from './server.js';
@@ -119,11 +120,13 @@ Options:
   -h, --help           Show this help
 `;
 
-const PR_HELP = `Usage: cpr pr <number> [options]      (alias: cpr mr)
+const PR_HELP = `Usage: cpr pr [<number>] [options]      (alias: cpr mr)
 
 Reviews a GitHub pull request or GitLab merge request of the \`origin\` remote: reads it
 through the forge's API, fetches its head and target branch, and opens the viewer, where
 comments on symbols are submitted as one review (comment, approve, or request changes).
+
+In a GitHub Actions or GitLab CI job for a pull/merge request, <number> defaults to it.
 
 Tokens: GITHUB_TOKEN / GH_TOKEN (or gh auth login) · GITLAB_TOKEN.
 API overrides: GITHUB_API_URL · GITLAB_API_URL.
@@ -423,12 +426,14 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
     return 0;
   }
   const [arg, ...extra] = positionals;
-  const number = Number(arg?.replace(/^[#!]/, ''));
+  // In a CI job for a pull/merge request, the number comes from the job.
+  const number =
+    arg === undefined ? ciChangeRequestNumber(ctx.env) : Number(arg.replace(/^[#!]/, ''));
+  if (number === undefined) {
+    throw new UsageError('missing <number> (and not in a pull/merge request CI job)', PR_HELP);
+  }
   if (!Number.isInteger(number) || number <= 0) {
-    throw new UsageError(
-      arg === undefined ? 'missing <number>' : `not a pull/merge request number: '${arg}'`,
-      PR_HELP,
-    );
+    throw new UsageError(`not a pull/merge request number: '${arg}'`, PR_HELP);
   }
   if (extra.length > 0) throw new UsageError(`unexpected argument '${extra[0]}'`, PR_HELP);
   if (values.forge !== undefined && values.forge !== 'github' && values.forge !== 'gitlab') {

@@ -581,3 +581,25 @@ new, 22 updated, 47 same, 4 dropped — exactly the helpers I1 deleted. 5.6 s �
 trivia), so "added a file header" pushes show nothing new — checked in the e2e test.
 
 **Phase 4 is done.** Next: phase 5 — CI for GitHub (C1) and GitLab (C2).
+
+## C1 — GitHub Action (2026-10-01)
+
+**What landed**
+- `cpr pr` with no number in CI: GitHub Actions' event file (`pull_request`,
+  `pull_request_target`, `issue_comment` on a PR) or GitLab's `CI_MERGE_REQUEST_IID`.
+- `action.yml` (composite): inputs `token`, `pull-request`, `post-findings` (default
+  `warning`, empty = don't post), `fail-on` (default `error`), `project`, `depth`,
+  `working-directory`, `setup-node`; output `graph`. Inputs reach the scripts through `env`,
+  never interpolated into shell code.
+- `action/install.sh` builds CPR from the action's own checkout with pnpm 12 via `npx` (the
+  packages are not published): 8 s from a fresh clone here with a warm pnpm store.
+- `action/run.sh` is shared with the coming GitLab template: deepens shallow clones (the
+  merge-base needs history), builds the arguments, tees the summary, writes the step summary
+  and the `graph` output, keeps cpr's exit status.
+- `.github/workflows/cpr.yml`: this repo reviews its pull requests with `uses: ./`; fork PRs
+  (read-only token) are reviewed without posting.
+
+**Testing**: `run.sh` runs against a stub CLI that echoes its arguments (arguments, exit status,
+step summary, output); the CI-number detection has unit tests and a `cpr pr` run with a GitHub
+event file. The action itself only runs on a real pull request, and none exist in this repo yet:
+the first PR will be its first live run.

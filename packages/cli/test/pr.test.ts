@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { rmSync } from 'node:fs';
+import { rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Graph } from '@cpr/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createBranchedRepo, tempDir } from '../../core/test/helpers/git-repo.js';
@@ -103,6 +104,9 @@ describe('cpr pr', () => {
     for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
   });
 
+  /** More environment for the next runs, e.g. a CI job's. */
+  let jobEnv: Record<string, string> = {};
+
   async function cpr(cwd: string, ...argv: string[]) {
     let stdout = '';
     let stderr = '';
@@ -118,6 +122,7 @@ describe('cpr pr', () => {
         GITLAB_API_URL: api.url,
         GITLAB_TOKEN: 'glpat-test',
         CPR_CACHE_DIR: cache,
+        ...jobEnv,
       },
     });
     return { code, stdout, stderr };
@@ -252,8 +257,22 @@ describe('cpr pr', () => {
     expect(stdout).toContain('+ variable    added  [new]');
   });
 
+  it('finds the pull request of a GitHub Actions job', async () => {
+    const local = cloneAs(bare, 'https://github.com/acme/widgets.git');
+    dirs.push(local);
+    const event = join(local, '.git', 'event.json');
+    writeFileSync(event, JSON.stringify({ pull_request: { number: 7 } }));
+    jobEnv = { GITHUB_EVENT_PATH: event };
+    const { code, stderr } = await cpr(local, 'pr', '--summary');
+    jobEnv = {};
+    expect(code).toBe(0);
+    expect(stderr).toContain('#7 Add widgets');
+  });
+
   it('reports usage errors and missing remotes', async () => {
-    expect((await cpr(repo.root, 'pr')).code).toBe(2);
+    const missing = await cpr(repo.root, 'pr');
+    expect(missing.code).toBe(2);
+    expect(missing.stderr).toContain('missing <number> (and not in a pull/merge request CI job)');
     expect((await cpr(repo.root, 'pr', 'abc')).stderr).toContain(
       "not a pull/merge request number: 'abc'",
     );

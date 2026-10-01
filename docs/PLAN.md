@@ -393,7 +393,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 
 | # | Milestone | Output |
 |---|---|---|
-| C1 | GitHub Action | `action.yml` running `cpr pr <n> --post-findings warning --fail-on error` on `pull_request`, with `pull-requests: write`. |
+| C1 ✅ | GitHub Action | Composite `action.yml` at the repo root: sets up Node 22, builds CPR from the action's checkout (`action/install.sh`), runs `action/run.sh` (deepens a shallow clone, `cpr pr --summary --out … --post-findings … --fail-on …`, the summary into `$GITHUB_STEP_SUMMARY`, the graph path as an output). `cpr pr` without a number reads the job's pull request (`GITHUB_EVENT_PATH`, `CI_MERGE_REQUEST_IID`). This repo reviews its own PRs with it (`.github/workflows/cpr.yml`). |
 | C2 | GitLab CI template | A `.gitlab-ci.yml` include doing the same on merge request pipelines (`GITLAB_TOKEN` with api scope; the job token cannot post). |
 
 **Later:** more languages via adapters, a faster core (TS 7 adapter or Rust/oxc), self-hosted team mode.
