@@ -1,6 +1,7 @@
 import type { Graph, GraphNode } from '@cpr/core';
 import type { DiffRow } from './detail.js';
 import { label } from './flow.js';
+import { fingerprint } from './review.js';
 
 export type Side = 'base' | 'head';
 export type ReviewEvent = 'comment' | 'approve' | 'request-changes';
@@ -21,6 +22,45 @@ export interface Draft {
   /** Null: no changed line to attach to, so it goes into the review's summary. */
   anchor: Anchor | null;
   body: string;
+  /** The symbol's fingerprint when the comment was written. */
+  print: string;
+  /** First line of the anchored side of the symbol then: the anchor moves with the symbol. */
+  start: number | null;
+  /** The symbol changed (or left the change) since: the comment goes into the summary. */
+  outdated?: true;
+}
+
+export function newDraft(node: GraphNode, anchor: Anchor | null, body: string): Draft {
+  return {
+    id: draftId(),
+    symbol: node.id,
+    anchor,
+    body: body.trim(),
+    print: fingerprint(node),
+    start: (anchor && node[anchor.side]?.range.start.line) ?? null,
+  };
+}
+
+/**
+ * Brings drafts up to date with a newer version of the change: a symbol whose code is the same
+ * keeps its comments on the same lines of it, wherever it now starts; a symbol that changed
+ * makes its comments outdated, so they go into the summary instead of onto a wrong line.
+ */
+export function refreshDrafts(graph: Graph, drafts: readonly Draft[]): Draft[] {
+  const nodes = new Map(graph.nodes.map((n) => [n.id, n]));
+  return drafts.map((draft) => {
+    if (draft.outdated) return draft;
+    const node = nodes.get(draft.symbol);
+    const decl = node && draft.anchor ? node[draft.anchor.side] : undefined;
+    if (!node || fingerprint(node) !== draft.print || (draft.anchor && !decl)) {
+      return { ...draft, anchor: null, outdated: true };
+    }
+    if (!draft.anchor || !decl || draft.start === null) return draft;
+    const start = decl.range.start.line;
+    if (start === draft.start && decl.file === draft.anchor.path) return draft;
+    const line = draft.anchor.line - draft.start + start;
+    return { ...draft, anchor: anchor(graph, draft.anchor.side, decl.file, line), start };
+  });
 }
 
 /** What `POST /api/review` takes (the forge adapter's `Review`). */
@@ -61,6 +101,12 @@ function otherPath(graph: Graph, side: Side, path: string): string {
     if (side === 'base' && before === path) return file.path;
   }
   return path;
+}
+
+export function describeDraft(draft: Draft): string {
+  return draft.outdated
+    ? 'outdated: the symbol changed since; in the review summary'
+    : describeAnchor(draft.anchor);
 }
 
 export function describeAnchor(anchor: Anchor | null): string {
@@ -104,7 +150,7 @@ export function canSubmit(drafts: readonly Draft[], event: ReviewEvent, body: st
 export async function postReview(payload: ReviewPayload): Promise<{ url: string }> {
   const response = await fetch('./api/review', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-cpr-review': '1' },
+    headers: { 'content-type': 'application/json', 'x-cpr': '1' },
     body: JSON.stringify(payload),
   });
   if (response.ok) return (await response.json()) as { url: string };
@@ -123,33 +169,8 @@ export interface ReviewDraft {
   body: string;
 }
 
-/** Drafts are kept per pair of revisions, like reviewed marks. */
-export function draftsKey(graph: Graph): string {
-  const { base, head } = graph.revisions;
-  return `cpr:drafts:${base.sha ?? base.ref}..${head.sha ?? head.ref}`;
-}
-
-export function loadDrafts(key: string): ReviewDraft {
-  try {
-    const raw = window.localStorage.getItem(key);
-    const value = raw ? (JSON.parse(raw) as Partial<ReviewDraft>) : {};
-    return { drafts: value.drafts ?? [], body: value.body ?? '' };
-  } catch {
-    return { drafts: [], body: '' };
-  }
-}
-
-export function saveDrafts(key: string, value: ReviewDraft): void {
-  try {
-    if (value.drafts.length === 0 && value.body === '') window.localStorage.removeItem(key);
-    else window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Blocked storage: drafts last for this page only.
-  }
-}
-
 let counter = 0;
-export function draftId(): string {
+function draftId(): string {
   counter += 1;
   return `${Date.now().toString(36)}-${counter}`;
 }

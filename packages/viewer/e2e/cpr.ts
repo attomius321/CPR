@@ -1,5 +1,5 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
-import { cpSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,8 +20,13 @@ const env = {
 };
 
 export interface Running {
-  url: string;
+  readonly url: string;
   stop(): void;
+}
+
+/** A fixture file's head version. */
+export function fixtureFile(name: string, path: string): string {
+  return readFileSync(join(fixtures, name, 'head', path), 'utf8');
 }
 
 const git = (cwd: string, ...args: string[]) =>
@@ -87,6 +92,8 @@ export async function serveFixture(name: string): Promise<Running> {
 export interface RunningPullRequest extends Running {
   /** What the mock GitHub API received. */
   requests: Recorded[];
+  /** Pushes a new version of the pull request (files to write) and restarts `cpr pr` on it. */
+  push(files: Record<string, string>): Promise<void>;
 }
 
 /**
@@ -105,8 +112,9 @@ export async function servePullRequest(name: string): Promise<RunningPullRequest
   git(clone, 'config', 'remote.origin.url', remote);
   git(clone, 'config', `url.${bare}.insteadOf`, remote);
 
+  let headSha = head;
   const api = await mockApi({
-    'GET /repos/acme/widgets/pulls/7': {
+    'GET /repos/acme/widgets/pulls/7': () => ({
       body: {
         number: 7,
         title: 'Add perimeter and volume',
@@ -116,23 +124,39 @@ export async function servePullRequest(name: string): Promise<RunningPullRequest
         merged_at: null,
         draft: false,
         base: { ref: 'main', sha: base },
-        head: { ref: 'feature', sha: head },
+        head: { ref: 'feature', sha: headSha },
       },
-    },
+    }),
     'POST /repos/acme/widgets/pulls/7/reviews': {
       body: { html_url: 'https://github.com/acme/widgets/pull/7#pullrequestreview-1' },
     },
   });
-  const { url, child } = await startCpr(['pr', '7'], clone, {
-    CPR_CACHE_DIR: cache,
-    GITHUB_API_URL: api.url,
-    GITHUB_TOKEN: 'ghp_e2e',
-  });
+  const start = () =>
+    startCpr(['pr', '7'], clone, {
+      CPR_CACHE_DIR: cache,
+      GITHUB_API_URL: api.url,
+      GITHUB_TOKEN: 'ghp_e2e',
+    });
+  let running = await start();
+
   return {
-    url,
+    get url() {
+      return running.url;
+    },
     requests: api.requests,
+    async push(files) {
+      for (const [path, content] of Object.entries(files)) writeFileSync(join(repo, path), content);
+      git(repo, 'commit', '-q', '-am', 'another push');
+      headSha = git(repo, 'rev-parse', 'HEAD');
+      git(bare, 'fetch', '-q', repo, '+feature:feature');
+      git(bare, 'update-ref', 'refs/pull/7/head', headSha);
+      const exited = new Promise((resolve) => running.child.once('exit', resolve));
+      running.child.kill('SIGINT');
+      await exited;
+      running = await start();
+    },
     stop() {
-      child.kill('SIGINT');
+      running.child.kill('SIGINT');
       void api.close();
       for (const dir of [repo, bare, clone, cache]) rmSync(dir, { recursive: true, force: true });
     },

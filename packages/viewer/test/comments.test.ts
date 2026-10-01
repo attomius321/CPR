@@ -6,6 +6,9 @@ import {
   canSubmit,
   defaultAnchor,
   describeAnchor,
+  describeDraft,
+  newDraft,
+  refreshDrafts,
   toReview,
   type Draft,
 } from '../src/comments.js';
@@ -74,13 +77,8 @@ describe('anchors', () => {
 
 describe('toReview', () => {
   const drafts: Draft[] = [
-    {
-      id: '1',
-      symbol: slugify.id,
-      anchor: defaultAnchor(graph, slugify, rows),
-      body: ' Trim first? ',
-    },
-    { id: '2', symbol: 'src/user.ts#User', anchor: null, body: 'Rename this class.' },
+    newDraft(slugify, defaultAnchor(graph, slugify, rows), ' Trim first? '),
+    newDraft(node('src/user.ts#User'), null, 'Rename this class.'),
   ];
 
   it('posts anchored drafts inline and quotes the others in the summary', () => {
@@ -105,5 +103,45 @@ describe('toReview', () => {
     expect(canSubmit(drafts, 'comment', '')).toBe(true);
     expect(canSubmit(drafts, 'request-changes', ' ')).toBe(false);
     expect(canSubmit([], 'request-changes', 'Split it')).toBe(true);
+  });
+});
+
+describe('refreshDrafts', () => {
+  /** The same change after another push: slugify moved down 3 lines, maybe with new code. */
+  const pushed = (body?: string): Graph => ({
+    ...graph,
+    nodes: graph.nodes.map((n) =>
+      n.id === slugify.id && n.head
+        ? {
+            ...n,
+            head: {
+              ...n.head,
+              range: {
+                start: { ...n.head.range.start, line: n.head.range.start.line + 3 },
+                end: { ...n.head.range.end, line: n.head.range.end.line + 3 },
+              },
+              hashes: { ...n.head.hashes, body: body ?? n.head.hashes.body },
+            },
+          }
+        : n,
+    ),
+  });
+  const draft = newDraft(slugify, defaultAnchor(graph, slugify, rows), 'Trim first?');
+
+  it('keeps a comment on the same line of an unchanged symbol', () => {
+    const [moved] = refreshDrafts(pushed(), [draft]);
+    expect(moved?.anchor?.line).toBe(5);
+    expect(moved?.outdated).toBeUndefined();
+    expect(refreshDrafts(graph, [draft])[0]).toBe(draft);
+  });
+
+  it('turns comments on changed or vanished symbols into summary notes', () => {
+    const [changed] = refreshDrafts(pushed('ffff'), [draft]);
+    expect(changed).toMatchObject({ anchor: null, outdated: true, body: 'Trim first?' });
+    expect(describeDraft(changed as Draft)).toBe(
+      'outdated: the symbol changed since; in the review summary',
+    );
+    const gone = { ...graph, nodes: graph.nodes.filter((n) => n.id !== slugify.id) };
+    expect(refreshDrafts(gone, [draft])[0]?.outdated).toBe(true);
   });
 });

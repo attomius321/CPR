@@ -2,7 +2,15 @@ import { readFileSync } from 'node:fs';
 import type { Graph } from '@cpr/core';
 import { describe, expect, it } from 'vitest';
 import { toFlow } from '../src/flow.js';
-import { changeList, neighbourhood, reviewKey, stepChange } from '../src/review.js';
+import {
+  changeList,
+  fingerprint,
+  neighbourhood,
+  reviewKey,
+  reviewStatus,
+  stepChange,
+  toggleMark,
+} from '../src/review.js';
 
 const golden = (name: string) =>
   JSON.parse(
@@ -65,7 +73,45 @@ describe('neighbourhood', () => {
 });
 
 describe('reviewKey', () => {
-  it('is specific to the compared revisions', () => {
-    expect(reviewKey(golden('callers'))).toBe('cpr:reviewed:base..head');
+  it('is per change request, else per pair of revisions', () => {
+    const graph = golden('callers');
+    expect(reviewKey(graph)).toBe('cpr:review:base..head');
+    const request = { ...graph, changeRequest: { url: 'https://github.com/a/b/pull/7' } } as Graph;
+    expect(reviewKey(request)).toBe('cpr:review:https://github.com/a/b/pull/7');
+    expect(reviewKey(request, 'drafts')).toBe('cpr:drafts:https://github.com/a/b/pull/7');
+  });
+});
+
+describe('review marks', () => {
+  const graph = golden('callers');
+  const add = 'src/math.ts#add';
+
+  it('marks and unmarks changed symbols only', () => {
+    const marks = toggleMark(graph, {}, add);
+    expect(reviewStatus(graph, marks).reviewed).toEqual(new Set([add]));
+    expect(toggleMark(graph, marks, add)).toEqual({});
+    expect(toggleMark(graph, {}, 'src/app.ts#total')).toEqual({}); // context, not a change
+  });
+
+  it('flags symbols that changed since they were reviewed', () => {
+    const marks = toggleMark(graph, {}, add);
+    const pushed: Graph = {
+      ...graph,
+      nodes: graph.nodes.map((n) =>
+        n.id === add && n.head
+          ? { ...n, head: { ...n.head, hashes: { ...n.head.hashes, body: 'new' } } }
+          : n,
+      ),
+    };
+    expect(reviewStatus(pushed, marks)).toEqual({ reviewed: new Set(), stale: new Set([add]) });
+    // Reviewing it again records the new version.
+    const again = toggleMark(pushed, marks, add);
+    expect(again[add]).toBe(fingerprint(pushed.nodes.find((n) => n.id === add)!));
+    expect(reviewStatus(pushed, again).reviewed).toEqual(new Set([add]));
+  });
+
+  it('forgets symbols that left the change', () => {
+    const marks = { 'src/gone.ts#x': 'a|b' };
+    expect(Object.keys(toggleMark(graph, marks, add))).toEqual([add]);
   });
 });

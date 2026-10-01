@@ -10,26 +10,20 @@ import {
 } from '@xyflow/react';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import type { Graph } from '@cpr/core';
-import {
-  draftId,
-  draftsKey,
-  loadDrafts,
-  saveDrafts,
-  type Anchor,
-  type ReviewDraft,
-} from './comments.js';
+import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
 import { toFlow, type FlowEdge, type FlowNode, type SymbolData } from './flow.js';
 import {
   changeList,
-  loadReviewed,
   neighbourhood,
-  reviewKey,
-  saveReviewed,
+  reviewStatus,
   stepChange,
+  toggleMark,
+  type Marks,
 } from './review.js';
 import { Sidebar } from './Sidebar.js';
+import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
 import { SymbolNode } from './SymbolNode.js';
 
 const nodeTypes = { symbol: SymbolNode, file: FileNode };
@@ -41,13 +35,15 @@ type State =
    * `sources`: opened through `cpr view`, so `/api/source` exists. `forge`: opened through
    * `cpr pr`, which posts reviews there.
    */
-  | { status: 'ready'; graph: Graph; sources: boolean; forge: Forge | null };
+  | { status: 'ready'; graph: Graph; sources: boolean; forge: Forge | null; store: Store };
 
 type Forge = 'github' | 'gitlab';
 
 interface Capabilities {
   sources: boolean;
   review: { forge: Forge } | null;
+  /** `/api/state` keeps reviewed marks and drafts in the CLI's cache. */
+  state?: boolean;
 }
 
 /** Where the graph comes from: `?graph=<url>`, else `cpr view`'s API. */
@@ -61,41 +57,59 @@ export function App() {
   const [context, setContext] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [focus, setFocus] = useState(false);
-  const [reviewed, setReviewed] = useState<ReadonlySet<string>>(new Set());
+  const [marks, setMarks] = useState<Marks>({});
   const [draft, setDraft] = useState<ReviewDraft>({ drafts: [], body: '' });
 
   const graph = state.status === 'ready' ? state.graph : undefined;
   const forge = state.status === 'ready' ? state.forge : null;
+  const store = state.status === 'ready' ? state.store : undefined;
   const changes = useMemo(() => (graph ? changeList(graph) : []), [graph]);
+  const { reviewed, stale } = useMemo(
+    () =>
+      graph
+        ? reviewStatus(graph, marks)
+        : { reviewed: new Set<string>(), stale: new Set<string>() },
+    [graph, marks],
+  );
   useEffect(() => {
-    if (!graph) return;
-    setReviewed(loadReviewed(reviewKey(graph)));
-    setDraft(loadDrafts(draftsKey(graph)));
-  }, [graph]);
+    if (!graph || !store) return;
+    let live = true;
+    setMarks({});
+    setDraft({ drafts: [], body: '' });
+    void Promise.all([store.load('review'), store.load('drafts')]).then(([marks, drafts]) => {
+      if (!live) return;
+      setMarks(asMarks(marks));
+      // Under `cpr pr`, drafts may come from an earlier push of the change.
+      const saved = asReviewDraft(drafts);
+      setDraft({ ...saved, drafts: refreshDrafts(graph, saved.drafts) });
+    });
+    return () => {
+      live = false;
+    };
+  }, [graph, store]);
 
+  /** `delay`: typing a summary saves once it pauses. */
   const updateDraft = useCallback(
-    (change: (current: ReviewDraft) => ReviewDraft) => {
-      if (!graph) return;
+    (change: (current: ReviewDraft) => ReviewDraft, delay = 0) => {
       setDraft((current) => {
         const next = change(current);
-        saveDrafts(draftsKey(graph), next);
+        store?.save('drafts', next, delay);
         return next;
       });
     },
-    [graph],
+    [store],
   );
 
   const toggleReviewed = useCallback(
     (id: string) => {
       if (!graph) return;
-      setReviewed((current) => {
-        const next = new Set(current);
-        if (!next.delete(id)) next.add(id);
-        saveReviewed(reviewKey(graph), next);
+      setMarks((current) => {
+        const next = toggleMark(graph, current, id);
+        store?.save('review', next);
         return next;
       });
     },
-    [graph],
+    [graph, store],
   );
 
   // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, c comments, Esc closes.
@@ -138,6 +152,7 @@ export function App() {
           graph,
           sources: served,
           forge: capabilities?.review?.forge ?? null,
+          store: capabilities?.state ? serverStore() : browserStore(graph),
         });
       })
       .catch(() => setState({ status: 'empty' }));
@@ -146,7 +161,7 @@ export function App() {
   const load = useCallback(async (file: File) => {
     try {
       const graph = JSON.parse(await file.text()) as Graph;
-      setState({ status: 'ready', graph, sources: false, forge: null });
+      setState({ status: 'ready', graph, sources: false, forge: null, store: browserStore(graph) });
       setSelected(null);
     } catch (error) {
       setState({ status: 'empty', error: `Not a CPR graph: ${(error as Error).message}` });
@@ -163,12 +178,11 @@ export function App() {
   );
 
   const addDraft = useCallback(
-    (symbol: string, anchor: Anchor | null, body: string) =>
-      updateDraft((d) => ({
-        ...d,
-        drafts: [...d.drafts, { id: draftId(), symbol, anchor, body: body.trim() }],
-      })),
-    [updateDraft],
+    (symbol: string, anchor: Anchor | null, body: string) => {
+      const node = graph?.nodes.find((n) => n.id === symbol);
+      if (node) updateDraft((d) => ({ ...d, drafts: [...d.drafts, newDraft(node, anchor, body)] }));
+    },
+    [graph, updateDraft],
   );
   const removeDraft = useCallback(
     (id: string) => updateDraft((d) => ({ ...d, drafts: d.drafts.filter((x) => x.id !== id) })),
@@ -228,6 +242,7 @@ export function App() {
               graph={state.graph}
               changes={changes}
               reviewed={reviewed}
+              stale={stale}
               selected={selected}
               onSelect={setSelected}
               onToggleReviewed={toggleReviewed}
@@ -236,7 +251,7 @@ export function App() {
                   ? {
                       forge,
                       draft,
-                      onBody: (body) => updateDraft((d) => ({ ...d, body })),
+                      onBody: (body) => updateDraft((d) => ({ ...d, body }), 300),
                       onRemove: removeDraft,
                       onPosted: () => updateDraft(() => ({ drafts: [], body: '' })),
                     }
@@ -257,6 +272,7 @@ export function App() {
                 id={selected}
                 sources={state.sources}
                 reviewed={reviewed.has(selected)}
+                stale={stale.has(selected)}
                 onToggleReviewed={() => toggleReviewed(selected)}
                 onSelect={setSelected}
                 onClose={() => setSelected(null)}

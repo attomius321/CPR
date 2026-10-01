@@ -1,4 +1,4 @@
-import type { Graph, GraphNode } from '@cpr/core';
+import type { Graph, GraphNode, GraphSide } from '@cpr/core';
 
 export interface FileChanges {
   file: string;
@@ -54,25 +54,55 @@ export function neighbourhood(graph: Graph, id: string, hops = 1): Set<string> {
   return ids;
 }
 
-/** Where reviewed marks are kept: per pair of revisions, so a new push starts fresh. */
-export function reviewKey(graph: Graph): string {
+/**
+ * What a symbol's change looks like: the hashes of both its versions. A push that alters the
+ * change of a symbol (its code, or its base after a rebase) alters this.
+ */
+export function fingerprint(node: GraphNode): string {
+  const side = (decl: GraphSide | null) =>
+    decl ? `${decl.hashes.signature}.${decl.hashes.body}` : '-';
+  return `${side(node.base)}|${side(node.head)}`;
+}
+
+/** Reviewed marks: symbol ID → its fingerprint when it was marked. */
+export type Marks = Readonly<Record<string, string>>;
+
+/**
+ * Where review state is kept: per change request under `cpr pr`, so it outlives new pushes;
+ * otherwise per pair of revisions.
+ */
+export function reviewKey(graph: Graph, kind: 'review' | 'drafts' = 'review'): string {
+  if (graph.changeRequest) return `cpr:${kind}:${graph.changeRequest.url}`;
   const { base, head } = graph.revisions;
-  return `cpr:reviewed:${base.sha ?? base.ref}..${head.sha ?? head.ref}`;
+  return `cpr:${kind}:${base.sha ?? base.ref}..${head.sha ?? head.ref}`;
 }
 
-export function loadReviewed(key: string): Set<string> {
-  try {
-    const raw = window.localStorage.getItem(key);
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
+export interface ReviewStatus {
+  reviewed: Set<string>;
+  /** Marked reviewed, but the symbol changed since. */
+  stale: Set<string>;
 }
 
-export function saveReviewed(key: string, reviewed: ReadonlySet<string>): void {
-  try {
-    window.localStorage.setItem(key, JSON.stringify([...reviewed]));
-  } catch {
-    // Private windows and blocked storage: marks last for this session only.
+export function reviewStatus(graph: Graph, marks: Marks): ReviewStatus {
+  const status: ReviewStatus = { reviewed: new Set(), stale: new Set() };
+  for (const node of graph.nodes) {
+    const mark = marks[node.id];
+    if (node.status === 'unchanged' || mark === undefined) continue;
+    (mark === fingerprint(node) ? status.reviewed : status.stale).add(node.id);
   }
+  return status;
+}
+
+/** Marks or unmarks a symbol; marks of symbols no longer in the change are dropped. */
+export function toggleMark(graph: Graph, marks: Marks, id: string): Marks {
+  const changed = new Map(
+    graph.nodes.filter((n) => n.status !== 'unchanged').map((n) => [n.id, n]),
+  );
+  const node = changed.get(id);
+  if (!node) return marks;
+  const next: Record<string, string> = {};
+  for (const [key, mark] of Object.entries(marks)) if (changed.has(key)) next[key] = mark;
+  if (marks[id] === fingerprint(node)) delete next[id];
+  else next[id] = fingerprint(node);
+  return next;
 }

@@ -967,3 +967,21 @@ kbd {
   color: var(--added);
   font-size: 13px;
 }
+
+/* ---- changed since reviewed --------------------------------------------------------- */
+
+.stale-note {
+  margin: 4px 12px 6px;
+  color: var(--modified);
+  font-size: 12px;
+}
+
+.panel-head .stale-note {
+  margin: 4px 0 0;
+}
+
+.stale-mark {
+  flex: none;
+  color: var(--modified);
+  font-size: 12px;
+}

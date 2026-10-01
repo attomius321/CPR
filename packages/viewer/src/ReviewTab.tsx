@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Graph } from '@cpr/core';
 import {
   canSubmit,
-  describeAnchor,
+  describeDraft,
   postReview,
   toReview,
   type ReviewDraft,
@@ -82,7 +82,7 @@ export function ReviewTab({
                 Delete
               </button>
             </div>
-            <div className="muted small">{describeAnchor(d.anchor)}</div>
+            <div className="muted small">{describeDraft(d)}</div>
             <p className="draft-body">{d.body}</p>
           </div>
         );

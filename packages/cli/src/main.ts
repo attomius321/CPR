@@ -26,6 +26,7 @@ import { detectForge, type ChangeRequest, type Forge } from '@cpr/forge';
 import { formatAnalysis } from './format.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { startViewServer, type ReviewTarget } from './server.js';
+import { fileStateStore, stateDir } from './state.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -336,6 +337,7 @@ async function serve(
       if (!sha) return Promise.reject(new Error(`no ${side} revision`));
       return readFileAtRevision(repo, sha, path);
     },
+    state: fileStateStore(stateDir(defaultCacheDir(ctx.env), repo.id, graph)),
     ...(review ? { review } : {}),
   });
   const changed =

@@ -531,3 +531,27 @@ against mock GitHub and GitLab APIs that list back what was posted: posts once, 
 posts nothing, the GitHub 422 fallback, and `--fail-on` still failing after posting.
 
 **Phase 3 is done.** Next: phase 4 (interdiff, I1–I2), then phase 5 (CI on both forges, C1–C2).
+
+## I1 — Review state per change request (2026-10-01)
+
+**What landed**
+- Reviewed marks are now `{symbol ID → fingerprint}` (signature + body hashes of both sides).
+  A mark counts only while the fingerprint matches; otherwise the symbol is "↻ changed since you
+  reviewed it" (Changes list, detail panel, a count above the list). Marks of symbols that left
+  the change are dropped on the next toggle.
+- Drafts record the symbol's fingerprint and where the symbol started. On a newer version of
+  the change, a draft on an unchanged symbol moves with it (same line within the symbol); a draft
+  on a changed or vanished symbol becomes "outdated" and goes into the review summary.
+- State moved from browser storage into the CLI: `GET/PUT /api/state/review|drafts`, files
+  under `<cache>/state/<repo id>/<sha256(change request URL, else revision pair)>/`, written
+  atomically. The viewer saves marks at once and the summary text after a 300 ms pause, one
+  write at a time per name, and flushes with `keepalive` on `pagehide`. A graph dropped into the
+  viewer still uses browser storage.
+- The write header is now `x-cpr: 1` for every write (review and state).
+
+**Found while testing**: every `cpr view`/`cpr pr` run listens on a new free port, and browser
+storage is per origin — so V4's "remembers reviewed symbols" only ever held within one run.
+The e2e test reloaded the same page, which hid it. The new e2e test restarts `cpr pr` after a
+push (new port) and checks the state is still there.
+
+**Decision**: 17 (review state in the CLI's cache, per change request).
