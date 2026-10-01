@@ -46,7 +46,12 @@ comment, approve, or request changes. They arrive as inline comments on those li
 
 Your reviewed marks and drafts are kept per pull request. When the author pushes again, run
 `cpr pr` again: symbols you reviewed that didn't change stay reviewed, the ones that did are
-flagged ↻, and your drafts follow their code to its new lines.
+flagged ↻, and your drafts follow their code to its new lines. To see only what the push
+changed, compare with the head you saw last — a rebase that touched nothing shows nothing:
+
+```sh
+cpr pr 123 --since 3c2b1a0   # each changed symbol: new, updated, or same as in 3c2b1a0
+```
 
 ![Review tab: two draft comments on symbols, a summary, and "Request changes" ready to submit](docs/images/viewer-review.png)
 

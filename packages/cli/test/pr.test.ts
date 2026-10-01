@@ -18,9 +18,11 @@ const git = (cwd: string, ...args: string[]) =>
  * A "forge" remote: a bare repo whose pull/merge request refs point at the feature branch,
  * cloned locally with a github.com / gitlab URL that git rewrites (insteadOf) to the bare repo.
  */
-function cloneAs(bare: string, url: string): string {
+function cloneAs(bare: string, url: string, { copyObjects = true } = {}): string {
   const local = tempDir();
-  git(local, 'clone', '--quiet', bare, '.');
+  // A local clone copies every object; --no-local fetches only what branches reach, like a
+  // clone from a real forge.
+  git(local, 'clone', '--quiet', ...(copyObjects ? [] : ['--no-local']), bare, '.');
   git(local, 'config', 'remote.origin.url', url);
   git(local, 'config', `url.${bare}.insteadOf`, url);
   return local;
@@ -230,6 +232,24 @@ describe('cpr pr', () => {
     expect(second).toMatchObject({ code: 1 });
     expect(second.stderr).toContain('No new findings to post (1 already posted)');
     expect(posts('/projects/acme%2Ftools%2Fwidgets/merge_requests/7/draft_notes')).toHaveLength(3);
+  });
+
+  it('compares with an earlier head that only the forge still has', async () => {
+    // The pull request's previous version (before a force-push): \`a\` was changed differently.
+    repo.git('switch', '--quiet', '--create', 'previous', shas.root);
+    repo.write({ 'src/a.ts': 'export const a = 3;\n' });
+    const previous = repo.commit('previous version');
+    repo.git('switch', '--quiet', 'main');
+    git(bare, 'fetch', '--quiet', repo.root, `${previous}:refs/pull/7/previous`);
+
+    const local = cloneAs(bare, 'https://github.com/acme/widgets.git', { copyObjects: false });
+    dirs.push(local);
+    expect(() => git(local, 'cat-file', '-e', previous)).toThrow();
+    const { code, stdout } = await cpr(local, 'pr', '7', '--summary', '--since', previous);
+    expect(code).toBe(0);
+    expect(stdout).toContain(`since ${previous} (${previous.slice(0, 7)}): 2 new, 1 updated\n`);
+    expect(stdout).toContain('~ variable    a  (body)  [updated]');
+    expect(stdout).toContain('+ variable    added  [new]');
   });
 
   it('reports usage errors and missing remotes', async () => {

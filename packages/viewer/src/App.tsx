@@ -57,13 +57,19 @@ export function App() {
   const [context, setContext] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [focus, setFocus] = useState(false);
+  /** With `--since`: only what changed since the earlier version. */
+  const [sinceOnly, setSinceOnly] = useState(true);
   const [marks, setMarks] = useState<Marks>({});
   const [draft, setDraft] = useState<ReviewDraft>({ drafts: [], body: '' });
 
   const graph = state.status === 'ready' ? state.graph : undefined;
   const forge = state.status === 'ready' ? state.forge : null;
   const store = state.status === 'ready' ? state.store : undefined;
-  const changes = useMemo(() => (graph ? changeList(graph) : []), [graph]);
+  const onlySince = sinceOnly && !!graph?.since;
+  const changes = useMemo(
+    () => (graph ? changeList(graph, { sinceOnly: onlySince }) : []),
+    [graph, onlySince],
+  );
   const { reviewed, stale } = useMemo(
     () =>
       graph
@@ -196,9 +202,10 @@ export function App() {
       typeReferences,
       context,
       reviewed,
+      sinceOnly: onlySince,
       ...(focusSet ? { focus: focusSet } : {}),
     });
-  }, [graph, typeReferences, context, reviewed, focus, selected]);
+  }, [graph, typeReferences, context, reviewed, onlySince, focus, selected]);
 
   return (
     <div className="app" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
@@ -208,6 +215,19 @@ export function App() {
         <div className="spacer" />
         {state.status === 'ready' && (
           <>
+            {state.graph.since && (
+              <label
+                className="toggle"
+                title="Leave out symbols changed the same way as in the earlier version"
+              >
+                <input
+                  type="checkbox"
+                  checked={sinceOnly}
+                  onChange={(e) => setSinceOnly(e.target.checked)}
+                />
+                Only changes since {state.graph.since.sha.slice(0, 7)}
+              </label>
+            )}
             <label className="toggle" title="Show only the selected symbol and its neighbours (f)">
               <input type="checkbox" checked={focus} onChange={(e) => setFocus(e.target.checked)} />
               Focus
@@ -388,7 +408,33 @@ function Summary({ graph }: { graph: Graph }) {
       {severity('warning') > 0 && (
         <span className="badge badge-warning">{plural(severity('warning'), 'warning')}</span>
       )}
+      {graph.since && <SinceChip graph={graph} />}
     </div>
+  );
+}
+
+/** How this version compares with the earlier one (`--since`). */
+function SinceChip({ graph }: { graph: Graph }) {
+  const since = graph.since;
+  if (!since) return null;
+  const count = (status: string) => graph.nodes.filter((n) => n.since === status).length;
+  const parts = [
+    ['new', count('new')],
+    ['updated', count('updated')],
+    ['same', count('same')],
+    ['dropped', since.dropped.length],
+  ].filter(([, n]) => n !== 0);
+  return (
+    <span
+      className="chip chip-since"
+      title={
+        since.dropped.length
+          ? `No longer changed: ${since.dropped.join(', ')}`
+          : `Compared with ${since.ref}`
+      }
+    >
+      since {since.sha.slice(0, 7)}: {parts.map(([word, n]) => `${n} ${word}`).join(' · ')}
+    </span>
   );
 }
 

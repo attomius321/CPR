@@ -13,6 +13,8 @@ export interface SymbolData extends Record<string, unknown> {
   tags: string[];
   findings: Record<Severity, number>;
   reviewed: boolean;
+  /** With `--since`: changed the same way as in the earlier version, and those are hidden. */
+  settled: boolean;
 }
 
 export interface SymbolFlowNode {
@@ -62,6 +64,8 @@ export interface FlowOptions {
   focus?: ReadonlySet<string>;
   /** Symbols the reviewer has marked as reviewed. */
   reviewed?: ReadonlySet<string>;
+  /** With `--since`: dim symbols changed the same way as in the earlier version. */
+  sinceOnly?: boolean;
 }
 
 export const NODE_HEIGHT = 58;
@@ -72,7 +76,7 @@ export function toFlow(
   graph: Graph,
   options: FlowOptions = {},
 ): { nodes: FlowNode[]; edges: FlowEdge[] } {
-  const { typeReferences = false, context = true, focus, reviewed } = options;
+  const { typeReferences = false, context = true, focus, reviewed, sinceOnly = false } = options;
   const findings = countFindings(graph);
 
   const visible = graph.nodes.filter(
@@ -182,6 +186,7 @@ export function toFlow(
           : [],
         findings: findings.get(node.id) ?? { error: 0, warning: 0, info: 0 },
         reviewed: reviewed?.has(node.id) ?? false,
+        settled: sinceOnly && node.since === 'same',
       },
     };
   });

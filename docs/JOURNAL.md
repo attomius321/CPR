@@ -555,3 +555,29 @@ The e2e test reloaded the same page, which hid it. The new e2e test restarts `cp
 push (new port) and checks the state is still there.
 
 **Decision**: 17 (review state in the CLI's cache, per change request).
+
+## I2 — `--since`: what changed between two versions of a change (2026-10-01)
+
+**What landed**
+- `analyzeGit({ since })` (all of `cpr diff`, `view`, `pr`): after the main analysis, the
+  earlier version merge-base(base, since)..since is checked out in the same slots and only
+  extracted — same two-pass inference, no references or detectors. Each changed symbol gets
+  `new` / `updated` / `same` by `changeFingerprint` (both sides' signature and body hashes, the
+  string the viewer's I1 marks use); `dropped` lists symbols that version changed and this one
+  doesn't. Extraction was split out of `analyzeSources` (`extractChanges`) for this.
+- Graph schema 0.2.0: top-level `since {ref, sha, dropped}`, node `since`. Goldens differ only
+  in the version.
+- Summary: `since <ref> (<sha>): 2 new, 1 updated · 1 no longer changed: …` and `[status]` per
+  symbol. `cpr pr --since <sha>` fetches the sha from the remote when it is not local (protocol
+  v2 serves reachable SHAs; forges keep old heads after force-pushes).
+- Viewer: "Only changes since <sha>" (on by default) hides `same` symbols from the Changes list,
+  and so from `j`/`k`, and dims them on the canvas; a chip sums it up; `new`/`updated` tags on
+  nodes and in the panel.
+
+**Numbers**: on this repo, G1→I1 (34 files, 123 changed symbols) compared with the G2 head: 54
+new, 22 updated, 47 same, 4 dropped — exactly the helpers I1 deleted. 5.6 s → 8.7 s.
+
+**Learned**: a leading comment added above a declaration leaves its hashes alone (tokens skip
+trivia), so "added a file header" pushes show nothing new — checked in the e2e test.
+
+**Phase 4 is done.** Next: phase 5 — CI for GitHub (C1) and GitLab (C2).

@@ -50,3 +50,24 @@ test('keeps the review across a new push and flags what changed', async ({ page 
   await expect(page.locator('.draft-row')).toContainText('on line 16 of src/shapes.ts');
   await expect(page.locator('.draft-row')).toContainText('Cube only?');
 });
+
+test('opened with --since, walks only what changed since the previous push', async ({ page }) => {
+  // A third push rewrites volume; open it compared with the second.
+  const shapes = fixtureFile('detectors', 'src/shapes.ts')
+    .replace('shape.size * 4', '4 * shape.size')
+    .replace('shape.size ** 3', 'shape.size * shape.size * shape.size');
+  await cpr.push({ 'src/shapes.ts': `// Shapes and tools.\n${shapes}` }, { since: true });
+
+  await page.goto(cpr.url);
+  const only = page.getByLabel(/Only changes since [0-9a-f]{7}/);
+  await expect(only).toBeChecked();
+  await expect(page.locator('.chip-since')).toHaveText(/since [0-9a-f]{7}: 1 updated · 7 same/);
+  await page.getByRole('tab', { name: /Changes/ }).click();
+  await expect(page.locator('.list-link')).toHaveText(['volume']);
+  await page.keyboard.press('j');
+  await expect(page.locator('.panel-title')).toHaveText('volume');
+  await expect(page.locator('.panel-kind')).toContainText('updated since');
+
+  await only.uncheck();
+  await expect(page.locator('.list-link')).toHaveCount(8);
+});

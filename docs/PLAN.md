@@ -237,6 +237,7 @@ cpr diff <base> [head] [options]        head defaults to HEAD
   --project <path>      tsconfig to use, relative to the repo root (default: tsconfig.json)
   --depth <n>           hops of unchanged context (default: 1)
   --no-merge-base       compare base and head directly
+  --since <rev>         mark changed symbols new / updated / same vs an earlier head (I2)
 ```
 
 ```
@@ -244,7 +245,7 @@ cpr view <base> [head] [options]        same analysis, reviewed in the browser
 
   --port <n>            port on 127.0.0.1 (default: any free port)
   --no-open             don't open the browser
-  (plus --no-merge-base, --project, --depth)
+  (plus --no-merge-base, --since, --project, --depth)
 ```
 
 ```
@@ -345,7 +346,7 @@ or oxc in the long run.
 | **1. Engine** | `cpr diff base head` → JSON + findings | All fixture cases pass; runs within budget on the dogfood repos. |
 | **2. Viewer** | `cpr view` serves a local graph UI with per-symbol diffs | You can review a real PR from the graph alone: click a node → see its diff, callers, findings. |
 | **3. GitHub & GitLab** ✅ | `cpr pr 123`: review, comment, approve — pull requests and merge requests | Comments land on the right lines; approve/request-changes works like `gh pr review`, on GitHub and GitLab. |
-| **4. Interdiff** | Show only what changed between PR versions | Re-review after a force-push shows only the new deltas. |
+| **4. Interdiff** ✅ | Show only what changed between PR versions | Re-review after a force-push shows only the new deltas. |
 | **5. CI** | GitHub Action and GitLab CI template that post findings | A pipeline runs on a PR/MR and posts a summary + inline findings, on both forges. |
 
 ### Phase 2 milestones (viewer)
@@ -386,7 +387,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | # | Milestone | Output |
 |---|---|---|
 | I1 ✅ | Review state per change request | Reviewed marks and drafts kept by the CLI per PR/MR (else per revision pair), each with the symbol's fingerprint (both sides' hashes). After a new push, marks on symbols whose fingerprint is the same stay; the others are flagged "↻ changed since you reviewed it". Drafts on unchanged symbols follow them to their new lines; drafts on changed symbols become outdated and go into the summary. |
-| I2 | `--since <sha>` | `cpr pr <n> --since <old head>` (and `cpr diff … --since`): a graph of the symbols that changed between two versions of the change, by symbol hashes, so a rebase that touched nothing in the change shows nothing. |
+| I2 ✅ | `--since <sha>` | `cpr diff`/`view`/`pr … --since <old head>`: each changed symbol is `new`, `updated` or `same` compared with merge-base(base, old head)..old head, by fingerprint (both sides' hashes), so a rebase that touched nothing in the change shows nothing; `since.dropped` lists symbols no longer changed. The earlier version is only extracted (no references): +55 % time on a 34-file change. `cpr pr` fetches the old head from the forge if it is gone locally. The viewer's "Only changes since …" hides `same` symbols from the list (and `j`/`k`) and dims them. |
 
 ### Phase 5 milestones (CI, both forges)
 

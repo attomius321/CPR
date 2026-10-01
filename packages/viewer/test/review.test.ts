@@ -115,3 +115,32 @@ describe('review marks', () => {
     expect(Object.keys(toggleMark(graph, marks, add))).toEqual([add]);
   });
 });
+
+describe('since an earlier version', () => {
+  const graph = golden('callers');
+  const add = 'src/math.ts#add';
+  const since: Graph = {
+    ...graph,
+    since: { ref: 'v1', sha: 'abc', dropped: [] },
+    nodes: graph.nodes.map((n) =>
+      n.status === 'unchanged' ? n : { ...n, since: n.id === add ? 'updated' : 'same' },
+    ),
+  };
+
+  it('can leave out symbols changed the same way as before', () => {
+    const ids = (list: ReturnType<typeof changeList>) =>
+      list.flatMap((f) => f.symbols.map((s) => s.id));
+    expect(ids(changeList(since, { sinceOnly: true }))).toEqual([add]);
+    expect(ids(changeList(since))).toEqual(ids(changeList(graph)));
+  });
+
+  it('dims them on the canvas', () => {
+    const settled = (options: Parameters<typeof toFlow>[1]) =>
+      toFlow(since, options)
+        .nodes.filter((n) => n.type === 'symbol' && n.data.settled)
+        .map((n) => n.id);
+    expect(settled({ sinceOnly: false })).toEqual([]);
+    expect(settled({ sinceOnly: true })).not.toContain(add);
+    expect(settled({ sinceOnly: true }).length).toBeGreaterThan(0);
+  });
+});

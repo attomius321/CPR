@@ -97,6 +97,8 @@ Options:
   --out <file>         Also write the graph JSON to a file
   --fail-on <level>    Exit 1 if a finding is at least: error, warning, info (default: never)
   --no-merge-base      Compare against base directly
+  --since <rev>        Mark each changed symbol new, updated or the same as in an earlier
+                       head of this change (before a push or rebase)
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   -h, --help           Show this help
@@ -110,6 +112,8 @@ Options:
   --port <n>           Port to listen on (default: any free port)
   --no-open            Don't open the browser
   --no-merge-base      Compare against base directly
+  --since <rev>        Mark each changed symbol new, updated or the same as in an earlier
+                       head of this change (before a push or rebase)
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   -h, --help           Show this help
@@ -137,6 +141,8 @@ Options:
   --remote <name>      Remote to read and fetch from (default: origin)
   --port <n>           Viewer port (default: any free port)
   --no-open            Don't open the browser
+  --since <sha>        Mark each changed symbol new, updated or the same as in an earlier
+                       head of this pull/merge request (fetched if needed)
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   -h, --help           Show this help
@@ -207,6 +213,7 @@ function parse<const T extends ParseArgsConfig>(config: T, help: string) {
 /** Options shared by `diff` and `view`: what to compare and how far to look. */
 const ANALYSIS_OPTIONS = {
   'no-merge-base': { type: 'boolean', default: false },
+  since: { type: 'string' },
   project: { type: 'string' },
   depth: { type: 'string', default: '1' },
   help: { type: 'boolean', short: 'h', default: false },
@@ -214,7 +221,12 @@ const ANALYSIS_OPTIONS = {
 
 interface AnalysisArgs {
   positionals: string[];
-  values: { 'no-merge-base': boolean; project?: string | undefined; depth: string };
+  values: {
+    'no-merge-base': boolean;
+    since?: string | undefined;
+    project?: string | undefined;
+    depth: string;
+  };
 }
 
 /** Runs the analysis for `diff`/`view` arguments; returns it with the time it took. */
@@ -241,6 +253,7 @@ async function analyze(
       mergeBase: !values['no-merge-base'],
       depth,
       cacheDir: defaultCacheDir(ctx.env),
+      ...(values.since === undefined ? {} : { since: values.since }),
       ...(values.project === undefined ? {} : { project: values.project }),
     });
     return { analysis, durationMs: Math.round(performance.now() - started) };
@@ -451,6 +464,18 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
   };
   const head = await available(request.head.sha, `${local}/head`);
   const base = await available(request.mergeBase ?? request.base.sha, `${local}/base`);
+  // An earlier head may be gone from every branch after a force-push; forges still serve it.
+  if (values.since !== undefined) {
+    try {
+      await resolveCommit(repo, values.since);
+    } catch {
+      try {
+        await fetchRefs(repo, values.remote, [{ from: values.since, to: `${local}/since` }]);
+      } catch (error) {
+        throw new CprError(`cannot find or fetch --since ${values.since}`, { cause: error });
+      }
+    }
+  }
 
   const { analysis, durationMs } = await analyze(
     // GitLab says which commit it diffs against; for GitHub, merge-base(base, head) is it.

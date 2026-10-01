@@ -1,10 +1,10 @@
 import type { SymbolChange, Delta } from './diff.js';
 import type { ChangedFile } from './git/changed-files.js';
 import type { EdgeKind, Finding, Range, Site, SymbolDecl, SymbolId, SymbolKind } from './model.js';
-import type { Analysis, ContextSymbol } from './pipeline.js';
+import type { Analysis, ContextSymbol, SinceStatus } from './pipeline.js';
 
 /** Version of the graph JSON contract. See docs/graph-schema.md. */
-export const SCHEMA_VERSION = '0.1.0';
+export const SCHEMA_VERSION = '0.2.0';
 
 export interface GraphSide {
   file: string;
@@ -25,6 +25,8 @@ export interface GraphNode {
   previousId: SymbolId | null;
   base: GraphSide | null;
   head: GraphSide | null;
+  /** Changed symbols, when compared with an earlier version of the change. */
+  since?: SinceStatus;
 }
 
 export interface GraphEdge {
@@ -53,6 +55,8 @@ export interface Graph {
   generator: { name: string; version: string };
   changeRequest?: GraphChangeRequest;
   revisions: Analysis['revisions'];
+  /** The earlier version of the change the nodes' `since` compares with. */
+  since?: { ref: string; sha: string; dropped: SymbolId[] };
   files: (ChangedFile & { ignored?: true })[];
   nodes: GraphNode[];
   edges: GraphEdge[];
@@ -90,11 +94,24 @@ export function buildGraph(analysis: Analysis, options: BuildGraphOptions): Grap
     generator: options.generator,
     ...(options.changeRequest ? { changeRequest: options.changeRequest } : {}),
     revisions: analysis.revisions,
+    ...(analysis.since
+      ? {
+          since: {
+            ref: analysis.since.ref,
+            sha: analysis.since.sha,
+            dropped: analysis.since.dropped,
+          },
+        }
+      : {}),
     files: analysis.files.map((file) =>
       ignored.has(file.path) ? { ...file, ignored: true } : file,
     ),
     nodes: [
-      ...changed.map((change) => changeNode(change, language)),
+      ...changed.map((change) => {
+        const node = changeNode(change, language);
+        const since = analysis.since?.symbols[change.id];
+        return since ? { ...node, since } : node;
+      }),
       ...analysis.context.map((context) =>
         contextNode(context, unchanged.get(context.id), language),
       ),

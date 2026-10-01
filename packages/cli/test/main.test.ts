@@ -140,7 +140,7 @@ describe('cpr diff', () => {
       expect(result.stdout).toContain('4 files · 3 symbols changed · 1 findings');
       expect(result.opened).toHaveLength(1);
       expect(seen['']).toBe('200 <!doctype html><title>viewer</title>');
-      expect(seen['api/graph']).toMatch(/^200 \{"schemaVersion":"0\.1\.0"/);
+      expect(seen['api/graph']).toMatch(/^200 \{"schemaVersion":"0\.\d+\.\d+"/);
       expect(seen['api/source?side=head&file=src/a.ts']).toBe('200 export const a = 2;\n');
       expect(seen['api/source?side=base&file=src/a.ts']).toBe('200 export const a = 1;\n');
     } finally {

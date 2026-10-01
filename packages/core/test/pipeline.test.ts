@@ -5,6 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   analyzeDirectories,
   analyzeGit,
+  buildGraph,
   listChangedFilesInDirectories,
   type SymbolChange,
 } from '../src/index.js';
@@ -185,5 +186,53 @@ describe('analyzeGit', () => {
     const analysis = await analyzeGit({ cwd: repo.root, base: 'HEAD~1', head: 'HEAD', cacheDir });
     expect(analysis.files).toEqual([{ status: 'modified', path: 'notes.md' }]);
     expect(analysis.changes).toEqual([]);
+  });
+});
+
+describe('analyzeGit with since', () => {
+  const repo = createRepo();
+  const cacheDir = tempDir();
+  afterAll(() => {
+    repo.cleanup();
+    rmSync(cacheDir, { recursive: true, force: true });
+  });
+
+  const fn = (name: string, body: string) =>
+    `export function ${name}(x: number) {\n  return ${body};\n}\n`;
+
+  it('marks symbols new, updated or the same as in the earlier version, across a rebase', async () => {
+    repo.write({ 'src/a.ts': fn('f', 'x + 1') + fn('g', 'x * 2') + fn('h', 'x - 1') });
+    repo.commit('base');
+    // v1: f and h change, k is added.
+    repo.git('switch', '--quiet', '--create', 'v1');
+    repo.write({
+      'src/a.ts': fn('f', 'x + 2') + fn('g', 'x * 2') + fn('h', 'x - 2') + fn('k', 'x'),
+    });
+    repo.commit('v1');
+    // main moves on; v2 is rebuilt on it: f the same, g now changed, h left alone, k reworked.
+    repo.git('switch', '--quiet', 'main');
+    repo.write({ 'src/b.ts': fn('unrelated', 'x') });
+    repo.commit('main moves on');
+    repo.git('switch', '--quiet', '--create', 'v2');
+    repo.write({
+      'src/a.ts': fn('f', 'x + 2') + fn('g', 'x * 3') + fn('h', 'x - 1') + fn('k', '-x'),
+    });
+    repo.commit('v2');
+
+    const analysis = await analyzeGit({
+      cwd: repo.root,
+      base: 'main',
+      head: 'v2',
+      since: 'v1',
+      cacheDir,
+    });
+    expect(analysis.since).toMatchObject({
+      ref: 'v1',
+      symbols: { 'src/a.ts#f': 'same', 'src/a.ts#g': 'new', 'src/a.ts#k': 'updated' },
+      dropped: ['src/a.ts#h'],
+    });
+    const graph = buildGraph(analysis, { generator: { name: 'cpr', version: 'test' } });
+    expect(graph.since).toEqual({ ref: 'v1', sha: analysis.since?.sha, dropped: ['src/a.ts#h'] });
+    expect(graph.nodes.find((n) => n.id === 'src/a.ts#g')?.since).toBe('new');
   });
 });

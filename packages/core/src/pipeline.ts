@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import type { LanguageAdapter, LoadOptions } from './adapter.js';
 import { linkNodeModules } from './deps.js';
 import { runDetectors } from './detectors.js';
-import { diffSymbols, type SymbolChange } from './diff.js';
+import { changeFingerprint, diffSymbols, type SymbolChange } from './diff.js';
 import { listChangedFilesInDirectories } from './fs-diff.js';
 import { listChangedFiles, type ChangedFile } from './git/changed-files.js';
 import { openRepo } from './git/repo.js';
@@ -10,6 +10,7 @@ import { resolveRevisions } from './git/revisions.js';
 import { checkoutRevision } from './git/worktree.js';
 import { loadIgnores } from './ignore.js';
 import { typescriptAdapter } from './lang/typescript/index.js';
+import type { GitRepo } from './git/repo.js';
 import type {
   Edge,
   EdgeRef,
@@ -36,8 +37,23 @@ export interface ContextSymbol {
   decl: SymbolDecl | null;
 }
 
+/** How a symbol's change compares with an earlier version of the same change. */
+export type SinceStatus = 'new' | 'updated' | 'same';
+
+/** The comparison with an earlier version of the change (`since`). */
+export interface SinceInfo {
+  ref: string;
+  sha: string;
+  /** Every changed symbol: changed only now, changed differently, or changed the same way. */
+  symbols: Record<SymbolId, SinceStatus>;
+  /** Symbols that version changed and this one no longer does. */
+  dropped: SymbolId[];
+}
+
 export interface Analysis {
   revisions: RevisionsInfo;
+  /** Present when compared with an earlier version of the change. */
+  since?: SinceInfo;
   files: ChangedFile[];
   changes: SymbolChange[];
   edges: Edge[];
@@ -68,6 +84,11 @@ export interface AnalyzeGitOptions extends AnalyzeOptions {
   mergeBase?: boolean;
   /** Worktree cache root. Default: the platform cache folder. */
   cacheDir?: string;
+  /**
+   * An earlier head of the same change (before a push or rebase): each changed symbol is then
+   * marked new, updated or the same compared with merge-base(base, since)..since.
+   */
+  since?: string;
 }
 
 /** Compares two git revisions of the repository containing `cwd`. */
@@ -77,29 +98,86 @@ export async function analyzeGit(options: AnalyzeGitOptions): Promise<Analysis> 
     ...(options.mergeBase === undefined ? {} : { mergeBase: options.mergeBase }),
   });
   const files = await listChangedFiles(repo, revisions.from, revisions.head.sha);
-  if (!files.some((file) => isRelevant(file, options.adapter ?? typescriptAdapter))) {
-    return { revisions, files, ...EMPTY };
-  }
+  const analysis: Analysis = files.some((file) =>
+    isRelevant(file, options.adapter ?? typescriptAdapter),
+  )
+    ? {
+        revisions,
+        files,
+        ...(await withCheckouts(repo, revisions.from, revisions.head.sha, options, (base, head) =>
+          analyzeSources(base, head, files, options),
+        )),
+      }
+    : { revisions, files, ...EMPTY };
 
+  if (options.since !== undefined) {
+    const started = performance.now();
+    analysis.since = await compareSince(repo, analysis, options.since, options);
+    analysis.timings.since = Math.round(performance.now() - started);
+  }
+  return analysis;
+}
+
+/** Checks out both revisions (with the user's dependencies linked) for the time of `work`. */
+async function withCheckouts<T>(
+  repo: GitRepo,
+  baseSha: string,
+  headSha: string,
+  options: AnalyzeGitOptions,
+  work: (base: RevisionSource, head: RevisionSource) => Promise<T>,
+): Promise<T> {
   const checkout = (sha: string, role: string) =>
     checkoutRevision(repo, sha, {
       role,
       ...(options.cacheDir === undefined ? {} : { cacheDir: options.cacheDir }),
     });
-  const base = await checkout(revisions.from, 'base');
+  const base = await checkout(baseSha, 'base');
   try {
-    const head = await checkout(revisions.head.sha, 'head');
+    const head = await checkout(headSha, 'head');
     try {
       // Slots have no installed dependencies; borrow the user's.
       await linkNodeModules(repo.root, base.root);
       await linkNodeModules(repo.root, head.root);
-      return { revisions, files, ...(await analyzeSources(base, head, files, options)) };
+      return await work(base, head);
     } finally {
       await head.dispose();
     }
   } finally {
     await base.dispose();
   }
+}
+
+/**
+ * Compares each changed symbol with the earlier version of the change: that version's symbols
+ * are only extracted (no references), with the same inference rules, so equal code hashes equal.
+ */
+async function compareSince(
+  repo: GitRepo,
+  analysis: Analysis,
+  since: string,
+  options: AnalyzeGitOptions,
+): Promise<SinceInfo> {
+  const earlier = await resolveRevisions(repo, options.base, since, { mergeBase: true });
+  const files = await listChangedFiles(repo, earlier.from, earlier.head.sha);
+  const changes = files.some((file) => isRelevant(file, options.adapter ?? typescriptAdapter))
+    ? await withCheckouts(repo, earlier.from, earlier.head.sha, options, async (base, head) => {
+        const extracted = await extractChanges(base, head, files, options);
+        return extracted?.changes ?? [];
+      })
+    : [];
+  const before = new Map(
+    changes.filter((c) => c.status !== 'unchanged').map((c) => [c.id, changeFingerprint(c)]),
+  );
+
+  const symbols: Record<SymbolId, SinceStatus> = {};
+  for (const change of analysis.changes) {
+    if (change.status === 'unchanged') continue;
+    const print = before.get(change.id);
+    symbols[change.id] =
+      print === undefined ? 'new' : print === changeFingerprint(change) ? 'same' : 'updated';
+    before.delete(change.id);
+  }
+  return { ref: since, sha: earlier.head.sha, symbols, dropped: [...before.keys()].sort() };
 }
 
 /** Compares two folders, e.g. test fixtures. */
@@ -137,12 +215,26 @@ const EMPTY: SourceAnalysis = {
   timings: {},
 };
 
-async function analyzeSources(
+interface Extracted<L = unknown> {
+  adapter: LanguageAdapter<L>;
+  baseRev: L;
+  headRev: L;
+  relevant: ChangedFile[];
+  ignored: string[];
+  changes: SymbolChange[];
+  timings: Record<string, number>;
+}
+
+/**
+ * Loads both revisions and extracts and diffs the symbols of the changed files. Undefined when
+ * no changed file is analyzable (`ignored` still applies).
+ */
+async function extractChanges(
   base: RevisionSource,
   head: RevisionSource,
   files: readonly ChangedFile[],
-  { adapter = typescriptAdapter, depth = 1, ...load }: AnalyzeOptions,
-): Promise<SourceAnalysis> {
+  { adapter = typescriptAdapter, ...load }: AnalyzeOptions,
+): Promise<Extracted | { ignored: string[]; changes?: undefined }> {
   const isIgnored = loadIgnores(head.root);
   const ignored = files
     .filter((file) => isIgnored(file.path) && (!file.previousPath || isIgnored(file.previousPath)))
@@ -150,7 +242,7 @@ async function analyzeSources(
   const relevant = files.filter(
     (file) => isRelevant(file, adapter) && !ignored.includes(file.path),
   );
-  if (relevant.length === 0) return { ...EMPTY, ignored };
+  if (relevant.length === 0) return { ignored };
 
   const baseFiles = relevant.flatMap((file) =>
     file.status === 'added' || file.status === 'copied'
@@ -189,6 +281,25 @@ async function analyzeSources(
   const headSymbols = adapter.extract(headRev, headFiles, { infer });
   const changes = diffSymbols({ base: baseSymbols, head: headSymbols, renames });
   lap('extract');
+  return { adapter, baseRev, headRev, relevant, ignored, changes, timings };
+}
+
+async function analyzeSources(
+  base: RevisionSource,
+  head: RevisionSource,
+  files: readonly ChangedFile[],
+  options: AnalyzeOptions,
+): Promise<SourceAnalysis> {
+  const extracted = await extractChanges(base, head, files, options);
+  if (extracted.changes === undefined) return { ...EMPTY, ignored: extracted.ignored };
+  const { adapter, baseRev, headRev, relevant, ignored, changes, timings } = extracted;
+  const depth = options.depth ?? 1;
+  let mark = performance.now();
+  const lap = (phase: string) => {
+    const now = performance.now();
+    timings[phase] = Math.round(now - mark);
+    mark = now;
+  };
 
   // References around every changed symbol, on the side(s) where it exists.
   const refs = { base: [] as EdgeRef[], head: [] as EdgeRef[] };

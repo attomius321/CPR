@@ -109,6 +109,11 @@ export function DetailPanel({
         <div>
           <div className="panel-kind">
             {node.kind} · <span className={`status tone-${tone(node)}`}>{tone(node)}</span>
+            {(node.since === 'new' || node.since === 'updated') && (
+              <span className="tag tag-since">
+                {node.since} since {graph.since?.sha.slice(0, 7)}
+              </span>
+            )}
             {node.delta &&
               Object.entries(node.delta)
                 .filter(([, on]) => on)

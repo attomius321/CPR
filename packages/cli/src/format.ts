@@ -23,7 +23,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Human summary: revisions, then each changed file with its changed symbols. */
 export function formatAnalysis(
-  { revisions, files, changes, edges, findings, ignored }: Analysis,
+  { revisions, files, changes, edges, findings, ignored, since }: Analysis,
   changeRequest?: Graph['changeRequest'],
 ): string {
   const { base, head } = revisions;
@@ -48,8 +48,21 @@ export function formatAnalysis(
   lines.push(
     `${plural(files.length, 'file')} changed · ${plural(changed.length, 'symbol')} changed` +
       (parts.length ? `: ${parts.map(([word, n]) => `${n} ${word}`).join(', ')}` : ''),
-    '',
   );
+  if (since) {
+    const statuses = Object.values(since.symbols);
+    const tally = (['new', 'updated', 'same'] as const)
+      .map((status) => [status, statuses.filter((s) => s === status).length] as const)
+      .filter(([, n]) => n > 0)
+      .map(([status, n]) => `${n} ${status}`);
+    const dropped = since.dropped.length
+      ? ` · ${since.dropped.length} no longer changed: ${since.dropped.join(', ')}`
+      : '';
+    lines.push(
+      `since ${side(since.ref, since.sha)}: ${tally.join(', ') || 'nothing changed'}${dropped}`,
+    );
+  }
+  lines.push('');
 
   if (findings.length > 0) lines.push(...formatFindings(findings), '');
 
@@ -59,7 +72,10 @@ export function formatAnalysis(
     const skipped = ignored.includes(file.path) ? '  (ignored)' : '';
     lines.push(`${LETTER[file.status]}  ${from}${file.path}${skipped}`);
     for (const change of byFile.get(file.path) ?? []) {
-      lines.push(`     ${formatChange(change, users(change, edges))}`);
+      const status = since?.symbols[change.id];
+      lines.push(
+        `     ${formatChange(change, users(change, edges))}${status ? `  [${status}]` : ''}`,
+      );
     }
   }
   return `${lines.join('\n')}\n`;
