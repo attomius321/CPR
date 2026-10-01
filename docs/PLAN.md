@@ -310,6 +310,16 @@ or oxc in the long run.
 | **4. Interdiff** | Show only what changed between PR versions | Re-review after a force-push shows only the new deltas. |
 | **5. CI** | GitHub Action that posts findings | Action runs on a PR and posts a summary + inline findings. |
 
+### Phase 2 milestones (viewer)
+
+| # | Milestone | Output |
+|---|---|---|
+| V1 ✅ | Viewer app | Vite + React + React Flow app rendering a graph JSON: changed symbols colored by status, context dimmed, edges by side, finding badges, layered layout. Load by URL or drag & drop. |
+| V2 | `cpr view` | CLI runs the analysis, serves the built viewer plus `/api/graph` and `/api/source`, opens the browser. |
+| V3 | Symbol detail | Click a node → base/head source of the symbol side by side, what changed, users and callees, findings. |
+| V4 | Review flow | Findings list, filters (type references hidden by default, externals grouped by package), mark symbols reviewed, keyboard navigation. |
+| V5 | Viewer dogfood | Playwright end-to-end tests; review real commits of ky/zod/vite in the viewer. |
+
 **Later:** more languages via adapters, a faster core (TS 7 adapter or Rust/oxc), self-hosted team mode.
 
 ### Phase 1 milestones

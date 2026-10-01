@@ -24,6 +24,11 @@ M  src/math.ts
      + function    triple
 ```
 
+![CPR viewer: changed symbols boxed by file, colored by status, with finding badges](docs/images/viewer.png)
+
+The viewer (`packages/viewer`) draws the same graph: one box per file, symbols colored by what
+changed, findings as badges, removed edges dashed. Open it with a graph from `cpr diff --out`.
+
 TypeScript and JavaScript for now. Symbols in `fixtures/`, `generated/` and similar folders are not analyzed; add a `.cprignore` (gitignore syntax) to change that.
 
 - [Plan](docs/PLAN.md) · [Journal](docs/JOURNAL.md) · [Graph schema](docs/graph-schema.md)
