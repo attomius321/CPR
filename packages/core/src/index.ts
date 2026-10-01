@@ -18,3 +18,6 @@ export {
   type FileChangeStatus,
 } from './git/changed-files.js';
 export { checkoutRevision, defaultCacheDir, type CheckoutOptions } from './git/worktree.js';
+export type { Position, Range, SymbolDecl, SymbolId, SymbolKind } from './model.js';
+export type { LanguageAdapter, LoadOptions } from './adapter.js';
+export { typescriptAdapter, type TsRevision } from './lang/typescript/index.js';

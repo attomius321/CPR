@@ -4,3 +4,4 @@ pnpm-lock.yaml
 packages/*/test/fixtures
 # Docs keep hand-written table layout.
 *.md
+**/__snapshots__

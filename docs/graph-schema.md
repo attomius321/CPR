@@ -82,6 +82,7 @@ One per symbol in the graph: every changed symbol, plus unchanged **context** sy
 | `delta` | object \| absent | Present only when `status` is `modified`. At least one flag is `true`. |
 | `base` / `head` | object \| null | `base` is null for `added`, `head` is null for `removed`. |
 | `previousId` | string \| null | The base ID when the symbol was moved or renamed. |
+| `hashes` | object | `signature` and `body`, 16 hex chars each. `body` is `""` when the symbol has no body (interfaces, types, enums, abstract methods). |
 
 `unchanged` nodes are context only. `external` nodes are symbols from `node_modules` or
 the standard library; they are leaves with no `base`/`head` ranges.

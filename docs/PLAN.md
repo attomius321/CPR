@@ -1,6 +1,20 @@
 # CPR — Plan (draft v0.1)
 
-> Status: first planning draft. Settled decisions are listed in §14.
+> Status: living plan. Settled decisions are in §14; what we learn along the way is in
+> [JOURNAL.md](./JOURNAL.md).
+
+## North Star
+
+**Review decisions, not lines.** Every feature must help a reviewer answer, faster than
+reading the diff:
+
+1. **What changed in behavior or contract?** (added, removed, signature, body)
+2. **Who is affected?** (callers, blast radius)
+3. **What is risky?** (findings)
+
+Tie-breakers when trading off: precise beats complete (a wrong finding costs more trust than a
+missing one), explainable beats clever (every finding links to code), local and fast beats
+hosted.
 
 ## 1. Why
 
@@ -126,34 +140,42 @@ resolve refs → changed files → load projects → extract → hash → diff
 | Included | ID example |
 |---|---|
 | Top-level function | `src/a.ts#parse` |
-| Exported or top-level `const` arrow / function expression | `src/a.ts#handler` |
-| Class, its methods, constructor, accessors, properties | `src/a.ts#User`, `src/a.ts#User.save`, `src/a.ts#User.constructor` |
+| Top-level variable; a function-valued one (`const f = () => …`) has kind `function` | `src/a.ts#handler`, `src/a.ts#config` |
+| Each name in a destructuring declaration | `const { a, b: [c] } = …` → `#a`, `#c` |
+| Class, its methods, constructor, accessors (get+set = one symbol), properties | `src/a.ts#User`, `src/a.ts#User.save`, `src/a.ts#User.constructor` |
+| Class property holding a function (`handle = () => …`) has kind `method` | `src/a.ts#User.handle` |
 | Interface, type alias, enum | `src/a.ts#UserDto` |
-| Namespace members | `src/a.ts#Utils.slugify` |
-| Default export | `src/a.ts#default` (or its name, if it has one) |
+| Namespace and its members (`namespace A.B` nests) | `src/a.ts#Utils.slugify`, `src/a.ts#A.B.x` |
+| Default export: unnamed function/class/expression | `src/a.ts#default` (or its name, if it has one) |
 
 Nested functions and callbacks are **folded into their parent's body** in v1.
 A change inside them shows up as a body change of the parent.
+
+Not yet extracted: CommonJS exports (`module.exports = …`, `exports.x = …`), ambient
+`declare module 'x'` blocks, `export =`. Declaration files (`.d.ts`) and `*.min.js` are skipped.
 
 ### 6.2 Stable IDs
 
 Format: `<repo-relative POSIX path>#<qualified name>`.
 
 - Function overloads are one symbol; all overload signatures go into its signature hash.
-- Static and instance members with the same name: `User.save` vs `User.static:save`.
+- Static members always carry a `static:` prefix (`User.static:create`), so they never
+  collide with instance members and IDs don't change when a same-named member appears.
 - Computed or symbol-keyed members: `User.[Symbol.iterator]`.
 - Anonymous default export: `#default`.
 - Declaration merging (interface + namespace with one name): one ID, kinds listed together.
 
 ### 6.3 Hashing
 
-Both hashes are computed from **normalized AST text**: comments and whitespace removed,
-so formatting-only edits do not count as changes.
+Both hashes are computed from **normalized AST tokens**, so formatting-only edits do not count
+as changes. Ignored: whitespace, comments, JSDoc, quote style (`'a'` = `"a"` = `` `a` ``),
+trailing commas, statement and member terminators (`;` / `,`), parentheses around a single
+arrow parameter. Still counted (journaled): redundant parentheses around expressions.
 
 | Hash | Input |
 |---|---|
-| `signatureHash` | name, modifiers (`export`, `async`, `static`, visibility, `abstract`), type params, params (name, optional, type), declared return type, heritage clauses for classes |
-| `bodyHash` | function/method body; initializer for variables; member list for interfaces/types/enums |
+| `signatureHash` | exported or not (however it is exported), decorators, modifiers (`async`, `static`, visibility, `abstract`, `readonly`), name, type params, params (name, optional, type, default), declared or inferred return type, heritage clauses for classes. **Interfaces, type aliases and enums: the whole declaration** — their shape *is* their contract. |
+| `bodyHash` | function/method body; initializer for variables and properties; for classes and namespaces, the sorted list of member names. Empty string when there is no body (types, abstract methods). |
 
 A class's own change comes from its heritage and member list. Member edits show on the members.
 
@@ -256,7 +278,7 @@ or oxc in the long run.
 |---|---|---|
 | M0 ✅ | Scaffolding | pnpm workspace, TS strict, vitest, eslint, prettier, CI on push |
 | M1 ✅ | Git layer | ref resolve, merge-base, changed files, worktree cache |
-| M2 | Extraction | symbol IDs + both hashes, fixture tests |
+| M2 ✅ | Extraction | symbol IDs + both hashes, fixture tests |
 | M3 | Diff + moves | change classification, exact move matching |
 | M4 | References | incoming/outgoing edges, alias resolution, context nodes |
 | S1 | TS 7 spike | Prototype adapter on `typescript/unstable/sync`; compare speed and results with ts-morph on fixtures and dogfood repos |
