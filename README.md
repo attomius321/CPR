@@ -31,6 +31,10 @@ The viewer (`packages/viewer`) draws the same graph: one box per file, symbols c
 changed, findings as badges, removed edges dashed. `cpr view main` opens it; it also accepts a
 graph file from `cpr diff --out` (drag and drop).
 
+Click a symbol to see what changed in it, its findings, and who uses it:
+
+![Detail panel: findings, old and new signature, a line diff of just this method, its users and callees](docs/images/viewer-detail.png)
+
 TypeScript and JavaScript for now. Symbols in `fixtures/`, `generated/` and similar folders are not analyzed; add a `.cprignore` (gitignore syntax) to change that.
 
 - [Plan](docs/PLAN.md) · [Journal](docs/JOURNAL.md) · [Graph schema](docs/graph-schema.md)

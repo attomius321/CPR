@@ -1,14 +1,27 @@
-import { Background, Controls, MiniMap, ReactFlow, type Edge, type Node } from '@xyflow/react';
+import {
+  Background,
+  Controls,
+  MiniMap,
+  ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
+  type Edge,
+  type Node,
+} from '@xyflow/react';
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
 import type { Graph } from '@cpr/core';
-import { toFlow, type SymbolData } from './flow.js';
+import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
+import { toFlow, type FlowEdge, type FlowNode, type SymbolData } from './flow.js';
 import { SymbolNode } from './SymbolNode.js';
 
 const nodeTypes = { symbol: SymbolNode, file: FileNode };
 
 type State =
-  { status: 'loading' } | { status: 'empty'; error?: string } | { status: 'ready'; graph: Graph };
+  | { status: 'loading' }
+  | { status: 'empty'; error?: string }
+  /** `sources`: opened through `cpr view`, so `/api/source` exists. */
+  | { status: 'ready'; graph: Graph; sources: boolean };
 
 /** Where the graph comes from: `?graph=<url>`, else `cpr view`'s API. */
 function graphUrl(): string {
@@ -19,19 +32,24 @@ export function App() {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [typeReferences, setTypeReferences] = useState(false);
   const [context, setContext] = useState(true);
+  const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(graphUrl())
+    const url = graphUrl();
+    fetch(url)
       .then(async (response) => {
         if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-        setState({ status: 'ready', graph: (await response.json()) as Graph });
+        const graph = (await response.json()) as Graph;
+        setState({ status: 'ready', graph, sources: url === './api/graph' });
       })
       .catch(() => setState({ status: 'empty' }));
   }, []);
 
   const load = useCallback(async (file: File) => {
     try {
-      setState({ status: 'ready', graph: JSON.parse(await file.text()) as Graph });
+      const graph = JSON.parse(await file.text()) as Graph;
+      setState({ status: 'ready', graph, sources: false });
+      setSelected(null);
     } catch (error) {
       setState({ status: 'empty', error: `Not a CPR graph: ${(error as Error).message}` });
     }
@@ -83,29 +101,83 @@ export function App() {
         {state.status === 'empty' && (
           <DropZone error={state.error} onFile={(file) => void load(file)} />
         )}
-        {flow && (
-          <ReactFlow<Node, Edge>
-            nodes={flow.nodes}
-            edges={flow.edges}
-            nodeTypes={nodeTypes}
-            fitView
-            colorMode="system"
-            minZoom={0.1}
-            nodesConnectable={false}
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background gap={24} />
-            <Controls showInteractive={false} />
-            <MiniMap
-              pannable
-              zoomable
-              nodeClassName={(n) => `minimap-${(n.data as SymbolData).tone}`}
+        {flow && state.status === 'ready' && (
+          <ReactFlowProvider>
+            <Canvas
+              nodes={flow.nodes}
+              edges={flow.edges}
+              selected={selected}
+              onSelect={setSelected}
             />
-          </ReactFlow>
+            {selected && (
+              <DetailPanel
+                graph={state.graph}
+                id={selected}
+                sources={state.sources}
+                onSelect={setSelected}
+                onClose={() => setSelected(null)}
+              />
+            )}
+          </ReactFlowProvider>
         )}
       </main>
       {flow && <Legend />}
     </div>
+  );
+}
+
+interface CanvasProps {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+  selected: string | null;
+  onSelect: (id: string | null) => void;
+}
+
+/** The graph; brings the selected symbol into view when it changes. Esc clears it. */
+function Canvas({ nodes, edges, selected, onSelect }: CanvasProps) {
+  const { fitView } = useReactFlow();
+  useEffect(() => {
+    if (selected) void fitView({ nodes: [{ id: selected }], duration: 300, maxZoom: 1.1 });
+  }, [selected, fitView]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onSelect(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onSelect]);
+
+  const marked = useMemo(
+    () => nodes.map((n) => (n.type === 'symbol' ? { ...n, selected: n.id === selected } : n)),
+    [nodes, selected],
+  );
+
+  return (
+    <ReactFlow<Node, Edge>
+      nodes={marked}
+      edges={edges}
+      nodeTypes={nodeTypes}
+      fitView
+      colorMode="system"
+      minZoom={0.1}
+      nodesConnectable={false}
+      onNodeClick={(_, node) => {
+        if (node.type === 'symbol') onSelect(node.id);
+      }}
+      onPaneClick={() => onSelect(null)}
+      proOptions={{ hideAttribution: true }}
+    >
+      <Background gap={24} />
+      <Controls showInteractive={false} />
+      <MiniMap
+        pannable
+        zoomable
+        nodeClassName={(n) =>
+          n.type === 'symbol' ? `minimap-${(n.data as SymbolData).tone}` : 'minimap-file'
+        }
+      />
+    </ReactFlow>
   );
 }
 
@@ -170,6 +242,7 @@ function Legend() {
       )}
       <span className="legend-edge edge-head">added edge</span>
       <span className="legend-edge edge-base">removed edge</span>
+      <span className="legend-hint">click a symbol for details · Esc to close</span>
     </footer>
   );
 }
