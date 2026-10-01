@@ -827,3 +827,20 @@ kbd {
   font: inherit;
   cursor: pointer;
 }
+
+.request {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  max-width: 40vw;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.request:hover {
+  text-decoration: underline;
+}

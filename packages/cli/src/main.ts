@@ -1,20 +1,26 @@
-import { createRequire } from 'node:module';
-import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
+import { parseArgs, type ParseArgsConfig } from 'node:util';
 import {
   analyzeGit,
   buildGraph,
   CprError,
+  defaultCacheDir,
+  fetchRefs,
   NoMergeBaseError,
   openRepo,
   readFileAtRevision,
+  remoteUrl,
+  resolveCommit,
   SCHEMA_VERSION,
   type Analysis,
+  type Graph,
   type Severity,
 } from '@cpr/core';
+import { detectForge } from '@cpr/forge';
 import { formatAnalysis } from './format.js';
 import { startViewServer } from './server.js';
 
@@ -29,6 +35,8 @@ export interface CliContext {
   openUrl: (url: string) => void;
   /** Resolves when a long-running command (`view`) should stop: Ctrl+C. */
   waitForExit: () => Promise<void>;
+  /** Environment: tokens, API URLs, `CPR_*` settings. */
+  env: Readonly<Record<string, string | undefined>>;
 }
 
 const processContext = (): CliContext => ({
@@ -36,6 +44,7 @@ const processContext = (): CliContext => ({
   stdout: (text) => process.stdout.write(text),
   stderr: (text) => process.stderr.write(text),
   openUrl,
+  env: process.env,
   waitForExit: () =>
     new Promise((resolve) => {
       process.once('SIGINT', () => resolve());
@@ -67,6 +76,7 @@ const HELP = `Usage: cpr <command> [options]
 Commands:
   diff <base> [head]   Compare head (default: HEAD) against base
   view <base> [head]   Same comparison, reviewed in the browser
+  pr <number>          Review a GitHub pull request or GitLab merge request (alias: mr)
 
 Options:
   -h, --help           Show this help
@@ -101,6 +111,28 @@ Options:
   -h, --help           Show this help
 `;
 
+const PR_HELP = `Usage: cpr pr <number> [options]      (alias: cpr mr)
+
+Reviews a GitHub pull request or GitLab merge request of the \`origin\` remote: reads it
+through the forge's API, fetches its head and target branch, and opens the viewer.
+
+Tokens: GITHUB_TOKEN / GH_TOKEN (or gh auth login) · GITLAB_TOKEN.
+API overrides: GITHUB_API_URL · GITLAB_API_URL.
+
+Options:
+  --summary            Print the summary instead of opening the viewer
+  --json               Print the graph JSON instead of opening the viewer
+  --out <file>         Also write the graph JSON to a file
+  --fail-on <level>    Exit 1 if a finding is at least: error, warning, info
+  --forge <name>       github or gitlab, for hosts whose name doesn't say
+  --remote <name>      Remote to read and fetch from (default: origin)
+  --port <n>           Viewer port (default: any free port)
+  --no-open            Don't open the browser
+  --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
+  --depth <n>          Hops of unchanged callers/callees to include (default: 1)
+  -h, --help           Show this help
+`;
+
 /** Runs the CLI and returns the process exit code: 0 ok, 1 failure, 2 usage error. */
 export async function run(
   argv: readonly string[],
@@ -120,6 +152,7 @@ export async function run(
   try {
     if (command === 'diff') return await diff(rest, ctx);
     if (command === 'view') return await view(rest, ctx);
+    if (command === 'pr' || command === 'mr') return await pr(rest, ctx);
   } catch (error) {
     if (error instanceof UsageError) {
       ctx.stderr(`cpr ${command}: ${error.message}\n\n${error.help}`);
@@ -198,6 +231,7 @@ async function analyze(
       head,
       mergeBase: !values['no-merge-base'],
       depth,
+      cacheDir: defaultCacheDir(ctx.env),
       ...(values.project === undefined ? {} : { project: values.project }),
     });
     return { analysis, durationMs: Math.round(performance.now() - started) };
@@ -211,37 +245,55 @@ async function analyze(
   }
 }
 
-async function diff(argv: string[], ctx: CliContext): Promise<number> {
-  const { values, positionals } = parse(
-    {
-      args: argv,
-      allowPositionals: true,
-      options: {
-        ...ANALYSIS_OPTIONS,
-        json: { type: 'boolean', default: false },
-        out: { type: 'string' },
-        'fail-on': { type: 'string' },
-      },
-    },
-    DIFF_HELP,
-  );
-  if (values.help) {
-    ctx.stdout(DIFF_HELP);
-    return 0;
-  }
+const REPORT_OPTIONS = {
+  json: { type: 'boolean', default: false },
+  out: { type: 'string' },
+  'fail-on': { type: 'string' },
+} as const;
 
-  const failOn = values['fail-on'];
+const SERVE_OPTIONS = {
+  port: { type: 'string', default: '0' },
+  'no-open': { type: 'boolean', default: false },
+} as const;
+
+interface ReportArgs {
+  json: boolean;
+  out?: string | undefined;
+  'fail-on'?: string | undefined;
+}
+
+interface ServeArgs {
+  port: string;
+  'no-open': boolean;
+}
+
+function checkFailOn(failOn: string | undefined, help: string): void {
   if (failOn !== undefined && !SEVERITIES.includes(failOn as Severity)) {
-    throw new UsageError(`--fail-on must be error, warning or info, got '${failOn}'`, DIFF_HELP);
+    throw new UsageError(`--fail-on must be error, warning or info, got '${failOn}'`, help);
   }
+}
 
-  const { analysis, durationMs } = await analyze({ positionals, values }, ctx, DIFF_HELP);
-  const graph = buildGraph(analysis, { generator: { name: 'cpr', version }, durationMs });
+function checkPort(port: string, help: string): number {
+  const value = Number(port);
+  if (!Number.isInteger(value) || value < 0 || value > 65535) {
+    throw new UsageError(`--port must be a port number, got '${port}'`, help);
+  }
+  return value;
+}
+
+/** Prints the summary or the graph JSON, writes `--out`, applies `--fail-on`. */
+async function report(
+  analysis: Analysis,
+  graph: Graph,
+  args: ReportArgs,
+  ctx: CliContext,
+): Promise<number> {
   const json = `${JSON.stringify(graph, null, 2)}\n`;
-  if (values.out !== undefined) await writeFile(resolve(ctx.cwd, values.out), json);
-  ctx.stdout(values.json ? json : formatAnalysis(analysis));
+  if (args.out !== undefined) await writeFile(resolve(ctx.cwd, args.out), json);
+  ctx.stdout(args.json ? json : formatAnalysis(analysis, graph.changeRequest));
   for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
 
+  const failOn = args['fail-on'];
   if (failOn !== undefined) {
     const threshold = SEVERITIES.indexOf(failOn as Severity);
     const failing = analysis.findings.filter((f) => SEVERITIES.indexOf(f.severity) <= threshold);
@@ -255,37 +307,21 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
   return 0;
 }
 
-async function view(argv: string[], ctx: CliContext): Promise<number> {
-  const { values, positionals } = parse(
-    {
-      args: argv,
-      allowPositionals: true,
-      options: {
-        ...ANALYSIS_OPTIONS,
-        port: { type: 'string', default: '0' },
-        'no-open': { type: 'boolean', default: false },
-      },
-    },
-    VIEW_HELP,
-  );
-  if (values.help) {
-    ctx.stdout(VIEW_HELP);
-    return 0;
-  }
-  const port = Number(values.port);
-  if (!Number.isInteger(port) || port < 0 || port > 65535) {
-    throw new UsageError(`--port must be a port number, got '${values.port}'`, VIEW_HELP);
-  }
-
-  const { analysis, durationMs } = await analyze({ positionals, values }, ctx, VIEW_HELP);
-  const graph = buildGraph(analysis, { generator: { name: 'cpr', version }, durationMs });
+/** Serves the viewer for a graph until the user stops it. */
+async function serve(
+  analysis: Analysis,
+  graph: Graph,
+  args: ServeArgs,
+  ctx: CliContext,
+  help: string,
+): Promise<number> {
+  const port = checkPort(args.port, help);
   const repo = await openRepo(ctx.cwd);
   const shas = { base: analysis.revisions.from, head: analysis.revisions.head.sha };
-
   const server = await startViewServer({
     graph,
     port,
-    viewerDir: viewerDir(),
+    viewerDir: viewerDir(ctx),
     readSource: (side, path) => {
       const sha = shas[side];
       if (!sha) return Promise.reject(new Error(`no ${side} revision`));
@@ -299,18 +335,142 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       `CPR viewer: ${server.url}  (Ctrl+C to stop)\n`,
   );
   for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
-  if (!values['no-open']) ctx.openUrl(server.url);
+  if (!args['no-open']) ctx.openUrl(server.url);
 
   await ctx.waitForExit();
   await server.close();
   return 0;
 }
 
+async function diff(argv: string[], ctx: CliContext): Promise<number> {
+  const { values, positionals } = parse(
+    { args: argv, allowPositionals: true, options: { ...ANALYSIS_OPTIONS, ...REPORT_OPTIONS } },
+    DIFF_HELP,
+  );
+  if (values.help) {
+    ctx.stdout(DIFF_HELP);
+    return 0;
+  }
+  checkFailOn(values['fail-on'], DIFF_HELP);
+  const { analysis, durationMs } = await analyze({ positionals, values }, ctx, DIFF_HELP);
+  const graph = buildGraph(analysis, { generator: { name: 'cpr', version }, durationMs });
+  return report(analysis, graph, values, ctx);
+}
+
+async function view(argv: string[], ctx: CliContext): Promise<number> {
+  const { values, positionals } = parse(
+    { args: argv, allowPositionals: true, options: { ...ANALYSIS_OPTIONS, ...SERVE_OPTIONS } },
+    VIEW_HELP,
+  );
+  if (values.help) {
+    ctx.stdout(VIEW_HELP);
+    return 0;
+  }
+  checkPort(values.port, VIEW_HELP);
+  const { analysis, durationMs } = await analyze({ positionals, values }, ctx, VIEW_HELP);
+  const graph = buildGraph(analysis, { generator: { name: 'cpr', version }, durationMs });
+  return serve(analysis, graph, values, ctx, VIEW_HELP);
+}
+
+/**
+ * Reviews a GitHub pull request or GitLab merge request: reads it through the forge's API,
+ * fetches its head and target branch, and analyzes the same diff the forge shows.
+ */
+async function pr(argv: string[], ctx: CliContext): Promise<number> {
+  const { values, positionals } = parse(
+    {
+      args: argv,
+      allowPositionals: true,
+      options: {
+        ...ANALYSIS_OPTIONS,
+        ...REPORT_OPTIONS,
+        ...SERVE_OPTIONS,
+        summary: { type: 'boolean', default: false },
+        forge: { type: 'string' },
+        remote: { type: 'string', default: 'origin' },
+      },
+    },
+    PR_HELP,
+  );
+  if (values.help) {
+    ctx.stdout(PR_HELP);
+    return 0;
+  }
+  const [arg, ...extra] = positionals;
+  const number = Number(arg?.replace(/^[#!]/, ''));
+  if (!Number.isInteger(number) || number <= 0) {
+    throw new UsageError(
+      arg === undefined ? 'missing <number>' : `not a pull/merge request number: '${arg}'`,
+      PR_HELP,
+    );
+  }
+  if (extra.length > 0) throw new UsageError(`unexpected argument '${extra[0]}'`, PR_HELP);
+  if (values.forge !== undefined && values.forge !== 'github' && values.forge !== 'gitlab') {
+    throw new UsageError(`--forge must be github or gitlab, got '${values.forge}'`, PR_HELP);
+  }
+  checkFailOn(values['fail-on'], PR_HELP);
+  checkPort(values.port, PR_HELP);
+
+  const repo = await openRepo(ctx.cwd);
+  const forge = detectForge(await remoteUrl(repo, values.remote), ctx.env, values.forge);
+  const request = await forge.getChangeRequest(number);
+  const sign = forge.kind === 'gitlab' ? '!' : '#';
+  ctx.stderr(
+    `${sign}${request.number} ${request.title} (${request.state}, by ${request.author})\n`,
+  );
+
+  // Bring both commits in; if the API's commit is gone (force-push), use the fetched ref.
+  const local = `refs/cpr/${forge.kind}/${number}`;
+  await fetchRefs(repo, values.remote, [
+    { from: request.refs.head, to: `${local}/head` },
+    { from: request.refs.base, to: `${local}/base` },
+  ]);
+  const available = async (sha: string, fallback: string) => {
+    try {
+      return await resolveCommit(repo, sha);
+    } catch {
+      return fallback;
+    }
+  };
+  const head = await available(request.head.sha, `${local}/head`);
+  const base = await available(request.mergeBase ?? request.base.sha, `${local}/base`);
+
+  const { analysis, durationMs } = await analyze(
+    // GitLab says which commit it diffs against; for GitHub, merge-base(base, head) is it.
+    {
+      positionals: [base, head],
+      values: { ...values, 'no-merge-base': request.mergeBase !== null },
+    },
+    ctx,
+    PR_HELP,
+  );
+  analysis.revisions.base.ref = request.base.ref;
+  analysis.revisions.head.ref = `${sign}${request.number} ${request.head.ref}`;
+  const graph = buildGraph(analysis, {
+    generator: { name: 'cpr', version },
+    durationMs,
+    changeRequest: {
+      forge: request.forge,
+      number: request.number,
+      title: request.title,
+      url: request.url,
+      author: request.author,
+      state: request.state,
+      draft: request.draft,
+    },
+  });
+
+  const reportOnly = values.summary || values.json || values['fail-on'] !== undefined;
+  if (reportOnly) return report(analysis, graph, values, ctx);
+  if (values.out !== undefined)
+    await writeFile(resolve(ctx.cwd, values.out), `${JSON.stringify(graph, null, 2)}\n`);
+  return serve(analysis, graph, values, ctx, PR_HELP);
+}
+
 /** The built viewer that ships with the CLI (`CPR_VIEWER_DIR` overrides, e.g. for tests). */
-function viewerDir(): string {
+function viewerDir(ctx: CliContext): string {
   const dir =
-    process.env.CPR_VIEWER_DIR ??
-    join(dirname(require.resolve('@cpr/viewer/package.json')), 'dist');
+    ctx.env.CPR_VIEWER_DIR ?? join(dirname(require.resolve('@cpr/viewer/package.json')), 'dist');
   if (!existsSync(join(dir, 'index.html'))) {
     throw new CprError(`the viewer is not built (${dir}); run pnpm build`);
   }

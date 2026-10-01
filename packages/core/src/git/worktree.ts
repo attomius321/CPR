@@ -11,7 +11,7 @@ const MAX_SLOTS = 8;
 
 /** Cache root: `$CPR_CACHE_DIR`, else `$XDG_CACHE_HOME/cpr`, else the platform cache folder. */
 export function defaultCacheDir(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Readonly<Record<string, string | undefined>> = process.env,
   platform: NodeJS.Platform = process.platform,
   home: string = homedir(),
 ): string {

@@ -31,6 +31,11 @@ every golden graph against it.
 {
   "schemaVersion": "0.1.0",
   "generator": { "name": "cpr", "version": "0.1.0" },
+  "changeRequest": {             // only from `cpr pr`
+    "forge": "gitlab", "number": 7, "title": "Add widgets",
+    "url": "https://gitlab.example.com/acme/widgets/-/merge_requests/7",
+    "author": "ada", "state": "open", "draft": false
+  },
   "revisions": {
     "base": { "ref": "main", "sha": "a1b2c3d", "mergeBase": "9f8e7d6" },
     "head": { "ref": "feature/users", "sha": "d4e5f6a" },

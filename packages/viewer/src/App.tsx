@@ -257,8 +257,17 @@ function Summary({ graph }: { graph: Graph }) {
   const side = (ref: string, sha: string | null) => (sha ? `${ref} (${sha.slice(0, 7)})` : ref);
   const { added, removed, modified } = graph.stats.symbols;
   const severity = (s: string) => graph.findings.filter((f) => f.severity === s).length;
+  const request = graph.changeRequest;
   return (
     <div className="summary">
+      {request && (
+        <a className="request" href={request.url} target="_blank" rel="noreferrer">
+          {request.forge === 'gitlab' ? '!' : '#'}
+          {request.number} {request.title}
+          {request.draft && <span className="chip">draft</span>}
+          {request.state !== 'open' && <span className="chip">{request.state}</span>}
+        </a>
+      )}
       <span className="revisions">
         {side(base.ref, base.sha)} → {side(head.ref, head.sha)}
       </span>

@@ -22,6 +22,20 @@
       "required": ["name", "version"],
       "properties": { "name": { "type": "string" }, "version": { "type": "string" } }
     },
+    "changeRequest": {
+      "description": "The pull/merge request reviewed, when the graph comes from cpr pr.",
+      "type": "object",
+      "required": ["forge", "number", "title", "url", "author", "state", "draft"],
+      "properties": {
+        "forge": { "enum": ["github", "gitlab"] },
+        "number": { "type": "integer", "minimum": 1 },
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "author": { "type": "string" },
+        "state": { "enum": ["open", "closed", "merged"] },
+        "draft": { "type": "boolean" }
+      }
+    },
     "revisions": {
       "type": "object",
       "required": ["base", "head", "from"],

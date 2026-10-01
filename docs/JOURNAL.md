@@ -433,3 +433,38 @@ The analysis (~7 s) dominates `cpr view` startup; the UI itself is fast at this 
   are module-level code). Informative, but they inflate "untouched" counts; a later option
   could separate test users.
 - Closing the panel keeps the zoomed viewport; the fit-view button returns to the overview.
+
+## Phase 3 kickoff — GitHub **and** GitLab (2026-10-01)
+
+Request: "It should also work with GitLab." Phase 3 now targets both forges through a forge
+adapter (PLAN §12, Phase 3 milestones). This session can only reach the GitHub API for
+`attomius321/CPR` (no PRs there), and no GitLab instance, so both adapters are tested against
+local mock servers; `GITHUB_API_URL` / `GITLAB_API_URL` point the CLI at them.
+
+## G1 — `cpr pr` for GitHub and GitLab (2026-10-01)
+
+**What landed**
+- New package `@cpr/forge` (network code stays out of the engine): `parseRemote` (https, ssh,
+  scp-like, credentials in URLs), `detectForge` (host name → `--forge` → `CPR_FORGE`),
+  `GitHubForge` (incl. Enterprise `https://<host>/api/v3`; token from `GITHUB_TOKEN`,
+  `GH_TOKEN`, or `gh auth token`) and `GitLabForge` (nested groups, URL-encoded project path,
+  `PRIVATE-TOKEN` or CI `JOB-TOKEN`). Errors say which token to set, or that access is missing.
+- Core: `remoteUrl` (reads `remote.<name>.url` from config, before `insteadOf`), `fetchRefs`.
+- `cpr pr <n>` / `cpr mr !<n>`: API → fetch head + target branch into `refs/cpr/<forge>/<n>/…`
+  → analyze → viewer (or `--summary` / `--json` / `--fail-on`). Graph gains optional
+  `changeRequest` (schema + viewer header link).
+- `CliContext.env` carries tokens and settings; the worktree cache also resolves from it.
+
+**Decisions**
+- Diff base matches what each forge shows: GitHub → merge-base(base, head); GitLab →
+  `diff_refs.base_sha` as is (no extra merge-base).
+- If the API's commit is no longer fetchable (force-push), fall back to the fetched ref.
+- `remote.<name>.url` is read raw so `url.<x>.insteadOf` can redirect fetches (used by the
+  tests: a bare repo stands in for github.com / gitlab).
+
+**Testing**: local mock APIs for both forges (headers, mapping, 401/404 messages) and full
+`cpr pr`/`cpr mr` runs against a bare "forge" repo whose `refs/pull/7/head` and
+`refs/merge-requests/7/head` point at the feature branch.
+
+**Open**: self-hosted forges on non-standard ports need `GITHUB_API_URL` / `GITLAB_API_URL`
+(the remote's SSH port says nothing about the API's).

@@ -37,9 +37,21 @@ export interface GraphEdge {
   sites: { base?: Site[]; head?: Site[] };
 }
 
+/** The pull/merge request being reviewed, when the graph comes from `cpr pr`. */
+export interface GraphChangeRequest {
+  forge: 'github' | 'gitlab';
+  number: number;
+  title: string;
+  url: string;
+  author: string;
+  state: 'open' | 'closed' | 'merged';
+  draft: boolean;
+}
+
 export interface Graph {
   schemaVersion: string;
   generator: { name: string; version: string };
+  changeRequest?: GraphChangeRequest;
   revisions: Analysis['revisions'];
   files: (ChangedFile & { ignored?: true })[];
   nodes: GraphNode[];
@@ -59,6 +71,7 @@ export interface BuildGraphOptions {
   /** Language of the analyzed symbols. Default: `typescript`. */
   language?: string;
   durationMs?: number;
+  changeRequest?: GraphChangeRequest;
 }
 
 /** Turns an analysis into the versioned graph JSON contract. */
@@ -75,6 +88,7 @@ export function buildGraph(analysis: Analysis, options: BuildGraphOptions): Grap
   return {
     schemaVersion: SCHEMA_VERSION,
     generator: options.generator,
+    ...(options.changeRequest ? { changeRequest: options.changeRequest } : {}),
     revisions: analysis.revisions,
     files: analysis.files.map((file) =>
       ignored.has(file.path) ? { ...file, ignored: true } : file,

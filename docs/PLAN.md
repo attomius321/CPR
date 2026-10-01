@@ -247,6 +247,18 @@ cpr view <base> [head] [options]        same analysis, reviewed in the browser
   (plus --no-merge-base, --project, --depth)
 ```
 
+```
+cpr pr <number> [options]               a GitHub pull request or GitLab merge request (alias: mr)
+
+  --summary | --json    print instead of opening the viewer (also --out, --fail-on)
+  --forge github|gitlab for hosts whose name doesn't say
+  --remote <name>       remote to read and fetch from (default: origin)
+```
+
+`cpr pr` reads the PR/MR through the forge API, fetches its head (`refs/pull/<n>/head`,
+`refs/merge-requests/<n>/head`) and target branch into `refs/cpr/<forge>/<n>/…`, and analyzes
+the same diff the forge shows (GitHub: merge-base of base and head; GitLab: `diff_refs.base_sha`).
+
 `cpr view` serves the built viewer, `/api/graph` and `/api/source?side=base|head&file=…` on
 localhost only; sources are limited to files the graph mentions and read with `git show`.
 
@@ -317,7 +329,7 @@ or oxc in the long run.
 |---|---|---|
 | **1. Engine** | `cpr diff base head` → JSON + findings | All fixture cases pass; runs within budget on the dogfood repos. |
 | **2. Viewer** | `cpr view` serves a local graph UI with per-symbol diffs | You can review a real PR from the graph alone: click a node → see its diff, callers, findings. |
-| **3. GitHub** | `cpr pr 123`: review, comment, approve | Comments land on the right lines; approve/request-changes works like `gh pr review`. |
+| **3. GitHub & GitLab** | `cpr pr 123`: review, comment, approve — pull requests and merge requests | Comments land on the right lines; approve/request-changes works like `gh pr review`, on GitHub and GitLab. |
 | **4. Interdiff** | Show only what changed between PR versions | Re-review after a force-push shows only the new deltas. |
 | **5. CI** | GitHub Action that posts findings | Action runs on a PR and posts a summary + inline findings. |
 
@@ -330,6 +342,28 @@ or oxc in the long run.
 | V3 ✅ | Symbol detail | Click a node → base/head source of the symbol side by side, what changed, users and callees, findings. |
 | V4 ✅ | Review flow | Findings list, filters (type references hidden by default, externals grouped by package), mark symbols reviewed, keyboard navigation. |
 | V5 ✅ | Viewer dogfood | Playwright end-to-end tests; review real commits of ky/zod/vite in the viewer. |
+
+### Phase 3 milestones (GitHub and GitLab)
+
+Everything forge-specific sits behind one **forge adapter** (like the language adapter), with a
+GitHub and a GitLab implementation; the CLI and viewer only see "a change request".
+
+| # | Milestone | Output |
+|---|---|---|
+| G1 ✅ | `cpr pr <n>` | Detect the forge and project from the `origin` remote (`--forge github\|gitlab` for self-hosted hosts), read the PR/MR through its API, fetch its head (`pull/<n>/head`, `merge-requests/<n>/head`) and base, analyze, open the viewer (or `--json`). `cpr mr` is an alias. |
+| G2 | Review from the viewer | Draft comments on symbols (anchored to head lines), then submit: comment, approve, or request changes. GitHub: one review call. GitLab: draft notes + bulk publish, approve endpoint. Local POST endpoint guarded against cross-site requests. |
+| G3 | Findings as comments | `cpr pr <n> --post-findings`: findings become inline comments on their symbols, never posted twice. |
+
+| | GitHub | GitLab |
+|---|---|---|
+| Project from remote | `github.com/<owner>/<repo>` | `gitlab.com/<group>/<subgroup…>/<project>` (URL-encoded path as project id) |
+| Read | `GET /repos/:o/:r/pulls/:n` | `GET /projects/:id/merge_requests/:iid` (`diff_refs`) |
+| Head ref | `refs/pull/<n>/head` | `refs/merge-requests/<iid>/head` |
+| Review | `POST …/pulls/:n/reviews` with `comments[]` and `event` | `POST …/draft_notes` (position: base/start/head SHA, `new_path`, `new_line`) → `POST …/draft_notes/bulk_publish`; `POST …/approve` |
+| Token | `GITHUB_TOKEN`, `GH_TOKEN`, `gh auth token` | `GITLAB_TOKEN`, `CI_JOB_TOKEN` |
+| API base | `GITHUB_API_URL` or `https://api.github.com` (GHE: `https://<host>/api/v3`) | `GITLAB_API_URL` or `https://<host>/api/v4` |
+
+Tests run against local mock APIs for both forges (no network, no tokens).
 
 **Later:** more languages via adapters, a faster core (TS 7 adapter or Rust/oxc), self-hosted team mode.
 
