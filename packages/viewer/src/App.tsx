@@ -13,6 +13,15 @@ import type { Graph } from '@cpr/core';
 import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
 import { toFlow, type FlowEdge, type FlowNode, type SymbolData } from './flow.js';
+import {
+  changeList,
+  loadReviewed,
+  neighbourhood,
+  reviewKey,
+  saveReviewed,
+  stepChange,
+} from './review.js';
+import { Sidebar } from './Sidebar.js';
 import { SymbolNode } from './SymbolNode.js';
 
 const nodeTypes = { symbol: SymbolNode, file: FileNode };
@@ -33,6 +42,48 @@ export function App() {
   const [typeReferences, setTypeReferences] = useState(false);
   const [context, setContext] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
+  const [focus, setFocus] = useState(false);
+  const [reviewed, setReviewed] = useState<ReadonlySet<string>>(new Set());
+
+  const graph = state.status === 'ready' ? state.graph : undefined;
+  const changes = useMemo(() => (graph ? changeList(graph) : []), [graph]);
+  useEffect(() => {
+    if (graph) setReviewed(loadReviewed(reviewKey(graph)));
+  }, [graph]);
+
+  const toggleReviewed = useCallback(
+    (id: string) => {
+      if (!graph) return;
+      setReviewed((current) => {
+        const next = new Set(current);
+        if (!next.delete(id)) next.add(id);
+        saveReviewed(reviewKey(graph), next);
+        return next;
+      });
+    },
+    [graph],
+  );
+
+  // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, Esc closes.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (
+        target &&
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) &&
+        event.key !== 'Escape'
+      )
+        return;
+      if (event.key === 'j') setSelected((id) => stepChange(changes, id, 1));
+      else if (event.key === 'k') setSelected((id) => stepChange(changes, id, -1));
+      else if (event.key === 'r' && selected) toggleReviewed(selected);
+      else if (event.key === 'f') setFocus((on) => !on);
+      else if (event.key === 'Escape') setSelected(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [changes, selected, toggleReviewed]);
 
   useEffect(() => {
     const url = graphUrl();
@@ -64,10 +115,16 @@ export function App() {
     [load],
   );
 
-  const flow = useMemo(
-    () => (state.status === 'ready' ? toFlow(state.graph, { typeReferences, context }) : undefined),
-    [state, typeReferences, context],
-  );
+  const flow = useMemo(() => {
+    if (!graph) return undefined;
+    const focusSet = focus && selected ? neighbourhood(graph, selected) : undefined;
+    return toFlow(graph, {
+      typeReferences,
+      context,
+      reviewed,
+      ...(focusSet ? { focus: focusSet } : {}),
+    });
+  }, [graph, typeReferences, context, reviewed, focus, selected]);
 
   return (
     <div className="app" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
@@ -77,6 +134,10 @@ export function App() {
         <div className="spacer" />
         {state.status === 'ready' && (
           <>
+            <label className="toggle" title="Show only the selected symbol and its neighbours (f)">
+              <input type="checkbox" checked={focus} onChange={(e) => setFocus(e.target.checked)} />
+              Focus
+            </label>
             <label className="toggle">
               <input
                 type="checkbox"
@@ -103,10 +164,19 @@ export function App() {
         )}
         {flow && state.status === 'ready' && (
           <ReactFlowProvider>
+            <Sidebar
+              graph={state.graph}
+              changes={changes}
+              reviewed={reviewed}
+              selected={selected}
+              onSelect={setSelected}
+              onToggleReviewed={toggleReviewed}
+            />
             <Canvas
               nodes={flow.nodes}
               edges={flow.edges}
               selected={selected}
+              focus={focus}
               onSelect={setSelected}
             />
             {selected && (
@@ -114,6 +184,8 @@ export function App() {
                 graph={state.graph}
                 id={selected}
                 sources={state.sources}
+                reviewed={reviewed.has(selected)}
+                onToggleReviewed={() => toggleReviewed(selected)}
                 onSelect={setSelected}
                 onClose={() => setSelected(null)}
               />
@@ -130,23 +202,22 @@ interface CanvasProps {
   nodes: FlowNode[];
   edges: FlowEdge[];
   selected: string | null;
+  /** In focus mode the whole (small) neighbourhood is fitted; otherwise the selection is centered. */
+  focus: boolean;
   onSelect: (id: string | null) => void;
 }
 
-/** The graph; brings the selected symbol into view when it changes. Esc clears it. */
-function Canvas({ nodes, edges, selected, onSelect }: CanvasProps) {
+/** The graph; brings the selected symbol into view when it changes. */
+function Canvas({ nodes, edges, selected, focus, onSelect }: CanvasProps) {
   const { fitView } = useReactFlow();
   useEffect(() => {
-    if (selected) void fitView({ nodes: [{ id: selected }], duration: 300, maxZoom: 1.1 });
-  }, [selected, fitView]);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onSelect(null);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onSelect]);
+    // Wait a frame so React Flow has measured nodes that just appeared.
+    const frame = requestAnimationFrame(() => {
+      if (focus) void fitView({ duration: 300, maxZoom: 1.1 });
+      else if (selected) void fitView({ nodes: [{ id: selected }], duration: 300, maxZoom: 1.1 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selected, focus, nodes, fitView]);
 
   const marked = useMemo(
     () => nodes.map((n) => (n.type === 'symbol' ? { ...n, selected: n.id === selected } : n)),
@@ -242,7 +313,7 @@ function Legend() {
       )}
       <span className="legend-edge edge-head">added edge</span>
       <span className="legend-edge edge-base">removed edge</span>
-      <span className="legend-hint">click a symbol for details · Esc to close</span>
+      <span className="legend-hint">click a symbol for details</span>
     </footer>
   );
 }

@@ -4,13 +4,17 @@ import type { SymbolData } from './flow.js';
 const SEVERITIES = ['error', 'warning', 'info'] as const;
 
 export function SymbolNode({ data, selected }: NodeProps<Node<SymbolData, 'symbol'>>) {
-  const { node, tone, label, file, tags, findings } = data;
+  const { node, tone, label, file, tags, findings, reviewed } = data;
   return (
-    <div className={`symbol tone-${tone}${selected ? ' selected' : ''}`} title={node.id}>
+    <div
+      className={`symbol tone-${tone}${selected ? ' selected' : ''}${reviewed ? ' reviewed' : ''}`}
+      title={node.id}
+    >
       <Handle type="target" position={Position.Left} />
       <div className="symbol-head">
         <span className="symbol-kind">{node.kind}</span>
         <span className="symbol-name">{label}</span>
+        {reviewed && <span className="check">✓</span>}
         {SEVERITIES.map((severity) =>
           findings[severity] > 0 ? (
             <span
