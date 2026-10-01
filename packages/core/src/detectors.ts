@@ -55,7 +55,7 @@ function removedStillReferenced({ changes, edges, dangling }: DetectorInput): Dr
         change.id,
         referencedBy,
         {
-          message: `${name(change.id)} was removed but is still used by ${plural(referencedBy.length, 'symbol')}: ${referencedBy.map(name).join(', ')}`,
+          message: `${name(change.id)} was removed but is still used by ${plural(referencedBy.length, 'symbol')}: ${list(referencedBy)}`,
           data: { referencedBy, certainty, sites: hits.map((h) => h.site) },
         },
       ),
@@ -134,7 +134,7 @@ function signatureMessage(
       ? `${symbol} changed its signature; its only user was updated`
       : `${symbol} changed its signature; all ${users} users were updated`;
   }
-  return `${symbol} changed its signature; ${untouched.length} of ${plural(users, 'user')} not updated: ${untouched.map(name).join(', ')}`;
+  return `${symbol} changed its signature; ${untouched.length} of ${plural(users, 'user')} not updated: ${list(untouched)}`;
 }
 
 /**
@@ -193,8 +193,16 @@ function draft(
   return { rule, severity, symbol, related, message, data };
 }
 
+/** Short display name: `Class.method`, or `src/app.ts (top level)` for module code. */
 function name(id: SymbolId): string {
-  return id.slice(id.indexOf('#') + 1);
+  const qualified = id.slice(id.indexOf('#') + 1);
+  return qualified === '(module)' ? `${id.slice(0, id.indexOf('#'))} (top level)` : qualified;
+}
+
+/** `a, b, c, d, e and 3 more`. */
+function list(ids: SymbolId[], max = 5): string {
+  const names = ids.slice(0, max).map(name).join(', ');
+  return ids.length > max ? `${names} and ${ids.length - max} more` : names;
 }
 
 function depth(id: SymbolId): number {

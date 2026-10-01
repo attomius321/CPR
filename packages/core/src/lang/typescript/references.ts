@@ -121,9 +121,11 @@ export function outgoingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
     if (own.some((n) => n.getSourceFile() === declSf && n.pos <= decl.pos && decl.end <= n.end)) {
       return undefined;
     }
+    // Namespace imports (`import * as ns`) resolve to the module itself; its members resolve on their own.
+    if (ts.isSourceFile(decl)) return undefined;
     if (
       ts.isTypeElement(decl) ||
-      ts.isObjectLiteralExpression(decl.parent) ||
+      (decl.parent !== undefined && ts.isObjectLiteralExpression(decl.parent)) ||
       ts.isParameter(decl)
     ) {
       return undefined;

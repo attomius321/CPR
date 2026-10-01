@@ -1,4 +1,4 @@
-import type { Dangling, EdgeRef, Exposure, SymbolDecl } from './model.js';
+import type { Dangling, EdgeRef, Exposure, SymbolDecl, SymbolId } from './model.js';
 import type { RevisionSource } from './revision.js';
 
 export interface LoadOptions {
@@ -6,6 +6,15 @@ export interface LoadOptions {
   project?: string;
   /** Repo-relative files that must be analyzable even if no config includes them. */
   files?: readonly string[];
+}
+
+export interface ExtractOptions {
+  /**
+   * Whether to infer types (return types, variable types) for a symbol. Inference is the costly
+   * part of extraction; without it, inferred types are left out of hashes and signatures.
+   * Default: always.
+   */
+  infer?: (id: SymbolId) => boolean;
 }
 
 /**
@@ -18,7 +27,7 @@ export interface LanguageAdapter<L = unknown> {
   matches(path: string): boolean;
   load(source: RevisionSource, options?: LoadOptions): Promise<L>;
   /** Declarations in the given repo-relative files. Files that do not exist are skipped. */
-  extract(revision: L, files: readonly string[]): SymbolDecl[];
+  extract(revision: L, files: readonly string[], options?: ExtractOptions): SymbolDecl[];
   /** References to an extracted symbol from elsewhere in the revision: its callers and users. */
   incoming(revision: L, symbol: SymbolDecl): EdgeRef[];
   /** What an extracted symbol references: callees, types, base classes. */

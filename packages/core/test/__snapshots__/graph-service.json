@@ -1,0 +1,475 @@
+{
+  "schemaVersion": "0.1.0",
+  "generator": {
+    "name": "cpr",
+    "version": "test"
+  },
+  "revisions": {
+    "base": {
+      "ref": "base",
+      "sha": null,
+      "mergeBase": null
+    },
+    "head": {
+      "ref": "head",
+      "sha": null
+    },
+    "from": null
+  },
+  "files": [
+    {
+      "status": "modified",
+      "path": "README.md"
+    },
+    {
+      "status": "deleted",
+      "path": "src/old-utils.ts"
+    },
+    {
+      "status": "added",
+      "path": "src/text/slug.ts"
+    },
+    {
+      "status": "modified",
+      "path": "src/user.ts"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "src/text/slug.ts#slugify",
+      "kind": "function",
+      "name": "slugify",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": false,
+        "body": false,
+        "moved": true
+      },
+      "previousId": "src/old-utils.ts#slugify",
+      "base": {
+        "file": "src/old-utils.ts",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 3,
+            "col": 2
+          }
+        },
+        "signature": "slugify(text: string): string",
+        "hashes": {
+          "signature": "513d94df795f9ae7",
+          "body": "74e70379c8ee87bd"
+        }
+      },
+      "head": {
+        "file": "src/text/slug.ts",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 3,
+            "col": 2
+          }
+        },
+        "signature": "slugify(text: string): string",
+        "hashes": {
+          "signature": "513d94df795f9ae7",
+          "body": "74e70379c8ee87bd"
+        }
+      }
+    },
+    {
+      "id": "src/text/slug.ts#titleCase",
+      "kind": "function",
+      "name": "titleCase",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "added",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/text/slug.ts",
+        "range": {
+          "start": {
+            "line": 5,
+            "col": 1
+          },
+          "end": {
+            "line": 7,
+            "col": 2
+          }
+        },
+        "signature": "titleCase(text: string): string",
+        "hashes": {
+          "signature": "8a4be6eecd05e549",
+          "body": "547c3f03e1a70592"
+        }
+      }
+    },
+    {
+      "id": "src/user.ts#User",
+      "kind": "interface",
+      "name": "User",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": true,
+        "body": false,
+        "moved": false
+      },
+      "previousId": null,
+      "base": {
+        "file": "src/user.ts",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 4,
+            "col": 2
+          }
+        },
+        "signature": "interface User",
+        "hashes": {
+          "signature": "bbee61bda0cffc3c",
+          "body": ""
+        }
+      },
+      "head": {
+        "file": "src/user.ts",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 5,
+            "col": 2
+          }
+        },
+        "signature": "interface User",
+        "hashes": {
+          "signature": "1bd6f4386e313662",
+          "body": ""
+        }
+      }
+    },
+    {
+      "id": "src/user.ts#findUser",
+      "kind": "function",
+      "name": "findUser",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": true,
+        "body": true,
+        "moved": false
+      },
+      "previousId": null,
+      "base": {
+        "file": "src/user.ts",
+        "range": {
+          "start": {
+            "line": 6,
+            "col": 1
+          },
+          "end": {
+            "line": 8,
+            "col": 2
+          }
+        },
+        "signature": "findUser(users: User[], id: string): User | undefined",
+        "hashes": {
+          "signature": "73dd8e3ecc2e169b",
+          "body": "196cf6ef6cbd1c28"
+        }
+      },
+      "head": {
+        "file": "src/user.ts",
+        "range": {
+          "start": {
+            "line": 7,
+            "col": 1
+          },
+          "end": {
+            "line": 9,
+            "col": 2
+          }
+        },
+        "signature": "findUser(users: User[], id: string): User | null",
+        "hashes": {
+          "signature": "84183c0a8a25ac5c",
+          "body": "6bf6dad15e96e29a"
+        }
+      }
+    },
+    {
+      "id": "src/user.ts#formatUser",
+      "kind": "function",
+      "name": "formatUser",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": false,
+        "body": true,
+        "moved": false
+      },
+      "previousId": null,
+      "base": {
+        "file": "src/user.ts",
+        "range": {
+          "start": {
+            "line": 10,
+            "col": 1
+          },
+          "end": {
+            "line": 12,
+            "col": 2
+          }
+        },
+        "signature": "formatUser(user: User): string",
+        "hashes": {
+          "signature": "11de662550a17ac8",
+          "body": "9a572fad84198e1e"
+        }
+      },
+      "head": {
+        "file": "src/user.ts",
+        "range": {
+          "start": {
+            "line": 11,
+            "col": 1
+          },
+          "end": {
+            "line": 13,
+            "col": 2
+          }
+        },
+        "signature": "formatUser(user: User): string",
+        "hashes": {
+          "signature": "11de662550a17ac8",
+          "body": "eb3e6981ee50a897"
+        }
+      }
+    },
+    {
+      "id": "src/user.ts#normalizeId",
+      "kind": "function",
+      "name": "normalizeId",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": true,
+        "body": false,
+        "moved": true
+      },
+      "previousId": "src/user.ts#legacyLookup",
+      "base": {
+        "file": "src/user.ts",
+        "range": {
+          "start": {
+            "line": 14,
+            "col": 1
+          },
+          "end": {
+            "line": 16,
+            "col": 2
+          }
+        },
+        "signature": "legacyLookup(id: string): string",
+        "hashes": {
+          "signature": "0bcb14cbefa38d50",
+          "body": "7c42492f78502ade"
+        }
+      },
+      "head": {
+        "file": "src/user.ts",
+        "range": {
+          "start": {
+            "line": 19,
+            "col": 1
+          },
+          "end": {
+            "line": 21,
+            "col": 2
+          }
+        },
+        "signature": "normalizeId(id: string): string",
+        "hashes": {
+          "signature": "f049f5b6d0a877ce",
+          "body": "7c42492f78502ade"
+        }
+      }
+    },
+    {
+      "id": "src/user.ts#greet",
+      "kind": "function",
+      "name": "greet",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "added",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/user.ts",
+        "range": {
+          "start": {
+            "line": 23,
+            "col": 1
+          },
+          "end": {
+            "line": 25,
+            "col": 2
+          }
+        },
+        "signature": "greet(user: User): string",
+        "hashes": {
+          "signature": "5eef9d4574b43f87",
+          "body": "223ecd57c49fc873"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "src/user.ts#findUser",
+      "to": "src/user.ts#User",
+      "kind": "type-reference",
+      "side": "both",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "src/user.ts",
+            "line": 6,
+            "col": 33
+          }
+        ],
+        "head": [
+          {
+            "file": "src/user.ts",
+            "line": 7,
+            "col": 33
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "from": "src/user.ts#formatUser",
+      "to": "src/user.ts#User",
+      "kind": "type-reference",
+      "side": "both",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "src/user.ts",
+            "line": 10,
+            "col": 34
+          }
+        ],
+        "head": [
+          {
+            "file": "src/user.ts",
+            "line": 11,
+            "col": 34
+          }
+        ]
+      }
+    },
+    {
+      "id": "e3",
+      "from": "src/user.ts#greet",
+      "to": "src/user.ts#User",
+      "kind": "type-reference",
+      "side": "head",
+      "resolution": "resolved",
+      "sites": {
+        "head": [
+          {
+            "file": "src/user.ts",
+            "line": 23,
+            "col": 29
+          }
+        ]
+      }
+    }
+  ],
+  "findings": [
+    {
+      "rule": "orphan-added",
+      "severity": "warning",
+      "symbol": "src/text/slug.ts#titleCase",
+      "related": [],
+      "message": "titleCase is new and nothing references it",
+      "data": {
+        "exportedFromEntry": false,
+        "exposure": null
+      },
+      "id": "f1"
+    },
+    {
+      "rule": "orphan-added",
+      "severity": "warning",
+      "symbol": "src/user.ts#greet",
+      "related": [],
+      "message": "greet is new and nothing references it",
+      "data": {
+        "exportedFromEntry": false,
+        "exposure": null
+      },
+      "id": "f2"
+    },
+    {
+      "rule": "signature-changed",
+      "severity": "info",
+      "symbol": "src/user.ts#User",
+      "related": [
+        "src/user.ts#findUser",
+        "src/user.ts#formatUser",
+        "src/user.ts#greet"
+      ],
+      "message": "User changed its signature compatibly; existing users keep working (3 users, 0 untouched)",
+      "data": {
+        "callers": 3,
+        "updated": 3,
+        "untouched": 0,
+        "untouchedElsewhere": 0,
+        "compatibility": "compatible"
+      },
+      "id": "f3"
+    }
+  ],
+  "stats": {
+    "filesChanged": 4,
+    "symbols": {
+      "added": 2,
+      "removed": 0,
+      "modified": 5,
+      "context": 0
+    },
+    "edges": 3
+  },
+  "warnings": []
+}

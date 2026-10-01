@@ -45,6 +45,7 @@ for (const { sha, subject } of commits) {
       context: analysis.context.length,
       findings: rules,
       warnings: analysis.warnings.length,
+      timings: analysis.timings,
       details:
         flag === '--json'
           ? analysis.findings.map((f) => `${f.severity} ${f.rule} ${f.symbol} — ${f.message}`)
@@ -62,7 +63,7 @@ for (const { sha, subject } of commits) {
   console.log(
     row.error
       ? `${row.sha} ${String(row.ms).padStart(6)}ms ERROR ${row.error}`
-      : `${row.sha} ${String(row.ms).padStart(6)}ms files=${row.files} symbols=${row.symbols} edges=${row.edges} ctx=${row.context} warn=${row.warnings} ${JSON.stringify(row.findings)}  ${row.subject}`,
+      : `${row.sha} ${String(row.ms).padStart(6)}ms files=${row.files} symbols=${row.symbols} edges=${row.edges} ctx=${row.context} warn=${row.warnings} ${JSON.stringify(row.findings)}  ${row.subject}\n      timings ${JSON.stringify(row.timings)}`,
   );
   if (row.details?.length) for (const d of row.details) console.log(`      ${d}`);
 }
