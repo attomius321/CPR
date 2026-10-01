@@ -19,6 +19,7 @@ async function cpr(
     stderr: (text) => (stderr += text),
     openUrl: (url) => opened.push(url),
     waitForExit: () => whileRunning(() => stdout),
+    env: process.env,
   });
   return { code, stdout, stderr, opened };
 }

@@ -7,6 +7,7 @@ cpr diff main            # what changed on this branch, symbol by symbol, with f
 cpr diff main --json     # the graph as JSON (docs/graph-schema.md)
 cpr diff main --fail-on error   # for CI
 cpr view main            # review it as a graph in the browser
+cpr pr 123               # a GitHub pull request or GitLab merge request (cpr mr 123)
 ```
 
 ```
@@ -34,6 +35,10 @@ graph file from `cpr diff --out` (drag and drop).
 Click a symbol to see what changed in it, its findings, and who uses it:
 
 ![Detail panel: findings, old and new signature, a line diff of just this method, its users and callees](docs/images/viewer-detail.png)
+
+`cpr pr` works with GitHub (and GitHub Enterprise) and GitLab (gitlab.com and self-managed). It
+reads the forge from the `origin` remote; tokens come from `GITHUB_TOKEN`/`GH_TOKEN` (or
+`gh auth login`) and `GITLAB_TOKEN`.
 
 TypeScript and JavaScript for now. Symbols in `fixtures/`, `generated/` and similar folders are not analyzed; add a `.cprignore` (gitignore syntax) to change that.
 

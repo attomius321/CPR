@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@cpr/core": "workspace:*",
-    "@cpr/viewer": "workspace:*"
+    "@cpr/viewer": "workspace:*",
+    "@cpr/forge": "workspace:*"
   }
 }

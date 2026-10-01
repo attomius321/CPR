@@ -60,9 +60,11 @@ export {
   SCHEMA_VERSION,
   type BuildGraphOptions,
   type Graph,
+  type GraphChangeRequest,
   type GraphEdge,
   type GraphNode,
   type GraphSide,
 } from './graph.js';
 export { compareShapes, compatibility, type Compatibility } from './compat.js';
 export { readFileAtRevision } from './git/show.js';
+export { fetchRefs, remoteUrl } from './git/remote.js';

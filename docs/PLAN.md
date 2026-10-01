@@ -247,6 +247,18 @@ cpr view <base> [head] [options]        same analysis, reviewed in the browser
   (plus --no-merge-base, --project, --depth)
 ```
 
+```
+cpr pr <number> [options]               a GitHub pull request or GitLab merge request (alias: mr)
+
+  --summary | --json    print instead of opening the viewer (also --out, --fail-on)
+  --forge github|gitlab for hosts whose name doesn't say
+  --remote <name>       remote to read and fetch from (default: origin)
+```
+
+`cpr pr` reads the PR/MR through the forge API, fetches its head (`refs/pull/<n>/head`,
+`refs/merge-requests/<n>/head`) and target branch into `refs/cpr/<forge>/<n>/…`, and analyzes
+the same diff the forge shows (GitHub: merge-base of base and head; GitLab: `diff_refs.base_sha`).
+
 `cpr view` serves the built viewer, `/api/graph` and `/api/source?side=base|head&file=…` on
 localhost only; sources are limited to files the graph mentions and read with `git show`.
 
@@ -338,7 +350,7 @@ GitHub and a GitLab implementation; the CLI and viewer only see "a change reques
 
 | # | Milestone | Output |
 |---|---|---|
-| G1 | `cpr pr <n>` | Detect the forge and project from the `origin` remote (`--forge github\|gitlab` for self-hosted hosts), read the PR/MR through its API, fetch its head (`pull/<n>/head`, `merge-requests/<n>/head`) and base, analyze, open the viewer (or `--json`). `cpr mr` is an alias. |
+| G1 ✅ | `cpr pr <n>` | Detect the forge and project from the `origin` remote (`--forge github\|gitlab` for self-hosted hosts), read the PR/MR through its API, fetch its head (`pull/<n>/head`, `merge-requests/<n>/head`) and base, analyze, open the viewer (or `--json`). `cpr mr` is an alias. |
 | G2 | Review from the viewer | Draft comments on symbols (anchored to head lines), then submit: comment, approve, or request changes. GitHub: one review call. GitLab: draft notes + bulk publish, approve endpoint. Local POST endpoint guarded against cross-site requests. |
 | G3 | Findings as comments | `cpr pr <n> --post-findings`: findings become inline comments on their symbols, never posted twice. |
 

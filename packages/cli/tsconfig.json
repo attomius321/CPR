@@ -3,7 +3,8 @@
   "compilerOptions": {
     "noEmit": true,
     "paths": {
-      "@cpr/core": ["../core/src/index.ts"]
+      "@cpr/core": ["../core/src/index.ts"],
+      "@cpr/forge": ["../forge/src/index.ts"]
     }
   },
   "include": ["src", "test"],

@@ -199,6 +199,9 @@ importers:
       '@cpr/core':
         specifier: workspace:*
         version: link:../core
+      '@cpr/forge':
+        specifier: workspace:*
+        version: link:../forge
       '@cpr/viewer':
         specifier: workspace:*
         version: link:../viewer
@@ -212,6 +215,12 @@ importers:
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
+
+  packages/forge:
+    dependencies:
+      '@cpr/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/viewer:
     dependencies:

@@ -4,6 +4,7 @@ import type {
   Edge,
   FileChangeStatus,
   Finding,
+  Graph,
   Severity,
   SymbolChange,
 } from '@cpr/core';
@@ -21,14 +22,10 @@ const short = (sha: string | null) => (sha ? sha.slice(0, 7) : '');
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Human summary: revisions, then each changed file with its changed symbols. */
-export function formatAnalysis({
-  revisions,
-  files,
-  changes,
-  edges,
-  findings,
-  ignored,
-}: Analysis): string {
+export function formatAnalysis(
+  { revisions, files, changes, edges, findings, ignored }: Analysis,
+  changeRequest?: Graph['changeRequest'],
+): string {
   const { base, head } = revisions;
   const side = (ref: string, sha: string | null) => (sha ? `${ref} (${short(sha)})` : ref);
   const mergeBase = base.mergeBase ? `, merge-base ${short(base.mergeBase)}` : '';
@@ -37,7 +34,11 @@ export function formatAnalysis({
     changed.filter((c) => c.status === status).length;
 
   const lines = [`${side(base.ref, base.sha)} → ${side(head.ref, head.sha)}${mergeBase}`];
-  if (files.length === 0) return `${lines[0]}\nno files changed\n`;
+  if (changeRequest) {
+    const sign = changeRequest.forge === 'gitlab' ? '!' : '#';
+    lines.unshift(`${sign}${changeRequest.number} ${changeRequest.title}  ${changeRequest.url}`);
+  }
+  if (files.length === 0) return `${lines.join('\n')}\nno files changed\n`;
 
   const parts = [
     ['added', count('added')],
