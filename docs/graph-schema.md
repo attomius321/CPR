@@ -149,6 +149,6 @@ A directed relation `from` → `to` ("from uses to").
 
 | Rule | `data` |
 |---|---|
-| `removed-still-referenced` | `{ "referencedBy": string[], "certainty": "resolved" \| "unknown" }` |
-| `orphan-added` | `{ "exportedFromEntry": boolean }` |
-| `signature-changed` | `{ "callers": number, "updated": number, "untouched": number }` |
+| `removed-still-referenced` | `{ "referencedBy": string[], "certainty": "resolved" \| "unknown", "sites": Site[] }` |
+| `orphan-added` | `{ "exportedFromEntry": boolean, "exposure": "entry-export" \| "default-export" \| null }` |
+| `signature-changed` | `{ "callers": number, "updated": number, "untouched": number }` — `related` lists untouched users first |

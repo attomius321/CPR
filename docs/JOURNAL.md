@@ -213,3 +213,37 @@ offers batched reference search; load time is where TS 7 wins most.
 **Also learned:** CPR's own reference search cost scales with symbols × files; on zod a
 whole-package sweep (2.5k symbols) takes ~14 s with ts-morph. Real PRs touch far fewer
 symbols, but M7 must measure big PRs.
+
+## M5 — Detectors (2026-10-01)
+
+**What landed**
+- `runDetectors` (language-neutral) with three rules; findings numbered `f1…` by severity.
+- Adapter: `dangling(revision, removed)` scans head files (text prefilter on the name) for
+  identifiers that no longer resolve: alias to nothing (import of a removed export), unknown
+  name, or property missing on a typed receiver → `resolved`; JS files or `any` receivers →
+  `unknown`. `exposure(revision, symbol)`: `override` (an inherited member of the same name),
+  `default-export`, `entry-export` (exported from the package's source entry).
+- `cpr diff` prints a Findings block.
+- Default ignores (`fixtures/`, `__fixtures__/`, `__snapshots__/`, `generated/`,
+  `*.generated.*`) and `.cprignore`.
+
+**Decisions**
+- A dangling name only counts for a removed symbol when the head symbol using it already used
+  the removed one in base (or imports it from the removed symbol's file). This keeps
+  `canvas.clear()` in an untyped JS file from being blamed when it never resolved anyway.
+- Orphan rule skips overrides (called through the base type) and reports an orphan class once.
+- Signature "updated" = the user changed in this PR (or is top-level code of a changed file).
+
+**Dogfood (CPR on itself, M1 → M5)**
+- Before ignores: ~20 `orphan-added` warnings, all from test fixtures (fixture code is never
+  called). After default ignores: 0 false orphans.
+- Editing a string constant (`DIFF_HELP`) was reported as a **signature** change because a
+  `const` has a literal type. Inferred types of variables, properties and default expressions
+  are now widened (`getBaseTypeOfLiteralType`): new value = body change.
+- Remaining finding is real: `parse` gained a `const` type parameter (its one caller updated).
+
+**Open**
+- `analyzeGit` decides whether to check out slots before reading `.cprignore` (fixture-only
+  changes still cost a checkout).
+- The dangling scan reads every head file containing the name; fine for removed symbols with
+  distinctive names, slower for `get`/`run`.
