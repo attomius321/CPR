@@ -24,6 +24,7 @@ import {
 } from '@cpr/core';
 import { detectForge, type ChangeRequest, type Forge } from '@cpr/forge';
 import { ciChangeRequestNumber } from './ci.js';
+import { codeQualityReport } from './codequality.js';
 import { formatAnalysis } from './format.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { startViewServer, type ReviewTarget } from './server.js';
@@ -96,6 +97,7 @@ like a GitHub pull request, and lists the changed symbols in each file.
 Options:
   --json               Print the graph JSON instead of the summary
   --out <file>         Also write the graph JSON to a file
+  --codequality <file> Also write the findings as a GitLab Code Quality report
   --fail-on <level>    Exit 1 if a finding is at least: error, warning, info (default: never)
   --no-merge-base      Compare against base directly
   --since <rev>        Mark each changed symbol new, updated or the same as in an earlier
@@ -135,6 +137,7 @@ Options:
   --summary            Print the summary instead of opening the viewer
   --json               Print the graph JSON instead of opening the viewer
   --out <file>         Also write the graph JSON to a file
+  --codequality <file> Also write the findings as a GitLab Code Quality report
   --fail-on <level>    Exit 1 if a finding is at least: error, warning, info
   --post-findings <level>
                        Post new findings at or above the level (error, warning, info) as
@@ -273,6 +276,7 @@ async function analyze(
 const REPORT_OPTIONS = {
   json: { type: 'boolean', default: false },
   out: { type: 'string' },
+  codequality: { type: 'string' },
   'fail-on': { type: 'string' },
 } as const;
 
@@ -284,6 +288,7 @@ const SERVE_OPTIONS = {
 interface ReportArgs {
   json: boolean;
   out?: string | undefined;
+  codequality?: string | undefined;
   'fail-on'?: string | undefined;
 }
 
@@ -315,6 +320,7 @@ async function report(
 ): Promise<number> {
   const json = `${JSON.stringify(graph, null, 2)}\n`;
   if (args.out !== undefined) await writeFile(resolve(ctx.cwd, args.out), json);
+  await writeCodeQuality(analysis, graph, args.codequality, ctx);
   ctx.stdout(args.json ? json : formatAnalysis(analysis, graph.changeRequest));
   for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
 
@@ -330,6 +336,21 @@ async function report(
     }
   }
   return 0;
+}
+
+/** Writes the GitLab Code Quality report, when asked for. */
+async function writeCodeQuality(
+  analysis: Analysis,
+  graph: Graph,
+  file: string | undefined,
+  ctx: CliContext,
+): Promise<void> {
+  const { from } = analysis.revisions;
+  const head = analysis.revisions.head.sha;
+  if (file === undefined || !from || !head) return;
+  const lines = await listChangedLines(await openRepo(ctx.cwd), from, head);
+  const report = codeQualityReport(graph, lines);
+  await writeFile(resolve(ctx.cwd, file), `${JSON.stringify(report, null, 2)}\n`);
 }
 
 /** Serves the viewer for a graph until the user stops it. */
@@ -522,6 +543,7 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
   if (reportOnly) return report(analysis, graph, values, ctx);
   if (values.out !== undefined)
     await writeFile(resolve(ctx.cwd, values.out), `${JSON.stringify(graph, null, 2)}\n`);
+  await writeCodeQuality(analysis, graph, values.codequality, ctx);
   return serve(analysis, graph, values, ctx, PR_HELP, {
     forge: forge.kind,
     submit: (review) => forge.submitReview(reviewed, review),

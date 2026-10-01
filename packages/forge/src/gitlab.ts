@@ -27,9 +27,11 @@ export class GitLabForge implements Forge {
   constructor(
     readonly host: string,
     readonly project: string,
-    env: Env,
+    private readonly env: Env,
   ) {
-    this.apiBase = (env.GITLAB_API_URL ?? `https://${host}/api/v4`).replace(/\/+$/, '');
+    // Inside GitLab CI, the instance's own API URL (it knows ports and path prefixes).
+    const ci = env.CI_SERVER_HOST === host ? env.CI_API_V4_URL : undefined;
+    this.apiBase = (env.GITLAB_API_URL ?? ci ?? `https://${host}/api/v4`).replace(/\/+$/, '');
     // A personal/project token, or the job token inside GitLab CI.
     this.headers = env.GITLAB_TOKEN
       ? { 'private-token': env.GITLAB_TOKEN }
@@ -39,6 +41,10 @@ export class GitLabForge implements Forge {
   }
 
   async getChangeRequest(number: number): Promise<ChangeRequest> {
+    // The merge request's own pipeline, without GITLAB_TOKEN: the job token may not read merge
+    // requests, but the pipeline's variables say all that is needed.
+    const pipeline = this.env.GITLAB_TOKEN ? undefined : fromPipeline(this.env, number);
+    if (pipeline) return pipeline;
     const mr = await this.request<MergeRequestResponse>(`/merge_requests/${number}`);
     const refs = mr.diff_refs;
     return {
@@ -62,6 +68,7 @@ export class GitLabForge implements Forge {
    * publishes the review marked as such and withdraws a previous approval.
    */
   async submitReview(request: ChangeRequest, review: Review): Promise<{ url: string }> {
+    this.requireToken('Commenting');
     if (!request.mergeBase) throw new CprError(`!${request.number} has no diff refs yet`);
     const path = `/merge_requests/${request.number}`;
     const marker = review.event === 'request-changes' ? '**Changes requested.**' : '';
@@ -112,10 +119,19 @@ export class GitLabForge implements Forge {
 
   /** All notes: diff notes, summaries, and system notes (which never carry markers). */
   async commentBodies(request: ChangeRequest): Promise<string[]> {
+    this.requireToken('Reading comments');
     const notes = await paged((query) =>
       this.request<{ body?: string | null }[]>(`/merge_requests/${request.number}/notes?${query}`),
     );
     return notes.flatMap((note) => (note.body ? [note.body] : []));
+  }
+
+  private requireToken(what: string): void {
+    if (this.env.GITLAB_TOKEN) return;
+    throw new CprError(
+      `${what} on GitLab needs ${TOKEN_HINT}` +
+        (this.env.CI_JOB_TOKEN ? '; CI_JOB_TOKEN cannot comment on merge requests' : ''),
+    );
   }
 
   /** Withdraws the token owner's approval; fine if there was none. */
@@ -141,4 +157,35 @@ export class GitLabForge implements Forge {
       headers: this.headers,
     });
   }
+}
+
+/**
+ * A merge request as its own pipeline describes it (`CI_MERGE_REQUEST_*`), or undefined outside
+ * that pipeline. Merged-results pipelines name the source and target commits; others build the
+ * source commit itself.
+ */
+function fromPipeline(env: Env, number: number): ChangeRequest | undefined {
+  if (env.CI_MERGE_REQUEST_IID !== String(number) || !env.CI_MERGE_REQUEST_DIFF_BASE_SHA) {
+    return undefined;
+  }
+  const target = env.CI_MERGE_REQUEST_TARGET_BRANCH_NAME ?? '';
+  const source = env.CI_MERGE_REQUEST_SOURCE_BRANCH_NAME ?? '';
+  const mergeBase = env.CI_MERGE_REQUEST_DIFF_BASE_SHA;
+  return {
+    forge: 'gitlab',
+    number,
+    title: env.CI_MERGE_REQUEST_TITLE ?? `!${number}`,
+    url: `${env.CI_MERGE_REQUEST_PROJECT_URL ?? ''}/-/merge_requests/${number}`,
+    // Who started the pipeline: usually, not always, the author.
+    author: env.GITLAB_USER_LOGIN ?? 'unknown',
+    state: 'open',
+    draft: env.CI_MERGE_REQUEST_DRAFT === 'true',
+    base: { ref: target, sha: env.CI_MERGE_REQUEST_TARGET_BRANCH_SHA || mergeBase },
+    head: {
+      ref: source,
+      sha: env.CI_MERGE_REQUEST_SOURCE_BRANCH_SHA || env.CI_COMMIT_SHA || '',
+    },
+    mergeBase,
+    refs: { base: `refs/heads/${target}`, head: `refs/merge-requests/${number}/head` },
+  };
 }

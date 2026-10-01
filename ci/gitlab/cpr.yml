@@ -1,0 +1,42 @@
+# CPR for GitLab merge requests. Add to your .gitlab-ci.yml:
+#
+#   include:
+#     - remote: https://raw.githubusercontent.com/attomius321/CPR/main/ci/gitlab/cpr.yml
+#
+# The `cpr` job runs on merge request pipelines. With no token, its findings show in the merge
+# request's Code Quality widget. With a GITLAB_TOKEN CI/CD variable (a project or personal
+# access token with api scope, masked), they are also posted as comments on their lines; the
+# job token cannot comment. Override the variables below in your own `cpr:` job.
+
+.cpr:
+  image: node:22
+  variables:
+    GIT_DEPTH: '0' # the merge-base needs history
+    CPR_VERSION: main # branch or tag of CPR
+    CPR_POST_FINDINGS: warning # needs GITLAB_TOKEN; empty: don't post
+    CPR_FAIL_ON: error # empty: never fail the job
+    CPR_OUT: $CI_PROJECT_DIR/.cpr
+  script:
+    - git clone --quiet --depth 1 --branch "$CPR_VERSION" https://github.com/attomius321/CPR.git /tmp/cpr
+    - (cd /tmp/cpr && bash action/install.sh)
+    - |
+      if [ -z "${GITLAB_TOKEN:-}" ] && [ -n "$CPR_POST_FINDINGS" ]; then
+        echo "No GITLAB_TOKEN: findings go to the Code Quality widget, not comments."
+        CPR_POST_FINDINGS=""
+      fi
+      export CPR_POST_FINDINGS
+      CPR_CLI="node /tmp/cpr/packages/cli/dist/bin.js" \
+      CPR_CODEQUALITY="$CPR_OUT/gl-code-quality-report.json" \
+        bash /tmp/cpr/action/run.sh
+  artifacts:
+    when: always
+    paths:
+      - .cpr/
+    reports:
+      codequality: .cpr/gl-code-quality-report.json
+
+cpr:
+  extends: .cpr
+  stage: test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"

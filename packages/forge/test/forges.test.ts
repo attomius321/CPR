@@ -299,3 +299,57 @@ describe('commentBodies', () => {
     await api.close();
   });
 });
+
+describe('GitLab CI', () => {
+  const pipeline = {
+    CI_SERVER_HOST: 'gitlab.example.com',
+    CI_API_V4_URL: 'https://gitlab.example.com:8443/api/v4',
+    CI_JOB_TOKEN: 'job',
+    CI_MERGE_REQUEST_IID: '7',
+    CI_MERGE_REQUEST_TITLE: 'Add widgets',
+    CI_MERGE_REQUEST_PROJECT_URL: 'https://gitlab.example.com:8443/acme/widgets',
+    CI_MERGE_REQUEST_DIFF_BASE_SHA: BASE,
+    CI_MERGE_REQUEST_TARGET_BRANCH_NAME: 'main',
+    CI_MERGE_REQUEST_SOURCE_BRANCH_NAME: 'feature',
+    CI_MERGE_REQUEST_SOURCE_BRANCH_SHA: '', // set, but empty, outside merged-results pipelines
+    CI_COMMIT_SHA: HEAD,
+    GITLAB_USER_LOGIN: 'ada',
+  };
+
+  it("uses the instance's API URL", () => {
+    const forge = new GitLabForge('gitlab.example.com', 'acme/widgets', pipeline);
+    expect((forge as unknown as { apiBase: string }).apiBase).toBe(
+      'https://gitlab.example.com:8443/api/v4',
+    );
+    const other = new GitLabForge('gitlab.com', 'acme/widgets', pipeline);
+    expect((other as unknown as { apiBase: string }).apiBase).toBe('https://gitlab.com/api/v4');
+  });
+
+  it('reads its own merge request from the pipeline, without a token', async () => {
+    const forge = new GitLabForge('gitlab.example.com', 'acme/widgets', pipeline);
+    expect(await forge.getChangeRequest(7)).toEqual({
+      forge: 'gitlab',
+      number: 7,
+      title: 'Add widgets',
+      url: 'https://gitlab.example.com:8443/acme/widgets/-/merge_requests/7',
+      author: 'ada',
+      state: 'open',
+      draft: false,
+      base: { ref: 'main', sha: BASE },
+      head: { ref: 'feature', sha: HEAD },
+      mergeBase: BASE,
+      refs: { base: 'refs/heads/main', head: 'refs/merge-requests/7/head' },
+    });
+  });
+
+  it('says which token commenting needs', async () => {
+    const forge = new GitLabForge('gitlab.example.com', 'acme/widgets', pipeline);
+    const request = await forge.getChangeRequest(7);
+    await expect(
+      forge.submitReview(request, { event: 'comment', body: 'x', comments: [] }),
+    ).rejects.toThrow(
+      'Commenting on GitLab needs GITLAB_TOKEN (a personal or project access token with api scope); CI_JOB_TOKEN cannot comment on merge requests',
+    );
+    await expect(forge.commentBodies(request)).rejects.toThrow('Reading comments on GitLab needs');
+  });
+});
