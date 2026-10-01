@@ -314,3 +314,32 @@ No `removed-still-referenced` or `orphan-added` false positives showed up on the
 - zod's `docs/`, `bench/` configs load into the program; per-repo `.cprignore` can trim them.
 - Commits only exercise "merged and green" code; PR heads with real mistakes would exercise
   `removed-still-referenced` better (phase 3, `cpr pr`).
+
+## V1 — Viewer app (2026-10-01)
+
+**What landed**
+- `packages/viewer`: Vite 8 + React 19 + `@xyflow/react` 12 + `@dagrejs/dagre` 3. Loads a graph
+  from `?graph=<url>`, from `./api/graph` (for `cpr view`), or a dropped/chosen JSON file.
+- `toFlow(graph, { typeReferences, context })` (pure, unit-tested on the engine's golden graphs):
+  symbols colored by tone (added, removed, modified, moved, context, external, unknown), delta
+  tags, finding badges, edges styled by side (added green, removed dashed red, kept gray) and
+  kind (type references and unknown calls dotted). Type references hidden by default
+  (decision #3); context can be hidden.
+- Symbols are boxed by file (packages and dynamic calls get their own boxes).
+- Root `pnpm build` now also builds the viewer.
+
+**Discoveries**
+- dagre's compound-graph layout let clusters overlap (nodes of other files inside a file's
+  box). Replaced with a **two-level layout**: each file's symbols laid out alone, then the boxes
+  as nodes connected by cross-file edges. Boxes can't overlap by construction.
+- React Flow 12: `colorMode="system"` themes controls/minimap for dark mode; children of a
+  parent node are positioned relative to it and must come after it in the nodes array.
+- dagre node labels are `any` after layout; a small typed `placement()` helper keeps lint clean.
+- Edge labels made big graphs unreadable; kind is encoded by line style instead.
+- Screenshots via Playwright with the preinstalled Chromium
+  (`executablePath: '/opt/pw-browsers/chromium'`; the bundled revision doesn't match
+  `@playwright/test` 1.63).
+
+**Observed**
+- A real ky commit (25 changed symbols, 58 context) is readable when zoomed, but the overview
+  is dense → V4 adds focus (jump to finding, neighbourhood only).
