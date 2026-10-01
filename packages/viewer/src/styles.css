@@ -985,3 +985,19 @@ kbd {
   color: var(--modified);
   font-size: 12px;
 }
+
+/* ---- since an earlier version ------------------------------------------------------- */
+
+.symbol.settled {
+  opacity: 0.4;
+}
+
+.tag-since {
+  border-color: var(--moved);
+  color: var(--moved);
+}
+
+.chip-since {
+  border-color: var(--moved);
+  color: var(--moved);
+}

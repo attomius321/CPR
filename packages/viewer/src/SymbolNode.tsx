@@ -4,10 +4,10 @@ import type { SymbolData } from './flow.js';
 const SEVERITIES = ['error', 'warning', 'info'] as const;
 
 export function SymbolNode({ data, selected }: NodeProps<Node<SymbolData, 'symbol'>>) {
-  const { node, tone, label, file, tags, findings, reviewed } = data;
+  const { node, tone, label, file, tags, findings, reviewed, settled } = data;
   return (
     <div
-      className={`symbol tone-${tone}${selected ? ' selected' : ''}${reviewed ? ' reviewed' : ''}`}
+      className={`symbol tone-${tone}${selected ? ' selected' : ''}${reviewed ? ' reviewed' : ''}${settled ? ' settled' : ''}`}
       title={node.id}
     >
       <Handle type="target" position={Position.Left} />
@@ -34,6 +34,11 @@ export function SymbolNode({ data, selected }: NodeProps<Node<SymbolData, 'symbo
             {tag}
           </span>
         ))}
+        {(node.since === 'new' || node.since === 'updated') && (
+          <span className="tag tag-since" title="Compared with the earlier version">
+            {node.since}
+          </span>
+        )}
       </div>
       <Handle type="source" position={Position.Right} />
     </div>

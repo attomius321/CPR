@@ -36,6 +36,7 @@ export type {
 export type { LanguageAdapter, LoadOptions } from './adapter.js';
 export { typescriptAdapter, type TsRevision } from './lang/typescript/index.js';
 export {
+  changeFingerprint,
   diffSymbols,
   MIN_MOVE_BODY_SIZE,
   type ChangeStatus,
@@ -52,6 +53,8 @@ export {
   type AnalyzeOptions,
   type ContextSymbol,
   type RevisionsInfo,
+  type SinceInfo,
+  type SinceStatus,
 } from './pipeline.js';
 export { linkNodeModules } from './deps.js';
 export { runDetectors, type DetectorInput } from './detectors.js';

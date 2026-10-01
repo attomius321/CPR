@@ -6,8 +6,11 @@ export interface FileChanges {
 }
 
 /** Changed symbols in reading order: by file, then by position in the file. */
-export function changeList(graph: Graph): FileChanges[] {
-  const changed = graph.nodes.filter((n) => n.status !== 'unchanged');
+export function changeList(graph: Graph, { sinceOnly = false } = {}): FileChanges[] {
+  // With `--since`, symbols changed the same way as in the earlier version can be left out.
+  const changed = graph.nodes.filter(
+    (n) => n.status !== 'unchanged' && !(sinceOnly && n.since === 'same'),
+  );
   const byFile = new Map<string, GraphNode[]>();
   for (const node of changed) {
     const file = (node.head ?? node.base)?.file ?? node.id.slice(0, node.id.indexOf('#'));

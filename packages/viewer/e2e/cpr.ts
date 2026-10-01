@@ -92,8 +92,11 @@ export async function serveFixture(name: string): Promise<Running> {
 export interface RunningPullRequest extends Running {
   /** What the mock GitHub API received. */
   requests: Recorded[];
-  /** Pushes a new version of the pull request (files to write) and restarts `cpr pr` on it. */
-  push(files: Record<string, string>): Promise<void>;
+  /**
+   * Pushes a new version of the pull request (files to write) and restarts `cpr pr` on it,
+   * with `--since <previous head>` when `since` is set.
+   */
+  push(files: Record<string, string>, options?: { since?: boolean }): Promise<void>;
 }
 
 /**
@@ -131,8 +134,8 @@ export async function servePullRequest(name: string): Promise<RunningPullRequest
       body: { html_url: 'https://github.com/acme/widgets/pull/7#pullrequestreview-1' },
     },
   });
-  const start = () =>
-    startCpr(['pr', '7'], clone, {
+  const start = (args: string[] = []) =>
+    startCpr(['pr', '7', ...args], clone, {
       CPR_CACHE_DIR: cache,
       GITHUB_API_URL: api.url,
       GITHUB_TOKEN: 'ghp_e2e',
@@ -144,7 +147,8 @@ export async function servePullRequest(name: string): Promise<RunningPullRequest
       return running.url;
     },
     requests: api.requests,
-    async push(files) {
+    async push(files, { since = false } = {}) {
+      const previous = headSha;
       for (const [path, content] of Object.entries(files)) writeFileSync(join(repo, path), content);
       git(repo, 'commit', '-q', '-am', 'another push');
       headSha = git(repo, 'rev-parse', 'HEAD');
@@ -153,7 +157,7 @@ export async function servePullRequest(name: string): Promise<RunningPullRequest
       const exited = new Promise((resolve) => running.child.once('exit', resolve));
       running.child.kill('SIGINT');
       await exited;
-      running = await start();
+      running = await start(since ? ['--since', previous] : []);
     },
     stop() {
       running.child.kill('SIGINT');

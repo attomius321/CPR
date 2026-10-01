@@ -1,4 +1,4 @@
-# CPR Graph Schema (draft v0.1.0)
+# CPR Graph Schema (draft v0.2.0)
 
 The graph JSON is the contract between the engine (`@cpr/core`) and every consumer
 (viewer, CLI summary, GitHub Action). It is **language-neutral**: nothing in it is
@@ -20,6 +20,9 @@ TypeScript-specific except the `language` value.
 | New optional field, new enum value consumers can ignore | minor |
 | Removed/renamed field, changed meaning | major |
 
+History: `0.2.0` added `since` (top level and on nodes); `changeRequest` arrived in 0.1.0
+before any release.
+
 A consumer accepts any version with the same major. The JSON Schema at
 [`packages/core/schema/graph.schema.json`](../packages/core/schema/graph.schema.json) (draft
 2020-12, exported as `@cpr/core/schema/graph.schema.json`) is the source of truth; tests validate
@@ -29,7 +32,7 @@ every golden graph against it.
 
 ```jsonc
 {
-  "schemaVersion": "0.1.0",
+  "schemaVersion": "0.2.0",
   "generator": { "name": "cpr", "version": "0.1.0" },
   "changeRequest": {             // only from `cpr pr`
     "forge": "gitlab", "number": 7, "title": "Add widgets",
@@ -40,6 +43,10 @@ every golden graph against it.
     "base": { "ref": "main", "sha": "a1b2c3d", "mergeBase": "9f8e7d6" },
     "head": { "ref": "feature/users", "sha": "d4e5f6a" },
     "from": "9f8e7d6"            // the commit head was compared against
+  },
+  "since": {                     // only with --since: an earlier head of the same change
+    "ref": "3c2b1a0", "sha": "3c2b1a0…",
+    "dropped": ["src/user.ts#legacyName"]   // changed then, not anymore
   },
   "files": [ /* changed files, like git diff --name-status */ ],
   "nodes": [ /* Node */ ],
@@ -106,6 +113,7 @@ One per symbol in the graph: every changed symbol, plus unchanged **context** sy
 | `delta` | object \| absent | Present only when `status` is `modified`. At least one flag is `true`. |
 | `base` / `head` | object \| null | `base` is null for `added`, `head` is null for `removed`. |
 | `previousId` | string \| null | The base ID when the symbol was moved or renamed. |
+| `since` | enum \| absent | With `--since`, on changed nodes: `new` (not changed by the earlier version), `updated` (changed differently: either side's hashes differ), `same` (changed the same way). |
 | `hashes` | object | `signature` and `body`, 16 hex chars each. `body` is `""` when the symbol has no body (interfaces, types, enums, abstract methods). |
 
 `unchanged` nodes are context only. A context node carries the side(s) it was resolved on:

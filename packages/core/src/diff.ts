@@ -100,6 +100,17 @@ export function diffSymbols({ base, head, renames = new Map() }: DiffInput): Sym
   return changes.sort(byLocation);
 }
 
+/**
+ * What a symbol's change looks like: the hashes of both its versions (`-` for a missing side).
+ * Two versions of a change changed a symbol the same way when this is equal. The viewer computes
+ * the same string from graph nodes.
+ */
+export function changeFingerprint(change: Pick<SymbolChange, 'base' | 'head'>): string {
+  const side = (decl: SymbolDecl | null) =>
+    decl ? `${decl.hashes.signature}.${decl.hashes.body}` : '-';
+  return `${side(change.base)}|${side(change.head)}`;
+}
+
 /** Pairs symbols whose key is unique among both the removed and the added ones. */
 function matchUnique(
   removed: Map<SymbolId, SymbolDecl>,
