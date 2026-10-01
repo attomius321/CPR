@@ -70,6 +70,54 @@ describe('edges and context', () => {
   });
 });
 
+describe('detectors', () => {
+  it('flags removed-but-used, changed signatures and orphans', async () => {
+    const analysis = await analyzeDirectories(
+      fixture('detectors', 'base'),
+      fixture('detectors', 'head'),
+    );
+    expect(analysis.findings.map((f) => `${f.id} ${f.severity} ${f.rule} ${f.symbol}`)).toEqual([
+      'f1 error removed-still-referenced src/shapes.ts#Canvas.clear',
+      'f2 warning orphan-added src/shapes.ts#perimeter',
+      'f3 warning orphan-added src/shapes.ts#tools',
+      'f4 warning signature-changed src/shapes.ts#Shape',
+      'f5 info orphan-added src/shapes.ts#volume',
+    ]);
+
+    const [removed, , , signature] = analysis.findings;
+    // legacy.js calls an untyped `canvas.clear()` it never resolved: not counted.
+    expect(removed?.related).toEqual(['src/app.ts#render']);
+    expect(removed?.data).toMatchObject({ certainty: 'resolved' });
+    expect(signature?.data).toEqual({ callers: 4, updated: 2, untouched: 2 });
+    expect(signature?.related).toEqual([
+      'src/shapes.ts#Canvas.draw',
+      'src/shapes.ts#area',
+      'src/shapes.ts#perimeter',
+      'src/shapes.ts#volume',
+    ]);
+    // Pen.use overrides Tool.use: called through the base type, never an orphan.
+    expect(analysis.findings.some((f) => f.symbol.includes('Pen'))).toBe(false);
+  });
+
+  it('reports removed exports still imported', async () => {
+    const analysis = await analyzeDirectories(
+      fixture('callers', 'base'),
+      fixture('callers', 'head'),
+    );
+    const removed = analysis.findings.find((f) => f.rule === 'removed-still-referenced');
+    expect(removed).toMatchObject({
+      severity: 'error',
+      symbol: 'src/math.ts#legacy',
+      related: ['src/app.ts#old'],
+    });
+    expect(analysis.findings.map((f) => `${f.rule} ${f.symbol}`)).toEqual([
+      'removed-still-referenced src/math.ts#legacy',
+      'orphan-added src/math.ts#triple',
+      'signature-changed src/math.ts#add',
+    ]);
+  });
+});
+
 describe('listChangedFilesInDirectories', () => {
   it('reports nothing for identical folders', async () => {
     const base = fixture('service', 'base');

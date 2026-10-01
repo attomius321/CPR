@@ -204,7 +204,7 @@ function globRegExp(glob: string): RegExp {
   return new RegExp(`^${source}$`);
 }
 
-function sourceEntry(dir: string, pkg: Record<string, unknown>): string | undefined {
+export function sourceEntry(dir: string, pkg: Record<string, unknown>): string | undefined {
   const candidates = [
     pkg.source,
     exportsEntry(pkg.exports),
@@ -274,7 +274,7 @@ function findFiles(root: string, name: string): string[] {
   return found.sort();
 }
 
-function readJson(path: string): unknown {
+export function readJson(path: string): unknown {
   try {
     return ts.parseConfigFileTextToJson(path, readFileSync(path, 'utf8')).config as unknown;
   } catch {
