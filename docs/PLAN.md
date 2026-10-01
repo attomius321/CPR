@@ -255,7 +255,7 @@ or oxc in the long run.
 | # | Milestone | Output |
 |---|---|---|
 | M0 ✅ | Scaffolding | pnpm workspace, TS strict, vitest, eslint, prettier, CI on push |
-| M1 | Git layer | ref resolve, merge-base, changed files, worktree cache |
+| M1 ✅ | Git layer | ref resolve, merge-base, changed files, worktree cache |
 | M2 | Extraction | symbol IDs + both hashes, fixture tests |
 | M3 | Diff + moves | change classification, exact move matching |
 | M4 | References | incoming/outgoing edges, alias resolution, context nodes |
