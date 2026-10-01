@@ -266,3 +266,51 @@ symbols, but M7 must measure big PRs.
 - Ajv's 2020 build: `import { Ajv2020 } from 'ajv/dist/2020.js'` (named export) works with
   NodeNext; the default import is the CJS namespace.
 - `SCHEMA_VERSION` moved into `graph.ts` next to the types it versions.
+
+## M7 — Dogfood on ky, zod, vite (2026-10-01)
+
+Script: `node scripts/dogfood.mjs <repo> [count] [--json]` (each recent commit touching TS,
+`C~1 → C`, full pipeline, phase timings).
+
+**Repos**
+- **ky** (87 TS files): small, `npm install` done → dependency types available.
+- **zod** (515 TS files, workspaces): its lockfile belongs to the `nub` package manager; pnpm
+  and npm both failed → analyzed **without `node_modules`** (realistic for CI without install).
+- **vite** (601 TS files + 1k playground files, 38 tsconfigs, **no root tsconfig**): `pnpm
+  install --ignore-scripts`.
+
+**Bugs found and fixed**
+1. **Crash** on 3/15 zod commits: `Cannot read properties of undefined (reading 'kind')`.
+   `import * as z` resolves `z` to the module, whose declaration is a `SourceFile` with no
+   parent. Outgoing resolution now skips module declarations. Regression test:
+   `refs/app/src/namespace.ts`.
+2. **Noise**: `signature-changed` warned on every interface change, e.g. ky adding the optional
+   `maxResponseSize?` listed all 5 type users as "not updated". New compatibility check
+   (shapes: params/returns, members) → `compatible` / `additive` / `breaking` / `unknown`; only
+   possibly-breaking changes with untouched users **in other files** warn.
+3. **Slow extraction** on zod (2.5 s of 7 s): inferred return types computed twice per function,
+   printed untruncated. Now cached, truncated, and only computed for symbols whose syntax
+   differs between the sides (two-pass extraction): `extract` 2.5 s → 0.35–1.9 s.
+4. **Slow loading** on vite (7.7 s per side): no root tsconfig → we globbed 2,724 files, with
+   playgrounds. Now: configs below the root are loaded (ignore-aware), `examples/` and
+   `playground/` are default ignores → 932 files, 2.9 s.
+5. Messages: top-level code shows as `file (top level)` instead of `(module)`; user lists are
+   capped at 5 (`and N more`).
+
+**Results after fixes**
+
+| Repo | Commits | Per commit | Findings (warning / info) | Warnings judged |
+|---|---|---|---|---|
+| ky | 10 | 0.8–3.1 s | 1 / 12 | 1 true (`InternalOptions` lost `Required<…>`) |
+| zod | 15 | 2.8–6.4 s | 4 / 10 | 4 defensible (union members removed/added, return type changed) |
+| vite | 12 | 4.5–7.0 s | 0 / 3 | — |
+
+No `removed-still-referenced` or `orphan-added` false positives showed up on these histories
+(merged commits compile, so removed symbols are rarely still used).
+
+**Open / next**
+- Loading both programs is ~70 % of the time → reuse one program across sides (incremental).
+- Union-aware compatibility (adding a union member is additive, removing one breaks producers).
+- zod's `docs/`, `bench/` configs load into the program; per-repo `.cprignore` can trim them.
+- Commits only exercise "merged and green" code; PR heads with real mistakes would exercise
+  `removed-still-referenced` better (phase 3, `cpr pr`).

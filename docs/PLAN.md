@@ -219,7 +219,7 @@ the declared text only. Runs on changed symbols only, so the cost is small.
 |---|---|---|---|
 | `removed-still-referenced` | A removed symbol's name still appears **unresolved** in head (an import of an export that is gone, an unknown identifier, a property missing from a typed receiver), inside a symbol that used it in base or imported from its file. | error; warning when only untyped code (JS, `any`) still uses it | Unresolved names in symbols that never used it are ignored (precision). |
 | `orphan-added` | An added symbol has no references in head (its own members don't count). | warning; `info` when exported from the package entry (public API) or a default export | Overrides/implementations of inherited members are skipped (called through the base type). Members of an orphan class are not repeated. |
-| `signature-changed` | A modified symbol's signature hash changed and it has users in head. | warning when some users are untouched; `info` when all were updated in this change | **Blast radius** = all head users, split into *updated* (changed in this PR, or top-level code of a changed file) and *untouched*. |
+| `signature-changed` | A modified symbol's signature hash changed and it has users in head. | warning only when the change may break users (**compatibility** `breaking`/`unknown`) **and** an untouched user lives in another file; otherwise `info` | **Blast radius** = all head users, split into *updated* (changed in this PR, or top-level code of a changed file) and *untouched*. Compatibility compares shapes: optional params/members added → `compatible`; required members added → `additive`; removed/retyped → `breaking`. |
 
 Every finding links to a symbol ID and its related IDs, so the UI can highlight them.
 
@@ -276,6 +276,20 @@ A  test/fixtures/x.ts  (ignored)
 
 ## 11. Performance budget (v1)
 
+Measured in M7 (4-core container, per commit, end to end):
+
+| Repo | TS files | Deps installed | Per commit |
+|---|---|---|---|
+| ky | 87 | yes | 0.8–3.1 s |
+| zod | 515 | no | 2.8–6.4 s |
+| vite | 601 (+ playgrounds) | yes | 4.5–7.0 s |
+
+Loading the two programs is ~70 % of the time. Next lever: **one program for both sides** —
+load head, then swap in the base versions of changed files so TypeScript reuses every unchanged
+file's AST (incremental program). Expected ~40 % off large repos.
+
+Budget targets:
+
 | Repo size | Changed symbols | Target |
 |---|---|---|
 | ~1k files | 20 | < 5 s |
@@ -310,7 +324,7 @@ or oxc in the long run.
 | S1 ✅ | TS 7 spike | Prototype adapter on `typescript/unstable/sync`; compare speed and results with ts-morph on fixtures and dogfood repos |
 | M5 ✅ | Detectors | the three v1 rules |
 | M6 ✅ | Output + CLI | graph JSON v0.1, human summary, `--fail-on` |
-| M7 | Dogfood | measured runtime + false-positive notes on 3 repos |
+| M7 ✅ | Dogfood | measured runtime + false-positive notes on 3 repos |
 
 ## 13. Risks
 
@@ -337,3 +351,6 @@ or oxc in the long run.
 | 7 | TypeScript for our own code | **6.0.x**, not 7 | TS 7 (the Go port) is `latest`, but typescript-eslint supports `<6.1`. ts-morph bundles its own compiler, so the engine is unaffected. Revisit when lint tooling supports 7. |
 | 8 | Compiler behind the engine | **ts-morph (bundles TS 6.0)** for v1; TS 7 adapter as spike S1 after M4 | TS 7's compiler API is `unstable` and ts-morph doesn't support it yet. The adapter boundary lets us swap later. |
 | 9 | After spike S1 | **Stay on ts-morph for v1** | TS 7 matched results (99.9 % of use sites) and loaded 4–7× faster, but reference search was only 1.6–3.5× faster over IPC, the API is unstable, and an adapter means porting extraction and hashing to a new AST. See [spikes/ts7](../spikes/ts7/README.md). |
+| 10 | Signature-change severity | **By compatibility and reach**: warn only for possibly-breaking changes with untouched users in other files | Dogfood on ky/zod: adding an optional field to an interface warned on every type user. Same-file users are already in the line diff. |
+| 11 | Type inference cost | **Infer only for symbols whose syntax changed** (two-pass extraction), truncate long type text | Inference was 75 % of extraction on zod. A drifted inferred type of an unchanged symbol is covered by the callee's own finding. |
+| 12 | What to load | Ignore `examples/` and `playground/` by default (also for loading); without a root tsconfig, load the configs below it instead of every file | vite: 2,724 → 932 program files, 15–20 s → 4.5–7 s per commit. |
