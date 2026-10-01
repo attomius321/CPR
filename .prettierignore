@@ -6,3 +6,5 @@ packages/*/test/fixtures
 *.md
 **/__snapshots__
 spikes
+test-results
+playwright-report
