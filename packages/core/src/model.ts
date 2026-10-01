@@ -76,3 +76,34 @@ export interface Edge {
   resolution: 'resolved' | 'unknown';
   sites: { base?: Site[]; head?: Site[] };
 }
+
+export type Severity = 'error' | 'warning' | 'info';
+
+export type RuleId = 'removed-still-referenced' | 'orphan-added' | 'signature-changed';
+
+export interface Finding {
+  /** `f1`, `f2`, … in severity order. */
+  id: string;
+  rule: RuleId;
+  severity: Severity;
+  symbol: SymbolId;
+  /** Other symbols to highlight: callers, the blast radius. */
+  related: SymbolId[];
+  message: string;
+  data: Record<string, unknown>;
+}
+
+/** A use of a removed symbol's name in head that no longer resolves. */
+export interface Dangling {
+  /** The removed symbol (base ID). */
+  target: SymbolId;
+  from: SymbolId;
+  site: Site;
+  /** `resolved`: the compiler would report an error here. `unknown`: untyped code, a guess. */
+  certainty: 'resolved' | 'unknown';
+  /** The name is imported from the removed symbol's file. */
+  viaImport: boolean;
+}
+
+/** Why an unreferenced symbol is still expected to be used. */
+export type Exposure = 'entry-export' | 'override' | 'default-export';

@@ -1,4 +1,5 @@
 import type { LanguageAdapter } from '../../adapter.js';
+import { danglingTs, exposureTs } from './detect.js';
 import { extractTs } from './extract.js';
 import { isTsSource } from './files.js';
 import { loadTsProject, type TsRevision } from './project.js';
@@ -14,5 +15,7 @@ export const typescriptAdapter: LanguageAdapter<TsRevision> = {
   extract: extractTs,
   incoming: incomingTs,
   outgoing: outgoingTs,
+  dangling: danglingTs,
+  exposure: exposureTs,
   warnings: (revision) => revision.warnings,
 };

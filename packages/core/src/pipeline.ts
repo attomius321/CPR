@@ -1,14 +1,24 @@
 import { resolve } from 'node:path';
 import type { LanguageAdapter, LoadOptions } from './adapter.js';
 import { linkNodeModules } from './deps.js';
+import { runDetectors } from './detectors.js';
 import { diffSymbols, type SymbolChange } from './diff.js';
 import { listChangedFilesInDirectories } from './fs-diff.js';
 import { listChangedFiles, type ChangedFile } from './git/changed-files.js';
 import { openRepo } from './git/repo.js';
 import { resolveRevisions } from './git/revisions.js';
 import { checkoutRevision } from './git/worktree.js';
+import { loadIgnores } from './ignore.js';
 import { typescriptAdapter } from './lang/typescript/index.js';
-import type { Edge, EdgeRef, SymbolDecl, SymbolId, SymbolKind } from './model.js';
+import type {
+  Edge,
+  EdgeRef,
+  Exposure,
+  Finding,
+  SymbolDecl,
+  SymbolId,
+  SymbolKind,
+} from './model.js';
 import { directorySource, type RevisionSource } from './revision.js';
 
 /** What was compared. `sha` and `from` are null when comparing folders. */
@@ -32,6 +42,9 @@ export interface Analysis {
   changes: SymbolChange[];
   edges: Edge[];
   context: ContextSymbol[];
+  findings: Finding[];
+  /** Changed files left out of symbol analysis (`.cprignore` and default ignores). */
+  ignored: string[];
   warnings: string[];
 }
 
@@ -107,9 +120,19 @@ export async function analyzeDirectories(
   };
 }
 
-type SourceAnalysis = Pick<Analysis, 'changes' | 'edges' | 'context' | 'warnings'>;
+type SourceAnalysis = Pick<
+  Analysis,
+  'changes' | 'edges' | 'context' | 'findings' | 'ignored' | 'warnings'
+>;
 
-const EMPTY: SourceAnalysis = { changes: [], edges: [], context: [], warnings: [] };
+const EMPTY: SourceAnalysis = {
+  changes: [],
+  edges: [],
+  context: [],
+  findings: [],
+  ignored: [],
+  warnings: [],
+};
 
 async function analyzeSources(
   base: RevisionSource,
@@ -117,8 +140,14 @@ async function analyzeSources(
   files: readonly ChangedFile[],
   { adapter = typescriptAdapter, depth = 1, ...load }: AnalyzeOptions,
 ): Promise<SourceAnalysis> {
-  const relevant = files.filter((file) => isRelevant(file, adapter));
-  if (relevant.length === 0) return EMPTY;
+  const isIgnored = loadIgnores(head.root);
+  const ignored = files
+    .filter((file) => isIgnored(file.path) && (!file.previousPath || isIgnored(file.previousPath)))
+    .map((file) => file.path);
+  const relevant = files.filter(
+    (file) => isRelevant(file, adapter) && !ignored.includes(file.path),
+  );
+  if (relevant.length === 0) return { ...EMPTY, ignored };
 
   const baseFiles = relevant.flatMap((file) =>
     file.status === 'added' || file.status === 'copied'
@@ -191,8 +220,22 @@ async function analyzeSources(
   }
   context.sort((a, b) => a.id.localeCompare(b.id));
 
+  const removed = changes.flatMap((c) => (c.status === 'removed' && c.base ? [c.base] : []));
+  const exposure = new Map<SymbolId, Exposure>();
+  for (const change of changes) {
+    const why = change.status === 'added' && change.head && adapter.exposure(headRev, change.head);
+    if (why) exposure.set(change.id, why);
+  }
+  const findings = runDetectors({
+    changes,
+    edges,
+    files: relevant,
+    dangling: removed.length > 0 ? adapter.dangling(headRev, removed) : [],
+    exposure,
+  });
+
   const warnings = [...new Set([...adapter.warnings(baseRev), ...adapter.warnings(headRev)])];
-  return { changes, edges, context, warnings };
+  return { changes, edges, context, findings, ignored, warnings };
 }
 
 function references<L>(adapter: LanguageAdapter<L>, revision: L, symbol: SymbolDecl): EdgeRef[] {

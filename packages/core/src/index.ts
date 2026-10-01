@@ -19,9 +19,14 @@ export {
 } from './git/changed-files.js';
 export { checkoutRevision, defaultCacheDir, type CheckoutOptions } from './git/worktree.js';
 export type {
+  Dangling,
   Edge,
   EdgeKind,
   EdgeRef,
+  Exposure,
+  Finding,
+  RuleId,
+  Severity,
   Position,
   Range,
   Site,
@@ -50,3 +55,5 @@ export {
   type RevisionsInfo,
 } from './pipeline.js';
 export { linkNodeModules } from './deps.js';
+export { runDetectors, type DetectorInput } from './detectors.js';
+export { DEFAULT_IGNORES, ignoreMatcher, loadIgnores, type IgnoreMatcher } from './ignore.js';

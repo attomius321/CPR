@@ -1,4 +1,4 @@
-import type { EdgeRef, SymbolDecl } from './model.js';
+import type { Dangling, EdgeRef, Exposure, SymbolDecl } from './model.js';
 import type { RevisionSource } from './revision.js';
 
 export interface LoadOptions {
@@ -23,6 +23,10 @@ export interface LanguageAdapter<L = unknown> {
   incoming(revision: L, symbol: SymbolDecl): EdgeRef[];
   /** What an extracted symbol references: callees, types, base classes. */
   outgoing(revision: L, symbol: SymbolDecl): EdgeRef[];
+  /** Uses of the removed symbols' names in this revision that no longer resolve. */
+  dangling(revision: L, removed: readonly SymbolDecl[]): Dangling[];
+  /** Why an extracted symbol may be used without in-repo references, if it may. */
+  exposure(revision: L, symbol: SymbolDecl): Exposure | undefined;
   /** Problems worth telling the user about (configs that failed to load, skipped files). */
   warnings(revision: L): string[];
 }

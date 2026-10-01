@@ -211,15 +211,15 @@ the declared text only. Runs on changed symbols only, so the cost is small.
 | **Dynamic JS calls** | `obj[name]()`, `any`-typed receivers, `require(var)`, `eval`: emit an edge with `resolution: "unknown"` and a text-based guess when a name is visible. Never silently drop them. |
 | **JS without types** | Always load with `allowJs` + `checkJs: false`, even when the tsconfig doesn't, so changed `.js` files are part of the program. Resolution is weaker; mark low-confidence edges as `unknown`. |
 | **Project's own TS version** | CPR analyzes with ts-morph's bundled compiler (TS 6.0), not the version the project installs. Older configs (`baseUrl`, `moduleResolution: node`, `target: es5`) still work in 6.0 but warn, so projects are loaded with `ignoreDeprecations: "6.0"`. ts-morph is pinned exactly: a release built on TS 7 would drop those options. |
-| **Generated files** | Skip `.d.ts` and files matching `.cprignore` / common globs (`dist/`, `build/`, `*.generated.ts`). |
+| **Generated files, fixtures** | `.d.ts` and `*.min.js` are never extracted. Changed files under `fixtures/`, `__fixtures__/`, `__snapshots__/`, `generated/` or named `*.generated.*` are listed as `(ignored)` but not analyzed; a root `.cprignore` (gitignore-style, `!` re-includes) adds or removes patterns. |
 
 ## 8. Detectors (v1)
 
 | Rule ID | Fires when | Severity | Notes |
 |---|---|---|---|
-| `removed-still-referenced` | A removed symbol still has callers in `head`. | error | Found via base callers that still exist in head, plus head diagnostics like "Cannot find name" / "has no exported member". Text-match fallback for JS → marked `unknown`. |
-| `orphan-added` | An added symbol has no references in `head`. | warning | Downgraded to `info` if it is exported from a package entry point (it may be public API). |
-| `signature-changed` | A symbol's signature hash changed. | warning | **Blast radius** = all head callers, split into *updated in this PR* and *untouched*. Untouched callers are the ones to check. |
+| `removed-still-referenced` | A removed symbol's name still appears **unresolved** in head (an import of an export that is gone, an unknown identifier, a property missing from a typed receiver), inside a symbol that used it in base or imported from its file. | error; warning when only untyped code (JS, `any`) still uses it | Unresolved names in symbols that never used it are ignored (precision). |
+| `orphan-added` | An added symbol has no references in head (its own members don't count). | warning; `info` when exported from the package entry (public API) or a default export | Overrides/implementations of inherited members are skipped (called through the base type). Members of an orphan class are not repeated. |
+| `signature-changed` | A modified symbol's signature hash changed and it has users in head. | warning when some users are untouched; `info` when all were updated in this change | **Blast radius** = all head users, split into *updated* (changed in this PR, or top-level code of a changed file) and *untouched*. |
 
 Every finding links to a symbol ID and its related IDs, so the UI can highlight them.
 
@@ -298,7 +298,7 @@ or oxc in the long run.
 | M3 ✅ | Diff + moves | change classification, exact move matching |
 | M4 ✅ | References | incoming/outgoing edges, alias resolution, context nodes |
 | S1 ✅ | TS 7 spike | Prototype adapter on `typescript/unstable/sync`; compare speed and results with ts-morph on fixtures and dogfood repos |
-| M5 | Detectors | the three v1 rules |
+| M5 ✅ | Detectors | the three v1 rules |
 | M6 | Output + CLI | graph JSON v0.1, human summary, `--fail-on` |
 | M7 | Dogfood | measured runtime + false-positive notes on 3 repos |
 

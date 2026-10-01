@@ -1,4 +1,12 @@
-import type { Analysis, ChangedFile, Edge, FileChangeStatus, SymbolChange } from '@cpr/core';
+import type {
+  Analysis,
+  ChangedFile,
+  Edge,
+  FileChangeStatus,
+  Finding,
+  Severity,
+  SymbolChange,
+} from '@cpr/core';
 
 const LETTER: Record<FileChangeStatus, string> = {
   added: 'A',
@@ -13,7 +21,14 @@ const short = (sha: string | null) => (sha ? sha.slice(0, 7) : '');
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Human summary: revisions, then each changed file with its changed symbols. */
-export function formatAnalysis({ revisions, files, changes, edges }: Analysis): string {
+export function formatAnalysis({
+  revisions,
+  files,
+  changes,
+  edges,
+  findings,
+  ignored,
+}: Analysis): string {
   const { base, head } = revisions;
   const side = (ref: string, sha: string | null) => (sha ? `${ref} (${short(sha)})` : ref);
   const mergeBase = base.mergeBase ? `, merge-base ${short(base.mergeBase)}` : '';
@@ -35,15 +50,31 @@ export function formatAnalysis({ revisions, files, changes, edges }: Analysis): 
     '',
   );
 
+  if (findings.length > 0) lines.push(...formatFindings(findings), '');
+
   const byFile = groupByFile(files, changed);
   for (const file of files) {
     const from = file.previousPath === undefined ? '' : `${file.previousPath} → `;
-    lines.push(`${LETTER[file.status]}  ${from}${file.path}`);
+    const skipped = ignored.includes(file.path) ? '  (ignored)' : '';
+    lines.push(`${LETTER[file.status]}  ${from}${file.path}${skipped}`);
     for (const change of byFile.get(file.path) ?? []) {
       lines.push(`     ${formatChange(change, users(change, edges))}`);
     }
   }
   return `${lines.join('\n')}\n`;
+}
+
+const ICON: Record<Severity, string> = { error: '✖', warning: '⚠', info: 'ℹ' };
+
+function formatFindings(findings: Finding[]): string[] {
+  const width = Math.max(...findings.map((f) => f.rule.length));
+  return [
+    'Findings',
+    ...findings.flatMap((f) => [
+      `  ${ICON[f.severity]} ${f.rule.padEnd(width)}  ${f.symbol}`,
+      `      ${f.message}`,
+    ]),
+  ];
 }
 
 /** Distinct symbols that reference a change: in head, or in base for removed symbols. */

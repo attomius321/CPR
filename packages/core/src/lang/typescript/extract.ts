@@ -404,8 +404,17 @@ class FileExtractor {
     return annotation ? annotation.getText(this.sf) : this.inferred(at);
   }
 
+  /**
+   * Inferred type of a variable, property or expression, with literal types widened: a `const`
+   * holding `'a'` has type `'a'`, but editing the value is a body change, not a new contract.
+   */
   private inferred(node: ts.Node): string {
-    return this.safely(() => this.typeString(this.checker.getTypeAtLocation(node), node));
+    return this.safely(() =>
+      this.typeString(
+        this.checker.getBaseTypeOfLiteralType(this.checker.getTypeAtLocation(node)),
+        node,
+      ),
+    );
   }
 
   private inferredReturn(fn: ts.SignatureDeclaration): string {
