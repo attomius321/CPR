@@ -12,6 +12,7 @@ export interface SymbolData extends Record<string, unknown> {
   /** `signature`, `body`, `moved` for modified symbols. */
   tags: string[];
   findings: Record<Severity, number>;
+  reviewed: boolean;
 }
 
 export interface SymbolFlowNode {
@@ -57,6 +58,10 @@ export interface FlowOptions {
   typeReferences?: boolean;
   /** Show unchanged neighbours, packages and top-level code. */
   context?: boolean;
+  /** Show only these symbols (e.g. a selection's neighbourhood). */
+  focus?: ReadonlySet<string>;
+  /** Symbols the reviewer has marked as reviewed. */
+  reviewed?: ReadonlySet<string>;
 }
 
 export const NODE_HEIGHT = 58;
@@ -67,10 +72,12 @@ export function toFlow(
   graph: Graph,
   options: FlowOptions = {},
 ): { nodes: FlowNode[]; edges: FlowEdge[] } {
-  const { typeReferences = false, context = true } = options;
+  const { typeReferences = false, context = true, focus, reviewed } = options;
   const findings = countFindings(graph);
 
-  const visible = graph.nodes.filter((n) => context || n.status !== 'unchanged');
+  const visible = graph.nodes.filter(
+    (n) => (context || n.status !== 'unchanged') && (!focus || focus.has(n.id)),
+  );
   const ids = new Set(visible.map((n) => n.id));
   const edges = graph.edges.filter(
     (e) => ids.has(e.from) && ids.has(e.to) && (typeReferences || e.kind !== 'type-reference'),
@@ -174,6 +181,7 @@ export function toFlow(
               .map(([tag]) => tag)
           : [],
         findings: findings.get(node.id) ?? { error: 0, warning: 0, info: 0 },
+        reviewed: reviewed?.has(node.id) ?? false,
       },
     };
   });

@@ -386,3 +386,24 @@ parameter in the signature and the exact changed lines.
 
 **Gotcha**: Prettier collapses short import lists to one line, so scripted string edits of
 `App.tsx` stopped matching; rewriting the file whole was simpler and clearer.
+
+## V4 — Review flow (2026-10-01)
+
+**What landed**
+- Sidebar with two tabs: **Changes** (changed symbols in reading order, grouped by file, each
+  with a "reviewed" checkbox and a progress bar `2/25`) and **Findings** (by severity; a click
+  selects the symbol). Opens on Findings when there are any.
+- Reviewed marks persist in `localStorage` per revision pair (`cpr:reviewed:<base>..<head>`), so
+  a new push starts fresh; storage failures (private windows) degrade to session-only.
+- **Focus** mode (toggle or `f`): only the selected symbol and its 1-hop neighbourhood.
+- Keyboard: `j`/`k` next/previous change, `r` toggle reviewed, `f` focus, `Esc` close. Ignored
+  while typing in inputs.
+- Detail panel: "Mark reviewed" button; classes and namespaces list their **changed members**
+  instead of dumping their whole body; diffs longer than 300 lines collapse behind "Show all".
+- Reviewed symbols are dimmed with a ✓ in the graph.
+
+**Bugs caught by end-to-end screenshots**
+- Focus left the canvas empty: React Flow's `fitView` prop only applies on mount. Re-fit after
+  the node set changes, one animation frame later (nodes must be measured first).
+- Selecting a class showed its entire body (1,000+ lines in ky's `Ky`); its members are
+  separate symbols, so the class shows its changed members instead.

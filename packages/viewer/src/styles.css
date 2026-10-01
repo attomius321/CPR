@@ -608,3 +608,220 @@ code {
   color: var(--muted);
   cursor: default;
 }
+
+/* ---- review sidebar ----------------------------------------------------------------- */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  min-width: 300px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+}
+
+.tabs button {
+  flex: 1;
+  padding: 10px 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabs button[aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--moved);
+}
+
+.count {
+  margin-left: 4px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.progress {
+  height: 3px;
+  background: var(--line);
+}
+
+.progress > div {
+  height: 100%;
+  background: var(--added);
+  transition: width 0.2s;
+}
+
+.list {
+  flex: 1;
+  overflow: auto;
+  padding: 6px 0;
+}
+
+.list-file-name {
+  padding: 8px 12px 2px;
+  color: var(--muted);
+  font:
+    12px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px 1px 12px;
+}
+
+.list-item.current {
+  background: color-mix(in srgb, var(--moved) 14%, transparent);
+}
+
+.list-item.done .list-link {
+  color: var(--muted);
+}
+
+.list-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 3px 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font:
+    13px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+
+.finding-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-left: 3px solid var(--info);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.finding-row.finding-error {
+  border-left-color: var(--error);
+}
+
+.finding-row.finding-warning {
+  border-left-color: var(--warning);
+}
+
+.finding-row.current,
+.finding-row:hover {
+  background: color-mix(in srgb, var(--moved) 10%, transparent);
+}
+
+.finding-row-rule {
+  font-weight: 600;
+}
+
+.finding-row-message {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.keys {
+  margin: 0;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+kbd {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font:
+    11px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+
+.pad {
+  padding: 8px 12px;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.review {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.review.done {
+  border-color: var(--added);
+  color: var(--added);
+}
+
+.symbol.reviewed {
+  opacity: 0.55;
+}
+
+.check {
+  color: var(--added);
+  font-weight: 700;
+}
+
+.more {
+  width: 100%;
+  padding: 6px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--moved);
+  font: inherit;
+  cursor: pointer;
+}

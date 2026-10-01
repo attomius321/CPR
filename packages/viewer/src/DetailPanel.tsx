@@ -49,14 +49,26 @@ interface Props {
   id: string;
   /** Whether `/api/source` exists (opened with `cpr view`). */
   sources: boolean;
+  /** Whether the reviewer marked it reviewed; only changed symbols can be. */
+  reviewed: boolean;
+  onToggleReviewed: () => void;
   onSelect: (id: string) => void;
   onClose: () => void;
 }
 
-export function DetailPanel({ graph, id, sources: hasSources, onSelect, onClose }: Props) {
+export function DetailPanel({
+  graph,
+  id,
+  sources: hasSources,
+  reviewed,
+  onToggleReviewed,
+  onSelect,
+  onClose,
+}: Props) {
   const detail = useMemo(() => symbolDetail(graph, id), [graph, id]);
   if (!detail) return null;
   const { node, users, callees, findings, mentions } = detail;
+  const members = graph.nodes.filter((n) => n.container === node.id && n.status !== 'unchanged');
   const moved = node.previousId ? ` (from ${node.previousId})` : '';
   const signatures = [node.base?.signature, node.head?.signature].filter(Boolean);
 
@@ -81,9 +93,16 @@ export function DetailPanel({ graph, id, sources: hasSources, onSelect, onClose 
             {moved}
           </div>
         </div>
-        <button className="close" onClick={onClose} aria-label="Close">
-          ×
-        </button>
+        <div className="panel-actions">
+          {node.status !== 'unchanged' && (
+            <button className={`review${reviewed ? ' done' : ''}`} onClick={onToggleReviewed}>
+              {reviewed ? '✓ Reviewed' : 'Mark reviewed'}
+            </button>
+          )}
+          <button className="close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </div>
       </header>
 
       {findings.length + mentions.length > 0 && (
@@ -112,7 +131,26 @@ export function DetailPanel({ graph, id, sources: hasSources, onSelect, onClose 
         </section>
       )}
 
-      {(node.base || node.head) && (
+      {members.length > 0 && (
+        <section>
+          <h3>
+            Changed members <span className="muted">({members.length})</span>
+          </h3>
+          <ul className="neighbours">
+            {members.map((member) => (
+              <li key={member.id}>
+                <button className="link" onClick={() => onSelect(member.id)}>
+                  {label(member)}
+                </button>
+                <span className="muted"> {tone(member)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* A class's members are symbols of their own: its code would repeat them. */}
+      {(node.base || node.head) && node.kind !== 'class' && node.kind !== 'namespace' && (
         <section>
           <h3>Code</h3>
           <SymbolDiff node={node} enabled={hasSources} />
@@ -125,15 +163,20 @@ export function DetailPanel({ graph, id, sources: hasSources, onSelect, onClose 
   );
 }
 
+/** Long symbols show this many rows until expanded. */
+const MAX_ROWS = 300;
+
 function SymbolDiff({ node, enabled }: { node: GraphNode; enabled: boolean }) {
   const state = useSymbolDiff(node, enabled);
+  const [all, setAll] = useState(false);
   if (state.status === 'loading') return <p className="muted">Loading source…</p>;
   if (state.status === 'none') {
     return <p className="muted">Source is available when the graph is opened with cpr view.</p>;
   }
+  const rows = all ? state.rows : state.rows.slice(0, MAX_ROWS);
   return (
     <div className="code" role="table">
-      {state.rows.map((row, i) => (
+      {rows.map((row, i) => (
         <div key={i} className={`row row-${row.type}`} role="row">
           <span className="ln">{row.base ?? ''}</span>
           <span className="ln">{row.head ?? ''}</span>
@@ -141,6 +184,11 @@ function SymbolDiff({ node, enabled }: { node: GraphNode; enabled: boolean }) {
           <span className="text">{row.text}</span>
         </div>
       ))}
+      {rows.length < state.rows.length && (
+        <button className="more" onClick={() => setAll(true)}>
+          Show all {state.rows.length} lines
+        </button>
+      )}
     </div>
   );
 }
