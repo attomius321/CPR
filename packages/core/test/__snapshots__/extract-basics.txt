@@ -51,6 +51,6 @@ namespace   export src/user.ts#Utils.Deep @71:3-73:4
 namespace   export src/user.ts#Utils.Deep.Er @71:25-73:4
     namespace Er
 variable    export src/user.ts#Utils.Deep.Er.x @72:5-72:24
-    const x: 1
+    const x: number
 function    export src/user.ts#default @78:1-80:2
     default(): number

@@ -89,7 +89,9 @@ function signatureChanged({ changes, edges, files }: DetectorInput): Draft[] {
           message:
             untouched.length > 0
               ? `${name(change.id)} changed its signature; ${untouched.length} of ${plural(all.length, 'user')} not updated: ${untouched.map(name).join(', ')}`
-              : `${name(change.id)} changed its signature; all ${plural(all.length, 'user')} were updated`,
+              : all.length === 1
+                ? `${name(change.id)} changed its signature; its only user was updated`
+                : `${name(change.id)} changed its signature; all ${all.length} users were updated`,
           data: { callers: all.length, updated: updated.length, untouched: untouched.length },
         },
       ),

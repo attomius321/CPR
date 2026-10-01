@@ -63,7 +63,7 @@ describe('cpr diff', () => {
         '      added is new and nothing references it',
         '',
         'M  src/a.ts',
-        '     ~ variable    a  (signature, body)',
+        '     ~ variable    a  (body)',
         'A  src/added.ts',
         '     + variable    added',
         'D  src/gone.ts',

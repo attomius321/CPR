@@ -8,6 +8,7 @@ import { listChangedFiles, type ChangedFile } from './git/changed-files.js';
 import { openRepo } from './git/repo.js';
 import { resolveRevisions } from './git/revisions.js';
 import { checkoutRevision } from './git/worktree.js';
+import { loadIgnores } from './ignore.js';
 import { typescriptAdapter } from './lang/typescript/index.js';
 import type {
   Edge,
@@ -42,6 +43,8 @@ export interface Analysis {
   edges: Edge[];
   context: ContextSymbol[];
   findings: Finding[];
+  /** Changed files left out of symbol analysis (`.cprignore` and default ignores). */
+  ignored: string[];
   warnings: string[];
 }
 
@@ -117,9 +120,19 @@ export async function analyzeDirectories(
   };
 }
 
-type SourceAnalysis = Pick<Analysis, 'changes' | 'edges' | 'context' | 'findings' | 'warnings'>;
+type SourceAnalysis = Pick<
+  Analysis,
+  'changes' | 'edges' | 'context' | 'findings' | 'ignored' | 'warnings'
+>;
 
-const EMPTY: SourceAnalysis = { changes: [], edges: [], context: [], findings: [], warnings: [] };
+const EMPTY: SourceAnalysis = {
+  changes: [],
+  edges: [],
+  context: [],
+  findings: [],
+  ignored: [],
+  warnings: [],
+};
 
 async function analyzeSources(
   base: RevisionSource,
@@ -127,8 +140,14 @@ async function analyzeSources(
   files: readonly ChangedFile[],
   { adapter = typescriptAdapter, depth = 1, ...load }: AnalyzeOptions,
 ): Promise<SourceAnalysis> {
-  const relevant = files.filter((file) => isRelevant(file, adapter));
-  if (relevant.length === 0) return EMPTY;
+  const isIgnored = loadIgnores(head.root);
+  const ignored = files
+    .filter((file) => isIgnored(file.path) && (!file.previousPath || isIgnored(file.previousPath)))
+    .map((file) => file.path);
+  const relevant = files.filter(
+    (file) => isRelevant(file, adapter) && !ignored.includes(file.path),
+  );
+  if (relevant.length === 0) return { ...EMPTY, ignored };
 
   const baseFiles = relevant.flatMap((file) =>
     file.status === 'added' || file.status === 'copied'
@@ -216,7 +235,7 @@ async function analyzeSources(
   });
 
   const warnings = [...new Set([...adapter.warnings(baseRev), ...adapter.warnings(headRev)])];
-  return { changes, edges, context, findings, warnings };
+  return { changes, edges, context, findings, ignored, warnings };
 }
 
 function references<L>(adapter: LanguageAdapter<L>, revision: L, symbol: SymbolDecl): EdgeRef[] {

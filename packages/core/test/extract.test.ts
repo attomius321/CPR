@@ -141,6 +141,12 @@ describe('change hashes', () => {
     expect(annotated).toMatchObject({ signatureChanged: false, bodyChanged: true });
   });
 
+  it('treat a new constant value as a body change, not a new type', async () => {
+    const result = await pair('LIMIT', 'export const LIMIT = 10;', 'export const LIMIT = 20;');
+    expect(result).toMatchObject({ signatureChanged: false, bodyChanged: true });
+    expect(result.after.signature).toBe('const LIMIT: number');
+  });
+
   it('count exporting and un-exporting as a signature change', async () => {
     const result = await pair('f', 'export function f() {}', 'function f() {}');
     expect(result).toMatchObject({ signatureChanged: true, bodyChanged: false });

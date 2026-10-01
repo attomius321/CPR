@@ -21,7 +21,14 @@ const short = (sha: string | null) => (sha ? sha.slice(0, 7) : '');
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Human summary: revisions, then each changed file with its changed symbols. */
-export function formatAnalysis({ revisions, files, changes, edges, findings }: Analysis): string {
+export function formatAnalysis({
+  revisions,
+  files,
+  changes,
+  edges,
+  findings,
+  ignored,
+}: Analysis): string {
   const { base, head } = revisions;
   const side = (ref: string, sha: string | null) => (sha ? `${ref} (${short(sha)})` : ref);
   const mergeBase = base.mergeBase ? `, merge-base ${short(base.mergeBase)}` : '';
@@ -48,7 +55,8 @@ export function formatAnalysis({ revisions, files, changes, edges, findings }: A
   const byFile = groupByFile(files, changed);
   for (const file of files) {
     const from = file.previousPath === undefined ? '' : `${file.previousPath} → `;
-    lines.push(`${LETTER[file.status]}  ${from}${file.path}`);
+    const skipped = ignored.includes(file.path) ? '  (ignored)' : '';
+    lines.push(`${LETTER[file.status]}  ${from}${file.path}${skipped}`);
     for (const change of byFile.get(file.path) ?? []) {
       lines.push(`     ${formatChange(change, users(change, edges))}`);
     }
