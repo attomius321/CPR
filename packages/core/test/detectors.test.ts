@@ -112,6 +112,56 @@ describe('runDetectors', () => {
     });
   });
 
+  it('sets test users apart: only stale tests make it information', () => {
+    const [finding] = runDetectors(
+      input({
+        changes: [change('modified', 'a.ts#f')],
+        edges: [edge('test/a.test.ts#(module)', 'a.ts#f'), edge('a.spec.ts#check', 'a.ts#f')],
+      }),
+    );
+    expect(finding).toMatchObject({
+      severity: 'info',
+      message: 'f changed its signature; only tests use it · 2 test users, 2 not updated',
+      data: { callers: 2, untouched: 2, untouchedElsewhere: 0, tests: 2, untouchedTests: 2 },
+    });
+  });
+
+  it('flags public API removed or no longer exported, once', () => {
+    const findings = runDetectors(
+      input({
+        changes: [
+          change('removed', 'a.ts#gone'),
+          change('removed', 'a.ts#stillUsed'),
+          change('modified', 'a.ts#hidden'),
+        ],
+        edges: [edge('b.ts#caller', 'a.ts#stillUsed', 'base')],
+        dangling: [
+          {
+            target: 'a.ts#stillUsed',
+            from: 'b.ts#caller',
+            site: { file: 'b.ts', line: 1, col: 1 },
+            certainty: 'resolved',
+            viaImport: true,
+          },
+        ],
+        publicApi: {
+          base: new Set(['a.ts#gone', 'a.ts#stillUsed', 'a.ts#hidden']),
+          head: new Set(),
+        },
+      }),
+    );
+    expect(
+      findings.map(
+        (f) => `${f.severity} ${f.rule} ${f.symbol} ${JSON.stringify(f.data.change ?? null)}`,
+      ),
+    ).toEqual([
+      // The repo itself breaks: that error says it; no second finding.
+      'error removed-still-referenced a.ts#stillUsed null',
+      'warning exported-api-changed a.ts#gone "removed"',
+      'warning exported-api-changed a.ts#hidden "unexported"',
+    ]);
+  });
+
   it('reports an orphan class once, not each of its members', () => {
     const findings = runDetectors(
       input({

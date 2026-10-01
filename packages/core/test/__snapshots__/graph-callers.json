@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "0.2.0",
+  "schemaVersion": "0.3.0",
   "generator": {
     "name": "cpr",
     "version": "test"
@@ -318,6 +318,8 @@
         "updated": 1,
         "untouched": 1,
         "untouchedElsewhere": 1,
+        "tests": 0,
+        "untouchedTests": 0,
         "compatibility": "compatible"
       },
       "id": "f3"

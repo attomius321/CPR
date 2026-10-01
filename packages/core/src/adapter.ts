@@ -36,6 +36,8 @@ export interface LanguageAdapter<L = unknown> {
   dangling(revision: L, removed: readonly SymbolDecl[]): Dangling[];
   /** Why an extracted symbol may be used without in-repo references, if it may. */
   exposure(revision: L, symbol: SymbolDecl): Exposure | undefined;
+  /** Whether code outside the repository can use the symbol (a published package's API). */
+  publicApi(revision: L, symbol: SymbolDecl): boolean;
   /** Problems worth telling the user about (configs that failed to load, skipped files). */
   warnings(revision: L): string[];
 }

@@ -358,12 +358,20 @@ async function analyzeSources(
     const why = change.status === 'added' && change.head && adapter.exposure(headRev, change.head);
     if (why) exposure.set(change.id, why);
   }
+  // Only removed and modified symbols can break code outside the repo.
+  const publicApi = { base: new Set<SymbolId>(), head: new Set<SymbolId>() };
+  for (const change of changes) {
+    if (change.status !== 'removed' && change.status !== 'modified') continue;
+    if (change.base && adapter.publicApi(baseRev, change.base)) publicApi.base.add(change.id);
+    if (change.head && adapter.publicApi(headRev, change.head)) publicApi.head.add(change.id);
+  }
   const findings = runDetectors({
     changes,
     edges,
     files: relevant,
     dangling: removed.length > 0 ? adapter.dangling(headRev, removed) : [],
     exposure,
+    publicApi,
   });
 
   lap('detectors');

@@ -11,16 +11,33 @@ export interface DetectorInput {
   dangling: readonly Dangling[];
   /** Why added symbols may be used without in-repo references. */
   exposure: ReadonlyMap<SymbolId, Exposure>;
+  /**
+   * Changed symbols (by change ID) that code outside the repository can use, per side: removed
+   * and modified symbols exported from a published package's entry.
+   */
+  publicApi?: { base: ReadonlySet<SymbolId>; head: ReadonlySet<SymbolId> };
 }
+
+/** Test code by its path: `*.test.ts`, `*.spec.ts`, `*.test-d.ts`, `__tests__/`, `test/`… */
+export function isTestFile(path: string): boolean {
+  return (
+    /\.(test|spec)(-d)?\.[cm]?[jt]sx?$/.test(path) ||
+    /(^|\/)(__tests__|__mocks__|tests?|e2e)\//.test(path)
+  );
+}
+
+const fileOf = (id: SymbolId) => id.slice(0, id.indexOf('#'));
 
 const SEVERITY_ORDER: Severity[] = ['error', 'warning', 'info'];
 
 /** Runs every v1 rule and numbers the findings `f1…` in severity order. */
 export function runDetectors(input: DetectorInput): Finding[] {
+  const stillReferenced = removedStillReferenced(input);
   const findings = [
-    ...removedStillReferenced(input),
+    ...stillReferenced,
     ...signatureChanged(input),
     ...orphanAdded(input),
+    ...exportedApiChanged(input, new Set(stillReferenced.map((f) => f.symbol))),
   ].sort(
     (a, b) =>
       SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity) ||
@@ -65,9 +82,10 @@ function removedStillReferenced({ changes, edges, dangling }: DetectorInput): Dr
 }
 
 /**
- * A changed signature, with its users split into those updated in this change and the rest.
- * It is a warning only when the change may break users (not `compatible`/`additive`) and some
- * untouched user lives in another file: same-file users are already in front of the reviewer.
+ * A changed signature, with its users split into those updated in this change and the rest,
+ * and production code apart from tests. It is a warning only when the change may break users
+ * (not `compatible`/`additive`) and some untouched production user lives in another file:
+ * same-file users are already in front of the reviewer, and a stale test fails on its own.
  */
 function signatureChanged({ changes, edges, files }: DetectorInput): Draft[] {
   const changed = new Set(
@@ -75,7 +93,7 @@ function signatureChanged({ changes, edges, files }: DetectorInput): Draft[] {
   );
   const changedFiles = new Set(files.map((f) => f.path));
   const isUpdated = (id: SymbolId) =>
-    changed.has(id) || (id.endsWith('#(module)') && changedFiles.has(id.slice(0, id.indexOf('#'))));
+    changed.has(id) || (id.endsWith('#(module)') && changedFiles.has(fileOf(id)));
 
   const drafts: Draft[] = [];
   for (const change of changes) {
@@ -86,8 +104,11 @@ function signatureChanged({ changes, edges, files }: DetectorInput): Draft[] {
     if (all.length === 0) continue;
     const updated = all.filter(isUpdated).sort();
     const untouched = all.filter((id) => !isUpdated(id)).sort();
+    const tests = all.filter((id) => isTestFile(fileOf(id)));
+    const untouchedTests = untouched.filter((id) => isTestFile(fileOf(id)));
+    const untouchedCode = untouched.filter((id) => !isTestFile(fileOf(id)));
     const file = change.head.file;
-    const elsewhere = untouched.filter((id) => !id.startsWith(`${file}#`));
+    const elsewhere = untouchedCode.filter((id) => fileOf(id) !== file);
     const compat =
       change.delta.moved && change.base.name !== change.head.name
         ? 'breaking'
@@ -99,14 +120,21 @@ function signatureChanged({ changes, edges, files }: DetectorInput): Draft[] {
         'signature-changed',
         risky ? 'warning' : 'info',
         change.id,
-        [...untouched, ...updated],
+        [...untouchedCode, ...untouchedTests, ...updated],
         {
-          message: signatureMessage(name(change.id), compat, all.length, untouched),
+          message: signatureMessage(name(change.id), compat, {
+            code: all.length - tests.length,
+            untouchedCode,
+            tests: tests.length,
+            untouchedTests: untouchedTests.length,
+          }),
           data: {
             callers: all.length,
             updated: updated.length,
             untouched: untouched.length,
             untouchedElsewhere: elsewhere.length,
+            tests: tests.length,
+            untouchedTests: untouchedTests.length,
             compatibility: compat,
           },
         },
@@ -116,25 +144,34 @@ function signatureChanged({ changes, edges, files }: DetectorInput): Draft[] {
   return drafts;
 }
 
-function signatureMessage(
-  symbol: string,
-  compat: string,
-  users: number,
-  untouched: SymbolId[],
-): string {
-  const counts = `${plural(users, 'user')}, ${untouched.length} untouched`;
-  if (compat === 'compatible') {
-    return `${symbol} changed its signature compatibly; existing users keep working (${counts})`;
+interface UserCounts {
+  /** Users outside tests, and those of them this change did not update. */
+  code: number;
+  untouchedCode: SymbolId[];
+  tests: number;
+  untouchedTests: number;
+}
+
+function signatureMessage(symbol: string, compat: string, counts: UserCounts): string {
+  const { code, untouchedCode, tests, untouchedTests } = counts;
+  const testNote =
+    tests === 0
+      ? ''
+      : `${plural(tests, 'test user')}${untouchedTests > 0 ? `, ${untouchedTests} not updated` : ''}`;
+  const withTests = testNote ? ` · ${testNote}` : '';
+  if (compat === 'compatible' || compat === 'additive') {
+    const codeNote = code > 0 ? `${plural(code, 'user')}, ${untouchedCode.length} untouched` : '';
+    const total = [codeNote, testNote].filter(Boolean).join(' · ');
+    return compat === 'compatible'
+      ? `${symbol} changed its signature compatibly; existing users keep working (${total})`
+      : `${symbol} gained required members; code that creates it must add them (${total})`;
   }
-  if (compat === 'additive') {
-    return `${symbol} gained required members; code that creates it must add them (${counts})`;
+  if (code === 0) return `${symbol} changed its signature; only tests use it${withTests}`;
+  if (untouchedCode.length === 0) {
+    const all = code === 1 ? 'its only user was updated' : `all ${code} users were updated`;
+    return `${symbol} changed its signature; ${all}${withTests}`;
   }
-  if (untouched.length === 0) {
-    return users === 1
-      ? `${symbol} changed its signature; its only user was updated`
-      : `${symbol} changed its signature; all ${users} users were updated`;
-  }
-  return `${symbol} changed its signature; ${untouched.length} of ${plural(users, 'user')} not updated: ${list(untouched)}`;
+  return `${symbol} changed its signature; ${untouchedCode.length} of ${plural(code, 'user')} not updated: ${list(untouchedCode)}${withTests}`;
 }
 
 /**
@@ -170,6 +207,57 @@ function orphanAdded({ changes, edges, exposure }: DetectorInput): Draft[] {
         data: { exportedFromEntry: why === 'entry-export', exposure: why ?? null },
       }),
     );
+  }
+  return drafts;
+}
+
+/**
+ * A published package's API that changed in a way that can break code outside the repository:
+ * a public symbol removed, no longer exported from the entry, or with a possibly breaking new
+ * signature. In-repo users are the other rules' business; a removal that already breaks the
+ * repo itself is reported there only.
+ */
+function exportedApiChanged(
+  { changes, publicApi }: DetectorInput,
+  alreadyBroken: ReadonlySet<SymbolId>,
+): Draft[] {
+  if (!publicApi) return [];
+  const drafts: Draft[] = [];
+  const add = (id: SymbolId, change: string, message: string, extra = {}) =>
+    drafts.push(
+      draft('exported-api-changed', 'warning', id, [], { message, data: { change, ...extra } }),
+    );
+
+  for (const change of changes) {
+    const wasPublic = publicApi.base.has(change.id);
+    if (change.status === 'removed') {
+      if (wasPublic && !alreadyBroken.has(change.id)) {
+        add(change.id, 'removed', `${name(change.id)} was removed from the package's public API`);
+      }
+      continue;
+    }
+    if (change.status !== 'modified' || !change.base || !change.head || !wasPublic) continue;
+    if (!publicApi.head.has(change.id)) {
+      add(
+        change.id,
+        'unexported',
+        `${name(change.id)} is no longer exported from the package entry`,
+      );
+      continue;
+    }
+    if (!change.delta?.signature) continue;
+    const compat =
+      change.delta.moved && change.base.name !== change.head.name
+        ? 'breaking'
+        : compatibility(change.base, change.head);
+    if (compat === 'breaking' || compat === 'unknown') {
+      add(
+        change.id,
+        'signature',
+        `${name(change.id)} is public API and its new signature may break code outside the repo`,
+        { compatibility: compat },
+      );
+    }
   }
   return drafts;
 }
