@@ -82,8 +82,12 @@ Diffing, move detection, detectors and graph output are shared code.
 interface RevisionSource { root: string; sha?: string; dispose(): Promise<void> }
 ```
 
-- `GitWorktreeSource` — `git worktree add --detach <cache>/<sha> <sha>`; cached by SHA under
-  `$XDG_CACHE_HOME/cpr/worktrees/<repo-id>/` (fallback `~/.cache/cpr`, macOS `~/Library/Caches/cpr`).
+- `GitWorktreeSource` — a small **pool of detached worktrees** per repo at
+  `<cache>/worktrees/<repo-id>/<role>-<n>`. A run takes a free slot (pid lock file) and moves it
+  to the target SHA with `git checkout --detach`, so git only rewrites files that differ and
+  disk use stays at a few checkouts per repo. Slots show up in `git worktree list`.
+  Cache root: `$CPR_CACHE_DIR`, else `$XDG_CACHE_HOME/cpr`, else `~/Library/Caches/cpr` (macOS)
+  or `~/.cache/cpr`.
 - `DirectorySource` — a plain folder. Used by test fixtures and for quick experiments.
 
 ## 5. Engine pipeline
@@ -95,6 +99,7 @@ resolve refs → changed files → load projects → extract → hash → diff
 
 1. **Resolve revisions.** `git rev-parse` both refs. Use `merge-base(base, head)` as the
    real base, the same way GitHub computes a PR diff. Flag `--no-merge-base` to compare directly.
+   User-supplied refs are passed after `--end-of-options`; everything after uses resolved SHAs.
 2. **Changed files.** `git diff --name-status -M <mergeBase> <head>`. Only these files can
    contain changed symbols, so extraction runs on them only. This is the main speedup.
 3. **Load projects.** One ts-morph `Project` per side, built from the repo's `tsconfig.json`
@@ -167,6 +172,7 @@ the declared text only. Runs on changed symbols only, so the cost is small.
 | **Renames and moves** | §5 step 7. Exact body-hash match in v1; similarity matching later. |
 | **Dynamic JS calls** | `obj[name]()`, `any`-typed receivers, `require(var)`, `eval`: emit an edge with `resolution: "unknown"` and a text-based guess when a name is visible. Never silently drop them. |
 | **JS without types** | Enable `allowJs` + `checkJs: false`. Resolution is weaker; mark low-confidence edges as `unknown`. |
+| **Project's own TS version** | CPR analyzes with ts-morph's bundled compiler (TS 6.0), not the version the project installs. Older configs (`baseUrl`, `moduleResolution: node`, `target: es5`) still work in 6.0 but warn, so projects are loaded with `ignoreDeprecations: "6.0"`. ts-morph is pinned exactly: a release built on TS 7 would drop those options. |
 | **Generated files** | Skip `.d.ts` and files matching `.cprignore` / common globs (`dist/`, `build/`, `*.generated.ts`). |
 
 ## 8. Detectors (v1)
@@ -212,7 +218,8 @@ cpr: 14 symbols changed (3 added, 1 removed, 10 modified) in 6 files
 ## 10. Testing
 
 - **Fixture pairs:** `packages/core/test/fixtures/<case>/{base,head}/`, loaded with
-  `DirectorySource`. One case per behavior (rename, barrel, path alias, overload, dynamic call…).
+  `DirectorySource`. One case per behavior (rename, barrel, path alias, overload, dynamic call,
+  legacy TS 4–style tsconfig…).
 - **Golden snapshots:** each case has an expected `graph.json`; tests diff against it.
 - **Git integration tests:** a small script builds a temp repo with commits to test
   worktrees, merge-base and rename detection.
@@ -228,7 +235,8 @@ cpr: 14 symbols changed (3 added, 1 removed, 10 modified) in 6 files
 
 Main costs are type-checker setup (2 programs) and `findReferences`. Levers if we miss:
 cache worktrees and `.tsbuildinfo` by SHA, load only the affected workspace packages,
-build a per-file identifier index to prefilter reference search, then oxc in the long run.
+build a per-file identifier index to prefilter reference search, then a TS 7 adapter (spike S1)
+or oxc in the long run.
 
 ## 12. Roadmap
 
@@ -240,17 +248,18 @@ build a per-file identifier index to prefilter reference search, then oxc in the
 | **4. Interdiff** | Show only what changed between PR versions | Re-review after a force-push shows only the new deltas. |
 | **5. CI** | GitHub Action that posts findings | Action runs on a PR and posts a summary + inline findings. |
 
-**Later:** more languages via adapters, Rust/oxc core, self-hosted team mode.
+**Later:** more languages via adapters, a faster core (TS 7 adapter or Rust/oxc), self-hosted team mode.
 
 ### Phase 1 milestones
 
 | # | Milestone | Output |
 |---|---|---|
 | M0 ✅ | Scaffolding | pnpm workspace, TS strict, vitest, eslint, prettier, CI on push |
-| M1 | Git layer | ref resolve, merge-base, changed files, worktree cache |
+| M1 ✅ | Git layer | ref resolve, merge-base, changed files, worktree cache |
 | M2 | Extraction | symbol IDs + both hashes, fixture tests |
 | M3 | Diff + moves | change classification, exact move matching |
 | M4 | References | incoming/outgoing edges, alias resolution, context nodes |
+| S1 | TS 7 spike | Prototype adapter on `typescript/unstable/sync`; compare speed and results with ts-morph on fixtures and dogfood repos |
 | M5 | Detectors | the three v1 rules |
 | M6 | Output + CLI | graph JSON v0.1, human summary, `--fail-on` |
 | M7 | Dogfood | measured runtime + false-positive notes on 3 repos |
@@ -263,6 +272,8 @@ build a per-file identifier index to prefilter reference search, then oxc in the
 | Missing `node_modules` in worktrees breaks types | Symlink from main checkout; external symbols are leaves; base/head lockfile drift is accepted in v1. |
 | Symbol IDs unstable across refactors | Move matching by body hash; `previousId` on the node. |
 | Graph too big to read | UI collapses context nodes and groups by file/package by default. |
+| TS 7 compiler API is published as `unstable` | Only behind the adapter boundary; ts-morph stays the default until it stabilizes. |
+| A ts-morph upgrade moves to a TS 7–based compiler | Pin the exact version; the legacy-config fixture must pass before upgrading. |
 | ts-morph memory use with two projects | Load sides one after the other and keep only extracted data, not both ASTs. |
 
 ## 14. Decisions
@@ -276,3 +287,4 @@ build a per-file identifier index to prefilter reference search, then oxc in the
 | 5 | Worktree cache location | **`$XDG_CACHE_HOME/cpr`** (outside the repo) | Worktrees inside the repo would be picked up by tsc, eslint, test runners and file watchers. |
 | 6 | Minimum Node | **22.12** | Node 20 is EOL; Vitest 5 requires ≥ 22.12. CI runs Node 22 and 24. |
 | 7 | TypeScript for our own code | **6.0.x**, not 7 | TS 7 (the Go port) is `latest`, but typescript-eslint supports `<6.1`. ts-morph bundles its own compiler, so the engine is unaffected. Revisit when lint tooling supports 7. |
+| 8 | Compiler behind the engine | **ts-morph (bundles TS 6.0)** for v1; TS 7 adapter as spike S1 after M4 | TS 7's compiler API is `unstable` and ts-morph doesn't support it yet. The adapter boundary lets us swap later. |
