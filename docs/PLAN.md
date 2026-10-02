@@ -71,7 +71,7 @@ at the risky parts. It runs locally and needs no server.
 | `packages/core` | Engine: revisions, extraction, diff, references, detectors, graph output | `ts-morph` |
 | `packages/cli` | Argument parsing, git plumbing, output formatting | `@cpr/core` |
 | `packages/viewer` | Graph UI (phase 2) | `react`, `@xyflow/react` |
-| `packages/plugin-angular` (planned, X1–A2) | Angular templates, as a plugin the CLI loads on request | `@cpr/core`, `@angular/compiler` |
+| `packages/plugin-angular` (X1–A2) | Angular templates, as a plugin the CLI loads on request | `@angular/compiler` (types from `@cpr/core`) |
 
 ### Language adapter boundary
 
@@ -411,7 +411,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | P1 | One program for both sides | Measured lever: base and head share most files; a single language service over both trees (or reusing the head program's lib/dependency files) would cut load time, the largest cost on vite/zod. |
 | C3 | GitHub annotations | Fork PRs get a read-only token, so nothing is posted; `::warning file=…,line=…::` workflow commands show findings inline without one (GitLab already has Code Quality). |
 | D1 ✅ | Detectors from real reviews | `signature-changed` tells test users from production users (only untouched production users elsewhere make a warning); new `exported-api-changed` for a published package's API removed, unexported, or broken. See §8. |
-| X1, A1–A2 | Plugins; Angular templates as the `angular` plugin | Templates call component methods, bind inputs and use pipes, and CPR sees none of it: 9 of 9 warnings on real Angular commits were false. Angular support must stay outside the TS/JS analysis: X1 adds plugin hooks, A1–A2 build the Angular plugin on them. Planned below. |
+| X1 ✅, A1–A2 ✅ | Plugins; Angular templates as the `angular` plugin | Templates call component methods, bind inputs and use pipes, and CPR saw none of it: 9 of 9 warnings on real Angular commits were false. Angular support must stay outside the TS/JS analysis: X1 adds plugin hooks, A1–A2 build the Angular plugin on them. Merged with PR #1; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -463,7 +463,7 @@ Not in R1 (listed for later): reading Angular templates, `.cprignore` from the w
 
 ### X1 — Plugins
 
-**Status:** built on branch `milestone/x1-plugins`, awaiting review before merge. The
+**Status:** merged into main (PR #1, 2026-10-02). The
 contract below is as built; "As built" at the end lists what changed from the first sketch.
 
 **Why.** Framework knowledge — Angular templates now; Vue or Svelte templates, NestJS conventions
@@ -603,8 +603,8 @@ warning and the plain analysis.
 
 ### A1–A2 — Angular templates, as the `angular` plugin
 
-**Status:** A1 and A2 built on branch `milestone/x1-plugins` (with X1, awaiting review; results
-and "as built" at the end of this section).
+**Status:** A1 and A2 merged into main with X1 (PR #1, 2026-10-02); results and "as built" at
+the end of this section.
 
 Everything in this section lives in `@cpr/plugin-angular` and reaches CPR only through X1's hooks.
 Without `--plugin angular`, CPR does none of it — on Angular projects too.

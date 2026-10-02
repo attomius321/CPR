@@ -782,7 +782,7 @@ Angular repos included. Decision 24 records it.
 
 ## X1 — Plugins (2026-10-02, branch `milestone/x1-plugins`)
 
-**What landed** (not merged yet: review first)
+**What landed** (reviewed and merged with PR #1)
 - `@cpr/core` exports the plugin contract (`TsPlugin`, `PLUGIN_API_VERSION` = 1) and
   `createTypescriptAdapter({ plugins })`; `typescriptAdapter` is that factory with no plugins.
   Hooks: `applies`, `matches`, `virtualFiles` (with `map` back to owner and real site),
@@ -827,7 +827,7 @@ the summary and viewer show template names as `(template)` — both want templat
 
 ## A1 — Angular plugin: templates see their component (2026-10-02, branch `milestone/x1-plugins`)
 
-**What landed** (on the X1 branch, as asked; not merged yet): `@cpr/plugin-angular`, loaded with
+**What landed** (on the X1 branch, as asked; merged with PR #1): `@cpr/plugin-angular`, loaded with
 `--plugin angular`. Templates become TypeScript shims (`this` is the component) in the analyzed
 program, so TypeScript's own reference search, R1's family filter, inherited members, chains
 and dangling detection cover them unchanged. Template symbols (`x.html#(template)`, inline
@@ -901,3 +901,24 @@ components' files (94 in one commit).
 **Not done (later)**: library directives and pipes (`ngModel`, `routerLink`, `| async`,
 Material) from their `.d.ts` metadata; NgModule and standalone scopes; host directives;
 `ngTemplateContextGuard` types for `let-` variables.
+
+## Merged: X1, A1–A2 (2026-10-02, PR #1)
+
+X1, A1 and A2 went into main as one pull request (`milestone/x1-plugins`, 10 commits), after
+review. It was the repository's first pull request, so the first run of its own CPR review
+workflow:
+
+- **The action failed before CPR ran**: `actions/setup-node@v5` enables caching for the package
+  manager `package.json` names (`packageManager: pnpm@…`) and fails when that manager is not
+  installed yet ("Unable to locate executable file: pnpm"). Any project with a `packageManager`
+  field would have hit it. Fixed in `action.yml` with `package-manager-cache: false` (CPR
+  installs its own pnpm). The action's tests run `run.sh` only, so only a real workflow run
+  could show it.
+- **Then CPR reviewed itself**: no errors, 3 `signature-changed` warnings posted as review
+  comments, on `LanguageAdapter` (the new `base` parameter of `dangling`), `Exposure`
+  (`framework`) and `SymbolKind` (`template`). Each was checked: the code that calls or branches
+  on them was updated in the same change; the "users not updated" only hold or carry the type.
+  Answered and resolved; no code change. A known limit of `signature-changed` on widened types
+  and interfaces: it cannot tell a user that passes a type along from one that depends on its
+  exact members.
+
