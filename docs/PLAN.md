@@ -214,7 +214,7 @@ the declared text only. Runs on changed symbols only, so the cost is small.
 | **Dynamic JS calls** | `obj[name]()`, `any`-typed receivers, `require(var)`, `eval`: emit an edge with `resolution: "unknown"` and a text-based guess when a name is visible. Never silently drop them. |
 | **JS without types** | Always load with `allowJs` + `checkJs: false`, even when the tsconfig doesn't, so changed `.js` files are part of the program. Resolution is weaker; mark low-confidence edges as `unknown`. |
 | **Project's own TS version** | CPR analyzes with ts-morph's bundled compiler (TS 6.0), not the version the project installs. Older configs (`baseUrl`, `moduleResolution: node`, `target: es5`) still work in 6.0 but warn, so projects are loaded with `ignoreDeprecations: "6.0"`. ts-morph is pinned exactly: a release built on TS 7 would drop those options. |
-| **Generated files, fixtures** | `.d.ts` and `*.min.js` are never extracted. Changed files under `fixtures/`, `__fixtures__/`, `__snapshots__/`, `generated/` or named `*.generated.*` are listed as `(ignored)` but not analyzed; a root `.cprignore` (gitignore-style, `!` re-includes) adds or removes patterns. |
+| **Generated files, fixtures** | `.d.ts` and `*.min.js` are never extracted. Changed files under `fixtures/`, `__fixtures__/`, `__snapshots__/`, `generated/` or named `*.generated.*` are listed as `(ignored)` but not analyzed; a root `.cprignore` adds or removes patterns with gitignore's rules (a pattern matches at any depth unless a `/` at its start or middle anchors it, `dir/` matches folders and what is inside, `!` re-includes). It is read from the working folder, not from the analyzed commits (a fix after the Angular trial). |
 
 ## 8. Detectors (v1)
 
@@ -459,7 +459,8 @@ The viewer labels such neighbours "possible".
 guard against it. **Cost:** one type lookup per reference.
 
 Not in R1 (listed for later): reading Angular templates, `.cprignore` from the working folder,
-`interfaces/` matching at any depth, decorator-only class changes treated as compatible.
+`interfaces/` matching at any depth, decorator-only class changes treated as compatible. (Since
+done: templates and decorators in A1–A2, `.cprignore` in a fix of its own; see the journal.)
 
 ### X1 — Plugins
 

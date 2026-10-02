@@ -26,3 +26,33 @@ describe('ignoreMatcher', () => {
     expect(ignored(path)).toBe(expected);
   });
 });
+
+describe('ignoreMatcher, gitignore semantics', () => {
+  const ignored = ignoreMatcher([
+    'interfaces/',
+    '/tools/',
+    'src/legacy/',
+    'secrets',
+    '!apps/web/interfaces/keep.ts',
+  ]);
+
+  it.each([
+    // A trailing `/` alone does not anchor: every `interfaces` folder, at any depth.
+    ['apps/admin/src/interfaces/user.ts', true],
+    ['interfaces/user.ts', true],
+    ['apps/admin/interfaces/', true],
+    ['apps/web/interfaces/keep.ts', false],
+    // A folder pattern does not match a file of that name.
+    ['src/interfaces.ts', false],
+    // A leading or middle `/` anchors at the root.
+    ['tools/build.ts', true],
+    ['apps/tools/build.ts', false],
+    ['src/legacy/old.ts', true],
+    ['apps/src/legacy/old.ts', false],
+    // A name matches files and folders at any depth, and what is inside them.
+    ['config/secrets', true],
+    ['config/secrets/key.ts', true],
+  ])('%s → %s', (path, expected) => {
+    expect(ignored(path)).toBe(expected);
+  });
+});

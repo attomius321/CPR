@@ -67,7 +67,7 @@ const DEFAULTS: ts.CompilerOptions = {
  */
 export function loadTsProject(
   source: RevisionSource,
-  { project, files = [] }: LoadOptions = {},
+  { project, files = [], ignore }: LoadOptions = {},
   plugins: readonly TsPlugin[] = [],
 ): TsRevision {
   const root = resolve(source.root);
@@ -75,7 +75,7 @@ export function loadTsProject(
   const configPath = project ? join(root, project) : join(root, 'tsconfig.json');
   if (project && !existsSync(configPath)) throw new CprError(`project file not found: ${project}`);
   const workspace = workspacePaths(root);
-  const ignored = loadIgnores(root);
+  const ignored = ignore ?? loadIgnores(root);
   // Folders are passed with a trailing `/`, so `**/playground/**` prunes the whole folder.
   const notIgnored = (path: string) => {
     const rel = repoPath(root, path);

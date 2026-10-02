@@ -282,6 +282,31 @@ describe('analyzeGit', () => {
     ]);
   });
 
+  it('reads .cprignore from the working folder, not from the analyzed commits', async () => {
+    const other = createRepo();
+    try {
+      // The commit's own .cprignore says something else; the working folder's is not committed.
+      other.write({
+        '.cprignore': 'service.ts\n',
+        'apps/admin/src/service.ts': 'export const a = 1;\n',
+        'apps/admin/src/interfaces/user.ts': 'export interface User { id: number }\n',
+      });
+      const base = other.commit('base');
+      other.write({
+        'apps/admin/src/service.ts': 'export const a = 2;\n',
+        'apps/admin/src/interfaces/user.ts': 'export interface User { id: string }\n',
+      });
+      other.commit('head');
+      other.write({ '.cprignore': '# local\ninterfaces/\n' });
+
+      const analysis = await analyzeGit({ cwd: other.root, base, head: 'HEAD', cacheDir });
+      expect(analysis.ignored).toEqual(['apps/admin/src/interfaces/user.ts']);
+      expect(analysis.changes.map((c) => c.id)).toEqual(['apps/admin/src/service.ts#a']);
+    } finally {
+      other.cleanup();
+    }
+  });
+
   it('skips loading projects when no source file changed', async () => {
     repo.write({ 'notes.md': 'y\n' });
     repo.commit('docs only');

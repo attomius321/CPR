@@ -91,9 +91,14 @@ export interface AnalyzeGitOptions extends AnalyzeOptions {
   since?: string;
 }
 
-/** Compares two git revisions of the repository containing `cwd`. */
-export async function analyzeGit(options: AnalyzeGitOptions): Promise<Analysis> {
-  const repo = await openRepo(options.cwd);
+/**
+ * Compares two git revisions of the repository containing `cwd`. `.cprignore` is read from that
+ * working folder, not from the analyzed commits: an edit applies at once, and older commits are
+ * read with today's rules.
+ */
+export async function analyzeGit(gitOptions: AnalyzeGitOptions): Promise<Analysis> {
+  const repo = await openRepo(gitOptions.cwd);
+  const options = { ...gitOptions, ignore: gitOptions.ignore ?? loadIgnores(repo.root) };
   const revisions = await resolveRevisions(repo, options.base, options.head, {
     ...(options.mergeBase === undefined ? {} : { mergeBase: options.mergeBase }),
   });
@@ -235,7 +240,7 @@ async function extractChanges(
   files: readonly ChangedFile[],
   { adapter = typescriptAdapter, ...load }: AnalyzeOptions,
 ): Promise<Extracted | { ignored: string[]; changes?: undefined }> {
-  const isIgnored = loadIgnores(head.root);
+  const isIgnored = load.ignore ?? loadIgnores(head.root);
   const ignored = files
     .filter((file) => isIgnored(file.path) && (!file.previousPath || isIgnored(file.previousPath)))
     .map((file) => file.path);

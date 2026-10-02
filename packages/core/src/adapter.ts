@@ -1,4 +1,5 @@
 import type { Dangling, EdgeRef, Exposure, SymbolDecl, SymbolId } from './model.js';
+import type { IgnoreMatcher } from './ignore.js';
 import type { RevisionSource } from './revision.js';
 
 export interface LoadOptions {
@@ -6,6 +7,11 @@ export interface LoadOptions {
   project?: string;
   /** Repo-relative files that must be analyzable even if no config includes them. */
   files?: readonly string[];
+  /**
+   * Repo-relative paths left out of analysis and of the program. Default: the default ignores
+   * plus the `.cprignore` at the revision's root.
+   */
+  ignore?: IgnoreMatcher;
 }
 
 export interface ExtractOptions {
