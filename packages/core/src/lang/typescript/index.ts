@@ -1,4 +1,5 @@
 import type { LanguageAdapter } from '../../adapter.js';
+import type { Dangling } from '../../model.js';
 import { danglingTs, exposureTs, publicApiTs } from './detect.js';
 import { extractTs } from './extract.js';
 import { isTsSource } from './files.js';
@@ -47,7 +48,21 @@ export function createTypescriptAdapter({
     extract: extractTs,
     incoming: incomingTs,
     outgoing: outgoingTs,
-    dangling: danglingTs,
+    dangling: (revision, removed, base) => {
+      const found = danglingTs(revision, removed);
+      for (const active of revision.plugins) {
+        const dangling = active.plugin.dangling;
+        // Only a plugin that applies to both sides can compare them.
+        const before = base.plugins.find((p) => p.plugin === active.plugin);
+        if (!dangling || !before || before.failed) continue;
+        found.push(
+          ...runHook(active, 'dangling', revision.warnings, [] as Dangling[], () =>
+            dangling(pluginRevision(revision, active), removed, pluginRevision(base, before)),
+          ),
+        );
+      }
+      return found;
+    },
     exposure: (revision, symbol) => {
       const own = exposureTs(revision, symbol);
       if (own) return own;

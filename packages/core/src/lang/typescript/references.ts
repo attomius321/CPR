@@ -44,12 +44,12 @@ export function incomingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
 
         const at = nodeAt(refSf, entry.textSpan.start);
         let kind = referenceKind(at);
-        let possible = false;
+        let possible = mapped?.possible === true;
         if (family) {
           const verdict = family.judge(at);
           if (verdict === 'drop') continue;
           if (verdict === 'overrides') kind = 'overrides';
-          possible = verdict === 'possible';
+          possible ||= verdict === 'possible';
         }
         const from = mapped ? mapped.owner : enclosingSymbolId(at, refSf, file);
         if (!from || from === symbol.id) continue;
@@ -86,16 +86,24 @@ export function outgoingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
     const ownName = nameNode(node, symbol.name);
     // In a plugin's virtual file, sites map back to the real file; scaffolding maps to nothing.
     const virtual = revision.virtual.has(sf.fileName);
-    const site = (n: ts.Node): Site | undefined =>
+    const locate = (n: ts.Node): { site: Site; possible?: boolean } | undefined =>
       virtual
-        ? mapVirtual(revision, sf.fileName, n.getStart(sf))?.site
-        : siteOf(sf, file, n.getStart(sf));
+        ? (mapVirtual(revision, sf.fileName, n.getStart(sf)) ?? undefined)
+        : { site: siteOf(sf, file, n.getStart(sf)) };
+    const site = (n: ts.Node): Site | undefined => locate(n)?.site;
 
     const visit = (n: ts.Node): void => {
       if (ts.isIdentifier(n) && n !== ownName) {
         const edge = resolveIdentifier(n);
-        const at = edge && site(n);
-        if (edge && at) add({ from: symbol.id, ...edge, site: at });
+        const at = edge && locate(n);
+        if (edge && at) {
+          add({
+            from: symbol.id,
+            ...edge,
+            ...(at.possible ? { possible: true as const } : {}),
+            site: at.site,
+          });
+        }
       } else if (ts.isCallExpression(n) || ts.isNewExpression(n)) {
         const callee = unwrap(n.expression);
         const at = site(callee);

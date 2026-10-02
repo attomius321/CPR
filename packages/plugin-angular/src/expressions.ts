@@ -4,7 +4,7 @@ import * as ng from '@angular/compiler';
 export interface Out {
   write(text: string): void;
   /** A name read from the template at `offset`: recorded so the shim maps back to it. */
-  name(text: string, offset: number): void;
+  name(text: string, offset: number, possible?: boolean): void;
 }
 
 /** What names mean where an expression is translated. */
@@ -15,6 +15,8 @@ export interface Scope {
   params: ReadonlySet<string>;
   /** Inside an event handler, where `$event` is defined. */
   event: boolean;
+  /** The shim's name for a repo pipe's class (`markdown` → `__cpr_D1`), if it is one. */
+  pipe?: (name: string) => string | undefined;
 }
 
 export const CANONICAL: Scope = { params: new Set(), event: false };
@@ -141,10 +143,22 @@ export function writeExpression(ast: ng.AST, out: Out, scope: Scope): void {
     list(ast.expressions);
     out.write(')');
   } else if (ast instanceof ng.BindingPipe) {
-    // Pipes are not resolved yet (A2): the value and the arguments are still read.
-    out.write('__cpr_pipe(');
-    list([ast.exp, ...ast.args]);
-    out.write(')');
+    const pipe = scope.pipe?.(ast.name);
+    if (pipe) {
+      // A repo pipe: `(MarkdownPipe(), MarkdownPipe.prototype.transform(value, …args))`.
+      out.write('(');
+      out.name(pipe, ast.nameSpan.start);
+      out.write(`(), ${pipe}.prototype.`);
+      out.name('transform', ast.nameSpan.start);
+      out.write('(');
+      list([ast.exp, ...ast.args]);
+      out.write('))');
+    } else {
+      // A library pipe: the value and the arguments are still read.
+      out.write('__cpr_pipe(');
+      list([ast.exp, ...ast.args]);
+      out.write(')');
+    }
   } else if (ast instanceof ng.Interpolation || ast instanceof ng.TemplateLiteral) {
     out.write('[');
     list(ast.expressions);

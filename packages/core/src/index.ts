@@ -45,6 +45,7 @@ export type { ts } from 'ts-morph';
 export {
   PLUGIN_API_VERSION,
   type ArgumentRoles,
+  type MappedPosition,
   type PluginContext,
   type PluginRevision,
   type PluginSymbol,

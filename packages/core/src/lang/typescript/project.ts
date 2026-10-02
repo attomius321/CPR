@@ -4,12 +4,13 @@ import { Project, ts } from 'ts-morph';
 import type { LoadOptions } from '../../adapter.js';
 import { CprError } from '../../errors.js';
 import { loadIgnores } from '../../ignore.js';
-import type { Site, SymbolId } from '../../model.js';
+import type { SymbolId } from '../../model.js';
 import type { RevisionSource } from '../../revision.js';
 import { isTsSource } from './files.js';
 import {
   runHook,
   type ActivePlugin,
+  type MappedPosition,
   type PluginContext,
   type PluginRevision,
   type TsPlugin,
@@ -165,7 +166,7 @@ export function mapVirtual(
   revision: TsRevision,
   fileName: string,
   offset: number,
-): { owner: SymbolId; site: Site } | undefined | null {
+): MappedPosition | undefined | null {
   const entry = revision.virtual.get(fileName);
   if (!entry) return null;
   return runHook(entry.plugin, 'map', revision.warnings, undefined, () => entry.file.map(offset));

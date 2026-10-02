@@ -1,4 +1,5 @@
 import * as ng from '@angular/compiler';
+import type { Meta } from './directives.js';
 import { canonical, unwrap } from './expressions.js';
 
 /** Template syntax of the project's Angular version. */
@@ -12,7 +13,6 @@ export interface ParsedTemplate {
   nodes: ng.TmplAstNode[];
   /** Parse errors, `line:col message` (1-based, in the template's file). */
   errors: string[];
-  bound: ng.BoundTarget<ng.DirectiveMeta>;
 }
 
 /** Where an inline template sits in its `.ts` file. */
@@ -25,7 +25,25 @@ export interface InlineRange {
 
 const MAX_CACHED = 5000;
 const cache = new Map<string, ParsedTemplate>();
-const EMPTY_BINDER = new ng.R3TargetBinder(new ng.SelectorMatcher<ng.DirectiveMeta[]>());
+const bindings = new WeakMap<object, WeakMap<ParsedTemplate, ng.BoundTarget<Meta>>>();
+
+/**
+ * Binds a template against a set of directives: which directive each element matches, which
+ * input or output each binding sets, what each name and reference stands for.
+ */
+export function bindTemplate(
+  parsed: ParsedTemplate,
+  matcher: ng.SelectorMatcher<Meta[]>,
+): ng.BoundTarget<Meta> {
+  let cache = bindings.get(matcher);
+  if (!cache) bindings.set(matcher, (cache = new WeakMap()));
+  let bound = cache.get(parsed);
+  if (!bound) {
+    bound = new ng.R3TargetBinder(matcher).bind({ template: parsed.nodes });
+    cache.set(parsed, bound);
+  }
+  return bound;
+}
 
 /**
  * Parses a template with Angular's own parser. Base and head share most templates, so results
@@ -68,13 +86,11 @@ export function parseTemplate(
         (e) =>
           `${e.span.start.line + 1}:${e.span.start.col + 1} ${e.msg.replace(/ in \S+@\d+:\d+$/, '')}`,
       ),
-      bound: EMPTY_BINDER.bind({ template: result.nodes }),
     };
   } catch (error) {
     parsed = {
       nodes: [],
       errors: [`parser failed: ${(error as Error).message}`],
-      bound: EMPTY_BINDER.bind({ template: [] }),
     };
   }
   if (cache.size >= MAX_CACHED) cache.clear();

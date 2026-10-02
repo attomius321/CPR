@@ -1,0 +1,16 @@
+<app-preview
+  #p="appPreview"
+  [article]="article"
+  [total]="3"
+  [label]="'Hi'"
+  [size]="2"
+  [theme]="'dark'"
+  [(selected)]="isSelected"
+  (toggle)="onToggle($event)"
+  (closed)="onClosed()"
+/>
+<button (click)="p.reload()">Reload</button>
+<p *ifAuthenticated="true">Welcome back</p>
+<div>{{ article.body | markdown }}</div>
+<app-badge />
+<app-twin />

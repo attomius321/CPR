@@ -352,7 +352,11 @@ async function analyzeSources(
   context.sort((a, b) => a.id.localeCompare(b.id));
   lap('context');
 
-  const removed = changes.flatMap((c) => (c.status === 'removed' && c.base ? [c.base] : []));
+  // What no longer exists under its old name and place: removed symbols, and the old
+  // declarations of moved or renamed ones (a caller of the old name is just as broken).
+  const removed = changes.flatMap((c) =>
+    c.base && (c.status === 'removed' || c.previousId !== null) ? [c.base] : [],
+  );
   const exposure = new Map<SymbolId, Exposure>();
   for (const change of changes) {
     const why = change.status === 'added' && change.head && adapter.exposure(headRev, change.head);
@@ -369,7 +373,7 @@ async function analyzeSources(
     changes,
     edges,
     files: relevant,
-    dangling: removed.length > 0 ? adapter.dangling(headRev, removed) : [],
+    dangling: removed.length > 0 ? adapter.dangling(headRev, removed, baseRev) : [],
     exposure,
     publicApi,
   });

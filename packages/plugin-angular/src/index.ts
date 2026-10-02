@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
+import * as ng from '@angular/compiler';
 import type {
   ArgumentRoles,
+  Dangling,
   PluginContext,
   PluginRevision,
   PluginSymbol,
@@ -17,8 +19,15 @@ import {
   propertyName,
   type NgClass,
 } from './classes.js';
-import { ShimBuilder, writeHost, writeTemplate } from './shim.js';
-import { parseTemplate, templateTokens, type ParsedTemplate, type Syntax } from './template.js';
+import { directiveSite, isMeta, registry, type Meta, type Registry } from './directives.js';
+import { ShimBuilder, typeOf, writeHost, writeTemplate } from './shim.js';
+import {
+  bindTemplate,
+  parseTemplate,
+  templateTokens,
+  type ParsedTemplate,
+  type Syntax,
+} from './template.js';
 
 const VERSION = '0.1.0';
 
@@ -51,6 +60,8 @@ interface Revision {
   syntax: Syntax;
   classes: NgClass[];
   byId: Map<string, NgClass>;
+  /** Directives, components and pipes, for matching templates. */
+  registry: Registry;
   warnings: string[];
   /** Classes with a template or host bindings that are not exported. */
   unexported: string[];
@@ -128,6 +139,8 @@ const angular: TsPlugin = {
 
   decoratorArguments: (revision, decorator) => decoratorRoles(revision, decorator),
 
+  dangling: (revision, removed, base) => lostInTemplates(revision, removed, base),
+
   exposure: (revision, symbol) => {
     if (symbol.kind === 'template') return 'framework';
     const cls = symbol.container ? revisionOf(revision).byId.get(symbol.container) : undefined;
@@ -187,6 +200,7 @@ function revisionOf(revision: PluginContext): Revision {
     syntax: { blocks: major === undefined || major >= 17 },
     classes,
     byId: new Map(classes.map((c) => [c.id, c])),
+    registry: registry(classes),
     warnings: [],
     unexported: [],
   };
@@ -245,18 +259,16 @@ function buildShim(
     if (!TEST_OR_STORY.test(cls.file)) state.unexported.push(`${cls.name} (${cls.file})`);
     return undefined;
   }
-  const self =
-    cls.typeParameters > 0
-      ? `__cpr_C<${Array.from({ length: cls.typeParameters }, () => 'any').join(', ')}>`
-      : '__cpr_C';
-  const module = `./${posix.basename(cls.file).replace(/\.[cm]?tsx?$/, '')}.js`;
+  const self = typeOf('__cpr_C', cls);
   const builder = new ShimBuilder();
-  builder.write(
-    cls.exported === 'default'
-      ? `import type __cpr_C from '${module}';\n`
-      : `import type { ${cls.name} as __cpr_C } from '${module}';\n`,
-  );
-  builder.write('declare function __cpr_pipe(...args: any[]): any;\n');
+  // Repo classes the template uses, imported under their own names (`__cpr_D0`…).
+  const imports = new Map<NgClass, string>();
+  const use = (target: NgClass): string | undefined => {
+    if (!target.exported) return undefined;
+    let alias = imports.get(target);
+    if (!alias) imports.set(target, (alias = `__cpr_D${imports.size}`));
+    return alias;
+  };
 
   const parsed = templateOf(revision, state, cls);
   if (parsed && cls.template) {
@@ -269,7 +281,8 @@ function buildShim(
     }
     builder.source(templateId(cls), file);
     builder.write(`export function __cpr_template(this: ${self}): void {\n`);
-    writeTemplate(parsed, builder);
+    const bound = bindTemplate(parsed, state.registry.matcher);
+    writeTemplate(parsed, builder, { bound, use, pipes: state.registry.pipes });
     builder.write('}\n');
   }
   if (cls.host.length > 0) {
@@ -280,6 +293,13 @@ function buildShim(
     builder.write('}\n');
   }
 
+  const header = [
+    importLine(cls, '__cpr_C', cls.file, true),
+    ...[...imports].map(([target, alias]) => importLine(target, alias, cls.file, false)),
+    'declare function __cpr_pipe(...args: any[]): any;\n',
+  ];
+  builder.prepend(header.join(''));
+
   const positions = new Positions(revision);
   return {
     path: shimPath(cls),
@@ -288,9 +308,144 @@ function buildShim(
       const name = builder.at(offset);
       if (!name) return undefined;
       const at = positions.of(name.file, name.offset + offset - name.start);
-      return at ? { owner: name.owner, site: { file: name.file, ...at } } : undefined;
+      if (!at) return undefined;
+      return {
+        owner: name.owner,
+        site: { file: name.file, ...at },
+        ...(name.possible ? { possible: true } : {}),
+      };
     },
   };
+}
+
+/**
+ * What head templates still use of what this change removed: a component or directive by its
+ * selector, a pipe by its name (Angular rejects both at build), an input still bound (rejected
+ * too) and an output still listened to (accepted, and never fires: a warning). TypeScript
+ * cannot see these: in head, nothing matches the selector or binding any more.
+ */
+function lostInTemplates(
+  head: PluginRevision,
+  removed: readonly SymbolDecl[],
+  base: PluginRevision,
+): Dangling[] {
+  const before = revisionOf(base);
+  const after = revisionOf(head);
+  const gone = new Set(removed.map((r) => r.id));
+  const afterSelectors = new Set([...after.registry.metas.values()].map((m) => m.selector));
+
+  const lostDirectives = [...before.registry.metas.values()].filter(
+    (m) => gone.has(m.ref.key) && !afterSelectors.has(m.selector),
+  );
+  const lostMatcher = new ng.SelectorMatcher<Meta[]>();
+  for (const meta of lostDirectives) {
+    matcherAdd(lostMatcher, meta);
+  }
+  const lostPipes = new Map(
+    [...before.registry.pipes].filter(
+      ([name, cls]) => gone.has(cls.id) && !after.registry.pipes.has(name),
+    ),
+  );
+  // Inputs and outputs removed from directives that are still there: binding → member.
+  const lostBindings = (kind: 'inputs' | 'outputs') => {
+    const lost = new Map<string, Map<string, string>>();
+    for (const meta of before.registry.metas.values()) {
+      const now = after.byId.get(meta.ref.key);
+      if (!now || gone.has(meta.ref.key)) continue;
+      const still = new Set(after.registry[kind](now).values());
+      for (const [property, binding] of before.registry[kind](meta.ref.cls)) {
+        const member = `${meta.ref.key}.${property}`;
+        if (!gone.has(member) || still.has(binding)) continue;
+        lost.set(
+          meta.ref.key,
+          (lost.get(meta.ref.key) ?? new Map<string, string>()).set(binding, member),
+        );
+      }
+    }
+    return lost;
+  };
+  const lostInputs = lostBindings('inputs');
+  const lostOutputs = lostBindings('outputs');
+  if (!lostDirectives.length && !lostPipes.size && !lostInputs.size && !lostOutputs.size) return [];
+
+  const found: Dangling[] = [];
+  const positions = new Positions(head);
+  for (const cls of after.classes) {
+    if (!cls.template) continue;
+    const parsed = templateOf(head, after, cls);
+    if (!parsed) continue;
+    const file = cls.template.kind === 'external' ? cls.template.path : cls.file;
+    const from = templateId(cls);
+    const add = (target: string, offset: number, certainty: Dangling['certainty']) => {
+      const at = positions.of(file, offset);
+      if (at) found.push({ target, from, site: { file, ...at }, certainty, viaImport: false });
+    };
+    const bound = bindTemplate(parsed, after.registry.matcher);
+    const lostBound = lostDirectives.length ? bindTemplate(parsed, lostMatcher) : undefined;
+
+    const visitor = new (class extends ng.CombinedRecursiveAstVisitor {
+      override visitElement(element: ng.TmplAstElement): void {
+        this.node(element);
+        super.visitElement(element);
+      }
+      override visitTemplate(template: ng.TmplAstTemplate): void {
+        this.node(template);
+        super.visitTemplate(template);
+      }
+      override visitPipe(ast: ng.BindingPipe, context: unknown): void {
+        const pipe = lostPipes.get(ast.name);
+        if (pipe) add(pipe.id, ast.nameSpan.start, 'resolved');
+        super.visitPipe(ast, context);
+      }
+      node(node: ng.TmplAstElement | ng.TmplAstTemplate): void {
+        for (const meta of (lostBound?.getDirectivesOfNode(node) ?? []).filter(isMeta)) {
+          add(meta.ref.key, directiveSite(node, meta.selector), 'resolved');
+        }
+        const metas = (bound.getDirectivesOfNode(node) ?? []).filter(isMeta);
+        const own = !(node instanceof ng.TmplAstTemplate) || node.tagName === 'ng-template';
+        const inputs = [
+          ...(own ? [...node.attributes, ...node.inputs] : []),
+          ...(node instanceof ng.TmplAstTemplate ? node.templateAttrs : []),
+        ];
+        for (const meta of metas) {
+          const lostIn = lostInputs.get(meta.ref.key);
+          const lostOut = lostOutputs.get(meta.ref.key);
+          for (const input of lostIn ? inputs : []) {
+            const member = lostIn?.get(input.name);
+            if (member && !isMeta(bound.getConsumerOfBinding(input))) {
+              add(member, (input.keySpan ?? input.sourceSpan).start.offset, 'resolved');
+            }
+          }
+          for (const output of lostOut && own ? node.outputs : []) {
+            const member = lostOut?.get(output.name);
+            if (member && !isMeta(bound.getConsumerOfBinding(output))) {
+              add(member, output.keySpan.start.offset, 'unknown');
+            }
+          }
+        }
+      }
+    })();
+    for (const node of parsed.nodes) node.visit(visitor);
+  }
+  return found;
+}
+
+function matcherAdd(matcher: ng.SelectorMatcher<Meta[]>, meta: Meta): void {
+  try {
+    matcher.addSelectables(ng.CssSelector.parse(meta.selector ?? ''), [meta]);
+  } catch {
+    // a selector Angular cannot parse matches nothing
+  }
+}
+
+/** `import { Foo as alias } from './foo.js';`, relative to the shim (next to `from`). */
+function importLine(target: NgClass, alias: string, from: string, typeOnly: boolean): string {
+  let module = posix.relative(posix.dirname(from), target.file).replace(/\.[cm]?tsx?$/, '.js');
+  if (!module.startsWith('.')) module = `./${module}`;
+  const kind = typeOnly ? 'import type' : 'import';
+  return target.exported === 'default'
+    ? `${kind} ${alias} from '${module}';\n`
+    : `${kind} { ${target.name} as ${alias} } from '${module}';\n`;
 }
 
 /** 1-based line and column of offsets in a revision's files. */

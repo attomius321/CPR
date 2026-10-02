@@ -51,16 +51,16 @@ type Draft = Omit<Finding, 'id'>;
 
 /**
  * A removed symbol whose name still appears, unresolved, in head: in a symbol that used it
- * before the change, or imported from the file it was removed from.
+ * before the change, or imported from the file it was removed from. Likewise the old name or
+ * place of a renamed or moved symbol.
  */
 function removedStillReferenced({ changes, edges, dangling }: DetectorInput): Draft[] {
   const drafts: Draft[] = [];
   for (const change of changes) {
-    if (change.status !== 'removed') continue;
+    const old = change.status === 'removed' ? change.id : change.previousId;
+    if (!old) continue;
     const before = users(edges, change.id, 'base');
-    const hits = dangling.filter(
-      (d) => d.target === change.id && (d.viaImport || before.has(d.from)),
-    );
+    const hits = dangling.filter((d) => d.target === old && (d.viaImport || before.has(d.from)));
     if (hits.length === 0) continue;
 
     const referencedBy = unique(hits.map((h) => h.from));
@@ -72,13 +72,23 @@ function removedStillReferenced({ changes, edges, dangling }: DetectorInput): Dr
         change.id,
         referencedBy,
         {
-          message: `${name(change.id)} was removed but is still used by ${plural(referencedBy.length, 'symbol')}: ${list(referencedBy)}`,
+          message: lostMessage(change.id, old, referencedBy),
           data: { referencedBy, certainty, sites: hits.map((h) => h.site) },
         },
       ),
     );
   }
   return drafts;
+}
+
+/** `x was removed but is still used by …`, or renamed or moved with users of the old name. */
+function lostMessage(id: SymbolId, old: SymbolId, users: SymbolId[]): string {
+  const count = plural(users.length, 'symbol');
+  if (old === id) return `${name(id)} was removed but is still used by ${count}: ${list(users)}`;
+  const verb = users.length === 1 ? 'uses' : 'use';
+  return name(old) === name(id)
+    ? `${name(old)} was moved to ${id.slice(0, id.indexOf('#'))}, but ${count} still ${verb} the old place: ${list(users)}`
+    : `${name(old)} was renamed to ${name(id)}, but ${count} still ${verb} the old name: ${list(users)}`;
 }
 
 /**

@@ -165,3 +165,73 @@ describe('the angular plugin', () => {
     expect(strip(await run([angular]))).toEqual(strip(await run([])));
   });
 });
+
+describe('the angular plugin, across components', () => {
+  const PREVIEW = `${APP}/preview.component.ts#PreviewComponent`;
+  const PARENT_HTML = `${APP}/parent.component.html`;
+
+  it('finds what templates still use of what was removed or changed', async () => {
+    // parent.component.html did not change; what it uses did.
+    const findings = (await analyze('bindings')).findings.map(
+      (f) =>
+        `${f.severity} ${f.rule} ${f.symbol} ${(f.data.sites as { line: number; col: number }[] | undefined)?.map((s) => `${s.line}:${s.col}`).join(',') ?? ''}`,
+    );
+    expect(findings).toEqual([
+      // A removed component whose selector a template still uses: Angular rejects it.
+      `error removed-still-referenced ${APP}/badge.component.ts#BadgeComponent 15:2`,
+      // An input renamed while a template still binds the old name: rejected too.
+      `error removed-still-referenced ${PREVIEW}.label 5:4`,
+      // The new name is not bound anywhere yet.
+      `warning orphan-added ${PREVIEW}.caption `,
+      // A removed output still listened to: Angular accepts it, and it never fires.
+      `warning removed-still-referenced ${PREVIEW}.closed 10:4`,
+      // Breaking changes whose template users were not updated.
+      `warning signature-changed ${APP}/markdown.pipe.ts#MarkdownPipe.transform `,
+      `warning signature-changed ${PREVIEW}.size `,
+    ]);
+    const without = await analyze('bindings', []);
+    expect(without.findings.map((f) => `${f.rule} ${f.symbol}`)).toEqual([
+      // A directive used only as `*ifAuthenticated` looks unused without the plugin.
+      `orphan-added ${APP}/if-authenticated.directive.ts#IfAuthenticatedDirective`,
+      `orphan-added ${PREVIEW}.caption`,
+    ]);
+  });
+
+  it('links elements, bindings, references and pipes to what they use', async () => {
+    const short = (text: string) => text.replaceAll(`${APP}/`, '');
+    const edges = edgesFrom(await analyze('bindings'), `${PARENT_HTML}#(template)`).map(short);
+    const html = 'parent.component.html';
+    expect(edges).toEqual([
+      `call badge.component.ts#BadgeComponent [base] ${html}:15:2`,
+      // An input inherited from a base directive.
+      `reference base-card.ts#BaseCard.theme [both] ${html}:7:4`,
+      // A structural directive and its input.
+      `call if-authenticated.directive.ts#IfAuthenticatedDirective [head] ${html}:13:5`,
+      `reference if-authenticated.directive.ts#IfAuthenticatedDirective.ifAuthenticated [head] ${html}:13:5`,
+      `call markdown.pipe.ts#MarkdownPipe.transform [both] ${html}:14:24`,
+      `call preview.component.ts#PreviewComponent [both] ${html}:1:2`,
+      // A signal input.
+      `reference preview.component.ts#PreviewComponent.article [both] ${html}:3:4`,
+      `reference preview.component.ts#PreviewComponent.closed [base] ${html}:10:4`,
+      // `[total]` is the alias of the signal input `count`.
+      `reference preview.component.ts#PreviewComponent.count [both] ${html}:4:4`,
+      `reference preview.component.ts#PreviewComponent.label [base] ${html}:5:4`,
+      // `#p="appPreview"` … `p.reload()`.
+      `call preview.component.ts#PreviewComponent.reload [both] ${html}:12:20`,
+      // `[(selected)]` on a `model()`.
+      `reference preview.component.ts#PreviewComponent.selected [both] ${html}:8:5`,
+      `reference preview.component.ts#PreviewComponent.size [both] ${html}:6:4`,
+    ]);
+  });
+
+  it('marks components that share a selector as possible', async () => {
+    const analysis = await analyze('bindings');
+    const twins = analysis.edges
+      .filter((e) => e.from === `${APP}/shelf.component.html#(template)`)
+      .map((e) => [e.to, e.possible]);
+    expect(twins).toEqual([
+      [`${APP}/twins.component.ts#TwinAComponent`, true],
+      [`${APP}/twins.component.ts#TwinBComponent`, true],
+    ]);
+  });
+});

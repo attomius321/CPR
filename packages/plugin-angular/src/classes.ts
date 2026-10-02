@@ -45,7 +45,25 @@ export interface NgClass {
   host: { key: string; value: SourceString }[];
   /** Members decorated with `@HostListener` or `@HostBinding`. */
   hostMembers: Set<string>;
+  /** `@Component`/`@Directive` selector. */
+  selector?: string;
+  /** `exportAs` names (`#ref="name"`). */
+  exportAs?: string[];
+  /** `@Pipe({ name })`. */
+  pipeName?: string;
+  /** Own inputs: class property → binding name (aliases resolved). Inherited ones: `bindings`. */
+  inputs: Map<string, string>;
+  /** Own outputs: class property → binding name. */
+  outputs: Map<string, string>;
+  /** `extends Base`: the base's name and the module it is imported from, if imported. */
+  base?: { name: string; module?: string };
+  /** Injects `TemplateRef`: a structural directive (`*name`). */
+  structural: boolean;
 }
+
+/** Signal functions that declare inputs and outputs. */
+const SIGNAL_INPUTS = new Set(['input', 'model']);
+const SIGNAL_OUTPUTS = new Set(['output', 'outputFromObservable']);
 
 /** What `@angular/core` names are called in a file: local name → exported name. */
 export interface AngularImports {
@@ -63,7 +81,7 @@ export function angularImports(tsApi: TS, sf: ts.SourceFile): AngularImports {
     if (
       !tsApi.isImportDeclaration(statement) ||
       !tsApi.isStringLiteral(statement.moduleSpecifier) ||
-      statement.moduleSpecifier.text !== '@angular/core'
+      !statement.moduleSpecifier.text.startsWith('@angular/core')
     ) {
       continue;
     }
@@ -168,7 +186,17 @@ export function angularClasses(tsApi: TS, file: string, sf: ts.SourceFile): NgCl
       typeParameters: statement.typeParameters?.length ?? 0,
       host: [],
       hostMembers: new Set(),
+      inputs: new Map(),
+      outputs: new Map(),
+      structural: statement.getText(sf).includes('TemplateRef'),
     };
+    const extended = statement.heritageClauses?.find(
+      (c) => c.token === tsApi.SyntaxKind.ExtendsKeyword,
+    )?.types[0]?.expression;
+    if (extended && tsApi.isIdentifier(extended)) {
+      const module = moduleImports(tsApi, sf).get(extended.text);
+      ngClass.base = { name: extended.text, ...(module ? { module } : {}) };
+    }
 
     for (const property of decoratorOptions(tsApi, decorator)?.properties ?? []) {
       if (!tsApi.isPropertyAssignment(property)) continue;
@@ -182,6 +210,17 @@ export function angularClasses(tsApi: TS, file: string, sf: ts.SourceFile): NgCl
       } else if (kind === 'Component' && key === 'template') {
         const literal = sourceString(tsApi, value, sf);
         if (literal) ngClass.template = { kind: 'inline', literal };
+      } else if (key === 'selector' && tsApi.isStringLiteralLike(value)) {
+        ngClass.selector = value.text;
+      } else if (key === 'exportAs' && tsApi.isStringLiteralLike(value)) {
+        ngClass.exportAs = value.text.split(',').map((n) => n.trim());
+      } else if (kind === 'Pipe' && key === 'name' && tsApi.isStringLiteralLike(value)) {
+        ngClass.pipeName = value.text;
+      } else if ((key === 'inputs' || key === 'outputs') && tsApi.isArrayLiteralExpression(value)) {
+        for (const element of value.elements) {
+          const binding = arrayBinding(tsApi, element);
+          if (binding) ngClass[key].set(binding[0], binding[1]);
+        }
       } else if (key === 'host' && tsApi.isObjectLiteralExpression(value)) {
         for (const entry of value.properties) {
           const hostKey = tsApi.isPropertyAssignment(entry) && propertyName(tsApi, entry);
@@ -192,14 +231,115 @@ export function angularClasses(tsApi: TS, file: string, sf: ts.SourceFile): NgCl
     }
 
     for (const member of statement.members) {
-      if (!member.name || !tsApi.canHaveDecorators(member)) continue;
-      const decorated = (tsApi.getDecorators(member) ?? []).some((d) =>
-        HOST_DECORATORS.has(angularDecorator(tsApi, d) ?? ''),
-      );
-      const memberName = tsApi.isIdentifier(member.name) ? member.name.text : undefined;
-      if (decorated && memberName) ngClass.hostMembers.add(memberName);
+      const memberName =
+        member.name && tsApi.isIdentifier(member.name) ? member.name.text : undefined;
+      if (!memberName) continue;
+      for (const d of tsApi.canHaveDecorators(member) ? (tsApi.getDecorators(member) ?? []) : []) {
+        const decorator = angularDecorator(tsApi, d) ?? '';
+        if (HOST_DECORATORS.has(decorator)) ngClass.hostMembers.add(memberName);
+        if (decorator === 'Input' || decorator === 'Output') {
+          const call = tsApi.isCallExpression(d.expression) ? d.expression : undefined;
+          const alias = aliasOf(tsApi, call?.arguments ?? []);
+          ngClass[decorator === 'Input' ? 'inputs' : 'outputs'].set(
+            memberName,
+            alias ?? memberName,
+          );
+        }
+      }
+      // Signal inputs and outputs: `x = input()`, `input.required()`, `model()`, `output()`.
+      const initializer = tsApi.isPropertyDeclaration(member) ? member.initializer : undefined;
+      if (initializer && tsApi.isCallExpression(initializer)) {
+        const fn = signalFunction(tsApi, initializer.expression, imports);
+        const alias = aliasOf(tsApi, initializer.arguments) ?? memberName;
+        if (fn && SIGNAL_INPUTS.has(fn)) ngClass.inputs.set(memberName, alias);
+        if (fn === 'model') ngClass.outputs.set(memberName, `${alias}Change`);
+        if (fn && SIGNAL_OUTPUTS.has(fn)) ngClass.outputs.set(memberName, alias);
+      }
     }
     found.push(ngClass);
   }
+  return found;
+}
+
+/** `input`, `model`… for `input(…)`, `input.required(…)`, when imported from Angular. */
+function signalFunction(
+  tsApi: TS,
+  callee: ts.Expression,
+  imports: AngularImports,
+): string | undefined {
+  const root =
+    tsApi.isPropertyAccessExpression(callee) && callee.name.text === 'required'
+      ? callee.expression
+      : callee;
+  return tsApi.isIdentifier(root) ? imports.named.get(root.text) : undefined;
+}
+
+/** An alias given as `'alias'` or `{ alias: 'alias' }` among a call's arguments. */
+function aliasOf(tsApi: TS, args: readonly ts.Expression[]): string | undefined {
+  for (const arg of args) {
+    if (tsApi.isStringLiteralLike(arg)) return arg.text;
+    if (tsApi.isObjectLiteralExpression(arg)) {
+      for (const property of arg.properties) {
+        if (
+          tsApi.isPropertyAssignment(property) &&
+          propertyName(tsApi, property) === 'alias' &&
+          tsApi.isStringLiteralLike(property.initializer)
+        ) {
+          return property.initializer.text;
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+/** `'name'`, `'name: alias'` or `{ name, alias }` in `inputs`/`outputs` arrays. */
+function arrayBinding(tsApi: TS, element: ts.Expression): [string, string] | undefined {
+  if (tsApi.isStringLiteralLike(element)) {
+    const [name = '', alias] = element.text.split(':').map((part) => part.trim());
+    return name ? [name, alias || name] : undefined;
+  }
+  if (tsApi.isObjectLiteralExpression(element)) {
+    let name: string | undefined;
+    let alias: string | undefined;
+    for (const property of element.properties) {
+      if (
+        !tsApi.isPropertyAssignment(property) ||
+        !tsApi.isStringLiteralLike(property.initializer)
+      ) {
+        continue;
+      }
+      const key = propertyName(tsApi, property);
+      if (key === 'name') name = property.initializer.text;
+      if (key === 'alias') alias = property.initializer.text;
+    }
+    return name ? [name, alias ?? name] : undefined;
+  }
+  return undefined;
+}
+
+const moduleImportsCache = new WeakMap<ts.SourceFile, Map<string, string>>();
+
+/** Local names imported by a file → their module specifier. */
+function moduleImports(tsApi: TS, sf: ts.SourceFile): Map<string, string> {
+  const cached = moduleImportsCache.get(sf);
+  if (cached) return cached;
+  const found = new Map<string, string>();
+  for (const statement of sf.statements) {
+    if (
+      !tsApi.isImportDeclaration(statement) ||
+      !tsApi.isStringLiteral(statement.moduleSpecifier)
+    ) {
+      continue;
+    }
+    const module = statement.moduleSpecifier.text;
+    const clause = statement.importClause;
+    if (clause?.name) found.set(clause.name.text, module);
+    const bindings = clause?.namedBindings;
+    if (bindings && !tsApi.isNamespaceImport(bindings)) {
+      for (const element of bindings.elements) found.set(element.name.text, module);
+    }
+  }
+  moduleImportsCache.set(sf, found);
   return found;
 }

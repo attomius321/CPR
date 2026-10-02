@@ -1,5 +1,5 @@
 import type { ts } from 'ts-morph';
-import type { Exposure, Site, SymbolDecl, SymbolId } from '../../model.js';
+import type { Dangling, Exposure, Site, SymbolDecl, SymbolId } from '../../model.js';
 
 /** The plugin contract this version of CPR implements. */
 export const PLUGIN_API_VERSION = 1;
@@ -35,6 +35,15 @@ export interface TsPlugin {
     revision: PluginRevision,
     decorator: ts.Decorator,
   ) => ArgumentRoles | undefined;
+  /**
+   * Uses of removed symbols the adapter cannot find by name, e.g. a removed component whose
+   * selector a template still uses; `base` is where they were removed from.
+   */
+  dangling?: (
+    revision: PluginRevision,
+    removed: readonly SymbolDecl[],
+    base: PluginRevision,
+  ) => Dangling[];
   /** Why a symbol may be used with no reference, consulted after the adapter's own answer. */
   exposure?: (revision: PluginRevision, symbol: SymbolDecl) => Exposure | undefined;
   /** Problems worth telling the user about. */
@@ -72,9 +81,16 @@ export interface VirtualFile {
   text: string;
   /**
    * The symbol a position of `text` belongs to and its real site (e.g. a line of a `.html`
-   * file). Undefined for scaffolding: references there are dropped.
+   * file). Undefined for scaffolding: references there are dropped. `possible`: a reference
+   * there may not be a use (e.g. two components match one element).
    */
-  map: (offset: number) => { owner: SymbolId; site: Site } | undefined;
+  map: (offset: number) => MappedPosition | undefined;
+}
+
+export interface MappedPosition {
+  owner: SymbolId;
+  site: Site;
+  possible?: boolean;
 }
 
 export interface PluginSymbol {
