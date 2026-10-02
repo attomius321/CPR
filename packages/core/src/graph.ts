@@ -4,7 +4,7 @@ import type { EdgeKind, Finding, Range, Site, SymbolDecl, SymbolId, SymbolKind }
 import type { Analysis, ContextSymbol, SinceStatus } from './pipeline.js';
 
 /** Version of the graph JSON contract. See docs/graph-schema.md. */
-export const SCHEMA_VERSION = '0.3.0';
+export const SCHEMA_VERSION = '0.4.0';
 
 export interface GraphSide {
   file: string;
@@ -36,6 +36,8 @@ export interface GraphEdge {
   kind: EdgeKind;
   side: 'base' | 'head' | 'both';
   resolution: 'resolved' | 'unknown';
+  /** Reaches a class member only through an ancestor or interface type. */
+  possible?: true;
   sites: { base?: Site[]; head?: Site[] };
 }
 
@@ -123,6 +125,7 @@ export function buildGraph(analysis: Analysis, options: BuildGraphOptions): Grap
       kind: edge.kind,
       side: edge.side,
       resolution: edge.resolution,
+      ...(edge.possible ? { possible: true } : {}),
       sites: edge.sites,
     })),
     findings: analysis.findings,

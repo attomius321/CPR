@@ -5,6 +5,8 @@ export interface Neighbour {
   id: string;
   kind: GraphEdge['kind'];
   side: GraphEdge['side'];
+  /** Only through an ancestor or interface type: a use when the object is of this class. */
+  possible: boolean;
   node: GraphNode | undefined;
 }
 
@@ -28,6 +30,7 @@ export function symbolDetail(graph: Graph, id: string): SymbolDetail | undefined
     id: other,
     kind: edge.kind,
     side: edge.side,
+    possible: edge.possible === true,
     node: nodes.get(other),
   });
   const order = (a: Neighbour, b: Neighbour) =>

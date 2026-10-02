@@ -1,4 +1,4 @@
-# CPR Graph Schema (draft v0.3.0)
+# CPR Graph Schema (draft v0.4.0)
 
 The graph JSON is the contract between the engine (`@cpr/core`) and every consumer
 (viewer, CLI summary, GitHub Action). It is **language-neutral**: nothing in it is
@@ -20,7 +20,7 @@ TypeScript-specific except the `language` value.
 | New optional field, new enum value consumers can ignore | minor |
 | Removed/renamed field, changed meaning | major |
 
-History: `0.3.0` added the `exported-api-changed` rule and test-user counts in
+History: `0.4.0` added the `overrides` edge kind and the edge flag `possible`; `0.3.0` added the `exported-api-changed` rule and test-user counts in
 `signature-changed` data; `0.2.0` added `since` (top level and on nodes); `changeRequest` arrived in 0.1.0
 before any release.
 
@@ -33,7 +33,7 @@ every golden graph against it.
 
 ```jsonc
 {
-  "schemaVersion": "0.3.0",
+  "schemaVersion": "0.4.0",
   "generator": { "name": "cpr", "version": "0.1.0" },
   "changeRequest": {             // only from `cpr pr`
     "forge": "gitlab", "number": 7, "title": "Add widgets",
@@ -149,7 +149,8 @@ A directed relation `from` → `to` ("from uses to").
 
 | Field | Type | Notes |
 |---|---|---|
-| `kind` | enum | `call` `new` `reference` `type-reference` `extends` `implements`. `type-reference` edges are always emitted; viewers should hide them by default. |
+| `kind` | enum | `call` `new` `reference` `type-reference` `extends` `implements` `overrides`. `type-reference` edges are always emitted; viewers should hide them by default. `overrides`: a class member overriding or implementing `to` (a base class member, or an interface — interface members are not nodes). |
+| `possible` | `true` \| absent | Every site reaches the class member `to` only through an ancestor class or interface type (`item: Base`, `this` in a base class): a use when the object is an instance of `to`'s class at runtime. |
 | `side` | enum | `base` (edge removed), `head` (edge added), `both` (kept) |
 | `resolution` | enum | `resolved` — the checker found the target. `unknown` — dynamic call or untyped JS; `to` is a best guess and may be an `unknown` node. |
 | `sites` | object | Call/reference locations per side. Missing side = no sites there. |

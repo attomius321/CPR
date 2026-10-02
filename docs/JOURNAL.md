@@ -662,3 +662,46 @@ instead of `assignability.test.ts (top level)`. Warnings there: 3 → 2.
 
 **Open**: removing only a re-export from the entry (the symbol itself unchanged) is not
 detected; packages without a source entry (only `dist/` in `main`) have no public API for CPR.
+
+## Angular 11 trial (2026-10-02)
+
+Ran CPR on the Angular RealWorld example app at its Angular 11.2 state (TypeScript 4.1.5, 72 TS
+files, dependencies installed with `npm ci --ignore-scripts --legacy-peer-deps` under Node 22):
+it loads cleanly, ~3–4.6 s per commit, and its real Angular-11-era commits come out right
+(e.g. "Fixed: Tag not saving" → `EditorComponent.submitForm (body)`). Found:
+- **Templates are invisible**: a method used only from `(click)` is reported as an orphan; a
+  method deleted while its template still calls it is not reported at all.
+- **Class families**: `ngOnInit` "used by 11" (every component implements `OnInit`); a user's
+  project showed the same for a property overridden from a shared base class. → R1.
+- **Decorator metadata**: changing `@NgModule({...})` arguments warns "AppRoutingModule changed
+  its signature; 1 of 1 user not updated: AppModule".
+- `.cprignore` is read from the analyzed head commit, not the working folder, so an uncommitted
+  file (or a diff of older commits) ignores it; `interfaces/` matches only at the root, unlike
+  `.gitignore`.
+
+## R1 — Receiver-aware references (2026-10-02, branch only)
+
+**What landed** (branch `milestone/r1-receiver-aware-references`, not merged into main)
+- `incomingTs` judges every reference to a class member by the class of the object it is read
+  from (`x` in `x.m`, the class for `this`): the member's class or a subclass → use; an ancestor
+  class or interface → **possible** use; unrelated (a sibling) → dropped; unknown (`any`, no
+  receiver) → kept. Union and intersection types count if any part relates; `this` and
+  constrained type parameters stand for their constraint.
+- Declarations the search returns: a subclass's direct override → `overrides` edge to the
+  member; any other (the base declaration, a sibling's own `ngOnInit`) → dropped.
+- `outgoingTs` adds the member's own `overrides` edges: to the base class member, to the interface
+  (interface members are not nodes), or to a package member (`@angular/core#OnInit.ngOnInit`).
+- Graph schema 0.4.0: edge kind `overrides`, edge flag `possible` (every site possible). The
+  viewer's detail panel labels such neighbours "· possible".
+
+**Golden graphs**: one real change — `Tool.use → Pen.use (reference)`, the abstract base method
+listed as *using* its implementation, became `Pen.use → Tool.use (overrides)`.
+
+**Before/after** on 29 comparisons (6 commits each of ky, zod, vite; the Angular app's 8 commits
+and 3 experiments): 957 → 932 edges, 29 dropped, 4 `overrides` added, 2 marked possible, **0
+findings changed**. Every dropped edge was inspected: ky's sibling error classes' own `name`
+declarations (7), and the Angular app's sibling `ngOnInit` declarations (2 × 11). zod and vite
+were unaffected in these ranges.
+
+**Not done**: templates, `.cprignore` location, `interfaces/` matching, decorator-only changes
+(see the Angular trial above).

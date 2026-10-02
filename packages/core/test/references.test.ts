@@ -127,3 +127,74 @@ describe('monorepos', () => {
     ]);
   });
 });
+
+describe('class families', () => {
+  // A base class, an overriding class, its subclass, a sibling and users through each type:
+  // what the language service returns for renaming is not what uses a member.
+  const familyRoot = fileURLToPath(new URL('./fixtures/refs/family', import.meta.url));
+  const files = ['src/base.ts', 'src/cbs.ts', 'src/rent-cars.ts', 'src/host.ts'];
+  let family: TsRevision;
+  const members = new Map<string, SymbolDecl>();
+
+  beforeAll(async () => {
+    family = await typescriptAdapter.load(directorySource(familyRoot), { files });
+    for (const s of typescriptAdapter.extract(family, files)) members.set(s.id, s);
+  });
+
+  const member = (id: string) => members.get(id) as SymbolDecl;
+  const users = (id: string) =>
+    typescriptAdapter
+      .incoming(family, member(id))
+      .map((r) => `${r.kind} ${r.from}${r.possible ? ' (possible)' : ''}`)
+      .sort();
+  const uses = (id: string) =>
+    typescriptAdapter
+      .outgoing(family, member(id))
+      .map((r) => `${r.kind} ${r.to}`)
+      .sort();
+
+  it('counts only code that can run on an instance of the member’s class', () => {
+    expect(users('src/cbs.ts#CbsComponent.panelDisplayType')).toEqual([
+      // A subclass override must stay compatible with it.
+      'overrides src/cbs.ts#SpecialCbsComponent.panelDisplayType',
+      // Through the base type: when the object is a CbsComponent.
+      'reference src/base.ts#ResourceBase.describe (possible)',
+      'reference src/cbs.ts#CbsComponent.ngOnInit',
+      'reference src/host.ts#HostComponent.show',
+      'reference src/host.ts#modes (possible)',
+      // Not: the sibling RentCarsResourceComponent, a RentCars-typed value, the base and
+      // interface declarations.
+    ]);
+  });
+
+  it('links a member to what it overrides or implements', () => {
+    expect(uses('src/cbs.ts#CbsComponent.panelDisplayType')).toEqual([
+      'overrides src/base.ts#ResourceBase.panelDisplayType',
+    ]);
+    expect(uses('src/base.ts#ResourceBase.panelDisplayType')).toEqual([
+      'overrides src/base.ts#Panel',
+    ]);
+  });
+
+  it('does not count siblings implementing the same interface method', () => {
+    // Every Angular component's ngOnInit implements OnInit; none uses another's.
+    expect(users('src/cbs.ts#CbsComponent.ngOnInit')).toEqual([]);
+    expect(uses('src/cbs.ts#CbsComponent.ngOnInit')).toEqual([
+      'overrides src/base.ts#OnInit',
+      'reference src/cbs.ts#CbsComponent.panelDisplayType',
+    ]);
+  });
+
+  it('keeps every user of the base member, the whole family included', () => {
+    expect(users('src/base.ts#ResourceBase.panelDisplayType')).toEqual([
+      'overrides src/cbs.ts#CbsComponent.panelDisplayType',
+      'reference src/base.ts#ResourceBase.describe',
+      'reference src/cbs.ts#CbsComponent.ngOnInit',
+      'reference src/host.ts#HostComponent.rentMode',
+      'reference src/host.ts#HostComponent.show',
+      'reference src/host.ts#modes',
+      'reference src/rent-cars.ts#RentCarsResourceComponent.isPanelOverlay',
+      'reference src/rent-cars.ts#RentCarsResourceComponent.onAddItem',
+    ]);
+  });
+});
