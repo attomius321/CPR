@@ -57,7 +57,15 @@ export interface Shape {
   rest: string;
 }
 
-export type EdgeKind = 'call' | 'new' | 'reference' | 'type-reference' | 'extends' | 'implements';
+export type EdgeKind =
+  | 'call'
+  | 'new'
+  | 'reference'
+  | 'type-reference'
+  | 'extends'
+  | 'implements'
+  /** A class member overriding or implementing a member of a base class or interface. */
+  | 'overrides';
 
 /** Where a reference is: repo-relative file, 1-based line and column. */
 export interface Site {
@@ -77,6 +85,11 @@ export interface EdgeRef {
   resolution: 'resolved' | 'unknown';
   /** Set when `to` is not a repo symbol. */
   target?: 'external' | 'unknown';
+  /**
+   * The reference reaches a class member only through an ancestor class or interface type: it
+   * uses this member when the object is an instance of the member's class at runtime.
+   */
+  possible?: true;
   site: Site;
 }
 
@@ -87,6 +100,8 @@ export interface Edge {
   /** `base`: only before the change (removed). `head`: only after (added). `both`: kept. */
   side: 'base' | 'head' | 'both';
   resolution: 'resolved' | 'unknown';
+  /** Every site reaches the member only through an ancestor or interface type. */
+  possible?: true;
   sites: { base?: Site[]; head?: Site[] };
 }
 

@@ -418,7 +418,7 @@ function endpoints(refs: EdgeRef[], changed: Set<SymbolId>): SymbolId[] {
 
 /** Merges per-side references into edges keyed by (from, to, kind). */
 function mergeEdges(base: EdgeRef[], head: EdgeRef[]): Edge[] {
-  const edges = new Map<string, Edge & { inBase: boolean; inHead: boolean }>();
+  const edges = new Map<string, Edge & { inBase: boolean; inHead: boolean; certain: boolean }>();
   const add = (ref: EdgeRef, side: 'base' | 'head') => {
     const key = `${ref.from}\0${ref.to}\0${ref.kind}`;
     let edge = edges.get(key);
@@ -432,9 +432,11 @@ function mergeEdges(base: EdgeRef[], head: EdgeRef[]): Edge[] {
         sites: {},
         inBase: false,
         inHead: false,
+        certain: false,
       };
       edges.set(key, edge);
     }
+    if (!ref.possible) edge.certain = true;
     if (side === 'base') edge.inBase = true;
     else edge.inHead = true;
     const sites = (edge.sites[side] ??= []);
@@ -450,9 +452,10 @@ function mergeEdges(base: EdgeRef[], head: EdgeRef[]): Edge[] {
   for (const ref of head) add(ref, 'head');
 
   return [...edges.values()]
-    .map(({ inBase, inHead, ...edge }): Edge => ({
+    .map(({ inBase, inHead, certain, ...edge }): Edge => ({
       ...edge,
       side: inBase && inHead ? 'both' : inBase ? 'base' : 'head',
+      ...(certain ? {} : { possible: true }),
     }))
     .sort(
       (a, b) =>

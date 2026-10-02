@@ -380,6 +380,7 @@ function Neighbours({
             <span className="muted">
               {' '}
               {item.kind}
+              {item.possible ? ' · possible' : ''}
               {item.side === 'base' ? ' · removed' : item.side === 'head' ? ' · new' : ''}
             </span>
           </li>

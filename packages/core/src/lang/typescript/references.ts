@@ -2,16 +2,33 @@ import { ts } from 'ts-morph';
 import type { EdgeKind, EdgeRef, Site, SymbolDecl } from '../../model.js';
 import { isTsSource } from './files.js';
 import { repoPath, type TsRevision } from './project.js';
-import { bindingNames, enclosingSymbolId, nodeAt, referenceKind, unwrap } from './syntax.js';
+import {
+  bindingNames,
+  enclosingSymbolId,
+  hasModifier,
+  nodeAt,
+  referenceKind,
+  unwrap,
+} from './syntax.js';
 
 const MAX_UNKNOWN_TEXT = 60;
 
-/** References to a symbol from elsewhere in the revision, found by the language service. */
+/**
+ * References to a symbol from elsewhere in the revision, found by the language service.
+ *
+ * The language service answers "what must change if this is renamed", so for a class member it
+ * also returns the whole class family: the base declaration, siblings' overrides and every
+ * `this.member` in sibling classes. Only code that could run on an instance of the member's
+ * class uses it; the rest is dropped (see `FamilyFilter`).
+ */
 export function incomingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] {
   const { program, service, root } = revision;
+  const checker = program.getTypeChecker();
   const edges = new Map<string, EdgeRef>();
+  const nodes = revision.declarations.get(symbol.id) ?? [];
+  const family = FamilyFilter.forMember(checker, nodes);
 
-  for (const node of revision.declarations.get(symbol.id) ?? []) {
+  for (const node of nodes) {
     const name = nameNode(node, symbol.name);
     if (!name) continue;
     const sf = node.getSourceFile();
@@ -23,14 +40,23 @@ export function incomingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
         if (!file || !isTsSource(file) || !refSf) continue;
 
         const at = nodeAt(refSf, entry.textSpan.start);
+        let kind = referenceKind(at);
+        let possible = false;
+        if (family) {
+          const verdict = family.judge(at);
+          if (verdict === 'drop') continue;
+          if (verdict === 'overrides') kind = 'overrides';
+          possible = verdict === 'possible';
+        }
         const from = enclosingSymbolId(at, refSf, file);
         if (!from || from === symbol.id) continue;
         const site = siteOf(refSf, file, entry.textSpan.start);
         edges.set(siteKey(site), {
           from,
           to: symbol.id,
-          kind: referenceKind(at),
+          kind,
           resolution: 'resolved',
+          ...(possible ? { possible: true as const } : {}),
           site,
         });
       }
@@ -73,8 +99,38 @@ export function outgoingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
       ts.forEachChild(n, visit);
     };
     for (const scanned of scanRoots(node)) visit(scanned);
+
+    // The base class or interface members this member overrides or implements.
+    if (ts.isClassElement(node) && ownName) {
+      for (const decl of overriddenMembers(checker, node)) {
+        const target = overrideTarget(decl);
+        if (target) {
+          add({
+            from: symbol.id,
+            ...target,
+            kind: 'overrides',
+            resolution: 'resolved',
+            site: site(ownName),
+          });
+        }
+      }
+    }
   }
   return [...edges.values()];
+
+  function overrideTarget(decl: ts.Declaration): Pick<EdgeRef, 'to' | 'target'> | undefined {
+    const declSf = decl.getSourceFile();
+    if (program.isSourceFileDefaultLibrary(declSf)) return undefined;
+    const declFile = repoPath(root, declSf.fileName);
+    if (!declFile || declSf.fileName.includes('/node_modules/')) {
+      const pkg = packageOf(declSf.fileName);
+      return pkg ? { to: `${pkg}#${declarationPath(decl)}`, target: 'external' } : undefined;
+    }
+    if (declSf.isDeclarationFile) return undefined;
+    // Interface members are not symbols of their own: the edge goes to the interface.
+    const to = enclosingSymbolId(declarationName(decl) ?? decl, declSf, declFile);
+    return to ? { to } : undefined;
+  }
 
   function resolveIdentifier(id: ts.Identifier): Omit<EdgeRef, 'from' | 'site'> | undefined {
     const parent = id.parent;
@@ -156,6 +212,146 @@ export function outgoingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
     if (specifier.startsWith('.')) return undefined; // a relative import that did not resolve
     return { to: `${specifier}#${name}`, kind, resolution: 'resolved', target: 'external' };
   }
+}
+
+type Verdict = 'use' | 'possible' | 'overrides' | 'drop';
+
+/**
+ * Decides which references to a class member are uses, from the class of the object the member
+ * is read from: the member's class or a subclass → a use; an ancestor class or an interface it
+ * implements → a possible use (the object may be an instance of the member's class); any other
+ * class (a sibling) → not a use; unknown (`any`, no receiver) → kept. Declarations returned by
+ * the search are overrides when a subclass's member overrides this one, and dropped otherwise:
+ * this member's own overrides come from its outgoing references.
+ */
+class FamilyFilter {
+  private readonly ancestorsCache = new Map<ts.Node, Set<ts.Node>>();
+  private readonly ancestors: Set<ts.Node>;
+
+  private constructor(
+    private readonly checker: ts.TypeChecker,
+    private readonly cls: ts.ClassLikeDeclaration,
+    private readonly declarations: readonly ts.Node[],
+  ) {
+    this.ancestors = this.ancestorsOf(cls);
+  }
+
+  /** A filter for a class member's declarations; undefined for anything else. */
+  static forMember(checker: ts.TypeChecker, nodes: readonly ts.Node[]): FamilyFilter | undefined {
+    const parent = nodes[0]?.parent;
+    return parent && ts.isClassLike(parent) && nodes.every((n) => ts.isClassElement(n))
+      ? new FamilyFilter(checker, parent, nodes)
+      : undefined;
+  }
+
+  judge(at: ts.Node): Verdict {
+    const parent = at.parent as (ts.Node & { name?: ts.Node }) | undefined;
+    if (parent && parent.name === at && (ts.isClassElement(parent) || ts.isTypeElement(parent))) {
+      return ts.isClassElement(parent) &&
+        overriddenMembers(this.checker, parent).some((d) => this.declarations.includes(d))
+        ? 'overrides'
+        : 'drop';
+    }
+    const receiver = receiverOf(at);
+    if (!receiver) return 'use';
+    const relations = this.relations(this.checker.getTypeAtLocation(receiver));
+    if (relations.has('self') || relations.has('descendant') || relations.has('unknown')) {
+      return 'use';
+    }
+    return relations.has('ancestor') ? 'possible' : 'drop';
+  }
+
+  /** How the classes a type stands for relate to the member's class. */
+  private relations(type: ts.Type, seen = new Set<ts.Type>()): Set<string> {
+    const found = new Set<string>();
+    if (seen.has(type)) return found;
+    seen.add(type);
+    if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return new Set(['unknown']);
+    if (type.isUnionOrIntersection()) {
+      for (const part of type.types) for (const r of this.relations(part, seen)) found.add(r);
+      return found;
+    }
+    if (type.isTypeParameter()) {
+      // `this` and constrained generics stand for their constraint.
+      const constraint = this.checker.getBaseConstraintOfType(type);
+      return constraint && constraint !== type
+        ? this.relations(constraint, seen)
+        : new Set(['unknown']);
+    }
+    // (`isTypeParameter` narrows `type` to never past this point.)
+    const classes = ((type as ts.Type).getSymbol()?.declarations ?? []).filter(isClassOrInterface);
+    if (classes.length === 0) return new Set(['unknown']);
+    for (const decl of classes) {
+      if (decl === this.cls) found.add('self');
+      else if (this.ancestors.has(decl)) found.add('ancestor');
+      else if (this.ancestorsOf(decl).has(this.cls)) found.add('descendant');
+      else found.add('unrelated');
+    }
+    return found;
+  }
+
+  /** Every class and interface a class or interface extends or implements, transitively. */
+  private ancestorsOf(decl: ts.Node): Set<ts.Node> {
+    const cached = this.ancestorsCache.get(decl);
+    if (cached) return cached;
+    const found = new Set<ts.Node>();
+    this.ancestorsCache.set(decl, found);
+    const clauses = (decl as { heritageClauses?: ts.NodeArray<ts.HeritageClause> }).heritageClauses;
+    for (const clause of clauses ?? []) {
+      for (const type of clause.types) {
+        const declarations = this.checker.getTypeAtLocation(type).getSymbol()?.declarations ?? [];
+        for (const base of declarations.filter(isClassOrInterface)) {
+          if (found.has(base)) continue;
+          found.add(base);
+          for (const further of this.ancestorsOf(base)) found.add(further);
+        }
+      }
+    }
+    return found;
+  }
+}
+
+function isClassOrInterface(node: ts.Node): boolean {
+  return ts.isClassLike(node) || ts.isInterfaceDeclaration(node);
+}
+
+/** The object a member is read from: `x` in `x.member` or `x['member']`. */
+function receiverOf(at: ts.Node): ts.Expression | undefined {
+  const parent = at.parent;
+  if (!parent) return undefined;
+  if (ts.isPropertyAccessExpression(parent) && parent.name === at) return parent.expression;
+  if (ts.isElementAccessExpression(parent) && parent.argumentExpression === at) {
+    return parent.expression;
+  }
+  return undefined;
+}
+
+/**
+ * Declarations of the base class and interface members a class member overrides or implements:
+ * the same-named member of each type in its class's `extends` and `implements` clauses.
+ */
+function overriddenMembers(checker: ts.TypeChecker, member: ts.ClassElement): ts.Declaration[] {
+  const cls = member.parent;
+  const name = member.name;
+  if (
+    !ts.isClassLike(cls) ||
+    ts.isConstructorDeclaration(member) ||
+    hasModifier(member, ts.SyntaxKind.StaticKeyword) ||
+    !name ||
+    !(ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name))
+  ) {
+    return [];
+  }
+  const found: ts.Declaration[] = [];
+  for (const clause of cls.heritageClauses ?? []) {
+    for (const type of clause.types) {
+      for (const decl of checker.getTypeAtLocation(type).getProperty(name.text)?.declarations ??
+        []) {
+        if (!found.includes(decl)) found.push(decl);
+      }
+    }
+  }
+  return found;
 }
 
 /** Nodes to scan for outgoing references: members of classes and namespaces are scanned on their own. */

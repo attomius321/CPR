@@ -416,13 +416,25 @@
           "$ref": "#/$defs/symbolId"
         },
         "kind": {
-          "enum": ["call", "new", "reference", "type-reference", "extends", "implements"]
+          "enum": [
+            "call",
+            "new",
+            "reference",
+            "type-reference",
+            "extends",
+            "implements",
+            "overrides"
+          ]
         },
         "side": {
           "enum": ["base", "head", "both"]
         },
         "resolution": {
           "enum": ["resolved", "unknown"]
+        },
+        "possible": {
+          "description": "Every site reaches the class member only through an ancestor class or interface type.",
+          "const": true
         },
         "sites": {
           "type": "object",

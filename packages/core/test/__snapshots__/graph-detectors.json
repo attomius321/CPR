@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "0.3.0",
+  "schemaVersion": "0.4.0",
   "generator": {
     "name": "cpr",
     "version": "test"
@@ -626,6 +626,23 @@
     },
     {
       "id": "e6",
+      "from": "src/shapes.ts#Pen.use",
+      "to": "src/shapes.ts#Tool.use",
+      "kind": "overrides",
+      "side": "head",
+      "resolution": "resolved",
+      "sites": {
+        "head": [
+          {
+            "file": "src/shapes.ts",
+            "line": 30,
+            "col": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "e7",
       "from": "src/shapes.ts#perimeter",
       "to": "src/shapes.ts#Shape",
       "kind": "type-reference",
@@ -637,23 +654,6 @@
             "file": "src/shapes.ts",
             "line": 11,
             "col": 34
-          }
-        ]
-      }
-    },
-    {
-      "id": "e7",
-      "from": "src/shapes.ts#Tool.use",
-      "to": "src/shapes.ts#Pen.use",
-      "kind": "reference",
-      "side": "head",
-      "resolution": "resolved",
-      "sites": {
-        "head": [
-          {
-            "file": "src/shapes.ts",
-            "line": 26,
-            "col": 12
           }
         ]
       }
