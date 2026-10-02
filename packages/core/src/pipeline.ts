@@ -376,7 +376,17 @@ async function analyzeSources(
 
   lap('detectors');
 
-  const warnings = [...new Set([...adapter.warnings(baseRev), ...adapter.warnings(headRev)])];
+  // Head's warnings concern the change; one only base has (fixed by it) says so.
+  const headWarnings = adapter.warnings(headRev);
+  const warnings = [
+    ...new Set([
+      ...headWarnings,
+      ...adapter
+        .warnings(baseRev)
+        .filter((w) => !headWarnings.includes(w))
+        .map((w) => `in base: ${w}`),
+    ]),
+  ];
   return { changes, edges, context, findings, ignored, warnings, timings };
 }
 

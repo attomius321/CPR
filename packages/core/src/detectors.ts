@@ -282,10 +282,18 @@ function draft(
   return { rule, severity, symbol, related, message, data };
 }
 
-/** Short display name: `Class.method`, or `src/app.ts (top level)` for module code. */
+/**
+ * Short display name: `Class.method`, `src/app.ts (top level)` for module code, a template's
+ * file (`foo.component.html`) or `FooComponent template` for an inline one.
+ */
 function name(id: SymbolId): string {
+  const file = id.slice(0, id.indexOf('#'));
   const qualified = id.slice(id.indexOf('#') + 1);
-  return qualified === '(module)' ? `${id.slice(0, id.indexOf('#'))} (top level)` : qualified;
+  if (qualified === '(module)') return `${file} (top level)`;
+  if (qualified === '(template)') return file.slice(file.lastIndexOf('/') + 1);
+  if (qualified.endsWith('.(template)'))
+    return `${qualified.slice(0, -'.(template)'.length)} template`;
+  return qualified;
 }
 
 /** `a, b, c, d, e and 3 more`. */
@@ -295,7 +303,7 @@ function list(ids: SymbolId[], max = 5): string {
 }
 
 function depth(id: SymbolId): number {
-  return name(id).split('.').length;
+  return id.slice(id.indexOf('#') + 1).split('.').length;
 }
 
 function unique<T>(items: T[]): T[] {

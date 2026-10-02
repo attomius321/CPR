@@ -169,6 +169,17 @@ describe('plugins', () => {
     expect(change(analysis, 'src/card.ts#Card.reset')?.status).toBe('removed');
   });
 
+  it('says which warnings only the base revision has', async () => {
+    const sided: TsPlugin = {
+      ...tplPlugin,
+      warnings: (revision) => [revision.root.endsWith('base') ? 'old problem' : 'new problem'],
+    };
+    expect((await analyze([sided])).warnings).toEqual([
+      'plugin tpl: new problem',
+      'in base: plugin tpl: old problem',
+    ]);
+  });
+
   it('refuses another plugin API version', () => {
     const future = { ...tplPlugin, apiVersion: 2 } as unknown as TsPlugin;
     expect(() => createTypescriptAdapter({ plugins: [future] })).toThrow(

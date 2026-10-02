@@ -1,0 +1,18 @@
+<h1>{{ title }}</h1>
+<h2>{{ label }}</h2>
+@if (auth.isLoggedIn()) {
+  <button (click)="save()">Save</button>
+  <button (click)="toggle()">Toggle</button>
+  <button (click)="remove()">Remove</button>
+}
+@if (loading) {
+  <p>Loading</p>
+}
+@for (item of items; track item.id) {
+  <span (click)="item.reload()">{{ item.name }}</span>
+}
+<input #query (keyup)="save()" />
+<p>{{ query.value }}</p>
+@let count = items.length;
+<p>{{ count }} items</p>
+<ng-template let-name>{{ name }}</ng-template>

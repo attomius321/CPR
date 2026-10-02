@@ -9,6 +9,9 @@
     },
     {
       "path": "packages/cli/tsconfig.build.json"
+    },
+    {
+      "path": "packages/plugin-angular/tsconfig.build.json"
     }
   ]
 }
