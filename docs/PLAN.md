@@ -1144,7 +1144,8 @@ noise), inside the 5 % budget. The same findings on all 10 commits, no warnings.
 edges into libraries (`@angular/forms` 64, `@angular/common` 49, `@angular/cdk` 24,
 `@angular/router` 7, `@angular/core` 6), and 12 more into the repo's own code: members reached
 through values that a library now types. Before the two fixes in "as built" (reads per name,
-path aliases), the library scan alone took ~0.45 s per revision.
+path aliases), the library scan alone took ~0.45 s per revision. Without the plugin, the 29 R1
+comparisons are unchanged (932 edges, 11 findings).
 
 **A core gap found on the way**: a `node_modules` that is a link (an install shared between
 checkouts) was not linked into the base and head worktrees, so neither side saw any dependency
