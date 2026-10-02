@@ -867,3 +867,37 @@ pipe `transform`), template labels in findings, summary and viewer. Details and 
 **Next (A2)**: repo components, directives and pipes used by templates (selectors, inputs,
 outputs, pipes, `exportAs`), which also explains the remaining `ifAuthenticated`/`articleInput`
 orphans and links `MarkdownPipe.transform` to its template.
+
+## A2 — Angular plugin: templates see other components (2026-10-02, branch `milestone/x1-plugins`)
+
+**What landed**: the plugin reads the repo's directives, components and pipes (selectors,
+inputs and outputs in every form Angular 11–21 writes them, aliases, inherited inputs) and
+binds templates with Angular's own `SelectorMatcher`. Shims reference what an element matches,
+set inputs on it, subscribe to its outputs, type `#ref="exportAs"` locals and call repo pipes'
+`transform`; TypeScript's reference search then links templates to them like any code. Two X1
+additions: a `dangling(head, removed, base)` hook, and `possible` in a virtual file's map.
+Details and numbers: PLAN, "A2 results" and "A2 as built".
+
+**Results in short**: on the fixture, five kinds of template breakage caught that nothing caught
+before; on RealWorld, the last two false warnings gone and two more experiments caught; on
+Bitwarden, +18.7 % time (budget 20 %), the same findings as A1, and template edges into other
+components' files (94 in one commit).
+
+**Learned**
+- A rename is a move to CPR (same body, new name), and nothing checked the *old name* of a moved
+  symbol: a caller left on it was silent — in plain TypeScript too. Found by the A2 experiment
+  "rename an input a template still binds"; fixed in core for every language: old declarations
+  of moved symbols are checked like removed ones.
+- Removed components and inputs cannot be found by name in head: their selector or binding
+  matches nothing there. The plugin needs base to know what `<app-badge>` was — hence the
+  `dangling` hook with both revisions.
+- `@Output() x` and `output()` are listened to with `(alias)`; listening to a removed one is
+  accepted by Angular and silently dead, so it is a warning, not an error.
+- Plugins cache per revision by the context's functions; core handed them a new context after
+  building the program, so every class was scanned twice per side. One context per revision now.
+- Timing on a shared machine needs back-to-back runs: comparing against an earlier baseline read
+  +26 %, interleaved +18.7 %.
+
+**Not done (later)**: library directives and pipes (`ngModel`, `routerLink`, `| async`,
+Material) from their `.d.ts` metadata; NgModule and standalone scopes; host directives;
+`ngTemplateContextGuard` types for `let-` variables.

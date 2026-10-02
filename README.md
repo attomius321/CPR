@@ -110,9 +110,11 @@ cpr diff main --plugin ./tools/my-plugin.mjs
 With `angular`, a template is code: its edits are changes (formatting aside), and what it calls
 counts as a use. A method removed while its template still calls it is an error at the template
 line; a method used only by a template, a lifecycle hook or a host listener is no orphan; editing
-`@Component({ imports })` no longer reads as a new signature. In the viewer, a template opens
-with its own diff, and comments on its lines go to the `.html` file. Templates see their own
-component for now; components, directives and pipes they use come next.
+`@Component({ imports })` no longer reads as a new signature. Templates see the repo's components,
+directives and pipes too: a removed component still placed, an input renamed while still bound,
+an output removed while still listened to, or a pipe whose `transform` changed under a template
+that was not updated are reported. In the viewer, a template opens with its own diff, and
+comments on its lines go to the `.html` file.
 
 ```jsonc
 // cpr.config.json, at the repository root (read from your working folder)

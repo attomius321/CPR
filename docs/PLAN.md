@@ -493,6 +493,9 @@ interface TsPlugin {
   extract?: (revision: PluginRevision, files: readonly string[]) => PluginSymbol[];
   /** How a decorator's arguments count in hashes; undefined = as today (all signature). */
   decoratorArguments?: (revision: PluginRevision, decorator: ts.Decorator) => ArgumentRoles | undefined;
+  /** Uses of removed symbols found by what they were, not their name (a removed component's
+   *  selector in a template): needs the base revision too. Added with A2. */
+  dangling?: (revision: PluginRevision, removed: readonly SymbolDecl[], base: PluginRevision) => Dangling[];
   /** Why a symbol may be used with no reference (a lifecycle hook → `framework`). */
   exposure?: (revision: PluginRevision, symbol: SymbolDecl) => Exposure | undefined;
   warnings?: (revision: PluginRevision) => string[];
@@ -510,8 +513,9 @@ interface PluginRevision extends PluginContext {   // once it exists
 interface VirtualFile {
   path: string;                          // src/app/foo.component.html.cpr.ts — never on disk
   text: string;
-  /** Owner symbol and real site of a position in `text`; undefined = scaffolding (dropped). */
-  map: (offset: number) => { owner: SymbolId; site: Site } | undefined;
+  /** Owner symbol and real site of a position in `text`; undefined = scaffolding (dropped).
+   *  `possible`: a reference there may not be a use (two components on one element; A2). */
+  map: (offset: number) => { owner: SymbolId; site: Site; possible?: boolean } | undefined;
 }
 ```
 
@@ -599,8 +603,8 @@ warning and the plain analysis.
 
 ### A1–A2 — Angular templates, as the `angular` plugin
 
-**Status:** A1 built on branch `milestone/x1-plugins` (with X1, awaiting review; results and
-"as built" at the end of this section); A2 planned.
+**Status:** A1 and A2 built on branch `milestone/x1-plugins` (with X1, awaiting review; results
+and "as built" at the end of this section).
 
 Everything in this section lives in `@cpr/plugin-angular` and reaches CPR only through X1's hooks.
 Without `--plugin angular`, CPR does none of it — on Angular projects too.
@@ -789,7 +793,7 @@ FooComponent  (body)`.
 |---|---|---|
 | X1 ✅ | Plugins | The TS adapter's plugin hooks (`applies`, `matches`, `virtualFiles` with position maps, `extract`, `decoratorArguments`, `exposure`, `warnings`); `createTypescriptAdapter({ plugins })`; `--plugin` and `cpr.config.json`; plugin resolution, API version check, failure isolation, the Angular hint; schema 0.5.0 (`template`, `framework`, `plugins`); CI inputs; a fixture test plugin. No Angular code. |
 | A1 ✅ | Angular plugin: templates see their component | `packages/plugin-angular`; Angular project detection; component metadata (`templateUrl`, inline `template`, `host`); template symbols, hashes and `.html` relevance; shims for names on the component, chains, locals and host bindings; shim position maps; the decorator split; `framework` exposures; viewer and summary labels for templates. |
-| A2 | Angular plugin: templates see other components | Directive, component and pipe metadata from repo decorators: selectors, `@Input`/`@Output`, `inputs`/`outputs` arrays, signal `input()`/`input.required()`/`model()`/`output()`, aliases, inputs inherited from base classes. Selector matching with the compiler's `SelectorMatcher` over the repo's directives; shims for elements, directives, inputs, outputs, two-way bindings, pipes and `#ref="exportAs"`; removed components, pipes and outputs still used. |
+| A2 ✅ | Angular plugin: templates see other components | Directive, component and pipe metadata from repo decorators: selectors, `@Input`/`@Output`, `inputs`/`outputs` arrays, signal `input()`/`input.required()`/`model()`/`output()`, aliases, inputs inherited from base classes. Selector matching with the compiler's `SelectorMatcher` over the repo's directives; shims for elements, directives, inputs, outputs, two-way bindings, pipes and `#ref="exportAs"`; removed components, pipes and outputs still used. |
 
 A2 matches globally over the repo's directives, without NgModule or standalone scopes: a compiling
 app can only use what its scope offers, so global matching over-reports only when two directives
@@ -917,6 +921,69 @@ give the same edges and findings as before X1.
   (`foo.component.html`) or `FooComponent template`; the summary prints `template of …`.
 - Core, generic: `ts` types exported for plugins; a warning only the base revision has is
   prefixed `in base:` (a problem the change fixes is not one it brings).
+
+#### A2 results
+
+**Fixture** `bindings` (3 tests): a parent template that does not change while what it uses
+does. With the plugin: a removed component still placed (`<app-badge />`) → ✖ error at the tag;
+an input renamed while still bound → ✖ error; an output removed while still listened to → ⚠
+(Angular accepts it and it never fires); an input's type changed → ⚠ `signature-changed`, the
+untouched template not updated; a pipe's `transform` made async → ⚠ likewise; a new directive used
+only as `*ifAuthenticated` → no orphan. Links: signal `input()` and `model()` (`[(selected)]`),
+an alias (`[total]` → `count`), an input inherited from a `@Directive()` base, `#p="appPreview"`
+… `p.reload()`, a repo pipe's `transform`; two components with one selector → both edges
+`possible`. Without the plugin: none of the five problems, and one false orphan.
+
+**RealWorld**, A2's share: `df9d5dc` 1 → 0 (`ifAuthenticated` is used as `*ifAuthenticated`;
+the commit now has 5 → 0 warnings in all); `51c4afd` 1 → 0 (`articleInput` bound as
+`[articleInput]`); `2faae23` `MarkdownPipe.transform` changed its signature (breaking), its
+only user `article.component.html` updated → info. Experiments, each missed without the plugin:
+the `| async` of `2faae23` taken out of the template → ⚠ "1 of 1 user not updated:
+article.component.html"; `articleInput` renamed while `ArticleListComponent`'s inline template
+still binds it → ✖ "articleInput was renamed to articleValue, but 1 symbol still uses the old
+name".
+
+**A core gap found on the way**: a *renamed* symbol (same body, new name: a move) was not checked
+for users of its old name at all — in TS code too (`computeTotal` → `sumPrices` with a caller
+left on `computeTotal`: no finding). Now the old declarations of moved and renamed symbols go to
+`dangling` with the removed ones, and `removed-still-referenced` reports them under the new
+symbol: "… was renamed to …, but N symbols still use the old name" (or "moved to …, … the old
+place"). The 29 R1 comparisons are unchanged by it (code that compiles has no such uses).
+
+**Bitwarden** (the same 10 commits, each run without and with the plugin back to back):
+- Time on the 7 commits analyzed either way: 214.2 s → 254.3 s, **+18.7 %** (per commit +8 % to
+  +29 %), inside the 20 % budget. The plugin's own JavaScript (parsing, binding, shims) is
+  ~1.6 s per run; the rest is TypeScript checking ~1,200 shims and their imports. A1 alone was
+  +7.5 %. Fixed on the way: the plugin's per-revision cache missed after the program was built
+  (core handed plugins a new context), so every class was scanned twice per side (extract
+  430 → 32 ms).
+- Findings: the same as with A1 (12 false ones gone, none new). Links: one commit (`6d07b79`,
+  the 1Password import dialogs) has 94 template edges into other files — the 5 templates that
+  place `<tools-import>`, and Bitwarden's own components and directives (`bitSubmit`, callout,
+  card…).
+
+#### A2 as built
+
+- `classes.ts` also reads `selector`, `exportAs`, `@Pipe({ name })`, `inputs`/`outputs` arrays
+  (`'name'`, `'name: alias'`, `{ name, alias }`), `@Input`/`@Output` with an alias (string or
+  `{ alias }`), signal `input()`, `input.required()`, `model()` (input `x` and output
+  `xChange`), `output()`, `outputFromObservable()`, the `extends` base and whether the class
+  injects `TemplateRef` (structural).
+- `directives.ts`: one registry per revision — a `SelectorMatcher` over every repo component
+  and directive with a selector, pipes by name, inputs and outputs merged along `extends`
+  (resolved by relative import, else by a unique class name).
+- Shims: an element (or `*` template) matching repo directives gets
+  `const d = null! as Directive; Directive();` — the call is the edge, at the tag or at the
+  attribute its selector names; a binding a directive consumes becomes `d.field = value`
+  (static attributes too), an output `d.field.subscribe(($event) => { … })` (so `$event` is
+  typed), `#p="appPreview"` a local of the directive's type, `x | markdown`
+  `(MarkdownPipe(), MarkdownPipe.prototype.transform(x))`. Classes are imported by value
+  (`__cpr_D0`…), relative to the shim; imports are written last (`ShimBuilder.prepend`).
+- Plugin `dangling` (new X1 hook, core passes `base`): removed components and directives whose
+  selector no head directive has, still matched in a head template (error); removed pipes still
+  named (error); inputs removed from a directive that is still there and still bound (error);
+  outputs likewise still listened to (warning, certainty `unknown`). Sites at the tag,
+  attribute, binding or pipe name.
 
 **Risk:** medium. The harmful outcomes are a false edge or a false error from a shim; "unknown →
 `any` → nothing" and the fixtures guard against both. **Cost:** ~1–2 ms per template per side to

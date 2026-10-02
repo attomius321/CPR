@@ -31,6 +31,8 @@ export interface TsRevision {
   plugins: ActivePlugin[];
   /** Plugins' in-memory files, by absolute file name. */
   virtual: Map<string, { file: VirtualFile; plugin: ActivePlugin }>;
+  /** What plugins see of the revision; the same functions before and after the program. */
+  context: PluginContext;
 }
 
 const SKIPPED_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', 'out', '.git']);
@@ -155,6 +157,7 @@ export function loadTsProject(
     warnings,
     plugins: active,
     virtual,
+    context,
   };
 }
 
@@ -180,7 +183,8 @@ export function pluginRevision(revision: TsRevision, active: ActivePlugin): Plug
   if (cached) return cached;
   const { root, program } = revision;
   const view: PluginRevision = {
-    ...pluginContext(root, revision.project, revision.virtual),
+    // The same context functions as before the program: plugins may cache by them.
+    ...revision.context,
     program,
     checker: program.getTypeChecker(),
     virtual(path) {

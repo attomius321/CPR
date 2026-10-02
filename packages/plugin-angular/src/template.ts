@@ -114,7 +114,10 @@ function lineAndCol(text: string, offset: number): { startLine: number; startCol
  */
 export function templateTokens(parsed: ParsedTemplate, text: string): string[] {
   if (parsed.errors.length > 0) return text.split(/\s+/).filter(Boolean);
+  const cached = tokensCache.get(parsed);
+  if (cached) return cached;
   const out: string[] = [];
+  tokensCache.set(parsed, out);
   const expression = (ast: ng.AST | null | undefined) => {
     if (ast) out.push(canonical(ast));
   };
@@ -230,6 +233,8 @@ export function templateTokens(parsed: ParsedTemplate, text: string): string[] {
   visit(parsed.nodes);
   return out;
 }
+
+const tokensCache = new WeakMap<ParsedTemplate, string[]>();
 
 /** Every trigger of a `@defer` block: main, prefetch and hydrate. */
 export function deferTriggers(block: ng.TmplAstDeferredBlock): ng.TmplAstDeferredTrigger[] {
