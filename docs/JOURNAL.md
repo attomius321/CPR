@@ -767,3 +767,15 @@ receiver, which is what `danglingTs` reports as a certain removal.
 | `df9d5dc` | orphan `ifAuthenticated`, orphan `ngOnInit`; 3 components' signatures changed | `*ifAuthenticated`; `OnInit` unresolved without dependencies; `imports` edits |
 | `51c4afd` | orphan `articleInput`; 38 info `signature-changed` | bound as `[articleInput]` in `ArticleListComponent`'s inline template |
 | `2faae23` | none | `MarkdownPipe.transform` became async and its template added `\| async` |
+
+## Plan revised: Angular as a plugin (2026-10-02)
+
+Direction from review: Angular support must be a plugin of the CLI, and the TypeScript/JavaScript
+analysis must keep working on its own, without it. The A1–A2 plan put template shims, `.html`
+relevance, the Angular decorator split and lifecycle exposures inside the TypeScript adapter. It
+now starts with **X1 — Plugins**: generic hooks on the TypeScript adapter (`applies`, `matches`,
+`virtualFiles` with position maps, `extract`, `decoratorArguments`, `exposure`), plugins turned on
+with `--plugin` or `cpr.config.json` (read from the working folder), resolved by name or path,
+isolated on failure. A1–A2 become `@cpr/plugin-angular` on those hooks; `@cpr/core` and
+`@cpr/cli` never depend on Angular, and without the plugin every result stays byte-identical,
+Angular repos included. Decision 24 records it.

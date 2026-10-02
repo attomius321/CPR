@@ -71,6 +71,7 @@ at the risky parts. It runs locally and needs no server.
 | `packages/core` | Engine: revisions, extraction, diff, references, detectors, graph output | `ts-morph` |
 | `packages/cli` | Argument parsing, git plumbing, output formatting | `@cpr/core` |
 | `packages/viewer` | Graph UI (phase 2) | `react`, `@xyflow/react` |
+| `packages/plugin-angular` (planned, X1–A2) | Angular templates, as a plugin the CLI loads on request | `@cpr/core`, `@angular/compiler` |
 
 ### Language adapter boundary
 
@@ -88,7 +89,9 @@ interface LanguageAdapter {
 }
 ```
 
-Diffing, move detection, detectors and graph output are shared code.
+Diffing, move detection, detectors and graph output are shared code. Framework knowledge
+(Angular templates first) is not part of an adapter: it comes as **plugins** of the TypeScript
+adapter that the CLI loads on request (X1), so the TS/JS analysis is the same for every project.
 
 ### Revision sources
 
@@ -408,7 +411,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | P1 | One program for both sides | Measured lever: base and head share most files; a single language service over both trees (or reusing the head program's lib/dependency files) would cut load time, the largest cost on vite/zod. |
 | C3 | GitHub annotations | Fork PRs get a read-only token, so nothing is posted; `::warning file=…,line=…::` workflow commands show findings inline without one (GitLab already has Code Quality). |
 | D1 ✅ | Detectors from real reviews | `signature-changed` tells test users from production users (only untouched production users elsewhere make a warning); new `exported-api-changed` for a published package's API removed, unexported, or broken. See §8. |
-| A1–A2 | Angular templates | Templates call component methods, bind inputs and use pipes, and CPR sees none of it: 9 of 9 warnings on real Angular commits were false. Planned below. |
+| X1, A1–A2 | Plugins; Angular templates as the `angular` plugin | Templates call component methods, bind inputs and use pipes, and CPR sees none of it: 9 of 9 warnings on real Angular commits were false. Angular support must stay outside the TS/JS analysis: X1 adds plugin hooks, A1–A2 build the Angular plugin on them. Planned below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -458,7 +461,97 @@ guard against it. **Cost:** one type lookup per reference.
 Not in R1 (listed for later): reading Angular templates, `.cprignore` from the working folder,
 `interfaces/` matching at any depth, decorator-only class changes treated as compatible.
 
-### A1–A2 — Angular templates (planned, branch `milestone/a1-angular-templates`)
+### X1 — Plugins (planned)
+
+**Why.** Framework knowledge — Angular templates now; Vue or Svelte templates, NestJS conventions
+later — must not live in the TypeScript/JavaScript analysis. That analysis stays the same program
+for every project and carries no framework dependency; a framework comes as a **plugin** that the
+CLI loads only when asked. Without plugins, CPR behaves exactly as it does today.
+
+**What a plugin is.** A JavaScript module exporting one plugin object. A plugin *extends* the
+TypeScript adapter at fixed points; it never replaces it, and it sees TypeScript's own objects
+(program, checker, nodes). Sketch of the contract, exported by `@cpr/core`:
+
+```ts
+interface TsPlugin {
+  name: string;                         // "angular"
+  apiVersion: 1;
+  /** Whether it applies to this revision (checked per side: base may predate the framework). */
+  applies(revision: PluginContext): boolean;
+  /** Extra files whose changes it analyzes, besides TS/JS (e.g. `*.html`). */
+  matches?(path: string): boolean;
+  /** In-memory TypeScript files added to the program before it is built (template shims). Runs
+   *  before types exist: it sees the project's files and their syntax trees. */
+  virtualFiles?(revision: PluginContext): VirtualFile[];
+  /** Extra symbols in the given changed files (templates), with hashes and ranges. */
+  extract?(revision: PluginRevision, files: readonly string[]): SymbolDecl[];
+  /** How a decorator's arguments count in hashes; undefined = as today (all signature). */
+  decoratorArguments?(decorator: ts.Decorator): ArgumentRoles | undefined;
+  /** Why a symbol may be used with no reference (a lifecycle hook → `framework`). */
+  exposure?(revision: PluginRevision, symbol: SymbolDecl): Exposure | undefined;
+  warnings?(revision: PluginRevision): string[];
+}
+
+interface VirtualFile {
+  path: string;                          // src/app/foo.component.html.cpr.ts — never on disk
+  text: string;
+  /** Owner symbol and real site of a position in `text`; undefined = scaffolding (dropped). */
+  map(offset: number): { owner: SymbolId; site: Site } | undefined;
+}
+```
+
+**What core does with plugins** — generic mechanisms, nothing Angular-specific:
+
+| Hook | Core behaviour |
+|---|---|
+| `matches` | A changed file is analyzable if the adapter or an applying plugin matches it (today a template-only change exits early). |
+| `virtualFiles` | Added to the program before the language service starts; the program still never changes after loading. |
+| `map` | Wherever the adapter reports a site — `incoming`, `outgoing`, `dangling` — a position inside a virtual file is mapped back: the site becomes the real `.html` line and the symbol becomes the owner (the template). Unmapped positions are scaffolding and dropped, like import declarations today. |
+| `extract` | Plugin symbols join the adapter's: diffed, move-matched, hashed and drawn like any symbol. |
+| `decoratorArguments` | A claimed decorator's arguments are hashed by role (signature, body, neither); unclaimed decorators as today. |
+| `exposure` | Consulted after the adapter's own; the new exposure `framework` is skipped by `orphan-added` like `override`. |
+
+Technically the CLI builds `createTypescriptAdapter({ plugins })`; the default `typescriptAdapter`
+is the same factory with no plugins, so the pipeline and the `LanguageAdapter` interface do not
+change.
+
+**Turning plugins on.**
+- `--plugin <name|path>` (repeatable) on `diff`, `view` and `pr`, and/or `cpr.config.json` at the
+  repository root: `{ "plugins": ["angular"] }`. The config is read from the working folder, not
+  from the analyzed commit (the `.cprignore` lesson); a flag adds to it.
+- `angular` means `@cpr/plugin-angular`; a value with `/` or a leading `.` is a path. Resolved from
+  the project first, then next to the CLI. Imported only when turned on: no plugin, no cost, no
+  extra dependency loaded.
+- Another `apiVersion` is refused with a message; a plugin that throws becomes a warning and the
+  run continues without it — a plugin never makes an analysis fail.
+- A hint, once: when a changed `.html` sits in a repo that depends on `@angular/core` and the
+  plugin is off — `Angular project: add --plugin angular to analyze templates`. Nothing changes
+  on its own.
+- Plugins are trusted code, like build-tool plugins: they run only when configured.
+
+**Packaging.** `packages/plugin-angular` (`@cpr/plugin-angular`) depends on `@cpr/core` and
+`@angular/compiler`. `@cpr/core` and `@cpr/cli` never depend on Angular; in this repository the
+plugin is built with the rest, so `--plugin angular` works from a checkout.
+
+**Graph contract (schema 0.5.0).** Node kind `template` (any framework's); exposure `framework`;
+top-level `plugins: [{ name, version }]`, so a graph says what produced it. Edge sites can point
+into non-TS files. The viewer stays generic: it labels template nodes and shows their file's diff.
+
+**CI.** The GitHub Action gets a `plugins` input and the GitLab template a `CPR_PLUGINS` variable,
+both passed as `--plugin`.
+
+**X1 verification**
+1. A test plugin among the fixtures exercises every hook: a virtual file mapped back into a non-TS
+   file, an extra file type, a claimed decorator, an exposure.
+2. No plugin → every golden graph byte-identical; ky, zod and vite unchanged; an Angular repo
+   without `--plugin angular` unchanged too (only the hint).
+3. A missing plugin, a wrong `apiVersion` and a plugin that throws → a message or a warning, never
+   a crash.
+
+### A1–A2 — Angular templates, as the `angular` plugin (planned, branch `milestone/a1-angular-templates`)
+
+Everything in this section lives in `@cpr/plugin-angular` and reaches CPR only through X1's hooks.
+Without `--plugin angular`, CPR does none of it — on Angular projects too.
 
 **Problem.** CPR reads TypeScript only, so everything an Angular template does is invisible: a
 method called only from `(click)` looks unused, a method removed while its template still calls
@@ -520,15 +613,16 @@ its own component; A2 makes it see the other components, directives and pipes it
 - **Extraction**: a changed `.html` yields the templates of the components whose `templateUrl`
   points at it (none for `index.html`); a component's `.ts` file yields its inline template. An
   `.html` shared by two components is one symbol whose uses are resolved for each of them.
-- **Relevance**: a changed `.html` is analyzable when the head revision is an Angular project (the
-  root `package.json` depends on `@angular/core`, or an `angular.json` exists). Template-only
-  changes are then analyzed; other repos keep the early exit for `.html` edits.
+- **Relevance** (X1 `applies`, `matches`): the plugin applies to a revision that is an Angular
+  project (the root `package.json` depends on `@angular/core`, or an `angular.json` exists), and
+  then matches `.html` files, so template-only changes are analyzed. Without the plugin, `.html`
+  edits keep today's early exit.
 
 #### Resolving with TypeScript: template shims
 
-Each template is translated into a small TypeScript function, a **shim**, and added to the
-revision's program as an in-memory file next to its component, before the language service starts
-(the program still never changes after loading). The shim's `this` is the component, template
+The plugin translates each template into a small TypeScript function, a **shim**, returned as an
+X1 virtual file next to its component; the adapter adds it to the program before the language
+service starts (the program still never changes after loading). The shim's `this` is the component, template
 locals become locals, and whatever CPR cannot type is `any`:
 
 ```html
@@ -560,8 +654,9 @@ function __template(this: __C) {
 }
 ```
 
-A side map records where each name the shim emits came from (template file, line, column) and
-which template it belongs to. Every place the adapter reads positions maps shim positions back:
+The plugin's `map` records where each name the shim emits came from (template file, line, column)
+and which template owns it. Core maps shim positions back wherever the adapter reads positions
+(X1), so the TypeScript side needs no Angular code:
 
 - `incoming`: a reference inside a shim becomes an edge from its template, with its site in the
   `.html` (or in the inline template).
@@ -586,7 +681,8 @@ template with syntax errors still gets a shim for the parts that parse, plus a w
 
 Every decorator argument is part of a class's signature hash today, so editing
 `@Component({ imports })` reports a changed signature and warns about the module or routes that use
-the component. For decorators imported from `@angular/core`:
+the component. The plugin claims the decorators imported from `@angular/core` (X1
+`decoratorArguments`):
 
 | Decorator | Signature (what templates depend on) | Body | Neither |
 |---|---|---|---|
@@ -599,8 +695,8 @@ Member decorators (`@Input('alias')`, `@Output()`) stay in the member's signatur
 
 Angular calls some members by name, so they are not orphans when added: lifecycle hooks
 (`ngOnInit` … `ngOnDestroy`, with or without `implements`) of a class with an Angular decorator,
-and `@HostListener`/`@HostBinding` members. They get a new exposure, `framework`, which
-`orphan-added` skips like `override`. Templates are never orphans.
+and `@HostListener`/`@HostBinding` members. The plugin gives them the exposure `framework` (X1
+`exposure`), which `orphan-added` skips like `override`. Templates are never orphans.
 
 #### Findings with templates
 
@@ -617,27 +713,28 @@ and `@HostListener`/`@HostBinding` members. They get a new exposure, `framework`
 binder (`parseTemplate`, `R3TargetBinder`), so templates read exactly as Angular reads them: block
 control flow, `@let`, `@defer`, ICU messages, structural micro-syntax.
 
-- **Pinned to 21.2.x**: 22.x requires Node ≥ 22.22.3, and CPR supports 22.12. Imported lazily, for
-  Angular projects only (77 ms).
+- **Pinned to 21.2.x**: 22.x requires Node ≥ 22.22.3, and CPR supports 22.12. A dependency of
+  `@cpr/plugin-angular` only, imported when the plugin runs on an Angular revision (77 ms).
 - **Syntax by the project's Angular version** (`@angular/core` in package.json or `node_modules`):
   17 and later → block syntax and `@let` on; older → both off. Never block syntax with `@let` off:
   the parser loops forever on `@let x = 1;` in that mode (found in the spike).
 - **Parse errors** → a warning (`src/app/foo.component.html: template has syntax errors;
   references may be missing`); the hash falls back to whitespace-normalized text.
 
-#### Graph contract (schema 0.5.0)
+#### Graph contract
 
-Node kind `template`; edge sites can point into `.html` files; no new edge kinds. The viewer labels
-template nodes; their per-symbol diff and comments go through the existing source access (a node's
-file is already allowed). Summary line: `M  src/app/foo.component.html` / `~ template  of
+X1's schema 0.5.0 covers it: node kind `template`, edge sites in `.html` files, `plugins` listing
+`angular`; no new edge kinds. The viewer labels template nodes; their per-symbol diff and comments
+go through the existing source access (a node's file is already allowed). Summary line: `M  src/app/foo.component.html` / `~ template  of
 FooComponent  (body)`.
 
 #### Milestones
 
 | # | Milestone | Output |
 |---|---|---|
-| A1 | Templates see their component | Angular project detection; component metadata (`templateUrl`, inline `template`, `host`); template symbols, hashes and `.html` relevance; shims for names on the component, chains, locals and host bindings; positions mapped back in `incoming`, `outgoing` and `dangling`; the decorator split; `framework` exposure; schema 0.5.0, viewer and summary labels. |
-| A2 | Templates see other components | Directive, component and pipe metadata from repo decorators: selectors, `@Input`/`@Output`, `inputs`/`outputs` arrays, signal `input()`/`input.required()`/`model()`/`output()`, aliases, inputs inherited from base classes. Selector matching with the compiler's `SelectorMatcher` over the repo's directives; shims for elements, directives, inputs, outputs, two-way bindings, pipes and `#ref="exportAs"`; removed components, pipes and outputs still used. |
+| X1 | Plugins | The TS adapter's plugin hooks (`applies`, `matches`, `virtualFiles` with position maps, `extract`, `decoratorArguments`, `exposure`, `warnings`); `createTypescriptAdapter({ plugins })`; `--plugin` and `cpr.config.json`; plugin resolution, API version check, failure isolation, the Angular hint; schema 0.5.0 (`template`, `framework`, `plugins`); CI inputs; a fixture test plugin. No Angular code. |
+| A1 | Angular plugin: templates see their component | `packages/plugin-angular`; Angular project detection; component metadata (`templateUrl`, inline `template`, `host`); template symbols, hashes and `.html` relevance; shims for names on the component, chains, locals and host bindings; shim position maps; the decorator split; `framework` exposures; viewer and summary labels for templates. |
+| A2 | Angular plugin: templates see other components | Directive, component and pipe metadata from repo decorators: selectors, `@Input`/`@Output`, `inputs`/`outputs` arrays, signal `input()`/`input.required()`/`model()`/`output()`, aliases, inputs inherited from base classes. Selector matching with the compiler's `SelectorMatcher` over the repo's directives; shims for elements, directives, inputs, outputs, two-way bindings, pipes and `#ref="exportAs"`; removed components, pipes and outputs still used. |
 
 A2 matches globally over the repo's directives, without NgModule or standalone scopes: a compiling
 app can only use what its scope offers, so global matching over-reports only when two directives
@@ -661,8 +758,9 @@ that), so their edges are marked `possible`.
      another file (warning); a pipe whose `transform` changed; a structural directive
      (`*ifAuthenticated`); `#p="appPreview"`; two components with one selector (possible); signal
      inputs and aliases.
-2. **No Angular, no change**: every existing golden graph stays byte-identical; ky, zod and vite
-   findings stay the same (the feature is off without `@angular/core`).
+2. **Without the plugin, no change**: every existing golden graph stays byte-identical, and ky,
+   zod, vite and RealWorld results are the same as before X1. **With the plugin on a non-Angular
+   repo**: no change either (`applies` is false).
 3. **RealWorld commits**, expected afterwards:
 
    | Commit | Expected |
@@ -703,15 +801,16 @@ parse and bind, plus the shims' share of program load.
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 20 | Where template uses come from | **A template is a symbol**: `<file>.html#(template)`, inline `<file>.ts#<Class>.(template)` | Template-only changes were invisible (14 templates in one commit); a template has its own changes, sits in its own file as the pull request shows it, and must be "the user" in findings. |
-| 21 | How templates are resolved | **Generated TypeScript shims** in the analyzed program, not a resolver of our own | Reference search, R1's family filter, inherited members, chains and dangling detection then cover templates unchanged (confirmed in the spike); a resolver of our own would repeat each of them. |
+| 21 | How templates are resolved | **Generated TypeScript shims** in the analyzed program (X1 virtual files), not a resolver of our own | Reference search, R1's family filter, inherited members, chains and dangling detection then cover templates unchanged (confirmed in the spike); a resolver of our own would repeat each of them. |
 | 22 | Template parser | **`@angular/compiler` 21.2.x**, pinned, lazy, syntax options by the project's Angular version | Angular's own parser: 0 errors on 1,212 templates from Angular 11 to 21. 22.x needs a newer Node than CPR supports. |
-| 23 | Angular decorator arguments | **What templates depend on is signature, the rest is body** | 5 of the 9 false warnings on RealWorld commits were `@Component({ imports })` edits reported as signature changes. |
+| 23 | Angular decorator arguments | **What templates depend on is signature, the rest is body** (claimed by the plugin) | 5 of the 9 false warnings on RealWorld commits were `@Component({ imports })` edits reported as signature changes. |
+| 24 | Where framework support lives | **Plugins of the TypeScript adapter, loaded by the CLI on request** (`--plugin`, `cpr.config.json`); core offers generic hooks — virtual files with position maps, extra file types, decorator argument roles, exposures | The TS/JS analysis must be the same for every project and carry no framework dependency; the same hooks fit Vue or Svelte templates later. |
 
 Not in A1–A2 (later): library directives and pipes (selectors, inputs and pipe names from the
 `ɵdir`/`ɵcmp`/`ɵpipe` declarations in their `.d.ts`) and NgModule/standalone scopes;
 `ngTemplateContextGuard` types for `let-` variables; host directives; templates built at runtime
 or with `require()`; templates of other frameworks (Vue single-file components, Svelte), which the
-same shim approach fits behind the adapter.
+same shim approach fits as further plugins on X1's hooks.
 
 **Later:** more languages via adapters, a faster core (TS 7 adapter or Rust/oxc), self-hosted team mode.
 
