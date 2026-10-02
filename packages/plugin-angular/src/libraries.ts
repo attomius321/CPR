@@ -78,12 +78,13 @@ const metaCache = new WeakMap<ts.ClassDeclaration, LibraryMeta | 'unknown' | nul
  */
 export function libraryClasses(context: PluginContext): Libraries {
   const reader = new Reader(context.ts, context.root);
-  const queue: Imported[] = [];
+  // Entry points to read, each resolved from the first file that imports it.
+  const queue: { spec: string; from: string }[] = [];
   const queued = new Set<string>();
   const enqueue = (spec: string, from: string) => {
     if (queued.has(spec) || isRelative(spec) || spec.startsWith('@angular/core')) return;
     queued.add(spec);
-    queue.push({ spec, name: from });
+    queue.push({ spec, from });
   };
   for (const path of context.sourceFiles()) {
     const sf = context.syntax(path);
@@ -95,8 +96,9 @@ export function libraryClasses(context: PluginContext): Libraries {
   const seen = new Set<ts.ClassDeclaration>();
   const entries = new Set<string>();
   const unreadable: string[] = [];
+  // NgModules add entry points to the queue while it is read.
   for (let i = 0; i < queue.length; i++) {
-    const { spec, name: from } = queue[i] as Imported;
+    const { spec, from } = queue[i] as { spec: string; from: string };
     const file = reader.resolve(spec, from);
     if (!file || entries.has(file) || !reader.isAngularPackage(file)) continue;
     entries.add(file);
@@ -307,8 +309,7 @@ class Reader {
   /** Whether the package of a file is Angular's or depends on it. */
   isAngularPackage(file: string): boolean {
     const index = file.lastIndexOf('/node_modules/') + '/node_modules/'.length;
-    const parts = file.slice(index).split('/');
-    const name = parts[0]?.startsWith('@') ? parts.slice(0, 2).join('/') : (parts[0] ?? '');
+    const name = packageName(file.slice(index));
     if (name.startsWith('@angular/')) return true;
     const dir = file.slice(0, index) + name;
     let angular = this.packages.get(dir);
@@ -351,7 +352,7 @@ class Reader {
     return dts;
   }
 
-  /** The classes a module exports, by export name; a class exported twice under its own name. */
+  /** The classes a module exports, by export name; a class exported under two names, once. */
   exportedClasses(dts: Dts): Map<string, Declared> {
     const byClass = new Map<ts.ClassDeclaration, [string, Declared]>();
     for (const name of this.exportNames(dts, new Set())) {

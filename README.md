@@ -122,8 +122,12 @@ line; a method used only by a template, a lifecycle hook or a host listener is n
 `@Component({ imports })` no longer reads as a new signature. Templates see the repo's components,
 directives and pipes too: a removed component still placed, an input renamed while still bound,
 an output removed while still listened to, or a pipe whose `transform` changed under a template
-that was not updated are reported. In the viewer, a template opens with its own diff, and
-comments on its lines go to the `.html` file.
+that was not updated are reported. With dependencies installed, templates also see the
+components, directives and pipes of Angular and its libraries (read from their typings in
+`node_modules`): `x$ | async` has a type, so a field read only in `@if (org$ | async; as org)`
+counts as used, and `(ngModelChange)="save($event)"` or `#f="ngForm"` are typed — in CI, install
+dependencies before CPR runs. In the viewer, a template opens with its own diff, and comments on
+its lines go to the `.html` file.
 
 ```jsonc
 // cpr.config.json, at the repository root (read from your working folder)
