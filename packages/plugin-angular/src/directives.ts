@@ -2,12 +2,12 @@ import { posix } from 'node:path';
 import * as ng from '@angular/compiler';
 import type { NgClass } from './classes.js';
 
-/** A repo directive or component, as the binder sees it, with its class. */
+/** A directive or component of the repo or a library, as the binder sees it, with its class. */
 export interface Meta extends ng.DirectiveMeta {
   ref: { key: string; cls: NgClass };
 }
 
-/** The repo's directives, components and pipes, for matching templates against them. */
+/** The directives, components and pipes templates can use, for matching them. */
 export interface Registry {
   matcher: ng.SelectorMatcher<Meta[]>;
   /** By class id. */
@@ -20,9 +20,9 @@ export interface Registry {
 }
 
 /**
- * Matches templates against every directive of the repo, without NgModule or standalone scopes:
- * a template that compiles can only use what its scope offers, so this over-matches only when
- * two directives share a selector.
+ * Matches templates against every directive of the repo and of the libraries it imports,
+ * without NgModule or standalone scopes: a template that compiles can only use what its scope
+ * offers, so this over-matches only when two directives share a selector.
  */
 export function registry(classes: readonly NgClass[]): Registry {
   const byName = new Map<string, NgClass[]>();
@@ -97,7 +97,7 @@ function only<T>(items: readonly T[]): T | undefined {
   return items.length === 1 ? items[0] : undefined;
 }
 
-/** Whether a binder's directive is one of the repo's (not an element or a library's). */
+/** Whether a binder's directive is one of ours (not an element). */
 export function isMeta(value: unknown): value is Meta {
   return (
     !!value &&

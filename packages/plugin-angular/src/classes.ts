@@ -59,6 +59,8 @@ export interface NgClass {
   base?: { name: string; module?: string };
   /** Injects `TemplateRef`: a structural directive (`*name`). */
   structural: boolean;
+  /** A library's class: the entry point it is imported from (`@angular/forms`). */
+  module?: string;
 }
 
 /** Signal functions that declare inputs and outputs. */

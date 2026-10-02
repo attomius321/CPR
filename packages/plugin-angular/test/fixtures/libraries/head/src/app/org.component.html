@@ -1,0 +1,13 @@
+@if (org$ | await; as org) {
+  <h1>{{ org.name }}</h1>
+  <p>{{ org.plan }}</p>
+}
+<p>{{ (user$ | await)?.email }}</p>
+<ui-button label="Save" kind="primary" [disabled]="count > 3" (press)="onPress($event.count)"></ui-button>
+<form uiForm #f="uiForm" (uiSubmit)="onSubmit()">
+  <span>{{ f.valid }}</span>
+</form>
+<div [widget]="count">{{ title | upper }}</div>
+<input [oldModel]="title" #m="oldModel" [oldDisabled]="false" (oldModelChange)="rename($event)" />
+<span [uiInternal]="count">{{ m.valid }} {{ count | oldFormat: 2 }}</span>
+<div unused uiHidden></div>
