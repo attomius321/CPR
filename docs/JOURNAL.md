@@ -679,9 +679,9 @@ it loads cleanly, ~3–4.6 s per commit, and its real Angular-11-era commits com
   file (or a diff of older commits) ignores it; `interfaces/` matches only at the root, unlike
   `.gitignore`.
 
-## R1 — Receiver-aware references (2026-10-02, branch only)
+## R1 — Receiver-aware references (2026-10-02)
 
-**What landed** (branch `milestone/r1-receiver-aware-references`, not merged into main)
+**What landed** (branch `milestone/r1-receiver-aware-references`, merged into main after review)
 - `incomingTs` judges every reference to a class member by the class of the object it is read
   from (`x` in `x.m`, the class for `this`): the member's class or a subclass → use; an ancestor
   class or interface → **possible** use; unrelated (a sibling) → dropped; unknown (`any`, no
@@ -706,7 +706,7 @@ were unaffected in these ranges.
 **Not done**: templates, `.cprignore` location, `interfaces/` matching, decorator-only changes
 (see the Angular trial above).
 
-## Fix — diff colours across the full line (2026-10-02, branch `fix/diff-row-width`, not merged)
+## Fix — diff colours across the full line (2026-10-02, branch `fix/diff-row-width`)
 
 Reported from a real review: in the detail panel, a long line made the code scroll sideways and
 the green/red row colour stopped at the panel's edge. Rows were as wide as the visible box, not as

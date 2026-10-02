@@ -409,7 +409,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | C3 | GitHub annotations | Fork PRs get a read-only token, so nothing is posted; `::warning file=…,line=…::` workflow commands show findings inline without one (GitLab already has Code Quality). |
 | D1 ✅ | Detectors from real reviews | `signature-changed` tells test users from production users (only untouched production users elsewhere make a warning); new `exported-api-changed` for a published package's API removed, unexported, or broken. See §8. |
 
-### R1 — Receiver-aware references (✅ on branch `milestone/r1-receiver-aware-references`, not merged)
+### R1 — Receiver-aware references ✅
 
 **Problem** (found on an Angular project): TypeScript's reference search is built for safe
 renaming, so it treats every class in a family as related. When `CbsComponent` overrides a
