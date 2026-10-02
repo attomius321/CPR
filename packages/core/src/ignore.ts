@@ -20,8 +20,11 @@ export type IgnoreMatcher = (path: string) => boolean;
 
 /**
  * Builds a matcher from gitignore-style patterns, last match wins: `*` stays within a folder,
- * `**` crosses folders, a pattern without `/` matches a name at any depth, `dir/` matches
- * everything below `dir`, and `!pattern` re-includes.
+ * `**` crosses folders, `!pattern` re-includes. As in git, a pattern matches a path or any
+ * folder above it (ignoring a folder ignores what is inside), a trailing `/` matches folders
+ * only, and a `/` at the start or in the middle anchors a pattern at the root; otherwise it
+ * matches at any depth (`interfaces/` ignores every `interfaces` folder). Folders are passed
+ * with a trailing `/`.
  */
 export function ignoreMatcher(patterns: readonly string[]): IgnoreMatcher {
   const rules = patterns
@@ -29,11 +32,26 @@ export function ignoreMatcher(patterns: readonly string[]): IgnoreMatcher {
     .filter((p) => p !== '' && !p.startsWith('#'))
     .map((p) => {
       const negate = p.startsWith('!');
-      return { negate, regex: globRegExp(negate ? p.slice(1) : p) };
+      const glob = negate ? p.slice(1) : p;
+      const folders = glob.endsWith('/');
+      return { negate, folders, regex: globRegExp(folders ? glob.slice(0, -1) : glob) };
     });
   return (path) => {
+    const isFolder = path.endsWith('/');
+    const parts = (isFolder ? path.slice(0, -1) : path).split('/');
     let ignored = false;
-    for (const { negate, regex } of rules) if (regex.test(path)) ignored = !negate;
+    for (const rule of rules) {
+      // The path itself, then each folder above it.
+      for (let i = parts.length; i >= 1; i--) {
+        const folder = i < parts.length || isFolder;
+        if (rule.folders && !folder) continue;
+        const prefix = parts.slice(0, i).join('/');
+        if (rule.regex.test(prefix) || (folder && rule.regex.test(`${prefix}/`))) {
+          ignored = !rule.negate;
+          break;
+        }
+      }
+    }
     return ignored;
   };
 }
@@ -50,9 +68,9 @@ export function loadIgnores(root: string): IgnoreMatcher {
 }
 
 function globRegExp(pattern: string): RegExp {
+  // A `/` at the start or in the middle anchors the pattern at the root.
   let glob = pattern.replace(/^\//, '');
-  if (glob.endsWith('/')) glob += '**';
-  if (!glob.includes('/')) glob = `**/${glob}`;
+  if (!pattern.includes('/')) glob = `**/${glob}`;
 
   let source = '';
   for (let i = 0; i < glob.length; i++) {

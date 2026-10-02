@@ -93,7 +93,16 @@ Its `cpr` job runs on merge request pipelines. Without a token, findings appear 
 request's Code Quality widget; add a masked `GITLAB_TOKEN` variable (api scope) to also get them
 as comments on their lines.
 
-TypeScript and JavaScript for now. Symbols in `fixtures/`, `generated/` and similar folders are not analyzed; add a `.cprignore` (gitignore syntax) to change that.
+TypeScript and JavaScript for now. Symbols in `fixtures/`, `generated/` and similar folders are not analyzed; add a `.cprignore` (gitignore syntax) at the root of your repository to change that. It is read from your working folder, so it applies right away, even uncommitted, and to any commits you compare:
+
+```gitignore
+# every `interfaces` folder, at any depth
+interfaces/
+# only the top-level `tools` folder
+/tools/
+# but keep this one
+!apps/web/interfaces/public.ts
+```
 
 ### Plugins
 
