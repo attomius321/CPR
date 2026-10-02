@@ -1,4 +1,4 @@
-import { lstat, readdir, symlink } from 'node:fs/promises';
+import { lstat, readdir, stat, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const MAX_DEPTH = 4;
@@ -32,9 +32,18 @@ async function dependencyFolders(root: string): Promise<string[]> {
       return;
     }
     for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      if (entry.name === 'node_modules') found.push(rel);
-      else if (depth < MAX_DEPTH && !SKIPPED.has(entry.name) && !entry.name.startsWith('.')) {
+      if (entry.name === 'node_modules') {
+        // A folder, or a link to one (an install shared between checkouts).
+        const path = join(root, rel, entry.name);
+        if (entry.isDirectory() || (entry.isSymbolicLink() && (await isFolder(path)))) {
+          found.push(rel);
+        }
+      } else if (
+        entry.isDirectory() &&
+        depth < MAX_DEPTH &&
+        !SKIPPED.has(entry.name) &&
+        !entry.name.startsWith('.')
+      ) {
         await walk(rel ? `${rel}/${entry.name}` : entry.name, depth + 1);
       }
     }
@@ -55,6 +64,15 @@ async function exists(path: string): Promise<boolean> {
 async function isDirectory(path: string): Promise<boolean> {
   try {
     return (await lstat(path)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/** Whether a path is a folder, following links. */
+async function isFolder(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isDirectory();
   } catch {
     return false;
   }
