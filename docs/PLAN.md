@@ -412,6 +412,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | C3 | GitHub annotations | Fork PRs get a read-only token, so nothing is posted; `::warning file=…,line=…::` workflow commands show findings inline without one (GitLab already has Code Quality). |
 | D1 ✅ | Detectors from real reviews | `signature-changed` tells test users from production users (only untouched production users elsewhere make a warning); new `exported-api-changed` for a published package's API removed, unexported, or broken. See §8. |
 | X1 ✅, A1–A2 ✅ | Plugins; Angular templates as the `angular` plugin | Templates call component methods, bind inputs and use pipes, and CPR saw none of it: 9 of 9 warnings on real Angular commits were false. Angular support must stay outside the TS/JS analysis: X1 adds plugin hooks, A1–A2 build the Angular plugin on them. Merged with PR #1; see below. |
+| A3 | Angular library components, directives and pipes | `async`, `date`, `ngModel`, `routerLink` and Material are still plain bindings, and a library pipe's result is untyped: links through `@if (x$ \| async; as x)` are lost (19 such blocks in Bitwarden's web app). Planned below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -1005,6 +1006,101 @@ Not in A1–A2 (later): library directives and pipes (selectors, inputs and pipe
 `ngTemplateContextGuard` types for `let-` variables; host directives; templates built at runtime
 or with `require()`; templates of other frameworks (Vue single-file components, Svelte), which the
 same shim approach fits as further plugins on X1's hooks.
+
+### A3 — Angular library components, directives and pipes (planned, branch `milestone/a3-angular-libraries`)
+
+**Problem.** A2 sees the repo's own components, directives and pipes; everything that comes from
+a package — `async`, `date`, `currency`, `ngModel`, `formControlName`, `routerLink`, Angular
+Material — is still a plain binding, and a library pipe's result is `any`. The costliest case:
+`@if (org$ | async; as org) { {{ org.name }} }` gives `org` no type, so no `org.…` in that block
+links to anything — renaming or removing `Organization.name` goes unnoticed there. Measured
+(templates parsed with Angular's compiler, library selectors from Angular 21's packages):
+
+| | RealWorld (Angular 21) | Bitwarden `apps/web` |
+|---|---|---|
+| Templates | 19 | 297 |
+| Elements and attributes matching a library directive | 100 (router 43, forms 46, `NgClass` 8) | 1,058 (forms 900+, `NgClass` 59, router 41) |
+| Library pipe uses | 4 `async`, 3 `date` | 176 `async`, 123 `currency`, 25 `date`, 9 `number`, 7 `lowercase` |
+| `@if`/`*ngIf` aliases of an `async` (a typed local for a whole block) | 2 | 19 |
+
+**Goal**: library directives and pipes resolve like the repo's: a library pipe returns its
+`transform`'s type (`x$ | async` is `T`), library outputs type `$event`, `#f="ngForm"` is an
+`NgForm`, and template uses of library classes are edges to their package (`@angular/common#AsyncPipe.transform`).
+
+#### Where the metadata comes from
+
+Angular libraries describe their directives in their published typings, in one of three forms
+(all three verified on real installs: Angular 21; Angular 11.2 before and after ngcc):
+
+| Angular version of the library | Where | Example |
+|---|---|---|
+| 12 and later (partial Ivy) | `.d.ts` | `static ɵdir: i0.ɵɵDirectiveDeclaration<NgModel, "[ngModel]:not([formControlName])…", ["ngModel"], { "model": { "alias": "ngModel"; "required": false; } … }, { "update": "ngModelChange"; }, …>` |
+| 9–11 after ngcc (it runs on `ng build`/`ng serve`) | `.d.ts`, rewritten in place | `static ɵdir: ɵngcc0.ɵɵDirectiveDefWithMeta<NgModel, "…", ["ngModel"], { "model": "ngModel"; … }, { "update": "ngModelChange"; }, never>` |
+| 9–11 before ngcc (View Engine) | `<entry>.metadata.json` | `{ "NgModel": { "decorators": [{ "Directive", { selector, exportAs } }], "members": { "model": [{ "Input", ["ngModel"] }] } } }` |
+
+Components (`ɵcmp`/`ɵɵComponentDeclaration`/`…DefWithMeta`, `@Component`) likewise; pipes
+`ɵɵPipeDeclaration<AsyncPipe, "async", true>` / `ɵɵPipeDefWithMeta<AsyncPipe, "async">` /
+`@Pipe({ name: 'async' })`. Signal inputs carry `"isSignal": true`. The `.d.ts` forms win over
+`metadata.json` when both exist. Libraries older than Angular 9 (View Engine only, no metadata
+v4) are out of scope.
+
+**Which packages**: the entry points the project's TypeScript imports (non-relative specifiers:
+`@angular/forms`, `@angular/material/button`), resolved like Node from the project's
+`node_modules` (`exports` → `types`, else `typings`/`types`, else `index.d.ts`), plus what their
+NgModules export from other entry points. A compiling app can only use what it imports, so
+this finds every library directive a template can use — and nothing is read when dependencies
+are not installed (then everything stays as in A2). Declarations are found by syntax only:
+classes with a static `ɵcmp`/`ɵdir`/`ɵpipe`, following `export { … } from`/`export *` into chunk
+files; the name the entry point exports a class under is what the shim imports (Angular exports
+some only as `ɵName`).
+
+#### Shims
+
+Library classes join the A2 registry with their package as their place:
+`import { AsyncPipe as __cpr_D4 } from '@angular/common';` (by value, resolved in the analyzed
+program like any import). Matching stays global (A2), now over repo and imported library
+directives; two components on one element stay `possible`. A pipe call is
+`(__cpr_D4(), __cpr_D4.prototype.transform(value, …args))` as for repo pipes — `transform`'s
+generic signature types the result (`async`: `Observable<T>` → `T`). `ngFor`/`ngIf` keep A1's
+special handling (their context types are not in their metadata).
+
+#### What changes in findings
+
+- **Through library pipes**: reads after `| async`, and aliases of it in `@if`/`*ngIf`/`@for`,
+  are typed: their members are edges, a removed or renamed one is `removed-still-referenced`,
+  a changed one counts its template users, a new one read only there is no orphan.
+- **Library outputs** type `$event` (`(ngModelChange)="save($event)"`); **references** to library
+  directives are typed (`#f="ngForm"` … `f.valid`).
+- **Edges to packages**: a template's uses of library classes and members are edges to external
+  nodes (`@angular/forms#NgModel.model`), drawn in the package's box as for TS code.
+- Nothing for library code itself: the analysis is of the repo's change.
+
+#### Verification
+
+1. **Fixture** `libraries` with fake packages under its own `node_modules` (kept in git): one in
+   each metadata form, each with a component (input, aliased input, output), a directive with
+   `exportAs`, a generic `async`-like pipe and an NgModule. Cases: a member read only through the
+   pipe alias (no orphan, edge); that member removed (error at the template line); a library
+   output typing `$event`; `#f="libForm"` typed; an entry point not imported (not matched); no
+   `node_modules` (same result as A2).
+2. **Without the plugin, no change**; with it on a non-Angular repo, no change.
+3. **RealWorld** with its dependencies installed (Angular 21 and the Angular 11 project, before
+   and after ngcc): links through `| async`, library edges per template; experiment: a field read
+   only through an `async` alias removed → error.
+4. **Cost**: the library `.d.ts` files read are those of imported entry points, parsed once and
+   shared by both revisions (same path through the linked `node_modules`); budget +5 % over A2.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| A metadata form not seen yet (other Angular versions, hand-written typings) | Unknown forms are skipped and counted in one warning; the three forms have fixtures. |
+| Global matching over large libraries (Material: 86 entry points) over-matches | Only imported entry points are read; competing components stay `possible`. |
+| A library class is not exported under a usable name | Classes without an export name are skipped (their elements stay plain). |
+
+**Not in A3 (later)**: NgModule and standalone scopes (which directives a template may use);
+`ngTemplateContextGuard` context types for `let-` variables of library structural directives
+(`*matCellDef="let row"`); host directives.
 
 **Later:** more languages via adapters, a faster core (TS 7 adapter or Rust/oxc), self-hosted team mode.
 
