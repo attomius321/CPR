@@ -32,8 +32,12 @@ export interface LanguageAdapter<L = unknown> {
   incoming(revision: L, symbol: SymbolDecl): EdgeRef[];
   /** What an extracted symbol references: callees, types, base classes. */
   outgoing(revision: L, symbol: SymbolDecl): EdgeRef[];
-  /** Uses of the removed symbols' names in this revision that no longer resolve. */
-  dangling(revision: L, removed: readonly SymbolDecl[]): Dangling[];
+  /**
+   * Uses of the removed symbols in this revision (head) that no longer resolve; `removed` also
+   * holds the old declarations of moved and renamed symbols. `base` is the revision they come
+   * from, for uses found by what the symbol was (a selector, say) rather than by its name.
+   */
+  dangling(revision: L, removed: readonly SymbolDecl[], base: L): Dangling[];
   /** Why an extracted symbol may be used without in-repo references, if it may. */
   exposure(revision: L, symbol: SymbolDecl): Exposure | undefined;
   /** Whether code outside the repository can use the symbol (a published package's API). */

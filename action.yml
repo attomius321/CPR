@@ -26,6 +26,11 @@ inputs:
   depth:
     description: Hops of unchanged callers and callees to include.
     default: '1'
+  plugins:
+    description: >-
+      Plugins to analyze with, separated by commas (e.g. angular), besides those in
+      cpr.config.json.
+    default: ''
   working-directory:
     description: Where the repository is checked out.
     default: .
@@ -45,6 +50,9 @@ runs:
       uses: actions/setup-node@v5
       with:
         node-version: 22
+        # v5 caches the project's package manager when package.json names one (`packageManager`),
+        # and fails when that manager is not installed yet: CPR installs its own.
+        package-manager-cache: false
     - name: Install CPR
       shell: bash
       working-directory: ${{ github.action_path }}
@@ -60,5 +68,6 @@ runs:
         CPR_FAIL_ON: ${{ inputs.fail-on }}
         CPR_PROJECT: ${{ inputs.project }}
         CPR_DEPTH: ${{ inputs.depth }}
+        CPR_PLUGINS: ${{ inputs.plugins }}
         CPR_CLI: node ${{ github.action_path }}/packages/cli/dist/bin.js
       run: bash "$GITHUB_ACTION_PATH/action/run.sh"

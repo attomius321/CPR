@@ -34,7 +34,24 @@ export type {
   SymbolKind,
 } from './model.js';
 export type { LanguageAdapter, LoadOptions } from './adapter.js';
-export { typescriptAdapter, type TsRevision } from './lang/typescript/index.js';
+export {
+  createTypescriptAdapter,
+  typescriptAdapter,
+  type TsRevision,
+  type TypescriptAdapterOptions,
+} from './lang/typescript/index.js';
+/** TypeScript's types, for plugins: the values come from `PluginContext.ts`. */
+export type { ts } from 'ts-morph';
+export {
+  PLUGIN_API_VERSION,
+  type ArgumentRoles,
+  type MappedPosition,
+  type PluginContext,
+  type PluginRevision,
+  type PluginSymbol,
+  type TsPlugin,
+  type VirtualFile,
+} from './lang/typescript/plugins.js';
 export {
   changeFingerprint,
   diffSymbols,
@@ -67,6 +84,7 @@ export {
   type GraphChangeRequest,
   type GraphEdge,
   type GraphNode,
+  type GraphPlugin,
   type GraphSide,
 } from './graph.js';
 export { compareShapes, compatibility, type Compatibility } from './compat.js';

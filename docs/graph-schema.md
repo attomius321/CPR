@@ -1,8 +1,9 @@
-# CPR Graph Schema (draft v0.4.0)
+# CPR Graph Schema (draft v0.5.0)
 
 The graph JSON is the contract between the engine (`@cpr/core`) and every consumer
 (viewer, CLI summary, GitHub Action). It is **language-neutral**: nothing in it is
-TypeScript-specific except the `language` value.
+TypeScript-specific except the `language` value. Plugins (framework knowledge such as templates)
+add symbols and edges of the same shapes; the graph names the plugins it was made with.
 
 ## Conventions
 
@@ -20,7 +21,8 @@ TypeScript-specific except the `language` value.
 | New optional field, new enum value consumers can ignore | minor |
 | Removed/renamed field, changed meaning | major |
 
-History: `0.4.0` added the `overrides` edge kind and the edge flag `possible`; `0.3.0` added the `exported-api-changed` rule and test-user counts in
+History: `0.5.0` added top-level `plugins` and the node kind `template` (both from plugins;
+without plugins a graph only changes its version); `0.4.0` added the `overrides` edge kind and the edge flag `possible`; `0.3.0` added the `exported-api-changed` rule and test-user counts in
 `signature-changed` data; `0.2.0` added `since` (top level and on nodes); `changeRequest` arrived in 0.1.0
 before any release.
 
@@ -33,8 +35,9 @@ every golden graph against it.
 
 ```jsonc
 {
-  "schemaVersion": "0.4.0",
+  "schemaVersion": "0.5.0",
   "generator": { "name": "cpr", "version": "0.1.0" },
+  "plugins": [{ "name": "angular", "version": "0.1.0" }],   // only when plugins ran
   "changeRequest": {             // only from `cpr pr`
     "forge": "gitlab", "number": 7, "title": "Add widgets",
     "url": "https://gitlab.example.com/acme/widgets/-/merge_requests/7",
@@ -109,7 +112,7 @@ One per symbol in the graph: every changed symbol, plus unchanged **context** sy
 
 | Field | Type | Notes |
 |---|---|---|
-| `kind` | enum | `function` `class` `method` `constructor` `accessor` `property` `interface` `type` `enum` `variable` `namespace` `module` `external` `unknown` |
+| `kind` | enum | `function` `class` `method` `constructor` `accessor` `property` `interface` `type` `enum` `variable` `namespace` `template` `module` `external` `unknown` |
 | `status` | enum | `added` `removed` `modified` `unchanged` |
 | `delta` | object \| absent | Present only when `status` is `modified`. At least one flag is `true`. |
 | `base` / `head` | object \| null | `base` is null for `added`, `head` is null for `removed`. |
@@ -126,6 +129,12 @@ files. Special node IDs, all leaves without `base`/`head`:
 | `module` | `src/app.ts#(module)` | Top-level code of a file, outside any declaration. |
 | `external` | `react#useState`, `node:fs#readFileSync`, `express#Response.json` | A package symbol: package name, then its dotted name. Standard-library globals are not included. |
 | `unknown` | `unknown:obj[name]`, `unknown:target.go` | A call the checker cannot resolve (dynamic or `any`); the ID holds the callee text. |
+
+A **`template`** node comes from a plugin: a framework template is code that uses its component's
+members. The Angular plugin names an external template by its file
+(`src/app/foo.component.html#(template)`) and an inline one by its class
+(`src/app/foo.component.ts#FooComponent.(template)`, contained by the class). It is diffed and drawn like any symbol; its
+edges' sites point into the template file, which need not be TypeScript.
 
 ## Edge
 
@@ -186,6 +195,6 @@ A directed relation `from` → `to` ("from uses to").
 | Rule | `data` |
 |---|---|
 | `removed-still-referenced` | `{ "referencedBy": string[], "certainty": "resolved" \| "unknown", "sites": Site[] }` |
-| `orphan-added` | `{ "exportedFromEntry": boolean, "exposure": "entry-export" \| "default-export" \| null }` |
+| `orphan-added` | `{ "exportedFromEntry": boolean, "exposure": "entry-export" \| "default-export" \| null }` (`override` and `framework` — a plugin knows the framework uses it — are not reported) |
 | `signature-changed` | `{ "callers", "updated", "untouched", "untouchedElsewhere", "tests", "untouchedTests": number, "compatibility": "compatible" \| "additive" \| "breaking" \| "unknown" }` — counts include test users (`tests` of them); `related` lists untouched production users, then untouched test users, then updated ones |
 | `exported-api-changed` | `{ "change": "removed" \| "unexported" \| "signature", "compatibility"?: "breaking" \| "unknown" }` |

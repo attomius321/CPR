@@ -8,6 +8,7 @@
 # CPR_CODEQUALITY   also write a GitLab Code Quality report there
 # CPR_OUT           folder for the graph JSON and summary (default: $RUNNER_TEMP/cpr)
 # CPR_PROJECT, CPR_DEPTH, CPR_SINCE   passed on as --project, --depth, --since
+# CPR_PLUGINS       plugins, separated by commas or spaces: one --plugin each
 set -uo pipefail
 
 # The merge-base needs history; shallow checkouts are deepened once.
@@ -26,6 +27,10 @@ args+=(--summary --out "$out/graph.json")
 [ -n "${CPR_PROJECT:-}" ] && args+=(--project "$CPR_PROJECT")
 [ -n "${CPR_DEPTH:-}" ] && args+=(--depth "$CPR_DEPTH")
 [ -n "${CPR_SINCE:-}" ] && args+=(--since "$CPR_SINCE")
+plugins="${CPR_PLUGINS:-}"
+for plugin in ${plugins//,/ }; do
+  args+=(--plugin "$plugin")
+done
 
 read -r -a cli <<<"${CPR_CLI:-cpr}"
 "${cli[@]}" "${args[@]}" | tee "$out/summary.txt"

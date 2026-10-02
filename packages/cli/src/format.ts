@@ -105,7 +105,11 @@ function users(change: SymbolChange, edges: Edge[]): number {
 
 function formatChange(change: SymbolChange, usedBy: number): string {
   const symbol = (change.head ?? change.base)!;
-  const name = symbol.id.slice(symbol.id.indexOf('#') + 1);
+  // A template reads as its signature: `template of FooComponent`.
+  const name =
+    symbol.kind === 'template'
+      ? symbol.signature.replace(/^template /, '')
+      : symbol.id.slice(symbol.id.indexOf('#') + 1);
   const { delta } = change;
   const marker =
     change.status === 'added' ? '+' : change.status === 'removed' ? '-' : delta?.moved ? '→' : '~';

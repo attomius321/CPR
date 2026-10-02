@@ -1,0 +1,7 @@
+{
+  "name": "ng11-app",
+  "private": true,
+  "dependencies": {
+    "@angular/core": "~11.2.0"
+  }
+}

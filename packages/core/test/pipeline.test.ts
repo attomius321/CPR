@@ -1,4 +1,4 @@
-import { cpSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -126,6 +126,47 @@ describe('detectors', () => {
       'orphan-added src/math.ts#triple',
       'signature-changed src/math.ts#add',
     ]);
+  });
+
+  it('reports renamed or moved symbols still used by their old name or place', async () => {
+    const root = tempDir();
+    const body =
+      '{\n  const total = items.reduce((sum, item) => sum + item.price * item.count, 0);\n' +
+      '  return Math.round(total * 100) / 100;\n}\n';
+    const signature = '(items: { price: number; count: number }[]): number ';
+    const caller =
+      "import { computeTotal } from './cart';\nexport const total = computeTotal([]);\n";
+    const side = (name: string, files: Record<string, string>) => {
+      mkdirSync(join(root, name, 'src'), { recursive: true });
+      for (const [path, text] of Object.entries(files)) writeFileSync(join(root, name, path), text);
+      return join(root, name);
+    };
+    try {
+      const analysis = await analyzeDirectories(
+        side('base', {
+          'src/cart.ts': `export function computeTotal${signature}${body}`,
+          'src/b.ts': caller,
+        }),
+        side('head', {
+          'src/cart.ts': `export function sumPrices${signature}${body}`,
+          'src/b.ts': caller,
+        }),
+      );
+      expect(analysis.changes.map((c) => [c.id, c.previousId])).toEqual([
+        ['src/cart.ts#sumPrices', 'src/cart.ts#computeTotal'],
+      ]);
+      expect(analysis.findings).toMatchObject([
+        {
+          rule: 'removed-still-referenced',
+          severity: 'error',
+          symbol: 'src/cart.ts#sumPrices',
+          message:
+            'computeTotal was renamed to sumPrices, but 1 symbol still uses the old name: total',
+        },
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

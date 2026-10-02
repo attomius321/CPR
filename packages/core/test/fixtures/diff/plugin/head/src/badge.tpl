@@ -1,0 +1,1 @@
+<span>{{ text }} ({{ count }})</span>

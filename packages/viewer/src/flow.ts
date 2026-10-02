@@ -244,11 +244,17 @@ export function tone(node: GraphNode): Tone {
   return node.status;
 }
 
-/** `Class.method`, a package export, `file (top level)`, or the unresolved callee. */
+/**
+ * `Class.method`, a package export, `file (top level)`, the unresolved callee, or a template:
+ * its file (`foo.component.html`), or `FooComponent template` when inline.
+ */
 export function label(node: GraphNode): string {
   const local = node.id.slice(node.id.indexOf('#') + 1);
   if (node.kind === 'module') return 'top level';
   if (node.kind === 'unknown') return node.id.replace(/^unknown:/, '');
+  if (local === '(template)')
+    return node.id.slice(node.id.lastIndexOf('/') + 1, node.id.indexOf('#'));
+  if (local.endsWith('.(template)')) return `${local.slice(0, -'.(template)'.length)} template`;
   return local;
 }
 

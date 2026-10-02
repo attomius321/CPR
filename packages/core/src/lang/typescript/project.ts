@@ -7,6 +7,15 @@ import { loadIgnores } from '../../ignore.js';
 import type { SymbolId } from '../../model.js';
 import type { RevisionSource } from '../../revision.js';
 import { isTsSource } from './files.js';
+import {
+  runHook,
+  type ActivePlugin,
+  type MappedPosition,
+  type PluginContext,
+  type PluginRevision,
+  type TsPlugin,
+  type VirtualFile,
+} from './plugins.js';
 
 export interface TsRevision {
   /** Absolute revision root, without a trailing slash. */
@@ -18,6 +27,12 @@ export interface TsRevision {
   /** Declaration nodes of extracted symbols, for reference search. */
   declarations: Map<SymbolId, ts.Node[]>;
   warnings: string[];
+  /** Plugins that apply to this revision. */
+  plugins: ActivePlugin[];
+  /** Plugins' in-memory files, by absolute file name. */
+  virtual: Map<string, { file: VirtualFile; plugin: ActivePlugin }>;
+  /** What plugins see of the revision; the same functions before and after the program. */
+  context: PluginContext;
 }
 
 const SKIPPED_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', 'out', '.git']);
@@ -53,6 +68,7 @@ const DEFAULTS: ts.CompilerOptions = {
 export function loadTsProject(
   source: RevisionSource,
   { project, files = [] }: LoadOptions = {},
+  plugins: readonly TsPlugin[] = [],
 ): TsRevision {
   const root = resolve(source.root);
   const warnings: string[] = [];
@@ -101,6 +117,28 @@ export function loadTsProject(
     if (isTsSource(file)) tsProject.addSourceFileAtPathIfExists(join(root, file));
   }
 
+  // Plugins see the project's files before the program exists, and may add files to it.
+  const active: ActivePlugin[] = [];
+  const virtual: TsRevision['virtual'] = new Map();
+  const context = pluginContext(root, tsProject, virtual);
+  for (const plugin of plugins) {
+    const entry: ActivePlugin = { plugin, failed: false };
+    if (!runHook(entry, 'applies', warnings, false, () => plugin.applies(context))) continue;
+    active.push(entry);
+    const files = runHook(entry, 'virtualFiles', warnings, [] as VirtualFile[], () =>
+      plugin.virtualFiles ? plugin.virtualFiles(context) : [],
+    );
+    for (const file of files) {
+      const path = join(root, file.path);
+      if (!repoPath(root, path) || existsSync(path) || tsProject.getSourceFile(path)) {
+        warnings.push(`plugin ${plugin.name}: virtual file ${file.path} clashes; skipped`);
+        continue;
+      }
+      tsProject.createSourceFile(path, file.text);
+      virtual.set(path, { file, plugin: entry });
+    }
+  }
+
   const service = tsProject.getLanguageService().compilerObject;
   const program = service.getProgram();
   if (!program) throw new Error('TypeScript did not create a program');
@@ -110,7 +148,93 @@ export function loadTsProject(
       warnings.push(`${file}: not part of the TypeScript program, skipped`);
     }
   }
-  return { root, project: tsProject, service, program, declarations: new Map(), warnings };
+  return {
+    root,
+    project: tsProject,
+    service,
+    program,
+    declarations: new Map(),
+    warnings,
+    plugins: active,
+    virtual,
+    context,
+  };
+}
+
+/**
+ * Where a position in a file belongs when the file is a plugin's virtual file: its owner and
+ * real site, or undefined for scaffolding and for a plugin that failed. Null for other files.
+ */
+export function mapVirtual(
+  revision: TsRevision,
+  fileName: string,
+  offset: number,
+): MappedPosition | undefined | null {
+  const entry = revision.virtual.get(fileName);
+  if (!entry) return null;
+  return runHook(entry.plugin, 'map', revision.warnings, undefined, () => entry.file.map(offset));
+}
+
+const pluginViews = new WeakMap<ActivePlugin, PluginRevision>();
+
+/** What a plugin sees of a loaded revision: its program, and its own virtual files. */
+export function pluginRevision(revision: TsRevision, active: ActivePlugin): PluginRevision {
+  const cached = pluginViews.get(active);
+  if (cached) return cached;
+  const { root, program } = revision;
+  const view: PluginRevision = {
+    // The same context functions as before the program: plugins may cache by them.
+    ...revision.context,
+    program,
+    checker: program.getTypeChecker(),
+    virtual(path) {
+      const fileName = join(root, path);
+      return revision.virtual.get(fileName)?.plugin === active
+        ? program.getSourceFile(fileName)
+        : undefined;
+    },
+  };
+  pluginViews.set(active, view);
+  return view;
+}
+
+/** What plugins see of a revision before its program exists (plugins' virtual files aside). */
+function pluginContext(
+  root: string,
+  tsProject: Project,
+  virtual: TsRevision['virtual'],
+): PluginContext {
+  const packageJson = readJson(join(root, 'package.json'));
+  return {
+    ts,
+    root,
+    packageJson:
+      packageJson && typeof packageJson === 'object'
+        ? (packageJson as Record<string, unknown>)
+        : undefined,
+    readFile(path) {
+      const file = join(root, path);
+      if (!repoPath(root, file)) return undefined;
+      try {
+        return readFileSync(file, 'utf8');
+      } catch {
+        return undefined;
+      }
+    },
+    sourceFiles() {
+      return tsProject.getSourceFiles().flatMap((sf) => {
+        const fileName = sf.getFilePath();
+        const path = repoPath(root, fileName);
+        return path && isTsSource(path) && !path.includes('node_modules/') && !virtual.has(fileName)
+          ? [path]
+          : [];
+      });
+    },
+    syntax(path) {
+      const fileName = join(root, path);
+      return virtual.has(fileName) ? undefined : tsProject.getSourceFile(fileName)?.compilerNode;
+    },
+  };
 }
 
 /** Repo-relative POSIX path, or undefined outside the root. */

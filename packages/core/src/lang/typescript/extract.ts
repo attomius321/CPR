@@ -4,7 +4,8 @@ import { ts } from 'ts-morph';
 import type { ExtractOptions } from '../../adapter.js';
 import type { Range, Shape, SymbolDecl, SymbolId, SymbolKind } from '../../model.js';
 import { isTsSource } from './files.js';
-import type { TsRevision } from './project.js';
+import { runHook, type ArgumentRoles, type PluginSymbol } from './plugins.js';
+import { pluginRevision, type TsRevision } from './project.js';
 import {
   bindingNames,
   functionValue,
@@ -77,18 +78,48 @@ export function extractTs(
   const { program, root } = revision;
   const checker = program.getTypeChecker();
   const symbols: SymbolDecl[] = [];
+  const roles = decoratorRoles(revision);
   for (const file of files) {
     if (!isTsSource(file)) continue;
     const sf = program.getSourceFile(join(root, file));
-    if (!sf) continue;
-    const extractor = new FileExtractor(file, sf, checker, root, infer);
+    if (!sf || revision.virtual.has(sf.fileName)) continue;
+    const extractor = new FileExtractor(file, sf, checker, root, infer, roles);
     for (const [symbol, nodes] of extractor.run()) {
       symbols.push(symbol);
       revision.declarations.set(symbol.id, nodes);
     }
   }
+  // Plugins' own symbols (e.g. templates) join the adapter's.
+  for (const active of revision.plugins) {
+    const extract = active.plugin.extract;
+    if (!extract) continue;
+    const found = runHook(active, 'extract', revision.warnings, [] as PluginSymbol[], () =>
+      extract(pluginRevision(revision, active), files),
+    );
+    for (const { symbol, nodes } of found) {
+      symbols.push(symbol);
+      revision.declarations.set(symbol.id, nodes ?? []);
+    }
+  }
   return symbols;
 }
+
+/** The first applying plugin's roles for a decorator's arguments, if one claims it. */
+function decoratorRoles(revision: TsRevision): DecoratorRoles {
+  const claimants = revision.plugins.filter((p) => p.plugin.decoratorArguments);
+  if (claimants.length === 0) return () => undefined;
+  return (decorator) => {
+    for (const active of claimants) {
+      const roles = runHook(active, 'decoratorArguments', revision.warnings, undefined, () =>
+        active.plugin.decoratorArguments?.(pluginRevision(revision, active), decorator),
+      );
+      if (roles) return roles;
+    }
+    return undefined;
+  };
+}
+
+type DecoratorRoles = (decorator: ts.Decorator) => ArgumentRoles | undefined;
 
 class FileExtractor {
   private readonly symbols = new Map<SymbolId, Builder>();
@@ -100,6 +131,7 @@ class FileExtractor {
     private readonly checker: ts.TypeChecker,
     private readonly root: string,
     private readonly infer: (id: SymbolId) => boolean,
+    private readonly roles: DecoratorRoles = () => undefined,
   ) {}
 
   run(): [SymbolDecl, ts.Node[]][] {
@@ -173,7 +205,7 @@ class FileExtractor {
         ...angle(listTokens(node.typeParameters, this.sf)),
         ...listTokens(node.heritageClauses, this.sf),
       ],
-      body: this.classBody(node),
+      body: [...this.decoratorBody(node), ...this.classBody(node)],
       display: this.text(
         `${hasModifier(node, ts.SyntaxKind.AbstractKeyword) ? 'abstract ' : ''}class ${name}` +
           `${this.sourceText(node.typeParameters, '<', '>')}` +
@@ -212,10 +244,13 @@ class FileExtractor {
           exported,
           fn
             ? {
-                ...this.functionPart(fn, 'method', name, {
-                  head: [...this.modifierTokens(member), ...tokens(member.name, this.sf)],
-                  prefix: [...prefix, ...this.memberPrefix(fn)],
-                }),
+                ...this.withDecoratorBody(
+                  member,
+                  this.functionPart(fn, 'method', name, {
+                    head: [...this.modifierTokens(member), ...tokens(member.name, this.sf)],
+                    prefix: [...prefix, ...this.memberPrefix(fn)],
+                  }),
+                ),
                 ...this.span(member),
               }
             : {
@@ -227,7 +262,7 @@ class FileExtractor {
                   ...tokens(member.questionToken ?? member.exclamationToken, this.sf),
                   ...this.typeTokens(member.type, member.name),
                 ],
-                body: tokens(member.initializer, this.sf),
+                body: [...this.decoratorBody(member), ...tokens(member.initializer, this.sf)],
                 display: this.text(
                   `${prefix.join(' ')} ${name}${member.questionToken ? '?' : ''}: ${this.typeText(member.type, member.name)}`,
                 ),
@@ -366,7 +401,7 @@ class FileExtractor {
       kind,
       ...this.span(fn),
       signature,
-      body: tokens(body, this.sf),
+      body: [...this.decoratorBody(fn), ...tokens(body, this.sf)],
       display: this.functionDisplay(fn, name, prefix ?? this.memberPrefix(fn)),
       shape: {
         params: fn.parameters.map((p) => ({
@@ -620,10 +655,26 @@ class FileExtractor {
     return keyword || this.exportedNames.has(name);
   }
 
+  /**
+   * Modifier and decorator tokens of a signature. A decorator a plugin claims contributes its
+   * name and the arguments the plugin marks as signature; the rest goes to `decoratorBody`.
+   */
   private modifierTokens(node: ts.Node): string[] {
     const out: string[] = [];
     if (ts.canHaveDecorators(node)) {
-      for (const decorator of ts.getDecorators(node) ?? []) tokens(decorator, this.sf, out);
+      for (const decorator of ts.getDecorators(node) ?? []) {
+        const roles = this.roles(decorator);
+        if (!roles) {
+          tokens(decorator, this.sf, out);
+          continue;
+        }
+        const callee = ts.isCallExpression(decorator.expression)
+          ? decorator.expression.expression
+          : decorator.expression;
+        out.push('@');
+        tokens(callee, this.sf, out);
+        for (const argument of roles.signature) tokens(argument, this.sf, out);
+      }
     }
     if (ts.canHaveModifiers(node)) {
       for (const modifier of ts.getModifiers(node) ?? []) {
@@ -633,6 +684,21 @@ class FileExtractor {
       }
     }
     return out;
+  }
+
+  /** Body tokens from the arguments of plugin-claimed decorators (none without plugins). */
+  private decoratorBody(node: ts.Node): string[] {
+    const out: string[] = [];
+    if (!ts.canHaveDecorators(node)) return out;
+    for (const decorator of ts.getDecorators(node) ?? []) {
+      for (const argument of this.roles(decorator)?.body ?? []) tokens(argument, this.sf, out);
+    }
+    return out;
+  }
+
+  private withDecoratorBody(node: ts.Node, part: Part): Part {
+    const extra = this.decoratorBody(node);
+    return extra.length > 0 ? { ...part, body: [...extra, ...part.body] } : part;
   }
 
   /** Display prefix for members: `static`, `private`, `async`… (decorators left out). */

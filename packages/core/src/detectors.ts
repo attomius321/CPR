@@ -51,16 +51,16 @@ type Draft = Omit<Finding, 'id'>;
 
 /**
  * A removed symbol whose name still appears, unresolved, in head: in a symbol that used it
- * before the change, or imported from the file it was removed from.
+ * before the change, or imported from the file it was removed from. Likewise the old name or
+ * place of a renamed or moved symbol.
  */
 function removedStillReferenced({ changes, edges, dangling }: DetectorInput): Draft[] {
   const drafts: Draft[] = [];
   for (const change of changes) {
-    if (change.status !== 'removed') continue;
+    const old = change.status === 'removed' ? change.id : change.previousId;
+    if (!old) continue;
     const before = users(edges, change.id, 'base');
-    const hits = dangling.filter(
-      (d) => d.target === change.id && (d.viaImport || before.has(d.from)),
-    );
+    const hits = dangling.filter((d) => d.target === old && (d.viaImport || before.has(d.from)));
     if (hits.length === 0) continue;
 
     const referencedBy = unique(hits.map((h) => h.from));
@@ -72,13 +72,23 @@ function removedStillReferenced({ changes, edges, dangling }: DetectorInput): Dr
         change.id,
         referencedBy,
         {
-          message: `${name(change.id)} was removed but is still used by ${plural(referencedBy.length, 'symbol')}: ${list(referencedBy)}`,
+          message: lostMessage(change.id, old, referencedBy),
           data: { referencedBy, certainty, sites: hits.map((h) => h.site) },
         },
       ),
     );
   }
   return drafts;
+}
+
+/** `x was removed but is still used by …`, or renamed or moved with users of the old name. */
+function lostMessage(id: SymbolId, old: SymbolId, users: SymbolId[]): string {
+  const count = plural(users.length, 'symbol');
+  if (old === id) return `${name(id)} was removed but is still used by ${count}: ${list(users)}`;
+  const verb = users.length === 1 ? 'uses' : 'use';
+  return name(old) === name(id)
+    ? `${name(old)} was moved to ${id.slice(0, id.indexOf('#'))}, but ${count} still ${verb} the old place: ${list(users)}`
+    : `${name(old)} was renamed to ${name(id)}, but ${count} still ${verb} the old name: ${list(users)}`;
 }
 
 /**
@@ -176,7 +186,8 @@ function signatureMessage(symbol: string, compat: string, counts: UserCounts): s
 
 /**
  * A new symbol nothing references. Public API (exported from the package entry) and default
- * exports are only `info`; overrides are skipped; members of an orphan class are not repeated.
+ * exports are only `info`; overrides and what a plugin says the framework uses are skipped;
+ * members of an orphan class are not repeated.
  */
 function orphanAdded({ changes, edges, exposure }: DetectorInput): Draft[] {
   const added = changes
@@ -193,7 +204,7 @@ function orphanAdded({ changes, edges, exposure }: DetectorInput): Draft[] {
     );
     if (used) continue;
     const why = exposure.get(change.id);
-    if (why === 'override') continue;
+    if (why === 'override' || why === 'framework') continue;
 
     orphans.add(change.id);
     drafts.push(
@@ -281,10 +292,18 @@ function draft(
   return { rule, severity, symbol, related, message, data };
 }
 
-/** Short display name: `Class.method`, or `src/app.ts (top level)` for module code. */
+/**
+ * Short display name: `Class.method`, `src/app.ts (top level)` for module code, a template's
+ * file (`foo.component.html`) or `FooComponent template` for an inline one.
+ */
 function name(id: SymbolId): string {
+  const file = id.slice(0, id.indexOf('#'));
   const qualified = id.slice(id.indexOf('#') + 1);
-  return qualified === '(module)' ? `${id.slice(0, id.indexOf('#'))} (top level)` : qualified;
+  if (qualified === '(module)') return `${file} (top level)`;
+  if (qualified === '(template)') return file.slice(file.lastIndexOf('/') + 1);
+  if (qualified.endsWith('.(template)'))
+    return `${qualified.slice(0, -'.(template)'.length)} template`;
+  return qualified;
 }
 
 /** `a, b, c, d, e and 3 more`. */
@@ -294,7 +313,7 @@ function list(ids: SymbolId[], max = 5): string {
 }
 
 function depth(id: SymbolId): number {
-  return name(id).split('.').length;
+  return id.slice(id.indexOf('#') + 1).split('.').length;
 }
 
 function unique<T>(items: T[]): T[] {

@@ -32,17 +32,21 @@ export function fixtureFile(name: string, path: string): string {
 const git = (cwd: string, ...args: string[]) =>
   execFileSync('git', args, { cwd, env, encoding: 'utf8', stdio: 'pipe' }).trim();
 
-/** A fresh repo whose `main` holds a fixture's base/ and `feature` its head/. */
+/**
+ * A fresh repo whose `main` holds a fixture's base/ and `feature` its head/. A name is a fixture
+ * of `packages/core`; a path relative to the repo root names another one.
+ */
 function fixtureRepo(name: string): { repo: string; base: string; head: string } {
+  const dir = name.includes('/') ? join(root, name) : join(fixtures, name);
   const repo = mkdtempSync(join(tmpdir(), 'cpr-e2e-'));
   git(repo, 'init', '-q', '-b', 'main');
-  cpSync(join(fixtures, name, 'base'), repo, { recursive: true });
+  cpSync(join(dir, 'base'), repo, { recursive: true });
   git(repo, 'add', '-A');
   git(repo, 'commit', '-q', '-m', 'base');
   git(repo, 'checkout', '-q', '-b', 'feature');
   for (const entry of readdirSync(repo))
     if (entry !== '.git') rmSync(join(repo, entry), { recursive: true });
-  cpSync(join(fixtures, name, 'head'), repo, { recursive: true });
+  cpSync(join(dir, 'head'), repo, { recursive: true });
   git(repo, 'add', '-A');
   git(repo, 'commit', '-q', '-m', 'head');
   return { repo, base: git(repo, 'rev-parse', 'main'), head: git(repo, 'rev-parse', 'feature') };
@@ -102,8 +106,12 @@ export interface RunningPullRequest extends Running {
 /**
  * Serves `cpr pr 7` for a fixture as a GitHub pull request: the clone's `origin` says
  * github.com but git fetches from a local bare repo, and a mock API answers for GitHub.
+ * `args` go to every `cpr pr` run (e.g. `--plugin angular`).
  */
-export async function servePullRequest(name: string): Promise<RunningPullRequest> {
+export async function servePullRequest(
+  name: string,
+  args: readonly string[] = [],
+): Promise<RunningPullRequest> {
   const { repo, base, head } = fixtureRepo(name);
   const bare = mkdtempSync(join(tmpdir(), 'cpr-e2e-bare-'));
   const clone = mkdtempSync(join(tmpdir(), 'cpr-e2e-clone-'));
@@ -134,8 +142,8 @@ export async function servePullRequest(name: string): Promise<RunningPullRequest
       body: { html_url: 'https://github.com/acme/widgets/pull/7#pullrequestreview-1' },
     },
   });
-  const start = (args: string[] = []) =>
-    startCpr(['pr', '7', ...args], clone, {
+  const start = (more: string[] = []) =>
+    startCpr(['pr', '7', ...args, ...more], clone, {
       CPR_CACHE_DIR: cache,
       GITHUB_API_URL: api.url,
       GITHUB_TOKEN: 'ghp_e2e',

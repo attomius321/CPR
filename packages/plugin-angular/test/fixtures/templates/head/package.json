@@ -1,0 +1,7 @@
+{
+  "name": "ng-app",
+  "private": true,
+  "dependencies": {
+    "@angular/core": "^21.0.0"
+  }
+}
