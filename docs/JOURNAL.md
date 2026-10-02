@@ -977,3 +977,8 @@ CPU profiles (inclusive time per phase) and file counts of one commit each; time
 - Sharing by path covers lib and `node_modules` files (vite: 81 % of parsing) but not project
   files, whose paths differ between the two worktrees — and those are most of Bitwarden and zod.
   One program for both sides (option A) would not share them either.
+
+**Decision**: not pursued. Sharing lib and `node_modules` files (B1) means replacing the ts-morph
+loader for ~15–30 % on projects with installed dependencies; sharing project files too (B2) adds
+a virtual-path layer. The user judged the gain too small for the risk. The measurement stays as
+the baseline for a later TS 7 adapter.
