@@ -408,7 +408,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 
 | # | Idea | Why |
 |---|---|---|
-| P1 | One program for both sides | Measured lever: base and head share most files; a single language service over both trees (or reusing the head program's lib/dependency files) would cut load time, the largest cost on vite/zod. |
+| P1 (measured, not pursued) | One program for both sides | Measured (journal, "P1 measurement"): loading is 62–79 % of a run and CPR's own work 2–4 %, but what both sides can safely share is lib and `node_modules` files (vite ~25–30 % faster, Bitwarden ~15 %, zod little); sharing project files needs both worktrees under one virtual path. Decided against for now: the gain does not justify replacing the ts-morph loader. Revisit with a TS 7 adapter, where loading is several times faster anyway (S1). |
 | C3 | GitHub annotations | Fork PRs get a read-only token, so nothing is posted; `::warning file=…,line=…::` workflow commands show findings inline without one (GitLab already has Code Quality). |
 | D1 ✅ | Detectors from real reviews | `signature-changed` tells test users from production users (only untouched production users elsewhere make a warning); new `exported-api-changed` for a published package's API removed, unexported, or broken. See §8. |
 | X1 ✅, A1–A2 ✅ | Plugins; Angular templates as the `angular` plugin | Templates call component methods, bind inputs and use pipes, and CPR saw none of it: 9 of 9 warnings on real Angular commits were false. Angular support must stay outside the TS/JS analysis: X1 adds plugin hooks, A1–A2 build the Angular plugin on them. Merged with PR #1; see below. |
