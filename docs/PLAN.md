@@ -565,6 +565,17 @@ both passed as `--plugin`.
 3. A missing plugin, a wrong `apiVersion` and a plugin that throws → a message or a warning, never
    a crash.
 
+**Results**: 1 — `packages/core/test/plugins.test.ts` (11 tests) runs the `.tpl` test plugin
+over a fixture: template edges with sites in the `.tpl`, a template-only change analyzed, a removed
+method its template still calls (error), no false orphans (`double` used by the template,
+`onStart` called by the framework) and no false `signature-changed` from a configuration-only
+decorator edit; the built CLI and viewer show the template node with its own diff. 2 — goldens
+changed only `schemaVersion`; on the 29 R1 comparisons (ky, zod, vite, the Angular app) `main` and
+X1 give identical edges (932) and findings (11); the Angular app prints the hint once on a
+template commit. 3 — CLI tests cover a missing package, a missing file, a wrong `apiVersion`, a
+module that is not a plugin and a broken `cpr.config.json`; a plugin whose hook throws leaves a
+warning and the plain analysis.
+
 **As built** (what differs from the first sketch, and where it lives)
 - Hooks are function-typed properties: a plugin never relies on `this`. `PluginContext.ts` hands
   plugins the adapter's own TypeScript, so a plugin needs no TypeScript of its own and its nodes
