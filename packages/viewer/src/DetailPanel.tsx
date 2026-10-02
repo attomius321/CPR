@@ -234,21 +234,26 @@ function SymbolDiff({ state, anchor, onPick }: SymbolDiffProps) {
   const rows = all ? state.rows : state.rows.slice(0, MAX_ROWS);
   return (
     <div className="code" role="table">
-      {rows.map((row, i) => (
-        <div
-          key={i}
-          className={`row row-${row.type}${onPick && row.type !== 'same' ? ' pickable' : ''}${isAnchor(row, anchor) ? ' anchored' : ''}`}
-          role="row"
-          {...(onPick && row.type !== 'same'
-            ? { onClick: () => onPick(row), title: 'Comment on this line' }
-            : {})}
-        >
-          <span className="ln">{row.base ?? ''}</span>
-          <span className="ln">{row.head ?? ''}</span>
-          <span className="mark">{row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}</span>
-          <span className="text">{row.text}</span>
-        </div>
-      ))}
+      {/* As wide as the longest line, so every row's colour spans it when the code scrolls. */}
+      <div className="code-rows">
+        {rows.map((row, i) => (
+          <div
+            key={i}
+            className={`row row-${row.type}${onPick && row.type !== 'same' ? ' pickable' : ''}${isAnchor(row, anchor) ? ' anchored' : ''}`}
+            role="row"
+            {...(onPick && row.type !== 'same'
+              ? { onClick: () => onPick(row), title: 'Comment on this line' }
+              : {})}
+          >
+            <span className="ln">{row.base ?? ''}</span>
+            <span className="ln">{row.head ?? ''}</span>
+            <span className="mark">
+              {row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}
+            </span>
+            <span className="text">{row.text}</span>
+          </div>
+        ))}
+      </div>
       {rows.length < state.rows.length && (
         <button className="more" onClick={() => setAll(true)}>
           Show all {state.rows.length} lines

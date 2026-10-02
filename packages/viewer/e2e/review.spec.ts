@@ -73,3 +73,20 @@ test('focus shows only the neighbourhood of the selection', async ({ page }) => 
   await page.keyboard.press('f');
   await expect(page.locator('.react-flow__node-symbol')).toHaveCount(all);
 });
+
+test('colours a changed line across its full width when the code scrolls', async ({ page }) => {
+  // A narrow window: the panel is narrower than perimeter's first line.
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.getByRole('tab', { name: /Changes/ }).click();
+  await page.locator('.list-link', { hasText: 'perimeter' }).click();
+  const code = page.getByRole('complementary', { name: 'Symbol detail' }).locator('.code');
+  await expect(code.locator('.row-add').first()).toBeVisible();
+
+  const widths = await code.evaluate((el) => ({
+    visible: el.clientWidth,
+    content: el.scrollWidth,
+    rows: [...el.querySelectorAll('.row')].map((row) => row.getBoundingClientRect().width),
+  }));
+  expect(widths.content).toBeGreaterThan(widths.visible); // the code does scroll
+  for (const row of widths.rows) expect(row).toBeGreaterThanOrEqual(widths.content - 1);
+});
