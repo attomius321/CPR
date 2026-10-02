@@ -294,6 +294,43 @@ code {
   font-size: 11px;
 }
 
+/* ---- summary nodes: many neighbours of one changed symbol ---------------------------- */
+
+.summary-node {
+  height: 100%;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  border: 1px dashed var(--context);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.summary-node:hover {
+  border-color: var(--moved);
+}
+
+.summary-node.expanded {
+  opacity: 0.8;
+}
+
+.summary-count {
+  font-weight: 600;
+}
+
+.summary-where {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.summary-action {
+  color: var(--moved);
+}
+
 /* ---- file boxes --------------------------------------------------------------------- */
 
 .file-box {
@@ -327,6 +364,12 @@ code {
   stroke: var(--line);
 }
 
+.minimap-summary {
+  fill: transparent;
+  stroke: var(--context);
+  stroke-dasharray: 4 3;
+}
+
 /* ---- edges -------------------------------------------------------------------------- */
 
 .react-flow__edge.edge-both path.react-flow__edge-path {
@@ -346,6 +389,11 @@ code {
 .react-flow__edge.edge-type-reference path.react-flow__edge-path,
 .react-flow__edge.edge-unknown path.react-flow__edge-path {
   stroke-dasharray: 2 4;
+}
+
+.react-flow__edge.edge-summary path.react-flow__edge-path {
+  stroke: var(--context);
+  stroke-dasharray: 4 3;
 }
 
 .react-flow__edge-text {
@@ -405,6 +453,11 @@ code {
   border-radius: 2px;
   background: var(--tone);
   vertical-align: -1px;
+}
+
+.legend-summary::before {
+  background: transparent;
+  border: 1px dashed var(--context);
 }
 
 .legend-edge::before {
