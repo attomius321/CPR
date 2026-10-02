@@ -824,3 +824,46 @@ each of ky, zod and vite, 8 Angular app commits and 3 experiments) give byte-ide
 **For A1**: an unresolved call inside a shim is labelled with shim text (`unknown:this.reset`);
 the summary and viewer show template names as `(template)` — both want template-aware labels.
 `@cpr/plugin-angular` must be a dependency of the CLI to be found "next to cpr".
+
+## A1 — Angular plugin: templates see their component (2026-10-02, branch `milestone/x1-plugins`)
+
+**What landed** (on the X1 branch, as asked; not merged yet): `@cpr/plugin-angular`, loaded with
+`--plugin angular`. Templates become TypeScript shims (`this` is the component) in the analyzed
+program, so TypeScript's own reference search, R1's family filter, inherited members, chains
+and dangling detection cover them unchanged. Template symbols (`x.html#(template)`, inline
+`X.(template)`), the decorator split (selector/inputs/outputs/exportAs signature, the rest body,
+the inline template neither), `framework` exposures (templates, lifecycle hooks, host members,
+pipe `transform`), template labels in findings, summary and viewer. Details and numbers: PLAN,
+"A1 results" and "A1 as built".
+
+**Results in short**
+- RealWorld: 8 false warnings on 4 commits → 0 (A1's share); template-only commits analyzed; a
+  real bug (`@for` without `track`) reported on the commit that introduced it. Three
+  experiments (removed method, renamed member in an inline template, new required parameter)
+  all caught; all three missed without the plugin.
+- Bitwarden (1,188 templates): +7.5 % time on 7 commits; 12 findings gone, all checked false;
+  none new; template-only commits analyzed instead of skipped.
+- Without the plugin: nothing changed (goldens, the 29 R1 comparisons).
+
+**Learned**
+- `preserveWhitespaces: false` shifts interpolation offsets (the text is rewritten): parse with
+  whitespace kept, normalize for the hash.
+- Inline templates parse in place with `range` + `escapedString`: spans are then `.ts` offsets,
+  escapes included.
+- The parser can throw (a bad range gave `RangeError: Invalid code point NaN`): every parse is
+  guarded.
+- The binder resolves template variables, references and `@let`, but not arrow-function
+  parameters or `$event`.
+- `<x></x>` → `<x />` is no change to Angular; 4 of the 14 templates of the control-flow commit
+  changed only that, so "10 modified" is right where the plan expected 14.
+- A generic component needs `this: X<any>` in its shim; without type arguments the whole
+  template resolved to nothing (found on Bitwarden: `rowHeight` read by a template looked
+  unused).
+- Shims can only import exported classes; tests and stories often don't export their hosts
+  (268 in Bitwarden). Skipped; warned about only elsewhere.
+- Base and head warnings were merged; a warning only base has now reads `in base: …`, so a
+  problem the change fixes doesn't read as one it brings.
+
+**Next (A2)**: repo components, directives and pipes used by templates (selectors, inputs,
+outputs, pipes, `exportAs`), which also explains the remaining `ifAuthenticated`/`articleInput`
+orphans and links `MarkdownPipe.transform` to its template.

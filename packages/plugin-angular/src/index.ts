@@ -22,6 +22,8 @@ import { parseTemplate, templateTokens, type ParsedTemplate, type Syntax } from 
 
 const VERSION = '0.1.0';
 
+const TEST_OR_STORY = /\.(?:spec|test|stories)\.[cm]?tsx?$/;
+
 /** Lifecycle hooks Angular calls by name, `implements` or not. */
 const LIFECYCLE_HOOKS = new Set([
   'ngOnChanges',
@@ -238,8 +240,9 @@ function buildShim(
   cls: NgClass,
 ): VirtualFile | undefined {
   if (!cls.exported) {
-    // A shim can only import exported classes (tests and stories often skip the export).
-    state.unexported.push(`${cls.name} (${cls.file})`);
+    // A shim can only import exported classes. Tests and stories often skip the export: no
+    // warning for those.
+    if (!TEST_OR_STORY.test(cls.file)) state.unexported.push(`${cls.name} (${cls.file})`);
     return undefined;
   }
   const self =

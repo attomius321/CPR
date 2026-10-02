@@ -597,7 +597,10 @@ warning and the plain analysis.
   [`tpl-plugin.ts`](../packages/core/test/helpers/tpl-plugin.ts): a made-up framework whose
   `@View({ template: './card.tpl' })` classes render `{{ expression }}` templates, using every hook.
 
-### A1–A2 — Angular templates, as the `angular` plugin (planned, branch `milestone/a1-angular-templates`)
+### A1–A2 — Angular templates, as the `angular` plugin
+
+**Status:** A1 built on branch `milestone/x1-plugins` (with X1, awaiting review; results and
+"as built" at the end of this section); A2 planned.
 
 Everything in this section lives in `@cpr/plugin-angular` and reaches CPR only through X1's hooks.
 Without `--plugin angular`, CPR does none of it — on Angular projects too.
@@ -762,8 +765,11 @@ and `@HostListener`/`@HostBinding` members. The plugin gives them the exposure `
 binder (`parseTemplate`, `R3TargetBinder`), so templates read exactly as Angular reads them: block
 control flow, `@let`, `@defer`, ICU messages, structural micro-syntax.
 
-- **Pinned to 21.2.x**: 22.x requires Node ≥ 22.22.3, and CPR supports 22.12. A dependency of
-  `@cpr/plugin-angular` only, imported when the plugin runs on an Angular revision (77 ms).
+- **Pinned to 21.2.x** (21.2.25): 22.x requires Node ≥ 22.22.3, and CPR supports 22.12. A
+  dependency of `@cpr/plugin-angular` only, loaded with the plugin, which the CLI imports only
+  when asked for it.
+- **Whitespace preserved** while parsing: collapsing it rewrites text nodes and shifts the
+  offsets of interpolations; the hash normalizes whitespace itself.
 - **Syntax by the project's Angular version** (`@angular/core` in package.json or `node_modules`):
   17 and later → block syntax and `@let` on; older → both off. Never block syntax with `@let` off:
   the parser loops forever on `@let x = 1;` in that mode (found in the spike).
@@ -782,7 +788,7 @@ FooComponent  (body)`.
 | # | Milestone | Output |
 |---|---|---|
 | X1 ✅ | Plugins | The TS adapter's plugin hooks (`applies`, `matches`, `virtualFiles` with position maps, `extract`, `decoratorArguments`, `exposure`, `warnings`); `createTypescriptAdapter({ plugins })`; `--plugin` and `cpr.config.json`; plugin resolution, API version check, failure isolation, the Angular hint; schema 0.5.0 (`template`, `framework`, `plugins`); CI inputs; a fixture test plugin. No Angular code. |
-| A1 | Angular plugin: templates see their component | `packages/plugin-angular`; Angular project detection; component metadata (`templateUrl`, inline `template`, `host`); template symbols, hashes and `.html` relevance; shims for names on the component, chains, locals and host bindings; shim position maps; the decorator split; `framework` exposures; viewer and summary labels for templates. |
+| A1 ✅ | Angular plugin: templates see their component | `packages/plugin-angular`; Angular project detection; component metadata (`templateUrl`, inline `template`, `host`); template symbols, hashes and `.html` relevance; shims for names on the component, chains, locals and host bindings; shim position maps; the decorator split; `framework` exposures; viewer and summary labels for templates. |
 | A2 | Angular plugin: templates see other components | Directive, component and pipe metadata from repo decorators: selectors, `@Input`/`@Output`, `inputs`/`outputs` arrays, signal `input()`/`input.required()`/`model()`/`output()`, aliases, inputs inherited from base classes. Selector matching with the compiler's `SelectorMatcher` over the repo's directives; shims for elements, directives, inputs, outputs, two-way bindings, pipes and `#ref="exportAs"`; removed components, pipes and outputs still used. |
 
 A2 matches globally over the repo's directives, without NgModule or standalone scopes: a compiling
@@ -840,6 +846,77 @@ that), so their edges are marked `possible`.
 | Large apps: shims add one file per template to the program | 1.8 s per side to parse and bind 1,188 templates; the Bitwarden budget check; the name prefilter as lever. |
 | Angular adds syntax | Pinned compiler, upgraded deliberately against the fixtures; unknown syntax is a parse error and a warning, never a crash. |
 | Global selector matching (A2) | Competing components are `possible`; scopes later. |
+
+#### A1 results
+
+**Fixtures** (`packages/plugin-angular/test`, 8 tests): every A1 case listed above, plus a
+generic component (`Table<T>`), a component that is not exported and a test host in a `.spec.ts`.
+**Viewer e2e** (`e2e/angular.spec.ts`): `cpr pr --plugin angular` shows the finding naming the
+template, opens the template with its own diff and posts a comment to line 5 of the `.html`.
+
+**RealWorld commits**, without → with the plugin:
+
+| Commit | Without | With `--plugin angular` |
+|---|---|---|
+| `438e991` | nothing (no TS file) | 10 templates modified; 2 warnings: two `@for` loops without `track`, which Angular rejects — the very bug `c80e51b` fixes. The other 4 changed `.html` files only switched to self-closing tags: no change, rightly |
+| `c80e51b` | nothing | 2 templates modified; the missing `track` reported `in base:` only |
+| `857a75e` | 2 warnings (orphan `authState$`, `HeaderComponent` signature) | 0; header template modified |
+| `5467760` | 1 warning (`ProfileComponent` signature) | 0; 2 templates modified |
+| `df9d5dc` | 5 warnings | 1 (`ifAuthenticated`, bound as `*ifAuthenticated`: A2) |
+| `51c4afd` | 1 orphan, 38 infos | the class-level infos from inline-template edits are gone; `articleInput` (A2) and the members' own signal-type infos remain |
+| `2faae23` | nothing | 2 changes (the template and `MarkdownPipe.transform`); the pipe link is A2 |
+
+**Experiments** on `51c4afd`, each missed without the plugin: `deleteArticle()` removed while
+`article.component.html` still calls it → ✖ error; `articlesConfig` renamed while the inline
+template of a default-exported component still reads it → ✖ error ("ProfileArticlesComponent
+template"); `removeTag()` given a second required parameter → ⚠ `signature-changed`, 1 of 1 user
+not updated: `editor.component.html`.
+
+**Bitwarden clients**, 10 recent commits that touch templates, one run each way:
+- Time on the 7 commits analyzed either way: 225.8 s → 242.7 s, **+7.5 %** (per commit −11 % to
+  +19 %: single runs are noisy). Under the 20 % budget, so the name prefilter is not needed yet.
+- The 3 template-only commits were skipped before (0.5 s, nothing shown); now 27–31 s, each
+  showing its changed template.
+- Findings: 12 gone, every one checked and false — 5 class `signature-changed`/
+  `exported-api-changed` from `imports`/`host` edits, 7 orphans read by templates
+  (`[bitSubmit]="submit"`, `[rounded]="… && isMacOs"`, `[virtualRowHeight]="rowHeight"`), host
+  bindings or lifecycle hooks. None new.
+- Found on the way: a generic component's shim needs type arguments (`this: Table<any>`), or
+  every name in its template resolves to nothing; 268 components in tests and stories are not
+  exported, so their templates cannot be imported by a shim — skipped, warned about only outside
+  tests and stories.
+
+**No plugin, no change**: the goldens, and the 29 R1 comparisons (ky, zod, vite, the Angular app)
+give the same edges and findings as before X1.
+
+#### A1 as built
+
+- `packages/plugin-angular` (`@cpr/plugin-angular` 0.1.0) depends on `@angular/compiler` only;
+  `@cpr/core` is a dev dependency for types, and TypeScript comes from `PluginContext.ts`. The
+  root `package.json` links it, so `--plugin angular` resolves from a checkout and in CI
+  (`action/install.sh` installs the workspace).
+- `classes.ts`: Angular classes by syntax — decorators imported from `@angular/core` (named,
+  aliased or through a namespace), `templateUrl`, inline `template`, `host`,
+  `@HostListener`/`@HostBinding` members, type parameters, how the class is exported.
+- `template.ts`: parsing (cached by text, so base and head share most templates; a parser crash
+  is an error like a syntax error); inline templates are parsed in place (`range`,
+  `escapedString`) so spans are offsets in the `.ts`; the binder runs without directives (A2
+  adds them); hash tokens.
+- `expressions.ts`: Angular expressions as TypeScript. The binder resolves template locals;
+  arrow-function parameters and `$event` it does not, so the plugin tracks them. `$any(x)` →
+  `(x as any)`; pipes → `__cpr_pipe(…)` (A2 resolves repo pipes); assignments are `Binary`
+  nodes in Angular 21.
+- `shim.ts`: one block per view; `#refs` declared at the start of their view; `@for`/`*ngFor` →
+  `for…of`; `@if`/`*ngIf` aliases → constants; other locals `any`; events →
+  `($event: any) => { … }`; host bindings → `__cpr_host`, owned by the class.
+- One shim per class: `foo.component.FooComponent.cpr.ts`, importing `./foo.component.js` (valid
+  in every module resolution mode), with `__cpr_template` and `__cpr_host`.
+- Template symbol: name `(template)`, signature `template of FooComponent` (a shared
+  `templateUrl` is one symbol listing its components), constant signature hash, body hash from
+  the parsed template. Labels: findings and the viewer call it by its file
+  (`foo.component.html`) or `FooComponent template`; the summary prints `template of …`.
+- Core, generic: `ts` types exported for plugins; a warning only the base revision has is
+  prefixed `in base:` (a problem the change fixes is not one it brings).
 
 **Risk:** medium. The harmful outcomes are a false edge or a false error from a shim; "unknown →
 `any` → nothing" and the fixtures guard against both. **Cost:** ~1–2 ms per template per side to
