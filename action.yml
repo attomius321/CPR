@@ -50,6 +50,9 @@ runs:
       uses: actions/setup-node@v5
       with:
         node-version: 22
+        # v5 caches the project's package manager when package.json names one (`packageManager`),
+        # and fails when that manager is not installed yet: CPR installs its own.
+        package-manager-cache: false
     - name: Install CPR
       shell: bash
       working-directory: ${{ github.action_path }}
