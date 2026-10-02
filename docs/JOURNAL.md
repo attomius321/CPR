@@ -713,3 +713,57 @@ the green/red row colour stopped at the panel's edge. Rows were as wide as the v
 the code. They now sit in a wrapper `width: max-content; min-width: 100%`, so every row spans the
 longest line. An e2e test opens the panel in a 700 px window and checks each row is as wide as the
 scrollable content (it failed before: 280 px rows, 447 px of code).
+
+## Angular templates spike (2026-10-02)
+
+Groundwork for A1–A2 (PLAN), on branch `milestone/a1-angular-templates`. Nothing in CPR changed.
+
+**Parser**: `@angular/compiler` 21.2.25 (`parseTemplate` + `R3TargetBinder` with a
+`SelectorMatcher` of repo directives) runs standalone under Node 22. On one template mixing
+`*ngFor`, `let-`, `#ref="ngModel"`, `[(ngModel)]`, `@if`, `@for`, `@let`, `@defer` and pipes it
+told every component member apart from template locals, matched elements and attributes to
+directives, mapped input and output bindings to their fields, and gave exact line:column for each
+name (inline templates too, with the `range` option). Quirks: `$event` reads as a component name
+and must be special-cased; a `*ngFor`'s bindings are visited twice (deduplicate by site); a broken
+expression still yields the rest of the template.
+- Literal `@` in text (`team@example.com`) parses with block syntax on.
+- **Hang**: block syntax on with `@let` off loops forever on `@let x = 1;`. Use both on (Angular
+  ≥ 17) or both off.
+- 22.x requires Node ≥ 22.22.3 (CPR: 22.12); 21.x accepts `^22.12`. Import: 77 ms.
+
+**Counts** (all templates of one checkout; "only by templates" = members whose name no TS file
+reads as `.name`, so approximate):
+
+| | RealWorld `994e00b` (Angular 11.2) | RealWorld `3c5b7ac` (Angular 21.2) | Bitwarden clients (Angular 21.2) |
+|---|---|---|---|
+| TS files / components | 70 / 18 | 48 / 18 | 6,411 / 1,188 |
+| External / inline templates | 18 / 0 | 10 / 8 | 780 / 396 |
+| Parse errors | 0 | 0 | 0 |
+| Component members read | 128 | 112 | 10,368 |
+| Template locals read | 13 | 43 | 4,159 |
+| Chains past the first name | 64 | 63 | 5,905 |
+| Elements matched to repo components | 20 | 23 | 9,545 |
+| Input / output bindings to repo directives | 26 / 7 | 30 / 8 | 4,060 / 522 |
+| Pipe uses (repo pipes) | 4 (1) | 13 (6) | 6,485 (5,732) |
+| Members used only by templates | 19 | 21 | 1,808 |
+| Parse + bind, all templates | 103 ms | 100 ms | 1,794 ms |
+
+In RealWorld, the template-only members are nearly every event handler (`submitForm`,
+`toggleFavorite`, `deleteComment`, …) and the observables read with `| async`.
+
+**Shims**: a ts-morph project on disk plus one in-memory file holding
+`function __template(this: FooComponent) { … }`: `findReferences` returned the shim's sites for a
+base class method called as `this.save()`, a service method reached as `this.auth.isLoggedIn()`,
+and a method called on a `for…of` loop variable; `this.gone()` had no symbol and a `FooComponent`
+receiver, which is what `danglingTs` reports as a certain removal.
+
+**CPR today on RealWorld commits that touch templates** (no dependencies installed):
+
+| Commit | Findings | Why they are wrong |
+|---|---|---|
+| `438e991` (14 templates), `c80e51b` (2) | none, 40 ms: no file is analyzable | templates changed |
+| `857a75e` | orphan `authState$`; `HeaderComponent` signature changed | read by its template; `imports` edit |
+| `5467760` | `ProfileComponent` signature changed | `imports` edit |
+| `df9d5dc` | orphan `ifAuthenticated`, orphan `ngOnInit`; 3 components' signatures changed | `*ifAuthenticated`; `OnInit` unresolved without dependencies; `imports` edits |
+| `51c4afd` | orphan `articleInput`; 38 info `signature-changed` | bound as `[articleInput]` in `ArticleListComponent`'s inline template |
+| `2faae23` | none | `MarkdownPipe.transform` became async and its template added `\| async` |
