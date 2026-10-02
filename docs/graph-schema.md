@@ -131,7 +131,9 @@ files. Special node IDs, all leaves without `base`/`head`:
 | `unknown` | `unknown:obj[name]`, `unknown:target.go` | A call the checker cannot resolve (dynamic or `any`); the ID holds the callee text. |
 
 A **`template`** node comes from a plugin: a framework template is code that uses its component's
-members (`src/app/foo.component.html#(template)`). It is diffed and drawn like any symbol; its
+members. The Angular plugin names an external template by its file
+(`src/app/foo.component.html#(template)`) and an inline one by its class
+(`src/app/foo.component.ts#FooComponent.(template)`, contained by the class). It is diffed and drawn like any symbol; its
 edges' sites point into the template file, which need not be TypeScript.
 
 ## Edge
