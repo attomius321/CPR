@@ -15,6 +15,7 @@
     CPR_VERSION: main # branch or tag of CPR
     CPR_POST_FINDINGS: warning # needs GITLAB_TOKEN; empty: don't post
     CPR_FAIL_ON: error # empty: never fail the job
+    CPR_PLUGINS: '' # e.g. angular; comma-separated, besides those in cpr.config.json
     CPR_OUT: $CI_PROJECT_DIR/.cpr
   script:
     - git clone --quiet --depth 1 --branch "$CPR_VERSION" https://github.com/attomius321/CPR.git /tmp/cpr

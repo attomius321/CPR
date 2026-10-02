@@ -95,6 +95,30 @@ as comments on their lines.
 
 TypeScript and JavaScript for now. Symbols in `fixtures/`, `generated/` and similar folders are not analyzed; add a `.cprignore` (gitignore syntax) to change that.
 
+### Plugins
+
+Framework knowledge comes as plugins, so the TypeScript/JavaScript analysis stays the same for
+every project. A plugin can make CPR see what plain TypeScript cannot: a template that calls a
+component's methods, a method the framework calls, decorator settings that are configuration
+rather than contract. Turn one on per run or for the repository:
+
+```sh
+cpr diff main --plugin angular          # @cpr/plugin-angular (planned)
+cpr diff main --plugin ./tools/my-plugin.mjs
+```
+
+```jsonc
+// cpr.config.json, at the repository root (read from your working folder)
+{ "plugins": ["angular"] }
+```
+
+A short name means `@cpr/plugin-<name>`, found in your project first, then next to cpr; a path
+starts with `.` or `/`. In CI: the action's `plugins` input or GitLab's `CPR_PLUGINS` variable
+(comma-separated). A plugin that fails is skipped with a warning — it never fails the review.
+Writing one: the `TsPlugin` interface exported by `@cpr/core`
+([plan](docs/PLAN.md#x1--plugins)), and a complete example in
+[`tpl-plugin.ts`](packages/core/test/helpers/tpl-plugin.ts).
+
 - [Plan](docs/PLAN.md) · [Journal](docs/JOURNAL.md) · [Graph schema](docs/graph-schema.md)
 
 ## Development

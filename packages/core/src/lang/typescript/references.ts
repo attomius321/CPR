@@ -1,7 +1,7 @@
 import { ts } from 'ts-morph';
 import type { EdgeKind, EdgeRef, Site, SymbolDecl } from '../../model.js';
 import { isTsSource } from './files.js';
-import { repoPath, type TsRevision } from './project.js';
+import { mapVirtual, repoPath, type TsRevision } from './project.js';
 import {
   bindingNames,
   enclosingSymbolId,
@@ -38,6 +38,9 @@ export function incomingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
         const file = repoPath(root, entry.fileName);
         const refSf = program.getSourceFile(entry.fileName);
         if (!file || !isTsSource(file) || !refSf) continue;
+        // A plugin's virtual file: the reference belongs to its owner, at its real site.
+        const mapped = mapVirtual(revision, entry.fileName, entry.textSpan.start);
+        if (mapped === undefined) continue;
 
         const at = nodeAt(refSf, entry.textSpan.start);
         let kind = referenceKind(at);
@@ -48,9 +51,9 @@ export function incomingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
           if (verdict === 'overrides') kind = 'overrides';
           possible = verdict === 'possible';
         }
-        const from = enclosingSymbolId(at, refSf, file);
+        const from = mapped ? mapped.owner : enclosingSymbolId(at, refSf, file);
         if (!from || from === symbol.id) continue;
-        const site = siteOf(refSf, file, entry.textSpan.start);
+        const site = mapped ? mapped.site : siteOf(refSf, file, entry.textSpan.start);
         edges.set(siteKey(site), {
           from,
           to: symbol.id,
@@ -81,19 +84,27 @@ export function outgoingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
     const file = repoPath(root, sf.fileName);
     if (!file) continue;
     const ownName = nameNode(node, symbol.name);
-    const site = (n: ts.Node) => siteOf(sf, file, n.getStart(sf));
+    // In a plugin's virtual file, sites map back to the real file; scaffolding maps to nothing.
+    const virtual = revision.virtual.has(sf.fileName);
+    const site = (n: ts.Node): Site | undefined =>
+      virtual
+        ? mapVirtual(revision, sf.fileName, n.getStart(sf))?.site
+        : siteOf(sf, file, n.getStart(sf));
 
     const visit = (n: ts.Node): void => {
       if (ts.isIdentifier(n) && n !== ownName) {
         const edge = resolveIdentifier(n);
-        if (edge) add({ from: symbol.id, ...edge, site: site(n) });
+        const at = edge && site(n);
+        if (edge && at) add({ from: symbol.id, ...edge, site: at });
       } else if (ts.isCallExpression(n) || ts.isNewExpression(n)) {
         const callee = unwrap(n.expression);
+        const at = site(callee);
         if (
+          at &&
           ts.isElementAccessExpression(callee) &&
           !ts.isStringLiteralLike(callee.argumentExpression)
         ) {
-          add({ from: symbol.id, ...unknown(callee, sf, 'call'), site: site(callee) });
+          add({ from: symbol.id, ...unknown(callee, sf, 'call'), site: at });
         }
       }
       ts.forEachChild(n, visit);
@@ -101,7 +112,8 @@ export function outgoingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
     for (const scanned of scanRoots(node)) visit(scanned);
 
     // The base class or interface members this member overrides or implements.
-    if (ts.isClassElement(node) && ownName) {
+    const nameSite = ownName && site(ownName);
+    if (ts.isClassElement(node) && nameSite) {
       for (const decl of overriddenMembers(checker, node)) {
         const target = overrideTarget(decl);
         if (target) {
@@ -110,7 +122,7 @@ export function outgoingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
             ...target,
             kind: 'overrides',
             resolution: 'resolved',
-            site: site(ownName),
+            site: nameSite,
           });
         }
       }
@@ -121,6 +133,8 @@ export function outgoingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
   function overrideTarget(decl: ts.Declaration): Pick<EdgeRef, 'to' | 'target'> | undefined {
     const declSf = decl.getSourceFile();
     if (program.isSourceFileDefaultLibrary(declSf)) return undefined;
+    // Plugin shims are scaffolding, never a declaration of the project.
+    if (revision.virtual.has(declSf.fileName)) return undefined;
     const declFile = repoPath(root, declSf.fileName);
     if (!declFile || declSf.fileName.includes('/node_modules/')) {
       const pkg = packageOf(declSf.fileName);
@@ -158,6 +172,8 @@ export function outgoingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
     if (!decl) return undefined;
     const declSf = decl.getSourceFile();
     if (program.isSourceFileDefaultLibrary(declSf)) return undefined;
+    // Plugin shims are scaffolding, never a declaration of the project.
+    if (revision.virtual.has(declSf.fileName)) return undefined;
 
     const path = declSf.fileName;
     const declFile = repoPath(root, path);

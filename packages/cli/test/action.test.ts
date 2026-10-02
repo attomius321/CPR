@@ -87,6 +87,11 @@ describe('action/run.sh', () => {
     ]);
   });
 
+  it('passes one --plugin per listed plugin', () => {
+    const { args } = run({ CPR_PLUGINS: 'angular, ./tools/plugin.mjs' });
+    expect(args.slice(-4)).toEqual(['--plugin', 'angular', '--plugin', './tools/plugin.mjs']);
+  });
+
   it('passes a number and keeps the exit status of cpr', () => {
     const { status, args } = run({ CPR_PULL_REQUEST: '7', STUB_EXIT: '1' });
     expect(status).toBe(1);

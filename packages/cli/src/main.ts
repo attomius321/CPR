@@ -8,6 +8,7 @@ import {
   analyzeGit,
   buildGraph,
   CprError,
+  createTypescriptAdapter,
   defaultCacheDir,
   fetchRefs,
   listChangedLines,
@@ -21,11 +22,13 @@ import {
   type ChangedLines,
   type Graph,
   type Severity,
+  type TsPlugin,
 } from '@cpr/core';
 import { detectForge, type ChangeRequest, type Forge } from '@cpr/forge';
 import { ciChangeRequestNumber } from './ci.js';
 import { codeQualityReport } from './codequality.js';
 import { formatAnalysis } from './format.js';
+import { angularHint, loadPlugins } from './plugins.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { startViewServer, type ReviewTarget } from './server.js';
 import { fileStateStore, stateDir } from './state.js';
@@ -104,6 +107,8 @@ Options:
                        head of this change (before a push or rebase)
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
+  --plugin <name|path> Analyze with a plugin, e.g. angular (repeatable; also read from
+                       "plugins" in cpr.config.json at the repo root)
   -h, --help           Show this help
 `;
 
@@ -119,6 +124,8 @@ Options:
                        head of this change (before a push or rebase)
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
+  --plugin <name|path> Analyze with a plugin, e.g. angular (repeatable; also read from
+                       "plugins" in cpr.config.json at the repo root)
   -h, --help           Show this help
 `;
 
@@ -151,6 +158,8 @@ Options:
                        head of this pull/merge request (fetched if needed)
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
+  --plugin <name|path> Analyze with a plugin, e.g. angular (repeatable; also read from
+                       "plugins" in cpr.config.json at the repo root)
   -h, --help           Show this help
 `;
 
@@ -222,6 +231,7 @@ const ANALYSIS_OPTIONS = {
   since: { type: 'string' },
   project: { type: 'string' },
   depth: { type: 'string', default: '1' },
+  plugin: { type: 'string', multiple: true },
   help: { type: 'boolean', short: 'h', default: false },
 } as const;
 
@@ -232,15 +242,19 @@ interface AnalysisArgs {
     since?: string | undefined;
     project?: string | undefined;
     depth: string;
+    plugin?: string[] | undefined;
   };
 }
 
-/** Runs the analysis for `diff`/`view` arguments; returns it with the time it took. */
+/**
+ * Runs the analysis for `diff`/`view` arguments; returns it with the time it took and the
+ * plugins it ran with.
+ */
 async function analyze(
   { positionals, values }: AnalysisArgs,
   ctx: CliContext,
   help: string,
-): Promise<{ analysis: Analysis; durationMs: number }> {
+): Promise<{ analysis: Analysis; durationMs: number; plugins: TsPlugin[] }> {
   const [base, head = 'HEAD', ...extra] = positionals;
   if (base === undefined) throw new UsageError('missing <base>', help);
   if (extra.length > 0) throw new UsageError(`unexpected argument '${extra[0]}'`, help);
@@ -251,6 +265,8 @@ async function analyze(
   }
 
   const started = performance.now();
+  const repo = await openRepo(ctx.cwd);
+  const plugins = await loadPlugins(values.plugin ?? [], { cwd: ctx.cwd, repoRoot: repo.root });
   try {
     const analysis = await analyzeGit({
       cwd: ctx.cwd,
@@ -259,10 +275,13 @@ async function analyze(
       mergeBase: !values['no-merge-base'],
       depth,
       cacheDir: defaultCacheDir(ctx.env),
+      adapter: createTypescriptAdapter({ plugins }),
       ...(values.since === undefined ? {} : { since: values.since }),
       ...(values.project === undefined ? {} : { project: values.project }),
     });
-    return { analysis, durationMs: Math.round(performance.now() - started) };
+    const hint = angularHint(plugins, analysis.files, repo.root);
+    if (hint) ctx.stderr(`hint: ${hint}\n`);
+    return { analysis, durationMs: Math.round(performance.now() - started), plugins };
   } catch (error) {
     if (error instanceof NoMergeBaseError) {
       throw new CprError(`${error.message}; use --no-merge-base to compare them directly`, {
@@ -401,8 +420,8 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
     return 0;
   }
   checkFailOn(values['fail-on'], DIFF_HELP);
-  const { analysis, durationMs } = await analyze({ positionals, values }, ctx, DIFF_HELP);
-  const graph = buildGraph(analysis, { generator: { name: 'cpr', version }, durationMs });
+  const { analysis, durationMs, plugins } = await analyze({ positionals, values }, ctx, DIFF_HELP);
+  const graph = buildGraph(analysis, { generator: { name: 'cpr', version }, durationMs, plugins });
   return report(analysis, graph, values, ctx);
 }
 
@@ -416,8 +435,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     return 0;
   }
   checkPort(values.port, VIEW_HELP);
-  const { analysis, durationMs } = await analyze({ positionals, values }, ctx, VIEW_HELP);
-  const graph = buildGraph(analysis, { generator: { name: 'cpr', version }, durationMs });
+  const { analysis, durationMs, plugins } = await analyze({ positionals, values }, ctx, VIEW_HELP);
+  const graph = buildGraph(analysis, { generator: { name: 'cpr', version }, durationMs, plugins });
   return serve(analysis, graph, values, ctx, VIEW_HELP);
 }
 
@@ -503,7 +522,7 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
     }
   }
 
-  const { analysis, durationMs } = await analyze(
+  const { analysis, durationMs, plugins } = await analyze(
     // GitLab says which commit it diffs against; for GitHub, merge-base(base, head) is it.
     {
       positionals: [base, head],
@@ -517,6 +536,7 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
   const graph = buildGraph(analysis, {
     generator: { name: 'cpr', version },
     durationMs,
+    plugins,
     changeRequest: {
       forge: request.forge,
       number: request.number,

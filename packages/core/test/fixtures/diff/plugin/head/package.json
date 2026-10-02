@@ -1,0 +1,7 @@
+{
+  "name": "tpl-app",
+  "private": true,
+  "dependencies": {
+    "tpl-framework": "1.0.0"
+  }
+}

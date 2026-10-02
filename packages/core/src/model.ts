@@ -12,7 +12,9 @@ export type SymbolKind =
   | 'type'
   | 'enum'
   | 'variable'
-  | 'namespace';
+  | 'namespace'
+  /** A framework template (from a plugin), e.g. an Angular component's HTML. */
+  | 'template';
 
 /** 1-based line and column. */
 export interface Position {
@@ -134,5 +136,8 @@ export interface Dangling {
   viaImport: boolean;
 }
 
-/** Why an unreferenced symbol is still expected to be used. */
-export type Exposure = 'entry-export' | 'override' | 'default-export';
+/**
+ * Why an unreferenced symbol is still expected to be used. `framework`: a plugin knows the
+ * framework uses it (a template, a lifecycle hook…).
+ */
+export type Exposure = 'entry-export' | 'override' | 'default-export' | 'framework';

@@ -4,7 +4,7 @@ import type { EdgeKind, Finding, Range, Site, SymbolDecl, SymbolId, SymbolKind }
 import type { Analysis, ContextSymbol, SinceStatus } from './pipeline.js';
 
 /** Version of the graph JSON contract. See docs/graph-schema.md. */
-export const SCHEMA_VERSION = '0.4.0';
+export const SCHEMA_VERSION = '0.5.0';
 
 export interface GraphSide {
   file: string;
@@ -52,9 +52,17 @@ export interface GraphChangeRequest {
   draft: boolean;
 }
 
+/** A plugin of the analysis, e.g. `{ name: 'angular', version: '0.1.0' }`. */
+export interface GraphPlugin {
+  name: string;
+  version?: string;
+}
+
 export interface Graph {
   schemaVersion: string;
   generator: { name: string; version: string };
+  /** Plugins the analysis ran with (none: the field is left out). */
+  plugins?: GraphPlugin[];
   changeRequest?: GraphChangeRequest;
   revisions: Analysis['revisions'];
   /** The earlier version of the change the nodes' `since` compares with. */
@@ -78,6 +86,8 @@ export interface BuildGraphOptions {
   language?: string;
   durationMs?: number;
   changeRequest?: GraphChangeRequest;
+  /** Plugins the analysis ran with. */
+  plugins?: readonly GraphPlugin[];
 }
 
 /** Turns an analysis into the versioned graph JSON contract. */
@@ -94,6 +104,14 @@ export function buildGraph(analysis: Analysis, options: BuildGraphOptions): Grap
   return {
     schemaVersion: SCHEMA_VERSION,
     generator: options.generator,
+    ...(options.plugins?.length
+      ? {
+          plugins: options.plugins.map(({ name, version }) => ({
+            name,
+            ...(version === undefined ? {} : { version }),
+          })),
+        }
+      : {}),
     ...(options.changeRequest ? { changeRequest: options.changeRequest } : {}),
     revisions: analysis.revisions,
     ...(analysis.since

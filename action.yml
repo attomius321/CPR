@@ -26,6 +26,11 @@ inputs:
   depth:
     description: Hops of unchanged callers and callees to include.
     default: '1'
+  plugins:
+    description: >-
+      Plugins to analyze with, separated by commas (e.g. angular), besides those in
+      cpr.config.json.
+    default: ''
   working-directory:
     description: Where the repository is checked out.
     default: .
@@ -60,5 +65,6 @@ runs:
         CPR_FAIL_ON: ${{ inputs.fail-on }}
         CPR_PROJECT: ${{ inputs.project }}
         CPR_DEPTH: ${{ inputs.depth }}
+        CPR_PLUGINS: ${{ inputs.plugins }}
         CPR_CLI: node ${{ github.action_path }}/packages/cli/dist/bin.js
       run: bash "$GITHUB_ACTION_PATH/action/run.sh"

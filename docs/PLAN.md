@@ -461,7 +461,10 @@ guard against it. **Cost:** one type lookup per reference.
 Not in R1 (listed for later): reading Angular templates, `.cprignore` from the working folder,
 `interfaces/` matching at any depth, decorator-only class changes treated as compatible.
 
-### X1 — Plugins (planned)
+### X1 — Plugins
+
+**Status:** built on branch `milestone/x1-plugins`, awaiting review before merge. The
+contract below is as built; "As built" at the end lists what changed from the first sketch.
 
 **Why.** Framework knowledge — Angular templates now; Vue or Svelte templates, NestJS conventions
 later — must not live in the TypeScript/JavaScript analysis. That analysis stays the same program
@@ -470,33 +473,45 @@ CLI loads only when asked. Without plugins, CPR behaves exactly as it does today
 
 **What a plugin is.** A JavaScript module exporting one plugin object. A plugin *extends* the
 TypeScript adapter at fixed points; it never replaces it, and it sees TypeScript's own objects
-(program, checker, nodes). Sketch of the contract, exported by `@cpr/core`:
+(program, checker, nodes). The contract, exported by `@cpr/core`
+(`packages/core/src/lang/typescript/plugins.ts`):
 
 ```ts
 interface TsPlugin {
-  name: string;                         // "angular"
-  apiVersion: 1;
+  name: string;                          // "angular"
+  version?: string;
+  apiVersion: 1;                         // PLUGIN_API_VERSION
   /** Whether it applies to this revision (checked per side: base may predate the framework). */
-  applies(revision: PluginContext): boolean;
+  applies: (revision: PluginContext) => boolean;
   /** Extra files whose changes it analyzes, besides TS/JS (e.g. `*.html`). */
-  matches?(path: string): boolean;
+  matches?: (path: string) => boolean;
   /** In-memory TypeScript files added to the program before it is built (template shims). Runs
    *  before types exist: it sees the project's files and their syntax trees. */
-  virtualFiles?(revision: PluginContext): VirtualFile[];
-  /** Extra symbols in the given changed files (templates), with hashes and ranges. */
-  extract?(revision: PluginRevision, files: readonly string[]): SymbolDecl[];
+  virtualFiles?: (revision: PluginContext) => VirtualFile[];
+  /** Extra symbols in the given changed files (templates), with the nodes that stand for them
+   *  (usually in a virtual file): their outgoing references are scanned there. */
+  extract?: (revision: PluginRevision, files: readonly string[]) => PluginSymbol[];
   /** How a decorator's arguments count in hashes; undefined = as today (all signature). */
-  decoratorArguments?(decorator: ts.Decorator): ArgumentRoles | undefined;
+  decoratorArguments?: (revision: PluginRevision, decorator: ts.Decorator) => ArgumentRoles | undefined;
   /** Why a symbol may be used with no reference (a lifecycle hook → `framework`). */
-  exposure?(revision: PluginRevision, symbol: SymbolDecl): Exposure | undefined;
-  warnings?(revision: PluginRevision): string[];
+  exposure?: (revision: PluginRevision, symbol: SymbolDecl) => Exposure | undefined;
+  warnings?: (revision: PluginRevision) => string[];
+}
+
+interface PluginContext {        // before the program exists
+  ts: typeof ts;                 // the adapter's own TypeScript: nodes match, no second copy
+  root: string; packageJson: Record<string, unknown> | undefined;
+  readFile(path): string | undefined; sourceFiles(): string[]; syntax(path): ts.SourceFile | undefined;
+}
+interface PluginRevision extends PluginContext {   // once it exists
+  program: ts.Program; checker: ts.TypeChecker; virtual(path): ts.SourceFile | undefined;
 }
 
 interface VirtualFile {
   path: string;                          // src/app/foo.component.html.cpr.ts — never on disk
   text: string;
   /** Owner symbol and real site of a position in `text`; undefined = scaffolding (dropped). */
-  map(offset: number): { owner: SymbolId; site: Site } | undefined;
+  map: (offset: number) => { owner: SymbolId; site: Site } | undefined;
 }
 ```
 
@@ -519,8 +534,10 @@ change.
 - `--plugin <name|path>` (repeatable) on `diff`, `view` and `pr`, and/or `cpr.config.json` at the
   repository root: `{ "plugins": ["angular"] }`. The config is read from the working folder, not
   from the analyzed commit (the `.cprignore` lesson); a flag adds to it.
-- `angular` means `@cpr/plugin-angular`; a value with `/` or a leading `.` is a path. Resolved from
-  the project first, then next to the CLI. Imported only when turned on: no plugin, no cost, no
+- `angular` means `@cpr/plugin-angular`; a value starting with `.` or `/` is a path (flags
+  relative to the working folder, the config relative to the repo root); any other value is a
+  package name as given (`@acme/cpr-vue`). Packages resolve from the project first, then next to
+  the CLI. Imported only when turned on: no plugin, no cost, no
   extra dependency loaded.
 - Another `apiVersion` is refused with a message; a plugin that throws becomes a warning and the
   run continues without it — a plugin never makes an analysis fail.
@@ -547,6 +564,27 @@ both passed as `--plugin`.
    without `--plugin angular` unchanged too (only the hint).
 3. A missing plugin, a wrong `apiVersion` and a plugin that throws → a message or a warning, never
    a crash.
+
+**As built** (what differs from the first sketch, and where it lives)
+- Hooks are function-typed properties: a plugin never relies on `this`. `PluginContext.ts` hands
+  plugins the adapter's own TypeScript, so a plugin needs no TypeScript of its own and its nodes
+  are the program's.
+- `extract` returns `{ symbol, nodes }`: the nodes (usually the shim function) are where the
+  symbol's outgoing references are scanned. `decoratorArguments` receives the revision too.
+- Core (`lang/typescript/`): `project.ts` runs `applies` and `virtualFiles` before the language
+  service starts, and refuses a virtual file whose path exists on disk or in the program or lies
+  outside the root (warning). `mapVirtual` maps positions in `incomingTs`, `outgoingTs` and
+  `danglingTs`; a declaration inside a virtual file is never an edge target. `extract.ts` skips
+  virtual files, hashes claimed decorators by role and adds plugin symbols; `detectors.ts` skips
+  the `framework` exposure.
+- Failure isolation: every hook call, `map` included, goes through one guard; the first throw
+  disables the plugin for that revision (its shims then map to nothing) and leaves one warning.
+- CLI (`packages/cli/src/plugins.ts`): config plus flags, loaded once per file; two plugins with
+  one name are refused; packages resolve from the project, then the CLI; the module's default
+  export (or `plugin`) is validated before use.
+- The reference for plugin authors is the test plugin
+  [`tpl-plugin.ts`](../packages/core/test/helpers/tpl-plugin.ts): a made-up framework whose
+  `@View({ template: './card.tpl' })` classes render `{{ expression }}` templates, using every hook.
 
 ### A1–A2 — Angular templates, as the `angular` plugin (planned, branch `milestone/a1-angular-templates`)
 
@@ -732,7 +770,7 @@ FooComponent  (body)`.
 
 | # | Milestone | Output |
 |---|---|---|
-| X1 | Plugins | The TS adapter's plugin hooks (`applies`, `matches`, `virtualFiles` with position maps, `extract`, `decoratorArguments`, `exposure`, `warnings`); `createTypescriptAdapter({ plugins })`; `--plugin` and `cpr.config.json`; plugin resolution, API version check, failure isolation, the Angular hint; schema 0.5.0 (`template`, `framework`, `plugins`); CI inputs; a fixture test plugin. No Angular code. |
+| X1 ✅ | Plugins | The TS adapter's plugin hooks (`applies`, `matches`, `virtualFiles` with position maps, `extract`, `decoratorArguments`, `exposure`, `warnings`); `createTypescriptAdapter({ plugins })`; `--plugin` and `cpr.config.json`; plugin resolution, API version check, failure isolation, the Angular hint; schema 0.5.0 (`template`, `framework`, `plugins`); CI inputs; a fixture test plugin. No Angular code. |
 | A1 | Angular plugin: templates see their component | `packages/plugin-angular`; Angular project detection; component metadata (`templateUrl`, inline `template`, `host`); template symbols, hashes and `.html` relevance; shims for names on the component, chains, locals and host bindings; shim position maps; the decorator split; `framework` exposures; viewer and summary labels for templates. |
 | A2 | Angular plugin: templates see other components | Directive, component and pipe metadata from repo decorators: selectors, `@Input`/`@Output`, `inputs`/`outputs` arrays, signal `input()`/`input.required()`/`model()`/`output()`, aliases, inputs inherited from base classes. Selector matching with the compiler's `SelectorMatcher` over the repo's directives; shims for elements, directives, inputs, outputs, two-way bindings, pipes and `#ref="exportAs"`; removed components, pipes and outputs still used. |
 

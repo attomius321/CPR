@@ -176,7 +176,8 @@ function signatureMessage(symbol: string, compat: string, counts: UserCounts): s
 
 /**
  * A new symbol nothing references. Public API (exported from the package entry) and default
- * exports are only `info`; overrides are skipped; members of an orphan class are not repeated.
+ * exports are only `info`; overrides and what a plugin says the framework uses are skipped;
+ * members of an orphan class are not repeated.
  */
 function orphanAdded({ changes, edges, exposure }: DetectorInput): Draft[] {
   const added = changes
@@ -193,7 +194,7 @@ function orphanAdded({ changes, edges, exposure }: DetectorInput): Draft[] {
     );
     if (used) continue;
     const why = exposure.get(change.id);
-    if (why === 'override') continue;
+    if (why === 'override' || why === 'framework') continue;
 
     orphans.add(change.id);
     drafts.push(

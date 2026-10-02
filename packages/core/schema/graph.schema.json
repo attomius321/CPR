@@ -32,6 +32,22 @@
         }
       }
     },
+    "plugins": {
+      "description": "Plugins the analysis ran with; absent when none.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "changeRequest": {
       "description": "The pull/merge request reviewed, when the graph comes from cpr pr.",
       "type": "object",
@@ -305,6 +321,7 @@
             "enum",
             "variable",
             "namespace",
+            "template",
             "module",
             "external",
             "unknown"

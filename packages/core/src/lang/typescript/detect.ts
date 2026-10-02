@@ -1,9 +1,9 @@
 import { existsSync } from 'node:fs';
 import { dirname, join, posix } from 'node:path';
 import { ts } from 'ts-morph';
-import type { Dangling, Exposure, SymbolDecl } from '../../model.js';
+import type { Dangling, Exposure, Site, SymbolDecl, SymbolId } from '../../model.js';
 import { isTsSource } from './files.js';
-import { readJson, repoPath, sourceEntry, type TsRevision } from './project.js';
+import { mapVirtual, readJson, repoPath, sourceEntry, type TsRevision } from './project.js';
 import { enclosingSymbolId, hasModifier, isDefaultExport } from './syntax.js';
 
 const MEMBER_KINDS = new Set(['method', 'property', 'accessor', 'constructor']);
@@ -30,24 +30,31 @@ export function danglingTs(revision: TsRevision, removed: readonly SymbolDecl[])
     if (!file || !isTsSource(file) || sf.isDeclarationFile) continue;
     if (![...byName.keys()].some((name) => sf.text.includes(name))) continue;
     const typed = /\.[cm]?tsx?$/.test(file);
+    // A plugin's virtual file: hits belong to their owner, at their real site.
+    const virtual = revision.virtual.has(sf.fileName);
+    const locate = (node: ts.Node): { owner: SymbolId; site: Site } | undefined => {
+      const start = node.getStart(sf);
+      if (virtual) return mapVirtual(revision, sf.fileName, start) ?? undefined;
+      const owner = enclosingSymbolId(node, sf, file);
+      if (!owner) return undefined;
+      const { line, character } = sf.getLineAndCharacterOfPosition(start);
+      return { owner, site: { file, line: line + 1, col: character + 1 } };
+    };
 
     const visit = (node: ts.Node): void => {
       if (ts.isIdentifier(node) && byName.has(node.text) && !isDeclarationName(node)) {
         const result = classify(node, typed);
-        if (result) {
-          const from = enclosingSymbolId(node, sf, file);
-          if (from) {
-            const { line, character } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
-            for (const target of byName.get(node.text) ?? []) {
-              found.push({
-                target: target.id,
-                from,
-                site: { file, line: line + 1, col: character + 1 },
-                certainty: result.certainty,
-                viaImport:
-                  result.importedFrom !== undefined && sameModule(result.importedFrom, target.file),
-              });
-            }
+        const at = result && locate(node);
+        if (result && at) {
+          for (const target of byName.get(node.text) ?? []) {
+            found.push({
+              target: target.id,
+              from: at.owner,
+              site: at.site,
+              certainty: result.certainty,
+              viaImport:
+                result.importedFrom !== undefined && sameModule(result.importedFrom, target.file),
+            });
           }
         }
       }
