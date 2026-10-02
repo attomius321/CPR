@@ -431,6 +431,84 @@ code {
   fill: var(--context);
 }
 
+.react-flow__edge.edge-active path.react-flow__edge-path {
+  stroke-width: 2.5;
+  stroke-opacity: 1;
+}
+
+/* ---- map: zoomed out, files are what you read and click -------------------------------- */
+
+.react-flow.map .react-flow__node-file {
+  /* Above the symbols, so a click lands on the file and its name stays readable. */
+  z-index: 2000 !important;
+  cursor: zoom-in;
+}
+
+.react-flow.map .file-box {
+  background: transparent;
+}
+
+.file-name {
+  display: none;
+}
+
+.react-flow.map .file-label {
+  display: none;
+}
+
+/* The file's name, readable at any zoom; it may run past a narrow box. */
+.react-flow.map .file-name {
+  display: inline-block;
+  padding: calc(2px / var(--cpr-zoom, 1)) calc(6px / var(--cpr-zoom, 1));
+  border-radius: calc(4px / var(--cpr-zoom, 1));
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  color: var(--text);
+  font:
+    calc(13px / var(--cpr-zoom, 1)) / 1.25 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  white-space: nowrap;
+}
+
+.react-flow.map .file-box.changed .file-name {
+  font-weight: 600;
+}
+
+/* Files with no change are context: their names step back where names crowd. */
+.react-flow.map .file-box:not(.changed) .file-name {
+  background: transparent;
+  color: var(--muted);
+  font-size: calc(10px / var(--cpr-zoom, 1));
+}
+
+/* A name may cover a neighbouring box: clicks go to the box under the pointer. */
+.react-flow.map .file-name {
+  pointer-events: none;
+}
+
+.react-flow.map .symbol,
+.react-flow.map .summary-node {
+  background: color-mix(in srgb, var(--tone) 45%, var(--panel));
+}
+
+.react-flow.map .summary-node {
+  --tone: var(--context);
+}
+
+.react-flow.map .symbol > *,
+.react-flow.map .summary-node > * {
+  visibility: hidden;
+}
+
+.react-flow.map .react-flow__edge path.react-flow__edge-path {
+  stroke-opacity: 0.3;
+}
+
+.react-flow.map .react-flow__edge.edge-active path.react-flow__edge-path {
+  stroke-opacity: 1;
+}
+
 /* ---- legend ------------------------------------------------------------------------- */
 
 .legend {

@@ -87,6 +87,8 @@ export interface FlowLayout {
   edges: FlowEdge[];
   /** Symbols drawn only as part of a collapsed summary: symbol → summary node. */
   hidden: Map<string, string>;
+  /** Every summary's neighbours, shown or not: summary → symbols. */
+  members: Map<string, string[]>;
 }
 
 export interface LayoutOptions {
@@ -335,6 +337,7 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
       ...summaryEdges,
     ],
     hidden,
+    members: new Map(summaries.map((s) => [s.id, [...s.members]])),
   };
 }
 
@@ -356,6 +359,16 @@ export function decorate(nodes: readonly FlowNode[], options: DecorateOptions = 
       data: { ...n.data, reviewed: isReviewed, settled },
     };
   });
+}
+
+/** Edges of the selected symbol stand out, so its users and uses can be followed. */
+export function decorateEdges(edges: readonly FlowEdge[], selected: string | null): FlowEdge[] {
+  if (!selected) return [...edges];
+  return edges.map((e) =>
+    e.source === selected || e.target === selected
+      ? { ...e, className: `${e.className} edge-active` }
+      : e,
+  );
 }
 
 interface Neighbours {

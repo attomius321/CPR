@@ -26,11 +26,17 @@ test.beforeEach(async ({ page }) => {
 test.afterEach(() => expect(errors).toEqual([]));
 
 test('shows what a template uses of its libraries, by package', async ({ page }) => {
+  // The template uses 30-odd symbols: one group until it is opened.
+  const uses = page.locator('.react-flow__node-summary', { hasText: 'uses' });
+  await expect(uses).toContainText('32 uses');
+  await expect(uses).toContainText('in 5 files or packages');
+  await uses.click();
+  const box = (name: string) => page.locator(`.react-flow__node[data-id="group:package:${name}"]`);
   for (const name of ['@acme/ui', '@legacy/widgets', '@old/forms']) {
-    await expect(page.locator('.file-label', { hasText: `package ${name}` })).toBeVisible();
+    await expect(box(name)).toBeAttached();
   }
   // Installed but never imported.
-  await expect(page.locator('.file-label', { hasText: 'package @acme/unused' })).toHaveCount(0);
+  await expect(box('@acme/unused')).toHaveCount(0);
 
   await page.getByRole('tab', { name: /Findings/ }).click();
   await expect(page.locator('.finding-row', { hasText: 'removed-still-referenced' })).toContainText(

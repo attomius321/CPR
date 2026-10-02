@@ -65,13 +65,15 @@ test('walks the changes with the keyboard and remembers reviewed symbols', async
 });
 
 test('focus shows only the neighbourhood of the selection', async ({ page }) => {
-  const all = await page.locator('.react-flow__node-symbol').count();
+  // Only nodes on screen are in the page; the minimap draws every node of the graph.
+  const drawn = page.locator('.react-flow__minimap-node');
+  const all = await drawn.count();
   await symbol(page, 'render').click();
   await page.keyboard.press('f');
   await expect(page.locator('.react-flow__node-symbol')).toHaveCount(3); // render, Canvas, Canvas.clear
-  expect(all).toBeGreaterThan(3);
+  expect(all).toBeGreaterThan(await drawn.count());
   await page.keyboard.press('f');
-  await expect(page.locator('.react-flow__node-symbol')).toHaveCount(all);
+  await expect(drawn).toHaveCount(all);
 });
 
 test('colours a changed line across its full width when the code scrolls', async ({ page }) => {

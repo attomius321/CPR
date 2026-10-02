@@ -5,6 +5,8 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  useStore,
+  useStoreApi,
   type Edge,
   type Node,
 } from '@xyflow/react';
@@ -13,7 +15,14 @@ import type { Graph } from '@cpr/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
-import { decorate, layoutFlow, type FlowEdge, type FlowNode, type SymbolData } from './flow.js';
+import {
+  decorate,
+  decorateEdges,
+  layoutFlow,
+  type FlowEdge,
+  type FlowNode,
+  type SymbolData,
+} from './flow.js';
 import {
   changeList,
   neighbourhood,
@@ -28,6 +37,9 @@ import { SummaryNode } from './SummaryNode.js';
 import { SymbolNode } from './SymbolNode.js';
 
 const nodeTypes = { symbol: SymbolNode, file: FileNode, summary: SummaryNode };
+
+/** Below this zoom the canvas is a map: file names readable, symbols as coloured blocks. */
+const MAP_ZOOM = 0.45;
 
 type State =
   | { status: 'loading' }
@@ -224,19 +236,35 @@ export function App() {
     [layout, reviewed, onlySince, selected],
   );
 
+  const flowEdges = useMemo(
+    () => (layout ? decorateEdges(layout.edges, selected) : undefined),
+    [layout, selected],
+  );
+
   // Selecting a symbol that sits inside a collapsed summary (from the detail panel) shows it.
   useEffect(() => {
     const summary = selected ? layout?.hidden.get(selected) : undefined;
     if (summary) setExpanded((current) => new Set(current).add(summary));
   }, [selected, layout]);
 
-  const toggleSummary = useCallback((id: string) => {
-    setExpanded((current) => {
-      const next = new Set(current);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
-  }, []);
+  // After a group is shown or hidden, the canvas fits it (and its symbol), until the next
+  // selection.
+  const [reveal, setReveal] = useState<string[] | null>(null);
+  useEffect(() => setReveal(null), [selected]);
+  const toggleSummary = useCallback(
+    (id: string) => {
+      const open = !expanded.has(id);
+      const owner = layout?.nodes.find((n) => n.id === id);
+      const of = owner?.type === 'summary' ? [owner.data.of] : [];
+      setReveal([id, ...of, ...(open ? (layout?.members.get(id) ?? []) : [])]);
+      setExpanded((current) => {
+        const next = new Set(current);
+        if (!next.delete(id)) next.add(id);
+        return next;
+      });
+    },
+    [expanded, layout],
+  );
 
   return (
     <div className="app" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
@@ -311,12 +339,13 @@ export function App() {
             />
             <Canvas
               nodes={flowNodes}
-              edges={layout.edges}
+              edges={flowEdges ?? layout.edges}
               layoutNodes={layout.nodes}
               selected={selected}
               focus={focus}
               onSelect={setSelected}
               onToggleSummary={toggleSummary}
+              reveal={reveal}
             />
             {selected && (
               <DetailPanel
@@ -359,6 +388,8 @@ interface CanvasProps {
   focus: boolean;
   onSelect: (id: string | null) => void;
   onToggleSummary: (id: string) => void;
+  /** Symbols to bring into view: a group just shown or hidden. */
+  reveal: string[] | null;
 }
 
 /** The graph; brings the selected symbol into view when it, or the layout, changes. */
@@ -370,16 +401,31 @@ function Canvas({
   focus,
   onSelect,
   onToggleSummary,
+  reveal,
 }: CanvasProps) {
   const { fitView } = useReactFlow();
+  // Zoomed out, the canvas is a map; labels scale with `--cpr-zoom`, set without re-rendering.
+  const map = useStore((state) => state.transform[2] < MAP_ZOOM);
+  // The canvas narrows when the detail panel opens: centre the selection again then.
+  const size = useStore((state) => `${state.width}x${state.height}`);
+  const store = useStoreApi();
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = (zoom: number) => root.style.setProperty('--cpr-zoom', String(zoom));
+    apply(store.getState().transform[2]);
+    return store.subscribe((state) => apply(state.transform[2]));
+  }, [store]);
+
   useEffect(() => {
     // Wait a frame so React Flow has measured nodes that just appeared.
     const frame = requestAnimationFrame(() => {
-      if (focus) void fitView({ duration: 300, maxZoom: 1.1 });
+      if (reveal)
+        void fitView({ nodes: reveal.map((id) => ({ id })), duration: 300, maxZoom: 1.1 });
+      else if (focus) void fitView({ duration: 300, maxZoom: 1.1 });
       else if (selected) void fitView({ nodes: [{ id: selected }], duration: 300, maxZoom: 1.1 });
     });
     return () => cancelAnimationFrame(frame);
-  }, [selected, focus, layoutNodes, fitView]);
+  }, [selected, focus, layoutNodes, size, reveal, fitView]);
 
   return (
     <ReactFlow<Node, Edge>
@@ -388,12 +434,17 @@ function Canvas({
       nodeTypes={nodeTypes}
       fitView
       onlyRenderVisibleElements
+      {...(map ? { className: 'map' } : {})}
       colorMode="system"
       minZoom={0.05}
       nodesConnectable={false}
       onNodeClick={(_, node) => {
         if (node.type === 'symbol') onSelect(node.id);
         else if (node.type === 'summary') onToggleSummary(node.id);
+        // On the map, a file box is what is clicked: zoom into it.
+        else if (node.type === 'file' && map) {
+          void fitView({ nodes: [{ id: node.id }], duration: 300, maxZoom: 1.1 });
+        }
       }}
       onPaneClick={() => onSelect(null)}
       proOptions={{ hideAttribution: true }}
