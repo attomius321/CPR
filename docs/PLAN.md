@@ -1139,7 +1139,12 @@ the same experiment shows nothing either way: its models are interfaces, whose m
 counts as the interface (as for TS code).
 
 **Bitwarden** (the same 10 commits as A2, A2 and A3 back to back, `@angular/*`, CDK, ng-select
-and ngx-toastr installed): BWTBD
+and ngx-toastr installed): 359.6 s → 368.0 s, **+2.3 %** (per commit −7.4 % to +7.7 %, mostly
+noise), inside the 5 % budget. The same findings on all 10 commits, no warnings. 150 template
+edges into libraries (`@angular/forms` 64, `@angular/common` 49, `@angular/cdk` 24,
+`@angular/router` 7, `@angular/core` 6), and 12 more into the repo's own code: members reached
+through values that a library now types. Before the two fixes in "as built" (reads per name,
+path aliases), the library scan alone took ~0.45 s per revision.
 
 **A core gap found on the way**: a `node_modules` that is a link (an install shared between
 checkouts) was not linked into the base and head worktrees, so neither side saw any dependency

@@ -1021,5 +1021,6 @@ at the end, re-exported by the entry point, some only as `ɵName`.
 
 **Verification**: fixture `libraries` (3 tests, one per metadata form plus not-installed); the
 whole suite; RealWorld (Angular 21) and the Angular 11 project before and after ngcc (same 16
-library edges both ways); the Bitwarden rename experiment (A3 ✖, A2 nothing); Bitwarden timing:
-BWTBD
+library edges both ways); the Bitwarden rename experiment (A3 ✖, A2 nothing); Bitwarden timing
+on 10 commits, A2 and A3 back to back with the Angular packages installed: +2.3 % in total, the
+same findings on all 10, 150 edges into libraries.
