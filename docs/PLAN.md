@@ -413,6 +413,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | D1 ✅ | Detectors from real reviews | `signature-changed` tells test users from production users (only untouched production users elsewhere make a warning); new `exported-api-changed` for a published package's API removed, unexported, or broken. See §8. |
 | X1 ✅, A1–A2 ✅ | Plugins; Angular templates as the `angular` plugin | Templates call component methods, bind inputs and use pipes, and CPR saw none of it: 9 of 9 warnings on real Angular commits were false. Angular support must stay outside the TS/JS analysis: X1 adds plugin hooks, A1–A2 build the Angular plugin on them. Merged with PR #1; see below. |
 | A3 ✅ | Angular library components, directives and pipes | `async`, `date`, `ngModel`, `routerLink` and Material were plain bindings, and a library pipe's result untyped: links through `@if (x$ \| async; as x)` were lost (19 such blocks in Bitwarden's web app). Now read from installed packages' typings; see below. |
+| V6 | A graph you can navigate | On a large change the viewer drew 1,288 symbols for 86 changes, in a 9,470 × 85,468 px strip, and every click re-ran the layout. Planned below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -1184,6 +1185,72 @@ types. `linkNodeModules` now links it too.
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 25 | Where library directives come from | **The installed packages' published typings (and View Engine `metadata.json`), read by syntax**; nothing when `node_modules` is missing | They are what Angular's compiler reads too; reading them by syntax needs no type checker, so the registry exists before the program the shims join. Without an install the result is A2's, never a wrong one. |
+
+### V6 — A graph you can navigate (planned, branch `milestone/v6-navigable-graph`)
+
+**Problem** (reported on a real project: "I can't navigate through it"). Measured on Bitwarden
+with the Angular plugin, in Chromium:
+
+| | `737ee3f` (1 commit) | `c72c857~15..c72c857` | `canManageScim` experiment |
+|---|---|---|---|
+| Changed symbols | 86 | 129 | 5 |
+| Symbols drawn (default view) | 1,288 in 509 file boxes | 1,389 in 723 boxes | 69 in 58 boxes |
+| Edges drawn | 1,840 | 1,640 | 69 |
+| Canvas | 9,470 × 85,468 px | 12,553 × 98,871 px | 3,611 × 7,260 px |
+| First paint · select a symbol · mark reviewed | 4.0 s · 1.5 s · 1.2 s | 4.0 s · 1.8 s · 1.6 s | 0.4 s · 0.2 s · 0.1 s |
+
+Panning stays at 60 fps: drawing is not the problem. Three things are:
+
+1. **The view is mostly not the change.** 94 % of the nodes are unchanged neighbours, and a few
+   hubs bring most of them: `FeatureFlag` (one changed enum member's enum) has 390 users, a
+   changed constructor 385 dependencies; the top 5 hubs bring 733 of 1,202 neighbours. 44 of the
+   78 changed symbols with neighbours have 5 or fewer.
+2. **One tall strip.** The outer dagre layout stacks the file boxes' disconnected clusters in a
+   single column; "fit" bottoms out at `minZoom` 0.1, where nothing is readable, and zooming in
+   loses the overview.
+3. **Every click re-lays out the graph.** `toFlow` runs dagre on everything, and its memo
+   depends on `selected` and `reviewed`: selecting or marking a symbol costs 1.2–1.8 s, so
+   walking the change with j/k stutters and the canvas jumps.
+
+**Goal**: any change opens as an overview that fits one screen at a readable zoom; walking it
+(list, j/k, findings) is instant and keeps the canvas still; neighbourhoods of any size stay one
+click away. Viewer only: the analysis and the graph JSON do not change.
+
+#### Design
+
+- **Collapse big neighbourhoods** (in `toFlow`, pure). For each changed symbol, its unchanged
+  neighbours on one side — users (edges into it) or uses (edges out of it) — are drawn only if
+  there are at most `NEIGHBOUR_LIMIT` = 8; otherwise one **summary node** stands for them:
+  "390 users · 220 files". A neighbour another changed symbol shows anyway stays drawn (and is
+  not counted twice); users named by an `error` finding are always drawn (the stale call site
+  is the point of the finding). Simulated: `737ee3f` 1,288 → 168 symbols + 29 summaries in 59
+  boxes; the 15-commit range 1,389 → 282 + 24 in 119 boxes; `canManageScim` 69 → 15 + 2.
+- **Expand on click**: a summary node toggles its group (`expanded` set in the app); expanded,
+  it stays as "390 users · hide" and its neighbours are laid out. Focus mode (f) collapses the
+  same way, so focusing a hub is no longer a wall.
+- **Tiles, not a strip**: the file-box graph is split into connected clusters; each is laid out
+  with dagre as now, then the clusters are packed in rows (largest first) to a ~16:10 page. The
+  inside of a box keeps dagre, but symbols without an edge inside their box are wrapped into
+  columns of at most 6 instead of one tall column.
+- **Layout once, decorate often**: `toFlow` is split into `layoutFlow` (what is drawn and where:
+  graph, type references, context, focus, expanded) and `decorate` (reviewed, settled,
+  selected, findings), so selecting, marking reviewed and j/k never move a node; the canvas only
+  pans to the selection.
+- **Draw what is on screen**: React Flow's `onlyRenderVisibleElements`.
+
+#### Verification
+
+1. Unit (`flow.test.ts`): a hub with 30 users collapses to one summary with the right counts;
+   expanded, all 30 are laid out; shared neighbours and error-finding users stay; packing keeps
+   the canvas within 2.5:1 for many small clusters; decoration never changes positions.
+2. E2E: a generated large graph (`?graph=`): the summary node shows, a click expands it,
+   marking reviewed and j/k leave every node where it was; the existing viewer tests unchanged.
+3. Bitwarden graphs above: symbols drawn, canvas size and aspect, select/review times
+   (target: under 150 ms), screenshots of the overview.
+
+**Risks**: a collapsed neighbour the reviewer needed (mitigation: counts on the summary, one
+click, error-finding users always shown, the detail panel still lists all callers); packing
+moves clusters away from where they were (one layout per view, stable while reviewing).
 
 **Later:** more languages via adapters, a faster core (TS 7 adapter or Rust/oxc), self-hosted team mode.
 
