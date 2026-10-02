@@ -1025,3 +1025,5 @@ library edges both ways); the Bitwarden rename experiment (A3 ✖, A2 nothing); 
 on 10 commits, A2 and A3 back to back with the Angular packages installed: +2.3 % in total, the
 same findings on all 10, 150 edges into libraries. Without the plugin, the 29 R1 comparisons
 are unchanged (932 edges, 11 findings).
+
+Merged into main (2026-10-02).

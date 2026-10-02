@@ -412,7 +412,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | C3 | GitHub annotations | Fork PRs get a read-only token, so nothing is posted; `::warning file=…,line=…::` workflow commands show findings inline without one (GitLab already has Code Quality). |
 | D1 ✅ | Detectors from real reviews | `signature-changed` tells test users from production users (only untouched production users elsewhere make a warning); new `exported-api-changed` for a published package's API removed, unexported, or broken. See §8. |
 | X1 ✅, A1–A2 ✅ | Plugins; Angular templates as the `angular` plugin | Templates call component methods, bind inputs and use pipes, and CPR saw none of it: 9 of 9 warnings on real Angular commits were false. Angular support must stay outside the TS/JS analysis: X1 adds plugin hooks, A1–A2 build the Angular plugin on them. Merged with PR #1; see below. |
-| A3 ✅ (branch, not merged) | Angular library components, directives and pipes | `async`, `date`, `ngModel`, `routerLink` and Material were plain bindings, and a library pipe's result untyped: links through `@if (x$ \| async; as x)` were lost (19 such blocks in Bitwarden's web app). Now read from installed packages' typings; see below. |
+| A3 ✅ | Angular library components, directives and pipes | `async`, `date`, `ngModel`, `routerLink` and Material were plain bindings, and a library pipe's result untyped: links through `@if (x$ \| async; as x)` were lost (19 such blocks in Bitwarden's web app). Now read from installed packages' typings; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -1009,7 +1009,7 @@ same shim approach fits as further plugins on X1's hooks.
 
 ### A3 — Angular library components, directives and pipes
 
-**Status:** built and verified on branch `milestone/a3-angular-libraries`, not merged yet;
+**Status:** merged into main (2026-10-02, from branch `milestone/a3-angular-libraries`);
 results and "as built" at the end of this section.
 
 **Problem.** A2 sees the repo's own components, directives and pipes; everything that comes from
