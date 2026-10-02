@@ -662,3 +662,11 @@ instead of `assignability.test.ts (top level)`. Warnings there: 3 → 2.
 
 **Open**: removing only a re-export from the entry (the symbol itself unchanged) is not
 detected; packages without a source entry (only `dist/` in `main`) have no public API for CPR.
+
+## Fix — diff colours across the full line (2026-10-02, branch `fix/diff-row-width`, not merged)
+
+Reported from a real review: in the detail panel, a long line made the code scroll sideways and
+the green/red row colour stopped at the panel's edge. Rows were as wide as the visible box, not as
+the code. They now sit in a wrapper `width: max-content; min-width: 100%`, so every row spans the
+longest line. An e2e test opens the panel in a 700 px window and checks each row is as wide as the
+scrollable content (it failed before: 280 px rows, 447 px of code).
