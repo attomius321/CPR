@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { PluginContext, ts } from '@cpr/core';
 import type { NgClass, NgKind } from './classes.js';
 
@@ -106,18 +106,18 @@ export function libraryClasses(context: PluginContext): Libraries {
     let found = 0;
     for (const [exportName, declared] of reader.exportedClasses(entry)) {
       const meta = reader.meta(declared);
-      if (meta === 'unknown') {
-        unreadable.push(`${exportName} (${spec})`);
-        continue;
-      }
       if (!meta) continue;
       found++;
-      if (meta.kind === 'NgModule') {
-        for (const next of moduleExports(context.ts, declared)) enqueue(next, declared.dts.file);
-      }
+      // A class two entry points export counts once, from the first one the project imports.
       if (seen.has(declared.cls)) continue;
       seen.add(declared.cls);
-      classes.push(libraryClass(spec, exportName, declared, reader.inherited(declared, meta)));
+      if (meta === 'unknown') {
+        unreadable.push(`${exportName} (${spec})`);
+      } else if (meta.kind === 'NgModule') {
+        for (const next of moduleExports(context.ts, declared)) enqueue(next, declared.dts.file);
+      } else {
+        classes.push(libraryClass(spec, exportName, declared, reader.inherited(declared, meta)));
+      }
     }
     if (found > 0) continue;
 
@@ -131,6 +131,7 @@ export function libraryClasses(context: PluginContext): Libraries {
     }
     for (const next of viewEngine.follow) enqueue(next, file);
     for (const [exportName, meta] of viewEngine.classes) {
+      if (meta.kind === 'NgModule') continue;
       const declared = reader.resolveExport(entry, exportName, false, new Set());
       if (!declared || seen.has(declared.cls)) continue;
       seen.add(declared.cls);
@@ -148,6 +149,12 @@ export function libraryClasses(context: PluginContext): Libraries {
     );
   }
   return { classes, warnings };
+}
+
+/** `@angular/material/button` → `@angular/material`; `rxjs/operators` → `rxjs`. */
+function packageName(spec: string): string {
+  const parts = spec.split('/');
+  return (spec.startsWith('@') ? parts.slice(0, 2) : parts.slice(0, 1)).join('/');
 }
 
 function isRelative(spec: string): boolean {
@@ -241,6 +248,10 @@ class Reader {
   private readonly options: ts.CompilerOptions;
   private readonly resolutions: ts.ModuleResolutionCache;
   private readonly packages = new Map<string, boolean>();
+  /** Per revision: each file is read and each specifier resolved once. */
+  private readonly loaded = new Map<string, Dts | undefined>();
+  private readonly resolved = new Map<string, string | undefined>();
+  private readonly installedCache = new Map<string, boolean>();
 
   constructor(
     private readonly tsApi: TS,
@@ -255,6 +266,17 @@ class Reader {
 
   /** The typings a module specifier resolves to from a file, if they are a package's. */
   resolve(spec: string, from: string): string | undefined {
+    // Specifiers resolve alike from files of one folder.
+    const key = `${dirname(from)}\0${spec}`;
+    if (this.resolved.has(key)) return this.resolved.get(key);
+    const file = this.resolveUncached(spec, from);
+    this.resolved.set(key, file);
+    return file;
+  }
+
+  private resolveUncached(spec: string, from: string): string | undefined {
+    // Most bare specifiers of a monorepo are path aliases: skip TypeScript's full lookup.
+    if (!isRelative(spec) && !this.installed(dirname(from), packageName(spec))) return undefined;
     const resolved = this.tsApi.resolveModuleName(
       spec,
       from,
@@ -266,6 +288,20 @@ class Reader {
     // A workspace package links to the repo's own sources: those are not a library.
     if (!file || !/\.d\.[cm]?ts$/.test(file) || !file.includes('/node_modules/')) return undefined;
     return file;
+  }
+
+  /** Whether a package's folder is in a `node_modules` of `dir` or a folder above it. */
+  private installed(dir: string, name: string): boolean {
+    const key = `${dir}\0${name}`;
+    let found = this.installedCache.get(key);
+    if (found === undefined) {
+      const parent = dirname(dir);
+      found =
+        this.tsApi.sys.directoryExists(join(dir, 'node_modules', name)) ||
+        (parent !== dir && this.installed(parent, name));
+      this.installedCache.set(key, found);
+    }
+    return found;
   }
 
   /** Whether the package of a file is Angular's or depends on it. */
@@ -298,6 +334,13 @@ class Reader {
   }
 
   load(file: string): Dts | undefined {
+    if (this.loaded.has(file)) return this.loaded.get(file);
+    const dts = this.loadUncached(file);
+    this.loaded.set(file, dts);
+    return dts;
+  }
+
+  private loadUncached(file: string): Dts | undefined {
     const text = this.tsApi.sys.readFile(file);
     if (text === undefined) return undefined;
     const cached = dtsCache.get(file);
