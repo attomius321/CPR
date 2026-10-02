@@ -1,0 +1,11 @@
+{
+  "name": "ng-libraries",
+  "private": true,
+  "dependencies": {
+    "@acme/ui": "^1.0.0",
+    "@acme/unused": "^1.0.0",
+    "@angular/core": "^21.0.0",
+    "@legacy/widgets": "^11.0.0",
+    "@old/forms": "^8.0.0"
+  }
+}

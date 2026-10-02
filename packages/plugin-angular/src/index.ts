@@ -20,6 +20,7 @@ import {
   type NgClass,
 } from './classes.js';
 import { directiveSite, isMeta, registry, type Meta, type Registry } from './directives.js';
+import { libraryClasses } from './libraries.js';
 import { ShimBuilder, typeOf, writeHost, writeTemplate } from './shim.js';
 import {
   bindTemplate,
@@ -195,13 +196,15 @@ function revisionOf(revision: PluginContext): Revision {
     const sf = revision.syntax(file);
     return sf ? angularClasses(revision.ts, file, sf) : [];
   });
+  const libraries = libraryClasses(revision);
   const state: Revision = {
     // Block syntax and `@let` arrived in Angular 17; unknown versions get today's syntax.
     syntax: { blocks: major === undefined || major >= 17 },
     classes,
     byId: new Map(classes.map((c) => [c.id, c])),
-    registry: registry(classes),
-    warnings: [],
+    // The repo's own pipes win over a library's of the same name.
+    registry: registry([...libraries.classes, ...classes]),
+    warnings: [...libraries.warnings],
     unexported: [],
   };
   revisions.set(revision.syntax, state);
@@ -261,7 +264,7 @@ function buildShim(
   }
   const self = typeOf('__cpr_C', cls);
   const builder = new ShimBuilder();
-  // Repo classes the template uses, imported under their own names (`__cpr_D0`…).
+  // Repo and library classes the template uses, imported under names of their own (`__cpr_D0`…).
   const imports = new Map<NgClass, string>();
   const use = (target: NgClass): string | undefined => {
     if (!target.exported) return undefined;
@@ -438,11 +441,15 @@ function matcherAdd(matcher: ng.SelectorMatcher<Meta[]>, meta: Meta): void {
   }
 }
 
-/** `import { Foo as alias } from './foo.js';`, relative to the shim (next to `from`). */
+/**
+ * `import { Foo as alias } from './foo.js';`, relative to the shim (next to `from`), or from the
+ * library's entry point.
+ */
 function importLine(target: NgClass, alias: string, from: string, typeOnly: boolean): string {
+  const kind = typeOnly ? 'import type' : 'import';
+  if (target.module) return `${kind} { ${target.name} as ${alias} } from '${target.module}';\n`;
   let module = posix.relative(posix.dirname(from), target.file).replace(/\.[cm]?tsx?$/, '.js');
   if (!module.startsWith('.')) module = `./${module}`;
-  const kind = typeOnly ? 'import type' : 'import';
   return target.exported === 'default'
     ? `${kind} ${alias} from '${module}';\n`
     : `${kind} { ${target.name} as ${alias} } from '${module}';\n`;

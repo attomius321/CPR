@@ -1,3 +1,6 @@
+import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
@@ -232,6 +235,96 @@ describe('the angular plugin, across components', () => {
     expect(twins).toEqual([
       [`${APP}/twins.component.ts#TwinAComponent`, true],
       [`${APP}/twins.component.ts#TwinBComponent`, true],
+    ]);
+  });
+});
+
+describe('the angular plugin, with libraries', () => {
+  const ORG = `${APP}/org.component.html#(template)`;
+  const ORGANIZATION = `${APP}/org.ts#Organization`;
+
+  it('types what library pipes return: a member read only through `| await` is a use', async () => {
+    const analysis = await analyze('libraries');
+    expect(rules(analysis)).toEqual([`error removed-still-referenced ${ORGANIZATION}.name`]);
+    expect(analysis.findings[0]?.data).toMatchObject({
+      sites: [{ file: `${APP}/org.component.html`, line: 2, col: 14 }],
+    });
+    // Organization.plan is new and read only in `@if (org$ | await; as org)`: not an orphan.
+    expect(changed(analysis)).toContain(`added ${ORGANIZATION}.plan`);
+    expect(analysis.warnings).toEqual([
+      'plugin angular: 1 Angular library class has metadata in a form CPR cannot read, so templates do not match it: UiFuture (@acme/ui)',
+    ]);
+  });
+
+  it('stays as without libraries when dependencies are not installed', async () => {
+    const copy = mkdtempSync(join(tmpdir(), 'cpr-ng-'));
+    try {
+      for (const side of ['base', 'head'] as const) {
+        cpSync(fixture('libraries', side), join(copy, side), {
+          recursive: true,
+          filter: (path) => !path.includes('node_modules'),
+        });
+      }
+      const analysis = await analyzeDirectories(join(copy, 'base'), join(copy, 'head'), {
+        adapter: createTypescriptAdapter({ plugins: [angular] }),
+      });
+      // `org` has no type: neither the removed nor the new member is seen.
+      expect(rules(analysis)).toEqual([`warning orphan-added ${ORGANIZATION}.plan`]);
+      expect(analysis.edges.filter((e) => e.to.startsWith('@'))).toEqual([]);
+      expect(analysis.warnings).toEqual([]);
+    } finally {
+      rmSync(copy, { recursive: true, force: true });
+    }
+  });
+
+  it('links library components, directives, pipes and their members to their packages', async () => {
+    const short = (text: string) => text.replaceAll(`${APP}/`, '');
+    const edges = edgesFrom(await analyze('libraries'), ORG).map(short);
+    const html = 'org.component.html';
+    expect(edges).toEqual([
+      // `(press)="onPress($event.count)"`: the output's type types `$event`.
+      `reference @acme/ui#PressEvent.count [both] ${html}:6:87`,
+      `call @acme/ui#UiAwaitPipe [both] ${html}:1:13`,
+      `call @acme/ui#UiAwaitPipe.transform [both] ${html}:1:13`,
+      `call @acme/ui#UiButton [both] ${html}:6:2`,
+      `reference @acme/ui#UiButton.label [both] ${html}:6:12`,
+      `reference @acme/ui#UiButton.press [both] ${html}:6:64`,
+      // `kind="primary"`: an aliased input.
+      `reference @acme/ui#UiButton.variant [both] ${html}:6:25`,
+      // An input of the base class.
+      `reference @acme/ui#UiButtonBase.disabled [both] ${html}:6:41`,
+      `call @acme/ui#UiFormDirective [both] ${html}:7:7`,
+      `reference @acme/ui#UiFormDirective.submitted [both] ${html}:7:27`,
+      // `#f="uiForm"` … `f.valid`.
+      `reference @acme/ui#UiFormDirective.valid [both] ${html}:8:14`,
+      // Exported as `ɵUiInternal` only.
+      `call @acme/ui#UiInternal [both] ${html}:12:8`,
+      `reference @acme/ui#UiInternal.level [both] ${html}:12:8`,
+      // Angular 9-11 typings after ngcc, from an entry point UiModule exports.
+      `call @legacy/widgets#WidgetDirective [both] ${html}:10:7`,
+      `reference @legacy/widgets#WidgetDirective.widgetValue [both] ${html}:10:7`,
+      `call @legacy/widgets#WidgetUpperPipe [both] ${html}:10:34`,
+      `call @legacy/widgets#WidgetUpperPipe.transform [both] ${html}:10:34`,
+      // View Engine metadata.json, with an input inherited from an undecorated base.
+      `reference @old/forms#OldControl.disabled [both] ${html}:11:42`,
+      `call @old/forms#OldFormatPipe [both] ${html}:12:53`,
+      `call @old/forms#OldFormatPipe.transform [both] ${html}:12:53`,
+      `call @old/forms#OldModelDirective [both] ${html}:11:9`,
+      `reference @old/forms#OldModelDirective.model [both] ${html}:11:9`,
+      `reference @old/forms#OldModelDirective.update [both] ${html}:11:64`,
+      `reference @old/forms#OldModelDirective.valid [both] ${html}:12:33`,
+      `reference org.component.ts#OrgComponent.count [both] ${html}:6:52`,
+      `call org.component.ts#OrgComponent.onPress [both] ${html}:6:72`,
+      `call org.component.ts#OrgComponent.onSubmit [both] ${html}:7:38`,
+      `reference org.component.ts#OrgComponent.org$ [both] ${html}:1:6`,
+      `call org.component.ts#OrgComponent.rename [both] ${html}:11:81`,
+      `reference org.component.ts#OrgComponent.title [both] ${html}:10:26`,
+      `reference org.component.ts#OrgComponent.user$ [both] ${html}:5:8`,
+      `reference org.ts#Organization.name [base] ${html}:2:14`,
+      `reference org.ts#Organization.plan [head] ${html}:3:13`,
+      // `(user$ | await)?.email`.
+      `reference org.ts#User.email [both] ${html}:5:24`,
+      // Nothing from `@acme/unused` (installed, not imported) or `UiHidden` (not exported).
     ]);
   });
 });

@@ -1,4 +1,6 @@
 node_modules/
+# Fake libraries of the Angular plugin's test fixtures.
+!packages/plugin-angular/test/fixtures/**/node_modules/
 dist/
 coverage/
 *.tsbuildinfo

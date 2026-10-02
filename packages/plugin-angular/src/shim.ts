@@ -69,10 +69,10 @@ export class ShimBuilder implements Out {
   }
 }
 
-/** What a template's shim refers to besides its component: the repo's directives and pipes. */
+/** What a template's shim refers to besides its component: directives and pipes. */
 export interface Repo {
   bound: ng.BoundTarget<Meta>;
-  /** The shim's name for a repo class, importing it; undefined if it cannot be imported. */
+  /** The shim's name for a class, importing it; undefined if it cannot be imported. */
   use(cls: NgClass): string | undefined;
   pipes: ReadonlyMap<string, NgClass>;
 }
@@ -96,8 +96,9 @@ export function typeOf(alias: string, cls: NgClass): string {
  * every expression becomes a statement, `@for`/`*ngFor` loops become `for…of` over their
  * collection, aliases (`@if (x; as y)`, `*ngIf="x as y"`) constants, and other template locals
  * (`let-`, `#ref`, `@for` context variables) `any`-typed variables in the block of their view.
- * An element matching a repo component or directive references its class; its bindings set
- * the directive's inputs and listen to its outputs; a repo pipe calls `transform`.
+ * An element matching a component or directive (the repo's or a library's) references its
+ * class; its bindings set the directive's inputs and listen to its outputs; a pipe calls
+ * `transform`.
  */
 export function writeTemplate(parsed: ParsedTemplate, out: Out, repo: Repo): void {
   const scope: Scope = {
@@ -114,7 +115,7 @@ export function writeTemplate(parsed: ParsedTemplate, out: Out, repo: Repo): voi
 
 function view(nodes: readonly ng.TmplAstNode[], ctx: Ctx, scope: Scope, indent: string): void {
   // References (`#box`) are visible anywhere in their view, before their element too. One to a
-  // repo directive (`#p="appPreview"`, or on a component's element) has its class's type.
+  // known directive (`#p="appPreview"`, or on a component's element) has its class's type.
   for (const ref of viewReferences(nodes)) {
     const target = ctx.repo.bound.getReferenceTarget(ref);
     const directive = target && 'directive' in target ? target.directive : undefined;
