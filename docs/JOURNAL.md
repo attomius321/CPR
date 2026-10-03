@@ -1189,4 +1189,5 @@ lines, so removed components, props pages do not pass, and components only pages
 rules, unclosed elements, mapping, the parse fallback), the `qwik-mdx` fixture (red before),
 the viewer test `qwik.spec.ts`, Qwik docs site: without the plugin identical to
 `main`, with it 7 false findings gone (`head` ×2, route `default` ×3, `BenchmarkTable`,
-`useMDXComponents`), both right `Repos` kept, no new warning; +3.7 % time..
+`useMDXComponents`), both right `Repos` kept, no new warning; +3.7 % time. Full suite: 377 unit
+tests, 29 browser tests.
