@@ -5,6 +5,8 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  useStore,
+  useStoreApi,
   type Edge,
   type Node,
 } from '@xyflow/react';
@@ -13,7 +15,14 @@ import type { Graph } from '@cpr/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
-import { toFlow, type FlowEdge, type FlowNode, type SymbolData } from './flow.js';
+import {
+  decorate,
+  decorateEdges,
+  layoutFlow,
+  type FlowEdge,
+  type FlowNode,
+  type SymbolData,
+} from './flow.js';
 import {
   changeList,
   neighbourhood,
@@ -24,9 +33,13 @@ import {
 } from './review.js';
 import { Sidebar } from './Sidebar.js';
 import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
+import { SummaryNode } from './SummaryNode.js';
 import { SymbolNode } from './SymbolNode.js';
 
-const nodeTypes = { symbol: SymbolNode, file: FileNode };
+const nodeTypes = { symbol: SymbolNode, file: FileNode, summary: SummaryNode };
+
+/** Below this zoom the canvas is a map: file names readable, symbols as coloured blocks. */
+const MAP_ZOOM = 0.45;
 
 type State =
   | { status: 'loading' }
@@ -57,6 +70,8 @@ export function App() {
   const [context, setContext] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [focus, setFocus] = useState(false);
+  /** Summary nodes whose neighbours are shown. */
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   /** With `--since`: only what changed since the earlier version. */
   const [sinceOnly, setSinceOnly] = useState(true);
   const [marks, setMarks] = useState<Marks>({});
@@ -77,6 +92,9 @@ export function App() {
         : { reviewed: new Set<string>(), stale: new Set<string>() },
     [graph, marks],
   );
+  // A new graph starts with every big neighbourhood collapsed.
+  useEffect(() => setExpanded(new Set()), [graph]);
+
   useEffect(() => {
     if (!graph || !store) return;
     let live = true;
@@ -195,17 +213,58 @@ export function App() {
     [updateDraft],
   );
 
-  const flow = useMemo(() => {
-    if (!graph) return undefined;
-    const focusSet = focus && selected ? neighbourhood(graph, selected) : undefined;
-    return toFlow(graph, {
-      typeReferences,
-      context,
-      reviewed,
-      sinceOnly: onlySince,
-      ...(focusSet ? { focus: focusSet } : {}),
-    });
-  }, [graph, typeReferences, context, reviewed, onlySince, focus, selected]);
+  // Layout once per view; selecting and marking only decorate it, so nothing moves.
+  const focusSet = useMemo(
+    () => (graph && focus && selected ? neighbourhood(graph, selected) : undefined),
+    [graph, focus, selected],
+  );
+  const layout = useMemo(
+    () =>
+      graph
+        ? layoutFlow(graph, {
+            typeReferences,
+            context,
+            expanded,
+            ...(focusSet ? { focus: focusSet } : {}),
+          })
+        : undefined,
+    [graph, typeReferences, context, expanded, focusSet],
+  );
+  const flowNodes = useMemo(
+    () =>
+      layout ? decorate(layout.nodes, { reviewed, sinceOnly: onlySince, selected }) : undefined,
+    [layout, reviewed, onlySince, selected],
+  );
+
+  const flowEdges = useMemo(
+    () => (layout ? decorateEdges(layout.edges, selected) : undefined),
+    [layout, selected],
+  );
+
+  // Selecting a symbol that sits inside a collapsed summary (from the detail panel) shows it.
+  useEffect(() => {
+    const summary = selected ? layout?.hidden.get(selected) : undefined;
+    if (summary) setExpanded((current) => new Set(current).add(summary));
+  }, [selected, layout]);
+
+  // After a group is shown or hidden, the canvas fits it (and its symbol), until the next
+  // selection.
+  const [reveal, setReveal] = useState<string[] | null>(null);
+  useEffect(() => setReveal(null), [selected]);
+  const toggleSummary = useCallback(
+    (id: string) => {
+      const open = !expanded.has(id);
+      const owner = layout?.nodes.find((n) => n.id === id);
+      const of = owner?.type === 'summary' ? [owner.data.of] : [];
+      setReveal([id, ...of, ...(open ? (layout?.members.get(id) ?? []) : [])]);
+      setExpanded((current) => {
+        const next = new Set(current);
+        if (!next.delete(id)) next.add(id);
+        return next;
+      });
+    },
+    [expanded, layout],
+  );
 
   return (
     <div className="app" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
@@ -256,7 +315,7 @@ export function App() {
         {state.status === 'empty' && (
           <DropZone error={state.error} onFile={(file) => void load(file)} />
         )}
-        {flow && state.status === 'ready' && (
+        {layout && flowNodes && state.status === 'ready' && (
           <ReactFlowProvider>
             <Sidebar
               graph={state.graph}
@@ -279,11 +338,14 @@ export function App() {
               }
             />
             <Canvas
-              nodes={flow.nodes}
-              edges={flow.edges}
+              nodes={flowNodes}
+              edges={flowEdges ?? layout.edges}
+              layoutNodes={layout.nodes}
               selected={selected}
               focus={focus}
               onSelect={setSelected}
+              onToggleSummary={toggleSummary}
+              reveal={reveal}
             />
             {selected && (
               <DetailPanel
@@ -310,48 +372,79 @@ export function App() {
           </ReactFlowProvider>
         )}
       </main>
-      {flow && <Legend />}
+      {layout && <Legend />}
     </div>
   );
 }
 
 interface CanvasProps {
+  /** Decorated: reviewed marks and the selection. */
   nodes: FlowNode[];
   edges: FlowEdge[];
+  /** The undecorated layout: it changes only when what is drawn changes. */
+  layoutNodes: FlowNode[];
   selected: string | null;
   /** In focus mode the whole (small) neighbourhood is fitted; otherwise the selection is centered. */
   focus: boolean;
   onSelect: (id: string | null) => void;
+  onToggleSummary: (id: string) => void;
+  /** Symbols to bring into view: a group just shown or hidden. */
+  reveal: string[] | null;
 }
 
-/** The graph; brings the selected symbol into view when it changes. */
-function Canvas({ nodes, edges, selected, focus, onSelect }: CanvasProps) {
+/** The graph; brings the selected symbol into view when it, or the layout, changes. */
+function Canvas({
+  nodes,
+  edges,
+  layoutNodes,
+  selected,
+  focus,
+  onSelect,
+  onToggleSummary,
+  reveal,
+}: CanvasProps) {
   const { fitView } = useReactFlow();
+  // Zoomed out, the canvas is a map; labels scale with `--cpr-zoom`, set without re-rendering.
+  const map = useStore((state) => state.transform[2] < MAP_ZOOM);
+  // The canvas narrows when the detail panel opens: centre the selection again then.
+  const size = useStore((state) => `${state.width}x${state.height}`);
+  const store = useStoreApi();
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = (zoom: number) => root.style.setProperty('--cpr-zoom', String(zoom));
+    apply(store.getState().transform[2]);
+    return store.subscribe((state) => apply(state.transform[2]));
+  }, [store]);
+
   useEffect(() => {
     // Wait a frame so React Flow has measured nodes that just appeared.
     const frame = requestAnimationFrame(() => {
-      if (focus) void fitView({ duration: 300, maxZoom: 1.1 });
+      if (reveal)
+        void fitView({ nodes: reveal.map((id) => ({ id })), duration: 300, maxZoom: 1.1 });
+      else if (focus) void fitView({ duration: 300, maxZoom: 1.1 });
       else if (selected) void fitView({ nodes: [{ id: selected }], duration: 300, maxZoom: 1.1 });
     });
     return () => cancelAnimationFrame(frame);
-  }, [selected, focus, nodes, fitView]);
-
-  const marked = useMemo(
-    () => nodes.map((n) => (n.type === 'symbol' ? { ...n, selected: n.id === selected } : n)),
-    [nodes, selected],
-  );
+  }, [selected, focus, layoutNodes, size, reveal, fitView]);
 
   return (
     <ReactFlow<Node, Edge>
-      nodes={marked}
+      nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
       fitView
+      onlyRenderVisibleElements
+      {...(map ? { className: 'map' } : {})}
       colorMode="system"
-      minZoom={0.1}
+      minZoom={0.05}
       nodesConnectable={false}
       onNodeClick={(_, node) => {
         if (node.type === 'symbol') onSelect(node.id);
+        else if (node.type === 'summary') onToggleSummary(node.id);
+        // On the map, a file box is what is clicked: zoom into it.
+        else if (node.type === 'file' && map) {
+          void fitView({ nodes: [{ id: node.id }], duration: 300, maxZoom: 1.1 });
+        }
       }}
       onPaneClick={() => onSelect(null)}
       proOptions={{ hideAttribution: true }}
@@ -362,7 +455,11 @@ function Canvas({ nodes, edges, selected, focus, onSelect }: CanvasProps) {
         pannable
         zoomable
         nodeClassName={(n) =>
-          n.type === 'symbol' ? `minimap-${(n.data as SymbolData).tone}` : 'minimap-file'
+          n.type === 'symbol'
+            ? `minimap-${(n.data as SymbolData).tone}`
+            : n.type === 'summary'
+              ? 'minimap-summary'
+              : 'minimap-file'
         }
       />
     </ReactFlow>
@@ -475,7 +572,8 @@ function Legend() {
       )}
       <span className="legend-edge edge-head">added edge</span>
       <span className="legend-edge edge-base">removed edge</span>
-      <span className="legend-hint">click a symbol for details</span>
+      <span className="legend-item legend-summary">many neighbours, grouped</span>
+      <span className="legend-hint">click a symbol for details, a group to show its symbols</span>
     </footer>
   );
 }
