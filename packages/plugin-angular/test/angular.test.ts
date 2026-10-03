@@ -358,23 +358,37 @@ describe('the angular plugin, in a repo with several projects', () => {
     const analysis = await analyze('multi-project');
     const legacy = 'apps/web/legacy/src/app/contact.component.html';
     expect(edgesFrom(analysis, LEGACY_HTML)).toEqual([
-      `call @acme/badge#BadgeComponent [both] ${legacy}:2:2`,
+      `call @acme/badge#BadgeComponent [both] ${legacy}:3:2`,
       // Angular 11 typings after ngcc: `text`.
-      `reference @acme/badge#BadgeComponent.text [both] ${legacy}:2:14`,
-      `reference ${LEGACY}/contact.component.ts#ContactComponent.account [both] ${legacy}:2:21`,
-      `call ${LEGACY}/contact.component.ts#ContactComponent.clear [head] ${legacy}:3:43`,
+      `reference @acme/badge#BadgeComponent.text [both] ${legacy}:3:14`,
+      `reference ${LEGACY}/contact.component.ts#ContactComponent.account [both] ${legacy}:3:21`,
+      `call ${LEGACY}/contact.component.ts#ContactComponent.clear [head] ${legacy}:4:43`,
       // `Account` imported as `app/core/account`, through src/tsconfig.app.json's `baseUrl`.
-      `reference ${LEGACY}/core/account.ts#Account.email [both] ${legacy}:2:29`,
-      `reference ${LEGACY}/core/account.ts#Account.verified [head] ${legacy}:3:24`,
+      `reference ${LEGACY}/core/account.ts#Account.email [both] ${legacy}:3:29`,
+      `reference ${LEGACY}/core/account.ts#Account.verified [head] ${legacy}:4:24`,
+      // Both apps have an `app-header`: each template uses its own workspace's.
+      `call ${LEGACY}/header.component.ts#HeaderComponent [both] ${legacy}:1:2`,
+      // Code outside both workspaces is for both.
+      `call libs/shared/footer.component.ts#FooterComponent [both] ${legacy}:5:2`,
     ]);
     const modern = 'apps/web/modern/src/app/profile.component.html';
     expect(edgesFrom(analysis, MODERN_HTML)).toEqual([
-      `call @acme/badge#BadgeComponent [both] ${modern}:3:4`,
+      `call @acme/badge#BadgeComponent [both] ${modern}:4:4`,
       // Angular 17 typings: `label`.
-      `reference @acme/badge#BadgeComponent.label [both] ${modern}:3:16`,
-      `reference ${MODERN}/core/account.ts#Account.email [both] ${modern}:1:21`,
-      `reference ${MODERN}/core/account.ts#Account.verified [base] ${modern}:2:14`,
-      `reference ${MODERN}/profile.component.ts#ProfileComponent.account [both] ${modern}:1:13`,
+      `reference @acme/badge#BadgeComponent.label [both] ${modern}:4:16`,
+      `reference ${MODERN}/core/account.ts#Account.email [both] ${modern}:2:21`,
+      `reference ${MODERN}/core/account.ts#Account.verified [base] ${modern}:3:14`,
+      `call ${MODERN}/header.component.ts#HeaderComponent [both] ${modern}:1:2`,
+      `reference ${MODERN}/profile.component.ts#ProfileComponent.account [both] ${modern}:2:13`,
+      `call libs/shared/footer.component.ts#FooterComponent [both] ${modern}:7:2`,
     ]);
+    // Nothing crosses between the apps, and a header is certain, not one of two candidates.
+    const app = (id: string) => /^apps\/web\/(\w+)\//.exec(id)?.[1];
+    expect(
+      analysis.edges.filter((e) => app(e.from) && app(e.to) && app(e.from) !== app(e.to)),
+    ).toEqual([]);
+    expect(
+      analysis.edges.filter((e) => e.to.endsWith('#HeaderComponent')).map((e) => e.possible),
+    ).toEqual([undefined, undefined]);
   });
 });

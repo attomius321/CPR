@@ -203,6 +203,30 @@ function angularVersions(revision: PluginContext): (file: string) => number | un
   return (file) => at(posix.dirname(file));
 }
 
+/**
+ * The Angular workspace a file belongs to: the nearest folder above it holding `angular.json`
+ * (`.` for the root); `''` outside every workspace. Apps of different workspaces never use each
+ * other's components.
+ */
+function workspaces(revision: PluginContext): (file: string) => string {
+  const cache = new Map<string, string>();
+  const at = (folder: string): string => {
+    let found = cache.get(folder);
+    if (found === undefined) {
+      const prefix = folder === '.' ? '' : `${folder}/`;
+      found =
+        revision.readFile(`${prefix}angular.json`) !== undefined
+          ? folder
+          : folder === '.'
+            ? ''
+            : at(posix.dirname(folder));
+      cache.set(folder, found);
+    }
+    return found;
+  };
+  return (file) => at(posix.dirname(file));
+}
+
 function installedMajor(text: string | undefined): number | undefined {
   const version = (parseJson(text) as { version?: unknown } | undefined)?.version;
   return typeof version === 'string' ? Number.parseInt(version, 10) : undefined;
@@ -237,16 +261,28 @@ function revisionOf(revision: PluginContext): Revision {
     return sf ? angularClasses(revision.ts, file, sf) : [];
   });
   const libraries = libraryClasses(revision);
-  // One registry per dependency root; the repo's own pipes win over a library's of the same name.
-  const plain = registry(classes);
+  const workspaceOf = workspaces(revision);
+  // What a template can use: the repo's classes of its Angular workspace (an `angular.json`
+  // folder) and those outside every workspace, plus the libraries installed for its project.
+  // One registry per (dependency root, workspace); the repo's own pipes win over a library's.
+  const visible = (workspace: string) =>
+    workspace === ''
+      ? classes
+      : classes.filter((c) => {
+          const own = workspaceOf(c.file);
+          return own === workspace || own === '';
+        });
   const registries = new Map<string, Registry>();
-  const registryFor = (root: string): Registry => {
-    const installed = libraries.byRoot.get(root);
-    if (!installed?.length) return plain;
-    let found = registries.get(root);
-    if (!found) registries.set(root, (found = registry([...installed, ...classes])));
+  const registryFor = (root: string, workspace: string): Registry => {
+    const key = `${root}\0${workspace}`;
+    let found = registries.get(key);
+    if (!found) {
+      found = registry([...(libraries.byRoot.get(root) ?? []), ...visible(workspace)]);
+      registries.set(key, found);
+    }
     return found;
   };
+  const registryOf = (file: string) => registryFor(libraries.rootOf(file), workspaceOf(file));
   const syntaxes = new Map<boolean, Syntax>();
   const state: Revision = {
     // Block syntax and `@let` arrived in Angular 17; unknown versions get today's syntax.
@@ -259,8 +295,12 @@ function revisionOf(revision: PluginContext): Revision {
     },
     classes,
     byId: new Map(classes.map((c) => [c.id, c])),
-    registryOf: (file) => registryFor(libraries.rootOf(file)),
-    registries: () => [plain, ...[...libraries.byRoot.keys()].map(registryFor)],
+    registryOf,
+    registries: () => {
+      // Every template's registry, and the repo-wide one for classes no template sits next to.
+      for (const cls of classes) if (cls.template) registryOf(cls.file);
+      return [registryFor('', ''), ...registries.values()];
+    },
     warnings: [...libraries.warnings],
     unexported: [],
   };
