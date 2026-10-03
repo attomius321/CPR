@@ -77,9 +77,13 @@ export function incomingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
  */
 function jsxAttributes(name: ts.Node): string[] | undefined {
   let tag = name;
-  while (ts.isPropertyAccessExpression(tag.parent) && tag.parent.name === tag) tag = tag.parent;
+  // A reference in a doc comment (`{@link Foo}`) is found at a node without a parent.
+  while (tag.parent && ts.isPropertyAccessExpression(tag.parent) && tag.parent.name === tag) {
+    tag = tag.parent;
+  }
   const element = tag.parent;
   if (
+    !element ||
     !(ts.isJsxOpeningElement(element) || ts.isJsxSelfClosingElement(element)) ||
     element.tagName !== tag
   ) {
