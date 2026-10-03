@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { Finding, Graph } from '@cpr/core';
 import { label, tone } from './flow.js';
 import type { FileChanges } from './review.js';
@@ -6,9 +5,17 @@ import { ReviewTab, type ReviewProps } from './ReviewTab.js';
 
 const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 } as const;
 
+export type SidebarTab = 'changes' | 'findings' | 'review';
+
 interface Props {
   graph: Graph;
   changes: FileChanges[];
+  /** The changes the search leaves. */
+  shown: FileChanges[];
+  search: string;
+  onSearch: (search: string) => void;
+  tab: SidebarTab;
+  onTab: (tab: SidebarTab) => void;
   reviewed: ReadonlySet<string>;
   /** Reviewed before, but changed since (a new push). */
   stale: ReadonlySet<string>;
@@ -26,6 +33,11 @@ interface Props {
 export function Sidebar({
   graph,
   changes,
+  shown,
+  search,
+  onSearch,
+  tab,
+  onTab: setTab,
   reviewed,
   stale,
   selected,
@@ -33,14 +45,12 @@ export function Sidebar({
   onToggleReviewed,
   review,
 }: Props) {
-  const [tab, setTab] = useState<'changes' | 'findings' | 'review'>(
-    graph.findings.length > 0 ? 'findings' : 'changes',
-  );
   const commented = new Map<string, number>();
   for (const d of review?.draft.drafts ?? []) {
     commented.set(d.symbol, (commented.get(d.symbol) ?? 0) + 1);
   }
   const total = changes.reduce((n, f) => n + f.symbols.length, 0);
+  const matches = shown.reduce((n, f) => n + f.symbols.length, 0);
   const done = changes.reduce((n, f) => n + f.symbols.filter((s) => reviewed.has(s.id)).length, 0);
   const findings = [...graph.findings].sort(
     (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || a.id.localeCompare(b.id),
@@ -69,49 +79,89 @@ export function Sidebar({
       </div>
 
       {tab === 'changes' ? (
-        <div className="list">
-          {stale.size > 0 && (
-            <p className="stale-note">
-              ↻ {stale.size} symbol{stale.size === 1 ? '' : 's'} changed since you reviewed{' '}
-              {stale.size === 1 ? 'it' : 'them'}
-            </p>
-          )}
-          {changes.map(({ file, symbols }) => (
-            <div key={file} className="list-file">
-              <div className="list-file-name" title={file}>
-                {file}
-              </div>
-              {symbols.map((node) => (
-                <div
-                  key={node.id}
-                  className={`list-item tone-${tone(node)}${node.id === selected ? ' current' : ''}${reviewed.has(node.id) ? ' done' : ''}${stale.has(node.id) ? ' stale' : ''}`}
+        <>
+          <div className="search">
+            <input
+              id="change-search"
+              className="search-input"
+              type="text"
+              value={search}
+              onChange={(e) => onSearch(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter goes to the first match; j/k then walk the rest.
+                const first = shown[0]?.symbols[0];
+                if (e.key === 'Enter' && first) {
+                  onSelect(first.id);
+                  e.currentTarget.blur();
+                }
+              }}
+              placeholder="Search files and symbols"
+              aria-label="Search changes"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {search && (
+              <>
+                <span className="count" aria-live="polite">
+                  {matches}/{total}
+                </span>
+                <button
+                  className="search-clear"
+                  onClick={() => onSearch('')}
+                  aria-label="Clear search"
                 >
-                  <input
-                    type="checkbox"
-                    checked={reviewed.has(node.id)}
-                    onChange={() => onToggleReviewed(node.id)}
-                    aria-label={`Mark ${label(node)} reviewed`}
-                  />
-                  <button className="list-link" onClick={() => onSelect(node.id)}>
-                    <span className="dot" />
-                    {label(node)}
-                  </button>
-                  {stale.has(node.id) && (
-                    <span className="stale-mark" title="Changed since you reviewed it">
-                      ↻
-                    </span>
-                  )}
-                  {commented.has(node.id) && (
-                    <span className="commented" title="Comments on this symbol">
-                      💬 {commented.get(node.id)}
-                    </span>
-                  )}
+                  ×
+                </button>
+              </>
+            )}
+          </div>
+          <div className="list">
+            {stale.size > 0 && (
+              <p className="stale-note">
+                ↻ {stale.size} symbol{stale.size === 1 ? '' : 's'} changed since you reviewed{' '}
+                {stale.size === 1 ? 'it' : 'them'}
+              </p>
+            )}
+            {shown.map(({ file, symbols }) => (
+              <div key={file} className="list-file">
+                <div className="list-file-name" title={file}>
+                  {file}
                 </div>
-              ))}
-            </div>
-          ))}
-          {total === 0 && <p className="muted pad">No symbol changed.</p>}
-        </div>
+                {symbols.map((node) => (
+                  <div
+                    key={node.id}
+                    className={`list-item tone-${tone(node)}${node.id === selected ? ' current' : ''}${reviewed.has(node.id) ? ' done' : ''}${stale.has(node.id) ? ' stale' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={reviewed.has(node.id)}
+                      onChange={() => onToggleReviewed(node.id)}
+                      aria-label={`Mark ${label(node)} reviewed`}
+                    />
+                    <button className="list-link" onClick={() => onSelect(node.id)}>
+                      <span className="dot" />
+                      {label(node)}
+                    </button>
+                    {stale.has(node.id) && (
+                      <span className="stale-mark" title="Changed since you reviewed it">
+                        ↻
+                      </span>
+                    )}
+                    {commented.has(node.id) && (
+                      <span className="commented" title="Comments on this symbol">
+                        💬 {commented.get(node.id)}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+            {total === 0 && <p className="muted pad">No symbol changed.</p>}
+            {total > 0 && matches === 0 && (
+              <p className="muted pad">No changed file or symbol matches “{search.trim()}”.</p>
+            )}
+          </div>
+        </>
       ) : tab === 'review' && review ? (
         <ReviewTab graph={graph} review={review} onSelect={onSelect} />
       ) : (
@@ -129,6 +179,7 @@ export function Sidebar({
       )}
       <p className="keys">
         <kbd>j</kbd>/<kbd>k</kbd> next/previous · <kbd>r</kbd> reviewed · <kbd>f</kbd> focus ·{' '}
+        <kbd>/</kbd> search ·{' '}
         {review && (
           <>
             <kbd>c</kbd> comment ·{' '}

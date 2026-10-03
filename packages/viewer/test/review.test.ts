@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { toFlow } from '../src/flow.js';
 import {
   changeList,
+  filterChanges,
   fingerprint,
   neighbourhood,
   reviewKey,
@@ -27,6 +28,25 @@ describe('changeList', () => {
       ['src/text/slug.ts', ['slugify', 'titleCase']],
       ['src/user.ts', ['User', 'findUser', 'formatUser', 'normalizeId', 'greet']],
     ]);
+  });
+});
+
+describe('filterChanges', () => {
+  const names = (list: ReturnType<typeof changeList>) =>
+    list.map((f) => [f.file, f.symbols.map((s) => s.name)]);
+  const list = changeList(golden('service'));
+
+  it('keeps the symbols whose name or file holds every word, ignoring case', () => {
+    expect(names(filterChanges(list, 'USER'))).toEqual([
+      ['src/user.ts', ['User', 'findUser', 'formatUser', 'normalizeId', 'greet']],
+    ]);
+    expect(names(filterChanges(list, 'case'))).toEqual([['src/text/slug.ts', ['titleCase']]]);
+    expect(names(filterChanges(list, ' user.ts  find '))).toEqual([['src/user.ts', ['findUser']]]);
+    expect(filterChanges(list, 'nothing-like-it')).toEqual([]);
+  });
+
+  it('keeps everything when there is nothing to search for', () => {
+    expect(filterChanges(list, '  ')).toBe(list);
   });
 });
 

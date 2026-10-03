@@ -839,6 +839,51 @@ code {
   transition: width 0.2s;
 }
 
+.search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 2px 12px;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.search-input:focus {
+  outline: 2px solid color-mix(in srgb, var(--moved) 50%, transparent);
+  border-color: var(--moved);
+}
+
+.search .count {
+  margin: 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.search-clear {
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.search-clear:hover {
+  color: var(--text);
+}
+
 .list {
   flex: 1;
   overflow: auto;

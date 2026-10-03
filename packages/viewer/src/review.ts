@@ -1,4 +1,5 @@
 import type { Graph, GraphNode, GraphSide } from '@cpr/core';
+import { label } from './flow.js';
 
 export interface FileChanges {
   file: string;
@@ -20,6 +21,24 @@ export function changeList(graph: Graph, { sinceOnly = false } = {}): FileChange
   return [...byFile]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([file, symbols]) => ({ file, symbols: symbols.sort((a, b) => line(a) - line(b)) }));
+}
+
+/**
+ * The changes a search shows: those whose file and name hold every word of `query`, ignoring
+ * case. A word that matches the file keeps all of its symbols ("user greet").
+ */
+export function filterChanges(list: FileChanges[], query: string): FileChanges[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return list;
+  return list
+    .map(({ file, symbols }) => ({
+      file,
+      symbols: symbols.filter((node) => {
+        const text = `${file} ${label(node)}`.toLowerCase();
+        return words.every((word) => text.includes(word));
+      }),
+    }))
+    .filter((f) => f.symbols.length > 0);
 }
 
 /** The next (or previous) changed symbol after `current`, wrapping around. */

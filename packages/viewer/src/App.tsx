@@ -18,6 +18,7 @@ import {
   type CSSProperties,
   type DragEvent,
 } from 'react';
+import { flushSync } from 'react-dom';
 import type { Graph } from '@cpr/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import { DetailPanel } from './DetailPanel.js';
@@ -32,6 +33,7 @@ import {
 } from './flow.js';
 import {
   changeList,
+  filterChanges,
   neighbourhood,
   reviewStatus,
   stepChange,
@@ -39,7 +41,7 @@ import {
   type Marks,
 } from './review.js';
 import { Resizer } from './Resizer.js';
-import { Sidebar } from './Sidebar.js';
+import { Sidebar, type SidebarTab } from './Sidebar.js';
 import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
 import { SummaryNode } from './SummaryNode.js';
 import { SymbolNode } from './SymbolNode.js';
@@ -116,6 +118,10 @@ export function App() {
   /** With `--since`: only what changed since the earlier version. */
   const [sinceOnly, setSinceOnly] = useState(true);
   const [marks, setMarks] = useState<Marks>({});
+  /** The sidebar tab picked; until then, the findings if there are any. */
+  const [tab, setTab] = useState<SidebarTab | null>(null);
+  /** Words the change list is narrowed to. */
+  const [search, setSearch] = useState('');
   const [draft, setDraft] = useState<ReviewDraft>({ drafts: [], body: '' });
   const [widths, setWidths] = useState<Widths>(loadWidths);
   /** A panel is being resized: the canvas waits for the drop to centre the selection again. */
@@ -138,6 +144,8 @@ export function App() {
     () => (graph ? changeList(graph, { sinceOnly: onlySince }) : []),
     [graph, onlySince],
   );
+  /** The changes the search leaves: what the list shows and j/k walk. */
+  const shown = useMemo(() => filterChanges(changes, search), [changes, search]);
   const { reviewed, stale } = useMemo(
     () =>
       graph
@@ -189,7 +197,8 @@ export function App() {
     [graph, store],
   );
 
-  // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, c comments, Esc closes.
+  // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, c comments, / searches,
+  // Esc closes.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target;
@@ -206,15 +215,19 @@ export function App() {
       if (event.key === 'c' && document.getElementById('comment-input')) {
         event.preventDefault();
         document.getElementById('comment-input')?.focus();
-      } else if (event.key === 'j') setSelected((id) => stepChange(changes, id, 1));
-      else if (event.key === 'k') setSelected((id) => stepChange(changes, id, -1));
+      } else if (event.key === '/') {
+        event.preventDefault();
+        flushSync(() => setTab('changes'));
+        document.getElementById('change-search')?.focus();
+      } else if (event.key === 'j') setSelected((id) => stepChange(shown, id, 1));
+      else if (event.key === 'k') setSelected((id) => stepChange(shown, id, -1));
       else if (event.key === 'r' && selected) toggleReviewed(selected);
       else if (event.key === 'f') setFocus((on) => !on);
       else if (event.key === 'Escape') setSelected(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [changes, selected, toggleReviewed]);
+  }, [shown, selected, toggleReviewed]);
 
   useEffect(() => {
     const url = graphUrl();
@@ -240,6 +253,7 @@ export function App() {
       const graph = JSON.parse(await file.text()) as Graph;
       setState({ status: 'ready', graph, sources: false, forge: null, store: browserStore(graph) });
       setSelected(null);
+      setSearch('');
     } catch (error) {
       setState({ status: 'empty', error: `Not a CPR graph: ${(error as Error).message}` });
     }
@@ -381,6 +395,11 @@ export function App() {
             <Sidebar
               graph={state.graph}
               changes={changes}
+              shown={shown}
+              search={search}
+              onSearch={setSearch}
+              tab={tab ?? (state.graph.findings.length > 0 ? 'findings' : 'changes')}
+              onTab={setTab}
               reviewed={reviewed}
               stale={stale}
               selected={selected}

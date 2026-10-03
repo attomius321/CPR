@@ -158,3 +158,36 @@ test('a user picked in the detail panel is shown even when grouped', async ({ pa
   await expect(node(page, 'src/users7.ts#caller7')).toBeVisible();
   expect(await drawn(page)).toBe(collapsed + 40 + 12);
 });
+
+test('the search narrows the change list, and j/k walk what it leaves', async ({ page }) => {
+  const items = page.locator('.list-item');
+  await expect(page.getByRole('tab', { name: /Changes/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(items).toHaveCount(31);
+
+  // `/` puts the cursor in the search; typing doesn't walk the list.
+  await page.keyboard.press('/');
+  await expect(page.getByLabel('Search changes')).toBeFocused();
+  await page.keyboard.type('PIECE1');
+  await expect(items).toHaveCount(11); // piece1x and piece10x…piece19x
+  await expect(page.locator('.search .count')).toHaveText('11/31');
+  await expect(page.locator('.panel-title')).toHaveCount(0);
+
+  // Enter opens the first match; j walks on among the matches only, wrapping around.
+  const names = await page.locator('.list-link').allTextContents();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.panel-title')).toHaveText(names[0] ?? '');
+  for (const name of [...names.slice(1), names[0]]) {
+    await page.keyboard.press('j');
+    await expect(page.locator('.panel-title')).toHaveText(name ?? '');
+  }
+
+  // A file path finds its symbols too, and words narrow further.
+  await page.getByLabel('Search changes').fill('hub.ts hub');
+  await expect(items).toHaveCount(1);
+  await page.getByLabel('Search changes').fill('nothing here');
+  await expect(items).toHaveCount(0);
+  await expect(page.locator('.list')).toContainText('No changed file or symbol matches');
+
+  await page.getByRole('button', { name: 'Clear search' }).click();
+  await expect(items).toHaveCount(31);
+});
