@@ -1,0 +1,9 @@
+{
+  "name": "heroes-ng11",
+  "private": true,
+  "dependencies": {
+    "@angular/common": "~11.2.14",
+    "@angular/core": "~11.2.14",
+    "@angular/platform-browser": "~11.2.14"
+  }
+}
