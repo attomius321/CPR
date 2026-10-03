@@ -10,7 +10,14 @@ import {
   type Edge,
   type Node,
 } from '@xyflow/react';
-import { useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+} from 'react';
 import type { Graph } from '@cpr/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import { DetailPanel } from './DetailPanel.js';
@@ -31,6 +38,7 @@ import {
   toggleMark,
   type Marks,
 } from './review.js';
+import { Resizer } from './Resizer.js';
 import { Sidebar } from './Sidebar.js';
 import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
 import { SummaryNode } from './SummaryNode.js';
@@ -64,6 +72,39 @@ function graphUrl(): string {
   return new URLSearchParams(window.location.search).get('graph') ?? './api/graph';
 }
 
+/** Widths the reviewer gave the sidebar and the detail panel; unset, the stylesheet's. */
+interface Widths {
+  sidebar?: number;
+  panel?: number;
+}
+
+const WIDTHS_KEY = 'cpr.viewer.widths';
+
+/** Kept in this browser for every graph: how wide panels read best is the reviewer's. */
+function loadWidths(): Widths {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(WIDTHS_KEY) ?? '{}') as unknown;
+    if (!stored || typeof stored !== 'object') return {};
+    const width = (value: unknown) =>
+      typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+    const { sidebar, panel } = stored as Record<string, unknown>;
+    return {
+      ...(width(sidebar) ? { sidebar: width(sidebar) } : {}),
+      ...(width(panel) ? { panel: width(panel) } : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function saveWidths(widths: Widths): void {
+  try {
+    window.localStorage.setItem(WIDTHS_KEY, JSON.stringify(widths));
+  } catch {
+    // Storage blocked: the widths last until the page closes.
+  }
+}
+
 export function App() {
   const [state, setState] = useState<State>({ status: 'loading' });
   const [typeReferences, setTypeReferences] = useState(false);
@@ -76,6 +117,18 @@ export function App() {
   const [sinceOnly, setSinceOnly] = useState(true);
   const [marks, setMarks] = useState<Marks>({});
   const [draft, setDraft] = useState<ReviewDraft>({ drafts: [], body: '' });
+  const [widths, setWidths] = useState<Widths>(loadWidths);
+  /** A panel is being resized: the canvas waits for the drop to centre the selection again. */
+  const [resizing, setResizing] = useState(false);
+  const resize = useCallback((panel: keyof Widths, width: number | null) => {
+    setWidths((current) => {
+      const next = { ...current };
+      if (width === null) delete next[panel];
+      else next[panel] = width;
+      saveWidths(next);
+      return next;
+    });
+  }, []);
 
   const graph = state.status === 'ready' ? state.graph : undefined;
   const forge = state.status === 'ready' ? state.forge : null;
@@ -310,7 +363,15 @@ export function App() {
           </>
         )}
       </header>
-      <main className="canvas">
+      <main
+        className={`canvas${resizing ? ' resizing' : ''}`}
+        style={
+          {
+            '--sidebar-width': widths.sidebar ? `${widths.sidebar}px` : undefined,
+            '--panel-width': widths.panel ? `${widths.panel}px` : undefined,
+          } as CSSProperties
+        }
+      >
         {state.status === 'loading' && <p className="hint">Loading graph…</p>}
         {state.status === 'empty' && (
           <DropZone error={state.error} onFile={(file) => void load(file)} />
@@ -337,16 +398,33 @@ export function App() {
                   : undefined
               }
             />
+            <Resizer
+              label="Resize review sidebar"
+              side="before"
+              variable="--sidebar-width"
+              onResize={(width) => resize('sidebar', width)}
+              onDrag={setResizing}
+            />
             <Canvas
               nodes={flowNodes}
               edges={flowEdges ?? layout.edges}
               layoutNodes={layout.nodes}
               selected={selected}
               focus={focus}
+              resizing={resizing}
               onSelect={setSelected}
               onToggleSummary={toggleSummary}
               reveal={reveal}
             />
+            {selected && (
+              <Resizer
+                label="Resize detail panel"
+                side="after"
+                variable="--panel-width"
+                onResize={(width) => resize('panel', width)}
+                onDrag={setResizing}
+              />
+            )}
             {selected && (
               <DetailPanel
                 key={selected}
@@ -386,6 +464,8 @@ interface CanvasProps {
   selected: string | null;
   /** In focus mode the whole (small) neighbourhood is fitted; otherwise the selection is centered. */
   focus: boolean;
+  /** A panel beside it is being dragged wider or narrower. */
+  resizing: boolean;
   onSelect: (id: string | null) => void;
   onToggleSummary: (id: string) => void;
   /** Symbols to bring into view: a group just shown or hidden. */
@@ -399,6 +479,7 @@ function Canvas({
   layoutNodes,
   selected,
   focus,
+  resizing,
   onSelect,
   onToggleSummary,
   reveal,
@@ -406,7 +487,8 @@ function Canvas({
   const { fitView } = useReactFlow();
   // Zoomed out, the canvas is a map; labels scale with `--cpr-zoom`, set without re-rendering.
   const map = useStore((state) => state.transform[2] < MAP_ZOOM);
-  // The canvas narrows when the detail panel opens: centre the selection again then.
+  // The canvas narrows when the detail panel opens or a panel is resized: centre the selection
+  // again then (after the drop: following the drag would shake the canvas).
   const size = useStore((state) => `${state.width}x${state.height}`);
   const store = useStoreApi();
   useEffect(() => {
@@ -417,6 +499,7 @@ function Canvas({
   }, [store]);
 
   useEffect(() => {
+    if (resizing) return;
     // Wait a frame so React Flow has measured nodes that just appeared.
     const frame = requestAnimationFrame(() => {
       if (reveal)
@@ -425,7 +508,7 @@ function Canvas({
       else if (selected) void fitView({ nodes: [{ id: selected }], duration: 300, maxZoom: 1.1 });
     });
     return () => cancelAnimationFrame(frame);
-  }, [selected, focus, layoutNodes, size, reveal, fitView]);
+  }, [selected, focus, layoutNodes, size, reveal, resizing, fitView]);
 
   return (
     <ReactFlow<Node, Edge>
