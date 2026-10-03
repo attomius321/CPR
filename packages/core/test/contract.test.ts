@@ -170,6 +170,22 @@ describe('contracts', () => {
       expect(await run('{ children?: string }', '{}', '<Badge>text</Badge>')).toMatch(/^warning:/);
     });
 
+    it('reads a reference in a doc comment as no JSX use', async () => {
+      // `{@link Badge}` in JSDoc before a top-level statement: the reference has no parent node.
+      const files = (props: string) => ({
+        ...jsx(props, '<Badge a="x" />'),
+        'src/notes.ts':
+          "import { Badge } from './badge';\n/** See {@link Badge}. */\nexport const note = 1;\n",
+      });
+      const analysis = await analyze(
+        files('{ a: string; b?: number }'),
+        files('{ a: string; b: number }'),
+      );
+      expect(analysis.findings.map((f) => `${f.severity} ${f.symbol}`)).toContain(
+        'warning src/badge.ts#Badge',
+      );
+    });
+
     it('assumes the worst where it cannot see what is passed', async () => {
       expect(
         await run('{ a: string; b?: number }', '{ a: string }', '<Badge a="x" {...rest} />'),
