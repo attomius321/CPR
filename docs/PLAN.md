@@ -414,7 +414,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | X1 ✅, A1–A2 ✅ | Plugins; Angular templates as the `angular` plugin | Templates call component methods, bind inputs and use pipes, and CPR saw none of it: 9 of 9 warnings on real Angular commits were false. Angular support must stay outside the TS/JS analysis: X1 adds plugin hooks, A1–A2 build the Angular plugin on them. Merged with PR #1; see below. |
 | A3 ✅ | Angular library components, directives and pipes | `async`, `date`, `ngModel`, `routerLink` and Material were plain bindings, and a library pipe's result untyped: links through `@if (x$ \| async; as x)` were lost (19 such blocks in Bitwarden's web app). Now read from installed packages' typings; see below. |
 | V6 ✅ | A graph you can navigate | On a large change the viewer drew 1,288 symbols for 86 changes, in a 9,470 × 85,468 px strip, and every click re-ran the layout. Now: big neighbourhoods as one node, a page of clusters, a map when zoomed out, no relayout while reviewing; see below. |
-| W1 | Repositories with several projects | A repo whose Angular apps live in subfolders (two apps, two levels deep, nothing at the root) got no template analysis at all, and its `@app/*` and `baseUrl` imports did not resolve. Planned below. |
+| W1 ✅ (branch, not merged) | Repositories with several projects | A repo whose Angular apps live in subfolders (two apps, two levels deep, nothing at the root) got no template analysis at all, and its `@app/*` and `baseUrl` imports did not resolve. Now each file resolves with its own project's options, and the Angular plugin works per app; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -1311,7 +1311,10 @@ A3 viewer test opens the template's uses first.
   (`onlyRenderVisibleElements`); the zoom is a CSS variable (`--cpr-zoom`) set from the store
   without re-rendering, and the `map` class flips at 45 %.
 
-### W1 — Repositories with several projects (planned, branch `milestone/w1-multi-project`)
+### W1 — Repositories with several projects
+
+**Status:** built and verified on branch `milestone/w1-multi-project`, not merged yet; results
+and "as built" at the end of this section.
 
 **Problem** (reported on a real project: "CPR does not render any HTML templates in my app").
 The repo holds two Angular apps two folders below its root (`<dir>/<dir>/app-a`, `…/app-b`);
@@ -1435,6 +1438,61 @@ three. **Proposed decisions** (into §14 with 20–25):
 |---|---|---|---|
 | 26 | Compiler options in a repo with several projects | **Per file: the config its project builds with** (nearest folder; `tsconfig.app.json` > `tsconfig.lib.json` > `tsconfig.json` > others; tests prefer their spec config), falling back to today's options | One alias can mean different folders in two projects; Angular keeps its build options in `tsconfig.app.json`; the fallback keeps every resolution that works today. |
 | 27 | Angular detection and version | **Per project**: any file importing `@angular/core` turns the plugin on; each component's version comes from the nearest installed `@angular/core` or `package.json` | A repo root says nothing about nested apps, and two apps can be years of Angular apart. |
+| 28 | Which repo components a template can use | **Those of its Angular workspace** (the folder of the nearest `angular.json`) **and those outside every workspace**; no `angular.json`, or one at the root: all, as before | Found in verification: two apps with the same selectors linked each other's components (38 edges on the replica). Separate `angular.json` files are separate builds; shared code lives outside them. |
+
+#### W1 results
+
+**Fixtures** (red before, green after):
+- Core `multi-project` (no root config): `a` maps `@app/*` and `baseUrl`, `b` is solution-style
+  (`files: []` + references → `tsconfig.app.json` extending `tsconfig.base.json` with the same
+  alias). `UserService.fullName` renamed in `a` while `profile.ts` (`@app/…`) and `header.ts`
+  (`src/app/…`) still call it → ✖ "renamed …, but 2 symbols still use the old name"; `b`'s alias
+  reaches `b`'s class only. Before: no finding, `b` not loaded.
+- Angular `multi-project`: `legacy` (Angular 11, `baseUrl` in `src/tsconfig.app.json`,
+  `team@example.com` in a template, an HTML-only change) and `modern` (Angular 17, `@app/*`,
+  `@if`/`@let`), each with its own `angular.json`, `app-header` and `@acme/badge` (ngcc `text`
+  vs Angular 17 `label`), and a shared `app-footer` in `libs/shared`. Both templates analyzed
+  with their own syntax (no warning), each links its own header, badge input and `Account`, both
+  link the shared footer, no edge crosses between the apps; `Account.verified` removed in
+  `modern` → ✖ at its template. Before: no template at all.
+- CLI hint: an Angular app in `apps/web` (nothing Angular at the root) with a changed template →
+  the hint (failed before).
+
+**Replica of the reported repo**: one repo with the RealWorld app at Angular 11 in
+`apps/web/legacy` (`c023198` → `eca8bb6`, a template-only change) and at Angular 21 in
+`apps/web/modern` (`81aeddd` → `51c4afd`), each with its dependencies installed:
+
+| | `main` (before W1) | W1 |
+|---|---|---|
+| Changed templates | **0** | **13** (1 legacy, 12 modern) |
+| Template edges | 0 | 218 |
+| Edges crossing between the apps | — | 38 before workspace scoping, **0** after |
+| Findings | 39, incl. a false orphan (`articleInput`, bound in a template) and 4 class-level signature notes | 34 — the same as RealWorld analyzed on its own |
+| Warnings | none | none |
+
+**No change for one-project repos**: the 29 R1 comparisons without plugins are identical
+(932 edges, 11 findings); all earlier fixtures, goldens and viewer tests pass unchanged.
+Bitwarden (one root `angular.json`, 192 tsconfigs of which one has its own `paths`, which
+turns per-project resolution on): BWTBD
+
+#### W1 as built
+
+- `configs.ts` (core): every `tsconfig*.json` below the root is discovered (depth 5, outside
+  ignored folders); a file's project config is the first folder upwards holding one, by
+  preference `tsconfig.app.json` > `tsconfig.lib.json` > `tsconfig.json` > others (tests:
+  `tsconfig.spec.json`/`.test`/`.e2e` first). Options are parsed with `extends` but without
+  globbing files. Per-project resolution (ts-morph `resolutionHost`) is on only when some
+  config's `baseUrl`/`paths` differ from the root project's, and then only for files whose
+  config differs; `node_modules` files and everything that finds nothing resolve as before
+  (with the import's ESM/CJS mode). Solution-style configs found in the repo load their
+  references.
+- Angular plugin: `applies` also when any file imports `@angular/core`; a component's version
+  is the nearest folder's installed `@angular/core` or `package.json`, and sets its template
+  syntax; libraries are scanned per dependency root (nearest folder with `node_modules`); a
+  template's registry is (its dependency root's libraries) + (repo classes of its workspace and
+  outside every workspace), one per pair, cached; what a change takes from templates is checked
+  across all registries.
+- CLI hint: the nearest `package.json` above a changed template decides.
 
 **Later:** more languages via adapters, a faster core (TS 7 adapter or Rust/oxc), self-hosted team mode.
 
