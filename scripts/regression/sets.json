@@ -1,0 +1,119 @@
+{
+  "repos": {
+    "ky": { "url": "https://github.com/sindresorhus/ky.git" },
+    "zod": { "url": "https://github.com/colinhacks/zod.git" },
+    "vite": { "url": "https://github.com/vitejs/vite.git" },
+    "realworld": {
+      "url": "https://github.com/gothinkster/angular-realworld-example-app.git",
+      "branches": {
+        "exp-a": { "from": "cbc6378", "patch": "patches/realworld-exp-a.patch" },
+        "exp-b": { "from": "cbc6378", "patch": "patches/realworld-exp-b.patch" },
+        "exp-c": { "from": "cbc6378", "patch": "patches/realworld-exp-c.patch" }
+      }
+    },
+    "bitwarden": { "url": "https://github.com/bitwarden/clients.git" },
+    "qwik": { "url": "https://github.com/QwikDev/qwik.git" }
+  },
+  "sets": {
+    "r1": {
+      "about": "The 29 comparisons every analysis change is checked on since R1: 6 commits each of ky, zod and vite, 8 of the Angular 11 RealWorld app, 3 experiments on it. No plugins.",
+      "comparisons": [
+        ["ky", "0d59458"],
+        ["ky", "071a9b9"],
+        ["ky", "d6e049a"],
+        ["ky", "323b98f"],
+        ["ky", "a8753dc"],
+        ["ky", "b28ba90"],
+        ["zod", "f448c44d"],
+        ["zod", "be5dfa72"],
+        ["zod", "10dda3a3"],
+        ["zod", "b1970f64"],
+        ["zod", "c7eb014e"],
+        ["zod", "d821685e"],
+        ["vite", "24bd3316f"],
+        ["vite", "94d008034"],
+        ["vite", "89574f6d9"],
+        ["vite", "5a3a010ee"],
+        ["vite", "6894f5cbc"],
+        ["vite", "cf5c0288d"],
+        ["realworld", "ecd93aa"],
+        ["realworld", "05a1264"],
+        ["realworld", "2faae23"],
+        ["realworld", "803e10c"],
+        ["realworld", "2a16a9d"],
+        ["realworld", "5da067f"],
+        ["realworld", "c023198"],
+        ["realworld", "07f7fce"],
+        ["realworld", "cbc6378", "exp-a"],
+        ["realworld", "cbc6378", "exp-b"],
+        ["realworld", "cbc6378", "exp-c"]
+      ]
+    },
+    "bitwarden": {
+      "about": "Bitwarden clients (Angular monorepo, Nx): the 10 template-touching commits used since A2. With the Angular plugin.",
+      "plugins": ["angular"],
+      "comparisons": [
+        ["bitwarden", "197b912"],
+        ["bitwarden", "1f1d510"],
+        ["bitwarden", "2b5ba9a"],
+        ["bitwarden", "55465e2"],
+        ["bitwarden", "5b580cd"],
+        ["bitwarden", "5c8acda"],
+        ["bitwarden", "5f2b6fa"],
+        ["bitwarden", "6d07b79"],
+        ["bitwarden", "737ee3f"],
+        ["bitwarden", "7740c96"]
+      ]
+    },
+    "bitwarden-projects": {
+      "about": "Bitwarden commits whose changes span 3 or more projects (V7 measurements). With the Angular plugin.",
+      "plugins": ["angular"],
+      "comparisons": [
+        ["bitwarden", "9ce55cd"],
+        ["bitwarden", "737ee3f"],
+        ["bitwarden", "12b0923"],
+        ["bitwarden", "787bad6"],
+        ["bitwarden", "9014aef"],
+        ["bitwarden", "31dda4f"],
+        ["bitwarden", "cbf86c2"],
+        ["bitwarden", "58af82a"]
+      ]
+    },
+    "qwik-docs": {
+      "about": "Qwik's monorepo: the 30 latest non-merge commits touching its docs site's routes when Q1 was planned (docs site, e2e apps, packages). With the Qwik plugin.",
+      "plugins": ["qwik"],
+      "comparisons": [
+        ["qwik", "bdbd08290"],
+        ["qwik", "cfc666732"],
+        ["qwik", "40b622af4"],
+        ["qwik", "eb9e2a346"],
+        ["qwik", "f1cb4d7fb"],
+        ["qwik", "4ea81698f"],
+        ["qwik", "6a320eaa3"],
+        ["qwik", "6d589d0a9"],
+        ["qwik", "f468af96c"],
+        ["qwik", "538b9a99a"],
+        ["qwik", "bfd831448"],
+        ["qwik", "8889fa159"],
+        ["qwik", "5120e6cf6"],
+        ["qwik", "c645d4886"],
+        ["qwik", "f8d02e8d8"],
+        ["qwik", "cc7572274"],
+        ["qwik", "95683626f"],
+        ["qwik", "f7ed58cfc"],
+        ["qwik", "b4b8c1b3e"],
+        ["qwik", "4b24e0f4a"],
+        ["qwik", "0f4ba147b"],
+        ["qwik", "28675cc9d"],
+        ["qwik", "4e089ff93"],
+        ["qwik", "aa4693522"],
+        ["qwik", "65661bf49"],
+        ["qwik", "e7451ab2b"],
+        ["qwik", "df6438398"],
+        ["qwik", "7227b5365"],
+        ["qwik", "1df6462d3"],
+        ["qwik", "7bd2889aa"]
+      ]
+    }
+  }
+}

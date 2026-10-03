@@ -1,0 +1,31 @@
+From 02291d00f0dca676540ad2ccf531577672a65f0d Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Fri, 2 Oct 2026 07:03:09 +0000
+Subject: [PATCH] B: remove deleteArticle (template still calls it)
+
+---
+ src/app/article/article.component.ts | 8 --------
+ 1 file changed, 8 deletions(-)
+
+diff --git a/src/app/article/article.component.ts b/src/app/article/article.component.ts
+index c56cd38..4d9eba0 100644
+--- a/src/app/article/article.component.ts
++++ b/src/app/article/article.component.ts
+@@ -65,14 +65,6 @@ export class ArticleComponent implements OnInit {
+     this.article.author.following = following;
+   }
+ 
+-  deleteArticle() {
+-    this.isDeleting = true;
+-
+-    this.articlesService.destroy(this.article.slug).subscribe(success => {
+-      this.router.navigateByUrl('/');
+-    });
+-  }
+-
+   populateComments() {
+     this.commentsService
+       .getAll(this.article.slug)
+-- 
+2.43.0
+
