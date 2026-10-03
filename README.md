@@ -187,5 +187,13 @@ node packages/cli/dist/bin.js diff main
 |---|---|
 | `packages/core` | Analysis engine: git, symbols, diff, references, detectors, graph JSON |
 | `packages/cli` | `cpr` command line |
-| `packages/viewer` | Graph UI (phase 2) |
+| `packages/forge` | GitHub and GitLab APIs |
+| `packages/viewer` | Graph viewer served by `cpr view` and `cpr pr` |
+| `packages/plugin-angular`, `packages/plugin-qwik` | Framework plugins |
 | `spikes/ts7` | TypeScript 7 API experiment (outside the workspace) |
+
+Changes to the analysis are checked on real repositories, not only fixtures:
+`scripts/regression/` runs pinned commits of ky, zod, vite, RealWorld, Bitwarden and Qwik on two
+builds and compares edges, findings and time; `scripts/viewer/measure.mjs` times the viewer on a
+graph in Chromium. `CLAUDE.md` (and one per package) and `.claude/skills/` hold the working rules
+and procedures for Claude Code.

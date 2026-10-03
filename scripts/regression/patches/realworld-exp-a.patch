@@ -1,0 +1,40 @@
+From 30e859fb43e299a7ce98649fd7fc590822783535 Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Fri, 2 Oct 2026 07:03:09 +0000
+Subject: [PATCH] A: share button
+
+---
+ src/app/article/article.component.html | 1 +
+ src/app/article/article.component.ts   | 4 ++++
+ 2 files changed, 5 insertions(+)
+
+diff --git a/src/app/article/article.component.html b/src/app/article/article.component.html
+index 4a62400..77e5146 100644
+--- a/src/app/article/article.component.html
++++ b/src/app/article/article.component.html
+@@ -3,6 +3,7 @@
+   <div class="banner">
+     <div class="container">
+       <h1>{{ article.title }}</h1>
++      <button class="btn btn-sm" (click)="shareArticle()">Share</button>
+ 
+       <app-article-meta [article]="article">
+ 
+diff --git a/src/app/article/article.component.ts b/src/app/article/article.component.ts
+index c56cd38..d6da5e4 100644
+--- a/src/app/article/article.component.ts
++++ b/src/app/article/article.component.ts
+@@ -65,6 +65,10 @@ export class ArticleComponent implements OnInit {
+     this.article.author.following = following;
+   }
+ 
++  shareArticle() {
++    navigator.clipboard.writeText(window.location.href);
++  }
++
+   deleteArticle() {
+     this.isDeleting = true;
+ 
+-- 
+2.43.0
+
