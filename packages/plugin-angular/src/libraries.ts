@@ -1,4 +1,4 @@
-import { dirname, join } from 'node:path';
+import { dirname, join, posix } from 'node:path';
 import type { PluginContext, ts } from '@cpr/core';
 import type { NgClass, NgKind } from './classes.js';
 
@@ -24,7 +24,13 @@ const MAX_DEPTH = 10;
 
 /** The Angular classes of the libraries a revision imports, as its templates see them. */
 export interface Libraries {
-  classes: NgClass[];
+  /**
+   * Per dependency root — the folder whose `node_modules` a project uses — the library classes
+   * its files import. One root in most repos; one per project when each installs its own.
+   */
+  byRoot: Map<string, NgClass[]>;
+  /** A repo file's dependency root (`.` for the repo's own); `''` when no folder above has one. */
+  rootOf: (file: string) => string;
   warnings: string[];
 }
 
@@ -78,7 +84,68 @@ const metaCache = new WeakMap<ts.ClassDeclaration, LibraryMeta | 'unknown' | nul
  */
 export function libraryClasses(context: PluginContext): Libraries {
   const reader = new Reader(context.ts, context.root);
-  // Entry points to read, each resolved from the first file that imports it.
+  const rootOf = dependencyRoots(context);
+  // What each dependency root's files import (without installed dependencies: nothing to read).
+  const imports = new Map<string, { spec: string; from: string }[]>();
+  for (const path of context.sourceFiles()) {
+    const sf = context.syntax(path);
+    const root = rootOf(path);
+    if (!sf || root === '') continue;
+    let list = imports.get(root);
+    if (!list) imports.set(root, (list = []));
+    for (const spec of importedSpecifiers(context.ts, sf)) {
+      list.push({ spec, from: join(context.root, path) });
+    }
+  }
+
+  const byRoot = new Map<string, NgClass[]>();
+  const unreadable = new Set<string>();
+  for (const [root, list] of imports) {
+    byRoot.set(root, scanRoot(context, reader, list, unreadable));
+  }
+
+  const warnings: string[] = [];
+  if (unreadable.size > 0) {
+    const names = [...unreadable];
+    const more = names.length > 3 ? ` and ${names.length - 3} more` : '';
+    warnings.push(
+      `${names.length} Angular library ${names.length === 1 ? 'class has' : 'classes have'} ` +
+        `metadata in a form CPR cannot read, so templates do not match ${names.length === 1 ? 'it' : 'them'}: ` +
+        `${names.slice(0, 3).join(', ')}${more}`,
+    );
+  }
+  return { byRoot, rootOf, warnings };
+}
+
+/** For each repo file, the nearest folder above it holding `node_modules`. */
+function dependencyRoots(context: PluginContext): (file: string) => string {
+  const cache = new Map<string, string>();
+  const at = (folder: string): string => {
+    let found = cache.get(folder);
+    if (found === undefined) {
+      const absolute = folder === '.' ? context.root : join(context.root, folder);
+      found = context.ts.sys.directoryExists(join(absolute, 'node_modules'))
+        ? folder
+        : folder === '.'
+          ? ''
+          : at(posix.dirname(folder));
+      cache.set(folder, found);
+    }
+    return found;
+  };
+  return (file) => at(posix.dirname(file));
+}
+
+/**
+ * The library classes one dependency root's files import: entry points resolved from the first
+ * file importing each, plus the entry points their NgModules export from.
+ */
+function scanRoot(
+  context: PluginContext,
+  reader: Reader,
+  imports: readonly { spec: string; from: string }[],
+  unreadable: Set<string>,
+): NgClass[] {
   const queue: { spec: string; from: string }[] = [];
   const queued = new Set<string>();
   const enqueue = (spec: string, from: string) => {
@@ -86,16 +153,11 @@ export function libraryClasses(context: PluginContext): Libraries {
     queued.add(spec);
     queue.push({ spec, from });
   };
-  for (const path of context.sourceFiles()) {
-    const sf = context.syntax(path);
-    if (!sf) continue;
-    for (const spec of importedSpecifiers(context.ts, sf)) enqueue(spec, join(context.root, path));
-  }
+  for (const { spec, from } of imports) enqueue(spec, from);
 
   const classes: NgClass[] = [];
   const seen = new Set<ts.ClassDeclaration>();
   const entries = new Set<string>();
-  const unreadable: string[] = [];
   // NgModules add entry points to the queue while it is read.
   for (let i = 0; i < queue.length; i++) {
     const { spec, from } = queue[i] as { spec: string; from: string };
@@ -114,7 +176,7 @@ export function libraryClasses(context: PluginContext): Libraries {
       if (seen.has(declared.cls)) continue;
       seen.add(declared.cls);
       if (meta === 'unknown') {
-        unreadable.push(`${exportName} (${spec})`);
+        unreadable.add(`${exportName} (${spec})`);
       } else if (meta.kind === 'NgModule') {
         for (const next of moduleExports(context.ts, declared)) enqueue(next, declared.dts.file);
       } else {
@@ -128,7 +190,7 @@ export function libraryClasses(context: PluginContext): Libraries {
     if (metadata === undefined) continue;
     const viewEngine = viewEngineClasses(metadata);
     if (!viewEngine) {
-      unreadable.push(`${spec} metadata.json`);
+      unreadable.add(`${spec} metadata.json`);
       continue;
     }
     for (const next of viewEngine.follow) enqueue(next, file);
@@ -140,17 +202,7 @@ export function libraryClasses(context: PluginContext): Libraries {
       classes.push(libraryClass(spec, exportName, declared, meta));
     }
   }
-
-  const warnings: string[] = [];
-  if (unreadable.length > 0) {
-    const more = unreadable.length > 3 ? ` and ${unreadable.length - 3} more` : '';
-    warnings.push(
-      `${unreadable.length} Angular library ${unreadable.length === 1 ? 'class has' : 'classes have'} ` +
-        `metadata in a form CPR cannot read, so templates do not match ${unreadable.length === 1 ? 'it' : 'them'}: ` +
-        `${unreadable.slice(0, 3).join(', ')}${more}`,
-    );
-  }
-  return { classes, warnings };
+  return classes;
 }
 
 /** `@angular/material/button` → `@angular/material`; `rxjs/operators` → `rxjs`. */

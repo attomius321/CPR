@@ -33,6 +33,7 @@ import {
 const VERSION = '0.1.0';
 
 const TEST_OR_STORY = /\.(?:spec|test|stories)\.[cm]?tsx?$/;
+const ANGULAR_IMPORT = /from\s*['"]@angular\/core['"/]/;
 
 /** Lifecycle hooks Angular calls by name, `implements` or not. */
 const LIFECYCLE_HOOKS = new Set([
@@ -58,11 +59,17 @@ const SIGNATURE_OPTIONS: Record<string, ReadonlySet<string>> = {
 
 /** What one revision holds for the plugin: its Angular classes and their templates. */
 interface Revision {
-  syntax: Syntax;
+  /** Template syntax for a file: its project's Angular version decides. */
+  syntaxOf: (file: string) => Syntax;
   classes: NgClass[];
   byId: Map<string, NgClass>;
-  /** Directives, components and pipes, for matching templates. */
-  registry: Registry;
+  /**
+   * Directives, components and pipes a file's templates can use: the repo's, and the libraries
+   * installed for its project.
+   */
+  registryOf: (file: string) => Registry;
+  /** Every registry in use, for what a change takes away from templates. */
+  registries: () => Registry[];
   warnings: string[];
   /** Classes with a template or host bindings that are not exported. */
   unexported: string[];
@@ -81,8 +88,11 @@ const angular: TsPlugin = {
   version: VERSION,
   apiVersion: 1,
 
+  // At the root, or in any project below it (a repo can hold several apps).
   applies: (revision) =>
-    dependsOnAngular(revision.packageJson) || !!revision.readFile('angular.json'),
+    dependsOnAngular(revision.packageJson) ||
+    !!revision.readFile('angular.json') ||
+    revision.sourceFiles().some((file) => ANGULAR_IMPORT.test(revision.syntax(file)?.text ?? '')),
 
   matches: (path) => path.endsWith('.html'),
 
@@ -167,18 +177,62 @@ function dependsOnAngular(manifest: Record<string, unknown> | undefined): boolea
   });
 }
 
-/** The project's Angular major version: installed, or from package.json. */
-function angularMajor(revision: PluginContext): number | undefined {
-  const installed = revision.readFile('node_modules/@angular/core/package.json');
-  if (installed) {
-    try {
-      const version = (JSON.parse(installed) as { version?: unknown }).version;
-      if (typeof version === 'string') return Number.parseInt(version, 10);
-    } catch {
-      // fall back to package.json
+/**
+ * The Angular major version of a file's project: in the nearest folder above it that says, the
+ * installed `@angular/core`, else the `@angular/core` its `package.json` asks for.
+ */
+function angularVersions(revision: PluginContext): (file: string) => number | undefined {
+  const cache = new Map<string, number | undefined>();
+  const at = (folder: string): number | undefined => {
+    if (cache.has(folder)) return cache.get(folder);
+    const prefix = folder === '.' ? '' : `${folder}/`;
+    let major = installedMajor(
+      revision.readFile(`${prefix}node_modules/@angular/core/package.json`),
+    );
+    if (major === undefined) {
+      const manifest =
+        folder === '.'
+          ? revision.packageJson
+          : parseJson(revision.readFile(`${prefix}package.json`));
+      major = requestedMajor(manifest);
     }
-  }
-  const manifest = revision.packageJson;
+    if (major === undefined && folder !== '.') major = at(posix.dirname(folder));
+    cache.set(folder, major);
+    return major;
+  };
+  return (file) => at(posix.dirname(file));
+}
+
+/**
+ * The Angular workspace a file belongs to: the nearest folder above it holding `angular.json`
+ * (`.` for the root); `''` outside every workspace. Apps of different workspaces never use each
+ * other's components.
+ */
+function workspaces(revision: PluginContext): (file: string) => string {
+  const cache = new Map<string, string>();
+  const at = (folder: string): string => {
+    let found = cache.get(folder);
+    if (found === undefined) {
+      const prefix = folder === '.' ? '' : `${folder}/`;
+      found =
+        revision.readFile(`${prefix}angular.json`) !== undefined
+          ? folder
+          : folder === '.'
+            ? ''
+            : at(posix.dirname(folder));
+      cache.set(folder, found);
+    }
+    return found;
+  };
+  return (file) => at(posix.dirname(file));
+}
+
+function installedMajor(text: string | undefined): number | undefined {
+  const version = (parseJson(text) as { version?: unknown } | undefined)?.version;
+  return typeof version === 'string' ? Number.parseInt(version, 10) : undefined;
+}
+
+function requestedMajor(manifest: Record<string, unknown> | undefined): number | undefined {
   for (const field of ['dependencies', 'devDependencies', 'peerDependencies']) {
     const deps = manifest?.[field] as Record<string, unknown> | undefined;
     const range = deps?.['@angular/core'];
@@ -188,22 +242,65 @@ function angularMajor(revision: PluginContext): number | undefined {
   return undefined;
 }
 
+function parseJson(text: string | undefined): Record<string, unknown> | undefined {
+  if (text === undefined) return undefined;
+  try {
+    const value: unknown = JSON.parse(text);
+    return value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function revisionOf(revision: PluginContext): Revision {
   const cached = revisions.get(revision.syntax);
   if (cached) return cached;
-  const major = angularMajor(revision);
+  const versionOf = angularVersions(revision);
   const classes = revision.sourceFiles().flatMap((file) => {
     const sf = revision.syntax(file);
     return sf ? angularClasses(revision.ts, file, sf) : [];
   });
   const libraries = libraryClasses(revision);
+  const workspaceOf = workspaces(revision);
+  // What a template can use: the repo's classes of its Angular workspace (an `angular.json`
+  // folder) and those outside every workspace, plus the libraries installed for its project.
+  // One registry per (dependency root, workspace); the repo's own pipes win over a library's.
+  const visible = (workspace: string) =>
+    workspace === ''
+      ? classes
+      : classes.filter((c) => {
+          const own = workspaceOf(c.file);
+          return own === workspace || own === '';
+        });
+  const registries = new Map<string, Registry>();
+  const registryFor = (root: string, workspace: string): Registry => {
+    const key = `${root}\0${workspace}`;
+    let found = registries.get(key);
+    if (!found) {
+      found = registry([...(libraries.byRoot.get(root) ?? []), ...visible(workspace)]);
+      registries.set(key, found);
+    }
+    return found;
+  };
+  const registryOf = (file: string) => registryFor(libraries.rootOf(file), workspaceOf(file));
+  const syntaxes = new Map<boolean, Syntax>();
   const state: Revision = {
     // Block syntax and `@let` arrived in Angular 17; unknown versions get today's syntax.
-    syntax: { blocks: major === undefined || major >= 17 },
+    syntaxOf: (file) => {
+      const major = versionOf(file);
+      const blocks = major === undefined || major >= 17;
+      let syntax = syntaxes.get(blocks);
+      if (!syntax) syntaxes.set(blocks, (syntax = { blocks }));
+      return syntax;
+    },
     classes,
     byId: new Map(classes.map((c) => [c.id, c])),
-    // The repo's own pipes win over a library's of the same name.
-    registry: registry([...libraries.classes, ...classes]),
+    registryOf,
+    registries: () => {
+      // Every template's registry, and the repo-wide one for classes no template sits next to.
+      for (const cls of classes) if (cls.template) registryOf(cls.file);
+      return [registryFor('', ''), ...registries.values()];
+    },
     warnings: [...libraries.warnings],
     unexported: [],
   };
@@ -222,14 +319,14 @@ function templateOf(
   if (template.kind === 'inline') {
     const sf = revision.syntax(cls.file);
     if (!sf) return undefined;
-    return parseTemplate(sf.text, cls.file, state.syntax, template.literal);
+    return parseTemplate(sf.text, cls.file, state.syntaxOf(cls.file), template.literal);
   }
   const text = revision.readFile(template.path);
   if (text === undefined) {
     warn(state, `${cls.file}: templateUrl ${template.path} not found`);
     return undefined;
   }
-  return parseTemplate(text, template.path, state.syntax);
+  return parseTemplate(text, template.path, state.syntaxOf(cls.file));
 }
 
 function warn(state: Revision, message: string): void {
@@ -284,8 +381,9 @@ function buildShim(
     }
     builder.source(templateId(cls), file);
     builder.write(`export function __cpr_template(this: ${self}): void {\n`);
-    const bound = bindTemplate(parsed, state.registry.matcher);
-    writeTemplate(parsed, builder, { bound, use, pipes: state.registry.pipes });
+    const own = state.registryOf(cls.file);
+    const bound = bindTemplate(parsed, own.matcher);
+    writeTemplate(parsed, builder, { bound, use, pipes: own.pipes });
     builder.write('}\n');
   }
   if (cls.host.length > 0) {
@@ -335,9 +433,20 @@ function lostInTemplates(
   const before = revisionOf(base);
   const after = revisionOf(head);
   const gone = new Set(removed.map((r) => r.id));
-  const afterSelectors = new Set([...after.registry.metas.values()].map((m) => m.selector));
+  // Every project's registry: the same repo class is in each, so keep one meta per class.
+  const metasOf = (state: Revision) =>
+    new Map(
+      state
+        .registries()
+        .flatMap((r) => [...r.metas.values()])
+        .map((m) => [m.ref.key, m]),
+    );
+  const pipesOf = (state: Revision) => new Map(state.registries().flatMap((r) => [...r.pipes]));
+  const beforeMetas = metasOf(before);
+  const afterSelectors = new Set([...metasOf(after).values()].map((m) => m.selector));
+  const afterPipes = pipesOf(after);
 
-  const lostDirectives = [...before.registry.metas.values()].filter(
+  const lostDirectives = [...beforeMetas.values()].filter(
     (m) => gone.has(m.ref.key) && !afterSelectors.has(m.selector),
   );
   const lostMatcher = new ng.SelectorMatcher<Meta[]>();
@@ -345,18 +454,16 @@ function lostInTemplates(
     matcherAdd(lostMatcher, meta);
   }
   const lostPipes = new Map(
-    [...before.registry.pipes].filter(
-      ([name, cls]) => gone.has(cls.id) && !after.registry.pipes.has(name),
-    ),
+    [...pipesOf(before)].filter(([name, cls]) => gone.has(cls.id) && !afterPipes.has(name)),
   );
   // Inputs and outputs removed from directives that are still there: binding → member.
   const lostBindings = (kind: 'inputs' | 'outputs') => {
     const lost = new Map<string, Map<string, string>>();
-    for (const meta of before.registry.metas.values()) {
+    for (const meta of beforeMetas.values()) {
       const now = after.byId.get(meta.ref.key);
       if (!now || gone.has(meta.ref.key)) continue;
-      const still = new Set(after.registry[kind](now).values());
-      for (const [property, binding] of before.registry[kind](meta.ref.cls)) {
+      const still = new Set(after.registryOf(now.file)[kind](now).values());
+      for (const [property, binding] of before.registryOf(meta.ref.cls.file)[kind](meta.ref.cls)) {
         const member = `${meta.ref.key}.${property}`;
         if (!gone.has(member) || still.has(binding)) continue;
         lost.set(
@@ -383,7 +490,7 @@ function lostInTemplates(
       const at = positions.of(file, offset);
       if (at) found.push({ target, from, site: { file, ...at }, certainty, viaImport: false });
     };
-    const bound = bindTemplate(parsed, after.registry.matcher);
+    const bound = bindTemplate(parsed, after.registryOf(cls.file).matcher);
     const lostBound = lostDirectives.length ? bindTemplate(parsed, lostMatcher) : undefined;
 
     const visitor = new (class extends ng.CombinedRecursiveAstVisitor {

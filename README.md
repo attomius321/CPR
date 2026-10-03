@@ -134,6 +134,12 @@ counts as used, and `(ngModelChange)="save($event)"` or `#f="ngForm"` are typed 
 dependencies before CPR runs. In the viewer, a template opens with its own diff, and comments on
 its lines go to the `.html` file.
 
+Repos holding several apps work too, at any depth and with nothing at the root: each file's
+imports resolve with its own project's `paths` and `baseUrl` (the `tsconfig.app.json`,
+`tsconfig.lib.json` or `tsconfig.json` it is built with), each template is read with its app's
+Angular version and installed libraries, and an app's templates only use components of its own
+Angular workspace (its `angular.json` folder) and of shared code outside every workspace.
+
 ```jsonc
 // cpr.config.json, at the repository root (read from your working folder)
 { "plugins": ["angular"] }

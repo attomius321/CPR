@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "module": "es2020",
+    "moduleResolution": "node",
+    "target": "es2015",
+    "experimentalDecorators": true,
+    "strict": true
+  }
+}

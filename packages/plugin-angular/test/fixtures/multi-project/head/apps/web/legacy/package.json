@@ -1,0 +1,8 @@
+{
+  "name": "legacy",
+  "private": true,
+  "dependencies": {
+    "@acme/badge": "^1.0.0",
+    "@angular/core": "~11.2.0"
+  }
+}

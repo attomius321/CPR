@@ -160,4 +160,21 @@ describe('the Angular hint', () => {
     expect(code).toBe(0);
     expect(stderr).toBe('hint: Angular project: add --plugin angular to analyze templates\n');
   });
+
+  it('also when the Angular app lives in a subfolder', async () => {
+    repo.write({
+      // Nothing Angular at the root: only the app's own package.json says so.
+      'package.json': '{ "name": "two-apps", "private": true }\n',
+      'apps/web/package.json': '{ "dependencies": { "@angular/core": "~11.2.0" } }\n',
+      'apps/web/src/menu.component.ts': 'export class MenuComponent {\n  open = false;\n}\n',
+      'apps/web/src/menu.component.html': '<nav>{{ open }}</nav>\n',
+    });
+    const base = repo.commit('nested app');
+    repo.write({ 'apps/web/src/menu.component.html': '<nav *ngIf="open">menu</nav>\n' });
+    repo.commit('nested template');
+
+    const { code, stderr } = await cpr(['diff', base, 'HEAD'], repo.root);
+    expect(code).toBe(0);
+    expect(stderr).toBe('hint: Angular project: add --plugin angular to analyze templates\n');
+  });
 });

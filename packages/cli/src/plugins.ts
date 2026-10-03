@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { isAbsolute, join, resolve } from 'node:path';
+import { isAbsolute, join, posix, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CprError, PLUGIN_API_VERSION, type TsPlugin } from '@cpr/core';
 
@@ -134,7 +134,8 @@ function isPlugin(value: unknown): value is TsPlugin {
 
 /**
  * An Angular project reviewed without the Angular plugin, with changed templates: a hint, since
- * template users of component members are otherwise invisible.
+ * template users of component members are otherwise invisible. A template's project is the
+ * nearest `package.json` above it, up to the repo root (repos can hold several apps).
  */
 export function angularHint(
   plugins: readonly TsPlugin[],
@@ -142,15 +143,31 @@ export function angularHint(
   repoRoot: string,
 ): string | undefined {
   if (plugins.some((p) => p.name === 'angular')) return undefined;
-  if (!changedFiles.some((f) => f.path.endsWith('.html'))) return undefined;
-  let manifest: { dependencies?: unknown; devDependencies?: unknown };
+  const templates = changedFiles.filter((f) => f.path.endsWith('.html'));
+  const checked = new Map<string, boolean>();
+  const usesAngular = (folder: string): boolean => {
+    const known = checked.get(folder);
+    if (known !== undefined) return known;
+    const manifest = readManifest(join(repoRoot, folder, 'package.json'));
+    const result = manifest
+      ? [manifest.dependencies, manifest.devDependencies, manifest.peerDependencies].some(
+          (deps) => !!deps && typeof deps === 'object' && '@angular/core' in deps,
+        )
+      : folder !== '.' && usesAngular(posix.dirname(folder));
+    checked.set(folder, result);
+    return result;
+  };
+  return templates.some((f) => usesAngular(posix.dirname(f.path)))
+    ? 'Angular project: add --plugin angular to analyze templates'
+    : undefined;
+}
+
+function readManifest(
+  path: string,
+): { dependencies?: unknown; devDependencies?: unknown; peerDependencies?: unknown } | undefined {
   try {
-    manifest = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as typeof manifest;
+    return JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
   } catch {
     return undefined;
   }
-  const depends = [manifest.dependencies, manifest.devDependencies].some(
-    (deps) => !!deps && typeof deps === 'object' && '@angular/core' in deps,
-  );
-  return depends ? 'Angular project: add --plugin angular to analyze templates' : undefined;
 }
