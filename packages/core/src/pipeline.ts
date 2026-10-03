@@ -381,6 +381,7 @@ async function analyzeSources(
     dangling: removed.length > 0 ? adapter.dangling(headRev, removed, baseRev) : [],
     exposure,
     publicApi,
+    passes: passedInputs(refs.head),
   });
 
   lap('detectors');
@@ -433,6 +434,26 @@ function endpoints(refs: EdgeRef[], changed: Set<SymbolId>): SymbolId[] {
     }
   }
   return [...ids];
+}
+
+/**
+ * What each user passes to each symbol it renders in head (`from\0to` → attribute names), over
+ * all its sites; undefined where one site's is unknown.
+ */
+function passedInputs(refs: readonly EdgeRef[]): Map<string, ReadonlySet<string> | undefined> {
+  const passes = new Map<string, Set<string> | undefined>();
+  for (const ref of refs) {
+    const key = `${ref.from}\0${ref.to}`;
+    if (!ref.passes) {
+      passes.set(key, undefined);
+      continue;
+    }
+    if (passes.has(key) && passes.get(key) === undefined) continue;
+    const names = passes.get(key) ?? new Set<string>();
+    for (const name of ref.passes) names.add(name);
+    passes.set(key, names);
+  }
+  return passes;
 }
 
 /** Merges per-side references into edges keyed by (from, to, kind). */

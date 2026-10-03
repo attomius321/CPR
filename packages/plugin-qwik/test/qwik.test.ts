@@ -108,7 +108,7 @@ describe('the qwik plugin, components', () => {
     const analysis = await analyze('qwik-v1');
     // A required prop added, one removed: users that do not change break.
     expect(finding(analysis, V1.badge)?.message).toBe(
-      'Badge changed its signature; 1 of 1 user not updated: default',
+      'Badge changed its props; 1 of 1 user not updated passes a changed prop or misses a new required one: default',
     );
     expect(finding(analysis, V1.tag)?.data).toMatchObject({ compatibility: 'breaking' });
     // An optional prop added: every user keeps working.
@@ -125,7 +125,7 @@ describe('the qwik plugin, components', () => {
       delta: { signature: true, body: false },
     });
     expect(finding(analysis, V1.card)?.message).toBe(
-      'Card changed its signature; 1 of 1 user not updated: default',
+      'Card changed its props; 1 of 1 user not updated passes a changed prop or misses a new required one: default',
     );
   });
 

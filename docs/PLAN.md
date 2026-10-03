@@ -72,7 +72,7 @@ at the risky parts. It runs locally and needs no server.
 | `packages/cli` | Argument parsing, git plumbing, output formatting | `@cpr/core` |
 | `packages/viewer` | Graph UI (phase 2) | `react`, `@xyflow/react` |
 | `packages/plugin-angular` (X1–A2) | Angular templates, as a plugin the CLI loads on request | `@angular/compiler` (types from `@cpr/core`) |
-| `packages/plugin-qwik` (Q1–Q2, planned) | Qwik routes, `component$` props and MDX routes, as a plugin | none (types from `@cpr/core`) |
+| `packages/plugin-qwik` (Q1–Q2) | Qwik routes, `component$` props and MDX routes, as a plugin | none (types from `@cpr/core`) |
 
 ### Language adapter boundary
 
@@ -416,7 +416,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | A3 ✅ | Angular library components, directives and pipes | `async`, `date`, `ngModel`, `routerLink` and Material were plain bindings, and a library pipe's result untyped: links through `@if (x$ \| async; as x)` were lost (19 such blocks in Bitwarden's web app). Now read from installed packages' typings; see below. |
 | V6 ✅ | A graph you can navigate | On a large change the viewer drew 1,288 symbols for 86 changes, in a 9,470 × 85,468 px strip, and every click re-ran the layout. Now: big neighbourhoods as one node, a page of clusters, a map when zoomed out, no relayout while reviewing; see below. |
 | W1 ✅ | Repositories with several projects | A repo whose Angular apps live in subfolders (two apps, two levels deep, nothing at the root) got no template analysis at all, and its `@app/*` and `baseUrl` imports did not resolve. Now each file resolves with its own project's options, and the Angular plugin works per app; see below. |
-| Q1–Q2 | Qwik as the `qwik` plugin | Qwik is TSX and mostly reads right, but what its router calls by name (`onGet`, `head`, loaders, actions) shows as false orphans, an optional prop added to a `component$` is a warning, a required one added to a named props type is missed, and components used only from `.mdx` routes look unused. Planned; see below. |
+| Q1 ✅ (branch), Q2 | Qwik as the `qwik` plugin | Qwik is TSX and mostly reads right, but what its router calls by name (`onGet`, `head`, loaders, actions) shows as false orphans, an optional prop added to a `component$` is a warning, a required one added to a named props type is missed, and components used only from `.mdx` routes look unused. Planned; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -1507,7 +1507,8 @@ next to the Angular 21 app's templates (none on `main`).
 
 ### Q1–Q2 — Qwik, as the `qwik` plugin
 
-**Status:** planned (2026-10-03), on branch `milestone/q1-qwik`; not started.
+**Status:** Q1 done (2026-10-03, branch `milestone/q1-qwik`, not merged yet); Q2 next. As built and
+results: "As built (Q1)" below.
 
 **Problem** (asked: "does it support TSX, specifically Qwik?"). Qwik is TSX, and CPR reads most of
 it right already: `<Counter start={1} />` is a call to `Counter`, an edit inside `component$` or
@@ -1689,20 +1690,69 @@ no new node or edge kinds (`template` and `framework` exist since X1); `plugins`
 `inputs`, then the plugin's `component$` contract, then the hint — the docs-site comparison
 after Q1 — then MDX (Q2) and the comparison again.
 
+#### As built (Q1)
+
+Differences from the plan above, and why:
+
+- **The `contract` hook** is `(revision, declaration: VariableDeclaration | ExportAssignment) →
+  { label, inputs: ts.Type | undefined }`: default-exported components have props too, and a
+  component taking none gets an empty contract (an optional prop added later is then
+  `compatible`, not `unknown`). Core builds the display (`const Badge = component$<{ label:
+  string; tone: string }>`) from the label and the inputs.
+- **It runs in both extraction passes**, not only for changed symbols: `Card`'s code does not
+  change when `CardProps` gains a member, so the syntactic pass must already see the contract to
+  send `Card` to the second one. It stays cheap: props come from the types written in the code
+  (`component$<P>`, `(props: P)`, `const C: Component<P>`) through `getTypeFromTypeNode`, with no
+  inference; only untyped props fall back to the value's type (`Component<P>`).
+- **Input types are the tokens of their declared type** (as for interface members), the checker's
+  text only where there is none: `typeToString` orders a union's members by type creation, which
+  can differ between base and head and would make spurious changes.
+- **Per JSX site** (not planned; found on the docs site): a props change warned about every user
+  not updated, though most do not pass the prop that went away (`Header`'s optional
+  `mobileSidebarOpen`, 9 `<Header />` users). JSX references now record the attributes they pass
+  (`EdgeRef.passes`, `children` included; unknown with a spread); when only inputs changed, a user
+  breaks only if it passes an input that is gone or retyped, or misses one now required. None
+  breaking → ℹ "the 9 users not updated pass props that still fit"; else the message names those
+  that break. Without inputs nothing changes.
+- **Exposure order**: the adapter's `default-export` ("loaded by convention?") is a guess, so a
+  plugin's answer now replaces it; every other adapter answer still comes first.
+- **Projects**: a file's Qwik project is its package (the nearest `package.json` with a name,
+  dependencies or scripts; `{ "type": "module" }` markers are not packages), and Qwik and its
+  router may be named there or above — Qwik's own e2e apps have a bare `package.json` and take
+  Qwik from the monorepo root. The routes folder is read from `routesDir` as a quoted path or
+  built by `resolve`/`join`/`fileURLToPath(new URL(…))` from quoted paths and the config's folder,
+  also through a `const`; anything else warns and uses `src/routes`.
+- **Loaders and actions by type**: a type alias named `Loader` (declared `Loader_2` in the
+  typings), `Loader_2` or `Action` from the router — installed, or, in a monorepo, the package
+  named like it.
+
+**Results.** Fixtures `qwik-v1` (with the fake typings `tsc` agrees with — same 3 errors as the
+real 1.20.1 typings), the same without `node_modules`, and `qwik-v2` (two folders down, nothing at
+the root, `routesDir` from `vite.config.ts`): every row of the table above as planned, plus the
+precision cases (helper in a route module, non-handler in a server plugin, non-loader re-exported
+by `export *`, route-like export outside the routes folder, Qwik 2's non-route `500.tsx`). `--plugin
+qwik` on the 5 core fixtures and with `angular` on 3 Angular fixtures: identical analyses.
+Qwik docs site, 30 commits: without the plugin identical to `main` (findings, nodes, edges); with
+it the 5 router findings are gone (`head` ×2, route `default` ×3), the 2 `Repos` stay, and the 2
+MDX ones wait for Q2; 6 new ℹ, each a real props change now visible (Qwik is not installed there,
+so these components' types were `any`): their users were updated or pass props that still fit.
+No new warning. Cost: +3.9 % (with and without, 30 commits each).
+
 #### Milestones
 
 | # | Milestone | Output |
 |---|---|---|
-| Q1 | Qwik plugin: routes and components | `packages/plugin-qwik`; Qwik and router projects per folder; routes folder from the Vite config; page, layout, error, server plugin, entry and service-worker modules per Qwik's rules (1.x and 2.x); `framework` exposure for router-called exports, loaders and actions (by type, by callee without typings, through re-exports) and app entries; core `contract` hook and `Shape.inputs` compared from the caller's side; `component$` props as the contract; the CLI hint as a list. |
+| Q1 ✅ (branch) | Qwik plugin: routes and components | `packages/plugin-qwik`; Qwik and router projects per folder; routes folder from the Vite config; page, layout, error, server plugin, entry and service-worker modules per Qwik's rules (1.x and 2.x); `framework` exposure for router-called exports, loaders and actions (by type, by callee without typings, through re-exports) and app entries; core `contract` hook and `Shape.inputs` compared from the caller's side; `component$` props as the contract; the CLI hint as a list. |
 | Q2 | Qwik plugin: MDX routes | `.mdx` routes as `template` symbols hashed over their code parts; shims with imports, elements (verbatim when they parse, else names) and expressions, mapped to `.mdx` lines; the MDX provider from the Vite config; removed components and missing props found in MDX; no orphans for components only MDX uses. |
 
-**Proposed decisions** (into §14 with 20–28):
+**Decisions** (29, 30 and 32 taken with Q1; 31 proposed for Q2):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 29 | How Qwik is supported | **A `qwik` plugin on X1's hooks, no new adapter**: router conventions as exposures, `component$` props as the contract (a new optional `contract` hook), `.mdx` routes as templates | Qwik is TSX, which CPR reads already; what it cannot see is what the router calls by name and what `component$` makes of props. |
-| 30 | What a router convention silences | **Only what Qwik's router reads**: the exports it calls by name, values typed as its `Loader`/`Action`, entry modules — by Qwik's own file rules | A route file can hold real orphans too; "everything under `routes/` is used" would hide them. |
+| 30 | What a router convention silences | **Only what Qwik's router reads**: the exports it calls by name, values typed as its `Loader`/`Action` (or made by its constructors), entry modules — by Qwik's own file rules | A route file can hold real orphans too; "everything under `routes/` is used" would hide them. |
 | 31 | Reading MDX | **A line scanner over MDX's code parts, no MDX dependency**, checked against `@mdx-js/mdx` | The plugin needs imports, element tags and their lines, not markdown; an MDX compiler is megabytes of dependencies for that. |
+| 32 | Which users a props change breaks | **Those passing a prop that is gone or retyped, or missing one now required**, read from the attributes at each JSX site (unknown with a spread or outside JSX: may break) | Most users do not pass an optional prop; warning about all of them when one goes away was the only false warning left on Qwik's docs site. |
 
 **Not in Q1–Q2 (later)**: props of plain-function components (Qwik inline components, React) —
 the `inputs` comparison fits them, as a core change for TSX; props declared in another file that

@@ -136,6 +136,48 @@ describe('contracts', () => {
     expect(change(analysis, 'src/icon.ts#default')?.base?.signature).toBe('default = make$<{}>');
   });
 
+  describe('at each JSX use', () => {
+    /** `Badge` with the given props, rendered by a page in another file that does not change. */
+    const jsx = (props: string, element: string) => ({
+      'src/badge.ts': `import { make$ } from './framework';\nexport const Badge = make$((props: ${props}) => props);\n`,
+      'src/page.tsx': `import { Badge } from './badge';\nexport const page = (rest: object) => ${element};\n`,
+    });
+    const run = async (before: string, after: string, element: string) => {
+      const analysis = await analyze(jsx(before, element), jsx(after, element));
+      const found = analysis.findings.find((f) => f.symbol === 'src/badge.ts#Badge');
+      return `${found?.severity}: ${found?.message}`;
+    };
+
+    it('lets users that do not pass a removed or retyped prop be', async () => {
+      expect(await run('{ a: string; b?: number }', '{ a: string }', '<Badge a="x" />')).toBe(
+        'info: Badge changed its props; the user not updated passes props that still fit',
+      );
+      expect(
+        await run('{ a: string; b?: number }', '{ a: string; b?: string }', '<Badge a="x" />'),
+      ).toBe('info: Badge changed its props; the user not updated passes props that still fit');
+    });
+
+    it('names users that pass a removed prop or miss a required one', async () => {
+      expect(await run('{ a: string; b?: number }', '{ a: string }', '<Badge a="x" b={1} />')).toBe(
+        'warning: Badge changed its props; 1 of 1 user not updated passes a changed prop or misses a new required one: page',
+      );
+      expect(
+        await run('{ a: string; b?: number }', '{ a: string; b: number }', '<Badge a="x" />'),
+      ).toBe(
+        'warning: Badge changed its props; 1 of 1 user not updated passes a changed prop or misses a new required one: page',
+      );
+      // Children are passed as `children`.
+      expect(await run('{ children?: string }', '{}', '<Badge>text</Badge>')).toMatch(/^warning:/);
+    });
+
+    it('assumes the worst where it cannot see what is passed', async () => {
+      expect(
+        await run('{ a: string; b?: number }', '{ a: string }', '<Badge a="x" {...rest} />'),
+      ).toMatch(/^warning: .*: page$/);
+      expect(await run('{ a: string; b?: number }', '{ a: string }', 'Badge')).toMatch(/^warning:/);
+    });
+  });
+
   it('lets a plugin say a default export is used, where the adapter guesses', async () => {
     const page = { 'src/pages/home.ts': 'export default function home() { return 1; }\n' };
     const other = { 'src/other.ts': 'export default function other() { return 1; }\n' };

@@ -54,6 +54,7 @@ export function incomingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
         const from = mapped ? mapped.owner : enclosingSymbolId(at, refSf, file);
         if (!from || from === symbol.id) continue;
         const site = mapped ? mapped.site : siteOf(refSf, file, entry.textSpan.start);
+        const passes = jsxAttributes(at);
         edges.set(siteKey(site), {
           from,
           to: symbol.id,
@@ -61,11 +62,39 @@ export function incomingTs(revision: TsRevision, symbol: SymbolDecl): EdgeRef[] 
           resolution: 'resolved',
           ...(possible ? { possible: true as const } : {}),
           site,
+          ...(passes ? { passes } : {}),
         });
       }
     }
   }
   return [...edges.values()];
+}
+
+/**
+ * The attributes a JSX element passes when `name` is its tag (`<Badge>`, `<ui.Badge>`), and
+ * `children` when it has some; undefined for any other reference, and with a spread attribute
+ * (`{...props}`).
+ */
+function jsxAttributes(name: ts.Node): string[] | undefined {
+  let tag = name;
+  while (ts.isPropertyAccessExpression(tag.parent) && tag.parent.name === tag) tag = tag.parent;
+  const element = tag.parent;
+  if (
+    !(ts.isJsxOpeningElement(element) || ts.isJsxSelfClosingElement(element)) ||
+    element.tagName !== tag
+  ) {
+    return undefined;
+  }
+  const passes: string[] = [];
+  for (const attribute of element.attributes.properties) {
+    if (!ts.isJsxAttribute(attribute)) return undefined;
+    passes.push(attribute.name.getText());
+  }
+  // Children between the tags are passed as `children` (React; Qwik slots them).
+  if (ts.isJsxOpeningElement(element) && element.parent.children.length > 0) {
+    passes.push('children');
+  }
+  return passes;
 }
 
 /** What a symbol references: repo symbols, external packages, and calls it cannot resolve. */

@@ -15,6 +15,41 @@ export function compatibility(base: SymbolDecl, head: SymbolDecl): Compatibility
   return compareShapes(base.shape, head.shape);
 }
 
+/**
+ * When two versions differ only in their inputs (a component's props): which users the change
+ * breaks, by the inputs a user passes — one passing an input that is gone or retyped, or not
+ * passing one that is now required. `passed` undefined means unknown: such a user may break.
+ * Undefined when anything else changed too.
+ */
+export function inputsBreak(
+  base: SymbolDecl,
+  head: SymbolDecl,
+): ((passed: ReadonlySet<string> | undefined) => boolean) | undefined {
+  const before = base.shape?.inputs;
+  const after = head.shape?.inputs;
+  if (!before || !after || (base.exported && !head.exported)) return undefined;
+  if (compareShapes(withoutInputs(base.shape), withoutInputs(head.shape)) !== 'compatible') {
+    return undefined;
+  }
+  const mustNotPass = Object.entries(before)
+    .filter(([name, input]) => after[name]?.type !== input.type)
+    .map(([name]) => name);
+  const mustPass = Object.entries(after)
+    .filter(([name, input]) => !input.optional && (before[name]?.optional ?? true))
+    .map(([name]) => name);
+  return (passed) =>
+    !passed ||
+    mustNotPass.some((name) => passed.has(name)) ||
+    mustPass.some((name) => !passed.has(name));
+}
+
+function withoutInputs(shape: Shape | undefined): Shape | undefined {
+  if (!shape) return undefined;
+  const copy = { ...shape };
+  delete copy.inputs;
+  return copy;
+}
+
 export function compareShapes(base: Shape | undefined, head: Shape | undefined): Compatibility {
   if (!base || !head) return 'unknown';
   if (base.rest !== head.rest) return 'breaking';
