@@ -1305,3 +1305,38 @@ repo, a throwing hook), Angular's W1 fixture and an Angular CLI workspace (`shop
 changed; time ×0.97–1.015. Projects phase: 250 ms of 66 s (Bitwarden `cbf86c2`), 7 ms (Qwik
 `f7ed58cfc`). Not verified: Yarn's `workspaces: { packages }` form and an Nx repo without
 workspaces (no fixture, no real repo), an Angular CLI workspace on real code (fixture only).
+
+## V7b — Project frames (2026-10-03, branch `milestone/v7b-project-frames`)
+
+When what the viewer draws spans two or more apps or libraries, each is a frame around its files,
+with its name, kind, folder and how many of its symbols changed; edges between projects are
+heavier, project names are the largest labels on the map, and summaries say across how many
+projects their symbols are. One project, or an older graph: the same layout as before.
+
+**Learned**
+- The plan's prototype check paid off: dagre over frames ran 3–8 times wider than high on
+  Bitwarden (`cbf86c2` 23,924 × 7,549). Rows in dagre's rank order keep callers first and the page
+  between 1.00 and 1.46 times wider than high on all 8 changes, at most as wide as before.
+- Canvas size was the wrong thing to watch. Qwik `f7ed58cfc` got a smaller canvas and panned at
+  3 fps instead of 22: packages placed after the frames (or beside their main user) pulled fans of
+  hundreds of long edges across it, and React Flow draws every edge whose bounding box meets the
+  view. Hiding the frames changed nothing, which pointed at placement, not painting. Drawing a
+  package in the frame it has the most links with (it stays in no project) brought the median
+  edges in view to 106, below the 136 without frames, and panning to 30 fps. "Edges in view
+  around each changed symbol" is now the measure for placement changes (viewer CLAUDE.md).
+- A 1.5 px border is a tenth of a pixel on the map at 7 % zoom: frames there get a ring sized by
+  `--cpr-zoom`, as file names already were.
+- A frame must not take clicks: as a parent node it lies under its files, and a click between them
+  would land on it instead of the canvas. Only its name band takes the pointer.
+
+**Verification**: tests first — layout (frames around their files, parents first, paths from the
+project's folder, frames apart in reading order, `edge-cross` only between two projects, the
+longest folder winning, packages in their main user's frame and in no project, one project equal
+to no projects, islands packed into a page, summaries across projects) were red before the code;
+400 unit tests, 32 e2e (3 new on the npm-workspaces fixture: frames, a click inside a frame,
+names on the map and a click zooming into one; all three fail on V7a's build, for want of
+frames). Real graphs (8 Bitwarden changes with the Angular plugin, 2 Qwik changes with the
+Qwik plugin) against V7a's viewer, back to back: first paint within +7 % (Bitwarden `cbf86c2`
+1,514 → 1,168 ms), pan 59–63 fps on Bitwarden and 23 → 30 fps on Qwik `f7ed58cfc`, no page
+errors; screenshots of the map, a selection and dark mode. Not verified: a real repository with
+an Nx-only or Angular CLI layout in the browser (fixtures only).
