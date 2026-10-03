@@ -1,0 +1,25 @@
+From 24178e546e8d148ebd2c1dd1fc65274bc260c4c6 Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Fri, 2 Oct 2026 07:03:09 +0000
+Subject: [PATCH] C: query needs a page size
+
+---
+ src/app/core/services/articles.service.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/app/core/services/articles.service.ts b/src/app/core/services/articles.service.ts
+index 693ec0c..c80f418 100644
+--- a/src/app/core/services/articles.service.ts
++++ b/src/app/core/services/articles.service.ts
+@@ -12,7 +12,7 @@ export class ArticlesService {
+     private apiService: ApiService
+   ) {}
+ 
+-  query(config: ArticleListConfig): Observable<{articles: Article[], articlesCount: number}> {
++  query(config: ArticleListConfig, pageSize: number): Observable<{articles: Article[], articlesCount: number}> {
+     // Convert any filters over to Angular's URLSearchParams
+     const params = {};
+ 
+-- 
+2.43.0
+
