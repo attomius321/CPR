@@ -153,7 +153,45 @@ code {
 }
 
 .canvas > .react-flow {
-  flex: 1;
+  /* What the panels leave, never under 240px (MIN_CANVAS in Resizer.tsx). */
+  flex: 1 0 240px;
+}
+
+/* ---- resizing the panels ------------------------------------------------------------ */
+
+/* Takes no room: it straddles the panel's edge, over the border. */
+.resizer {
+  position: relative;
+  z-index: 5;
+  flex: none;
+  width: 8px;
+  margin: 0 -4px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.resizer::after {
+  content: '';
+  position: absolute;
+  inset: 0 3px;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.resizer:hover::after,
+.resizer:focus-visible::after,
+.resizer.dragging::after {
+  background: var(--moved);
+}
+
+.resizer:focus-visible {
+  outline: none;
+}
+
+/* While dragging, the pointer stays a resize cursor and text is not selected. */
+.canvas.resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .legend-hint {
@@ -554,7 +592,9 @@ code {
 /* ---- detail panel ------------------------------------------------------------------- */
 
 .panel {
-  width: min(520px, 45vw);
+  flex: 0 1 auto;
+  width: var(--panel-width, min(520px, 45vw));
+  min-width: min(320px, 45vw);
   overflow: auto;
   padding: 0 16px 24px;
   background: var(--panel);
@@ -751,9 +791,10 @@ code {
 
 .sidebar {
   display: flex;
+  flex: 0 1 auto;
   flex-direction: column;
-  width: 300px;
-  min-width: 300px;
+  width: var(--sidebar-width, 300px);
+  min-width: 240px;
   background: var(--panel);
   border-right: 1px solid var(--line);
 }

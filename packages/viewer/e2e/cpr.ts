@@ -77,12 +77,14 @@ async function startCpr(
 
 /**
  * Turns a fixture into two commits of a fresh repo and serves `cpr view HEAD~1 HEAD` from the
- * built CLI. Build first: `pnpm build`.
+ * built CLI, with `args` (e.g. `--plugin angular`). Build first: `pnpm build`.
  */
-export async function serveFixture(name: string): Promise<Running> {
+export async function serveFixture(name: string, args: readonly string[] = []): Promise<Running> {
   const { repo } = fixtureRepo(name);
   const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
-  const { url, child } = await startCpr(['view', 'HEAD~1', 'HEAD'], repo, { CPR_CACHE_DIR: cache });
+  const { url, child } = await startCpr(['view', 'HEAD~1', 'HEAD', ...args], repo, {
+    CPR_CACHE_DIR: cache,
+  });
   return {
     url,
     stop() {
