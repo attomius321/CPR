@@ -120,7 +120,7 @@ rather than contract. Turn one on per run or for the repository:
 
 ```sh
 cpr diff main --plugin angular          # Angular templates, decorators, lifecycle hooks
-cpr diff main --plugin qwik             # Qwik routes and component$ props
+cpr diff main --plugin qwik             # Qwik routes, component$ props, MDX routes
 cpr diff main --plugin ./tools/my-plugin.mjs
 ```
 
@@ -152,7 +152,11 @@ but nothing calls is still an orphan. A `component$`'s props are its signature, 
 `const Badge = component$<{ label: string; tone: string }>`: an optional prop added is
 compatible, a required prop added or one removed is a warning naming the JSX that was not updated
 — also when the props are a named type (`component$<CardProps>`) whose definition changed. Props
-are read from the types in the code, so this works without `node_modules`.
+are read from the types in the code, so this works without `node_modules`. `.mdx` routes are
+templates: their imports, components and `{expressions}` are code (prose edits are no change), so
+a component removed while a page still renders it is an error at that line of the `.mdx`, a
+required prop a page does not pass is a warning naming it, and a component only pages use is no
+orphan — components the MDX provider gives (`providerImportSource`) included.
 
 ```jsonc
 // cpr.config.json, at the repository root (read from your working folder)

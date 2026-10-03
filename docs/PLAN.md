@@ -416,7 +416,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | A3 ✅ | Angular library components, directives and pipes | `async`, `date`, `ngModel`, `routerLink` and Material were plain bindings, and a library pipe's result untyped: links through `@if (x$ \| async; as x)` were lost (19 such blocks in Bitwarden's web app). Now read from installed packages' typings; see below. |
 | V6 ✅ | A graph you can navigate | On a large change the viewer drew 1,288 symbols for 86 changes, in a 9,470 × 85,468 px strip, and every click re-ran the layout. Now: big neighbourhoods as one node, a page of clusters, a map when zoomed out, no relayout while reviewing; see below. |
 | W1 ✅ | Repositories with several projects | A repo whose Angular apps live in subfolders (two apps, two levels deep, nothing at the root) got no template analysis at all, and its `@app/*` and `baseUrl` imports did not resolve. Now each file resolves with its own project's options, and the Angular plugin works per app; see below. |
-| Q1 ✅ (branch), Q2 | Qwik as the `qwik` plugin | Qwik is TSX and mostly reads right, but what its router calls by name (`onGet`, `head`, loaders, actions) shows as false orphans, an optional prop added to a `component$` is a warning, a required one added to a named props type is missed, and components used only from `.mdx` routes look unused. Planned; see below. |
+| Q1 ✅, Q2 ✅ (branches) | Qwik as the `qwik` plugin | Qwik is TSX and mostly reads right, but what its router calls by name (`onGet`, `head`, loaders, actions) shows as false orphans, an optional prop added to a `component$` is a warning, a required one added to a named props type is missed, and components used only from `.mdx` routes look unused. Planned; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -1507,8 +1507,8 @@ next to the Angular 21 app's templates (none on `main`).
 
 ### Q1–Q2 — Qwik, as the `qwik` plugin
 
-**Status:** Q1 done (2026-10-03, branch `milestone/q1-qwik`, not merged yet); Q2 next. As built and
-results: "As built (Q1)" below.
+**Status:** Q1 and Q2 done (2026-10-03; branches `milestone/q1-qwik` and `milestone/q2-qwik-mdx`,
+not merged yet). As built and results: "As built (Q1)" and "As built (Q2)" below.
 
 **Problem** (asked: "does it support TSX, specifically Qwik?"). Qwik is TSX, and CPR reads most of
 it right already: `<Counter start={1} />` is a call to `Counter`, an edit inside `component$` or
@@ -1738,14 +1738,49 @@ MDX ones wait for Q2; 6 new ℹ, each a real props change now visible (Qwik is n
 so these components' types were `any`): their users were updated or pass props that still fit.
 No new warning. Cost: +3.9 % (with and without, 30 commits each).
 
+#### As built (Q2)
+
+- **Template IDs** are `…/index.mdx#(template)`, as Angular's external templates (the viewer and
+  messages call it `index.mdx`); its signature reads `MDX route`. `matches` takes every `.mdx`
+  (it only sees a path); symbols exist for `.mdx` files with code under a routes folder.
+  Prose-only files have none: nothing in them to analyze, and a prose edit is no change.
+- **The scanner** follows MDX's own tokenizer where the plan's sketch was loose: ESM starts only
+  with `import `/`export ` and a space, at column 1, not continuing a paragraph
+  (`import("x").Type` at a line start is prose); frontmatter is skipped; fences count at any
+  indentation (inside list items). Against `@mdx-js/mdx` 3 on the docs site's 243 routes:
+  identical ESM blocks (146) and component elements (585), every content expression found (plus
+  53 attribute expressions of HTML elements, which the scanner also reads), no read errors.
+- **Elements** are copied self-closed (children are content, not props). TSX's parser turned out
+  to accept every valid MDX element tried (it is the more permissive of the two), so the
+  name-reference fallback only guards against scanner misreads.
+- **The MDX provider** is read by syntax: `providerImportSource` resolved with the app's tsconfig
+  (as Vite resolves it), the object `useMDXComponents` returns mapped key → where the provider
+  imports that component, and a shim imports each provided tag under its own name. Tried first:
+  `<__cpr_c.Term>` on the provider's return value — props type-check, but TypeScript's
+  find-references does not follow a shorthand `{ Term }` property to such uses, so the route did
+  not count as a user. Imports it does follow. A provider module's `useMDXComponents` is a
+  framework exposure.
+- An `.mdx` file's `export` blocks (`export const head`) are code of its template, not symbols.
+
+**Results.** Fixture `qwik-mdx`: a component removed while a route renders it → ✖ at the `.mdx`
+line; a required prop a route does not pass → ⚠ naming it (also for a provided component, with
+the provider as a second user); components only routes use → no orphan; a prose and inline-code
+edit → no change; a prose-only page that gains a component → an added template. Viewer: the route
+opens with its own diff and what it renders; a comment on its line goes to the `.mdx` file
+(Playwright, `qwik.spec.ts`). Qwik docs site, 30 commits: without the plugin identical to `main`;
+with it 7 false findings gone — the 5 router ones of Q1, `BenchmarkTable` (rendered only by its
+blog post's `index.mdx`) and `useMDXComponents` (the provider) — both `Repos` kept, no new
+warning, no plugin warning; 69 MDX templates in the graphs. Cost on an idle machine, 6 commits
+alternating: 67.2 s without, 69.7 s with (+3.7 %)..
+
 #### Milestones
 
 | # | Milestone | Output |
 |---|---|---|
 | Q1 ✅ (branch) | Qwik plugin: routes and components | `packages/plugin-qwik`; Qwik and router projects per folder; routes folder from the Vite config; page, layout, error, server plugin, entry and service-worker modules per Qwik's rules (1.x and 2.x); `framework` exposure for router-called exports, loaders and actions (by type, by callee without typings, through re-exports) and app entries; core `contract` hook and `Shape.inputs` compared from the caller's side; `component$` props as the contract; the CLI hint as a list. |
-| Q2 | Qwik plugin: MDX routes | `.mdx` routes as `template` symbols hashed over their code parts; shims with imports, elements (verbatim when they parse, else names) and expressions, mapped to `.mdx` lines; the MDX provider from the Vite config; removed components and missing props found in MDX; no orphans for components only MDX uses. |
+| Q2 ✅ (branch) | Qwik plugin: MDX routes | `.mdx` routes as `template` symbols hashed over their code parts; shims with imports, elements (verbatim when they parse, else names) and expressions, mapped to `.mdx` lines; the MDX provider from the Vite config; removed components and missing props found in MDX; no orphans for components only MDX uses. |
 
-**Decisions** (29, 30 and 32 taken with Q1; 31 proposed for Q2):
+**Decisions** (29, 30 and 32 taken with Q1, 31 with Q2):
 
 | # | Question | Decision | Why |
 |---|---|---|---|

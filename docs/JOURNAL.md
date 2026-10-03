@@ -1165,3 +1165,29 @@ loaded by convention?" guess.
 passing. `--plugin qwik` on the core fixtures and next to `angular` on the Angular fixtures:
 identical analyses. Qwik docs site, 30 commits: without the plugin identical to `main`; with it 5
 false findings gone, no new warning, 6 new ℹ (real props changes), +3.9 % time.
+
+## Q2 — Qwik MDX routes (2026-10-03, branch `milestone/q2-qwik-mdx`)
+
+`.mdx` files under a Qwik app's routes folder become templates: a shim per file renders its
+component elements (self-closed) and expressions under its own imports, mapped back to `.mdx`
+lines, so removed components, props pages do not pass, and components only pages use are seen.
+
+**Learned**
+- MDX's ESM rule is stricter than "a line starting with import": the keyword needs a space after
+  it and cannot continue a paragraph. Qwik's API pages have `import("@qwik.dev/core").JSXOutput`
+  at line starts; the first scanner read those as ESM. Frontmatter sits right before the imports,
+  and fences inside list items are indented 4+ spaces. With those rules the scanner and
+  `@mdx-js/mdx` agree on all 243 routes of the docs site.
+- MDX rejects JS comments in JSX tags, and TSX accepts every valid MDX element tried: the
+  "element that does not parse" case only protects against scanner mistakes.
+- Find-references follows imports and aliases but not a shorthand property to its uses: routing
+  provided components through `useMDXComponents()`'s return value type-checked their props but
+  hid the page as a user. Reading the provider by syntax and importing each provided component
+  into the shim fixed it.
+
+**Verification**: scanner and shim unit tests (frontmatter, fences, inline code, escapes, ESM
+rules, unclosed elements, mapping, the parse fallback), the `qwik-mdx` fixture (red before),
+the viewer test `qwik.spec.ts`, Qwik docs site: without the plugin identical to
+`main`, with it 7 false findings gone (`head` ×2, route `default` ×3, `BenchmarkTable`,
+`useMDXComponents`), both right `Repos` kept, no new warning; +3.7 % time. Full suite: 377 unit
+tests, 29 browser tests.
