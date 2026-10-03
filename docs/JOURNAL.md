@@ -1102,3 +1102,33 @@ before assuming the checkout is on `main`.
 
 **Verification**: `pnpm check` (295 tests), build, 28 e2e tests including the new search test in
 `large-graph.spec.ts`. Fast-forwarded into main (2026-10-03).
+
+## Qwik spike (2026-10-03, branch `milestone/q1-qwik`)
+
+Groundwork for Q1–Q2 (PLAN). Nothing in CPR changed.
+
+**What CPR does today** on a scratch app with the real typings (`@builder.io/qwik` and
+`qwik-city` 1.20.1, checked by `tsc`): JSX elements are calls, `component$` bodies and `$`
+handlers fold into the component, a required prop added to an inline props type warns with the
+page that does not pass it. Wrong: router-called exports (`onGet`, `onRequest`, `head`, loaders,
+actions, a loader re-exported by a route) are orphans; an optional prop added warns (a
+`component$` variable has no shape, so its type text is compared: `unknown`); a required member
+added to a named `CardProps` is only ℹ on the interface, since `Component<CardProps>` does not
+change and JSX sites never name it.
+
+**Qwik's docs site** (`QwikDev/qwik` `packages/docs`, Qwik 2 RC; 30 latest non-merge commits
+touching its routes' TS files; blobless clone, no install): 9 `orphan-added`, 7 false — 5 router
+exports (`head` ×2, `default` ×3), 1 component rendered only from `.mdx`, 1 MDX provider named
+in `vite.config.ts`. The 2 right ones are tutorial code whose only use is commented out.
+
+**Route rules**, read in Qwik's own Vite plugin (`getSourceFile`, `walkServerPlugins`):
+1.20.1 and 2.0.0-rc.0 agree on `index`/`layout`/`plugin`/`entry`/`service-worker` names and
+extensions; error pages differ (1.x any `400`–`599`, 2.x `404` and `error`). Server plugins are
+read from one folder, not recursively. The request handler reads `onRequest`…`onOptions`,
+`head`, `default`, `onStaticGenerate`, and (2.x) `routeConfig`, `eTag`, `cacheKey`; loaders and
+actions are collected from every export of a page or layout module by their `__brand`.
+
+**MDX** on the docs site: 243 `.mdx` routes, 144 with imports (347 lines, 372 names), 575
+elements whose tag is an imported name (2 more inside code fences); 138 imported names are not
+tags, mostly images in `src={…}`. A line scanner finds what the plugin needs; checking it
+against `@mdx-js/mdx` is part of Q2's verification.
