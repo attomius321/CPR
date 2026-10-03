@@ -1239,3 +1239,5 @@ this branch: identical (29 comparisons, 927 edges); `compare.mjs` on a doctored 
 dropped edge, a new finding and an error; the `qwik-docs` set with the plugin: the same findings
 as the CLI's earlier run on all 30 commits, no error; `measure.mjs` on two Bitwarden graphs
 (`737ee3f`: first paint 1.1 s under load, no page error).
+
+Merged into main (2026-10-03).
