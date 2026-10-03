@@ -1801,7 +1801,8 @@ shows); `$` closures (`onClick$`, `useTask$`) as symbols of their own; links to 
 
 ### V7 — Apps in the graph
 
-**Status:** planned (2026-10-03), on branch `milestone/v7-app-boundaries`; not started.
+**Status:** V7a built (2026-10-03) on branch `milestone/v7a-projects-in-graph`, from the plan's
+branch `milestone/v7-app-boundaries`; V7b and V7c not started.
 
 **Problem** (asked: "In the UI view, the boundary between applications is visible?"). Not really.
 In a repo with several apps and libraries the viewer draws one box per file, labelled with its
@@ -1976,6 +1977,31 @@ project, today's drawing.
 | 34 | How the graph says it | **A top-level `projects` list, no field on nodes**; consumers use the longest folder prefix | Nodes stay as they are (smaller graphs, no change for single-project repos); base-only files resolve the same way. |
 | 35 | When frames are drawn | **Only with two or more projects**; otherwise today's layout, unchanged | A single-app repo gains nothing from one frame around everything, and every existing view stays as reviewers know it. |
 | 36 | Where frames go | **Files packed inside their project; frames laid out by the links between them, callers left of what they call**; size-packing if that runs too wide | Bitwarden's changes run from apps into shared libraries (16–45 % of drawn edges cross projects); Qwik's projects are islands — both read best with each project in one place. |
+
+#### As built — V7a
+
+- **Which projects are listed**: those holding every file the graph names — changed files (also
+  non-code and ignored ones, and old paths of renames) and the files of its nodes — not only the
+  symbols' files. The longest-folder rule must give the right answer for every path in the graph:
+  listing only the symbols' projects would put a changed `apps/web/README.md` into the root
+  project when `apps/web` holds no symbol. The list appears with two or more of them; the viewer
+  decides when to draw frames (V7b: by the projects of what it draws).
+- **"The repo declares"** (rule 2's condition): workspace globs, an `nx.json` at the root, or a
+  plugin's projects. An Nx `project.json` counts only with `nx.json`, so a stray `project.json`
+  in another kind of repo is not a project.
+- **Nx before plugins** for the name and kind of a folder declared both ways: Bitwarden's
+  `libs/components` is an `application` in `angular.json` (its Storybook) and a `library` in Nx,
+  which is what it is.
+- **The workspace globs reader** (`src/workspace.ts`) is shared with the TypeScript adapter, and
+  `**` now also matches no folder: `libs/**/*` holds `libs/common`, as in npm. The old pattern
+  missed every direct child, so Bitwarden's `libs/common` was not a workspace member for the
+  adapter's package mapping either. It reads `package.json` with `JSON.parse` (npm's rule) where
+  the adapter used TypeScript's lenient config reader.
+- **Hook**: `TsPlugin.projects(context) → { folder, name, kind? }[]` (plugin API stays 1);
+  `LanguageAdapter.projects?(revision)` adds the plugin's name. Folders are normalized
+  (`./src/` → `src`, `.` → `''`); one outside the repository is skipped with a warning.
+- **Base-only files** are read from base; when head and base give a project for the same folder,
+  head's is listed (a renamed package shows its new name).
 
 **Not in V7 (later)**: collapsing a whole frame into one node (V6's summaries already cut
 context); grouping findings by project in the CLI summary and PR comments; colouring projects.

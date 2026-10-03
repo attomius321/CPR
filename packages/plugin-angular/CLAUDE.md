@@ -3,7 +3,7 @@
 `--plugin angular`: templates become symbols that use their component's members; decorator
 configuration is not contract; lifecycle hooks and host listeners are not orphans; templates see
 the repo's and installed libraries' components, directives and pipes. Design and history:
-`docs/PLAN.md` sections X1, A1–A2, A3, W1.
+`docs/PLAN.md` sections X1, A1–A2, A3, W1, V7.
 
 ## Where things are
 
@@ -22,6 +22,9 @@ the repo's and installed libraries' components, directives and pipes. Design and
   nearest `node_modules`; a template only sees components of its own Angular workspace (nearest
   `angular.json`) and shared code outside every workspace.
 - Without `node_modules`, results must equal A2's (no library classes), never a wrong guess.
+- `projects` (V7a) declares every `angular.json`'s projects (`root` from the workspace folder;
+  `projectType` as kind): `bit-web` exists only there, and an Angular CLI workspace's
+  `projects/*` apps have no other marker.
 - Shims are virtual files: an import there that no longer resolves is how removed components and
   pipes are found — keep their positions mapped to the template.
 

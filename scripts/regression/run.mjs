@@ -68,6 +68,7 @@ for (const [repo, ...revs] of set.comparisons) {
       })),
       findings: analysis.findings.map((f) => `${f.severity} ${f.rule} ${f.symbol} — ${f.message}`),
       warnings: analysis.warnings,
+      ...(analysis.projects ? { projects: analysis.projects } : {}),
     });
   } catch (error) {
     run.error = String(error?.stack ?? error).slice(0, 600);

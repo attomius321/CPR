@@ -111,6 +111,11 @@ interfaces/
 !apps/web/interfaces/public.ts
 ```
 
+In a monorepo the graph JSON also says which app or library each file belongs to (`projects`, see
+the [graph schema](docs/graph-schema.md#project)): workspace members (npm, Yarn, pnpm), Nx projects
+and, with `--plugin angular`, the projects of `angular.json`; when a repository declares none,
+its packages and folders with their own `tsconfig.json`.
+
 ### Plugins
 
 Framework knowledge comes as plugins, so the TypeScript/JavaScript analysis stays the same for
