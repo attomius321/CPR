@@ -22,13 +22,16 @@ async function graphOf(name: string): Promise<Graph> {
 }
 
 describe('buildGraph', () => {
-  it.each(['service', 'callers', 'detectors'])('builds a valid graph for %s', async (name) => {
-    const graph = await graphOf(name);
-    expect(validate(graph), JSON.stringify(validate.errors, null, 2)).toBe(true);
-    await expect(`${JSON.stringify(graph, null, 2)}\n`).toMatchFileSnapshot(
-      `./__snapshots__/graph-${name}.json`,
-    );
-  });
+  it.each(['service', 'callers', 'detectors', 'projects'])(
+    'builds a valid graph for %s',
+    async (name) => {
+      const graph = await graphOf(name);
+      expect(validate(graph), JSON.stringify(validate.errors, null, 2)).toBe(true);
+      await expect(`${JSON.stringify(graph, null, 2)}\n`).toMatchFileSnapshot(
+        `./__snapshots__/graph-${name}.json`,
+      );
+    },
+  );
 
   it('fills stats and versions', async () => {
     const graph = await graphOf('callers');
@@ -44,6 +47,17 @@ describe('buildGraph', () => {
     const graph = await graphOf('callers');
     const total = graph.nodes.find((n) => n.id === 'src/app.ts#total');
     expect(total).toMatchObject({ status: 'unchanged', base: null, head: { file: 'src/app.ts' } });
+  });
+
+  it('lists projects only when the change spans two or more', async () => {
+    expect((await graphOf('projects')).projects?.map((p) => p.folder)).toEqual([
+      '',
+      'apps/admin',
+      'apps/shop',
+      'libs/legacy',
+      'libs/ui',
+    ]);
+    expect(await graphOf('callers')).not.toHaveProperty('projects');
   });
 
   it('rejects malformed graphs', () => {

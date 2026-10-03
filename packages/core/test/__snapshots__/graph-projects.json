@@ -1,0 +1,332 @@
+{
+  "schemaVersion": "0.6.0",
+  "generator": {
+    "name": "cpr",
+    "version": "test"
+  },
+  "revisions": {
+    "base": {
+      "ref": "base",
+      "sha": null,
+      "mergeBase": null
+    },
+    "head": {
+      "ref": "head",
+      "sha": null
+    },
+    "from": null
+  },
+  "projects": [
+    {
+      "folder": "",
+      "name": "acme",
+      "source": "root"
+    },
+    {
+      "folder": "apps/admin",
+      "name": "@acme/admin",
+      "source": "workspace"
+    },
+    {
+      "folder": "apps/shop",
+      "name": "@acme/shop",
+      "source": "workspace"
+    },
+    {
+      "folder": "libs/legacy",
+      "name": "@acme/legacy",
+      "source": "workspace"
+    },
+    {
+      "folder": "libs/ui",
+      "name": "@acme/ui",
+      "source": "workspace"
+    }
+  ],
+  "files": [
+    {
+      "status": "modified",
+      "path": "apps/admin/src/page.ts"
+    },
+    {
+      "status": "deleted",
+      "path": "CHANGELOG.md"
+    },
+    {
+      "status": "deleted",
+      "path": "libs/legacy/package.json"
+    },
+    {
+      "status": "deleted",
+      "path": "libs/legacy/src/index.ts"
+    },
+    {
+      "status": "modified",
+      "path": "libs/ui/src/index.ts"
+    },
+    {
+      "status": "modified",
+      "path": "package.json"
+    },
+    {
+      "status": "modified",
+      "path": "README.md"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "apps/admin/src/page.ts#page",
+      "kind": "function",
+      "name": "page",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": false,
+        "body": true,
+        "moved": false
+      },
+      "previousId": null,
+      "base": {
+        "file": "apps/admin/src/page.ts",
+        "range": {
+          "start": {
+            "line": 3,
+            "col": 1
+          },
+          "end": {
+            "line": 5,
+            "col": 2
+          }
+        },
+        "signature": "page(): string",
+        "hashes": {
+          "signature": "057cc871d9fbadcf",
+          "body": "97f443f585b8f04c"
+        }
+      },
+      "head": {
+        "file": "apps/admin/src/page.ts",
+        "range": {
+          "start": {
+            "line": 3,
+            "col": 1
+          },
+          "end": {
+            "line": 5,
+            "col": 2
+          }
+        },
+        "signature": "page(): string",
+        "hashes": {
+          "signature": "057cc871d9fbadcf",
+          "body": "24e3d33729913a23"
+        }
+      }
+    },
+    {
+      "id": "libs/legacy/src/index.ts#legacy",
+      "kind": "function",
+      "name": "legacy",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "removed",
+      "previousId": null,
+      "base": {
+        "file": "libs/legacy/src/index.ts",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 3,
+            "col": 2
+          }
+        },
+        "signature": "legacy(): number",
+        "hashes": {
+          "signature": "d81427235474ca6f",
+          "body": "ba2ff7257d8be88f"
+        }
+      },
+      "head": null
+    },
+    {
+      "id": "libs/ui/src/index.ts#button",
+      "kind": "function",
+      "name": "button",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": true,
+        "body": true,
+        "moved": false
+      },
+      "previousId": null,
+      "base": {
+        "file": "libs/ui/src/index.ts",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 3,
+            "col": 2
+          }
+        },
+        "signature": "button(label: string): string",
+        "hashes": {
+          "signature": "3892edec4e9e5659",
+          "body": "526a80a72d261589"
+        }
+      },
+      "head": {
+        "file": "libs/ui/src/index.ts",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 3,
+            "col": 2
+          }
+        },
+        "signature": "button(label: string, size: 'small' | 'large' = 'large'): string",
+        "hashes": {
+          "signature": "dc770fc3bd2d2e78",
+          "body": "37fa8d85b17e1828"
+        }
+      }
+    },
+    {
+      "id": "apps/shop/src/cart.ts#cart",
+      "kind": "function",
+      "name": "cart",
+      "container": null,
+      "language": "typescript",
+      "exported": true,
+      "status": "unchanged",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "apps/shop/src/cart.ts",
+        "range": {
+          "start": {
+            "line": 3,
+            "col": 1
+          },
+          "end": {
+            "line": 5,
+            "col": 2
+          }
+        },
+        "signature": "cart(): string",
+        "hashes": {
+          "signature": "656d4d7576ff1b98",
+          "body": "de7a4fbe1f3f2aea"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "apps/admin/src/page.ts#page",
+      "to": "libs/ui/src/index.ts#button",
+      "kind": "call",
+      "side": "both",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "apps/admin/src/page.ts",
+            "line": 4,
+            "col": 10
+          }
+        ],
+        "head": [
+          {
+            "file": "apps/admin/src/page.ts",
+            "line": 4,
+            "col": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "from": "apps/shop/src/cart.ts#cart",
+      "to": "libs/ui/src/index.ts#button",
+      "kind": "call",
+      "side": "both",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "apps/shop/src/cart.ts",
+            "line": 4,
+            "col": 10
+          }
+        ],
+        "head": [
+          {
+            "file": "apps/shop/src/cart.ts",
+            "line": 4,
+            "col": 10
+          }
+        ]
+      }
+    }
+  ],
+  "findings": [
+    {
+      "rule": "exported-api-changed",
+      "severity": "warning",
+      "symbol": "libs/legacy/src/index.ts#legacy",
+      "related": [],
+      "message": "legacy was removed from the package's public API",
+      "data": {
+        "change": "removed"
+      },
+      "id": "f1"
+    },
+    {
+      "rule": "signature-changed",
+      "severity": "info",
+      "symbol": "libs/ui/src/index.ts#button",
+      "related": [
+        "apps/shop/src/cart.ts#cart",
+        "apps/admin/src/page.ts#page"
+      ],
+      "message": "button changed its signature compatibly; existing users keep working (2 users, 1 untouched)",
+      "data": {
+        "callers": 2,
+        "updated": 1,
+        "untouched": 1,
+        "untouchedElsewhere": 1,
+        "tests": 0,
+        "untouchedTests": 0,
+        "compatibility": "compatible"
+      },
+      "id": "f2"
+    }
+  ],
+  "stats": {
+    "filesChanged": 7,
+    "symbols": {
+      "added": 0,
+      "removed": 1,
+      "modified": 2,
+      "context": 1
+    },
+    "edges": 2
+  },
+  "warnings": []
+}

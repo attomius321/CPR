@@ -7,6 +7,7 @@ import {
   analyzeGit,
   buildGraph,
   createTypescriptAdapter,
+  directorySource,
   typescriptAdapter,
   type Analysis,
   type TsPlugin,
@@ -178,6 +179,46 @@ describe('plugins', () => {
       'plugin tpl: new problem',
       'in base: plugin tpl: old problem',
     ]);
+  });
+
+  it('takes the projects a plugin declares, inside the repository only', async () => {
+    const adapter = createTypescriptAdapter({ plugins: [tplPlugin] });
+    const head = await adapter.load(directorySource(fixture('head')));
+    expect(adapter.projects?.(head)).toEqual([
+      { folder: 'src', name: 'cards', kind: 'application', plugin: 'tpl' },
+    ]);
+
+    const loose: TsPlugin = {
+      ...tplPlugin,
+      projects: () => [
+        { folder: './src/widgets/', name: 'widgets' },
+        { folder: '.', name: 'everything' },
+        { folder: '../elsewhere', name: 'outside' },
+      ],
+    };
+    const looseAdapter = createTypescriptAdapter({ plugins: [loose] });
+    const revision = await looseAdapter.load(directorySource(fixture('head')));
+    expect(looseAdapter.projects?.(revision)).toEqual([
+      { folder: 'src/widgets', name: 'widgets', plugin: 'tpl' },
+      { folder: '', name: 'everything', plugin: 'tpl' },
+    ]);
+    expect(looseAdapter.warnings(revision)).toEqual([
+      'plugin tpl: project folder ../elsewhere is outside the repository; skipped',
+    ]);
+  });
+
+  it('goes on without the projects of a plugin that throws', async () => {
+    const throwing: TsPlugin = {
+      ...tplPlugin,
+      projects: () => {
+        throw new Error('bad tpl.json');
+      },
+    };
+    const analysis = await analyze([throwing]);
+    expect(analysis.warnings).toContain(
+      'plugin tpl: projects failed (bad tpl.json); continuing without it',
+    );
+    expect(change(analysis, 'src/card.tpl#(template)')?.status).toBe('modified');
   });
 
   it('refuses another plugin API version', () => {

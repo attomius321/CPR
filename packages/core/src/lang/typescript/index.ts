@@ -1,9 +1,11 @@
+import { posix } from 'node:path';
 import type { LanguageAdapter } from '../../adapter.js';
 import type { Dangling } from '../../model.js';
+import type { DeclaredProject } from '../../projects.js';
 import { danglingTs, exposureTs, publicApiTs } from './detect.js';
 import { extractTs } from './extract.js';
 import { isTsSource } from './files.js';
-import { PLUGIN_API_VERSION, runHook, type TsPlugin } from './plugins.js';
+import { PLUGIN_API_VERSION, runHook, type PluginProject, type TsPlugin } from './plugins.js';
 import { loadTsProject, pluginRevision, type TsRevision } from './project.js';
 import { incomingTs, outgoingTs } from './references.js';
 
@@ -78,6 +80,37 @@ export function createTypescriptAdapter({
       return own;
     },
     publicApi: publicApiTs,
+    projects: (revision) => {
+      const found: DeclaredProject[] = [];
+      for (const active of revision.plugins) {
+        const projects = active.plugin.projects;
+        if (!projects) continue;
+        const declared = runHook(active, 'projects', revision.warnings, [] as PluginProject[], () =>
+          projects(revision.context),
+        );
+        for (const { folder, name, kind } of declared) {
+          const skip = (why: string) =>
+            revision.warnings.push(`plugin ${active.plugin.name}: ${why}; skipped`);
+          // Plugins are not type-checked against this contract at run time.
+          if (typeof folder !== 'string' || typeof name !== 'string') {
+            skip('a project without a folder or name');
+            continue;
+          }
+          const repoFolder = inRepo(folder);
+          if (repoFolder === undefined) {
+            skip(`project folder ${folder} is outside the repository`);
+            continue;
+          }
+          found.push({
+            folder: repoFolder,
+            name,
+            ...(kind === 'application' || kind === 'library' ? { kind } : {}),
+            plugin: active.plugin.name,
+          });
+        }
+      }
+      return found;
+    },
     warnings: (revision) => {
       for (const active of revision.plugins) {
         const warnings = active.plugin.warnings;
@@ -96,3 +129,12 @@ export function createTypescriptAdapter({
 }
 
 export const typescriptAdapter: LanguageAdapter<TsRevision> = createTypescriptAdapter();
+
+/** A plugin's repo-relative folder, normalized (`./src/` → `src`, `.` → `''`); undefined outside. */
+function inRepo(folder: string): string | undefined {
+  const normalized = posix.normalize(folder.replace(/\\/g, '/')).replace(/\/$/, '');
+  if (normalized === '..' || normalized.startsWith('../') || posix.isAbsolute(normalized)) {
+    return undefined;
+  }
+  return normalized === '.' ? '' : normalized;
+}

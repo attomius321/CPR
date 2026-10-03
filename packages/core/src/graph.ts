@@ -2,9 +2,10 @@ import type { SymbolChange, Delta } from './diff.js';
 import type { ChangedFile } from './git/changed-files.js';
 import type { EdgeKind, Finding, Range, Site, SymbolDecl, SymbolId, SymbolKind } from './model.js';
 import type { Analysis, ContextSymbol, SinceStatus } from './pipeline.js';
+import type { Project } from './projects.js';
 
 /** Version of the graph JSON contract. See docs/graph-schema.md. */
-export const SCHEMA_VERSION = '0.5.0';
+export const SCHEMA_VERSION = '0.6.0';
 
 export interface GraphSide {
   file: string;
@@ -67,6 +68,11 @@ export interface Graph {
   revisions: Analysis['revisions'];
   /** The earlier version of the change the nodes' `since` compares with. */
   since?: { ref: string; sha: string; dropped: SymbolId[] };
+  /**
+   * The projects holding the graph's files, when there are two or more; a file belongs to the
+   * one with the longest folder.
+   */
+  projects?: Project[];
   files: (ChangedFile & { ignored?: true })[];
   nodes: GraphNode[];
   edges: GraphEdge[];
@@ -123,6 +129,7 @@ export function buildGraph(analysis: Analysis, options: BuildGraphOptions): Grap
           },
         }
       : {}),
+    ...(analysis.projects ? { projects: analysis.projects } : {}),
     files: analysis.files.map((file) =>
       ignored.has(file.path) ? { ...file, ignored: true } : file,
     ),
