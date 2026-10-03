@@ -1195,3 +1195,31 @@ the viewer test `qwik.spec.ts`, Qwik docs site: without the plugin identical to
 tests, 29 browser tests.
 
 Merged into main (2026-10-03).
+
+## V7 spike — apps in the graph (2026-10-03, branch `milestone/v7-app-boundaries`)
+
+Asked whether the viewer shows where one app ends and the next begins: it does not (file boxes
+by path, placed by calls; a flat change list; no project in the graph JSON). Groundwork for V7
+(PLAN); nothing in CPR changed on this branch.
+
+**Measured** with the viewer's own layout on 8 Bitwarden changes chosen for touching several
+projects and on Qwik's monorepo: a Bitwarden view holds 4–16 projects, 16–45 % of its drawn
+edges cross projects, and a third to two thirds of those projects hold only unchanged
+neighbours; Qwik's projects are islands (no drawn edge between them). Both need each project in
+one place, light frames for context-only projects, and a layout that keeps cross-project edges
+short where there are many.
+
+**What a project is** is less obvious than "the nearest `package.json`": Bitwarden's desktop app
+has its Electron manifest at `apps/desktop/src/package.json` and the browser app a
+`lit-components` package inside it (both would split their app); `bitwarden_license/bit-*` have
+no `package.json` or Nx file, only a `tsconfig.json` (and a path alias); `bit-web` is declared
+only in `angular.json`. Declared projects first (workspaces, Nx, plugins), packages when nothing
+is declared, tsconfig-only folders outside every project, the root last.
+
+**Found on the way**: 5 of the 8 Bitwarden runs crashed. Q1's per-site props check read the parent
+of a reference's node, and `findReferences` returns `{@link Class.member}` in a JSDoc comment at a
+node without one. Fixed on `fix/jsdoc-reference-crash` (a test reproducing it, red before; the 29
+R1 comparisons identical to W1's baseline: 932 edges, no finding changed; the 8 runs complete).
+Q1's verification had re-run the Qwik docs site and the fixtures, not Bitwarden or the 29
+comparisons after changing core's references — they are part of every core change's checks
+from now on.

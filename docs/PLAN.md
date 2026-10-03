@@ -417,6 +417,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V6 ✅ | A graph you can navigate | On a large change the viewer drew 1,288 symbols for 86 changes, in a 9,470 × 85,468 px strip, and every click re-ran the layout. Now: big neighbourhoods as one node, a page of clusters, a map when zoomed out, no relayout while reviewing; see below. |
 | W1 ✅ | Repositories with several projects | A repo whose Angular apps live in subfolders (two apps, two levels deep, nothing at the root) got no template analysis at all, and its `@app/*` and `baseUrl` imports did not resolve. Now each file resolves with its own project's options, and the Angular plugin works per app; see below. |
 | Q1 ✅, Q2 ✅ | Qwik as the `qwik` plugin | Qwik is TSX and mostly reads right, but what its router calls by name (`onGet`, `head`, loaders, actions) shows as false orphans, an optional prop added to a `component$` is a warning, a required one added to a named props type is missed, and components used only from `.mdx` routes look unused. Planned; see below. |
+| V7 | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -1797,6 +1798,187 @@ shows); `$` closures (`onClick$`, `useTask$`) as symbols of their own; links to 
 (`eslint-plugin-qwik` checks them).
 
 **Later:** more languages via adapters, a faster core (TS 7 adapter or Rust/oxc), self-hosted team mode.
+
+### V7 — Apps in the graph
+
+**Status:** planned (2026-10-03), on branch `milestone/v7-app-boundaries`; not started.
+
+**Problem** (asked: "In the UI view, the boundary between applications is visible?"). Not really.
+In a repo with several apps and libraries the viewer draws one box per file, labelled with its
+path, and places boxes by what calls what: two apps' files sit side by side, a library and the
+apps it reaches are not grouped, on the map (zoomed out) only file names show — two apps'
+`header.tsx` look the same — the change list is one flat list of paths, and the graph JSON does
+not say which app a file belongs to. The only "package" boxes are npm packages.
+
+Measured with the viewer's own layout (V6, `layoutFlow`) on real changes, a project being what
+the rules below make of it:
+
+| Repo, change | Symbols drawn (changed) | File boxes | Projects (only context) | Edges drawn (between projects) | Canvas |
+|---|---|---|---|---|---|
+| Bitwarden `737ee3f` | 168 (86) | 59 | 6 (2) | 336 (79) | 10,904 × 7,183 |
+| Bitwarden `cbf86c2` | 303 (115) | 123 | 16 (7) | 672 (293) | 17,456 × 15,905 |
+| Bitwarden `787bad6` | 80 (34) | 33 | 9 (3) | 166 (72) | 9,632 × 2,662 |
+| Bitwarden `9014aef` | 75 (36) | 25 | 6 (3) | 97 (25) | 6,812 × 2,976 |
+| Bitwarden `58af82a` | 39 (15) | 23 | 7 (4) | 45 (18) | 4,476 × 2,128 |
+| Bitwarden `31dda4f` | 46 (20) | 25 | 4 (1) | 73 (12) | 3,119 × 2,165 |
+| Bitwarden `12b0923` | 31 (8) | 18 | 9 (6) | 38 (17) | 3,581 × 2,005 |
+| Bitwarden `9ce55cd` | 23 (7) | 15 | 5 (1) | 24 (6) | 2,968 × 825 |
+| Qwik `f7ed58cfc` | 685 (367) | 192 | 6 (0) | 1,944 (0) | 35,051 × 25,081 |
+| Qwik `65661bf49` | 152 (62) | 39 | 3 (0) | 226 (0) | 8,165 × 3,658 |
+
+(npm packages and dynamic calls, outside every project, are not counted as projects.)
+Two kinds of monorepo, and the design must serve both: in Bitwarden a change spreads over 4–16
+projects and 16–45 % of the edges drawn cross projects (apps into `@bitwarden/common`, `auth`,
+`vault`…); in Qwik's repo each project's part of a change is its own island (no edge between
+projects drawn) — boundaries there separate unrelated work. A third to two thirds of Bitwarden's
+projects in a view hold only unchanged neighbours, often one or two (`guid`, `storybook`,
+`ui-common`): frames must stay light for those.
+
+**Goal**: when a graph's symbols come from two or more projects, each project is a labelled frame
+holding its files; edges between projects stand out; the map keeps project names readable; the
+change list groups by project, shows review progress per project and can show one project only.
+A single-project graph is drawn exactly as today.
+
+#### What a project is (core)
+
+Measured on Bitwarden (60 `package.json`, 54 Nx `project.json`, an `angular.json` with 6
+projects, workspaces `apps/*` and `libs/**/*`) and Qwik's repo (pnpm workspaces). "The nearest
+`package.json`" alone is wrong: `apps/desktop/src/package.json` is the desktop app's Electron
+manifest and `apps/browser/src/autofill/content/components` holds a `lit-components` package —
+it would split two apps; and `bitwarden_license/bit-*` have no `package.json` at all (only a
+`tsconfig.json` and a path alias). The rule, in order:
+
+1. **Declared projects**: workspace members (`package.json` `workspaces`, `pnpm-workspace.yaml`,
+   `**` globs included), Nx `project.json` files, and projects a plugin declares (Angular:
+   `angular.json` `projects` and their `root` — `bit-web` exists only there).
+2. **Packages**, when the repo declares nothing: the nearest `package.json` with a name,
+   dependencies or scripts (not a `{ "type": "module" }` marker) — the user's repo with two apps
+   two folders down and nothing at the root.
+3. **TypeScript projects nobody declared**: for a file outside every project above, the nearest
+   folder with its own `tsconfig.json` (not the root's) — `bitwarden_license/bit-common`. Inside a
+   declared project such a folder is not a project of its own (an app's `e2e/` stays the app's).
+4. **The root**, for everything else.
+
+A file belongs to the project with the longest folder prefix. One folder declared several ways is
+one project (Bitwarden's `apps/web`: workspace member `@bitwarden/web-vault`, Nx `web`, Angular
+`web`). Name: the Nx or plugin name (`web`), else the package name (`@bitwarden/common`), else the
+folder's name (`bit-common`); the root: its package's name, else "repository root". Kind
+(`application`/`library`) when declared (Nx or Angular `projectType`), else none.
+
+**Plugin hook** (optional, generic): `projects?: (revision: PluginContext) => { folder: string;
+name: string; kind?: 'application' | 'library' }[]`. The Angular plugin returns `angular.json`
+projects — an Angular CLI workspace with one `package.json` and `projects/*` has no other marker.
+Nx stays in core: it is build tooling, not a framework.
+
+**In the analysis**: core reads the markers of the folders of the graph's files from the head
+checkout (the base checkout for files only base has), cached per folder; the workspace globs
+reader moves out of the TypeScript adapter (`project.ts`) into a shared core module. The
+`LanguageAdapter` gets an optional `projects(revision)` for plugin-declared ones.
+
+**In the graph** (schema 0.6.0, minor — a new optional field): a top-level list, only when the
+graph's symbols span two or more projects:
+
+```jsonc
+"projects": [
+  { "folder": "apps/web", "name": "web", "kind": "application", "source": "nx" },
+  { "folder": "libs/common", "name": "@bitwarden/common", "source": "workspace" },
+  { "folder": "bitwarden_license/bit-common", "name": "bit-common", "source": "tsconfig" },
+  { "folder": "", "name": "@bitwarden/clients", "source": "root" }
+]
+```
+
+No field on nodes: a consumer puts a file in the project with the longest folder prefix (one rule,
+documented with the schema; base-only files work the same). `source`: `workspace`, `nx`,
+`plugin` (with the plugin's name), `package`, `tsconfig`, `root`. Older graphs have no list: one
+project, today's drawing.
+
+#### Frames (viewer)
+
+- **Layout, one level more** (pure, in `layoutFlow`): symbols → file boxes as today; a project's
+  file boxes packed into its frame with the V6 cluster packing (clusters of boxes linked inside
+  the project, to the page aspect); frames and the boxes outside every project (npm packages,
+  dynamic calls) laid out together by the links between them — dagre left to right, callers
+  before what they call, so apps sit left of the libraries they use; groups of frames with no
+  link between them packed like V6 clusters. Prototype check before going on: on `cbf86c2` (16
+  projects) and `737ee3f` the canvas stays within about 2:1 and no wider than today's; if dagre
+  over frames runs too wide, frames are packed by size instead and only edges show the links.
+- **Frame node** (`project`, React Flow parent of its file boxes, which stay parents of their
+  symbols): name, kind (app/lib), folder, and "12 changed" in its top band; a frame holding only
+  unchanged neighbours is drawn lighter and smaller-headed. Neutral colours: status colours
+  keep meaning added/removed/modified.
+- **Edges between projects** get their own class (heavier, a distinct dash) and stand out more
+  when one end is selected; the legend explains them.
+- **Map** (below 45 % zoom): the frame's name scales with `--cpr-zoom` at about twice a file
+  name's size, so projects read first, files second; clicking a frame on the map zooms into it,
+  as a file box does. The minimap draws frames as outlines.
+- **Summaries** ("390 users in 220 files") also say "across 5 projects" when they do; expanded,
+  their members are drawn in their own frames.
+- **One project** (or a graph without `projects`): no frame, layout identical to today's — every
+  existing viewer test and screenshot unchanged.
+
+#### By project in the sidebar (viewer)
+
+- **Change list grouped by project** (only with two or more): a header per project (name, kind,
+  "4/12 reviewed"), collapsible; file paths under it relative to the project's folder
+  (`src/components/header.tsx`); projects with changes first, in folder order; j/k follow the
+  list's order; search also matches project names ("web button").
+- **Show one project**: a filter on the project header (and `p` cycles projects): the canvas and
+  the list keep that project's changed symbols and what they are linked to directly in other
+  projects (the impact across the boundary stays visible), as focus does for one symbol.
+- **Findings and detail**: a finding row names its symbol's project; the detail panel's file line
+  reads `web › src/app/foo.ts`.
+
+#### Verification
+
+1. **Core**: project rules on fixtures for each kind (workspaces with `**` globs, pnpm, Nx,
+   plugin-declared, no declaration, a `{ "type": "module" }` marker, an undeclared nested
+   package inside a declared one, a tsconfig-only folder, the root), names and kinds, one folder
+   declared three ways; the graph has `projects` only with two or more; goldens unchanged except
+   `schemaVersion`; schema validation. The 29 R1 comparisons identical apart from the new field.
+2. **Angular plugin**: `angular.json` projects (an Angular CLI workspace with `projects/*`, and the
+   W1 multi-project fixture).
+3. **Viewer units** (`flow.test.ts`): one project → positions identical to today's; two or more →
+   every file box inside its frame, frames not overlapping, boxes outside projects outside
+   frames, edges between projects classed; filter by project; grouped change list and j/k order.
+4. **E2E**: a monorepo fixture (two apps and a shared library, plain TypeScript, npm workspaces):
+   frames with names, the map showing project names, the grouped list, the project filter;
+   screenshot. Existing e2e tests unchanged.
+5. **Real repos**: Bitwarden's 8 changes above and Qwik `f7ed58cfc`: project assignment matches
+   the rule (no `apps/desktop/src` split, `bit-common` its own project, `bit-web` from
+   `angular.json`), canvas size and first paint against today's (+10 % at most), screenshots of
+   `737ee3f` and `cbf86c2`. The user's two-app layout (W1 replica): two frames.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| Frames waste space (a project of one box still has a band and padding) | Light frames for context-only projects; inside a frame the V6 packing; measured canvas against today's. |
+| Dagre over 16 frames runs wide | Prototype on `cbf86c2` first; fallback: frames packed by size, links shown by edges only. |
+| Wrong boundaries | Rules from three real layouts; `source` in the graph says why; a plugin can declare projects. |
+| Nested React Flow parents cost render time | Frames are few (at most 16 measured); first paint measured on the largest graphs. |
+
+**Order**: V7a (core and schema, fixtures red first) → V7b (frames; prototype the frame layout on
+`cbf86c2` before the rest) → V7c (sidebar). Each merged after its checks.
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V7a | Projects in the graph | Core project rules (declared, packages, tsconfig-only, root), the optional plugin hook and the Angular plugin's `angular.json` projects, `projects` in the graph (schema 0.6.0), shared workspace-globs reader. |
+| V7b | Frames | `layoutFlow` one level deeper (files in project frames, frames by the links between them), `project` frame node, edges between projects, project names on the map and minimap, summaries across projects, legend; one project = today. |
+| V7c | By project in the sidebar | Change list grouped by project with progress and relative paths, the project filter (canvas and list), project names in findings and the detail panel, search by project name. |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 33 | What a project is | **Declared first** (workspace members, Nx `project.json`, plugin-declared such as `angular.json`), **packages when nothing is declared**, **tsconfig-only folders outside every project**, the root last; the longest folder prefix wins | "Nearest `package.json`" splits Bitwarden's desktop and browser apps over nested packages and leaves `bit-common` (no `package.json`) at the root; repos that declare nothing (two apps two folders down) still get one frame per app. |
+| 34 | How the graph says it | **A top-level `projects` list, no field on nodes**; consumers use the longest folder prefix | Nodes stay as they are (smaller graphs, no change for single-project repos); base-only files resolve the same way. |
+| 35 | When frames are drawn | **Only with two or more projects**; otherwise today's layout, unchanged | A single-app repo gains nothing from one frame around everything, and every existing view stays as reviewers know it. |
+| 36 | Where frames go | **Files packed inside their project; frames laid out by the links between them, callers left of what they call**; size-packing if that runs too wide | Bitwarden's changes run from apps into shared libraries (16–45 % of drawn edges cross projects); Qwik's projects are islands — both read best with each project in one place. |
+
+**Not in V7 (later)**: collapsing a whole frame into one node (V6's summaries already cut
+context); grouping findings by project in the CLI summary and PR comments; colouring projects.
 
 ### Phase 1 milestones
 
