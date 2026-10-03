@@ -1196,6 +1196,22 @@ tests, 29 browser tests.
 
 Merged into main (2026-10-03).
 
+## Fix — a doc-comment reference crashed the analysis (2026-10-03, branch `fix/jsdoc-reference-crash`)
+
+Found while measuring Bitwarden for V7: 5 of 8 runs crashed. Q1's per-site props check reads the
+parent of a reference's node, and `findReferences` returns `{@link Class.member}` in a JSDoc
+comment at a node without a parent. Such a reference is no JSX use: what it passes is unknown,
+as for any non-JSX reference.
+
+**Verification**: a test with a resolving `{@link Badge}` (red before: the same `TypeError`); the
+29 R1 comparisons identical to W1's baseline (932 edges, no finding changed); the 8 Bitwarden
+changes complete; full suite 378 tests, 29 browser tests.
+
+**Learned**: Q1 changed core's references but its checks were the fixtures and Qwik's docs site.
+Every core change re-runs the 29 comparisons and Bitwarden from now on.
+
+Merged into main (2026-10-03).
+
 ## V7 spike — apps in the graph (2026-10-03, branch `milestone/v7-app-boundaries`)
 
 Asked whether the viewer shows where one app ends and the next begins: it does not (file boxes
@@ -1218,8 +1234,8 @@ is declared, tsconfig-only folders outside every project, the root last.
 
 **Found on the way**: 5 of the 8 Bitwarden runs crashed. Q1's per-site props check read the parent
 of a reference's node, and `findReferences` returns `{@link Class.member}` in a JSDoc comment at a
-node without one. Fixed on `fix/jsdoc-reference-crash` (a test reproducing it, red before; the 29
-R1 comparisons identical to W1's baseline: 932 edges, no finding changed; the 8 runs complete).
+node without one. Fixed on `fix/jsdoc-reference-crash` and merged into main (see "Fix — a
+doc-comment reference crashed the analysis" above).
 Q1's verification had re-run the Qwik docs site and the fixtures, not Bitwarden or the 29
 comparisons after changing core's references — they are part of every core change's checks
 from now on.
