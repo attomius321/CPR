@@ -1,0 +1,9 @@
+{
+  "name": "site",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@qwik.dev/core": "2.0.0-rc.0",
+    "@qwik.dev/router": "2.0.0-rc.0"
+  }
+}

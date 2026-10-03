@@ -120,6 +120,7 @@ rather than contract. Turn one on per run or for the repository:
 
 ```sh
 cpr diff main --plugin angular          # Angular templates, decorators, lifecycle hooks
+cpr diff main --plugin qwik             # Qwik routes and component$ props
 cpr diff main --plugin ./tools/my-plugin.mjs
 ```
 
@@ -141,6 +142,17 @@ imports resolve with its own project's `paths` and `baseUrl` (the `tsconfig.app.
 `tsconfig.lib.json` or `tsconfig.json` it is built with), each template is read with its app's
 Angular version and installed libraries, and an app's templates only use components of its own
 Angular workspace (its `angular.json` folder) and of shared code outside every workspace.
+
+With `qwik`, what Qwik's router calls by name is no orphan: `onGet`, `head`, `onRequest` and the
+other route exports, `routeLoader$`/`routeAction$` values (also re-exported from elsewhere, also
+through a form library's wrapper when Qwik is installed), server plugins' handlers, entries and
+error pages — by Qwik's own file rules for 1.x (`@builder.io/qwik-city`) and 2.x
+(`@qwik.dev/router`), in the routes folder its Vite config names. A helper a route module exports
+but nothing calls is still an orphan. A `component$`'s props are its signature, shown as
+`const Badge = component$<{ label: string; tone: string }>`: an optional prop added is
+compatible, a required prop added or one removed is a warning naming the JSX that was not updated
+— also when the props are a named type (`component$<CardProps>`) whose definition changed. Props
+are read from the types in the code, so this works without `node_modules`.
 
 ```jsonc
 // cpr.config.json, at the repository root (read from your working folder)

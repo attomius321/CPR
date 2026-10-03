@@ -55,6 +55,11 @@ export interface Shape {
   returns?: string;
   /** Members of interfaces and object types. */
   members?: Record<string, { optional: boolean; type: string }>;
+  /**
+   * What users pass, by name (a component's props, from a plugin's contract): compared from
+   * their side, so a new required input breaks them where a new required member does not.
+   */
+  inputs?: Record<string, { optional: boolean; type: string }>;
   /** Everything else that must stay equal: name, modifiers, type parameters, heritage. */
   rest: string;
 }
@@ -93,6 +98,11 @@ export interface EdgeRef {
    */
   possible?: true;
   site: Site;
+  /**
+   * At a JSX element naming the target (`<Badge label="a" />`): the attributes it passes.
+   * Absent anywhere else, and with a spread attribute, where what is passed is unknown.
+   */
+  passes?: string[];
 }
 
 export interface Edge {

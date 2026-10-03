@@ -1,0 +1,22 @@
+{
+  "name": "@cpr/plugin-qwik",
+  "version": "0.1.0",
+  "description": "CPR plugin: Qwik routes, component$ props and MDX routes.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@cpr/core": "workspace:*"
+  }
+}

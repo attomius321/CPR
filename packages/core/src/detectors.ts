@@ -1,4 +1,4 @@
-import { compatibility } from './compat.js';
+import { compatibility, inputsBreak } from './compat.js';
 import type { SymbolChange } from './diff.js';
 import type { ChangedFile } from './git/changed-files.js';
 import type { Dangling, Edge, Exposure, Finding, RuleId, Severity, SymbolId } from './model.js';
@@ -16,6 +16,11 @@ export interface DetectorInput {
    * and modified symbols exported from a published package's entry.
    */
   publicApi?: { base: ReadonlySet<SymbolId>; head: ReadonlySet<SymbolId> };
+  /**
+   * What each user passes to what it renders in head (`from\0to` → JSX attribute names);
+   * missing or undefined where unknown.
+   */
+  passes?: ReadonlyMap<string, ReadonlySet<string> | undefined>;
 }
 
 /** Test code by its path: `*.test.ts`, `*.spec.ts`, `*.test-d.ts`, `__tests__/`, `test/`… */
@@ -97,7 +102,7 @@ function lostMessage(id: SymbolId, old: SymbolId, users: SymbolId[]): string {
  * (not `compatible`/`additive`) and some untouched production user lives in another file:
  * same-file users are already in front of the reviewer, and a stale test fails on its own.
  */
-function signatureChanged({ changes, edges, files }: DetectorInput): Draft[] {
+function signatureChanged({ changes, edges, files, passes }: DetectorInput): Draft[] {
   const changed = new Set(
     changes.filter((c) => c.status === 'added' || c.status === 'modified').map((c) => c.id),
   );
@@ -119,11 +124,14 @@ function signatureChanged({ changes, edges, files }: DetectorInput): Draft[] {
     const untouchedCode = untouched.filter((id) => !isTestFile(fileOf(id)));
     const file = change.head.file;
     const elsewhere = untouchedCode.filter((id) => fileOf(id) !== file);
-    const compat =
-      change.delta.moved && change.base.name !== change.head.name
-        ? 'breaking'
-        : compatibility(change.base, change.head);
-    const risky = (compat === 'breaking' || compat === 'unknown') && elsewhere.length > 0;
+    const renamed = change.delta.moved && change.base.name !== change.head.name;
+    const compat = renamed ? 'breaking' : compatibility(change.base, change.head);
+    // Props changed: only users passing a changed one (or missing a required one) break.
+    const breaks = compat === 'breaking' && !renamed && inputsBreak(change.base, change.head);
+    const broken = breaks
+      ? elsewhere.filter((id) => breaks(passes?.get(`${id}\0${change.id}`)))
+      : elsewhere;
+    const risky = (compat === 'breaking' || compat === 'unknown') && broken.length > 0;
 
     drafts.push(
       draft(
@@ -137,12 +145,14 @@ function signatureChanged({ changes, edges, files }: DetectorInput): Draft[] {
             untouchedCode,
             tests: tests.length,
             untouchedTests: untouchedTests.length,
+            ...(breaks ? { broken } : {}),
           }),
           data: {
             callers: all.length,
             updated: updated.length,
             untouched: untouched.length,
             untouchedElsewhere: elsewhere.length,
+            ...(breaks ? { untouchedBroken: broken.length } : {}),
             tests: tests.length,
             untouchedTests: untouchedTests.length,
             compatibility: compat,
@@ -160,6 +170,11 @@ interface UserCounts {
   untouchedCode: SymbolId[];
   tests: number;
   untouchedTests: number;
+  /**
+   * When only props changed: the untouched users elsewhere that pass a changed prop or miss a
+   * new required one (the others keep working).
+   */
+  broken?: SymbolId[];
 }
 
 function signatureMessage(symbol: string, compat: string, counts: UserCounts): string {
@@ -180,6 +195,19 @@ function signatureMessage(symbol: string, compat: string, counts: UserCounts): s
   if (untouchedCode.length === 0) {
     const all = code === 1 ? 'its only user was updated' : `all ${code} users were updated`;
     return `${symbol} changed its signature; ${all}${withTests}`;
+  }
+  if (counts.broken?.length === 0) {
+    const users =
+      untouchedCode.length === 1
+        ? 'the user not updated passes'
+        : `the ${untouchedCode.length} users not updated pass`;
+    return `${symbol} changed its props; ${users} props that still fit${withTests}`;
+  }
+  if (counts.broken) {
+    const { broken } = counts;
+    const verbs =
+      broken.length === 1 ? 'passes a changed prop or misses' : 'pass a changed prop or miss';
+    return `${symbol} changed its props; ${broken.length} of ${plural(code, 'user')} not updated ${verbs} a new required one: ${list(broken)}${withTests}`;
   }
   return `${symbol} changed its signature; ${untouchedCode.length} of ${plural(code, 'user')} not updated: ${list(untouchedCode)}${withTests}`;
 }

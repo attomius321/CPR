@@ -4,7 +4,7 @@ import { ts } from 'ts-morph';
 import type { ExtractOptions } from '../../adapter.js';
 import type { Range, Shape, SymbolDecl, SymbolId, SymbolKind } from '../../model.js';
 import { isTsSource } from './files.js';
-import { runHook, type ArgumentRoles, type PluginSymbol } from './plugins.js';
+import { runHook, type ArgumentRoles, type Contract, type PluginSymbol } from './plugins.js';
 import { pluginRevision, type TsRevision } from './project.js';
 import {
   bindingNames,
@@ -79,11 +79,12 @@ export function extractTs(
   const checker = program.getTypeChecker();
   const symbols: SymbolDecl[] = [];
   const roles = decoratorRoles(revision);
+  const contracts = contractsOf(revision);
   for (const file of files) {
     if (!isTsSource(file)) continue;
     const sf = program.getSourceFile(join(root, file));
     if (!sf || revision.virtual.has(sf.fileName)) continue;
-    const extractor = new FileExtractor(file, sf, checker, root, infer, roles);
+    const extractor = new FileExtractor(file, sf, checker, root, infer, roles, contracts);
     for (const [symbol, nodes] of extractor.run()) {
       symbols.push(symbol);
       revision.declarations.set(symbol.id, nodes);
@@ -121,6 +122,25 @@ function decoratorRoles(revision: TsRevision): DecoratorRoles {
 
 type DecoratorRoles = (decorator: ts.Decorator) => ArgumentRoles | undefined;
 
+/** The first applying plugin's contract for a value, if one claims it. */
+function contractsOf(revision: TsRevision): Contracts {
+  const claimants = revision.plugins.filter((p) => p.plugin.contract);
+  if (claimants.length === 0) return () => undefined;
+  return (declaration) => {
+    for (const active of claimants) {
+      const contract = runHook(active, 'contract', revision.warnings, undefined, () =>
+        active.plugin.contract?.(pluginRevision(revision, active), declaration),
+      );
+      if (contract) return contract;
+    }
+    return undefined;
+  };
+}
+
+type Contracts = (
+  declaration: ts.VariableDeclaration | ts.ExportAssignment,
+) => Contract | undefined;
+
 class FileExtractor {
   private readonly symbols = new Map<SymbolId, Builder>();
   private readonly exportedNames = new Set<string>();
@@ -132,6 +152,7 @@ class FileExtractor {
     private readonly root: string,
     private readonly infer: (id: SymbolId) => boolean,
     private readonly roles: DecoratorRoles = () => undefined,
+    private readonly contracts: Contracts = () => undefined,
   ) {}
 
   run(): [SymbolDecl, ts.Node[]][] {
@@ -282,6 +303,10 @@ class FileExtractor {
         const exported = this.isExported(statement, name, container);
         const init = unwrap(declaration.initializer);
         const fn = functionValue(declaration.initializer);
+        const contract =
+          !fn && init && !ts.isClassExpression(init) && ts.isIdentifier(declaration.name)
+            ? this.contracts(declaration)
+            : undefined;
 
         if (fn) {
           this.add(container, name, exported, {
@@ -298,6 +323,13 @@ class FileExtractor {
           });
         } else if (init && ts.isClassExpression(init)) {
           this.addClass(init, name, exported, container);
+        } else if (contract) {
+          this.add(container, name, exported, {
+            ...this.contractPart(contract, [keyword, name], identifier, declaration.initializer),
+            ...this.span(
+              statement.declarationList.declarations.length === 1 ? statement : declaration,
+            ),
+          });
         } else {
           this.add(container, name, exported, {
             kind: 'variable',
@@ -358,6 +390,7 @@ class FileExtractor {
     const expression = unwrap(node.expression);
     if (ts.isIdentifier(expression)) return; // `export default foo` exports an existing symbol
     const fn = functionValue(node.expression);
+    const contract = fn || ts.isClassExpression(expression) ? undefined : this.contracts(node);
     if (fn) {
       this.add(null, 'default', true, {
         ...this.functionPart(fn, 'function', 'default', { head: ['default'] }),
@@ -365,6 +398,11 @@ class FileExtractor {
       });
     } else if (ts.isClassExpression(expression)) {
       this.addClass(expression, 'default', true, null);
+    } else if (contract) {
+      this.add(null, 'default', true, {
+        ...this.contractPart(contract, ['default'], node, node.expression),
+        ...this.span(node),
+      });
     } else {
       this.add(null, 'default', true, {
         kind: 'variable',
@@ -412,6 +450,76 @@ class FileExtractor {
         rest: lead.join(' '),
       },
     };
+  }
+
+  /**
+   * A value a plugin's contract describes (a component → its props): the inputs, resolved by
+   * the checker even through named types, are its signature and shape; the value is its body.
+   */
+  private contractPart(
+    contract: Contract,
+    head: string[],
+    at: ts.Node,
+    value: ts.Node | undefined,
+  ): Omit<Part, 'node' | 'start' | 'end'> {
+    const inputs = this.inputs(contract.inputs, at);
+    const shown = inputs.map((i) => `${i.name}${i.optional ? '?' : ''}: ${i.display}`);
+    return {
+      kind: 'variable',
+      signature: [
+        ...head,
+        '=',
+        contract.label,
+        '<',
+        ...inputs.map((i) => `${i.name}${i.optional ? '?' : ''}: ${i.type}`),
+        '>',
+      ],
+      body: tokens(value, this.sf),
+      display: this.text(
+        `${head.join(' ')} = ${contract.label}<{${shown.length > 0 ? ` ${shown.join('; ')} ` : ''}}>`,
+      ),
+      shape: {
+        inputs: Object.fromEntries(
+          inputs.map((i) => [i.name, { optional: i.optional, type: i.type }]),
+        ),
+        rest: [...head, contract.label].join(' '),
+      },
+    };
+  }
+
+  /**
+   * Each input by name: optional or not, and its type — the tokens of its declared type when
+   * it has one (as for interface members), else the checker's text without the `undefined` an
+   * optional input adds, so making it required or optional is not also a change of type.
+   */
+  private inputs(
+    type: ts.Type | undefined,
+    at: ts.Node,
+  ): { name: string; optional: boolean; type: string; display: string }[] {
+    if (!type) return [];
+    const inputs = this.safely(() => this.checker.getPropertiesOfType(type), []).map((property) => {
+      const optional = (property.flags & ts.SymbolFlags.Optional) !== 0;
+      const declared = property.valueDeclaration;
+      const node =
+        declared &&
+        (ts.isPropertySignature(declared) || ts.isPropertyDeclaration(declared)) &&
+        declared.type;
+      if (node) {
+        const sf = node.getSourceFile();
+        return {
+          name: property.name,
+          optional,
+          type: tokens(node, sf).join(' '),
+          display: node.getText(sf),
+        };
+      }
+      let text = this.safely(() =>
+        this.typeString(this.checker.getTypeOfSymbolAtLocation(property, at), at),
+      );
+      if (optional) text = text.replace(/ \| undefined$/, '');
+      return { name: property.name, optional, type: text, display: text };
+    });
+    return inputs.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   }
 
   /** Members of interfaces, object type aliases (and their intersections) and enums. */
@@ -558,11 +666,13 @@ class FileExtractor {
   }
 
   /** Runs a checker query; a checker failure on odd code degrades to an unknown type. */
-  private safely(query: () => string): string {
+  private safely(query: () => string): string;
+  private safely<T>(query: () => T, fallback: T): T;
+  private safely<T>(query: () => T, fallback?: T): T | string {
     try {
       return query();
     } catch {
-      return '?';
+      return fallback ?? '?';
     }
   }
 
@@ -766,6 +876,7 @@ function resolveShape(shape: Shape, resolve: (text: string) => string): Shape {
       : {}),
     ...(shape.returns === undefined ? {} : { returns: resolve(shape.returns) }),
     ...(shape.members ? { members: shape.members } : {}),
+    ...(shape.inputs ? { inputs: shape.inputs } : {}),
   };
 }
 

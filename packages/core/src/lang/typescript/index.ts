@@ -65,7 +65,8 @@ export function createTypescriptAdapter({
     },
     exposure: (revision, symbol) => {
       const own = exposureTs(revision, symbol);
-      if (own) return own;
+      // That a default export is loaded by convention is a guess: a plugin may know.
+      if (own && own !== 'default-export') return own;
       for (const active of revision.plugins) {
         const exposure = active.plugin.exposure;
         if (!exposure) continue;
@@ -74,7 +75,7 @@ export function createTypescriptAdapter({
         );
         if (why) return why;
       }
-      return undefined;
+      return own;
     },
     publicApi: publicApiTs,
     warnings: (revision) => {

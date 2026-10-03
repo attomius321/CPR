@@ -44,7 +44,20 @@ export interface TsPlugin {
     removed: readonly SymbolDecl[],
     base: PluginRevision,
   ) => Dangling[];
-  /** Why a symbol may be used with no reference, consulted after the adapter's own answer. */
+  /**
+   * What a value is to its users when a framework call made it (a Qwik `component$` → its
+   * props), for a variable or `export default` holding it; undefined leaves it as today (the
+   * value's type). Its inputs become the symbol's signature and are compared from the callers'
+   * side.
+   */
+  contract?: (
+    revision: PluginRevision,
+    declaration: ts.VariableDeclaration | ts.ExportAssignment,
+  ) => Contract | undefined;
+  /**
+   * Why a symbol may be used with no reference, consulted after the adapter's own answer; a
+   * plugin's answer replaces the adapter's guess that a default export is loaded by convention.
+   */
   exposure?: (revision: PluginRevision, symbol: SymbolDecl) => Exposure | undefined;
   /** Problems worth telling the user about. */
   warnings?: (revision: PluginRevision) => string[];
@@ -106,6 +119,14 @@ export interface PluginSymbol {
 export interface ArgumentRoles {
   signature: readonly ts.Node[];
   body: readonly ts.Node[];
+}
+
+/** What a value made by a framework call is to its users (see `TsPlugin.contract`). */
+export interface Contract {
+  /** What made it, e.g. `component$`: shown, and part of the signature. */
+  label: string;
+  /** What users pass, member by member (a component's props); undefined when it takes none. */
+  inputs: ts.Type | undefined;
 }
 
 /** A plugin that applies to a loaded revision; dropped from it when a hook fails. */
