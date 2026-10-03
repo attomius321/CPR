@@ -521,6 +521,8 @@ function Canvas({
       colorMode="system"
       minZoom={0.05}
       nodesConnectable={false}
+      // The layout is computed: a drag that starts on a box pans the canvas instead of moving it.
+      nodesDraggable={false}
       onNodeClick={(_, node) => {
         if (node.type === 'symbol') onSelect(node.id);
         else if (node.type === 'summary') onToggleSummary(node.id);
