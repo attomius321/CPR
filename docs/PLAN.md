@@ -1310,6 +1310,10 @@ A3 viewer test opens the template's uses first.
   selection and marks only decorate. React Flow draws only on-screen nodes
   (`onlyRenderVisibleElements`); the zoom is a CSS variable (`--cpr-zoom`) set from the store
   without re-rendering, and the `map` class flips at 45 %.
+- Follow-up (branch `claude/change-search`, merged 2026-10-03): a search box on the Changes
+  tab. `filterChanges(list, query)` keeps the symbols whose `file` + label hold every word,
+  ignoring case; `/` focuses it, Enter opens the first match, j/k walk only the matches. The
+  sidebar tab and the query live in `App` so `/` can switch tabs and j/k see the filter.
 
 ### W1 — Repositories with several projects
 
