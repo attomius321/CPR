@@ -1086,3 +1086,5 @@ listed as changed, no template analyzed, no warning.
 the old code), full suite 293+ tests; 29 R1 comparisons identical; replica 0 → 13 templates,
 0 cross-app edges; Bitwarden (per-project resolution on: its test runner has its own `paths`):
 10 commits with every edge, finding and warning identical to `main`, no slowdown.
+
+Merged into main (2026-10-03).
