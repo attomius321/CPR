@@ -12,6 +12,9 @@
     },
     {
       "path": "packages/plugin-angular/tsconfig.build.json"
+    },
+    {
+      "path": "packages/plugin-qwik/tsconfig.build.json"
     }
   ]
 }

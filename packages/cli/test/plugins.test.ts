@@ -132,7 +132,7 @@ describe('cpr --plugin', () => {
   });
 });
 
-describe('the Angular hint', () => {
+describe('framework hints', () => {
   const cacheDir = tempDir();
   const previousCacheDir = process.env.CPR_CACHE_DIR;
   const repo = createRepo();
@@ -176,5 +176,33 @@ describe('the Angular hint', () => {
     const { code, stderr } = await cpr(['diff', base, 'HEAD'], repo.root);
     expect(code).toBe(0);
     expect(stderr).toBe('hint: Angular project: add --plugin angular to analyze templates\n');
+  });
+
+  it('suggests the Qwik plugin when a Qwik app changes a component', async () => {
+    repo.write({
+      'apps/site/package.json': '{ "devDependencies": { "@qwik.dev/core": "2.0.0" } }\n',
+      'apps/site/src/routes/index.tsx': 'export const onGet = () => 1;\n',
+    });
+    const base = repo.commit('qwik app');
+    repo.write({ 'apps/site/src/routes/index.tsx': 'export const onGet = () => 2;\n' });
+    repo.commit('qwik route');
+
+    const { code, stderr } = await cpr(['diff', base, 'HEAD'], repo.root);
+    expect(code).toBe(0);
+    expect(stderr).toBe('hint: Qwik project: add --plugin qwik to analyze routes and components\n');
+  });
+
+  it('gives no hint for plain TSX', async () => {
+    repo.write({
+      'apps/react/package.json': '{ "dependencies": { "react": "19.0.0" } }\n',
+      'apps/react/src/app.tsx': 'export const App = () => 1;\n',
+    });
+    const base = repo.commit('react app');
+    repo.write({ 'apps/react/src/app.tsx': 'export const App = () => 2;\n' });
+    repo.commit('react change');
+
+    const { code, stderr } = await cpr(['diff', base, 'HEAD'], repo.root);
+    expect(code).toBe(0);
+    expect(stderr).toBe('');
   });
 });

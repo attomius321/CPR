@@ -2,7 +2,7 @@ import type { Shape, SymbolDecl } from './model.js';
 
 /**
  * How a signature change affects existing users:
- * - `compatible`: existing uses keep working (an optional parameter or member was added).
+ * - `compatible`: existing uses keep working (an optional parameter, member or input was added).
  * - `additive`: readers keep working, but code that creates such values must add new required
  *   members (a required member or enum member was added, or one became required).
  * - `breaking`: existing uses may stop working (something removed, renamed or retyped).
@@ -44,6 +44,23 @@ export function compareShapes(base: Shape | undefined, head: Shape | undefined):
     }
     for (const [name, member] of Object.entries(after)) {
       if (!(name in before) && !member.optional) result = 'additive';
+    }
+  }
+
+  // Inputs are what users pass (props): judged from their side. Passing one that is gone, or
+  // not passing one that is now required, fails; one more optional input does not.
+  if (base.inputs || head.inputs) {
+    if (!base.inputs || !head.inputs) return 'unknown';
+    const before = base.inputs;
+    const after = head.inputs;
+    for (const [name, input] of Object.entries(before)) {
+      const next = after[name];
+      if (!next || next.type !== input.type || (input.optional && !next.optional)) {
+        return 'breaking';
+      }
+    }
+    for (const [name, input] of Object.entries(after)) {
+      if (!(name in before) && !input.optional) return 'breaking';
     }
   }
   return result;

@@ -132,34 +132,68 @@ function isPlugin(value: unknown): value is TsPlugin {
   );
 }
 
+/** A framework a plugin knows, and the changed files that make its plugin worth a hint. */
+interface Framework {
+  plugin: string;
+  /** Packages that make a project one of the framework's. */
+  packages: readonly string[];
+  /** Changed files whose analysis the plugin changes. */
+  files: RegExp;
+  hint: string;
+}
+
+const FRAMEWORKS: readonly Framework[] = [
+  {
+    plugin: 'angular',
+    packages: ['@angular/core'],
+    files: /\.html$/,
+    hint: 'Angular project: add --plugin angular to analyze templates',
+  },
+  {
+    plugin: 'qwik',
+    packages: ['@builder.io/qwik', '@qwik.dev/core'],
+    files: /\.(?:tsx|mdx)$/,
+    hint: 'Qwik project: add --plugin qwik to analyze routes and components',
+  },
+];
+
 /**
- * An Angular project reviewed without the Angular plugin, with changed templates: a hint, since
- * template users of component members are otherwise invisible. A template's project is the
- * nearest `package.json` above it, up to the repo root (repos can hold several apps).
+ * Hints for frameworks reviewed without their plugin: an Angular project with changed templates
+ * (template users of component members are otherwise invisible), a Qwik project with changed
+ * components or routes. A file's project is the nearest `package.json` above it, up to the repo
+ * root (repos can hold several apps).
  */
-export function angularHint(
+export function frameworkHints(
   plugins: readonly TsPlugin[],
   changedFiles: readonly { path: string }[],
   repoRoot: string,
-): string | undefined {
-  if (plugins.some((p) => p.name === 'angular')) return undefined;
-  const templates = changedFiles.filter((f) => f.path.endsWith('.html'));
-  const checked = new Map<string, boolean>();
-  const usesAngular = (folder: string): boolean => {
+): string[] {
+  const checked = new Map<string, ReadonlySet<string>>();
+  const dependencies = (folder: string): ReadonlySet<string> => {
     const known = checked.get(folder);
     if (known !== undefined) return known;
     const manifest = readManifest(join(repoRoot, folder, 'package.json'));
     const result = manifest
-      ? [manifest.dependencies, manifest.devDependencies, manifest.peerDependencies].some(
-          (deps) => !!deps && typeof deps === 'object' && '@angular/core' in deps,
+      ? new Set(
+          [manifest.dependencies, manifest.devDependencies, manifest.peerDependencies].flatMap(
+            (deps) => (!!deps && typeof deps === 'object' ? Object.keys(deps) : []),
+          ),
         )
-      : folder !== '.' && usesAngular(posix.dirname(folder));
+      : folder !== '.'
+        ? dependencies(posix.dirname(folder))
+        : new Set<string>();
     checked.set(folder, result);
     return result;
   };
-  return templates.some((f) => usesAngular(posix.dirname(f.path)))
-    ? 'Angular project: add --plugin angular to analyze templates'
-    : undefined;
+  return FRAMEWORKS.filter(
+    (framework) =>
+      !plugins.some((p) => p.name === framework.plugin) &&
+      changedFiles.some(
+        (file) =>
+          framework.files.test(file.path) &&
+          framework.packages.some((name) => dependencies(posix.dirname(file.path)).has(name)),
+      ),
+  ).map((framework) => framework.hint);
 }
 
 function readManifest(

@@ -28,7 +28,7 @@ import { detectForge, type ChangeRequest, type Forge } from '@cpr/forge';
 import { ciChangeRequestNumber } from './ci.js';
 import { codeQualityReport } from './codequality.js';
 import { formatAnalysis } from './format.js';
-import { angularHint, loadPlugins } from './plugins.js';
+import { frameworkHints, loadPlugins } from './plugins.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { startViewServer, type ReviewTarget } from './server.js';
 import { fileStateStore, stateDir } from './state.js';
@@ -107,8 +107,8 @@ Options:
                        head of this change (before a push or rebase)
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
-  --plugin <name|path> Analyze with a plugin, e.g. angular (repeatable; also read from
-                       "plugins" in cpr.config.json at the repo root)
+  --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
+                       read from "plugins" in cpr.config.json at the repo root)
   -h, --help           Show this help
 `;
 
@@ -124,8 +124,8 @@ Options:
                        head of this change (before a push or rebase)
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
-  --plugin <name|path> Analyze with a plugin, e.g. angular (repeatable; also read from
-                       "plugins" in cpr.config.json at the repo root)
+  --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
+                       read from "plugins" in cpr.config.json at the repo root)
   -h, --help           Show this help
 `;
 
@@ -158,8 +158,8 @@ Options:
                        head of this pull/merge request (fetched if needed)
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
-  --plugin <name|path> Analyze with a plugin, e.g. angular (repeatable; also read from
-                       "plugins" in cpr.config.json at the repo root)
+  --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
+                       read from "plugins" in cpr.config.json at the repo root)
   -h, --help           Show this help
 `;
 
@@ -279,8 +279,9 @@ async function analyze(
       ...(values.since === undefined ? {} : { since: values.since }),
       ...(values.project === undefined ? {} : { project: values.project }),
     });
-    const hint = angularHint(plugins, analysis.files, repo.root);
-    if (hint) ctx.stderr(`hint: ${hint}\n`);
+    for (const hint of frameworkHints(plugins, analysis.files, repo.root)) {
+      ctx.stderr(`hint: ${hint}\n`);
+    }
     return { analysis, durationMs: Math.round(performance.now() - started), plugins };
   } catch (error) {
     if (error instanceof NoMergeBaseError) {
