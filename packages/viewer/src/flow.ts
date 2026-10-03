@@ -151,7 +151,6 @@ const GROUP_PAD = { top: 30, side: 12, bottom: 12 };
 /** Room for a project's name band above its files; a frame of neighbours only has a smaller one. */
 const FRAME_PAD = { top: 46, side: 20, bottom: 20 };
 const LIGHT_FRAME_PAD = { top: 34, side: 16, bottom: 16 };
-const FRAME_MIN_WIDTH = 220;
 /** Symbols with no edge inside their box are stacked in columns of at most this many. */
 const WRAP_ROWS = 6;
 const WRAP_GAP = { x: 16, y: 12 };
@@ -329,21 +328,44 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     if (project) projectOfBox.set(id, project);
   }
   const frameOf = new Map<string, string>();
-  const frames = new Map<string, { project: Project; boxes: string[]; changed: number }>();
+  const frames = new Map<string, { project: Project; changed: number }>();
   if (new Set(projectOfBox.values()).size > 1) {
     for (const [box, project] of projectOfBox) {
       const id = `project:${project.folder}`;
       let frame = frames.get(id);
-      if (!frame) frames.set(id, (frame = { project, boxes: [], changed: 0 }));
-      frame.boxes.push(box);
+      if (!frame) frames.set(id, (frame = { project, changed: 0 }));
       frame.changed += boxes.get(box)?.members.filter((m) => m.changed).length ?? 0;
       frameOf.set(box, id);
     }
   }
+  // A box in no project (a package, the dynamic calls) is drawn in the frame it has the most links
+  // with, among its users as without frames: beside every frame, a package used by hundreds of
+  // symbols drew long fans of edges (Qwik). It still belongs to no project.
+  const placedIn = new Map(frameOf);
+  if (frames.size > 0) {
+    const weights = new Map<string, Map<string, number>>();
+    for (const { from, to } of between) {
+      for (const [box, other] of [
+        [from, to],
+        [to, from],
+      ] as const) {
+        const frame = frameOf.get(other);
+        if (frameOf.has(box) || !frame) continue;
+        const byFrame = weights.get(box) ?? new Map<string, number>();
+        byFrame.set(frame, (byFrame.get(frame) ?? 0) + 1);
+        weights.set(box, byFrame);
+      }
+    }
+    for (const [box, byFrame] of weights) {
+      let best: [string, number] | undefined;
+      for (const entry of byFrame) if (!best || entry[1] > best[1]) best = entry;
+      if (best) placedIn.set(box, best[0]);
+    }
+  }
 
   // Between boxes: clusters connected by edges, each laid out by dagre, packed into a page. With
-  // frames, files are packed so inside their frame; the frames and the boxes outside every
-  // project (packages, dynamic calls) are placed in rows in the order of the links between them.
+  // frames, the boxes in a frame are packed so inside it; frames (and a box in none, linked to no
+  // frame) are placed in rows in the order of the links between them.
   const boxPositions = new Map<string, { x: number; y: number }>();
   const frameRects = new Map<string, Rect>();
   if (frames.size === 0) {
@@ -351,10 +373,11 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     for (const [id, at] of packed.positions) boxPositions.set(id, at);
   } else {
     for (const [id, frame] of frames) {
-      const pad = frame.changed > 0 ? FRAME_PAD : LIGHT_FRAME_PAD;
-      const inside = new Set(frame.boxes);
+      const light = frame.changed === 0;
+      const pad = light ? LIGHT_FRAME_PAD : FRAME_PAD;
+      const inside = new Set([...placedIn].filter(([, at]) => at === id).map(([box]) => box));
       const packed = packClusters(
-        frame.boxes.map((box) => [box, boxSizes.get(box) ?? { width: 0, height: 0 }]),
+        [...inside].map((box) => [box, boxSizes.get(box) ?? { width: 0, height: 0 }]),
         between.filter((l) => inside.has(l.from) && inside.has(l.to)),
         { x: pad.side, y: pad.top },
       );
@@ -362,13 +385,13 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
       frameRects.set(id, {
         x: 0,
         y: 0,
-        width: Math.max(FRAME_MIN_WIDTH, packed.width + 2 * pad.side),
+        width: Math.max(bandWidth(frame.project, light), packed.width + 2 * pad.side),
         height: packed.height + pad.top + pad.bottom,
       });
     }
-    const outer = (box: string) => frameOf.get(box) ?? box;
+    const outer = (box: string) => placedIn.get(box) ?? box;
     const placed = packFrames(
-      [...frameRects, ...[...boxSizes].filter(([id]) => !frameOf.has(id))],
+      [...frameRects, ...[...boxSizes].filter(([id]) => !placedIn.has(id))],
       between.map((l) => ({ from: outer(l.from), to: outer(l.to) })).filter((l) => l.from !== l.to),
       { x: MARGIN, y: MARGIN },
     );
@@ -399,8 +422,8 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
 
   const fileNodes: FileFlowNode[] = [...boxes].map(([id, box]) => {
     const size = boxSizes.get(id) ?? { width: 0, height: 0 };
-    const frame = frameOf.get(id);
-    const project = projectOfBox.get(id);
+    const frame = placedIn.get(id);
+    const project = frameOf.has(id) ? projectOfBox.get(id) : undefined;
     return {
       id,
       type: 'file',
@@ -411,7 +434,7 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
       ...(frame ? { parentId: frame, extent: 'parent' as const } : {}),
       data: {
         label: box.label,
-        ...(frame && project && box.file ? { local: pathInProject(box.file, project) } : {}),
+        ...(project && box.file ? { local: pathInProject(box.file, project) } : {}),
         changed: box.changed,
       },
     };
@@ -646,32 +669,40 @@ function packClusters(
 }
 
 /**
- * Top-left corners of project frames and of the boxes outside them, in reading order: dagre ranks
- * them left to right by the links between them (callers before what they call), and they are
- * placed in rows in that order, the tallest first within a rank. Dagre's own columns run 3 to 8
- * times wider than high with frames (Bitwarden), rows keep the page about `PAGE_ASPECT` wide.
+ * Top-left corners of project frames (and of boxes in none), in reading order: dagre ranks them
+ * left to right by the links between them (callers before what they call), and they are placed in
+ * rows in that order, the tallest first within a rank; those linked to nothing come last. Dagre's
+ * own columns run 3 to 8 times wider than high with frames (Bitwarden); rows keep the page about
+ * `PAGE_ASPECT` wide.
  */
 function packFrames(
-  items: readonly [string, { width: number; height: number }][],
+  items: readonly [string, Size][],
   links: readonly { from: string; to: string }[],
   origin: { x: number; y: number },
 ): { positions: Map<string, { x: number; y: number }>; width: number; height: number } {
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({ rankdir: 'LR', nodesep: 30, ranksep: 90 });
   graph.setDefaultEdgeLabel(() => ({}));
-  for (const [id, size] of items) graph.setNode(id, { ...size });
+  for (const [id, { width, height }] of items) graph.setNode(id, { width, height });
   for (const l of links) graph.setEdge(l.from, l.to);
   dagre.layout(graph);
+  const linked = new Set(links.flatMap((l) => [l.from, l.to]));
   // Left to right, a rank's nodes share their centre's x.
   const ordered = items.map(([id, size], order) => ({
     positions: new Map([[id, { x: 0, y: 0 }]]),
     width: size.width,
     height: size.height,
+    alone: !linked.has(id),
     rank: Math.round(placement(graph, id).x),
     order,
   }));
   ordered.sort(
-    (a, b) => a.rank - b.rank || b.height - a.height || b.width - a.width || a.order - b.order,
+    (a, b) =>
+      Number(a.alone) - Number(b.alone) ||
+      a.rank - b.rank ||
+      b.height - a.height ||
+      b.width - a.width ||
+      a.order - b.order,
   );
   return placeInRows(ordered, origin);
 }
@@ -721,6 +752,16 @@ interface Rect {
 
 /** dagre's placement: a node's center and size. */
 type Placement = Rect;
+
+interface Size {
+  width: number;
+  height: number;
+}
+
+/** Wide enough for a frame's name band: the name and kind, the start of the folder, "12 changed". */
+function bandWidth(project: Project, light: boolean): number {
+  return Math.round(project.name.length * (light ? 8 : 10) + (project.kind ? 44 : 0) + 190);
+}
 
 /** dagre's node labels are untyped; after layout they hold center and size. */
 function placement(graph: DagreGraph, id: string): Placement {

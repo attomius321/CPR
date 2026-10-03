@@ -365,6 +365,12 @@ code {
   white-space: nowrap;
 }
 
+.summary-in {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .summary-action {
   color: var(--moved);
 }
@@ -397,9 +403,92 @@ code {
   white-space: nowrap;
 }
 
+/* ---- project frames: an app's or library's files, when a change spans several -------- */
+
+/* A click or drag inside a frame reaches the canvas or the box under it; the band takes it. */
+.react-flow__node-project {
+  pointer-events: none !important;
+}
+
+.project-frame {
+  height: 100%;
+  border: 1.5px solid color-mix(in srgb, var(--text) 28%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+}
+
+/* Only unchanged neighbours come from it: lighter, with a smaller head. */
+.project-frame.context {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--text) 12%, var(--line));
+  background: transparent;
+}
+
+.project-band {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 11px 16px 0;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.project-name {
+  /* The frame is made wide enough for it; the folder gives way first. */
+  flex: none;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.project-kind {
+  flex: none;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.project-folder {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font:
+    12px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+
+.project-changed {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.project-frame.context .project-band {
+  padding-top: 8px;
+}
+
+.project-frame.context .project-name {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .minimap-file {
   fill: transparent;
   stroke: var(--line);
+}
+
+.minimap-project {
+  fill: transparent;
+  stroke: var(--muted);
+  vector-effect: non-scaling-stroke;
 }
 
 .minimap-summary {
@@ -472,6 +561,15 @@ code {
 .react-flow__edge.edge-active path.react-flow__edge-path {
   stroke-width: 2.5;
   stroke-opacity: 1;
+}
+
+/* Between two projects: what one app or library asks of another. */
+.react-flow__edge.edge-cross path.react-flow__edge-path {
+  stroke-width: 3;
+}
+
+.react-flow__edge.edge-cross.edge-active path.react-flow__edge-path {
+  stroke-width: 4.5;
 }
 
 /* ---- map: zoomed out, files are what you read and click -------------------------------- */
@@ -547,6 +645,57 @@ code {
   stroke-opacity: 1;
 }
 
+.react-flow.map .react-flow__edge.edge-cross path.react-flow__edge-path {
+  stroke-opacity: 0.6;
+}
+
+/* Projects read first, files second: the frame is drawn over its files (transparent, and only
+   its name takes clicks), its name about twice a file name's size, up to the frame's width. */
+.react-flow.map .react-flow__node-project {
+  z-index: 2001 !important;
+}
+
+/* A border would be a tenth of a pixel when zoomed out: a ring that keeps its screen width. */
+.react-flow.map .project-frame {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: 0 0 0 calc(2px / var(--cpr-zoom, 1)) color-mix(in srgb, var(--text) 35%, var(--line));
+}
+
+.react-flow.map .project-frame.context {
+  box-shadow: 0 0 0 calc(1px / var(--cpr-zoom, 1)) color-mix(in srgb, var(--text) 18%, var(--line));
+}
+
+.react-flow.map .project-band {
+  padding: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.react-flow.map .project-band > :not(.project-name) {
+  display: none;
+}
+
+.react-flow.map .project-name {
+  padding: calc(3px / var(--cpr-zoom, 1)) calc(8px / var(--cpr-zoom, 1));
+  border-radius: calc(6px / var(--cpr-zoom, 1));
+  overflow: visible;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  font-size: clamp(
+    calc(13px / var(--cpr-zoom, 1)),
+    calc(var(--frame-width) / var(--name-length) / 0.62),
+    calc(26px / var(--cpr-zoom, 1))
+  );
+  line-height: 1.25;
+  cursor: zoom-in;
+  pointer-events: auto;
+}
+
+.react-flow.map .project-frame.context .project-name {
+  background: transparent;
+  font-size: calc(13px / var(--cpr-zoom, 1));
+}
+
 /* ---- legend ------------------------------------------------------------------------- */
 
 .legend {
@@ -587,6 +736,17 @@ code {
 
 .legend-edge.edge-base::before {
   border-top: 2px dashed var(--removed);
+}
+
+.legend-edge.edge-cross::before {
+  border-top: 3px solid var(--context);
+}
+
+.legend-project::before {
+  width: 14px;
+  background: transparent;
+  border: 1.5px solid color-mix(in srgb, var(--text) 28%, var(--line));
+  border-radius: 4px;
 }
 
 /* ---- detail panel ------------------------------------------------------------------- */

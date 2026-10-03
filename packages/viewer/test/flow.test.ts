@@ -401,27 +401,42 @@ describe('layoutFlow: projects', () => {
     expect(frames(nodes).find((f) => f.id === 'project:')?.data.name).toBe('repository root');
   });
 
-  it('keeps packages and dynamic calls outside every frame', () => {
+  it('draws a package among the files of its main user, yet in no project', () => {
+    // `x` uses three of React's exports, `z` one: React's box is drawn in `apps/a`'s frame, next
+    // to its users as without frames; an edge to it never crosses projects.
+    const react = ['useState', 'useEffect', 'useMemo'].map((name) => `react#${name}`);
     const graph = synthetic(
       ['apps/a/x.ts#x!', 'libs/b/z.ts#z!'],
-      ['apps/a/x.ts#x>libs/b/z.ts#z', 'apps/a/x.ts#x>react#useState'],
+      [
+        'apps/a/x.ts#x>libs/b/z.ts#z',
+        ...react.map((id) => `apps/a/x.ts#x>${id}`),
+        'libs/b/z.ts#z>react#useState',
+      ],
       [],
       [project('apps/a'), project('libs/b')],
     );
     const [first] = graph.nodes as [GraphNode];
-    graph.nodes.push({
-      ...first,
-      id: 'react#useState',
-      name: 'useState',
-      kind: 'external',
-      status: 'unchanged',
-    });
+    for (const id of react) {
+      graph.nodes.push({
+        ...first,
+        id,
+        name: id.slice(id.indexOf('#') + 1),
+        kind: 'external',
+        status: 'unchanged',
+      });
+    }
     const { nodes, edges } = layoutFlow(graph);
-    const box = files(nodes).find((f) => f.id === 'group:package:react');
-    expect(box).toBeDefined();
-    expect(box).not.toHaveProperty('parentId');
-    for (const frame of frames(nodes)) expect(apart(box as FileFlowNode, frame)).toBe(true);
-    expect(edges.find((e) => e.target === 'react#useState')?.className).not.toContain('edge-cross');
+    const box = files(nodes).find((f) => f.id === 'group:package:react') as FileFlowNode;
+    expect(box.parentId).toBe('project:apps/a');
+    expect(box.data).toEqual({ label: 'package react', changed: false });
+    const a = frames(nodes).find((f) => f.id === 'project:apps/a') as ProjectFlowNode;
+    expect(box.position.x + box.width).toBeLessThan(a.width);
+    expect(box.position.y + box.height).toBeLessThan(a.height);
+    // Its symbols are no project's changes.
+    expect(a.data.changed).toBe(1);
+    expect(
+      edges.filter((e) => e.target.startsWith('react#')).map((e) => e.className.includes('cross')),
+    ).toEqual([false, false, false, false]);
   });
 
   it('draws one project as before: no frame, the same layout', () => {

@@ -4,9 +4,10 @@ import type { FileData } from './flow.js';
 export function FileNode({ data }: NodeProps<Node<FileData, 'file'>>) {
   return (
     <div className={`file-box${data.changed ? ' changed' : ''}`}>
-      {/* rtl container + ltr text: a long path loses its start, not its file name. */}
+      {/* rtl container + ltr text: a long path loses its start, not its file name. In a
+          project's frame the path starts at the project's folder. */}
       <div className="file-label" title={data.label}>
-        <span dir="ltr">{data.label}</span>
+        <span dir="ltr">{data.local ?? data.label}</span>
       </div>
       {/* On the map (zoomed out) only the name is shown, large enough to read. */}
       <div className="file-name" title={data.label}>
