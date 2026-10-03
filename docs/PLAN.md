@@ -413,7 +413,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | D1 ✅ | Detectors from real reviews | `signature-changed` tells test users from production users (only untouched production users elsewhere make a warning); new `exported-api-changed` for a published package's API removed, unexported, or broken. See §8. |
 | X1 ✅, A1–A2 ✅ | Plugins; Angular templates as the `angular` plugin | Templates call component methods, bind inputs and use pipes, and CPR saw none of it: 9 of 9 warnings on real Angular commits were false. Angular support must stay outside the TS/JS analysis: X1 adds plugin hooks, A1–A2 build the Angular plugin on them. Merged with PR #1; see below. |
 | A3 ✅ | Angular library components, directives and pipes | `async`, `date`, `ngModel`, `routerLink` and Material were plain bindings, and a library pipe's result untyped: links through `@if (x$ \| async; as x)` were lost (19 such blocks in Bitwarden's web app). Now read from installed packages' typings; see below. |
-| V6 ✅ (branch, not merged) | A graph you can navigate | On a large change the viewer drew 1,288 symbols for 86 changes, in a 9,470 × 85,468 px strip, and every click re-ran the layout. Now: big neighbourhoods as one node, a page of clusters, a map when zoomed out, no relayout while reviewing; see below. |
+| V6 ✅ | A graph you can navigate | On a large change the viewer drew 1,288 symbols for 86 changes, in a 9,470 × 85,468 px strip, and every click re-ran the layout. Now: big neighbourhoods as one node, a page of clusters, a map when zoomed out, no relayout while reviewing; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -1188,7 +1188,7 @@ types. `linkNodeModules` now links it too.
 
 ### V6 — A graph you can navigate
 
-**Status:** built and verified on branch `milestone/v6-navigable-graph`, not merged yet; results
+**Status:** merged into main (2026-10-03, from branch `milestone/v6-navigable-graph`); results
 and "as built" at the end of this section.
 
 **Problem** (reported on a real project: "I can't navigate through it"). Measured on Bitwarden

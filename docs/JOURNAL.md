@@ -1053,3 +1053,5 @@ a 9,470 × 85,468 px strip; every selection and reviewed mark re-ran the whole l
 **Verification**: viewer unit tests 44/44, e2e 14/14, typecheck, lint; Bitwarden graphs measured
 before and after in Chromium (first paint 4.0 → 0.65 s, mark reviewed 1.2 s → 72 ms, page
 elements 22,966 → 3,937 on `737ee3f`), screenshots of the map, a zoomed file and a selection.
+
+Merged into main (2026-10-03).
