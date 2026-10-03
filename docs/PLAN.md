@@ -1965,7 +1965,7 @@ project, today's drawing.
 
 | # | Milestone | Output |
 |---|---|---|
-| V7a | Projects in the graph | Core project rules (declared, packages, tsconfig-only, root), the optional plugin hook and the Angular plugin's `angular.json` projects, `projects` in the graph (schema 0.6.0), shared workspace-globs reader. |
+| V7a (built) | Projects in the graph | Core project rules (declared, packages, tsconfig-only, root), the optional plugin hook and the Angular plugin's `angular.json` projects, `projects` in the graph (schema 0.6.0), shared workspace-globs reader. |
 | V7b | Frames | `layoutFlow` one level deeper (files in project frames, frames by the links between them), `project` frame node, edges between projects, project names on the map and minimap, summaries across projects, legend; one project = today. |
 | V7c | By project in the sidebar | Change list grouped by project with progress and relative paths, the project filter (canvas and list), project names in findings and the detail panel, search by project name. |
 
@@ -2002,6 +2002,18 @@ project, today's drawing.
   (`./src/` → `src`, `.` → `''`); one outside the repository is skipped with a warning.
 - **Base-only files** are read from base; when head and base give a project for the same folder,
   head's is listed (a renamed package shows its new name).
+
+**Results (V7a)**: graphs, edges and findings identical to `main` apart from the new field and
+`schemaVersion` — `r1` 29 comparisons (859 edges), Bitwarden 10 (4,862 edges) and the 8
+multi-project changes (10,803 edges), Qwik's 30 (5,530 edges); run time ×0.97–1.015. Goldens:
+only `schemaVersion`. On Bitwarden every project is what the rules say: apps and libraries by
+their Nx names and kinds (`web`, `@bitwarden/common`), `bitwarden_license/bit-common`,
+`bit-browser`, `bit-cli` by their tsconfig, `bit-web` from `angular.json`, nothing split at
+`apps/desktop/src` or the browser's `lit-components`. The graphs list 8–45 projects there, far more
+than the 4–16 the viewer draws: all but 3–10 come from context symbols, which V6 folds into
+summaries — V7b frames what it draws, and a summary can say "across 5 projects" from the list.
+Qwik: 19 of 30 changes span 2–7 projects (`f7ed58cfc`: 7, with the root). The new phase costs
+250 ms of 66 s on Bitwarden `cbf86c2`, 7 ms on Qwik `f7ed58cfc`.
 
 **Not in V7 (later)**: collapsing a whole frame into one node (V6's summaries already cut
 context); grouping findings by project in the CLI summary and PR comments; colouring projects.

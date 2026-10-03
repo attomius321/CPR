@@ -1269,3 +1269,39 @@ as the CLI's earlier run on all 30 commits, no error; `measure.mjs` on two Bitwa
 (`737ee3f`: first paint 1.1 s under load, no page error).
 
 Merged into main (2026-10-03).
+
+## V7a — Projects in the graph (2026-10-03, branch `milestone/v7a-projects-in-graph`)
+
+The graph JSON now says which app or library each file belongs to (`projects`, schema 0.6.0),
+by the rules the V7 spike measured: declared projects (workspaces, Nx, plugins), packages when
+nothing is declared, tsconfig folders, the root. The Angular plugin declares `angular.json`'s
+projects through a new optional hook. Nothing in the viewer yet (V7b).
+
+**Learned**
+- The workspace glob reader turned `libs/**/*` into "at least one folder between": it never
+  matched `libs/common`, so none of Bitwarden's direct `libs/*` packages were workspace members —
+  for the TypeScript adapter's package mapping either. `**` now matches no folder too, as in npm.
+  No Bitwarden edge changed (its tsconfig `paths` map most of those packages anyway).
+- Which projects to list is a contract question: a consumer assigns paths by the longest folder,
+  so the list must hold the project of *every* path the graph names (changed files included), or
+  a README in an app with no symbol would land in the root project.
+- The spike's "4–16 projects per Bitwarden change" counted what the viewer draws. The graph's
+  nodes span 8–45: most come from context symbols V6 folds into summaries. Frames must follow
+  what is drawn, not the list.
+- Nx and `angular.json` disagree: Bitwarden's `libs/components` is an Angular `application`
+  (Storybook) and an Nx `library`. Nx wins for name and kind.
+- An Nx `project.json` is trusted only with `nx.json` at the root.
+
+**Verification**: tests first (red for the missing module, the missing hook and the missing
+field): rule fixtures (`projects/declared` — one folder declared three ways, nested packages, a
+`**` member, an Nx-only and a plugin-only folder, a tsconfig folder inside and outside a declared
+project; `projects/packages` — nothing declared, a `{ "type": "module" }` marker; `projects/pnpm`
+— an excluded package), a monorepo change with a base-only library and a renamed root package,
+W1's two-app fixture (two tsconfig projects), the plugin hook (normalized folders, one outside the
+repo, a throwing hook), Angular's W1 fixture and an Angular CLI workspace (`shop` at the root,
+`projects/admin`, `projects/ui-kit`; without the plugin only the library's package). Full suite
+392 tests. Regression against `main`: `r1` 29 identical (859 edges), Bitwarden 10 identical
+(4,862), Bitwarden multi-project 8 identical (10,803), Qwik 30 identical (5,530); no finding
+changed; time ×0.97–1.015. Projects phase: 250 ms of 66 s (Bitwarden `cbf86c2`), 7 ms (Qwik
+`f7ed58cfc`). Not verified: Yarn's `workspaces: { packages }` form and an Nx repo without
+workspaces (no fixture, no real repo), an Angular CLI workspace on real code (fixture only).
