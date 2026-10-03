@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "module": "es2020",
+    "moduleResolution": "node",
+    "target": "es2020",
+    "strict": true,
+    "paths": { "@app/*": ["src/app/*"] }
+  }
+}

@@ -6,6 +6,7 @@ import { CprError } from '../../errors.js';
 import { loadIgnores } from '../../ignore.js';
 import type { SymbolId } from '../../model.js';
 import type { RevisionSource } from '../../revision.js';
+import { isAnyConfig, isSolutionStyle, projectResolution } from './configs.js';
 import { isTsSource } from './files.js';
 import {
   runHook,
@@ -91,22 +92,42 @@ export function loadTsProject(
     }
   };
 
+  // Every config in the repo, for resolving each file with its own project's options (repos
+  // with several projects); `tsconfig.json` files also say which files to load.
+  const allConfigs = findFiles(root, isAnyConfig, notIgnored);
+  const hasRootConfig = existsSync(configPath);
+  const resolutionHost = projectResolution({
+    root,
+    configs: allConfigs,
+    rootConfig: hasRootConfig ? configPath : undefined,
+    overrides: OVERRIDES,
+    workspace,
+  });
+  // A solution-style config (`files: []`, references) loads nothing itself: its references do.
+  const withReferences = (configs: string[]) =>
+    configs.flatMap((c) => (isSolutionStyle(readJson(c)) ? [c, ...referencedConfigs(c)] : [c]));
+  const found = withReferences(allConfigs.filter((c) => isConfig(c.slice(c.lastIndexOf(sep) + 1))));
+
   let tsProject: Project;
-  if (existsSync(configPath)) {
+  if (hasRootConfig) {
     tsProject = new Project({
       tsConfigFilePath: configPath,
       compilerOptions: { ...OVERRIDES, paths: { ...workspace, ...configPaths(configPath) } },
+      ...(resolutionHost ? { resolutionHost } : {}),
     });
     const others = project
       ? referencedConfigs(configPath)
-      : [...referencedConfigs(configPath), ...findFiles(root, isConfig, notIgnored)];
+      : [...referencedConfigs(configPath), ...found];
     addConfigs(
       tsProject,
       [...new Set(others)].filter((c) => c !== configPath),
     );
   } else {
-    tsProject = new Project({ compilerOptions: { ...DEFAULTS, ...OVERRIDES, paths: workspace } });
-    const configs = findFiles(root, isConfig, notIgnored);
+    tsProject = new Project({
+      compilerOptions: { ...DEFAULTS, ...OVERRIDES, paths: workspace },
+      ...(resolutionHost ? { resolutionHost } : {}),
+    });
+    const configs = [...new Set(found)];
     if (configs.length > 0) addConfigs(tsProject, configs);
     else
       for (const file of findFiles(root, isTsSource, notIgnored))

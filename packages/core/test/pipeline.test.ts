@@ -170,6 +170,37 @@ describe('detectors', () => {
   });
 });
 
+describe('repositories with several projects', () => {
+  // Two apps two folders down, nothing at the root, both mapping `@app/*` to their own sources.
+  // `a` renames UserService.fullName; its callers (one through `@app/…`, one through `baseUrl`)
+  // still use the old name. `b` has a class of the same name, loaded through a solution-style
+  // tsconfig (`files: []` and references).
+  const A = 'apps/web/a/src/app';
+  const B = 'apps/web/b/src/app';
+
+  it('resolves each file with the paths and baseUrl of its own project', async () => {
+    const analysis = await analyzeDirectories(
+      fixture('multi-project', 'base'),
+      fixture('multi-project', 'head'),
+    );
+    expect(analysis.findings.map((f) => [f.severity, f.rule, f.symbol, f.related])).toEqual([
+      [
+        'error',
+        'removed-still-referenced',
+        `${A}/core/user.service.ts#UserService.displayName`,
+        [`${A}/header.ts#title`, `${A}/profile.ts#greet`],
+      ],
+    ]);
+    const edges = analysis.edges.map((e) => `${e.from} -${e.kind}-> ${e.to} (${e.side})`);
+    // `b`'s alias reaches `b`'s class, never `a`'s.
+    expect(edges).toContain(
+      `${B}/menu.ts#label -call-> ${B}/core/user.service.ts#UserService.fullName (both)`,
+    );
+    expect(edges.filter((e) => e.startsWith(`${B}/`) && e.includes(`${A}/`))).toEqual([]);
+    expect(analysis.warnings).toEqual([]);
+  });
+});
+
 describe('public API and test users', () => {
   it('flags public API that breaks outside the repo, and sets stale tests apart', async () => {
     const analysis = await analyzeDirectories(
