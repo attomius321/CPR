@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { Finding, Graph, GraphEdge, GraphNode } from '@cpr/core';
+import type { Finding, Graph, GraphEdge, GraphNode, Project } from '@cpr/core';
 import { describe, expect, it } from 'vitest';
 import {
   decorate,
@@ -13,6 +13,7 @@ import {
   tone,
   type FileFlowNode,
   type FlowNode,
+  type ProjectFlowNode,
   type SummaryFlowNode,
   type SymbolFlowNode,
 } from '../src/flow.js';
@@ -114,7 +115,12 @@ describe('toFlow', () => {
 });
 
 /** A made-up graph: `nodes` as `id` (unchanged) or `id!` (modified); `edges` as `from>to`. */
-function synthetic(nodes: string[], edges: string[], findings: Finding[] = []): Graph {
+function synthetic(
+  nodes: string[],
+  edges: string[],
+  findings: Finding[] = [],
+  projects?: Project[],
+): Graph {
   const node = (spec: string): GraphNode => {
     const id = spec.replace(/!$/, '');
     return {
@@ -142,7 +148,13 @@ function synthetic(nodes: string[], edges: string[], findings: Finding[] = []): 
       sites: {},
     };
   };
-  return { ...golden('callers'), nodes: nodes.map(node), edges: edges.map(edge), findings };
+  return {
+    ...golden('callers'),
+    nodes: nodes.map(node),
+    edges: edges.map(edge),
+    findings,
+    ...(projects ? { projects } : {}),
+  };
 }
 
 /** `hub` (changed) used by `users` callers, one per file in `files` files; `small` with 2. */
@@ -285,6 +297,194 @@ describe('layoutFlow: a page, not a strip', () => {
           b.position.y + b.height <= a.position.y;
         expect(apart, `${a.id} and ${b.id}`).toBe(true);
       }
+    }
+  });
+});
+
+describe('layoutFlow: projects', () => {
+  const frames = (nodes: FlowNode[]) =>
+    nodes.filter((n): n is ProjectFlowNode => n.type === 'project');
+  const files = (nodes: FlowNode[]) => nodes.filter((n): n is FileFlowNode => n.type === 'file');
+  const project = (folder: string, name = folder || 'repository root'): Project => ({
+    folder,
+    name,
+    source: folder ? 'workspace' : 'root',
+  });
+  /** Top-level rectangles: frames, and boxes outside every frame. */
+  const apart = (
+    a: { position: { x: number; y: number }; width: number; height: number },
+    b: { position: { x: number; y: number }; width: number; height: number },
+  ) =>
+    a.position.x + a.width <= b.position.x ||
+    b.position.x + b.width <= a.position.x ||
+    a.position.y + a.height <= b.position.y ||
+    b.position.y + b.height <= a.position.y;
+
+  it('draws a frame per project around its files, parents first', () => {
+    // Two apps call a shared library; a removed library stands alone (npm workspaces).
+    const { nodes } = layoutFlow(golden('projects'));
+    const drawn = frames(nodes);
+    expect(drawn.map((f) => [f.data.name, f.data.folder, f.data.changed]).sort()).toEqual([
+      ['@acme/admin', 'apps/admin', 1],
+      ['@acme/legacy', 'libs/legacy', 1],
+      ['@acme/shop', 'apps/shop', 0],
+      ['@acme/ui', 'libs/ui', 1],
+    ]);
+    const types = nodes.map((n) => n.type);
+    expect(types.lastIndexOf('project')).toBeLessThan(types.indexOf('file'));
+    expect(types.lastIndexOf('file')).toBeLessThan(types.indexOf('symbol'));
+    for (const file of files(nodes)) {
+      const frame = drawn.find((f) => f.id === file.parentId);
+      expect(frame, file.id).toBeDefined();
+      expect(file.extent).toBe('parent');
+      expect(file.position.x).toBeGreaterThan(0);
+      expect(file.position.y).toBeGreaterThan(0);
+      expect(file.position.x + file.width).toBeLessThan(frame?.width ?? 0);
+      expect(file.position.y + file.height).toBeLessThan(frame?.height ?? 0);
+    }
+    // Inside a frame a path is shown relative to its project; the label stays the full path.
+    const page = files(nodes).find((f) => f.data.label === 'apps/admin/src/page.ts');
+    expect(page?.data.local).toBe('src/page.ts');
+  });
+
+  it('places frames apart, the apps before the library they call', () => {
+    const drawn = frames(layoutFlow(golden('projects')).nodes);
+    for (const a of drawn) {
+      for (const b of drawn) if (a !== b) expect(apart(a, b), `${a.id} and ${b.id}`).toBe(true);
+    }
+    // In rows: a later one is to the right in the same row, or in a row below.
+    const frame = (name: string) => drawn.find((f) => f.data.name === name) as ProjectFlowNode;
+    const ui = frame('@acme/ui');
+    for (const app of [frame('@acme/admin'), frame('@acme/shop')]) {
+      const after =
+        ui.position.y >= app.position.y + app.height ||
+        (ui.position.y === app.position.y && ui.position.x >= app.position.x + app.width);
+      expect(after, app.data.name).toBe(true);
+    }
+  });
+
+  it('marks edges between projects', () => {
+    expect(layoutFlow(golden('projects')).edges.map((e) => e.className)).toEqual([
+      'edge-both edge-call edge-cross',
+      'edge-both edge-call edge-cross',
+    ]);
+    const graph = synthetic(
+      ['apps/a/x.ts#x!', 'apps/a/y.ts#y!', 'libs/b/z.ts#z!'],
+      ['apps/a/x.ts#x>apps/a/y.ts#y', 'apps/a/y.ts#y>libs/b/z.ts#z'],
+      [],
+      [project(''), project('apps/a'), project('libs/b')],
+    );
+    expect(layoutFlow(graph).edges.map((e) => `${e.source} ${e.className}`)).toEqual([
+      'apps/a/x.ts#x edge-both edge-call',
+      'apps/a/y.ts#y edge-both edge-call edge-cross',
+    ]);
+  });
+
+  it('puts a file in the project with the longest folder holding it', () => {
+    const graph = synthetic(
+      ['apps/web/a.ts#a!', 'apps/web-admin/b.ts#b!', 'apps/web/e2e/c.ts#c!', 'tools/d.ts#d!'],
+      [],
+      [],
+      [project(''), project('apps/web'), project('apps/web-admin'), project('apps/web/e2e')],
+    );
+    const { nodes } = layoutFlow(graph);
+    expect(
+      files(nodes)
+        .map((f) => `${f.data.label} in ${f.parentId ?? '-'} as ${f.data.local ?? '-'}`)
+        .sort(),
+    ).toEqual([
+      'apps/web-admin/b.ts in project:apps/web-admin as b.ts',
+      'apps/web/a.ts in project:apps/web as a.ts',
+      'apps/web/e2e/c.ts in project:apps/web/e2e as c.ts',
+      'tools/d.ts in project: as tools/d.ts',
+    ]);
+    expect(frames(nodes).find((f) => f.id === 'project:')?.data.name).toBe('repository root');
+  });
+
+  it('keeps packages and dynamic calls outside every frame', () => {
+    const graph = synthetic(
+      ['apps/a/x.ts#x!', 'libs/b/z.ts#z!'],
+      ['apps/a/x.ts#x>libs/b/z.ts#z', 'apps/a/x.ts#x>react#useState'],
+      [],
+      [project('apps/a'), project('libs/b')],
+    );
+    const [first] = graph.nodes as [GraphNode];
+    graph.nodes.push({
+      ...first,
+      id: 'react#useState',
+      name: 'useState',
+      kind: 'external',
+      status: 'unchanged',
+    });
+    const { nodes, edges } = layoutFlow(graph);
+    const box = files(nodes).find((f) => f.id === 'group:package:react');
+    expect(box).toBeDefined();
+    expect(box).not.toHaveProperty('parentId');
+    for (const frame of frames(nodes)) expect(apart(box as FileFlowNode, frame)).toBe(true);
+    expect(edges.find((e) => e.target === 'react#useState')?.className).not.toContain('edge-cross');
+  });
+
+  it('draws one project as before: no frame, the same layout', () => {
+    const callers = golden('callers');
+    expect(
+      layoutFlow({ ...callers, projects: [project(''), project('src'), project('docs')] }),
+    ).toEqual(layoutFlow(callers));
+    // The graph spans four projects, but focus draws one of them.
+    const single = golden('projects');
+    delete single.projects;
+    const focus = new Set(['libs/ui/src/index.ts#button']);
+    expect(layoutFlow(golden('projects'), { focus })).toEqual(layoutFlow(single, { focus }));
+  });
+
+  it('packs projects with no link between them into a page', () => {
+    // Qwik's monorepo: each project's part of a change is an island.
+    const graph = synthetic(
+      Array.from({ length: 12 }, (_, i) => `packages/p${i}/src/index.ts#s${i}!`),
+      [],
+      [],
+      Array.from({ length: 12 }, (_, i) => project(`packages/p${i}`)),
+    );
+    const drawn = frames(layoutFlow(graph).nodes);
+    expect(drawn).toHaveLength(12);
+    const width = Math.max(...drawn.map((f) => f.position.x + f.width));
+    const height = Math.max(...drawn.map((f) => f.position.y + f.height));
+    expect(width / height).toBeGreaterThan(0.6);
+    expect(width / height).toBeLessThan(2.5);
+  });
+
+  it('says how many projects a summary spans, and draws its members in their frames', () => {
+    const HUB = 'libs/hub/hub.ts#hub';
+    const callers = Array.from(
+      { length: 30 },
+      (_, i) => `apps/${'abc'[i % 3]}/u${i}.ts#caller${i}`,
+    );
+    const graph = synthetic(
+      [`${HUB}!`, ...callers],
+      callers.map((c) => `${c}>${HUB}`),
+      [],
+      ['apps/a', 'apps/b', 'apps/c', 'libs/hub'].map((folder) => project(folder)),
+    );
+    const collapsed = layoutFlow(graph);
+    expect(summaries(collapsed.nodes)[0]?.data).toEqual({
+      of: HUB,
+      side: 'users',
+      count: 30,
+      files: 30,
+      projects: 3,
+      expanded: false,
+    });
+    // Only the hub's project is drawn: no frame.
+    expect(frames(collapsed.nodes)).toEqual([]);
+
+    const open = layoutFlow(graph, { expanded: new Set([summaryId('users', HUB)]) });
+    expect(
+      frames(open.nodes)
+        .map((f) => f.data.name)
+        .sort(),
+    ).toEqual(['apps/a', 'apps/b', 'apps/c', 'libs/hub']);
+    for (const file of files(open.nodes)) {
+      const folder = file.data.label.split('/').slice(0, 2).join('/');
+      expect(file.parentId).toBe(`project:${folder}`);
     }
   });
 });

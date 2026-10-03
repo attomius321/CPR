@@ -1,5 +1,6 @@
 import dagre, { type Graph as DagreGraph } from '@dagrejs/dagre';
-import type { Graph, GraphEdge, GraphNode, Severity } from '@cpr/core';
+import type { Graph, GraphEdge, GraphNode, Project, ProjectKind, Severity } from '@cpr/core';
+import { pathInProject, projectOf } from './projects.js';
 
 /** How a node is drawn: what changed, or what kind of neighbour it is. */
 export type Tone = 'added' | 'removed' | 'modified' | 'moved' | 'context' | 'external' | 'unknown';
@@ -38,6 +39,8 @@ export interface SummaryData extends Record<string, unknown> {
   /** How many neighbours, and in how many files or packages. */
   count: number;
   files: number;
+  /** In how many projects, when more than one. */
+  projects?: number;
   /** Shown: every neighbour is laid out too, and this node hides them again. */
   expanded: boolean;
 }
@@ -55,7 +58,10 @@ export interface SummaryFlowNode {
 }
 
 export interface FileData extends Record<string, unknown> {
+  /** The file's path, `package <name>`, or `dynamic calls`. */
   label: string;
+  /** In a project's frame: the path from the project's folder. */
+  local?: string;
   changed: boolean;
 }
 
@@ -63,14 +69,37 @@ export interface FileData extends Record<string, unknown> {
 export interface FileFlowNode {
   id: string;
   type: 'file';
+  /** Relative to its project's frame, when it has one. */
   position: { x: number; y: number };
   data: FileData;
   width: number;
   height: number;
   selectable: false;
+  parentId?: string;
+  extent?: 'parent';
 }
 
-export type FlowNode = FileFlowNode | SymbolFlowNode | SummaryFlowNode;
+export interface ProjectData extends Record<string, unknown> {
+  name: string;
+  /** Repo-relative; `''` for the repository root. */
+  folder: string;
+  kind?: ProjectKind;
+  /** Changed symbols drawn in it; none when only neighbours of a change come from it. */
+  changed: number;
+}
+
+/** A frame around the files of one app or library, when what is drawn spans two or more. */
+export interface ProjectFlowNode {
+  id: string;
+  type: 'project';
+  position: { x: number; y: number };
+  data: ProjectData;
+  width: number;
+  height: number;
+  selectable: false;
+}
+
+export type FlowNode = ProjectFlowNode | FileFlowNode | SymbolFlowNode | SummaryFlowNode;
 
 export interface FlowEdge {
   id: string;
@@ -116,7 +145,13 @@ export const NODE_HEIGHT = 58;
 /** More unchanged neighbours than this on one side of a changed symbol become one summary. */
 export const NEIGHBOUR_LIMIT = 8;
 export const SUMMARY_WIDTH = 190;
+/** A summary that also says across how many projects. */
+const SUMMARY_WIDE = 250;
 const GROUP_PAD = { top: 30, side: 12, bottom: 12 };
+/** Room for a project's name band above its files; a frame of neighbours only has a smaller one. */
+const FRAME_PAD = { top: 46, side: 20, bottom: 20 };
+const LIGHT_FRAME_PAD = { top: 34, side: 16, bottom: 16 };
+const FRAME_MIN_WIDTH = 220;
 /** Symbols with no edge inside their box are stacked in columns of at most this many. */
 const WRAP_ROWS = 6;
 const WRAP_GAP = { x: 16, y: 12 };
@@ -203,12 +238,36 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     (n) => candidates.has(n.id) && (n.status !== 'unchanged' || connected.has(n.id)),
   );
 
+  // How many projects a summary's neighbours come from, when more than one.
+  const projects = graph.projects ?? [];
+  const spans = new Map<string, number>();
+  if (projects.length > 1) {
+    for (const summary of summaries) {
+      const held = new Set<Project>();
+      for (const member of summary.members) {
+        const { file } = groupOf(byId.get(member) as GraphNode);
+        const project = file === undefined ? undefined : projectOf(file, projects);
+        if (project) held.add(project);
+      }
+      if (held.size > 1) spans.set(summary.id, held.size);
+    }
+  }
+  const summaryWidth = (id: string) => (spans.has(id) ? SUMMARY_WIDE : SUMMARY_WIDTH);
+
   // Boxes: a file or package each; a summary sits in its symbol's box.
   const boxOf = new Map<string, string>();
-  const boxes = new Map<string, { label: string; changed: boolean; members: Member[] }>();
-  const join = (member: Member, box: { id: string; label: string }, changed: boolean) => {
+  const boxes = new Map<
+    string,
+    { label: string; file: string | undefined; changed: boolean; members: Member[] }
+  >();
+  const join = (member: Member, box: ReturnType<typeof groupOf>, changed: boolean) => {
     let entry = boxes.get(box.id);
-    if (!entry) boxes.set(box.id, (entry = { label: box.label, changed: false, members: [] }));
+    if (!entry) {
+      boxes.set(
+        box.id,
+        (entry = { label: box.label, file: box.file, changed: false, members: [] }),
+      );
+    }
     entry.changed ||= changed;
     entry.members.push(member);
     boxOf.set(member.id, box.id);
@@ -223,7 +282,11 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
   for (const summary of summaries) {
     const owner = byId.get(summary.of);
     if (!owner || !boxOf.has(summary.of)) continue;
-    join({ id: summary.id, width: SUMMARY_WIDTH, changed: false }, groupOf(owner), false);
+    join(
+      { id: summary.id, width: summaryWidth(summary.id), changed: false },
+      groupOf(owner),
+      false,
+    );
   }
 
   const summaryEdges: FlowEdge[] = summaries
@@ -255,14 +318,89 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     });
   }
 
-  // Between boxes: clusters connected by edges, each laid out by dagre, packed into a page.
   const between = links
     .map((l) => ({ from: boxOf.get(l.from) ?? '', to: boxOf.get(l.to) ?? '' }))
     .filter((l) => l.from && l.to && l.from !== l.to);
-  const boxPositions = packClusters([...boxSizes], between);
+
+  // Projects: when the files drawn belong to two or more, each is a frame around its files.
+  const projectOfBox = new Map<string, Project>();
+  for (const [id, box] of boxes) {
+    const project = box.file === undefined ? undefined : projectOf(box.file, projects);
+    if (project) projectOfBox.set(id, project);
+  }
+  const frameOf = new Map<string, string>();
+  const frames = new Map<string, { project: Project; boxes: string[]; changed: number }>();
+  if (new Set(projectOfBox.values()).size > 1) {
+    for (const [box, project] of projectOfBox) {
+      const id = `project:${project.folder}`;
+      let frame = frames.get(id);
+      if (!frame) frames.set(id, (frame = { project, boxes: [], changed: 0 }));
+      frame.boxes.push(box);
+      frame.changed += boxes.get(box)?.members.filter((m) => m.changed).length ?? 0;
+      frameOf.set(box, id);
+    }
+  }
+
+  // Between boxes: clusters connected by edges, each laid out by dagre, packed into a page. With
+  // frames, files are packed so inside their frame; the frames and the boxes outside every
+  // project (packages, dynamic calls) are placed in rows in the order of the links between them.
+  const boxPositions = new Map<string, { x: number; y: number }>();
+  const frameRects = new Map<string, Rect>();
+  if (frames.size === 0) {
+    const packed = packClusters([...boxSizes], between, { x: MARGIN, y: MARGIN });
+    for (const [id, at] of packed.positions) boxPositions.set(id, at);
+  } else {
+    for (const [id, frame] of frames) {
+      const pad = frame.changed > 0 ? FRAME_PAD : LIGHT_FRAME_PAD;
+      const inside = new Set(frame.boxes);
+      const packed = packClusters(
+        frame.boxes.map((box) => [box, boxSizes.get(box) ?? { width: 0, height: 0 }]),
+        between.filter((l) => inside.has(l.from) && inside.has(l.to)),
+        { x: pad.side, y: pad.top },
+      );
+      for (const [box, at] of packed.positions) boxPositions.set(box, at);
+      frameRects.set(id, {
+        x: 0,
+        y: 0,
+        width: Math.max(FRAME_MIN_WIDTH, packed.width + 2 * pad.side),
+        height: packed.height + pad.top + pad.bottom,
+      });
+    }
+    const outer = (box: string) => frameOf.get(box) ?? box;
+    const placed = packFrames(
+      [...frameRects, ...[...boxSizes].filter(([id]) => !frameOf.has(id))],
+      between.map((l) => ({ from: outer(l.from), to: outer(l.to) })).filter((l) => l.from !== l.to),
+      { x: MARGIN, y: MARGIN },
+    );
+    for (const [id, at] of placed.positions) {
+      const frame = frameRects.get(id);
+      if (frame) frameRects.set(id, { ...frame, ...at });
+      else boxPositions.set(id, at);
+    }
+  }
+
+  const projectNodes: ProjectFlowNode[] = [...frames].map(([id, { project, changed }]) => {
+    const rect = frameRects.get(id) ?? { x: 0, y: 0, width: 0, height: 0 };
+    return {
+      id,
+      type: 'project',
+      position: { x: rect.x, y: rect.y },
+      width: rect.width,
+      height: rect.height,
+      selectable: false,
+      data: {
+        name: project.name,
+        folder: project.folder,
+        ...(project.kind ? { kind: project.kind } : {}),
+        changed,
+      },
+    };
+  });
 
   const fileNodes: FileFlowNode[] = [...boxes].map(([id, box]) => {
     const size = boxSizes.get(id) ?? { width: 0, height: 0 };
+    const frame = frameOf.get(id);
+    const project = projectOfBox.get(id);
     return {
       id,
       type: 'file',
@@ -270,7 +408,12 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
       width: size.width,
       height: size.height,
       selectable: false,
-      data: { label: box.label, changed: box.changed },
+      ...(frame ? { parentId: frame, extent: 'parent' as const } : {}),
+      data: {
+        label: box.label,
+        ...(frame && project && box.file ? { local: pathInProject(box.file, project) } : {}),
+        changed: box.changed,
+      },
     };
   });
 
@@ -300,26 +443,37 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
 
   const summaryNodes: SummaryFlowNode[] = summaries
     .filter((s) => boxOf.has(s.id))
-    .map((s) => ({
-      id: s.id,
-      type: 'summary',
-      parentId: boxOf.get(s.id) ?? '',
-      extent: 'parent',
-      position: inner.get(s.id) ?? { x: 0, y: 0 },
-      width: SUMMARY_WIDTH,
-      height: NODE_HEIGHT,
-      data: {
-        of: s.of,
-        side: s.side,
-        count: s.members.size,
-        files: new Set([...s.members].map((m) => groupOf(byId.get(m) as GraphNode).id)).size,
-        expanded: s.expanded,
-      },
-    }));
+    .map((s) => {
+      const span = spans.get(s.id);
+      return {
+        id: s.id,
+        type: 'summary',
+        parentId: boxOf.get(s.id) ?? '',
+        extent: 'parent',
+        position: inner.get(s.id) ?? { x: 0, y: 0 },
+        width: summaryWidth(s.id),
+        height: NODE_HEIGHT,
+        data: {
+          of: s.of,
+          side: s.side,
+          count: s.members.size,
+          files: new Set([...s.members].map((m) => groupOf(byId.get(m) as GraphNode).id)).size,
+          ...(span ? { projects: span } : {}),
+          expanded: s.expanded,
+        },
+      };
+    });
+
+  /** Between two projects' frames (not to a package outside every project). */
+  const crosses = (edge: GraphEdge) => {
+    const from = frameOf.get(boxOf.get(edge.from) ?? '');
+    const to = frameOf.get(boxOf.get(edge.to) ?? '');
+    return from !== undefined && to !== undefined && from !== to;
+  };
 
   return {
     // Parents before their children, as React Flow requires.
-    nodes: [...fileNodes, ...symbolNodes, ...summaryNodes],
+    nodes: [...projectNodes, ...fileNodes, ...symbolNodes, ...summaryNodes],
     edges: [
       ...edges.map((edge) => ({
         id: edge.id,
@@ -329,6 +483,7 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
           `edge-${edge.side}`,
           `edge-${edge.kind}`,
           edge.resolution === 'unknown' ? 'edge-unknown' : '',
+          crosses(edge) ? 'edge-cross' : '',
         ]
           .filter(Boolean)
           .join(' '),
@@ -433,13 +588,15 @@ function layoutBox(
 }
 
 /**
- * Top-left corners of the boxes: boxes connected by edges form a cluster laid out left to right
- * by dagre; clusters are placed in rows, tallest first, on a page about `PAGE_ASPECT` wide.
+ * Top-left corners of the boxes, from `origin`: boxes connected by edges form a cluster laid out
+ * left to right by dagre; clusters are placed in rows, tallest first, on a page about
+ * `PAGE_ASPECT` wide. Also the size they take, from `origin`.
  */
 function packClusters(
   boxes: readonly [string, { width: number; height: number }][],
   links: readonly { from: string; to: string }[],
-): Map<string, { x: number; y: number }> {
+  origin: { x: number; y: number },
+): { positions: Map<string, { x: number; y: number }>; width: number; height: number } {
   // Union-find over boxes.
   const parent = new Map(boxes.map(([id]) => [id, id]));
   const find = (id: string): string => {
@@ -485,6 +642,49 @@ function packClusters(
   });
 
   laidOut.sort((a, b) => b.height - a.height || b.width - a.width || a.order - b.order);
+  return placeInRows(laidOut, origin);
+}
+
+/**
+ * Top-left corners of project frames and of the boxes outside them, in reading order: dagre ranks
+ * them left to right by the links between them (callers before what they call), and they are
+ * placed in rows in that order, the tallest first within a rank. Dagre's own columns run 3 to 8
+ * times wider than high with frames (Bitwarden), rows keep the page about `PAGE_ASPECT` wide.
+ */
+function packFrames(
+  items: readonly [string, { width: number; height: number }][],
+  links: readonly { from: string; to: string }[],
+  origin: { x: number; y: number },
+): { positions: Map<string, { x: number; y: number }>; width: number; height: number } {
+  const graph = new dagre.graphlib.Graph();
+  graph.setGraph({ rankdir: 'LR', nodesep: 30, ranksep: 90 });
+  graph.setDefaultEdgeLabel(() => ({}));
+  for (const [id, size] of items) graph.setNode(id, { ...size });
+  for (const l of links) graph.setEdge(l.from, l.to);
+  dagre.layout(graph);
+  // Left to right, a rank's nodes share their centre's x.
+  const ordered = items.map(([id, size], order) => ({
+    positions: new Map([[id, { x: 0, y: 0 }]]),
+    width: size.width,
+    height: size.height,
+    rank: Math.round(placement(graph, id).x),
+    order,
+  }));
+  ordered.sort(
+    (a, b) => a.rank - b.rank || b.height - a.height || b.width - a.width || a.order - b.order,
+  );
+  return placeInRows(ordered, origin);
+}
+
+/** Laid-out groups (positions from their own top-left) placed in rows, in the order given. */
+function placeInRows(
+  laidOut: readonly {
+    positions: Map<string, { x: number; y: number }>;
+    width: number;
+    height: number;
+  }[],
+  origin: { x: number; y: number },
+): { positions: Map<string, { x: number; y: number }>; width: number; height: number } {
   const area = laidOut.reduce(
     (sum, c) => sum + (c.width + CLUSTER_GAP) * (c.height + CLUSTER_GAP),
     0,
@@ -495,6 +695,7 @@ function packClusters(
   let x = 0;
   let y = 0;
   let rowHeight = 0;
+  let width = 0;
   for (const cluster of laidOut) {
     if (x > 0 && x + cluster.width > pageWidth) {
       x = 0;
@@ -502,32 +703,36 @@ function packClusters(
       rowHeight = 0;
     }
     for (const [id, at] of cluster.positions) {
-      result.set(id, { x: MARGIN + x + at.x, y: MARGIN + y + at.y });
+      result.set(id, { x: origin.x + x + at.x, y: origin.y + y + at.y });
     }
+    width = Math.max(width, x + cluster.width);
     x += cluster.width + CLUSTER_GAP;
     rowHeight = Math.max(rowHeight, cluster.height);
   }
-  return result;
+  return { positions: result, width, height: y + rowHeight };
 }
 
-interface Placement {
+interface Rect {
   x: number;
   y: number;
   width: number;
   height: number;
 }
 
+/** dagre's placement: a node's center and size. */
+type Placement = Rect;
+
 /** dagre's node labels are untyped; after layout they hold center and size. */
 function placement(graph: DagreGraph, id: string): Placement {
   return graph.node(id) as Placement;
 }
 
-/** The box a node is drawn in: its file, its package, or the dynamic calls. */
-export function groupOf(node: GraphNode): { id: string; label: string } {
+/** The box a node is drawn in: its file (whose path it gives), its package, or the dynamic calls. */
+export function groupOf(node: GraphNode): { id: string; label: string; file?: string } {
   if (node.kind === 'unknown') return { id: 'group:unknown', label: 'dynamic calls' };
   const file = node.id.slice(0, node.id.indexOf('#'));
   if (node.kind === 'external') return { id: `group:package:${file}`, label: `package ${file}` };
-  return { id: `group:file:${file}`, label: file };
+  return { id: `group:file:${file}`, label: file, file };
 }
 
 export function tone(node: GraphNode): Tone {
