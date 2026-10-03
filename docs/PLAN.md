@@ -1473,7 +1473,12 @@ three. **Proposed decisions** (into §14 with 20–25):
 **No change for one-project repos**: the 29 R1 comparisons without plugins are identical
 (932 edges, 11 findings); all earlier fixtures, goldens and viewer tests pass unchanged.
 Bitwarden (one root `angular.json`, 192 tsconfigs of which one has its own `paths`, which
-turns per-project resolution on): BWTBD
+turns per-project resolution on — root `tsconfig.json` with 64 aliases, the test runner's with
+its own 19), the same 10 commits on `main` and on W1: **every edge, finding and warning
+identical** (5,016 edges), 360.6 → 328.0 s (no slowdown; W1 ran second). Every Bitwarden import
+went through the new resolver, so its fallback resolves exactly as TypeScript did. In
+`cpr view`, the replica's Changes list holds the Angular 11 template-only change with its diff
+next to the Angular 21 app's templates (none on `main`).
 
 #### W1 as built
 
