@@ -1166,6 +1166,8 @@ passing. `--plugin qwik` on the core fixtures and next to `angular` on the Angul
 identical analyses. Qwik docs site, 30 commits: without the plugin identical to `main`; with it 5
 false findings gone, no new warning, 6 new ℹ (real props changes), +3.9 % time.
 
+Merged into main (2026-10-03), with Q2.
+
 ## Q2 — Qwik MDX routes (2026-10-03, branch `milestone/q2-qwik-mdx`)
 
 `.mdx` files under a Qwik app's routes folder become templates: a shim per file renders its
@@ -1191,3 +1193,5 @@ the viewer test `qwik.spec.ts`, Qwik docs site: without the plugin identical to
 `main`, with it 7 false findings gone (`head` ×2, route `default` ×3, `BenchmarkTable`,
 `useMDXComponents`), both right `Repos` kept, no new warning; +3.7 % time. Full suite: 377 unit
 tests, 29 browser tests.
+
+Merged into main (2026-10-03).
