@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": { "@app/*": ["src/app/*"] },
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2022",
+    "experimentalDecorators": true,
+    "strict": true
+  }
+}

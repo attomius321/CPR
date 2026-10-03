@@ -328,3 +328,53 @@ describe('the angular plugin, with libraries', () => {
     ]);
   });
 });
+
+describe('the angular plugin, in a repo with several projects', () => {
+  // Two apps two folders down, nothing at the root: `legacy` on Angular 11 (`baseUrl` in
+  // src/tsconfig.app.json, `team@example.com` in a template), `modern` on Angular 17 (`@app/*`,
+  // `@if`, `@let`), each with its own version of `@acme/badge`.
+  const LEGACY = 'apps/web/legacy/src/app';
+  const MODERN = 'apps/web/modern/src/app';
+  const LEGACY_HTML = `${LEGACY}/contact.component.html#(template)`;
+  const MODERN_HTML = `${MODERN}/profile.component.html#(template)`;
+
+  it('analyzes each app with its own Angular version', async () => {
+    const analysis = await analyze('multi-project');
+    expect(analysis.warnings).toEqual([]);
+    expect(changed(analysis)).toEqual([
+      // An HTML-only change.
+      `modified ${LEGACY_HTML}`,
+      `modified ${MODERN}/core/account.ts#Account`,
+      `removed ${MODERN}/core/account.ts#Account.verified`,
+      `modified ${MODERN_HTML}`,
+    ]);
+    expect(rules(analysis)).toEqual([
+      `error removed-still-referenced ${MODERN}/core/account.ts#Account.verified`,
+    ]);
+    expect(analysis.findings[0]?.related).toEqual([MODERN_HTML]);
+  });
+
+  it('links templates to their own app: its classes and its installed libraries', async () => {
+    const analysis = await analyze('multi-project');
+    const legacy = 'apps/web/legacy/src/app/contact.component.html';
+    expect(edgesFrom(analysis, LEGACY_HTML)).toEqual([
+      `call @acme/badge#BadgeComponent [both] ${legacy}:2:2`,
+      // Angular 11 typings after ngcc: `text`.
+      `reference @acme/badge#BadgeComponent.text [both] ${legacy}:2:14`,
+      `reference ${LEGACY}/contact.component.ts#ContactComponent.account [both] ${legacy}:2:21`,
+      `call ${LEGACY}/contact.component.ts#ContactComponent.clear [head] ${legacy}:3:43`,
+      // `Account` imported as `app/core/account`, through src/tsconfig.app.json's `baseUrl`.
+      `reference ${LEGACY}/core/account.ts#Account.email [both] ${legacy}:2:29`,
+      `reference ${LEGACY}/core/account.ts#Account.verified [head] ${legacy}:3:24`,
+    ]);
+    const modern = 'apps/web/modern/src/app/profile.component.html';
+    expect(edgesFrom(analysis, MODERN_HTML)).toEqual([
+      `call @acme/badge#BadgeComponent [both] ${modern}:3:4`,
+      // Angular 17 typings: `label`.
+      `reference @acme/badge#BadgeComponent.label [both] ${modern}:3:16`,
+      `reference ${MODERN}/core/account.ts#Account.email [both] ${modern}:1:21`,
+      `reference ${MODERN}/core/account.ts#Account.verified [base] ${modern}:2:14`,
+      `reference ${MODERN}/profile.component.ts#ProfileComponent.account [both] ${modern}:1:13`,
+    ]);
+  });
+});
