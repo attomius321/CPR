@@ -1,5 +1,6 @@
 import type { Dangling, EdgeRef, Exposure, SymbolDecl, SymbolId } from './model.js';
 import type { IgnoreMatcher } from './ignore.js';
+import type { DeclaredProject } from './projects.js';
 import type { RevisionSource } from './revision.js';
 
 export interface LoadOptions {
@@ -48,6 +49,11 @@ export interface LanguageAdapter<L = unknown> {
   exposure(revision: L, symbol: SymbolDecl): Exposure | undefined;
   /** Whether code outside the repository can use the symbol (a published package's API). */
   publicApi(revision: L, symbol: SymbolDecl): boolean;
+  /**
+   * Projects the revision's frameworks declare (from plugins, e.g. `angular.json`'s), before
+   * those found by convention (workspaces, packages).
+   */
+  projects?(revision: L): DeclaredProject[];
   /** Problems worth telling the user about (configs that failed to load, skipped files). */
   warnings(revision: L): string[];
 }

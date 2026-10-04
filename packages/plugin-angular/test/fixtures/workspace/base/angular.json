@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "projects": {
+    "shop": { "projectType": "application", "root": "", "sourceRoot": "src" },
+    "admin": { "projectType": "application", "root": "projects/admin", "sourceRoot": "projects/admin/src" },
+    "ui-kit": { "projectType": "library", "root": "projects/ui-kit", "sourceRoot": "projects/ui-kit/src" }
+  }
+}

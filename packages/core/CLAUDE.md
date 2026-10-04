@@ -17,7 +17,11 @@ The engine. Language-neutral pipeline; everything TypeScript-specific sits behin
 4. References around changed symbols (`references.ts`: `findReferences` incoming, a walk outgoing),
    context widened by `depth` hops, merged into edges per side.
 5. Exposure, public API, dangling uses (`detect.ts`), then detectors (`src/detectors.ts`,
-   compatibility in `src/compat.ts`), then the graph (`src/graph.ts`).
+   compatibility in `src/compat.ts`).
+6. Projects (`src/projects.ts`, V7): the app or library of each file the graph names — declared
+   (workspace globs in `src/workspace.ts`, Nx, `adapter.projects` from plugins), packages,
+   tsconfig folders, the root — read from head, base for base-only files. Then the graph
+   (`src/graph.ts`), whose `projects` appears only with two or more.
 
 ## Rules
 

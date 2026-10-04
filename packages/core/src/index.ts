@@ -48,6 +48,7 @@ export {
   type Contract,
   type MappedPosition,
   type PluginContext,
+  type PluginProject,
   type PluginRevision,
   type PluginSymbol,
   type TsPlugin,
@@ -89,5 +90,14 @@ export {
   type GraphSide,
 } from './graph.js';
 export { compareShapes, compatibility, type Compatibility } from './compat.js';
+export {
+  changeProjects,
+  projectResolver,
+  type DeclaredProject,
+  type Project,
+  type ProjectKind,
+  type ProjectSide,
+  type ProjectSource,
+} from './projects.js';
 export { readFileAtRevision } from './git/show.js';
 export { fetchRefs, remoteUrl } from './git/remote.js';

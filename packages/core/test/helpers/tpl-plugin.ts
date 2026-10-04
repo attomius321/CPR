@@ -3,6 +3,7 @@ import { posix } from 'node:path';
 import type { ts } from 'ts-morph';
 import type {
   PluginContext,
+  PluginProject,
   PluginSymbol,
   Site,
   SymbolDecl,
@@ -61,6 +62,13 @@ export const tplPlugin: TsPlugin = {
     return symbol.kind === 'method' && symbol.name === 'onStart' && isComponent(symbol.container)
       ? 'framework'
       : undefined;
+  },
+  // `tpl.json` lists the framework's projects, as `angular.json` does.
+  projects: (revision) => {
+    const text = revision.readFile('tpl.json');
+    return text === undefined
+      ? []
+      : ((JSON.parse(text) as { projects?: PluginProject[] }).projects ?? []);
   },
   warnings: (revision) =>
     components(revision)

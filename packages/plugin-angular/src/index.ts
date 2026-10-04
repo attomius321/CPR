@@ -5,6 +5,7 @@ import type {
   ArgumentRoles,
   Dangling,
   PluginContext,
+  PluginProject,
   PluginRevision,
   PluginSymbol,
   SymbolDecl,
@@ -95,6 +96,18 @@ const angular: TsPlugin = {
     revision.sourceFiles().some((file) => ANGULAR_IMPORT.test(revision.syntax(file)?.text ?? '')),
 
   matches: (path) => path.endsWith('.html'),
+
+  // The apps and libraries of every Angular workspace (`angular.json`) in the repo.
+  projects: (revision) => {
+    const workspaceOf = workspaces(revision);
+    const folders = new Set<string>();
+    if (revision.readFile('angular.json') !== undefined) folders.add('.');
+    for (const file of revision.sourceFiles()) {
+      const folder = workspaceOf(file);
+      if (folder) folders.add(folder);
+    }
+    return [...folders].sort().flatMap((folder) => workspaceProjects(revision, folder));
+  },
 
   virtualFiles: (revision) => {
     const state = revisionOf(revision);
@@ -225,6 +238,27 @@ function workspaces(revision: PluginContext): (file: string) => string {
     return found;
   };
   return (file) => at(posix.dirname(file));
+}
+
+/** The projects an `angular.json` declares, with folders from the repo root. */
+function workspaceProjects(revision: PluginContext, workspace: string): PluginProject[] {
+  const prefix = workspace === '.' ? '' : `${workspace}/`;
+  const projects = parseJson(revision.readFile(`${prefix}angular.json`))?.projects;
+  if (!projects || typeof projects !== 'object') return [];
+  return Object.entries(projects as Record<string, unknown>).flatMap(([name, project]) => {
+    const { root, projectType } = (project ?? {}) as { root?: unknown; projectType?: unknown };
+    if (typeof root !== 'string') return [];
+    const folder = posix.join(workspace, root).replace(/\/$/, '');
+    return [
+      {
+        folder: folder === '.' ? '' : folder,
+        name,
+        ...(projectType === 'application' || projectType === 'library'
+          ? { kind: projectType }
+          : {}),
+      },
+    ];
+  });
 }
 
 function installedMajor(text: string | undefined): number | undefined {

@@ -10,6 +10,7 @@ import { resolveRevisions } from './git/revisions.js';
 import { checkoutRevision } from './git/worktree.js';
 import { loadIgnores } from './ignore.js';
 import { typescriptAdapter } from './lang/typescript/index.js';
+import { changeProjects, type Project } from './projects.js';
 import type { GitRepo } from './git/repo.js';
 import type {
   Edge,
@@ -61,6 +62,11 @@ export interface Analysis {
   findings: Finding[];
   /** Changed files left out of symbol analysis (`.cprignore` and default ignores). */
   ignored: string[];
+  /**
+   * The projects holding the changed files and the symbols' files, when there are two or more
+   * (a monorepo's apps and libraries), by folder.
+   */
+  projects?: Project[];
   warnings: string[];
   /** Milliseconds per phase, for performance work. */
   timings: Record<string, number>;
@@ -207,7 +213,7 @@ export async function analyzeDirectories(
 
 type SourceAnalysis = Pick<
   Analysis,
-  'changes' | 'edges' | 'context' | 'findings' | 'ignored' | 'warnings' | 'timings'
+  'changes' | 'edges' | 'context' | 'findings' | 'ignored' | 'projects' | 'warnings' | 'timings'
 >;
 
 const EMPTY: SourceAnalysis = {
@@ -386,6 +392,13 @@ async function analyzeSources(
 
   lap('detectors');
 
+  const projects = changeProjects(
+    graphFiles(files, changes, context),
+    { root: head.root, declared: () => adapter.projects?.(headRev) ?? [] },
+    { root: base.root, declared: () => adapter.projects?.(baseRev) ?? [] },
+  );
+  lap('projects');
+
   // Head's warnings concern the change; one only base has (fixed by it) says so.
   const headWarnings = adapter.warnings(headRev);
   const warnings = [
@@ -397,7 +410,37 @@ async function analyzeSources(
         .map((w) => `in base: ${w}`),
     ]),
   ];
-  return { changes, edges, context, findings, ignored, warnings, timings };
+  return {
+    changes,
+    edges,
+    context,
+    findings,
+    ignored,
+    ...(projects.length > 1 ? { projects } : {}),
+    warnings,
+    timings,
+  };
+}
+
+/** Every file the graph names: changed files, and the files of its symbols. */
+function graphFiles(
+  files: readonly ChangedFile[],
+  changes: readonly SymbolChange[],
+  context: readonly ContextSymbol[],
+): string[] {
+  const paths = files.flatMap((file) =>
+    file.previousPath ? [file.path, file.previousPath] : [file.path],
+  );
+  for (const change of changes) {
+    if (change.status === 'unchanged') continue;
+    if (change.base) paths.push(change.base.file);
+    if (change.head) paths.push(change.head.file);
+  }
+  for (const symbol of context) {
+    if (symbol.decl) paths.push(symbol.decl.file);
+    else if (symbol.kind === 'module') paths.push(symbol.id.slice(0, symbol.id.indexOf('#')));
+  }
+  return paths;
 }
 
 /** IDs present on one side only, or whose hashes differ between the sides. */

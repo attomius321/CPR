@@ -1,5 +1,6 @@
 import type { ts } from 'ts-morph';
 import type { Dangling, Exposure, Site, SymbolDecl, SymbolId } from '../../model.js';
+import type { ProjectKind } from '../../projects.js';
 
 /** The plugin contract this version of CPR implements. */
 export const PLUGIN_API_VERSION = 1;
@@ -59,8 +60,21 @@ export interface TsPlugin {
    * plugin's answer replaces the adapter's guess that a default export is loaded by convention.
    */
   exposure?: (revision: PluginRevision, symbol: SymbolDecl) => Exposure | undefined;
+  /**
+   * The apps and libraries the framework declares (Angular: `angular.json`'s projects). They
+   * count before packages and tsconfig folders when CPR tells which project a file is in.
+   */
+  projects?: (revision: PluginContext) => PluginProject[];
   /** Problems worth telling the user about. */
   warnings?: (revision: PluginRevision) => string[];
+}
+
+/** A project a plugin declares. */
+export interface PluginProject {
+  /** Repo-relative folder; `''` for the root. */
+  folder: string;
+  name: string;
+  kind?: ProjectKind;
 }
 
 /** What a plugin sees of a revision before its program exists. */

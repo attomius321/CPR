@@ -133,6 +133,14 @@
         }
       }
     },
+    "projects": {
+      "description": "The projects (apps, libraries) holding the graph's files, when there are two or more; a file belongs to the one with the longest folder.",
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/project"
+      }
+    },
     "files": {
       "type": "array",
       "items": {
@@ -235,6 +243,29 @@
         "col": {
           "type": "integer",
           "minimum": 1
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "required": ["folder", "name", "source"],
+      "properties": {
+        "folder": {
+          "description": "Repo-relative folder, without a trailing slash; empty for the root.",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": ["application", "library"]
+        },
+        "source": {
+          "enum": ["workspace", "nx", "plugin", "package", "tsconfig", "root"]
+        },
+        "plugin": {
+          "description": "The plugin that declared it, with source plugin.",
+          "type": "string"
         }
       }
     },

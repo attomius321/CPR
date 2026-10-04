@@ -1,4 +1,4 @@
-# CPR Graph Schema (draft v0.5.0)
+# CPR Graph Schema (draft v0.6.0)
 
 The graph JSON is the contract between the engine (`@cpr/core`) and every consumer
 (viewer, CLI summary, GitHub Action). It is **language-neutral**: nothing in it is
@@ -21,7 +21,8 @@ add symbols and edges of the same shapes; the graph names the plugins it was mad
 | New optional field, new enum value consumers can ignore | minor |
 | Removed/renamed field, changed meaning | major |
 
-History: `0.5.0` added top-level `plugins` and the node kind `template` (both from plugins;
+History: `0.6.0` added top-level `projects` (the apps and libraries of a monorepo change; absent
+when there is one); `0.5.0` added top-level `plugins` and the node kind `template` (both from plugins;
 without plugins a graph only changes its version); `0.4.0` added the `overrides` edge kind and the edge flag `possible`; `0.3.0` added the `exported-api-changed` rule and test-user counts in
 `signature-changed` data; `0.2.0` added `since` (top level and on nodes); `changeRequest` arrived in 0.1.0
 before any release.
@@ -35,7 +36,7 @@ every golden graph against it.
 
 ```jsonc
 {
-  "schemaVersion": "0.5.0",
+  "schemaVersion": "0.6.0",
   "generator": { "name": "cpr", "version": "0.1.0" },
   "plugins": [{ "name": "angular", "version": "0.1.0" }],   // only when plugins ran
   "changeRequest": {             // only from `cpr pr`
@@ -52,6 +53,7 @@ every golden graph against it.
     "ref": "3c2b1a0", "sha": "3c2b1a0…",
     "dropped": ["src/user.ts#legacyName"]   // changed then, not anymore
   },
+  "projects": [ /* Project; only when the files span two or more */ ],
   "files": [ /* changed files, like git diff --name-status */ ],
   "nodes": [ /* Node */ ],
   "edges": [ /* Edge */ ],
@@ -68,6 +70,48 @@ every golden graph against it.
 
 When comparing folders instead of commits, `sha`, `mergeBase` and `from` are `null` and `ref` is
 the folder path.
+
+## Project
+
+The apps and libraries of a monorepo that hold the graph's files: changed files (and their old
+paths) and the files of its nodes. Present only when there are two or more; older graphs and
+single-project changes have none, which consumers read as one project.
+
+```jsonc
+"projects": [
+  { "folder": "", "name": "@bitwarden/clients", "source": "root" },
+  { "folder": "apps/web", "name": "web", "kind": "application", "source": "nx" },
+  { "folder": "bitwarden_license/bit-common", "name": "bit-common", "source": "tsconfig" },
+  { "folder": "bitwarden_license/bit-web", "name": "bit-web", "kind": "application",
+    "source": "plugin", "plugin": "angular" },
+  { "folder": "libs/common", "name": "@bitwarden/common", "kind": "library", "source": "nx" }
+]
+```
+
+**A path belongs to the project with the longest `folder` that holds it** (`""` holds every path).
+Nodes carry no project: use their `head.file` (or `base.file`), or the path in a `module` node's
+ID; `external` and `unknown` nodes belong to none. The list is sorted by folder.
+
+| Field | Type | Notes |
+|---|---|---|
+| `folder` | string | Repo-relative, no trailing slash; `""` for the root. |
+| `name` | string | The Nx or plugin name, else the package name, else the folder's name; the root: its package's name, else `repository root`. |
+| `kind` | enum \| absent | `application` or `library`, only when declared (Nx `projectType`, a plugin). |
+| `source` | enum | Why it is a project, below. |
+| `plugin` | string \| absent | With `source: "plugin"`: the plugin that declared it. |
+
+How CPR finds a file's project (the first rule that finds one wins; each takes the nearest folder
+at or above the file):
+
+| `source` | Rule |
+|---|---|
+| `workspace`, `nx`, `plugin` | **Declared**: a workspace member (a folder with a `package.json` matched by `package.json` `workspaces` or `pnpm-workspace.yaml`, `**` included), an Nx `project.json` (with `nx.json` at the root), or a project a plugin declares (`angular.json`'s with `--plugin angular`). One folder declared several ways is one project; `source` is the first of `nx`, `plugin`, `workspace`. |
+| `package` | Only when the repository declares nothing: a `package.json` with a name, dependencies or scripts (not a `{ "type": "module" }` marker). |
+| `tsconfig` | A folder with its own `tsconfig.json`, outside every project above. |
+| `root` | Everything else. |
+
+Files head has are read from head; files only base has (deleted, renamed away) from base. When
+both sides give a project for one folder, head's is listed.
 
 ## File
 

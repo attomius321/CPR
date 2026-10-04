@@ -1,1 +1,1 @@
-{ "version": 1, "projects": {} }
+{ "version": 1, "projects": { "modern": { "projectType": "application", "root": "", "sourceRoot": "src" } } }

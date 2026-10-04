@@ -6,6 +6,7 @@ import { CprError } from '../../errors.js';
 import { loadIgnores } from '../../ignore.js';
 import type { SymbolId } from '../../model.js';
 import type { RevisionSource } from '../../revision.js';
+import { workspaceMatcher, workspacePatterns } from '../../workspace.js';
 import { isAnyConfig, isSolutionStyle, projectResolution } from './configs.js';
 import { isTsSource } from './files.js';
 import {
@@ -310,14 +311,13 @@ function configPaths(configPath: string): Record<string, string[]> {
 function workspacePaths(root: string): Record<string, string[]> {
   const patterns = workspacePatterns(root);
   if (patterns.length === 0) return {};
-  const include = patterns.filter((p) => !p.startsWith('!')).map(globRegExp);
-  const exclude = patterns.filter((p) => p.startsWith('!')).map((p) => globRegExp(p.slice(1)));
+  const member = workspaceMatcher(patterns);
 
   const paths: Record<string, string[]> = {};
   for (const manifest of findFiles(root, (name) => name === 'package.json')) {
     const dir = dirname(manifest);
     const rel = repoPath(root, dir);
-    if (!rel || !include.some((r) => r.test(rel)) || exclude.some((r) => r.test(rel))) continue;
+    if (!rel || !member(rel)) continue;
     const pkg = readJson(manifest) as Record<string, unknown> | undefined;
     if (typeof pkg?.name !== 'string') continue;
     const entry = sourceEntry(dir, pkg);
@@ -326,40 +326,6 @@ function workspacePaths(root: string): Record<string, string[]> {
     paths[`${pkg.name}/*`] = [join(dir, 'src', '*'), join(dir, '*')];
   }
   return paths;
-}
-
-/** Workspace globs from package.json `workspaces` or pnpm-workspace.yaml `packages`. */
-function workspacePatterns(root: string): string[] {
-  const pkg = readJson(join(root, 'package.json')) as { workspaces?: unknown } | undefined;
-  const workspaces = pkg?.workspaces;
-  const list = Array.isArray(workspaces)
-    ? workspaces
-    : (workspaces as { packages?: unknown } | undefined)?.packages;
-  const patterns = Array.isArray(list)
-    ? list.filter((p): p is string => typeof p === 'string')
-    : [];
-
-  const pnpm = join(root, 'pnpm-workspace.yaml');
-  if (existsSync(pnpm)) {
-    let inPackages = false;
-    for (const line of readFileSync(pnpm, 'utf8').split('\n')) {
-      if (/^\S/.test(line)) inPackages = /^packages\s*:/.test(line);
-      const item = inPackages ? /^\s*-\s*['"]?([^'"#]+?)['"]?\s*(?:#.*)?$/.exec(line) : null;
-      if (item?.[1]) patterns.push(item[1]);
-    }
-  }
-  return patterns.map((p) => p.replace(/^\.\//, '').replace(/\/$/, ''));
-}
-
-/** `packages/*` → matches `packages/a`; `**` matches any depth. */
-function globRegExp(glob: string): RegExp {
-  const source = glob
-    .split('/')
-    .map((part) =>
-      part === '**' ? '.*' : part.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*'),
-    )
-    .join('/');
-  return new RegExp(`^${source}$`);
 }
 
 export function sourceEntry(dir: string, pkg: Record<string, unknown>): string | undefined {

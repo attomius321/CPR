@@ -354,6 +354,23 @@ describe('the angular plugin, in a repo with several projects', () => {
     expect(analysis.findings[0]?.related).toEqual([MODERN_HTML]);
   });
 
+  it('declares each app of its angular.json as a project', async () => {
+    const analysis = await analyze('multi-project');
+    const app = (name: string) => ({
+      folder: `apps/web/${name}`,
+      name,
+      kind: 'application',
+      source: 'plugin',
+      plugin: 'angular',
+    });
+    expect(analysis.projects).toEqual([
+      app('legacy'),
+      app('modern'),
+      // Shared code nobody declares, with its own tsconfig.
+      { folder: 'libs/shared', name: 'shared', source: 'tsconfig' },
+    ]);
+  });
+
   it('links templates to their own app: its classes and its installed libraries', async () => {
     const analysis = await analyze('multi-project');
     const legacy = 'apps/web/legacy/src/app/contact.component.html';
@@ -390,5 +407,29 @@ describe('the angular plugin, in a repo with several projects', () => {
     expect(
       analysis.edges.filter((e) => e.to.endsWith('#HeaderComponent')).map((e) => e.possible),
     ).toEqual([undefined, undefined]);
+  });
+});
+
+describe('the angular plugin, in an Angular CLI workspace', () => {
+  // One package.json at the root: the `shop` app there, an `admin` app and a `ui-kit` library
+  // (with its own package.json, as `ng generate library` makes it) under projects/.
+  it('makes each project of angular.json a project of the graph', async () => {
+    const declared = (folder: string, name: string, kind: string) => ({
+      folder,
+      name,
+      kind,
+      source: 'plugin',
+      plugin: 'angular',
+    });
+    expect((await analyze('workspace')).projects).toEqual([
+      declared('', 'shop', 'application'),
+      declared('projects/admin', 'admin', 'application'),
+      declared('projects/ui-kit', 'ui-kit', 'library'),
+    ]);
+    // Without the plugin: the library's package, and the rest at the root.
+    expect((await analyze('workspace', [])).projects).toEqual([
+      { folder: '', name: 'shop-workspace', source: 'root' },
+      { folder: 'projects/ui-kit', name: 'ui-kit', source: 'package' },
+    ]);
   });
 });
