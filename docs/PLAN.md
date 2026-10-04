@@ -417,7 +417,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V6 ✅ | A graph you can navigate | On a large change the viewer drew 1,288 symbols for 86 changes, in a 9,470 × 85,468 px strip, and every click re-ran the layout. Now: big neighbourhoods as one node, a page of clusters, a map when zoomed out, no relayout while reviewing; see below. |
 | W1 ✅ | Repositories with several projects | A repo whose Angular apps live in subfolders (two apps, two levels deep, nothing at the root) got no template analysis at all, and its `@app/*` and `baseUrl` imports did not resolve. Now each file resolves with its own project's options, and the Angular plugin works per app; see below. |
 | Q1 ✅, Q2 ✅ | Qwik as the `qwik` plugin | Qwik is TSX and mostly reads right, but what its router calls by name (`onGet`, `head`, loaders, actions) shows as false orphans, an optional prop added to a `component$` is a warning, a required one added to a named props type is missed, and components used only from `.mdx` routes look unused. Planned; see below. |
-| V7 (V7a, V7b built) | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
+| V7 (V7a ✅, V7b ✅) | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -1801,9 +1801,9 @@ shows); `$` closures (`onClick$`, `useTask$`) as symbols of their own; links to 
 
 ### V7 — Apps in the graph
 
-**Status:** V7a built (2026-10-03) on branch `milestone/v7a-projects-in-graph`, from the plan's
-branch `milestone/v7-app-boundaries`; V7b built (2026-10-03) on `milestone/v7b-project-frames`,
-from V7a's branch; V7c not started.
+**Status:** V7a merged into main (2026-10-04, from branch `milestone/v7a-projects-in-graph`, with
+the plan's branch `milestone/v7-app-boundaries`); V7b merged into main (2026-10-04, from branch
+`milestone/v7b-project-frames`); V7c not started.
 
 **Problem** (asked: "In the UI view, the boundary between applications is visible?"). Not really.
 In a repo with several apps and libraries the viewer draws one box per file, labelled with its
@@ -1966,8 +1966,8 @@ project, today's drawing.
 
 | # | Milestone | Output |
 |---|---|---|
-| V7a (built) | Projects in the graph | Core project rules (declared, packages, tsconfig-only, root), the optional plugin hook and the Angular plugin's `angular.json` projects, `projects` in the graph (schema 0.6.0), shared workspace-globs reader. |
-| V7b (built) | Frames | `layoutFlow` one level deeper (files in project frames, frames by the links between them), `project` frame node, edges between projects, project names on the map and minimap, summaries across projects, legend; one project = today. |
+| V7a ✅ | Projects in the graph | Core project rules (declared, packages, tsconfig-only, root), the optional plugin hook and the Angular plugin's `angular.json` projects, `projects` in the graph (schema 0.6.0), shared workspace-globs reader. |
+| V7b ✅ | Frames | `layoutFlow` one level deeper (files in project frames, frames by the links between them), `project` frame node, edges between projects, project names on the map and minimap, summaries across projects, legend; one project = today. |
 | V7c | By project in the sidebar | Change list grouped by project with progress and relative paths, the project filter (canvas and list), project names in findings and the detail panel, search by project name. |
 
 **Proposed decisions**:

@@ -1240,6 +1240,8 @@ Q1's verification had re-run the Qwik docs site and the fixtures, not Bitwarden 
 comparisons after changing core's references — they are part of every core change's checks
 from now on.
 
+Merged into main (2026-10-04).
+
 ## Working rules for Claude Code (2026-10-03, branch `chore/agent-guidance`)
 
 Asked where the session's learning is kept: only in the repo. The docs held *what* was learned,
@@ -1306,6 +1308,8 @@ changed; time ×0.97–1.015. Projects phase: 250 ms of 66 s (Bitwarden `cbf86c2
 `f7ed58cfc`). Not verified: Yarn's `workspaces: { packages }` form and an Nx repo without
 workspaces (no fixture, no real repo), an Angular CLI workspace on real code (fixture only).
 
+Merged into main (2026-10-04).
+
 ## V7b — Project frames (2026-10-03, branch `milestone/v7b-project-frames`)
 
 When what the viewer draws spans two or more apps or libraries, each is a frame around its files,
@@ -1340,3 +1344,5 @@ Qwik plugin) against V7a's viewer, back to back: first paint within +7 % (Bitwar
 1,514 → 1,168 ms), pan 59–63 fps on Bitwarden and 23 → 30 fps on Qwik `f7ed58cfc`, no page
 errors; screenshots of the map, a selection and dark mode. Not verified: a real repository with
 an Nx-only or Angular CLI layout in the browser (fixtures only).
+
+Merged into main (2026-10-04).
