@@ -21,6 +21,10 @@
 // Usage: node spikes/e1-ripples/measure.mjs --out <file.json> [--sets r1,bitwarden,qwik-docs]
 //          [--recent 15]  also the latest N commits touching TS of ky, zod, vite, bitwarden, qwik
 //          [--recent-repos ky,zod]  of these repos only
+//          [--grep 'rename|move|refactor']  only commits whose subject matches (set `refactor`)
+// Besides ripples, a decision repeated in the change is counted as `repeat`: a modified symbol
+// whose edit (string and number values masked) is another's, or an added symbol shaped as
+// another (its name and values masked). The first of each group stays a decision.
 //          [--only <sha prefix>,…]
 // Build CPR first; repos come from scripts/regression/setup.mjs.
 import { execFileSync } from 'node:child_process';
@@ -39,6 +43,8 @@ const { values } = parseArgs({
     sets: { type: 'string', default: 'r1,bitwarden,qwik-docs' },
     recent: { type: 'string', default: '0' },
     'recent-repos': { type: 'string', default: 'ky,zod,vite,bitwarden,qwik' },
+    /** With --recent: only commits whose message matches (as the `refactor` set). */
+    grep: { type: 'string' },
     only: { type: 'string' },
   },
 });
@@ -61,15 +67,21 @@ for (const name of values.sets.split(',').filter(Boolean)) {
 }
 const recentPlugins = { bitwarden: ['angular'], qwik: ['qwik'] };
 for (const repo of Number(values.recent) > 0 ? values['recent-repos'].split(',') : []) {
+  // With --grep, commits whose subject line matches (the message body often mentions anything).
+  const subject = values.grep ? new RegExp(values.grep, 'i') : undefined;
   const shas = execFileSync(
     'git',
-    ['log', '--first-parent', '--no-merges', `-n${values.recent}`, '--format=%h', 'main', '--', '*.ts', '*.tsx'],
-    { cwd: join(regressionDir, repo), encoding: 'utf8' },
+    ['log', '--first-parent', '--no-merges', `-n${subject ? 3000 : values.recent}`, '--format=%h%x09%s', 'main', '--', '*.ts', '*.tsx'],
+    { cwd: join(regressionDir, repo), encoding: 'utf8', maxBuffer: 1 << 26 },
   )
     .trim()
     .split('\n')
-    .filter(Boolean);
-  for (const sha of shas) work.push(['recent', repo, `${sha}~1`, sha, recentPlugins[repo] ?? []]);
+    .filter(Boolean)
+    .map((line) => line.split('\t'))
+    .filter(([, title]) => !subject || subject.test(title))
+    .slice(0, Number(values.recent))
+    .map(([sha]) => sha);
+  for (const sha of shas) work.push([values.grep ? 'refactor' : 'recent', repo, `${sha}~1`, sha, recentPlugins[repo] ?? []]);
 }
 const only = values.only?.split(',').filter(Boolean);
 const selected = only ? work.filter((w) => only.some((sha) => w[3].startsWith(sha))) : work;
@@ -325,6 +337,10 @@ function enclosingCall(tokens, start, end) {
 
 // ---- per comparison ----------------------------------------------------------------------
 
+/** Tokens with string and number values masked: the shape of an edit, not its values. */
+const mask = (tokens) =>
+  tokens.map((tok) => (tok.kind === 'str' ? '"…"' : /^\d/.test(tok.t) ? '0' : tok.t));
+
 const linesOf = (decl) => (decl ? decl.range.end.line - decl.range.start.line + 1 : 0);
 
 /** Lines a line diff shows for two texts: removed plus added (as GitHub counts them). */
@@ -452,6 +468,11 @@ for (const [set, repo, base, head, pluginNames] of selected) {
       }
       if (c.status !== 'modified' || !c.base || !c.head) {
         entry.class = 'decision';
+        if (c.status === 'added') {
+          const own = c.head.name;
+          const toks = tokensOf(c, 'head');
+          if (toks.length >= 12) entry.shape = JSON.stringify(mask(toks.map((tok) => (tok.t === own ? { t: '<name>', kind: 'id' } : tok))));
+        }
         continue;
       }
       if (c.previousId && !c.delta?.signature && !c.delta?.body) {
@@ -488,12 +509,30 @@ for (const [set, repo, base, head, pluginNames] of selected) {
       }
       if (!explained) {
         entry.class = 'decision';
+        const shape = diff.map(([a0, a1, b0, b1]) => [mask(before.slice(a0, a1)), mask(after.slice(b0, b1))]);
+        if (shape.flat(2).length >= 3) entry.edit = JSON.stringify(shape);
         continue;
       }
       entry.class = c.previousId ? 'renamed' : 'ripple';
       entry.kinds = [...kinds];
       entry.linked = linked.has(c.id) || linked.has(c.previousId ?? '');
       if (args.length) entry.args = args;
+    }
+    // The same edit, or the same new code, again: read once, the rest by their values.
+    const firstOf = new Map();
+    for (const entry of symbols) {
+      const key = entry.edit ? `edit:${entry.edit}` : entry.shape ? `new:${entry.shape}` : undefined;
+      if (!key) continue;
+      if (!firstOf.has(key)) firstOf.set(key, entry.id);
+      else {
+        entry.class = 'repeat';
+        entry.like = firstOf.get(key);
+        entry.kinds = [entry.edit ? 'edit' : 'added'];
+      }
+    }
+    for (const entry of symbols) {
+      delete entry.edit;
+      delete entry.shape;
     }
     Object.assign(run, { subs: subs.map((s) => `${s.from.join(' ')} → ${s.to.join('')} (${s.why})`), symbols });
   } catch (error) {

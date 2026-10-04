@@ -16,7 +16,9 @@ function totals(list) {
       const cls =
         s.class === 'ripple'
           ? `ripple ${s.kinds.includes('argument') ? 'argument' : s.linked ? 'linked' : 'spelling'}${s.kinds.includes('rename-in-text') ? ' +text' : ''}`
-          : s.class;
+          : s.class === 'repeat'
+            ? `repeat ${s.kinds[0]}`
+            : s.class;
       t.symbols++;
       t.lines += s.lines;
       t.by[cls] = (t.by[cls] ?? 0) + 1;
