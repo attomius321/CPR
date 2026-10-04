@@ -13,7 +13,8 @@ with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packag
 - `src/App.tsx` — state, the layout memo, the canvas (map mode, reveal/fit), toolbar.
 - `src/Sidebar.tsx` (change list with search, findings, review tab), `src/DetailPanel.tsx`
   (diff, comments, users/uses), `src/ReviewTab.tsx`.
-- `src/review.ts` (change list, search, j/k order, marks), `src/detail.ts` (excerpts, diff rows),
+- `src/review.ts` (change list — by project when it spans several —, search, j/k order, one
+  project and its neighbourhood, marks), `src/detail.ts` (excerpts, diff rows),
   `src/comments.ts` (draft comments and anchors), `src/store.ts` (server or browser state).
 - `src/ProjectNode.tsx`, `FileNode.tsx`, `SymbolNode.tsx`, `SummaryNode.tsx`; `src/styles.css`.
 

@@ -44,7 +44,11 @@ files: its name, kind and folder, and how many of its symbols changed (a frame h
 unchanged neighbours is drawn lighter). Frames read in order: what calls comes before what it
 calls. Edges between projects are drawn heavier; on the map the projects' names are the largest
 labels, and a click on one zooms into it. A summary also says across how many projects its
-symbols are ("390 users in 220 files across 5 projects").
+symbols are ("390 users in 220 files across 5 projects"). The change list is then grouped by
+project — name, kind, how many of its changes you reviewed, paths from the project's folder — and
+a project folds away (j/k pass it by); the search also finds project names. "only" on a project,
+or `p` (`P` back), shows one project at a time: its changes, and everything they are linked to
+in other projects. Findings and the detail panel name the project (`web › src/app/foo.ts`).
 
 Click a symbol to see what changed in it, its findings, and who uses it:
 
