@@ -39,6 +39,13 @@ symbol without anything moving. To find one in hundreds, search the change list 
 keeps the symbols whose file path and name hold every word you type, Enter opens the first, and
 j/k walk only the matches.
 
+In a monorepo, when what is drawn spans two or more apps or libraries, each is a frame around its
+files: its name, kind and folder, and how many of its symbols changed (a frame holding only
+unchanged neighbours is drawn lighter). Frames read in order: what calls comes before what it
+calls. Edges between projects are drawn heavier; on the map the projects' names are the largest
+labels, and a click on one zooms into it. A summary also says across how many projects its
+symbols are ("390 users in 220 files across 5 projects").
+
 Click a symbol to see what changed in it, its findings, and who uses it:
 
 ![Detail panel: findings, old and new signature, a line diff of just this method, its users and callees](docs/images/viewer-detail.png)

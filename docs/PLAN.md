@@ -417,7 +417,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V6 ✅ | A graph you can navigate | On a large change the viewer drew 1,288 symbols for 86 changes, in a 9,470 × 85,468 px strip, and every click re-ran the layout. Now: big neighbourhoods as one node, a page of clusters, a map when zoomed out, no relayout while reviewing; see below. |
 | W1 ✅ | Repositories with several projects | A repo whose Angular apps live in subfolders (two apps, two levels deep, nothing at the root) got no template analysis at all, and its `@app/*` and `baseUrl` imports did not resolve. Now each file resolves with its own project's options, and the Angular plugin works per app; see below. |
 | Q1 ✅, Q2 ✅ | Qwik as the `qwik` plugin | Qwik is TSX and mostly reads right, but what its router calls by name (`onGet`, `head`, loaders, actions) shows as false orphans, an optional prop added to a `component$` is a warning, a required one added to a named props type is missed, and components used only from `.mdx` routes look unused. Planned; see below. |
-| V7 | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
+| V7 (V7a, V7b built) | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -1802,7 +1802,8 @@ shows); `$` closures (`onClick$`, `useTask$`) as symbols of their own; links to 
 ### V7 — Apps in the graph
 
 **Status:** V7a built (2026-10-03) on branch `milestone/v7a-projects-in-graph`, from the plan's
-branch `milestone/v7-app-boundaries`; V7b and V7c not started.
+branch `milestone/v7-app-boundaries`; V7b built (2026-10-03) on `milestone/v7b-project-frames`,
+from V7a's branch; V7c not started.
 
 **Problem** (asked: "In the UI view, the boundary between applications is visible?"). Not really.
 In a repo with several apps and libraries the viewer draws one box per file, labelled with its
@@ -1966,7 +1967,7 @@ project, today's drawing.
 | # | Milestone | Output |
 |---|---|---|
 | V7a (built) | Projects in the graph | Core project rules (declared, packages, tsconfig-only, root), the optional plugin hook and the Angular plugin's `angular.json` projects, `projects` in the graph (schema 0.6.0), shared workspace-globs reader. |
-| V7b | Frames | `layoutFlow` one level deeper (files in project frames, frames by the links between them), `project` frame node, edges between projects, project names on the map and minimap, summaries across projects, legend; one project = today. |
+| V7b (built) | Frames | `layoutFlow` one level deeper (files in project frames, frames by the links between them), `project` frame node, edges between projects, project names on the map and minimap, summaries across projects, legend; one project = today. |
 | V7c | By project in the sidebar | Change list grouped by project with progress and relative paths, the project filter (canvas and list), project names in findings and the detail panel, search by project name. |
 
 **Proposed decisions**:
@@ -1976,7 +1977,7 @@ project, today's drawing.
 | 33 | What a project is | **Declared first** (workspace members, Nx `project.json`, plugin-declared such as `angular.json`), **packages when nothing is declared**, **tsconfig-only folders outside every project**, the root last; the longest folder prefix wins | "Nearest `package.json`" splits Bitwarden's desktop and browser apps over nested packages and leaves `bit-common` (no `package.json`) at the root; repos that declare nothing (two apps two folders down) still get one frame per app. |
 | 34 | How the graph says it | **A top-level `projects` list, no field on nodes**; consumers use the longest folder prefix | Nodes stay as they are (smaller graphs, no change for single-project repos); base-only files resolve the same way. |
 | 35 | When frames are drawn | **Only with two or more projects**; otherwise today's layout, unchanged | A single-app repo gains nothing from one frame around everything, and every existing view stays as reviewers know it. |
-| 36 | Where frames go | **Files packed inside their project; frames laid out by the links between them, callers left of what they call**; size-packing if that runs too wide | Bitwarden's changes run from apps into shared libraries (16–45 % of drawn edges cross projects); Qwik's projects are islands — both read best with each project in one place. |
+| 36 | Where frames go | **Files packed inside their project; frames laid out by the links between them, callers left of what they call**; size-packing if that runs too wide. *As built: frames in rows in dagre's rank order (callers first), packages inside their main user's frame — see As built — V7b.* | Bitwarden's changes run from apps into shared libraries (16–45 % of drawn edges cross projects); Qwik's projects are islands — both read best with each project in one place. |
 
 #### As built — V7a
 
@@ -2014,6 +2015,57 @@ than the 4–16 the viewer draws: all but 3–10 come from context symbols, whic
 summaries — V7b frames what it draws, and a summary can say "across 5 projects" from the list.
 Qwik: 19 of 30 changes span 2–7 projects (`f7ed58cfc`: 7, with the root). The new phase costs
 250 ms of 66 s on Bitwarden `cbf86c2`, 7 ms on Qwik `f7ed58cfc`.
+
+#### As built — V7b
+
+- **Frames follow what is drawn**: a frame per project of the file boxes drawn, when they belong
+  to two or more (the graph's `projects`, longest folder; `src/projects.ts`). Focus, context and
+  opened summaries change what is drawn, so they can add or remove frames. One project, or a graph
+  without `projects`: the layout equals the one without (a unit test compares them).
+- **Rows in rank order, not dagre's columns** (decision 36 changed): the prototype ran dagre over
+  frames 3–8 times wider than high on Bitwarden (`cbf86c2` 23,924 × 7,549, `737ee3f` 15,557 ×
+  3,158). Frames are ranked by dagre (callers before what they call) and placed in rows in that
+  order, the tallest first within a rank, frames linked to nothing last. Packing by size alone
+  fitted as well but put a callee before its caller for 202 of 338 links on `cbf86c2` (rank
+  order: 109).
+- **Packages and the dynamic calls are drawn in the frame they have the most links with**, still
+  in no project (no relative path, never `edge-cross`). Placed after the frames, or in a column
+  beside their main user, Qwik `f7ed58cfc`'s `@qwik.dev/core` (461 edges, 403 from the e2e apps)
+  pulled fans of long edges across the canvas: React Flow draws every edge whose bounding box meets
+  the view, and panning at the first change fell from 22 to 3 fps. Inside its main user's frame the
+  package joins its users into one cluster, as without frames.
+- **Edges between projects** are heavier (3 px, 4.5 px when an end is selected) and less faded on
+  the map; no distinct dash, since dashes already mean "removed" and "type reference / unknown".
+- **Frame**: name, kind (app/lib), folder (unless it is the name), "N changed" (changed symbols
+  drawn in it) or "context only" — then lighter, dashed and with a smaller head. Wide enough for
+  its name. Only the name band takes the pointer: a click inside a frame is a click on the canvas
+  (it closes the detail panel), a drag pans.
+- **Map**: a frame is drawn over its files there, transparent, with a ring that keeps 2 screen px;
+  its name is 26 px on screen, smaller only to fit the frame's width and never below a file name's
+  13 px; a click on it zooms into the frame. A context-only frame's name is a file name's size.
+- **Paths in a frame** start at the project's folder (`src/page.ts`); the full path is the title.
+  Summaries say "across N projects" when their neighbours span two or more (from the graph's list,
+  frames drawn or not); they are 250 px wide then, 190 otherwise.
+
+**Results (V7b)**, with the Angular and Qwik plugins, against V7a's viewer (no frames), measured
+back to back (two rounds, 1440 × 900 Chromium):
+
+| Change | Frames (context only) | Canvas, today → frames | Edges in view, median (p90), today → frames | First paint | Pan |
+|---|---|---|---|---|---|
+| Bitwarden `cbf86c2` | 17 (8) | 17,044 × 15,230 → 8,921 × 8,964 | 121 (177) → 131 (190) | 1,514 → 1,168 ms | 63 → 63 fps |
+| Bitwarden `737ee3f` | 6 (2) | 9,587 × 7,819 → 7,566 × 5,859 | 53 (120) → 67 (112) | 922 → 900 ms | 64 → 59 fps |
+| Bitwarden `787bad6` | 10 (4) | 9,632 × 2,662 → 4,037 × 4,024 | 42 (59) → 49 (68) | 676 → 667 ms | 64 → 62 fps |
+| Qwik `f7ed58cfc` | 6 (0) | 35,051 × 25,081 → 27,896 × 22,196 | 136 (318) → 106 (260) | 2,726 → 2,910 ms | 23 → 30 fps |
+| Qwik `65661bf49` | 3 (0) | 8,165 × 3,658 → 8,092 × 4,585 | 45 (50) → 42 (53) | 764 → 654 ms | 62 → 62 fps |
+
+"Edges in view": edges React Flow draws in a zoom-1.1 view centred on each changed symbol. On all
+8 Bitwarden changes the canvas is 1.00–1.46 times wider than high and 0.42–1.01 times today's
+width; on the three Bitwarden changes above a view holds 10–19 % more edges on average (the page
+is denser), on Qwik's fewer. Marking a symbol
+reviewed took 84 → 134 ms (`737ee3f`) and 154 → 230 ms (`f7ed58cfc`), within the ±30 % these
+timings vary by; no page errors. Layout time fell (Bitwarden `cbf86c2` 443 → 243 ms): dagre runs
+per frame. Not changed: the largest Qwik graph opens at the minimum zoom (0.05) and does not fit,
+as before.
 
 **Not in V7 (later)**: collapsing a whole frame into one node (V6's summaries already cut
 context); grouping findings by project in the CLI summary and PR comments; colouring projects.

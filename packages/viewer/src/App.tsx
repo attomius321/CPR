@@ -40,13 +40,19 @@ import {
   toggleMark,
   type Marks,
 } from './review.js';
+import { ProjectNode } from './ProjectNode.js';
 import { Resizer } from './Resizer.js';
 import { Sidebar, type SidebarTab } from './Sidebar.js';
 import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
 import { SummaryNode } from './SummaryNode.js';
 import { SymbolNode } from './SymbolNode.js';
 
-const nodeTypes = { symbol: SymbolNode, file: FileNode, summary: SummaryNode };
+const nodeTypes = {
+  symbol: SymbolNode,
+  file: FileNode,
+  summary: SummaryNode,
+  project: ProjectNode,
+};
 
 /** Below this zoom the canvas is a map: file names readable, symbols as coloured blocks. */
 const MAP_ZOOM = 0.45;
@@ -469,7 +475,7 @@ export function App() {
           </ReactFlowProvider>
         )}
       </main>
-      {layout && <Legend />}
+      {layout && <Legend frames={layout.nodes[0]?.type === 'project'} />}
     </div>
   );
 }
@@ -545,8 +551,8 @@ function Canvas({
       onNodeClick={(_, node) => {
         if (node.type === 'symbol') onSelect(node.id);
         else if (node.type === 'summary') onToggleSummary(node.id);
-        // On the map, a file box is what is clicked: zoom into it.
-        else if (node.type === 'file' && map) {
+        // On the map, a file box or a project's name is what is clicked: zoom into it.
+        else if ((node.type === 'file' || node.type === 'project') && map) {
           void fitView({ nodes: [{ id: node.id }], duration: 300, maxZoom: 1.1 });
         }
       }}
@@ -563,7 +569,9 @@ function Canvas({
             ? `minimap-${(n.data as SymbolData).tone}`
             : n.type === 'summary'
               ? 'minimap-summary'
-              : 'minimap-file'
+              : n.type === 'project'
+                ? 'minimap-project'
+                : 'minimap-file'
         }
       />
     </ReactFlow>
@@ -664,7 +672,8 @@ function DropZone({ error, onFile }: { error?: string | undefined; onFile: (file
   );
 }
 
-function Legend() {
+/** `frames`: the canvas draws projects' frames, so their parts are explained too. */
+function Legend({ frames }: { frames: boolean }) {
   return (
     <footer className="legend">
       {(['added', 'removed', 'modified', 'moved', 'context', 'external', 'unknown'] as const).map(
@@ -676,7 +685,9 @@ function Legend() {
       )}
       <span className="legend-edge edge-head">added edge</span>
       <span className="legend-edge edge-base">removed edge</span>
+      {frames && <span className="legend-edge edge-cross">edge between projects</span>}
       <span className="legend-item legend-summary">many neighbours, grouped</span>
+      {frames && <span className="legend-item legend-project">project (app or library)</span>}
       <span className="legend-hint">click a symbol for details, a group to show its symbols</span>
     </footer>
   );
