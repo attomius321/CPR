@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { serveFixture, type Running } from './cpr.js';
 
 // `cpr view` on a monorepo (npm workspaces): two apps call a shared library, and a library is
@@ -23,6 +23,20 @@ test.afterEach(() => expect(errors).toEqual([]));
 
 const node = (page: Page, id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
 const frame = (page: Page, folder: string) => node(page, `project:${folder}`);
+
+/** Where it is once the canvas stops moving: a selection pans to it, animated. */
+async function settledBox(locator: Locator) {
+  let last = await locator.boundingBox();
+  for (let i = 0; i < 30; i++) {
+    await locator.page().waitForTimeout(100);
+    const box = await locator.boundingBox();
+    if (box && last && box.x === last.x && box.y === last.y && box.width === last.width) {
+      return box;
+    }
+    last = box;
+  }
+  throw new Error('the canvas did not settle');
+}
 
 test('draws each project as a frame around its files', async ({ page }) => {
   const names = await page.locator('.react-flow__node-project .project-name').allInnerTexts();
@@ -49,8 +63,7 @@ test('a click inside a frame is a click on the canvas', async ({ page }) => {
   await expect(page.locator('.panel-title')).toHaveText('page');
 
   // Below the file box, inside the frame: nothing there but the canvas, which closes the panel.
-  const box = await frame(page, 'apps/admin').boundingBox();
-  if (!box) throw new Error('frame not drawn');
+  const box = await settledBox(frame(page, 'apps/admin'));
   await page.mouse.click(box.x + box.width / 2, box.y + box.height - 6);
   await expect(page.locator('.panel-title')).toHaveCount(0);
 });
@@ -74,4 +87,66 @@ test('zoomed out, project names read first, and a click on one zooms into it', a
   await expect(page.locator('.react-flow.map')).toHaveCount(0);
   await expect(node(page, 'libs/ui/src/index.ts#button').locator('.symbol-name')).toBeVisible();
   await test.info().attach('frames', { body: await page.screenshot(), contentType: 'image/png' });
+});
+
+const group = (page: Page, name: string) => page.getByRole('region', { name });
+
+test('lists the changes by project, with progress and paths from the project', async ({ page }) => {
+  await page.getByRole('tab', { name: /Changes/ }).click();
+  await expect(page.locator('.list-project-name')).toHaveText([
+    '@acme/admin',
+    '@acme/legacy',
+    '@acme/ui',
+  ]);
+  const ui = group(page, '@acme/ui');
+  await expect(ui.locator('.list-project-progress')).toHaveText('0/1');
+  await expect(ui.locator('.list-file-name')).toHaveText('src/index.ts');
+  await expect(ui.locator('.list-file-name')).toHaveAttribute('title', 'libs/ui/src/index.ts');
+  await ui.getByLabel('Mark button reviewed').check();
+  await expect(ui.locator('.list-project-progress')).toHaveText('1/1');
+
+  // A folded project hides its files, and j/k pass it by.
+  await group(page, '@acme/admin').locator('.list-project-toggle').click();
+  await expect(group(page, '@acme/admin').locator('.list-item')).toHaveCount(0);
+  await page.keyboard.press('j');
+  await expect(page.locator('.panel-title')).toHaveText('legacy');
+  await expect(page.locator('.panel-file')).toHaveText('@acme/legacy › src/index.ts');
+
+  // The search finds project names too.
+  await page.getByLabel('Search changes').fill('acme/ui');
+  await expect(page.locator('.list-item')).toHaveCount(1);
+  await expect(page.locator('.list-project-name')).toHaveText(['@acme/ui']);
+});
+
+test('shows one project and what it is linked to, and p walks the projects', async ({ page }) => {
+  await page.getByRole('tab', { name: /Changes/ }).click();
+  const symbols = page.locator('.react-flow__node-symbol');
+  await expect(symbols).toHaveCount(4);
+
+  // The library: its changed button and both apps' calls to it.
+  await group(page, '@acme/ui').getByRole('button', { name: 'only' }).click();
+  await expect(page.locator('.project-note')).toContainText('Only @acme/ui');
+  await expect(page.locator('.list-project-name')).toHaveText(['@acme/ui']);
+  await expect(symbols).toHaveCount(3);
+  await expect(node(page, 'apps/shop/src/cart.ts#cart')).toBeVisible();
+
+  // p: after the last project, all of them; then the first.
+  await page.keyboard.press('p');
+  await expect(page.locator('.project-note')).toHaveCount(0);
+  await expect(symbols).toHaveCount(4);
+  await page.keyboard.press('p');
+  await expect(page.locator('.project-note')).toContainText('Only @acme/admin');
+  await expect(symbols).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Show all projects' }).click();
+  await expect(page.locator('.list-project')).toHaveCount(3);
+  await expect(symbols).toHaveCount(4);
+});
+
+test('findings name the project of their symbol', async ({ page }) => {
+  await page.getByRole('tab', { name: /Findings/ }).click();
+  const project = (rule: string) =>
+    page.locator('.finding-row', { hasText: rule }).locator('.finding-row-project');
+  await expect(project('exported-api-changed')).toHaveText('@acme/legacy');
+  await expect(project('signature-changed')).toHaveText('@acme/ui');
 });

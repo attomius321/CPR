@@ -14,6 +14,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type DragEvent,
@@ -35,9 +36,13 @@ import {
   changeList,
   filterChanges,
   neighbourhood,
+  nextProject,
+  onlyProject,
+  projectNeighbourhood,
   reviewStatus,
   stepChange,
   toggleMark,
+  withoutCollapsed,
   type Marks,
 } from './review.js';
 import { ProjectNode } from './ProjectNode.js';
@@ -128,6 +133,10 @@ export function App() {
   const [tab, setTab] = useState<SidebarTab | null>(null);
   /** Words the change list is narrowed to. */
   const [search, setSearch] = useState('');
+  /** The one project (by folder) the list and the canvas show; null for all. */
+  const [project, setProject] = useState<string | null>(null);
+  /** Projects (by folder) folded in the change list. */
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
   const [draft, setDraft] = useState<ReviewDraft>({ drafts: [], body: '' });
   const [widths, setWidths] = useState<Widths>(loadWidths);
   /** A panel is being resized: the canvas waits for the drop to centre the selection again. */
@@ -150,8 +159,13 @@ export function App() {
     () => (graph ? changeList(graph, { sinceOnly: onlySince }) : []),
     [graph, onlySince],
   );
-  /** The changes the search leaves: what the list shows and j/k walk. */
-  const shown = useMemo(() => filterChanges(changes, search), [changes, search]);
+  /** The changes the project filter and the search leave: what the list shows. */
+  const shown = useMemo(
+    () => filterChanges(onlyProject(changes, project), search),
+    [changes, project, search],
+  );
+  /** What j/k walk: the list, without the projects folded in it. */
+  const walked = useMemo(() => withoutCollapsed(shown, collapsed), [shown, collapsed]);
   const { reviewed, stale } = useMemo(
     () =>
       graph
@@ -159,8 +173,19 @@ export function App() {
         : { reviewed: new Set<string>(), stale: new Set<string>() },
     [graph, marks],
   );
-  // A new graph starts with every big neighbourhood collapsed.
-  useEffect(() => setExpanded(new Set()), [graph]);
+  // A new graph starts with every big neighbourhood collapsed, and every project shown.
+  useEffect(() => {
+    setExpanded(new Set());
+    setProject(null);
+    setCollapsed(new Set());
+  }, [graph]);
+  const toggleCollapsed = useCallback((folder: string) => {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (!next.delete(folder)) next.add(folder);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!graph || !store) return;
@@ -203,8 +228,8 @@ export function App() {
     [graph, store],
   );
 
-  // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, c comments, / searches,
-  // Esc closes.
+  // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, p (P) shows the next
+  // (previous) project only, c comments, / searches, Esc closes.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target;
@@ -225,15 +250,17 @@ export function App() {
         event.preventDefault();
         flushSync(() => setTab('changes'));
         document.getElementById('change-search')?.focus();
-      } else if (event.key === 'j') setSelected((id) => stepChange(shown, id, 1));
-      else if (event.key === 'k') setSelected((id) => stepChange(shown, id, -1));
+      } else if (event.key === 'j') setSelected((id) => stepChange(walked, id, 1));
+      else if (event.key === 'k') setSelected((id) => stepChange(walked, id, -1));
       else if (event.key === 'r' && selected) toggleReviewed(selected);
       else if (event.key === 'f') setFocus((on) => !on);
-      else if (event.key === 'Escape') setSelected(null);
+      else if (event.key === 'p' || event.key === 'P') {
+        setProject((folder) => nextProject(changes, folder, event.key === 'p' ? 1 : -1));
+      } else if (event.key === 'Escape') setSelected(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [shown, selected, toggleReviewed]);
+  }, [changes, walked, selected, toggleReviewed]);
 
   useEffect(() => {
     const url = graphUrl();
@@ -287,10 +314,12 @@ export function App() {
   );
 
   // Layout once per view; selecting and marking only decorate it, so nothing moves.
-  const focusSet = useMemo(
-    () => (graph && focus && selected ? neighbourhood(graph, selected) : undefined),
-    [graph, focus, selected],
-  );
+  // Focus on a symbol narrows further than showing one project.
+  const focusSet = useMemo(() => {
+    if (!graph) return undefined;
+    if (focus && selected) return neighbourhood(graph, selected);
+    return project === null ? undefined : projectNeighbourhood(graph, changes, project);
+  }, [graph, focus, selected, project, changes]);
   const layout = useMemo(
     () =>
       graph
@@ -411,6 +440,10 @@ export function App() {
               selected={selected}
               onSelect={setSelected}
               onToggleReviewed={toggleReviewed}
+              project={project}
+              onProject={setProject}
+              collapsed={collapsed}
+              onCollapse={toggleCollapsed}
               review={
                 forge
                   ? {
@@ -436,6 +469,7 @@ export function App() {
               layoutNodes={layout.nodes}
               selected={selected}
               focus={focus}
+              scope={project}
               resizing={resizing}
               onSelect={setSelected}
               onToggleSummary={toggleSummary}
@@ -455,6 +489,9 @@ export function App() {
                 key={selected}
                 graph={state.graph}
                 id={selected}
+                {...(changes.some((f) => f.project) && state.graph.projects
+                  ? { projects: state.graph.projects }
+                  : {})}
                 sources={state.sources}
                 reviewed={reviewed.has(selected)}
                 stale={stale.has(selected)}
@@ -489,6 +526,8 @@ interface CanvasProps {
   selected: string | null;
   /** In focus mode the whole (small) neighbourhood is fitted; otherwise the selection is centered. */
   focus: boolean;
+  /** The one project shown (by folder), or null: a new one is fitted as a whole, once. */
+  scope: string | null;
   /** A panel beside it is being dragged wider or narrower. */
   resizing: boolean;
   onSelect: (id: string | null) => void;
@@ -504,6 +543,7 @@ function Canvas({
   layoutNodes,
   selected,
   focus,
+  scope,
   resizing,
   onSelect,
   onToggleSummary,
@@ -523,17 +563,21 @@ function Canvas({
     return store.subscribe((state) => apply(state.transform[2]));
   }, [store]);
 
+  // The project last fitted as a whole: walking its symbols then centres each, as without one.
+  const fitted = useRef(scope);
   useEffect(() => {
     if (resizing) return;
     // Wait a frame so React Flow has measured nodes that just appeared.
     const frame = requestAnimationFrame(() => {
+      const rescoped = fitted.current !== scope;
+      fitted.current = scope;
       if (reveal)
         void fitView({ nodes: reveal.map((id) => ({ id })), duration: 300, maxZoom: 1.1 });
-      else if (focus) void fitView({ duration: 300, maxZoom: 1.1 });
+      else if (focus || rescoped) void fitView({ duration: 300, maxZoom: 1.1 });
       else if (selected) void fitView({ nodes: [{ id: selected }], duration: 300, maxZoom: 1.1 });
     });
     return () => cancelAnimationFrame(frame);
-  }, [selected, focus, layoutNodes, size, reveal, resizing, fitView]);
+  }, [selected, focus, scope, layoutNodes, size, reveal, resizing, fitView]);
 
   return (
     <ReactFlow<Node, Edge>

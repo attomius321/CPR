@@ -417,7 +417,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V6 ✅ | A graph you can navigate | On a large change the viewer drew 1,288 symbols for 86 changes, in a 9,470 × 85,468 px strip, and every click re-ran the layout. Now: big neighbourhoods as one node, a page of clusters, a map when zoomed out, no relayout while reviewing; see below. |
 | W1 ✅ | Repositories with several projects | A repo whose Angular apps live in subfolders (two apps, two levels deep, nothing at the root) got no template analysis at all, and its `@app/*` and `baseUrl` imports did not resolve. Now each file resolves with its own project's options, and the Angular plugin works per app; see below. |
 | Q1 ✅, Q2 ✅ | Qwik as the `qwik` plugin | Qwik is TSX and mostly reads right, but what its router calls by name (`onGet`, `head`, loaders, actions) shows as false orphans, an optional prop added to a `component$` is a warning, a required one added to a named props type is missed, and components used only from `.mdx` routes look unused. Planned; see below. |
-| V7 (V7a ✅, V7b ✅) | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
+| V7 (V7a ✅, V7b ✅, V7c built) | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -1803,7 +1803,7 @@ shows); `$` closures (`onClick$`, `useTask$`) as symbols of their own; links to 
 
 **Status:** V7a merged into main (2026-10-04, from branch `milestone/v7a-projects-in-graph`, with
 the plan's branch `milestone/v7-app-boundaries`); V7b merged into main (2026-10-04, from branch
-`milestone/v7b-project-frames`); V7c not started.
+`milestone/v7b-project-frames`); V7c built (2026-10-04) on `milestone/v7c-projects-sidebar`.
 
 **Problem** (asked: "In the UI view, the boundary between applications is visible?"). Not really.
 In a repo with several apps and libraries the viewer draws one box per file, labelled with its
@@ -1968,7 +1968,7 @@ project, today's drawing.
 |---|---|---|
 | V7a ✅ | Projects in the graph | Core project rules (declared, packages, tsconfig-only, root), the optional plugin hook and the Angular plugin's `angular.json` projects, `projects` in the graph (schema 0.6.0), shared workspace-globs reader. |
 | V7b ✅ | Frames | `layoutFlow` one level deeper (files in project frames, frames by the links between them), `project` frame node, edges between projects, project names on the map and minimap, summaries across projects, legend; one project = today. |
-| V7c | By project in the sidebar | Change list grouped by project with progress and relative paths, the project filter (canvas and list), project names in findings and the detail panel, search by project name. |
+| V7c (built) | By project in the sidebar | Change list grouped by project with progress and relative paths, the project filter (canvas and list), project names in findings and the detail panel, search by project name. |
 
 **Proposed decisions**:
 
@@ -2066,6 +2066,33 @@ reviewed took 84 → 134 ms (`737ee3f`) and 154 → 230 ms (`f7ed58cfc`), within
 timings vary by; no page errors. Layout time fell (Bitwarden `cbf86c2` 443 → 243 ms): dagre runs
 per frame. Not changed: the largest Qwik graph opens at the minimum zoom (0.05) and does not fit,
 as before.
+
+#### As built — V7c
+
+- **By project when the changes span two or more** (as frames, decision 35): `changeList` gives
+  each file its project and orders by project folder (stable, so files stay in path order within
+  one); `byProject` cuts the list into groups. Folder order puts the root and a nested project
+  (`apps/web/e2e` after `apps/web`) where the folders say, not where the paths sort.
+- **Header**: name, kind, "n/m reviewed" over the project's whole change (not what the search
+  leaves); it stays at the top while its files scroll. A click folds the project; j/k walk the
+  list without folded projects, as they walk only what a search leaves.
+- **One project**: "only" on a header, or `p` / `P` (next / previous, then all). The list keeps
+  that project; the canvas keeps its changed symbols and everything one edge away, in it or in
+  another project (`projectNeighbourhood`), and fits them once — walking the project's symbols
+  then centres each, as without the filter. Focus on a symbol (`f`) narrows further. When the
+  project's neighbours are all its own, one project is drawn: no frame (Qwik's router).
+- **Search** matches project names too ("acme/ui"). **Findings** name their symbol's project;
+  the **detail panel** reads `@acme/ui › src/index.ts`, the full path as its title. Packages and
+  dynamic calls are in no project and stay as they were.
+- **Fixed on the way**: V7b's e2e "a click inside a frame" measured the frame while the canvas
+  still panned to the selection; 3 of 12 runs failed. It waits for the canvas to settle (20 of 20).
+
+**Results (V7c)**: change lists on real graphs span 3–9 projects (Bitwarden `cbf86c2`: 115
+changes in 32 files, 9 projects, `@bitwarden/common` 55 and `@bitwarden/auth` 32; Qwik `f7ed58cfc`:
+367 in 113 files, 6 projects). Showing one project takes 623 ms on `cbf86c2` (`@bitwarden/auth`:
+153 nodes drawn), 369 ms on Qwik `f7ed58cfc`; back to all, 914 and 1,617 ms (the whole layout
+again). Against `main` (V7b), two rounds back to back: first paint +4–5 % on Bitwarden, select and
+mark reviewed within their noise, no page errors.
 
 **Not in V7 (later)**: collapsing a whole frame into one node (V6's summaries already cut
 context); grouping findings by project in the CLI summary and PR comments; colouring projects.

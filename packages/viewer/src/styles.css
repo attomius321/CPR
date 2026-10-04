@@ -808,6 +808,11 @@ code {
   word-break: break-all;
 }
 
+.panel-project {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .panel h3 {
   margin: 18px 0 8px;
   font-size: 13px;
@@ -1070,6 +1075,102 @@ code {
   padding: 1px 8px 1px 12px;
 }
 
+/* ---- the change list by project, when the change spans several ------------------------ */
+
+.list-project + .list-project {
+  border-top: 1px solid var(--line);
+}
+
+/* The project's header stays in view while its files scroll by. */
+.list-project-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 4px 6px;
+  background: var(--panel);
+}
+
+.list-project-toggle {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.list-project-caret {
+  flex: none;
+  width: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.list-project-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 650;
+}
+
+.list-project-progress {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.list-project-only {
+  flex: none;
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.list-project-only:hover {
+  color: var(--text);
+}
+
+.list-project-only[aria-pressed='true'] {
+  border-color: var(--moved);
+  background: color-mix(in srgb, var(--moved) 14%, transparent);
+  color: var(--text);
+}
+
+.list-project .list-file-name,
+.list-project .list-item {
+  padding-left: 24px;
+}
+
+.project-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0;
+  padding: 6px 12px 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.project-note strong {
+  color: var(--text);
+}
+
 .list-item.current {
   background: color-mix(in srgb, var(--moved) 14%, transparent);
 }
@@ -1137,6 +1238,16 @@ code {
 
 .finding-row-rule {
   font-weight: 600;
+}
+
+.finding-row-project {
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
 }
 
 .finding-row-message {

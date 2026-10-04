@@ -1,6 +1,7 @@
-import type { Finding, Graph } from '@cpr/core';
-import { label, tone } from './flow.js';
-import type { FileChanges } from './review.js';
+import type { Finding, Graph, GraphNode, Project } from '@cpr/core';
+import { groupOf, label, tone } from './flow.js';
+import { pathInProject, projectOf } from './projects.js';
+import { byProject, type FileChanges } from './review.js';
 import { ReviewTab, type ReviewProps } from './ReviewTab.js';
 
 const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 } as const;
@@ -22,13 +23,19 @@ interface Props {
   selected: string | null;
   onSelect: (id: string) => void;
   onToggleReviewed: (id: string) => void;
+  /** The one project shown (by folder), or null for all. */
+  project: string | null;
+  onProject: (folder: string | null) => void;
+  /** Projects (by folder) folded in the list. */
+  collapsed: ReadonlySet<string>;
+  onCollapse: (folder: string) => void;
   /** Present when the review can be posted to the forge (`cpr pr`). */
   review?: ReviewProps | undefined;
 }
 
 /**
- * The review checklist (changed symbols by file), the findings and, under `cpr pr`, the review
- * to post, in tabs.
+ * The review checklist (changed symbols by file, by project when they span several), the
+ * findings and, under `cpr pr`, the review to post, in tabs.
  */
 export function Sidebar({
   graph,
@@ -43,6 +50,10 @@ export function Sidebar({
   selected,
   onSelect,
   onToggleReviewed,
+  project,
+  onProject,
+  collapsed,
+  onCollapse,
   review,
 }: Props) {
   const commented = new Map<string, number>();
@@ -55,6 +66,46 @@ export function Sidebar({
   const findings = [...graph.findings].sort(
     (a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || a.id.localeCompare(b.id),
   );
+  // By project only when the changes span two or more.
+  const grouped = changes.some((f) => f.project);
+  const progress = new Map<string, { done: number; total: number }>();
+  for (const { project: of, symbols } of changes) {
+    if (!of) continue;
+    const entry = progress.get(of.folder) ?? { done: 0, total: 0 };
+    entry.total += symbols.length;
+    entry.done += symbols.filter((s) => reviewed.has(s.id)).length;
+    progress.set(of.folder, entry);
+  }
+  const shownProject =
+    project === null ? undefined : changes.find((f) => f.project?.folder === project)?.project;
+  const nodes = new Map(graph.nodes.map((n) => [n.id, n]));
+  /** A finding's project, named when the list is by project. */
+  const projectName = (symbol: string): string | undefined => {
+    const node = nodes.get(symbol);
+    const file = node ? groupOf(node).file : undefined;
+    return grouped && file ? projectOf(file, graph.projects ?? [])?.name : undefined;
+  };
+
+  const fileList = (files: FileChanges[], of?: Project) =>
+    files.map(({ file, symbols }) => (
+      <div key={file} className="list-file">
+        <div className="list-file-name" title={file}>
+          {of ? pathInProject(file, of) : file}
+        </div>
+        {symbols.map((node) => (
+          <ChangeItem
+            key={node.id}
+            node={node}
+            current={node.id === selected}
+            reviewed={reviewed.has(node.id)}
+            stale={stale.has(node.id)}
+            comments={commented.get(node.id)}
+            onSelect={onSelect}
+            onToggleReviewed={onToggleReviewed}
+          />
+        ))}
+      </div>
+    ));
 
   return (
     <nav className="sidebar" aria-label="Review">
@@ -122,40 +173,57 @@ export function Sidebar({
                 {stale.size === 1 ? 'it' : 'them'}
               </p>
             )}
-            {shown.map(({ file, symbols }) => (
-              <div key={file} className="list-file">
-                <div className="list-file-name" title={file}>
-                  {file}
-                </div>
-                {symbols.map((node) => (
-                  <div
-                    key={node.id}
-                    className={`list-item tone-${tone(node)}${node.id === selected ? ' current' : ''}${reviewed.has(node.id) ? ' done' : ''}${stale.has(node.id) ? ' stale' : ''}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={reviewed.has(node.id)}
-                      onChange={() => onToggleReviewed(node.id)}
-                      aria-label={`Mark ${label(node)} reviewed`}
-                    />
-                    <button className="list-link" onClick={() => onSelect(node.id)}>
-                      <span className="dot" />
-                      {label(node)}
-                    </button>
-                    {stale.has(node.id) && (
-                      <span className="stale-mark" title="Changed since you reviewed it">
-                        ↻
-                      </span>
-                    )}
-                    {commented.has(node.id) && (
-                      <span className="commented" title="Comments on this symbol">
-                        💬 {commented.get(node.id)}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
+            {shownProject && (
+              <p className="project-note">
+                Only <strong>{shownProject.name}</strong> and what it is linked to
+                <button className="link" onClick={() => onProject(null)}>
+                  Show all projects
+                </button>
+              </p>
+            )}
+            {grouped
+              ? byProject(shown).map(({ project: of, files }) => {
+                  if (!of) return fileList(files);
+                  const folded = collapsed.has(of.folder);
+                  const { done: ok = 0, total: all = 0 } = progress.get(of.folder) ?? {};
+                  return (
+                    <section key={of.folder} className="list-project" aria-label={of.name}>
+                      <div className="list-project-head">
+                        <button
+                          className="list-project-toggle"
+                          aria-expanded={!folded}
+                          onClick={() => onCollapse(of.folder)}
+                          title={of.folder === '' ? 'repository root' : of.folder}
+                        >
+                          <span className="list-project-caret">{folded ? '▸' : '▾'}</span>
+                          <span className="list-project-name">{of.name}</span>
+                          {of.kind && (
+                            <span className="project-kind">
+                              {of.kind === 'application' ? 'app' : 'lib'}
+                            </span>
+                          )}
+                        </button>
+                        <span className="list-project-progress" title={`${ok} of ${all} reviewed`}>
+                          {ok}/{all}
+                        </span>
+                        <button
+                          className="list-project-only"
+                          aria-pressed={project === of.folder}
+                          onClick={() => onProject(project === of.folder ? null : of.folder)}
+                          title={
+                            project === of.folder
+                              ? 'Show all projects (p)'
+                              : `Show only ${of.name} and what it is linked to (p)`
+                          }
+                        >
+                          only
+                        </button>
+                      </div>
+                      {!folded && fileList(files, of)}
+                    </section>
+                  );
+                })
+              : fileList(shown)}
             {total === 0 && <p className="muted pad">No symbol changed.</p>}
             {total > 0 && matches === 0 && (
               <p className="muted pad">No changed file or symbol matches “{search.trim()}”.</p>
@@ -170,6 +238,7 @@ export function Sidebar({
             <FindingRow
               key={finding.id}
               finding={finding}
+              project={projectName(finding.symbol)}
               current={finding.symbol === selected}
               onSelect={onSelect}
             />
@@ -179,6 +248,11 @@ export function Sidebar({
       )}
       <p className="keys">
         <kbd>j</kbd>/<kbd>k</kbd> next/previous · <kbd>r</kbd> reviewed · <kbd>f</kbd> focus ·{' '}
+        {grouped && (
+          <>
+            <kbd>p</kbd> project ·{' '}
+          </>
+        )}
         <kbd>/</kbd> search ·{' '}
         {review && (
           <>
@@ -191,12 +265,61 @@ export function Sidebar({
   );
 }
 
+/** A changed symbol in the list: its reviewed box, its name, and marks. */
+function ChangeItem({
+  node,
+  current,
+  reviewed,
+  stale,
+  comments,
+  onSelect,
+  onToggleReviewed,
+}: {
+  node: GraphNode;
+  current: boolean;
+  reviewed: boolean;
+  stale: boolean;
+  comments: number | undefined;
+  onSelect: (id: string) => void;
+  onToggleReviewed: (id: string) => void;
+}) {
+  return (
+    <div
+      className={`list-item tone-${tone(node)}${current ? ' current' : ''}${reviewed ? ' done' : ''}${stale ? ' stale' : ''}`}
+    >
+      <input
+        type="checkbox"
+        checked={reviewed}
+        onChange={() => onToggleReviewed(node.id)}
+        aria-label={`Mark ${label(node)} reviewed`}
+      />
+      <button className="list-link" onClick={() => onSelect(node.id)}>
+        <span className="dot" />
+        {label(node)}
+      </button>
+      {stale && (
+        <span className="stale-mark" title="Changed since you reviewed it">
+          ↻
+        </span>
+      )}
+      {comments !== undefined && (
+        <span className="commented" title="Comments on this symbol">
+          💬 {comments}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function FindingRow({
   finding,
+  project,
   current,
   onSelect,
 }: {
   finding: Finding;
+  /** The symbol's project, when the change spans several. */
+  project: string | undefined;
   current: boolean;
   onSelect: (id: string) => void;
 }) {
@@ -206,7 +329,10 @@ function FindingRow({
       onClick={() => onSelect(finding.symbol)}
     >
       <span className={`badge badge-${finding.severity}`}>{finding.severity}</span>
-      <span className="finding-row-rule">{finding.rule}</span>
+      <span className="finding-row-rule">
+        {finding.rule}
+        {project && <span className="finding-row-project">{project}</span>}
+      </span>
       <span className="finding-row-message">{finding.message}</span>
     </button>
   );

@@ -1,16 +1,21 @@
 import { readFileSync } from 'node:fs';
-import type { Graph } from '@cpr/core';
+import type { Graph, GraphNode } from '@cpr/core';
 import { describe, expect, it } from 'vitest';
 import { toFlow } from '../src/flow.js';
 import {
+  byProject,
   changeList,
   filterChanges,
   fingerprint,
   neighbourhood,
+  nextProject,
+  onlyProject,
+  projectNeighbourhood,
   reviewKey,
   reviewStatus,
   stepChange,
   toggleMark,
+  withoutCollapsed,
 } from '../src/review.js';
 
 const golden = (name: string) =>
@@ -66,6 +71,114 @@ describe('stepChange', () => {
 
   it('starts over from a context symbol', () => {
     expect(stepChange(list, 'src/app.ts#total', 1)).toBe(ids[0]);
+  });
+});
+
+/** A monorepo change: `files` as `path:name` (a changed function each), projects by folder. */
+function monorepo(files: string[], folders: string[]): Graph {
+  return {
+    ...golden('projects'),
+    nodes: files.map((spec): GraphNode => {
+      const [file = '', name = ''] = spec.split(':');
+      return {
+        id: `${file}#${name}`,
+        kind: 'function',
+        name,
+        container: null,
+        language: 'typescript',
+        exported: true,
+        status: 'modified',
+        previousId: null,
+        base: null,
+        head: null,
+      };
+    }),
+    edges: [],
+    findings: [],
+    projects: folders.map((folder) => ({
+      folder,
+      name: folder === '' ? 'repository root' : (folder.split('/').pop() ?? folder),
+      source: folder === '' ? 'root' : 'workspace',
+    })),
+  };
+}
+
+describe('the change list by project', () => {
+  // A nested project (`apps/web/e2e`) and the root: folder order is not path order.
+  const graph = monorepo(
+    ['apps/web/src/x.ts:x', 'apps/web/e2e/a.ts:a', 'libs/ui/i.ts:i', 'tools/t.ts:t'],
+    ['', 'apps/web', 'apps/web/e2e', 'libs/ui'],
+  );
+  const list = changeList(graph);
+  const files = (l: typeof list) => l.map((f) => f.file);
+
+  it('groups files by project, in folder order, when the changes span two or more', () => {
+    expect(list.map((f) => `${f.project?.folder ?? '-'} ${f.file}`)).toEqual([
+      ' tools/t.ts',
+      'apps/web apps/web/src/x.ts',
+      'apps/web/e2e apps/web/e2e/a.ts',
+      'libs/ui libs/ui/i.ts',
+    ]);
+    expect(byProject(list).map((g) => [g.project?.name, files(g.files)])).toEqual([
+      ['repository root', ['tools/t.ts']],
+      ['web', ['apps/web/src/x.ts']],
+      ['e2e', ['apps/web/e2e/a.ts']],
+      ['ui', ['libs/ui/i.ts']],
+    ]);
+    // j/k follow the list.
+    expect(stepChange(list, null, 1)).toBe('tools/t.ts#t');
+    expect(stepChange(list, 'apps/web/src/x.ts#x', 1)).toBe('apps/web/e2e/a.ts#a');
+  });
+
+  it('stays one flat list when the changes are in one project', () => {
+    const one = changeList(
+      monorepo(['apps/web/a.ts:a', 'apps/web/b.ts:b'], ['', 'apps/web', 'libs/ui']),
+    );
+    expect(one.map((f) => f.project)).toEqual([undefined, undefined]);
+    expect(byProject(one)).toEqual([{ files: one }]);
+    expect(changeList(golden('callers')).some((f) => f.project)).toBe(false);
+  });
+
+  it('finds project names with the search', () => {
+    const acme = changeList(golden('projects'));
+    expect(filterChanges(acme, '@acme/ui').map((f) => [f.project?.name, f.file])).toEqual([
+      ['@acme/ui', 'libs/ui/src/index.ts'],
+    ]);
+    expect(filterChanges(acme, 'acme legacy').flatMap((f) => f.symbols.map((s) => s.name))).toEqual(
+      ['legacy'],
+    );
+  });
+
+  it('shows one project, or leaves collapsed ones out', () => {
+    expect(files(onlyProject(list, 'apps/web'))).toEqual(['apps/web/src/x.ts']);
+    expect(files(onlyProject(list, ''))).toEqual(['tools/t.ts']);
+    expect(onlyProject(list, null)).toBe(list);
+    expect(files(withoutCollapsed(list, new Set(['', 'apps/web'])))).toEqual([
+      'apps/web/e2e/a.ts',
+      'libs/ui/i.ts',
+    ]);
+  });
+
+  it('cycles through the projects, then all of them', () => {
+    expect(nextProject(list, null, 1)).toBe('');
+    expect(nextProject(list, '', 1)).toBe('apps/web');
+    expect(nextProject(list, 'libs/ui', 1)).toBeNull();
+    expect(nextProject(list, null, -1)).toBe('libs/ui');
+    expect(nextProject(changeList(golden('callers')), null, 1)).toBeNull();
+  });
+
+  it("keeps a project's changes and what they are linked to in other projects", () => {
+    const acme = golden('projects');
+    const acmeList = changeList(acme);
+    expect([...projectNeighbourhood(acme, acmeList, 'libs/ui')].sort()).toEqual([
+      'apps/admin/src/page.ts#page',
+      'apps/shop/src/cart.ts#cart',
+      'libs/ui/src/index.ts#button',
+    ]);
+    expect([...projectNeighbourhood(acme, acmeList, 'apps/admin')].sort()).toEqual([
+      'apps/admin/src/page.ts#page',
+      'libs/ui/src/index.ts#button',
+    ]);
   });
 });
 

@@ -1346,3 +1346,31 @@ errors; screenshots of the map, a selection and dark mode. Not verified: a real 
 an Nx-only or Angular CLI layout in the browser (fixtures only).
 
 Merged into main (2026-10-04).
+
+## V7c — The change list by project (2026-10-04, branch `milestone/v7c-projects-sidebar`)
+
+When a change spans two or more apps or libraries, the change list is grouped by project (name,
+kind, progress, foldable, paths from the project's folder), "only" or `p` shows one project and
+what it is linked to, and findings and the detail panel name the project. One project: as before.
+
+**Learned**
+- Folder order is not path order: `apps/web/e2e/a.ts` sorts before `apps/web/src/x.ts`, but its
+  project comes after `apps/web`'s. The list is sorted by project folder with a stable sort, so
+  files keep their path order within a project and j/k follow what is on screen.
+- Fitting the whole project on every j/k step would throw away the reviewer's place: the canvas
+  fits a newly shown project once, then centres each selection as before.
+- A test that clicks at a measured spot must wait for the canvas to stop panning: V7b's frame
+  click test failed 3 times in 12 because the selection's pan was still running. "Flake" was the
+  test reading a moving target, not the viewer.
+- Real change lists span 3–9 projects (Bitwarden `cbf86c2`: 9, with 55 of 115 changes in
+  `@bitwarden/common`); without groups that was one list of 32 paths.
+
+**Verification**: tests first — the list logic (grouping in folder order with a nested project
+and the root, flat for one project, the search over project names, one project, folded projects,
+`p` cycling, a project's neighbourhood) was red before the code; 406 unit tests. E2E 35, three new
+on the npm-workspaces fixture (the grouped list with progress, folding, j/k and search; one
+project on list and canvas, `p`, "Show all projects"; findings naming projects), which fail on
+`main`'s build; the projects spec ran 6 times over without a failure. Real graphs: screenshots of
+Bitwarden `cbf86c2` grouped and with `@bitwarden/auth` only, and Qwik `f7ed58cfc` with its router
+only; timings against `main` within noise (first paint +4–5 % on Bitwarden), no page errors. Not
+verified: very long project lists in a narrow sidebar beyond 9 projects.
