@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
-import type { Finding, Graph, GraphNode } from '@cpr/core';
+import type { Finding, Graph, GraphNode, Project } from '@cpr/core';
 import {
   anchorFor,
   defaultAnchor,
@@ -9,7 +9,8 @@ import {
   type Draft,
 } from './comments.js';
 import { diffRows, excerpt, symbolDetail, type DiffRow, type Neighbour } from './detail.js';
-import { label, tone } from './flow.js';
+import { groupOf, label, tone } from './flow.js';
+import { pathInProject, projectOf } from './projects.js';
 
 const sources = new Map<string, Promise<string>>();
 
@@ -55,6 +56,8 @@ function useSymbolDiff(node: GraphNode | undefined, enabled: boolean): SourceSta
 interface Props {
   graph: Graph;
   id: string;
+  /** The graph's projects, when the change spans two or more: the file line names its project. */
+  projects?: readonly Project[];
   /** Whether `/api/source` exists (opened with `cpr view`). */
   sources: boolean;
   /** Whether the reviewer marked it reviewed; only changed symbols can be. */
@@ -79,6 +82,7 @@ export interface Comments {
 export function DetailPanel({
   graph,
   id,
+  projects,
   sources: hasSources,
   reviewed,
   stale,
@@ -124,10 +128,7 @@ export function DetailPanel({
                 ))}
           </div>
           <h2 className="panel-title">{label(node)}</h2>
-          <div className="panel-file">
-            {(node.head ?? node.base)?.file ?? node.id}
-            {moved}
-          </div>
+          <FileLine node={node} projects={projects} moved={moved} />
           {stale && <div className="stale-note">↻ Changed since you reviewed it</div>}
         </div>
         <div className="panel-actions">
@@ -392,5 +393,32 @@ function Neighbours({
         ))}
       </ul>
     </section>
+  );
+}
+
+/** Where a symbol is: `web › src/app/foo.ts` when the change spans projects, else the path. */
+function FileLine({
+  node,
+  projects,
+  moved,
+}: {
+  node: GraphNode;
+  projects: readonly Project[] | undefined;
+  moved: string;
+}) {
+  const file = (node.head ?? node.base)?.file ?? node.id;
+  // Packages and dynamic calls are in no project.
+  const project = projects && groupOf(node).file ? projectOf(file, projects) : undefined;
+  return (
+    <div className="panel-file" {...(project ? { title: file } : {})}>
+      {project ? (
+        <>
+          <span className="panel-project">{project.name}</span> › {pathInProject(file, project)}
+        </>
+      ) : (
+        file
+      )}
+      {moved}
+    </div>
   );
 }
