@@ -1,10 +1,25 @@
 // Summarizes measure.mjs outputs: per set and overall, what share of changed symbols (and of
 // their lines) is mechanical — moved, renamed, ripple — against what is left to read.
-// Usage: node spikes/e1-ripples/summarize.mjs <out.json>…
+// Usage: node spikes/e1-ripples/summarize.mjs <out.json>… [--exclude sha,…] [--without sha]
+//   --exclude  leave changes out (e.g. a revert and its re-apply: the same change three times)
+//   --without  also report "all" without this change (one outlier can carry the total)
 import { readFileSync } from 'node:fs';
+import { parseArgs } from 'node:util';
 
-const runs = process.argv.slice(2).flatMap((path) => JSON.parse(readFileSync(path, 'utf8')).runs);
-const ok = runs.filter((r) => !r.error);
+const { values, positionals } = parseArgs({
+  allowPositionals: true,
+  options: { exclude: { type: 'string', default: '' }, without: { type: 'string' } },
+});
+const excluded = values.exclude.split(',').filter(Boolean);
+const runs = positionals.flatMap((path) => JSON.parse(readFileSync(path, 'utf8')).runs);
+// A change in two sets (or samples) is counted once, in the first.
+const seen = new Set();
+const ok = runs.filter((r) => {
+  const key = `${r.repo} ${r.head}`;
+  if (r.error || seen.has(key) || excluded.some((sha) => r.head.startsWith(sha))) return false;
+  seen.add(key);
+  return true;
+});
 const pct = (n, d) => (d ? `${((100 * n) / d).toFixed(1)} %` : '–');
 
 function totals(list) {
@@ -39,9 +54,10 @@ function totals(list) {
 
 function report(name, list) {
   const t = totals(list);
+  // Per change: the share of its diff lines that is verified.
   const shares = list.map((r) => {
-    const n = r.symbols.length;
-    return n ? r.symbols.filter((s) => s.class !== 'decision').length / n : 0;
+    const all = r.symbols.reduce((n, s) => n + (s.diff ?? 0), 0);
+    return all ? r.symbols.filter((s) => s.class !== 'decision').reduce((n, s) => n + (s.diff ?? 0), 0) / all : 0;
   });
   const atLeast = (x) => shares.filter((s) => s >= x).length;
   console.log(`\n## ${name}: ${t.runs} changes, ${t.symbols} changed symbols, ${t.diff} diff lines`);
@@ -52,12 +68,13 @@ function report(name, list) {
     console.log(`  ${cls.padEnd(24)} ${String(n).padStart(5)} symbols  ${String(t.diffBy[cls]).padStart(6)} diff lines`);
   }
   console.log(
-    `changes with any verified symbol: ${atLeast(1e-9)}/${t.runs}; ≥ 25 %: ${atLeast(0.25)}; ≥ 50 %: ${atLeast(0.5)}`,
+    `changes with verified diff lines: ${atLeast(1e-9)}/${t.runs}; ≥ 10 % of their lines: ${atLeast(0.1)}; ≥ 25 %: ${atLeast(0.25)}; ≥ 50 %: ${atLeast(0.5)}`,
   );
 }
 
 for (const set of [...new Set(ok.map((r) => r.set))]) report(set, ok.filter((r) => r.set === set));
 report('all', ok);
+if (values.without) report(`all without ${values.without}`, ok.filter((r) => !r.head.startsWith(values.without)));
 
 console.log('\n## Most verified');
 const ranked = ok
