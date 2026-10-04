@@ -1374,3 +1374,5 @@ project on list and canvas, `p`, "Show all projects"; findings naming projects),
 Bitwarden `cbf86c2` grouped and with `@bitwarden/auth` only, and Qwik `f7ed58cfc` with its router
 only; timings against `main` within noise (first paint +4–5 % on Bitwarden), no page errors. Not
 verified: very long project lists in a narrow sidebar beyond 9 projects.
+
+Merged into main (2026-10-04).
