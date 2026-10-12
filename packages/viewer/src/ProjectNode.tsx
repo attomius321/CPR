@@ -12,8 +12,9 @@ export function ProjectNode({ data, width }: NodeProps<Node<ProjectData, 'projec
   return (
     <div
       className={`project-frame${changed > 0 ? '' : ' context'}`}
-      // On the map the name grows with the zoom-out, up to the frame's width.
-      style={{ '--frame-width': `${width ?? 0}px`, '--name-length': name.length } as CSSProperties}
+      // On the map the name grows with the zoom-out, up to the frame's width (in px, unitless:
+      // it scales a transform).
+      style={{ '--frame-width': width ?? 0, '--name-length': name.length } as CSSProperties}
     >
       <div className="project-band" title={`${name} — ${where}`}>
         <span className="project-name">{name}</span>

@@ -1409,3 +1409,49 @@ Not verified: recall (how many mechanical changes the rules miss beyond member r
 Qwik `f7ed58cfc`); changes outside these five repositories.
 
 Merged into main (2026-10-12).
+
+## V8 spike — a smooth viewer (2026-10-12, branch `milestone/v8a-zoom-labels`)
+
+Reported "flaky and laggy". Every interaction a reviewer does was scripted in Chromium on real
+graphs (`scripts/viewer/interactions.mjs`), profiled on an unminified build, and re-run with one
+cost removed at a time. Plan in PLAN.md (V8a–V8e).
+
+**Learned**
+- The biggest single cost of zooming was one line: `--cpr-zoom` set on the page root on every
+  zoom frame. An inherited custom property restyles every element below it — 12,788 on Qwik's
+  map — though only about 130 labels read it. A stylesheet rule aimed at the labels restyles
+  only them, but they still re-laid out their text each frame (`font-size` changes); scaling them
+  with a transform from fixed sizes removes that too. Each change alone gained little; together
+  they came within reach of the variable frozen (Qwik zoom-out blocking 507 → 190 ms, frozen 150).
+- React Flow's `onlyRenderVisibleElements` checks every edge on every frame of a pan, zoom or
+  `fitView` animation; edges are 38–52 % of the map's page elements.
+- "Flaky" had a concrete part: on the map, frame names (V7b) are drawn over file boxes and take
+  the pointer — 9–23 % of the spots on file boxes zoom into the whole project instead.
+- On Qwik `f7ed58cfc` a j step's 300 ms glide got 4 frames: the canvas jumps in steps. Layout
+  runs on the main thread (1.9 s there), and a context toggle lays out again (769 ms frame).
+- Measuring traps: timings varied 3× between runs on this machine — compare medians of 3–5 rounds
+  back to back; Long Tasks miss style and layout work, long animation frames (LoAF) include it;
+  `getByLabel('Context')` matched "Mark InitContextMenuItems reviewed" too (use `exact`).
+
+**Verification**: baselines (median of 3) in PLAN.md V8's table; the prototype for V8a measured
+with medians of 5 against the variable frozen, edges hidden and both.
+
+## V8a — Map labels (2026-10-12, branch `milestone/v8a-zoom-labels`)
+
+Zooming no longer restyles the whole page: the map's labels are scaled by a transform from fixed
+sizes, and the zoom value lives in a stylesheet rule for them alone, written only on the map.
+
+**Learned**
+- Two costs hid in one line, and each fix alone gained little: an inherited custom property on the
+  root restyles every element below it; a font size that follows the zoom re-lays out its text
+  on every frame. Scoping the variable halved the cost, the transform alone changed nothing,
+  both together came near the "variable frozen" bound.
+- A label's computed font size no longer says how big it looks: the e2e check that project names
+  read twice as big as file names now compares drawn sizes (bounding boxes).
+
+**Verification**: tests first — `nextMapZoom` (on the map, once per value, nothing off it); e2e:
+a map file name keeps its size on screen while the map zooms further out (passing before and
+after) and nothing is set on the page root (red before). `interactions.mjs` against `main`'s
+build, two alternating runs of 3 rounds: zoom out ×20 blocked 102–103 → 32–40 ms (Bitwarden
+`cbf86c2`), 451–466 → 193–219 ms (Qwik `f7ed58cfc`); zoom in on Qwik 107–115 → 0–5 ms; nothing
+else moved beyond noise. Map screenshots before and after match. 408 unit tests, 35 e2e.

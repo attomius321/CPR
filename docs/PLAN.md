@@ -419,6 +419,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | Q1 ✅, Q2 ✅ | Qwik as the `qwik` plugin | Qwik is TSX and mostly reads right, but what its router calls by name (`onGet`, `head`, loaders, actions) shows as false orphans, an optional prop added to a `component$` is a warning, a required one added to a named props type is missed, and components used only from `.mdx` routes look unused. Planned; see below. |
 | V7 ✅ | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
 | E1 (measured) | Decisions and their ripples | Could mechanical parts of a change (renames and their call sites, moves, a new argument everywhere, the same edit repeated) be verified instead of read? Measured on 165 changes: 20 % of changed symbols but 5.4 % of diff lines (2.8 % without one large rename); 0 false in 40 audited. Not the disruptive lever; grouping repeated edits in the change list is a candidate. See below. |
+| V8 | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Planned V8a–V8e; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -2162,6 +2163,157 @@ verified symbols, at much lower risk.
 **Not measured**: member renames (an enum or interface member renamed; Qwik's `suspense` →
 `pendingBoundary` flag stayed a decision), call-site rewrites beyond one argument list, and
 whether the old spelling of a rename is left anywhere (an incomplete rename would be a finding).
+
+### V8 — A smooth viewer
+
+**Status:** planned (2026-10-12); V8a built (2026-10-12) on branch `milestone/v8a-zoom-labels`;
+V8b–V8e not started.
+
+**Problem** (asked: "it works really flaky and laggy. What are our options to improve the client
+side viewer?"). Measured with `scripts/viewer/interactions.mjs` (new: every interaction a
+reviewer does, scripted in Chromium; "blocked" sums long animation frames over 50 ms; median of
+3 rounds) on today's viewer:
+
+| Interaction | Bitwarden `737ee3f` | Bitwarden `cbf86c2` | Qwik `f7ed58cfc` |
+|---|---|---|---|
+| Open: took / blocked / worst frame | 674 / 310 / 262 ms | 885 / 148 / 198 ms | 2,082 / 610 / 660 ms |
+| Zoom out ×20: blocked / worst frame | 30 / 63 ms | 164 / 122 ms | 603 / 134 ms |
+| Next change (j) ×8: blocked / worst | 0 / 0 ms | 38 / 80 ms | 731 / 149 ms |
+| Select a change: blocked / worst | 6 / 56 ms | 55 / 105 ms | 362 / 205 ms |
+| Context on: blocked / worst frame | 111 / 161 ms | 212 / 236 ms | 874 / 769 ms |
+| Map: file-box clicks reaching the file | 91 % | 77 % | 87 % |
+| Map: page elements (edges, symbols) | 4,021 (1,417, 1,629) | 7,131 (2,733, 2,780) | 12,788 (6,681, 4,157) |
+
+What causes it, found by profiling (CPU profiles of an unminified build) and by removing one cost
+at a time (medians of 5):
+
+1. **The map labels' zoom variable**: `--cpr-zoom` is set on the page root on every zoom frame;
+   an inherited custom property restyles every element under it, though only map labels read
+   it. Frozen, zoom-out blocking fell 94 → 14 ms (Bitwarden `cbf86c2`) and 507 → 150 ms (Qwik).
+2. **Edges**: with `onlyRenderVisibleElements`, React Flow checks every edge's bounding box on
+   every frame of a pan, zoom or animation (`isEdgeVisible`, `nodeToBox` lead the profiles), and
+   edges are 38–52 % of the map's elements. Edges hidden plus the variable frozen: zoom-out
+   blocking −75 to −90 %, j −39 to −67 %.
+3. **Selection**: each j re-renders the whole change list and decorates every node, then animates
+   the view for 300 ms; on Qwik the animation gets 4 frames — the canvas jumps in steps, and a
+   selection starts moving 670 ms after the click.
+4. **Layout on the main thread**: 1.9 s for Qwik `f7ed58cfc` (dagre on its biggest cluster,
+   1.3 s); toggling context lays out again (worst frame 769 ms).
+5. **Frames on the map catch clicks** (V7b): a frame's name is drawn above its files and takes
+   the pointer; 9–23 % of the spots on file boxes zoom into the whole project instead.
+
+**Goal**: no freeze a reviewer notices on Bitwarden-sized changes (no frame over 100 ms while
+zooming, panning, pressing j or selecting), Qwik-sized ones usable (blocking halved or better),
+the UI never frozen while laying out, and every click on the map landing on what is under the
+pointer. Nothing a reviewer sees changes, apart from what each part says.
+
+#### V8a — map labels (A)
+
+- Map labels (`.file-name`, `.project-name`) keep fixed font sizes and grow with `transform:
+  scale(1 / zoom)` instead of `font-size: calc(13px / zoom)`: a scale needs no text layout.
+  The frames' ring (`box-shadow`) keeps its width the same way.
+- The zoom value lives in a one-rule stylesheet aimed at those elements (`.file-name,
+  .project-frame, .project-name { --cpr-zoom: … }`), not on the page root, so a change restyles
+  them alone; it is only updated while the canvas is a map (below 45 %) or crossing into it.
+- Prototype (medians of 5, zoom out ×20): Bitwarden `cbf86c2` 94 → 34 ms blocked, Qwik 507 →
+  190 ms; either change alone gained little (the scale alone nothing, the scoped rule half).
+
+#### V8b — map clicks (B)
+
+- On the map a frame never takes the pointer, its name included; a click on an empty part of a
+  frame reaches the canvas, which finds the frame under it (`screenToFlowPosition`) and zooms
+  into it, as a click on a file box zooms into the file. Off the map, a click there deselects
+  as today.
+
+#### V8c — edges while moving, edges on the map (C)
+
+- While the view moves (`onMoveStart` to `onMoveEnd`, programmatic animations included), React
+  Flow gets only the selected symbol's edges; all edges come back when it stops.
+- On the map, symbols' edges give way to one edge per pair of linked file boxes (pure, in
+  `layoutFlow`: count, sides, crossing projects), drawn heavier by count; symbols' edges come back
+  above 45 %. Expected: Qwik's map from 1,670 edges to its file pairs, a few hundred.
+
+#### V8d — lighter selection (D)
+
+- The change list's rows are memoized: a selection or a mark re-renders the two or three rows it
+  touches, not hundreds; nodes keep their identity unless their decoration changed (today's rule).
+- A selection moves the view only when the symbol is out of view (or within a margin of the
+  edge); on graphs too large to animate smoothly (a node count measured in V8d), it jumps
+  instead of gliding in steps.
+
+#### V8e — layout in a worker (E)
+
+- `layoutFlow` (pure; dagre and types only) runs in a module Web Worker. The previous layout
+  stays drawn, with a small "laying out…" note, until the next arrives; requests are numbered so
+  a late answer never replaces a newer one; recent layouts are kept by their options (context,
+  type references, focus, project, opened groups), so toggling back is instant.
+- Opening: the sidebar and findings show while the first layout runs.
+
+#### Verification
+
+1. **Unit tests** (red first): the zoom value set only on the map (V8a),
+   the frame under a point (V8b), file-pair edges and the moving-edges filter (V8c), the
+   selection-moves rule (V8d), layout requests and their order (V8e).
+2. **Nothing else changes**: every e2e spec unchanged except where a part changes behavior
+   (map clicks); screenshots of the map and a selection before and after.
+3. **Real graphs**: `scripts/viewer/interactions.mjs` on Bitwarden `737ee3f`, `cbf86c2` and
+   Qwik `f7ed58cfc`, against `main`'s build, back to back, 3 rounds; each part's targets below.
+4. **Targets**: V8a — zoom out ×20 blocked ≤ 60 ms (Bitwarden `cbf86c2`), ≤ 300 ms (Qwik).
+   V8b — 100 % of map file-box clicks reach the file. V8c — zoom out ×20 on Qwik ≤ 150 ms blocked;
+   map edges' elements on Qwik ≤ 1,500. V8d — j ×8 on Qwik ≤ 250 ms blocked, one movement per
+   step; select a change ≤ 150 ms. V8e — no frame over 200 ms on the main thread while laying out
+   (open, context, groups, project) on any of the three.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| Timings vary ±30 % and more between runs (a 3× spread was seen) | Medians of 3–5 rounds, back to back against `main`; targets with margin. |
+| Scaled labels blur (a raster scaled up) | No `will-change` on labels, so they are painted at the final scale; screenshots on the map. |
+| Edges popping in after a move feel worse than lag | Only the selected symbol's edges stay during a move; check in the browser; fall back to drawing all edges if it reads badly. |
+| A worker makes layout asynchronous: tests and the reveal/fit effects assume it is immediate | Requests numbered; the canvas fits after the layout it asked for arrives; e2e waits on nodes, as today. |
+
+**Order**: V8a → V8b → V8c → V8d → V8e, each on its own branch from the previous, each merged
+after its checks and the user's agreement.
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V8a (built) | Map labels | Labels scaled by a transform, the zoom value in a stylesheet for them only, updated only on the map. |
+| V8b | Map clicks | Frames never take the pointer on the map; a click on an empty frame area zooms into it. |
+| V8c | Edges | Only the selection's edges while moving; one edge per linked file pair on the map. |
+| V8d | Lighter selection | Memoized change-list rows; the view moves only for a symbol out of view, without stepped animation on large graphs. |
+| V8e | Layout in a worker | `layoutFlow` off the main thread, numbered requests, recent layouts kept. |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 37 | How map labels follow the zoom | **A transform from fixed sizes; the zoom value in a stylesheet rule for the labels only, updated only on the map** | The root variable restyled every element on every frame; measured −64 % zoom blocking, near the frozen bound. |
+| 38 | What takes clicks on the map | **File boxes; frames never** (an empty frame area zooms in through the canvas) | Frame names caught 9–23 % of file-box clicks. |
+| 39 | Which edges are drawn | **While moving: the selection's; on the map: one per linked file pair** | Per-frame visibility checks over every edge; edges are up to half the map's elements. |
+| 40 | When a selection moves the view | **Only when the symbol is out of view; no stepped animation on large graphs** | Qwik's 300 ms glide ran in 4 frames: a jumping canvas. |
+| 41 | Where layout runs | **A Web Worker; the last layout drawn until the next arrives** | 1.9 s of frozen UI on Qwik; a toggle froze it for 769 ms. |
+
+#### As built — V8a
+
+- As planned: map labels keep fixed sizes (13 px, 10 px for unchanged files, 26 px for project
+  names) and are scaled by `transform: scale(1 / zoom)`; the frame name's fit to its frame's
+  width became a clamp on the scale (`--frame-width` is now unitless). `mapZoomStyle`
+  (`src/mapzoom.ts`) owns a one-rule stylesheet for `.file-name, .project-frame, .project-name`
+  and writes the zoom there only below `MAP_ZOOM`; `MAP_ZOOM` moved there from `App.tsx`.
+- Screenshots of Bitwarden `cbf86c2`'s map before and after: the same labels, sizes and places.
+
+**Results (V8a)**, `interactions.mjs` against `main`, two alternating runs of 3 rounds each,
+blocked ms (main → V8a): zoom out ×20 — Bitwarden `737ee3f` 13–35 → 0, `cbf86c2` 102–103 → 32–40
+(−65 %), Qwik `f7ed58cfc` 451–466 → 193–219 (−55 %); zoom in ×10 — Qwik 107–115 → 0–5; select a
+change — Qwik 342–395 → 280–283. Open, j and context toggles unchanged (V8d, V8e). Map clicks
+unchanged (V8b). No page errors; 408 unit tests, 35 e2e.
+
+**Not in V8 (later)**: drawing the map on a canvas (option F) or as one element per file
+("F-lite"); a faster layout for very large clusters (dagre's 1.3 s on Qwik moves off the main
+thread in V8e, but stays 1.3 s).
 
 ### Phase 1 milestones
 

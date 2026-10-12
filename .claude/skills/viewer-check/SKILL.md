@@ -42,6 +42,13 @@ One JSON line per graph: `firstPaint`, `select` (open the first change from the 
 in the regression-check skill) for a before/after; timings vary ±30 % under load, so compare runs
 made back to back.
 
+For how interactions feel — open, pan, zoom, select, j, mark, context, project — run
+`node scripts/viewer/interactions.mjs <graph.json>… [--dist <other build>] [--rounds 3]`: per
+interaction the time, the main-thread blocking (long animation frames over 50 ms) and the worst
+frame, plus on the map the share of file-box clicks reaching the file and the page elements by
+kind. Compare against `main`'s build (`--dist` of a worktree) back to back; use medians — runs
+vary up to 3× on a busy machine.
+
 For a custom view (a zoom level, a selection), write a short Playwright script on the same page;
 `page.goto(<base>/index.html?graph=<url>)` loads any graph.
 
