@@ -1455,3 +1455,5 @@ after) and nothing is set on the page root (red before). `interactions.mjs` agai
 build, two alternating runs of 3 rounds: zoom out ×20 blocked 102–103 → 32–40 ms (Bitwarden
 `cbf86c2`), 451–466 → 193–219 ms (Qwik `f7ed58cfc`); zoom in on Qwik 107–115 → 0–5 ms; nothing
 else moved beyond noise. Map screenshots before and after match. 408 unit tests, 35 e2e.
+
+Merged into main (2026-10-12).
