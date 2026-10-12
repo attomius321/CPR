@@ -2167,7 +2167,8 @@ whether the old spelling of a rename is left anywhere (an incomplete rename woul
 ### V8 — A smooth viewer
 
 **Status:** planned (2026-10-12); V8a merged into main (2026-10-12, from branch
-`milestone/v8a-zoom-labels`); V8b–V8e not started.
+`milestone/v8a-zoom-labels`); V8b built (2026-10-12) on `milestone/v8b-map-clicks`; V8c–V8e not
+started.
 
 **Problem** (asked: "it works really flaky and laggy. What are our options to improve the client
 side viewer?"). Measured with `scripts/viewer/interactions.mjs` (new: every interaction a
@@ -2281,7 +2282,7 @@ after its checks and the user's agreement.
 | # | Milestone | Output |
 |---|---|---|
 | V8a ✅ | Map labels | Labels scaled by a transform, the zoom value in a stylesheet for them only, updated only on the map. |
-| V8b | Map clicks | Frames never take the pointer on the map; a click on an empty frame area zooms into it. |
+| V8b (built) | Map clicks | Frames never take the pointer on the map; a click on an empty frame area zooms into it. |
 | V8c | Edges | Only the selection's edges while moving; one edge per linked file pair on the map. |
 | V8d | Lighter selection | Memoized change-list rows; the view moves only for a symbol out of view, without stepped animation on large graphs. |
 | V8e | Layout in a worker | `layoutFlow` off the main thread, numbered requests, recent layouts kept. |
@@ -2310,6 +2311,18 @@ blocked ms (main → V8a): zoom out ×20 — Bitwarden `737ee3f` 13–35 → 0, 
 (−65 %), Qwik `f7ed58cfc` 451–466 → 193–219 (−55 %); zoom in ×10 — Qwik 107–115 → 0–5; select a
 change — Qwik 342–395 → 280–283. Open, j and context toggles unchanged (V8d, V8e). Map clicks
 unchanged (V8b). No page errors; 408 unit tests, 35 e2e.
+
+#### As built — V8b
+
+- As planned: on the map nothing of a frame takes the pointer (`.react-flow__node-project *`); the
+  canvas's click handler asks `projectAt` (flow.ts) for the frame under the point and zooms into
+  it, else deselects. A click on a project's name now reaches what is under the name — usually
+  a file box, sometimes the frame's empty top. Off the map, nothing changed.
+- README: "a click inside a frame, off its files, zooms into the project".
+
+**Results (V8b)**: file-box clicks reaching the file on the map, `main` → V8b: Bitwarden
+`737ee3f` 91 → 100 %, `cbf86c2` 77 → 100 %, Qwik `f7ed58cfc` 88 → 100 %; timings unchanged
+within noise; no page errors; 409 unit tests, 35 e2e.
 
 **Not in V8 (later)**: drawing the map on a canvas (option F) or as one element per file
 ("F-lite"); a faster layout for very large clusters (dagre's 1.3 s on Qwik moves off the main
