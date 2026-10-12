@@ -1376,3 +1376,29 @@ only; timings against `main` within noise (first paint +4–5 % on Bitwarden), n
 verified: very long project lists in a narrow sidebar beyond 9 projects.
 
 Merged into main (2026-10-04).
+
+## V8 spike — a smooth viewer (2026-10-12, branch `milestone/v8a-zoom-labels`)
+
+Reported "flaky and laggy". Every interaction a reviewer does was scripted in Chromium on real
+graphs (`scripts/viewer/interactions.mjs`), profiled on an unminified build, and re-run with one
+cost removed at a time. Plan in PLAN.md (V8a–V8e).
+
+**Learned**
+- The biggest single cost of zooming was one line: `--cpr-zoom` set on the page root on every
+  zoom frame. An inherited custom property restyles every element below it — 12,788 on Qwik's
+  map — though only about 130 labels read it. A stylesheet rule aimed at the labels restyles
+  only them, but they still re-laid out their text each frame (`font-size` changes); scaling them
+  with a transform from fixed sizes removes that too. Each change alone gained little; together
+  they came within reach of the variable frozen (Qwik zoom-out blocking 507 → 190 ms, frozen 150).
+- React Flow's `onlyRenderVisibleElements` checks every edge on every frame of a pan, zoom or
+  `fitView` animation; edges are 38–52 % of the map's page elements.
+- "Flaky" had a concrete part: on the map, frame names (V7b) are drawn over file boxes and take
+  the pointer — 9–23 % of the spots on file boxes zoom into the whole project instead.
+- On Qwik `f7ed58cfc` a j step's 300 ms glide got 4 frames: the canvas jumps in steps. Layout
+  runs on the main thread (1.9 s there), and a context toggle lays out again (769 ms frame).
+- Measuring traps: timings varied 3× between runs on this machine — compare medians of 3–5 rounds
+  back to back; Long Tasks miss style and layout work, long animation frames (LoAF) include it;
+  `getByLabel('Context')` matched "Mark InitContextMenuItems reviewed" too (use `exact`).
+
+**Verification**: baselines (median of 3) in PLAN.md V8's table; the prototype for V8a measured
+with medians of 5 against the variable frozen, edges hidden and both.
