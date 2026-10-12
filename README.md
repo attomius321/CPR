@@ -43,7 +43,7 @@ In a monorepo, when what is drawn spans two or more apps or libraries, each is a
 files: its name, kind and folder, and how many of its symbols changed (a frame holding only
 unchanged neighbours is drawn lighter). Frames read in order: what calls comes before what it
 calls. Edges between projects are drawn heavier; on the map the projects' names are the largest
-labels, and a click on one zooms into it. A summary also says across how many projects its
+labels, and a click inside a frame, off its files, zooms into the project. A summary also says across how many projects its
 symbols are ("390 users in 220 files across 5 projects"). The change list is then grouped by
 project — name, kind, how many of its changes you reviewed, paths from the project's folder — and
 a project folds away (j/k pass it by); the search also finds project names. "only" on a project,

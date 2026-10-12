@@ -68,7 +68,9 @@ test('a click inside a frame is a click on the canvas', async ({ page }) => {
   await expect(page.locator('.panel-title')).toHaveCount(0);
 });
 
-test('zoomed out, project names read first, and a click on one zooms into it', async ({ page }) => {
+test('zoomed out, project names read first, and a click inside a frame zooms into it', async ({
+  page,
+}) => {
   const zoomOut = page.locator('.react-flow__controls-zoomout');
   for (let i = 0; i < 12 && (await page.locator('.react-flow.map').count()) === 0; i++) {
     await zoomOut.click();
@@ -83,7 +85,21 @@ test('zoomed out, project names read first, and a click on one zooms into it', a
   const height = async (locator: typeof name) => (await locator.boundingBox())?.height ?? 0;
   expect(await height(name)).toBeGreaterThanOrEqual(1.5 * (await height(file)));
 
-  await name.click();
+  // Every spot of every file box is the file's: frames and their names never take the click.
+  const reach = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.react-flow__node-file')].flatMap((box) => {
+      const r = box.getBoundingClientRect();
+      return [0.1, 0.5, 0.9].map((f) => {
+        const hit = document.elementFromPoint(r.left + r.width * f, r.top + r.height * f);
+        return `${box.dataset.id} ${hit?.closest('.react-flow__node') === box ? 'file' : (hit?.className ?? 'nothing')}`;
+      });
+    }),
+  );
+  expect(reach.filter((spot) => !spot.endsWith(' file'))).toEqual([]);
+
+  // Inside the frame but on no file (its bottom edge): the frame, zoomed into.
+  const box = await settledBox(frame(page, 'libs/ui'));
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height - 2);
   await expect(page.locator('.react-flow.map')).toHaveCount(0);
   await expect(node(page, 'libs/ui/src/index.ts#button').locator('.symbol-name')).toBeVisible();
   await test.info().attach('frames', { body: await page.screenshot(), contentType: 'image/png' });

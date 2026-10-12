@@ -539,6 +539,26 @@ export function decorate(nodes: readonly FlowNode[], options: DecorateOptions = 
   });
 }
 
+/**
+ * The project frame under a point of the canvas (flow coordinates), if any. Frames never take the
+ * pointer on the map (their names would cover files, V8b): a click there reaches the canvas, which
+ * asks this.
+ */
+export function projectAt(
+  nodes: readonly FlowNode[],
+  point: { x: number; y: number },
+): string | undefined {
+  // Frames are top-level nodes: their position is on the canvas.
+  return nodes.find(
+    (n) =>
+      n.type === 'project' &&
+      point.x >= n.position.x &&
+      point.x <= n.position.x + n.width &&
+      point.y >= n.position.y &&
+      point.y <= n.position.y + n.height,
+  )?.id;
+}
+
 /** Edges of the selected symbol stand out, so its users and uses can be followed. */
 export function decorateEdges(edges: readonly FlowEdge[], selected: string | null): FlowEdge[] {
   if (!selected) return [...edges];

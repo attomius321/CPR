@@ -28,6 +28,7 @@ import {
   decorate,
   decorateEdges,
   layoutFlow,
+  projectAt,
   type FlowEdge,
   type FlowNode,
   type SymbolData,
@@ -547,7 +548,7 @@ function Canvas({
   onToggleSummary,
   reveal,
 }: CanvasProps) {
-  const { fitView } = useReactFlow();
+  const { fitView, screenToFlowPosition } = useReactFlow();
   // Zoomed out, the canvas is a map; labels scale with `--cpr-zoom`, set without re-rendering
   // and only where they read it.
   const map = useStore((state) => state.transform[2] < MAP_ZOOM);
@@ -597,12 +598,20 @@ function Canvas({
       onNodeClick={(_, node) => {
         if (node.type === 'symbol') onSelect(node.id);
         else if (node.type === 'summary') onToggleSummary(node.id);
-        // On the map, a file box or a project's name is what is clicked: zoom into it.
-        else if ((node.type === 'file' || node.type === 'project') && map) {
+        // On the map, a file box is what is clicked: zoom into it.
+        else if (node.type === 'file' && map) {
           void fitView({ nodes: [{ id: node.id }], duration: 300, maxZoom: 1.1 });
         }
       }}
-      onPaneClick={() => onSelect(null)}
+      onPaneClick={(event) => {
+        // On the map, an empty part of a frame (frames never take the pointer there): zoom into
+        // the frame. Anywhere else, the canvas: deselect.
+        const frame = map
+          ? projectAt(layoutNodes, screenToFlowPosition({ x: event.clientX, y: event.clientY }))
+          : undefined;
+        if (frame) void fitView({ nodes: [{ id: frame }], duration: 300, maxZoom: 1.1 });
+        else onSelect(null);
+      }}
       proOptions={{ hideAttribution: true }}
     >
       <Background gap={24} />

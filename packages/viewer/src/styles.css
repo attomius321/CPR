@@ -654,10 +654,16 @@ code {
   stroke-opacity: 0.6;
 }
 
-/* Projects read first, files second: the frame is drawn over its files (transparent, and only
-   its name takes clicks), its name about twice a file name's size, up to the frame's width. */
+/* Projects read first, files second: the frame is drawn over its files, transparent, its name
+   about twice a file name's size, up to the frame's width. Nothing of it takes the pointer: a
+   name covers files, and they must get their clicks (V8b); a click on an empty part of a frame
+   reaches the canvas, which zooms into the frame under it. */
 .react-flow.map .react-flow__node-project {
   z-index: 2001 !important;
+}
+
+.react-flow.map .react-flow__node-project * {
+  pointer-events: none;
 }
 
 /* A border would be a tenth of a pixel when zoomed out: a ring that keeps its screen width. */
@@ -674,7 +680,6 @@ code {
 .react-flow.map .project-band {
   padding: 0;
   overflow: visible;
-  pointer-events: none;
 }
 
 .react-flow.map .project-band > :not(.project-name) {
@@ -688,8 +693,6 @@ code {
   background: color-mix(in srgb, var(--panel) 90%, transparent);
   font-size: 26px;
   line-height: 1.25;
-  cursor: zoom-in;
-  pointer-events: auto;
   /* 26 px on screen, smaller only to fit the frame's width, never below a file name's 13 px. */
   transform: scale(
     clamp(

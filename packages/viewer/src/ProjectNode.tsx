@@ -3,8 +3,8 @@ import type { CSSProperties } from 'react';
 import type { ProjectData } from './flow.js';
 
 /**
- * A frame around one app's or library's files. Only its name band takes the pointer: a click or
- * drag inside the frame goes to the canvas or the box under it.
+ * A frame around one app's or library's files. Only its name band takes the pointer, and only
+ * off the map: a click or drag inside the frame goes to the canvas or the box under it.
  */
 export function ProjectNode({ data, width }: NodeProps<Node<ProjectData, 'project'>>) {
   const { name, folder, kind, changed } = data;

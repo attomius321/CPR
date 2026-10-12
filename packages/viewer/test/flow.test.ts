@@ -6,6 +6,7 @@ import {
   decorateEdges,
   label,
   layoutFlow,
+  projectAt,
   NEIGHBOUR_LIMIT,
   NODE_HEIGHT,
   summaryId,
@@ -345,6 +346,22 @@ describe('layoutFlow: projects', () => {
     // Inside a frame a path is shown relative to its project; the label stays the full path.
     const page = files(nodes).find((f) => f.data.label === 'apps/admin/src/page.ts');
     expect(page?.data.local).toBe('src/page.ts');
+  });
+
+  it('finds the frame under a point of the canvas', () => {
+    const { nodes } = layoutFlow(golden('projects'));
+    const admin = frames(nodes).find((f) => f.id === 'project:apps/admin') as ProjectFlowNode;
+    // Inside the frame, below its files: the frame.
+    const inside = {
+      x: admin.position.x + admin.width / 2,
+      y: admin.position.y + admin.height - 4,
+    };
+    expect(projectAt(nodes, inside)).toBe('project:apps/admin');
+    // Between frames, or anywhere without frames: none.
+    expect(
+      projectAt(nodes, { x: admin.position.x - 10, y: admin.position.y - 10 }),
+    ).toBeUndefined();
+    expect(projectAt(layoutFlow(golden('callers')).nodes, { x: 50, y: 50 })).toBeUndefined();
   });
 
   it('places frames apart, the apps before the library they call', () => {
