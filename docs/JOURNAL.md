@@ -1407,3 +1407,5 @@ changes. Nothing in CPR changed; the scripts are in `spikes/e1-ripples`.
 mechanical, none hiding a real change. The script ran on every comparison without an error.
 Not verified: recall (how many mechanical changes the rules miss beyond member renames, seen in
 Qwik `f7ed58cfc`); changes outside these five repositories.
+
+Merged into main (2026-10-12).

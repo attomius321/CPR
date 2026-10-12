@@ -2101,8 +2101,9 @@ context); grouping findings by project in the CLI summary and PR comments; colou
 
 ### E1 — Decisions and their ripples (measured)
 
-**Status:** measured (2026-10-04) with a spike on branch `milestone/e1-explained-changes`
-(`spikes/e1-ripples`); not planned for implementation — see the recommendation.
+**Status:** measured (2026-10-04) with a spike (`spikes/e1-ripples`); merged into main
+(2026-10-12, from branch `milestone/e1-explained-changes`); not planned for implementation — see
+the recommendation.
 
 **Hypothesis** (asked: "What this app could have to be disruptive?", then "I want a more precise
 explanation for #1"): much of a pull request is mechanical — a rename and the call sites it
