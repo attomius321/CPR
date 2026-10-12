@@ -23,9 +23,13 @@ with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packag
 - **Layout never depends on selection or review state.** Only `decorate` does; the layout memo
   depends on the graph and the view toggles. Clicking or marking must not move anything (V6:
   this took marking from 1.2 s to 72 ms on a 1,288-symbol graph).
-- Big graphs: neighbourhoods over `NEIGHBOUR_LIMIT` (8) become summary nodes; below zoom 0.45 the
-  canvas is a map (CSS class `map`, labels scaled by the `--cpr-zoom` variable set without
-  re-rendering); React Flow draws only on-screen nodes (`onlyRenderVisibleElements`).
+- Big graphs: neighbourhoods over `NEIGHBOUR_LIMIT` (8) become summary nodes; below zoom 0.45
+  (`MAP_ZOOM`, `src/mapzoom.ts`) the canvas is a map (CSS class `map`), React Flow draws only
+  on-screen nodes (`onlyRenderVisibleElements`).
+- Map labels keep fixed sizes and are scaled by `transform: scale(1 / var(--cpr-zoom))`; the
+  variable is written by `mapZoomStyle` into a one-rule stylesheet for the labels only, and only
+  on the map (V8a). Never set it on the page root or change a font size with the zoom: either
+  restyles or re-lays out thousands of elements on every zoom frame.
 - Frames (V7b): only when the files drawn span two or more projects; otherwise the layout must
   equal one without `projects` (a unit test compares them). Nodes nest three deep — frame → file
   box → symbol — and parents come first in `nodes`. A frame takes the pointer only on its name

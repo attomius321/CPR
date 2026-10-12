@@ -2101,8 +2101,8 @@ context); grouping findings by project in the CLI summary and PR comments; colou
 
 ### V8 — A smooth viewer
 
-**Status:** planned (2026-10-12) on branch `milestone/v8a-zoom-labels`; V8a in progress, V8b–V8e
-not started.
+**Status:** planned (2026-10-12); V8a built (2026-10-12) on branch `milestone/v8a-zoom-labels`;
+V8b–V8e not started.
 
 **Problem** (asked: "it works really flaky and laggy. What are our options to improve the client
 side viewer?"). Measured with `scripts/viewer/interactions.mjs` (new: every interaction a
@@ -2215,7 +2215,7 @@ after its checks and the user's agreement.
 
 | # | Milestone | Output |
 |---|---|---|
-| V8a | Map labels | Labels scaled by a transform, the zoom value in a stylesheet for them only, updated only on the map. |
+| V8a (built) | Map labels | Labels scaled by a transform, the zoom value in a stylesheet for them only, updated only on the map. |
 | V8b | Map clicks | Frames never take the pointer on the map; a click on an empty frame area zooms into it. |
 | V8c | Edges | Only the selection's edges while moving; one edge per linked file pair on the map. |
 | V8d | Lighter selection | Memoized change-list rows; the view moves only for a symbol out of view, without stepped animation on large graphs. |
@@ -2230,6 +2230,21 @@ after its checks and the user's agreement.
 | 39 | Which edges are drawn | **While moving: the selection's; on the map: one per linked file pair** | Per-frame visibility checks over every edge; edges are up to half the map's elements. |
 | 40 | When a selection moves the view | **Only when the symbol is out of view; no stepped animation on large graphs** | Qwik's 300 ms glide ran in 4 frames: a jumping canvas. |
 | 41 | Where layout runs | **A Web Worker; the last layout drawn until the next arrives** | 1.9 s of frozen UI on Qwik; a toggle froze it for 769 ms. |
+
+#### As built — V8a
+
+- As planned: map labels keep fixed sizes (13 px, 10 px for unchanged files, 26 px for project
+  names) and are scaled by `transform: scale(1 / zoom)`; the frame name's fit to its frame's
+  width became a clamp on the scale (`--frame-width` is now unitless). `mapZoomStyle`
+  (`src/mapzoom.ts`) owns a one-rule stylesheet for `.file-name, .project-frame, .project-name`
+  and writes the zoom there only below `MAP_ZOOM`; `MAP_ZOOM` moved there from `App.tsx`.
+- Screenshots of Bitwarden `cbf86c2`'s map before and after: the same labels, sizes and places.
+
+**Results (V8a)**, `interactions.mjs` against `main`, two alternating runs of 3 rounds each,
+blocked ms (main → V8a): zoom out ×20 — Bitwarden `737ee3f` 13–35 → 0, `cbf86c2` 102–103 → 32–40
+(−65 %), Qwik `f7ed58cfc` 451–466 → 193–219 (−55 %); zoom in ×10 — Qwik 107–115 → 0–5; select a
+change — Qwik 342–395 → 280–283. Open, j and context toggles unchanged (V8d, V8e). Map clicks
+unchanged (V8b). No page errors; 408 unit tests, 35 e2e.
 
 **Not in V8 (later)**: drawing the map on a canvas (option F) or as one element per file
 ("F-lite"); a faster layout for very large clusters (dagre's 1.3 s on Qwik moves off the main

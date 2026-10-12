@@ -1402,3 +1402,23 @@ cost removed at a time. Plan in PLAN.md (V8a–V8e).
 
 **Verification**: baselines (median of 3) in PLAN.md V8's table; the prototype for V8a measured
 with medians of 5 against the variable frozen, edges hidden and both.
+
+## V8a — Map labels (2026-10-12, branch `milestone/v8a-zoom-labels`)
+
+Zooming no longer restyles the whole page: the map's labels are scaled by a transform from fixed
+sizes, and the zoom value lives in a stylesheet rule for them alone, written only on the map.
+
+**Learned**
+- Two costs hid in one line, and each fix alone gained little: an inherited custom property on the
+  root restyles every element below it; a font size that follows the zoom re-lays out its text
+  on every frame. Scoping the variable halved the cost, the transform alone changed nothing,
+  both together came near the "variable frozen" bound.
+- A label's computed font size no longer says how big it looks: the e2e check that project names
+  read twice as big as file names now compares drawn sizes (bounding boxes).
+
+**Verification**: tests first — `nextMapZoom` (on the map, once per value, nothing off it); e2e:
+a map file name keeps its size on screen while the map zooms further out (passing before and
+after) and nothing is set on the page root (red before). `interactions.mjs` against `main`'s
+build, two alternating runs of 3 rounds: zoom out ×20 blocked 102–103 → 32–40 ms (Bitwarden
+`cbf86c2`), 451–466 → 193–219 ms (Qwik `f7ed58cfc`); zoom in on Qwik 107–115 → 0–5 ms; nothing
+else moved beyond noise. Map screenshots before and after match. 408 unit tests, 35 e2e.
