@@ -79,9 +79,9 @@ test('zoomed out, project names read first, and a click on one zooms into it', a
   const file = node(page, 'group:file:libs/ui/src/index.ts').locator('.file-name');
   await expect(name).toBeVisible();
   await expect(file).toBeVisible();
-  const size = (locator: typeof name) =>
-    locator.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-  expect(await size(name)).toBeGreaterThanOrEqual(1.5 * (await size(file)));
+  // As drawn on screen: names are scaled, not only sized.
+  const height = async (locator: typeof name) => (await locator.boundingBox())?.height ?? 0;
+  expect(await height(name)).toBeGreaterThanOrEqual(1.5 * (await height(file)));
 
   await name.click();
   await expect(page.locator('.react-flow.map')).toHaveCount(0);

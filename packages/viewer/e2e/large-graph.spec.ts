@@ -114,9 +114,22 @@ test('zoomed out, the canvas is a map of files, and a click zooms into one', asy
   }
   await expect(page.locator('.react-flow.map')).toBeVisible();
   // File names, not symbols, are what is readable there.
-  await expect(node(page, 'group:file:src/hub.ts').locator('.file-name')).toBeVisible();
-  await expect(node(page, 'group:file:src/hub.ts').locator('.file-name')).toHaveText('hub.ts');
+  const name = node(page, 'group:file:src/hub.ts').locator('.file-name');
+  await expect(name).toBeVisible();
+  await expect(name).toHaveText('hub.ts');
   await expect(node(page, HUB).locator('.symbol-name')).toBeHidden();
+
+  // A name keeps its size on screen as the map zooms further out.
+  const height = async () => (await name.boundingBox())?.height ?? 0;
+  const before = await height();
+  await zoomOut.click();
+  await page.waitForTimeout(400);
+  expect(await height()).toBeGreaterThan(before * 0.9);
+  expect(await height()).toBeLessThan(before * 1.1);
+  // Zooming restyles the map's labels, not the whole page (V8a): nothing is set on the root.
+  expect(
+    await page.evaluate(() => document.documentElement.style.getPropertyValue('--cpr-zoom')),
+  ).toBe('');
 
   await node(page, 'group:file:src/hub.ts').click({ position: { x: 2, y: 2 } });
   await expect(page.locator('.react-flow.map')).toHaveCount(0);

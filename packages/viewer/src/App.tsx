@@ -46,6 +46,7 @@ import {
   type Marks,
 } from './review.js';
 import { ProjectNode } from './ProjectNode.js';
+import { MAP_ZOOM, mapZoomStyle } from './mapzoom.js';
 import { Resizer } from './Resizer.js';
 import { Sidebar, type SidebarTab } from './Sidebar.js';
 import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
@@ -58,9 +59,6 @@ const nodeTypes = {
   summary: SummaryNode,
   project: ProjectNode,
 };
-
-/** Below this zoom the canvas is a map: file names readable, symbols as coloured blocks. */
-const MAP_ZOOM = 0.45;
 
 type State =
   | { status: 'loading' }
@@ -550,17 +548,21 @@ function Canvas({
   reveal,
 }: CanvasProps) {
   const { fitView } = useReactFlow();
-  // Zoomed out, the canvas is a map; labels scale with `--cpr-zoom`, set without re-rendering.
+  // Zoomed out, the canvas is a map; labels scale with `--cpr-zoom`, set without re-rendering
+  // and only where they read it.
   const map = useStore((state) => state.transform[2] < MAP_ZOOM);
   // The canvas narrows when the detail panel opens or a panel is resized: centre the selection
   // again then (after the drop: following the drag would shake the canvas).
   const size = useStore((state) => `${state.width}x${state.height}`);
   const store = useStoreApi();
   useEffect(() => {
-    const root = document.documentElement;
-    const apply = (zoom: number) => root.style.setProperty('--cpr-zoom', String(zoom));
-    apply(store.getState().transform[2]);
-    return store.subscribe((state) => apply(state.transform[2]));
+    const labels = mapZoomStyle(document);
+    labels.update(store.getState().transform[2]);
+    const unsubscribe = store.subscribe((state) => labels.update(state.transform[2]));
+    return () => {
+      unsubscribe();
+      labels.remove();
+    };
   }, [store]);
 
   // The project last fitted as a whole: walking its symbols then centres each, as without one.
