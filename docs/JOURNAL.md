@@ -1790,3 +1790,21 @@ slow hooks.
 
 Merged into main (2026-10-13), with V11a dropped and HEAD's styling added at the user's request.
 `main` verified after the merge: 522 unit tests, build, 53 e2e.
+
+## V12 spike — opening VS Code from the viewer (2026-10-13, branch `milestone/v12-open-in-vscode`)
+
+Measured before planning "open in VS Code" from the diff panel. **Which line**: for the last
+60–68 first-parent commits of CPR, ky and zod, each reviewed as `c^1..c` with the working copy at
+the branch tip, 1–62 % of the added lines of code files sat at another line number at the tip
+(CPR 29–46 %, ky 23–62 %, zod 1–26 % by distance), and up to 23 % had been changed since (ky
+6–20 commits back). Head's number is right only for the checked-out commit, so the server maps
+it, with `git diff -U0 <commit> -- <file>` against the working copy (under 10 ms on a
+3,195-line file). **Which window**: `code <folder> -g <file>:<line>` returned in 50 ms here
+(WSL, VS Code 1.141 on Windows), and the window that had the folder got the file (`code
+--status`: one window before and after). `launch-editor`, the usual package for this, runs
+`code -r -g`: the last active window, whatever project it shows, so it cannot do what was asked.
+**Windows**: `code.cmd` runs `Code.exe` with a `cli.js` under a folder named for the build, which
+changes with each update, and Node refuses to start a `.cmd` without a shell; the plan reads
+`code.cmd` to run what it runs. The user wants it on every platform: running VS Code from the
+server, where the files are, needs no case for WSL, SSH or containers, unlike a `vscode://` link
+from the browser.
