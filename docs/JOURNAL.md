@@ -1624,3 +1624,7 @@ through the server Qwik 13.8–14.3 s (`cpr diff` 14.2–15.1 s), Bitwarden 41.6
 in 1.4–10 ms. `cpr view HEAD~1 HEAD` on Qwik to its URL: `main` 13.1–14.5 s, V9 13.2–14.5 s. Not
 verified: Windows and macOS.
 
+Merged into main (2026-10-13), after two fixes found at merge time: macOS CI (a component named
+like `commits.ts` but for case) and a flaky e2e (a key listener attached after the paint). Left
+for later: a ref picker and history search, uncommitted changes as a head, graphs kept on disk;
+the pre-existing hazard of a checkout interrupted by Ctrl+C (see above).

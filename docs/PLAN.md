@@ -420,7 +420,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V7 ✅ | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
 | E1 (measured) | Decisions and their ripples | Could mechanical parts of a change (renames and their call sites, moves, a new argument everywhere, the same edit repeated) be verified instead of read? Measured on 165 changes: 20 % of changed symbols but 5.4 % of diff lines (2.8 % without one large rename); 0 false in 40 audited. Not the disruptive lever; grouping repeated edits in the change list is a candidate. See below. |
 | V8 ✅ | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Closed: V8a–V8c and V8e merged (on Qwik: zoom out 466 → 15 ms blocked, opening 2,568 → 620 ms, map clicks reaching the file 87 → 100 %); V8d deferred; see below. |
-| V9 | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Built (not merged): the current branch's commits as `cpr view`'s first page (100 rows in under 1 s on Qwik), pick two (or one against its parent), the diff analyzed on demand in a child process (Bitwarden 42 s, within 10 % of `cpr diff`; the server answers in 2 ms meanwhile), the last 8 kept. See below. |
+| V9 ✅ | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Merged: the current branch's commits as `cpr view`'s first page (100 rows in under 1 s on Qwik), pick two (or one against its parent), the diff analyzed on demand in a child process (Bitwarden 42 s, within 10 % of `cpr diff`; the server answers in 2 ms meanwhile), the last 8 kept. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -2448,8 +2448,8 @@ thread in V8e, but stays 1.3 s); drawing a large new layout in parts rather than
 
 ### V9 — Pick two commits
 
-**Status:** implemented (2026-10-13), on branch `milestone/v9-commit-picker`; not merged. As
-built and results: "As built — V9" below.
+**Status:** merged into main (2026-10-13, from branch `milestone/v9-commit-picker`). As built
+and results: "As built — V9" below.
 
 **Problem** (asked: "I would also like to start making a git user interface to manage the
 repository … from where you can select 2 commits and go to this diff page … This should be the
@@ -2633,7 +2633,7 @@ as today; `cpr diff`'s results do not change.
 - `cpr view HEAD~1 HEAD --plugin qwik` to its URL, 3 runs alternating: `main` 13.1–14.5 s, V9
   13.2–14.5 s.
 - `r1`: 29 comparisons identical (859 edges, no finding changed), time 0.97 of `main`'s.
-- Tests: 464 unit (31 new), 45 e2e (5 new; the 40 others unchanged, `cpr view HEAD~1 HEAD` now
+- Tests: 466 unit (33 new, with the guard against names differing only by case), 45 e2e (5 new; the 40 others unchanged, `cpr view HEAD~1 HEAD` now
   opening `/diff/<pair>/`).
 - Not verified: Windows and macOS (spawning the CLI, signals); a server restarted while a diff
   page polls (the page then starts the analysis again, by design, but no test restarts it).
