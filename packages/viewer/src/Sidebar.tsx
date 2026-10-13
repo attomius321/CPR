@@ -31,6 +31,8 @@ interface Props {
   onCollapse: (folder: string) => void;
   /** Present when the review can be posted to the forge (`cpr pr`). */
   review?: ReviewProps | undefined;
+  /** Whether the server opens files in VS Code (the `o` key). */
+  canOpen: boolean;
 }
 
 /**
@@ -55,6 +57,7 @@ export function Sidebar({
   collapsed,
   onCollapse,
   review,
+  canOpen,
 }: Props) {
   const commented = new Map<string, number>();
   for (const d of review?.draft.drafts ?? []) {
@@ -257,6 +260,11 @@ export function Sidebar({
         {review && (
           <>
             <kbd>c</kbd> comment ·{' '}
+          </>
+        )}
+        {canOpen && (
+          <>
+            <kbd>o</kbd> VS Code ·{' '}
           </>
         )}
         <kbd>Esc</kbd> close

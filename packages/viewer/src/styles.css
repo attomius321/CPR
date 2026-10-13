@@ -2023,3 +2023,54 @@ kbd {
   overflow: auto;
   white-space: pre-wrap;
 }
+
+/* ---- open in VS Code ---------------------------------------------------------------- */
+
+/* The file line and the button beside it; the button wraps under a long path. */
+.panel-where {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+
+.panel-where .panel-file {
+  min-width: 0;
+}
+
+.open-editor {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.open-editor:hover {
+  text-decoration: underline;
+}
+
+/* A row's line number, as a button that opens that line. */
+.ln-open {
+  padding: 0 6px 0 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ln-open:hover {
+  color: var(--moved);
+  text-decoration: underline;
+}
+
+.open-note {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.open-note:empty {
+  display: none;
+}
+
+.open-note.open-error {
+  color: var(--error);
+}
