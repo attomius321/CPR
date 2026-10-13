@@ -1521,3 +1521,33 @@ worker needs costs little next to it: the graph once (6–39 ms to send), each l
 (4–42 ms to receive). So a worker frees 0.2–1 s of main thread per layout. React drawing the new
 layout stays on the main thread; V8e measures that part separately. V8d is deferred: V8c already
 met its targets (j ×8 on Qwik 78 ms blocked, select 115 ms).
+
+## V8e — Layout in a worker (2026-10-13, branch `milestone/v8e-layout-worker`)
+
+Layouts are made in a Web Worker. The page stays usable while one is made: the change list and
+findings show at once on opening, the last layout stays drawn with "Laying out…" until the next
+arrives, and a view seen before (the last 8) comes back at once. Opening Qwik `f7ed58cfc` blocked
+the page 2,568 ms, now 620 ms; context on 1,147 → 284 ms.
+
+**Learned**
+- What remains is React drawing a new layout: one frame of 157–693 ms (Qwik's first layout,
+  `cbf86c2`'s 404-user group with ~750 more nodes). The worker removed the computing, not the
+  drawing; drawing in parts would be the next step for very large views.
+- Every effect that moves the view for a new layout (fitting a project, the focus, an opened
+  group) must wait for that layout to be drawn: run against the old one, it moved the view twice.
+  The canvas skips its fit while a layout is pending.
+- The options object must keep its identity while the view is the same (a memo): the effect
+  that asks for a layout depends on it, and a cached answer sets state.
+- On the map a group lies under its file box, which takes clicks (V8b): a scripted click at the
+  group zoomed into the file instead. The measuring script dispatches the click on the node.
+- Holding the worker script back (`page.route`) makes "the change list shows before the first
+  layout" testable without timing.
+
+**Verification**: tests first — `layoutKey` (same view, any set order; views told apart),
+`LayoutCache` (one request per view, a late answer kept and not drawn, least recently used
+dropped), `workerLayouts` (answers out of order, worker failure, no worker); e2e: with the worker
+held back the change list shows and the canvas says "Laying out…", then symbols; a view laid out
+before comes back without the note. Real graphs, `main` → V8e, blocked ms: open — Bitwarden
+`737ee3f` 557 → 233, `cbf86c2` 856 → 307, Qwik 2,568 → 620; context on 223 → 51, 256 → 92,
+1,147 → 284; the largest group 265 → 173, 1,010 → 600, 1,340 → 322. A timeline of opening Qwik:
+no long frame while the worker lays out. 423 unit tests, 40 e2e.

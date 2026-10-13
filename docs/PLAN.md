@@ -419,7 +419,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | Q1 ✅, Q2 ✅ | Qwik as the `qwik` plugin | Qwik is TSX and mostly reads right, but what its router calls by name (`onGet`, `head`, loaders, actions) shows as false orphans, an optional prop added to a `component$` is a warning, a required one added to a named props type is missed, and components used only from `.mdx` routes look unused. Planned; see below. |
 | V7 ✅ | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
 | E1 (measured) | Decisions and their ripples | Could mechanical parts of a change (renames and their call sites, moves, a new argument everywhere, the same edit repeated) be verified instead of read? Measured on 165 changes: 20 % of changed symbols but 5.4 % of diff lines (2.8 % without one large rename); 0 false in 40 audited. Not the disruptive lever; grouping repeated edits in the change list is a candidate. See below. |
-| V8 | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. V8a–V8c merged (zoom out on Qwik 466 → 15 ms blocked); V8d–V8e planned; see below. |
+| V8 | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. V8a–V8c merged (zoom out on Qwik 466 → 15 ms blocked); V8e built (Qwik opens with 620 ms blocked, was 2,568); V8d deferred; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -2169,7 +2169,8 @@ whether the old spelling of a rename is left anywhere (an incomplete rename woul
 **Status:** planned (2026-10-12); V8a merged into main (2026-10-12, from branch
 `milestone/v8a-zoom-labels`); V8b merged into main (2026-10-13, from branch
 `milestone/v8b-map-clicks`); V8c merged into main (2026-10-13, from branch
-`milestone/v8c-edges`); V8e in progress (branch `milestone/v8e-layout-worker`); V8d deferred.
+`milestone/v8c-edges`); V8e built (2026-10-13, branch `milestone/v8e-layout-worker`), not
+merged; V8d deferred.
 
 **Problem** (asked: "it works really flaky and laggy. What are our options to improve the client
 side viewer?"). Measured with `scripts/viewer/interactions.mjs` (new: every interaction a
@@ -2318,7 +2319,7 @@ after its checks and the user's agreement.
 | V8b ✅ | Map clicks | Frames never take the pointer on the map; a click on an empty frame area zooms into it. |
 | V8c ✅ | Edges | Only the selection's edges while moving; one edge per linked file pair on the map. |
 | V8d | Lighter selection | Memoized change-list rows; the view moves only for a symbol out of view, without stepped animation on large graphs. |
-| V8e | Layout in a worker | `layoutFlow` off the main thread, numbered requests, recent layouts kept. |
+| V8e ✅ | Layout in a worker | `layoutFlow` off the main thread, numbered requests, recent layouts kept. |
 
 **Proposed decisions**:
 
@@ -2328,7 +2329,7 @@ after its checks and the user's agreement.
 | 38 | What takes clicks on the map | **File boxes; frames never** (an empty frame area zooms in through the canvas) | Frame names caught 9–23 % of file-box clicks. |
 | 39 | Which edges are drawn | **While moving (over 400 edges drawn): the selection's; on the map: one per linked file pair** | Per-frame visibility checks over every edge; edges are up to half the map's elements. Smaller changes keep every edge (V8c). |
 | 40 | When a selection moves the view | **Only when the symbol is out of view; no stepped animation on large graphs** | Qwik's 300 ms glide ran in 4 frames: a jumping canvas. |
-| 41 | Where layout runs | **A Web Worker; the last layout drawn until the next arrives** | 1.9 s of frozen UI on Qwik; a toggle froze it for 769 ms. |
+| 41 | Where layout runs | **A Web Worker; the last layout drawn until the next arrives** | 1.9 s of frozen UI on Qwik; a toggle froze it for 769 ms. As built (V8e): no long frame while a layout is made; drawing it is one frame of 0.2–0.7 s. |
 
 #### As built — V8a
 
@@ -2407,9 +2408,42 @@ within noise; no page errors; 409 unit tests, 35 e2e.
   same picture, with fewer, heavier lines.
 - No page errors; 415 unit tests, 38 e2e.
 
+#### As built — V8e
+
+- As planned. `useLayout` (App) asks `workerLayouts` for the view (`layoutKey`) unless
+  `LayoutCache` has it; the worker bundle is 57 kB (dagre and `flow.ts`). The canvas skips its
+  fit while a layout is pending, so a project, the focus or an opened group is fitted once, when
+  its layout is drawn. A `Panel` says "Laying out…" over the canvas; before the first layout the
+  canvas's place says it.
+- `interactions.mjs` gained "open a group" (the largest drawn, clicked on the node itself: on
+  the map a file box lies over it) and "close it", and waits for a new layout to be drawn.
+- Not changed: how long a layout takes (Qwik's still 1 s, now in the worker) and drawing it,
+  which stays on the main thread as one long frame.
+
+**Results (V8e)**, `interactions.mjs` against `main`, back to back, median of 3, blocked ms
+(worst frame), main → V8e:
+
+| Interaction | Bitwarden `737ee3f` | Bitwarden `cbf86c2` | Qwik `f7ed58cfc` |
+|---|---|---|---|
+| Open | 557 (405) → 233 (283) | 856 (647) → 307 (345) | 2,568 (1,731) → 620 (630) |
+| Open the largest group | 265 (294) → 173 (157) | 1,010 (777) → 600 (412) | 1,340 (1,309) → 322 (271) |
+| Close it | 208 (258) → 122 (172) | 552 (602) → 350 (400) | 1,049 (1,087) → 247 (292) |
+| Context off | 32 (82) → 0 (0) | 57 (107) → 5 (55) | 424 (388) → 124 (149) |
+| Context on | 223 (252) → 51 (95) | 256 (303) → 92 (137) | 1,147 (1,106) → 284 (302) |
+
+- Timeline of opening Qwik (one run): the change list shows at 230 ms (main: 1,185 ms, after a
+  955 ms frame); the worker lays out with no long frame on the page; one 693 ms frame draws the
+  layout; symbols at 1,565 ms (main: 2,440 ms, after a 1,798 ms frame). Context off: 270 ms of
+  "Laying out…" with no long frame, then a 290 ms frame to draw (main: one 512 ms frame); context
+  back on, a view seen before: no note, one 322 ms frame (main: 945 ms).
+- Target: no frame over 200 ms while laying out — met; drawing a new layout is still one frame
+  of 157–693 ms (worst: Qwik's first layout; `cbf86c2`'s 404-user group, ~750 more nodes, 412 ms).
+- Other interactions unchanged within noise; no page errors; 423 unit tests, 40 e2e.
+
 **Not in V8 (later)**: drawing the map on a canvas (option F) or as one element per file
 ("F-lite"); a faster layout for very large clusters (dagre's 1.3 s on Qwik moves off the main
-thread in V8e, but stays 1.3 s).
+thread in V8e, but stays 1.3 s); drawing a large new layout in parts rather than one frame
+(V8e: up to 693 ms); V8d (lighter selection), deferred.
 
 ### Phase 1 milestones
 
