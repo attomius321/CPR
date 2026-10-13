@@ -33,7 +33,8 @@ export function tempDir(): string {
 export function createRepo(): TestRepo {
   const root = tempDir();
   const git = (...args: string[]) =>
-    execFileSync('git', args, { cwd: root, env, encoding: 'utf8' }).trim();
+    // stderr is kept in the error a failing command throws, not printed.
+    execFileSync('git', args, { cwd: root, env, encoding: 'utf8', stdio: 'pipe' }).trim();
   git('init', '--quiet', '--initial-branch=main');
 
   return {

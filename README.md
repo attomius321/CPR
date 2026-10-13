@@ -7,7 +7,7 @@ cpr diff main            # what changed on this branch, symbol by symbol, with f
 cpr diff main --json     # the graph as JSON (docs/graph-schema.md)
 cpr diff main --fail-on error   # for CI
 cpr view main            # review it as a graph in the browser
-cpr view                 # pick two commits of this branch in the browser, and review their diff
+cpr view                 # the history as a graph: check out, or pick two commits and review their diff
 cpr pr 123               # a GitHub pull request or GitLab merge request (cpr mr 123)
 ```
 
@@ -33,8 +33,17 @@ The viewer (`packages/viewer`) draws the same graph: one box per file, symbols c
 changed, findings as badges, removed edges dashed. `cpr view main` opens it; it also accepts a
 graph file from `cpr diff --out` (drag and drop).
 
-`cpr view` without revisions opens at once on the current branch's commits, newest first (100 at
-a time). Click one commit and another — the older is the base — and Compare (or j/k, x, Enter);
+`cpr view` without revisions opens at once on the repository's history: every branch, local and
+remote, drawn as a graph left of the commits, the current branch the straight line on the left
+(tags show on their commits). A line spanning more than 100 rows is two arrows; a click on one
+goes to its other end. "This branch" shows only the current branch's commits. The whole history
+scrolls; commits load as they come into view (git orders it once: a hint names `git
+commit-graph write` when that is slow). Right-click a commit (or "⋯", or c) to check out one of
+its branches, a remote branch as its local branch, a tag or the commit itself; CPR asks first,
+uses `git switch` (never forced: local changes come along, or git refuses and nothing changes)
+and redraws the graph. A checkout made elsewhere shows when the page is back in focus.
+
+Click one commit and another — the older is the base — and Compare (or j/k, x, Enter);
 "This commit" compares one with its parent. A picked pair is compared directly (no merge-base)
 and analyzed then, in the background, with the same `--plugin`, `--project` and `--depth`: its
 page says what it is doing ("loading head · 12 s") and can stop it. Each diff has its own address

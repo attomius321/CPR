@@ -98,6 +98,8 @@ export async function serveFixture(name: string, args: readonly string[] = []): 
 export interface RunningCommits extends Running {
   /** The commits, oldest first. */
   shas: string[];
+  /** The repository's folder (V11's tests change its working tree). */
+  repo: string;
 }
 
 /** Commits with `git commit`, dated `minutes` after the fixture's own commits. */
@@ -143,6 +145,8 @@ export async function serveCommits(): Promise<RunningCommits> {
     return git(repo, 'rev-parse', 'HEAD');
   };
   git(repo, 'branch', 'wip', aside(square, 4, 'Try a wobble'));
+  // A remote (never fetched), so origin/topic can be tracked.
+  git(repo, 'remote', 'add', 'origin', 'https://example.com/never-fetched.git');
   git(repo, 'update-ref', 'refs/remotes/origin/topic', aside(head, 5, 'Sketch a topic'));
   git(repo, 'tag', 'v0', aside(base, 6, 'Old release'));
   git(repo, 'checkout', '-q', 'main');
@@ -151,6 +155,7 @@ export async function serveCommits(): Promise<RunningCommits> {
   return {
     url,
     shas,
+    repo,
     stop() {
       child.kill('SIGINT');
       rmSync(repo, { recursive: true, force: true });

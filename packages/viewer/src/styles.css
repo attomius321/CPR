@@ -1767,6 +1767,125 @@ kbd {
   margin: 8px 0;
 }
 
+/* ---- checkout (V11) ------------------------------------------------------------------ */
+
+.commit-menu {
+  visibility: hidden;
+  padding: 0 4px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.commit:hover .commit-menu,
+.commit.cursor .commit-menu {
+  visibility: visible;
+}
+
+.checkout-notice {
+  margin: -4px 0 12px;
+  color: var(--added);
+}
+
+.checkout-menu {
+  position: fixed;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  max-width: 480px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 18%);
+  outline: none;
+}
+
+.menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item.active {
+  background: color-mix(in srgb, var(--moved) 14%, transparent);
+}
+
+.menu-item:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.menu-note {
+  font-size: 12px;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 30%);
+}
+
+.dialog {
+  width: min(520px, 100%);
+  padding: 20px 24px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 25%);
+}
+
+.dialog h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.dialog pre {
+  max-height: 30vh;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.dialog-note {
+  color: var(--muted);
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.dialog-buttons .link {
+  font-family: inherit;
+}
+
+.dialog-buttons .button {
+  margin-top: 0;
+  border: 0;
+  font: inherit;
+}
+
+.dialog-buttons .button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .commit-sha {
   color: var(--muted);
 }

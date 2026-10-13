@@ -118,3 +118,21 @@ export {
   type HistoryState,
 } from './git/log.js';
 export { fetchRefs, remoteUrl } from './git/remote.js';
+export {
+  listRefs,
+  type LocalBranch,
+  type RefList,
+  type RemoteBranch,
+  type Tag,
+} from './git/refs.js';
+export {
+  checkout,
+  CheckoutRefused,
+  UnknownCheckoutTarget,
+  workingState,
+  type CheckoutResult,
+  type CheckoutTarget,
+  type Operation,
+  type RepoStatus,
+  type WorkingState,
+} from './git/checkout.js';

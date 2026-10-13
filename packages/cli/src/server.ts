@@ -2,7 +2,17 @@ import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { extname, join, normalize, sep } from 'node:path';
-import { HISTORY_SCOPES, type Graph, type HistoryScope } from '@cpr/core';
+import {
+  CheckoutRefused,
+  HISTORY_SCOPES,
+  UnknownCheckoutTarget,
+  type CheckoutResult,
+  type CheckoutTarget,
+  type Graph,
+  type HistoryScope,
+  type RefList,
+  type RepoStatus,
+} from '@cpr/core';
 import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
 import type { Histories } from './history.js';
@@ -29,6 +39,12 @@ export interface ReviewTarget {
 export interface RepositoryOptions {
   /** The commits page's history: rows and their details, its shape (`GET /api/history…`). */
   history: Histories;
+  /** HEAD, the history's version, local changes and an operation in progress. */
+  status(): Promise<RepoStatus>;
+  /** Branches, remote branches and tags (`GET /api/refs`). */
+  refs(): Promise<RefList>;
+  /** Checks out a branch, remote branch, tag or commit (`POST /api/checkout`). */
+  checkout(target: CheckoutTarget): Promise<CheckoutResult>;
   /** Whether a full SHA is a commit of the repository (`POST /api/diffs`). */
   isCommit(sha: string): Promise<boolean>;
   /** Analyzed and asked for, each served under `/diff/<base>..<head>/`. */
@@ -114,6 +130,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   // One site per diff graph, made once: `allowed` walks the whole graph.
   const sites = new WeakMap<Graph, Site>();
   let hosts: Set<string> = new Set();
+  let checkingOut = false;
   const server = createServer((req, res) => {
     handle(req, res).catch((error: unknown) => send(res, 500, String(error)));
   });
@@ -131,6 +148,9 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       }
       if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
       if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
+      if (url.pathname === '/api/status') return read(req, res, () => repository.status());
+      if (url.pathname === '/api/refs') return read(req, res, () => repository.refs());
+      if (url.pathname === '/api/checkout') return checkoutTarget(req, res, repository);
       if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
       if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
     }
@@ -272,6 +292,43 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     return json(res, 200, shape);
   }
 
+  /** A GET answered with a value of the repository. */
+  async function read(
+    req: IncomingMessage,
+    res: ServerResponse,
+    value: () => Promise<unknown>,
+  ): Promise<void> {
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    return json(res, 200, await value());
+  }
+
+  /** Checks out what the commits page asks for, one checkout at a time. */
+  async function checkoutTarget(
+    req: IncomingMessage,
+    res: ServerResponse,
+    repo: RepositoryOptions,
+  ): Promise<void> {
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let target: CheckoutTarget;
+    try {
+      target = parseCheckoutTarget(await readBody(req, MAX_BODY_BYTES));
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    if (checkingOut) return json(res, 409, { error: 'a checkout is running' });
+    checkingOut = true;
+    try {
+      return json(res, 200, await repo.checkout(target));
+    } catch (error) {
+      if (error instanceof UnknownCheckoutTarget) return send(res, 400, error.message);
+      if (error instanceof CheckoutRefused) return json(res, 409, { error: error.message });
+      throw error;
+    } finally {
+      checkingOut = false;
+    }
+  }
+
   /** Starts analyzing two commits; answers where the diff will be. */
   async function startDiff(
     req: IncomingMessage,
@@ -384,6 +441,25 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
 function json(res: ServerResponse, status: number, value: unknown): void {
   send(res, status, JSON.stringify(value), TYPES['.json']);
+}
+
+const CHECKOUT_KINDS: readonly CheckoutTarget['kind'][] = ['branch', 'remote', 'tag', 'commit'];
+
+/** `{ kind, name }`, or `{ kind: 'commit', sha }` with a full SHA. */
+function parseCheckoutTarget(text: string): CheckoutTarget {
+  const value = JSON.parse(text) as { kind?: unknown; name?: unknown; sha?: unknown } | null;
+  const kind = value?.kind as CheckoutTarget['kind'];
+  if (!CHECKOUT_KINDS.includes(kind)) throw new Error('kind: branch, remote, tag or commit');
+  if (kind === 'commit') {
+    if (typeof value?.sha !== 'string' || !FULL_SHA.test(value.sha)) {
+      throw new Error('sha: not a full SHA');
+    }
+    return { kind, sha: value.sha };
+  }
+  const name = value?.name;
+  if (typeof name !== 'string' || name === '' || name.length > 255)
+    throw new Error('name: a ref name');
+  return { kind, name };
 }
 
 /** `?scope=`: every branch when absent; null when unknown. */
