@@ -73,7 +73,8 @@ test('lists every branch as a graph, the current branch on the left', async ({ p
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText('Add square');
   await page.getByRole('button', { name: 'HEAD → main' }).click();
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText(/^Add half/);
-  await expect(row(page, 'base').getByRole('button', { name: 'This commit' })).toBeDisabled();
+  // One commit is compared with its parent by picking it alone: no button per row.
+  await expect(page.getByRole('button', { name: 'This commit' })).toHaveCount(0);
   // A long subject is cut, not the page: no sideways scroll, every row's end and Compare in view.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -129,7 +130,8 @@ test('picks two commits, analyzes them, and goes back', async ({ page }) => {
 test('compares one commit with its parent, from the keyboard too', async ({ page }) => {
   const [, , , cube, half] = cpr.shas;
   await page.goto(cpr.url);
-  await row(page, 'Add half').getByRole('button', { name: 'This commit' }).click();
+  await row(page, 'Add half').click();
+  await page.getByRole('button', { name: 'Compare' }).click();
   await expect(page).toHaveURL(`${cpr.url}diff/${cube}..${half}/`);
   await expect(symbol(page, 'half').locator('.symbol')).toHaveClass(/tone-added/);
   await expect(symbol(page, 'cube')).toHaveCount(0);

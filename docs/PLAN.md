@@ -3341,6 +3341,11 @@ the file (a read-only copy, or VS Code's git URIs); opening from graph nodes and
   side (unchanged rows have both); Ctrl/⌘+click opens the head line when the row has one, else
   the base line. Under `cpr view` rows had no click action before (comments are `cpr pr`'s), so
   Ctrl/⌘+click means the same in both. A note stays 8 s; an error stays until the next open.
+- **The button** (asked after the first build: "make a nice button for Open in VS Code … so i
+  can see it"): link-styled 12 px text at first, it went unseen. Now an outlined button in the
+  accent colour, with an icon and its key (`o`), on the line under the file name.
+- **"This commit" removed from the commits page** (asked at the same time): every row had it. One
+  commit picked alone, then Compare (or `x`, Enter), compares it with its parent, as before.
 
 **Results (V12)**: 557 unit tests (35 new: core 9, CLI 19, viewer 7), 59 e2e (6 new: the button,
 Ctrl/⌘+click and a removed line's number, `o` after the working copy moved the line, a file the

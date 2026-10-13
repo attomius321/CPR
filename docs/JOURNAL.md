@@ -1829,6 +1829,10 @@ one with it, at the line's place in the working copy. The server maps the line w
   view` of each build instead.
 - Under `cpr view` the code rows had no click action (picking a comment line is `cpr pr`'s), so
   Ctrl/⌘+click means the same in both, and a plain click keeps its meaning under `cpr pr`.
+- The first "Open in VS Code" was link-styled 12 px text beside the path, and the user did not
+  see it. An action the reviewer is meant to find needs to look like a button (now outlined, in
+  the accent colour, with an icon and its key). At the same time the user had "This commit"
+  removed from every commits row: picking one commit and Compare already does it.
 
 **Verification**: tests first — `mapLine` (insertions, removals, replacements, the file's start
 and end), `workingLine` on temp repositories (uncommitted edits, a later commit, deleted and

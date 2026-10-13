@@ -44,7 +44,7 @@ uses `git switch` (never forced: local changes come along, or git refuses and no
 and redraws the graph. A checkout made elsewhere shows when the page is back in focus.
 
 Click one commit and another — the older is the base — and Compare (or j/k, x, Enter);
-"This commit" compares one with its parent. A picked pair is compared directly (no merge-base)
+one picked alone is compared with its parent. A picked pair is compared directly (no merge-base)
 and analyzed then, in the background, with the same `--plugin`, `--project` and `--depth`: its
 page says what it is doing ("loading head · 12 s") and can stop it. Each diff has its own address
 (`/diff/<base>..<head>/`), so it can be reloaded or bookmarked; the last 8 stay ready while
