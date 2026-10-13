@@ -1770,6 +1770,12 @@ moved elsewhere. V11a (a checkbox for the current branch) was dropped: V10a's sw
   lanes, picks and the cursor start over, and the cursor lands on the new HEAD by V10a's rule.
 - A test that conflicts on purpose printed git's stderr into every `pnpm check`; the repository
   helper now keeps stderr in the thrown error.
+- The first checkout from the page outside the tests was the user's own, on this repository:
+  it moved the working tree to another branch under uncommitted work of the session (two files,
+  the same on both branches, moved back with `git stash` and a switch). That is what a checkout
+  does, and the confirmation says so; but whoever develops CPR with `cpr view` open on it should
+  expect the branch to change under them. Right after, the user found HEAD hard to see: HEAD's
+  row, badge, dot and a title chip now show it.
 
 **Verification**: tests first — core (`listRefs`: upstreams with ahead/behind and `gone`, remotes
 by remote without `HEAD`, annotated tags peeled; `workingState`: counts, merge, cherry-pick,

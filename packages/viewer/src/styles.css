@@ -1906,9 +1906,39 @@ kbd {
   white-space: nowrap;
 }
 
+/* HEAD stands out: a solid badge ("HEAD → main"), a tinted row with a bold subject, a ringed
+   dot (V11). */
 .ref-head {
   border-color: var(--added);
-  color: var(--added);
+  background: var(--added);
+  color: var(--panel);
+  font-weight: 600;
+}
+
+.commit.head {
+  background: color-mix(in srgb, var(--added) 10%, transparent);
+}
+
+.commit.head .commit-subject {
+  font-weight: 600;
+}
+
+.graph .head-ring {
+  fill: none;
+  stroke: var(--added);
+  stroke-width: 2.5;
+}
+
+.head-chip {
+  padding: 1px 10px;
+  border: 1px solid var(--added);
+  border-radius: 999px;
+  background: var(--added);
+  color: var(--panel);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .ref-branch {

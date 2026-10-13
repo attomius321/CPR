@@ -7,6 +7,7 @@ import {
   parentRows,
   pick,
   relativeDate,
+  rowBadges,
   type Picked,
 } from '../src/commits.js';
 
@@ -143,5 +144,50 @@ describe('graphLoaded', () => {
     expect(graphLoaded(404, null)).toEqual({ kind: 'missing' });
     expect(graphLoaded(200, 'not json')).toEqual({ kind: 'missing' });
     expect(graphLoaded(500, 'oops')).toEqual({ kind: 'missing' });
+  });
+});
+
+describe('rowBadges', () => {
+  it('joins HEAD and the branch it is on into one badge', () => {
+    expect(
+      rowBadges(
+        [
+          { kind: 'head', name: 'HEAD' },
+          { kind: 'branch', name: 'main' },
+          { kind: 'branch', name: 'wip' },
+          { kind: 'remote', name: 'origin/main' },
+        ],
+        'main',
+      ),
+    ).toEqual([
+      { kind: 'head', label: 'HEAD → main', title: 'HEAD: the branch main is checked out' },
+      { kind: 'branch', label: 'wip' },
+      { kind: 'remote', label: 'origin/main' },
+    ]);
+  });
+
+  it('says when HEAD is detached', () => {
+    expect(
+      rowBadges(
+        [
+          { kind: 'head', name: 'HEAD' },
+          { kind: 'tag', name: 'v1' },
+        ],
+        null,
+      ),
+    ).toEqual([
+      { kind: 'head', label: 'HEAD', title: 'HEAD, detached: no branch is checked out' },
+      { kind: 'tag', label: 'v1' },
+    ]);
+  });
+
+  it('shows three badges at most, then "+N" naming the rest', () => {
+    const tags = ['t1', 't2', 't3', 't4', 't5'].map((name) => ({ kind: 'tag' as const, name }));
+    expect(rowBadges(tags, 'main')).toEqual([
+      { kind: 'tag', label: 't1' },
+      { kind: 'tag', label: 't2' },
+      { kind: 'more', label: '+3', title: 't3\nt4\nt5' },
+    ]);
+    expect(rowBadges(tags.slice(0, 3), 'main')).toHaveLength(3);
   });
 });

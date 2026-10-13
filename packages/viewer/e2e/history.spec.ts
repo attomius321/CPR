@@ -36,6 +36,10 @@ test('spans the whole history, drawing only the rows near the view', async ({ pa
   await page.locator('.commits-scroll').evaluate((box) => (box.scrollTop = box.scrollHeight));
   await expect(page.locator(subject('commit 1'))).toBeInViewport();
   await expect(page.locator(subject('commit 1')).locator('.commit-dot')).toHaveClass(/lane-0/);
+  // Back to HEAD from the far end.
+  await page.getByRole('button', { name: 'HEAD → main' }).click();
+  await expect(page.locator(subject(`commit ${ROWS}`))).toBeInViewport();
+  await expect(page.locator(subject(`commit ${ROWS}`))).toHaveClass(/head/);
 });
 
 test('cuts a line longer than 100 rows into arrows; a click goes to the other end', async ({

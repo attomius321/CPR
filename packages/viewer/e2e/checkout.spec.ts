@@ -59,7 +59,7 @@ test('checks out a branch: HEAD, lane 0 and the cursor follow', async ({ page })
   await dialog.getByRole('button', { name: 'Check out' }).click();
 
   await expect(page.getByRole('status')).toHaveText('Switched to branch wip');
-  await expect(row(page, 'Try a wobble').locator('.ref')).toHaveText(['HEAD', 'wip']);
+  await expect(row(page, 'Try a wobble').locator('.ref')).toHaveText(['HEAD → wip']);
   await expect(row(page, 'Try a wobble').locator('.commit-dot')).toHaveClass(/lane-0/);
   await expect(row(page, 'Add half').locator('.commit-dot')).not.toHaveClass(/lane-0/);
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText('Try a wobble');
@@ -92,8 +92,7 @@ test('checks out a remote branch as a local one from the keyboard, and a tag det
     'Created the branch topic, tracking origin/topic, and switched to it',
   );
   await expect(row(page, 'Sketch a topic').locator('.ref')).toHaveText([
-    'HEAD',
-    'topic',
+    'HEAD → topic',
     'origin/topic',
   ]);
 
@@ -104,6 +103,15 @@ test('checks out a remote branch as a local one from the keyboard, and a tag det
   await page.getByRole('dialog').getByRole('button', { name: 'Check out' }).click();
   await expect(page.getByRole('status')).toHaveText(`HEAD is now at ${short(cube)} (detached)`);
   await expect(page.getByRole('button', { name: 'This branch', exact: true })).toBeVisible();
+  // Detached: HEAD's badge alone, and the title says where it is.
+  await expect(row(page, 'Add cube').locator('.ref')).toHaveText(['HEAD', 'v1']);
+  await expect(row(page, 'Add cube').locator('.ref-head')).toHaveAttribute(
+    'title',
+    'HEAD, detached: no branch is checked out',
+  );
+  await expect(
+    page.getByRole('button', { name: `HEAD → ${short(cube)} (detached)` }),
+  ).toBeVisible();
   expect(head()).toBe(cube);
 });
 
@@ -124,14 +132,14 @@ test("shows git's refusal and changes nothing", async ({ page }) => {
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(head()).toBe(half);
-  await expect(row(page, 'Add half').locator('.ref').first()).toHaveText('HEAD');
+  await expect(row(page, 'Add half').locator('.ref').first()).toHaveText('HEAD → main');
 });
 
 test('shows a checkout made elsewhere when the page is back', async ({ page }) => {
   await page.goto(cpr.url);
-  await expect(row(page, 'Add half').locator('.ref').first()).toHaveText('HEAD');
+  await expect(row(page, 'Add half').locator('.ref').first()).toHaveText('HEAD → main');
   execFileSync('git', ['switch', '-q', 'wip'], { cwd: cpr.repo });
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await expect(row(page, 'Try a wobble').locator('.ref')).toHaveText(['HEAD', 'wip']);
+  await expect(row(page, 'Try a wobble').locator('.ref')).toHaveText(['HEAD → wip']);
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText('Try a wobble');
 });

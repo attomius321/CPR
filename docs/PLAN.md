@@ -3129,6 +3129,11 @@ the branches panel (V10b), where a double-click could check a branch out.
   same instead of reloading. "c checks out" joins the help line.
 - Test helper: `createRepo`'s `git` keeps stderr in the error (a test that conflicts on purpose
   printed git's "could not apply" into every `pnpm check`).
+- **HEAD stands out** (asked after trying a checkout: "the current HEAD marker is not really
+  visible"): HEAD and its branch are one solid badge, "HEAD → main" (`rowBadges` in
+  `src/commits.ts`; detached: "HEAD", titled so); HEAD's row is tinted with a bold subject; its
+  dot has a green ring; the title has a "HEAD → main" chip that goes to HEAD from anywhere in the
+  history.
 
 **Results (V11)**: from "Check out" to the page drawn again, on a clone of this repository
 (181 commits, plain fonts): a remote branch (creating its local branch) 109 ms, a branch 112 ms,

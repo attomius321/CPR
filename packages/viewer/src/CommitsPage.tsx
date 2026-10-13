@@ -11,7 +11,6 @@ import type {
   CheckoutResult,
   CheckoutTarget,
   Commit,
-  CommitRef,
   HistoryPage,
   HistoryScope,
   HistoryShape,
@@ -28,6 +27,7 @@ import {
   parentRows,
   pick,
   relativeDate,
+  rowBadges,
   shortSha,
   type Loaded,
   type Pair,
@@ -458,6 +458,16 @@ function History({
               This branch{first.branch ? ` (${first.branch})` : ''}
             </button>
           </span>
+          {first.head && headRow !== null && (
+            <button
+              type="button"
+              className="head-chip"
+              title="Go to HEAD"
+              onClick={() => jump(headRow)}
+            >
+              HEAD → {first.branch ?? `${shortSha(first.head)} (detached)`}
+            </button>
+          )}
           <span className="commits-help">
             Pick two to compare them, or one against its parent · j/k move, x picks, Enter compares,
             c checks out
@@ -499,6 +509,7 @@ function History({
                   }}
                   disabled={starting}
                   onMenu={(x, y) => openMenu(row, x, y)}
+                  branch={first.branch}
                   graph={
                     lane && (
                       <GraphCell
@@ -507,6 +518,7 @@ function History({
                         spacing={spacing}
                         width={graphWidth}
                         merge={(parents[row]?.length ?? 0) > 1}
+                        head={row === headRow}
                         picked={!!commit && picked.has(commit.sha)}
                         onJump={jump}
                       />
@@ -576,6 +588,7 @@ function CommitRow({
   onMenu,
   disabled,
   graph,
+  branch,
 }: {
   row: number;
   /** Not loaded yet: the graph alone, and grey bars. */
@@ -589,6 +602,8 @@ function CommitRow({
   onMenu: (x: number, y: number) => void;
   disabled: boolean;
   graph: ReactNode;
+  /** The branch checked out (null when HEAD is detached), for HEAD's badge. */
+  branch: string | null;
 }) {
   const style = { top: row * ROW_HEIGHT, height: ROW_HEIGHT };
   if (!commit) {
@@ -602,9 +617,10 @@ function CommitRow({
     );
   }
   const root = commit.parents.length === 0;
+  const head = commit.refs.some((ref) => ref.kind === 'head');
   return (
     <li
-      className={`commit${picked ? ' picked' : ''}${cursor ? ' cursor' : ''}`}
+      className={`commit${head ? ' head' : ''}${picked ? ' picked' : ''}${cursor ? ' cursor' : ''}`}
       style={style}
       onClick={onPick}
       onContextMenu={(event) => {
@@ -620,7 +636,15 @@ function CommitRow({
       <span className="commit-subject" title={commit.subject}>
         {commit.subject}
       </span>
-      <RefBadges refs={commit.refs} />
+      {rowBadges(commit.refs, branch).map((badge) => (
+        <span
+          key={`${badge.kind}:${badge.label}`}
+          className={`ref ref-${badge.kind}`}
+          {...(badge.title ? { title: badge.title } : {})}
+        >
+          {badge.label}
+        </span>
+      ))}
       <span className="commit-author">{commit.author}</span>
       <time
         className="commit-date"
@@ -655,29 +679,6 @@ function CommitRow({
         ⋯
       </button>
     </li>
-  );
-}
-
-/** Badges shown on a row before the rest are folded into "+N" (Qwik tags 9 packages at once). */
-const MAX_BADGES = 3;
-
-/** A row's branches and tags: the first few, then "+N" naming the others. */
-function RefBadges({ refs }: { refs: readonly CommitRef[] }) {
-  const shown = refs.length > MAX_BADGES ? refs.slice(0, MAX_BADGES - 1) : refs;
-  const folded = refs.slice(shown.length);
-  return (
-    <>
-      {shown.map((ref) => (
-        <span key={`${ref.kind}:${ref.name}`} className={`ref ref-${ref.kind}`}>
-          {ref.name}
-        </span>
-      ))}
-      {folded.length > 0 && (
-        <span className="ref ref-more" title={folded.map((ref) => ref.name).join('\n')}>
-          +{folded.length}
-        </span>
-      )}
-    </>
   );
 }
 

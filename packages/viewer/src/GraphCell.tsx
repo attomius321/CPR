@@ -24,6 +24,7 @@ export const GraphCell = memo(function GraphCell({
   spacing,
   width,
   merge,
+  head,
   picked,
   onJump,
 }: {
@@ -33,6 +34,8 @@ export const GraphCell = memo(function GraphCell({
   spacing: number;
   width: number;
   merge: boolean;
+  /** HEAD's commit: ringed, so it stands out. */
+  head: boolean;
   picked: boolean;
   onJump: (row: number) => void;
 }) {
@@ -84,7 +87,8 @@ export const GraphCell = memo(function GraphCell({
           onClick={() => onJump(child)}
         />
       ))}
-      {picked && <circle className="pick-ring" cx={cx} cy={mid} r={7} />}
+      {head && <circle className="head-ring" cx={cx} cy={mid} r={7} />}
+      {picked && <circle className="pick-ring" cx={cx} cy={mid} r={head ? 10 : 7} />}
       <circle className={`commit-dot ${lane}${merge ? ' merge' : ''}`} cx={cx} cy={mid} r={4} />
     </svg>
   );
