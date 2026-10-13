@@ -72,11 +72,20 @@ export interface Analysis {
   timings: Record<string, number>;
 }
 
+/** The parts of an analysis, in order, as `onPhase` reports them. */
+export type AnalysisPhase =
+  'checkout' | 'loadBase' | 'loadHead' | 'extract' | 'references' | 'findings';
+
 export interface AnalyzeOptions extends Omit<LoadOptions, 'files'> {
   /** Default: the TypeScript adapter. */
   adapter?: LanguageAdapter;
   /** Hops of unchanged context around changed symbols. Default: 1. */
   depth?: number;
+  /**
+   * Called as each phase starts, for progress (`cpr view` runs an analysis in a child process).
+   * Phases with nothing to do are not reported: no checkout when no source file changed.
+   */
+  onPhase?: (phase: AnalysisPhase) => void;
 }
 
 /** Stop widening context past this many symbols. */
@@ -109,9 +118,9 @@ export async function analyzeGit(gitOptions: AnalyzeGitOptions): Promise<Analysi
     ...(options.mergeBase === undefined ? {} : { mergeBase: options.mergeBase }),
   });
   const files = await listChangedFiles(repo, revisions.from, revisions.head.sha);
-  const analysis: Analysis = files.some((file) =>
-    isRelevant(file, options.adapter ?? typescriptAdapter),
-  )
+  const relevant = files.some((file) => isRelevant(file, options.adapter ?? typescriptAdapter));
+  if (relevant) options.onPhase?.('checkout');
+  const analysis: Analysis = relevant
     ? {
         revisions,
         files,
@@ -172,7 +181,11 @@ async function compareSince(
   const files = await listChangedFiles(repo, earlier.from, earlier.head.sha);
   const changes = files.some((file) => isRelevant(file, options.adapter ?? typescriptAdapter))
     ? await withCheckouts(repo, earlier.from, earlier.head.sha, options, async (base, head) => {
-        const extracted = await extractChanges(base, head, files, options);
+        // The phases reported are the analysis's own, not this extra extraction's.
+        const extracted = await extractChanges(base, head, files, {
+          ...options,
+          onPhase: undefined,
+        });
         return extracted?.changes ?? [];
       })
     : [];
@@ -244,7 +257,7 @@ async function extractChanges(
   base: RevisionSource,
   head: RevisionSource,
   files: readonly ChangedFile[],
-  { adapter = typescriptAdapter, ...load }: AnalyzeOptions,
+  { adapter = typescriptAdapter, onPhase, ...load }: AnalyzeOptions,
 ): Promise<Extracted | { ignored: string[]; changes?: undefined }> {
   const isIgnored = load.ignore ?? loadIgnores(head.root);
   const ignored = files
@@ -277,10 +290,13 @@ async function extractChanges(
     mark = now;
   };
 
+  onPhase?.('loadBase');
   const baseRev = await adapter.load(base, { ...load, files: baseFiles });
   lap('loadBase');
+  onPhase?.('loadHead');
   const headRev = await adapter.load(head, { ...load, files: headFiles });
   lap('loadHead');
+  onPhase?.('extract');
   // Pass 1 without type inference (the costly part); pass 2 infers only for symbols whose
   // syntax differs. An unchanged symbol whose inferred type drifted because something it
   // calls changed is covered by that callee's own signature change.
@@ -305,6 +321,7 @@ async function analyzeSources(
   if (extracted.changes === undefined) return { ...EMPTY, ignored: extracted.ignored };
   const { adapter, baseRev, headRev, relevant, ignored, changes, timings } = extracted;
   const depth = options.depth ?? 1;
+  options.onPhase?.('references');
   let mark = performance.now();
   const lap = (phase: string) => {
     const now = performance.now();
@@ -362,6 +379,7 @@ async function analyzeSources(
   }
   context.sort((a, b) => a.id.localeCompare(b.id));
   lap('context');
+  options.onPhase?.('findings');
 
   // What no longer exists under its old name and place: removed symbols, and the old
   // declarations of moved or renamed ones (a caller of the old name is just as broken).

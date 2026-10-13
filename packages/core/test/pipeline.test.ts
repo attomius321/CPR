@@ -313,6 +313,22 @@ describe('analyzeGit', () => {
     ]);
   });
 
+  it('reports its phases in order, and analyzes the same', async () => {
+    const options = { cwd: repo.root, base: 'HEAD~1', head: 'HEAD', cacheDir };
+    const phases: string[] = [];
+    const reported = await analyzeGit({ ...options, onPhase: (phase) => phases.push(phase) });
+    expect(phases).toEqual([
+      'checkout',
+      'loadBase',
+      'loadHead',
+      'extract',
+      'references',
+      'findings',
+    ]);
+    const plain = await analyzeGit(options);
+    expect({ ...reported, timings: {} }).toEqual({ ...plain, timings: {} });
+  });
+
   it('reads .cprignore from the working folder, not from the analyzed commits', async () => {
     const other = createRepo();
     try {
