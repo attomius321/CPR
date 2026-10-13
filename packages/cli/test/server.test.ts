@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { request } from 'node:http';
 import { join } from 'node:path';
-import type { Graph } from '@cpr/core';
+import { CheckoutRefused, UnknownCheckoutTarget, type CheckoutTarget, type Graph } from '@cpr/core';
 import type { Review } from '@cpr/forge';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
@@ -276,6 +276,9 @@ describe('cpr view: commits and diffs', () => {
     });
   const diffs = new Diffs(run);
   const reads: string[] = [];
+  const checkouts: CheckoutTarget[] = [];
+  /** While set, a checkout waits for it. */
+  let checkoutGate: Promise<void> | null = null;
   // C ← B ← A, listed as git would; `version` moves when a test says so.
   let version = 'v1';
   const streams: string[] = [];
@@ -321,6 +324,21 @@ describe('cpr view: commits and diffs', () => {
       viewerDir: viewer,
       repository: {
         history,
+        status: () =>
+          Promise.resolve({ version, branch: 'main', head: C, changed: 2, operation: null }),
+        refs: () =>
+          Promise.resolve({ branches: [{ name: 'main', sha: C }], remotes: [], tags: [] }),
+        checkout: async (target) => {
+          checkouts.push(target);
+          if (checkoutGate) await checkoutGate;
+          if (target.kind === 'branch' && target.name === 'nope') {
+            throw new UnknownCheckoutTarget('no branch nope');
+          }
+          if (target.kind === 'branch' && target.name === 'busy') {
+            throw new CheckoutRefused('error: Your local changes would be overwritten');
+          }
+          return { branch: target.kind === 'branch' ? target.name : null, head: C };
+        },
         isCommit: (sha) => Promise.resolve(commits.includes(sha)),
         diffs,
         readFile: (sha, path) => {
@@ -403,6 +421,77 @@ describe('cpr view: commits and diffs', () => {
     expect((await get('/api/history?version=v1')).status).toBe(409);
     expect((await post('/api/history', {})).status).toBe(405);
     expect((await get('/api/commits')).status).toBe(404);
+  });
+
+  it("reports the repository's status and refs", async () => {
+    expect(JSON.parse((await get('/api/status')).body)).toEqual({
+      version,
+      branch: 'main',
+      head: C,
+      changed: 2,
+      operation: null,
+    });
+    expect(JSON.parse((await get('/api/refs')).body)).toEqual({
+      branches: [{ name: 'main', sha: C }],
+      remotes: [],
+      tags: [],
+    });
+  });
+
+  it("checks out what the page asks for; git's refusals are 409, unknown targets 400", async () => {
+    const ok = await post('/api/checkout', { kind: 'branch', name: 'wip' });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ branch: 'wip', head: C });
+    expect((await post('/api/checkout', { kind: 'commit', sha: A })).status).toBe(200);
+    expect(checkouts).toEqual([
+      { kind: 'branch', name: 'wip' },
+      { kind: 'commit', sha: A },
+    ]);
+
+    const refused = await post('/api/checkout', { kind: 'branch', name: 'busy' });
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toEqual({
+      error: 'error: Your local changes would be overwritten',
+    });
+    expect((await post('/api/checkout', { kind: 'branch', name: 'nope' })).status).toBe(400);
+    for (const body of [
+      { kind: 'stash', name: 'x' },
+      { kind: 'branch' },
+      { kind: 'branch', name: '' },
+      { kind: 'commit', sha: 'abc' },
+      { kind: 'tag', name: 'x'.repeat(300) },
+    ]) {
+      expect((await post('/api/checkout', body)).status, JSON.stringify(body)).toBe(400);
+    }
+    expect((await get('/api/checkout')).status).toBe(405);
+  });
+
+  it('checks out one at a time, and only for the page itself', async () => {
+    const before = checkouts.length;
+    let open = () => {};
+    checkoutGate = new Promise((resolve) => (open = resolve));
+    const first = post('/api/checkout', { kind: 'branch', name: 'wip' });
+    await settle();
+    const second = await post('/api/checkout', { kind: 'branch', name: 'main' });
+    expect(second.status).toBe(409);
+    expect(await second.json()).toEqual({ error: 'a checkout is running' });
+    open();
+    checkoutGate = null;
+    expect((await first).status).toBe(200);
+
+    expect(
+      (
+        await post(
+          '/api/checkout',
+          { kind: 'branch', name: 'wip' },
+          { origin: 'https://attacker.example' },
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (await post('/api/checkout', { kind: 'branch', name: 'wip' }, { 'x-cpr': '' })).status,
+    ).toBe(403);
+    expect(checkouts.length).toBe(before + 1);
   });
 
   it('says it lists commits; the root has no graph', async () => {

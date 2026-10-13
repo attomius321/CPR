@@ -1,4 +1,4 @@
-import type { Commit, Graph } from '@cpr/core';
+import type { Commit, CommitRef, Graph } from '@cpr/core';
 
 /** Two commits compared directly, by full SHA. */
 export interface Pair {
@@ -100,6 +100,45 @@ export function blocksAround(first: number, last: number, rows: number): number[
     blocks.push(block);
   }
   return blocks;
+}
+
+/** A badge on a commit's row: a ref, HEAD with its branch, or "+N" for refs folded away. */
+export interface Badge {
+  kind: CommitRef['kind'] | 'more';
+  label: string;
+  title?: string;
+}
+
+/** Badges shown on a row before the rest are folded into "+N" (Qwik tags 9 packages at once). */
+const MAX_BADGES = 3;
+
+/**
+ * A row's badges: HEAD joined with the branch checked out ("HEAD → main"), so the current
+ * commit stands out; the first few refs, then "+N" naming the others.
+ */
+export function rowBadges(refs: readonly CommitRef[], branch: string | null): Badge[] {
+  const head = refs.some((r) => r.kind === 'head');
+  const badges: Badge[] = refs.flatMap((ref): Badge[] => {
+    if (ref.kind === 'head') {
+      return [
+        branch && refs.some((r) => r.kind === 'branch' && r.name === branch)
+          ? {
+              kind: 'head',
+              label: `HEAD → ${branch}`,
+              title: `HEAD: the branch ${branch} is checked out`,
+            }
+          : { kind: 'head', label: 'HEAD', title: 'HEAD, detached: no branch is checked out' },
+      ];
+    }
+    if (head && ref.kind === 'branch' && ref.name === branch) return [];
+    return [{ kind: ref.kind, label: ref.name }];
+  });
+  if (badges.length <= MAX_BADGES) return badges;
+  const folded = badges.slice(MAX_BADGES - 1);
+  return [
+    ...badges.slice(0, MAX_BADGES - 1),
+    { kind: 'more', label: `+${folded.length}`, title: folded.map((b) => b.label).join('\n') },
+  ];
 }
 
 const UNITS: [unit: string, seconds: number][] = [

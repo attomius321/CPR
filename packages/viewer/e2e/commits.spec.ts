@@ -41,7 +41,11 @@ test('lists every branch as a graph, the current branch on the left', async ({ p
     'head',
     'base',
   ]);
-  await expect(row(page, 'Add half').locator('.ref')).toHaveText(['HEAD', 'main']);
+  // HEAD stands out: one solid badge with its branch, a tinted row, a ringed dot.
+  await expect(row(page, 'Add half').locator('.ref')).toHaveText(['HEAD → main']);
+  await expect(page.locator('.commit.head .commit-subject')).toHaveText(/^Add half/);
+  await expect(row(page, 'Add half').locator('.head-ring')).toHaveCount(1);
+  await expect(page.locator('.head-ring')).toHaveCount(1);
   await expect(row(page, 'Sketch a topic').locator('.ref')).toHaveText(['origin/topic']);
   await expect(row(page, 'Try a wobble').locator('.ref')).toHaveText(['wip']);
   await expect(row(page, 'head').locator('.ref')).toHaveText(['feature']);
@@ -62,6 +66,12 @@ test('lists every branch as a graph, the current branch on the left', async ({ p
   for (const subject of ['Sketch a topic', 'Try a wobble']) {
     await expect(row(page, subject).locator('.commit-dot')).not.toHaveClass(/lane-0/);
   }
+  await expect(page.locator('.commit.cursor .commit-subject')).toHaveText(/^Add half/);
+  // The title's "HEAD → main" goes back to HEAD from anywhere.
+  await page.keyboard.press('j');
+  await page.keyboard.press('j');
+  await expect(page.locator('.commit.cursor .commit-subject')).toHaveText('Add square');
+  await page.getByRole('button', { name: 'HEAD → main' }).click();
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText(/^Add half/);
   await expect(row(page, 'base').getByRole('button', { name: 'This commit' })).toBeDisabled();
   // A long subject is cut, not the page: no sideways scroll, every row's end and Compare in view.
