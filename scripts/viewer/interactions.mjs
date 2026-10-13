@@ -140,6 +140,20 @@ async function pass(index) {
   const map = await mapState(page);
 
   await measure('pan, overview', drag);
+  // The largest group drawn, clicked where it is: on the map a file box lies over it.
+  const largest = await page.evaluate(() => {
+    let best = { id: '', count: 0 };
+    for (const node of globalThis.document.querySelectorAll('.react-flow__node-summary')) {
+      const count = Number.parseInt(node.textContent ?? '', 10);
+      if (count > best.count) best = { id: node.dataset.id ?? '', count };
+    }
+    return best.id;
+  });
+  if (largest) {
+    const group = page.locator(`.react-flow__node[data-id="${largest}"]`);
+    await measure('open a group', () => group.dispatchEvent('click'), 800);
+    await measure('close it', () => group.dispatchEvent('click'), 800);
+  }
   await page.getByRole('tab', { name: /Changes/ }).click();
   await measure('select a change', async () => {
     await page
@@ -158,11 +172,6 @@ async function pass(index) {
   await measure('mark reviewed (r)', () => page.keyboard.press('r'));
   await measure('zoom out ×20', () => wheel(120, 20));
   await measure('zoom in ×10', () => wheel(-120, 10));
-  const group = page.locator('.react-flow__node-summary').first();
-  if ((await group.count()) > 0) {
-    await measure('open a group', () => group.click({ force: true }), 800);
-    await measure('close it', () => group.click({ force: true }), 800);
-  }
   await measure('context off', () => page.getByLabel('Context', { exact: true }).uncheck(), 800);
   await measure('context on', () => page.getByLabel('Context', { exact: true }).check(), 800);
   if ((await page.locator('.list-project').count()) > 0) {
