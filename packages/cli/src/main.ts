@@ -44,6 +44,7 @@ import { frameworkHints, loadPlugins } from './plugins.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ReviewTarget } from './server.js';
+import { vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
 
 const require = createRequire(import.meta.url);
@@ -425,6 +426,7 @@ async function serve(
     },
     state: fileStateStore(stateDir(defaultCacheDir(ctx.env), repo.id, graph)),
     ...(review ? { review } : {}),
+    open: vsCodeOpener(repo, ctx.env),
   });
   ctx.stdout(`${statsLine(graph)}\nCPR viewer: ${server.url}  (Ctrl+C to stop)\n`);
   for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
@@ -518,6 +520,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       readFile: (sha, path) => readFileAtRevision(repo, sha, path),
       state: (graph) => fileStateStore(stateDir(cacheDir, repo.id, graph)),
     },
+    open: vsCodeOpener(repo, ctx.env),
   });
 
   let url = server.url;

@@ -15,6 +15,7 @@ import {
 import { fileStateStore, stateDir } from '../src/state.js';
 import { Diffs, type Pair, type RunDiff } from '../src/diffs.js';
 import { Histories } from '../src/history.js';
+import type { OpenRequest, OpenResult } from '../src/editor.js';
 
 const graph = JSON.parse(
   readFileSync(
@@ -107,6 +108,12 @@ describe('startViewServer', () => {
       body: '{}',
     });
     expect(response.status).toBe(404);
+    const open = await fetch(new URL('/api/open', server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+      body: JSON.stringify({ side: 'head', file: 'src/math.ts', line: 1 }),
+    });
+    expect(open.status).toBe(404);
   });
 
   it('serves only sources the graph mentions', async () => {
@@ -255,6 +262,112 @@ describe('/api/state', () => {
   }
 });
 
+describe('POST /api/open', () => {
+  const viewer = tempDir();
+  const A = 'a'.repeat(40);
+  const B = 'b'.repeat(40);
+  const requests: OpenRequest[] = [];
+  const open = (request: OpenRequest): Promise<OpenResult> => {
+    requests.push(request);
+    if (request.line === 99) {
+      return Promise.resolve({
+        opened: false,
+        reason: 'missing',
+        message: 'src/math.ts is not in your working copy',
+      });
+    }
+    if (request.line === 98) {
+      return Promise.resolve({ opened: false, reason: 'editor', message: 'code was not found' });
+    }
+    return Promise.resolve({ opened: true, line: request.line + 2, how: 'exact', moved: true });
+  };
+  let server: ViewServer;
+  let folders: ViewServer;
+
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      graph: {
+        ...graph,
+        revisions: {
+          base: { ref: 'main', sha: A, mergeBase: A },
+          head: { ref: 'wip', sha: B },
+          from: A,
+        },
+      },
+      viewerDir: viewer,
+      readSource: () => Promise.resolve(''),
+      open,
+    });
+    // Two folders compared: no commit to map lines from.
+    folders = await startViewServer({
+      graph,
+      viewerDir: viewer,
+      readSource: () => Promise.resolve(''),
+      open,
+    });
+  });
+
+  afterAll(async () => {
+    await server.close();
+    await folders.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+
+  const post = (body: unknown, headers: Record<string, string> = {}, to = server) =>
+    fetch(new URL('/api/open', to.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      body: JSON.stringify(body),
+    });
+
+  it('says it can open files', async () => {
+    const response = await fetch(new URL('/api/capabilities', server.url));
+    expect(await response.json()).toEqual({
+      sources: true,
+      review: null,
+      state: false,
+      open: true,
+    });
+  });
+
+  it('opens a file of either side at that side’s commit', async () => {
+    const opened = await post({ side: 'head', file: 'src/math.ts', line: 5, column: 3 });
+    expect(opened.status).toBe(200);
+    expect(await opened.json()).toEqual({ line: 7, how: 'exact', moved: true });
+    expect((await post({ side: 'base', file: 'src/math.ts', line: 1 })).status).toBe(200);
+    expect(requests.slice(-2)).toEqual([
+      { sha: B, file: 'src/math.ts', line: 5, column: 3 },
+      { sha: A, file: 'src/math.ts', line: 1, column: 1 },
+    ]);
+  });
+
+  it('says when the working copy lacks the file, or VS Code could not open it', async () => {
+    const missing = await post({ side: 'head', file: 'src/math.ts', line: 99 });
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toEqual({ error: 'src/math.ts is not in your working copy' });
+    const failed = await post({ side: 'head', file: 'src/math.ts', line: 98 });
+    expect(failed.status).toBe(502);
+    expect(await failed.json()).toEqual({ error: 'code was not found' });
+  });
+
+  it('refuses files outside the change, bad lines, and requests other sites could send', async () => {
+    const before = requests.length;
+    const ok = { side: 'head', file: 'src/math.ts', line: 1 };
+    expect((await post({ ...ok, file: '../../etc/passwd' })).status).toBe(400);
+    expect((await post({ ...ok, side: 'elsewhere' })).status).toBe(400);
+    for (const line of [0, -1, 1.5, '3', null]) {
+      expect((await post({ ...ok, line })).status).toBe(400);
+    }
+    expect((await post({ ...ok, column: 0 })).status).toBe(400);
+    expect((await post(ok, { 'x-cpr': '' })).status).toBe(403);
+    expect((await post(ok, { origin: 'https://attacker.example' })).status).toBe(403);
+    expect((await fetch(new URL('/api/open', server.url))).status).toBe(405);
+    expect((await post(ok, {}, folders)).status).toBe(404);
+    expect(requests).toHaveLength(before);
+  });
+});
+
 describe('cpr view: commits and diffs', () => {
   const viewer = tempDir();
   const dir = tempDir();
@@ -276,6 +389,7 @@ describe('cpr view: commits and diffs', () => {
     });
   const diffs = new Diffs(run);
   const reads: string[] = [];
+  const opens: OpenRequest[] = [];
   const checkouts: CheckoutTarget[] = [];
   /** While set, a checkout waits for it. */
   let checkoutGate: Promise<void> | null = null;
@@ -346,6 +460,10 @@ describe('cpr view: commits and diffs', () => {
           return Promise.resolve(`// ${path} at ${sha.slice(0, 7)}`);
         },
         state: (g) => fileStateStore(join(dir, g.revisions.head.sha ?? 'none')),
+      },
+      open: (request) => {
+        opens.push(request);
+        return Promise.resolve({ opened: true, line: request.line, how: 'exact', moved: false });
       },
     });
   });
@@ -537,6 +655,7 @@ describe('cpr view: commits and diffs', () => {
       sources: true,
       review: null,
       state: true,
+      open: true,
       commits: true,
     });
 
@@ -563,6 +682,15 @@ describe('cpr view: commits and diffs', () => {
     });
     expect((await get(`/diff/${A}..${B}/api/source?side=head&file=../x`)).status).toBe(404);
     expect(reads).toEqual(['a:src/math.ts']);
+
+    // Files open at the pair's commits.
+    const opened = await post(`/diff/${A}..${B}/api/open`, {
+      side: 'head',
+      file: 'src/math.ts',
+      line: 2,
+    });
+    expect(opened.status).toBe(200);
+    expect(opens).toEqual([{ sha: B, file: 'src/math.ts', line: 2, column: 1 }]);
 
     // Asking again is instant: nothing runs.
     await post('/api/diffs', { base: A, head: B });
