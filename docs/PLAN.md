@@ -422,7 +422,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V8 ✅ | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Closed: V8a–V8c and V8e merged (on Qwik: zoom out 466 → 15 ms blocked, opening 2,568 → 620 ms, map clicks reaching the file 87 → 100 %); V8d deferred; see below. |
 | V9 ✅ | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Merged: the current branch's commits as `cpr view`'s first page (100 rows in under 1 s on Qwik), pick two (or one against its parent), the diff analyzed on demand in a child process (Bitwarden 42 s, within 10 % of `cpr diff`; the server answers in 2 ms meanwhile), the last 8 kept. See below. |
 | V10a ✅, V10b–c | A commit graph | The commits page was a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches were not listed (1,539 unmerged on Bitwarden). V10a merged: every branch's history as a graph, lines over 100 rows as arrows (Bitwarden 20 lanes, 142 drawn whole), loaded lazily (CPython's 150,182 rows: first rows in 120 ms once listed). V10b (branches panel) and V10c (picks across branches) planned. See below. |
-| V11 | Checkout from the commits page | The commits page shows every branch but checks nothing out, and does not notice a checkout made in a terminal (on this repository it showed the old HEAD until reloaded). Planned: a menu per row to check out a branch, a remote branch (as its tracking branch), a tag or a commit, after a confirmation; `git switch` never forced (git refuses what would lose work, measured); the page lists anew on focus; "Show only this branch's commits" as a checkbox. See below. |
+| V11 | Checkout from the commits page | The commits page showed every branch but checked nothing out, and did not notice a checkout made in a terminal (it showed the old HEAD until reloaded). Done on its branch, not merged: a row menu (right-click, "⋯", c) checks out a branch, a remote branch as its tracking branch, a tag or the commit, after a confirmation; `git switch` never forced, git's refusals shown; the page lists anew after a checkout (109–115 ms on this repository) and on focus. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -2964,7 +2964,9 @@ a direct diff of diverged picks; a lane layout that moves lines left as lanes fr
 
 ### V11 — Checkout from the commits page
 
-**Status:** planned (2026-10-13), on branch `milestone/v11-checkout`; not started.
+**Status:** done on branch `milestone/v11-checkout` (2026-10-13): V11b and V11c; V11a dropped
+(the user: V10a's "All branches · This branch" switch already does it). As built and results:
+"As built — V11" below. Not merged.
 
 **Problem** (asked: "let's make a mini git extension out of this … checkout to branch/commit/
 tag as a first feature, also, a checkbox with Show only this branch commits"). The commits page
@@ -3089,9 +3091,9 @@ focus), V11c (checkout), on one branch.
 
 | # | Milestone | Output |
 |---|---|---|
-| V11a | Show only this branch's commits | The checkbox named for HEAD's branch, kept in the URL. |
-| V11b | Status and refs | `workingState`, `listRefs`, `/api/status`, `/api/refs`; the page lists anew on focus when the version changed. |
-| V11c | Checkout | `checkout`, `POST /api/checkout`, the row menu (right-click, "⋯", `c`), the confirmation, the line after. |
+| V11a (dropped) | Show only this branch's commits | V10a's switch already does it. |
+| V11b ✅ | Status and refs | `workingState`, `listRefs`, `/api/status`, `/api/refs`; the page lists anew on focus when the version changed. |
+| V11c ✅ | Checkout | `checkout`, `POST /api/checkout`, the row menu (right-click, "⋯", `c`), the confirmation, the line after. |
 
 **Proposed decisions**:
 
@@ -3102,11 +3104,40 @@ focus), V11c (checkout), on one branch.
 | 56 | Tags and commits | **A detached HEAD, said before and after** | Git's own way; creating a branch there is a separate action (later). |
 | 57 | Operations in progress | **Refused: merge, rebase, cherry-pick, revert, bisect** | Checking out in the middle of one leaves a state the page cannot show. |
 | 58 | What a request may name | **Refs as `listRefs` lists them, by exact name; full SHAs of commits** | As V9's diffs: nothing else from a page reaches git. |
-| 59 | "This branch" | **HEAD's branch, as a checkbox; after a checkout, the new one** | Asked: "a checkbox with Show only this branch commits"; V10a's "This branch" was already HEAD's. |
+| 59 | "This branch" | **V10a's "All branches · This branch" switch stays (no checkbox); after a checkout, "this branch" is the new one** | Asked first for a checkbox, then: "I didn't see that we already have a switch between All branches, and current branch". |
 
 **Not in V11 (later)**: creating, renaming or deleting branches; stash, reset, merge, rebase,
 fetch, pull, push; choosing what to do with local changes (stash, discard); untracked files;
 the branches panel (V10b), where a double-click could check a branch out.
+
+#### As built — V11
+
+- **Core**: `listRefs` in `src/git/refs.ts` (one `for-each-ref`, `%1f`-separated; the remote of
+  `refs/remotes/a/b` is the longest configured remote prefixing it; a remote's `HEAD` and tags
+  on trees or blobs left out). `workingState` and `checkout` in `src/git/checkout.ts`; the
+  operation is read from `git rev-parse --absolute-git-dir` (`rebase-apply/applying` is `am`).
+  A remote branch with no local branch of its name: `git switch --create x --track
+  refs/remotes/origin/x` (the full ref, never a guess); git sets up tracking only for a remote
+  it has configured. `RepoStatus` is `HistoryState & WorkingState`.
+- **Server**: `GET /api/status`, `GET /api/refs`, `POST /api/checkout` as planned; a refusal is
+  409 `{ error }` with git's words; a second checkout while one runs is 409 too.
+- **Viewer**: `src/checkout.ts` (pure: the menu's entries, the note on local changes, the line
+  after) and `src/CheckoutMenu.tsx` (menu and confirmation). A remote branch whose tracking
+  branch is on the same row gets no entry of its own (the branch's covers it). After a checkout
+  `CommitsPage` lists anew in a new generation of the page (fresh rows, lanes and picks; the
+  cursor on HEAD) and shows the line above the rows; a stale page's "List them again" does the
+  same instead of reloading. "c checks out" joins the help line.
+- Test helper: `createRepo`'s `git` keeps stderr in the error (a test that conflicts on purpose
+  printed git's "could not apply" into every `pnpm check`).
+
+**Results (V11)**: from "Check out" to the page drawn again, on a clone of this repository
+(181 commits, plain fonts): a remote branch (creating its local branch) 109 ms, a branch 112 ms,
+the first commit (detached, 713 files changed) 115 ms. Tests: 519 unit (24 new: core 15,
+server 3, viewer 6), 53 e2e (5 new: the menu's entries per row; a branch with HEAD, lane 0 and
+the cursor following; a remote branch from the keyboard and a tag detached; git's refusal with
+nothing changed; a terminal checkout shown on focus). Not verified: a large working tree (the
+regression clones of Qwik, Bitwarden and CPython have none: they are history only), Windows
+and macOS, a checkout through a hook that is slow (husky).
 
 ### Phase 1 milestones
 
