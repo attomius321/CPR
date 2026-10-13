@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import {
   analyzeGit,
@@ -11,7 +12,9 @@ import {
   createTypescriptAdapter,
   defaultCacheDir,
   fetchRefs,
+  isCommit,
   listChangedLines,
+  listCommits,
   NoMergeBaseError,
   openRepo,
   readFileAtRevision,
@@ -19,6 +22,7 @@ import {
   resolveCommit,
   SCHEMA_VERSION,
   type Analysis,
+  type AnalysisPhase,
   type ChangedLines,
   type Graph,
   type Severity,
@@ -27,9 +31,11 @@ import {
 import { detectForge, type ChangeRequest, type Forge } from '@cpr/forge';
 import { ciChangeRequestNumber } from './ci.js';
 import { codeQualityReport } from './codequality.js';
+import { Diffs, pairKey } from './diffs.js';
 import { formatAnalysis } from './format.js';
 import { frameworkHints, loadPlugins } from './plugins.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
+import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ReviewTarget } from './server.js';
 import { fileStateStore, stateDir } from './state.js';
 
@@ -46,7 +52,12 @@ export interface CliContext {
   waitForExit: () => Promise<void>;
   /** Environment: tokens, API URLs, `CPR_*` settings. */
   env: Readonly<Record<string, string | undefined>>;
+  /** Told each phase of an analysis as it starts: set when `cpr view` runs this CLI. */
+  onPhase?: (phase: AnalysisPhase) => void;
 }
+
+/** This CLI's script, which `cpr view` runs to analyze a pair of commits. */
+const CLI_SCRIPT = fileURLToPath(new URL('./bin.js', import.meta.url));
 
 const processContext = (): CliContext => ({
   cwd: process.cwd(),
@@ -54,6 +65,8 @@ const processContext = (): CliContext => ({
   stderr: (text) => process.stderr.write(text),
   openUrl,
   env: process.env,
+  // Started by `cpr view` with an IPC channel: phases go back to it.
+  ...(process.send ? { onPhase: (phase) => process.send?.({ phase } satisfies PhaseMessage) } : {}),
   waitForExit: () =>
     new Promise((resolve) => {
       process.once('SIGINT', () => resolve());
@@ -84,7 +97,8 @@ const HELP = `Usage: cpr <command> [options]
 
 Commands:
   diff <base> [head]   Compare head (default: HEAD) against base
-  view <base> [head]   Same comparison, reviewed in the browser
+  view [<base> [head]] Same comparison, reviewed in the browser; without revisions,
+                       pick two commits of the current branch there
   pr <number>          Review a GitHub pull request or GitLab merge request (alias: mr)
 
 Options:
@@ -112,9 +126,12 @@ Options:
   -h, --help           Show this help
 `;
 
-const VIEW_HELP = `Usage: cpr view <base> [head] [options]
+const VIEW_HELP = `Usage: cpr view [<base> [head]] [options]
 
-Analyzes like \`cpr diff\` and serves the graph viewer on localhost until Ctrl+C.
+Serves the graph viewer on localhost until Ctrl+C. Its first page lists the current
+branch's commits: pick two to compare them (the older is the base), or one against its
+parent; each pair is analyzed when picked. With <base>, analyzes like \`cpr diff\` first
+and opens that comparison.
 
 Options:
   --port <n>           Port to listen on (default: any free port)
@@ -258,11 +275,7 @@ async function analyze(
   const [base, head = 'HEAD', ...extra] = positionals;
   if (base === undefined) throw new UsageError('missing <base>', help);
   if (extra.length > 0) throw new UsageError(`unexpected argument '${extra[0]}'`, help);
-
-  const depth = Number(values.depth);
-  if (!Number.isInteger(depth) || depth < 1) {
-    throw new UsageError(`--depth must be a positive integer, got '${values.depth}'`, help);
-  }
+  const depth = checkDepth(values.depth, help);
 
   const started = performance.now();
   const repo = await openRepo(ctx.cwd);
@@ -276,6 +289,7 @@ async function analyze(
       depth,
       cacheDir: defaultCacheDir(ctx.env),
       adapter: createTypescriptAdapter({ plugins }),
+      ...(ctx.onPhase ? { onPhase: ctx.onPhase } : {}),
       ...(values.since === undefined ? {} : { since: values.since }),
       ...(values.project === undefined ? {} : { project: values.project }),
     });
@@ -321,6 +335,14 @@ function checkFailOn(failOn: string | undefined, help: string): void {
   if (failOn !== undefined && !SEVERITIES.includes(failOn as Severity)) {
     throw new UsageError(`--fail-on must be error, warning or info, got '${failOn}'`, help);
   }
+}
+
+function checkDepth(value: string, help: string): number {
+  const depth = Number(value);
+  if (!Number.isInteger(depth) || depth < 1) {
+    throw new UsageError(`--depth must be a positive integer, got '${value}'`, help);
+  }
+  return depth;
 }
 
 function checkPort(port: string, help: string): number {
@@ -373,7 +395,7 @@ async function writeCodeQuality(
   await writeFile(resolve(ctx.cwd, file), `${JSON.stringify(report, null, 2)}\n`);
 }
 
-/** Serves the viewer for a graph until the user stops it. */
+/** Serves the viewer for one graph (`cpr pr`) until the user stops it. */
 async function serve(
   analysis: Analysis,
   graph: Graph,
@@ -397,18 +419,19 @@ async function serve(
     state: fileStateStore(stateDir(defaultCacheDir(ctx.env), repo.id, graph)),
     ...(review ? { review } : {}),
   });
-  const changed =
-    graph.stats.symbols.added + graph.stats.symbols.removed + graph.stats.symbols.modified;
-  ctx.stdout(
-    `${graph.stats.filesChanged} files · ${changed} symbols changed · ${graph.findings.length} findings\n` +
-      `CPR viewer: ${server.url}  (Ctrl+C to stop)\n`,
-  );
+  ctx.stdout(`${statsLine(graph)}\nCPR viewer: ${server.url}  (Ctrl+C to stop)\n`);
   for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
   if (!args['no-open']) ctx.openUrl(server.url);
 
   await ctx.waitForExit();
   await server.close();
   return 0;
+}
+
+function statsLine(graph: Graph): string {
+  const { symbols } = graph.stats;
+  const changed = symbols.added + symbols.removed + symbols.modified;
+  return `${graph.stats.filesChanged} files · ${changed} symbols changed · ${graph.findings.length} findings`;
 }
 
 async function diff(argv: string[], ctx: CliContext): Promise<number> {
@@ -435,10 +458,68 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     ctx.stdout(VIEW_HELP);
     return 0;
   }
-  checkPort(values.port, VIEW_HELP);
-  const { analysis, durationMs, plugins } = await analyze({ positionals, values }, ctx, VIEW_HELP);
-  const graph = buildGraph(analysis, { generator: { name: 'cpr', version }, durationMs, plugins });
-  return serve(analysis, graph, values, ctx, VIEW_HELP);
+  const port = checkPort(values.port, VIEW_HELP);
+  checkDepth(values.depth, VIEW_HELP);
+  if (positionals.length === 0 && values.since !== undefined) {
+    throw new UsageError('--since needs <base>', VIEW_HELP);
+  }
+  // With revisions, that pair is analyzed before serving, as `cpr diff` would.
+  const first =
+    positionals.length > 0 ? await analyze({ positionals, values }, ctx, VIEW_HELP) : undefined;
+
+  const repo = await openRepo(ctx.cwd);
+  const cacheDir = defaultCacheDir(ctx.env);
+  // Pairs picked in the viewer: the same analysis options, in a child process each.
+  const diffs = new Diffs(
+    childRunner({
+      command: [process.execPath, ...process.execArgv, CLI_SCRIPT],
+      cwd: ctx.cwd,
+      env: ctx.env,
+      args: [
+        ...(values.plugin ?? []).flatMap((plugin) => ['--plugin', plugin]),
+        ...(values.project === undefined ? [] : ['--project', values.project]),
+        '--depth',
+        values.depth,
+      ],
+      stderr: ctx.stderr,
+    }),
+  );
+  const server = await startViewServer({
+    port,
+    viewerDir: viewerDir(ctx),
+    repository: {
+      commits: (skip) => listCommits(repo, { skip }),
+      isCommit: (sha) => isCommit(repo, sha),
+      diffs,
+      readFile: (sha, path) => readFileAtRevision(repo, sha, path),
+      state: (graph) => fileStateStore(stateDir(cacheDir, repo.id, graph)),
+    },
+  });
+
+  let url = server.url;
+  if (first) {
+    const { analysis, durationMs, plugins } = first;
+    const graph = buildGraph(analysis, {
+      generator: { name: 'cpr', version },
+      durationMs,
+      plugins,
+    });
+    const { from, head } = analysis.revisions;
+    if (from && head.sha) {
+      const pair = { base: from, head: head.sha };
+      diffs.add(pair, graph);
+      url = `${server.url}diff/${pairKey(pair)}/`;
+    }
+    ctx.stdout(`${statsLine(graph)}\n`);
+  }
+  ctx.stdout(`CPR viewer: ${url}  (Ctrl+C to stop)\n`);
+  for (const warning of first?.analysis.warnings ?? []) ctx.stderr(`warning: ${warning}\n`);
+  if (!values['no-open']) ctx.openUrl(url);
+
+  await ctx.waitForExit();
+  diffs.close();
+  await server.close();
+  return 0;
 }
 
 /**

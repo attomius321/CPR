@@ -1547,3 +1547,199 @@ kbd {
   border-color: var(--moved);
   color: var(--moved);
 }
+
+/* ---- commits page and diffs on demand (V9) ------------------------------------------ */
+
+.back {
+  color: var(--moved);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.commits {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* Long subjects are cut in their row; without this they widen the page's grid column. */
+  contain: inline-size;
+}
+
+.commits-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 24px;
+}
+
+.commits-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.commits-help {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: normal;
+}
+
+.commit-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.commit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.commit:last-child {
+  border-bottom: 0;
+}
+
+.commit:hover {
+  background: color-mix(in srgb, var(--moved) 6%, transparent);
+}
+
+.commit.cursor {
+  box-shadow: inset 3px 0 0 var(--muted);
+}
+
+.commit.picked {
+  background: color-mix(in srgb, var(--moved) 14%, transparent);
+}
+
+.commit-pick {
+  color: var(--moved);
+  width: 1em;
+}
+
+.commit-sha {
+  color: var(--muted);
+}
+
+.commit-subject {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ref {
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ref-head {
+  border-color: var(--added);
+  color: var(--added);
+}
+
+.ref-branch {
+  border-color: var(--moved);
+  color: var(--moved);
+}
+
+.ref-tag {
+  border-color: var(--modified);
+  color: var(--modified);
+}
+
+.ref-remote {
+  color: var(--muted);
+}
+
+.commit-author,
+.commit-date {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.commit-author {
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.commit-date {
+  width: 8.5em;
+  text-align: right;
+}
+
+.commit-this {
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.load-more {
+  display: block;
+  margin: 12px auto;
+  padding: 6px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.compare-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 24px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+
+.compare-label {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.compare-bar .button,
+.diff-progress .button {
+  margin-top: 0;
+  border: 0;
+  font: inherit;
+}
+
+.compare-bar .button:disabled,
+.diff-progress .button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.diff-progress {
+  max-width: 720px;
+  margin: 12vh auto;
+  padding: 0 24px;
+}
+
+.diff-progress p {
+  font-size: 16px;
+}
+
+.diff-progress pre {
+  max-height: 40vh;
+  overflow: auto;
+  white-space: pre-wrap;
+}

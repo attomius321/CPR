@@ -25,6 +25,8 @@ import {
 import { flushSync } from 'react-dom';
 import type { Graph } from '@cpr/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
+import type { Loaded, Pair } from './commits.js';
+import { BackToCommits, CommitsPage, DiffProgress, fetchGraph, startDiff } from './CommitsPage.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
 import {
@@ -67,11 +69,22 @@ const nodeTypes = {
 type State =
   | { status: 'loading' }
   | { status: 'empty'; error?: string }
+  /** `cpr view` with no graph here: pick commits to compare. */
+  | { status: 'commits' }
+  /** A diff's page while it is analyzed, or once it failed or was stopped. */
+  | { status: 'analyzing'; loaded: Exclude<Loaded, { kind: 'graph' }> }
   /**
    * `sources`: opened through `cpr view`, so `/api/source` exists. `forge`: opened through
-   * `cpr pr`, which posts reviews there.
+   * `cpr pr`, which posts reviews there. `commits`: a diff of `cpr view`, which lists commits.
    */
-  | { status: 'ready'; graph: Graph; sources: boolean; forge: Forge | null; store: Store };
+  | {
+      status: 'ready';
+      graph: Graph;
+      sources: boolean;
+      forge: Forge | null;
+      store: Store;
+      commits: boolean;
+    };
 
 type Forge = 'github' | 'gitlab';
 
@@ -80,7 +93,12 @@ interface Capabilities {
   review: { forge: Forge } | null;
   /** `/api/state` keeps reviewed marks and drafts in the CLI's cache. */
   state?: boolean;
+  /** `cpr view`: the commits page, and diffs analyzed when picked. */
+  commits?: boolean;
 }
+
+/** How often a diff's page asks how its analysis is going. */
+const POLL_MS = 500;
 
 /** Where the graph comes from: `?graph=<url>`, else `cpr view`'s API. */
 function graphUrl(): string {
@@ -264,29 +282,64 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [changes, walked, selected, toggleReviewed]);
 
+  /** Bumped to load the page again: after "Analyze again". */
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const url = graphUrl();
     const served = url === './api/graph';
-    fetch(url)
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-        const graph = (await response.json()) as Graph;
-        const capabilities = served ? await fetchCapabilities() : null;
-        setState({
-          status: 'ready',
-          graph,
-          sources: served,
-          forge: capabilities?.review?.forge ?? null,
-          store: capabilities?.state ? serverStore() : browserStore(graph),
-        });
-      })
-      .catch(() => setState({ status: 'empty' }));
+    let live = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    void (async () => {
+      const capabilities = served ? await fetchCapabilities() : null;
+      let opened = attempt === 0;
+      const poll = async (): Promise<void> => {
+        const loaded = await fetchGraph(url);
+        if (!live) return;
+        if (loaded.kind === 'graph') {
+          const { graph } = loaded;
+          setState({
+            status: 'ready',
+            graph,
+            sources: served,
+            forge: capabilities?.review?.forge ?? null,
+            store: capabilities?.state ? serverStore() : browserStore(graph),
+            commits: !!capabilities?.commits,
+          });
+        } else if (loaded.kind === 'progress' || loaded.kind === 'failed') {
+          setState({ status: 'analyzing', loaded });
+          if (loaded.kind === 'progress') timer = setTimeout(() => void poll(), POLL_MS);
+        } else if (loaded.pair && capabilities?.commits) {
+          // A diff's page opened anew (a bookmark, a restarted server): analyze it.
+          if (!opened) return setState({ status: 'analyzing', loaded });
+          opened = false;
+          await startDiff(loaded.pair).catch(() => undefined);
+          if (live) await poll();
+        } else setState({ status: capabilities?.commits ? 'commits' : 'empty' });
+      };
+      await poll();
+    })();
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [attempt]);
+  const retry = useCallback((pair: Pair) => {
+    void startDiff(pair)
+      .catch(() => undefined)
+      .then(() => setAttempt((n) => n + 1));
   }, []);
 
   const load = useCallback(async (file: File) => {
     try {
       const graph = JSON.parse(await file.text()) as Graph;
-      setState({ status: 'ready', graph, sources: false, forge: null, store: browserStore(graph) });
+      setState({
+        status: 'ready',
+        graph,
+        sources: false,
+        forge: null,
+        store: browserStore(graph),
+        commits: false,
+      });
       setSelected(null);
       setSearch('');
     } catch (error) {
@@ -363,6 +416,7 @@ export function App() {
     <div className="app" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
       <header className="bar">
         <strong className="brand">CPR</strong>
+        {state.status === 'ready' && state.commits && <BackToCommits />}
         {state.status === 'ready' && <Summary graph={state.graph} />}
         <div className="spacer" />
         {state.status === 'ready' && (
@@ -416,6 +470,8 @@ export function App() {
         {state.status === 'empty' && (
           <DropZone error={state.error} onFile={(file) => void load(file)} />
         )}
+        {state.status === 'commits' && <CommitsPage />}
+        {state.status === 'analyzing' && <DiffProgress loaded={state.loaded} onRetry={retry} />}
         {state.status === 'ready' && (
           <ReactFlowProvider>
             <Sidebar
@@ -691,7 +747,9 @@ async function fetchCapabilities(): Promise<Capabilities | null> {
 
 function Summary({ graph }: { graph: Graph }) {
   const { base, head } = graph.revisions;
-  const side = (ref: string, sha: string | null) => (sha ? `${ref} (${sha.slice(0, 7)})` : ref);
+  // A pair picked from the commits page is named by its SHAs: once, short.
+  const side = (ref: string, sha: string | null) =>
+    !sha ? ref : ref === sha ? sha.slice(0, 7) : `${ref} (${sha.slice(0, 7)})`;
   const { added, removed, modified } = graph.stats.symbols;
   const severity = (s: string) => graph.findings.filter((f) => f.severity === s).length;
   const request = graph.changeRequest;

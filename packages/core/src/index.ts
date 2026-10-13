@@ -68,6 +68,7 @@ export {
   analyzeDirectories,
   analyzeGit,
   type Analysis,
+  type AnalysisPhase,
   type AnalyzeGitOptions,
   type AnalyzeOptions,
   type ContextSymbol,
@@ -100,4 +101,13 @@ export {
   type ProjectSource,
 } from './projects.js';
 export { readFileAtRevision } from './git/show.js';
+export {
+  isCommit,
+  listCommits,
+  parseLog,
+  type Commit,
+  type CommitPage,
+  type CommitRef,
+  type ListCommitsOptions,
+} from './git/log.js';
 export { fetchRefs, remoteUrl } from './git/remote.js';

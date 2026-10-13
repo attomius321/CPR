@@ -7,6 +7,7 @@ cpr diff main            # what changed on this branch, symbol by symbol, with f
 cpr diff main --json     # the graph as JSON (docs/graph-schema.md)
 cpr diff main --fail-on error   # for CI
 cpr view main            # review it as a graph in the browser
+cpr view                 # pick two commits of this branch in the browser, and review their diff
 cpr pr 123               # a GitHub pull request or GitLab merge request (cpr mr 123)
 ```
 
@@ -31,6 +32,15 @@ M  src/math.ts
 The viewer (`packages/viewer`) draws the same graph: one box per file, symbols colored by what
 changed, findings as badges, removed edges dashed. `cpr view main` opens it; it also accepts a
 graph file from `cpr diff --out` (drag and drop).
+
+`cpr view` without revisions opens at once on the current branch's commits, newest first (100 at
+a time). Click one commit and another — the older is the base — and Compare (or j/k, x, Enter);
+"This commit" compares one with its parent. A picked pair is compared directly (no merge-base)
+and analyzed then, in the background, with the same `--plugin`, `--project` and `--depth`: its
+page says what it is doing ("loading head · 12 s") and can stop it. Each diff has its own address
+(`/diff/<base>..<head>/`), so it can be reloaded or bookmarked; the last 8 stay ready while
+`cpr view` runs, and "← Commits" goes back to the list. `cpr view main` analyzes first, as before,
+and opens that diff with the commits a click away.
 
 Large changes stay navigable: a changed symbol with more than 8 unchanged users (or uses) shows
 them as one node — "390 users in 220 files" — that opens on click; zoomed out, the canvas is a
