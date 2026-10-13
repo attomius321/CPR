@@ -2448,7 +2448,8 @@ thread in V8e, but stays 1.3 s); drawing a large new layout in parts rather than
 
 ### V9 — Pick two commits
 
-**Status:** planned (2026-10-13), on branch `milestone/v9-commit-picker`; not started.
+**Status:** implemented (2026-10-13), on branch `milestone/v9-commit-picker`; not merged. As
+built and results: "As built — V9" below.
 
 **Problem** (asked: "I would also like to start making a git user interface to manage the
 repository … from where you can select 2 commits and go to this diff page … This should be the
@@ -2553,8 +2554,8 @@ as today; `cpr diff`'s results do not change.
 
 | # | Milestone | Output |
 |---|---|---|
-| V9a | Commit list | `listCommits`, `/api/commits`, the commits page, `cpr view` without arguments. |
-| V9b | Diffs on demand | `/diff/<pair>/`, `POST /api/diffs`, child-process runs with phases, the progress page with Stop, kept graphs, "← Commits". |
+| V9a ✅ | Commit list | `listCommits`, `/api/commits`, the commits page, `cpr view` without arguments. |
+| V9b ✅ | Diffs on demand | `/diff/<pair>/`, `POST /api/diffs`, child-process runs with phases, the progress page with Stop, kept graphs, "← Commits". |
 
 **Proposed decisions**:
 
@@ -2565,6 +2566,62 @@ as today; `cpr diff`'s results do not change.
 | 44 | Where a diff lives | **`/diff/<base>..<head>/`, the viewer's relative API under it** | One server, many diffs; reload and back work; review state is already per pair. |
 | 45 | Where an analysis runs | **A child process of the CLI, one at a time, with Stop** | The analysis is synchronous: in the server it would block it for up to 90 s; a process frees its memory and can be stopped. |
 | 46 | What is kept | **The last 8 graphs, in memory, while the server runs** | A pair takes 3–90 s; going back must be instant. On disk later. |
+
+#### As built — V9
+
+- **Core**: `listCommits(repo, { skip, limit })` in `src/git/log.ts` returns `{ branch, commits,
+  more }` (`branch` is null for a detached HEAD; the plan said `head`). Refs come from `%D` with
+  full names as `{ kind: head | branch | remote | tag, name }`; a remote's `HEAD` and refs outside
+  `heads/`, `tags/`, `remotes/` (`refs/cpr/*` from `cpr pr`, the stash) are left out. The
+  subject is the last field, so one holding the separators is read whole. `isCommit` takes only
+  full SHAs (40 or 64 hex). `analyzeGit`'s `onPhase` reports `checkout`, `loadBase`,
+  `loadHead`, `extract`, `references`, `findings` as each starts; `--since`'s extra extraction
+  reports nothing.
+- **Server** (`packages/cli/src/server.ts`): one "site" per graph — its sources, review state
+  and reviews — at `/` for `cpr pr`, under `/diff/<base>..<head>/` for `cpr view`
+  (`/diff/<pair>` redirects to the trailing slash). A diff's `api/graph` answers 200 (graph),
+  202 `{ base, head, status, phase | queued, elapsedMs }` (`elapsedMs` since asked: waiting
+  counts), 502 `{ base, head, error }` (the CLI's `cpr: …` lines), 404 `{ base, head }`.
+  Stop is `POST /api/diffs/stop { base, head }`. Capabilities say `commits: true` under
+  `cpr view` only; there the root's `/api/graph` is 404.
+- **Runs** (`diffs.ts`, `runner.ts`): `Diffs` queues pairs, runs one at a time, keeps failures
+  until asked again and the last 8 graphs by use (a graph opened again moves to the end).
+  `childRunner` spawns `node [execArgv] bin.js diff <base> <head> --no-merge-base --json
+  --depth n [--plugin …] [--project …]` with an IPC channel; the CLI sends `{ phase }` when it
+  has one (`CliContext.onPhase`). The child's hints and warnings go to `cpr view`'s terminal,
+  prefixed with the pair. Stop sends SIGTERM to the node child only: a `git checkout` it started
+  finishes, so no slot is left half checked out, and the slot's pid lock is recovered as stale
+  (a run started within that checkout can meet its index lock and fail: "Analyze again").
+  Stopping the server stops every run.
+- **Viewer**: `src/commits.ts` (pure) and `src/Commits.tsx`. A click picks, a picked commit is
+  unpicked, a third replaces the last picked. The label counts the commits head adds to base,
+  walked through the listed commits' parents (the rows between them would count commits of
+  other lines). A diff page opened anew (a bookmark, a restarted server) starts its own analysis;
+  404 while polling (stopped elsewhere) shows "not analyzed" with "Analyze again"; a failure
+  shows the message and "Analyze again". `App` loads capabilities, then the graph, and polls
+  while it gets 202.
+- **CLI**: `cpr view [<base> [head]]`; `--since` without `<base>` is a usage error. With a pair,
+  the URL printed and opened is the diff's (`/diff/<from>..<head>/`); its review state is in the
+  same folder as before (`stateDir` keys by base..head).
+- Trap: the stylesheet is flat, and `.progress` was already the sidebar's review bar; the
+  progress page uses `.diff-progress` (an e2e check holds the bar's margin at 0).
+
+**Results (V9)**, 4 cores, the regression clones, `HEAD~1..HEAD`, warm (worktrees made), 2 rounds:
+
+| | Qwik (`--plugin qwik`) | Bitwarden (`--plugin angular`) |
+|---|---|---|
+| `cpr view` prints its URL | 0.58–0.64 s | BW_URL |
+| `/api/commits` (100 commits) | 33–104 ms | BW_COMMITS |
+| A pair picked → its graph served | 13.8–14.3 s | BW_PAIR |
+| `cpr diff` of the same pair | 14.2–15.1 s | BW_DIFF |
+| Status requests during the analysis: median (max) | 1.8 ms (17 ms) | BW_LAT |
+| The pair asked again (kept) | 1.4–3 ms | BW_KEPT |
+
+- Phases on Qwik (one run): starting 0.7 s (the child's Node and ts-morph), checkout 0.1 s, load
+  base 6.8 s, load head 6.4 s, then extract, references and findings in 0.3 s together.
+- `r1`: 29 comparisons identical (859 edges, no finding changed), time 0.97 of `main`'s.
+- Tests: 464 unit (31 new), 45 e2e (5 new; the 40 others unchanged, `cpr view HEAD~1 HEAD` now
+  opening `/diff/<pair>/`).
 
 **Not in V9 (later)**: uncommitted changes as a head (analysis reads commits only); other
 branches and tags (a ref picker), search through history; branch lanes; a commit's details
