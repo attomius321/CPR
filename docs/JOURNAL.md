@@ -1512,3 +1512,12 @@ j ×8 Qwik 862 → 78, `cbf86c2` 98 → 0; select Qwik 576 → 115; map edge ele
 with fewer, heavier lines. 415 unit tests, 38 e2e.
 
 Merged into main (2026-10-13).
+
+## V8e spike — where layout time goes (2026-10-13, branch `milestone/v8e-layout-worker`)
+
+`layoutFlow` alone, in Node: 187–981 ms for the default view of the three measured changes,
+47–227 ms with context off, up to 841 ms with Qwik's largest group opened. Moving the data a
+worker needs costs little next to it: the graph once (6–39 ms to send), each layout back
+(4–42 ms to receive). So a worker frees 0.2–1 s of main thread per layout. React drawing the new
+layout stays on the main thread; V8e measures that part separately. V8d is deferred: V8c already
+met its targets (j ×8 on Qwik 78 ms blocked, select 115 ms).

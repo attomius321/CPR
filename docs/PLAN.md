@@ -2169,7 +2169,7 @@ whether the old spelling of a rename is left anywhere (an incomplete rename woul
 **Status:** planned (2026-10-12); V8a merged into main (2026-10-12, from branch
 `milestone/v8a-zoom-labels`); V8b merged into main (2026-10-13, from branch
 `milestone/v8b-map-clicks`); V8c merged into main (2026-10-13, from branch
-`milestone/v8c-edges`); V8d–V8e not started.
+`milestone/v8c-edges`); V8e in progress (branch `milestone/v8e-layout-worker`); V8d deferred.
 
 **Problem** (asked: "it works really flaky and laggy. What are our options to improve the client
 side viewer?"). Measured with `scripts/viewer/interactions.mjs` (new: every interaction a
@@ -2250,6 +2250,38 @@ pointer. Nothing a reviewer sees changes, apart from what each part says.
   a late answer never replaces a newer one; recent layouts are kept by their options (context,
   type references, focus, project, opened groups), so toggling back is instant.
 - Opening: the sidebar and findings show while the first layout runs.
+
+**Refined before building (2026-10-13; built after V8c, V8d deferred: V8c met its targets).**
+Measured in Node (median of 3), `layoutFlow` per view, and the cost of moving data between
+threads (V8 serialization, as structured clone does):
+
+| View | Bitwarden `737ee3f` | Bitwarden `cbf86c2` | Qwik `f7ed58cfc` |
+|---|---|---|---|
+| Default | 217 ms | 187 ms | 981 ms |
+| Context off | 67 ms | 47 ms | 227 ms |
+| Type references on | 217 ms | 321 ms | 1,021 ms |
+| One project (the largest) | 108 ms | 215 ms | 183 ms |
+| The largest group opened | 217 ms | 273 ms | 841 ms |
+| The graph to a worker, once (send) | 6 ms | 39 ms | 9 ms |
+| A layout back (receive) | 4–11 ms | 5–39 ms | 10–42 ms |
+
+In the browser (V8c's results): Qwik opens with 2,348 ms blocked (worst frame 1,575 ms) and
+context on blocks 1,279 ms (1,181 ms); `cbf86c2` 942 and 253 ms. Part of that is React drawing
+the new layout, which stays on the main thread.
+
+- `src/layout-worker.ts`: a module worker that holds the graph and answers `{ id, options }`
+  with `layoutFlow`'s result (its Maps and Sets cross threads as they are).
+- `src/layouts.ts`: `layoutKey(options)` (the same view gives the same key, whatever the order
+  of its sets); a cache of the last 8 layouts by key that knows the view last asked for (an
+  answer for an older one is kept, never drawn); a runner whose requests are numbered and whose
+  answers are matched by number; if the worker fails, layouts run on the main thread as today.
+- App: the layout memo becomes `useLayout(graph, options)` → the layout to draw and whether a
+  newer one is coming. A cached view is drawn at once. The canvas fits a project, the focus or a
+  group only once the layout asked for is drawn, so the view moves once. A "Laying out…" note
+  shows while one is coming; on opening, the header, change list and findings show at once and
+  the canvas says "Laying out…".
+- Not in V8e: a faster layout (dagre still takes 1 s on Qwik, off the main thread now); React
+  drawing a new layout (measured and reported separately).
 
 #### Verification
 
