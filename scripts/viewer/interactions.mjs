@@ -118,17 +118,21 @@ async function pass(index) {
   await page.goto(`${base}/index.html?graph=/graphs/${index}.json`);
   await page.waitForSelector('.react-flow__node-symbol', { timeout: 180_000 });
   await settle(0);
+  const took = Date.now() - started;
+  const painted = await page.evaluate(() => globalThis.performance.now());
+  // A long frame is reported after it ends: read them once the page is idle, or the last (and
+  // longest) frame of opening is missed at random (V8c: main's open read 135 or 454 ms).
+  await settle(600);
   rows.open = {
-    took: Date.now() - started,
-    ...(await page.evaluate(() => {
-      const frames = globalThis.__loaf.map(([, d]) => d);
+    took,
+    ...(await page.evaluate((painted) => {
+      const frames = globalThis.__loaf.filter(([t]) => t < painted).map(([, d]) => d);
       return {
         blocked: Math.round(frames.reduce((s, d) => s + Math.max(0, d - 50), 0)),
         worst: Math.round(Math.max(0, ...frames)),
       };
-    })),
+    }, painted)),
   };
-  await settle(600);
   const map = await mapState(page);
 
   await measure('pan, overview', drag);
