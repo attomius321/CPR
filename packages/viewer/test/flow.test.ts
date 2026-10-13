@@ -4,15 +4,18 @@ import { describe, expect, it } from 'vitest';
 import {
   decorate,
   decorateEdges,
+  edgesToDraw,
   label,
   layoutFlow,
   projectAt,
+  MOVING_EDGE_LIMIT,
   NEIGHBOUR_LIMIT,
   NODE_HEIGHT,
   summaryId,
   toFlow,
   tone,
   type FileFlowNode,
+  type FlowEdge,
   type FlowNode,
   type ProjectFlowNode,
   type SummaryFlowNode,
@@ -551,5 +554,110 @@ describe('decorate', () => {
       'src/math.ts#triple → src/math.ts#add',
     ]);
     expect(decorateEdges(edges, null).some((e) => e.className.includes('edge-active'))).toBe(false);
+  });
+});
+
+describe('layoutFlow: file edges for the map', () => {
+  const file = (path: string) => `group:file:${path}`;
+  const described = (edges: FlowEdge[]) =>
+    edges.map((e) => [`${e.source} → ${e.target}`, e.className, e.data.count]);
+
+  it('draws one edge per pair of linked file boxes, with how many it stands for', () => {
+    // x calls y from two symbols and z once; y calls back; a call inside x's file is no file edge.
+    const graph = synthetic(
+      ['src/x.ts#x1!', 'src/x.ts#x2!', 'src/y.ts#y1!', 'src/y.ts#y2!', 'src/z.ts#z!'],
+      [
+        'src/x.ts#x1>src/y.ts#y1',
+        'src/x.ts#x2>src/y.ts#y2',
+        'src/x.ts#x1>src/z.ts#z',
+        'src/y.ts#y1>src/x.ts#x2',
+        'src/x.ts#x1>src/x.ts#x2',
+      ],
+    );
+    // A pair's side is its edges' when they share one, else `both`.
+    const sides = ['both', 'head', 'base', 'head', 'both'] as const;
+    graph.edges = graph.edges.map((e, i) => ({ ...e, side: sides[i] ?? 'both' }));
+    const { fileEdges, edges } = layoutFlow(graph);
+    expect(described(fileEdges)).toEqual([
+      [`${file('src/x.ts')} → ${file('src/y.ts')}`, 'edge-files edge-files-2 edge-both', 2],
+      [`${file('src/x.ts')} → ${file('src/z.ts')}`, 'edge-files edge-files-1 edge-base', 1],
+      [`${file('src/y.ts')} → ${file('src/x.ts')}`, 'edge-files edge-files-1 edge-head', 1],
+    ]);
+    expect(new Set(fileEdges.map((e) => e.id)).size).toBe(3);
+    expect(fileEdges.every((e) => e.data.edge === null)).toBe(true);
+    // The symbols' edges are unchanged.
+    expect(edges).toHaveLength(5);
+  });
+
+  it('weighs a pair by its count', () => {
+    const weight = (count: number) => {
+      const users = Array.from({ length: count }, (_, i) => `src/u.ts#u${i}`);
+      const graph = synthetic(
+        ['src/hub.ts#hub!', ...users.map((u) => `${u}!`)],
+        users.map((u) => `${u}>src/hub.ts#hub`),
+      );
+      return layoutFlow(graph).fileEdges.map((e) => e.className.split(' ')[1]);
+    };
+    expect([1, 2, 3, 4, 9, 10, 40].map(weight)).toEqual(
+      [1, 2, 2, 3, 3, 4, 4].map((w) => [`edge-files-${w}`]),
+    );
+  });
+
+  it('leaves summaries in their box, and marks pairs between projects', () => {
+    // The hub's 30 users are one summary inside the hub's box: only a and b call across files.
+    expect(described(layoutFlow(hubGraph()).fileEdges)).toEqual([
+      [`${file('src/a.ts')} → ${file('src/small.ts')}`, 'edge-files edge-files-1 edge-both', 1],
+      [`${file('src/b.ts')} → ${file('src/small.ts')}`, 'edge-files edge-files-1 edge-both', 1],
+    ]);
+    expect(layoutFlow(golden('projects')).fileEdges.map((e) => e.className)).toEqual([
+      'edge-files edge-files-1 edge-both edge-cross',
+      'edge-files edge-files-1 edge-both edge-cross',
+    ]);
+  });
+});
+
+describe('edgesToDraw', () => {
+  // 21 × 20 calls between two files: more edges than a moving view draws.
+  const a = Array.from({ length: 21 }, (_, i) => `src/a.ts#a${i}!`);
+  const b = Array.from({ length: 20 }, (_, i) => `src/b.ts#b${i}!`);
+  const large = layoutFlow(
+    synthetic(
+      [...a, ...b],
+      a.flatMap((from) => b.map((to) => `${from.slice(0, -1)}>${to.slice(0, -1)}`)),
+    ),
+  );
+  const A0 = 'src/a.ts#a0';
+  const ids = (edges: FlowEdge[]) => edges.map((e) => e.id);
+  const active = (edges: FlowEdge[]) => edges.filter((e) => e.className.includes('edge-active'));
+
+  it('draws every symbol edge off the map, the selected ones standing out', () => {
+    expect(large.edges.length).toBeGreaterThan(MOVING_EDGE_LIMIT);
+    const still = edgesToDraw(large, { map: false, moving: false, selected: A0 });
+    expect(ids(still)).toEqual(ids(large.edges));
+    expect(active(still)).toHaveLength(20);
+    // A small graph keeps them all while moving too.
+    const small = layoutFlow(golden('callers'));
+    expect(ids(edgesToDraw(small, { map: false, moving: true, selected: null }))).toEqual(
+      ids(small.edges),
+    );
+  });
+
+  it("while a large graph's view moves, draws only the selected symbol's edges", () => {
+    const moving = edgesToDraw(large, { map: false, moving: true, selected: A0 });
+    expect(moving).toHaveLength(20);
+    expect(active(moving)).toHaveLength(20);
+    expect(edgesToDraw(large, { map: false, moving: true, selected: null })).toEqual([]);
+  });
+
+  it("on the map, draws file pairs and the selected symbol's own edges", () => {
+    const map = edgesToDraw(large, { map: true, moving: false, selected: A0 });
+    expect(map.filter((e) => e.className.includes('edge-files'))).toEqual(large.fileEdges);
+    expect(map).toHaveLength(large.fileEdges.length + 20);
+    expect(active(map)).toHaveLength(20);
+    expect(edgesToDraw(large, { map: true, moving: false, selected: null })).toEqual(
+      large.fileEdges,
+    );
+    // Few enough to keep while moving: the limit counts what would be drawn.
+    expect(edgesToDraw(large, { map: true, moving: true, selected: A0 })).toEqual(map);
   });
 });

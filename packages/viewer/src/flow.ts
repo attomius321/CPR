@@ -106,14 +106,19 @@ export interface FlowEdge {
   source: string;
   target: string;
   className: string;
-  /** The graph's edge; `null` for the edge between a summary and its symbol. */
-  data: { edge: GraphEdge | null };
+  /**
+   * The graph's edge; `null` for the edge between a summary and its symbol, and for a file
+   * pair's edge, which has the `count` of symbol edges it stands for.
+   */
+  data: { edge: GraphEdge | null; count?: number };
 }
 
 /** What is drawn and where; reviewing (selection, marks) never changes it. */
 export interface FlowLayout {
   nodes: FlowNode[];
   edges: FlowEdge[];
+  /** For the map: one edge per pair of linked file boxes, in place of their symbols' edges. */
+  fileEdges: FlowEdge[];
   /** Symbols drawn only as part of a collapsed summary: symbol → summary node. */
   hidden: Map<string, string>;
   /** Every summary's neighbours, shown or not: summary → symbols. */
@@ -145,6 +150,8 @@ export const NODE_HEIGHT = 58;
 /** More unchanged neighbours than this on one side of a changed symbol become one summary. */
 export const NEIGHBOUR_LIMIT = 8;
 export const SUMMARY_WIDTH = 190;
+/** Above this many edges drawn, a moving view draws only the selected symbol's (V8c). */
+export const MOVING_EDGE_LIMIT = 400;
 /** A summary that also says across how many projects. */
 const SUMMARY_WIDE = 250;
 const GROUP_PAD = { top: 30, side: 12, bottom: 12 };
@@ -494,6 +501,40 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
     return from !== undefined && to !== undefined && from !== to;
   };
 
+  // A file pair's edge is drawn as its symbols' edges are when they all share a side.
+  const pairs = new Map<
+    string,
+    { source: string; target: string; sides: Set<GraphEdge['side']>; count: number; cross: boolean }
+  >();
+  for (const edge of edges) {
+    const source = boxOf.get(edge.from);
+    const target = boxOf.get(edge.to);
+    if (!source || !target || source === target) continue;
+    const id = `files:${source} → ${target}`;
+    let pair = pairs.get(id);
+    if (!pair) pairs.set(id, (pair = { source, target, sides: new Set(), count: 0, cross: false }));
+    pair.sides.add(edge.side);
+    pair.count++;
+    pair.cross ||= crosses(edge);
+  }
+  const fileEdges: FlowEdge[] = [...pairs].map(([id, pair]) => {
+    const [side = 'both'] = pair.sides.size === 1 ? pair.sides : [];
+    return {
+      id,
+      source: pair.source,
+      target: pair.target,
+      className: [
+        'edge-files',
+        `edge-files-${pair.count >= 10 ? 4 : pair.count >= 4 ? 3 : pair.count >= 2 ? 2 : 1}`,
+        `edge-${side}`,
+        pair.cross ? 'edge-cross' : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+      data: { edge: null, count: pair.count },
+    };
+  });
+
   return {
     // Parents before their children, as React Flow requires.
     nodes: [...projectNodes, ...fileNodes, ...symbolNodes, ...summaryNodes],
@@ -514,6 +555,7 @@ export function layoutFlow(graph: Graph, options: LayoutOptions = {}): FlowLayou
       })),
       ...summaryEdges,
     ],
+    fileEdges,
     hidden,
     members: new Map(summaries.map((s) => [s.id, [...s.members]])),
   };
@@ -557,6 +599,22 @@ export function projectAt(
       point.y >= n.position.y &&
       point.y <= n.position.y + n.height,
   )?.id;
+}
+
+/**
+ * The edges React Flow is given, decorated. It checks every one on every frame of a move, and
+ * edges were up to half the map's elements (V8c): on the map, a file pair's edges are drawn as
+ * one; while the view of a large graph moves, only the selected symbol's are.
+ */
+export function edgesToDraw(
+  layout: Pick<FlowLayout, 'edges' | 'fileEdges'>,
+  view: { map: boolean; moving: boolean; selected: string | null },
+): FlowEdge[] {
+  const { selected } = view;
+  const own = (e: FlowEdge) => e.source === selected || e.target === selected;
+  const all = view.map ? [...layout.fileEdges, ...layout.edges.filter(own)] : layout.edges;
+  const drawn = view.moving && all.length > MOVING_EDGE_LIMIT ? layout.edges.filter(own) : all;
+  return decorateEdges(drawn, selected);
 }
 
 /** Edges of the selected symbol stand out, so its users and uses can be followed. */
