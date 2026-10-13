@@ -1457,3 +1457,22 @@ build, two alternating runs of 3 rounds: zoom out ×20 blocked 102–103 → 32�
 else moved beyond noise. Map screenshots before and after match. 408 unit tests, 35 e2e.
 
 Merged into main (2026-10-12).
+
+## V8b — Map clicks (2026-10-12, branch `milestone/v8b-map-clicks`)
+
+On the map, a click on a file box now always lands on the file: frames (names included) never take
+the pointer there, and a click on an empty part of a frame reaches the canvas, which zooms into the
+frame under it.
+
+**Learned**
+- The bug came from V7b's choice to draw frames above files on the map so their names stay
+  readable, and to let the name take clicks. Layering for reading and for clicking must be decided
+  separately: the frame can be on top and still give every click to what is below.
+- A test that measures where clicks land (`elementFromPoint` on each box's corners and middle)
+  found it on the four-file fixture; nothing checked it before.
+
+**Verification**: tests first — `projectAt` (inside a frame, between frames, without frames); e2e:
+every spot of every file box on the fixture's map reaches the file (4 boxes failed before), a
+click on a frame's empty edge zooms into it. Real maps, `main` → V8b: Bitwarden `737ee3f` 91 →
+100 %, `cbf86c2` 77 → 100 %, Qwik `f7ed58cfc` 88 → 100 % of file-box clicks reach the file;
+timings unchanged within noise. 409 unit tests, 35 e2e.

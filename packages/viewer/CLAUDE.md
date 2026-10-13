@@ -33,7 +33,8 @@ with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packag
 - Frames (V7b): only when the files drawn span two or more projects; otherwise the layout must
   equal one without `projects` (a unit test compares them). Nodes nest three deep — frame → file
   box → symbol — and parents come first in `nodes`. A frame takes the pointer only on its name
-  band, so clicks and drags inside it reach the canvas or the box below. Frames are placed in
+  band, and not at all on the map (V8b): there its name covers files, which must get their
+  clicks; a canvas click inside a frame zooms into it (`projectAt`). Frames are placed in
   rows in dagre's rank order (`packFrames`): dagre's own columns ran 3–8× wider than high. A
   package or the dynamic calls box is drawn in the frame it has most links with (it stays in no
   project: no `edge-cross`): beside the frames, a package with hundreds of users made long fans
