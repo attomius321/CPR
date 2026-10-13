@@ -1808,3 +1808,37 @@ changes with each update, and Node refuses to start a `.cmd` without a shell; th
 `code.cmd` to run what it runs. The user wants it on every platform: running VS Code from the
 server, where the files are, needs no case for WSL, SSH or containers, unlike a `vscode://` link
 from the browser.
+
+## V12 — Open in VS Code (2026-10-13, branch `milestone/v12-open-in-vscode`)
+
+"Open in VS Code" beside the panel's file line (or `o`), Ctrl/⌘+click on a row, or a click on a
+line number opens that line in VS Code: in the window that has the repository open, else a new
+one with it, at the line's place in the working copy. The server maps the line with `git diff
+<commit> -- <file>` and runs `code <repo root> --goto <file>:<line>:<col>`.
+
+**Learned**:
+- Git pathspecs are globs: `git diff <sha> -- 'src/[id].ts'` also matched `src/i.ts` and
+  `src/d.ts`, and their edits moved `[id].ts`'s lines. A path from a graph handed to git as a
+  pathspec needs `--literal-pathspecs` (Qwik routes use `[param]` folders).
+- A command that may start a long-lived process (VS Code) must be awaited on `exit`, not
+  `close`: the process it starts can inherit and hold the stderr pipe.
+- A button inside the file line changed the text two existing specs read (the path); beside it,
+  nothing else changed. Text assertions on a container break when controls are added to it.
+- `scripts/viewer/measure.mjs` serves graphs with `?graph=`, where no server can open files, so
+  the controls never show there; the cost was measured with a short script against a real `cpr
+  view` of each build instead.
+- Under `cpr view` the code rows had no click action (picking a comment line is `cpr pr`'s), so
+  Ctrl/⌘+click means the same in both, and a plain click keeps its meaning under `cpr pr`.
+
+**Verification**: tests first — `mapLine` (insertions, removals, replacements, the file's start
+and end), `workingLine` on temp repositories (uncommitted edits, a later commit, deleted and
+renamed files, a `[id]` path, a bad SHA), `findVsCode` with injected platforms (PATH, PATHEXT,
+VS Code 1.141's and the older `code.cmd`, an unknown `code.cmd`, the macOS bundle, `CPR_CODE`),
+the `cmd.exe` quoting and its refusals, `runVsCode` with a stand-in (arguments, failure,
+a command that keeps running, a missing command), `vsCodeOpener` on a temp repository, the
+endpoint (each side's commit, 404 and 502, refusals), the viewer's `src/open.ts`. E2E with a
+stand-in for VS Code (`CPR_CODE`): 5 under `cpr view`, 1 under `cpr pr`. 557 unit tests, 59 e2e.
+On this machine (WSL, VS Code 1.141 on Windows): a function at line 449 of `24396ab` opened at
+480 in the working copy, 105 ms, in the existing window. Selecting a 300-row symbol: 31–37 ms
+median on `main`, 33–34 ms with V12. Not verified: native Windows and macOS, a repository not
+open in VS Code, Remote SSH and dev containers.

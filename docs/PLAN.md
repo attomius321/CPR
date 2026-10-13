@@ -423,7 +423,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V9 ✅ | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Merged: the current branch's commits as `cpr view`'s first page (100 rows in under 1 s on Qwik), pick two (or one against its parent), the diff analyzed on demand in a child process (Bitwarden 42 s, within 10 % of `cpr diff`; the server answers in 2 ms meanwhile), the last 8 kept. See below. |
 | V10a ✅, V10b–c | A commit graph | The commits page was a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches were not listed (1,539 unmerged on Bitwarden). V10a merged: every branch's history as a graph, lines over 100 rows as arrows (Bitwarden 20 lanes, 142 drawn whole), loaded lazily (CPython's 150,182 rows: first rows in 120 ms once listed). V10b (branches panel) and V10c (picks across branches) planned. See below. |
 | V11 ✅ | Checkout from the commits page | The commits page showed every branch but checked nothing out, and did not notice a checkout made in a terminal (it showed the old HEAD until reloaded). Merged: a row menu (right-click, "⋯", c) checks out a branch, a remote branch as its tracking branch, a tag or the commit, after a confirmation; `git switch` never forced, git's refusals shown; the page lists anew after a checkout (109–115 ms on this repository) and on focus; HEAD stands out (solid "HEAD → main" badge, tinted row, ringed dot, a title chip). See below. |
-| V12 | Open in VS Code | The diff panel shows a symbol's lines, but going there in the editor is done by hand, and head's line number is not the working copy's: reviewing anything but the checked-out commit, 1–62 % of added lines sat at another line and up to 23 % were changed since (CPR, ky, zod). Planned: the server runs `code <repo root> --goto <file>:<line>` (the window with the project, else a new one with it), on Linux, macOS, Windows, WSL and remotes alike, with lines mapped to the working copy through git. See below. |
+| V12 | Open in VS Code | The diff panel shows a symbol's lines, but going there in the editor is done by hand, and head's line number is not the working copy's: reviewing anything but the checked-out commit, 1–62 % of added lines sat at another line and up to 23 % were changed since (CPR, ky, zod). Built, not merged: "Open in VS Code" (or `o`), Ctrl/⌘+click or a line number opens the line in the window that has the repository open (else a new one with it), at its place in the working copy; the server runs `code <repo root> --goto <file>:<line>:<col>`, found on any platform. 105 ms from the request to VS Code here. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -3147,7 +3147,8 @@ and macOS, a checkout through a hook that is slow (husky).
 
 ### V12 — Open in VS Code
 
-**Status:** planned (2026-10-13), on branch `milestone/v12-open-in-vscode`; not started.
+**Status:** built (2026-10-13), on branch `milestone/v12-open-in-vscode`; not merged. As built and
+results: "As built — V12" below.
 
 **Problem** (asked: "is there a way to jump to vs code at a specific selected line from the file
 from the diff?", then "i want it to work on any platform", and "i want it to open the project in
@@ -3319,6 +3320,39 @@ then V12b (viewer), on one branch.
 **Not in V12 (later)**: other editors (JetBrains, Sublime, Vim); a setting for the folder to open
 (a subfolder, a `.code-workspace`); opening the commit's own version when the working copy lacks
 the file (a read-only copy, or VS Code's git URIs); opening from graph nodes and the change list.
+
+#### As built — V12
+
+- **Which line** lives in core, not the CLI: `mapLine` and `workingLine` in
+  `src/git/working-line.ts`, next to `readFileAtRevision`. `git --literal-pathspecs` is needed:
+  without it git reads a path like Qwik's `src/routes/[id]/index.tsx` as a glob, and edits of
+  `i.ts` or `d.ts` moved its lines (a test maps line 3 to 1 without the flag).
+- **Running VS Code** (`packages/cli/src/editor.ts`): as planned, plus: the run ends at the
+  command's `exit`, not `close` (a VS Code it starts may keep the pipe open); off Windows it runs
+  detached, so Ctrl+C on `cpr` does not reach it; the command is found at the first open and
+  looked up again after a failure.
+- **Server**: `startViewServer`'s `open` option (`OpenRequest` → `OpenResult`); `cpr view` and
+  `cpr pr` pass `vsCodeOpener(repo, env)`. A graph without a commit for the side (two folders
+  compared) answers 404.
+- **Viewer**: `src/open.ts` (pure: what a button, a row or a line number opens, the note; and the
+  request). The button sits beside the file line, not in it: inside, its text became part of the
+  path two specs read (projects, Angular 11). The button and `o` open the line picked for a
+  comment when there is one (`cpr pr`), else the symbol's first line. A line number opens its own
+  side (unchanged rows have both); Ctrl/⌘+click opens the head line when the row has one, else
+  the base line. Under `cpr view` rows had no click action before (comments are `cpr pr`'s), so
+  Ctrl/⌘+click means the same in both. A note stays 8 s; an error stays until the next open.
+
+**Results (V12)**: 557 unit tests (35 new: core 9, CLI 19, viewer 7), 59 e2e (6 new: the button,
+Ctrl/⌘+click and a removed line's number, `o` after the working copy moved the line, a file the
+working copy lacks, no controls under `?graph=`; under `cpr pr`, a click still picks the comment
+line while Ctrl/⌘+click and line numbers open, and `o` opens the picked line). On this machine
+(WSL, VS Code 1.141 on Windows), `cpr view 24396ab~1 24396ab`: `parseCheckoutTarget`, at line 449
+in that commit, opened at 480, its place in the working copy, 105 ms from the request to the
+answer, in the window that had CPR open (`code --status`: one window before and after). Selecting
+`startViewServer` (300 rows, 559 line numbers as buttons): median 31–37 ms on `main`, 33–34 ms
+with V12 (8 rounds per run, two runs each, back to back); the panel has 1,720 elements instead of
+1,717. Not verified: native Windows and macOS, a repository not open in VS Code (a new window),
+Remote SSH and dev containers.
 
 ### Phase 1 milestones
 
