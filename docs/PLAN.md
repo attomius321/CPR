@@ -424,7 +424,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V10a ✅, V10b–c | A commit graph | The commits page was a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches were not listed (1,539 unmerged on Bitwarden). V10a merged: every branch's history as a graph, lines over 100 rows as arrows (Bitwarden 20 lanes, 142 drawn whole), loaded lazily (CPython's 150,182 rows: first rows in 120 ms once listed). V10b (branches panel) and V10c (picks across branches) planned. See below. |
 | V11 ✅ | Checkout from the commits page | The commits page showed every branch but checked nothing out, and did not notice a checkout made in a terminal (it showed the old HEAD until reloaded). Merged: a row menu (right-click, "⋯", c) checks out a branch, a remote branch as its tracking branch, a tag or the commit, after a confirmation; `git switch` never forced, git's refusals shown; the page lists anew after a checkout (109–115 ms on this repository) and on focus; HEAD stands out (solid "HEAD → main" badge, tinted row, ringed dot, a title chip). See below. |
 | V12 ✅ | Open in VS Code | The diff panel shows a symbol's lines, but going there in the editor is done by hand, and head's line number is not the working copy's: reviewing anything but the checked-out commit, 1–62 % of added lines sat at another line and up to 23 % were changed since (CPR, ky, zod). Merged: "Open in VS Code" (or `o`), Ctrl/⌘+click or a line number opens the line in the window that has the repository open (else a new one with it), at its place in the working copy; the server runs `code <repo root> --goto <file>:<line>:<col>`, found on any platform. 105 ms from the request to VS Code here. See below. |
-| V13 | Compare mode | The commits page still opens as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Planned: browse by default (a click selects the row), and a "Compare mode" toggle (or `x`) for picking, left with Escape; see below. |
+| V13 | Compare mode | The commits page still opens as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Built (not merged): browse by default (a click selects the row; 25 rows in view instead of 23 at 1440 × 900), and a "Compare mode" toggle (or `x`) for picking, left with Escape; first rows as fast as `main`. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -3362,7 +3362,8 @@ Remote SSH and dev containers.
 
 ### V13 — Compare mode
 
-**Status:** planned (2026-10-13), on branch `milestone/v13-compare-mode`; not started.
+**Status:** built (2026-10-13), on branch `milestone/v13-compare-mode`; not merged. As built and
+results: "As built — V13" below.
 
 **Problem** (asked: "i would like the default mode to not be 'Pick two to compare them, or one
 against its parent' -- there should be an active mode 'Compare mode' that trigger that state on
@@ -3490,6 +3491,37 @@ README.
 **Not in V13 (later)**: a one-step compare from browse mode (double-click a row: the commit
 against its parent); what the selection could show beside the list (a commit's message and
 files, V10's "later"); the mode kept in the URL; Shift+click to pick a range.
+
+#### As built — V13
+
+- As planned, in `src/CommitsPage.tsx` and `src/styles.css`; `src/commits.ts`, the server and
+  core unchanged. `comparing` lives in `CommitsPage`; `History` leaves the mode through
+  `stopComparing` (picks and the bar's error cleared). The row's click handler is `onClick`
+  (was `onPick`): it moves the cursor, and picks only when comparing.
+- The toggle shows its key: "Compare mode `x`", and "`Esc`" when on (a `kbd` hidden from the
+  accessible name, so the button is "Compare mode" in both states).
+- Errors: listing and menu errors under the title (`.commits-error`, `role="alert"`); "Could not
+  compare" stays in the bar (`compareError`), the only place it can come from.
+- HEAD's row selected: the selection's accent tint replaces HEAD's green tint; HEAD stays clear
+  from its solid badge, bold subject and ringed dot (screenshots, light and dark).
+- Clear (in the bar) still clears the picks and stays in compare mode.
+
+**Results (V13)**. Tests first: against `main`'s build the changed `commits.spec.ts` failed 9 of
+11 (the toggle and the error line missing; the two tests that do not pick passed). Now 557 unit
+tests (unchanged) and 64 e2e (5 new: browse mode, the toggle with Escape and a menu taking
+Escape first, `x` turning the mode on, a scope switch, an error under the title; 3 existing tests
+turn compare mode on before picking). Real repositories (Chromium, 1440 × 900 unless said;
+`main`'s build from a worktree, run back to back):
+
+| | Qwik `main` / V13 | Bitwarden `main` / V13 |
+|---|---|---|
+| Rows wholly in view, 1440 × 900 | 23 / 25 | 23 / 25 |
+| Rows wholly in view, 1280 × 720 | 17 / 19 | 17 / 19 |
+| First rows drawn, warm server, plain fonts (5 rounds, alternating): median (range) | 114 (112–117) / 114 (107–127) ms | 146 (142–148) / 139 (114–144) ms |
+| Page errors (both modes, light and dark) | — / 0 | — / 0 |
+
+Not verified: Firefox and Safari; a browser that restores the page from its back-forward cache
+(Chromium here lists it anew on Back, so compare mode does not come back).
 
 ### Phase 1 milestones
 

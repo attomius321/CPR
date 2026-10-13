@@ -1767,6 +1767,60 @@ kbd {
   margin: 8px 0;
 }
 
+/* ---- compare mode (V13) ------------------------------------------------------------- */
+
+/* Outlined in the accent colour, filled when on: a control meant to be found (V12). */
+.compare-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 6px 1px 10px;
+  border: 1px solid color-mix(in srgb, var(--moved) 45%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--moved) 9%, var(--panel));
+  color: var(--moved);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.compare-mode:hover {
+  border-color: var(--moved);
+  background: color-mix(in srgb, var(--moved) 16%, var(--panel));
+}
+
+.compare-mode:focus-visible {
+  outline: 2px solid var(--moved);
+  outline-offset: 1px;
+}
+
+.compare-mode[aria-pressed='true'] {
+  border-color: var(--moved);
+  background: var(--moved);
+  color: var(--panel);
+}
+
+.compare-mode kbd {
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: normal;
+}
+
+/* Out of compare mode a click selects: the cursor row is the selection, and shows it. */
+.commits:not(.comparing) .commit.cursor {
+  background: color-mix(in srgb, var(--moved) 12%, transparent);
+  box-shadow: inset 3px 0 0 var(--moved);
+}
+
+.commits-error {
+  margin: -4px 0 12px;
+}
+
 /* ---- checkout (V11) ------------------------------------------------------------------ */
 
 .commit-menu {
