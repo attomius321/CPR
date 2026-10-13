@@ -2,6 +2,7 @@ import {
   Background,
   Controls,
   MiniMap,
+  Panel,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
@@ -29,7 +30,6 @@ import { FileNode } from './FileNode.js';
 import {
   decorate,
   edgesToDraw,
-  layoutFlow,
   projectAt,
   type FlowEdge,
   type FlowNode,
@@ -55,6 +55,7 @@ import { Sidebar, type SidebarTab } from './Sidebar.js';
 import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
 import { SummaryNode } from './SummaryNode.js';
 import { SymbolNode } from './SymbolNode.js';
+import { useLayout } from './useLayout.js';
 
 const nodeTypes = {
   symbol: SymbolNode,
@@ -321,18 +322,12 @@ export function App() {
     if (focus && selected) return neighbourhood(graph, selected);
     return project === null ? undefined : projectNeighbourhood(graph, changes, project);
   }, [graph, focus, selected, project, changes]);
-  const layout = useMemo(
-    () =>
-      graph
-        ? layoutFlow(graph, {
-            typeReferences,
-            context,
-            expanded,
-            ...(focusSet ? { focus: focusSet } : {}),
-          })
-        : undefined,
-    [graph, typeReferences, context, expanded, focusSet],
+  const view = useMemo(
+    () => ({ typeReferences, context, expanded, ...(focusSet ? { focus: focusSet } : {}) }),
+    [typeReferences, context, expanded, focusSet],
   );
+  // Made in a worker: the last layout stays drawn until the one for this view arrives.
+  const { layout, pending } = useLayout(graph, view);
   const flowNodes = useMemo(
     () =>
       layout ? decorate(layout.nodes, { reviewed, sinceOnly: onlySince, selected }) : undefined,
@@ -421,7 +416,7 @@ export function App() {
         {state.status === 'empty' && (
           <DropZone error={state.error} onFile={(file) => void load(file)} />
         )}
-        {layout && flowNodes && state.status === 'ready' && (
+        {state.status === 'ready' && (
           <ReactFlowProvider>
             <Sidebar
               graph={state.graph}
@@ -459,19 +454,27 @@ export function App() {
               onResize={(width) => resize('sidebar', width)}
               onDrag={setResizing}
             />
-            <Canvas
-              nodes={flowNodes}
-              edges={layout.edges}
-              fileEdges={layout.fileEdges}
-              layoutNodes={layout.nodes}
-              selected={selected}
-              focus={focus}
-              scope={project}
-              resizing={resizing}
-              onSelect={setSelected}
-              onToggleSummary={toggleSummary}
-              reveal={reveal}
-            />
+            {layout && flowNodes ? (
+              <Canvas
+                nodes={flowNodes}
+                edges={layout.edges}
+                fileEdges={layout.fileEdges}
+                layoutNodes={layout.nodes}
+                pending={pending}
+                selected={selected}
+                focus={focus}
+                scope={project}
+                resizing={resizing}
+                onSelect={setSelected}
+                onToggleSummary={toggleSummary}
+                reveal={reveal}
+              />
+            ) : (
+              // The first layout: the change list and findings are there meanwhile.
+              <p className="hint canvas-waiting layout-pending" role="status">
+                Laying out…
+              </p>
+            )}
             {selected && (
               <Resizer
                 label="Resize detail panel"
@@ -522,6 +525,8 @@ interface CanvasProps {
   fileEdges: FlowEdge[];
   /** The undecorated layout: it changes only when what is drawn changes. */
   layoutNodes: FlowNode[];
+  /** A layout for a newer view is being made: this one stays until it arrives. */
+  pending: boolean;
   selected: string | null;
   /** In focus mode the whole (small) neighbourhood is fitted; otherwise the selection is centered. */
   focus: boolean;
@@ -554,6 +559,7 @@ function Canvas({
   edges,
   fileEdges,
   layoutNodes,
+  pending,
   selected,
   focus,
   scope,
@@ -627,7 +633,8 @@ function Canvas({
   // The project last fitted as a whole: walking its symbols then centres each, as without one.
   const fitted = useRef(scope);
   useEffect(() => {
-    if (resizing) return;
+    // Fit once the layout asked for is drawn, not the one it replaces: the view moves once.
+    if (resizing || pending) return;
     // Wait a frame so React Flow has measured nodes that just appeared.
     const frame = requestAnimationFrame(() => {
       const rescoped = fitted.current !== scope;
@@ -638,7 +645,7 @@ function Canvas({
       else if (selected) void fitView({ nodes: [{ id: selected }], duration: 300, maxZoom: 1.1 });
     });
     return () => cancelAnimationFrame(frame);
-  }, [selected, focus, scope, layoutNodes, size, reveal, resizing, fitView]);
+  }, [selected, focus, scope, layoutNodes, size, reveal, resizing, pending, fitView]);
 
   return (
     <ReactFlow<Node, Edge>
@@ -663,6 +670,11 @@ function Canvas({
       <Background gap={24} />
       <Controls showInteractive={false} />
       <MiniMap pannable zoomable nodeClassName={minimapClass} />
+      {pending && (
+        <Panel position="top-center" className="layout-pending" role="status">
+          Laying out…
+        </Panel>
+      )}
     </ReactFlow>
   );
 }
