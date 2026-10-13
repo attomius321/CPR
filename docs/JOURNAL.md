@@ -1632,7 +1632,9 @@ the pre-existing hazard of a checkout interrupted by Ctrl+C (see above).
 ## V10 spike — what a commit graph needs (2026-10-13, branch `milestone/v10-commit-graph`)
 
 Measured before planning lanes for the commits page, with a prototype of the lane walk over
-`git log` on this repository and fresh blobless clones of ky, zod, vite, Qwik and Bitwarden.
+`git log` on this repository and fresh blobless clones of ky, zod, vite, Qwik and Bitwarden. The
+plan changed twice as the user said what they wanted (every branch; then "exactly like git
+extension, or gitty up", with a branches panel); each change was measured first.
 Repositories that merge with merge commits list side-branch commits among the branch's own (CPR
 66 and Qwik 57 of the first 100 rows); squash-merging ones are one line, and their divergence is
 in branches the page does not list (Bitwarden: 1,539 remote branches not merged into HEAD).
@@ -1649,11 +1651,24 @@ in branches the page does not list (Bitwarden: 1,539 remote branches not merged 
   fresh clone has none (`git gc` writes it): 100 rows on Bitwarden take 111–123 ms (with every
   remote branch 206–237 ms) against 14–16 ms unordered; with the file, 1–25 ms. Within budget
   either way, so CPR need not write one (it would change the user's repository).
-- Every remote branch is mostly other people's work: on Bitwarden 93 of the first 100 rows, 12–28
-  lanes. Hence local branches and their upstreams by default. The clones each have one local
-  branch, so that scope cannot be measured on them; the e2e fixture must hold feature branches.
-- The lane walk is cheap enough to redo in the browser on every page: 0.5 ms for 1,000 rows,
-  7–8 ms for 10,000 (Bitwarden with remotes reaches 53 lanes there).
+- Every remote branch is mostly other people's work: on Bitwarden 93 of the first 100 rows. The
+  first plan listed local branches and their upstreams by default; the user asked for every
+  branch, as Git Extensions and Gittyup show it, with a branches panel on the left.
+- Branch tips sit deep in graph order: Bitwarden's median remote tip is row 9,165 (deepest
+  37,633; 95 of 1,591 in the first 1,000 rows), Qwik's 3,695. A panel click cannot page its way
+  there 100 rows at a time.
+- The whole history costs little more than its first page: without a commit-graph file the
+  ordered walk is paid before the first row anyway. Bitwarden, every branch and tag: 233 ms for
+  200 rows, 305 ms for all 41,358 with their details (7.5 MB); Qwik 63 and 79 ms. The lane walk
+  over all of Bitwarden takes 24 ms. So: the first rows, then the rest in one request, rows
+  virtualized.
+- Lane counts on partial lists mislead: lines to parents not yet listed stay open to the bottom.
+  Bitwarden showed 49 lanes in its first 10,000 rows but needs 17 over the whole history; Qwik
+  needs 36 (p95 35). Cutting lines over 100 rows into arrows, as gitk does, takes partial lists
+  to 5–19 lanes, but the tools asked for draw every line whole; not planned.
+- 410 of Bitwarden's 638 tags point at commits no branch reaches (1,497 rows of deleted release
+  lines; vite 401 rows). A panel listing tags must lead somewhere, so tags are tips too; they
+  add no lanes (17 and 5, with or without).
 - Unrelated: `scripts/regression/setup.mjs r1` fails on a fresh machine. Zod's pinned commits
   (`f448c44d` and five more) are no longer reachable from its branches, and git cannot fetch a
   commit by a short SHA. The set needs reachable (or full, fetchable) SHAs; not fixed here.
