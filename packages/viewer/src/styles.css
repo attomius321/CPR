@@ -654,6 +654,29 @@ code {
   stroke-opacity: 0.6;
 }
 
+/* On the map, one edge per linked file pair (V8c), heavier the more symbol edges it stands for:
+   1, 2–3, 4–9, 10 or more. */
+.react-flow__edge.edge-files-1 path.react-flow__edge-path {
+  stroke-width: 3;
+}
+
+.react-flow__edge.edge-files-2 path.react-flow__edge-path {
+  stroke-width: 5;
+}
+
+.react-flow__edge.edge-files-3 path.react-flow__edge-path {
+  stroke-width: 8;
+}
+
+.react-flow__edge.edge-files-4 path.react-flow__edge-path {
+  stroke-width: 12;
+}
+
+/* Where a file pair's edge starts and ends: never seen, never in the pointer's way. */
+.file-handle {
+  visibility: hidden;
+}
+
 /* Projects read first, files second: the frame is drawn over its files, transparent, its name
    about twice a file name's size, up to the frame's width. Nothing of it takes the pointer: a
    name covers files, and they must get their clicks (V8b); a click on an empty part of a frame

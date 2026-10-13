@@ -26,7 +26,7 @@ import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
 import {
   decorate,
-  decorateEdges,
+  edgesToDraw,
   layoutFlow,
   projectAt,
   type FlowEdge,
@@ -337,11 +337,6 @@ export function App() {
     [layout, reviewed, onlySince, selected],
   );
 
-  const flowEdges = useMemo(
-    () => (layout ? decorateEdges(layout.edges, selected) : undefined),
-    [layout, selected],
-  );
-
   // Selecting a symbol that sits inside a collapsed summary (from the detail panel) shows it.
   useEffect(() => {
     const summary = selected ? layout?.hidden.get(selected) : undefined;
@@ -464,7 +459,8 @@ export function App() {
             />
             <Canvas
               nodes={flowNodes}
-              edges={flowEdges ?? layout.edges}
+              edges={layout.edges}
+              fileEdges={layout.fileEdges}
               layoutNodes={layout.nodes}
               selected={selected}
               focus={focus}
@@ -519,7 +515,9 @@ export function App() {
 interface CanvasProps {
   /** Decorated: reviewed marks and the selection. */
   nodes: FlowNode[];
+  /** The layout's: the canvas picks and decorates those it draws (`edgesToDraw`). */
   edges: FlowEdge[];
+  fileEdges: FlowEdge[];
   /** The undecorated layout: it changes only when what is drawn changes. */
   layoutNodes: FlowNode[];
   selected: string | null;
@@ -535,10 +533,16 @@ interface CanvasProps {
   reveal: string[] | null;
 }
 
+/** How long after React Flow's end of a move the edges come back, unless it moves again. */
+const MOVE_END_DELAY = 100;
+/** Nothing uses edge clicks or hovers: no invisible wide path beside each edge. */
+const EDGE_OPTIONS = { interactionWidth: 0 };
+
 /** The graph; brings the selected symbol into view when it, or the layout, changes. */
 function Canvas({
   nodes,
   edges,
+  fileEdges,
   layoutNodes,
   selected,
   focus,
@@ -566,6 +570,25 @@ function Canvas({
     };
   }, [store]);
 
+  // While the view moves, a large graph draws fewer edges. A move starts with the view's first
+  // change (React Flow's start comes with any press, a click included) and ends a little after
+  // React Flow says so: an animation interrupted by the next one ends after the next has started.
+  const [moving, setMoving] = useState(false);
+  const stop = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const move = useCallback(() => {
+    clearTimeout(stop.current);
+    setMoving(true);
+  }, []);
+  const moved = useCallback(() => {
+    clearTimeout(stop.current);
+    stop.current = setTimeout(() => setMoving(false), MOVE_END_DELAY);
+  }, []);
+  useEffect(() => () => clearTimeout(stop.current), []);
+  const drawn = useMemo(
+    () => edgesToDraw({ edges, fileEdges }, { map, moving, selected }),
+    [edges, fileEdges, map, moving, selected],
+  );
+
   // The project last fitted as a whole: walking its symbols then centres each, as without one.
   const fitted = useRef(scope);
   useEffect(() => {
@@ -585,8 +608,11 @@ function Canvas({
   return (
     <ReactFlow<Node, Edge>
       nodes={nodes}
-      edges={edges}
+      edges={drawn}
       nodeTypes={nodeTypes}
+      defaultEdgeOptions={EDGE_OPTIONS}
+      onMove={move}
+      onMoveEnd={moved}
       fitView
       onlyRenderVisibleElements
       {...(map ? { className: 'map' } : {})}
