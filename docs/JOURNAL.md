@@ -1555,3 +1555,14 @@ no long frame while the worker lays out. 423 unit tests, 40 e2e.
 Merged into main (2026-10-13). V8 closed with it: V8a, V8b, V8c and V8e merged, V8d deferred
 (V8c already met its targets). Left for later: drawing a large new layout in one frame (up to
 693 ms), a faster layout than dagre for very large clusters, the map on a canvas.
+
+## V9 spike — what picking two commits costs (2026-10-13, branch `milestone/v9-commit-picker`)
+
+Measured on the regression clones before planning a commits page for `cpr view`. Listing 100
+commits with `git log` takes 9–66 ms, even on Bitwarden's 23,236 (628 ms once, with a cold disk).
+Analyzing one commit against its parent takes 0.6 s (vite, no TypeScript changed) to 59 s
+(Bitwarden with the Angular plugin; 46 s on a second run, with the worktrees made); 20 commits
+5.6–87 s. Two consequences for the plan: the page must show progress and keep results, and the
+analysis cannot run in the server's process — ts-morph is synchronous, so the server would not
+answer for up to 90 s. A child process per analysis is safe to stop: worktree locks hold the
+owner's pid and stale ones are recovered.

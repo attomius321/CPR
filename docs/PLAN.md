@@ -420,6 +420,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V7 ✅ | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
 | E1 (measured) | Decisions and their ripples | Could mechanical parts of a change (renames and their call sites, moves, a new argument everywhere, the same edit repeated) be verified instead of read? Measured on 165 changes: 20 % of changed symbols but 5.4 % of diff lines (2.8 % without one large rename); 0 false in 40 audited. Not the disruptive lever; grouping repeated edits in the change list is a candidate. See below. |
 | V8 ✅ | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Closed: V8a–V8c and V8e merged (on Qwik: zoom out 466 → 15 ms blocked, opening 2,568 → 620 ms, map clicks reaching the file 87 → 100 %); V8d deferred; see below. |
+| V9 | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Planned: the current branch's commits as `cpr view`'s first page, pick two (or one against its parent), the diff analyzed on demand in a child process (3–90 s measured), kept while the server runs. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -2444,6 +2445,131 @@ within noise; no page errors; 409 unit tests, 35 e2e.
 ("F-lite"); a faster layout for very large clusters (dagre's 1.3 s on Qwik moves off the main
 thread in V8e, but stays 1.3 s); drawing a large new layout in parts rather than one frame
 (V8e: up to 693 ms); V8d (lighter selection), deferred.
+
+### V9 — Pick two commits
+
+**Status:** planned (2026-10-13), on branch `milestone/v9-commit-picker`; not started.
+
+**Problem** (asked: "I would also like to start making a git user interface to manage the
+repository … from where you can select 2 commits and go to this diff page … This should be the
+first page when you type "cpr view" command. A list of commits, select 2 commits, view diff
+between them."). Today `cpr view` without arguments is a usage error ("missing <base>"): the
+revisions come from the command line, the server starts with one graph analyzed before it
+listens, and another pair means stopping it and running again. Measured on the regression
+clones (4 cores, `cpr diff`, this branch's build):
+
+| Repo | Commits | 100 commits listed (`git log`) | One commit (`HEAD~1..HEAD`), first / second run | 20 commits |
+|---|---|---|---|---|
+| ky | 549 | 9 ms | 6.6 / 2.8 s | 5.6 s |
+| zod | 3,247 | 66 ms | 10.4 / 6.2 s | 6.6 s |
+| vite | 9,734 | 14 ms | 0.7 / 0.6 s (no TypeScript changed) | 9.5 s |
+| Qwik (`--plugin qwik`) | 10,736 | 8 ms (628 ms with a cold disk) | 24.3 / 13.6 s | 23.3 s |
+| Bitwarden (`--plugin angular`) | 23,236 | 23 ms | 59.1 / 46.5 s | 86.6 s |
+
+So listing commits is instant, but a pair takes 1–90 s: the page must say what it is doing and
+keep what it made. And the analysis is synchronous (ts-morph): run in the server's process, it
+would stop the server answering for up to 90 s.
+
+**Goal**: `cpr view` with no arguments opens a page listing the current branch's commits; the
+reviewer picks two (or one commit, against its parent) and gets the same diff page as
+`cpr view <base> <head>`, with a way back to the list. `cpr view <base> [head]` and `cpr pr` work
+as today; `cpr diff`'s results do not change.
+
+#### Commit list (V9a)
+
+- Core: `listCommits(repo, { skip, limit })` in `packages/core/src/git/log.ts`: `git log HEAD`
+  with fields separated by `%x1f` and records by `%x00` (subjects may hold anything), parsed by a
+  pure `parseLog`: sha, parents, author, date, subject, refs (`%D`: branches, tags, HEAD).
+  Newest first, 100 a page.
+- Server: `GET /api/commits?skip=<n>` → `{ head, commits, more }`; `/api/capabilities` says
+  `commits: true` when the server has a repository (`cpr view`, not `cpr pr`).
+- Viewer: at `/`, when the server lists commits, a commits page instead of the graph: rows with
+  the short sha, subject, author, relative date and branch/tag badges, "Load more" at the end.
+  A click picks a commit; a second click picks the other end; the lower in the list (older) is
+  the base. A bar shows "a1b2c3d → e4f5a6b · 12 commits" and Compare. Each row has "This commit"
+  (against its first parent). Keys as in the change list: j/k move, x picks, Enter compares.
+  The rules (order, label, one commit) are pure, in `src/commits.ts`.
+- CLI: `cpr view [<base> [head]]`; without arguments nothing is analyzed before serving, so the
+  URL prints at once.
+
+#### Diffs on demand (V9b)
+
+- **Where a diff lives**: `/diff/<base>..<head>/` (full SHAs). The viewer calls its API with
+  relative URLs (`./api/graph`, `./api/source`, `./api/state/<name>`) and loads its files from
+  `./assets/`, so under that path every call reaches that diff: the server routes
+  `/diff/<pair>/api/…` to it and serves the viewer's files under any `/diff/<pair>/` prefix. A
+  diff page can be reloaded or bookmarked while the server runs; reviewed marks and drafts are
+  kept per pair, as today (`stateDir` keys by base..head).
+- **Starting one**: `POST /api/diffs { base, head }`, a write like the others (same-origin JSON
+  with the custom header). Both must be full SHAs of commits (`git cat-file -e <sha>^{commit}`,
+  through `execFile`, no shell), else 400. The answer is `{ url }`; the commits page goes there.
+- **What is compared**: a picked pair directly, without the merge-base (`--no-merge-base`): the
+  diff between the two commits. `cpr view <base> [head]` keeps comparing with the merge-base, as
+  `cpr diff` and pull requests do.
+- **Where it runs**: a child process of the CLI per analysis (`cpr diff <base> <head>
+  --no-merge-base --json` with the server's `--plugin`, `--project` and `--depth`), so the server
+  keeps answering, the analysis's memory is freed when it ends, and it can be stopped. Its phases
+  (checkout, load base, load head, extract, references, findings) come over IPC from an `onPhase`
+  callback added to `analyzeGit`; nothing else in core changes. One runs at a time, in the order
+  asked.
+- **While it runs**: `GET /diff/<pair>/api/graph` answers 202 `{ phase, elapsedMs, queued }`;
+  the page shows "Analyzing a1b2c3d → e4f5a6b — loading head · 12 s" with Stop, and asks again
+  every 500 ms; then 200 with the graph, as today. A failure shows the CLI's message and the way
+  back. Leaving the page does not stop it: the result is kept.
+- **Kept**: the last 8 graphs, in memory, while the server runs; asking for one again is instant.
+- `cpr view <base> [head]` analyzes as today (before serving, in its own process), registers that
+  diff and opens `/diff/<from>..<head>/`; its commits page is at `/`. `cpr pr` is unchanged: one
+  graph at `/`. A diff page served by `cpr view` has "← Commits" in its header.
+
+#### Verification
+
+1. **Unit** (red first): `parseLog` (merges with two parents, refs, a subject holding the
+   separators, the root commit); `src/commits.ts` (base and head by list position, one commit
+   against its parent, the label); server: `/api/commits` pages, `POST /api/diffs` refusals (not a
+   SHA, not a commit, another site), a diff's 202 → 200 with a fake runner, sources and state per
+   diff, Stop; `onPhase` called in order with the same analysis.
+2. **Nothing else changes**: goldens and the `r1` regression set identical; every existing e2e
+   spec passes (`cpr view HEAD~1 HEAD` now opens `/diff/<pair>/`; `cpr pr` as before).
+3. **E2E**: a fixture repo of 5 commits served by `cpr view` without arguments: the list newest
+   first; pick two → "Analyzing…" → the graph; "← Commits"; "This commit"; reload a diff URL.
+4. **Real repos**: `cpr view` in the Bitwarden and Qwik clones: the commits page in under 1 s; a
+   pair's time against `cpr diff` (within 10 % + the child's start); the server answering status
+   requests during an analysis in under 100 ms.
+5. **Cost**: `cpr view <base>` as fast as today.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| A pair takes up to 90 s on large repos (Bitwarden) | Progress by phase and elapsed time; Stop; results kept; one run at a time. |
+| A child process per diff adds a start (Node, ts-morph) | Measured against today; small next to 3–90 s. |
+| Input from the page reaching git | Only full SHAs verified as commits; `execFile`; writes need the same-origin rules. |
+| Paths under `/diff/<pair>/` break the viewer's files | The viewer is built with relative URLs (`base: './'`); e2e reloads a diff URL. |
+| A stopped run leaves worktree locks | Locks hold the owner's pid; stale ones are recovered (`worktree.ts`). |
+
+**Order**: V9a (the list), then V9b (diffs), on one branch: the list alone compares nothing.
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V9a | Commit list | `listCommits`, `/api/commits`, the commits page, `cpr view` without arguments. |
+| V9b | Diffs on demand | `/diff/<pair>/`, `POST /api/diffs`, child-process runs with phases, the progress page with Stop, kept graphs, "← Commits". |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 42 | What `cpr view` opens without arguments | **The current branch's commits: pick two, or one against its parent** | It was a usage error; 100 commits list in 9–66 ms, even with 23,236. |
+| 43 | How a picked pair is compared | **Directly, without the merge-base; the older is the base** | "The diff between them"; the merge-base suits a branch against its target (`cpr view <base>`, pull requests). |
+| 44 | Where a diff lives | **`/diff/<base>..<head>/`, the viewer's relative API under it** | One server, many diffs; reload and back work; review state is already per pair. |
+| 45 | Where an analysis runs | **A child process of the CLI, one at a time, with Stop** | The analysis is synchronous: in the server it would block it for up to 90 s; a process frees its memory and can be stopped. |
+| 46 | What is kept | **The last 8 graphs, in memory, while the server runs** | A pair takes 3–90 s; going back must be instant. On disk later. |
+
+**Not in V9 (later)**: uncommitted changes as a head (analysis reads commits only); other
+branches and tags (a ref picker), search through history; branch lanes; a commit's details
+(message body, files); graphs kept on disk across runs; managing the repository (checkout,
+branches, commits) — the larger git interface this starts.
 
 ### Phase 1 milestones
 
