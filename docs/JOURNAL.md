@@ -1846,3 +1846,7 @@ On this machine (WSL, VS Code 1.141 on Windows): a function at line 449 of `2439
 480 in the working copy, 105 ms, in the existing window. Selecting a 300-row symbol: 31–37 ms
 median on `main`, 33–34 ms with V12. Not verified: native Windows and macOS, a repository not
 open in VS Code, Remote SSH and dev containers.
+
+Merged into main (2026-10-13), with the button made visible and "This commit" removed from the
+commits rows at the user's request. `main` verified after the merge: 557 unit tests, build, 59
+e2e.
