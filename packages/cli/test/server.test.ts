@@ -449,7 +449,11 @@ describe('cpr view: commits and diffs', () => {
     await settle();
     const failed = await get(`/diff/${B}..${C}/api/graph`);
     expect(failed.status).toBe(502);
-    expect(JSON.parse(failed.body)).toEqual({ error: "cpr: unknown revision 'x'" });
+    expect(JSON.parse(failed.body)).toEqual({
+      base: B,
+      head: C,
+      error: "cpr: unknown revision 'x'",
+    });
     await post('/api/diffs', { base: B, head: C });
     expect(runs).toHaveLength(3);
   });
@@ -464,7 +468,10 @@ describe('cpr view: commits and diffs', () => {
   });
 
   it('answers 404 for a pair never asked for', async () => {
-    expect((await get(`/diff/${C}..${A}/api/graph`)).status).toBe(404);
+    expect(await get(`/diff/${C}..${A}/api/graph`)).toMatchObject({
+      status: 404,
+      body: JSON.stringify({ base: C, head: A, error: 'not analyzed' }),
+    });
     expect((await get(`/diff/${C}..${A}/`)).body).toBe('<html>viewer</html>');
   });
 });

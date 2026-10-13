@@ -206,8 +206,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       return serveSite(req, res, url, path, diffSite(repo, status.graph), true);
     }
     if (path === '/api/graph' && req.method === 'GET') {
-      if (!status) return json(res, 404, { error: 'not analyzed' });
-      if (status.status === 'failed') return json(res, 502, { error: status.error });
+      if (!status) return json(res, 404, { ...pair, error: 'not analyzed' });
+      if (status.status === 'failed') return json(res, 502, { ...pair, error: status.error });
       return json(res, 202, { ...pair, ...status });
     }
     return serveSite(req, res, url, path, undefined, true);

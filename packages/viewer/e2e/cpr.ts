@@ -95,6 +95,42 @@ export async function serveFixture(name: string, args: readonly string[] = []): 
   };
 }
 
+export interface RunningCommits extends Running {
+  /** The commits, oldest first. */
+  shas: string[];
+}
+
+/**
+ * Five commits on `main` — the `callers` fixture's base and head, then three functions added
+ * one by one to `src/math.ts` — served by `cpr view` without revisions: the commits page.
+ */
+export async function serveCommits(): Promise<RunningCommits> {
+  const { repo } = fixtureRepo('callers');
+  git(repo, 'checkout', '-q', '-B', 'main');
+  let math = readFileSync(join(repo, 'src/math.ts'), 'utf8');
+  for (const [name, body] of [
+    ['square', 'a * a'],
+    ['cube', 'square(a) * a'],
+    ['half', 'a / 2'],
+  ]) {
+    math += `\nexport function ${name}(a: number): number {\n  return ${body};\n}\n`;
+    writeFileSync(join(repo, 'src/math.ts'), math);
+    git(repo, 'commit', '-q', '-am', `Add ${name}`);
+  }
+  const shas = git(repo, 'rev-list', '--reverse', 'HEAD').split('\n');
+  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  const { url, child } = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
+  return {
+    url,
+    shas,
+    stop() {
+      child.kill('SIGINT');
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(cache, { recursive: true, force: true });
+    },
+  };
+}
+
 export interface RunningPullRequest extends Running {
   /** What the mock GitHub API received. */
   requests: Recorded[];
