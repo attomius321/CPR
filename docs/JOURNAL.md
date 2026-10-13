@@ -1628,3 +1628,32 @@ Merged into main (2026-10-13), after two fixes found at merge time: macOS CI (a 
 like `commits.ts` but for case) and a flaky e2e (a key listener attached after the paint). Left
 for later: a ref picker and history search, uncommitted changes as a head, graphs kept on disk;
 the pre-existing hazard of a checkout interrupted by Ctrl+C (see above).
+
+## V10 spike — what a commit graph needs (2026-10-13, branch `milestone/v10-commit-graph`)
+
+Measured before planning lanes for the commits page, with a prototype of the lane walk over
+`git log` on this repository and fresh blobless clones of ky, zod, vite, Qwik and Bitwarden.
+Repositories that merge with merge commits list side-branch commits among the branch's own (CPR
+66 and Qwik 57 of the first 100 rows); squash-merging ones are one line, and their divergence is
+in branches the page does not list (Bitwarden: 1,539 remote branches not merged into HEAD).
+
+**Learned**:
+- `git log`'s default order (commit date) is not a graph order: with skewed clocks a parent can be
+  listed above its child. Of the two that are, `--topo-order` keeps a branch's commits together
+  and needs fewer lanes than `--date-order`: Qwik's own branch 7–11 against 13–15, zod with
+  remotes 4 against 5–12. It is also what `git log --graph` draws.
+- Without a rule for the current branch, a newer tip of another branch takes the first lane and
+  the current branch wanders. Keeping lane 0 for HEAD's first-parent line fixes it, and the
+  prototype's rows then matched `git log --graph` on this repository.
+- An ordered log walks the history first unless the repository has a commit-graph file, and a
+  fresh clone has none (`git gc` writes it): 100 rows on Bitwarden take 111–123 ms (with every
+  remote branch 206–237 ms) against 14–16 ms unordered; with the file, 1–25 ms. Within budget
+  either way, so CPR need not write one (it would change the user's repository).
+- Every remote branch is mostly other people's work: on Bitwarden 93 of the first 100 rows, 12–28
+  lanes. Hence local branches and their upstreams by default. The clones each have one local
+  branch, so that scope cannot be measured on them; the e2e fixture must hold feature branches.
+- The lane walk is cheap enough to redo in the browser on every page: 0.5 ms for 1,000 rows,
+  7–8 ms for 10,000 (Bitwarden with remotes reaches 53 lanes there).
+- Unrelated: `scripts/regression/setup.mjs r1` fails on a fresh machine. Zod's pinned commits
+  (`f448c44d` and five more) are no longer reachable from its branches, and git cannot fetch a
+  commit by a short SHA. The set needs reachable (or full, fetchable) SHAs; not fixed here.
