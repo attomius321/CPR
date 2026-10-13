@@ -419,7 +419,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | Q1 ✅, Q2 ✅ | Qwik as the `qwik` plugin | Qwik is TSX and mostly reads right, but what its router calls by name (`onGet`, `head`, loaders, actions) shows as false orphans, an optional prop added to a `component$` is a warning, a required one added to a named props type is missed, and components used only from `.mdx` routes look unused. Planned; see below. |
 | V7 ✅ | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
 | E1 (measured) | Decisions and their ripples | Could mechanical parts of a change (renames and their call sites, moves, a new argument everywhere, the same edit repeated) be verified instead of read? Measured on 165 changes: 20 % of changed symbols but 5.4 % of diff lines (2.8 % without one large rename); 0 false in 40 audited. Not the disruptive lever; grouping repeated edits in the change list is a candidate. See below. |
-| V8 | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Planned V8a–V8e; see below. |
+| V8 | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. V8a–V8b merged, V8c built (zoom out on Qwik 466 → 15 ms blocked); V8d–V8e planned; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -2168,7 +2168,8 @@ whether the old spelling of a rename is left anywhere (an incomplete rename woul
 
 **Status:** planned (2026-10-12); V8a merged into main (2026-10-12, from branch
 `milestone/v8a-zoom-labels`); V8b merged into main (2026-10-13, from branch
-`milestone/v8b-map-clicks`); V8c–V8e not started.
+`milestone/v8b-map-clicks`); V8c built (2026-10-13, branch `milestone/v8c-edges`), not merged;
+V8d–V8e not started.
 
 **Problem** (asked: "it works really flaky and laggy. What are our options to improve the client
 side viewer?"). Measured with `scripts/viewer/interactions.mjs` (new: every interaction a
@@ -2283,7 +2284,7 @@ after its checks and the user's agreement.
 |---|---|---|
 | V8a ✅ | Map labels | Labels scaled by a transform, the zoom value in a stylesheet for them only, updated only on the map. |
 | V8b ✅ | Map clicks | Frames never take the pointer on the map; a click on an empty frame area zooms into it. |
-| V8c | Edges | Only the selection's edges while moving; one edge per linked file pair on the map. |
+| V8c ✅ | Edges | Only the selection's edges while moving; one edge per linked file pair on the map. |
 | V8d | Lighter selection | Memoized change-list rows; the view moves only for a symbol out of view, without stepped animation on large graphs. |
 | V8e | Layout in a worker | `layoutFlow` off the main thread, numbered requests, recent layouts kept. |
 
@@ -2293,7 +2294,7 @@ after its checks and the user's agreement.
 |---|---|---|---|
 | 37 | How map labels follow the zoom | **A transform from fixed sizes; the zoom value in a stylesheet rule for the labels only, updated only on the map** | The root variable restyled every element on every frame; measured −64 % zoom blocking, near the frozen bound. |
 | 38 | What takes clicks on the map | **File boxes; frames never** (an empty frame area zooms in through the canvas) | Frame names caught 9–23 % of file-box clicks. |
-| 39 | Which edges are drawn | **While moving: the selection's; on the map: one per linked file pair** | Per-frame visibility checks over every edge; edges are up to half the map's elements. |
+| 39 | Which edges are drawn | **While moving (over 400 edges drawn): the selection's; on the map: one per linked file pair** | Per-frame visibility checks over every edge; edges are up to half the map's elements. Smaller changes keep every edge (V8c). |
 | 40 | When a selection moves the view | **Only when the symbol is out of view; no stepped animation on large graphs** | Qwik's 300 ms glide ran in 4 frames: a jumping canvas. |
 | 41 | Where layout runs | **A Web Worker; the last layout drawn until the next arrives** | 1.9 s of frozen UI on Qwik; a toggle froze it for 769 ms. |
 
@@ -2323,6 +2324,56 @@ unchanged (V8b). No page errors; 408 unit tests, 35 e2e.
 **Results (V8b)**: file-box clicks reaching the file on the map, `main` → V8b: Bitwarden
 `737ee3f` 91 → 100 %, `cbf86c2` 77 → 100 %, Qwik `f7ed58cfc` 88 → 100 %; timings unchanged
 within noise; no page errors; 409 unit tests, 35 e2e.
+
+#### As built — V8c
+
+- As planned, with three changes:
+  - A moving view drops edges only when more than 400 would be drawn (`MOVING_EDGE_LIMIT`):
+    smaller changes keep every edge while moving, so nothing pops in (the risk above). Bitwarden
+    `737ee3f` (354 edges) never drops them; `cbf86c2` (683) does off the map, not on it (290
+    file pairs).
+  - A move starts with the view's first change (`onMove`), not with React Flow's start, which
+    comes with every press: a click blinked every edge. It ends 100 ms after React Flow's end
+    unless the view moves again: an animation interrupted by the next one (j pressed during a
+    glide) reports its end after the next has started.
+  - Edges have no invisible click path (`interactionWidth: 0`; nothing uses edge clicks or
+    hovers): 3 elements per edge instead of 4.
+- File boxes have two unseen React Flow handles: React Flow draws no edge between nodes without
+  them. A file pair's edge is `edge-files` with a weight (`edge-files-1`…`4` for 1, 2–3, 4–9, 10+
+  symbol edges; 3–12 px), its edges' side when they all share one, and `edge-cross` when one of
+  them crosses projects.
+- Found while measuring: the canvas's click handlers and the minimap's class function were new
+  on every render, and React Flow hands them to every node and minimap node. With two more canvas
+  renders per move, thousands of nodes re-rendered for an edge change. Now stable.
+- Found while measuring: `interactions.mjs` read open's long frames as soon as the first symbol
+  was painted, but a frame is reported after it ends: the last and longest one was missed at
+  random (main's open on `737ee3f`: 135 ms in one run, 454 ms in another). It now reads them
+  once the page is idle. Open numbers above (V8 table, V8a, V8b) are undercounted.
+
+**Results (V8c)**, `interactions.mjs` against `main`, back to back, median of 3, blocked ms
+(main → V8c):
+
+| Interaction | Bitwarden `737ee3f` | Bitwarden `cbf86c2` | Qwik `f7ed58cfc` |
+|---|---|---|---|
+| Zoom out ×20 | 10 → 0 | 100 → 23 | 466 → 15 |
+| Next change (j) ×8 | 0 → 3 | 98 → 0 | 862 → 78 |
+| Select a change | 19 → 5 | 78 → 19 | 576 → 115 |
+| Pan, overview | 0 → 0 | 0 → 0 | 228 → 11 |
+| Mark reviewed (r) | 0 → 0 | 0 → 0 | 42 → 25 |
+| Open | 443 → 478 | 755 → 942 | 2,222 → 2,348 |
+| Context on | 133 → 201 | 301 → 253 | 1,149 → 1,279 |
+| Map: edge elements | 1,417 → 406 | 2,733 → 871 | 6,681 → 1,378 |
+| Map: page elements | 4,022 → 3,131 | 7,132 → 5,512 | 12,789 → 7,700 |
+
+- Targets met: Qwik zoom out 15 ms blocked (≤ 150), its map's edge elements 1,378 (≤ 1,500).
+  Worst frames on Qwik: zoom out 129 → 61 ms, j 191 → 109 ms, select 320 → 101 ms. On both
+  Bitwarden changes no frame over 70 ms while zooming, panning, pressing j or selecting.
+- Open and context: not changed by V8c, within noise. Open alternated build by build, 5 rounds
+  each on `cbf86c2`, read 806 → 980 ms in one run and 929 → 868 ms in the next; a build without
+  the file boxes' handles 864 and 887 ms. They are V8e's.
+- Screenshots of the map and of a selection on the map (`cbf86c2`, Qwik), main and V8c: the
+  same picture, with fewer, heavier lines.
+- No page errors; 415 unit tests, 38 e2e.
 
 **Not in V8 (later)**: drawing the map on a canvas (option F) or as one element per file
 ("F-lite"); a faster layout for very large clusters (dagre's 1.3 s on Qwik moves off the main

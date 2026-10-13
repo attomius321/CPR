@@ -40,6 +40,13 @@ with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packag
   project: no `edge-cross`): beside the frames, a package with hundreds of users made long fans
   of edges, and React Flow draws every edge whose bounding box meets the view (Qwik panned at
   3 fps). Measure edges in view, not only canvas size, when changing placement.
+- Edges (V8c): React Flow checks every edge it is given on every frame of a move. `edgesToDraw`
+  decides what it gets: on the map one edge per pair of linked file boxes (`fileEdges`; file
+  boxes carry unseen handles for them), while the view of a large graph moves (over
+  `MOVING_EDGE_LIMIT` edges) only the selected symbol's. A move starts at `onMove`, not
+  `onMoveStart` (which comes with every click).
+- Anything `<ReactFlow>` hands to every node (`onNodeClick`, the minimap's `nodeClassName`) keeps
+  its identity across renders (`useCallback`, module-level): a new function re-renders every node.
 - Import only **types** from `@cpr/core`; anything else must work in a browser.
 - Graphs from older CPR versions must still open: treat new graph fields as optional.
 

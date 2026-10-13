@@ -54,6 +54,9 @@ For a custom view (a zoom level, a selection), write a short Playwright script o
 
 ## Checks that are easy to forget
 
+- A regression seen in one run: confirm it another way (open each build in turn, 5 rounds) before
+  fixing it. Performance entries (long frames) arrive after the frame ends: read them once the
+  page is idle (V8c: a 3× "regression" on open was the script reading too early).
 - Selecting or marking a symbol must not move the canvas (layout is not decorated state).
 - Large graphs: the map mode below 45 % zoom stays readable; summaries open and close in place.
 - Older graph JSON (no new fields) still opens.

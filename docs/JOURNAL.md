@@ -1478,3 +1478,35 @@ click on a frame's empty edge zooms into it. Real maps, `main` → V8b: Bitwarde
 timings unchanged within noise. 409 unit tests, 35 e2e.
 
 Merged into main (2026-10-13).
+
+## V8c — Edges (2026-10-13, branch `milestone/v8c-edges`)
+
+On the map, one edge per pair of linked file boxes stands for their symbols' edges, heavier the
+more it stands for; while the view of a change with more than 400 edges moves, only the selected
+symbol's edges are drawn. Zooming out on Qwik `f7ed58cfc` blocked 466 ms, now 15 ms.
+
+**Learned**
+- React Flow's `onMoveStart` comes with every press (d3-zoom starts a gesture on mousedown), so
+  a click looked like a move and blinked every edge. The view's first real change is `onMove`.
+- An animation interrupted by the next one (j during a glide) reports its end after the next
+  has started (xyflow defers `onMoveEnd` with a timer): the end of a move must wait a little and
+  be cancelled by the next `onMove`.
+- React Flow hands `onNodeClick` to every node and the minimap's `nodeClassName` to every minimap
+  node. Inline functions re-render thousands of nodes on each canvas render; harmless while the
+  canvas rendered on selection only, costly once it renders at each move's start and end.
+- React Flow draws no edge to a node without handles: file boxes needed unseen ones. They cost
+  nothing measurable at open (alternating benchmarks, within ±15 % noise).
+- A long animation frame is reported after it ends. `interactions.mjs` read open's frames too
+  early and missed the last, longest one at random: it showed V8c's open 3× worse than main
+  (Qwik 835 → 2,304 ms) when both were the same (2,222 vs 2,348 once fixed). Read performance
+  entries only once the page is idle, and check a regression with a second method (here, opening
+  each build in turn, 5 rounds) before fixing it.
+
+**Verification**: tests first — `fileEdges` (pairs, sides, weights, summaries, projects) and
+`edgesToDraw` (off the map, moving, the map, the limit counting what would be drawn); e2e on a
+generated change with 421 edges: two file edges on the map, only the selection's edges during a
+held drag and all back after, a press without movement keeps them all, a small graph unchanged.
+Real graphs, `main` → V8c, blocked ms: zoom out ×20 Qwik 466 → 15, Bitwarden `cbf86c2` 100 → 23;
+j ×8 Qwik 862 → 78, `cbf86c2` 98 → 0; select Qwik 576 → 115; map edge elements Qwik 6,681 →
+1,378, `cbf86c2` 2,733 → 871; open and context unchanged within noise. Screenshots: the same map
+with fewer, heavier lines. 415 unit tests, 38 e2e.

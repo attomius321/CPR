@@ -34,8 +34,10 @@ graph file from `cpr diff --out` (drag and drop).
 
 Large changes stay navigable: a changed symbol with more than 8 unchanged users (or uses) shows
 them as one node — "390 users in 220 files" — that opens on click; zoomed out, the canvas is a
-map of file names you click to zoom into; and j/k, the change list or a finding take you to a
-symbol without anything moving. To find one in hundreds, search the change list (press `/`): it
+map of file names you click to zoom into, with one edge per pair of linked files, heavier the more
+symbol edges it stands for; and j/k, the change list or a finding take you to a symbol without
+anything moving. While the view of a change with more than 400 edges moves, only the selected
+symbol's edges are drawn; the rest come back when it stops. To find one in hundreds, search the change list (press `/`): it
 keeps the symbols whose file path and name hold every word you type, Enter opens the first, and
 j/k walk only the matches.
 
