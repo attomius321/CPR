@@ -102,7 +102,8 @@ export interface RunningCommits extends Running {
 
 /**
  * Five commits on `main` — the `callers` fixture's base and head, then three functions added
- * one by one to `src/math.ts` — served by `cpr view` without revisions: the commits page.
+ * one by one to `src/math.ts` ("Add half, and a subject …" the last) — served by `cpr view`
+ * without revisions: the commits page.
  */
 export async function serveCommits(): Promise<RunningCommits> {
   const { repo } = fixtureRepo('callers');
@@ -115,7 +116,9 @@ export async function serveCommits(): Promise<RunningCommits> {
   ]) {
     math += `\nexport function ${name}(a: number): number {\n  return ${body};\n}\n`;
     writeFileSync(join(repo, 'src/math.ts'), math);
-    git(repo, 'commit', '-q', '-am', `Add ${name}`);
+    // One subject far longer than the page is wide, as real histories have.
+    const more = name === 'half' ? `, ${'and a subject that runs on '.repeat(12)}` : '';
+    git(repo, 'commit', '-q', '-am', `Add ${name}${more}`);
   }
   const shas = git(repo, 'rev-list', '--reverse', 'HEAD').split('\n');
   const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));

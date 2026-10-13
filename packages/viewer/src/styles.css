@@ -1565,6 +1565,8 @@ kbd {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* Long subjects are cut in their row; without this they widen the page's grid column. */
+  contain: inline-size;
 }
 
 .commits-scroll {

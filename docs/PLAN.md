@@ -420,7 +420,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V7 ✅ | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
 | E1 (measured) | Decisions and their ripples | Could mechanical parts of a change (renames and their call sites, moves, a new argument everywhere, the same edit repeated) be verified instead of read? Measured on 165 changes: 20 % of changed symbols but 5.4 % of diff lines (2.8 % without one large rename); 0 false in 40 audited. Not the disruptive lever; grouping repeated edits in the change list is a candidate. See below. |
 | V8 ✅ | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Closed: V8a–V8c and V8e merged (on Qwik: zoom out 466 → 15 ms blocked, opening 2,568 → 620 ms, map clicks reaching the file 87 → 100 %); V8d deferred; see below. |
-| V9 | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Planned: the current branch's commits as `cpr view`'s first page, pick two (or one against its parent), the diff analyzed on demand in a child process (3–90 s measured), kept while the server runs. See below. |
+| V9 | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Built (not merged): the current branch's commits as `cpr view`'s first page (100 rows in under 1 s on Qwik), pick two (or one against its parent), the diff analyzed on demand in a child process (Bitwarden 42 s, within 10 % of `cpr diff`; the server answers in 2 ms meanwhile), the last 8 kept. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -2610,18 +2610,33 @@ as today; `cpr diff`'s results do not change.
 
 | | Qwik (`--plugin qwik`) | Bitwarden (`--plugin angular`) |
 |---|---|---|
-| `cpr view` prints its URL | 0.58–0.64 s | BW_URL |
-| `/api/commits` (100 commits) | 33–104 ms | BW_COMMITS |
-| A pair picked → its graph served | 13.8–14.3 s | BW_PAIR |
-| `cpr diff` of the same pair | 14.2–15.1 s | BW_DIFF |
-| Status requests during the analysis: median (max) | 1.8 ms (17 ms) | BW_LAT |
-| The pair asked again (kept) | 1.4–3 ms | BW_KEPT |
+| `cpr view` prints its URL | 0.58–0.64 s | 0.58 s |
+| `/api/commits` (100 commits) | 33–104 ms | 42–166 ms |
+| A pair picked → its graph served | 13.8–14.3 s | 41.6–43.2 s |
+| `cpr diff` of the same pair | 14.2–15.1 s | 39.8–40.2 s |
+| Status requests during the analysis: median (max) | 1.8 ms (17 ms) | 1.8 ms (20 ms) |
+| The pair asked again (kept) | 1.4–3 ms | 6–10 ms (206 kB) |
 
-- Phases on Qwik (one run): starting 0.7 s (the child's Node and ts-morph), checkout 0.1 s, load
-  base 6.8 s, load head 6.4 s, then extract, references and findings in 0.3 s together.
+- A pair through the server against `cpr diff`: Qwik −3 to −5 %, Bitwarden +3.5 to +8.4 % —
+  within the target (10 % plus the child's start, 0.7 s). The server answered 135–421 status
+  requests per run, none over 20 ms.
+- Phases (polled every 100 ms): the child starts in 0.7 s (Node, ts-morph), checks out in 0.1 s;
+  Qwik loads base 6.8 s and head 6.4 s, then extract, references and findings take 0.3 s
+  together; Bitwarden loads base 18.6–20.4 s and head 15.2–16.5 s, then extract 0.1 s,
+  references 4.9–6.0 s, findings 0.7 s.
+- In Chromium on Qwik: the URL printed after 0.60 s, 100 rows drawn 0.24–0.26 s after opening
+  (target: under 1 s); two rows four apart labelled "5 commits" (`git rev-list --count`: 5);
+  no page errors. Long subjects first widened the page past the window (the brand, dates and
+  Compare off screen): `.commits` now has `contain: inline-size`, and the e2e fixture holds a
+  long subject. A picked pair's header showed its SHAs twice in full; a ref equal to its SHA is
+  now shown short.
+- `cpr view HEAD~1 HEAD --plugin qwik` to its URL, 3 runs alternating: `main` 13.1–14.5 s, V9
+  13.2–14.5 s.
 - `r1`: 29 comparisons identical (859 edges, no finding changed), time 0.97 of `main`'s.
 - Tests: 464 unit (31 new), 45 e2e (5 new; the 40 others unchanged, `cpr view HEAD~1 HEAD` now
   opening `/diff/<pair>/`).
+- Not verified: Windows and macOS (spawning the CLI, signals); a server restarted while a diff
+  page polls (the page then starts the analysis again, by design, but no test restarts it).
 
 **Not in V9 (later)**: uncommitted changes as a head (analysis reads commits only); other
 branches and tags (a ref picker), search through history; branch lanes; a commit's details

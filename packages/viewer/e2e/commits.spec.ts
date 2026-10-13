@@ -20,9 +20,10 @@ test.beforeEach(({ page }) => {
 test.afterEach(() => expect(errors).toEqual([]));
 
 const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
+/** The row whose subject is, or starts with, `subject`. */
 const row = (page: Page, subject: string) =>
   page.locator('.commit', {
-    has: page.locator('.commit-subject').getByText(subject, { exact: true }),
+    has: page.locator('.commit-subject').getByText(new RegExp(`^${subject}(,|$)`)),
   });
 const symbol = (page: Page, name: string) =>
   page.locator('.react-flow__node-symbol', {
@@ -33,7 +34,7 @@ test('lists the branch, newest first', async ({ page }) => {
   await page.goto(cpr.url);
   await expect(page.locator('.commits-title')).toContainText('Commits on main');
   await expect(page.locator('.commit-subject')).toHaveText([
-    'Add half',
+    /^Add half, and a subject that runs on/,
     'Add cube',
     'Add square',
     'head',
@@ -41,6 +42,12 @@ test('lists the branch, newest first', async ({ page }) => {
   ]);
   await expect(row(page, 'Add half').locator('.ref')).toHaveText(['HEAD', 'main']);
   await expect(row(page, 'base').getByRole('button', { name: 'This commit' })).toBeDisabled();
+  // A long subject is cut, not the page: no sideways scroll, every row's end and Compare in view.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await expect(row(page, 'Add half').locator('.commit-date')).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'Compare' })).toBeInViewport();
 });
 
 test('picks two commits, analyzes them, and goes back', async ({ page }) => {
@@ -106,5 +113,6 @@ test('analyzes a diff URL opened anew', async ({ page }) => {
   const [base, head] = cpr.shas;
   await page.goto(`${cpr.url}diff/${base}..${head}/`);
   await expect(symbol(page, 'triple')).toBeVisible();
-  await expect(page.locator('.summary')).toContainText(short(head));
+  // A picked pair has no names: short SHAs, not the full ones twice.
+  await expect(page.locator('.summary .revisions')).toHaveText(`${short(base)} → ${short(head)}`);
 });

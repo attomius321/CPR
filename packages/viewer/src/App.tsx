@@ -747,7 +747,9 @@ async function fetchCapabilities(): Promise<Capabilities | null> {
 
 function Summary({ graph }: { graph: Graph }) {
   const { base, head } = graph.revisions;
-  const side = (ref: string, sha: string | null) => (sha ? `${ref} (${sha.slice(0, 7)})` : ref);
+  // A pair picked from the commits page is named by its SHAs: once, short.
+  const side = (ref: string, sha: string | null) =>
+    !sha ? ref : ref === sha ? sha.slice(0, 7) : `${ref} (${sha.slice(0, 7)})`;
   const { added, removed, modified } = graph.stats.symbols;
   const severity = (s: string) => graph.findings.filter((f) => f.severity === s).length;
   const request = graph.changeRequest;
