@@ -203,6 +203,22 @@ code {
   color: var(--muted);
 }
 
+/* Before the first layout arrives (V8e): where the canvas will be. */
+.canvas > .canvas-waiting {
+  flex: 1 0 240px;
+  margin: 0;
+}
+
+/* A newer layout is being made off the main thread; the one drawn stays usable. */
+.react-flow__panel.layout-pending {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .dropzone {
   max-width: 560px;
   margin: 12vh auto;

@@ -1,6 +1,7 @@
-// How the viewer feels on real graphs: for each interaction a reviewer does, how long it took,
-// how long the main thread was blocked (long animation frames over 50 ms) and the worst frame;
-// on the map, how many file-box click spots reach the box, and what its page elements are.
+// How the viewer feels on real graphs: for each interaction a reviewer does, how long it took
+// (for a new layout, until it is drawn), how long the main thread was blocked (long animation
+// frames over 50 ms) and the worst frame; on the map, how many file-box click spots reach the
+// box, and what its page elements are.
 // Usage: node scripts/viewer/interactions.mjs <graph.json>… [--dist <viewer dist>] [--rounds 3]
 //          [--json <out.json>]
 // Build first (pnpm build). Rounds are run back to back; the median is reported (timings vary
@@ -81,6 +82,8 @@ async function pass(index) {
       rows[name] = { error: String(error.message).split('\n')[0] };
       return;
     }
+    // A layout made off the main thread (V8e) is drawn when it arrives: wait for it.
+    await page.waitForSelector('.layout-pending', { state: 'detached', timeout: 60_000 });
     const took = Date.now() - started;
     await settle(wait);
     rows[name] = {
@@ -117,6 +120,7 @@ async function pass(index) {
   const started = Date.now();
   await page.goto(`${base}/index.html?graph=/graphs/${index}.json`);
   await page.waitForSelector('.react-flow__node-symbol', { timeout: 180_000 });
+  await page.waitForSelector('.layout-pending', { state: 'detached', timeout: 180_000 });
   await settle(0);
   const took = Date.now() - started;
   const painted = await page.evaluate(() => globalThis.performance.now());
@@ -136,6 +140,20 @@ async function pass(index) {
   const map = await mapState(page);
 
   await measure('pan, overview', drag);
+  // The largest group drawn, clicked where it is: on the map a file box lies over it.
+  const largest = await page.evaluate(() => {
+    let best = { id: '', count: 0 };
+    for (const node of globalThis.document.querySelectorAll('.react-flow__node-summary')) {
+      const count = Number.parseInt(node.textContent ?? '', 10);
+      if (count > best.count) best = { id: node.dataset.id ?? '', count };
+    }
+    return best.id;
+  });
+  if (largest) {
+    const group = page.locator(`.react-flow__node[data-id="${largest}"]`);
+    await measure('open a group', () => group.dispatchEvent('click'), 800);
+    await measure('close it', () => group.dispatchEvent('click'), 800);
+  }
   await page.getByRole('tab', { name: /Changes/ }).click();
   await measure('select a change', async () => {
     await page
