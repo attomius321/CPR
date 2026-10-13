@@ -422,6 +422,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V8 ✅ | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Closed: V8a–V8c and V8e merged (on Qwik: zoom out 466 → 15 ms blocked, opening 2,568 → 620 ms, map clicks reaching the file 87 → 100 %); V8d deferred; see below. |
 | V9 ✅ | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Merged: the current branch's commits as `cpr view`'s first page (100 rows in under 1 s on Qwik), pick two (or one against its parent), the diff analyzed on demand in a child process (Bitwarden 42 s, within 10 % of `cpr diff`; the server answers in 2 ms meanwhile), the last 8 kept. See below. |
 | V10a ✅, V10b–c | A commit graph | The commits page was a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches were not listed (1,539 unmerged on Bitwarden). V10a merged: every branch's history as a graph, lines over 100 rows as arrows (Bitwarden 20 lanes, 142 drawn whole), loaded lazily (CPython's 150,182 rows: first rows in 120 ms once listed). V10b (branches panel) and V10c (picks across branches) planned. See below. |
+| V11 | Checkout from the commits page | The commits page shows every branch but checks nothing out, and does not notice a checkout made in a terminal (on this repository it showed the old HEAD until reloaded). Planned: a menu per row to check out a branch, a remote branch (as its tracking branch), a tag or a commit, after a confirmation; `git switch` never forced (git refuses what would lose work, measured); the page lists anew on focus; "Show only this branch's commits" as a checkbox. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -2960,6 +2961,152 @@ a direct diff of diverged picks; a lane layout that moves lines left as lanes fr
   (3 new: every branch and "This branch"; 450 commits: rows near the view, details on scroll,
   arrows). Not verified: Windows and macOS browsers; Firefox's and Safari's element height caps
   (Firefox about 17.9 million px: 559,000 rows).
+
+### V11 — Checkout from the commits page
+
+**Status:** planned (2026-10-13), on branch `milestone/v11-checkout`; not started.
+
+**Problem** (asked: "let's make a mini git extension out of this … checkout to branch/commit/
+tag as a first feature, also, a checkbox with Show only this branch commits"). The commits page
+shows every branch (V10a) but changes nothing: to check out what it shows, the reviewer goes to
+a terminal. And the page does not notice. On a clone of this repository, after `git switch
+--detach HEAD~5` in a terminal, the open page still showed HEAD at `78ca95a`, before and after
+scrolling to the end: its 181 rows were all in the first block, so it asked for nothing and met
+no 409. Only a reload showed `41e6cc1`. On a longer history it notices only when it asks for a
+new block ("The branches moved…").
+
+What git does, measured on that clone (713 files):
+
+| Case | `git switch` |
+|---|---|
+| To a commit 60 back (647 files differ) / the first commit (104) / back to the tip (713) | 18 / 6 / 54 ms |
+| A local change to a file the target does not change | carried along (` M .editorconfig` after) |
+| A local change to a file the target changes | refused, nothing changed: "Your local changes to the following files would be overwritten by checkout: README.md" |
+| A branch checked out in another worktree | refused: "'other-branch' is already used by worktree at …" |
+| `git switch <name>` for a remote-only branch | creates `<name>` tracking `origin/<name>` |
+| Counting local changes (`git status --porcelain=v2 --untracked-files=no`) | 10 ms (713 files), 3 ms on ky (115) and zod (742) |
+
+So git already refuses whatever would lose work, and says why; a checkout costs tens of
+milliseconds here (git's own cost, growing with the files that differ).
+
+**Goal**: from the commits page, check out a local branch, a remote branch (as its local
+tracking branch), a tag or a commit (detached HEAD), after a confirmation that says what will
+happen; the page then shows the new HEAD (lane 0, cursor, badges). A checkout made elsewhere
+shows when the page gets focus. "Show only this branch's commits" is a checkbox. `cpr diff`,
+`cpr pr` and diff pages do not change.
+
+#### What can be checked out (core)
+
+- `checkout(repo, target)` in `src/git/checkout.ts`, the target one of:
+  - `{ kind: 'branch', name }` → `git switch --no-guess <name>`;
+  - `{ kind: 'remote', name: 'origin/x' }` → the local branch `x`: absent, `git switch --create
+    x --track origin/x`; present and tracking `origin/x`, `git switch x`; present and tracking
+    something else, refused ("a local branch x exists and tracks origin/y");
+  - `{ kind: 'tag', name }` and `{ kind: 'commit', sha }` → `git switch --detach <commit>`.
+
+  Never `--force`, `--discard-changes` or `--merge`: what git refuses is refused, with its
+  message.
+- Names only as `listRefs` lists them (exact match; a name starting with `-` refused), SHAs only
+  full and `isCommit`: nothing else from the request reaches git, as with V9's diffs.
+- Refused while a merge, rebase, cherry-pick, revert or bisect is in progress (their files in the
+  worktree's own git dir, `git rev-parse --git-dir`).
+- HEAD is read again after git returns: a failing post-checkout hook makes git exit non-zero
+  after HEAD moved, and the answer says "checked out; the post-checkout hook failed: …".
+- `workingState(repo)`: `{ changed, operation }` — tracked files with local changes, and the
+  operation in progress or null.
+- `listRefs(repo)` (from V10b's plan, brought forward): local branches with their upstream,
+  remote branches with their remote (the configured remote whose name prefixes the ref), tags
+  peeled to their commit. The menu offers what it lists.
+
+#### Server
+
+- `GET /api/status` → `{ version, branch, head, changed, operation }`; `GET /api/refs` →
+  `listRefs`'s answer.
+- `POST /api/checkout { kind, name | sha }`: a write like the others (same-origin JSON with the
+  custom header), one at a time. 200 `{ branch, head, warning? }`; 400 for a name or SHA the
+  repository does not have; 409 for a refusal (git's or ours), with the message.
+- After it the history's version has changed (HEAD moved): the page lists anew, by V10a's path.
+
+#### Viewer
+
+- A menu per row: right-click, the row's "⋯" (on hover and on the cursor row), or `c` on the
+  cursor row. Its entries come from the row's refs and `/api/refs`:
+  - each local branch: "Check out branch wip" (the current one disabled: "checked out");
+  - each remote branch: "Check out origin/topic as topic", or "… (tracked by topic)" when a
+    local branch tracks it; disabled with the reason when a local branch of that name tracks
+    something else;
+  - each tag: "Check out tag v1 (detached HEAD)";
+  - always "Check out this commit (detached HEAD)".
+- A confirmation says what will happen: the branch checked out or created, or the detached HEAD;
+  "3 files have uncommitted changes: they come along, unless the target changes them too — then
+  git refuses and nothing changes"; an operation in progress disables "Check out" and says
+  which. Enter confirms, Escape cancels.
+- While it runs: "Checking out…". Then the history is listed anew, the cursor goes to HEAD, and
+  a line under the title says "Switched to branch wip" or "HEAD is now at 9c1e0aa (detached)". A
+  refusal shows git's message in the confirmation, and nothing else changes.
+- On focus (`visibilitychange`, `focus`): `GET /api/status`; a version other than the page's
+  lists anew (a checkout or a commit made elsewhere).
+- "Show only this branch's commits": a checkbox replacing V10a's two buttons, named for the
+  branch ("Show only main's commits"; detached: "Show only HEAD's commits"), kept in the URL as
+  before. After a checkout, "this branch" is the new one.
+
+#### Verification
+
+1. **Unit** (red first), core on temp repositories: each kind of target; a local change carried;
+   one refused (git's message, HEAD unchanged); a branch checked out in another worktree; a merge
+   in progress; a remote whose local name tracks another; unknown names, short SHAs, a name
+   starting with `-`; a failing post-checkout hook (HEAD moved, the warning). `workingState`
+   (counts, each operation), `listRefs`. Server: `/api/checkout` refusals (another site, an
+   unknown ref, one already running); a checkout changes `/api/status`'s version.
+2. **Nothing else changes**: goldens; `cpr diff` and `cpr pr` tests; every e2e spec.
+3. **E2E** (a fresh fixture repository per test: checkouts change it): the menu's entries per
+   row; `wip` → its HEAD badge, lane 0 on its line, the cursor, "Switched to branch wip";
+   `origin/topic` → a local `topic`; tag `v1` → detached, the checkbox says "HEAD's"; a
+   conflicting local change → git's message, nothing changed; a terminal checkout shows on
+   focus; the checkbox and the URL.
+4. **Real repositories**: on clones (never a working tree in use): a branch, a remote branch, a
+   tag, a commit on this repository's clone and on a full clone of Qwik; the round trip
+   (checkout and relisting) against the checkout and the listing alone.
+5. **Cost**: the round trip no more than git's checkout plus V10a's listing (0.02 s on CPR,
+   0.8 s on CPython without a commit-graph file) plus 100 ms.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| A checkout changes the user's working tree: the first thing CPR writes outside its cache | `git switch` only, never forced; a confirmation every time; git's refusals shown; no reset, stash or discard. |
+| A detached HEAD surprises | The menu, the confirmation and the line after say "detached"; the checkbox says "HEAD's". |
+| Hooks (husky) run, can be slow or fail | Run as git runs them; "Checking out…" meanwhile; a failure after HEAD moved is a warning. |
+| An editor sees files change under it | That is a checkout; the confirmation says the working tree changes. |
+| A page acts on a stale view (another tab or a terminal checked out) | Names and SHAs are checked against the repository when asked; the page lists anew on focus. |
+| Requests from other sites | Same-origin JSON with the custom header, like every write. |
+| Analyses running meanwhile | They use CPR's cached worktrees, never the working tree: unaffected. |
+
+**Order**: V11a (the checkbox, viewer only), V11b (status and refs; the page notices changes on
+focus), V11c (checkout), on one branch.
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V11a | Show only this branch's commits | The checkbox named for HEAD's branch, kept in the URL. |
+| V11b | Status and refs | `workingState`, `listRefs`, `/api/status`, `/api/refs`; the page lists anew on focus when the version changed. |
+| V11c | Checkout | `checkout`, `POST /api/checkout`, the row menu (right-click, "⋯", `c`), the confirmation, the line after. |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 54 | How a checkout runs | **`git switch`, never forced: local changes come along unless the target changes them too; then git refuses and nothing changes** | Measured: git carries what it can, refuses what would be lost and names the files. Options that stash or discard (Git Extensions has them) can lose work; later, if asked. |
+| 55 | A remote branch | **Its local tracking branch: created if absent, checked out if it tracks it, refused if a branch of that name tracks something else** | What `git switch <name>` does by default, without its guessing where it would be ambiguous. |
+| 56 | Tags and commits | **A detached HEAD, said before and after** | Git's own way; creating a branch there is a separate action (later). |
+| 57 | Operations in progress | **Refused: merge, rebase, cherry-pick, revert, bisect** | Checking out in the middle of one leaves a state the page cannot show. |
+| 58 | What a request may name | **Refs as `listRefs` lists them, by exact name; full SHAs of commits** | As V9's diffs: nothing else from a page reaches git. |
+| 59 | "This branch" | **HEAD's branch, as a checkbox; after a checkout, the new one** | Asked: "a checkbox with Show only this branch commits"; V10a's "This branch" was already HEAD's. |
+
+**Not in V11 (later)**: creating, renaming or deleting branches; stash, reset, merge, rebase,
+fetch, pull, push; choosing what to do with local changes (stash, discard); untracked files;
+the branches panel (V10b), where a double-click could check a branch out.
 
 ### Phase 1 milestones
 

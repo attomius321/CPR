@@ -1735,3 +1735,16 @@ walk). Not verified: Windows and macOS browsers, Firefox's height cap.
 
 Merged into main (2026-10-13), V10a alone: V10b (branches panel) and V10c (picks across
 branches) are not started. `main` verified after the merge: 495 unit tests, build, 48 e2e.
+
+## V11 spike — checking out from the page (2026-10-13, branch `milestone/v11-checkout`)
+
+Measured on a clone of this repository before planning checkout from the commits page (never on
+a working tree in use). `git switch` takes 6–54 ms for 104–713 differing files. It carries a
+local change to a file the target leaves alone, and refuses one the target would overwrite,
+naming the files and changing nothing; it refuses a branch checked out in another worktree;
+`git switch <name>` for a remote-only branch creates its tracking branch. Counting local changes
+(`git status --porcelain=v2 --untracked-files=no`) takes 3–10 ms on 115–742 files. So the plan
+lets git decide what is safe and shows its message, with no forced mode. Found on the way: the
+open commits page does not notice a checkout made in a terminal (it showed the old HEAD after
+scrolling to the end; its rows were all in one block, so nothing returned 409); a reload did.
+The plan lists anew on focus.
