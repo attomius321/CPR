@@ -1976,11 +1976,6 @@ kbd {
   text-align: right;
 }
 
-.commit-this {
-  font-family: inherit;
-  white-space: nowrap;
-}
-
 .compare-bar {
   display: flex;
   align-items: center;
@@ -2030,8 +2025,8 @@ kbd {
 .panel-where {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 10px;
+  align-items: center;
+  gap: 6px 10px;
 }
 
 .panel-where .panel-file {
@@ -2039,12 +2034,51 @@ kbd {
 }
 
 .open-editor {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--moved) 45%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--moved) 9%, var(--panel));
+  color: var(--moved);
+  font: inherit;
   font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .open-editor:hover {
-  text-decoration: underline;
+  border-color: var(--moved);
+  background: color-mix(in srgb, var(--moved) 16%, var(--panel));
+}
+
+.open-editor:active {
+  background: color-mix(in srgb, var(--moved) 24%, var(--panel));
+}
+
+.open-editor:focus-visible {
+  outline: 2px solid var(--moved);
+  outline-offset: 1px;
+}
+
+.open-icon {
+  flex: none;
+}
+
+/* The key that does the same. */
+.open-editor kbd {
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--moved) 35%, var(--line));
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--muted);
+  font:
+    11px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
 }
 
 /* A row's line number, as a button that opens that line. */

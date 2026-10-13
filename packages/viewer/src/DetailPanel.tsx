@@ -165,11 +165,14 @@ export function DetailPanel({
               <FileLine node={node} projects={projects} moved={moved} />
               <button
                 id="open-in-editor"
-                className="link open-editor"
-                title={`Line ${openTarget.line} of ${openTarget.side} (o)`}
+                type="button"
+                className="open-editor"
+                title={`Open line ${openTarget.line} of ${openTarget.side} in VS Code (o)`}
                 onClick={() => open(openTarget)}
               >
+                <OpenIcon />
                 Open in VS Code
+                <kbd aria-hidden="true">o</kbd>
               </button>
             </div>
           ) : (
@@ -325,6 +328,22 @@ function SymbolDiff({ state, anchor, onPick, onOpen }: SymbolDiffProps) {
         </button>
       )}
     </div>
+  );
+}
+
+/** A box with an arrow leaving it: open elsewhere. */
+function OpenIcon() {
+  return (
+    <svg className="open-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d="M9 2h5v5M14 2 7.5 8.5M12 9.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
