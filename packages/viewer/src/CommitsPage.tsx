@@ -126,7 +126,7 @@ export async function fetchGraph(url: string): Promise<Loaded> {
 /** "← Commits", on a diff's page. */
 export function BackToCommits() {
   return (
-    <a className="back" href={COMMITS_PAGE} title="Pick other commits">
+    <a className="back" href={COMMITS_PAGE} title="Back to the commits">
       ← Commits
     </a>
   );
@@ -143,15 +143,18 @@ interface Notice {
 
 /**
  * The repository's history as a graph (V10): every branch, or the current one ("This branch",
- * `?scope=current`). Click (or x) picks one end, another the other end; the older is the base.
- * Compare (Enter) opens the diff; one picked is compared with its parent. A row's menu
- * (right-click, "⋯" or c) checks out its branches, tags or the commit (V11).
+ * `?scope=current`). A click selects a row. In compare mode (V13: its toggle, or x) a click (or
+ * x) picks one end, another the other end; the older is the base. Compare (Enter) opens the
+ * diff; one picked is compared with its parent. A row's menu (right-click, "⋯" or c) checks out
+ * its branches, tags or the commit (V11).
  */
 export function CommitsPage() {
   const [scope, setScope] = useState(scopeOfUrl);
   // Listing anew (after a checkout, or a change made elsewhere) starts a new generation.
   const [generation, setGeneration] = useState(0);
   const [notice, setNotice] = useState<Notice | null>(null);
+  // Kept across generations; the picks are not.
+  const [comparing, setComparing] = useState(false);
   const choose = (next: HistoryScope) => {
     window.history.replaceState(null, '', next === 'all' ? COMMITS_PAGE : '?scope=current');
     setNotice(null);
@@ -169,6 +172,8 @@ export function CommitsPage() {
       onScope={choose}
       notice={notice}
       onRelist={relist}
+      comparing={comparing}
+      onComparing={setComparing}
     />
   );
 }
@@ -178,15 +183,21 @@ function History({
   onScope,
   notice,
   onRelist,
+  comparing,
+  onComparing,
 }: {
   scope: HistoryScope;
   onScope: (scope: HistoryScope) => void;
   notice: Notice | null;
   onRelist: (notice: Notice | null) => void;
+  comparing: boolean;
+  onComparing: (comparing: boolean) => void;
 }) {
   const [first, setFirst] = useState<HistoryPage | null>(null);
   const [shape, setShape] = useState<HistoryShape | null>(null);
+  // Listing or a menu failed (under the title); a comparison failed (in the compare bar).
   const [error, setError] = useState<string | null>(null);
+  const [compareError, setCompareError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
   // Rows' details by row number, filled block by block; `loaded` re-renders when one arrives.
   const details = useRef(new Map<number, Commit>());
@@ -329,11 +340,11 @@ function History({
 
   const compare = useCallback(async (pair: Pair) => {
     setStarting(true);
-    setError(null);
+    setCompareError(null);
     try {
       window.location.assign(await startDiff(pair));
     } catch (e) {
-      setError(`Could not compare: ${(e as Error).message}`);
+      setCompareError(`Could not compare: ${(e as Error).message}`);
       setStarting(false);
     }
   }, []);
@@ -386,9 +397,16 @@ function History({
       ).map((sha) => ps.find((p) => p.sha === sha) ?? next),
     );
   }, []);
+  /** Leaves compare mode: the picks go with it. */
+  const stopComparing = useCallback(() => {
+    setPicks([]);
+    setCompareError(null);
+    onComparing(false);
+  }, [onComparing]);
 
-  // j/k move, x picks, Enter compares: as in the change list. Attached as the rows are drawn
-  // (a layout effect), not after the paint: a key pressed as soon as they show is not lost.
+  // j/k move, x picks (turning compare mode on), Enter compares, Escape leaves compare mode.
+  // Attached as the rows are drawn (a layout effect), not after the paint: a key pressed as soon
+  // as they show is not lost.
   useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
@@ -399,14 +417,18 @@ function History({
         const next = Math.max(0, Math.min(rows - 1, cursor + (event.key === 'j' ? 1 : -1)));
         setCursor(next);
         reveal(next);
-      } else if (event.key === 'x') pickRow(cursor);
-      else if (event.key === 'c') {
+      } else if (event.key === 'x') {
+        onComparing(true);
+        pickRow(cursor);
+      } else if (event.key === 'c') {
         const box = list.current?.querySelector('.commit.cursor')?.getBoundingClientRect();
         if (box) openMenu(cursor, box.left + 48, box.bottom);
-      } else if (
+      } else if (event.key === 'Escape' && comparing) stopComparing();
+      else if (
         event.key === 'Enter' &&
         // A focused button takes Enter itself.
         !(event.target instanceof HTMLButtonElement) &&
+        comparing &&
         current &&
         !starting
       ) {
@@ -416,7 +438,21 @@ function History({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [rows, cursor, current, starting, compare, pickRow, reveal, menu, confirm, openMenu]);
+  }, [
+    rows,
+    cursor,
+    current,
+    starting,
+    compare,
+    pickRow,
+    reveal,
+    menu,
+    confirm,
+    openMenu,
+    comparing,
+    onComparing,
+    stopComparing,
+  ]);
 
   if (stale) {
     return (
@@ -436,7 +472,7 @@ function History({
   const shown: number[] = [];
   for (let row = firstShown; row <= lastShown; row++) shown.push(row);
   return (
-    <div className="commits">
+    <div className={comparing ? 'commits comparing' : 'commits'}>
       <div className="commits-scroll" ref={scroller} onScroll={measure}>
         <h1 className="commits-title">
           Commits
@@ -458,6 +494,16 @@ function History({
               This branch{first.branch ? ` (${first.branch})` : ''}
             </button>
           </span>
+          <button
+            type="button"
+            className="compare-mode"
+            aria-pressed={comparing}
+            title={comparing ? 'Leave compare mode (Esc)' : 'Pick commits to compare (x)'}
+            onClick={() => (comparing ? stopComparing() : onComparing(true))}
+          >
+            Compare mode
+            <kbd aria-hidden="true">{comparing ? 'Esc' : 'x'}</kbd>
+          </button>
           {first.head && headRow !== null && (
             <button
               type="button"
@@ -469,14 +515,20 @@ function History({
             </button>
           )}
           <span className="commits-help">
-            Pick two to compare them, or one against its parent · j/k move, x picks, Enter compares,
-            c checks out
+            {comparing
+              ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
+              : 'j/k move · c checks out · x picks to compare'}
           </span>
         </h1>
         {notice && (
           <p className="checkout-notice" role="status">
             {notice.text}
             {notice.warning && <span className="warning"> · {notice.warning}</span>}
+          </p>
+        )}
+        {error && (
+          <p className="commits-error error" role="alert">
+            {error}
           </p>
         )}
         {rows === 0 ? (
@@ -497,11 +549,12 @@ function History({
                   row={row}
                   commit={commit}
                   now={now}
+                  comparing={comparing}
                   picked={!!commit && picked.has(commit.sha)}
                   cursor={row === cursor}
-                  onPick={() => {
+                  onClick={() => {
                     setCursor(row);
-                    pickRow(row);
+                    if (comparing) pickRow(row);
                   }}
                   onMenu={(x, y) => openMenu(row, x, y)}
                   branch={first.branch}
@@ -549,25 +602,27 @@ function History({
           onCancel={() => setConfirm(null)}
         />
       )}
-      <footer className="compare-bar">
-        <span className="compare-label">
-          {current ? current.label : 'Pick two commits, or one to compare with its parent'}
-        </span>
-        {error && <span className="error">{error}</span>}
-        {picks.length > 0 && (
-          <button type="button" className="link" onClick={() => setPicks([])}>
-            Clear
+      {comparing && (
+        <footer className="compare-bar">
+          <span className="compare-label">
+            {current ? current.label : 'Pick two commits, or one to compare with its parent'}
+          </span>
+          {compareError && <span className="error">{compareError}</span>}
+          {picks.length > 0 && (
+            <button type="button" className="link" onClick={() => setPicks([])}>
+              Clear
+            </button>
+          )}
+          <button
+            type="button"
+            className="button compare"
+            disabled={!current || starting}
+            onClick={() => current && void compare(current)}
+          >
+            {starting ? 'Starting…' : 'Compare'}
           </button>
-        )}
-        <button
-          type="button"
-          className="button compare"
-          disabled={!current || starting}
-          onClick={() => current && void compare(current)}
-        >
-          {starting ? 'Starting…' : 'Compare'}
-        </button>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }
@@ -576,9 +631,10 @@ function CommitRow({
   row,
   commit,
   now,
+  comparing,
   picked,
   cursor,
-  onPick,
+  onClick,
   onMenu,
   graph,
   branch,
@@ -587,9 +643,11 @@ function CommitRow({
   /** Not loaded yet: the graph alone, and grey bars. */
   commit: Commit | undefined;
   now: number;
+  /** Compare mode: the row shows whether it is picked. */
+  comparing: boolean;
   picked: boolean;
   cursor: boolean;
-  onPick: () => void;
+  onClick: () => void;
   /** Opens the row's checkout menu at a point of the window. */
   onMenu: (x: number, y: number) => void;
   graph: ReactNode;
@@ -601,7 +659,7 @@ function CommitRow({
     return (
       <li className={`commit loading${cursor ? ' cursor' : ''}`} style={style}>
         {graph}
-        <span className="commit-pick" />
+        {comparing && <span className="commit-pick" />}
         <span className="loading-bar sha-bar" />
         <span className="loading-bar subject-bar" />
       </li>
@@ -612,16 +670,18 @@ function CommitRow({
     <li
       className={`commit${head ? ' head' : ''}${picked ? ' picked' : ''}${cursor ? ' cursor' : ''}`}
       style={style}
-      onClick={onPick}
+      onClick={onClick}
       onContextMenu={(event) => {
         event.preventDefault();
         onMenu(event.clientX, event.clientY);
       }}
     >
       {graph}
-      <span className="commit-pick" role="img" aria-label={picked ? 'picked' : 'not picked'}>
-        {picked ? '●' : '○'}
-      </span>
+      {comparing && (
+        <span className="commit-pick" role="img" aria-label={picked ? 'picked' : 'not picked'}>
+          {picked ? '●' : '○'}
+        </span>
+      )}
       <code className="commit-sha">{shortSha(commit.sha)}</code>
       <span className="commit-subject" title={commit.subject}>
         {commit.subject}

@@ -80,7 +80,120 @@ test('lists every branch as a graph, the current branch on the left', async ({ p
     true,
   );
   await expect(row(page, 'Add half').locator('.commit-date')).toBeInViewport();
-  await expect(page.getByRole('button', { name: 'Compare' })).toBeInViewport();
+  await page.getByRole('button', { name: 'Compare mode' }).click();
+  await expect(page.getByRole('button', { name: 'Compare', exact: true })).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});
+
+test('opens in browse mode: a click selects a row and picks nothing', async ({ page }) => {
+  await page.goto(cpr.url);
+  await expect(page.locator('.commit')).toHaveCount(7);
+  await expect(page.getByRole('button', { name: 'Compare mode' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect(page.locator('.commits-help')).toHaveText(
+    'j/k move · c checks out · x picks to compare',
+  );
+  await expect(page.locator('.commit-pick')).toHaveCount(0);
+  await expect(page.locator('.compare-bar')).toHaveCount(0);
+  // Clicking rows to look at them moves the selection (the cursor) only.
+  for (const subject of ['Add cube', 'head', 'Try a wobble']) {
+    await row(page, subject).click();
+    await expect(row(page, subject)).toHaveClass(/cursor/);
+  }
+  await expect(page.locator('.commit.cursor')).toHaveCount(1);
+  await expect(page.locator('.commit.picked')).toHaveCount(0);
+  // Enter compares nothing; the page stays.
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(cpr.url);
+  // A row's menu opens on the selected row, with nothing picked on the way.
+  await page.keyboard.press('c');
+  await expect(page.getByRole('menuitem', { name: 'Check out branch wip' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.commit.picked')).toHaveCount(0);
+});
+
+test('compare mode: a toggle, picks, and Escape to leave', async ({ page }) => {
+  const [, head, , cube] = cpr.shas;
+  await page.goto(cpr.url);
+  const toggle = page.getByRole('button', { name: 'Compare mode' });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.commits-help')).toHaveText(
+    'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves',
+  );
+  await expect(page.locator('.commit-pick')).toHaveCount(7);
+  await expect(page.locator('.compare-label')).toHaveText(
+    'Pick two commits, or one to compare with its parent',
+  );
+  await row(page, 'Add cube').click();
+  await row(page, 'head').click();
+  await expect(page.locator('.commit.picked')).toHaveCount(2);
+  await expect(page.locator('.compare-label')).toHaveText(
+    `${short(head)} → ${short(cube)} · 2 commits`,
+  );
+  // Escape leaves, and the picks go with it.
+  await page.keyboard.press('Escape');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.compare-bar')).toHaveCount(0);
+  await expect(page.locator('.commit-pick')).toHaveCount(0);
+  await expect(page.locator('.commit.picked')).toHaveCount(0);
+  // Back in: nothing picked; the toggle leaves too.
+  await toggle.click();
+  await expect(page.locator('.commit.picked')).toHaveCount(0);
+  await row(page, 'Add cube').click();
+  await expect(page.locator('.commit.picked')).toHaveCount(1);
+  await toggle.click();
+  await expect(page.locator('.commit.picked')).toHaveCount(0);
+  await expect(page.locator('.compare-bar')).toHaveCount(0);
+  // A menu takes Escape first: compare mode stays.
+  await toggle.click();
+  await row(page, 'Add cube').click({ button: 'right' });
+  await expect(page.getByRole('menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('x turns compare mode on and picks the selected row', async ({ page }) => {
+  const [, , , cube, half] = cpr.shas;
+  await page.goto(cpr.url);
+  await expect(page.locator('.commit')).toHaveCount(7);
+  // The cursor starts on HEAD.
+  await page.keyboard.press('x');
+  await expect(page.getByRole('button', { name: 'Compare mode' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(page.locator('.commit.picked .commit-subject')).toHaveText(/^Add half/);
+  await expect(page.locator('.compare-label')).toHaveText(
+    `${short(cube)} → ${short(half)} · 1 commit`,
+  );
+});
+
+test('a scope switch keeps compare mode and clears the picks', async ({ page }) => {
+  await page.goto(cpr.url);
+  await page.getByRole('button', { name: 'Compare mode' }).click();
+  await row(page, 'Add cube').click();
+  await expect(page.locator('.commit.picked')).toHaveCount(1);
+  await page.getByRole('button', { name: 'This branch (main)' }).click();
+  await expect(page.locator('.commit')).toHaveCount(5);
+  await expect(page.getByRole('button', { name: 'Compare mode' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(page.locator('.commit-pick')).toHaveCount(5);
+  await expect(page.locator('.commit.picked')).toHaveCount(0);
+});
+
+test('shows errors under the title, with no compare bar', async ({ page }) => {
+  await page.route('**/api/refs', (route) => route.fulfill({ status: 500, body: 'refs broke' }));
+  await page.goto(cpr.url);
+  await row(page, 'Add cube').click({ button: 'right' });
+  await expect(page.getByRole('alert')).toHaveText('Could not read the branches: refs broke');
 });
 
 test("narrows to the current branch's commits, kept in the URL", async ({ page }) => {
@@ -102,12 +215,13 @@ test("narrows to the current branch's commits, kept in the URL", async ({ page }
 test('picks two commits, analyzes them, and goes back', async ({ page }) => {
   const [, head, , cube] = cpr.shas;
   await page.goto(cpr.url);
+  await page.getByRole('button', { name: 'Compare mode' }).click();
   await row(page, 'Add cube').click();
   await row(page, 'head').click();
   await expect(page.locator('.compare-label')).toHaveText(
     `${short(head)} → ${short(cube)} · 2 commits`,
   );
-  await page.getByRole('button', { name: 'Compare' }).click();
+  await page.getByRole('button', { name: 'Compare', exact: true }).click();
 
   await expect(page).toHaveURL(`${cpr.url}diff/${head}..${cube}/`);
   await expect(page.getByRole('status')).toContainText(`Analyzing ${short(head)} → ${short(cube)}`);
@@ -125,13 +239,20 @@ test('picks two commits, analyzes them, and goes back', async ({ page }) => {
   await page.getByRole('link', { name: '← Commits' }).click();
   await expect(page).toHaveURL(cpr.url);
   await expect(page.locator('.commit')).toHaveCount(7);
+  // Back in browse mode.
+  await expect(page.getByRole('button', { name: 'Compare mode' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect(page.locator('.compare-bar')).toHaveCount(0);
 });
 
 test('compares one commit with its parent, from the keyboard too', async ({ page }) => {
   const [, , , cube, half] = cpr.shas;
   await page.goto(cpr.url);
+  await page.getByRole('button', { name: 'Compare mode' }).click();
   await row(page, 'Add half').click();
-  await page.getByRole('button', { name: 'Compare' }).click();
+  await page.getByRole('button', { name: 'Compare', exact: true }).click();
   await expect(page).toHaveURL(`${cpr.url}diff/${cube}..${half}/`);
   await expect(symbol(page, 'half').locator('.symbol')).toHaveClass(/tone-added/);
   await expect(symbol(page, 'cube')).toHaveCount(0);
@@ -151,9 +272,10 @@ test('compares one commit with its parent, from the keyboard too', async ({ page
 test('stops an analysis', async ({ page }) => {
   const [base, , , , half] = cpr.shas;
   await page.goto(cpr.url);
+  await page.getByRole('button', { name: 'Compare mode' }).click();
   await row(page, 'base').click();
   await row(page, 'Add half').click();
-  await page.getByRole('button', { name: 'Compare' }).click();
+  await page.getByRole('button', { name: 'Compare', exact: true }).click();
   await expect(page).toHaveURL(`${cpr.url}diff/${base}..${half}/`);
   await page.getByRole('button', { name: 'Stop' }).click();
   await expect(page).toHaveURL(cpr.url);
