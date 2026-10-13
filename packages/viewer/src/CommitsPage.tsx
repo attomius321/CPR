@@ -144,7 +144,7 @@ interface Notice {
 /**
  * The repository's history as a graph (V10): every branch, or the current one ("This branch",
  * `?scope=current`). Click (or x) picks one end, another the other end; the older is the base.
- * Compare (Enter) opens the diff; "This commit" compares one with its parent. A row's menu
+ * Compare (Enter) opens the diff; one picked is compared with its parent. A row's menu
  * (right-click, "⋯" or c) checks out its branches, tags or the commit (V11).
  */
 export function CommitsPage() {
@@ -503,11 +503,6 @@ function History({
                     setCursor(row);
                     pickRow(row);
                   }}
-                  onThis={() => {
-                    const parent = commit?.parents[0];
-                    if (commit && parent) void compare({ base: parent, head: commit.sha });
-                  }}
-                  disabled={starting}
                   onMenu={(x, y) => openMenu(row, x, y)}
                   branch={first.branch}
                   graph={
@@ -584,9 +579,7 @@ function CommitRow({
   picked,
   cursor,
   onPick,
-  onThis,
   onMenu,
-  disabled,
   graph,
   branch,
 }: {
@@ -597,10 +590,8 @@ function CommitRow({
   picked: boolean;
   cursor: boolean;
   onPick: () => void;
-  onThis: () => void;
   /** Opens the row's checkout menu at a point of the window. */
   onMenu: (x: number, y: number) => void;
-  disabled: boolean;
   graph: ReactNode;
   /** The branch checked out (null when HEAD is detached), for HEAD's badge. */
   branch: string | null;
@@ -616,7 +607,6 @@ function CommitRow({
       </li>
     );
   }
-  const root = commit.parents.length === 0;
   const head = commit.refs.some((ref) => ref.kind === 'head');
   return (
     <li
@@ -653,18 +643,6 @@ function CommitRow({
       >
         {relativeDate(commit.date, now)}
       </time>
-      <button
-        type="button"
-        className="link commit-this"
-        disabled={root || disabled}
-        title={root ? 'The first commit has no parent' : 'Compare this commit with its parent'}
-        onClick={(event) => {
-          event.stopPropagation();
-          onThis();
-        }}
-      >
-        This commit
-      </button>
       <button
         type="button"
         className="link commit-menu"

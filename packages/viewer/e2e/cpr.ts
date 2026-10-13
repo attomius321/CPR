@@ -75,18 +75,30 @@ async function startCpr(
   return { url, child };
 }
 
+export interface RunningFixture extends Running {
+  /** The repository's folder, its working copy at head (as `git rev-parse` names it). */
+  repo: string;
+}
+
 /**
  * Turns a fixture into two commits of a fresh repo and serves `cpr view HEAD~1 HEAD` from the
- * built CLI, with `args` (e.g. `--plugin angular`). Build first: `pnpm build`.
+ * built CLI, with `args` (e.g. `--plugin angular`) and `extraEnv` (e.g. `CPR_CODE`). Build
+ * first: `pnpm build`.
  */
-export async function serveFixture(name: string, args: readonly string[] = []): Promise<Running> {
+export async function serveFixture(
+  name: string,
+  args: readonly string[] = [],
+  extraEnv: Record<string, string> = {},
+): Promise<RunningFixture> {
   const { repo } = fixtureRepo(name);
   const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
   const { url, child } = await startCpr(['view', 'HEAD~1', 'HEAD', ...args], repo, {
     CPR_CACHE_DIR: cache,
+    ...extraEnv,
   });
   return {
     url,
+    repo: git(repo, 'rev-parse', '--show-toplevel'),
     stop() {
       child.kill('SIGINT');
       rmSync(repo, { recursive: true, force: true });
@@ -209,16 +221,19 @@ export interface RunningPullRequest extends Running {
    * with `--since <previous head>` when `since` is set.
    */
   push(files: Record<string, string>, options?: { since?: boolean }): Promise<void>;
+  /** The clone `cpr pr` runs in (as `git rev-parse` names it). */
+  clone: string;
 }
 
 /**
  * Serves `cpr pr 7` for a fixture as a GitHub pull request: the clone's `origin` says
  * github.com but git fetches from a local bare repo, and a mock API answers for GitHub.
- * `args` go to every `cpr pr` run (e.g. `--plugin angular`).
+ * `args` go to every `cpr pr` run (e.g. `--plugin angular`), `extraEnv` too (e.g. `CPR_CODE`).
  */
 export async function servePullRequest(
   name: string,
   args: readonly string[] = [],
+  extraEnv: Record<string, string> = {},
 ): Promise<RunningPullRequest> {
   const { repo, base, head } = fixtureRepo(name);
   const bare = mkdtempSync(join(tmpdir(), 'cpr-e2e-bare-'));
@@ -255,6 +270,7 @@ export async function servePullRequest(
       CPR_CACHE_DIR: cache,
       GITHUB_API_URL: api.url,
       GITHUB_TOKEN: 'ghp_e2e',
+      ...extraEnv,
     });
   let running = await start();
 
@@ -263,6 +279,7 @@ export async function servePullRequest(
       return running.url;
     },
     requests: api.requests,
+    clone: git(clone, 'rev-parse', '--show-toplevel'),
     async push(files, { since = false } = {}) {
       const previous = headSha;
       for (const [path, content] of Object.entries(files)) writeFileSync(join(repo, path), content);

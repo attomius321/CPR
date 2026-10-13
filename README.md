@@ -44,7 +44,7 @@ uses `git switch` (never forced: local changes come along, or git refuses and no
 and redraws the graph. A checkout made elsewhere shows when the page is back in focus.
 
 Click one commit and another — the older is the base — and Compare (or j/k, x, Enter);
-"This commit" compares one with its parent. A picked pair is compared directly (no merge-base)
+one picked alone is compared with its parent. A picked pair is compared directly (no merge-base)
 and analyzed then, in the background, with the same `--plugin`, `--project` and `--depth`: its
 page says what it is doing ("loading head · 12 s") and can stop it. Each diff has its own address
 (`/diff/<base>..<head>/`), so it can be reloaded or bookmarked; the last 8 stay ready while
@@ -77,6 +77,14 @@ in other projects. Findings and the detail panel name the project (`web › src/
 Click a symbol to see what changed in it, its findings, and who uses it:
 
 ![Detail panel: findings, old and new signature, a line diff of just this method, its users and callees](docs/images/viewer-detail.png)
+
+Under `cpr view` and `cpr pr`, "Open in VS Code" beside the file (or `o`) opens the symbol in VS
+Code: in the window that has the repository open, else in a new window with it. Ctrl+click a line
+(⌘+click on macOS), or click its number, to open that line. CPR finds where the line is in your
+working copy now: after a checkout or an edit it opens at the line's new place and says so; a line
+changed since opens where it was. It runs VS Code's `code` command, from `PATH` or the usual
+install places, on the machine where `cpr` runs (WSL, Remote SSH and containers alike); set
+`CPR_CODE` to use another one (Insiders, VSCodium, Cursor).
 
 `cpr pr` works with GitHub (and GitHub Enterprise) and GitLab (gitlab.com and self-managed). It
 reads the forge from the `origin` remote; tokens come from `GITHUB_TOKEN`/`GH_TOKEN` (or

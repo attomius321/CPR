@@ -15,6 +15,7 @@ import {
 } from '@cpr/core';
 import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
+import type { OpenRequest, OpenResult } from './editor.js';
 import type { Histories } from './history.js';
 
 export type Side = 'base' | 'head';
@@ -70,6 +71,8 @@ export interface ViewServerOptions {
   state?: StateStore;
   /** Enables the commits page at `/` and diffs under `/diff/<base>..<head>/`. */
   repository?: RepositoryOptions;
+  /** Enables `POST /api/open`: a file of a graph's change, opened in VS Code. */
+  open?: (request: OpenRequest) => Promise<OpenResult>;
 }
 
 /** A graph served with its sources, review state and reviews. */
@@ -170,6 +173,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (path.startsWith('/api/state/')) {
       return state(req, res, site, path.slice('/api/state/'.length));
     }
+    if (path === '/api/open') return openFile(req, res, site);
     if (req.method !== 'GET') return send(res, 405, 'method not allowed');
 
     if (path === '/api/capabilities') {
@@ -177,6 +181,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         sources: site !== undefined || diff,
         review: site?.review ? { forge: site.review.forge } : null,
         state: diff ? repository?.state !== undefined : site?.state !== undefined,
+        ...(options.open && (site !== undefined || diff) ? { open: true } : {}),
         ...(repository ? { commits: true } : {}),
       };
       return send(res, 200, JSON.stringify(capabilities), TYPES['.json']);
@@ -393,6 +398,32 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
   }
 
+  /** Opens a file of the change in VS Code, where that line is in the working copy now. */
+  async function openFile(
+    req: IncomingMessage,
+    res: ServerResponse,
+    site: Site | undefined,
+  ): Promise<void> {
+    const { open } = options;
+    if (!open || !site) return send(res, 404, 'files open from cpr view and cpr pr');
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let target: ReturnType<typeof parseOpen>;
+    try {
+      target = parseOpen(await readBody(req, MAX_BODY_BYTES), site.allowed);
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    const { revisions } = site.graph;
+    const sha = target.side === 'base' ? revisions.from : revisions.head.sha;
+    if (!sha) return json(res, 404, { error: `no ${target.side} commit to open the file at` });
+    const result = await open({ sha, file: target.file, line: target.line, column: target.column });
+    if (!result.opened) {
+      return json(res, result.reason === 'missing' ? 404 : 502, { error: result.message });
+    }
+    return json(res, 200, { line: result.line, how: result.how, moved: result.moved });
+  }
+
   async function state(
     req: IncomingMessage,
     res: ServerResponse,
@@ -460,6 +491,26 @@ function parseCheckoutTarget(text: string): CheckoutTarget {
   if (typeof name !== 'string' || name === '' || name.length > 255)
     throw new Error('name: a ref name');
   return { kind, name };
+}
+
+/** `{ side, file, line, column? }`: a file the graph mentions on that side, 1-based positions. */
+function parseOpen(
+  text: string,
+  allowed: Record<Side, Set<string>>,
+): { side: Side; file: string; line: number; column: number } {
+  const value = JSON.parse(text) as Record<'side' | 'file' | 'line' | 'column', unknown> | null;
+  const { side, file, line, column = 1 } = value ?? {};
+  if (side !== 'base' && side !== 'head') throw new Error('side: base or head');
+  if (typeof file !== 'string' || !allowed[side].has(file)) {
+    throw new Error(`${String(file)} is not part of this change`);
+  }
+  if (!isPosition(line)) throw new Error('line: a positive integer');
+  if (!isPosition(column)) throw new Error('column: a positive integer');
+  return { side, file, line, column };
+}
+
+function isPosition(n: unknown): n is number {
+  return typeof n === 'number' && Number.isSafeInteger(n) && n >= 1;
 }
 
 /** `?scope=`: every branch when absent; null when unknown. */

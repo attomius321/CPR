@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import type { Finding, Graph, GraphNode, Project } from '@cpr/core';
 import {
   anchorFor,
@@ -7,12 +7,26 @@ import {
   describeDraft,
   type Anchor,
   type Draft,
+  type Side,
 } from './comments.js';
 import { diffRows, excerpt, symbolDetail, type DiffRow, type Neighbour } from './detail.js';
 import { groupOf, label, tone } from './flow.js';
+import {
+  anchorTarget,
+  describeOpen,
+  openInEditor,
+  rowTarget,
+  symbolTarget,
+  type OpenTarget,
+} from './open.js';
 import { pathInProject, projectOf } from './projects.js';
 
 const sources = new Map<string, Promise<string>>();
+
+/** How long "Opened in VS Code …" stays; an error stays until the next open. */
+const NOTE_MS = 8000;
+/** The key that opens a row in VS Code with a click. */
+const MOD = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl';
 
 /** Fetches a file once per side; `cpr view` serves them, a dropped file has none. */
 function fetchSource(side: 'base' | 'head', file: string): Promise<string> {
@@ -60,6 +74,8 @@ interface Props {
   projects?: readonly Project[];
   /** Whether `/api/source` exists (opened with `cpr view`). */
   sources: boolean;
+  /** Whether the server opens files in VS Code (`/api/open`). */
+  canOpen: boolean;
   /** Whether the reviewer marked it reviewed; only changed symbols can be. */
   reviewed: boolean;
   /** Reviewed before, but changed since. */
@@ -84,6 +100,7 @@ export function DetailPanel({
   id,
   projects,
   sources: hasSources,
+  canOpen,
   reviewed,
   stale,
   onToggleReviewed,
@@ -99,6 +116,13 @@ export function DetailPanel({
   const diff = useSymbolDiff(shown, hasSources && showsCode);
   /** The line picked for the next comment; undefined: the first changed line. */
   const [picked, setPicked] = useState<Anchor | null>();
+  /** What the last open in VS Code said. */
+  const [note, setNote] = useState<{ text: string; error: boolean } | null>(null);
+  useEffect(() => {
+    if (!note || note.error) return;
+    const timer = setTimeout(() => setNote(null), NOTE_MS);
+    return () => clearTimeout(timer);
+  }, [note]);
   if (!detail) return null;
   const { node, users, callees, findings, mentions } = detail;
   const rows = diff.status === 'ready' ? diff.rows : [];
@@ -106,6 +130,14 @@ export function DetailPanel({
   const members = graph.nodes.filter((n) => n.container === node.id && n.status !== 'unchanged');
   const moved = node.previousId ? ` (from ${node.previousId})` : '';
   const signatures = [node.base?.signature, node.head?.signature].filter(Boolean);
+  const open = (target: OpenTarget | null) => {
+    if (!target) return;
+    void openInEditor(target).then((answer) =>
+      setNote({ text: describeOpen(target, answer), error: !answer.ok }),
+    );
+  };
+  // The button (and `o`): the line picked for a comment, else the symbol's first line.
+  const openTarget = canOpen ? (picked ? anchorTarget(picked) : symbolTarget(node)) : null;
 
   return (
     <aside className="panel" aria-label="Symbol detail">
@@ -128,7 +160,29 @@ export function DetailPanel({
                 ))}
           </div>
           <h2 className="panel-title">{label(node)}</h2>
-          <FileLine node={node} projects={projects} moved={moved} />
+          {openTarget ? (
+            <div className="panel-where">
+              <FileLine node={node} projects={projects} moved={moved} />
+              <button
+                id="open-in-editor"
+                type="button"
+                className="open-editor"
+                title={`Open line ${openTarget.line} of ${openTarget.side} in VS Code (o)`}
+                onClick={() => open(openTarget)}
+              >
+                <OpenIcon />
+                Open in VS Code
+                <kbd aria-hidden="true">o</kbd>
+              </button>
+            </div>
+          ) : (
+            <FileLine node={node} projects={projects} moved={moved} />
+          )}
+          {canOpen && (
+            <div className={`open-note${note?.error ? ' open-error' : ''}`} role="status">
+              {note?.text}
+            </div>
+          )}
           {stale && <div className="stale-note">↻ Changed since you reviewed it</div>}
         </div>
         <div className="panel-actions">
@@ -196,6 +250,9 @@ export function DetailPanel({
             {...(comments
               ? { onPick: (row: DiffRow) => setPicked(anchorFor(graph, node, row)) }
               : {})}
+            {...(canOpen
+              ? { onOpen: (row: DiffRow, side?: Side) => open(rowTarget(node, row, side)) }
+              : {})}
           />
         </section>
       )}
@@ -224,9 +281,11 @@ interface SymbolDiffProps {
   anchor: Anchor | null;
   /** Picks a changed line for the next comment. */
   onPick?: (row: DiffRow) => void;
+  /** Opens a row in VS Code: Ctrl/⌘+click, or its line number (that side). */
+  onOpen?: (row: DiffRow, side?: Side) => void;
 }
 
-function SymbolDiff({ state, anchor, onPick }: SymbolDiffProps) {
+function SymbolDiff({ state, anchor, onPick, onOpen }: SymbolDiffProps) {
   const [all, setAll] = useState(false);
   if (state.status === 'loading') return <p className="muted">Loading source…</p>;
   if (state.status === 'none') {
@@ -237,23 +296,31 @@ function SymbolDiff({ state, anchor, onPick }: SymbolDiffProps) {
     <div className="code" role="table">
       {/* As wide as the longest line, so every row's colour spans it when the code scrolls. */}
       <div className="code-rows">
-        {rows.map((row, i) => (
-          <div
-            key={i}
-            className={`row row-${row.type}${onPick && row.type !== 'same' ? ' pickable' : ''}${isAnchor(row, anchor) ? ' anchored' : ''}`}
-            role="row"
-            {...(onPick && row.type !== 'same'
-              ? { onClick: () => onPick(row), title: 'Comment on this line' }
-              : {})}
-          >
-            <span className="ln">{row.base ?? ''}</span>
-            <span className="ln">{row.head ?? ''}</span>
-            <span className="mark">
-              {row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}
-            </span>
-            <span className="text">{row.text}</span>
-          </div>
-        ))}
+        {rows.map((row, i) => {
+          const pick = onPick && row.type !== 'same' ? () => onPick(row) : undefined;
+          const title = [pick && 'Comment on this line', onOpen && `${MOD}+click: open in VS Code`]
+            .filter(Boolean)
+            .join(' · ');
+          const onClick = (event: MouseEvent) => {
+            if (onOpen && (event.ctrlKey || event.metaKey)) onOpen(row);
+            else pick?.();
+          };
+          return (
+            <div
+              key={i}
+              className={`row row-${row.type}${pick ? ' pickable' : ''}${isAnchor(row, anchor) ? ' anchored' : ''}`}
+              role="row"
+              {...(pick || onOpen ? { onClick, title } : {})}
+            >
+              <LineNumber row={row} side="base" onOpen={onOpen} />
+              <LineNumber row={row} side="head" onOpen={onOpen} />
+              <span className="mark">
+                {row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}
+              </span>
+              <span className="text">{row.text}</span>
+            </div>
+          );
+        })}
       </div>
       {rows.length < state.rows.length && (
         <button className="more" onClick={() => setAll(true)}>
@@ -261,6 +328,49 @@ function SymbolDiff({ state, anchor, onPick }: SymbolDiffProps) {
         </button>
       )}
     </div>
+  );
+}
+
+/** A box with an arrow leaving it: open elsewhere. */
+function OpenIcon() {
+  return (
+    <svg className="open-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <path
+        d="M9 2h5v5M14 2 7.5 8.5M12 9.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** A row's line number on one side; a button that opens that line when the server can. */
+function LineNumber({
+  row,
+  side,
+  onOpen,
+}: {
+  row: DiffRow;
+  side: Side;
+  onOpen: ((row: DiffRow, side?: Side) => void) | undefined;
+}) {
+  const line = row[side];
+  if (line === undefined || !onOpen) return <span className="ln">{line ?? ''}</span>;
+  return (
+    <button
+      type="button"
+      className="ln ln-open"
+      title={`Open line ${line} of ${side} in VS Code`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen(row, side);
+      }}
+    >
+      {line}
+    </button>
   );
 }
 

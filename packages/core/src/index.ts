@@ -101,6 +101,7 @@ export {
   type ProjectSource,
 } from './projects.js';
 export { readFileAtRevision } from './git/show.js';
+export { mapLine, workingLine, type LineHunk, type WorkingLine } from './git/working-line.js';
 export {
   commitDetails,
   hasCommitGraph,

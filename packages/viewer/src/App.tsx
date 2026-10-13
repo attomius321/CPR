@@ -76,6 +76,7 @@ type State =
   /**
    * `sources`: opened through `cpr view`, so `/api/source` exists. `forge`: opened through
    * `cpr pr`, which posts reviews there. `commits`: a diff of `cpr view`, which lists commits.
+   * `open`: the server opens files in VS Code (`/api/open`).
    */
   | {
       status: 'ready';
@@ -84,6 +85,7 @@ type State =
       forge: Forge | null;
       store: Store;
       commits: boolean;
+      open: boolean;
     };
 
 type Forge = 'github' | 'gitlab';
@@ -95,6 +97,8 @@ interface Capabilities {
   state?: boolean;
   /** `cpr view`: the commits page, and diffs analyzed when picked. */
   commits?: boolean;
+  /** `cpr view`, `cpr pr`: `/api/open` opens a file of the change in VS Code. */
+  open?: boolean;
 }
 
 /** How often a diff's page asks how its analysis is going. */
@@ -249,7 +253,7 @@ export function App() {
   );
 
   // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, p (P) shows the next
-  // (previous) project only, c comments, / searches, Esc closes.
+  // (previous) project only, c comments, o opens in VS Code, / searches, Esc closes.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target;
@@ -266,6 +270,8 @@ export function App() {
       if (event.key === 'c' && document.getElementById('comment-input')) {
         event.preventDefault();
         document.getElementById('comment-input')?.focus();
+      } else if (event.key === 'o') {
+        document.getElementById('open-in-editor')?.click();
       } else if (event.key === '/') {
         event.preventDefault();
         flushSync(() => setTab('changes'));
@@ -304,6 +310,7 @@ export function App() {
             forge: capabilities?.review?.forge ?? null,
             store: capabilities?.state ? serverStore() : browserStore(graph),
             commits: !!capabilities?.commits,
+            open: !!capabilities?.open,
           });
         } else if (loaded.kind === 'progress' || loaded.kind === 'failed') {
           setState({ status: 'analyzing', loaded });
@@ -339,6 +346,7 @@ export function App() {
         forge: null,
         store: browserStore(graph),
         commits: false,
+        open: false,
       });
       setSelected(null);
       setSearch('');
@@ -491,6 +499,7 @@ export function App() {
               onProject={setProject}
               collapsed={collapsed}
               onCollapse={toggleCollapsed}
+              canOpen={state.open}
               review={
                 forge
                   ? {
@@ -549,6 +558,7 @@ export function App() {
                   ? { projects: state.graph.projects }
                   : {})}
                 sources={state.sources}
+                canOpen={state.open}
                 reviewed={reviewed.has(selected)}
                 stale={stale.has(selected)}
                 onToggleReviewed={() => toggleReviewed(selected)}
