@@ -1787,3 +1787,6 @@ per test): the menu per row, a branch, a remote branch from the keyboard, a tag,
 a terminal checkout on focus. 519 unit tests, 53 e2e. On a clone of this repository: 109–115 ms
 from "Check out" to the page drawn again. Not verified: a large working tree, Windows and macOS,
 slow hooks.
+
+Merged into main (2026-10-13), with V11a dropped and HEAD's styling added at the user's request.
+`main` verified after the merge: 522 unit tests, build, 53 e2e.

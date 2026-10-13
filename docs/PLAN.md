@@ -422,7 +422,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V8 ✅ | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Closed: V8a–V8c and V8e merged (on Qwik: zoom out 466 → 15 ms blocked, opening 2,568 → 620 ms, map clicks reaching the file 87 → 100 %); V8d deferred; see below. |
 | V9 ✅ | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Merged: the current branch's commits as `cpr view`'s first page (100 rows in under 1 s on Qwik), pick two (or one against its parent), the diff analyzed on demand in a child process (Bitwarden 42 s, within 10 % of `cpr diff`; the server answers in 2 ms meanwhile), the last 8 kept. See below. |
 | V10a ✅, V10b–c | A commit graph | The commits page was a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches were not listed (1,539 unmerged on Bitwarden). V10a merged: every branch's history as a graph, lines over 100 rows as arrows (Bitwarden 20 lanes, 142 drawn whole), loaded lazily (CPython's 150,182 rows: first rows in 120 ms once listed). V10b (branches panel) and V10c (picks across branches) planned. See below. |
-| V11 | Checkout from the commits page | The commits page showed every branch but checked nothing out, and did not notice a checkout made in a terminal (it showed the old HEAD until reloaded). Done on its branch, not merged: a row menu (right-click, "⋯", c) checks out a branch, a remote branch as its tracking branch, a tag or the commit, after a confirmation; `git switch` never forced, git's refusals shown; the page lists anew after a checkout (109–115 ms on this repository) and on focus. See below. |
+| V11 ✅ | Checkout from the commits page | The commits page showed every branch but checked nothing out, and did not notice a checkout made in a terminal (it showed the old HEAD until reloaded). Merged: a row menu (right-click, "⋯", c) checks out a branch, a remote branch as its tracking branch, a tag or the commit, after a confirmation; `git switch` never forced, git's refusals shown; the page lists anew after a checkout (109–115 ms on this repository) and on focus; HEAD stands out (solid "HEAD → main" badge, tinted row, ringed dot, a title chip). See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -2964,9 +2964,9 @@ a direct diff of diverged picks; a lane layout that moves lines left as lanes fr
 
 ### V11 — Checkout from the commits page
 
-**Status:** done on branch `milestone/v11-checkout` (2026-10-13): V11b and V11c; V11a dropped
-(the user: V10a's "All branches · This branch" switch already does it). As built and results:
-"As built — V11" below. Not merged.
+**Status:** merged into main (2026-10-13, from branch `milestone/v11-checkout`): V11b and V11c;
+V11a dropped (the user: V10a's "All branches · This branch" switch already does it). As built and
+results: "As built — V11" below.
 
 **Problem** (asked: "let's make a mini git extension out of this … checkout to branch/commit/
 tag as a first feature, also, a checkbox with Show only this branch commits"). The commits page
