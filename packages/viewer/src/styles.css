@@ -1714,29 +1714,29 @@ kbd {
 }
 
 .compare-bar .button,
-.progress .button {
+.diff-progress .button {
   margin-top: 0;
   border: 0;
   font: inherit;
 }
 
 .compare-bar .button:disabled,
-.progress .button:disabled {
+.diff-progress .button:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
-.progress {
+.diff-progress {
   max-width: 720px;
   margin: 12vh auto;
   padding: 0 24px;
 }
 
-.progress p {
+.diff-progress p {
   font-size: 16px;
 }
 
-.progress pre {
+.diff-progress pre {
   max-height: 40vh;
   overflow: auto;
   white-space: pre-wrap;

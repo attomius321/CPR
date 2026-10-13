@@ -111,15 +111,19 @@ export function CommitsPage() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement) {
-        return;
-      }
+      if (event.target instanceof HTMLInputElement) return;
       if (event.key === 'j') setCursor((i) => Math.min(i + 1, commits.length - 1));
       else if (event.key === 'k') setCursor((i) => Math.max(i - 1, 0));
       else if (event.key === 'x') {
         const sha = commits[cursor]?.sha;
         if (sha) setPicks((p) => pick(p, sha));
-      } else if (event.key === 'Enter' && current && !starting) {
+      } else if (
+        event.key === 'Enter' &&
+        // A focused button takes Enter itself.
+        !(event.target instanceof HTMLButtonElement) &&
+        current &&
+        !starting
+      ) {
         event.preventDefault();
         void compare(current);
       } else return;
@@ -222,12 +226,8 @@ function CommitRow({
 }) {
   const root = commit.parents.length === 0;
   return (
-    <li
-      className={`commit${picked ? ' picked' : ''}${cursor ? ' cursor' : ''}`}
-      aria-selected={picked}
-      onClick={onPick}
-    >
-      <span className="commit-pick" aria-hidden>
+    <li className={`commit${picked ? ' picked' : ''}${cursor ? ' cursor' : ''}`} onClick={onPick}>
+      <span className="commit-pick" role="img" aria-label={picked ? 'picked' : 'not picked'}>
         {picked ? '●' : '○'}
       </span>
       <code className="commit-sha">{shortSha(commit.sha)}</code>
@@ -295,9 +295,9 @@ export function DiffProgress({
         ? `waiting for ${loaded.queued} other analysis${loaded.queued === 1 ? '' : 'es'}`
         : (PHASES[loaded.phase ?? ''] ?? 'starting');
     return (
-      <div className="progress" role="status">
+      <div className="diff-progress" role="status">
         <p>
-          Analyzing {pairLabel(pair)} — <span className="progress-phase">{what}</span> · {seconds} s
+          Analyzing {pairLabel(pair)} — <span className="diff-phase">{what}</span> · {seconds} s
         </p>
         <button
           type="button"
@@ -315,7 +315,7 @@ export function DiffProgress({
     );
   }
   return (
-    <div className="progress">
+    <div className="diff-progress">
       {loaded.kind === 'failed' ? (
         <>
           <p>Analyzing {pairLabel(pair)} failed:</p>

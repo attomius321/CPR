@@ -58,6 +58,8 @@ test('picks two commits, analyzes them, and goes back', async ({ page }) => {
   await expect(symbol(page, 'square').locator('.symbol')).toHaveClass(/tone-added/);
   await expect(symbol(page, 'cube').locator('.symbol')).toHaveClass(/tone-added/);
   await expect(symbol(page, 'half')).toHaveCount(0);
+  // The commits page's styles leave the review sidebar's own progress bar alone.
+  await expect(page.locator('.sidebar .progress')).toHaveCSS('margin-top', '0px');
 
   // Kept: a reload shows it at once.
   await page.reload();

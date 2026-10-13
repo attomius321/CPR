@@ -2,7 +2,11 @@
 
 React 19 + `@xyflow/react` 12 + dagre, bundled by Vite into `dist/`. `cpr view`/`cpr pr` serve it
 with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packages/cli/src/server.ts`);
-`?graph=<url>` loads any graph JSON instead (used by `scripts/viewer/measure.mjs`).
+`?graph=<url>` loads any graph JSON instead (used by `scripts/viewer/measure.mjs`). Under
+`cpr view` (V9) the root is the commits page (`/api/commits`, `POST /api/diffs`) and each diff is
+served under `/diff/<base>..<head>/`: the viewer must keep calling its own API with **relative**
+URLs (`./api/…`) and loading files relative to the page (`base: './'`), so every call reaches that
+diff. Only the commits page's endpoints are absolute (`/api/commits`, `/api/diffs`).
 
 ## Where things are
 
@@ -18,7 +22,11 @@ with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packag
 - `src/review.ts` (change list — by project when it spans several —, search, j/k order, one
   project and its neighbourhood, marks), `src/detail.ts` (excerpts, diff rows),
   `src/comments.ts` (draft comments and anchors), `src/store.ts` (server or browser state).
-- `src/ProjectNode.tsx`, `FileNode.tsx`, `SymbolNode.tsx`, `SummaryNode.tsx`; `src/styles.css`.
+- `src/commits.ts` (**pure**: picking, which end is the base, the label, reading `api/graph`'s
+  202/502/404 while a diff is analyzed), `src/Commits.tsx` (the commits page, a diff's progress).
+- `src/ProjectNode.tsx`, `FileNode.tsx`, `SymbolNode.tsx`, `SummaryNode.tsx`; `src/styles.css`
+  (one flat stylesheet: check a new class name is not taken — the sidebar's review bar is
+  `.progress`).
 
 ## Rules
 
@@ -60,9 +68,10 @@ with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packag
 ## Tests
 
 - Unit: `test/flow.test.ts`, `layouts.test.ts`, `review.test.ts`, `detail.test.ts`,
-  `comments.test.ts` (vitest from the repo root).
+  `comments.test.ts`, `commits.test.ts` (vitest from the repo root).
 - E2E: `e2e/*.spec.ts` (Playwright, after `pnpm build`). `e2e/cpr.ts` turns a fixture's base/head
-  into a repo and serves `cpr view` (`serveFixture`) or a fake forge pull request
-  (`servePullRequest`). Every spec checks there were no page errors.
+  into a repo and serves `cpr view` (`serveFixture`, which opens `/diff/<pair>/`), a fake forge
+  pull request (`servePullRequest`), or five commits for the commits page (`serveCommits`). Every
+  spec checks there were no page errors.
 - Count minimap nodes, not DOM nodes: off-screen nodes are not in the DOM.
 - For layout or performance work, measure on real graphs with the `viewer-check` skill.
