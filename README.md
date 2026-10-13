@@ -37,7 +37,10 @@ them as one node — "390 users in 220 files" — that opens on click; zoomed ou
 map of file names you click to zoom into, with one edge per pair of linked files, heavier the more
 symbol edges it stands for; and j/k, the change list or a finding take you to a symbol without
 anything moving. While the view of a change with more than 400 edges moves, only the selected
-symbol's edges are drawn; the rest come back when it stops. To find one in hundreds, search the change list (press `/`): it
+symbol's edges are drawn; the rest come back when it stops. Layouts are made in the background:
+the change list and findings show at once, a new view (context, a project, a group) is drawn
+when ready — "Laying out…" meanwhile, the previous one still usable — and a view seen before
+comes back at once. To find one in hundreds, search the change list (press `/`): it
 keeps the symbols whose file path and name hold every word you type, Enter opens the first, and
 j/k walk only the matches.
 

@@ -10,7 +10,9 @@ with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packag
   neighbourhoods, file boxes, cluster packing, project frames) and `decorate`/`decorateEdges`
   (selection, reviewed marks, `--since` dimming). Unit-tested in `test/flow.test.ts`.
 - `src/projects.ts` — a path's project by the graph's `projects` (the longest folder holding it).
-- `src/App.tsx` — state, the layout memo, the canvas (map mode, reveal/fit), toolbar.
+- `src/layouts.ts`, `src/layout-worker.ts`, `src/useLayout.ts` — layouts made in a worker
+  (V8e): view keys, the cache of recent layouts, numbered requests, the main-thread fallback.
+- `src/App.tsx` — state, the view to lay out, the canvas (map mode, reveal/fit), toolbar.
 - `src/Sidebar.tsx` (change list with search, findings, review tab), `src/DetailPanel.tsx`
   (diff, comments, users/uses), `src/ReviewTab.tsx`.
 - `src/review.ts` (change list — by project when it spans several —, search, j/k order, one
@@ -20,9 +22,14 @@ with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packag
 
 ## Rules
 
-- **Layout never depends on selection or review state.** Only `decorate` does; the layout memo
-  depends on the graph and the view toggles. Clicking or marking must not move anything (V6:
+- **Layout never depends on selection or review state.** Only `decorate` does; the view to lay
+  out depends on the graph and the view toggles. Clicking or marking must not move anything (V6:
   this took marking from 1.2 s to 72 ms on a 1,288-symbol graph).
+- Layouts are made off the main thread (V8e, `useLayout`): never call `layoutFlow` from a
+  component. A layout arrives later: the last one stays drawn (`pending`), and anything that
+  moves the view for a new layout (fitting a project, the focus, a group) waits until it is
+  drawn. What crosses to the worker is structured-cloned: options and layouts stay plain data
+  (Maps, Sets, no functions).
 - Big graphs: neighbourhoods over `NEIGHBOUR_LIMIT` (8) become summary nodes; below zoom 0.45
   (`MAP_ZOOM`, `src/mapzoom.ts`) the canvas is a map (CSS class `map`), React Flow draws only
   on-screen nodes (`onlyRenderVisibleElements`).
@@ -52,8 +59,8 @@ with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packag
 
 ## Tests
 
-- Unit: `test/flow.test.ts`, `review.test.ts`, `detail.test.ts`, `comments.test.ts` (vitest from the
-  repo root).
+- Unit: `test/flow.test.ts`, `layouts.test.ts`, `review.test.ts`, `detail.test.ts`,
+  `comments.test.ts` (vitest from the repo root).
 - E2E: `e2e/*.spec.ts` (Playwright, after `pnpm build`). `e2e/cpr.ts` turns a fixture's base/head
   into a repo and serves `cpr view` (`serveFixture`) or a fake forge pull request
   (`servePullRequest`). Every spec checks there were no page errors.
