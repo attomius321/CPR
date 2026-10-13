@@ -1894,3 +1894,5 @@ back to back: rows wholly in view 23 → 25 at 1440 × 900 and 17 → 19 at 1280
 drawn (warm, plain fonts, 5 rounds) Qwik 114 → 114 ms median, Bitwarden 146 → 139 ms; no page
 errors; screenshots of both modes, light and dark, and of HEAD's row selected. Not verified:
 Firefox and Safari; a back-forward cache restoring the page (Chromium lists it anew).
+
+Merged into main (2026-10-13). `main` verified after the merge: 557 unit tests, build, 64 e2e.

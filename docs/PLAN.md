@@ -424,7 +424,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V10a ✅, V10b–c | A commit graph | The commits page was a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches were not listed (1,539 unmerged on Bitwarden). V10a merged: every branch's history as a graph, lines over 100 rows as arrows (Bitwarden 20 lanes, 142 drawn whole), loaded lazily (CPython's 150,182 rows: first rows in 120 ms once listed). V10b (branches panel) and V10c (picks across branches) planned. See below. |
 | V11 ✅ | Checkout from the commits page | The commits page showed every branch but checked nothing out, and did not notice a checkout made in a terminal (it showed the old HEAD until reloaded). Merged: a row menu (right-click, "⋯", c) checks out a branch, a remote branch as its tracking branch, a tag or the commit, after a confirmation; `git switch` never forced, git's refusals shown; the page lists anew after a checkout (109–115 ms on this repository) and on focus; HEAD stands out (solid "HEAD → main" badge, tinted row, ringed dot, a title chip). See below. |
 | V12 ✅ | Open in VS Code | The diff panel shows a symbol's lines, but going there in the editor is done by hand, and head's line number is not the working copy's: reviewing anything but the checked-out commit, 1–62 % of added lines sat at another line and up to 23 % were changed since (CPR, ky, zod). Merged: "Open in VS Code" (or `o`), Ctrl/⌘+click or a line number opens the line in the window that has the repository open (else a new one with it), at its place in the working copy; the server runs `code <repo root> --goto <file>:<line>:<col>`, found on any platform. 105 ms from the request to VS Code here. See below. |
-| V13 | Compare mode | The commits page still opens as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Built (not merged): browse by default (a click selects the row; 25 rows in view instead of 23 at 1440 × 900), and a "Compare mode" toggle (or `x`) for picking, left with Escape; first rows as fast as `main`. See below. |
+| V13 ✅ | Compare mode | The commits page opened as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Merged: browse by default (a click selects the row; 25 rows in view instead of 23 at 1440 × 900), and a "Compare mode" toggle (or `x`) for picking, left with Escape; first rows as fast as `main`. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -3362,7 +3362,7 @@ Remote SSH and dev containers.
 
 ### V13 — Compare mode
 
-**Status:** built (2026-10-13), on branch `milestone/v13-compare-mode`; not merged. As built and
+**Status:** merged into main (2026-10-13, from branch `milestone/v13-compare-mode`). As built and
 results: "As built — V13" below.
 
 **Problem** (asked: "i would like the default mode to not be 'Pick two to compare them, or one
@@ -3478,7 +3478,7 @@ README.
 
 | # | Milestone | Output |
 |---|---|---|
-| V13 | Compare mode | Browse mode by default (a click selects; no circles or bar; errors under the title), the "Compare mode" toggle, `x` turning it on, Escape leaving it; e2e; README. |
+| V13 ✅ | Compare mode | Browse mode by default (a click selects; no circles or bar; errors under the title), the "Compare mode" toggle, `x` turning it on, Escape leaving it; e2e; README. |
 
 **Proposed decisions**:
 
