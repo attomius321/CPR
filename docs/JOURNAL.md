@@ -1732,3 +1732,6 @@ seven repositories. Real repositories in Chromium (plain fonts, warm server): fi
 102–147 ms against `main`'s 87–119 ms; CPython's shape in 83 ms, lanes 62 ms, no long task
 while scrolling or jumping, heap 72 MB. A cold server: CPython's first rows at 0.93 s (git's
 walk). Not verified: Windows and macOS browsers, Firefox's height cap.
+
+Merged into main (2026-10-13), V10a alone: V10b (branches panel) and V10c (picks across
+branches) are not started. `main` verified after the merge: 495 unit tests, build, 48 e2e.

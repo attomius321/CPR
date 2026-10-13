@@ -421,7 +421,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | E1 (measured) | Decisions and their ripples | Could mechanical parts of a change (renames and their call sites, moves, a new argument everywhere, the same edit repeated) be verified instead of read? Measured on 165 changes: 20 % of changed symbols but 5.4 % of diff lines (2.8 % without one large rename); 0 false in 40 audited. Not the disruptive lever; grouping repeated edits in the change list is a candidate. See below. |
 | V8 ✅ | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Closed: V8a–V8c and V8e merged (on Qwik: zoom out 466 → 15 ms blocked, opening 2,568 → 620 ms, map clicks reaching the file 87 → 100 %); V8d deferred; see below. |
 | V9 ✅ | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Merged: the current branch's commits as `cpr view`'s first page (100 rows in under 1 s on Qwik), pick two (or one against its parent), the diff analyzed on demand in a child process (Bitwarden 42 s, within 10 % of `cpr diff`; the server answers in 2 ms meanwhile), the last 8 kept. See below. |
-| V10 | A commit graph | The commits page is a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches are not listed (1,539 unmerged on Bitwarden). Planned, as Git Extensions and Gittyup: the whole history of every branch drawn as a graph, every line whole, loaded lazily (CPython's 150,182 rows: a 1.32 MB shape, details 200 rows at a time in 20 ms); tags as badges only; a branches panel on the left (local with ahead/behind, remotes by folder) whose click goes to the tip; diverged picks compared from their fork point. See below. |
+| V10a ✅, V10b–c | A commit graph | The commits page was a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches were not listed (1,539 unmerged on Bitwarden). V10a merged: every branch's history as a graph, lines over 100 rows as arrows (Bitwarden 20 lanes, 142 drawn whole), loaded lazily (CPython's 150,182 rows: first rows in 120 ms once listed). V10b (branches panel) and V10c (picks across branches) planned. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -2646,8 +2646,8 @@ branches, commits) — the larger git interface this starts.
 
 ### V10 — A commit graph
 
-**Status:** in progress on branch `milestone/v10-commit-graph`: V10a done (2026-10-13; "As built
-— V10a" below); V10b and V10c next.
+**Status:** V10a merged into main (2026-10-13, from branch `milestone/v10-commit-graph`; "As
+built — V10a" below). V10b and V10c not started; the next step is V11 (checkout), asked first.
 
 **Problem** (asked: "I want to see the tree on the left, with branch divergence … if that is
 possible"; "I want to see all the commits, from any branches, not only from the branch, with a
