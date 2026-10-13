@@ -1,5 +1,16 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { isCommit, listCommits, openRepo, parseLog } from '../src/index.js';
+import {
+  commitDetails,
+  hasCommitGraph,
+  historyState,
+  isCommit,
+  openRepo,
+  parseLog,
+  streamHistory,
+  type GitRepo,
+  type HistoryRow,
+  type HistoryScope,
+} from '../src/index.js';
 import { createRepo } from './helpers/git-repo.js';
 
 const US = '\x1f';
@@ -73,61 +84,198 @@ describe('parseLog', () => {
   });
 });
 
-describe('listCommits', () => {
+// Every kind of tip, dated so graph order and date order differ nowhere but where a test says:
+//
+//   A ── B ── M ── C        main (HEAD); tag v1 on B; a stash on C
+//    │    \── F ──/         feature, merged by M
+//    │    \── W             wip, not merged
+//    ├── T                  origin/topic: a remote branch only
+//    ├── X                  tag old only (its branch deleted)
+//    └── Y                  refs/cpr/github/7/head only
+function historyRepo() {
   const repo = createRepo();
-  const shas: string[] = [];
-  for (let i = 1; i <= 5; i++) {
-    repo.write({ 'a.ts': `export const a = ${i};\n` });
-    shas.push(repo.commit(`commit ${i}`));
-  }
-  repo.git('tag', 'v1', shas[1] ?? '');
+  const commit = (name: string) => {
+    repo.write({ [`${name}.ts`]: `export const ${name} = 1;\n` });
+    return repo.commit(name);
+  };
+  const A = commit('A');
+  const B = commit('B');
+  repo.git('tag', 'v1', B);
+  repo.git('switch', '--quiet', '--create', 'feature');
+  const F = commit('F');
+  repo.git('switch', '--quiet', '--create', 'wip', B);
+  const W = commit('W');
+  repo.git('switch', '--quiet', 'main');
+  repo.git('merge', '--quiet', '--no-ff', '--message', 'M', 'feature');
+  const M = repo.git('rev-parse', 'HEAD');
+  const C = commit('C');
+  const aside = (name: string) => {
+    repo.git('switch', '--quiet', '--detach', A);
+    const sha = commit(name);
+    repo.git('switch', '--quiet', 'main');
+    return sha;
+  };
+  const T = aside('T');
+  repo.git('update-ref', 'refs/remotes/origin/topic', T);
+  const X = aside('X');
+  repo.git('tag', 'old', X);
+  const Y = aside('Y');
+  repo.git('update-ref', 'refs/cpr/github/7/head', Y);
+  repo.write({ 'C.ts': 'export const C = 2;\n' });
+  repo.git('stash', '--quiet');
+  return { repo, shas: { A, B, F, W, M, C, T, X, Y } };
+}
+
+async function listAll(repo: GitRepo, scope: HistoryScope): Promise<HistoryRow[]> {
+  const rows: HistoryRow[] = [];
+  await streamHistory(repo, scope, (batch) => rows.push(...batch));
+  return rows;
+}
+
+/** Every commit listed above its parents. */
+function inGraphOrder(rows: readonly HistoryRow[]): boolean {
+  const at = new Map(rows.map((row, i) => [row.sha, i]));
+  return rows.every((row, i) => row.parents.every((p) => (at.get(p) ?? Infinity) > i));
+}
+
+describe('streamHistory', () => {
+  const { repo, shas } = historyRepo();
+  const { A, B, F, W, M, C, T } = shas;
   afterAll(() => repo.cleanup());
 
-  it("lists the current branch's commits, newest first, in pages", async () => {
-    const git = await openRepo(repo.root);
-    const first = await listCommits(git, { limit: 2 });
-    expect(first.branch).toBe('main');
-    expect(first.more).toBe(true);
-    expect(first.commits.map((c) => c.subject)).toEqual(['commit 5', 'commit 4']);
-    expect(first.commits[0]).toMatchObject({
-      sha: shas[4],
-      parents: [shas[3]],
-      author: 'CPR Test',
-      refs: [
-        { kind: 'head', name: 'HEAD' },
-        { kind: 'branch', name: 'main' },
-      ],
-    });
-    expect(Number.isNaN(Date.parse(first.commits[0]?.date ?? ''))).toBe(false);
-
-    const last = await listCommits(git, { skip: 2, limit: 3 });
-    expect(last.more).toBe(false);
-    expect(last.commits.map((c) => c.sha)).toEqual([shas[2], shas[1], shas[0]]);
-    expect(last.commits[1]?.refs).toEqual([{ kind: 'tag', name: 'v1' }]);
-    expect(last.commits[2]?.parents).toEqual([]);
+  it('lists every branch, local and remote, in graph order; no tag, stash or cpr ref', async () => {
+    const rows = await listAll(await openRepo(repo.root), 'all');
+    expect(new Set(rows.map((r) => r.sha))).toEqual(new Set([A, B, F, W, M, C, T]));
+    expect(rows).toHaveLength(7);
+    expect(inGraphOrder(rows)).toBe(true);
+    expect(rows.find((r) => r.sha === M)?.parents).toEqual([B, F]);
+    expect(rows.find((r) => r.sha === C)?.parents).toEqual([M]);
   });
 
-  it('says when HEAD is detached', async () => {
-    repo.git('checkout', '--quiet', '--detach', shas[3] ?? '');
+  it("lists the current branch's commits alone, as git log --topo-order does", async () => {
+    const rows = await listAll(await openRepo(repo.root), 'current');
+    expect(rows.map((r) => r.sha)).toEqual(
+      repo.git('rev-list', '--topo-order', 'HEAD').split('\n'),
+    );
+    expect(rows[0]).toEqual({ sha: C, parents: [M] });
+  });
+
+  it('lists a child above its parent even when dated before it', async () => {
+    const skewed = createRepo();
     try {
-      const page = await listCommits(await openRepo(repo.root), { limit: 1 });
-      expect(page.branch).toBeNull();
-      expect(page.commits[0]?.sha).toBe(shas[3]);
+      skewed.write({ 'a.ts': '1' });
+      const parent = skewed.commitAt('parent', '2026-01-02T00:00:00Z');
+      skewed.git('switch', '--quiet', '--create', 'newer');
+      skewed.write({ 'b.ts': '1' });
+      skewed.commitAt('newer', '2026-01-03T00:00:00Z');
+      skewed.git('switch', '--quiet', 'main');
+      skewed.write({ 'c.ts': '1' });
+      const child = skewed.commitAt('child dated before its parent', '2026-01-01T00:00:00Z');
+      // In date order git lists the parent first (the newer tip pulls it up).
+      const byDate = skewed.git('log', '--format=%H', 'HEAD', '--branches').split('\n');
+      expect(byDate.indexOf(parent)).toBeLessThan(byDate.indexOf(child));
+
+      const rows = await listAll(await openRepo(skewed.root), 'all');
+      expect(inGraphOrder(rows)).toBe(true);
+      expect(rows.findIndex((r) => r.sha === child)).toBeLessThan(
+        rows.findIndex((r) => r.sha === parent),
+      );
     } finally {
-      repo.git('checkout', '--quiet', 'main');
+      skewed.cleanup();
     }
   });
 
   it('lists nothing in a repository without commits', async () => {
     const empty = createRepo();
     try {
-      expect(await listCommits(await openRepo(empty.root))).toEqual({
+      expect(await listAll(await openRepo(empty.root), 'all')).toEqual([]);
+      expect(await listAll(await openRepo(empty.root), 'current')).toEqual([]);
+    } finally {
+      empty.cleanup();
+    }
+  });
+});
+
+describe('commitDetails', () => {
+  const { repo, shas } = historyRepo();
+  afterAll(() => repo.cleanup());
+
+  it('gives the commits asked for, in that order, with their branches and tags', async () => {
+    const git = await openRepo(repo.root);
+    const commits = await commitDetails(git, [shas.C, shas.X, shas.B]);
+    expect(commits.map((c) => c.subject)).toEqual(['C', 'X', 'B']);
+    expect(commits[0]).toMatchObject({
+      sha: shas.C,
+      parents: [shas.M],
+      author: 'CPR Test',
+      refs: [
+        { kind: 'head', name: 'HEAD' },
+        { kind: 'branch', name: 'main' },
+      ],
+    });
+    expect(Number.isNaN(Date.parse(commits[0]?.date ?? ''))).toBe(false);
+    expect(commits[1]?.refs).toEqual([{ kind: 'tag', name: 'old' }]);
+    expect(commits[2]?.refs).toEqual([{ kind: 'tag', name: 'v1' }]);
+    expect(await commitDetails(git, [])).toEqual([]);
+  });
+});
+
+describe('historyState', () => {
+  const { repo, shas } = historyRepo();
+  afterAll(() => repo.cleanup());
+
+  it('names the branch and HEAD; its version moves with HEAD and the branches only', async () => {
+    const git = await openRepo(repo.root);
+    const state = await historyState(git);
+    expect(state).toMatchObject({ branch: 'main', head: shas.C });
+    expect((await historyState(git)).version).toBe(state.version);
+
+    repo.git('tag', 'v2', shas.C);
+    expect((await historyState(git)).version).toBe(state.version);
+
+    repo.git('branch', '--force', 'wip', shas.C);
+    const moved = await historyState(git);
+    expect(moved.version).not.toBe(state.version);
+
+    repo.git('update-ref', 'refs/remotes/origin/other', shas.A);
+    const fetched = await historyState(git);
+    expect(fetched.version).not.toBe(moved.version);
+
+    repo.git('switch', '--quiet', '--detach', shas.M);
+    try {
+      const detached = await historyState(git);
+      expect(detached).toMatchObject({ branch: null, head: shas.M });
+      expect(detached.version).not.toBe(fetched.version);
+    } finally {
+      repo.git('switch', '--quiet', 'main');
+    }
+  });
+
+  it('has no HEAD in a repository without commits', async () => {
+    const empty = createRepo();
+    try {
+      expect(await historyState(await openRepo(empty.root))).toMatchObject({
         branch: 'main',
-        commits: [],
-        more: false,
+        head: null,
       });
     } finally {
       empty.cleanup();
+    }
+  });
+});
+
+describe('hasCommitGraph', () => {
+  it('says whether git keeps a commit-graph file', async () => {
+    const repo = createRepo();
+    try {
+      repo.write({ 'a.ts': '1' });
+      repo.commit('one');
+      const git = await openRepo(repo.root);
+      expect(hasCommitGraph(git)).toBe(false);
+      repo.git('commit-graph', 'write', '--reachable');
+      expect(hasCommitGraph(git)).toBe(true);
+    } finally {
+      repo.cleanup();
     }
   });
 });

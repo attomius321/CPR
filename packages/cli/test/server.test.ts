@@ -14,6 +14,7 @@ import {
 } from '../src/server.js';
 import { fileStateStore, stateDir } from '../src/state.js';
 import { Diffs, type Pair, type RunDiff } from '../src/diffs.js';
+import { Histories } from '../src/history.js';
 
 const graph = JSON.parse(
   readFileSync(
@@ -275,7 +276,32 @@ describe('cpr view: commits and diffs', () => {
     });
   const diffs = new Diffs(run);
   const reads: string[] = [];
-  const skips: number[] = [];
+  // C ← B ← A, listed as git would; `version` moves when a test says so.
+  let version = 'v1';
+  const streams: string[] = [];
+  const history = new Histories({
+    state: () => Promise.resolve({ branch: 'main', head: C, version }),
+    stream: (scope, onRows) => {
+      streams.push(scope);
+      onRows([
+        { sha: C, parents: [B] },
+        { sha: B, parents: [A] },
+        { sha: A, parents: [] },
+      ]);
+      return Promise.resolve();
+    },
+    details: (shas) =>
+      Promise.resolve(
+        shas.map((sha) => ({
+          sha,
+          parents: [],
+          author: 'Ada',
+          date: '2026-10-13T08:00:00Z',
+          subject: `commit ${sha[0] ?? ''}`,
+          refs: [],
+        })),
+      ),
+  });
   /** The graph of a pair: the fixture's, with that pair's SHAs. */
   const graphOf = ({ base, head }: Pair): Graph => ({
     ...graph,
@@ -294,21 +320,7 @@ describe('cpr view: commits and diffs', () => {
     server = await startViewServer({
       viewerDir: viewer,
       repository: {
-        commits: (skip) => {
-          skips.push(skip);
-          return Promise.resolve({
-            branch: 'main',
-            commits: commits.slice(skip).map((sha) => ({
-              sha,
-              parents: [],
-              author: 'Ada',
-              date: '2026-10-13T08:00:00Z',
-              subject: `commit ${sha[0] ?? ''}`,
-              refs: [],
-            })),
-            more: false,
-          });
-        },
+        history,
         isCommit: (sha) => Promise.resolve(commits.includes(sha)),
         diffs,
         readFile: (sha, path) => {
@@ -342,16 +354,55 @@ describe('cpr view: commits and diffs', () => {
     });
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-  it('lists commits a page at a time', async () => {
-    const first = await get('/api/commits');
+  it('lists rows of the history with their details, then its shape', async () => {
+    const first = await get('/api/history?scope=all&from=0&to=2');
     expect(first.status).toBe(200);
-    expect(JSON.parse(first.body)).toMatchObject({ branch: 'main', more: false });
+    expect(JSON.parse(first.body)).toMatchObject({
+      version: 'v1',
+      branch: 'main',
+      head: C,
+      from: 0,
+      listed: 3,
+      done: true,
+    });
     expect(
-      (JSON.parse((await get('/api/commits?skip=2')).body) as { commits: unknown[] }).commits,
-    ).toHaveLength(1);
-    expect((await get('/api/commits?skip=-1')).status).toBe(400);
-    expect((await get('/api/commits?skip=x')).status).toBe(400);
-    expect(skips).toEqual([0, 2]);
+      (JSON.parse(first.body) as { commits: { sha: string }[] }).commits.map((c) => c.sha),
+    ).toEqual([C, B]);
+    // No scope: every branch; no range: the first 200 rows.
+    expect(JSON.parse((await get('/api/history')).body)).toMatchObject({ from: 0, listed: 3 });
+    expect(JSON.parse((await get('/api/history?from=2&version=v1')).body)).toMatchObject({
+      from: 2,
+      commits: [{ sha: A }],
+    });
+    expect(JSON.parse((await get('/api/history/shape?scope=all&version=v1')).body)).toEqual({
+      version: 'v1',
+      rows: 3,
+      head: 0,
+      parents: [[1], [2], []],
+    });
+    await get('/api/history?scope=current');
+    expect(streams).toEqual(['all', 'current']);
+  });
+
+  it('refuses unknown scopes and bad ranges; says when a version is stale', async () => {
+    for (const query of [
+      'scope=tags',
+      'from=-1',
+      'from=x',
+      'from=3&to=2',
+      'from=0&to=501',
+      'from=1.5',
+    ]) {
+      expect((await get(`/api/history?${query}`)).status, query).toBe(400);
+    }
+    expect((await get('/api/history/shape')).status).toBe(400);
+    expect((await get('/api/history/shape?scope=all&version=old')).status).toBe(409);
+    expect((await get('/api/history?version=old')).status).toBe(409);
+    version = 'v2';
+    expect(JSON.parse((await get('/api/history')).body)).toMatchObject({ version: 'v2' });
+    expect((await get('/api/history?version=v1')).status).toBe(409);
+    expect((await post('/api/history', {})).status).toBe(405);
+    expect((await get('/api/commits')).status).toBe(404);
   });
 
   it('says it lists commits; the root has no graph', async () => {

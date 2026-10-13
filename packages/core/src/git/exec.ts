@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { promisify } from 'node:util';
 import { CprError } from '../errors.js';
@@ -49,4 +49,35 @@ export async function git(cwd: string, args: readonly string[]): Promise<string>
       { cause: error },
     );
   }
+}
+
+/**
+ * Runs git in `cwd` and hands its stdout to `onData` as it comes, for output too long to wait
+ * for (a whole history). Resolves when git exits; rejects as `git` does.
+ */
+export function gitStream(
+  cwd: string,
+  args: readonly string[],
+  onData: (chunk: string) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('git', args, {
+      cwd,
+      env: { ...process.env, LC_ALL: 'C', GIT_TERMINAL_PROMPT: '0' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stderr = '';
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', onData);
+    child.stderr.setEncoding('utf8');
+    child.stderr.on('data', (chunk: string) => (stderr += chunk));
+    child.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.code !== 'ENOENT') return reject(error);
+      if (!existsSync(cwd)) reject(new Error(`directory does not exist: ${cwd}`, { cause: error }));
+      else reject(new CprError('git is not installed or not on PATH', { cause: error }));
+    });
+    child.on('close', (code) =>
+      code === 0 ? resolve() : reject(new GitError(args, code, stderr || 'git failed')),
+    );
+  });
 }

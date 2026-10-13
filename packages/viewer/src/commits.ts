@@ -22,50 +22,84 @@ export function pick(picks: readonly string[], sha: string): string[] {
   return picks.length < 2 ? [...picks, sha] : [picks[0] ?? sha, sha];
 }
 
-/**
- * What the picks compare: of two, the lower in the list (older) is the base; one commit is
- * compared with its first parent. Null with nothing to compare (a root commit has no parent).
- */
-export function comparison(
-  commits: readonly Commit[],
-  picks: readonly string[],
-): Comparison | null {
-  let pair: Pair | null = null;
-  if (picks.length === 1 && picks[0] !== undefined) {
-    const commit = commits.find((c) => c.sha === picks[0]);
-    const parent = commit?.parents[0];
-    if (commit && parent) pair = { base: parent, head: commit.sha };
-  } else if (picks.length === 2) {
-    const [first, second] = picks.map((sha) => commits.findIndex((c) => c.sha === sha));
-    if (first !== undefined && second !== undefined && first >= 0 && second >= 0) {
-      const older = commits[Math.max(first, second)];
-      const newer = commits[Math.min(first, second)];
-      if (older && newer) pair = { base: older.sha, head: newer.sha };
-    }
-  }
-  if (!pair) return null;
-  const count = countBetween(commits, pair);
-  const label = `${shortSha(pair.base)} → ${shortSha(pair.head)} · ${count} commit${count === 1 ? '' : 's'}`;
-  return { ...pair, label };
+/** A picked commit: its row, and its first parent's SHA (none for a root commit). */
+export interface Picked {
+  sha: string;
+  row: number;
+  parent?: string;
 }
 
 /**
- * Commits head adds to base (`git rev-list --count base..head`), among the commits listed: the
- * history older than the list is not walked.
+ * What the picks compare: of two, the lower row (older: in graph order an ancestor is always
+ * lower) is the base; one commit is compared with its first parent. Null with nothing to
+ * compare (a root commit has no parent). `parents` are the history's rows' parents.
  */
-function countBetween(commits: readonly Commit[], { base, head }: Pair): number {
-  const parents = new Map(commits.map((c) => [c.sha, c.parents]));
-  const reach = (from: string, stop: ReadonlySet<string>) => {
-    const seen = new Set<string>();
+export function comparison(
+  picks: readonly Picked[],
+  parents: readonly (readonly number[])[],
+): Comparison | null {
+  let pair: (Pair & { rows: [base: number, head: number] }) | null = null;
+  const [first, second] = picks;
+  if (first && !second) {
+    if (first.parent) {
+      const parentRow = parents[first.row]?.[0] ?? -1;
+      pair = { base: first.parent, head: first.sha, rows: [parentRow, first.row] };
+    }
+  } else if (first && second) {
+    const [older, newer] = first.row > second.row ? [first, second] : [second, first];
+    pair = { base: older.sha, head: newer.sha, rows: [older.row, newer.row] };
+  }
+  if (!pair) return null;
+  const count = countBetween(parents, ...pair.rows);
+  const label = `${shortSha(pair.base)} → ${shortSha(pair.head)} · ${count} commit${count === 1 ? '' : 's'}`;
+  return { base: pair.base, head: pair.head, label };
+}
+
+/** Commits head adds to base (`git rev-list --count base..head`), walked through the rows. */
+function countBetween(parents: readonly (readonly number[])[], base: number, head: number): number {
+  const reach = (from: number, stop: ReadonlySet<number>) => {
+    const seen = new Set<number>();
     const todo = [from];
-    for (let sha = todo.pop(); sha !== undefined; sha = todo.pop()) {
-      if (seen.has(sha) || stop.has(sha) || !parents.has(sha)) continue;
-      seen.add(sha);
-      todo.push(...(parents.get(sha) ?? []));
+    for (let row = todo.pop(); row !== undefined; row = todo.pop()) {
+      if (seen.has(row) || stop.has(row) || row < 0 || row >= parents.length) continue;
+      seen.add(row);
+      todo.push(...(parents[row] ?? []));
     }
     return seen;
   };
   return reach(head, reach(base, new Set())).size;
+}
+
+/**
+ * The first rows' parents as row numbers, before the history's shape is known: a parent not
+ * listed gets a number of its own below zero, the same for the same commit, so lanes join.
+ */
+export function parentRows(commits: readonly Commit[]): number[][] {
+  const rows = new Map(commits.map((c, i) => [c.sha, i]));
+  const unlisted = new Map<string, number>();
+  return commits.map((c) =>
+    c.parents.map((p) => {
+      const row = rows.get(p);
+      if (row !== undefined) return row;
+      if (!unlisted.has(p)) unlisted.set(p, -(unlisted.size + 1));
+      return unlisted.get(p) ?? -1;
+    }),
+  );
+}
+
+/** Rows whose details are asked for together. */
+export const BLOCK = 200;
+
+/** The blocks of rows to have for rows `first` to `last` in view, and a screen around them. */
+export function blocksAround(first: number, last: number, rows: number): number[] {
+  const margin = last - first + 1;
+  const from = Math.max(0, first - margin);
+  const to = Math.min(rows - 1, last + margin);
+  const blocks: number[] = [];
+  for (let block = Math.floor(from / BLOCK); block <= Math.floor(to / BLOCK); block++) {
+    blocks.push(block);
+  }
+  return blocks;
 }
 
 const UNITS: [unit: string, seconds: number][] = [

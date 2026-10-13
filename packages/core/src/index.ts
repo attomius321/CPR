@@ -102,12 +102,19 @@ export {
 } from './projects.js';
 export { readFileAtRevision } from './git/show.js';
 export {
+  commitDetails,
+  hasCommitGraph,
+  HISTORY_SCOPES,
+  historyState,
   isCommit,
-  listCommits,
   parseLog,
+  streamHistory,
   type Commit,
-  type CommitPage,
   type CommitRef,
-  type ListCommitsOptions,
+  type HistoryPage,
+  type HistoryRow,
+  type HistoryScope,
+  type HistoryShape,
+  type HistoryState,
 } from './git/log.js';
 export { fetchRefs, remoteUrl } from './git/remote.js';
