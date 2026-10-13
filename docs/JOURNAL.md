@@ -1590,6 +1590,11 @@ against its parent) are compared directly, analyzed then in a child process, and
   longest subject (Qwik has some): `min-width: 0` on flex items does not lower their min-content
   contribution. `contain: inline-size` on the page does. Short fixture subjects hid it; the e2e
   fixture now has a long one.
+- CI failed on macOS only: `src/commits.ts` and `src/Commits.tsx` differ only by case. macOS
+  file systems ignore case, so TypeScript resolved `./Commits.js` to `commits.ts` and never
+  loaded the component (ESLint: "not found by the project service"). Linux, where every local
+  run happened, tells them apart. The component is `CommitsPage.tsx`; a unit test now fails on
+  any two tracked names that differ only by case.
 - Counting "N commits" by rows between the picks is wrong with merges (other lines' commits sit
   between them by date); walking the listed commits' parents gives `git rev-list --count`
   (checked on Qwik: 5 and 5).

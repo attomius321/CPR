@@ -26,7 +26,7 @@ import { flushSync } from 'react-dom';
 import type { Graph } from '@cpr/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import type { Loaded, Pair } from './commits.js';
-import { BackToCommits, CommitsPage, DiffProgress, fetchGraph, startDiff } from './Commits.js';
+import { BackToCommits, CommitsPage, DiffProgress, fetchGraph, startDiff } from './CommitsPage.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
 import {

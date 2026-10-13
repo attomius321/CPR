@@ -2593,7 +2593,7 @@ as today; `cpr diff`'s results do not change.
   finishes, so no slot is left half checked out, and the slot's pid lock is recovered as stale
   (a run started within that checkout can meet its index lock and fail: "Analyze again").
   Stopping the server stops every run.
-- **Viewer**: `src/commits.ts` (pure) and `src/Commits.tsx`. A click picks, a picked commit is
+- **Viewer**: `src/commits.ts` (pure) and `src/CommitsPage.tsx`. A click picks, a picked commit is
   unpicked, a third replaces the last picked. The label counts the commits head adds to base,
   walked through the listed commits' parents (the rows between them would count commits of
   other lines). A diff page opened anew (a bookmark, a restarted server) starts its own analysis;
