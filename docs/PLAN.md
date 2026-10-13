@@ -2167,8 +2167,8 @@ whether the old spelling of a rename is left anywhere (an incomplete rename woul
 ### V8 — A smooth viewer
 
 **Status:** planned (2026-10-12); V8a merged into main (2026-10-12, from branch
-`milestone/v8a-zoom-labels`); V8b built (2026-10-12) on `milestone/v8b-map-clicks`; V8c–V8e not
-started.
+`milestone/v8a-zoom-labels`); V8b merged into main (2026-10-13, from branch
+`milestone/v8b-map-clicks`); V8c–V8e not started.
 
 **Problem** (asked: "it works really flaky and laggy. What are our options to improve the client
 side viewer?"). Measured with `scripts/viewer/interactions.mjs` (new: every interaction a
@@ -2282,7 +2282,7 @@ after its checks and the user's agreement.
 | # | Milestone | Output |
 |---|---|---|
 | V8a ✅ | Map labels | Labels scaled by a transform, the zoom value in a stylesheet for them only, updated only on the map. |
-| V8b (built) | Map clicks | Frames never take the pointer on the map; a click on an empty frame area zooms into it. |
+| V8b ✅ | Map clicks | Frames never take the pointer on the map; a click on an empty frame area zooms into it. |
 | V8c | Edges | Only the selection's edges while moving; one edge per linked file pair on the map. |
 | V8d | Lighter selection | Memoized change-list rows; the view moves only for a symbol out of view, without stepped animation on large graphs. |
 | V8e | Layout in a worker | `layoutFlow` off the main thread, numbered requests, recent layouts kept. |

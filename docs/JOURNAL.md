@@ -1476,3 +1476,5 @@ every spot of every file box on the fixture's map reaches the file (4 boxes fail
 click on a frame's empty edge zooms into it. Real maps, `main` → V8b: Bitwarden `737ee3f` 91 →
 100 %, `cbf86c2` 77 → 100 %, Qwik `f7ed58cfc` 88 → 100 % of file-box clicks reach the file;
 timings unchanged within noise. 409 unit tests, 35 e2e.
+
+Merged into main (2026-10-13).
