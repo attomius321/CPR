@@ -9,6 +9,7 @@ import {
   useStoreApi,
   type Edge,
   type Node,
+  type NodeMouseHandler,
 } from '@xyflow/react';
 import {
   useCallback,
@@ -18,6 +19,7 @@ import {
   useState,
   type CSSProperties,
   type DragEvent,
+  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { flushSync } from 'react-dom';
 import type { Graph } from '@cpr/core';
@@ -537,6 +539,14 @@ interface CanvasProps {
 const MOVE_END_DELAY = 100;
 /** Nothing uses edge clicks or hovers: no invisible wide path beside each edge. */
 const EDGE_OPTIONS = { interactionWidth: 0 };
+const PRO_OPTIONS = { hideAttribution: true };
+
+/** The minimap draws every node: its class must not change identity with each render. */
+function minimapClass(n: Node): string {
+  if (n.type === 'symbol') return `minimap-${(n.data as SymbolData).tone}`;
+  if (n.type === 'summary') return 'minimap-summary';
+  return n.type === 'project' ? 'minimap-project' : 'minimap-file';
+}
 
 /** The graph; brings the selected symbol into view when it, or the layout, changes. */
 function Canvas({
@@ -589,6 +599,31 @@ function Canvas({
     [edges, fileEdges, map, moving, selected],
   );
 
+  // Stable, as React Flow hands them to every node: a new one re-renders thousands of them.
+  const onNodeClick = useCallback<NodeMouseHandler>(
+    (_, node) => {
+      if (node.type === 'symbol') onSelect(node.id);
+      else if (node.type === 'summary') onToggleSummary(node.id);
+      // On the map, a file box is what is clicked: zoom into it.
+      else if (node.type === 'file' && map) {
+        void fitView({ nodes: [{ id: node.id }], duration: 300, maxZoom: 1.1 });
+      }
+    },
+    [map, fitView, onSelect, onToggleSummary],
+  );
+  const onPaneClick = useCallback(
+    (event: ReactMouseEvent) => {
+      // On the map, an empty part of a frame (frames never take the pointer there): zoom into
+      // the frame. Anywhere else, the canvas: deselect.
+      const frame = map
+        ? projectAt(layoutNodes, screenToFlowPosition({ x: event.clientX, y: event.clientY }))
+        : undefined;
+      if (frame) void fitView({ nodes: [{ id: frame }], duration: 300, maxZoom: 1.1 });
+      else onSelect(null);
+    },
+    [map, layoutNodes, fitView, screenToFlowPosition, onSelect],
+  );
+
   // The project last fitted as a whole: walking its symbols then centres each, as without one.
   const fitted = useRef(scope);
   useEffect(() => {
@@ -621,40 +656,13 @@ function Canvas({
       nodesConnectable={false}
       // The layout is computed: a drag that starts on a box pans the canvas instead of moving it.
       nodesDraggable={false}
-      onNodeClick={(_, node) => {
-        if (node.type === 'symbol') onSelect(node.id);
-        else if (node.type === 'summary') onToggleSummary(node.id);
-        // On the map, a file box is what is clicked: zoom into it.
-        else if (node.type === 'file' && map) {
-          void fitView({ nodes: [{ id: node.id }], duration: 300, maxZoom: 1.1 });
-        }
-      }}
-      onPaneClick={(event) => {
-        // On the map, an empty part of a frame (frames never take the pointer there): zoom into
-        // the frame. Anywhere else, the canvas: deselect.
-        const frame = map
-          ? projectAt(layoutNodes, screenToFlowPosition({ x: event.clientX, y: event.clientY }))
-          : undefined;
-        if (frame) void fitView({ nodes: [{ id: frame }], duration: 300, maxZoom: 1.1 });
-        else onSelect(null);
-      }}
-      proOptions={{ hideAttribution: true }}
+      onNodeClick={onNodeClick}
+      onPaneClick={onPaneClick}
+      proOptions={PRO_OPTIONS}
     >
       <Background gap={24} />
       <Controls showInteractive={false} />
-      <MiniMap
-        pannable
-        zoomable
-        nodeClassName={(n) =>
-          n.type === 'symbol'
-            ? `minimap-${(n.data as SymbolData).tone}`
-            : n.type === 'summary'
-              ? 'minimap-summary'
-              : n.type === 'project'
-                ? 'minimap-project'
-                : 'minimap-file'
-        }
-      />
+      <MiniMap pannable zoomable nodeClassName={minimapClass} />
     </ReactFlow>
   );
 }
