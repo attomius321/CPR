@@ -1551,3 +1551,7 @@ before comes back without the note. Real graphs, `main` → V8e, blocked ms: ope
 `737ee3f` 557 → 233, `cbf86c2` 856 → 307, Qwik 2,568 → 620; context on 223 → 51, 256 → 92,
 1,147 → 284; the largest group 265 → 173, 1,010 → 600, 1,340 → 322. A timeline of opening Qwik:
 no long frame while the worker lays out. 423 unit tests, 40 e2e.
+
+Merged into main (2026-10-13). V8 closed with it: V8a, V8b, V8c and V8e merged, V8d deferred
+(V8c already met its targets). Left for later: drawing a large new layout in one frame (up to
+693 ms), a faster layout than dagre for very large clusters, the map on a canvas.
