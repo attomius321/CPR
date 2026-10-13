@@ -1595,6 +1595,9 @@ against its parent) are compared directly, analyzed then in a child process, and
   loaded the component (ESLint: "not found by the project service"). Linux, where every local
   run happened, tells them apart. The component is `CommitsPage.tsx`; a unit test now fails on
   any two tracked names that differ only by case.
+- A flaky e2e (1 run in 75): "x" pressed as soon as the rows showed was lost, because the key
+  listener for that render was attached in a `useEffect`, after the paint. The commits page
+  attaches it in a `useLayoutEffect`, in the same task as the rows; 125 runs then passed.
 - Counting "N commits" by rows between the picks is wrong with merges (other lines' commits sit
   between them by date); walking the listed commits' parents gives `git rev-list --count`
   (checked on Qwik: 5 and 5).

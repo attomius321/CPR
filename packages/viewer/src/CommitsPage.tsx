@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Commit, CommitPage, CommitRef } from '@cpr/core';
 import {
   comparison,
@@ -107,8 +107,9 @@ export function CommitsPage() {
   const commits = page?.commits ?? [];
   const current = comparison(commits, picks);
 
-  // j/k move, x picks, Enter compares: as in the change list.
-  useEffect(() => {
+  // j/k move, x picks, Enter compares: as in the change list. Attached as the rows are drawn
+  // (a layout effect), not after the paint: a key pressed as soon as they show is not lost.
+  useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.target instanceof HTMLInputElement) return;
