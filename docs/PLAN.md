@@ -419,7 +419,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | Q1 ✅, Q2 ✅ | Qwik as the `qwik` plugin | Qwik is TSX and mostly reads right, but what its router calls by name (`onGet`, `head`, loaders, actions) shows as false orphans, an optional prop added to a `component$` is a warning, a required one added to a named props type is missed, and components used only from `.mdx` routes look unused. Planned; see below. |
 | V7 ✅ | Apps in the graph | In a monorepo the viewer shows no boundary between apps: file boxes by path, placed by calls, a flat change list, and no project in the graph JSON. Bitwarden changes span 4–16 projects, with 16–45 % of drawn edges crossing them. Planned: projects in the graph, a frame per project, a change list by project; see below. |
 | E1 (measured) | Decisions and their ripples | Could mechanical parts of a change (renames and their call sites, moves, a new argument everywhere, the same edit repeated) be verified instead of read? Measured on 165 changes: 20 % of changed symbols but 5.4 % of diff lines (2.8 % without one large rename); 0 false in 40 audited. Not the disruptive lever; grouping repeated edits in the change list is a candidate. See below. |
-| V8 | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. V8a–V8b merged, V8c built (zoom out on Qwik 466 → 15 ms blocked); V8d–V8e planned; see below. |
+| V8 | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. V8a–V8c merged (zoom out on Qwik 466 → 15 ms blocked); V8d–V8e planned; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -2168,8 +2168,8 @@ whether the old spelling of a rename is left anywhere (an incomplete rename woul
 
 **Status:** planned (2026-10-12); V8a merged into main (2026-10-12, from branch
 `milestone/v8a-zoom-labels`); V8b merged into main (2026-10-13, from branch
-`milestone/v8b-map-clicks`); V8c built (2026-10-13, branch `milestone/v8c-edges`), not merged;
-V8d–V8e not started.
+`milestone/v8b-map-clicks`); V8c merged into main (2026-10-13, from branch
+`milestone/v8c-edges`); V8d–V8e not started.
 
 **Problem** (asked: "it works really flaky and laggy. What are our options to improve the client
 side viewer?"). Measured with `scripts/viewer/interactions.mjs` (new: every interaction a

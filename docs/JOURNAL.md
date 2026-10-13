@@ -1510,3 +1510,5 @@ Real graphs, `main` → V8c, blocked ms: zoom out ×20 Qwik 466 → 15, Bitwarde
 j ×8 Qwik 862 → 78, `cbf86c2` 98 → 0; select Qwik 576 → 115; map edge elements Qwik 6,681 →
 1,378, `cbf86c2` 2,733 → 871; open and context unchanged within noise. Screenshots: the same map
 with fewer, heavier lines. 415 unit tests, 38 e2e.
+
+Merged into main (2026-10-13).
