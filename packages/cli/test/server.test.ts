@@ -13,6 +13,7 @@ import {
   type ViewServer,
 } from '../src/server.js';
 import { fileStateStore, stateDir } from '../src/state.js';
+import { Diffs, type Pair, type RunDiff } from '../src/diffs.js';
 
 const graph = JSON.parse(
   readFileSync(
@@ -251,6 +252,221 @@ describe('/api/state', () => {
     const response = await fetch(new URL(path, server.url));
     return { status: response.status, body: await response.text() };
   }
+});
+
+describe('cpr view: commits and diffs', () => {
+  const viewer = tempDir();
+  const dir = tempDir();
+  const A = 'a'.repeat(40);
+  const B = 'b'.repeat(40);
+  const C = 'c'.repeat(40);
+  const commits = [A, B, C];
+  const runs: {
+    pair: Pair;
+    onPhase: (phase: string) => void;
+    signal: AbortSignal;
+    resolve: (graph: Graph) => void;
+    reject: (error: Error) => void;
+  }[] = [];
+  const run: RunDiff = (pair, { onPhase, signal }) =>
+    new Promise((resolve, reject) => {
+      runs.push({ pair, onPhase, signal, resolve, reject });
+      signal.addEventListener('abort', () => reject(new Error('stopped')));
+    });
+  const diffs = new Diffs(run);
+  const reads: string[] = [];
+  const skips: number[] = [];
+  /** The graph of a pair: the fixture's, with that pair's SHAs. */
+  const graphOf = ({ base, head }: Pair): Graph => ({
+    ...graph,
+    revisions: {
+      base: { ref: base, sha: base, mergeBase: null },
+      head: { ref: head, sha: head },
+      from: base,
+    },
+  });
+  let server: ViewServer;
+
+  beforeAll(async () => {
+    mkdirSync(join(viewer, 'assets'));
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    writeFileSync(join(viewer, 'assets', 'app.js'), 'console.log(1)');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        commits: (skip) => {
+          skips.push(skip);
+          return Promise.resolve({
+            branch: 'main',
+            commits: commits.slice(skip).map((sha) => ({
+              sha,
+              parents: [],
+              author: 'Ada',
+              date: '2026-10-13T08:00:00Z',
+              subject: `commit ${sha[0] ?? ''}`,
+              refs: [],
+            })),
+            more: false,
+          });
+        },
+        isCommit: (sha) => Promise.resolve(commits.includes(sha)),
+        diffs,
+        readFile: (sha, path) => {
+          reads.push(`${sha[0] ?? ''}:${path}`);
+          return Promise.resolve(`// ${path} at ${sha.slice(0, 7)}`);
+        },
+        state: (g) => fileStateStore(join(dir, g.revisions.head.sha ?? 'none')),
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const get = async (path: string) => {
+    const response = await fetch(new URL(path, server.url), { redirect: 'manual' });
+    return {
+      status: response.status,
+      location: response.headers.get('location'),
+      body: await response.text(),
+    };
+  };
+  const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
+    fetch(new URL(path, server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      body: JSON.stringify(body),
+    });
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it('lists commits a page at a time', async () => {
+    const first = await get('/api/commits');
+    expect(first.status).toBe(200);
+    expect(JSON.parse(first.body)).toMatchObject({ branch: 'main', more: false });
+    expect(
+      (JSON.parse((await get('/api/commits?skip=2')).body) as { commits: unknown[] }).commits,
+    ).toHaveLength(1);
+    expect((await get('/api/commits?skip=-1')).status).toBe(400);
+    expect((await get('/api/commits?skip=x')).status).toBe(400);
+    expect(skips).toEqual([0, 2]);
+  });
+
+  it('says it lists commits; the root has no graph', async () => {
+    expect(JSON.parse((await get('/api/capabilities')).body)).toEqual({
+      sources: false,
+      review: null,
+      state: false,
+      commits: true,
+    });
+    expect((await get('/api/graph')).status).toBe(404);
+    expect((await get('/')).body).toBe('<html>viewer</html>');
+  });
+
+  it('refuses pairs that are not two commits, and requests other sites could send', async () => {
+    expect((await post('/api/diffs', { base: 'HEAD', head: B })).status).toBe(400);
+    expect((await post('/api/diffs', { base: A.slice(0, 7), head: B })).status).toBe(400);
+    expect((await post('/api/diffs', { base: 'd'.repeat(40), head: B })).status).toBe(400);
+    expect((await post('/api/diffs', { base: A, head: A })).status).toBe(400);
+    expect((await post('/api/diffs', { base: A })).status).toBe(400);
+    expect((await post('/api/diffs', { base: A, head: B }, { 'x-cpr': '' })).status).toBe(403);
+    expect(
+      (await post('/api/diffs', { base: A, head: B }, { origin: 'https://attacker.example' }))
+        .status,
+    ).toBe(403);
+    expect((await get('/api/diffs')).status).toBe(405);
+    expect(runs).toHaveLength(0);
+  });
+
+  it('analyzes a pair on demand under /diff/<base>..<head>/', async () => {
+    const started = await post('/api/diffs', { base: A, head: B });
+    expect(started.status).toBe(200);
+    expect(await started.json()).toEqual({ url: `/diff/${A}..${B}/` });
+    expect(runs.map((r) => r.pair)).toEqual([{ base: A, head: B }]);
+
+    // The viewer's files and API live under the diff's own path.
+    expect(await get(`/diff/${A}..${B}`)).toMatchObject({
+      status: 308,
+      location: `/diff/${A}..${B}/`,
+    });
+    expect((await get(`/diff/${A}..${B}/`)).body).toBe('<html>viewer</html>');
+    expect((await get(`/diff/${A}..${B}/assets/app.js`)).body).toBe('console.log(1)');
+    expect(JSON.parse((await get(`/diff/${A}..${B}/api/capabilities`)).body)).toEqual({
+      sources: true,
+      review: null,
+      state: true,
+      commits: true,
+    });
+
+    // While it runs: its phase; sources and state wait for the graph.
+    const running = await get(`/diff/${A}..${B}/api/graph`);
+    expect(running.status).toBe(202);
+    expect(JSON.parse(running.body)).toMatchObject({ status: 'running', phase: null });
+    runs[0]?.onPhase('loadHead');
+    expect(JSON.parse((await get(`/diff/${A}..${B}/api/graph`)).body)).toMatchObject({
+      phase: 'loadHead',
+    });
+    expect((await get(`/diff/${A}..${B}/api/source?side=head&file=src/math.ts`)).status).toBe(404);
+
+    runs[0]?.resolve(graphOf({ base: A, head: B }));
+    await settle();
+    const done = await get(`/diff/${A}..${B}/api/graph`);
+    expect(done.status).toBe(200);
+    expect((JSON.parse(done.body) as Graph).revisions.head.sha).toBe(B);
+
+    // Sources at the pair's commits, only files the graph mentions.
+    expect(await get(`/diff/${A}..${B}/api/source?side=base&file=src/math.ts`)).toMatchObject({
+      status: 200,
+      body: `// src/math.ts at ${A.slice(0, 7)}`,
+    });
+    expect((await get(`/diff/${A}..${B}/api/source?side=head&file=../x`)).status).toBe(404);
+    expect(reads).toEqual(['a:src/math.ts']);
+
+    // Asking again is instant: nothing runs.
+    await post('/api/diffs', { base: A, head: B });
+    expect(runs).toHaveLength(1);
+  });
+
+  it('keeps review state per diff', async () => {
+    const put = await fetch(new URL(`/diff/${A}..${B}/api/state/review`, server.url), {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+      body: JSON.stringify({ 'src/math.ts#add': 'x' }),
+    });
+    expect(put.status).toBe(204);
+    expect(JSON.parse((await get(`/diff/${A}..${B}/api/state/review`)).body)).toEqual({
+      'src/math.ts#add': 'x',
+    });
+    expect(await fileStateStore(join(dir, B)).read('review')).toEqual({ 'src/math.ts#add': 'x' });
+    expect(await fileStateStore(join(dir, C)).read('review')).toBeNull();
+  });
+
+  it('reports a failed analysis, runs it again when asked', async () => {
+    await post('/api/diffs', { base: B, head: C });
+    runs[1]?.reject(new Error("cpr: unknown revision 'x'"));
+    await settle();
+    const failed = await get(`/diff/${B}..${C}/api/graph`);
+    expect(failed.status).toBe(502);
+    expect(JSON.parse(failed.body)).toEqual({ error: "cpr: unknown revision 'x'" });
+    await post('/api/diffs', { base: B, head: C });
+    expect(runs).toHaveLength(3);
+  });
+
+  it('stops an analysis', async () => {
+    expect((await post('/api/diffs/stop', { base: B, head: C }, { 'x-cpr': '' })).status).toBe(403);
+    expect(runs[2]?.signal.aborted).toBe(false);
+    expect((await post('/api/diffs/stop', { base: B, head: C })).status).toBe(204);
+    expect(runs[2]?.signal.aborted).toBe(true);
+    expect((await get(`/diff/${B}..${C}/api/graph`)).status).toBe(404);
+    expect((await post('/api/diffs/stop', { base: B, head: C })).status).toBe(404);
+  });
+
+  it('answers 404 for a pair never asked for', async () => {
+    expect((await get(`/diff/${C}..${A}/api/graph`)).status).toBe(404);
+    expect((await get(`/diff/${C}..${A}/`)).body).toBe('<html>viewer</html>');
+  });
 });
 
 describe('stateDir', () => {

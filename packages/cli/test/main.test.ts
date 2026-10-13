@@ -138,7 +138,12 @@ describe('cpr diff', () => {
       });
       expect(result.code).toBe(0);
       expect(result.stdout).toContain('4 files · 3 symbols changed · 1 findings');
-      expect(result.opened).toHaveLength(1);
+      // The pair's own page, compared from the merge-base; the commits page is at `/`.
+      expect(result.opened).toEqual([
+        expect.stringMatching(
+          new RegExp(`^http://127\\.0\\.0\\.1:\\d+/diff/${shas.root}\\.\\.${shas.feature}/$`),
+        ),
+      ]);
       expect(seen['']).toBe('200 <!doctype html><title>viewer</title>');
       expect(seen['api/graph']).toMatch(/^200 \{"schemaVersion":"0\.\d+\.\d+"/);
       expect(seen['api/source?side=head&file=src/a.ts']).toBe('200 export const a = 2;\n');
@@ -147,6 +152,35 @@ describe('cpr diff', () => {
       delete process.env.CPR_VIEWER_DIR;
       rmSync(viewer, { recursive: true, force: true });
     }
+  });
+
+  it('lists commits with cpr view and no revisions, analyzing nothing first', async () => {
+    const viewer = tempDir();
+    writeFileSync(join(viewer, 'index.html'), '');
+    process.env.CPR_VIEWER_DIR = viewer;
+    try {
+      let url = '';
+      let page: { branch: string; commits: { subject: string }[] } | undefined;
+      const result = await cpr(['view'], repo.root, async (stdout) => {
+        url = /CPR viewer: (\S+)/.exec(stdout())?.[1] ?? '';
+        page = (await (await fetch(new URL('api/commits', url))).json()) as typeof page;
+      });
+      expect(result.code).toBe(0);
+      expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
+      expect(result.stdout).toBe(`CPR viewer: ${url}  (Ctrl+C to stop)\n`);
+      expect(result.opened).toEqual([url]);
+      expect(page?.branch).toBe('main');
+      expect(page?.commits.map((c) => c.subject)).toEqual(['main moves on', 'root']);
+    } finally {
+      delete process.env.CPR_VIEWER_DIR;
+      rmSync(viewer, { recursive: true, force: true });
+    }
+  });
+
+  it('needs <base> for --since in cpr view', async () => {
+    const { code, stderr } = await cpr(['view', '--since', 'main'], repo.root);
+    expect(code).toBe(2);
+    expect(stderr).toContain('--since needs <base>');
   });
 
   it('does not open the browser with --no-open', async () => {

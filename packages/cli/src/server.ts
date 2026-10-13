@@ -2,8 +2,9 @@ import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { extname, join, normalize, sep } from 'node:path';
-import type { Graph } from '@cpr/core';
+import type { CommitPage, Graph } from '@cpr/core';
 import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
+import { pairKey, type Diffs, type Pair } from './diffs.js';
 
 export type Side = 'base' | 'head';
 
@@ -23,18 +24,44 @@ export interface ReviewTarget {
   submit(review: Review): Promise<{ url: string }>;
 }
 
+/** `cpr view`: the repository's commits, and the diffs between them picked in the viewer. */
+export interface RepositoryOptions {
+  /** A page of the current branch's commits (`GET /api/commits`). */
+  commits(skip: number): Promise<CommitPage>;
+  /** Whether a full SHA is a commit of the repository (`POST /api/diffs`). */
+  isCommit(sha: string): Promise<boolean>;
+  /** Analyzed and asked for, each served under `/diff/<base>..<head>/`. */
+  diffs: Diffs;
+  /** A repo-relative file at a commit. */
+  readFile(sha: string, path: string): Promise<string>;
+  /** Where a diff's review state is kept; without it the viewer keeps state in the browser. */
+  state?: (graph: Graph) => StateStore;
+}
+
 export interface ViewServerOptions {
-  graph: Graph;
+  /** The graph served at `/` (`cpr pr`). */
+  graph?: Graph;
   /** Folder with the built viewer (index.html, assets/). */
   viewerDir: string;
-  /** Reads a repo-relative file on one side of the change. */
-  readSource: (side: Side, path: string) => Promise<string>;
+  /** Reads a repo-relative file on one side of `graph`'s change. */
+  readSource?: (side: Side, path: string) => Promise<string>;
   /** Default: a free port. */
   port?: number;
   /** Enables `POST /api/review`. */
   review?: ReviewTarget;
   /** Enables `/api/state/<name>`; without it the viewer keeps state in the browser. */
   state?: StateStore;
+  /** Enables the commits page at `/` and diffs under `/diff/<base>..<head>/`. */
+  repository?: RepositoryOptions;
+}
+
+/** A graph served with its sources, review state and reviews. */
+interface Site {
+  graph: Graph;
+  allowed: Record<Side, Set<string>>;
+  readSource: (side: Side, path: string) => Promise<string>;
+  state?: StateStore | undefined;
+  review?: ReviewTarget | undefined;
 }
 
 export interface ViewServer {
@@ -55,16 +82,34 @@ const TYPES: Record<string, string> = {
 /** Largest review or state the viewer may send. */
 const MAX_BODY_BYTES = 1 << 20;
 const EVENTS: readonly ReviewEvent[] = ['comment', 'approve', 'request-changes'];
+const SHA = '[0-9a-f]{40}(?:[0-9a-f]{24})?';
+const FULL_SHA = new RegExp(`^${SHA}$`);
+/** `/diff/<base>..<head>` and what follows: the viewer's own files and API, for that diff. */
+const DIFF_PATH = new RegExp(`^/diff/(${SHA})\\.\\.(${SHA})(/.*)?$`);
 
 /**
- * Serves the viewer, `/api/graph` and `/api/source` on localhost only. Sources are limited to
- * files the graph mentions, so the server never exposes anything else from the machine.
- * Requests must name the server itself as host, which defeats DNS rebinding; writes (a review,
- * saved state) also need a same-origin JSON request with a custom header, which other sites
- * cannot send.
+ * Serves the viewer, `/api/graph` and `/api/source` on localhost only: one graph at `/`
+ * (`cpr pr`), or (`cpr view`) the commits page at `/` and each diff under its own path, where
+ * the viewer's relative URLs reach that diff's API. Sources are limited to files a graph
+ * mentions, so the server never exposes anything else from the machine. Requests must name the
+ * server itself as host, which defeats DNS rebinding; writes (a review, saved state, starting
+ * or stopping an analysis) also need a same-origin JSON request with a custom header, which
+ * other sites cannot send.
  */
 export async function startViewServer(options: ViewServerOptions): Promise<ViewServer> {
-  const allowed = sourceFiles(options.graph);
+  const { repository } = options;
+  const root: Site | undefined =
+    options.graph && options.readSource
+      ? {
+          graph: options.graph,
+          allowed: sourceFiles(options.graph),
+          readSource: options.readSource,
+          state: options.state,
+          review: options.review,
+        }
+      : undefined;
+  // One site per diff graph, made once: `allowed` walks the whole graph.
+  const sites = new WeakMap<Graph, Site>();
   let hosts: Set<string> = new Set();
   const server = createServer((req, res) => {
     handle(req, res).catch((error: unknown) => send(res, 500, String(error)));
@@ -73,36 +118,68 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!hosts.has(req.headers.host ?? '')) return send(res, 421, 'unknown host');
     const url = new URL(req.url ?? '/', 'http://localhost');
-    if (url.pathname === '/api/review') return postReview(req, res);
-    if (url.pathname.startsWith('/api/state/')) {
-      return state(req, res, url.pathname.slice('/api/state/'.length));
+    if (repository) {
+      const diff = DIFF_PATH.exec(url.pathname);
+      if (diff) {
+        const [, base = '', head = '', rest] = diff;
+        // Relative URLs in the viewer need the trailing slash.
+        if (rest === undefined) return redirect(res, `${url.pathname}/${url.search}`);
+        return serveDiff(req, res, url, rest, repository, { base, head });
+      }
+      if (url.pathname === '/api/commits') return listCommits(req, res, url, repository);
+      if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
+      if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
+    }
+    return serveSite(req, res, url, url.pathname, root);
+  }
+
+  /** The viewer and its API for one graph (or none: the commits page). */
+  async function serveSite(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    path: string,
+    site: Site | undefined,
+    diff = false,
+  ): Promise<void> {
+    if (path === '/api/review') return postReview(req, res, site);
+    if (path.startsWith('/api/state/')) {
+      return state(req, res, site, path.slice('/api/state/'.length));
     }
     if (req.method !== 'GET') return send(res, 405, 'method not allowed');
 
-    if (url.pathname === '/api/capabilities') {
-      const review = options.review ? { forge: options.review.forge } : null;
-      const capabilities = { sources: true, review, state: options.state !== undefined };
+    if (path === '/api/capabilities') {
+      const capabilities = {
+        sources: site !== undefined || diff,
+        review: site?.review ? { forge: site.review.forge } : null,
+        state: diff ? repository?.state !== undefined : site?.state !== undefined,
+        ...(repository ? { commits: true } : {}),
+      };
       return send(res, 200, JSON.stringify(capabilities), TYPES['.json']);
     }
-    if (url.pathname === '/api/graph') {
-      return send(res, 200, JSON.stringify(options.graph), TYPES['.json']);
+    if (path === '/api/graph') {
+      if (!site) return send(res, 404, 'no graph here: pick two commits');
+      return send(res, 200, JSON.stringify(site.graph), TYPES['.json']);
     }
-    if (url.pathname === '/api/source') {
+    if (path === '/api/source') {
       const side = url.searchParams.get('side');
       const file = url.searchParams.get('file') ?? '';
-      if ((side !== 'base' && side !== 'head') || !allowed[side].has(file)) {
+      if (!site || (side !== 'base' && side !== 'head') || !site.allowed[side].has(file)) {
         return send(res, 404, 'unknown source');
       }
       try {
-        return send(res, 200, await options.readSource(side, file), 'text/plain; charset=utf-8');
+        return send(res, 200, await site.readSource(side, file), 'text/plain; charset=utf-8');
       } catch {
         return send(res, 404, 'unknown source');
       }
     }
+    if (path.startsWith('/api/')) return send(res, 404, 'not found');
+    return serveFile(res, path);
+  }
 
-    // Static viewer files; anything outside the viewer folder is refused.
-    const relative =
-      normalize(decodeURIComponent(url.pathname)).replace(/^[/\\]+/, '') || 'index.html';
+  /** Static viewer files; anything outside the viewer folder is refused. */
+  async function serveFile(res: ServerResponse, pathname: string): Promise<void> {
+    const relative = normalize(decodeURIComponent(pathname)).replace(/^[/\\]+/, '') || 'index.html';
     const path = join(options.viewerDir, relative);
     if (!path.startsWith(options.viewerDir + sep) && path !== options.viewerDir) {
       return send(res, 404, 'not found');
@@ -115,15 +192,110 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
   }
 
-  async function postReview(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    const target = options.review;
-    if (!target) return send(res, 404, 'reviews are posted from cpr pr');
+  /** A diff's page: its graph once analyzed, its progress meanwhile. */
+  async function serveDiff(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    path: string,
+    repo: RepositoryOptions,
+    pair: Pair,
+  ): Promise<void> {
+    const status = repo.diffs.status(pair);
+    if (status?.status === 'done') {
+      return serveSite(req, res, url, path, diffSite(repo, status.graph), true);
+    }
+    if (path === '/api/graph' && req.method === 'GET') {
+      if (!status) return json(res, 404, { error: 'not analyzed' });
+      if (status.status === 'failed') return json(res, 502, { error: status.error });
+      return json(res, 202, { ...pair, ...status });
+    }
+    return serveSite(req, res, url, path, undefined, true);
+  }
+
+  function diffSite(repo: RepositoryOptions, graph: Graph): Site {
+    let site = sites.get(graph);
+    if (!site) {
+      const shas = { base: graph.revisions.from, head: graph.revisions.head.sha };
+      site = {
+        graph,
+        allowed: sourceFiles(graph),
+        readSource: (side, path) => {
+          const sha = shas[side];
+          return sha ? repo.readFile(sha, path) : Promise.reject(new Error(`no ${side}`));
+        },
+        state: repo.state?.(graph),
+      };
+      sites.set(graph, site);
+    }
+    return site;
+  }
+
+  async function listCommits(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    repo: RepositoryOptions,
+  ): Promise<void> {
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    const skip = Number(url.searchParams.get('skip') ?? '0');
+    if (!Number.isSafeInteger(skip) || skip < 0) return send(res, 400, 'skip: not a count');
+    return json(res, 200, await repo.commits(skip));
+  }
+
+  /** Starts analyzing two commits; answers where the diff will be. */
+  async function startDiff(
+    req: IncomingMessage,
+    res: ServerResponse,
+    repo: RepositoryOptions,
+  ): Promise<void> {
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let pair: Pair;
+    try {
+      pair = parsePair(await readBody(req, MAX_BODY_BYTES));
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    if (pair.base === pair.head) return send(res, 400, 'pick two different commits');
+    for (const sha of [pair.base, pair.head]) {
+      if (!(await repo.isCommit(sha))) return send(res, 400, `not a commit: ${sha}`);
+    }
+    repo.diffs.start(pair);
+    return json(res, 200, { url: `/diff/${pairKey(pair)}/` });
+  }
+
+  async function stopDiff(
+    req: IncomingMessage,
+    res: ServerResponse,
+    repo: RepositoryOptions,
+  ): Promise<void> {
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let pair: Pair;
+    try {
+      pair = parsePair(await readBody(req, MAX_BODY_BYTES));
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    if (!repo.diffs.stop(pair)) return send(res, 404, 'not running');
+    res.writeHead(204, { 'cache-control': 'no-store' });
+    res.end();
+  }
+
+  async function postReview(
+    req: IncomingMessage,
+    res: ServerResponse,
+    site: Site | undefined,
+  ): Promise<void> {
+    const target = site?.review;
+    if (!site || !target) return send(res, 404, 'reviews are posted from cpr pr');
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
     if (!writable(req)) return send(res, 403, 'forbidden');
 
     let review: Review;
     try {
-      review = parseReview(await readBody(req, MAX_BODY_BYTES), allowed);
+      review = parseReview(await readBody(req, MAX_BODY_BYTES), site.allowed);
     } catch (error) {
       return send(res, 400, (error as Error).message);
     }
@@ -135,8 +307,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
   }
 
-  async function state(req: IncomingMessage, res: ServerResponse, name: string): Promise<void> {
-    const store = options.state;
+  async function state(
+    req: IncomingMessage,
+    res: ServerResponse,
+    site: Site | undefined,
+    name: string,
+  ): Promise<void> {
+    const store = site?.state;
     if (!store || !STATE_NAMES.includes(name as StateName)) return send(res, 404, 'not found');
     if (req.method === 'GET') {
       return send(res, 200, JSON.stringify(await store.read(name as StateName)), TYPES['.json']);
@@ -174,6 +351,24 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     url: `http://127.0.0.1:${port}/`,
     close: () => new Promise<void>((resolve) => server.close(() => resolve())),
   };
+}
+
+function json(res: ServerResponse, status: number, value: unknown): void {
+  send(res, status, JSON.stringify(value), TYPES['.json']);
+}
+
+function redirect(res: ServerResponse, location: string): void {
+  res.writeHead(308, { location, 'cache-control': 'no-store' });
+  res.end();
+}
+
+/** `{ base, head }`: two full SHAs. */
+function parsePair(text: string): Pair {
+  const value = JSON.parse(text) as Partial<Record<keyof Pair, unknown>> | null;
+  const { base, head } = value ?? {};
+  if (typeof base !== 'string' || !FULL_SHA.test(base)) throw new Error('base: not a full SHA');
+  if (typeof head !== 'string' || !FULL_SHA.test(head)) throw new Error('head: not a full SHA');
+  return { base, head };
 }
 
 function send(
