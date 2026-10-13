@@ -1850,3 +1850,18 @@ open in VS Code, Remote SSH and dev containers.
 Merged into main (2026-10-13), with the button made visible and "This commit" removed from the
 commits rows at the user's request. `main` verified after the merge: 557 unit tests, build, 59
 e2e.
+
+## V13 spike — compare as a mode (2026-10-13, branch `milestone/v13-compare-mode`)
+
+Measured in Chromium on `cpr view` (`main` at `2644214`) before planning a browse mode for the
+commits page, on this repository and the Qwik and Bitwarden clones. The page opens as V9's
+picker: the compare bar takes 52.6 px (1.6 rows of 32 px; Qwik and Bitwarden show 23 rows at
+1440 × 900, 18 at 1280 × 720) and the pick circle 24 px of every row. A click moves the cursor and
+picks, and the pick is what shows: the cursor is a 3 px grey bar, the pick a 14 % accent tint.
+Clicking three rows to look at them leaves the first and the third picked, with a comparison
+ready ("4d5d13d → 239e9d3 · 10 commits" on Qwik). A row clicked before `c` stays picked under its
+checkout menu. Back from a diff lists the page anew (no picks kept), so a mode held in the page's
+state starts over in browse mode. The errors the bar shows today (the menu's "Could not read the
+branches", a later block's "Could not list commits") need a place of their own once the bar is
+gone by default. The plan: browse by default, a "Compare mode" toggle (or `x`) for V9's picking,
+left with Escape.
