@@ -100,32 +100,94 @@ export interface RunningCommits extends Running {
   shas: string[];
 }
 
+/** Commits with `git commit`, dated `minutes` after the fixture's own commits. */
+function commitAt(repo: string, minutes: number, ...args: string[]): void {
+  const date = `@${Math.floor(Date.now() / 1000) + minutes * 60} +0000`;
+  execFileSync('git', ['commit', '-q', ...args], {
+    cwd: repo,
+    env: { ...env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date },
+    stdio: 'pipe',
+  });
+}
+
 /**
  * Five commits on `main` — the `callers` fixture's base and head, then three functions added
- * one by one to `src/math.ts` ("Add half, and a subject …" the last) — served by `cpr view`
- * without revisions: the commits page.
+ * one by one to `src/math.ts` ("Add half, and a subject …" the last) — and other branches, each
+ * newer: `wip` ("Try a wobble") from "Add square", the remote-only `origin/topic` ("Sketch a
+ * topic") from head. `feature` points at head; tag `v1` at "Add cube", `r1` to `r4` at base; tag
+ * `v0` at a commit no branch reaches ("Old release"). Served by `cpr view` without revisions: the commits page.
  */
 export async function serveCommits(): Promise<RunningCommits> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', '-B', 'main');
   let math = readFileSync(join(repo, 'src/math.ts'), 'utf8');
-  for (const [name, body] of [
-    ['square', 'a * a'],
-    ['cube', 'square(a) * a'],
-    ['half', 'a / 2'],
-  ]) {
+  for (const [minutes, name, body] of [
+    [1, 'square', 'a * a'],
+    [2, 'cube', 'square(a) * a'],
+    [3, 'half', 'a / 2'],
+  ] as const) {
     math += `\nexport function ${name}(a: number): number {\n  return ${body};\n}\n`;
     writeFileSync(join(repo, 'src/math.ts'), math);
     // One subject far longer than the page is wide, as real histories have.
     const more = name === 'half' ? `, ${'and a subject that runs on '.repeat(12)}` : '';
-    git(repo, 'commit', '-q', '-am', `Add ${name}${more}`);
+    commitAt(repo, minutes, '-am', `Add ${name}${more}`);
   }
   const shas = git(repo, 'rev-list', '--reverse', 'HEAD').split('\n');
+  const [base = '', head = '', square = '', cube = ''] = shas;
+  git(repo, 'tag', 'v1', cube);
+  // More refs than a row shows: folded into "+2".
+  for (const tag of ['r1', 'r2', 'r3', 'r4']) git(repo, 'tag', tag, base);
+  const aside = (from: string, minutes: number, subject: string) => {
+    git(repo, 'checkout', '-q', '--detach', from);
+    commitAt(repo, minutes, '--allow-empty', '-m', subject);
+    return git(repo, 'rev-parse', 'HEAD');
+  };
+  git(repo, 'branch', 'wip', aside(square, 4, 'Try a wobble'));
+  git(repo, 'update-ref', 'refs/remotes/origin/topic', aside(head, 5, 'Sketch a topic'));
+  git(repo, 'tag', 'v0', aside(base, 6, 'Old release'));
+  git(repo, 'checkout', '-q', 'main');
   const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
   const { url, child } = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
   return {
     url,
     shas,
+    stop() {
+      child.kill('SIGINT');
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(cache, { recursive: true, force: true });
+    },
+  };
+}
+
+/**
+ * `rows` commits on `main` ("commit 1" the oldest) and `old`, one newer commit forked from
+ * "commit 10": its line spans the whole history. Written with `git fast-import` (fast), served
+ * by `cpr view` without revisions.
+ */
+export async function serveLongHistory(rows: number): Promise<Running> {
+  const repo = mkdtempSync(join(tmpdir(), 'cpr-e2e-'));
+  git(repo, 'init', '-q', '-b', 'main');
+  const start = Math.floor(Date.now() / 1000) - rows * 60;
+  const commit = (ref: string, mark: number, time: number, subject: string, from?: number) =>
+    `commit ${ref}\nmark :${mark}\ncommitter CPR Test <test@example.com> ${time} +0000\n` +
+    `data ${Buffer.byteLength(subject)}\n${subject}\n${from ? `from :${from}\n` : ''}\n`;
+  let stream = '';
+  for (let i = 1; i <= rows; i++) {
+    stream += commit(
+      'refs/heads/main',
+      i,
+      start + i * 60,
+      `commit ${i}`,
+      i > 1 ? i - 1 : undefined,
+    );
+  }
+  stream += commit('refs/heads/old', rows + 1, start + (rows + 1) * 60, 'Old idea', 10);
+  execFileSync('git', ['fast-import', '--quiet'], { cwd: repo, env, input: stream });
+  git(repo, 'checkout', '-q', '-f', 'main');
+  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  const { url, child } = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
+  return {
+    url,
     stop() {
       child.kill('SIGINT');
       rmSync(repo, { recursive: true, force: true });

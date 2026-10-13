@@ -12,15 +12,18 @@ import {
   createTypescriptAdapter,
   defaultCacheDir,
   fetchRefs,
+  commitDetails,
+  hasCommitGraph,
+  historyState,
   isCommit,
   listChangedLines,
-  listCommits,
   NoMergeBaseError,
   openRepo,
   readFileAtRevision,
   remoteUrl,
   resolveCommit,
   SCHEMA_VERSION,
+  streamHistory,
   type Analysis,
   type AnalysisPhase,
   type ChangedLines,
@@ -33,6 +36,7 @@ import { ciChangeRequestNumber } from './ci.js';
 import { codeQualityReport } from './codequality.js';
 import { Diffs, pairKey } from './diffs.js';
 import { formatAnalysis } from './format.js';
+import { Histories, slowListingHint } from './history.js';
 import { frameworkHints, loadPlugins } from './plugins.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { childRunner, type PhaseMessage } from './runner.js';
@@ -484,11 +488,25 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       stderr: ctx.stderr,
     }),
   );
+  let hinted = false;
   const server = await startViewServer({
     port,
     viewerDir: viewerDir(ctx),
     repository: {
-      commits: (skip) => listCommits(repo, { skip }),
+      history: new Histories(
+        {
+          state: () => historyState(repo),
+          stream: (scope, onRows) => streamHistory(repo, scope, onRows),
+          details: (shas) => commitDetails(repo, shas),
+        },
+        {
+          onListed: (_scope, rows, ms) => {
+            const hint = hinted ? null : slowListingHint(rows, ms, hasCommitGraph(repo));
+            if (hint) ctx.stderr(hint);
+            hinted ||= hint !== null;
+          },
+        },
+      ),
       isCommit: (sha) => isCommit(repo, sha),
       diffs,
       readFile: (sha, path) => readFileAtRevision(repo, sha, path),

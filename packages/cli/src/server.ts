@@ -2,9 +2,10 @@ import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { extname, join, normalize, sep } from 'node:path';
-import type { CommitPage, Graph } from '@cpr/core';
+import { HISTORY_SCOPES, type Graph, type HistoryScope } from '@cpr/core';
 import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
+import type { Histories } from './history.js';
 
 export type Side = 'base' | 'head';
 
@@ -26,8 +27,8 @@ export interface ReviewTarget {
 
 /** `cpr view`: the repository's commits, and the diffs between them picked in the viewer. */
 export interface RepositoryOptions {
-  /** A page of the current branch's commits (`GET /api/commits`). */
-  commits(skip: number): Promise<CommitPage>;
+  /** The commits page's history: rows and their details, its shape (`GET /api/history…`). */
+  history: Histories;
   /** Whether a full SHA is a commit of the repository (`POST /api/diffs`). */
   isCommit(sha: string): Promise<boolean>;
   /** Analyzed and asked for, each served under `/diff/<base>..<head>/`. */
@@ -82,6 +83,8 @@ const TYPES: Record<string, string> = {
 /** Largest review or state the viewer may send. */
 const MAX_BODY_BYTES = 1 << 20;
 const EVENTS: readonly ReviewEvent[] = ['comment', 'approve', 'request-changes'];
+/** Rows of the history the viewer may ask for at once. */
+const MAX_HISTORY_ROWS = 500;
 const SHA = '[0-9a-f]{40}(?:[0-9a-f]{24})?';
 const FULL_SHA = new RegExp(`^${SHA}$`);
 /** `/diff/<base>..<head>` and what follows: the viewer's own files and API, for that diff. */
@@ -126,7 +129,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         if (rest === undefined) return redirect(res, `${url.pathname}/${url.search}`);
         return serveDiff(req, res, url, rest, repository, { base, head });
       }
-      if (url.pathname === '/api/commits') return listCommits(req, res, url, repository);
+      if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
+      if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
       if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
       if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
     }
@@ -231,16 +235,41 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     return site;
   }
 
-  async function listCommits(
+  /** Rows of the history with their details: `?scope=all|current&from=<n>&to=<n>&version=…`. */
+  async function historyRows(
     req: IncomingMessage,
     res: ServerResponse,
     url: URL,
     repo: RepositoryOptions,
   ): Promise<void> {
     if (req.method !== 'GET') return send(res, 405, 'method not allowed');
-    const skip = Number(url.searchParams.get('skip') ?? '0');
-    if (!Number.isSafeInteger(skip) || skip < 0) return send(res, 400, 'skip: not a count');
-    return json(res, 200, await repo.commits(skip));
+    const scope = historyScope(url);
+    if (!scope) return send(res, 400, 'scope: all or current');
+    const from = count(url.searchParams.get('from') ?? '0');
+    const to = count(url.searchParams.get('to') ?? String((from ?? 0) + 200));
+    if (from === null || to === null || to < from || to - from > MAX_HISTORY_ROWS) {
+      return send(res, 400, `from, to: counts, at most ${MAX_HISTORY_ROWS} rows apart`);
+    }
+    const version = url.searchParams.get('version') ?? undefined;
+    const page = await repo.history.page(scope, from, to, version);
+    if (!page) return send(res, 409, 'the history changed: list it again');
+    return json(res, 200, page);
+  }
+
+  /** Every row's parents as row numbers, once listed: `?scope=…&version=…`. */
+  async function historyShape(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    repo: RepositoryOptions,
+  ): Promise<void> {
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    const scope = historyScope(url);
+    const version = url.searchParams.get('version');
+    if (!scope || !version) return send(res, 400, 'scope and version needed');
+    const shape = await repo.history.shape(scope, version);
+    if (!shape) return send(res, 409, 'the history changed: list it again');
+    return json(res, 200, shape);
   }
 
   /** Starts analyzing two commits; answers where the diff will be. */
@@ -355,6 +384,18 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
 function json(res: ServerResponse, status: number, value: unknown): void {
   send(res, status, JSON.stringify(value), TYPES['.json']);
+}
+
+/** `?scope=`: every branch when absent; null when unknown. */
+function historyScope(url: URL): HistoryScope | null {
+  const scope = url.searchParams.get('scope') ?? 'all';
+  return HISTORY_SCOPES.includes(scope as HistoryScope) ? (scope as HistoryScope) : null;
+}
+
+/** A non-negative integer, or null. */
+function count(text: string): number | null {
+  const n = Number(text);
+  return text !== '' && Number.isSafeInteger(n) && n >= 0 ? n : null;
 }
 
 function redirect(res: ServerResponse, location: string): void {

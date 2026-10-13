@@ -154,23 +154,29 @@ describe('cpr diff', () => {
     }
   });
 
-  it('lists commits with cpr view and no revisions, analyzing nothing first', async () => {
+  it('lists the history with cpr view and no revisions, analyzing nothing first', async () => {
     const viewer = tempDir();
     writeFileSync(join(viewer, 'index.html'), '');
     process.env.CPR_VIEWER_DIR = viewer;
     try {
       let url = '';
-      let page: { branch: string; commits: { subject: string }[] } | undefined;
+      let page: { branch: string; done: boolean; commits: { subject: string }[] } | undefined;
       const result = await cpr(['view'], repo.root, async (stdout) => {
         url = /CPR viewer: (\S+)/.exec(stdout())?.[1] ?? '';
-        page = (await (await fetch(new URL('api/commits', url))).json()) as typeof page;
+        page = (await (await fetch(new URL('api/history', url))).json()) as typeof page;
       });
       expect(result.code).toBe(0);
       expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
       expect(result.stdout).toBe(`CPR viewer: ${url}  (Ctrl+C to stop)\n`);
       expect(result.opened).toEqual([url]);
-      expect(page?.branch).toBe('main');
-      expect(page?.commits.map((c) => c.subject)).toEqual(['main moves on', 'root']);
+      // Every branch: main and feature, each above the root they forked from.
+      expect(page).toMatchObject({ branch: 'main', done: true });
+      expect(page?.commits.map((c) => c.subject).sort()).toEqual([
+        'feature work',
+        'main moves on',
+        'root',
+      ]);
+      expect(page?.commits.at(-1)?.subject).toBe('root');
     } finally {
       delete process.env.CPR_VIEWER_DIR;
       rmSync(viewer, { recursive: true, force: true });

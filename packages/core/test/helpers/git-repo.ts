@@ -20,6 +20,8 @@ export interface TestRepo {
   write(files: Record<string, string>): void;
   /** Stages everything, commits, and returns the new SHA. */
   commit(message: string): string;
+  /** As `commit`, dated `date` (ISO 8601) as author and committer. */
+  commitAt(message: string, date: string): string;
   cleanup(): void;
 }
 
@@ -47,6 +49,14 @@ export function createRepo(): TestRepo {
     commit(message) {
       git('add', '--all');
       git('commit', '--quiet', '--message', message);
+      return git('rev-parse', 'HEAD');
+    },
+    commitAt(message, date) {
+      git('add', '--all');
+      execFileSync('git', ['commit', '--quiet', '--allow-empty', '--message', message], {
+        cwd: root,
+        env: { ...env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date },
+      });
       return git('rev-parse', 'HEAD');
     },
     cleanup() {

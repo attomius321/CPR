@@ -12,6 +12,13 @@
   --error: #cf222e;
   --warning: #bf8700;
   --info: #0969da;
+  /* Commit graph lanes after the current branch's (V10). */
+  --lane-1: #8250df;
+  --lane-2: #0a7f6f;
+  --lane-3: #bc4c00;
+  --lane-4: #bf3989;
+  --lane-5: #4d7a00;
+  --lane-6: #9a6700;
   color-scheme: light;
 }
 
@@ -30,6 +37,12 @@
     --error: #f85149;
     --warning: #d29922;
     --info: #58a6ff;
+    --lane-1: #a371f7;
+    --lane-2: #39c5bb;
+    --lane-3: #f0883e;
+    --lane-4: #f778ba;
+    --lane-5: #8ccf3e;
+    --lane-6: #d4a72c;
     color-scheme: dark;
   }
 }
@@ -1573,6 +1586,8 @@ kbd {
   flex: 1;
   overflow: auto;
   padding: 16px 24px;
+  /* Rows are placed from the list's offset in this box. */
+  position: relative;
 }
 
 .commits-title {
@@ -1591,25 +1606,29 @@ kbd {
 }
 
 .commit-list {
+  position: relative;
+  /* Its height is the rows' (set inline); the border goes around them. */
+  box-sizing: content-box;
   margin: 0;
   padding: 0;
   list-style: none;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
+  overflow: hidden;
 }
 
+/* Rows are placed by number (only those near the view exist) and have no borders: the graph's
+   lines run from one row into the next. */
 .commit {
+  position: absolute;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--line);
+  padding: 0 12px 0 8px;
   cursor: pointer;
-}
-
-.commit:last-child {
-  border-bottom: 0;
 }
 
 .commit:hover {
@@ -1625,8 +1644,127 @@ kbd {
 }
 
 .commit-pick {
+  flex: none;
   color: var(--moved);
   width: 1em;
+}
+
+.graph {
+  flex: none;
+  overflow: visible;
+}
+
+/* A lane's class sets its color; lines and dots draw in it. */
+.graph path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.graph .lane-0 {
+  color: var(--moved);
+}
+
+.graph .lane-1 {
+  color: var(--lane-1);
+}
+
+.graph .lane-2 {
+  color: var(--lane-2);
+}
+
+.graph .lane-3 {
+  color: var(--lane-3);
+}
+
+.graph .lane-4 {
+  color: var(--lane-4);
+}
+
+.graph .lane-5 {
+  color: var(--lane-5);
+}
+
+.graph .lane-6 {
+  color: var(--lane-6);
+}
+
+.graph .commit-dot {
+  fill: currentColor;
+}
+
+.graph .commit-dot.merge {
+  fill: var(--panel);
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.graph .pick-ring {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+
+.graph .arrow {
+  cursor: pointer;
+}
+
+.graph .arrow path {
+  fill: none;
+}
+
+.graph .arrow .arrow-hit {
+  stroke: transparent;
+  stroke-width: 10;
+  pointer-events: stroke;
+}
+
+.graph .arrow:hover path:not(.arrow-hit) {
+  stroke-width: 2.6;
+}
+
+.loading-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+}
+
+.sha-bar {
+  width: 56px;
+}
+
+.subject-bar {
+  width: 40%;
+}
+
+.scopes {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: normal;
+}
+
+.scope {
+  padding: 2px 10px;
+  border: 0;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.scope + .scope {
+  border-left: 1px solid var(--line);
+}
+
+.scope.active {
+  background: color-mix(in srgb, var(--moved) 18%, var(--panel));
+}
+
+.listing {
+  margin: 8px 0;
 }
 
 .commit-sha {
@@ -1668,6 +1806,10 @@ kbd {
   color: var(--muted);
 }
 
+.ref-more {
+  color: var(--muted);
+}
+
 .commit-author,
 .commit-date {
   color: var(--muted);
@@ -1688,17 +1830,6 @@ kbd {
 .commit-this {
   font-family: inherit;
   white-space: nowrap;
-}
-
-.load-more {
-  display: block;
-  margin: 12px auto;
-  padding: 6px 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  color: var(--text);
-  cursor: pointer;
 }
 
 .compare-bar {
