@@ -1632,9 +1632,10 @@ the pre-existing hazard of a checkout interrupted by Ctrl+C (see above).
 ## V10 spike — what a commit graph needs (2026-10-13, branch `milestone/v10-commit-graph`)
 
 Measured before planning lanes for the commits page, with a prototype of the lane walk over
-`git log` on this repository and fresh blobless clones of ky, zod, vite, Qwik and Bitwarden. The
-plan changed twice as the user said what they wanted (every branch; then "exactly like git
-extension, or gitty up", with a branches panel); each change was measured first.
+`git log` on this repository, fresh blobless clones of ky, zod, vite, Qwik and Bitwarden, and a
+history-only clone of CPython (172,396 commits). The plan changed four times as the user said
+what they wanted (every branch; "exactly like git extension, or gitty up", with a branches
+panel; lazy loading; tags only as badges); each change was measured first.
 Repositories that merge with merge commits list side-branch commits among the branch's own (CPR
 66 and Qwik 57 of the first 100 rows); squash-merging ones are one line, and their divergence is
 in branches the page does not list (Bitwarden: 1,539 remote branches not merged into HEAD).
@@ -1657,18 +1658,27 @@ in branches the page does not list (Bitwarden: 1,539 remote branches not merged 
 - Branch tips sit deep in graph order: Bitwarden's median remote tip is row 9,165 (deepest
   37,633; 95 of 1,591 in the first 1,000 rows), Qwik's 3,695. A panel click cannot page its way
   there 100 rows at a time.
-- The whole history costs little more than its first page: without a commit-graph file the
-  ordered walk is paid before the first row anyway. Bitwarden, every branch and tag: 233 ms for
-  200 rows, 305 ms for all 41,358 with their details (7.5 MB); Qwik 63 and 79 ms. The lane walk
-  over all of Bitwarden takes 24 ms. So: the first rows, then the rest in one request, rows
-  virtualized.
+- Without a commit-graph file git orders the whole history before its first row: Bitwarden
+  243 ms, CPython 762–776 ms. With one the first rows come in 42 ms and 6 ms, but the whole order
+  takes longer (Bitwarden 622 against 344 ms, CPython 2.0 against 1.2 s): the incremental walk is
+  slower in total.
+- What is heavy is the rows' details, not their order: CPython's 150,182 branch commits with
+  subject, author, date and refs are 30.5 MB; each row's parents as row numbers are 1.32 MB, and
+  the lane walk over them 62 ms. Details for 200 rows fetched by SHA (`git log --no-walk`) take
+  16–20 ms anywhere in the history. Hence the plan's lazy loading: the order once on the server,
+  the shape to the viewer, details for the rows in view. Sending everything at once (the second
+  plan) would have been 7.5 MB on Bitwarden and over 30 MB on CPython.
 - Lane counts on partial lists mislead: lines to parents not yet listed stay open to the bottom.
   Bitwarden showed 49 lanes in its first 10,000 rows but needs 17 over the whole history; Qwik
   needs 36 (p95 35). Cutting lines over 100 rows into arrows, as gitk does, takes partial lists
   to 5–19 lanes, but the tools asked for draw every line whole; not planned.
-- 410 of Bitwarden's 638 tags point at commits no branch reaches (1,497 rows of deleted release
-  lines; vite 401 rows). A panel listing tags must lead somewhere, so tags are tips too; they
-  add no lanes (17 and 5, with or without).
+- Tags as tips explode a graph: CPython's 676 tags reach 22,214 commits no branch does (old
+  release lines), and its widest row goes from 37 lanes to 2,449. Git's own `--graph` agrees (36
+  and 2,449) and takes 15 s to draw it. On Bitwarden and vite they added rows (1,497 and 401)
+  but no lanes, which hid it. The user had asked for tags only as badges anyway.
+- Cross-checking the prototype against `git log --graph` (the widest line's width) is cheap: 36
+  against 37 lanes on CPython's branches, 2,449 against 2,450 with tags. The one-lane difference
+  is not explained yet; the plan's check script compares row by row.
 - Unrelated: `scripts/regression/setup.mjs r1` fails on a fresh machine. Zod's pinned commits
   (`f448c44d` and five more) are no longer reachable from its branches, and git cannot fetch a
   commit by a short SHA. The set needs reachable (or full, fetchable) SHAs; not fixed here.

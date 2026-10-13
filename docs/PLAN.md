@@ -421,7 +421,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | E1 (measured) | Decisions and their ripples | Could mechanical parts of a change (renames and their call sites, moves, a new argument everywhere, the same edit repeated) be verified instead of read? Measured on 165 changes: 20 % of changed symbols but 5.4 % of diff lines (2.8 % without one large rename); 0 false in 40 audited. Not the disruptive lever; grouping repeated edits in the change list is a candidate. See below. |
 | V8 ✅ | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Closed: V8a–V8c and V8e merged (on Qwik: zoom out 466 → 15 ms blocked, opening 2,568 → 620 ms, map clicks reaching the file 87 → 100 %); V8d deferred; see below. |
 | V9 ✅ | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Merged: the current branch's commits as `cpr view`'s first page (100 rows in under 1 s on Qwik), pick two (or one against its parent), the diff analyzed on demand in a child process (Bitwarden 42 s, within 10 % of `cpr diff`; the server answers in 2 ms meanwhile), the last 8 kept. See below. |
-| V10 | A commit graph | The commits page is a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches are not listed (1,539 unmerged on Bitwarden). Planned, as Git Extensions and Gittyup: the whole history of every branch and tag drawn as a graph (Bitwarden: 41,358 rows, 305 ms of git, 17 lanes), every line whole; a branches panel on the left (local with ahead/behind, remotes by folder, tags) whose click goes to the tip; diverged picks compared from their fork point. See below. |
+| V10 | A commit graph | The commits page is a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches are not listed (1,539 unmerged on Bitwarden). Planned, as Git Extensions and Gittyup: the whole history of every branch drawn as a graph, every line whole, loaded lazily (CPython's 150,182 rows: a 1.32 MB shape, details 200 rows at a time in 20 ms); tags as badges only; a branches panel on the left (local with ahead/behind, remotes by folder) whose click goes to the tip; diverged picks compared from their fork point. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -2649,22 +2649,25 @@ branches, commits) — the larger git interface this starts.
 **Status:** planned (2026-10-13), on branch `milestone/v10-commit-graph`; not started.
 
 **Problem** (asked: "I want to see the tree on the left, with branch divergence … if that is
-possible", then "I want to see all the commits, from any branches, not only from the branch,
-with a tree structure", and "exactly like git extension, or gitty up, the entire flow of the
-commits, with the branch trees on the left" — a graph and a branches panel, as Git Extensions
-and Gittyup have). The commits page (V9) lists `git log HEAD` in date order as plain rows, 100 at
-a time. Nothing says which rows are the branch's own line and which came in through a merge;
-other branches and tags are not listed. Measured on this repository and the regression clones
-(fresh blobless clones, no commit-graph file), with a prototype of the lane rules below:
+possible"; "I want to see all the commits, from any branches, not only from the branch, with a
+tree structure"; "exactly like git extension, or gitty up, the entire flow of the commits, with
+the branch trees on the left" — a graph and a branches panel, as Git Extensions and Gittyup
+have; "How much time it takes to load 100.000 commits, can't we lazy load"; "tags should only be
+in the row, as a head … the tree should be branches only"). The commits page (V9) lists
+`git log HEAD` in date order as plain rows, 100 at a time. Nothing says which rows are the
+branch's own line and which came in through a merge, and other branches are not listed.
+Measured on this repository, the regression clones and CPython (fresh clones of the history
+only, no commit-graph file), with a prototype of the lane rules below:
 
-| Repo | Local / remote branches (not merged into HEAD) / tags | This branch, first 100 rows: from merged branches / merges | Every branch and tag: rows (only tags reach) | Of its first 100 rows, not on this branch | Remote branch tips: median row (deepest) | Lanes over the whole history: max (p95) |
+| Repo | Local / remote branches (not merged into HEAD) / tags | This branch, first 100 rows: from merged branches / merges | Every branch: rows | Of its first 100 rows, not on this branch | Remote branch tips: median row (deepest) | Lanes over the whole history: max (p95) |
 |---|---|---|---|---|---|---|
-| CPR | 1 / 50 (0) / 0 | 66 / 20 | 179 (0) | 0 | 116 (175) | 3 (2) |
-| ky | 1 / 2 (1) / 99 | 0 / 0 | 593 (0) | 0 | 1 (173) | 2 (1) |
-| zod | 1 / 154 (128) / 219 | 0 / 0 | 4,239 (0) | 48 | 978 (4,058) | 9 (6) |
-| vite | 1 / 88 (85) / 1,054 | 0 / 0 | 10,760 (401) | 56 | 691 (9,260) | 5 (5) |
-| Qwik | 1 / 133 (125) / 559 | 57 / 44 | 12,377 (15) | 62 | 3,695 (8,889) | 36 (35) |
-| Bitwarden | 1 / 1,591 (1,539) / 638 | 0 / 0 | 41,358 (1,497) | 93 | 9,165 (37,633) | 17 (8) |
+| CPR | 1 / 50 (0) / 0 | 66 / 20 | 179 | 0 | 116 (175) | 3 (2) |
+| ky | 1 / 2 (1) / 99 | 0 / 0 | 593 | 0 | 1 (173) | 2 (1) |
+| zod | 1 / 154 (128) / 219 | 0 / 0 | 4,239 | 48 | 978 (4,058) | 9 (6) |
+| vite | 1 / 88 (85) / 1,054 | 0 / 0 | 10,359 | 56 | 691 (9,260) | 3 (2) |
+| Qwik | 1 / 133 (125) / 559 | 57 / 44 | 12,362 | 62 | 3,695 (8,889) | 36 (35) |
+| Bitwarden | 1 / 1,591 (1,539) / 638 | 0 / 0 | 39,861 | 93 | 9,165 (37,633) | 17 (8) |
+| CPython | 1 / 6 (5) / 676 | 0 / 0 | 150,182 | 0 | 11,068 (33,309) | 37 (12) |
 
 - Repositories that merge with merge commits (CPR, Qwik) list side-branch commits among the
   branch's own: 66 and 57 of the first 100 rows, with nothing telling them apart. V9 met this
@@ -2672,73 +2675,84 @@ other branches and tags are not listed. Measured on this repository and the regr
 - Squash-merging repositories (ky, zod, vite, Bitwarden) are one line on their branch: their
   divergence is in the branches not listed, up to 1,539 unmerged ones on Bitwarden. With every
   branch, 48–93 of the first 100 rows are on other branches; HEAD is still in rows 1–7.
-- Branch tips sit deep: Bitwarden's median remote tip is row 9,165, only 95 of 1,591 are in the
-  first 1,000 rows. A panel whose click goes to a branch cannot wait for pages of 100 to get
-  there: the whole history must be listed.
-- Listing the whole history is cheap: an ordered log walks every commit before its first row
-  anyway (without a commit-graph file; `git gc` writes one, a fresh clone has none), so on
-  Bitwarden the first 200 rows take 233 ms and all 41,358 with their details 305 ms (7.5 MB);
-  Qwik 63 and 79 ms (2.2 MB). Lanes over the whole history take 4–24 ms; refs with each local
-  branch's ahead/behind (`git for-each-ref`) 10–79 ms.
-- Lines drawn whole, as the tools named do: over the whole history the widest row has 17 lanes
-  on Bitwarden and 36 on Qwik (its p95 is 35). Measured on partial lists the counts were higher
-  (Bitwarden 49 in 10,000 rows), because lines to parents not yet listed stay open. Cutting
-  lines over 100 rows into arrows, as gitk does, would take them to 5–19: measured, not planned.
+- Branch tips sit deep: Bitwarden's median remote tip is row 9,165 (95 of 1,591 in the first
+  1,000 rows), CPython's 11,068. A panel whose click goes to a branch cannot page its way there.
+- Git orders the whole history before its first row unless the repository has a commit-graph
+  file (`git gc` and `git maintenance` write one; a fresh clone has none). Without one, the first
+  row of Bitwarden comes after 243 ms, of CPython after 762–776 ms; with one, after 42 ms and
+  6 ms. The order of every row is known soon after: 344 ms and 1.2 s without the file (with it
+  622 ms and 2.0 s: the incremental walk is slower in total).
+- What is heavy is the rows' details, not the order: CPython's 150,182 rows with subject, author,
+  date and refs are 30.5 MB (Bitwarden's 39,861: 7.5 MB). The shape alone, each row's parents as
+  row numbers, is 1.32 MB (0.34 MB); lanes over it take 62 ms (24 ms). Details for 200 rows
+  fetched by SHA take 16–20 ms, about 40 kB, wherever they are in the history.
+- Lines drawn whole, as the tools named do: over whole histories the widest row has 17 lanes on
+  Bitwarden, 36 on Qwik, 37 on CPython (git's own `--graph`: 36). Counts on partial lists
+  overstate it (Bitwarden 49 in its first 10,000 rows): lines to parents not yet listed stay
+  open. Cutting lines over 100 rows into arrows, as gitk does, would give 5–19: not planned.
+- Tags as tips of the graph explode it: CPython's 676 tags reach 22,214 commits no branch does,
+  and its widest row goes from 37 lanes to 2,449 (git's `--graph` agrees, and takes 15 s to draw
+  it). Bitwarden's tags reach 1,497 such commits, vite's 401.
 - Order: `git log`'s default (commit date) can list a parent above its child when clocks are
   skewed, which no graph can draw. Date order (`--date-order`) keeps children first but
   interleaves lines: in the first prototype Qwik's own branch needed 13–15 lanes instead of 7–11
   in graph order (`--topo-order`), zod with remotes 5–12 instead of 4.
-- Tags: 1,497 of Bitwarden's commits and 401 of vite's are reached only by tags (release lines
-  whose branches were deleted): 410 of Bitwarden's 638 tags point there. Listed, they add no
-  lanes (17 and 5 with or without).
 
-**Goal**: `cpr view` opens on the whole history of the repository: every branch, local and
-remote, and every tag, drawn as a graph left of the rows, with a branches panel left of the
-graph. The current branch is the straight line on the left; other branches leave a line where
-they diverged and join it where they were merged, every line drawn whole; the scrollbar spans
-the whole history. The panel lists local branches (with how far each has diverged from its
-upstream), remote branches by remote and folder, and tags; a click goes to the tip. Two picks
-on diverged branches compare what one adds since they forked; picks on one line compare as
-today. "This branch" narrows the list to V9's. `cpr view <base> [head]`, `cpr diff` and `cpr pr`
-do not change. A sketch (`origin/feature/q3` is made up):
+**Goal**: `cpr view` opens on the whole history of every branch, local and remote, drawn as a
+graph left of the rows, with a branches panel left of the graph. The current branch is the
+straight line on the left; other branches leave a line where they diverged and join it where
+they were merged, every line drawn whole; the scrollbar spans the whole history, and the rows'
+details load as they come into view. Tags show as badges on their commits' rows, as today. The
+panel lists local branches (with how far each has diverged from its upstream) and remote
+branches by remote and folder; a click goes to the tip. Two picks on diverged branches compare
+what one adds since they forked; picks on one line compare as today. "This branch" narrows the
+list to V9's. `cpr view <base> [head]`, `cpr diff` and `cpr pr` do not change. A sketch
+(`origin/feature/q3` is made up):
 
 ```
 Filter branches     │ ●           d4d2d32  Docs: V9 merged                 main  origin/main
 ▾ Local             │ │ ●         9c1e0aa  Q3: route loaders typed         origin/feature/q3
-  ● main  ↑1        │ ●─┼─╮       db1acce  Merge V9: pick two commits
+  ● main  ↑1        │ ●─┼─╮       db1acce  Merge V9: pick two commits      v0.9
     milestone/v10   │ │ │ ●       fb0050b  Fix: a key pressed as soon as …
 ▾ Remotes           │ │ │ ●       6ac99b5  Plan V9: pick two commits
   ▾ origin          │ ●─┼─╯       b6b0016  Docs: V8e merged, V8 closed
-    ▸ milestone/ 27 │ │ │         …
+    ▸ milestone/ 27 │ │ │         ░░░░░░░  ░░░░░░░░░░░░░░░  (details loading)
     ▸ fix/ 4        │
-▸ Tags              │
 ```
 
-#### History (core, server)
+#### History, loaded lazily (core, server)
 
-- `listCommits(repo, { skip, limit, scope })` in `src/git/log.ts` runs `git log --topo-order`
-  (every commit above its parents, a branch's commits together: what `git log --graph` draws)
-  over the tips the scope names:
-  - `all` (the default): `HEAD`, `--branches`, `--remotes`, `--tags`;
-  - `current`: `HEAD`, as V9.
-
-  Never `--all`: it brings the stash and the `refs/cpr/*` heads `cpr pr` fetches. Only the
-  scope's name comes from the request, checked against the two; the revisions are fixed.
-- `listRefs(repo)` in the same file: one `git for-each-ref` over `refs/heads`, `refs/remotes`
-  and `refs/tags` (annotated tags peeled to their commit; a remote's `HEAD` left out) gives
-  `{ head: { branch, sha }, branches: { name, sha, upstream?, ahead?, behind?, gone? }[],
-  remotes: { remote, name, sha }[], tags: { name, sha }[] }`.
-- Server: `GET /api/commits?scope=all|current&skip=<n>&limit=<n>` (`limit` up to 100,000, default
-  100; another scope: 400; none: `all`) and `GET /api/refs`.
-- The page asks for the refs and the first 200 rows together, draws them, then asks for the rest
-  in one request. Over 100,000 commits, the oldest are not listed and the page says so.
-- `parseLog` and `Commit` do not change: `parents` is all a graph needs.
+- **Tips**: `HEAD`, `--branches`, `--remotes` (scope `all`, the default) or `HEAD` alone (scope
+  `current`, as V9). Never tags (decision 48) and never `--all` (the stash, `refs/cpr/*`). Only
+  the scope's name comes from the request, checked against the two; the revisions are fixed.
+- **The order, once**: the server streams `git log --topo-order -z --format=%H%x1f%P` over the
+  tips (graph order: every commit above its parents, a branch's commits together, what
+  `git log --graph` draws) and keeps, per scope, the SHAs in order and each row's parents as row
+  numbers. It is made again when the refs change: the server compares `git for-each-ref`'s
+  output (10–79 ms) when the page asks for the history.
+- **Core**: `streamHistory(repo, scope, onRows)` in `src/git/log.ts` (rows as git gives them),
+  `commitDetails(repo, shas)` (`git log --no-walk=unsorted` with V9's format, parsed by
+  `parseLog`), `listRefs(repo)` (one `git for-each-ref` over `refs/heads` and `refs/remotes`:
+  branches with `upstream`, `ahead`, `behind`, `gone`; remotes without their `HEAD`).
+  `listCommits` and `parseLog` stay for V9's callers.
+- **API**:
+  - `GET /api/history?scope=…&rows=<from>-<to>` → the details of those rows (at most 500), from
+    the kept order. It answers as soon as git has listed them: the first 200 rows do not wait for
+    the whole walk.
+  - `GET /api/history/shape?scope=…` → `{ version, rows, head, parents }` (`head`: HEAD's row;
+    `parents`: row numbers) once the whole order is known. `version` changes with the refs; rows
+    asked with an older version answer 409, and the page loads anew.
+  - `GET /api/refs?scope=…` → the branches and remotes, each with its tip's row (null when the
+    scope does not list it).
+- **Hint**: when the order took over 500 ms and the repository has no commit-graph file, the
+  terminal says once that `git commit-graph write --reachable` (or `git maintenance start`) makes
+  the first rows come at once. CPR does not write it: that would change the user's repository.
 
 #### Lanes (viewer, pure)
 
-`layoutLanes(commits, head)` in `src/lanes.ts`, over every row loaded, gives each row: `lane`
-(the column of its dot), `through` (lanes passing by), `from` (lanes ending in its dot from above:
-its children's lines, so branches diverged here when there are two or more), `to` (one lane per
+`layoutLanes(parents, head)` in `src/lanes.ts`, over row numbers, gives each row: `lane` (the
+column of its dot), `through` (lanes passing by), `from` (lanes ending in its dot from above: its
+children's lines, so branches diverged here when there are two or more), `to` (one lane per
 parent below; a merge has two or more) and `width`. Rules:
 
 1. Lane 0 is the current branch's first-parent line (HEAD, its first parent, …): the straight
@@ -2747,40 +2761,42 @@ parent below; a merge has two or more) and `width`. Rules:
    lane whose line ended is free again. A first parent continues in the child's lane.
 3. Lines never shift sideways: a line bends only where it starts or ends, so each row is drawn
    from its own data.
-4. Every line is drawn whole, however long. A parent not loaded yet keeps its lane open to the
-   bottom; the walk only goes on when the rest arrives, so the first 200 rows never move.
+4. Every line is drawn whole, however long. The first rows are drawn from their own parents
+   before the shape arrives (a parent not yet listed keeps its lane open to the bottom); the
+   walk only goes on when the shape comes, so they never move.
 
 #### Drawing (viewer)
 
-- Rows have a fixed height (about today's 33 px) and only those in view (and a screen around)
-  are in the page: 41,358 rows cannot all be. The cursor's scrolling and j/k work by row number,
-  not by element.
+- Rows have a fixed height (about today's 33 px) and only those in view (and a screen around) are
+  in the page. Their details are asked for in blocks of 200 as they come near; a row whose
+  details have not come yet shows its graph and grey bars. The cursor's scrolling and j/k work by
+  row number, not by element.
 - A graph cell at the left of each row: an inline `<svg>` of the row's full height, its top half
   the lines from children, its bottom half the lines to parents, a curve where a line changes
   lane. The cell spans the row's padding and border, so lines join across rows.
 - Lanes 14 px apart, narrowed down to 6 px when the widest row would pass 240 px; past 6 px the
-  column widens (Qwik's 36 lanes: 240 px at 6.7 px).
+  column widens (CPython's 37 lanes: 240 px at 6.5 px).
 - A lane keeps one color from start to end: lane 0 the accent (`--moved`), the others a palette
   of six tokens with light and dark values. A merge is a hollow dot. A picked commit's dot gets a
   ring; the fork point of two diverged picks a dashed one.
-- The page opens with the cursor on HEAD's row.
-- The `○/●` pick column, the row's picked background and the ref badges stay.
+- Badges as today: branches, remotes and tags on their commit's row; tags only there.
+- The page opens with the cursor on HEAD's row. The `○/●` pick column and the row's picked
+  background stay.
 
 #### Branches panel (viewer)
 
 - Left of the graph, its own scroll, about 260 px wide (hidden behind a "Branches" button under
-  900 px). Three sections:
+  900 px). Branches only:
   - **Local**: the current branch first (●), then by name; each with `↑2 ↓1` against its
     upstream (title: "2 commits not pushed to origin/main, 1 not pulled"), `gone` when the
     upstream was deleted.
   - **Remotes**: per remote, then folders by `/` (`milestone/`, `fix/`), each folder with its
     count; folders start closed.
-  - **Tags**: closed at first, newest version first.
-- A filter box on top narrows all three by name and opens the folders that match (Bitwarden:
-  1,591 remote branches).
-- A click puts the cursor on the branch's tip and scrolls it to the middle; the row flashes.
-  Under "This branch", a tip not listed switches to every branch first.
-- The panel draws from `/api/refs`; a ref's row is found by its SHA among the rows loaded.
+- A filter box on top narrows both by name and opens the folders that match (Bitwarden: 1,591
+  remote branches).
+- A click puts the cursor on the branch's tip row and scrolls it to the middle (its details load
+  as any rows in view); the row flashes. Under "This branch", a tip not listed switches to every
+  branch first.
 
 #### This branch (viewer)
 
@@ -2792,7 +2808,7 @@ parent below; a merge has two or more) and `width`. Rules:
 - One pick an ancestor of the other: as today. In graph order the ancestor is the lower, so it is
   the base.
 - Neither (diverged): the label says "a1b2c3d ⑂ e4f5a6b · forked at 9f8e7d6: 3 and 5 commits"
-  (each side's commits since the fork, walked through the rows), and the fork point's row is
+  (each side's commits since the fork, walked through the shape), and the fork point's row is
   marked. Compare analyzes the fork point against head: what head's branch adds since they
   diverged, as `cpr view <base> <head>` and pull requests do. The lower pick is the base; Swap
   exchanges them.
@@ -2802,60 +2818,61 @@ parent below; a merge has two or more) and `width`. Rules:
 
 #### Verification
 
-1. **Unit** (red first): `listCommits` on a fixture repository with a merged branch, an unmerged
-   one, a local branch ahead of and behind its upstream, a remote-only branch, a tag on no
-   branch (listed), a stash and a `refs/cpr/*` ref (never listed); a child dated before its
-   parent still listed above it; `current` lists V9's commits; `limit`. `listRefs`: branches
-   with ahead/behind and `gone`, remotes without their `HEAD`, an annotated tag peeled, a
-   detached HEAD. `/api/commits` and `/api/refs` (refusals, defaults). `layoutLanes`: one line;
-   a merged branch (fork and merge rows); two branches from one commit; an octopus merge; a tip
-   newer than HEAD (lane 0 stays HEAD's); a lane freed and reused; a parent not loaded (open to
-   the bottom); a detached HEAD; the first rows keep their lanes when the rest arrives. The panel
-   tree (pure): folders by `/`, counts, the filter opening folders, tag order. `comparison`:
-   ancestor picks unchanged; diverged picks (label, Swap). `POST /api/diffs` with `from: 'fork'`
-   (the fork's URL; no shared history: 400).
+1. **Unit** (red first): `streamHistory` on a fixture repository with a merged branch, an
+   unmerged one, a local branch ahead of and behind its upstream, a remote-only branch, a tag on
+   no branch, a stash and a `refs/cpr/*` ref (the last three never listed); a child dated before
+   its parent still listed above it; `current` lists V9's commits. `commitDetails` in the order
+   asked, tags among the refs. `listRefs`: ahead/behind, `gone`, no remote `HEAD`, no tags. The
+   server: rows before the walk ends, the shape after, rows past the end, more than 500 rows
+   refused, 409 after the refs change, one walk per scope and refs state. `layoutLanes`: one
+   line; a merged branch (fork and merge rows); two branches from one commit; an octopus merge;
+   a tip newer than HEAD (lane 0 stays HEAD's); a lane freed and reused; a parent not yet listed
+   (open to the bottom); a detached HEAD; the first rows keep their lanes when the shape comes.
+   The panel tree (pure): folders by `/`, counts, the filter opening folders. `comparison`:
+   ancestor picks unchanged; diverged picks (label, Swap). `POST /api/diffs` with `from: 'fork'`.
 2. **Nothing else changes**: no analysis code is touched; goldens identical; `cpr diff` and
    `cpr pr` tests unchanged; every e2e spec passes.
-3. **The graph is git's**: a script checks `layoutLanes` over the whole history of CPR, Qwik and
-   Bitwarden against `git log --topo-order`'s parents: each row's lines reach exactly its
-   parents' rows, lane 0 holds exactly the first-parent line, and the lane counts match the
-   Problem table.
+3. **The graph is git's**: a script checks `layoutLanes` over the whole history of CPR, Qwik,
+   Bitwarden and CPython against `git log --topo-order`'s parents: each row's lines reach
+   exactly its parents' rows, lane 0 holds exactly the first-parent line, and the widest row
+   matches the Problem table.
 4. **E2E** (`serveCommits` grows a merged branch, an unmerged local one, a remote-only one, a tag
-   on no branch and an upstream ahead): a graph cell per row (`data-lane`); every branch and tag
-   listed, "This branch" and the URL; the panel (sections, a folder, the filter, a click going
-   to the tip); diverged picks → the fork point's diff; Swap; the keys as before; no sideways
-   scroll with the widest graph; screenshots light and dark.
-5. **Real repos** (`viewer-check`): `cpr view` on Qwik and Bitwarden: the first rows drawn under
-   1 s from opening (V9: 0.24–0.26 s on Qwik's branch alone), the whole history listed under 2 s
-   (Bitwarden); scrolling from top to bottom and a panel click to the deepest tip with no frame
-   over 100 ms.
-6. **Cost**: `/api/commits` for 200 rows under 300 ms and the whole history under 600 ms on
-   Bitwarden without a commit-graph file (git alone: 233 and 305 ms); `/api/refs` under 150 ms.
+   on no branch and an upstream ahead): a graph cell per row (`data-lane`); every branch listed,
+   the tag only as a badge, "This branch" and the URL; rows' details arriving on scroll; the
+   panel (sections, a folder, the filter, a click going to the tip); diverged picks → the fork
+   point's diff; Swap; the keys as before; no sideways scroll with the widest graph; screenshots
+   light and dark.
+5. **Real repos** (`viewer-check`), without a commit-graph file and with one: `cpr view` on Qwik,
+   Bitwarden and CPython — the first rows drawn (target: under 1 s on CPython without the file,
+   under 0.3 s with it), the shape in, scrolling top to bottom and a panel click to the deepest
+   tip with no frame over 100 ms; the browser's memory after scrolling CPython end to end.
+6. **Cost**: 200 rows' details under 50 ms anywhere in the history; the shape under 2.5 s on
+   CPython (git: 1.2–2.0 s), under 700 ms on Bitwarden; `/api/refs` under 150 ms.
 
 **Risks**
 
 | Risk | Mitigation |
 |---|---|
-| Whole histories are large (Bitwarden 41,358 rows, 7.5 MB) | The first 200 rows first; the rest in one request; rows virtualized; at most 100,000 rows. |
-| Wide graphs (Qwik: 36 lanes) | Spacing narrows to 6 px; "This branch"; cutting long lines into arrows is measured and kept for later. |
-| Most rows are other people's branches (Bitwarden: 93 of the first 100) | The current branch is lane 0 and its badge; the page opens on HEAD; the panel; "This branch". |
-| Graph order walks the whole history without a commit-graph file | Measured: 305 ms for all of Bitwarden. CPR does not write one: it would change the user's repository. |
+| Large histories (CPython: 150,182 rows, 30.5 MB of details) | Only the shape for every row (1.32 MB); details for the rows in view, 200 at a time (20 ms); rows virtualized. Not measured beyond CPython (the Linux kernel has over 1.3 million commits). |
+| The first row waits for git's ordering (CPython 0.77 s without a commit-graph file) | The rows come as soon as git has them; the hint names the command that makes it instant; the page shows "Listing commits…" meanwhile. |
+| Refs move while the page is open (a fetch) | Rows and shape carry the history's version; an old version answers 409 and the page lists anew. |
+| Wide graphs (CPython 37, Qwik 36 lanes) | Spacing narrows to 6 px; "This branch"; cutting long lines into arrows is measured and kept for later. |
+| Most rows are other people's branches (Bitwarden: 93 of the first 100) | The current branch is lane 0; the page opens on HEAD; the panel; "This branch". |
 | 1,591 remote branches in a panel | Folders closed at first, counts, the filter. |
 | Rows' padding and borders break lines between rows | Fixed row height; the cell spans the whole row; e2e checks lines meet. |
 | Dates no longer fall steadily down the list (a branch's commits are kept together) | It is `git log --graph`'s order; the date column stays. |
 | Diverged picks: the reader expects a direct diff | The label says "forked at …"; Swap; a direct diff only if asked for (decision 52). |
-| Refs move between the first rows and the rest (a fetch meanwhile) | The rest is checked to continue the first rows (row 200's SHA); otherwise the page lists anew. |
 
-**Order**: on one branch, merged together. V10a (the whole history as a graph) first; V10b (the
-panel) next, since a click must reach any tip; V10c (picks across branches), since every
-branch listed makes diverged picks common; "This branch" with V10a.
+**Order**: on one branch, merged together. V10a (the history as a graph, lazily) first; V10b (the
+panel) next, since a click must reach any tip; V10c (picks across branches), since every branch
+listed makes diverged picks common; "This branch" with V10a.
 
 #### Milestones
 
 | # | Milestone | Output |
 |---|---|---|
-| V10a | The whole history as a graph | `--topo-order` over `HEAD`, branches, remotes and tags; `scope` and `limit`; the first rows, then the rest; `layoutLanes`; virtualized rows with a graph cell and lane colors; the cursor on HEAD; "This branch"; the check against git. |
-| V10b | Branches panel | `listRefs` and `/api/refs`; Local (ahead/behind), Remotes by remote and folder, Tags; the filter; a click to the tip. |
+| V10a | The history as a graph | `streamHistory`, `commitDetails`; the kept order per scope and refs state; `/api/history` (rows, shape); `layoutLanes`; virtualized rows with a graph cell, lane colors and details by block; the cursor on HEAD; "This branch"; the commit-graph hint; the check against git. |
+| V10b | Branches panel | `listRefs` and `/api/refs` with tip rows; Local (ahead/behind) and Remotes by remote and folder; the filter; a click to the tip. |
 | V10c | Picks across branches | The diverged label, the fork point marked, Compare from the fork point (`from: 'fork'`), Swap. |
 
 **Proposed decisions**:
@@ -2863,17 +2880,17 @@ branch listed makes diverged picks common; "This branch" with V10a.
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 47 | Row order | **Graph order (`--topo-order`)** | A graph needs every commit above its parents; date order interleaves lines (Qwik 13–15 lanes against 7–11, zod 5–12 against 4); it is what `git log --graph` shows. |
-| 48 | Which commits | **Every branch, local and remote, every tag, and HEAD; "This branch" on demand. Not the stash or `refs/cpr/*`** | Asked: "all the commits, from any branches". The panel lists tags, so a tag must lead to its commit: 410 of Bitwarden's 638 tags point at commits no branch reaches (1,497 rows, no extra lanes). |
+| 48 | Which commits | **Every branch, local and remote, and HEAD; "This branch" on demand. Tags only as badges on their rows; not the stash or `refs/cpr/*`** | Asked: "all the commits, from any branches" and "tags should only be in the row … the tree should be branches only". As tips, CPython's tags take its graph from 37 lanes to 2,449. |
 | 49 | Lane rules | **Lane 0 is HEAD's first-parent line; lines never shift sideways; the leftmost free lane is reused** | The current branch is always the straight line on the left; each row is drawn from its own data. |
-| 50 | Long lines | **Drawn whole; lanes narrow from 14 to 6 px, then the column widens** | Asked: "exactly like git extension, or gitty up … the entire flow of the commits"; they draw lines whole. Over whole histories the widest is 36 lanes (Qwik), 17 on Bitwarden. Arrows (gitk) measured, kept for later. |
-| 51 | How the history loads | **The first 200 rows, then the rest in one request (up to 100,000 rows); lanes in the viewer over all rows; rows virtualized** | Branch tips sit deep (Bitwarden: median row 9,165, deepest 37,633), so paging cannot reach them; the ordered walk is paid anyway (233 ms for 200 rows, 305 ms for all 41,358); lanes 24 ms. |
+| 50 | Long lines | **Drawn whole; lanes narrow from 14 to 6 px, then the column widens** | Asked: "exactly like git extension, or gitty up … the entire flow of the commits"; they draw lines whole. Over whole histories the widest is 37 lanes (CPython). Arrows (gitk) measured, kept for later. |
+| 51 | How the history loads | **The order once, on the server (kept per scope and refs state); the shape of every row to the viewer; the details of the rows in view, 200 at a time** | Asked: "can't we lazy load". Git orders everything before the first row anyway (CPython 0.77 s, 6 ms with a commit-graph file); the details are the weight (30.5 MB on CPython against a 1.32 MB shape); 200 rows' details take 20 ms anywhere; tips sit deep (median row 9,165–11,068), so the panel needs every row's place. |
 | 52 | What diverged picks compare | **The fork point (merge-base) against head; the lower pick is the base; Swap** | What a branch adds since it forked is what a pull request shows; directly, base's own changes would show as reverted. For a commit and its ancestor the merge-base is the ancestor, so V9's picks compare as before. |
-| 53 | The left panel | **Branches: Local (with ahead/behind), Remotes by remote and folder, Tags; a filter; a click goes to the tip** | Asked: "graph + branches panel", as Git Extensions and Gittyup have. Bitwarden's 1,591 remote branches need folders and a filter. |
+| 53 | The left panel | **Branches only: Local (with ahead/behind), Remotes by remote and folder; a filter; a click goes to the tip** | Asked: "graph + branches panel", "the tree should be branches only". Bitwarden's 1,591 remote branches need folders and a filter. |
 
 **Not in V10 (later)**: long lines cut into arrows (measured above); hiding branches from the
 graph (checkboxes in the panel); a commit's details (message, files); repository actions from
-the panel (checkout, delete, fetch); more than 100,000 commits; uncommitted changes as a row; a
-direct diff of diverged picks.
+the panel (checkout, delete, fetch); histories beyond CPython's size measured; uncommitted
+changes as a row; a direct diff of diverged picks.
 
 ### Phase 1 milestones
 
