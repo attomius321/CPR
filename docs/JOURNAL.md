@@ -1699,7 +1699,8 @@ out lanes over the shape and draws only the rows near the view.
   lanes for Bitwarden; `scripts/viewer/lanes-check.mjs`, which walks every drawn line to its
   parent and prints git `--graph`'s width beside ours, showed 142 on its first run. Whole lines
   were what the user had asked for; with the real numbers they chose gitk's arrows (Bitwarden
-  20 lanes, 1,943 arrows in 39,861 rows).
+  20 lanes, 1,939 arrows in 39,861 rows; 1,943 as first counted, see "Fix — lanes-check and root
+  commits").
 - `--no-walk=unsorted` reads any 200 commits by SHA in 16–20 ms, wherever they are in a
   150,000-commit history: the order is the only thing that must be listed whole.
 - A line may join a lane already going to its parent before it is cut: on HEAD's line that is
@@ -2248,3 +2249,17 @@ going to the deepest tip (row 37,633, 89–94 ms to its row drawn with details);
 the badge fix, 3–8 between 900 and 1,100 px). Not verified: Windows, macOS, Firefox, Safari.
 
 Merged into main (2026-10-14). `main` verified after the merge: 619 unit tests, build, 82 e2e.
+
+## Fix — lanes-check and root commits (2026-10-14, branch `fix/lanes-check-root-commits`)
+
+Found while checking V10c's comparisons: `git log --format='%H %P'` ends a root commit's line
+with a space, and `scripts/viewer/lanes-check.mjs` split it into one parent named `''`, a parent
+outside the history (`-1`). `layoutLanes` then gave the root a down-arrow "Its parent is below
+the commits listed" whenever more than 100 rows followed, and the script's partner check skipped
+it (no row to find). The page never had it: the server reads `%H%x1f%P` and an empty field as
+no parents. The script now reads git's output the same way.
+
+**Verification**: on the six regression clones and this repository, before and after: lane
+widths identical (max, p95, mean); arrows zod 15 → 14, Qwik 241 → 240, Bitwarden 1,943 → 1,939
+(one per extra root), others unchanged; 0 errors after. V10a's published arrow counts are
+corrected in PLAN.md (a note under its table) and its journal entry. No product code changed.
