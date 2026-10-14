@@ -2116,7 +2116,11 @@ approval, in the background. The rules an agent follows lived only in this repos
   Neither pushed: the rules say to follow the project's, and the repositories had none.
 - `git merge-tree` reports conflicts with exit 1 and its answer on stdout; `GitError` now keeps
   stdout. It writes loose objects only: no ref, index or file moved (a test checks it).
-- On Qwik the conflicting paths took six lines of the sidebar: file names, paths in the title.
+- On Qwik the conflicting paths took six lines of the sidebar. Asked then for "each file on
+  it's line..with a icon that opens the file in vscode": a list, V12's icon on each, which opens
+  the file through `/api/open` — extended to a branch review's conflicting files, since those
+  need not be in the change (Qwik's `.api.md`). Tests first (the server refused `docs/api.md`;
+  the e2e found no list on the old viewer).
 - The V17a–b commit says "CLI 8" tests failed first; it was 11 (and 2 in the server).
 
 **Verification**: tests first (core 3, CLI 11, server 2, viewer 2; e2e 3 of 4 review specs on

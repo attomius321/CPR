@@ -234,7 +234,7 @@ export function Sidebar({
           </div>
         </>
       ) : tab === 'review' && review ? (
-        <ReviewTab graph={graph} review={review} onSelect={onSelect} />
+        <ReviewTab graph={graph} review={review} onSelect={onSelect} canOpen={canOpen} />
       ) : (
         <div className="list">
           {findings.map((finding) => (

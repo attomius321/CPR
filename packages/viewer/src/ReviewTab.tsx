@@ -13,6 +13,8 @@ import {
   type ReviewEvent,
 } from './comments.js';
 import { label } from './flow.js';
+import { openInEditor } from './open.js';
+import { OpenIcon } from './OpenIcon.js';
 
 export interface ReviewProps {
   forge: 'github' | 'gitlab' | 'local';
@@ -49,10 +51,13 @@ export function ReviewTab({
   graph,
   review,
   onSelect,
+  canOpen = false,
 }: {
   graph: Graph;
   review: ReviewProps;
   onSelect: (id: string) => void;
+  /** The server opens files in VS Code (`/api/open`): a conflicting file too (V17). */
+  canOpen?: boolean;
 }) {
   const { forge, draft } = review;
   const [event, setEvent] = useState<ReviewEvent>('comment');
@@ -149,7 +154,7 @@ export function ReviewTab({
             CPR pushes nothing.
           </p>
         )}
-        {local && into && <MergeCheck branch={review.local?.branch ?? ''} />}
+        {local && into && <MergeCheck branch={review.local?.branch ?? ''} canOpen={canOpen} />}
         {forge === 'gitlab' && event === 'request-changes' && (
           <p className="muted small">
             GitLab gets a note marked “Changes requested”, and your approval is withdrawn.
@@ -190,10 +195,12 @@ export function ReviewTab({
 
 /**
  * Whether the branch merges cleanly into the default branch (V17), checked in the background:
- * nothing while git works (seconds on a long-lived branch), then clean or the conflicting files.
+ * nothing while git works (seconds on a long-lived branch), then clean, or each conflicting file
+ * on its line — its name, its folder, and a button that opens it in VS Code.
  */
-function MergeCheck({ branch }: { branch: string }) {
+function MergeCheck({ branch, canOpen }: { branch: string; canOpen: boolean }) {
   const [merge, setMerge] = useState<BranchMerge | { failed: string } | null>(null);
+  const [note, setNote] = useState<{ text: string; error: boolean } | null>(null);
   useEffect(() => {
     let live = true;
     checkMerge()
@@ -214,17 +221,49 @@ function MergeCheck({ branch }: { branch: string }) {
   if ('clean' in merge) {
     return <p className="merge-check muted small">Merges cleanly into {merge.into}.</p>;
   }
-  // File names: full paths wrap over many lines in the sidebar; they are in the title.
-  const shown = merge.conflicts
-    .slice(0, 3)
-    .map((path) => path.slice(path.lastIndexOf('/') + 1))
-    .join(', ');
-  const more = merge.conflicts.length > 3 ? ` and ${merge.conflicts.length - 3} more` : '';
+  const open = (file: string) =>
+    void openInEditor({ side: 'head', file, line: 1, column: 1 }).then((answer) =>
+      setNote(
+        answer.ok
+          ? { text: `Opened ${file} in VS Code`, error: false }
+          : { text: answer.error, error: true },
+      ),
+    );
+  const count = merge.conflicts.length;
   return (
-    <p className="merge-check conflicts small" title={merge.conflicts.join('\n')}>
-      Conflicts with {merge.into} in {shown}
-      {more}: the agent resolves them on {branch} first.
-    </p>
+    <div className="merge-check conflicts small">
+      <p className="merge-check-head">
+        Conflicts with {merge.into} in {count} file{count === 1 ? '' : 's'}; the agent resolves them
+        on {branch} first:
+      </p>
+      <ul className="merge-files">
+        {merge.conflicts.map((path) => {
+          const slash = path.lastIndexOf('/') + 1;
+          return (
+            <li key={path} title={path}>
+              {canOpen && (
+                <button
+                  type="button"
+                  className="merge-open"
+                  aria-label={`Open ${path} in VS Code`}
+                  title={`Open ${path} in VS Code`}
+                  onClick={() => open(path)}
+                >
+                  <OpenIcon />
+                </button>
+              )}
+              <span className="merge-file">{path.slice(slash)}</span>
+              <span className="merge-dir">{path.slice(0, slash)}</span>
+            </li>
+          );
+        })}
+      </ul>
+      {canOpen && (
+        <div className={`open-note${note?.error ? ' open-error' : ''}`} role="status">
+          {note?.text}
+        </div>
+      )}
+    </div>
   );
 }
 

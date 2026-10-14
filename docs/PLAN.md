@@ -4313,8 +4313,12 @@ commits page's badges; a verdict on compare-mode pairs.
   `cpr/AGENTS.md` counts as CPR's own when a project commits `cpr/`.
 - **One button, "Finish review"**, for every verdict; the line above it says what Approve asks
   ("Approve asks it to merge 561a0b4 into main. CPR pushes nothing.").
-- **The conflict line names files**, the full paths in its title: on Qwik the two paths took six
-  lines of the 300 px sidebar.
+- **Conflicting files, one per line** (asked: "put each file on it's line..with a icon that
+  opens the file in vscode"): a button with V12's open icon, the file's name, its folder dimmed
+  and cut short (the full path in the title). On Qwik the two paths as one sentence took six
+  lines of the 300 px sidebar. The button opens the file at line 1 in the working copy through
+  `POST ./api/open`, which accepts a branch review's conflicting files though they need not be
+  part of the change (Qwik's: an `.api.md` file); nothing else outside the change opens.
 - **`GitError` keeps git's stdout**: `merge-tree` answers on stdout with exit 1 when it conflicts.
 - **The merge check needs the analyzed review** (it is served beside the graph), which the Review
   tab needs anyway.

@@ -800,10 +800,11 @@ describe('cpr view: branch reviews', () => {
     },
     merge: (info) => {
       merges.push(info.head);
-      return Promise.resolve({ into: 'main', conflicts: ['src/math.ts'] });
+      return Promise.resolve({ into: 'main', conflicts: ['docs/api.md'] });
     },
   };
   const merges: string[] = [];
+  const opens: unknown[] = [];
   const finished: { branch: string; review: unknown; code: string }[] = [];
   const graphOf = ({ base, head }: Pair): Graph => ({
     ...graph,
@@ -820,6 +821,10 @@ describe('cpr view: branch reviews', () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
     server = await startViewServer({
       viewerDir: viewer,
+      open: (request) => {
+        opens.push(request);
+        return Promise.resolve({ opened: true, line: 1, how: 'exact', moved: false });
+      },
       repository: {
         history: new Histories({
           state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
@@ -901,6 +906,7 @@ describe('cpr view: branch reviews', () => {
       sources: true,
       review: { forge: 'local' },
       state: true,
+      open: true,
       commits: true,
       branchReview: { branch: 'wip', ref: 'wip', base: A, head: B, reviewed: null, since: null },
     });
@@ -991,9 +997,16 @@ describe('cpr view: branch reviews', () => {
   it('says whether the branch merges cleanly into the default branch (V17)', async () => {
     expect(JSON.parse((await get('/review/wip/api/merge')).body)).toEqual({
       into: 'main',
-      conflicts: ['src/math.ts'],
+      conflicts: ['docs/api.md'],
     });
     expect(merges).toEqual([C]);
+    // A conflicting file opens in VS Code though it is not part of the change; others do not.
+    const open = (path: string, file: string) =>
+      send('POST', path, { side: 'head', file, line: 1, column: 1 });
+    expect((await open('/review/wip/api/open', 'docs/api.md')).status).toBe(200);
+    expect(opens.at(-1)).toEqual({ sha: C, file: 'docs/api.md', line: 1, column: 1 });
+    expect((await open('/review/wip/api/open', 'docs/other.md')).status).toBe(400);
+    expect((await open(`/diff/${A}..${B}/api/open`, 'docs/api.md')).status).toBe(400);
     expect((await send('POST', '/review/wip/api/merge', {})).status).toBe(405);
     // Compare mode has no branch to merge.
     expect((await get(`/diff/${A}..${B}/api/merge`)).status).toBe(404);

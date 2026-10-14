@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveAgentBranch, type RunningAgent } from './cpr.js';
@@ -8,9 +9,28 @@ import { serveAgentBranch, type RunningAgent } from './cpr.js';
 // gets its own repository: reviews write into it.
 let cpr: RunningAgent;
 const errors: string[] = [];
+// `CPR_CODE`: a stand-in for VS Code that writes what it was given.
+const dir = mkdtempSync(join(tmpdir(), 'cpr-e2e-code-'));
+const log = join(dir, 'opened.jsonl');
+const fake = join(dir, 'code');
+writeFileSync(
+  fake,
+  '#!/usr/bin/env node\n' +
+    `require('node:fs').appendFileSync(${JSON.stringify(log)}, ` +
+    "JSON.stringify(process.argv.slice(2)) + '\\n');\n",
+);
+chmodSync(fake, 0o755);
+const opened = (): string[][] =>
+  existsSync(log)
+    ? readFileSync(log, 'utf8')
+        .split('\n')
+        .filter((line) => line !== '')
+        .map((line) => JSON.parse(line) as string[])
+    : [];
 
 test.beforeEach(async ({ page }) => {
-  cpr = await serveAgentBranch();
+  rmSync(log, { force: true });
+  cpr = await serveAgentBranch({ CPR_CODE: fake });
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
 });
@@ -19,6 +39,8 @@ test.afterEach(() => {
   cpr.stop();
   expect(errors).toEqual([]);
 });
+
+test.afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
 const row = (page: Page, subject: string) =>
@@ -287,10 +309,15 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   await page.goto(cpr.url);
   await review(page, 'Agent: add cube', 'agent not reviewed yet');
   await reviewTab(page).click();
-  await expect(page.locator('.merge-check')).toHaveText(
-    'Conflicts with main in math.ts: the agent resolves them on agent first.',
+  // Each file on its line, its folder beside it, and a button that opens it in VS Code.
+  const check = page.locator('.merge-check');
+  await expect(check.locator('.merge-check-head')).toHaveText(
+    'Conflicts with main in 1 file; the agent resolves them on agent first:',
   );
-  await expect(page.locator('.merge-check')).toHaveAttribute('title', 'src/math.ts');
+  await expect(check.locator('li')).toHaveText(['math.tssrc/']);
+  await check.getByRole('button', { name: 'Open src/math.ts in VS Code' }).click();
+  await expect(check.getByRole('status')).toHaveText('Opened src/math.ts in VS Code');
+  expect(opened()).toEqual([[cpr.repo, '--goto', `${join(cpr.repo, 'src', 'math.ts')}:1:1`]]);
   await page.getByLabel('Approve').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText(`Approved ${short(cube)}`);

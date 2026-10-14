@@ -567,7 +567,15 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (!writable(req)) return send(res, 403, 'forbidden');
     let target: ReturnType<typeof parseOpen>;
     try {
-      target = parseOpen(await readBody(req, MAX_BODY_BYTES), site.allowed);
+      const text = await readBody(req, MAX_BODY_BYTES);
+      try {
+        target = parseOpen(text, site.allowed);
+      } catch (error) {
+        // A file the branch conflicts in with the default branch (V17) may be outside the change.
+        const merge = site.merge ? await site.merge() : null;
+        if (!merge || !('conflicts' in merge)) throw error;
+        target = parseOpen(text, site.allowed, new Set(merge.conflicts));
+      }
     } catch (error) {
       return send(res, 400, (error as Error).message);
     }
@@ -651,14 +659,18 @@ function parseCheckoutTarget(text: string): CheckoutTarget {
 }
 
 /** `{ side, file, line, column? }`: a file the graph mentions on that side, 1-based positions. */
+/** `POST ./api/open`'s body: a file of the change, or one of `conflicts` (head side). */
 function parseOpen(
   text: string,
   allowed: Record<Side, Set<string>>,
+  conflicts: ReadonlySet<string> = new Set(),
 ): { side: Side; file: string; line: number; column: number } {
   const value = JSON.parse(text) as Record<'side' | 'file' | 'line' | 'column', unknown> | null;
   const { side, file, line, column = 1 } = value ?? {};
   if (side !== 'base' && side !== 'head') throw new Error('side: base or head');
-  if (typeof file !== 'string' || !allowed[side].has(file)) {
+  const known = (path: string) =>
+    allowed[side].has(path) || (side === 'head' && conflicts.has(path));
+  if (typeof file !== 'string' || !known(file)) {
     throw new Error(`${String(file)} is not part of this change`);
   }
   if (!isPosition(line)) throw new Error('line: a positive integer');
