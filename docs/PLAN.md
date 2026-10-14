@@ -426,7 +426,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V12 ✅ | Open in VS Code | The diff panel shows a symbol's lines, but going there in the editor is done by hand, and head's line number is not the working copy's: reviewing anything but the checked-out commit, 1–62 % of added lines sat at another line and up to 23 % were changed since (CPR, ky, zod). Merged: "Open in VS Code" (or `o`), Ctrl/⌘+click or a line number opens the line in the window that has the repository open (else a new one with it), at its place in the working copy; the server runs `code <repo root> --goto <file>:<line>:<col>`, found on any platform. 105 ms from the request to VS Code here. See below. |
 | V13 ✅ | Compare mode | The commits page opened as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Merged: browse by default (a click selects the row; 25 rows in view instead of 23 at 1440 × 900), and a "Compare mode" toggle (or `x`) for picking, left with Escape; first rows as fast as `main`. See below. |
 | V14 ✅ | Checkout submenu | The row menu lists every target as a sentence: on Qwik's HEAD row 10 entries, each starting "Check out", 8 ending "(detached HEAD)", 480 px wide (its max); a remote branch's entry is 117 characters. The names are plain text mid-sentence, while the rows draw them as coloured badges. Merged: "Check out ▸" with the targets in a submenu on hover (or c), each name as the row's badge with a muted note (Qwik's HEAD row: 10 badges in a 368 px column); the confirmation's heading with the name as a badge. See below. |
-| V15 | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Built, not merged: "Review ▸" in the row menu (or r) compares a branch's fork point with its tip, marks kept across new commits (on a clone, 83 of 83 after one more commit, 2 symbols left); reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; "✓" or "+n" on reviewed branches' badges, a dot on commits added since. See below. |
+| V15 ✅ | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Merged: "Review ▸" in the row menu (or r) compares a branch's fork point with its tip, marks kept across new commits (on a clone, 83 of 83 after one more commit, 2 symbols left); reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; "✓" or "+n" on reviewed branches' badges, a dot on commits added since. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -3677,8 +3677,8 @@ re-measured (the rows did not change).
 
 ### V15 — Branch reviews in the repository
 
-**Status:** implemented (2026-10-14) on branch `milestone/v15-branch-reviews`; not merged yet.
-As built and results: "As built — V15" below.
+**Status:** merged into main (2026-10-14, from branch `milestone/v15-branch-reviews`). As built
+and results: "As built — V15" below.
 
 **Problem** (asked: "this app will be a review app for commits made by an agent"; then, on where
 reviews live: "this should be shared in the repo, so .git is not a good position...much better

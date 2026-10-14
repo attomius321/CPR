@@ -1992,3 +1992,5 @@ left, as the spike measured; 1.6–1.7 s from "Review" to the graph; `git status
 `/api/reviews` 10–24 ms on Qwik and Bitwarden. No analysis code changed (goldens unchanged), so
 no regression comparison. Not verified: Windows, macOS, a review merged from two machines,
 worktrees, Firefox and Safari.
+
+Merged into main (2026-10-14). `main` verified after the merge: 587 unit tests, build, 67 e2e.
