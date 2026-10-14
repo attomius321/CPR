@@ -1994,3 +1994,17 @@ no regression comparison. Not verified: Windows, macOS, a review merged from two
 worktrees, Firefox and Safari.
 
 Merged into main (2026-10-14). `main` verified after the merge: 587 unit tests, build, 67 e2e.
+
+## V16 spike — how a review ends (2026-10-14, branch `milestone/v16-finish-review`)
+
+Asked after reviewing V15 with the viewer: "how to end review?". The reviewer's state for that
+review (`4061f2b..60d94e1`, compare mode, in CPR's cache): 86 of the 87 changed symbols marked,
+no comments. None were possible: comments, the summary and a verdict exist only under `cpr pr`,
+where the forge receives them, so `cpr view` hides them, branch reviews included. Feedback to
+the agent went through chat instead, without a place: "bad styling on checkout option in
+dropdown" took two close-up screenshots to locate. Checked for the plan: the server's address
+(`http://127.0.0.1:<port>`) is a secure context in Chromium, so the page may copy to the
+clipboard; graph nodes carry line ranges per side, so a comment's line names its symbol. So the
+plan gives branch reviews a local review target behind the same `/api/review`: a verdict
+recorded at the tip, and the comments written as Markdown an agent reads in
+`cpr/reviews/<branch>/`, or copies from the page.

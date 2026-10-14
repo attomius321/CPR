@@ -427,6 +427,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V13 ✅ | Compare mode | The commits page opened as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Merged: browse by default (a click selects the row; 25 rows in view instead of 23 at 1440 × 900), and a "Compare mode" toggle (or `x`) for picking, left with Escape; first rows as fast as `main`. See below. |
 | V14 ✅ | Checkout submenu | The row menu lists every target as a sentence: on Qwik's HEAD row 10 entries, each starting "Check out", 8 ending "(detached HEAD)", 480 px wide (its max); a remote branch's entry is 117 characters. The names are plain text mid-sentence, while the rows draw them as coloured badges. Merged: "Check out ▸" with the targets in a submenu on hover (or c), each name as the row's badge with a muted note (Qwik's HEAD row: 10 badges in a 368 px column); the confirmation's heading with the name as a badge. See below. |
 | V15 ✅ | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Merged: "Review ▸" in the row menu (or r) compares a branch's fork point with its tip, marks kept across new commits (on a clone, 83 of 83 after one more commit, 2 symbols left); reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; "✓" or "+n" on reviewed branches' badges, a dot on commits added since. See below. |
+| V16 | Finish a review | A branch review has no end: outside `cpr pr` the reviewer can only mark symbols (the reviewer's V15 review: 86 of 87 marked, 0 comments, none possible), feedback to the agent goes through chat without a place, and badges show no outcome. Planned: comments and the Review tab on branch reviews; Approve, Request changes or Comment recorded at the tip ("✓", "✗", "+n" on badges); feedback as Markdown in `cpr/reviews/<branch>/<reviewer>.md` (also in the branch's worktree) and "Copy for the agent". See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -3916,6 +3917,167 @@ errors.
 Not verified: Windows and macOS (branch folders, `@` in file names); a review shared through
 git and merged from two machines (the format is made for it, not exercised); worktrees; Firefox
 and Safari; first rows drawn (not re-measured: the reviews request runs beside the listing).
+
+### V16 — Finish a review: verdict and feedback for the agent
+
+**Status:** planned (2026-10-14), on branch `milestone/v16-finish-review`; not started.
+
+**Problem** (asked, after reviewing V15 in the viewer: "how to end review?"; then "Yes, plan
+it"). A branch review (V15) has no end and no way to tell the agent what to fix:
+
+- Outside `cpr pr` the reviewer can only mark symbols. Comments on lines, the summary and a
+  verdict (Comment, Approve, Request changes) exist only under `cpr pr`, where they go to the
+  forge (G2); `cpr view` diffs and branch reviews have nowhere to send them, so the viewer hides
+  them. The reviewer's own review of V15 (`4061f2b..60d94e1`, compare mode): 86 of 87 symbols
+  marked, 0 comments (none possible), and no way to say "done" or "fix this".
+- Feedback to the agent goes through chat, without a place. In this session "bad styling on
+  checkout option in dropdown" took two close-up screenshots to locate (the button 121 of the
+  menu's 150 px wide); "make the branch name more visible when checking out" had to be read as
+  the menu and the confirmation.
+- The commits page shows no outcome: V15's "✓" means only that something was marked at the
+  tip, not that the branch is approved.
+
+Checked: the server's own address (`http://127.0.0.1:<port>`) is a secure context in
+Chromium, so the page can copy text to the clipboard.
+
+**Goal**: On a branch review the reviewer comments on lines, as under `cpr pr`, and finishes
+the review in the Review tab with a verdict: Approve, Request changes, or Comment. Finishing
+records the verdict at the tip in the review file, and the commits page shows it on the
+branch's badge ("✓" approved, "✗" changes requested, "+2" once the agent committed since).
+Request changes and Comment write the feedback for the agent: Markdown in
+`cpr/reviews/<branch>/<reviewer>.md`, each comment with its file and line at the reviewed tip,
+its symbol, the code line and the reviewer's words, the summary on top; "Copy for the agent"
+puts the same text on the clipboard. `cpr pr`, compare-mode pairs and `cpr view <base> <head>`
+do not change.
+
+#### Comments and the Review tab on a branch review
+
+- A branch review's page names a local review target: `/api/capabilities` answers `review: {
+  forge: 'local' }`. The viewer then shows comments in the detail panel (`c`, a line picked) and
+  the Review tab, as for `cpr pr` (`ReviewTab`, `comments.ts`). Its button says "Finish review",
+  not "Submit to GitHub".
+- Drafts and the summary are kept in the branch's review file, as V15 already does; I1's rules
+  carry them to a new tip (a comment on a symbol that changed becomes outdated and goes into the
+  summary).
+- Finishing posts `./api/review` with the drafts as `toReview` makes them (the same request as
+  for a forge, checked by `parseReview`). Then the drafts and summary are cleared: they are in
+  the feedback, and the next round starts empty.
+
+#### The verdict
+
+- The review file gains `verdicts`, appended on each finish: `{ event, head, at, comments }`
+  (the tip reviewed, when, how many comments). Git history and the reviewer see what was
+  approved at which commit.
+- `GET /api/reviews` adds the last verdict to each review.
+- Badge marks replace V15's: "+2" when the branch has commits since the review; else "✓"
+  approved at the tip, "✗" changes requested at the tip, "…" marks at the tip and no verdict
+  yet. The Review submenu's notes say the same in words ("approved", "changes requested · 2
+  commits since", "40 reviewed · in progress").
+
+#### Feedback for the agent
+
+- `cpr/reviews/<branch>/<reviewer>.md`, next to the review's JSON, written on finishing:
+
+  ```markdown
+  # Review of agent: changes requested
+
+  anton@example.com reviewed agent at e4f5a6b (since its fork point a1b2c3d), 2026-10-14 10:12 UTC.
+
+  The summary, as written.
+
+  ## src/math.ts:12 · square
+
+      return a ** 2;
+
+  Keep `a * a`: it reads better here.
+
+  ## src/app.ts:4 · render (a removed line, at a1b2c3d)
+
+      canvas.clear();
+
+  Why is this call gone?
+  ```
+
+  Comments in file and line order; a removed line names the fork point it is from. Comments
+  without a line (outdated, or on a symbol with no changed line) follow under "About <symbol>".
+  Each carries its symbol and code line, so the agent finds the place even after it commits
+  again (V12 measured 1–62 % of added lines moving within a few commits).
+- On Approve the file says so and nothing more ("Review of agent: approved at e4f5a6b"), so an
+  agent never acts on an older request.
+- Per reviewer, like the JSON: two reviewers never overwrite each other's feedback. An agent
+  reads every `.md` in its branch's folder.
+- The branch checked out in another worktree (`git worktree list --porcelain`), as agents often
+  work: the file is written there too, with that worktree's `cpr/.gitignore` (written once, as
+  in V15). That is where the agent works; its own `cpr/` is the one it sees.
+- "Copy for the agent" in the Review tab after finishing (and in the review page's header while
+  the last verdict is "changes requested"): the same Markdown, first line "Address this review
+  of the branch agent:", on the clipboard.
+- README: a short "For agents" note — read `cpr/reviews/<your branch>/*.md` before continuing.
+
+#### Server
+
+- Branch review sites get a local `ReviewTarget` (`forge: 'local'`). Its `submit` maps each
+  comment to its symbol (the node whose range on that side holds the line), reads the code line
+  at that side's commit, writes the Markdown (here and in the branch's worktree), appends the
+  verdict, and answers `{ feedback: { path, text } }` instead of a forge URL.
+- `ReviewTarget.forge` becomes `'github' | 'gitlab' | 'local'`; nothing else in `cpr pr`
+  changes.
+
+#### Verification
+
+1. **Unit** (red first): the Markdown for head and base comments, a renamed file, outdated and
+   unanchored drafts, an approval; comment → symbol by range; verdicts appended and listed; the
+   worktree found from `git worktree list --porcelain` (temp repositories: a branch checked out
+   in a linked worktree, none, detached); badge marks and notes for each state.
+2. **Server**: `/api/capabilities` on a branch review says `review: { forge: 'local' }`; `POST
+   ./api/review` writes the feedback and the verdict, refuses comments outside the change (as
+   for a forge) and requests other sites could send; compare-mode pairs still have no review
+   target.
+3. **E2E** (red first), on V15's agent fixture: comment on `square`, finish with Request
+   changes: the file's text, drafts cleared, "✗" on the badge, the clipboard's text; the agent
+   commits: "+1"; review again, Approve: "✓", the file says approved. Every other spec
+   unchanged (`cpr pr`'s review tests included).
+4. **Real repository**: on a clone of this repository, review `v12`, comment on three symbols
+   (one on a removed line), Request changes: read the Markdown; the same with `v12` checked out
+   in a linked worktree.
+5. **Cost**: finishing reads one file per comment at its commit (`readFileAtRevision`): under
+   100 ms for ten comments here.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| Line numbers move once the agent commits again | Each comment carries its symbol and code line; the header names the reviewed tip. |
+| Writing into another worktree surprises its user | Only `cpr/`, kept out of git by its `.gitignore`; only for a worktree where that branch is checked out. Said in the README. |
+| An agent acts on stale feedback after an approval | Approve rewrites the file to say approved; verdicts name their tip. |
+| Comments on a branch review are mistaken for a pull request review | The button says "Finish review"; the Review tab says the feedback stays in the repository. |
+| Clipboard refused (permissions, another browser) | The file is written anyway; the button then says the copy failed and shows the path. |
+| The feedback names lines of the base for removed code, which the agent's tip lacks | Said in its heading ("a removed line, at a1b2c3d"), with the code line. |
+
+**Order**: V16a (verdicts and feedback: the CLI, the server's local target, and a core git helper
+listing worktrees; no analysis change), V16b (the viewer: comments and the Review tab on branch
+reviews, badges, copy), on one branch.
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V16a | Verdict and feedback | Local review target; `verdicts` in the review file; `cpr/reviews/<branch>/<reviewer>.md`, also in the branch's worktree; verdicts in `/api/reviews`. |
+| V16b | Finish from the viewer | Comments and the Review tab on branch reviews ("Finish review"); "✓", "✗", "…", "+n" on badges; "Copy for the agent"; README note for agents. |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 76 | How a branch review ends | **A verdict in the Review tab — Approve, Request changes or Comment — recorded at the tip; drafts cleared after** | Asked ("how to end review?"); the same three verdicts as `cpr pr`, so one flow to learn. |
+| 77 | Where the agent finds feedback | **Markdown in `cpr/reviews/<branch>/<reviewer>.md`, also in the worktree where the branch is checked out, and "Copy for the agent"** | A file an agent can read in place, a copy for any chat; the worktree is where agents often work. |
+| 78 | What a comment carries | **File and line at the reviewed tip, the symbol, the code line, the comment** | Lines move when the agent commits again; the symbol and the line's text still find it. |
+| 79 | Badge marks | **"+n" commits since; else "✓" approved, "✗" changes requested, "…" in progress** | The badge should say the outcome, not only that something was marked. |
+
+**Not in V16 (later)**: comments on compare-mode pairs and `cpr view <base> <head>` (no
+destination yet; a copy could be one); an agent answering comments in the file; posting a branch
+review to a forge once a pull request exists; checking whether the agent addressed each comment
+(the next review shows what changed where it was).
 
 ### Phase 1 milestones
 
