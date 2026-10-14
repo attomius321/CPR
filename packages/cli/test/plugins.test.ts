@@ -104,6 +104,25 @@ describe('cpr --plugin', () => {
     }
   });
 
+  it('reads cpr/config.json first (V15), paths still relative to the repo root', async () => {
+    repo.write({
+      'cpr/config.json': '{ "plugins": ["./tools/start.mjs"] }\n',
+      'cpr.config.json': '{ "plugins": ["./tools/missing.mjs"] }\n',
+    });
+    try {
+      expect((await graph([], join(repo.root, 'src'))).plugins).toEqual([
+        { name: 'start', version: '1.0.0' },
+      ]);
+      repo.write({ 'cpr/config.json': '{ "plugins": ' });
+      const { code, stderr } = await cpr(['diff', base, 'HEAD'], repo.root);
+      expect(code).toBe(1);
+      expect(stderr).toContain('cpr/config.json: ');
+    } finally {
+      rmSync(join(repo.root, 'cpr'), { recursive: true });
+      rmSync(join(repo.root, 'cpr.config.json'));
+    }
+  });
+
   it.each([
     [['--plugin', 'nope'], 'cannot find the package @cpr/plugin-nope'],
     [['--plugin', './tools/missing.mjs'], 'tools/missing.mjs not found'],

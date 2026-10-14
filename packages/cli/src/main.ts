@@ -131,7 +131,7 @@ Options:
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
-                       read from "plugins" in cpr.config.json at the repo root)
+                       read from "plugins" in cpr/config.json at the repo root)
   -h, --help           Show this help
 `;
 
@@ -151,7 +151,7 @@ Options:
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
-                       read from "plugins" in cpr.config.json at the repo root)
+                       read from "plugins" in cpr/config.json at the repo root)
   -h, --help           Show this help
 `;
 
@@ -185,7 +185,7 @@ Options:
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
-                       read from "plugins" in cpr.config.json at the repo root)
+                       read from "plugins" in cpr/config.json at the repo root)
   -h, --help           Show this help
 `;
 
