@@ -428,7 +428,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V14 ✅ | Checkout submenu | The row menu lists every target as a sentence: on Qwik's HEAD row 10 entries, each starting "Check out", 8 ending "(detached HEAD)", 480 px wide (its max); a remote branch's entry is 117 characters. The names are plain text mid-sentence, while the rows draw them as coloured badges. Merged: "Check out ▸" with the targets in a submenu on hover (or c), each name as the row's badge with a muted note (Qwik's HEAD row: 10 badges in a 368 px column); the confirmation's heading with the name as a badge. See below. |
 | V15 ✅ | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Merged: "Review ▸" in the row menu (or r) compares a branch's fork point with its tip, marks kept across new commits (on a clone, 83 of 83 after one more commit, 2 symbols left); reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; "✓" or "+n" on reviewed branches' badges, a dot on commits added since. See below. |
 | V16 ✅ | Finish a review | A branch review has no end: outside `cpr pr` the reviewer can only mark symbols (the reviewer's V15 review: 86 of 87 marked, 0 comments, none possible), feedback to the agent goes through chat without a place, badges show no outcome, and approved work is pushed by hand. Merged: comments and the Review tab on branch reviews; Approve, Request changes or Comment recorded with its comments in the review's JSON ("✓", "✗", "+n" on badges); Approve pushes the reviewed commit, by SHA; the default branch reviewable from where it was last pushed; `cpr pr` unchanged. See below. |
-| V17 | Approve means "merge it" | Approve pushes the reviewed commit, which did nothing on 0 of 4 approvals here (the agent had pushed), while every approval was followed by asking for the merge in chat; merging the default branch into a reviewed branch shows "+6" for one commit; agents elsewhere get no instructions. Planned: Approve records the commit and the default branch to merge into, nothing pushed; "since" counts the branch's own commits; the Review tab says whether the merge will conflict; CPR writes `cpr/AGENTS.md` for any repository's agent. See below. |
+| V17 | Approve means "merge it" | Approve pushes the reviewed commit, which did nothing on 0 of 4 approvals here (the agent had pushed), while every approval was followed by asking for the merge in chat; merging the default branch into a reviewed branch shows "+6" for one commit; agents elsewhere get no instructions. Built, not merged: Approve records the commit and the default branch to merge into, nothing pushed; "since" counts the branch's own commits; the Review tab says whether the merge will conflict; CPR writes `cpr/AGENTS.md` for any repository's agent (a headless Claude Code agent followed it: merged exactly the approved commit; on a conflict, resolved on its branch and asked for another review). See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -4158,7 +4158,8 @@ slow `pre-push` hooks; Windows and macOS; the clipboard in Firefox and Safari.
 
 ### V17 — Approve means "merge it": a verdict for the agent, not a push
 
-**Status:** planned (2026-10-14), on branch `milestone/v17-approve-means-merge`; not started.
+**Status:** implemented (2026-10-14) on branch `milestone/v17-approve-means-merge`; not merged
+yet. As built and results: "As built — V17" below.
 
 **Problem** (asked, after approving four branches in CPR and asking for each merge in chat: "How
 can we automate this…"; then "approve should mean merge into main...and
@@ -4283,9 +4284,9 @@ then V17b (the viewer), then V17c (README, this repository's skill and CLAUDE.md
 
 | # | Milestone | Output |
 |---|---|---|
-| V17a | The verdict as metadata | `into` on approve; push removed (`pushCommit`, `setUpstream`, `listRemotes`, the push endpoint); "since" without the default branch's commits; `GET ./api/merge`; `cpr/AGENTS.md`, `cpr/CLAUDE.md`, `about`. |
-| V17b | The viewer | "Approve"; the note and "Copy for the agent" after approving; the merge check in the Review tab; "Approved", "merged into main" in titles and notes. |
-| V17c | Docs | README (what Approve means, for agents); the skill as a pointer; CLAUDE.md's merge rule. |
+| V17a ✅ | The verdict as metadata | `into` on approve; push removed (`pushCommit`, `setUpstream`, `listRemotes`, the push endpoint); "since" without the default branch's commits; `GET ./api/merge`; `cpr/AGENTS.md`, `cpr/CLAUDE.md`, `about`. |
+| V17b ✅ | The viewer | "Approve"; the note and "Copy for the agent" after approving; the merge check in the Review tab; "Approved", "merged into main" in titles and notes. |
+| V17c ✅ | Docs | README (what Approve means, for agents); the skill as a pointer; CLAUDE.md's merge rule. |
 
 **Proposed decisions**:
 
@@ -4294,13 +4295,57 @@ then V17b (the viewer), then V17c (README, this repository's skill and CLAUDE.md
 | 82 | What Approve does (supersedes 80) | **Records the approved commit and `into`, the default branch; CPR pushes and merges nothing; the agent merges that commit when asked to act on the review** | Asked ("Aprove is just a metadata...that will tell the agent to merge"; "not automatically"); 0 of 4 approvals' pushes did anything; 4 of 4 were followed by asking for the merge in chat. |
 | 83 | Commits since a review | **Only the branch's own: not those reachable from the default branch** | Merging the default branch into a branch showed "+6" for one commit. |
 | 84 | Checking the merge | **`git merge-tree` in the background on a branch review, shown in the Review tab, not stored** | Touches no checkout, index or ref; 3 ms median on Bitwarden but up to 5.2 s on Qwik, so never on the commits page or in the way. |
-| 85 | Where agents learn what a verdict means | **`cpr/AGENTS.md`, written by CPR, imported by `cpr/CLAUDE.md`; `about` in every review file** | "This tool should be used on any other project": the rules lived in this repository's skill only. |
+| 85 | Where agents learn what a verdict means | **`cpr/AGENTS.md`, written by CPR beside the reviews; `about` in every review file** (no `cpr/CLAUDE.md`: Claude Code loads a folder's AGENTS.md itself, checked) | "This tool should be used on any other project": the rules lived in this repository's skill only. |
 | 86 | Conflicts | **Resolved on the feature branch (the default branch merged into it), reviewed again; never on the default branch, never by rebasing** | The resolution is code nobody reviewed; rewriting approved commits breaks marks and pushes. |
 | 87 | Approve on the default branch's own review | **No `into`: those unpushed commits may be pushed, if the project pushes** | Nothing to merge into; V16 pushed here. |
 
 **Not in V17 (later)**: a signal that wakes the agent when a verdict is recorded (a watcher, or a
 command run after each verdict from `cpr/config.json`); CPR merging by itself; conflicts on the
 commits page's badges; a verdict on compare-mode pairs.
+
+#### As built — V17
+
+- **No `cpr/CLAUDE.md`.** Checked with Claude Code 2.1.296 in a temporary repository whose `cpr/`
+  is git-ignored: asked to read only a review file there, it answered with a marker word that only
+  `cpr/AGENTS.md` held, one `Read` in its log — with `cpr/CLAUDE.md` and without it; reading the
+  same file from another folder, it had no marker. Claude Code loads a folder's AGENTS.md itself,
+  so CPR writes that one file (and, in CPR's cache, an AGENTS.md beside the cached reviews).
+  `cpr/AGENTS.md` counts as CPR's own when a project commits `cpr/`.
+- **One button, "Finish review"**, for every verdict; the line above it says what Approve asks
+  ("Approve asks it to merge 561a0b4 into main. CPR pushes nothing.").
+- **The conflict line names files**, the full paths in its title: on Qwik the two paths took six
+  lines of the 300 px sidebar.
+- **`GitError` keeps git's stdout**: `merge-tree` answers on stdout with exit 1 when it conflicts.
+- **The merge check needs the analyzed review** (it is served beside the graph), which the Review
+  tab needs anyway.
+- The old push endpoint now answers 405, as for any POST the server does not take. Verdicts
+  written by V16 keep their `push` field; nothing reads it.
+- This repository's `cpr-review` skill points at `cpr/AGENTS.md` (the text: `AGENTS` in
+  `packages/cli/src/reviews.ts`); CLAUDE.md says an Approve, when the user asks to act on the
+  review, is the yes to merge.
+
+**Results (V17)**. Tests first: core 3, CLI 11 and server 2, viewer 2 failed before the code; e2e
+3 of 4 review specs failed on the old viewer. Now 602 unit tests and 71 e2e (one new: a branch
+that conflicts with `main` — the Review tab names `math.ts`; the agent merges `main` into its
+branch: "+1", the dot on its merge commit only; reviewed again: "Merges cleanly into main").
+
+An agent following `cpr/AGENTS.md`: Claude Code, headless, in two temporary repositories with a
+real CPR approval and a bare `origin`, told only "Check my CPR review of the branch agent and act
+on it." Clean: it found `cpr/`, read `AGENTS.md` and the review, merged exactly the approved
+commit into `main` with `--no-ff` (`main`'s parents: the old `main` and `5f3fe66`), left the
+commit made after the approval out and said it needs a review, pushed nothing, changed nothing in
+`cpr/`; CPR then showed "+1" (that commit) and "merged". Conflict (`main` had added a function
+where the agent had): it tried the merge, aborted it (`main` unchanged), merged `main` into
+`agent`, resolved, committed, pushed nothing, and asked for another review; CPR then showed "+1"
+(the merge only) and "Merges cleanly into main" (10 ms).
+
+Qwik, the agent-written branch `origin/claude/http-error` (3 commits, 2 files conflicting with
+`main`): the review's graph in 6.7–10.3 s, then the Review tab's conflict line 0.5 s after the tab
+opened ("Conflicts with main in loader-handler.unit.ts, qwik-router.runtime.api.md"); no page
+errors; nothing written into the clone (the review in CPR's cache, without a git user).
+
+Not verified: agents other than Claude Code reading `cpr/AGENTS.md` (the `about` key and the
+copied text name it); git older than 2.38 ("Could not check the merge"); Windows and macOS.
 
 ### Phase 1 milestones
 

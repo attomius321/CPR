@@ -2100,3 +2100,30 @@ against the default branch on 40 recent unmerged branches each: Bitwarden 2 conf
 ref (it writes loose objects), so the Review tab can say "conflicts with main in …" before an
 approval, in the background. The rules an agent follows lived only in this repository's
 `cpr-review` skill; for any repository CPR must write them itself, next to the reviews.
+
+## V17 — Approve means "merge it" (2026-10-14, branch `milestone/v17-approve-means-merge`)
+
+**Learned**:
+
+- Claude Code loads a folder's `AGENTS.md` itself when it reads a file there, a git-ignored
+  folder included: with only a review file read (one `Read` in the log) it knew a marker word
+  that only `cpr/AGENTS.md` held, with or without a `cpr/CLAUDE.md`; reading the same JSON from
+  another folder, it did not. The planned `cpr/CLAUDE.md` would only have loaded it twice.
+- An agent told nothing but "Check my CPR review of the branch agent and act on it" found
+  `cpr/` by listing the repository, and followed `AGENTS.md` to the letter in both cases tried:
+  the approved commit merged with `--no-ff` and the later one left for review; on a conflict, the
+  merge aborted, `main` untouched, the conflict resolved on the branch, another review asked for.
+  Neither pushed: the rules say to follow the project's, and the repositories had none.
+- `git merge-tree` reports conflicts with exit 1 and its answer on stdout; `GitError` now keeps
+  stdout. It writes loose objects only: no ref, index or file moved (a test checks it).
+- On Qwik the conflicting paths took six lines of the sidebar: file names, paths in the title.
+- The V17a–b commit says "CLI 8" tests failed first; it was 11 (and 2 in the server).
+
+**Verification**: tests first (core 3, CLI 11, server 2, viewer 2; e2e 3 of 4 review specs on
+the old viewer). 602 unit tests, 71 e2e. The two agent runs above, checked in git afterwards
+(`main`'s parents, the later commit not in `main`, `origin` unchanged, clean status) and in CPR
+("+1" each; "merged" after the clean one; clean merge after the resolution). Qwik's
+`origin/claude/http-error`: the conflict line 0.5 s after opening the Review tab, the graph in
+6.7–10.3 s; screenshots light and dark, no page errors. Not verified: other agents than Claude
+Code, git before 2.38, Windows and macOS.
+

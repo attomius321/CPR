@@ -88,7 +88,8 @@ unless the change says otherwise — prove it with the comparisons.
   verify, record in JOURNAL.md.
 - One branch per milestone: `milestone/<id>-<slug>` (e.g. `milestone/v7-app-boundaries`); fixes on
   `fix/<slug>` from `main`; docs and tooling on `chore/<slug>`. Never commit to `main` directly.
-- IMPORTANT: **ask the user before merging into `main`.** Then merge with `--no-ff`
+- IMPORTANT: **ask the user before merging into `main`.** An Approve in CPR, when the user asks
+  you to act on the review (`cpr-review` skill), is that yes. Then merge with `--no-ff`
   ("Merge <ID>: …"), verify `main` (`pnpm check`, build, e2e), push, and add a
   "Docs: <ID> merged" commit.
 - Do not open pull requests unless asked. Commit and push as you go
@@ -124,4 +125,4 @@ unless the change says otherwise — prove it with the comparisons.
 - `regression-check` — compare a branch with `main` on ky, zod, vite, RealWorld, Bitwarden, Qwik.
 - `framework-plugin` — add or change a framework plugin (`@cpr/plugin-*`).
 - `viewer-check` — check viewer changes in a browser: e2e, screenshots, first paint on real graphs.
-- `cpr-review` — read and address a review the user left on your branch in `cpr/reviews/`.
+- `cpr-review` — act on a review the user left on your branch in CPR (`cpr/AGENTS.md`).
