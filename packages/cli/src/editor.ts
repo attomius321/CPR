@@ -71,7 +71,7 @@ export async function findVsCode(host: Host): Promise<VsCode | null> {
 }
 
 /** A command's file on PATH; on Windows only with an extension from PATHEXT. */
-async function onPath(host: Host, name: string): Promise<string | null> {
+export async function onPath(host: Host, name: string): Promise<string | null> {
   const windows = host.platform === 'win32';
   const path = windows ? win32 : posix;
   const dirs = (host.env.PATH ?? host.env.Path ?? '').split(windows ? ';' : ':');

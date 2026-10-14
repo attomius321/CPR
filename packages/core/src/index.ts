@@ -151,6 +151,18 @@ export {
   type VerdictEvent,
 } from './git/branches.js';
 export {
+  PERMISSION_MODES,
+  type AgentKind,
+  type AgentStateName,
+  type FeatureAgentState,
+  type FeatureList,
+  type FeatureOptions,
+  type FeatureRequest,
+  type FeatureStart,
+  type FeatureSummary,
+  type PermissionMode,
+} from './features.js';
+export {
   addWorktree,
   branchNameProblem,
   listWorktrees,

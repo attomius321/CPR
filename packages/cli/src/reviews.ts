@@ -8,6 +8,7 @@ import {
   isAncestor,
   isCommit,
   listRefs,
+  mainWorktree,
   mergeBase,
   trackedFiles,
   upstreamOf,
@@ -156,9 +157,10 @@ export interface BranchReviews {
 }
 
 /**
- * `cpr/reviews/` at the repository's root as the git user (`user.email`). The cache instead,
- * saying why, without a git user, or when `cpr/` holds files of the project itself (a `*` in
- * its `.gitignore` would hide that project's new files).
+ * `cpr/reviews/` at the repository's root as the git user (`user.email`): the main checkout's,
+ * which its linked worktrees share (V18), so a feature's worktree sees the same reviews. The
+ * cache instead, saying why, without a git user, or when `cpr/` holds files of the project
+ * itself (a `*` in its `.gitignore` would hide that project's new files).
  */
 export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<ReviewPlace> {
   const email = await userEmail(repo);
@@ -172,13 +174,14 @@ export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<Revi
   if (!email) {
     return cache("Kept in CPR's cache: set git config user.email to keep reviews in cpr/reviews/.");
   }
-  const folder = join(repo.root, 'cpr');
+  const main = mainWorktree(repo);
+  const folder = join(main, 'cpr');
   const foreign =
     (await stat(folder).then(
       (s) => !s.isDirectory(),
       () => false,
     )) ||
-    (await trackedFiles(repo, 'cpr')).some(
+    (await trackedFiles({ ...repo, root: main }, 'cpr')).some(
       (path) => !CPR_FILES.has(path) && !path.startsWith('cpr/reviews/'),
     );
   if (foreign) return cache("Kept in CPR's cache: cpr/ holds files of this project.");
@@ -213,7 +216,7 @@ export function serializeReview(review: BranchReviewFile): string {
   return `${JSON.stringify(sortKeys({ ...review, about: REVIEW_ABOUT }), null, 2)}\n`;
 }
 
-function sortKeys(value: unknown): unknown {
+export function sortKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sortKeys);
   if (value === null || typeof value !== 'object') return value;
   return Object.fromEntries(
@@ -256,6 +259,29 @@ function asMarks(value: unknown): Record<string, string> {
   );
 }
 
+/**
+ * Before CPR writes into `cpr/`: its `.gitignore`, unless one exists (then it is the project's),
+ * and, when `agents`, the agents' instructions beside it (V17), rewritten when CPR's text differs.
+ */
+export async function prepareCprFolder(
+  where: ReviewPlace,
+  { agents = true }: { agents?: boolean } = {},
+): Promise<void> {
+  if (where.gitignore) {
+    await mkdir(dirname(where.gitignore), { recursive: true });
+    await writeFile(where.gitignore, GITIGNORE, { flag: 'wx' }).catch(
+      (error: NodeJS.ErrnoException) => {
+        if (error.code !== 'EEXIST') throw error;
+      },
+    );
+  }
+  if (!agents) return;
+  const current = await readFile(where.agents, 'utf8').catch(() => null);
+  if (current === AGENTS) return;
+  await mkdir(dirname(where.agents), { recursive: true });
+  await writeFile(where.agents, AGENTS);
+}
+
 /** One write at a time per file: marks and drafts are read, changed and written back. */
 const writing = new Map<string, Promise<unknown>>();
 function serially<T>(path: string, task: () => Promise<T>): Promise<T> {
@@ -294,14 +320,6 @@ export function branchReviews(
   const otherThan = (refs: RefList, main: string | null, branch: string) =>
     main && main !== branch ? refsOf(refs, main).map((r) => r.sha) : [];
 
-  /** Writes a file of CPR's unless it already says exactly that. */
-  async function own(path: string, text: string): Promise<void> {
-    const current = await readFile(path, 'utf8').catch(() => null);
-    if (current === text) return;
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, text);
-  }
-
   /** The review's file, created out of git (V15); one change at a time, read and written back. */
   async function update(
     info: BranchReviewInfo,
@@ -323,20 +341,9 @@ export function branchReviews(
         verdicts: current?.verdicts ?? [],
       };
       change(next, current);
-      // Out of git before anything is in the folder; an existing one is the project's.
-      if (where.gitignore) {
-        await mkdir(dirname(where.gitignore), { recursive: true });
-        await writeFile(where.gitignore, GITIGNORE, { flag: 'wx' }).catch(
-          (error: NodeJS.ErrnoException) => {
-            if (error.code !== 'EEXIST') throw error;
-          },
-        );
-      }
-      // What an agent does with a review (V17), beside it.
-      if (!instructed.has(where.agents)) {
-        await own(where.agents, AGENTS);
-        instructed.add(where.agents);
-      }
+      // Out of git before anything is in the folder; the agents' instructions once a run.
+      await prepareCprFolder(where, { agents: !instructed.has(where.agents) });
+      instructed.add(where.agents);
       await mkdir(dirname(path), { recursive: true });
       const temp = `${path}.${process.pid}.tmp`;
       await writeFile(temp, serializeReview(next));
