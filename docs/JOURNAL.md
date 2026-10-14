@@ -1941,3 +1941,18 @@ dark: HEAD's row (`main` and 8 tags: a submenu of 10 badges, 368 × 335 px, wher
 480 × 343 with "Check out" 10 times), the remote-branch row (the name whole, the note under
 it), and their confirmations; a 140-character branch in a scratch repository. No page errors.
 Not verified: Firefox, Safari, touch screens.
+
+## V15 spike — what a new commit costs a review (2026-10-14, branch `milestone/v15-branch-reviews`)
+
+Measured before planning branch reviews. Outside `cpr pr`, marks and drafts are kept per pair of
+revisions (`stateDir`: a hash of `base..head` in the cache), so a commit added to a reviewed
+branch starts the review over. On a clone of this repository, whose commits an agent wrote (189
+of 206 carry its co-author line), each commit of four milestone branches (V9, V11, V12, V14) was
+compared with its branch's fork point (`cpr diff`, 1.0–1.4 s each), and the changed symbols of
+the commit before were checked against it by fingerprint, I1's rule. Over the 15 times a commit
+was added to a branch already reviewed, 1,027 of 1,051 marks (97.7 %) would still be valid: 11
+symbols changed again, and 13 moved with a renamed file (`e75c1cf`; IDs hold paths). Looking at
+each new pair from scratch means 1,197 symbols; keeping marks per branch leaves 170 (14 %).
+The graphs' `files` list non-code files too (docs, Markdown), so review files committed in
+`cpr/` would show there, with no symbols. So the plan keys reviews by branch and, as asked, keeps
+them in `cpr/reviews/` at the repository's root, one file per reviewer, for git to share.

@@ -426,6 +426,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V12 ✅ | Open in VS Code | The diff panel shows a symbol's lines, but going there in the editor is done by hand, and head's line number is not the working copy's: reviewing anything but the checked-out commit, 1–62 % of added lines sat at another line and up to 23 % were changed since (CPR, ky, zod). Merged: "Open in VS Code" (or `o`), Ctrl/⌘+click or a line number opens the line in the window that has the repository open (else a new one with it), at its place in the working copy; the server runs `code <repo root> --goto <file>:<line>:<col>`, found on any platform. 105 ms from the request to VS Code here. See below. |
 | V13 ✅ | Compare mode | The commits page opened as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Merged: browse by default (a click selects the row; 25 rows in view instead of 23 at 1440 × 900), and a "Compare mode" toggle (or `x`) for picking, left with Escape; first rows as fast as `main`. See below. |
 | V14 | Checkout submenu | The row menu lists every target as a sentence: on Qwik's HEAD row 10 entries, each starting "Check out", 8 ending "(detached HEAD)", 480 px wide (its max); a remote branch's entry is 117 characters. The names are plain text mid-sentence, while the rows draw them as coloured badges. Built, not merged: "Check out ▸" with the targets in a submenu on hover (or c), each name as the row's badge with a muted note (Qwik's HEAD row: 10 badges in a 368 px column); the confirmation's heading with the name as a badge. See below. |
+| V15 | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Planned: "Review" a branch from the commits page; reviews in `cpr/reviews/<branch>/<reviewer>.json`, committed and shared like any file; progress on the commits page. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -3673,6 +3674,181 @@ Not verified: Firefox and Safari (empty alternative text for `content` needs Chr
 17.4, Firefox 128; older browsers draw the same arrow and read it in the name); touch screens
 (no hover: a tap on "Check out" opens the submenu, as a click does); first rows drawn, not
 re-measured (the rows did not change).
+
+### V15 — Branch reviews in the repository
+
+**Status:** planned (2026-10-14), on branch `milestone/v15-branch-reviews` (from V14's branch:
+its row menu gets a "Review" entry); not started.
+
+**Problem** (asked: "this app will be a review app for commits made by an agent"; then, on where
+reviews live: "this should be shared in the repo, so .git is not a good position...much better
+to create a folder cpr at the root, and there we should store eveythinf related, reviews etc").
+An agent commits to a branch several times, and the reviewer looks at the branch after each
+commit or batch. Today:
+
+- Outside `cpr pr`, reviewed marks and drafts are kept per pair of revisions (`stateDir` in
+  `packages/cli/src/state.ts`: `<cache>/state/<repo id>/<sha256(base..head)>/`). A new commit
+  makes a new pair, so the marks start empty.
+- They live in CPR's cache (`~/.cache/cpr`), next to throwaway worktrees: one machine, one
+  person, and gone when caches are cleared.
+- The commits page does not show which commits or branches were reviewed.
+
+Measured on this repository, where an agent wrote 189 of 206 commits (`Co-Authored-By:
+Claude`). Four milestone branches, each commit compared with the branch's fork point (`cpr
+diff`, 1.0–1.4 s each); the marks of the commit before (as if all were reviewed) checked
+against each new commit by fingerprint, I1's rule:
+
+| Branch (fork point) | Commits | Symbols at the tip | A commit added to a reviewed branch: marks still valid | Symbols to look at, per pair (today) / per branch |
+|---|---|---|---|---|
+| V9 (`b6b0016`) | 10 | 109 | 617 of 637 (96.9 %), 8 times | 732 / 115 |
+| V11 (`78ca95a`) | 4 | 63 | 114 of 116 (98.3 %), 2 times | 121 / 7 |
+| V12 (`d67a5d6`) | 6 | 85 | 285 of 286 (99.7 %), 4 times | 332 / 47 |
+| V14 (`c2e3486`) | 3 | 12 | 11 of 12 (91.7 %), once | 12 / 1 |
+| All | 23 | | 1,027 of 1,051 (97.7 %), 15 times | 1,197 / 170 (14 %) |
+
+Of the 24 marks lost, 11 are symbols changed again (rightly "↻ changed since you reviewed it")
+and 13 moved with a renamed file (`e75c1cf`: a symbol's ID holds its path).
+
+**Goal**: "Review" a branch from the commits page. CPR compares the branch's fork point with
+its tip and opens the diff with the reviewer's marks and drafts for that branch. After the agent
+adds commits, reviewing the branch again keeps every mark whose symbol did not change, so only
+new and changed symbols are left. Reviews are files in `cpr/reviews/` at the repository's root,
+one per branch and reviewer: plain JSON, meant to be committed and shared like any file. CPR
+writes them; it never stages or commits them. The commits page shows each reviewed branch's
+progress and the commits added since. `cpr pr`, `cpr diff`, compare-mode pairs and the graph
+JSON do not change.
+
+#### Where reviews live (`cpr/`)
+
+- `cpr/reviews/<branch>/<reviewer>.json`, at the root of the working tree `cpr view` runs in
+  (`git rev-parse --show-toplevel`):
+  - `<branch>`: the branch name without its remote (`origin/topic` and `topic` are one branch).
+    Its slashes become folders; git refuses `a` and `a/b` as branches, so paths cannot clash.
+  - `<reviewer>`: the repository's `git config user.email`, already in every commit the
+    reviewer makes. Without one, the page says so and the review stays in the cache, as today.
+- One file per reviewer and branch: two reviewers never write the same file.
+- Keys sorted, two-space indent, one mark per line, so git merges and diffs it line by line;
+  the same review always gives the same bytes:
+
+  ```json
+  {
+    "base": "<the fork point, full SHA>",
+    "branch": "milestone/v14-checkout-submenu",
+    "drafts": [],
+    "head": "<the tip last reviewed, full SHA>",
+    "marks": {
+      "packages/viewer/src/checkout.ts#checkoutChoices": "<fingerprint>"
+    },
+    "reviewer": "anton@example.com",
+    "summary": "",
+    "updated": "2026-10-14T10:12:00Z"
+  }
+  ```
+
+- Written in the working tree, whatever is checked out. The reviewer (or the agent) commits them
+  where it suits: on the agent's branch the review travels with the work; on `main` it is shared
+  with everyone. CPR never runs `git add` or `git commit`.
+- Drafts sit in the same file: that is what feedback to the agent (later) will read.
+- `cpr/config.json` replaces `cpr.config.json` (`plugins`); the old file is still read when the
+  new one is absent. `.cprignore` stays at the root for now: core reads it per revision, an
+  analysis change.
+
+#### Reviewing a branch
+
+- The row menu (V14) gains "Review ▸": a submenu with the row's branches, one entry per branch
+  name (local or remote), each a badge with a note: "not reviewed", or "40 of 63 reviewed · 2
+  commits since". `r` on the cursor row opens it, as `c` opens "Check out".
+- Not offered on the default branch (`origin/HEAD`, else `main`, else `master`): it has no fork
+  point (later: review it from a commit you pick).
+- Fork point: `git merge-base <tip> <default branch>`, recomputed at each review. A rebase moves
+  it, and fingerprints then flag what changed, as I1 does after a rebase.
+- Server: `POST /api/reviews { branch }` (a write: same-origin JSON with the custom header)
+  resolves the tip and fork point, starts the analysis in `/api/diffs`' queue (the same 8 kept),
+  and answers `{ url: '/review/<branch, URL-encoded>/' }`. Under that path the server serves
+  the branch's diff with the viewer's files and API, as under `/diff/<pair>/`; a path opened
+  anew (a reload, a new `cpr view`) resolves the tip itself, as V9's diff URLs do.
+  `./api/state/review` and `./api/state/drafts` read and write the branch's file (both in one
+  file; `head` and `updated` set on each write).
+- The diff page's header: "Review of wip · a1b2c3d → e4f5a6b · 2 commits since your last
+  review". The change list already marks reviewed symbols and flags "↻ changed since you
+  reviewed it".
+
+#### The commits page
+
+- `GET /api/reviews` → the reviewer's reviews: branch, fork point, the tip last reviewed, the
+  commits since (`git rev-list <head>..<tip>`, at most 100), marks.
+- A reviewed branch's badge gets "✓" when the review's head is the tip, else "+2" (commits
+  since). Rows of commits added since the review get a dot ("new since your review").
+
+#### Code
+
+- `packages/cli/src/reviews.ts` (new): paths from branch names, the reviewer, read (missing or
+  invalid → empty), write (sorted, atomic: temp file + rename, as `fileStateStore`), list.
+- `packages/cli/src/server.ts`: `/api/reviews` (GET, POST) and `/review/<branch>/`.
+- `packages/core/src/git`: `defaultBranch`, `forkPoint` (`merge-base`), with `isCommit`'s
+  checks on what reaches git (branch names only as `listRefs` lists them).
+- `packages/viewer`: the row menu's "Review ▸" (`CheckoutMenu` becomes the row menu), badges
+  and dots on the commits page, the review header on the diff page.
+- No graph change (no schema bump).
+
+#### Verification
+
+1. **Unit** (red first): paths from branch names (slashes, remote prefixes); the file's bytes
+   stable and sorted; a missing or invalid file; the reviewer from git config, and its absence;
+   fork points on temp repositories (a branch off `main`, after `main` moved, after a rebase);
+   server: `POST /api/reviews` for an unknown branch (400), the default branch (refused), a
+   state round trip writing `cpr/reviews/<branch>/<email>.json` in the working tree with
+   nothing staged.
+2. **E2E** (red first), a fixture branch "written by an agent": review it from the row menu
+   (header, nothing marked); mark two symbols; a commit added that changes one of them; review
+   again: one still reviewed, one "↻ changed", the new symbols unmarked; the commits page shows
+   "+1" on the badge and a dot on the new commit; the file in `cpr/reviews/` survives a restart
+   of `cpr view` on a new port.
+3. **Nothing else changes**: compare-mode pairs and `cpr pr` keep their cache state (existing
+   tests); goldens unchanged; every e2e spec.
+4. **Real repository**: on a clone of this repository, review V12's branch at `d175ee5`, mark
+   everything, move the tip to `86dcb60`: 83 of 83 marks valid, 2 symbols left (as measured).
+5. **Cost**: a review is one analysis, as a picked pair (1.0–1.4 s on this repository);
+   `/api/reviews` one `rev-list` per reviewed branch.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| Review files change the working tree: `git status` shows them; a checkout carries them, or git refuses when the target has its own version of the same file | New untracked files never block a checkout (V11 counts tracked changes only); one file per reviewer and branch makes "its own version" rare; the confirmation shows git's refusal, as today. |
+| An agent committing with `git add -A` takes the reviewer's open review into its commit | Harmless (no code, no symbols); the README suggests agents work in their own worktree. |
+| An agent can write review files too, marking its own work reviewed | The file names its reviewer and git says who committed it. Not enforced (later: a warning when a review file's last commit is not by its reviewer). |
+| The same reviewer on two machines edits one file: merge conflicts | Sorted JSON, one mark per line: a conflict is a few plain lines. |
+| Email addresses in the tree | The same as in commit metadata; a noreply address works the same. |
+| A renamed or deleted branch | The review stays as history; a new name starts a new review. |
+| A renamed file loses its marks (13 in the measurement) | I1's limit, unchanged. |
+| Commits of review files show in diffs' file lists (`graph.files` lists non-code files) | No symbols, so no changes or findings; used only for comment anchors. |
+
+**Order**: V15a (reviews in `cpr/`, "Review" a branch: core, server, menu, header); V15b (the
+commits page shows progress); V15c (`cpr/config.json`). One branch.
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V15a | Branch reviews | `cpr/reviews/<branch>/<reviewer>.json`; "Review ▸" in the row menu; `/review/<branch>/` with marks kept across new commits; the review header. |
+| V15b | Progress on the commits page | `GET /api/reviews`; "✓" or "+n" on reviewed branches' badges; dots on commits added since. |
+| V15c | `cpr/config.json` | Plugins read from `cpr/config.json`, else `cpr.config.json`. |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 71 | Where reviews live | **`cpr/reviews/` at the repository's root, in the working tree, meant to be committed; CPR never stages or commits** | Asked: shared in the repository. Git decides how they travel (commits, merges), as for any file; `.git` and the cache are not shared. |
+| 72 | What a branch review is keyed by | **The branch name without its remote; marks checked by fingerprint** | Measured: 97.7 % of marks still valid after a new commit; per pair, none. |
+| 73 | Whose review a file is | **One file per reviewer, named by `git config user.email`** | Two reviewers never write one file; the email is already in their commits. |
+| 74 | Where a branch review starts | **The fork point with the default branch, recomputed each time; not offered on the default branch** | What a pull request of the branch would show; the default branch has no fork point. |
+| 75 | What stays in the cache | **Compare-mode pairs and `cpr pr` reviews** | A picked pair is a look, not a branch's review; `cpr pr`'s review goes to the forge, and its marks already outlive pushes. |
+
+**Not in V15 (later)**: feedback to the agent (drafts as a prompt or file it reads); agent
+commits marked (co-author trailers, bot authors, branch names like `codex/`); a commit's details
+beside the list; reviewing the default branch from a picked commit; other reviewers' reviews on
+the commits page; `.cprignore` in `cpr/`; checking who last committed a review file.
 
 ### Phase 1 milestones
 
