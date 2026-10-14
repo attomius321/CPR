@@ -4839,19 +4839,37 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
 
 #### Starting the agent (CLI)
 
-- **Which agent** (`agent` in `cpr/config.json`):
-  - absent or `"claude"`: Claude Code, when `claude` is on the PATH (found as V12 finds `code`);
-    optional `permissionMode` and `model`;
-  - `{ "command": ["codex", "exec", "{prompt}"] }`: any command, run detached in the worktree
+- **Which agent**: picked per feature in the dialog among those installed (on the PATH, found as
+  V12 finds `code`); the default is `agent` in `cpr/config.json`, else Claude Code, else Codex:
+  - `"claude"`: Claude Code; optional `permissionMode` and `model`;
+  - `"codex"`: Codex (V18d); optional `sandbox`, `approveForMe` and `model`;
+  - `{ "command": ["my-agent", "{prompt}"] }`: any other command, run detached in the worktree
     with `{prompt}` replaced, its output in a log file in CPR's cache (V18d);
   - none found: the feature is still made, and "Copy for the agent" gives its prompt, as after a
     verdict.
+
+  The record's `agent.kind` says which one a feature runs, so "Send to the agent" and "Talk to
+  the agent" use the same one later; switching agents is a new feature or a new start.
 - **Claude Code**: `claude --bg --name <branch> --add-dir <main worktree>/cpr
   [--permission-mode <mode>] [--model <model>] "<prompt>"`, run with `execFile` (no shell) in
   the worktree. The `--bg` text it prints is not parsed (not a stable format): the session is the
   one `claude agents --json --all` lists with that worktree as `cwd` (a real path; unique per
   feature). `--add-dir` lets it read its brief and, later, its reviews; Claude Code's worktree
   isolation refuses its edits in the main checkout (documented), and AGENTS.md says not to.
+- **Codex** (0.162 here; V18d): `codex exec --json -C <worktree> -s workspace-write
+  [--approve-for-me] [-m <model>] "<prompt>"`, started detached by CPR (Codex has no background
+  supervisor like `claude --bg`), its JSONL events in a log in CPR's cache, its process ID in the
+  record. State from the process and the last event: running → working; ended after a completed
+  turn → plan ready or ready for review, as for Claude Code; a failed turn or a non-zero exit →
+  failed. No "needs you": `exec` never stops to ask; a command its sandbox refuses fails, or with
+  `--approve-for-me` is reviewed automatically. Reply and "Send to the agent": `codex exec resume
+  <thread id> "<text>"` (the ID from the log's first event), appended to the same log; "Talk to
+  the agent" copies `codex resume <thread id>`, which continues it in a terminal. Never
+  `--dangerously-bypass-approvals-and-sandbox`, never `--worktree` (CPR made it). Not
+  `--add-dir`: in Codex it makes a folder *writable*, and `cpr/` is the person's; the prompt names
+  the brief and reviews by absolute path (reading them in its sandbox is checked first). Codex
+  reads `AGENTS.md` from the repository's root down to its folder, not `cpr/AGENTS.md`: the
+  prompt names it. Its account is its own login (`codex login`: a ChatGPT plan or an API key).
 - **Failures keep the feature**: the branch, worktree and record stay; the feature reads "agent
   not started" with Claude Code's own words and a way out, and "Start the agent" retries:
   - "Workspace not trusted" → "Run `claude` in <main worktree> once and accept the trust prompt,
@@ -4899,9 +4917,9 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
   here" in a row's menu (the base is that row). The dialog (`StartFeatureDialog.tsx`): "What
   should the agent build?" (a text area, required); the branch name, proposed as the brief's
   first line is typed and checked as it changes; "From main at a1b2c3d" (or the row's commit);
-  "Plan first and wait for my OK" (checked); the agent and its permission mode ("Claude Code ·
-  permission: default ▾", or the configured command, shown in full); the worktree's folder.
-  Ctrl+Enter starts, Escape cancels.
+  "Plan first and wait for my OK" (checked); the agent (Claude Code or Codex, those installed) and
+  its permission mode ("Claude Code · permission: default ▾", or the configured command, shown in
+  full); the worktree's folder. Ctrl+Enter starts, Escape cancels.
 - **After Start** (the history's version changed: a new branch): the page lists anew, the cursor
   on the new branch's row, and a line: "Started feature/export-review-as-csv: Claude Code is
   working in ../app.worktrees/feature-export-review-as-csv".
@@ -4990,7 +5008,7 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
    once — plan first: the plan in the session, `done` with no commits, "plan ready"; a reply: it
    builds and commits in its worktree, "ready for review"; Request changes, "Send to the agent":
    a fix, "+1"; Approve: the feature's agent says to merge from the main checkout, which does.
-   Codex as a command agent once (V18d).
+   Codex the same way once (V18d): plan, reply by `exec resume`, a fix after Request changes.
 4. **Real repositories**: on the six clones, a feature started at the default branch's tip — the
    time from Start to the page listing the branch, `git status` of the checkout unchanged;
    Bitwarden with three features: first rows against `main`'s build, `/api/features` time.
@@ -5021,8 +5039,8 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
 `--bg` with `--add-dir` and `--session-id`; the states from Start to `done` with plan first;
 `--bg --resume` on a finished session and on one still running; the time `--bg` takes to return.
 Then V18a (core and CLI, server, the dialog), V18b (badges, Features, actions, polling), V18c
-(reply, send a verdict, AGENTS.md, clean up), V18d (command agents, `.worktreeinclude`), on one
-branch.
+(reply, send a verdict, AGENTS.md, clean up), V18d (Codex, other commands, `.worktreeinclude`),
+on one branch.
 
 #### Milestones
 
@@ -5031,13 +5049,13 @@ branch.
 | V18a | Start a feature | `cpr/features/`, one `cpr/` per repository; branch and worktree outside the checkout; the agent started (`claude --bg`), failures kept with their reason; `/api/features` with states; the dialog (header, `n`, "Start a feature here"); the page lists the new branch. |
 | V18b | Features on the page | Agent chips on badges; "Features" in the branches panel; Talk (attach), Open in VS Code, Review, Start/Stop; plan ready; uncommitted files; polling while an agent works, the history listed anew when a feature's tip moves; Open in VS Code in the feature's worktree; V11's menu names a branch's worktree. |
 | V18c | Talk and finish | "Reply" and "Send to the agent" (resume); AGENTS.md: features, merging from a worktree; Clean up. |
-| V18d | Other agents | `agent.command` in `cpr/config.json` (detached, log, running/exited); `.worktreeinclude`. |
+| V18d | Codex and other agents | Codex (`codex exec --json`, detached; states from its events; reply by `exec resume`); `agent.command` for any other (detached, log, running/exited); the agent picked in the dialog; `.worktreeinclude`. |
 
 **Proposed decisions**:
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 95 | Who starts the agent | **CPR, on the person's click, in the background: Claude Code (`claude --bg`) by default, a command from `cpr/config.json` otherwise; without one, "Copy for the agent"** | Asked ("CPR starts it"). `--bg` sessions outlive `cpr view`, can be attached to for questions and permission prompts, and report their state; a `claude -p` child cannot ask anything and is not listed. |
+| 95 | Who starts the agent | **CPR, on the person's click, in the background: Claude Code (`claude --bg`) by default, Codex (`codex exec`, detached) or another command when picked or configured; without one, "Copy for the agent"** | Asked ("CPR starts it"). `--bg` sessions outlive `cpr view`, can be attached to for questions and permission prompts, and report their state; a `claude -p` child cannot ask anything and is not listed. |
 | 96 | Where the agent works | **A new worktree per feature, beside the checkout (`../<repo>.worktrees/<branch>`, configurable); never inside it, never in the cache** | Asked ("own worktree"). Inside: 0 of 6 clones ignore `.claude/worktrees/`, zod type-checks `**/*.ts`, a root Prettier check failed on 58 files. The cache is for throwaway worktrees and is cleared. |
 | 97 | Branch and base | **CPR creates both (`git worktree add -b`): the default branch's tip or a picked row; the name proposed from the brief, `feature/` prefix, editable** | Claude Code's own worktrees branch from the remote default branch and name themselves `worktree-<name>`; the person picks where the feature starts. |
 | 98 | What the agent is told | **The brief in the prompt, the plan-first instruction when ticked, and where its brief and reviews are (`--add-dir <repo>/cpr`); the record in `cpr/features/<branch>.json`** | The agent reads its brief without looking; reviews reach it in its worktree; the record outlives the session. |
