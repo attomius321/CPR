@@ -2078,3 +2078,5 @@ place when turned on. Narrower (900 px), it goes to the second line, still at th
 **Verification**: an e2e test at 1280 and 760 px — the toggle's right edge within 1 px of the
 list's, the same right edge and height on and off (red before: 713 px off). 599 unit tests,
 70 e2e. Screenshots at 1440 and 900 px, on and off, no page errors.
+
+Merged into main (2026-10-14). `main` verified after the merge: 599 unit tests, build, 70 e2e.
