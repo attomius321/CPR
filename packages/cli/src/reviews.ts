@@ -55,7 +55,8 @@ export const REVIEW_ABOUT =
 
 /**
  * What an agent does with a review (V17), written beside the reviews in any repository and
- * rewritten when CPR's text changes.
+ * rewritten when CPR's text changes. Claude Code loads a folder's AGENTS.md when it reads a file
+ * there, `cpr/` git-ignored or not (checked with 2.1.296); other agents follow `about`.
  */
 export const AGENTS = `# CPR reviews
 
@@ -110,9 +111,6 @@ Each has \`body\` (what to do) and \`symbol\` (\`<path>#<name>\`); on a line, al
 - Edit, move or commit anything in \`cpr/\`: the reviews are the person's.
 `;
 
-/** `cpr/CLAUDE.md`: Claude Code loads it when it reads anything in `cpr/`, and with it AGENTS.md. */
-export const CLAUDE = '@AGENTS.md\n';
-
 /** Where reviews are kept, and as whom. */
 export interface ReviewPlace {
   /** The folder holding `<branch>/<reviewer>.json`. */
@@ -125,8 +123,6 @@ export interface ReviewPlace {
   gitignore?: string;
   /** The agents' instructions (V17), beside the reviews folder. */
   agents: string;
-  /** `cpr/CLAUDE.md`, importing them; only in the repository. */
-  claude?: string;
 }
 
 /** A branch that cannot be reviewed, and why (the server answers 400). */
@@ -192,12 +188,11 @@ export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<Revi
     place: 'repository',
     gitignore: join(folder, '.gitignore'),
     agents: join(folder, 'AGENTS.md'),
-    claude: join(folder, 'CLAUDE.md'),
   };
 }
 
 /** What CPR itself keeps in `cpr/`, beside the reviews: a project may commit them. */
-const CPR_FILES = new Set(['cpr/config.json', 'cpr/.gitignore', 'cpr/AGENTS.md', 'cpr/CLAUDE.md']);
+const CPR_FILES = new Set(['cpr/config.json', 'cpr/.gitignore', 'cpr/AGENTS.md']);
 
 /** A review's file: the branch's slashes as folders, the reviewer as its name. */
 export function reviewPath(dir: string, branch: string, reviewer: string): string {
@@ -340,7 +335,6 @@ export function branchReviews(
       // What an agent does with a review (V17), beside it.
       if (!instructed.has(where.agents)) {
         await own(where.agents, AGENTS);
-        if (where.claude) await own(where.claude, CLAUDE);
         instructed.add(where.agents);
       }
       await mkdir(dirname(path), { recursive: true });

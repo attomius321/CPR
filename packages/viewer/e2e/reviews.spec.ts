@@ -288,8 +288,9 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   await review(page, 'Agent: add cube', 'agent not reviewed yet');
   await reviewTab(page).click();
   await expect(page.locator('.merge-check')).toHaveText(
-    'Conflicts with main in src/math.ts: the agent resolves them on agent first.',
+    'Conflicts with main in math.ts: the agent resolves them on agent first.',
   );
+  await expect(page.locator('.merge-check')).toHaveAttribute('title', 'src/math.ts');
   await page.getByLabel('Approve').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText(`Approved ${short(cube)}`);

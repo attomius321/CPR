@@ -214,10 +214,14 @@ function MergeCheck({ branch }: { branch: string }) {
   if ('clean' in merge) {
     return <p className="merge-check muted small">Merges cleanly into {merge.into}.</p>;
   }
-  const shown = merge.conflicts.slice(0, 3).join(', ');
+  // File names: full paths wrap over many lines in the sidebar; they are in the title.
+  const shown = merge.conflicts
+    .slice(0, 3)
+    .map((path) => path.slice(path.lastIndexOf('/') + 1))
+    .join(', ');
   const more = merge.conflicts.length > 3 ? ` and ${merge.conflicts.length - 3} more` : '';
   return (
-    <p className="merge-check conflicts small">
+    <p className="merge-check conflicts small" title={merge.conflicts.join('\n')}>
       Conflicts with {merge.into} in {shown}
       {more}: the agent resolves them on {branch} first.
     </p>

@@ -6,7 +6,6 @@ import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-
 import {
   AGENTS,
   branchReviews,
-  CLAUDE,
   GITIGNORE,
   readReview,
   REVIEW_ABOUT,
@@ -140,14 +139,12 @@ describe('reviewPlace', () => {
       place: 'repository',
       gitignore: join(repo.root, 'cpr', '.gitignore'),
       agents: join(repo.root, 'cpr', 'AGENTS.md'),
-      claude: join(repo.root, 'cpr', 'CLAUDE.md'),
     });
     // The project's own cpr/config.json is CPR's: still the repository; so are the agents'
     // instructions CPR writes, once a team commits its reviews with them (V17).
     repo.write({
       'cpr/config.json': '{ "plugins": [] }\n',
       'cpr/AGENTS.md': AGENTS,
-      'cpr/CLAUDE.md': CLAUDE,
     });
     repo.commit('config');
     expect((await reviewPlace(open, cache)).place).toBe('repository');
@@ -243,14 +240,11 @@ describe('branchReviews', () => {
     // Out of git: nothing to commit, nothing staged; the agents' instructions beside them (V17).
     expect(readFileSync(join(repo.root, 'cpr', '.gitignore'), 'utf8')).toBe(GITIGNORE);
     expect(readFileSync(join(repo.root, 'cpr', 'AGENTS.md'), 'utf8')).toBe(AGENTS);
-    expect(readFileSync(join(repo.root, 'cpr', 'CLAUDE.md'), 'utf8')).toBe(CLAUDE);
     expect(repo.git('status', '--porcelain', '--untracked-files=all')).toBe('');
     // Deleting cpr/.gitignore shares them: the review is an untracked file like any other.
     rmSync(join(repo.root, 'cpr', '.gitignore'));
     expect(repo.git('status', '--porcelain', '--untracked-files=all')).toBe(
-      ['?? cpr/AGENTS.md', '?? cpr/CLAUDE.md', '?? cpr/reviews/agent/ada@example.com.json'].join(
-        '\n',
-      ),
+      ['?? cpr/AGENTS.md', '?? cpr/reviews/agent/ada@example.com.json'].join('\n'),
     );
   });
 
@@ -262,7 +256,6 @@ describe('branchReviews', () => {
     await reviews.state(info).write('review', {});
     expect(readFileSync(join(repo.root, 'cpr', 'AGENTS.md'), 'utf8')).toBe(AGENTS);
     expect(AGENTS).toMatch(/^# CPR reviews\n\nWritten by CPR, which rewrites this file/);
-    expect(CLAUDE).toBe('@AGENTS.md\n');
     const text = readFileSync(
       join(repo.root, 'cpr', 'reviews', 'agent', 'ada@example.com.json'),
       'utf8',
