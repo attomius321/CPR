@@ -422,7 +422,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V8 ✅ | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Closed: V8a–V8c and V8e merged (on Qwik: zoom out 466 → 15 ms blocked, opening 2,568 → 620 ms, map clicks reaching the file 87 → 100 %); V8d deferred; see below. |
 | V9 ✅ | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Merged: the current branch's commits as `cpr view`'s first page (100 rows in under 1 s on Qwik), pick two (or one against its parent), the diff analyzed on demand in a child process (Bitwarden 42 s, within 10 % of `cpr diff`; the server answers in 2 ms meanwhile), the last 8 kept. See below. |
 | V10a ✅, V10b–c | A commit graph | The commits page was a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches were not listed (1,539 unmerged on Bitwarden). V10a merged: every branch's history as a graph, lines over 100 rows as arrows (Bitwarden 20 lanes, 142 drawn whole), loaded lazily (CPython's 150,182 rows: first rows in 120 ms once listed). V10b (branches panel) planned; V10c on its own row below. See below. |
-| V10c | Picks across branches | Two picks on diverged branches are compared directly: the other side's work shows as reverted (HEAD against unmerged branches: 67–96 % of the direct diff's files are not the branch's; Qwik: 43 files, 6 removed symbols, against the branch's 7 files, 0 removed), and the lower pick, today's base, is the branch in 71 of 71 such pairs. Planned: compare from the fork point, found in the page (= `git merge-base` on 1,800 of 1,800 pairs); the default branch's pick as the base; the label, the fork marked, Swap. See below. |
+| V10c (built) | Picks across branches | Two picks on diverged branches are compared directly: the other side's work shows as reverted (HEAD against unmerged branches: 67–96 % of the direct diff's files are not the branch's; Qwik: 43 files, 6 removed symbols, against the branch's 7 files, 0 removed), and the lower pick, today's base, is the branch in 71 of 71 such pairs. Built: compared from the fork point, found in the page (agrees with `git merge-base` and `rev-list` on 5,983 of 5,983 random pairs in six repositories, 157 of them with no shared history); the default branch's pick as the base (the branch as head against 1,868 of 1,868 diverged remote branches); the label, the fork marked, Swap; through `cpr view`, 12 of 12 graphs equal `cpr diff A B`. See below. |
 | V11 ✅ | Checkout from the commits page | The commits page showed every branch but checked nothing out, and did not notice a checkout made in a terminal (it showed the old HEAD until reloaded). Merged: a row menu (right-click, "⋯", c) checks out a branch, a remote branch as its tracking branch, a tag or the commit, after a confirmation; `git switch` never forced, git's refusals shown; the page lists anew after a checkout (109–115 ms on this repository) and on focus; HEAD stands out (solid "HEAD → main" badge, tinted row, ringed dot, a title chip). See below. |
 | V12 ✅ | Open in VS Code | The diff panel shows a symbol's lines, but going there in the editor is done by hand, and head's line number is not the working copy's: reviewing anything but the checked-out commit, 1–62 % of added lines sat at another line and up to 23 % were changed since (CPR, ky, zod). Merged: "Open in VS Code" (or `o`), Ctrl/⌘+click or a line number opens the line in the window that has the repository open (else a new one with it), at its place in the working copy; the server runs `code <repo root> --goto <file>:<line>:<col>`, found on any platform. 105 ms from the request to VS Code here. See below. |
 | V13 ✅ | Compare mode | The commits page opened as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Merged: browse by default (a click selects the row; 25 rows in view instead of 23 at 1440 × 900), and a "Compare mode" toggle (or `x`) for picking, left with Escape; first rows as fast as `main`. See below. |
@@ -4355,8 +4355,8 @@ copied text name it); git older than 2.38 ("Could not check the merge"); Windows
 
 ### V10c — Picks across branches: diverged picks compared from their fork point
 
-**Status:** planned (2026-10-14), on branch `milestone/v10c-picks-across-branches`; not started.
-Planned with V10 (decision 52, "Picking across branches" there); refined here, before V10b, on
+**Status:** built (2026-10-14) on branch `milestone/v10c-picks-across-branches`; not merged.
+As built and results: "As built — V10c" below. Planned with V10 (decision 52, "Picking across branches" there); refined here, before V10b, on
 today's code and measurements.
 
 **Problem** (asked: "let's do v10c first"; "be absolutely sure that it renders the correct
@@ -4509,6 +4509,70 @@ check on real repositories.
 
 **Not in V10c (later)**: a direct diff of diverged picks; ranking a pick merged into the default
 branch above one that is not; the diff page naming the picks it came from; V10b (branches panel).
+
+#### As built — V10c
+
+- **The fork point's SHA comes from the rows' details.** The shape holds row numbers only, so
+  `comparison` takes `shaAt(row)` (the details loaded) besides `parents`, `head`, `trunk` and
+  `complete`. While the fork's row is not loaded the bar says "Finding where … forked…" and the
+  page loads its block of 200 (one request, 16–20 ms anywhere in a history, V10).
+- **`comparison` returns `{ pair, label, diverged? }`**: `pair` null with the reason in the label;
+  `diverged` names the other pick, its commits since the fork, the fork's row and which rule chose
+  the base (`default`, `head`, `older`) for the note's title. It replaces `countBetween`, which
+  walked the whole history from both picks on every render; the result is now memoized.
+- **The bar**: `8dd3ab0 → 7b3a37e · 2 commits · diverged from 3fd543f: its 11 commits since the
+  fork are not in this diff` (Qwik), the fork's SHA a button to its row, then Swap. The title
+  says why: "3fd543f is on main: this diff shows what 7b3a37e adds since they forked at 8dd3ab0.
+  Swap compares 3fd543f instead." The SHAs keep the monospace font; the note takes the page's.
+- **Swap keeps focus**, so Enter right after it swaps again (V9's rule: a focused button takes
+  Enter); Compare is the next control.
+- **The default branch's tips are read while git lists the history**, not after: read after, the
+  shape took 26–35 ms longer on Bitwarden; alongside, 9–12 ms.
+- **Core**: `defaultBranchTips(repo)`; `forkPoint` and it share `branchTips`. `HistorySource`
+  gains an optional `defaultBranch()` (tests' fakes have none); a failed shape is not kept.
+- **Two scripts** stay: `scripts/viewer/compare-check.mjs` (the viewer's `comparison` against git
+  on whole histories) and `scripts/viewer/diverged-diffs.mjs` (`cpr view`'s server driven as the
+  page does, the graph against `git diff A...B` and `cpr diff A B`).
+
+**Results (V10c)**. Tests first: 13 unit tests failed before the code (viewer 11, 4 of them
+existing tests on the new API; core 1; CLI 1);
+on `main`'s build 3 of the 4 new e2e tests failed on the label (`main`'s tip compared directly
+with the branch's), the ancestor-pair one passed on both. Now 613 unit tests and 75 e2e.
+
+Against git (`compare-check.mjs`, 500 random pairs among the first 2,000 rows and 500 anywhere):
+
+| Repo | Rows | Pairs (diverged / no shared history / several merge-bases) | Fork = `git merge-base`; both counts = `rev-list`; base's side by the rules | Default branch against each diverged remote branch: the branch is head, from the fork | Slowest |
+|---|---|---|---|---|---|
+| CPR ("This branch") | 243 | 998 (2 / 0 / 0) | 998 of 998 | — (none) | 0.4 ms |
+| ky | 593 | 998 (0 / 0 / 0) | 998 of 998 | 1 of 1 | 0.4 ms |
+| zod | 4,239 | 997 (297 / 0 / 1) | 997 of 997 | 124 of 124 | 0.2 ms |
+| vite | 10,359 | 997 (95 / 0 / 0) | 997 of 997 | 80 of 80 | 0.3 ms |
+| Qwik | 12,362 | 997 (265 / 126 / 0) | 871 of 871; the 126 "share no history" | 124 of 124 | 0.7 ms |
+| Bitwarden | 39,861 | 997 (505 / 31 / 0) | 966 of 966; the 31 "share no history" | 1,534 of 1,534 | 0.6 ms |
+| CPython | 150,182 | 997 (37 / 0 / 0) | 997 of 997 | 5 of 5 | 3.2 ms |
+
+End to end (`diverged-diffs.mjs`: `cpr view`'s server, the default branch's tip and the three
+nearest diverged remote branches' tips picked, the pair the page sends analyzed): **12 of 12
+graphs hold exactly the branch's files (`git diff --name-only A...B`) and equal `cpr diff A B`**
+(files, symbols, edges, findings). Beside them, what `main`'s page analyzed for the same picks:
+
+| Pair | V10c: from the fork, the branch as head | `main`: the branch's tip as base, directly |
+|---|---|---|
+| zod `b500a2e` / `c7705c5` | 38 files; 100 added, 12 removed; 2 findings | 44 files; 12 added, **100 removed**, 1 modified; 0 findings |
+| vite `cf80aa5` / `f957682` | 3 files; 3 added, 1 modified | 48 files; 0 added, **3 removed**, 1 modified |
+| Qwik `3fd543f` / `7b3a37e` | 7 files; 1 added, 4 modified; 1 finding | 43 files; 6 added, 1 removed, 9 modified; 4 findings |
+| Qwik `3fd543f` / `aec301b` | 49 files; 151 added, 1 removed, 10 modified; 3 findings | 142 files; 29 added, **151 removed**, 38 modified; 12 findings |
+| Bitwarden `51450a5` / `2651094` | 4 files; 4 modified; 3 findings | 44 files; 7 added, 25 modified; 12 findings |
+
+On the Qwik clone in Chromium (1440 × 900, light and dark): `main` and `origin/fix-unclaimed-visible`
+picked, the bar and the dashed ring as above, no page errors. Cold `cpr view`, 4 rounds against
+`main`'s build back to back: first rows unchanged (Bitwarden 267–283 against 268–299 ms, CPython
+812–848 against 820–876 ms); the shape 87–94 against 75–82 ms (Bitwarden), 350–372 against
+339–380 ms (CPython). No analysis code changed (goldens unchanged), so no regression-check run.
+
+Not verified: Windows and macOS; Firefox and Safari; a repository whose default branch is not
+`main` or `master` and has no remote `HEAD` (rule 2 then, as unit-tested); shallow clones beyond
+the unit test.
 
 ### Phase 1 milestones
 

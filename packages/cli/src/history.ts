@@ -147,11 +147,11 @@ class Listing {
   private async makeShape(
     defaultBranch: () => Promise<{ name: string; tips: string[] } | null>,
   ): Promise<HistoryShape> {
-    await this.finished;
+    // Read while git may still be listing.
+    const [, main] = await Promise.all([this.finished, defaultBranch()]);
     if (this.failed) throw this.error;
     const row = new Map(this.shas.map((sha, i) => [sha, i]));
     const { head, version } = this.state;
-    const main = await defaultBranch();
     const rows = (main?.tips ?? []).flatMap((tip) => row.get(tip) ?? []);
     return {
       version,
