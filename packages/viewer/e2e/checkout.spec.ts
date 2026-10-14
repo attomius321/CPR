@@ -47,7 +47,11 @@ test('offers what each row can check out, in a submenu', async ({ page }) => {
   await page.goto(cpr.url);
   // The menu holds "Check out" (and "Review", V15: the row has a branch); targets open on hover.
   await row(page, 'Try a wobble').click({ button: 'right' });
-  await expect(page.getByRole('menuitem')).toHaveText(['Check out', 'Review']);
+  await expect(page.getByRole('menuitem')).toHaveText([
+    'Check out',
+    'Review',
+    'Start a feature here',
+  ]);
   await expect(checkOut(page)).toHaveAttribute('aria-expanded', 'false');
   await checkOut(page).hover();
   await expect(checkOut(page)).toHaveAttribute('aria-expanded', 'true');

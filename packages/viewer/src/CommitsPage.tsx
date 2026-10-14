@@ -12,6 +12,9 @@ import type {
   CheckoutResult,
   CheckoutTarget,
   Commit,
+  FeatureOptions,
+  FeatureRequest,
+  FeatureStart,
   HistoryPage,
   HistoryRefs,
   HistoryScope,
@@ -23,6 +26,8 @@ import { BranchesPanel } from './BranchesPanel.js';
 import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
 import { reviewChoices, reviewMarks, type ReviewChoice, type ReviewMark } from './branchReviews.js';
 import { CheckoutDialog } from './CheckoutDialog.js';
+import { startedNotice } from './features.js';
+import { StartFeatureDialog } from './StartFeatureDialog.js';
 import { RowMenu, type RowMenuItem } from './RowMenu.js';
 import {
   BLOCK,
@@ -119,6 +124,24 @@ export async function startDiff(pair: Pair): Promise<string> {
   return ((await response.json()) as { url: string }).url;
 }
 
+/** Starts a feature (V18): its branch, worktree and agent; rejects with the server's words. */
+async function postFeature(request: FeatureRequest): Promise<FeatureStart> {
+  const response = await fetch(`${COMMITS_PAGE}api/features`, {
+    method: 'POST',
+    headers: WRITE_HEADERS,
+    body: JSON.stringify(request),
+  });
+  if (response.ok) return (await response.json()) as FeatureStart;
+  const text = await response.text();
+  let message = text;
+  try {
+    message = (JSON.parse(text) as { error?: string }).error ?? text;
+  } catch {
+    // a plain-text refusal
+  }
+  throw new Error(message);
+}
+
 /** Starts reviewing a branch (V15); resolves with its page's URL, or rejects with why not. */
 async function startReview(ref: string): Promise<string> {
   const response = await fetch(`${COMMITS_PAGE}api/reviews`, {
@@ -167,10 +190,12 @@ export function BackToCommits() {
 const scopeOfUrl = (): HistoryScope =>
   new URLSearchParams(window.location.search).get('scope') === 'current' ? 'current' : 'all';
 
-/** What the page says after a checkout, above the rows. */
+/** What the page says after a checkout or a feature's start, above the rows. */
 interface Notice {
   text: string;
   warning?: string;
+  /** Text the person may copy from it: a feature's prompt when no agent took it (V18). */
+  copy?: string;
 }
 
 /**
@@ -214,8 +239,10 @@ export function CommitsPage() {
     [choose],
   );
   const arrived = useCallback(() => setGoTo(null), []);
-  const relist = useCallback((next: Notice | null) => {
+  const relist = useCallback((next: Notice | null, branch?: string) => {
     setNotice(next);
+    // A new branch (a feature's): its tip once listed.
+    if (branch) setGoTo(branch);
     setGeneration((g) => g + 1);
   }, []);
   // A new scope or generation starts afresh: its own rows, lanes and picks.
@@ -251,7 +278,8 @@ function History({
   scope: HistoryScope;
   onScope: (scope: HistoryScope) => void;
   notice: Notice | null;
-  onRelist: (notice: Notice | null) => void;
+  /** Lists anew, saying `notice`; with `branch`, the cursor goes to its tip. */
+  onRelist: (notice: Notice | null, branch?: string) => void;
   comparing: boolean;
   onComparing: (comparing: boolean) => void;
   /** The branches panel's filter and folders, kept by the page across listings. */
@@ -295,6 +323,8 @@ function History({
   // A row's menu (check out, review), then a checkout's confirmation (V11).
   const [menu, setMenu] = useState<{
     at: { x: number; y: number };
+    /** The row's commit. */
+    sha: string;
     /** The submenu shown at first: `c` and `r` (V14, V15). */
     open?: 'checkout' | 'review';
     checkout: CheckoutChoice[];
@@ -306,6 +336,15 @@ function History({
   );
   const [checkingOut, setCheckingOut] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
+  // Starting a feature (V18): the dialog with where it starts, then the start itself.
+  const [feature, setFeature] = useState<{
+    options: FeatureOptions;
+    base: { sha: string; from?: string };
+    taken: ReadonlySet<string>;
+  } | null>(null);
+  const [featureRunning, setFeatureRunning] = useState(false);
+  const [featureError, setFeatureError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<boolean | null>(null);
 
   // Branch reviews (V15): marks on badges, dots on commits added since; read again when the
   // page is back, since a review is made on another page.
@@ -509,6 +548,7 @@ function History({
           if (list) setReviews(list);
           setMenu({
             at: { x, y },
+            sha: commit.sha,
             ...(open ? { open } : {}),
             checkout: checkoutChoices(commit, refs, status),
             review: list ? reviewChoices(commit, refs, list) : [],
@@ -521,8 +561,54 @@ function History({
   );
   const closeMenu = useCallback(() => setMenu(null), []);
 
-  /** "Check out ▸" (V14), and "Review ▸" when the row has branches (V15). */
-  const menuItems = ({ checkout, review, status }: NonNullable<typeof menu>): RowMenuItem[] => [
+  /** The start dialog: at `sha` (a row's), else at the default branch's tip. */
+  const openFeature = useCallback((sha?: string) => {
+    setFeatureError(null);
+    Promise.all([fetchJson<FeatureOptions>('api/features/options'), fetchJson<RefList>('api/refs')])
+      .then(([options, refs]) => {
+        const base = sha ? { sha } : options.base;
+        if (!base) {
+          setError(
+            'No default branch to start from: start the feature from a commit (its menu: Start a feature here).',
+          );
+          return;
+        }
+        setFeature({
+          options,
+          base,
+          taken: new Set([
+            ...refs.branches.map((b) => b.name),
+            ...refs.remotes.map((r) => r.branch),
+          ]),
+        });
+      })
+      .catch((e: unknown) => setError(`Could not start a feature: ${(e as Error).message}`));
+  }, []);
+  const runFeature = useCallback(
+    async (request: FeatureRequest) => {
+      setFeatureRunning(true);
+      setFeatureError(null);
+      try {
+        const start = await postFeature(request);
+        onRelist(startedNotice(start), start.feature.branch);
+      } catch (e) {
+        setFeatureError((e as Error).message);
+        setFeatureRunning(false);
+      }
+    },
+    [onRelist],
+  );
+
+  /**
+   * "Check out ▸" (V14), "Review ▸" when the row has branches (V15), and "Start a feature here"
+   * (V18).
+   */
+  const menuItems = ({
+    sha,
+    checkout,
+    review,
+    status,
+  }: NonNullable<typeof menu>): RowMenuItem[] => [
     {
       label: 'Check out',
       choices: checkout,
@@ -552,6 +638,13 @@ function History({
             },
           },
         ]),
+    {
+      label: 'Start a feature here',
+      onSelect: () => {
+        setMenu(null);
+        openFeature(sha);
+      },
+    },
   ];
 
   const runCheckout = useCallback(
@@ -626,8 +719,8 @@ function History({
     const onKey = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.target instanceof HTMLInputElement) return;
-      // The menu and the confirmation take their own keys.
-      if (menu || confirm) return;
+      // The menu and the dialogs take their own keys.
+      if (menu || confirm || feature) return;
       if (event.key === 'j' || event.key === 'k') {
         const next = Math.max(0, Math.min(rows - 1, cursor + (event.key === 'j' ? 1 : -1)));
         setCursor(next);
@@ -643,6 +736,8 @@ function History({
         const box = list.current?.querySelector('.commit.cursor')?.getBoundingClientRect();
         // `r` reviews: straight to the row's branches.
         if (box) openMenu(cursor, box.left + 48, box.bottom, 'review');
+      } else if (event.key === 'n') {
+        openFeature();
       } else if (event.key === '/') {
         // Finds a branch: the panel's filter (shown first under 900 px).
         event.preventDefault();
@@ -674,6 +769,8 @@ function History({
     reveal,
     menu,
     confirm,
+    feature,
+    openFeature,
     openMenu,
     comparing,
     onComparing,
@@ -757,8 +854,16 @@ function History({
             <span className="commits-help">
               {comparing
                 ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
-                : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch'}
+                : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch · n starts a feature'}
             </span>
+            <button
+              type="button"
+              className="start-feature"
+              title="Start a feature: a branch, its worktree and an agent (n)"
+              onClick={() => openFeature()}
+            >
+              Start a feature
+            </button>
             <button
               type="button"
               className="compare-mode"
@@ -774,6 +879,23 @@ function History({
             <p className="checkout-notice" role="status">
               {notice.text}
               {notice.warning && <span className="warning"> · {notice.warning}</span>}
+              {notice.copy !== undefined && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    className="link"
+                    onClick={() => {
+                      navigator.clipboard
+                        .writeText(notice.copy ?? '')
+                        .then(() => setCopied(true))
+                        .catch(() => setCopied(false));
+                    }}
+                  >
+                    {copied === null ? 'Copy the prompt' : copied ? 'Copied' : 'Could not copy'}
+                  </button>
+                </>
+              )}
             </p>
           )}
           {error && (
@@ -843,6 +965,17 @@ function History({
           {...(menu.open === 'checkout' ? { open: 0 } : {})}
           {...(menu.open === 'review' && menu.review.length > 0 ? { open: 1 } : {})}
           onClose={closeMenu}
+        />
+      )}
+      {feature && (
+        <StartFeatureDialog
+          options={feature.options}
+          base={feature.base}
+          taken={feature.taken}
+          running={featureRunning}
+          error={featureError}
+          onStart={(request) => void runFeature(request)}
+          onCancel={() => setFeature(null)}
         />
       )}
       {confirm && (

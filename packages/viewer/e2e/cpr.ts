@@ -477,3 +477,104 @@ export async function serveBranches(): Promise<Running> {
     },
   };
 }
+
+/** What the fake Claude Code was asked to start: its arguments and folder. */
+export interface FakeClaudeCall {
+  args: string[];
+  cwd: string;
+}
+
+export interface RunningFeatures extends Running {
+  repo: string;
+  /** `main`'s commits, oldest first: the fixture's base and head. */
+  shas: string[];
+  /** What the fake Claude Code started. */
+  calls(): FakeClaudeCall[];
+  /** From now on the fake refuses to start, with Claude Code's trust message. */
+  distrust(): void;
+}
+
+/**
+ * A fake Claude Code (V18): `--bg` records its arguments and folder and lists a working session
+ * there (or, distrusted, prints Claude Code's trust refusal and exits 1); `agents --json` lists
+ * the sessions, `auth status` a Pro subscription. Its state lives in `dir`.
+ */
+function fakeClaude(dir: string): string {
+  const script = join(dir, 'claude');
+  writeFileSync(
+    script,
+    `#!/usr/bin/env node
+const { appendFileSync, existsSync, readFileSync, writeFileSync } = require('node:fs');
+const { join } = require('node:path');
+const dir = ${JSON.stringify(dir)};
+const sessions = join(dir, 'sessions.json');
+const list = () => (existsSync(sessions) ? JSON.parse(readFileSync(sessions, 'utf8')) : []);
+const args = process.argv.slice(2);
+if (args[0] === '--bg') {
+  if (existsSync(join(dir, 'distrust'))) {
+    process.stderr.write('Workspace not trusted. Run \`claude\` in ' + process.cwd() + ' once and accept the trust prompt, then retry.\\n');
+    process.exit(1);
+  }
+  appendFileSync(join(dir, 'calls.jsonl'), JSON.stringify({ args, cwd: process.cwd() }) + '\\n');
+  const id = 'fake' + list().length;
+  writeFileSync(sessions, JSON.stringify([...list(), { id, cwd: process.cwd(), kind: 'background', startedAt: Date.now(), state: 'working', name: args[2] }]));
+  process.stdout.write('backgrounded · ' + id + ' · ' + args[2] + '\\n');
+} else if (args[0] === 'agents') {
+  process.stdout.write(JSON.stringify(list()));
+} else if (args[0] === 'auth') {
+  process.stdout.write(JSON.stringify({ loggedIn: true, authMethod: 'claude.ai', subscriptionType: 'pro' }));
+} else {
+  process.exit(2);
+}
+`,
+    { mode: 0o755 },
+  );
+  return script;
+}
+
+/**
+ * `main` with the `callers` fixture's base and head, pushed to a bare `origin` (its default
+ * branch), and a fake Claude Code as `CPR_CLAUDE` (`agent: false`: one that is not installed).
+ * Served by `cpr view` without revisions; features' worktrees land beside the repository and go
+ * with it.
+ */
+export async function serveFeatures({ agent = true } = {}): Promise<RunningFeatures> {
+  const { repo } = fixtureRepo('callers');
+  git(repo, 'checkout', '-q', '-B', 'main');
+  git(repo, 'branch', '-q', '-D', 'feature');
+  git(repo, 'config', 'user.email', 'reviewer@example.com');
+  const origin = mkdtempSync(join(tmpdir(), 'cpr-e2e-origin-'));
+  git(origin, 'init', '-q', '--bare');
+  git(repo, 'remote', 'add', 'origin', origin);
+  git(repo, 'push', '-q', '-u', 'origin', 'main');
+  git(repo, 'remote', 'set-head', 'origin', 'main');
+  const shas = git(repo, 'rev-list', '--reverse', 'main').split('\n');
+  const fake = mkdtempSync(join(tmpdir(), 'cpr-e2e-claude-'));
+  const claude = agent ? fakeClaude(fake) : join(fake, 'not-installed');
+  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  const { url, child } = await startCpr(['view'], repo, {
+    CPR_CACHE_DIR: cache,
+    CPR_CLAUDE: claude,
+  });
+  return {
+    url,
+    repo,
+    shas,
+    calls() {
+      const file = join(fake, 'calls.jsonl');
+      return readFileSync(file, { encoding: 'utf8', flag: 'a+' })
+        .split('\n')
+        .filter((line) => line !== '')
+        .map((line) => JSON.parse(line) as FakeClaudeCall);
+    },
+    distrust() {
+      writeFileSync(join(fake, 'distrust'), '');
+    },
+    stop() {
+      child.kill('SIGINT');
+      for (const dir of [repo, `${repo}.worktrees`, origin, fake, cache]) {
+        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      }
+    },
+  };
+}

@@ -1892,6 +1892,32 @@ kbd {
   font-weight: normal;
 }
 
+/* "Start a feature" (V18): beside Compare mode, in the colour of something added. */
+.start-feature {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 10px;
+  border: 1px solid color-mix(in srgb, var(--added) 45%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--added) 9%, var(--panel));
+  color: var(--added);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.start-feature:hover {
+  border-color: var(--added);
+  background: color-mix(in srgb, var(--added) 16%, var(--panel));
+}
+
+.start-feature:focus-visible {
+  outline: 2px solid var(--added);
+  outline-offset: 1px;
+}
+
 /* Out of compare mode a click selects: the cursor row is the selection, and shows it. */
 .commits:not(.comparing) .commit.cursor {
   background: color-mix(in srgb, var(--moved) 12%, transparent);
@@ -2086,6 +2112,64 @@ kbd {
 .dialog-buttons .button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* The start dialog (V18): a brief to write, so wider than a confirmation. */
+.feature-dialog {
+  width: min(640px, 100%);
+}
+
+.feature-field {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+  font-weight: 600;
+}
+
+.feature-field textarea,
+.feature-field input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-weight: normal;
+}
+
+.feature-field textarea {
+  resize: vertical;
+  min-height: 7em;
+}
+
+.feature-field input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.feature-field [aria-invalid='true'] {
+  border-color: var(--error);
+}
+
+.feature-from {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.feature-from .ref {
+  display: inline;
+}
+
+.feature-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+}
+
+.feature-agent select {
+  font: inherit;
 }
 
 .commit-sha {

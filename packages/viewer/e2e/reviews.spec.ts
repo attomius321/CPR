@@ -78,7 +78,11 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
 
   // The agent's tip offers "Review" beside "Check out"; main, the default branch, cannot be.
   await row(page, 'Agent: add cube').click({ button: 'right' });
-  await expect(page.getByRole('menuitem')).toHaveText(['Check out', 'Review']);
+  await expect(page.getByRole('menuitem')).toHaveText([
+    'Check out',
+    'Review',
+    'Start a feature here',
+  ]);
   await page.getByRole('menuitem', { name: 'Review', exact: true }).hover();
   const targets = page.getByRole('menu', { name: 'Review' }).getByRole('menuitem');
   await expect(targets).toHaveText(['agent not reviewed yet']);

@@ -95,7 +95,7 @@ test('opens in browse mode: a click selects a row and picks nothing', async ({ p
     'false',
   );
   await expect(page.locator('.commits-help')).toHaveText(
-    'j/k move · c checks out · r reviews · x picks to compare · / finds a branch',
+    'j/k move · c checks out · r reviews · x picks to compare · / finds a branch · n starts a feature',
   );
   await expect(page.locator('.commit-pick')).toHaveCount(0);
   await expect(page.locator('.compare-bar')).toHaveCount(0);
