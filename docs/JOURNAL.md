@@ -1941,3 +1941,5 @@ dark: HEAD's row (`main` and 8 tags: a submenu of 10 badges, 368 × 335 px, wher
 480 × 343 with "Check out" 10 times), the remote-branch row (the name whole, the note under
 it), and their confirmations; a 140-character branch in a scratch repository. No page errors.
 Not verified: Firefox, Safari, touch screens.
+
+Merged into main (2026-10-14). `main` verified after the merge: 558 unit tests, build, 66 e2e.
