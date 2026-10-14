@@ -421,7 +421,8 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | E1 (measured) | Decisions and their ripples | Could mechanical parts of a change (renames and their call sites, moves, a new argument everywhere, the same edit repeated) be verified instead of read? Measured on 165 changes: 20 % of changed symbols but 5.4 % of diff lines (2.8 % without one large rename); 0 false in 40 audited. Not the disruptive lever; grouping repeated edits in the change list is a candidate. See below. |
 | V8 ✅ | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Closed: V8a–V8c and V8e merged (on Qwik: zoom out 466 → 15 ms blocked, opening 2,568 → 620 ms, map clicks reaching the file 87 → 100 %); V8d deferred; see below. |
 | V9 ✅ | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Merged: the current branch's commits as `cpr view`'s first page (100 rows in under 1 s on Qwik), pick two (or one against its parent), the diff analyzed on demand in a child process (Bitwarden 42 s, within 10 % of `cpr diff`; the server answers in 2 ms meanwhile), the last 8 kept. See below. |
-| V10a ✅, V10b–c | A commit graph | The commits page was a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches were not listed (1,539 unmerged on Bitwarden). V10a merged: every branch's history as a graph, lines over 100 rows as arrows (Bitwarden 20 lanes, 142 drawn whole), loaded lazily (CPython's 150,182 rows: first rows in 120 ms once listed). V10b (branches panel) planned; V10c on its own row below. See below. |
+| V10a ✅, V10b–c | A commit graph | The commits page was a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches were not listed (1,539 unmerged on Bitwarden). V10a merged: every branch's history as a graph, lines over 100 rows as arrows (Bitwarden 20 lanes, 142 drawn whole), loaded lazily (CPython's 150,182 rows: first rows in 120 ms once listed). V10b and V10c on their own rows below. See below. |
+| V10b | Branches panel | A branch can only be found by scrolling: tips sit deep (median row 155 on this repository, 9,165 on Bitwarden; 4–74 tips per repository in the first 200 rows), and Bitwarden has 1,591 remote branches, 519 in no folder. Planned: a panel left of the graph — Local with ahead/behind, Remotes by nested folder, a filter, review marks — whose click goes to the tip's row anywhere in the history (`/api/history/refs` gives the rows). See below. |
 | V10c ✅ | Picks across branches | Two picks on diverged branches are compared directly: the other side's work shows as reverted (HEAD against unmerged branches: 67–96 % of the direct diff's files are not the branch's; Qwik: 43 files, 6 removed symbols, against the branch's 7 files, 0 removed), and the lower pick, today's base, is the branch in 71 of 71 such pairs. Merged: compared from the fork point, found in the page (agrees with `git merge-base` and `rev-list` on 5,983 of 5,983 random pairs in six repositories, 157 of them with no shared history); the default branch's pick as the base (the branch as head against 1,868 of 1,868 diverged remote branches); the label, the fork marked, Swap; through `cpr view`, 12 of 12 graphs equal `cpr diff A B`. See below. |
 | V11 ✅ | Checkout from the commits page | The commits page showed every branch but checked nothing out, and did not notice a checkout made in a terminal (it showed the old HEAD until reloaded). Merged: a row menu (right-click, "⋯", c) checks out a branch, a remote branch as its tracking branch, a tag or the commit, after a confirmation; `git switch` never forced, git's refusals shown; the page lists anew after a checkout (109–115 ms on this repository) and on focus; HEAD stands out (solid "HEAD → main" badge, tinted row, ringed dot, a title chip). See below. |
 | V12 ✅ | Open in VS Code | The diff panel shows a symbol's lines, but going there in the editor is done by hand, and head's line number is not the working copy's: reviewing anything but the checked-out commit, 1–62 % of added lines sat at another line and up to 23 % were changed since (CPR, ky, zod). Merged: "Open in VS Code" (or `o`), Ctrl/⌘+click or a line number opens the line in the window that has the repository open (else a new one with it), at its place in the working copy; the server runs `code <repo root> --goto <file>:<line>:<col>`, found on any platform. 105 ms from the request to VS Code here. See below. |
@@ -2655,8 +2656,9 @@ branches, commits) — the larger git interface this starts.
 ### V10 — A commit graph
 
 **Status:** V10a merged into main (2026-10-13, from branch `milestone/v10-commit-graph`; "As
-built — V10a" below). V10b not started; the next step is V11 (checkout), asked first. V10c
-refined, built and merged on its own (2026-10-14): see "V10c — Picks across branches" after V17.
+built — V10a" below). V10c refined, built and merged on its own (2026-10-14), V10b refined and
+planned on its own (2026-10-14): see "V10c — Picks across branches" and "V10b — Branches panel"
+after V17.
 
 **Problem** (asked: "I want to see the tree on the left, with branch divergence … if that is
 possible"; "I want to see all the commits, from any branches, not only from the branch, with a
@@ -4573,6 +4575,127 @@ picked, the bar and the dashed ring as above, no page errors. Cold `cpr view`, 4
 Not verified: Windows and macOS; Firefox and Safari; a repository whose default branch is not
 `main` or `master` and has no remote `HEAD` (rule 2 then, as unit-tested); shallow clones beyond
 the unit test.
+
+### V10b — Branches panel: every branch a click away
+
+**Status:** planned (2026-10-14), on branch `milestone/v10b-branches-panel`; not started.
+Planned with V10 ("Branches panel" there, decision 53); refined here on today's page (V11–V17
+since) and measurements.
+
+**Problem** (asked with V10: "exactly like git extension, or gitty up … with the branch trees on
+the left"; "graph + branches panel"; now "start with v10[b]"). The commits page lists every
+branch's commits, but a branch can only be found by scrolling and reading badges: there is no
+list of branches and no search. Branch tips sit deep in graph order. Measured on this repository
+and the regression clones (every branch listed, `listRefs` as the row menu calls it):
+
+| Repo | Local / remote branches | Remote: not in a folder / folders (deepest nesting) | Tip rows: median / p90 / deepest | Tips in the first 25 rows / 200 | Name length: median / p90 / max | `listRefs` |
+|---|---|---|---|---|---|---|
+| CPR | 14 / 62 | 1 / 5 (1) | 155 / 230 / 242 | 7 / 43 | 25 / 30 / 38 | 4–6 ms |
+| zod | 1 / 154 | 103 / 13 (1) | 978 / 3,338 / 4,058 | 8 / 16 | 18 / 40 / 58 | 6–13 ms |
+| vite | 1 / 88 | 42 / 14 (1) | 691 / 4,896 / 9,260 | 10 / 24 | 23 / 58 / 83 | 9–11 ms |
+| Qwik | 1 / 133 | 74 / 10 (2) | 3,695 / 7,443 / 8,889 | 3 / 4 | 23 / 39 / 55 | 6–7 ms |
+| Bitwarden | 1 / 1,591 | 519 / 105 (3) | 9,165 / 21,794 / 37,633 | 9 / 74 | 29 / 53 / 133 | 22–23 ms |
+| CPython | 1 / 6 | 6 / 0 | 16,397 / 33,308 / 33,308 | 1 / 1 | 4 / 4 / 4 | 8–16 ms |
+
+- Most tips are out of reach by scrolling: Bitwarden's median tip is 9,165 rows (293,000 px)
+  down, Qwik's 3,695; only 4–74 tips per repository are in the first 200 rows.
+- Since V11 and V15 a branch's row is where it is checked out and reviewed (c, r): reviewing an
+  agent's branch starts with finding its row.
+- Folders do not make a short list on their own: Bitwarden has 519 remote branches outside any
+  folder, beside 105 folders. The filter is what finds a branch there.
+- Names run long: a 260 px panel holds about 35 characters; half of Bitwarden's names are 29 or
+  more, the longest 133.
+
+**Goal**: a panel left of the graph lists the branches — local ones with how far each is from its
+upstream, remote ones by remote and folder — with a filter on top. A click puts the cursor on
+the branch's tip row, wherever it is in the history, and flashes it; from there c and r check it
+out or review it as today. Reviewed branches show their mark as their badges do. Tags stay
+badges on rows (decision 48). The rows, the graph, compare mode, the row menu, `cpr view
+<base> [head]`, `cpr diff` and `cpr pr` do not change.
+
+#### Tips' rows (core, server)
+
+- `GET /api/history/refs?scope=…&version=…` → `{ version, branches, remotes }`: `listRefs`'s
+  local and remote branches, each with `row`, its tip's row in that listing (null when the scope
+  does not list it). It waits until the listing is done (tips sit deep); a stale version answers
+  409, as rows and shape do. `/api/refs` (the row menu's) is unchanged.
+- Server: `Histories.tips(scope, version, shas)` maps SHAs to rows from the kept order (one map
+  per listing, made once).
+- Core type `HistoryRefs` beside `HistoryShape`.
+
+#### The panel (viewer)
+
+- A pure `branchTree(refs, filter)` in `src/branches.ts`:
+  - **Local**: the current branch first, then by name; each with `↑2 ↓1` against its upstream
+    (title: "2 commits not pushed to origin/main, 1 not pulled") or `gone` when the upstream was
+    deleted.
+  - **Remotes**: per remote, then folders by `/` (nested: Bitwarden has 3 levels), each with its
+    count; a branch shows its last part (`milestone/v10b-…` under `milestone/` reads `v10b-…`).
+    Folders start closed; remotes open. By name, folders first.
+  - **Filter**: case-insensitive, on the whole name; folders with matches open, others hidden;
+    counts become matches. Nothing matching: "No branch matches".
+- `src/BranchesPanel.tsx`: about 260 px, its own scroll, left of the rows, the whole height
+  beside the list; names cut with an ellipsis, the full name as title; a reviewed branch's mark
+  (V15/V16's `reviewMarks`) after its name. Under 900 px it is hidden behind a "Branches" button
+  in the title and opens over the rows; a click on a branch closes it.
+- A click on a branch: the cursor on its tip row, scrolled to the middle (its details load as for
+  any rows in view), the row flashes (1 s). Under "This branch", a tip not listed switches to
+  every branch first, then goes there. A tip in no listing (a remote branch whose history the
+  clone lacks): the entry is greyed, with a title saying so.
+- `/` focuses the filter; Escape there clears it, then leaves it.
+
+#### Verification
+
+1. **Unit** (red first): `branchTree` — the current branch first; ahead/behind and `gone`;
+   folders nested by `/`, counts, closed at first; the filter (case, whole name, folders opened,
+   counts, nothing matching). `Histories.tips` — rows, null for a tip not listed, waits for the
+   listing, stale version. The server's `/api/history/refs` (shape of the answer, 409, defaults).
+2. **E2E** (a new `serveBranches` fixture: 300 commits on `main` written with `fast-import`,
+   `origin/feature/deep` forked near the bottom, `origin/fix/one` and `origin/fix/two`, a
+   top-level `origin/topic`, local `wip` ahead 2 and behind 1 of `origin/wip`, local `old` whose
+   upstream is gone): the panel's sections, counts and marks; a folder opened; the filter; a
+   click on the deep tip puts the cursor there and it is in view; "This branch" then a remote
+   branch: every branch, and the tip; `/` and Escape; under 900 px the button and the overlay;
+   no sideways scroll; every existing spec passes.
+3. **Real repositories** (`viewer-check`): on Bitwarden — the panel drawn with 1,591 remote
+   branches (time to draw, page elements), a filter keystroke, a click to the deepest tip
+   (row 37,633): the row drawn with its details, no task over 100 ms; first rows against
+   `main`'s build (the panel loads after them). Screenshots of this repository (14 local, 62
+   remote), light and dark, and at 900 px.
+4. **Cost**: `/api/history/refs` under 150 ms on Bitwarden once listed; first rows unchanged.
+5. **Nothing else changes**: no analysis code; goldens identical; `/api/refs` unchanged.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| 1,591 remote branches, 519 outside folders | Folders closed; the filter; measure drawing every entry before virtualizing anything. |
+| The panel narrows the rows (260 px of 1,440) | Subjects are cut already; under 900 px the panel is a button; author and date stay in view (checked). |
+| Refs move while the page is open (a fetch) | The answer carries the history's version; 409 → the page lists anew (V10a's path). |
+| A tip no listing holds (a shallow clone; a remote branch never fetched) | Its entry is greyed with a title; nothing to go to. |
+| Long names | Ellipsis, the full name as title; the filter matches the whole name. |
+
+**Order**: the endpoint and `branchTree` with their tests; the panel and the click; the narrow
+layout; the e2e fixture; real repositories.
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V10b | Branches panel | `/api/history/refs` with tips' rows; `branchTree`; the panel (Local, Remotes by folder, filter, marks); a click to the tip; "This branch" switching; `/`; the narrow overlay. |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 91 | Where tips' rows come from | **`GET /api/history/refs?scope&version`: `listRefs` with each tip's row in that listing; 409 when stale** | Rows belong to one listing; the page has the SHAs of loaded rows only, and tips sit deep (Bitwarden's median row 9,165). `/api/refs` stays the row menu's, unversioned. |
+| 92 | What the panel lists, and how (refines 53) | **Local (current first, ↑/↓, gone); Remotes by remote and nested folders, closed at first; a filter on the whole name; review marks** | Asked: "the tree should be branches only". 519 of Bitwarden's 1,591 remote branches are in no folder, so the filter, not the folders, makes it short. |
+| 93 | What a click does | **The cursor on the tip row, in the middle, flashed; "This branch" switches to every branch when needed; no action from the panel** | Checking out and reviewing already live on the row (c, r): one place for them. |
+| 94 | Narrow windows | **Under 900 px, a "Branches" button opens the panel over the rows** | The rows need the width; V10 planned the same. |
+
+**Not in V10b (later)**: actions from the panel (check out, review, delete, fetch); hiding
+branches from the graph (checkboxes); sorting by date; tags in the panel; the panel on a diff's
+page.
 
 ### Phase 1 milestones
 

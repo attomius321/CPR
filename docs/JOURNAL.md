@@ -2203,3 +2203,16 @@ first rows unchanged; the shape +9–12 ms (Bitwarden), within noise on CPython.
 Windows, macOS, Firefox, Safari; a repository with no `main`, `master` or remote `HEAD`.
 
 Merged into main (2026-10-14). `main` verified after the merge: 613 unit tests, build, 75 e2e.
+
+## V10b spike — what a branches panel holds (2026-10-14, branch `milestone/v10b-branches-panel`)
+
+Measured on this repository and the regression clones before refining V10's plan for the
+panel, with `listRefs` (as the row menu calls it) and the commits page's order. Tips sit deep:
+the median remote tip is row 155 here, 691–16,397 elsewhere (Bitwarden 9,165, its deepest
+37,633), and only 4–74 tips per repository are in the first 200 rows — a branch cannot be
+reached by scrolling. Bitwarden's 1,591 remote branches nest up to 3 folders deep (105 folders),
+but 519 are in none: closed folders still leave a 624-entry list, so the filter is what makes it
+short. Names: median 18–29 characters, p90 up to 58, the longest 133, against about 35 that fit
+in 260 px. `listRefs` takes 4–23 ms. This repository has 14 local branches (13 tracking one),
+the clones one each. The plan: tips' rows from the kept listing (`/api/history/refs`), Local and
+Remotes by nested folder with a filter, a click to the tip row.
