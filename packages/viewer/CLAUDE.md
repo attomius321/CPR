@@ -22,7 +22,8 @@ diff. Only the commits page's endpoints are absolute (`/api/commits`, `/api/diff
 - `src/review.ts` (change list — by project when it spans several —, search, j/k order, one
   project and its neighbourhood, marks), `src/detail.ts` (excerpts, diff rows),
   `src/comments.ts` (draft comments and anchors), `src/store.ts` (server or browser state).
-- `src/commits.ts` (**pure**: picking, which end is the base, the label, reading `api/graph`'s
+- `src/commits.ts` (**pure**: picking, which end is the base, diverged picks' fork point found from
+  the shape (V10c; checked against git by `scripts/viewer/compare-check.mjs`), the label, reading `api/graph`'s
   202/502/404 while a diff is analyzed), `src/CommitsPage.tsx` (the commits page, a diff's progress; not `Commits.tsx`: macOS file systems ignore case, and TypeScript then resolves it to `commits.ts`).
 - `src/ProjectNode.tsx`, `FileNode.tsx`, `SymbolNode.tsx`, `SummaryNode.tsx`; `src/styles.css`
   (one flat stylesheet: check a new class name is not taken — the sidebar's review bar is
