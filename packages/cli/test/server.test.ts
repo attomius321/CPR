@@ -1,7 +1,13 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { request } from 'node:http';
 import { join } from 'node:path';
-import { CheckoutRefused, UnknownCheckoutTarget, type CheckoutTarget, type Graph } from '@cpr/core';
+import {
+  CheckoutRefused,
+  UnknownCheckoutTarget,
+  type BranchReviewInfo,
+  type CheckoutTarget,
+  type Graph,
+} from '@cpr/core';
 import type { Review } from '@cpr/forge';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
@@ -16,6 +22,7 @@ import { fileStateStore, stateDir } from '../src/state.js';
 import { Diffs, type Pair, type RunDiff } from '../src/diffs.js';
 import { Histories } from '../src/history.js';
 import type { OpenRequest, OpenResult } from '../src/editor.js';
+import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
 
 const graph = JSON.parse(
   readFileSync(
@@ -741,6 +748,181 @@ describe('cpr view: commits and diffs', () => {
       body: JSON.stringify({ base: C, head: A, error: 'not analyzed' }),
     });
     expect((await get(`/diff/${C}..${A}/`)).body).toBe('<html>viewer</html>');
+  });
+});
+
+describe('cpr view: branch reviews', () => {
+  const viewer = tempDir();
+  const A = 'a'.repeat(40);
+  const B = 'b'.repeat(40);
+  const C = 'c'.repeat(40);
+  const runs: { pair: Pair; resolve: (graph: Graph) => void }[] = [];
+  const diffs = new Diffs((pair) => new Promise((resolve) => runs.push({ pair, resolve })));
+  const resolved: string[] = [];
+  /** Where each branch's tip is: a test moves one to see it re-resolved. */
+  const tips: Record<string, string> = { wip: B, topic: C, 'milestone/v15': C };
+  const saved = new Map<string, unknown>();
+  const reviews: BranchReviews = {
+    list: () =>
+      Promise.resolve({
+        defaultBranch: 'main',
+        reviewer: 'ada@example.com',
+        place: 'repository',
+        reviews: [],
+      }),
+    resolve: (ref) => {
+      resolved.push(ref);
+      const branch = ref.replace(/^origin\//, '');
+      const head = tips[branch];
+      if (branch === 'main') return Promise.reject(new ReviewRefused('main is the default branch'));
+      if (!head) return Promise.reject(new ReviewRefused(`no branch ${ref}`));
+      const info: BranchReviewInfo = { branch, ref, base: A, head, reviewed: null, since: null };
+      return Promise.resolve({ info, pair: { base: A, head } });
+    },
+    state: (info) => ({
+      read: (name) => Promise.resolve(saved.get(`${info.branch}@${info.head}:${name}`) ?? null),
+      write: (name, value) => {
+        saved.set(`${info.branch}@${info.head}:${name}`, value);
+        return Promise.resolve();
+      },
+    }),
+  };
+  const graphOf = ({ base, head }: Pair): Graph => ({
+    ...graph,
+    revisions: {
+      base: { ref: base, sha: base, mergeBase: null },
+      head: { ref: head, sha: head },
+      from: base,
+    },
+  });
+  let server: ViewServer;
+
+  beforeAll(async () => {
+    mkdirSync(join(viewer, 'assets'));
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs,
+        readFile: () => Promise.resolve(''),
+        state: () => ({
+          read: () => Promise.resolve('pair state'),
+          write: () => Promise.resolve(),
+        }),
+        reviews,
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+
+  const get = async (path: string) => {
+    const response = await fetch(new URL(path, server.url), { redirect: 'manual' });
+    return {
+      status: response.status,
+      location: response.headers.get('location'),
+      body: await response.text(),
+    };
+  };
+  const send = (
+    method: string,
+    path: string,
+    body: unknown,
+    headers: Record<string, string> = {},
+  ) =>
+    fetch(new URL(path, server.url), {
+      method,
+      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      body: JSON.stringify(body),
+    });
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it("lists the reviewer's reviews", async () => {
+    expect(JSON.parse((await get('/api/reviews')).body)).toEqual({
+      defaultBranch: 'main',
+      reviewer: 'ada@example.com',
+      place: 'repository',
+      reviews: [],
+    });
+  });
+
+  it('starts a review and answers where it is; refuses what cannot be reviewed', async () => {
+    expect((await send('POST', '/api/reviews', { ref: 'wip' }, { 'x-cpr': '' })).status).toBe(403);
+    expect((await send('POST', '/api/reviews', { ref: 5 })).status).toBe(400);
+    const refused = await send('POST', '/api/reviews', { ref: 'main' });
+    expect(refused.status).toBe(400);
+    expect(await refused.text()).toBe('main is the default branch');
+
+    const started = await send('POST', '/api/reviews', { ref: 'wip' });
+    expect(started.status).toBe(200);
+    expect(await started.json()).toEqual({ url: '/review/wip/' });
+    expect(runs.map((r) => r.pair)).toEqual([{ base: A, head: B }]);
+    // A branch's slashes stay in one path segment.
+    expect(await (await send('POST', '/api/reviews', { ref: 'milestone/v15' })).json()).toEqual({
+      url: '/review/milestone%2Fv15/',
+    });
+  });
+
+  it("serves the review's page: its graph, what it is, and its own state", async () => {
+    expect(await get('/review/wip')).toMatchObject({ status: 308, location: '/review/wip/' });
+    expect((await get('/review/wip/')).body).toBe('<html>viewer</html>');
+    expect(JSON.parse((await get('/review/wip/api/capabilities')).body)).toEqual({
+      sources: true,
+      review: null,
+      state: true,
+      commits: true,
+      branchReview: { branch: 'wip', ref: 'wip', base: A, head: B, reviewed: null, since: null },
+    });
+    expect((await get('/review/wip/api/graph')).status).toBe(202);
+    runs[0]?.resolve(graphOf({ base: A, head: B }));
+    await settle();
+    expect((await get('/review/wip/api/graph')).status).toBe(200);
+
+    expect(
+      (await send('PUT', '/review/wip/api/state/review', { 'src/math.ts#add': 'x' })).status,
+    ).toBe(204);
+    expect(saved.get(`wip@${B}:review`)).toEqual({ 'src/math.ts#add': 'x' });
+    expect(JSON.parse((await get('/review/wip/api/state/review')).body)).toEqual({
+      'src/math.ts#add': 'x',
+    });
+    // The same pair picked in compare mode keeps its own state.
+    expect(JSON.parse((await get(`/diff/${A}..${B}/api/state/review`)).body)).toBe('pair state');
+  });
+
+  it('resolves a review opened anew, and again when it is asked for again', async () => {
+    const before = resolved.length;
+    expect((await get('/review/topic/api/graph')).status).toBe(202);
+    expect(resolved.slice(before)).toEqual(['topic']);
+    await get('/review/topic/api/capabilities');
+    expect(resolved.slice(before)).toEqual(['topic']);
+
+    // The agent committed: asking again reviews the new tip.
+    tips.wip = C;
+    await send('POST', '/api/reviews', { ref: 'wip' });
+    expect(JSON.parse((await get('/review/wip/api/capabilities')).body)).toMatchObject({
+      branchReview: { head: C },
+    });
+  });
+
+  it('says why a review cannot be opened', async () => {
+    expect(await get('/review/nope/api/graph')).toMatchObject({
+      status: 404,
+      body: JSON.stringify({ error: 'no branch nope' }),
+    });
+    expect((await get('/review/%E0%A4/api/graph')).status).toBe(400);
   });
 });
 
