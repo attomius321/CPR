@@ -24,7 +24,7 @@ const git = (...args: string[]) =>
 const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Start a feature' });
 const brief = (page: Page) => dialog(page).getByLabel('What should the agent build?');
-const branch = (page: Page) => dialog(page).getByLabel('Branch');
+const branch = (page: Page) => dialog(page).getByRole('textbox', { name: 'Branch', exact: true });
 const row = (page: Page, subject: string) =>
   page.locator('.commit', {
     has: page.locator('.commit-subject').getByText(subject, { exact: true }),

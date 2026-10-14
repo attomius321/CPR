@@ -1883,7 +1883,8 @@ kbd {
   color: var(--panel);
 }
 
-.compare-mode kbd {
+.compare-mode kbd,
+.start-feature kbd {
   padding: 0 5px;
   border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
   border-radius: 4px;
@@ -1892,11 +1893,20 @@ kbd {
   font-weight: normal;
 }
 
-/* "Start a feature" (V18): beside Compare mode, in the colour of something added. */
+/* The header's actions, at its right: "Start a feature" (V18), then Compare mode. */
+.commits-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* "Start a feature" (V18), in the colour of something added. */
 .start-feature {
   display: inline-flex;
   align-items: center;
-  padding: 1px 10px;
+  gap: 6px;
+  padding: 1px 6px 1px 10px;
   border: 1px solid color-mix(in srgb, var(--added) 45%, var(--line));
   border-radius: 6px;
   background: color-mix(in srgb, var(--added) 9%, var(--panel));

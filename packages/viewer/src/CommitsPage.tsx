@@ -854,26 +854,29 @@ function History({
             <span className="commits-help">
               {comparing
                 ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
-                : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch · n starts a feature'}
+                : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch'}
             </span>
-            <button
-              type="button"
-              className="start-feature"
-              title="Start a feature: a branch, its worktree and an agent (n)"
-              onClick={() => openFeature()}
-            >
-              Start a feature
-            </button>
-            <button
-              type="button"
-              className="compare-mode"
-              aria-pressed={comparing}
-              title={comparing ? 'Leave compare mode (Esc)' : 'Pick commits to compare (x)'}
-              onClick={() => (comparing ? stopComparing() : onComparing(true))}
-            >
-              Compare mode
-              <kbd aria-hidden="true">{comparing ? 'Esc' : 'x'}</kbd>
-            </button>
+            <span className="commits-actions">
+              <button
+                type="button"
+                className="start-feature"
+                title="Start a feature: a branch, its worktree and an agent (n)"
+                onClick={() => openFeature()}
+              >
+                Start a feature
+                <kbd aria-hidden="true">n</kbd>
+              </button>
+              <button
+                type="button"
+                className="compare-mode"
+                aria-pressed={comparing}
+                title={comparing ? 'Leave compare mode (Esc)' : 'Pick commits to compare (x)'}
+                onClick={() => (comparing ? stopComparing() : onComparing(true))}
+              >
+                Compare mode
+                <kbd aria-hidden="true">{comparing ? 'Esc' : 'x'}</kbd>
+              </button>
+            </span>
           </h1>
           {notice && (
             <p className="checkout-notice" role="status">
