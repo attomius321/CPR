@@ -2013,3 +2013,33 @@ repository with a bare remote: `git push origin <sha>:refs/heads/<branch>` pushe
 and no later one, updates `origin/<branch>`, creates a missing branch (then the upstream can be
 set), and a push that is not a fast-forward is refused with git's message. So Approve pushes the
 reviewed SHA, never the branch name, never forced.
+
+## V16 — Finish a review (2026-10-14, branch `milestone/v16-finish-review`)
+
+A branch review ends with a verdict in the Review tab — Approve, Request changes or Comment —
+recorded with its comments in the review's JSON (`verdicts`), where the agent reads them; "Copy
+for the agent" puts them on the clipboard as text. Approve pushes the reviewed commit by SHA,
+never forced; newer commits stay local. The default branch is reviewable from where it was last
+pushed. `cpr pr` is unchanged.
+
+**Learned**:
+- The user preferred JSON to a Markdown feedback file: one file holds the review and its
+  outcome, with fields a script can read; the text for a chat is rendered from it.
+- `git push <remote> <sha>:refs/heads/<branch>` is the safe push for a review: it sends the
+  commit reviewed and no later one, updates the remote-tracking ref, creates a missing branch,
+  and git refuses what is not a fast-forward — checked against a bare remote before planning.
+- A draft already knows its symbol: sending it is exact, where mapping a line back to a symbol
+  on the server would guess at nested ranges.
+- `toReview` folds line-less drafts into the summary for a forge; a local verdict keeps them as
+  comments, so the agent gets each with its symbol.
+- A test that ends right after a verdict races the viewer's save of the cleared drafts with the
+  fixture's cleanup (`ENOTEMPTY`): the cleanup retries.
+- A screenshot script that pressed `c` before the code loaded lost nothing but added nothing:
+  the panel waits for the code to know the line (`cpr pr`'s rule).
+
+**Verification**: tests first (core, CLI, server, viewer failed before the code). 599 unit
+tests, 69 e2e. On a clone of this repository with a local bare `origin`: `v12` reviewed with
+three comments, Request changes in 12 ms (three code lines in the verdict), Approve with the push
+in 73 ms (`origin` at the reviewed commit, upstream set, `git status` clean). Screenshots light
+and dark. No analysis code changed. Not verified: remotes that need credentials, slow
+`pre-push` hooks, Windows, macOS, Firefox and Safari.

@@ -427,7 +427,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V13 ✅ | Compare mode | The commits page opened as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Merged: browse by default (a click selects the row; 25 rows in view instead of 23 at 1440 × 900), and a "Compare mode" toggle (or `x`) for picking, left with Escape; first rows as fast as `main`. See below. |
 | V14 ✅ | Checkout submenu | The row menu lists every target as a sentence: on Qwik's HEAD row 10 entries, each starting "Check out", 8 ending "(detached HEAD)", 480 px wide (its max); a remote branch's entry is 117 characters. The names are plain text mid-sentence, while the rows draw them as coloured badges. Merged: "Check out ▸" with the targets in a submenu on hover (or c), each name as the row's badge with a muted note (Qwik's HEAD row: 10 badges in a 368 px column); the confirmation's heading with the name as a badge. See below. |
 | V15 ✅ | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Merged: "Review ▸" in the row menu (or r) compares a branch's fork point with its tip, marks kept across new commits (on a clone, 83 of 83 after one more commit, 2 symbols left); reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; "✓" or "+n" on reviewed branches' badges, a dot on commits added since. See below. |
-| V16 | Finish a review | A branch review has no end: outside `cpr pr` the reviewer can only mark symbols (the reviewer's V15 review: 86 of 87 marked, 0 comments, none possible), feedback to the agent goes through chat without a place, badges show no outcome, and approved work is pushed by hand. Planned: comments and the Review tab on branch reviews; Approve, Request changes or Comment recorded with its comments in the review's JSON ("✓", "✗", "+n" on badges); Approve pushes the reviewed commit, by SHA; the default branch reviewable from where it was last pushed; `cpr pr` unchanged. See below. |
+| V16 | Finish a review | A branch review has no end: outside `cpr pr` the reviewer can only mark symbols (the reviewer's V15 review: 86 of 87 marked, 0 comments, none possible), feedback to the agent goes through chat without a place, badges show no outcome, and approved work is pushed by hand. Built, not merged: comments and the Review tab on branch reviews; Approve, Request changes or Comment recorded with its comments in the review's JSON ("✓", "✗", "+n" on badges); Approve pushes the reviewed commit, by SHA; the default branch reviewable from where it was last pushed; `cpr pr` unchanged. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -3920,7 +3920,8 @@ and Safari; first rows drawn (not re-measured: the reviews request runs beside t
 
 ### V16 — Finish a review: verdict, feedback for the agent, push on approval
 
-**Status:** planned (2026-10-14), on branch `milestone/v16-finish-review`; not started.
+**Status:** implemented (2026-10-14) on branch `milestone/v16-finish-review`; not merged yet.
+As built and results: "As built — V16" below.
 
 **Problem** (asked, after reviewing V15 in the viewer: "how to end review?"; then "Yes, plan
 it"; then: "Wouldn't it be better to save it as a JSON instead of md? … This would work locally,
@@ -4095,8 +4096,8 @@ on branch reviews, badges, copy, push results), on one branch.
 
 | # | Milestone | Output |
 |---|---|---|
-| V16a | Verdict, push, the default branch | Local review target; `verdicts` with comments in the review JSON; Approve pushes the reviewed commit; the default branch reviewable from its upstream; verdicts in `/api/reviews`. |
-| V16b | Finish from the viewer | Comments and the Review tab on branch reviews ("Finish review", "Approve and push N commits to origin/x"); "✓", "✗", "…", "+n" on badges; "Copy for the agent"; push results and "Push again"; README note for agents. |
+| V16a ✅ | Verdict, push, the default branch | Local review target; `verdicts` with comments in the review JSON; Approve pushes the reviewed commit; the default branch reviewable from its upstream; verdicts in `/api/reviews`. |
+| V16b ✅ | Finish from the viewer | Comments and the Review tab on branch reviews ("Finish review", "Approve and push N commits to origin/x"); "✓", "✗", "…", "+n" on badges; "Copy for the agent"; push results and "Push again"; README note for agents. |
 
 **Proposed decisions**:
 
@@ -4112,6 +4113,47 @@ on branch reviews, badges, copy, push results), on one branch.
 **Not in V16 (later)**: comments and verdicts on compare-mode pairs and `cpr view <base>
 <head>` (no branch to push); copying the verdict into the agent's own worktree; an agent marking
 comments answered by `id`; posting a branch review to a forge once a pull request exists.
+
+#### As built — V16
+
+- **Comments know their symbol from the draft**, not from a line range on the server as
+  planned: a draft is written on a symbol, so `toLocalReview` sends its `symbol` and `id`, and
+  the server checks the symbol against the graph and the line as for a forge (`parseReview`,
+  reused, its errors renamed per comment). Drafts without a line stay structured comments, where
+  `toReview` (for a forge) folds them into the summary.
+- **Core** (`src/git/branches.ts`): `upstreamOf` (`%(upstream:remotename)` and
+  `%(upstream:remoteref)`), `listRemotes`, `pushCommit` (a SHA to `refs/heads/<branch>`, names
+  checked, git's refusal as `PushRefused`), `setUpstream`, `mergeBase`; no analysis change.
+- **The push target**: the local branch's upstream, else the remote branch reviewed (a review
+  of `origin/topic`: already there, so nothing is pushed), else `origin/<branch>`. The count on
+  the button ("Approve and push 3 commits") is computed when the review is opened; the push
+  itself looks again.
+- **"Copy for the agent"** is in the note after finishing only; the plan also put it in the
+  review page's header while changes are requested (later: the verdict is in the file).
+- **Marks**: V15's "✓" (something marked at the tip) is now "…"; "✓" means approved.
+- A comment typed while the symbol's code is still loading is not added on Ctrl+Enter (the text
+  stays in the box): `cpr pr`'s behaviour, unchanged, seen while taking screenshots.
+- The e2e agent fixture has a bare `origin` with `main` pushed and tracked; its cleanup retries,
+  since the server may still be saving the cleared drafts when the test ends.
+
+**Results (V16)**. Tests first: core 3 of 3, CLI 6 of 6 (5 new and V15's resolve test), server
+2, viewer 6 failed before the code. Now 599 unit tests (12 new) and 69 e2e (2 new: a comment on
+`square` and Request changes — the verdict in the JSON, drafts cleared, "✗", the clipboard's
+text, nothing pushed —, the agent's fix ("+1"), Approve and push (`origin/agent` at the fix,
+"✓"); the agent's commit on `main` reviewed from `origin/main` and pushed). `cpr pr`'s review
+tests unchanged.
+
+On a clone of this repository with a local bare `origin` (`main` at `d67a5d6`), through `cpr
+view`'s API: reviewing `v12` (`86dcb60`, 6 commits to push) with three comments, one on the base
+side, Request changes took 12 ms and recorded the verdict with its three code lines; Approve took
+73 ms with the push: the bare `origin` had `v12` at `86dcb60`, the upstream was set, `git
+status` stayed clean, and `/api/reviews` reported the approval as pushed. Screenshots light and
+dark: the Review tab with a comment and Request changes chosen, the note after finishing, the
+commits page with "✓" on `v12` and `origin/v12` and "✗" on branches with changes requested; no
+page errors.
+
+Not verified: remotes that need credentials (prompts are off, so git's message is shown) and
+slow `pre-push` hooks; Windows and macOS; the clipboard in Firefox and Safari.
 
 ### Phase 1 milestones
 
