@@ -4,8 +4,8 @@ import { isAbsolute, join, posix, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CprError, PLUGIN_API_VERSION, type TsPlugin } from '@cpr/core';
 
-/** The project's CPR settings, at the repository root. */
-export const CONFIG_FILE = 'cpr.config.json';
+/** The project's CPR settings: in `cpr/` (V15), else the older file at the repository root. */
+export const CONFIG_FILES = ['cpr/config.json', 'cpr.config.json'] as const;
 
 /** A plugin to load and the folder its path is relative to. */
 interface PluginRequest {
@@ -16,7 +16,8 @@ interface PluginRequest {
 }
 
 /**
- * Loads the plugins asked for in `cpr.config.json` (paths relative to the repo root) and by
+ * Loads the plugins asked for in `cpr/config.json` or `cpr.config.json` (paths relative to the
+ * repo root) and by
  * `--plugin` (relative to the working folder). A short name like `angular` is the package
  * `@cpr/plugin-angular`, looked up in the project first and then next to the CLI.
  */
@@ -24,8 +25,9 @@ export async function loadPlugins(
   flags: readonly string[],
   { cwd, repoRoot }: { cwd: string; repoRoot: string },
 ): Promise<TsPlugin[]> {
+  const config = readConfig(repoRoot);
   const requests: PluginRequest[] = [
-    ...readConfig(repoRoot).map((spec) => ({ spec, from: repoRoot, origin: CONFIG_FILE })),
+    ...config.plugins.map((spec) => ({ spec, from: repoRoot, origin: config.file })),
     ...flags.map((spec) => ({ spec, from: cwd, origin: '--plugin' })),
   ];
   const plugins: TsPlugin[] = [];
@@ -43,25 +45,25 @@ export async function loadPlugins(
   return plugins;
 }
 
-/** The `plugins` of `cpr.config.json`, if the file exists. */
-function readConfig(repoRoot: string): string[] {
-  const path = join(repoRoot, CONFIG_FILE);
-  if (!existsSync(path)) return [];
+/** The `plugins` of the first config file that exists, and its name. */
+function readConfig(repoRoot: string): { file: string; plugins: string[] } {
+  const file = CONFIG_FILES.find((name) => existsSync(join(repoRoot, name)));
+  if (!file) return { file: CONFIG_FILES[0], plugins: [] };
   let config: unknown;
   try {
-    config = JSON.parse(readFileSync(path, 'utf8'));
+    config = JSON.parse(readFileSync(join(repoRoot, file), 'utf8'));
   } catch (error) {
-    throw new CprError(`${CONFIG_FILE}: ${(error as Error).message}`, { cause: error });
+    throw new CprError(`${file}: ${(error as Error).message}`, { cause: error });
   }
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
-    throw new CprError(`${CONFIG_FILE}: expected an object like { "plugins": ["angular"] }`);
+    throw new CprError(`${file}: expected an object like { "plugins": ["angular"] }`);
   }
   const plugins = (config as { plugins?: unknown }).plugins;
-  if (plugins === undefined) return [];
+  if (plugins === undefined) return { file, plugins: [] };
   if (!Array.isArray(plugins) || !plugins.every((p) => typeof p === 'string' && p !== '')) {
-    throw new CprError(`${CONFIG_FILE}: "plugins" must be a list of plugin names or paths`);
+    throw new CprError(`${file}: "plugins" must be a list of plugin names or paths`);
   }
-  return plugins as string[];
+  return { file, plugins: plugins as string[] };
 }
 
 /** `angular` → `@cpr/plugin-angular`; scoped or qualified names stay as they are. */

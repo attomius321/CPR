@@ -6,6 +6,7 @@ import {
   CheckoutRefused,
   HISTORY_SCOPES,
   UnknownCheckoutTarget,
+  type BranchReviewInfo,
   type CheckoutResult,
   type CheckoutTarget,
   type Graph,
@@ -17,6 +18,7 @@ import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
 import type { OpenRequest, OpenResult } from './editor.js';
 import type { Histories } from './history.js';
+import { ReviewRefused, type BranchReviews } from './reviews.js';
 
 export type Side = 'base' | 'head';
 
@@ -54,6 +56,8 @@ export interface RepositoryOptions {
   readFile(sha: string, path: string): Promise<string>;
   /** Where a diff's review state is kept; without it the viewer keeps state in the browser. */
   state?: (graph: Graph) => StateStore;
+  /** Branch reviews (V15): `/api/reviews`, and each review under `/review/<branch>/`. */
+  reviews?: BranchReviews;
 }
 
 export interface ViewServerOptions {
@@ -108,6 +112,8 @@ const SHA = '[0-9a-f]{40}(?:[0-9a-f]{24})?';
 const FULL_SHA = new RegExp(`^${SHA}$`);
 /** `/diff/<base>..<head>` and what follows: the viewer's own files and API, for that diff. */
 const DIFF_PATH = new RegExp(`^/diff/(${SHA})\\.\\.(${SHA})(/.*)?$`);
+/** `/review/<branch, URL-encoded>` and what follows: a branch's review, as a diff's page. */
+const REVIEW_PATH = /^\/review\/([^/]+)(\/.*)?$/;
 
 /**
  * Serves the viewer, `/api/graph` and `/api/source` on localhost only: one graph at `/`
@@ -132,6 +138,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       : undefined;
   // One site per diff graph, made once: `allowed` walks the whole graph.
   const sites = new WeakMap<Graph, Site>();
+  // Branch reviews: the one each branch's page shows (resolved when asked for, or opened), and
+  // a site per graph and branch, whose state is the branch's review.
+  const opened = new Map<string, { info: BranchReviewInfo; pair: Pair }>();
+  const reviewSites = new WeakMap<Graph, Map<string, Site>>();
   let hosts: Set<string> = new Set();
   let checkingOut = false;
   const server = createServer((req, res) => {
@@ -148,6 +158,21 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         // Relative URLs in the viewer need the trailing slash.
         if (rest === undefined) return redirect(res, `${url.pathname}/${url.search}`);
         return serveDiff(req, res, url, rest, repository, { base, head });
+      }
+      const review = repository.reviews ? REVIEW_PATH.exec(url.pathname) : null;
+      if (review && repository.reviews) {
+        const [, encoded = '', rest] = review;
+        let branch: string;
+        try {
+          branch = decodeURIComponent(encoded);
+        } catch {
+          return send(res, 400, 'not a branch name');
+        }
+        if (rest === undefined) return redirect(res, `${url.pathname}/${url.search}`);
+        return serveReview(req, res, url, rest, repository, repository.reviews, branch);
+      }
+      if (url.pathname === '/api/reviews' && repository.reviews) {
+        return reviewsApi(req, res, repository, repository.reviews);
       }
       if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
       if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
@@ -168,6 +193,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     path: string,
     site: Site | undefined,
     diff = false,
+    branchReview?: BranchReviewInfo,
   ): Promise<void> {
     if (path === '/api/review') return postReview(req, res, site);
     if (path.startsWith('/api/state/')) {
@@ -180,9 +206,14 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       const capabilities = {
         sources: site !== undefined || diff,
         review: site?.review ? { forge: site.review.forge } : null,
-        state: diff ? repository?.state !== undefined : site?.state !== undefined,
+        state: branchReview
+          ? true
+          : diff
+            ? repository?.state !== undefined
+            : site?.state !== undefined,
         ...(options.open && (site !== undefined || diff) ? { open: true } : {}),
         ...(repository ? { commits: true } : {}),
+        ...(branchReview ? { branchReview } : {}),
       };
       return send(res, 200, JSON.stringify(capabilities), TYPES['.json']);
     }
@@ -229,17 +260,93 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     path: string,
     repo: RepositoryOptions,
     pair: Pair,
+    review?: { info: BranchReviewInfo; reviews: BranchReviews },
   ): Promise<void> {
     const status = repo.diffs.status(pair);
     if (status?.status === 'done') {
-      return serveSite(req, res, url, path, diffSite(repo, status.graph), true);
+      const site = review
+        ? reviewSite(repo, status.graph, review.info, review.reviews)
+        : diffSite(repo, status.graph);
+      return serveSite(req, res, url, path, site, true, review?.info);
     }
     if (path === '/api/graph' && req.method === 'GET') {
       if (!status) return json(res, 404, { ...pair, error: 'not analyzed' });
       if (status.status === 'failed') return json(res, 502, { ...pair, error: status.error });
       return json(res, 202, { ...pair, ...status });
     }
-    return serveSite(req, res, url, path, undefined, true);
+    return serveSite(req, res, url, path, undefined, true, review?.info);
+  }
+
+  /**
+   * A branch review's page: the diff from its fork point to its tip, its state the branch's
+   * review. Opened anew (a reload, a new `cpr view`), the branch is resolved here.
+   */
+  async function serveReview(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    path: string,
+    repo: RepositoryOptions,
+    reviews: BranchReviews,
+    branch: string,
+  ): Promise<void> {
+    let review = opened.get(branch);
+    if (!review) {
+      try {
+        review = await reviews.resolve(branch);
+      } catch (error) {
+        if (!(error instanceof ReviewRefused)) throw error;
+        if (path === '/api/graph') return json(res, 404, { error: error.message });
+        return serveSite(req, res, url, path, undefined, true);
+      }
+      opened.set(branch, review);
+      repo.diffs.start(review.pair);
+    }
+    return serveDiff(req, res, url, path, repo, review.pair, { info: review.info, reviews });
+  }
+
+  function reviewSite(
+    repo: RepositoryOptions,
+    graph: Graph,
+    info: BranchReviewInfo,
+    reviews: BranchReviews,
+  ): Site {
+    let byBranch = reviewSites.get(graph);
+    if (!byBranch) reviewSites.set(graph, (byBranch = new Map<string, Site>()));
+    let site = byBranch.get(info.branch);
+    if (!site) {
+      site = { ...diffSite(repo, graph), state: reviews.state(info) };
+      byBranch.set(info.branch, site);
+    }
+    return site;
+  }
+
+  /** `GET`: the reviewer's branch reviews. `POST { ref }`: starts one; answers where it is. */
+  async function reviewsApi(
+    req: IncomingMessage,
+    res: ServerResponse,
+    repo: RepositoryOptions,
+    reviews: BranchReviews,
+  ): Promise<void> {
+    if (req.method === 'GET') return json(res, 200, await reviews.list());
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let ref: string;
+    try {
+      ref = parseRef(await readBody(req, MAX_BODY_BYTES));
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    let review: { info: BranchReviewInfo; pair: Pair };
+    try {
+      review = await reviews.resolve(ref);
+    } catch (error) {
+      if (error instanceof ReviewRefused) return send(res, 400, error.message);
+      throw error;
+    }
+    opened.set(review.info.branch, review);
+    repo.diffs.start(review.pair);
+    return json(res, 200, { url: `/review/${encodeURIComponent(review.info.branch)}/` });
   }
 
   function diffSite(repo: RepositoryOptions, graph: Graph): Site {
@@ -528,6 +635,13 @@ function count(text: string): number | null {
 function redirect(res: ServerResponse, location: string): void {
   res.writeHead(308, { location, 'cache-control': 'no-store' });
   res.end();
+}
+
+/** `{ ref }`: a branch or remote branch name. */
+function parseRef(text: string): string {
+  const ref = (JSON.parse(text) as { ref?: unknown } | null)?.ref;
+  if (typeof ref !== 'string' || ref === '' || ref.length > 255) throw new Error('ref: a branch');
+  return ref;
 }
 
 /** `{ base, head }`: two full SHAs. */

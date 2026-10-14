@@ -1,0 +1,292 @@
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { openRepo } from '@cpr/core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
+import {
+  branchReviews,
+  GITIGNORE,
+  readReview,
+  reviewPath,
+  reviewPlace,
+  ReviewRefused,
+  serializeReview,
+  type BranchReviewFile,
+} from '../src/reviews.js';
+
+/**
+ * main: A ── B ── M; agent: B ── W1 ── W2 (a branch written by an agent), and origin/topic at W1
+ * with no local branch; origin/HEAD names main. The reviewer is ada@example.com.
+ */
+function agentRepo() {
+  const repo = createRepo();
+  const commit = (name: string, content = `export const ${name} = 1;\n`) => {
+    repo.write({ [`src/${name}.ts`]: content });
+    return repo.commit(name);
+  };
+  commit('A');
+  const B = commit('B');
+  repo.git('switch', '--quiet', '--create', 'agent');
+  const W1 = commit('W1');
+  const W2 = commit('W2');
+  repo.git('switch', '--quiet', 'main');
+  const M = commit('M');
+  repo.git('remote', 'add', 'origin', 'https://example.com/never-fetched.git');
+  repo.git('update-ref', 'refs/remotes/origin/main', M);
+  repo.git('update-ref', 'refs/remotes/origin/topic', W1);
+  repo.git('symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main');
+  repo.git('config', 'user.email', 'ada@example.com');
+  return { repo, shas: { B, W1, W2, M } };
+}
+
+const repos: TestRepo[] = [];
+const caches: string[] = [];
+let cache: string;
+beforeEach(() => {
+  // The developer's own git config (user.email) must not leak in.
+  vi.stubEnv('GIT_CONFIG_GLOBAL', '/dev/null');
+  vi.stubEnv('GIT_CONFIG_NOSYSTEM', '1');
+  cache = tempDir();
+  caches.push(cache);
+});
+afterEach(() => {
+  for (const repo of repos.splice(0)) repo.cleanup();
+  for (const dir of caches.splice(0)) rmSync(dir, { recursive: true, force: true });
+  vi.unstubAllEnvs();
+});
+const fresh = () => {
+  const made = agentRepo();
+  repos.push(made.repo);
+  return made;
+};
+const NOW = new Date('2026-10-14T10:12:00Z');
+
+describe('reviewPath', () => {
+  it("nests a branch's folders and names the file by its reviewer", () => {
+    expect(reviewPath('/r', 'milestone/v14-checkout', 'ada@example.com')).toBe(
+      join('/r', 'milestone', 'v14-checkout', 'ada@example.com.json'),
+    );
+    expect(reviewPath('/r', 'wip', 'odd/name@x y')).toBe(join('/r', 'wip', 'odd_name@x_y.json'));
+    expect(() => reviewPath('/r', '../out', 'ada@example.com')).toThrow();
+  });
+});
+
+describe('serializeReview', () => {
+  it('writes sorted keys, one mark per line: the same review gives the same bytes', () => {
+    const review: BranchReviewFile = {
+      updated: '2026-10-14T10:12:00Z',
+      summary: '',
+      reviewer: 'ada@example.com',
+      marks: { 'src/b.ts#b': '2', 'src/a.ts#a': '1' },
+      head: 'h',
+      drafts: [{ symbol: 'src/a.ts#a', body: 'why?', id: 'x' }],
+      branch: 'agent',
+      base: 'b',
+    };
+    const text = serializeReview(review);
+    expect(text).toBe(
+      [
+        '{',
+        '  "base": "b",',
+        '  "branch": "agent",',
+        '  "drafts": [',
+        '    {',
+        '      "body": "why?",',
+        '      "id": "x",',
+        '      "symbol": "src/a.ts#a"',
+        '    }',
+        '  ],',
+        '  "head": "h",',
+        '  "marks": {',
+        '    "src/a.ts#a": "1",',
+        '    "src/b.ts#b": "2"',
+        '  },',
+        '  "reviewer": "ada@example.com",',
+        '  "summary": "",',
+        '  "updated": "2026-10-14T10:12:00Z"',
+        '}',
+        '',
+      ].join('\n'),
+    );
+    expect(serializeReview(JSON.parse(text) as BranchReviewFile)).toBe(text);
+  });
+});
+
+describe('readReview', () => {
+  it('reads a review, and nothing from a missing or invalid file', async () => {
+    const dir = tempDir();
+    caches.push(dir);
+    expect(await readReview(join(dir, 'none.json'))).toBeNull();
+    writeFileSync(join(dir, 'bad.json'), '{ not json');
+    expect(await readReview(join(dir, 'bad.json'))).toBeNull();
+    writeFileSync(join(dir, 'odd.json'), '[]');
+    expect(await readReview(join(dir, 'odd.json'))).toBeNull();
+  });
+});
+
+describe('reviewPlace', () => {
+  it('is cpr/reviews/ as the git user, else the cache with why', async () => {
+    const { repo } = fresh();
+    const open = await openRepo(repo.root);
+    expect(await reviewPlace(open, cache)).toEqual({
+      dir: join(repo.root, 'cpr', 'reviews'),
+      reviewer: 'ada@example.com',
+      place: 'repository',
+      gitignore: join(repo.root, 'cpr', '.gitignore'),
+    });
+    // The project's own cpr/config.json is CPR's: still the repository.
+    repo.write({ 'cpr/config.json': '{ "plugins": [] }\n' });
+    repo.commit('config');
+    expect((await reviewPlace(open, cache)).place).toBe('repository');
+
+    repo.git('config', '--unset', 'user.email');
+    expect(await reviewPlace(open, cache)).toMatchObject({
+      dir: join(cache, 'state', open.id, 'reviews'),
+      reviewer: 'local',
+      place: 'cache',
+      note: expect.stringContaining('git config user.email') as string,
+    });
+  });
+
+  it("leaves a project's own cpr/ folder alone", async () => {
+    const { repo } = fresh();
+    repo.write({ 'cpr/__init__.py': '' });
+    repo.commit('a package named cpr');
+    const open = await openRepo(repo.root);
+    expect(await reviewPlace(open, cache)).toMatchObject({
+      place: 'cache',
+      reviewer: 'ada@example.com',
+      note: expect.stringContaining('cpr/') as string,
+    });
+  });
+});
+
+describe('branchReviews', () => {
+  it('reviews a branch from its fork point to its tip', async () => {
+    const { repo, shas } = fresh();
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    expect(await reviews.resolve('agent')).toEqual({
+      info: {
+        branch: 'agent',
+        ref: 'agent',
+        base: shas.B,
+        head: shas.W2,
+        reviewed: null,
+        since: null,
+      },
+      pair: { base: shas.B, head: shas.W2 },
+    });
+    // A remote branch is its branch name; one with no local branch is found by that name too.
+    expect((await reviews.resolve('origin/topic')).info).toMatchObject({
+      branch: 'topic',
+      ref: 'origin/topic',
+      head: shas.W1,
+    });
+    expect((await reviews.resolve('topic')).info.ref).toBe('origin/topic');
+  });
+
+  it('refuses unknown refs, the default branch and merged branches', async () => {
+    const { repo } = fresh();
+    repo.git('branch', 'done', 'main~1');
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    await expect(reviews.resolve('nope')).rejects.toThrow(ReviewRefused);
+    await expect(reviews.resolve('-x')).rejects.toThrow(ReviewRefused);
+    await expect(reviews.resolve('main')).rejects.toThrow(/default branch/);
+    await expect(reviews.resolve('origin/main')).rejects.toThrow(/default branch/);
+    await expect(reviews.resolve('done')).rejects.toThrow(/merged into main/);
+  });
+
+  it('keeps marks and drafts in cpr/reviews/, out of git, and never stages them', async () => {
+    const { repo, shas } = fresh();
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    const { info } = await reviews.resolve('agent');
+    const store = reviews.state(info);
+    expect(await store.read('review')).toBeNull();
+    expect(await store.read('drafts')).toBeNull();
+
+    await store.write('review', { 'src/W1.ts#W1': 'x|y' });
+    await store.write('drafts', { drafts: [{ id: 'd1', body: 'why?' }], body: 'Looks fine' });
+    const file = join(repo.root, 'cpr', 'reviews', 'agent', 'ada@example.com.json');
+    expect(await readReview(file)).toEqual({
+      base: shas.B,
+      branch: 'agent',
+      drafts: [{ id: 'd1', body: 'why?' }],
+      head: shas.W2,
+      marks: { 'src/W1.ts#W1': 'x|y' },
+      reviewer: 'ada@example.com',
+      summary: 'Looks fine',
+      updated: NOW.toISOString(),
+    });
+    expect(await store.read('review')).toEqual({ 'src/W1.ts#W1': 'x|y' });
+    expect(await store.read('drafts')).toEqual({
+      drafts: [{ id: 'd1', body: 'why?' }],
+      body: 'Looks fine',
+    });
+
+    // Out of git: nothing to commit, nothing staged.
+    expect(readFileSync(join(repo.root, 'cpr', '.gitignore'), 'utf8')).toBe(GITIGNORE);
+    expect(repo.git('status', '--porcelain', '--untracked-files=all')).toBe('');
+    // Deleting cpr/.gitignore shares them: the review is an untracked file like any other.
+    rmSync(join(repo.root, 'cpr', '.gitignore'));
+    expect(repo.git('status', '--porcelain', '--untracked-files=all')).toBe(
+      '?? cpr/reviews/agent/ada@example.com.json',
+    );
+  });
+
+  it('never changes an existing cpr/.gitignore', async () => {
+    const { repo } = fresh();
+    repo.write({ 'cpr/.gitignore': '# ours\n' });
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    const { info } = await reviews.resolve('agent');
+    await reviews.state(info).write('review', {});
+    expect(readFileSync(join(repo.root, 'cpr', '.gitignore'), 'utf8')).toBe('# ours\n');
+  });
+
+  it('says what came after the last review, on the page and on the commits page', async () => {
+    const { repo, shas } = fresh();
+    const open = await openRepo(repo.root);
+    const reviews = branchReviews(open, cache, { now: () => NOW });
+    // Reviewed at W1 (the agent had made one commit), then the agent added W2.
+    const first = await reviews.resolve('agent');
+    await reviews.state({ ...first.info, head: shas.W1 }).write('review', { 'src/W1.ts#W1': 'x' });
+
+    expect((await reviews.resolve('agent')).info).toMatchObject({ reviewed: shas.W1, since: 1 });
+    expect(await reviews.list()).toEqual({
+      defaultBranch: 'main',
+      reviewer: 'ada@example.com',
+      place: 'repository',
+      reviews: [
+        {
+          branch: 'agent',
+          base: shas.B,
+          head: shas.W1,
+          updated: NOW.toISOString(),
+          marks: 1,
+          refs: [{ name: 'agent', tip: shas.W2, since: 1 }],
+          added: [shas.W2],
+        },
+      ],
+    });
+
+    // Reviewed at the tip: nothing since.
+    await reviews.state(first.info).write('review', { 'src/W1.ts#W1': 'x' });
+    expect((await reviews.resolve('agent')).info).toMatchObject({ reviewed: shas.W2, since: 0 });
+    expect((await reviews.list()).reviews[0]).toMatchObject({
+      refs: [{ name: 'agent', tip: shas.W2, since: 0 }],
+      added: [],
+    });
+  });
+
+  it('keeps reviews in the cache without a git user, and says so', async () => {
+    const { repo } = fresh();
+    repo.git('config', '--unset', 'user.email');
+    const open = await openRepo(repo.root);
+    const reviews = branchReviews(open, cache, { now: () => NOW });
+    const { info } = await reviews.resolve('agent');
+    expect(info.note).toContain('git config user.email');
+    await reviews.state(info).write('review', { a: 'b' });
+    expect(existsSync(join(repo.root, 'cpr'))).toBe(false);
+    expect(existsSync(join(cache, 'state', open.id, 'reviews', 'agent', 'local.json'))).toBe(true);
+    expect((await reviews.list()).place).toBe('cache');
+  });
+});

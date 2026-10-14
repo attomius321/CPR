@@ -46,6 +46,7 @@ import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ReviewTarget } from './server.js';
 import { vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
+import { branchReviews } from './reviews.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -130,7 +131,7 @@ Options:
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
-                       read from "plugins" in cpr.config.json at the repo root)
+                       read from "plugins" in cpr/config.json at the repo root)
   -h, --help           Show this help
 `;
 
@@ -150,7 +151,7 @@ Options:
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
-                       read from "plugins" in cpr.config.json at the repo root)
+                       read from "plugins" in cpr/config.json at the repo root)
   -h, --help           Show this help
 `;
 
@@ -184,7 +185,7 @@ Options:
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
-                       read from "plugins" in cpr.config.json at the repo root)
+                       read from "plugins" in cpr/config.json at the repo root)
   -h, --help           Show this help
 `;
 
@@ -519,6 +520,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       diffs,
       readFile: (sha, path) => readFileAtRevision(repo, sha, path),
       state: (graph) => fileStateStore(stateDir(cacheDir, repo.id, graph)),
+      reviews: branchReviews(repo, cacheDir),
     },
     open: vsCodeOpener(repo, ctx.env),
   });

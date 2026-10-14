@@ -23,7 +23,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { flushSync } from 'react-dom';
-import type { Graph } from '@cpr/core';
+import type { BranchReviewInfo, Graph } from '@cpr/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import type { Loaded, Pair } from './commits.js';
 import { BackToCommits, CommitsPage, DiffProgress, fetchGraph, startDiff } from './CommitsPage.js';
@@ -86,6 +86,8 @@ type State =
       store: Store;
       commits: boolean;
       open: boolean;
+      /** A branch's review (V15): what it covers, and what came since the last one. */
+      branchReview?: BranchReviewInfo;
     };
 
 type Forge = 'github' | 'gitlab';
@@ -99,6 +101,8 @@ interface Capabilities {
   commits?: boolean;
   /** `cpr view`, `cpr pr`: `/api/open` opens a file of the change in VS Code. */
   open?: boolean;
+  /** `cpr view`: this page is a branch's review (V15). */
+  branchReview?: BranchReviewInfo;
 }
 
 /** How often a diff's page asks how its analysis is going. */
@@ -311,6 +315,7 @@ export function App() {
             store: capabilities?.state ? serverStore() : browserStore(graph),
             commits: !!capabilities?.commits,
             open: !!capabilities?.open,
+            ...(capabilities?.branchReview ? { branchReview: capabilities.branchReview } : {}),
           });
         } else if (loaded.kind === 'progress' || loaded.kind === 'failed') {
           setState({ status: 'analyzing', loaded });
@@ -425,6 +430,7 @@ export function App() {
       <header className="bar">
         <strong className="brand">CPR</strong>
         {state.status === 'ready' && state.commits && <BackToCommits />}
+        {state.status === 'ready' && state.branchReview && <ReviewOf review={state.branchReview} />}
         {state.status === 'ready' && <Summary graph={state.graph} />}
         <div className="spacer" />
         {state.status === 'ready' && (
@@ -753,6 +759,25 @@ async function fetchCapabilities(): Promise<Capabilities | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * "Review of wip · 2 commits since your last review" (V15); the commits compared follow, in the
+ * summary.
+ */
+function ReviewOf({ review }: { review: BranchReviewInfo }) {
+  const { branch, since, note } = review;
+  const after =
+    since === null
+      ? 'first review'
+      : since === 0
+        ? 'no commits since your last review'
+        : `${since} commit${since === 1 ? '' : 's'} since your last review`;
+  return (
+    <span className="review-of" {...(note ? { title: note } : {})}>
+      Review of <strong>{branch}</strong> · {after}
+    </span>
+  );
 }
 
 function Summary({ graph }: { graph: Graph }) {

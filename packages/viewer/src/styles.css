@@ -2233,3 +2233,39 @@ kbd {
 .open-note.open-error {
   color: var(--error);
 }
+
+/* ---- branch reviews (V15) -------------------------------------------------------------- */
+
+/* On a reviewed branch's badge: "✓" up to date, "+2" commits since the review. */
+.ref-review {
+  margin-left: 4px;
+  font-weight: 600;
+}
+
+.ref-head .ref-review {
+  color: inherit;
+}
+
+/* Before the subject of a commit added to a reviewed branch since its review. */
+.review-new {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-right: -4px;
+  border-radius: 50%;
+  background: var(--moved);
+}
+
+/* The diff page's header on a branch review. */
+.review-of {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.review-of strong {
+  color: var(--text);
+}

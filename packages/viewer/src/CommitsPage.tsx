@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import type {
+  BranchReviewList,
   CheckoutResult,
   CheckoutTarget,
   Commit,
@@ -18,7 +19,9 @@ import type {
   RepoStatus,
 } from '@cpr/core';
 import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
-import { CheckoutDialog, CheckoutMenu } from './CheckoutMenu.js';
+import { reviewChoices, reviewMarks, type ReviewChoice } from './branchReviews.js';
+import { CheckoutDialog } from './CheckoutDialog.js';
+import { RowMenu, type RowMenuItem } from './RowMenu.js';
 import {
   BLOCK,
   blocksAround,
@@ -104,6 +107,23 @@ export async function startDiff(pair: Pair): Promise<string> {
   return ((await response.json()) as { url: string }).url;
 }
 
+/** Starts reviewing a branch (V15); resolves with its page's URL, or rejects with why not. */
+async function startReview(ref: string): Promise<string> {
+  const response = await fetch(`${COMMITS_PAGE}api/reviews`, {
+    method: 'POST',
+    headers: WRITE_HEADERS,
+    body: JSON.stringify({ ref }),
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return ((await response.json()) as { url: string }).url;
+}
+
+/** The reviewer's branch reviews (V15); null when the server keeps none. */
+async function fetchReviews(): Promise<BranchReviewList | null> {
+  const response = await fetch(`${COMMITS_PAGE}api/reviews`);
+  return response.ok ? ((await response.json()) as BranchReviewList) : null;
+}
+
 async function stopDiff(pair: Pair): Promise<void> {
   await fetch(`${COMMITS_PAGE}api/diffs/stop`, {
     method: 'POST',
@@ -145,8 +165,8 @@ interface Notice {
  * The repository's history as a graph (V10): every branch, or the current one ("This branch",
  * `?scope=current`). A click selects a row. In compare mode (V13: its toggle, or x) a click (or
  * x) picks one end, another the other end; the older is the base. Compare (Enter) opens the
- * diff; one picked is compared with its parent. A row's menu (right-click, "⋯" or c) checks out
- * its branches, tags or the commit (V11).
+ * diff; one picked is compared with its parent. A row's menu (right-click, "⋯", c or r) checks
+ * out its branches, tags or the commit (V11), and reviews its branches (V15).
  */
 export function CommitsPage() {
   const [scope, setScope] = useState(scopeOfUrl);
@@ -210,12 +230,13 @@ function History({
   const scroller = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLOListElement>(null);
   const placed = useRef(false);
-  // A row's checkout menu, then its confirmation (V11).
+  // A row's menu (check out, review), then a checkout's confirmation (V11).
   const [menu, setMenu] = useState<{
     at: { x: number; y: number };
-    /** Opened with its "Check out" submenu shown (V14). */
-    submenu: boolean;
-    choices: CheckoutChoice[];
+    /** The submenu shown at first: `c` and `r` (V14, V15). */
+    open?: 'checkout' | 'review';
+    checkout: CheckoutChoice[];
+    review: ReviewChoice[];
     status: RepoStatus;
   } | null>(null);
   const [confirm, setConfirm] = useState<{ choice: CheckoutChoice; status: RepoStatus } | null>(
@@ -223,6 +244,28 @@ function History({
   );
   const [checkingOut, setCheckingOut] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
+
+  // Branch reviews (V15): marks on badges, dots on commits added since; read again when the
+  // page is back, since a review is made on another page.
+  const [reviews, setReviews] = useState<BranchReviewList | null>(null);
+  useEffect(() => {
+    let live = true;
+    const load = () => {
+      if (document.visibilityState === 'hidden') return;
+      fetchReviews()
+        .then((list) => live && setReviews(list))
+        .catch(() => {});
+    };
+    load();
+    window.addEventListener('focus', load);
+    document.addEventListener('visibilitychange', load);
+    return () => {
+      live = false;
+      window.removeEventListener('focus', load);
+      document.removeEventListener('visibilitychange', load);
+    };
+  }, []);
+  const marks = useMemo(() => reviewMarks(reviews), [reviews]);
 
   const failed = useCallback((e: unknown) => {
     if (e instanceof StaleHistory) setStale(true);
@@ -351,23 +394,65 @@ function History({
     }
   }, []);
 
-  /** Opens row `row`'s menu at a point of the window, its targets shown with `submenu`. */
-  const openMenu = useCallback((row: number, x: number, y: number, submenu = false) => {
-    const commit = details.current.get(row);
-    if (!commit) return;
-    setCursor(row);
-    Promise.all([fetchJson<RefList>('api/refs'), fetchJson<RepoStatus>('api/status')])
-      .then(([refs, status]) =>
-        setMenu({
-          at: { x, y },
-          submenu,
-          choices: checkoutChoices(commit, refs, status),
-          status,
-        }),
-      )
-      .catch((e: unknown) => setError(`Could not read the branches: ${(e as Error).message}`));
-  }, []);
+  /** Opens row `row`'s menu at a point of the window, the submenu `open` shown. */
+  const openMenu = useCallback(
+    (row: number, x: number, y: number, open?: 'checkout' | 'review') => {
+      const commit = details.current.get(row);
+      if (!commit) return;
+      setCursor(row);
+      Promise.all([
+        fetchJson<RefList>('api/refs'),
+        fetchJson<RepoStatus>('api/status'),
+        fetchReviews(),
+      ])
+        .then(([refs, status, list]) => {
+          if (list) setReviews(list);
+          setMenu({
+            at: { x, y },
+            ...(open ? { open } : {}),
+            checkout: checkoutChoices(commit, refs, status),
+            review: list ? reviewChoices(commit, refs, list) : [],
+            status,
+          });
+        })
+        .catch((e: unknown) => setError(`Could not read the branches: ${(e as Error).message}`));
+    },
+    [],
+  );
   const closeMenu = useCallback(() => setMenu(null), []);
+
+  /** "Check out ▸" (V14), and "Review ▸" when the row has branches (V15). */
+  const menuItems = ({ checkout, review, status }: NonNullable<typeof menu>): RowMenuItem[] => [
+    {
+      label: 'Check out',
+      choices: checkout,
+      onChoose: (index) => {
+        const choice = checkout[index];
+        setMenu(null);
+        if (!choice || choice.disabled) return;
+        setRefused(null);
+        setConfirm({ choice, status });
+      },
+    },
+    ...(review.length === 0
+      ? []
+      : [
+          {
+            label: 'Review',
+            choices: review,
+            onChoose: (index: number) => {
+              const choice = review[index];
+              setMenu(null);
+              if (!choice || choice.disabled) return;
+              startReview(choice.review)
+                .then((url) => window.location.assign(url))
+                .catch((e: unknown) =>
+                  setError(`Could not review ${choice.ref.name}: ${(e as Error).message}`),
+                );
+            },
+          },
+        ]),
+  ];
 
   const runCheckout = useCallback(
     async ({ target }: CheckoutChoice) => {
@@ -430,7 +515,11 @@ function History({
       } else if (event.key === 'c') {
         const box = list.current?.querySelector('.commit.cursor')?.getBoundingClientRect();
         // `c` checks out: straight to the targets.
-        if (box) openMenu(cursor, box.left + 48, box.bottom, true);
+        if (box) openMenu(cursor, box.left + 48, box.bottom, 'checkout');
+      } else if (event.key === 'r') {
+        const box = list.current?.querySelector('.commit.cursor')?.getBoundingClientRect();
+        // `r` reviews: straight to the row's branches.
+        if (box) openMenu(cursor, box.left + 48, box.bottom, 'review');
       } else if (event.key === 'Escape' && comparing) stopComparing();
       else if (
         event.key === 'Enter' &&
@@ -525,7 +614,7 @@ function History({
           <span className="commits-help">
             {comparing
               ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
-              : 'j/k move · c checks out · x picks to compare'}
+              : 'j/k move · c checks out · r reviews · x picks to compare'}
           </span>
         </h1>
         {notice && (
@@ -566,6 +655,10 @@ function History({
                   }}
                   onMenu={(x, y) => openMenu(row, x, y)}
                   branch={first.branch}
+                  reviewed={marks.since}
+                  {...(commit && marks.added.has(commit.sha)
+                    ? { added: marks.added.get(commit.sha) }
+                    : {})}
                   graph={
                     lane && (
                       <GraphCell
@@ -588,17 +681,12 @@ function History({
         {!shape && first.listed > 0 && <p className="hint listing">Listing the rest…</p>}
       </div>
       {menu && (
-        <CheckoutMenu
-          choices={menu.choices}
+        <RowMenu
           at={menu.at}
-          submenu={menu.submenu}
+          items={menuItems(menu)}
+          {...(menu.open === 'checkout' ? { open: 0 } : {})}
+          {...(menu.open === 'review' && menu.review.length > 0 ? { open: 1 } : {})}
           onClose={closeMenu}
-          onChoose={(choice) => {
-            setMenu(null);
-            if (choice.disabled) return;
-            setRefused(null);
-            setConfirm({ choice, status: menu.status });
-          }}
         />
       )}
       {confirm && (
@@ -647,6 +735,8 @@ function CommitRow({
   onMenu,
   graph,
   branch,
+  reviewed,
+  added,
 }: {
   row: number;
   /** Not loaded yet: the graph alone, and grey bars. */
@@ -662,6 +752,10 @@ function CommitRow({
   graph: ReactNode;
   /** The branch checked out (null when HEAD is detached), for HEAD's badge. */
   branch: string | null;
+  /** Commits since each reviewed branch's review, by ref name (V15). */
+  reviewed: ReadonlyMap<string, number>;
+  /** The reviewed branches this commit was added to since their review. */
+  added?: string[];
 }) {
   const style = { top: row * ROW_HEIGHT, height: ROW_HEIGHT };
   if (!commit) {
@@ -692,16 +786,36 @@ function CommitRow({
         </span>
       )}
       <code className="commit-sha">{shortSha(commit.sha)}</code>
+      {added && (
+        <span
+          className="review-new"
+          role="img"
+          aria-label={`new since your review of ${added.join(', ')}`}
+          title={`New since your review of ${added.join(', ')}`}
+        />
+      )}
       <span className="commit-subject" title={commit.subject}>
         {commit.subject}
       </span>
-      {rowBadges(commit.refs, branch).map((badge) => (
+      {rowBadges(commit.refs, branch, reviewed).map((badge) => (
         <span
           key={`${badge.kind}:${badge.label}`}
           className={`ref ref-${badge.kind}`}
           {...(badge.title ? { title: badge.title } : {})}
         >
           {badge.label}
+          {badge.review !== undefined && (
+            <span
+              className="ref-review"
+              title={
+                badge.review === 0
+                  ? 'Reviewed up to here'
+                  : `${badge.review} commit${badge.review === 1 ? '' : 's'} since your review`
+              }
+            >
+              {badge.review === 0 ? '✓' : `+${badge.review}`}
+            </span>
+          )}
         </span>
       ))}
       <span className="commit-author">{commit.author}</span>
