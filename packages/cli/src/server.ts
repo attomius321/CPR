@@ -13,6 +13,7 @@ import {
   type LocalReview,
   type CheckoutTarget,
   type Graph,
+  type HistoryRefs,
   type HistoryScope,
   type RefList,
   type RepoStatus,
@@ -183,6 +184,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       }
       if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
       if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
+      if (url.pathname === '/api/history/refs') return historyRefs(req, res, url, repository);
       if (url.pathname === '/api/status') return read(req, res, () => repository.status());
       if (url.pathname === '/api/refs') return read(req, res, () => repository.refs());
       if (url.pathname === '/api/checkout') return checkoutTarget(req, res, repository);
@@ -422,6 +424,31 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     const shape = await repo.history.shape(scope, version);
     if (!shape) return send(res, 409, 'the history changed: list it again');
     return json(res, 200, shape);
+  }
+
+  /** The branches with their tips' rows in a listing (V10b): `?scope=…&version=…`. */
+  async function historyRefs(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    repo: RepositoryOptions,
+  ): Promise<void> {
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    const scope = historyScope(url);
+    const version = url.searchParams.get('version');
+    if (!scope || !version) return send(res, 400, 'scope and version needed');
+    const { branches, remotes } = await repo.refs();
+    const rows = await repo.history.tips(scope, version, [
+      ...branches.map((b) => b.sha),
+      ...remotes.map((r) => r.sha),
+    ]);
+    if (!rows) return send(res, 409, 'the history changed: list it again');
+    const answer: HistoryRefs = {
+      version,
+      branches: branches.map((b, i) => ({ ...b, row: rows[i] ?? null })),
+      remotes: remotes.map((r, i) => ({ ...r, row: rows[branches.length + i] ?? null })),
+    };
+    return json(res, 200, answer);
   }
 
   /** A GET answered with a value of the repository. */

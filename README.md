@@ -38,7 +38,11 @@ remote, drawn as a graph left of the commits, the current branch the straight li
 (tags show on their commits). A line spanning more than 100 rows is two arrows; a click on one
 goes to its other end. "This branch" shows only the current branch's commits. The whole history
 scrolls; commits load as they come into view (git orders it once: a hint names `git
-commit-graph write` when that is slow). Right-click a commit (or "⋯") and point at "Check out",
+commit-graph write` when that is slow). The branches panel on the left lists local branches (with
+`↑2 ↓1` against their upstream, or "gone") and remote ones by folder (`fix/`, `milestone/`), with a
+filter (`/`; Enter goes to the first branch listed); a click puts the selection on the branch's
+newest commit, however deep in the history, and from there c and r work as on any commit. Under
+900 px the panel opens from a "Branches" button. Right-click a commit (or "⋯") and point at "Check out",
 or press c, to check out one of its branches, a remote branch as its local branch, a tag or the
 commit itself (each named by its badge); CPR asks first, uses `git switch` (never forced: local changes come along, or git refuses and nothing changes)
 and redraws the graph. A checkout made elsewhere shows when the page is back in focus.

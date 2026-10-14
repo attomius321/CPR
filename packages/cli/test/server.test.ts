@@ -448,7 +448,14 @@ describe('cpr view: commits and diffs', () => {
         status: () =>
           Promise.resolve({ version, branch: 'main', head: C, changed: 2, operation: null }),
         refs: () =>
-          Promise.resolve({ branches: [{ name: 'main', sha: C }], remotes: [], tags: [] }),
+          Promise.resolve({
+            branches: [{ name: 'main', sha: C }],
+            // Its history is not listed (never fetched).
+            remotes: [
+              { name: 'origin/gone', remote: 'origin', branch: 'gone', sha: 'f'.repeat(40) },
+            ],
+            tags: [],
+          }),
         checkout: async (target) => {
           checkouts.push(target);
           if (checkoutGate) await checkoutGate;
@@ -558,9 +565,25 @@ describe('cpr view: commits and diffs', () => {
     });
     expect(JSON.parse((await get('/api/refs')).body)).toEqual({
       branches: [{ name: 'main', sha: C }],
-      remotes: [],
+      remotes: [{ name: 'origin/gone', remote: 'origin', branch: 'gone', sha: 'f'.repeat(40) }],
       tags: [],
     });
+  });
+
+  it("lists the branches with their tips' rows in a listing (V10b)", async () => {
+    const listed = JSON.parse((await get('/api/history')).body) as { version: string };
+    const answer = await get(`/api/history/refs?scope=all&version=${listed.version}`);
+    expect(answer.status).toBe(200);
+    expect(JSON.parse(answer.body)).toEqual({
+      version: listed.version,
+      branches: [{ name: 'main', sha: C, row: 0 }],
+      remotes: [
+        { name: 'origin/gone', remote: 'origin', branch: 'gone', sha: 'f'.repeat(40), row: null },
+      ],
+    });
+    expect((await get('/api/history/refs')).status).toBe(400);
+    expect((await get('/api/history/refs?scope=all&version=old')).status).toBe(409);
+    expect((await post('/api/history/refs', {})).status).toBe(405);
   });
 
   it("checks out what the page asks for; git's refusals are 409, unknown targets 400", async () => {

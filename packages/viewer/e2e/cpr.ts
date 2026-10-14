@@ -420,3 +420,60 @@ export async function serveDiverged(checkout: 'main' | 'topic' = 'main'): Promis
     },
   };
 }
+
+/**
+ * Branches for the panel (V10b), written with `git fast-import`: `main` ("commit 1" to "commit
+ * 300"), remote `origin` (never fetched) with `feature/deep` ("Deep feature", dated just after
+ * "commit 20": its row is near the bottom), `fix/one` and `fix/two`, `topic` ("Topic work") and
+ * `wip` ("Remote wip"); local `wip` ("Local wip 1", "Local wip 2" from "commit 250": ahead 2 and
+ * behind 1 of `origin/wip`) and `old` (at "commit 100", its upstream `origin/old` gone); a branch
+ * with a long name, local and remote, at "commit 298". `main` is checked out. Served by `cpr
+ * view` without revisions.
+ */
+export async function serveBranches(): Promise<Running> {
+  const repo = mkdtempSync(join(tmpdir(), 'cpr-e2e-'));
+  git(repo, 'init', '-q', '-b', 'main');
+  const start = Math.floor(Date.now() / 1000) - 400 * 60;
+  let mark = 0;
+  let stream = '';
+  const marks = new Map<number, number>();
+  const commit = (ref: string, minutes: number, subject: string, from?: number): number => {
+    mark++;
+    stream +=
+      `commit ${ref}\nmark :${mark}\ncommitter CPR Test <test@example.com> ${start + minutes * 60} +0000\n` +
+      `data ${Buffer.byteLength(subject)}\n${subject}\n${from ? `from :${from}\n` : ''}\n`;
+    return mark;
+  };
+  for (let i = 1; i <= 300; i++) {
+    marks.set(i, commit('refs/heads/main', i, `commit ${i}`, i > 1 ? marks.get(i - 1) : undefined));
+  }
+  const on = (i: number) => marks.get(i);
+  commit('refs/remotes/origin/feature/deep', 20.5, 'Deep feature', on(20));
+  commit('refs/remotes/origin/fix/one', 301, 'Fix one', on(290));
+  commit('refs/remotes/origin/fix/two', 302, 'Fix two', on(295));
+  commit('refs/remotes/origin/topic', 303, 'Topic work', on(299));
+  // Two long badges on one row: a local branch and its remote.
+  const long = 'a-branch-whose-name-runs-on-long-enough-to-crowd-its-row';
+  stream += `reset refs/heads/${long}\nfrom :${on(298)}\n\nreset refs/remotes/origin/${long}\nfrom :${on(298)}\n\n`;
+  commit('refs/remotes/origin/wip', 304, 'Remote wip', on(250));
+  const local = commit('refs/heads/wip', 305, 'Local wip 1', on(250));
+  commit('refs/heads/wip', 306, 'Local wip 2', local);
+  stream += `reset refs/heads/old\nfrom :${on(100)}\n\n`;
+  execFileSync('git', ['fast-import', '--quiet'], { cwd: repo, env, input: stream });
+  git(repo, 'remote', 'add', 'origin', 'https://example.com/never-fetched.git');
+  for (const branch of ['wip', 'old']) {
+    git(repo, 'config', `branch.${branch}.remote`, 'origin');
+    git(repo, 'config', `branch.${branch}.merge`, `refs/heads/${branch}`);
+  }
+  git(repo, 'checkout', '-q', '-f', 'main');
+  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  const { url, child } = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
+  return {
+    url,
+    stop() {
+      child.kill('SIGINT');
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(cache, { recursive: true, force: true });
+    },
+  };
+}

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { git, GitError, gitStream } from './exec.js';
+import type { LocalBranch, RemoteBranch } from './refs.js';
 import type { GitRepo } from './repo.js';
 
 /** A branch or tag pointing at a commit; `head` is HEAD itself. */
@@ -65,6 +66,16 @@ export interface HistoryShape {
   parents: number[][];
   /** The default branch and the rows of its tips listed (V10c); absent when none is listed. */
   defaultBranch?: { name: string; rows: number[] };
+}
+
+/**
+ * The branches with their tips' rows in one listing (`GET /api/history/refs`, V10b): null when
+ * the scope does not list a tip.
+ */
+export interface HistoryRefs {
+  version: string;
+  branches: (LocalBranch & { row: number | null })[];
+  remotes: (RemoteBranch & { row: number | null })[];
 }
 
 // Never tags as tips: they bring release lines no branch reaches (CPython's take its graph from
