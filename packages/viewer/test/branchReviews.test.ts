@@ -108,12 +108,17 @@ describe('reviewChoices', () => {
 });
 
 describe('reviewMarks', () => {
-  const verdict = (event: 'approve' | 'request-changes' | 'comment', head: string) => ({
+  const verdict = (
+    event: 'approve' | 'request-changes' | 'comment',
+    head: string,
+    merged = false,
+  ) => ({
     event,
     head,
     at: '2026-10-14T10:00:00Z',
     comments: 1,
-    pushed: event === 'approve',
+    ...(event === 'approve' ? { into: 'main' } : {}),
+    merged,
   });
   const withVerdicts: BranchReviewList = {
     ...LIST,
@@ -130,9 +135,15 @@ describe('reviewMarks', () => {
       title: '2 commits since your review',
       tone: 'since',
     });
-    expect(marks.get('origin/topic')).toEqual({
+    expect(marks.get('origin/topic')).toEqual({ mark: '✓', title: 'Approved', tone: 'approved' });
+    // Once the agent merged the approved commit (V17).
+    const merged = reviewMarks({
+      ...LIST,
+      reviews: [{ ...LIST.reviews[1]!, verdict: verdict('approve', sha('c'), true) }],
+    });
+    expect(merged.marks.get('origin/topic')).toEqual({
       mark: '✓',
-      title: 'Approved and pushed',
+      title: 'Approved · merged into main',
       tone: 'approved',
     });
     expect(added.get(sha('e'))).toEqual(['agent']);
@@ -161,7 +172,14 @@ describe('reviewMarks', () => {
       'branch:agent → agent · changes requested · 2 commits since',
     ]);
     expect(entries(commit('c', [{ kind: 'remote', name: 'origin/topic' }]), withVerdicts)).toEqual([
-      'remote:origin/topic → origin/topic · approved and pushed',
+      'remote:origin/topic → origin/topic · approved',
+    ]);
+    const merged: BranchReviewList = {
+      ...LIST,
+      reviews: [{ ...LIST.reviews[1]!, verdict: verdict('approve', sha('c'), true) }],
+    };
+    expect(entries(commit('c', [{ kind: 'remote', name: 'origin/topic' }]), merged)).toEqual([
+      'remote:origin/topic → origin/topic · approved · merged into main',
     ]);
   });
 

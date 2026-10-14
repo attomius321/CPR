@@ -8,6 +8,7 @@ import {
   UnknownCheckoutTarget,
   type BranchReviewInfo,
   type CheckoutResult,
+  type BranchMerge,
   type FinishResult,
   type LocalReview,
   type CheckoutTarget,
@@ -88,9 +89,10 @@ interface Site {
   readSource: (side: Side, path: string) => Promise<string>;
   state?: StateStore | undefined;
   review?: ReviewTarget | undefined;
-  /** A branch review's own end (V16): its verdict recorded, pushed on Approve. */
+  /** A branch review's own end (V16): its verdict recorded. */
   finish?: (review: LocalReview) => Promise<FinishResult>;
-  pushAgain?: () => Promise<FinishResult>;
+  /** Whether the branch merges cleanly into the default branch (V17). */
+  merge?: () => Promise<BranchMerge | null>;
 }
 
 export interface ViewServer {
@@ -203,7 +205,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (path === '/api/review') {
       return site?.finish ? finishReview(req, res, site) : postReview(req, res, site);
     }
-    if (path === '/api/review/push') return pushAgain(req, res, site);
+    if (path === '/api/merge') return mergeCheck(req, res, site);
     if (path.startsWith('/api/state/')) {
       return state(req, res, site, path.slice('/api/state/'.length));
     }
@@ -332,7 +334,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         ...shared,
         state: reviews.state(info),
         finish: (review) => reviews.finish(info, review, shared.readSource),
-        pushAgain: () => reviews.pushAgain(info),
+        merge: () => reviews.merge(info),
       };
       byBranch.set(info.branch, site);
     }
@@ -518,21 +520,15 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     return json(res, 200, await finish(review));
   }
 
-  /** Pushes a branch review's approval again, after git refused it. */
-  async function pushAgain(
+  /** `GET`: whether a branch review's branch merges cleanly into the default branch (V17). */
+  async function mergeCheck(
     req: IncomingMessage,
     res: ServerResponse,
     site: Site | undefined,
   ): Promise<void> {
-    if (!site?.pushAgain) return send(res, 404, 'not a branch review');
-    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
-    if (!writable(req)) return send(res, 403, 'forbidden');
-    try {
-      return json(res, 200, await site.pushAgain());
-    } catch (error) {
-      if (error instanceof ReviewRefused) return json(res, 409, { error: error.message });
-      throw error;
-    }
+    if (!site?.merge) return send(res, 404, 'not a branch review');
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    return json(res, 200, await site.merge());
   }
 
   async function postReview(
@@ -571,7 +567,15 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (!writable(req)) return send(res, 403, 'forbidden');
     let target: ReturnType<typeof parseOpen>;
     try {
-      target = parseOpen(await readBody(req, MAX_BODY_BYTES), site.allowed);
+      const text = await readBody(req, MAX_BODY_BYTES);
+      try {
+        target = parseOpen(text, site.allowed);
+      } catch (error) {
+        // A file the branch conflicts in with the default branch (V17) may be outside the change.
+        const merge = site.merge ? await site.merge() : null;
+        if (!merge || !('conflicts' in merge)) throw error;
+        target = parseOpen(text, site.allowed, new Set(merge.conflicts));
+      }
     } catch (error) {
       return send(res, 400, (error as Error).message);
     }
@@ -655,14 +659,18 @@ function parseCheckoutTarget(text: string): CheckoutTarget {
 }
 
 /** `{ side, file, line, column? }`: a file the graph mentions on that side, 1-based positions. */
+/** `POST ./api/open`'s body: a file of the change, or one of `conflicts` (head side). */
 function parseOpen(
   text: string,
   allowed: Record<Side, Set<string>>,
+  conflicts: ReadonlySet<string> = new Set(),
 ): { side: Side; file: string; line: number; column: number } {
   const value = JSON.parse(text) as Record<'side' | 'file' | 'line' | 'column', unknown> | null;
   const { side, file, line, column = 1 } = value ?? {};
   if (side !== 'base' && side !== 'head') throw new Error('side: base or head');
-  if (typeof file !== 'string' || !allowed[side].has(file)) {
+  const known = (path: string) =>
+    allowed[side].has(path) || (side === 'head' && conflicts.has(path));
+  if (typeof file !== 'string' || !known(file)) {
     throw new Error(`${String(file)} is not part of this change`);
   }
   if (!isPosition(line)) throw new Error('line: a positive integer');

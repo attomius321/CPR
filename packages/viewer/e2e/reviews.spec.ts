@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveAgentBranch, type RunningAgent } from './cpr.js';
@@ -8,9 +9,28 @@ import { serveAgentBranch, type RunningAgent } from './cpr.js';
 // gets its own repository: reviews write into it.
 let cpr: RunningAgent;
 const errors: string[] = [];
+// `CPR_CODE`: a stand-in for VS Code that writes what it was given.
+const dir = mkdtempSync(join(tmpdir(), 'cpr-e2e-code-'));
+const log = join(dir, 'opened.jsonl');
+const fake = join(dir, 'code');
+writeFileSync(
+  fake,
+  '#!/usr/bin/env node\n' +
+    `require('node:fs').appendFileSync(${JSON.stringify(log)}, ` +
+    "JSON.stringify(process.argv.slice(2)) + '\\n');\n",
+);
+chmodSync(fake, 0o755);
+const opened = (): string[][] =>
+  existsSync(log)
+    ? readFileSync(log, 'utf8')
+        .split('\n')
+        .filter((line) => line !== '')
+        .map((line) => JSON.parse(line) as string[])
+    : [];
 
 test.beforeEach(async ({ page }) => {
-  cpr = await serveAgentBranch();
+  rmSync(log, { force: true });
+  cpr = await serveAgentBranch({ CPR_CODE: fake });
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
 });
@@ -19,6 +39,8 @@ test.afterEach(() => {
   cpr.stop();
   expect(errors).toEqual([]);
 });
+
+test.afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
 const row = (page: Page, subject: string) =>
@@ -129,7 +151,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   await expect(changesTab(page)).toContainText('1/3');
 });
 
-test('finishes a review: changes requested for the agent, then approved and pushed (V16)', async ({
+test('finishes a review: changes requested for the agent, then approved to merge (V16, V17)', async ({
   page,
 }) => {
   const [, , cube] = cpr.shas;
@@ -216,21 +238,39 @@ test('finishes a review: changes requested for the agent, then approved and push
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(row(page, 'Agent: square returns early').locator('.ref-review')).toHaveText('+1');
 
-  // Reviewed again and approved: pushed, that commit exactly.
+  // Reviewed again and approved (V17): metadata for the agent, the merge into main; no push.
   await review(page, 'Agent: square returns early', 'agent changes requested · 1 commit since');
   await expect(page.locator('.review-of')).toHaveText(
     'Review of agent · 1 commit since your last review',
   );
   await reviewTab(page).click();
+  await expect(page.locator('.merge-check')).toHaveText('Merges cleanly into main.');
   await page.getByLabel('Approve').check();
-  await page.getByRole('button', { name: 'Approve and push 3 commits to origin/agent' }).click();
-  await expect(page.locator('.finished')).toContainText(
-    `Approved and pushed ${short(fix)} to origin/agent.`,
+  await expect(page.locator('.submit-review')).toContainText(
+    `Approve asks it to merge ${short(fix)} into main. CPR pushes nothing.`,
   );
-  expect(originGit('rev-parse', 'agent')).toBe(fix);
+  await page.getByRole('button', { name: 'Finish review' }).click();
+  await expect(page.locator('.finished')).toContainText(
+    `Approved ${short(fix)}: the agent merges it into main when you ask it to act on this review.`,
+  );
+  await page.getByRole('button', { name: 'Copy for the agent' }).click();
+  await expect(page.locator('.finished')).toContainText('Copied.');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    `Approved the branch agent at ${short(fix)}: merge ${short(fix)} into main.\n\n` +
+      'The review: cpr/reviews/agent/reviewer@example.com.json; how to act on it: cpr/AGENTS.md.\n',
+  );
+  expect(() => originGit('rev-parse', '--verify', '--quiet', 'agent')).toThrow();
+  const verdicts = (JSON.parse(readFileSync(reviewFile(), 'utf8')) as { verdicts: unknown[] })
+    .verdicts;
+  expect(verdicts.at(-1)).toMatchObject({ event: 'approve', head: fix, into: 'main' });
+  // What an agent opening it reads first, and the instructions beside it.
+  expect(readFileSync(reviewFile(), 'utf8').split('\n')[1]).toContain('cpr/AGENTS.md');
+  expect(readFileSync(join(cpr.repo, 'cpr', 'AGENTS.md'), 'utf8')).toContain('git merge --no-ff');
+  expect(git('status', '--porcelain', '--untracked-files=all')).toBe('');
   await page.getByRole('link', { name: '← Commits' }).click();
   const approved = row(page, 'Agent: square returns early').locator('.ref-review').first();
   await expect(approved).toHaveText('✓');
+  await expect(approved).toHaveAttribute('title', 'Approved');
   // A filled chip in the verdict's colour, not a glyph in the badge's text colour.
   await expect(approved).toHaveClass(/ref-review-approved/);
   const look = await approved.evaluate((el) => {
@@ -246,9 +286,67 @@ test('finishes a review: changes requested for the agent, then approved and push
   expect(look.background).not.toBe('rgba(0, 0, 0, 0)');
   expect(look.color).not.toBe(look.badgeColor);
   expect(look.height).toBeLessThan(look.badgeHeight);
+
+  // The agent merges the approved commit, as cpr/AGENTS.md says: the badge says so.
+  git('merge', '-q', '--no-ff', '--no-edit', fix);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(
+    row(page, 'Agent: square returns early').locator('.ref-review').first(),
+  ).toHaveAttribute('title', 'Approved · merged into main');
 });
 
-test("reviews the agent's commits on main itself, and pushes them on approval (V16)", async ({
+test('says a branch will conflict with main; resolved on the branch, only its commit is new (V17)', async ({
+  page,
+}) => {
+  const [, , cube] = cpr.shas;
+  const math = join(cpr.repo, 'src/math.ts');
+  // main adds a function where the agent added its own: the merge conflicts.
+  writeFileSync(
+    math,
+    `${readFileSync(math, 'utf8')}\nexport const double = (a: number) => a * 2;\n`,
+  );
+  git('commit', '-q', '-am', 'Main: add double');
+  await page.goto(cpr.url);
+  await review(page, 'Agent: add cube', 'agent not reviewed yet');
+  await reviewTab(page).click();
+  // Each file on its line, its folder beside it, and a button that opens it in VS Code.
+  const check = page.locator('.merge-check');
+  await expect(check.locator('.merge-check-head')).toHaveText(
+    'Conflicts with main in 1 file; the agent resolves them on agent first:',
+  );
+  await expect(check.locator('li')).toHaveText(['math.tssrc/']);
+  await check.getByRole('button', { name: 'Open src/math.ts in VS Code' }).click();
+  await expect(check.getByRole('status')).toHaveText('Opened src/math.ts in VS Code');
+  expect(opened()).toEqual([[cpr.repo, '--goto', `${join(cpr.repo, 'src', 'math.ts')}:1:1`]]);
+  await page.getByLabel('Approve').check();
+  await page.getByRole('button', { name: 'Finish review' }).click();
+  await expect(page.locator('.finished')).toContainText(`Approved ${short(cube)}`);
+
+  // The agent merges main into its branch and resolves the conflict there.
+  git('checkout', '-q', 'agent');
+  expect(() => git('merge', '-q', '--no-edit', 'main')).toThrow();
+  const theirs = readFileSync(math, 'utf8')
+    .split('\n')
+    .filter((line) => !/^(<<<<<<<|=======|>>>>>>>)/.test(line))
+    .join('\n');
+  writeFileSync(math, theirs);
+  git('commit', '-q', '-am', 'Merge main into agent');
+  git('checkout', '-q', 'main');
+  await page.getByRole('link', { name: '← Commits' }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  // One commit since the approval, the merge; main's own commit is not the branch's.
+  const merged = row(page, 'Merge main into agent');
+  await expect(merged.locator('.ref-review')).toHaveText('+1');
+  await expect(merged.locator('.review-new')).toHaveCount(1);
+  await expect(row(page, 'Main: add double').locator('.review-new')).toHaveCount(0);
+
+  // Reviewed again: the merge into main is clean now.
+  await review(page, 'Merge main into agent', 'agent approved · 1 commit since');
+  await reviewTab(page).click();
+  await expect(page.locator('.merge-check')).toHaveText('Merges cleanly into main.');
+});
+
+test("reviews the agent's commits on main itself; an approval says they may be pushed (V16, V17)", async ({
   page,
 }) => {
   const math = join(cpr.repo, 'src/math.ts');
@@ -260,10 +358,12 @@ test("reviews the agent's commits on main itself, and pushes them on approval (V
   await expect(page).toHaveURL(/\/review\/main\/$/);
   await expect(page.locator('.review-of')).toHaveText('Review of main · first review');
   await reviewTab(page).click();
+  // Nothing to merge into: no merge check.
+  await expect(page.locator('.merge-check')).toHaveCount(0);
   await page.getByLabel('Approve').check();
-  await page.getByRole('button', { name: 'Approve and push 1 commit to origin/main' }).click();
+  await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText(
-    `Approved and pushed ${short(tip)} to origin/main.`,
+    `Approved ${short(tip)}: the agent may push these commits when you ask it to act on this review.`,
   );
-  expect(originGit('rev-parse', 'main')).toBe(tip);
+  expect(originGit('rev-parse', 'main')).not.toBe(tip);
 });

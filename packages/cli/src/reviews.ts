@@ -1,19 +1,18 @@
 import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import {
+  checkMerge,
   commitsBetween,
   defaultBranch,
   forkPoint,
+  isAncestor,
   isCommit,
   listRefs,
-  listRemotes,
   mergeBase,
-  pushCommit,
-  PushRefused,
-  setUpstream,
   trackedFiles,
   upstreamOf,
   userEmail,
+  type BranchMerge,
   type BranchReviewInfo,
   type BranchReviewList,
   type BranchReviewRef,
@@ -21,7 +20,6 @@ import {
   type FinishResult,
   type GitRepo,
   type LocalReview,
-  type PushOutcome,
   type RefList,
   type Verdict,
   type VerdictComment,
@@ -51,6 +49,68 @@ export const GITIGNORE =
   '# Written by CPR: reviews stay on this machine. Delete this file to commit and share them.\n' +
   '*\n!config.json\n';
 
+/** Every review file's first key (V17): where an agent that opens it learns what to do. */
+export const REVIEW_ABOUT =
+  'A CPR review. Agents: read AGENTS.md beside the reviews folder (cpr/AGENTS.md) before acting on it.';
+
+/**
+ * What an agent does with a review (V17), written beside the reviews in any repository and
+ * rewritten when CPR's text changes. Claude Code loads a folder's AGENTS.md when it reads a file
+ * there, `cpr/` git-ignored or not (checked with 2.1.296); other agents follow `about`.
+ */
+export const AGENTS = `# CPR reviews
+
+Written by CPR, which rewrites this file when it changes: put your project's own rules in its
+own CLAUDE.md or AGENTS.md.
+
+A person reviews your branch with CPR and records a verdict in
+\`cpr/reviews/<branch>/<reviewer>.json\` (the branch's slashes are folders). Act on it when the
+person asks you to (for example "check my review"), not because you came across it.
+
+## Read only the last verdict
+
+- Act on the last entry of \`verdicts\`. \`drafts\`, \`marks\` and the top-level \`summary\` are a
+  review in progress, not feedback. No verdicts: there is nothing to act on yet; say so.
+- \`head\` is the commit the person reviewed. Commits after it (\`git log <head>..<branch>\`) were
+  not part of the review.
+
+## What each verdict asks
+
+- \`request-changes\`: fix each comment in new commits on the branch. Then say, one line per
+  comment, what you changed (with the commit) or why you did not.
+- \`comment\`: answer each comment; change code only where a comment asks for it.
+- \`approve\` with \`into\` (the repository's default branch): merge the approved commit \`head\`
+  into \`into\` — that commit, not the branch's tip: later commits are not approved.
+  \`git switch <into>\`, then \`git merge --no-ff <head>\`, unless the project merges another way.
+- \`approve\` without \`into\` (a review of the default branch's unpushed commits): those commits,
+  up to \`head\`, may be pushed.
+- Push only when and what the project's own instructions say.
+
+## A merge conflict
+
+Never resolve it on the default branch: the resolution would be code nobody reviewed.
+
+1. \`git merge --abort\`: the default branch is as it was.
+2. On the reviewed branch, merge the default branch in (\`git merge <into>\`), resolve the
+   conflicts there and commit.
+3. Tell the person the branch needs another review; merge only after the next approval.
+
+## Comments
+
+Each has \`body\` (what to do) and \`symbol\` (\`<path>#<name>\`); on a line, also \`path\`,
+\`line\`, \`side\` and \`code\` (that line's text). Without \`line\` it is about the whole symbol.
+
+- \`side: "head"\`: \`line\` is in the reviewed commit \`head\`, not your working copy. If the
+  branch moved since, find the place by \`code\` and \`symbol\`.
+- \`side: "base"\`: a line the branch removed, at the file's top-level \`base\` (where the review
+  starts: \`git show <base>:<path>\`). Usually the question is whether removing it was right.
+
+## Never
+
+- Rewrite commits the person reviewed (amend, rebase, squash): their review is of those commits.
+- Edit, move or commit anything in \`cpr/\`: the reviews are the person's.
+`;
+
 /** Where reviews are kept, and as whom. */
 export interface ReviewPlace {
   /** The folder holding `<branch>/<reviewer>.json`. */
@@ -61,6 +121,8 @@ export interface ReviewPlace {
   note?: string;
   /** `cpr/.gitignore`, written before the first review when absent. */
   gitignore?: string;
+  /** The agents' instructions (V17), beside the reviews folder. */
+  agents: string;
 }
 
 /** A branch that cannot be reviewed, and why (the server answers 400). */
@@ -81,15 +143,16 @@ export interface BranchReviews {
   state(info: BranchReviewInfo): StateStore;
   /**
    * Finishes the review (V16): appends the verdict with its comments (their code read with
-   * `read`, at the side's commit), clears the drafts, and on Approve pushes the reviewed tip.
+   * `read`, at the side's commit) and clears the drafts. An approval is metadata (V17): it names
+   * the branch to merge into, and nothing is pushed.
    */
   finish(
     info: BranchReviewInfo,
     review: LocalReview,
     read: (side: 'base' | 'head', path: string) => Promise<string>,
   ): Promise<FinishResult>;
-  /** Pushes the last approval's tip again (after git refused it). */
-  pushAgain(info: BranchReviewInfo): Promise<FinishResult>;
+  /** Whether the branch merges cleanly into the default branch (V17); null on the default branch. */
+  merge(info: BranchReviewInfo): Promise<BranchMerge | null>;
 }
 
 /**
@@ -104,6 +167,7 @@ export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<Revi
     reviewer: email ?? 'local',
     place: 'cache',
     note,
+    agents: join(cacheDir, 'state', repo.id, 'AGENTS.md'),
   });
   if (!email) {
     return cache("Kept in CPR's cache: set git config user.email to keep reviews in cpr/reviews/.");
@@ -115,8 +179,7 @@ export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<Revi
       () => false,
     )) ||
     (await trackedFiles(repo, 'cpr')).some(
-      (path) =>
-        path !== 'cpr/config.json' && path !== 'cpr/.gitignore' && !path.startsWith('cpr/reviews/'),
+      (path) => !CPR_FILES.has(path) && !path.startsWith('cpr/reviews/'),
     );
   if (foreign) return cache("Kept in CPR's cache: cpr/ holds files of this project.");
   return {
@@ -124,8 +187,12 @@ export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<Revi
     reviewer: email,
     place: 'repository',
     gitignore: join(folder, '.gitignore'),
+    agents: join(folder, 'AGENTS.md'),
   };
 }
+
+/** What CPR itself keeps in `cpr/`, beside the reviews: a project may commit them. */
+const CPR_FILES = new Set(['cpr/config.json', 'cpr/.gitignore', 'cpr/AGENTS.md']);
 
 /** A review's file: the branch's slashes as folders, the reviewer as its name. */
 export function reviewPath(dir: string, branch: string, reviewer: string): string {
@@ -138,9 +205,12 @@ export function reviewPath(dir: string, branch: string, reviewer: string): strin
 
 const fileName = (reviewer: string) => reviewer.replace(/[^\w.@+-]/g, '_');
 
-/** Sorted keys, two-space indent, a final newline: git merges and diffs it line by line. */
+/**
+ * Sorted keys, two-space indent, a final newline: git merges and diffs it line by line. The
+ * first key, `about`, tells an agent where its instructions are (V17).
+ */
 export function serializeReview(review: BranchReviewFile): string {
-  return `${JSON.stringify(sortKeys(review), null, 2)}\n`;
+  return `${JSON.stringify(sortKeys({ ...review, about: REVIEW_ABOUT }), null, 2)}\n`;
 }
 
 function sortKeys(value: unknown): unknown {
@@ -204,13 +274,32 @@ export function branchReviews(
   { now = () => new Date() }: { now?: () => Date } = {},
 ): BranchReviews {
   const place = () => reviewPlace(repo, cacheDir);
+  /** The agents' instructions checked this run, by path: rewritten at most once. */
+  const instructed = new Set<string>();
+  /** Merge checks by default branch and tip: they take seconds on long-lived branches. */
+  const merges = new Map<string, Promise<BranchMerge>>();
 
-  /** The commits on a ref since a review's head (else its fork point, gone after a rebase). */
-  async function since(review: BranchReviewFile, tip: string) {
+  /**
+   * The commits on a ref since a review's head (else its fork point, gone after a rebase): the
+   * branch's own, not the default branch's merged into it (`not`, its refs' tips; V17).
+   */
+  async function since(review: BranchReviewFile, tip: string, not: readonly string[]) {
     for (const from of [review.head, review.base]) {
-      if (from && (await isCommit(repo, from))) return commitsBetween(repo, from, tip);
+      if (from && (await isCommit(repo, from))) return commitsBetween(repo, from, tip, 100, not);
     }
     return null;
+  }
+
+  /** The default branch's tips (local and remotes'), unless `branch` is the default branch. */
+  const otherThan = (refs: RefList, main: string | null, branch: string) =>
+    main && main !== branch ? refsOf(refs, main).map((r) => r.sha) : [];
+
+  /** Writes a file of CPR's unless it already says exactly that. */
+  async function own(path: string, text: string): Promise<void> {
+    const current = await readFile(path, 'utf8').catch(() => null);
+    if (current === text) return;
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, text);
   }
 
   /** The review's file, created out of git (V15); one change at a time, read and written back. */
@@ -243,6 +332,11 @@ export function branchReviews(
           },
         );
       }
+      // What an agent does with a review (V17), beside it.
+      if (!instructed.has(where.agents)) {
+        await own(where.agents, AGENTS);
+        instructed.add(where.agents);
+      }
       await mkdir(dirname(path), { recursive: true });
       const temp = `${path}.${process.pid}.tmp`;
       await writeFile(temp, serializeReview(next));
@@ -251,57 +345,19 @@ export function branchReviews(
     });
   }
 
-  /**
-   * Where Approve pushes a review's tip (V16): the local branch's upstream; else the remote
-   * branch reviewed; else `origin` and the same name. Null without a remote.
-   */
-  async function pushTarget(
-    info: Pick<BranchReviewInfo, 'branch' | 'ref' | 'base' | 'head'>,
-    refs: RefList,
-  ): Promise<{ remote: string; branch: string; sha: string | null } | null> {
-    const local = refs.branches.find((b) => b.name === info.branch);
-    const upstream = local ? await upstreamOf(repo, local.name) : null;
-    if (upstream) return upstream;
-    const reviewed = refs.remotes.find((r) => r.name === info.ref);
-    if (reviewed) return { remote: reviewed.remote, branch: reviewed.branch, sha: reviewed.sha };
-    if (!(await listRemotes(repo)).includes('origin')) return null;
-    const there = refs.remotes.find((r) => r.name === `origin/${info.branch}`);
-    return { remote: 'origin', branch: info.branch, sha: there?.sha ?? null };
-  }
-
-  /** Pushes the reviewed tip, by SHA; the newer commits of the local branch stay local. */
-  async function push(info: BranchReviewInfo): Promise<{ push: PushOutcome; unpushed: number }> {
-    const refs = await listRefs(repo);
-    const local = refs.branches.find((b) => b.name === info.branch);
-    const unpushed =
-      local && local.sha !== info.head
-        ? (await commitsBetween(repo, info.head, local.sha, 0)).count
-        : 0;
-    const target = await pushTarget(info, refs);
-    if (!target) return { push: { none: 'no remote to push to' }, unpushed };
-    try {
-      if (target.sha !== info.head) await pushCommit(repo, info.head, target.remote, target.branch);
-      if (local && !(await upstreamOf(repo, local.name))) {
-        await setUpstream(repo, local.name, target.remote, target.branch);
-      }
-      return { push: { remote: target.remote, branch: target.branch, sha: info.head }, unpushed };
-    } catch (error) {
-      if (error instanceof PushRefused) return { push: { error: error.message }, unpushed };
-      throw error;
-    }
-  }
-
   return {
     async list() {
       const [where, refs] = await Promise.all([place(), listRefs(repo)]);
+      const main = await defaultBranch(repo, refs);
       const reviews: BranchReviewSummary[] = [];
       for (const branch of await reviewedBranches(where)) {
         const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
         if (!review) continue;
         const summaryRefs: BranchReviewRef[] = [];
         const added = new Set<string>();
+        const not = otherThan(refs, main, branch);
         for (const ref of refsOf(refs, branch)) {
-          const after = await since(review, ref.sha);
+          const after = await since(review, ref.sha, not);
           if (!after) continue;
           summaryRefs.push({ name: ref.name, tip: ref.sha, since: after.count });
           for (const sha of after.shas) added.add(sha);
@@ -322,14 +378,15 @@ export function branchReviews(
                   head: verdict.head,
                   at: verdict.at,
                   comments: verdict.comments.length,
-                  pushed: !!verdict.push && 'sha' in verdict.push,
+                  ...(verdict.into ? { into: verdict.into } : {}),
+                  merged: await mergedInto(refs, verdict),
                 },
               }
             : {}),
         });
       }
       return {
-        defaultBranch: await defaultBranch(repo, refs),
+        defaultBranch: main,
         reviewer: where.reviewer,
         place: where.place,
         ...(where.note ? { note: where.note } : {}),
@@ -383,10 +440,9 @@ export function branchReviews(
       const where = await place();
       const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
       const reviewed = review?.head || null;
-      const after = review && reviewed ? await since(review, tip) : null;
+      const after =
+        review && reviewed ? await since(review, tip, otherThan(refs, main, branch)) : null;
       const refName = local ? local.name : (remote?.name ?? ref);
-      const target = await pushTarget({ branch, ref: refName, base, head: tip }, refs);
-      const commits = target ? (await commitsBetween(repo, target.sha ?? base, tip, 0)).count : 0;
       const verdict = review?.verdicts.at(-1);
       return {
         info: {
@@ -397,7 +453,7 @@ export function branchReviews(
           reviewed,
           since: after ? after.count : null,
           ...(where.note ? { note: where.note } : {}),
-          ...(target ? { push: { remote: target.remote, branch: target.branch, commits } } : {}),
+          ...(branch === main ? {} : { into: main }),
           ...(verdict
             ? { verdict: { event: verdict.event, head: verdict.head, at: verdict.at } }
             : {}),
@@ -446,14 +502,13 @@ export function branchReviews(
           };
         }),
       );
-      const pushed = review.event === 'approve' ? await push(info) : null;
       const verdict: Verdict = {
         at: now().toISOString(),
         comments,
         event: review.event,
         head: info.head,
+        ...(review.event === 'approve' && info.into ? { into: info.into } : {}),
         summary: review.body.trim(),
-        ...(pushed ? { push: pushed.push } : {}),
       };
       // The drafts are in the verdict now: the next round starts empty.
       const file = await update(info, (next) => {
@@ -461,48 +516,73 @@ export function branchReviews(
         next.drafts = [];
         next.summary = '';
       });
+      const where = await place();
+      const shown = (path: string) =>
+        where.place === 'repository' ? relative(repo.root, path).split(sep).join('/') : path;
       return {
         verdict,
-        text: verdictText(info, file.reviewer, verdict),
-        unpushed: pushed?.unpushed ?? 0,
+        text: verdictText(info, file.reviewer, verdict, {
+          review: shown(reviewPath(where.dir, info.branch, where.reviewer)),
+          agents: shown(where.agents),
+        }),
       };
     },
 
-    async pushAgain(info) {
-      const where = await place();
-      const review = await readReview(reviewPath(where.dir, info.branch, where.reviewer));
-      const last = review?.verdicts.at(-1);
-      if (!last || last.event !== 'approve') throw new ReviewRefused('nothing approved to push');
-      const pushed = await push({ ...info, head: last.head });
-      const verdict: Verdict = { ...last, push: pushed.push };
-      const file = await update(info, (next) => {
-        next.verdicts = [...next.verdicts.slice(0, -1), verdict];
+    merge(info) {
+      const { into } = info;
+      if (!into) return Promise.resolve(null);
+      return listRefs(repo).then((refs) => {
+        // The local default branch, where the agent merges; else the remote's.
+        const target = refs.branches.find((b) => b.name === into) ?? refsOf(refs, into)[0];
+        if (!target) return { into, error: `no branch ${into}` };
+        const key = `${target.sha}:${info.head}`;
+        let check = merges.get(key);
+        if (!check) {
+          check = checkMerge(repo, target.sha, info.head).then((result) => ({ into, ...result }));
+          merges.set(key, check);
+        }
+        return check;
       });
-      return {
-        verdict,
-        text: verdictText(info, file.reviewer, verdict),
-        unpushed: pushed.unpushed,
-      };
     },
   };
+
+  /** Whether an approval's commit is in the branch it was to merge into (V17). */
+  async function mergedInto(refs: RefList, verdict: Verdict): Promise<boolean> {
+    if (verdict.event !== 'approve' || !verdict.into) return false;
+    if (!(await isCommit(repo, verdict.head))) return false;
+    for (const ref of refsOf(refs, verdict.into)) {
+      if (await isAncestor(repo, verdict.head, ref.sha)) return true;
+    }
+    return false;
+  }
 }
 
 /**
- * A verdict as text for an agent's chat (V16): what was decided at which commit, the summary,
- * then each comment with its file and line, symbol and code.
+ * A verdict as text for an agent's chat (V16): what was decided at which commit — for an
+ * approval, the merge it asks for (V17) —, the summary, each comment with its file and line,
+ * symbol and code, then where the review and the agents' instructions are.
  */
 export function verdictText(
   info: Pick<BranchReviewInfo, 'branch' | 'base'>,
   reviewer: string,
   verdict: Verdict,
+  where?: { review: string; agents: string },
 ): string {
   const at = verdict.head.slice(0, 7);
-  if (verdict.event === 'approve') return `Approved the branch ${info.branch} at ${at}.\n`;
-  const what = verdict.event === 'request-changes' ? 'changes requested' : 'comments';
   const name = (symbol: string) => symbol.slice(symbol.indexOf('#') + 1);
-  const lines = [
-    `Address this review of the branch ${info.branch} (${reviewer}, at ${at}): ${what}.`,
-  ];
+  const lines: string[] = [];
+  if (verdict.event === 'approve') {
+    lines.push(
+      verdict.into
+        ? `Approved the branch ${info.branch} at ${at}: merge ${at} into ${verdict.into}.`
+        : `Approved the unpushed commits of ${info.branch} up to ${at}: they may be pushed.`,
+    );
+  } else {
+    const what = verdict.event === 'request-changes' ? 'changes requested' : 'comments';
+    lines.push(
+      `Address this review of the branch ${info.branch} (${reviewer}, at ${at}): ${what}.`,
+    );
+  }
   if (verdict.summary) lines.push('', verdict.summary);
   for (const c of verdict.comments) {
     lines.push('');
@@ -512,6 +592,9 @@ export function verdictText(
       if (c.code !== undefined) lines.push(`    ${c.code}`);
     } else lines.push(`About ${name(c.symbol)}:`);
     lines.push(c.body);
+  }
+  if (where) {
+    lines.push('', `The review: ${where.review}; how to act on it: ${where.agents}.`);
   }
   return `${lines.join('\n')}\n`;
 }

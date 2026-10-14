@@ -1499,6 +1499,66 @@ kbd {
   border-top: 1px solid var(--line);
 }
 
+/* Whether the branch merges cleanly into the default branch (V17). */
+.merge-check {
+  margin: 0;
+}
+
+.merge-check-head {
+  margin: 0 0 4px;
+  color: var(--warning);
+}
+
+/* One conflicting file per line: open it, its name, then its folder, cut short when long. */
+.merge-files {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.merge-files li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.merge-open {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--moved);
+  cursor: pointer;
+}
+
+.merge-open:hover,
+.merge-open:focus-visible {
+  border-color: color-mix(in srgb, var(--moved) 45%, var(--line));
+  background: color-mix(in srgb, var(--moved) 9%, var(--panel));
+}
+
+.merge-file {
+  flex: none;
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.merge-dir {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .submit-review .button:disabled {
   opacity: 0.5;
   cursor: default;

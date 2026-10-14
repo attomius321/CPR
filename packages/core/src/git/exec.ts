@@ -7,6 +7,8 @@ const execFileAsync = promisify(execFile);
 
 export class GitError extends Error {
   override name = 'GitError';
+  /** What git wrote to stdout before failing (some commands answer there with exit 1). */
+  stdout = '';
 
   constructor(
     readonly args: readonly string[],
@@ -32,8 +34,9 @@ export async function git(cwd: string, args: readonly string[]): Promise<string>
     });
     return stdout;
   } catch (error) {
-    const { code, stderr, message } = error as {
+    const { code, stdout, stderr, message } = error as {
       code?: unknown;
+      stdout?: unknown;
       stderr?: unknown;
       message: string;
     };
@@ -42,12 +45,14 @@ export async function git(cwd: string, args: readonly string[]): Promise<string>
       if (!existsSync(cwd)) throw new Error(`directory does not exist: ${cwd}`, { cause: error });
       throw new CprError('git is not installed or not on PATH', { cause: error });
     }
-    throw new GitError(
+    const failure = new GitError(
       args,
       typeof code === 'number' ? code : null,
       typeof stderr === 'string' && stderr ? stderr : message,
       { cause: error },
     );
+    if (typeof stdout === 'string') failure.stdout = stdout;
+    throw failure;
   }
 }
 

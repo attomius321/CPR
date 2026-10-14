@@ -54,16 +54,18 @@ commits with `git add -A` in your working copy skips them while that `.gitignore
 working in their own worktree have their own `cpr/`.
 
 Comment on lines as you review (select a symbol, c), then finish in the Review tab: Request
-changes or Comment records your verdict and comments in the review's file, and "Copy for the
-agent" puts them on the clipboard as text; Approve pushes the reviewed commit — that commit, not
-newer ones — to the branch's upstream (else `origin/<branch>`), never forced. A branch's badge
-then shows "✓" approved, "✗" changes requested, "+2" for commits since, "…" while reviewing.
-The default branch (`main`) can be reviewed for its unpushed commits, from where it was last
-pushed.
+changes, Comment or Approve records your verdict and comments in the review's file, for the
+agent; "Copy for the agent" puts it on the clipboard as text. CPR pushes and merges nothing: an
+approval asks the agent to merge the commit you reviewed — that one, not newer ones — into the
+repository's default branch, when you tell it to act on the review ("check my review"). Before
+you approve, the Review tab says whether that merge is clean or which files conflict; on a
+conflict the agent resolves it on its branch, and you review that. A branch's badge shows "✓"
+approved, "✗" changes requested, "+2" for its own commits since, "…" while reviewing. The default
+branch (`main`) can be reviewed for its unpushed commits, from where it was last pushed; an
+approval there says they may be pushed.
 
-**For agents**: before continuing on a branch, read the last entry of `verdicts` in
-`cpr/reviews/<branch>/*.json`: its `event`, `summary`, and `comments`, each with `path`, `line`,
-`side` (`base` for removed code), `symbol`, `code` and `body`.
+**For agents**: CPR writes what to do with a review into `cpr/AGENTS.md`, beside the reviews,
+and every review file's first line points there. Claude Code loads it when it reads a review.
 
 A click selects a commit (j/k move the selection). To compare, turn on "Compare mode" (or press
 x): click one commit and another — the older is the base — and Compare (or x, Enter); one picked

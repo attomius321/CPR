@@ -140,7 +140,9 @@ export interface RunningAgent extends Running {
  * cube" (two functions in `src/math.ts`). The reviewer is reviewer@example.com. Served by `cpr
  * view` without revisions: the commits page.
  */
-export async function serveAgentBranch(): Promise<RunningAgent> {
+export async function serveAgentBranch(
+  extraEnv: Record<string, string> = {},
+): Promise<RunningAgent> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', 'main');
   git(repo, 'branch', '-q', '-D', 'feature');
@@ -166,7 +168,7 @@ export async function serveAgentBranch(): Promise<RunningAgent> {
     ...git(repo, 'rev-list', '--reverse', 'main..agent').split('\n'),
   ];
   const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
-  let running = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
+  let running = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache, ...extraEnv });
   return {
     get url() {
       return running.url;
@@ -176,7 +178,7 @@ export async function serveAgentBranch(): Promise<RunningAgent> {
     shas,
     async restart() {
       running.child.kill('SIGINT');
-      running = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
+      running = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache, ...extraEnv });
       return running.url;
     },
     stop() {

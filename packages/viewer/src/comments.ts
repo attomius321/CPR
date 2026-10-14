@@ -1,4 +1,4 @@
-import type { FinishResult, Graph, GraphNode, LocalReview } from '@cpr/core';
+import type { BranchMerge, FinishResult, Graph, GraphNode, LocalReview } from '@cpr/core';
 import type { DiffRow } from './detail.js';
 import { label } from './flow.js';
 import { fingerprint } from './review.js';
@@ -173,14 +173,16 @@ export function canFinish(drafts: readonly Draft[], event: ReviewEvent, body: st
   return event === 'approve' || body.trim() !== '' || drafts.length > 0;
 }
 
-/** Finishes a branch review (V16); resolves with the verdict, its text, and what was pushed. */
+/** Finishes a branch review (V16); resolves with the verdict and its text for a chat. */
 export function finishReview(review: LocalReview): Promise<FinishResult> {
   return send<FinishResult>('./api/review', review);
 }
 
-/** Pushes the last approval again, after git refused it. */
-export function pushAgain(): Promise<FinishResult> {
-  return send<FinishResult>('./api/review/push', {});
+/** Whether a branch review's branch merges cleanly into the default branch (V17). */
+export async function checkMerge(): Promise<BranchMerge | null> {
+  const response = await fetch('./api/merge');
+  if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
+  return (await response.json()) as BranchMerge | null;
 }
 
 async function send<T>(url: string, payload: unknown): Promise<T> {
