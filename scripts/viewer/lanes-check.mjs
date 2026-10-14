@@ -25,10 +25,14 @@ const quantile = (sorted, f) => sorted[Math.min(sorted.length - 1, Math.floor(f 
 for (const repo of positionals) {
   const git = (...args) =>
     execFileSync('git', args, { cwd: repo, encoding: 'utf8', maxBuffer: 1 << 30 });
-  const rows = git('log', '--topo-order', '--format=%H %P', ...tips, '--')
-    .split('\n')
+  // Read as `streamHistory` reads it: a root commit's parents are empty, not one parent ''.
+  const rows = git('log', '--topo-order', '-z', '--format=%H%x1f%P', ...tips, '--')
+    .split('\0')
     .filter(Boolean)
-    .map((line) => line.split(' '));
+    .map((record) => {
+      const [sha = '', ps = ''] = record.split('\x1f');
+      return [sha, ...(ps === '' ? [] : ps.split(' '))];
+    });
   const at = new Map(rows.map(([sha], i) => [sha, i]));
   const parents = rows.map(([, ...ps]) => ps.map((p) => at.get(p) ?? -1));
   const head = at.get(git('rev-parse', 'HEAD').trim()) ?? null;

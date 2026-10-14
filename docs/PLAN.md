@@ -2675,11 +2675,15 @@ against git by `scripts/viewer/lanes-check.mjs`; the planning prototype undercou
 |---|---|---|---|---|---|---|---|
 | CPR | 1 / 50 (0) / 0 | 66 / 20 | 179 | 0 | 116 (175) | 3 (3) | 3 (0) |
 | ky | 1 / 2 (1) / 99 | 0 / 0 | 593 | 0 | 1 (173) | 2 (2) | 2 (0) |
-| zod | 1 / 154 (128) / 219 | 0 / 0 | 4,239 | 48 | 978 (4,058) | 10 (9) | 7 (15) |
+| zod | 1 / 154 (128) / 219 | 0 / 0 | 4,239 | 48 | 978 (4,058) | 10 (9) | 7 (14) |
 | vite | 1 / 88 (85) / 1,054 | 0 / 0 | 10,359 | 56 | 691 (9,260) | 53 (54) | 3 (75) |
-| Qwik | 1 / 133 (125) / 559 | 57 / 44 | 12,362 | 62 | 3,695 (8,889) | 37 (35) | 10 (241) |
-| Bitwarden | 1 / 1,591 (1,539) / 638 | 0 / 0 | 39,861 | 93 | 9,165 (37,633) | 142 (143) | 20 (1,943) |
+| Qwik | 1 / 133 (125) / 559 | 57 / 44 | 12,362 | 62 | 3,695 (8,889) | 37 (35) | 10 (240) |
+| Bitwarden | 1 / 1,591 (1,539) / 638 | 0 / 0 | 39,861 | 93 | 9,165 (37,633) | 142 (143) | 20 (1,939) |
 | CPython | 1 / 6 (5) / 676 | 0 / 0 | 150,182 | 0 | 11,068 (33,309) | 37 (37) | 35 (169) |
+
+Arrow counts corrected (2026-10-14): `lanes-check.mjs` gave each root commit a parent outside
+the history, an arrow too many per root above the last 100 rows (zod 15, Qwik 241, Bitwarden
+1,943 as first published); lane widths were right.
 
 - Repositories that merge with merge commits (CPR, Qwik) list side-branch commits among the
   branch's own: 66 and 57 of the first 100 rows, with nothing telling them apart. V9 met this
