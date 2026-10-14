@@ -2669,7 +2669,8 @@ kbd {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 10px;
+  /* No taller than the brand beside it: the bar keeps its height. */
+  padding: 0 10px;
   border-radius: 6px;
   color: var(--muted);
   font-size: 14px;

@@ -274,10 +274,53 @@ export function rowBadges(
   });
   if (badges.length <= MAX_BADGES) return badges;
   const folded = badges.slice(MAX_BADGES - 1);
+  const agent = foldedMark(folded);
   return [
     ...badges.slice(0, MAX_BADGES - 1),
-    { kind: 'more', label: `+${folded.length}`, title: folded.map((b) => b.label).join('\n') },
+    {
+      kind: 'more',
+      label: `+${folded.length}`,
+      title: folded.map((b) => b.label).join('\n'),
+      ...(agent ? { agent } : {}),
+    },
   ];
+}
+
+/** Which feature marks matter most: what needs the person, then what works, then what is done. */
+const URGENCY: readonly AgentChip['tone'][] = [
+  'failed',
+  'waiting',
+  'ready',
+  'idle',
+  'working',
+  'done',
+];
+
+/**
+ * The mark "+N" carries for the features it folds (V18b): the most urgent one's, a link to the
+ * features view, its title naming them and how many need the person.
+ */
+function foldedMark(folded: readonly Badge[]): (AgentChip & { href: string }) | undefined {
+  const marked = folded.filter((b) => b.agent);
+  const first = marked
+    .map((b) => b.agent as AgentChip)
+    .sort((a, b) => URGENCY.indexOf(a.tone) - URGENCY.indexOf(b.tone))[0];
+  if (!first) return undefined;
+  const needs = marked.filter((b) => !['working', 'done'].includes(b.agent?.tone ?? '')).length;
+  const state =
+    needs === 1
+      ? 'one needs you'
+      : needs > 1
+        ? `${needs} need you`
+        : first.tone === 'working'
+          ? 'working'
+          : 'done';
+  return {
+    mark: first.mark,
+    tone: first.tone,
+    title: `Features here: ${marked.map((b) => b.label).join(', ')} — ${state}`,
+    href: '/features',
+  };
 }
 
 const UNITS: [unit: string, seconds: number][] = [
