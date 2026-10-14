@@ -158,6 +158,32 @@ test('compare mode: a toggle, picks, and Escape to leave', async ({ page }) => {
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
 });
 
+test("compare mode's toggle sits at the header's right, in line with the list, and stays", async ({
+  page,
+}) => {
+  for (const width of [1280, 760]) {
+    await page.setViewportSize({ width, height: 720 });
+    await page.goto(cpr.url);
+    const toggle = page.getByRole('button', { name: 'Compare mode' });
+    const place = async () => {
+      const button = (await toggle.boundingBox())!;
+      const list = (await page.locator('.commit-list').boundingBox())!;
+      return {
+        right: Math.round(button.x + button.width),
+        y: button.y,
+        listRight: list.x + list.width,
+      };
+    };
+    const off = await place();
+    expect(Math.abs(off.right - off.listRight)).toBeLessThanOrEqual(1);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    const on = await place();
+    expect(on.right).toBe(off.right);
+    expect(on.y).toBe(off.y);
+  }
+});
+
 test('x turns compare mode on and picks the selected row', async ({ page }) => {
   const [, , , cube, half] = cpr.shas;
   await page.goto(cpr.url);

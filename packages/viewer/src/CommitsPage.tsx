@@ -591,16 +591,6 @@ function History({
               This branch{first.branch ? ` (${first.branch})` : ''}
             </button>
           </span>
-          <button
-            type="button"
-            className="compare-mode"
-            aria-pressed={comparing}
-            title={comparing ? 'Leave compare mode (Esc)' : 'Pick commits to compare (x)'}
-            onClick={() => (comparing ? stopComparing() : onComparing(true))}
-          >
-            Compare mode
-            <kbd aria-hidden="true">{comparing ? 'Esc' : 'x'}</kbd>
-          </button>
           {first.head && headRow !== null && (
             <button
               type="button"
@@ -616,6 +606,16 @@ function History({
               ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
               : 'j/k move · c checks out · r reviews · x picks to compare'}
           </span>
+          <button
+            type="button"
+            className="compare-mode"
+            aria-pressed={comparing}
+            title={comparing ? 'Leave compare mode (Esc)' : 'Pick commits to compare (x)'}
+            onClick={() => (comparing ? stopComparing() : onComparing(true))}
+          >
+            Compare mode
+            <kbd aria-hidden="true">{comparing ? 'Esc' : 'x'}</kbd>
+          </button>
         </h1>
         {notice && (
           <p className="checkout-notice" role="status">
