@@ -2080,3 +2080,23 @@ list's, the same right edge and height on and off (red before: 713 px off). 599 
 70 e2e. Screenshots at 1440 and 900 px, on and off, no page errors.
 
 Merged into main (2026-10-14). `main` verified after the merge: 599 unit tests, build, 70 e2e.
+
+## V17 spike — what an approval should do (2026-10-14, branch `milestone/v17-approve-means-merge`)
+
+Asked after approving four branches in CPR and asking for each merge in chat: "How can we automate
+this…", then "Aprove is just a metadata...that will tell the agent to merge into whichever is the
+default branch of that git repository", for any repository, and "not automatically" (the person
+tells the agent to act on the review). Measured on this repository: V16's push on Approve did
+nothing on 0 of 4 approvals — the agent had pushed each commit 2–4 minutes before, and `origin`'s
+reflog holds only the agent's push — while all 4 were followed by asking for the merge in chat.
+Reproduced through `cpr view`'s `/api/reviews` on a temporary repository: a branch approved at its
+tip, then 5 commits on `main` merged into it, shows "+6" and the "new since your review" dot on
+all 5 of `main`'s commits; the branch's own new commits: 1, the merge. So "since" must leave out
+the default branch's commits, or resolving a conflict the usual way (merging the default branch
+in) floods the review. Checked `git merge-tree --write-tree --name-only` (git 2.43 here; 2.38+)
+against the default branch on 40 recent unmerged branches each: Bitwarden 2 conflicting, median
+3 ms, max 871 ms; Qwik 19 conflicting (long-lived lines such as `v1`, `v3`, 57–59 files), median
+599 ms, max 5.2 s; this repository's 70 branches are all merged. It touches no checkout, index or
+ref (it writes loose objects), so the Review tab can say "conflicts with main in …" before an
+approval, in the background. The rules an agent follows lived only in this repository's
+`cpr-review` skill; for any repository CPR must write them itself, next to the reviews.
