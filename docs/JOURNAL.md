@@ -2131,3 +2131,7 @@ the old viewer). 602 unit tests, 71 e2e. The two agent runs above, checked in gi
 6.7–10.3 s; screenshots light and dark, no page errors. Not verified: other agents than Claude
 Code, git before 2.38, Windows and macOS.
 
+Merged into main (2026-10-14). `main` verified after the merge: 602 unit tests, build, 71 e2e.
+The first use of the flow: the reviewer approved `92c5276` in CPR ("Merge into main") and pasted
+"Copy for the agent"; the agent read the verdict and `cpr/AGENTS.md` (CPR had written it with
+the verdict) and merged that commit, its parents the old `main` and `92c5276`.
