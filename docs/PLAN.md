@@ -431,7 +431,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V15 ✅ | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Merged: "Review ▸" in the row menu (or r) compares a branch's fork point with its tip, marks kept across new commits (on a clone, 83 of 83 after one more commit, 2 symbols left); reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; "✓" or "+n" on reviewed branches' badges, a dot on commits added since. See below. |
 | V16 ✅ | Finish a review | A branch review has no end: outside `cpr pr` the reviewer can only mark symbols (the reviewer's V15 review: 86 of 87 marked, 0 comments, none possible), feedback to the agent goes through chat without a place, badges show no outcome, and approved work is pushed by hand. Merged: comments and the Review tab on branch reviews; Approve, Request changes or Comment recorded with its comments in the review's JSON ("✓", "✗", "+n" on badges); Approve pushes the reviewed commit, by SHA; the default branch reviewable from where it was last pushed; `cpr pr` unchanged. See below. |
 | V17 ✅ | Approve means "merge it" | Approve pushes the reviewed commit, which did nothing on 0 of 4 approvals here (the agent had pushed), while every approval was followed by asking for the merge in chat; merging the default branch into a reviewed branch shows "+6" for one commit; agents elsewhere get no instructions. Merged: Approve records the commit and the default branch to merge into, nothing pushed; "since" counts the branch's own commits; the Review tab says whether the merge will conflict; CPR writes `cpr/AGENTS.md` for any repository's agent (a headless Claude Code agent followed it: merged exactly the approved commit; on a conflict, resolved on its branch and asked for another review). See below. |
-| V18 | Start a feature | The commits page starts nothing: starting an agent on a feature is a terminal job — a branch and worktree by hand (12 ms on ky to 0.85 s on Bitwarden), Claude Code's own worktrees inside the checkout (ignored by 0 of 6 clones) and from the remote default branch, `claude --bg` refused by a trust step a script cannot take (3 of 3 folders), and nothing ties an agent to its branch. Planned: "Start a feature" (header, `n`, a row's menu): a brief, a branch at the chosen commit with its own worktree beside the checkout, the agent started in the background (Claude Code, or a configured command), its state on the branch and in the branches panel, plan first per feature; reviews and merges as V15–V17. V18a built, not merged: a feature from the header or a row, its worktree and agent in 0.1–0.9 s on the six clones, the checkout untouched; the agent's state on the page is V18b's. See below. |
+| V18 | Start a feature | The commits page starts nothing: starting an agent on a feature is a terminal job — a branch and worktree by hand (12 ms on ky to 0.85 s on Bitwarden), Claude Code's own worktrees inside the checkout (ignored by 0 of 6 clones) and from the remote default branch, `claude --bg` refused by a trust step a script cannot take (3 of 3 folders), and nothing ties an agent to its branch. Planned: "Start a feature" (header, `n`, a row's menu): a brief, a branch at the chosen commit with its own worktree beside the checkout, the agent started in the background (Claude Code, or a configured command), its state on the branch's badge and in a features view (decisions 105–106), each leading to the other, plan first per feature; reviews and merges as V15–V17. V18a built, not merged: a feature from the header or a row, its worktree and agent in 0.1–0.9 s on the six clones, the checkout untouched; the agent's state on the page is V18b's. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -4924,14 +4924,52 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
 - **After Start** (the history's version changed: a new branch): the page lists anew, the cursor
   on the new branch's row, and a line: "Started feature/export-review-as-csv: Claude Code is
   working in ../app.worktrees/feature-export-review-as-csv".
-- **Badges**: a feature's branch badge gains an agent chip before its name, next to V16's review
-  chips after it: working, needs you (its `waitingFor` in the title), plan ready, ready for review,
-  failed or not started. Shapes as well as colours, as V16's fix made review chips readable.
-- **Branches panel** (V10b): a "Features" section first, one entry per open feature with its
-  state and age; its menu, also on the tip row's menu as "Feature ▸": "Talk to the agent" (copies
-  `claude attach <id>`: it needs a terminal), "Open in VS Code" (the worktree's folder, V12's
-  finder), "Review" (V15, once it has commits), "Start the agent" / "Stop the agent" (`claude
-  stop <id>`), and "Clean up" once merged.
+- **Badges** (V18b): a feature's branch badge gains an agent chip before its name, next to V16's
+  review chips after it: working, needs you (its `waitingFor` in the title), plan ready, ready for
+  review, failed or not started. Shapes as well as colours, as V16's fix made review chips
+  readable. The chip is the link to the feature (below); the branches panel draws the same chip.
+- No "Features" section in the branches panel (asked: "should we create a different view for
+  features?"): a feature carries more than its 260 px hold (V10b: about 35 characters), and
+  in a repository with 1,591 remote branches it would be buried among them. Features have their
+  own view.
+
+#### The features view (V18b)
+
+- `/features`, beside the commits page: a tab bar on both pages, "Commits · Features (2)", the
+  count being the features that need the person. The server serves the viewer there as at `/`;
+  the page reads `/api/features`, on load, on focus, and every 5 s while an agent works or waits.
+- One row per open feature, grouped by what it needs from the person, not by stage:
+  - **Needs you**: plan ready, waiting (a permission prompt, an answer: Claude Code's
+    `waitingFor`), ready for review, changes requested and fixed ("+n" since the verdict), failed
+    or not started (Claude Code's words);
+  - **Working**: working, with its commits since the start and its uncommitted files;
+  - **Done**: approved and merged into the default branch, until cleaned up.
+- A row: the agent's chip; the branch (a link, below); the brief's first line (the whole brief on
+  a click); the agent's state in words ("Waiting for a permission prompt · 12 min"); commits since
+  the start; "3 files not committed yet"; the review's mark (V16: "✓", "✗", "+2"); whether it
+  merges cleanly (V17's check, in the background, as the Review tab does).
+- Its actions as buttons on the row, what the state allows: Review (V15, once it has commits),
+  Talk (copies `claude attach <id>`: it needs a terminal), Open in VS Code (the worktree's
+  folder), Start / Stop the agent, Copy the prompt; Reply, Send the verdict and Clean up (V18c).
+- "Start a feature" (and `n`) in its header too; after a start the new feature's row is shown
+  and flashed.
+
+#### Feature and branch: each leads to the other
+
+- **One key**: a feature is its branch. The record is `cpr/features/<branch>.json`, and both
+  pages map a branch name to its feature as reviews do: the local branch and its remote ones
+  (`feature/x` and, once pushed, `origin/feature/x`) are one.
+- **From the feature to the branch**: the branch name on its row goes to the commits page at the
+  branch's tip, `/?branch=<name>` (a new parameter: V10b's "go to a tip" — the cursor there,
+  flashed; under "This branch", every branch first). Review opens `/review/<branch>/`.
+- **From the branch to the feature**: the agent chip on the branch's badge (rows and branches
+  panel) goes to `/features?branch=<name>`, the feature's row scrolled to and flashed; the tip
+  row's menu gains "Open its feature"; the review page's header (V15: "Review of wip · …") names
+  the brief's first line as a link to the feature.
+- Both addresses can be reloaded or bookmarked, as diffs and reviews can.
+- **When the link breaks**: a branch deleted or renamed outside CPR leaves its feature saying
+  "its branch is gone" (no commits link, no chip anywhere); a new branch of a cleaned-up
+  feature's name gets no chip (only open features have one). Following a rename: later.
 
 #### One `cpr view` for every worktree
 
@@ -4977,7 +5015,7 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
 
 - Once merged into the default branch, "Clean up": `git worktree remove` (git refuses while
   anything is uncommitted or untracked, and the page shows its message), `claude rm <id>`, `git
-  branch -d <branch>`. The record stays with `finished`; the panel lists open features only.
+  branch -d <branch>`. The record stays with `finished`; the view lists open features only.
 - Not merged: "Stop the agent"; "Clean up" then needs a confirmation and removes the worktree
   only (git refuses it with changes); the branch and its commits stay.
 
@@ -5004,7 +5042,11 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
    feature here" on a row — that base; merged — Clean up removes the worktree; a dirty worktree —
    git's refusal; V11's menu says where a feature's branch is checked out; a commit made in the
    worktree appears without leaving the page, and uncommitted files are counted; Open in VS Code on
-   the feature's review asks for the worktree's folder and line. Every existing spec passes.
+   the feature's review asks for the worktree's folder and line. The features view (V18b): the
+   groups as the fake's states change, the tab's count; a branch's chip opens its feature's row,
+   the branch name on that row the commits page at its tip, and both addresses reloaded land in
+   the same place; "Open its feature" from the tip's menu and the review page's header; a branch
+   deleted in a terminal: "its branch is gone", no chip. Every existing spec passes.
 3. **A real agent** (first, see Order): Claude Code in a temporary repository the person trusts
    once — plan first: the plan in the session, `done` with no commits, "plan ready"; a reply: it
    builds and commits in its worktree, "ready for review"; Request changes, "Send to the agent":
@@ -5025,8 +5067,9 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
 |---|---|
 | Claude Code does not trust the repository (3 of 3 folders here) | Said with Claude Code's words and the command that fixes it; the feature stays and "Start the agent" retries; CPR never grants trust. |
 | A background agent edits or runs commands unasked | Claude Code's permission mode decides: its default unless the person picked another; never bypassed by CPR. It works in its own worktree: the checkout is untouched. |
-| Agents cost money and run long | Started only by a click; the dialog names the agent, its mode and the brief; "Stop the agent" in the panel. |
-| Worktrees pile up (1.7–173 MB each, plus installs) | Listed under Features; Clean up once merged. |
+| Agents cost money and run long | Started only by a click; the dialog names the agent, its mode and the brief; "Stop the agent" in the features view. |
+| Worktrees pile up (1.7–173 MB each, plus installs) | Listed in the features view; Clean up once merged. |
+| A feature and its branch drift apart (deleted, renamed outside CPR) | Keyed by the branch name; the feature says its branch is gone; no chip on a branch that is not an open feature's. |
 | A folder beside the checkout surprises, or cannot be written | The dialog shows it; configurable; git's error shown. |
 | Losing work | Nothing forced: git refuses to remove a worktree with changes; a branch is deleted only merged (`-d`). |
 | An agent merges from its worktree into a checked-out default branch | AGENTS.md says not to; git refuses the `switch`; Claude Code refuses git in the main checkout. |
@@ -5039,7 +5082,8 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
 **Order**: first a spike on a repository the person trusts once (`claude` run there by hand):
 `--bg` with `--add-dir` and `--session-id`; the states from Start to `done` with plan first;
 `--bg --resume` on a finished session and on one still running; the time `--bg` takes to return.
-Then V18a (core and CLI, server, the dialog), V18b (badges, Features, actions, polling), V18c
+Then V18a (core and CLI, server, the dialog), V18b (the features view, chips, the links both
+ways, polling), V18c
 (reply, send a verdict, AGENTS.md, clean up), V18d (Codex, other commands, `.worktreeinclude`),
 on one branch.
 
@@ -5048,8 +5092,8 @@ on one branch.
 | # | Milestone | Output |
 |---|---|---|
 | V18a (built) | Start a feature | `cpr/features/`, one `cpr/` per repository; branch and worktree outside the checkout; the agent started (`claude --bg`), failures kept with their reason; `/api/features` with states; the dialog (header, `n`, "Start a feature here"); the page lists the new branch. |
-| V18b | Features on the page | Agent chips on badges; "Features" in the branches panel; Talk (attach), Open in VS Code, Review, Start/Stop; plan ready; uncommitted files; polling while an agent works, the history listed anew when a feature's tip moves; Open in VS Code in the feature's worktree; V11's menu names a branch's worktree. |
-| V18c | Talk and finish | "Reply" and "Send to the agent" (resume); AGENTS.md: features, merging from a worktree; Clean up. |
+| V18b | The features view | `/features`: open features grouped by what they need (needs you, working, done), each with its state, commits, uncommitted files, review mark and merge check; Review, Talk (attach), Open in VS Code, Start/Stop, Copy the prompt; the tab bar with the count; agent chips on badges and in the branches panel; feature ↔ branch links (`/?branch=`, `/features?branch=`, "Open its feature", the review header); polling while an agent works, the history listed anew when a feature's tip moves; Open in VS Code in the feature's worktree; V11's menu names a branch's worktree. |
+| V18c | Talk and finish | In the features view: "Reply" and "Send the verdict" (resume); Clean up; AGENTS.md: features, merging from a worktree. |
 | V18d | Codex and other agents | Codex (`codex exec --json`, detached; states from its events; reply by `exec resume`); `agent.command` for any other (detached, log, running/exited); the agent picked in the dialog; `.worktreeinclude`. |
 
 **Proposed decisions**:
@@ -5066,6 +5110,8 @@ on one branch.
 | 102 | Plan first | **Per feature, on by default: the agent plans and stops; "plan ready" is a finished session with no commits** | Asked ("your choice per feature"). |
 | 103 | One `cpr/` per repository | **The main worktree's, for reviews and features** | With features in worktrees, a `cpr view` opened in one would otherwise keep its reviews apart. |
 | 104 | Cleaning up | **Offered once merged; nothing forced; branches deleted with `-d` only; the record kept** | Worktrees hold uncommitted work; git's refusals protect it. |
+| 105 | Where features are shown (refines V18b's plan) | **Their own view, `/features`, grouped by what each needs from the person; on the commits page only the agent chip on the branch's badge; no section in the branches panel** | Asked ("should we create a different view for features?"). A feature carries its brief, state, commits, uncommitted files, verdict, merge check and five or six actions; the panel holds about 35 characters, and its 1,591 remote branches on Bitwarden would bury them. |
+| 106 | Feature and branch | **One key, the branch name; each leads to the other: the branch name on a feature goes to its tip (`/?branch=`), the chip on a branch and the tip's menu to its feature (`/features?branch=`), the review page names its feature** | Asked ("We still need a link between the feature and the branch"). The record is already keyed by the branch; addresses make both views bookmarkable. |
 
 **Not in V18 (later)**: cloud sessions (`claude --cloud`, whose branch comes back on `origin`);
 several agents on one feature; the agent's actions live in CPR (a `-p` stream); answering
