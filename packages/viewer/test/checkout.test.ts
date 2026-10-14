@@ -110,6 +110,38 @@ describe('checkoutChoices', () => {
     });
   });
 
+  it("names each target as the row's badges do, then says what it is and does", () => {
+    const entries = (c: Commit) =>
+      checkoutChoices(c, REFS, ON_MAIN).map(({ ref, note }) => `${ref.kind}:${ref.name} · ${note}`);
+    expect(
+      entries(
+        commit('a', [
+          { kind: 'head', name: 'HEAD' },
+          { kind: 'branch', name: 'main' },
+        ]),
+      ),
+    ).toEqual(['branch:main · branch', 'commit:aaaaaaa · this commit · detached HEAD']);
+    expect(
+      entries(
+        commit('d', [
+          { kind: 'remote', name: 'origin/new' },
+          { kind: 'remote', name: 'origin/topic' },
+          { kind: 'tag', name: 'v1' },
+        ]),
+      ),
+    ).toEqual([
+      'remote:origin/new · remote · creates branch new',
+      'remote:origin/topic · remote',
+      'tag:v1 · tag · detached HEAD',
+      'commit:ddddddd · this commit · detached HEAD',
+    ]);
+    // A remote branch whose local branch is elsewhere: the local branch is what is checked out.
+    expect(entries(commit('g', [{ kind: 'remote', name: 'origin/old' }]))).toEqual([
+      'branch:old · branch · tracks origin/old',
+      'commit:ggggggg · this commit · detached HEAD',
+    ]);
+  });
+
   it('disables the commit when HEAD is already detached there', () => {
     expect(labels(commit('d', []), { branch: null, head: sha('d') })).toEqual([
       'Check out this commit (detached HEAD) [checked out]',

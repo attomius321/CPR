@@ -425,7 +425,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V11 ✅ | Checkout from the commits page | The commits page showed every branch but checked nothing out, and did not notice a checkout made in a terminal (it showed the old HEAD until reloaded). Merged: a row menu (right-click, "⋯", c) checks out a branch, a remote branch as its tracking branch, a tag or the commit, after a confirmation; `git switch` never forced, git's refusals shown; the page lists anew after a checkout (109–115 ms on this repository) and on focus; HEAD stands out (solid "HEAD → main" badge, tinted row, ringed dot, a title chip). See below. |
 | V12 ✅ | Open in VS Code | The diff panel shows a symbol's lines, but going there in the editor is done by hand, and head's line number is not the working copy's: reviewing anything but the checked-out commit, 1–62 % of added lines sat at another line and up to 23 % were changed since (CPR, ky, zod). Merged: "Open in VS Code" (or `o`), Ctrl/⌘+click or a line number opens the line in the window that has the repository open (else a new one with it), at its place in the working copy; the server runs `code <repo root> --goto <file>:<line>:<col>`, found on any platform. 105 ms from the request to VS Code here. See below. |
 | V13 ✅ | Compare mode | The commits page opened as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Merged: browse by default (a click selects the row; 25 rows in view instead of 23 at 1440 × 900), and a "Compare mode" toggle (or `x`) for picking, left with Escape; first rows as fast as `main`. See below. |
-| V14 | Checkout submenu | The row menu lists every target as a sentence: on Qwik's HEAD row 10 entries, each starting "Check out", 8 ending "(detached HEAD)", 480 px wide (its max); a remote branch's entry is 117 characters. The names are plain text mid-sentence, while the rows draw them as coloured badges. Planned: "Check out ▸" with the targets in a submenu on hover, each name as the row's badge with a muted note; the confirmation's heading with the name as a badge. See below. |
+| V14 | Checkout submenu | The row menu lists every target as a sentence: on Qwik's HEAD row 10 entries, each starting "Check out", 8 ending "(detached HEAD)", 480 px wide (its max); a remote branch's entry is 117 characters. The names are plain text mid-sentence, while the rows draw them as coloured badges. Built, not merged: "Check out ▸" with the targets in a submenu on hover (or c), each name as the row's badge with a muted note (Qwik's HEAD row: 10 badges in a 368 px column); the confirmation's heading with the name as a badge. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -3526,7 +3526,8 @@ Not verified: Firefox and Safari; a browser that restores the page from its back
 
 ### V14 — Checkout submenu
 
-**Status:** planned (2026-10-14), on branch `milestone/v14-checkout-submenu`; not started.
+**Status:** implemented (2026-10-14) on branch `milestone/v14-checkout-submenu`; not merged yet.
+As built and results: "As built — V14" below.
 
 **Problem** (asked: "Let's make the branch name more visible when checking out...and maybe, in
 the dropdown, show Check out, and when hovering over, another dropdown opens with the options").
@@ -3633,6 +3634,42 @@ styles; screenshots; README.
 
 **Not in V14 (later)**: other row actions in the menu (create a branch here, copy the SHA,
 compare with the parent); the line after a checkout ("Switched to branch wip") with a badge.
+
+#### As built — V14
+
+- As planned in `src/checkout.ts` (`ref`, `note`), `src/CheckoutMenu.tsx` and `src/styles.css`;
+  `CommitsPage` passes `submenu` for `c`. Core, the server and `src/commits.ts` unchanged.
+- The arrow after "Check out" is drawn by CSS with empty alternative text (`content: '▸' /
+  ''`): plain generated text counts in the accessible name, and the item was "Check out▸".
+- A note that does not fit beside its name goes under it (`flex-wrap`). The first screenshot of
+  Qwik's remote-branch row showed the note, kept on one line, squeezing the badge to "o".
+- The confirmation's badge is an inline block (8 px corners, wrapping inside), leaving 1em for
+  the "?": a pill split over two lines lost its border, then the "?" fell to a line of its own.
+- Hovering "Check out" opens the submenu and keeps "Check out" highlighted; the pointer on an
+  entry highlights it, and the keys then act in the submenu. A click on "Check out" opens it
+  with the first entry active, like → and Enter.
+- The menu's minimum width went from 240 to 160 px: it holds one entry.
+- Headings for a tag or a commit no longer say "(detached HEAD)": the first words under them
+  do ("Detaches HEAD at …").
+
+**Results (V14)**. Tests first: the new unit test failed (no `ref`), and against `main`'s build
+5 of 6 checkout e2e tests failed (no lone "Check out", no submenu). Now 558 unit tests (1 new)
+and 66 e2e (2 new: the keyboard path through both menus; the submenu kept in a 900 × 300 window,
+flipped left of "⋯" and moved up near the bottom; the entries test rewritten for the submenu;
+3 tests choose through it; the confirmation's badge checked). Real repositories (Chromium,
+1440 × 900, light and dark), against the spike's numbers:
+
+| Row | Before | V14 |
+|---|---|---|
+| Qwik HEAD (`main`, 8 tags) | one menu, 480 × 343 px, "Check out" 10 times | menu 160 × 42, submenu 368 × 335: 10 badges in a column, notes after them |
+| Qwik `2cf8a7d` (remote branch) | 480 × 112, a 117-character entry on two lines | submenu 480 × 105: the name whole on one line, the note under it |
+| A 140-character branch (scratch repository) | — | cut with "…" in the submenu (its title whole), whole in the confirmation |
+| Page errors | — | 0 |
+
+Not verified: Firefox and Safari (empty alternative text for `content` needs Chrome 77, Safari
+17.4, Firefox 128; older browsers draw the same arrow and read it in the name); touch screens
+(no hover: a tap on "Check out" opens the submenu, as a click does); first rows drawn, not
+re-measured (the rows did not change).
 
 ### Phase 1 milestones
 
