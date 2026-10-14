@@ -3,12 +3,14 @@ import type { Graph, GraphNode } from '@cpr/core';
 import { describe, expect, it } from 'vitest';
 import {
   anchorFor,
+  canFinish,
   canSubmit,
   defaultAnchor,
   describeAnchor,
   describeDraft,
   newDraft,
   refreshDrafts,
+  toLocalReview,
   toReview,
   type Draft,
 } from '../src/comments.js';
@@ -103,6 +105,40 @@ describe('toReview', () => {
     expect(canSubmit(drafts, 'comment', '')).toBe(true);
     expect(canSubmit(drafts, 'request-changes', ' ')).toBe(false);
     expect(canSubmit([], 'request-changes', 'Split it')).toBe(true);
+  });
+});
+
+describe('toLocalReview (V16)', () => {
+  const drafts: Draft[] = [
+    newDraft(slugify, defaultAnchor(graph, slugify, rows), ' Trim first? '),
+    newDraft(node('src/user.ts#User'), null, 'Rename this class.'),
+  ];
+
+  it('keeps every draft a comment, with its symbol and id; a line when it has one', () => {
+    const [first, second] = drafts;
+    expect(toLocalReview(drafts, 'request-changes', ' Two things. ')).toEqual({
+      event: 'request-changes',
+      body: 'Two things.',
+      comments: [
+        {
+          id: first?.id,
+          symbol: 'src/text/slug.ts#slugify',
+          body: 'Trim first?',
+          side: 'head',
+          path: 'src/text/slug.ts',
+          otherPath: 'src/text/slug.ts',
+          line: 2,
+        },
+        { id: second?.id, symbol: 'src/user.ts#User', body: 'Rename this class.' },
+      ],
+    });
+  });
+
+  it('finishes with a verdict alone, else with something to say', () => {
+    expect(canFinish([], 'approve', '')).toBe(true);
+    expect(canFinish([], 'request-changes', ' ')).toBe(false);
+    expect(canFinish(drafts, 'request-changes', '')).toBe(true);
+    expect(canFinish([], 'comment', 'A thought.')).toBe(true);
   });
 });
 

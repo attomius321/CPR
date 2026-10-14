@@ -1,4 +1,4 @@
-import type { BranchReviewList, Commit, RefList } from '@cpr/core';
+import type { BranchReviewList, BranchReviewSummary, Commit, RefList } from '@cpr/core';
 import type { MenuChoice } from './checkout.js';
 
 /** One entry of a row's "Review" submenu (V15). */
@@ -9,9 +9,29 @@ export interface ReviewChoice extends MenuChoice {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+/** A review's last verdict in words (V16), or its marks when it has none. */
+function outcome(review: BranchReviewSummary): string {
+  const { verdict } = review;
+  if (verdict?.event === 'approve') return verdict.pushed ? 'approved and pushed' : 'approved';
+  if (verdict?.event === 'request-changes') return 'changes requested';
+  return `${review.marks} reviewed`;
+}
+
+/** How far a branch's review is, as the Review submenu says it. */
+function reviewNote(review: BranchReviewSummary | undefined, ref: string): string | null {
+  if (!review) return null;
+  const at = review.refs.find((r) => r.name === ref);
+  if (!at) return outcome(review);
+  if (at.since > 0) return `${outcome(review)} · ${plural(at.since, 'commit')} since`;
+  const decided =
+    review.verdict && review.verdict.head === at.tip && review.verdict.event !== 'comment';
+  return decided ? outcome(review) : `${review.marks} reviewed · in progress`;
+}
+
 /**
- * What a row offers to review: each branch on it once (its local branch, else a remote's),
- * with how far its review is; the default branch disabled, since others start from it.
+ * What a row offers to review: each branch on it once (its local branch, else a remote's), with
+ * how far its review is. The default branch is offered for its unpushed commits (V16): disabled
+ * without an upstream or with nothing unpushed, and as a remote branch (what was pushed).
  */
 export function reviewChoices(
   commit: Commit,
@@ -34,38 +54,65 @@ export function reviewChoices(
     seen.add(branch);
     const ref = { kind: name === branch ? ('branch' as const) : ('remote' as const), name };
     const label = name === branch ? `Review branch ${name}` : `Review ${name}`;
+    const review = list.reviews.find((r) => r.branch === branch);
     if (branch === list.defaultBranch) {
-      choices.push({
-        label,
-        ref,
-        note: 'default branch',
-        review: name,
-        disabled: 'nothing to compare it with: other branches start from it',
-      });
+      const local = refs.branches.find((b) => b.name === name);
+      const why = !local
+        ? `the default branch as pushed: review ${branch}`
+        : !local.upstream
+          ? 'no upstream to compare it with'
+          : !local.ahead
+            ? 'no unpushed commits'
+            : null;
+      if (why) {
+        choices.push({ label, ref, note: 'default branch', review: name, disabled: why });
+        continue;
+      }
+      const unpushed = plural(local?.ahead ?? 0, 'unpushed commit');
+      choices.push({ label, ref, note: reviewNote(review, name) ?? unpushed, review: name });
       continue;
     }
-    const review = list.reviews.find((r) => r.branch === branch);
-    const since = review?.refs.find((r) => r.name === name)?.since;
-    const note = !review
-      ? 'not reviewed yet'
-      : since === undefined
-        ? `${review.marks} reviewed`
-        : `${review.marks} reviewed · ${since === 0 ? 'up to date' : `${plural(since, 'commit')} since`}`;
-    choices.push({ label, ref, note, review: name });
+    choices.push({
+      label,
+      ref,
+      note: reviewNote(review, name) ?? 'not reviewed yet',
+      review: name,
+    });
   }
   return choices;
 }
 
-/** What the commits page shows of reviews: commits since review by ref, branches by new commit. */
+/** A reviewed branch's mark on its badges (V16), and what it means. */
+export interface ReviewMark {
+  mark: string;
+  title: string;
+}
+
+/**
+ * What the commits page shows of reviews: each reviewed branch's mark by ref name — "+2" commits
+ * since the review, else its verdict at the tip ("✓", "✗"), else "…" — and branches by new commit.
+ */
 export function reviewMarks(list: BranchReviewList | null): {
-  since: Map<string, number>;
+  marks: Map<string, ReviewMark>;
   added: Map<string, string[]>;
 } {
-  const since = new Map<string, number>();
+  const marks = new Map<string, ReviewMark>();
   const added = new Map<string, string[]>();
   for (const review of list?.reviews ?? []) {
-    for (const ref of review.refs) since.set(ref.name, ref.since);
+    for (const ref of review.refs) marks.set(ref.name, markOf(review, ref.tip, ref.since));
     for (const sha of review.added) added.set(sha, [...(added.get(sha) ?? []), review.branch]);
   }
-  return { since, added };
+  return { marks, added };
+}
+
+function markOf(review: BranchReviewSummary, tip: string, since: number): ReviewMark {
+  if (since > 0)
+    return { mark: `+${since}`, title: `${plural(since, 'commit')} since your review` };
+  const verdict = review.verdict?.head === tip ? review.verdict : undefined;
+  if (verdict?.event === 'approve') {
+    return { mark: '✓', title: verdict.pushed ? 'Approved and pushed' : 'Approved' };
+  }
+  if (verdict?.event === 'request-changes') return { mark: '✗', title: 'Changes requested' };
+  if (verdict?.event === 'comment') return { mark: '…', title: 'Commented, no verdict yet' };
+  return { mark: '…', title: 'Review in progress' };
 }

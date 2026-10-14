@@ -107,8 +107,8 @@ export interface Badge {
   kind: CommitRef['kind'] | 'more';
   label: string;
   title?: string;
-  /** The branch is reviewed (V15): commits on it since the review, 0 when none. */
-  review?: number;
+  /** The branch is reviewed (V15, V16): "+2", "✓", "✗" or "…", and what it means. */
+  review?: { mark: string; title: string };
 }
 
 /** Badges shown on a row before the rest are folded into "+N" (Qwik tags 9 packages at once). */
@@ -116,18 +116,18 @@ const MAX_BADGES = 3;
 
 /**
  * A row's badges: HEAD joined with the branch checked out ("HEAD → main"), so the current
- * commit stands out; the first few refs, then "+N" naming the others. `reviewed`: commits since
- * each reviewed branch's review, by ref name.
+ * commit stands out; the first few refs, then "+N" naming the others. `reviewed`: each reviewed
+ * branch's mark, by ref name.
  */
 export function rowBadges(
   refs: readonly CommitRef[],
   branch: string | null,
-  reviewed: ReadonlyMap<string, number> = new Map(),
+  reviewed: ReadonlyMap<string, { mark: string; title: string }> = new Map(),
 ): Badge[] {
   const head = refs.some((r) => r.kind === 'head');
   const review = (name: string) => {
-    const since = reviewed.get(name);
-    return since === undefined ? {} : { review: since };
+    const mark = reviewed.get(name);
+    return mark === undefined ? {} : { review: mark };
   };
   const badges: Badge[] = refs.flatMap((ref): Badge[] => {
     if (ref.kind === 'head') {

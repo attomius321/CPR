@@ -90,7 +90,8 @@ type State =
       branchReview?: BranchReviewInfo;
     };
 
-type Forge = 'github' | 'gitlab';
+/** Where a review goes: a forge (`cpr pr`), or the repository itself (a branch review, V16). */
+type Forge = 'github' | 'gitlab' | 'local';
 
 interface Capabilities {
   sources: boolean;
@@ -514,6 +515,14 @@ export function App() {
                       onBody: (body) => updateDraft((d) => ({ ...d, body }), 300),
                       onRemove: removeDraft,
                       onPosted: () => updateDraft(() => ({ drafts: [], body: '' })),
+                      ...(state.status === 'ready' && state.branchReview
+                        ? {
+                            local: {
+                              branch: state.branchReview.branch,
+                              ...(state.branchReview.push ? { push: state.branchReview.push } : {}),
+                            },
+                          }
+                        : {}),
                     }
                   : undefined
               }

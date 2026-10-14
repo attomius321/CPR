@@ -1,4 +1,4 @@
-import type { Graph, GraphNode } from '@cpr/core';
+import type { FinishResult, Graph, GraphNode, LocalReview } from '@cpr/core';
 import type { DiffRow } from './detail.js';
 import { label } from './flow.js';
 import { fingerprint } from './review.js';
@@ -145,6 +145,59 @@ export function canSubmit(drafts: readonly Draft[], event: ReviewEvent, body: st
   if (event === 'approve') return true;
   if (event === 'request-changes') return body.trim() !== '';
   return body.trim() !== '' || drafts.length > 0;
+}
+
+/**
+ * A branch review's verdict (V16): every draft a comment with its symbol and id, its line when
+ * it has one; the summary as written.
+ */
+export function toLocalReview(
+  drafts: readonly Draft[],
+  event: ReviewEvent,
+  body: string,
+): LocalReview {
+  return {
+    event,
+    body: body.trim(),
+    comments: drafts.map((d) => ({
+      id: d.id,
+      symbol: d.symbol,
+      body: d.body.trim(),
+      ...(d.anchor ?? {}),
+    })),
+  };
+}
+
+/** Whether a branch review can be finished: a verdict alone, else something to say. */
+export function canFinish(drafts: readonly Draft[], event: ReviewEvent, body: string): boolean {
+  return event === 'approve' || body.trim() !== '' || drafts.length > 0;
+}
+
+/** Finishes a branch review (V16); resolves with the verdict, its text, and what was pushed. */
+export function finishReview(review: LocalReview): Promise<FinishResult> {
+  return send<FinishResult>('./api/review', review);
+}
+
+/** Pushes the last approval again, after git refused it. */
+export function pushAgain(): Promise<FinishResult> {
+  return send<FinishResult>('./api/review/push', {});
+}
+
+async function send<T>(url: string, payload: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+    body: JSON.stringify(payload),
+  });
+  if (response.ok) return (await response.json()) as T;
+  const text = await response.text();
+  let message = text;
+  try {
+    message = (JSON.parse(text) as { error?: string }).error ?? text;
+  } catch {
+    // plain text
+  }
+  throw new Error(message || `${response.status} ${response.statusText}`);
 }
 
 export async function postReview(payload: ReviewPayload): Promise<{ url: string }> {
