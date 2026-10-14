@@ -4907,6 +4907,23 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
   finder), "Review" (V15, once it has commits), "Start the agent" / "Stop the agent" (`claude
   stop <id>`), and "Clean up" once merged.
 
+#### One `cpr view` for every worktree
+
+- Worktrees share the repository's refs and objects: the commits page lists every feature's
+  branch and commits, and a review compares commits in CPR's cached worktrees, never a working
+  tree. So one `cpr view`, in the main checkout, covers every feature; opened in a feature's
+  worktree it shows the same page and the same `cpr/` (decision 103).
+- **Uncommitted work** is not in any commit, so no page shows it. The prompt says to commit as it
+  goes; `/api/features` adds `worktree.changed` (V11's `workingState` run in the worktree, 3–10
+  ms), shown on the feature: "3 files not committed yet".
+- **New commits while the page is in view**: the page lists anew on focus only (V11). While an
+  agent works, `/api/features` (every 5 s) carries each feature's tip; a tip that moved lists the
+  history anew, so the agent's commits appear without leaving the page.
+- **Open in VS Code** (V12) opens the repository's root and maps a line to its working copy
+  (`editor.ts`): for a branch checked out in a feature's worktree that is the wrong copy. On a
+  review of such a branch, it opens that worktree's folder and maps the line there; V17's
+  conflicting files the same.
+
 #### Talking to the agent (V18c)
 
 - "Plan ready" and "needs you" are answered in the session: "Talk to the agent" gives the
@@ -4959,8 +4976,9 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
    "needs you"; it commits and reports `done` — "ready for review", and Review (V15) opens it;
    plan first with no commits — "plan ready"; the trust failure — the message, retry; "Start a
    feature here" on a row — that base; merged — Clean up removes the worktree; a dirty worktree —
-   git's refusal; V11's menu says where a feature's branch is checked out. Every existing spec
-   passes.
+   git's refusal; V11's menu says where a feature's branch is checked out; a commit made in the
+   worktree appears without leaving the page, and uncommitted files are counted; Open in VS Code on
+   the feature's review asks for the worktree's folder and line. Every existing spec passes.
 3. **A real agent** (first, see Order): Claude Code in a temporary repository the person trusts
    once — plan first: the plan in the session, `done` with no commits, "plan ready"; a reply: it
    builds and commits in its worktree, "ready for review"; Request changes, "Send to the agent":
@@ -5004,7 +5022,7 @@ branch.
 | # | Milestone | Output |
 |---|---|---|
 | V18a | Start a feature | `cpr/features/`, one `cpr/` per repository; branch and worktree outside the checkout; the agent started (`claude --bg`), failures kept with their reason; `/api/features` with states; the dialog (header, `n`, "Start a feature here"); the page lists the new branch. |
-| V18b | Features on the page | Agent chips on badges; "Features" in the branches panel; Talk (attach), Open in VS Code, Review, Start/Stop; plan ready; polling while an agent works; V11's menu names a branch's worktree. |
+| V18b | Features on the page | Agent chips on badges; "Features" in the branches panel; Talk (attach), Open in VS Code, Review, Start/Stop; plan ready; uncommitted files; polling while an agent works, the history listed anew when a feature's tip moves; Open in VS Code in the feature's worktree; V11's menu names a branch's worktree. |
 | V18c | Talk and finish | "Reply" and "Send to the agent" (resume); AGENTS.md: features, merging from a worktree; Clean up. |
 | V18d | Other agents | `agent.command` in `cpr/config.json` (detached, log, running/exited); `.worktreeinclude`. |
 
