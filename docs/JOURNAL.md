@@ -2201,3 +2201,5 @@ the base's side right on every pair; the default branch against every diverged r
 Screenshots on Qwik, light and dark, no page errors. Cold `cpr view` against `main`'s build:
 first rows unchanged; the shape +9–12 ms (Bitwarden), within noise on CPython. Not verified:
 Windows, macOS, Firefox, Safari; a repository with no `main`, `master` or remote `HEAD`.
+
+Merged into main (2026-10-14). `main` verified after the merge: 613 unit tests, build, 75 e2e.
