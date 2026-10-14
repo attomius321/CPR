@@ -127,6 +127,17 @@ export {
   type Tag,
 } from './git/refs.js';
 export {
+  commitsBetween,
+  defaultBranch,
+  forkPoint,
+  trackedFiles,
+  userEmail,
+  type BranchReviewInfo,
+  type BranchReviewList,
+  type BranchReviewRef,
+  type BranchReviewSummary,
+} from './git/branches.js';
+export {
   checkout,
   CheckoutRefused,
   UnknownCheckoutTarget,
