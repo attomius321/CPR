@@ -12,6 +12,8 @@ export interface HistorySource {
   state(): Promise<HistoryState>;
   stream(scope: HistoryScope, onRows: (rows: HistoryRow[]) => void): Promise<void>;
   details(shas: readonly string[]): Promise<Commit[]>;
+  /** The default branch and its tips (V10c), read once per listing; absent: none. */
+  defaultBranch?(): Promise<{ name: string; tips: string[] } | null>;
 }
 
 export interface HistoriesOptions {
@@ -63,7 +65,9 @@ export class Histories {
   /** Every row's parents as row numbers, once listed; null when `version` is stale. */
   async shape(scope: HistoryScope, version: string): Promise<HistoryShape | null> {
     const listing = this.of(scope, version);
-    return listing ? listing.shape() : null;
+    return listing
+      ? listing.shape(() => this.source.defaultBranch?.() ?? Promise.resolve(null))
+      : null;
   }
 
   private async current(scope: HistoryScope): Promise<Listing> {
@@ -92,7 +96,7 @@ class Listing {
   private error: unknown;
   private waiting: { rows: number; resolve: () => void }[] = [];
   private readonly finished: Promise<void>;
-  private shaped: HistoryShape | undefined;
+  private shaped: Promise<HistoryShape> | undefined;
 
   constructor(
     readonly state: HistoryState,
@@ -128,21 +132,35 @@ class Listing {
     if (this.failed) throw this.error;
   }
 
-  async shape(): Promise<HistoryShape> {
+  /** The shape, made once; `defaultBranch` is read then, with the listing done. */
+  shape(
+    defaultBranch: () => Promise<{ name: string; tips: string[] } | null>,
+  ): Promise<HistoryShape> {
+    // A failure is not kept: the next request tries again.
+    this.shaped ??= this.makeShape(defaultBranch).catch((error: unknown) => {
+      this.shaped = undefined;
+      throw error;
+    });
+    return this.shaped;
+  }
+
+  private async makeShape(
+    defaultBranch: () => Promise<{ name: string; tips: string[] } | null>,
+  ): Promise<HistoryShape> {
     await this.finished;
     if (this.failed) throw this.error;
-    if (!this.shaped) {
-      const row = new Map(this.shas.map((sha, i) => [sha, i]));
-      const { head, version } = this.state;
-      this.shaped = {
-        version,
-        rows: this.shas.length,
-        head: head === null ? null : (row.get(head) ?? null),
-        // A parent outside the history (a shallow clone's edge) is -1.
-        parents: this.parents.map((parents) => parents.map((p) => row.get(p) ?? -1)),
-      };
-    }
-    return this.shaped;
+    const row = new Map(this.shas.map((sha, i) => [sha, i]));
+    const { head, version } = this.state;
+    const main = await defaultBranch();
+    const rows = (main?.tips ?? []).flatMap((tip) => row.get(tip) ?? []);
+    return {
+      version,
+      rows: this.shas.length,
+      head: head === null ? null : (row.get(head) ?? null),
+      // A parent outside the history (a shallow clone's edge) is -1.
+      parents: this.parents.map((parents) => parents.map((p) => row.get(p) ?? -1)),
+      ...(main && rows.length > 0 ? { defaultBranch: { name: main.name, rows } } : {}),
+    };
   }
 
   private wake(): void {

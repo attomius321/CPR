@@ -4,6 +4,7 @@ import {
   checkMerge,
   commitsBetween,
   defaultBranch,
+  defaultBranchTips,
   forkPoint,
   isAncestor,
   listRefs,
@@ -62,6 +63,22 @@ describe('defaultBranch', () => {
     expect(await defaultBranch(open, await listRefs(open))).toBe('master');
     repo.git('branch', 'main', 'trunk');
     expect(await defaultBranch(open, await listRefs(open))).toBe('main');
+  });
+});
+
+describe('defaultBranchTips', () => {
+  it("names the default branch and its tips: the local branch's and each remote's", async () => {
+    const { repo, shas } = fresh();
+    const open = await openRepo(repo.root);
+    expect(await defaultBranchTips(open)).toEqual({ name: 'main', tips: [shas.M, shas.B] });
+    // One commit, one tip.
+    repo.git('update-ref', 'refs/remotes/origin/main', shas.M);
+    expect(await defaultBranchTips(open)).toEqual({ name: 'main', tips: [shas.M] });
+    // Without a default branch, none.
+    repo.git('symbolic-ref', '--delete', 'refs/remotes/origin/HEAD');
+    repo.git('branch', '--move', 'main', 'trunk');
+    repo.git('update-ref', '-d', 'refs/remotes/origin/main');
+    expect(await defaultBranchTips(open)).toBeNull();
   });
 });
 

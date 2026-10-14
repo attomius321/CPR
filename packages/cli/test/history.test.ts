@@ -95,6 +95,29 @@ describe('Histories', () => {
     expect(await shape).toEqual({ version: 'v1', rows: 4, head: 0, parents: [[1], [3], [3], []] });
   });
 
+  it("gives the default branch's tips as rows: those listed, else none (V10c)", async () => {
+    const fake = fakeSource();
+    // x's line is the default branch; z, a remote's tip, is not listed in this scope.
+    fake.source.defaultBranch = () => Promise.resolve({ name: 'main', tips: [sha('x'), sha('z')] });
+    const histories = new Histories(fake.source);
+    void histories.page('all', 0, 1);
+    await settle();
+    fake.streams[0]?.push(ROWS);
+    fake.streams[0]?.end();
+    expect(await histories.shape('all', 'v1')).toMatchObject({
+      defaultBranch: { name: 'main', rows: [2] },
+    });
+
+    const none = fakeSource();
+    none.source.defaultBranch = () => Promise.resolve({ name: 'main', tips: [sha('z')] });
+    const unlisted = new Histories(none.source);
+    void unlisted.page('all', 0, 1);
+    await settle();
+    none.streams[0]?.push(ROWS);
+    none.streams[0]?.end();
+    expect(await unlisted.shape('all', 'v1')).not.toHaveProperty('defaultBranch');
+  });
+
   it('reads rows anywhere in the history from the order kept, without listing again', async () => {
     const fake = fakeSource();
     const histories = new Histories(fake.source);
