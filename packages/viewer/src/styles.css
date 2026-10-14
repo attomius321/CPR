@@ -1599,7 +1599,10 @@ kbd {
   font-size: 18px;
 }
 
+/* The keys fill the space before Compare mode, wrapping inside it, so the toggle stays at the
+   right, in line with the list, whether its help is short or long. */
 .commits-help {
+  flex: 1 1 240px;
   color: var(--muted);
   font-size: 13px;
   font-weight: normal;
@@ -1772,6 +1775,7 @@ kbd {
 /* Outlined in the accent colour, filled when on: a control meant to be found (V12). */
 .compare-mode {
   display: inline-flex;
+  margin-left: auto;
   align-items: center;
   gap: 6px;
   padding: 1px 6px 1px 10px;
