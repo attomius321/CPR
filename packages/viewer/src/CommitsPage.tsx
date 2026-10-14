@@ -1043,7 +1043,8 @@ function CommitRow({
         <span
           key={`${badge.kind}:${badge.label}`}
           className={`ref ref-${badge.kind}`}
-          {...(badge.title ? { title: badge.title } : {})}
+          // A badge cut short (a narrow window, a long name) is named in full on hover.
+          title={badge.title ?? badge.label}
         >
           {badge.label}
           {badge.review && (

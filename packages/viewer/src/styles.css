@@ -2101,6 +2101,11 @@ kbd {
 }
 
 .ref {
+  /* Once the subject has no room left, badges shrink before the author and date leave the row
+     (V10b: the branches panel takes 260 px of it). */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 0 6px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -2172,12 +2177,14 @@ kbd {
 }
 
 .commit-author {
+  min-width: 0;
   max-width: 12em;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .commit-date {
+  flex: none;
   width: 8.5em;
   text-align: right;
 }

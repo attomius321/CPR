@@ -37,14 +37,16 @@ async function open(page: Page, url = cpr.url) {
 
 test('lists local branches and remote ones by folder, folders closed', async ({ page }) => {
   await open(page);
-  await expect(panel(page).locator('.branches-section')).toHaveText(['Local 3', 'Remotes 5']);
+  await expect(panel(page).locator('.branches-section')).toHaveText(['Local 4', 'Remotes 6']);
   await expect(panel(page).locator('.branches-folder, .branches-branch')).toHaveText([
     '●main',
+    'a-branch-whose-name-runs-on-long-enough-to-crowd-its-row',
     'oldgone',
     'wip↑2 ↓1',
-    '▾origin/5',
+    '▾origin/6',
     '▸feature/1',
     '▸fix/2',
+    'a-branch-whose-name-runs-on-long-enough-to-crowd-its-row',
     'topic',
     'wip',
   ]);
@@ -130,6 +132,29 @@ test('/ finds a branch', async ({ page }) => {
   // Enter goes to the first branch listed.
   await page.keyboard.press('Enter');
   await expect(cursorSubject(page)).toHaveText('Topic work');
+});
+
+test('rows keep their date in view beside the panel: long badges shrink first', async ({
+  page,
+}) => {
+  for (const width of [1000, 820]) {
+    await page.setViewportSize({ width, height: 720 });
+    await page.goto(cpr.url);
+    await expect(page.locator('.commit:not(.loading)').first()).toBeVisible();
+    const clipped = await page.evaluate(() => {
+      const list = document.querySelector('.commit-list')?.getBoundingClientRect();
+      return [...document.querySelectorAll('.commit:not(.loading) .commit-date')].filter(
+        (date) => !list || date.getBoundingClientRect().right > list.right + 0.5,
+      ).length;
+    });
+    expect(clipped, `at ${width} px`).toBe(0);
+    // The long badge is cut, and named in full on hover.
+    const badge = page.locator('.ref', { hasText: 'origin/a-branch-whose' });
+    await expect(badge).toHaveAttribute(
+      'title',
+      'origin/a-branch-whose-name-runs-on-long-enough-to-crowd-its-row',
+    );
+  }
 });
 
 test('under 900 px, a button opens the panel over the rows', async ({ page }) => {

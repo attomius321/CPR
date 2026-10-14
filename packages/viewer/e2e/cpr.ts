@@ -426,8 +426,9 @@ export async function serveDiverged(checkout: 'main' | 'topic' = 'main'): Promis
  * 300"), remote `origin` (never fetched) with `feature/deep` ("Deep feature", dated just after
  * "commit 20": its row is near the bottom), `fix/one` and `fix/two`, `topic` ("Topic work") and
  * `wip` ("Remote wip"); local `wip` ("Local wip 1", "Local wip 2" from "commit 250": ahead 2 and
- * behind 1 of `origin/wip`) and `old` (at "commit 100", its upstream `origin/old` gone). `main`
- * is checked out. Served by `cpr view` without revisions.
+ * behind 1 of `origin/wip`) and `old` (at "commit 100", its upstream `origin/old` gone); a branch
+ * with a long name, local and remote, at "commit 298". `main` is checked out. Served by `cpr
+ * view` without revisions.
  */
 export async function serveBranches(): Promise<Running> {
   const repo = mkdtempSync(join(tmpdir(), 'cpr-e2e-'));
@@ -451,6 +452,9 @@ export async function serveBranches(): Promise<Running> {
   commit('refs/remotes/origin/fix/one', 301, 'Fix one', on(290));
   commit('refs/remotes/origin/fix/two', 302, 'Fix two', on(295));
   commit('refs/remotes/origin/topic', 303, 'Topic work', on(299));
+  // Two long badges on one row: a local branch and its remote.
+  const long = 'a-branch-whose-name-runs-on-long-enough-to-crowd-its-row';
+  stream += `reset refs/heads/${long}\nfrom :${on(298)}\n\nreset refs/remotes/origin/${long}\nfrom :${on(298)}\n\n`;
   commit('refs/remotes/origin/wip', 304, 'Remote wip', on(250));
   const local = commit('refs/heads/wip', 305, 'Local wip 1', on(250));
   commit('refs/heads/wip', 306, 'Local wip 2', local);
