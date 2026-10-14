@@ -761,9 +761,12 @@ async function fetchCapabilities(): Promise<Capabilities | null> {
   }
 }
 
-/** "Review of wip · a1b2c3d → e4f5a6b · 2 commits since your last review" (V15). */
+/**
+ * "Review of wip · 2 commits since your last review" (V15); the commits compared follow, in the
+ * summary.
+ */
 function ReviewOf({ review }: { review: BranchReviewInfo }) {
-  const { branch, base, head, since, note } = review;
+  const { branch, since, note } = review;
   const after =
     since === null
       ? 'first review'
@@ -772,7 +775,7 @@ function ReviewOf({ review }: { review: BranchReviewInfo }) {
         : `${since} commit${since === 1 ? '' : 's'} since your last review`;
   return (
     <span className="review-of" {...(note ? { title: note } : {})}>
-      Review of <strong>{branch}</strong> · {base.slice(0, 7)} → {head.slice(0, 7)} · {after}
+      Review of <strong>{branch}</strong> · {after}
     </span>
   );
 }

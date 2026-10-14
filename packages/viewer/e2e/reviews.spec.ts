@@ -55,9 +55,8 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
 
   // From where the branch left main to its tip.
   await expect(page).toHaveURL(/\/review\/agent\/$/);
-  await expect(page.locator('.review-of')).toHaveText(
-    `Review of agent · ${short(base)} → ${short(cube)} · first review`,
-  );
+  await expect(page.locator('.review-of')).toHaveText('Review of agent · first review');
+  await expect(page.locator('.revisions')).toHaveText(`${short(base)} → ${short(cube)}`);
   await changesTab(page).click();
   await expect(changesTab(page)).toContainText('0/2');
   for (let i = 0; i < 2; i++) {
@@ -106,8 +105,9 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   );
   await page.keyboard.press('Enter');
   await expect(page.locator('.review-of')).toHaveText(
-    `Review of agent · ${short(base)} → ${short(tip)} · 1 commit since your last review`,
+    'Review of agent · 1 commit since your last review',
   );
+  await expect(page.locator('.revisions')).toHaveText(`${short(base)} → ${short(tip)}`);
   await changesTab(page).click();
   await expect(changesTab(page)).toContainText('1/3');
   await expect(page.locator('.stale-note')).toContainText('1 symbol changed since you reviewed it');

@@ -7,7 +7,7 @@ cpr diff main            # what changed on this branch, symbol by symbol, with f
 cpr diff main --json     # the graph as JSON (docs/graph-schema.md)
 cpr diff main --fail-on error   # for CI
 cpr view main            # review it as a graph in the browser
-cpr view                 # the history as a graph: check out, or pick two commits and review their diff
+cpr view                 # the history as a graph: check out, review a branch, or compare two commits
 cpr pr 123               # a GitHub pull request or GitLab merge request (cpr mr 123)
 ```
 
@@ -42,6 +42,16 @@ commit-graph write` when that is slow). Right-click a commit (or "⋯") and poin
 or press c, to check out one of its branches, a remote branch as its local branch, a tag or the
 commit itself (each named by its badge); CPR asks first, uses `git switch` (never forced: local changes come along, or git refuses and nothing changes)
 and redraws the graph. A checkout made elsewhere shows when the page is back in focus.
+
+To review a branch (an agent's, say), point at "Review" in the same menu, or press r: CPR
+compares the branch from where it left the default branch to its tip. Mark symbols reviewed as
+you go; after new commits, review it again and only what is new or changed since is left (marks
+stay on symbols that did not change). A reviewed branch's badge shows "✓", or "+2" for commits
+since, and those commits get a dot. Reviews are files in `cpr/reviews/<branch>/<your git
+email>.json`. The first one writes `cpr/.gitignore`, which keeps them out of git; delete it to
+commit and share them. `git clean -fdx` deletes ignored files, reviews with them. An agent that
+commits with `git add -A` in your working copy skips them while that `.gitignore` is there; agents
+working in their own worktree have their own `cpr/`.
 
 A click selects a commit (j/k move the selection). To compare, turn on "Compare mode" (or press
 x): click one commit and another — the older is the base — and Compare (or x, Enter); one picked
@@ -208,7 +218,7 @@ required prop a page does not pass is a warning naming it, and a component only 
 orphan — components the MDX provider gives (`providerImportSource`) included.
 
 ```jsonc
-// cpr.config.json, at the repository root (read from your working folder)
+// cpr/config.json (or cpr.config.json, the older place), at the repository root
 { "plugins": ["angular"] }
 ```
 

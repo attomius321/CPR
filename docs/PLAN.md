@@ -426,7 +426,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V12 ✅ | Open in VS Code | The diff panel shows a symbol's lines, but going there in the editor is done by hand, and head's line number is not the working copy's: reviewing anything but the checked-out commit, 1–62 % of added lines sat at another line and up to 23 % were changed since (CPR, ky, zod). Merged: "Open in VS Code" (or `o`), Ctrl/⌘+click or a line number opens the line in the window that has the repository open (else a new one with it), at its place in the working copy; the server runs `code <repo root> --goto <file>:<line>:<col>`, found on any platform. 105 ms from the request to VS Code here. See below. |
 | V13 ✅ | Compare mode | The commits page opened as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Merged: browse by default (a click selects the row; 25 rows in view instead of 23 at 1440 × 900), and a "Compare mode" toggle (or `x`) for picking, left with Escape; first rows as fast as `main`. See below. |
 | V14 ✅ | Checkout submenu | The row menu lists every target as a sentence: on Qwik's HEAD row 10 entries, each starting "Check out", 8 ending "(detached HEAD)", 480 px wide (its max); a remote branch's entry is 117 characters. The names are plain text mid-sentence, while the rows draw them as coloured badges. Merged: "Check out ▸" with the targets in a submenu on hover (or c), each name as the row's badge with a muted note (Qwik's HEAD row: 10 badges in a 368 px column); the confirmation's heading with the name as a badge. See below. |
-| V15 | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Planned: "Review" a branch from the commits page; reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; progress on the commits page. See below. |
+| V15 | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Built, not merged: "Review ▸" in the row menu (or r) compares a branch's fork point with its tip, marks kept across new commits (on a clone, 83 of 83 after one more commit, 2 symbols left); reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; "✓" or "+n" on reviewed branches' badges, a dot on commits added since. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -3677,8 +3677,8 @@ re-measured (the rows did not change).
 
 ### V15 — Branch reviews in the repository
 
-**Status:** planned (2026-10-14), on branch `milestone/v15-branch-reviews` (from V14's branch:
-its row menu gets a "Review" entry); not started.
+**Status:** implemented (2026-10-14) on branch `milestone/v15-branch-reviews`; not merged yet.
+As built and results: "As built — V15" below.
 
 **Problem** (asked: "this app will be a review app for commits made by an agent"; then, on where
 reviews live: "this should be shared in the repo, so .git is not a good position...much better
@@ -3853,9 +3853,9 @@ commits page shows progress); V15c (`cpr/config.json`). One branch.
 
 | # | Milestone | Output |
 |---|---|---|
-| V15a | Branch reviews | `cpr/reviews/<branch>/<reviewer>.json`, local by default (`cpr/.gitignore`); "Review ▸" in the row menu; `/review/<branch>/` with marks kept across new commits; the review header. |
-| V15b | Progress on the commits page | `GET /api/reviews`; "✓" or "+n" on reviewed branches' badges; dots on commits added since. |
-| V15c | `cpr/config.json` | Plugins read from `cpr/config.json`, else `cpr.config.json`. |
+| V15a ✅ | Branch reviews | `cpr/reviews/<branch>/<reviewer>.json`, local by default (`cpr/.gitignore`); "Review ▸" in the row menu; `/review/<branch>/` with marks kept across new commits; the review header. |
+| V15b ✅ | Progress on the commits page | `GET /api/reviews`; "✓" or "+n" on reviewed branches' badges; dots on commits added since. |
+| V15c ✅ | `cpr/config.json` | Plugins read from `cpr/config.json`, else `cpr.config.json`. |
 
 **Proposed decisions**:
 
@@ -3871,6 +3871,51 @@ commits page shows progress); V15c (`cpr/config.json`). One branch.
 commits marked (co-author trailers, bot authors, branch names like `codex/`); a commit's details
 beside the list; reviewing the default branch from a picked commit; other reviewers' reviews on
 the commits page; `.cprignore` in `cpr/`; checking who last committed a review file.
+
+#### As built — V15
+
+- **Core** (`src/git/branches.ts`): `defaultBranch`, `forkPoint`, `commitsBetween`,
+  `userEmail`, `trackedFiles`, and the types the viewer reads. `forkPoint` takes the latest
+  merge-base among the default branch's local and remote refs, not `merge-base <tip> <default>`
+  as planned: an agent that branched from `origin/main` while the local `main` was stale would
+  otherwise have its review start before commits that are not its own. `trackedFiles` uses a
+  `:/cpr` pathspec, so `cpr view` started in a subfolder checks the right folder. No analysis
+  code changed: the goldens are unchanged.
+- **CLI** (`src/reviews.ts`): as planned. Marks and drafts share one file, so writes go one at
+  a time per file (read, change, write back, atomically). A branch name only remotes have (a
+  review's address opened anew) is found on `origin` first. The server keeps the review each
+  branch's page shows; asking again re-resolves the tip. A review page whose branch cannot be
+  reviewed answers its graph with the reason (404).
+- **Viewer**: `CheckoutMenu.tsx` became `RowMenu.tsx` (entries, each with a submenu; ↑/↓ move
+  between entries, `RefBadge`) and `CheckoutDialog.tsx`. The Review submenu has an entry per
+  branch name: a row holding `v12` and `origin/milestone/v12-open-in-vscode` at the same commit
+  offers both. Its note says "12 reviewed · 2 commits since", not the planned "40 of 63": the
+  total needs the analysis. Reviews are read again when the page is back in focus (a review is
+  made on another page; its marks do not change the history's version).
+- The review page's header is "Review of wip · 2 commits since your last review", without the
+  planned SHAs: the summary right after it already shows them (seen on the first screenshot).
+
+**Results (V15)**. Tests first: core 7 of 7 and CLI 11 of 11 failed before the code existed,
+the server's 5 new tests failed (no routes), the e2e spec failed on the missing "Review" entry.
+Now 587 unit tests (29 new: core 8, CLI 17 with server and config, viewer 4) and 67 e2e (1 new:
+review an agent's branch, mark both changes, the file in `cpr/reviews/` with `git status`
+clean, "✓"; the agent changes `square` and adds `half`: "+1" and a dot; reviewing again from
+the keyboard leaves 1 of 3 with one symbol "changed since you reviewed it"; a restarted
+`cpr view` on a new port finds the review).
+
+On a clone of this repository with `main` set back before V12's merge (`d67a5d6`), through
+`cpr view`'s API: reviewing `v12` at `d175ee5` gave 83 changed symbols, all marked; with the tip
+moved to `86dcb60`, `/api/reviews` reported "+1" and that commit, and reviewing again found 83
+still reviewed, none changed, 2 left, as the spike measured. From "Review" to the graph: 1.6–1.7
+s. The file landed in `cpr/reviews/v12/reviewer@example.com.json`; `git status` stayed clean.
+`GET /api/reviews`, which the commits page now asks for beside its first rows: 10 ms on Qwik
+(694 refs), 24 ms on Bitwarden (2,231 refs), 14 ms with one review (medians of 5). Screenshots
+light and dark: the badge's "+1", the dot, the Review submenu, the review header; no page
+errors.
+
+Not verified: Windows and macOS (branch folders, `@` in file names); a review shared through
+git and merged from two machines (the format is made for it, not exercised); worktrees; Firefox
+and Safari; first rows drawn (not re-measured: the reviews request runs beside the listing).
 
 ### Phase 1 milestones
 
