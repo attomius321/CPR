@@ -2063,3 +2063,5 @@ longer looks like "+2 commits since".
 than its badge (red before: the class was missing). 599 unit tests, 69 e2e. Screenshots light and
 dark on this repository (V16 and the skill branch approved) and on a clone with every state
 (approved, changes requested, +1, in progress, HEAD on an approved branch), no page errors.
+
+Merged into main (2026-10-14). `main` verified after the merge: 599 unit tests, build, 69 e2e.
