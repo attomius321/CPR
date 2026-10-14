@@ -124,6 +124,60 @@ function commitAt(repo: string, minutes: number, ...args: string[]): void {
   });
 }
 
+export interface RunningAgent extends Running {
+  repo: string;
+  /** main's commit (the fork point), then the agent's commits, oldest first. */
+  shas: string[];
+  /** Stops `cpr view` and starts it again on the same repository (a new port): its URL. */
+  restart(): Promise<string>;
+}
+
+/**
+ * `main` with the `callers` fixture's base, and `agent`, a branch an agent wrote from it: "Agent:
+ * add square", then "Agent: add cube" (two functions in `src/math.ts`). The reviewer is
+ * reviewer@example.com. Served by `cpr view` without revisions: the commits page.
+ */
+export async function serveAgentBranch(): Promise<RunningAgent> {
+  const { repo } = fixtureRepo('callers');
+  git(repo, 'checkout', '-q', 'main');
+  git(repo, 'branch', '-q', '-D', 'feature');
+  git(repo, 'config', 'user.email', 'reviewer@example.com');
+  git(repo, 'checkout', '-q', '-b', 'agent');
+  let math = readFileSync(join(repo, 'src/math.ts'), 'utf8');
+  for (const [minutes, name, body] of [
+    [1, 'square', 'a * a'],
+    [2, 'cube', 'a * a * a'],
+  ] as const) {
+    math += `\nexport function ${name}(a: number): number {\n  return ${body};\n}\n`;
+    writeFileSync(join(repo, 'src/math.ts'), math);
+    commitAt(repo, minutes, '-am', `Agent: add ${name}`);
+  }
+  git(repo, 'checkout', '-q', 'main');
+  const shas = [
+    git(repo, 'rev-parse', 'main'),
+    ...git(repo, 'rev-list', '--reverse', 'main..agent').split('\n'),
+  ];
+  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  let running = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
+  return {
+    get url() {
+      return running.url;
+    },
+    repo,
+    shas,
+    async restart() {
+      running.child.kill('SIGINT');
+      running = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
+      return running.url;
+    },
+    stop() {
+      running.child.kill('SIGINT');
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(cache, { recursive: true, force: true });
+    },
+  };
+}
+
 /**
  * Five commits on `main` — the `callers` fixture's base and head, then three functions added
  * one by one to `src/math.ts` ("Add half, and a subject …" the last) — and other branches, each

@@ -1,19 +1,22 @@
 import type { CheckoutResult, CheckoutTarget, Commit, RefList, WorkingState } from '@cpr/core';
 import { shortSha } from './commits.js';
 
-/** One entry of a row's checkout menu (V11). */
-export interface CheckoutChoice {
+/** An entry of a row menu's submenu (V14): a ref drawn as the row's badges draw it. */
+export interface MenuChoice {
   /** The entry as a sentence: its accessible name. */
   label: string;
-  /** What is checked out, drawn as the row's badges draw it (V14). */
   ref: { kind: 'branch' | 'remote' | 'tag' | 'commit'; name: string };
-  /** After the name: what it is and what checking it out does ("tag · detached HEAD"). */
+  /** After the name: what it is and what choosing it does ("tag · detached HEAD"). */
   note: string;
+  /** Why it cannot be chosen. */
+  disabled?: string;
+}
+
+/** One entry of a row's checkout menu (V11). */
+export interface CheckoutChoice extends MenuChoice {
   target: CheckoutTarget;
   /** What the checkout does, for its confirmation. */
   what: string;
-  /** Why it cannot be chosen. */
-  disabled?: string;
 }
 
 /** Where HEAD is: the branch checked out (null when detached) and its commit. */
