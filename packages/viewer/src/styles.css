@@ -2236,14 +2236,41 @@ kbd {
 
 /* ---- branch reviews (V15) -------------------------------------------------------------- */
 
-/* On a reviewed branch's badge: "✓" up to date, "+2" commits since the review. */
+/* On a reviewed branch's badge, a filled chip: "+2" commits since the review (the blue of their
+   dot), else "✓" approved, "✗" changes requested, "…" in progress. A glyph in the badge's own
+   colour read as part of the name. */
 .ref-review {
-  margin-left: 4px;
-  font-weight: 600;
+  --review-tone: var(--context);
+  display: inline-block;
+  min-width: 14px;
+  margin-left: 5px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--review-tone);
+  color: var(--panel);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+  vertical-align: 1px;
 }
 
+.ref-review-since {
+  --review-tone: var(--moved);
+}
+
+.ref-review-approved {
+  --review-tone: var(--added);
+}
+
+.ref-review-changes {
+  --review-tone: var(--removed);
+}
+
+/* HEAD's badge is solid green: the chip is light on it, in its tone. */
 .ref-head .ref-review {
-  color: inherit;
+  background: var(--panel);
+  color: var(--review-tone);
 }
 
 /* Before the subject of a commit added to a reviewed branch since its review. */
