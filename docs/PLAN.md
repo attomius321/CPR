@@ -426,7 +426,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V12 ✅ | Open in VS Code | The diff panel shows a symbol's lines, but going there in the editor is done by hand, and head's line number is not the working copy's: reviewing anything but the checked-out commit, 1–62 % of added lines sat at another line and up to 23 % were changed since (CPR, ky, zod). Merged: "Open in VS Code" (or `o`), Ctrl/⌘+click or a line number opens the line in the window that has the repository open (else a new one with it), at its place in the working copy; the server runs `code <repo root> --goto <file>:<line>:<col>`, found on any platform. 105 ms from the request to VS Code here. See below. |
 | V13 ✅ | Compare mode | The commits page opened as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Merged: browse by default (a click selects the row; 25 rows in view instead of 23 at 1440 × 900), and a "Compare mode" toggle (or `x`) for picking, left with Escape; first rows as fast as `main`. See below. |
 | V14 | Checkout submenu | The row menu lists every target as a sentence: on Qwik's HEAD row 10 entries, each starting "Check out", 8 ending "(detached HEAD)", 480 px wide (its max); a remote branch's entry is 117 characters. The names are plain text mid-sentence, while the rows draw them as coloured badges. Built, not merged: "Check out ▸" with the targets in a submenu on hover (or c), each name as the row's badge with a muted note (Qwik's HEAD row: 10 badges in a 368 px column); the confirmation's heading with the name as a badge. See below. |
-| V15 | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Planned: "Review" a branch from the commits page; reviews in `cpr/reviews/<branch>/<reviewer>.json`, committed and shared like any file; progress on the commits page. See below. |
+| V15 | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Planned: "Review" a branch from the commits page; reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; progress on the commits page. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -3682,7 +3682,8 @@ its row menu gets a "Review" entry); not started.
 
 **Problem** (asked: "this app will be a review app for commits made by an agent"; then, on where
 reviews live: "this should be shared in the repo, so .git is not a good position...much better
-to create a folder cpr at the root, and there we should store eveythinf related, reviews etc").
+to create a folder cpr at the root, and there we should store eveythinf related, reviews etc";
+and: "can't we just keep cpr folder at the root, and gitignore it?").
 An agent commits to a branch several times, and the reviewer looks at the branch after each
 commit or batch. Today:
 
@@ -3713,8 +3714,9 @@ and 13 moved with a renamed file (`e75c1cf`: a symbol's ID holds its path).
 its tip and opens the diff with the reviewer's marks and drafts for that branch. After the agent
 adds commits, reviewing the branch again keeps every mark whose symbol did not change, so only
 new and changed symbols are left. Reviews are files in `cpr/reviews/` at the repository's root,
-one per branch and reviewer: plain JSON, meant to be committed and shared like any file. CPR
-writes them; it never stages or commits them. The commits page shows each reviewed branch's
+one per branch and reviewer, plain JSON. By default they stay out of git: CPR writes a
+`cpr/.gitignore` once, and deleting it makes them commit and share like any file. CPR never
+stages or commits them. The commits page shows each reviewed branch's
 progress and the commits added since. `cpr pr`, `cpr diff`, compare-mode pairs and the graph
 JSON do not change.
 
@@ -3745,9 +3747,24 @@ JSON do not change.
   }
   ```
 
-- Written in the working tree, whatever is checked out. The reviewer (or the agent) commits them
-  where it suits: on the agent's branch the review travels with the work; on `main` it is shared
-  with everyone. CPR never runs `git add` or `git commit`.
+- Local by default. The first time CPR writes a review it creates `cpr/.gitignore`, unless the
+  file exists (then CPR never changes it), as pytest and ruff do for their cache folders:
+
+  ```
+  # Written by CPR: reviews stay on this machine. Delete this file to commit and share them.
+  *
+  !config.json
+  ```
+
+  Nothing shows in `git status`, an agent's `git add -A` skips open reviews, and checkouts leave
+  ignored files alone. `cpr/config.json` stays trackable: CI reads it.
+- Shared, once `cpr/.gitignore` is deleted: the files are committed like any other, where it
+  suits (on the agent's branch the review travels with the work; on `main` everyone sees it).
+  The format above is made for that: one file per reviewer, stable sorted lines.
+- CPR never runs `git add` or `git commit`.
+- A repository whose own `cpr/` folder holds tracked files that are not CPR's (`git ls-files
+  cpr`: anything but `config.json`, `.gitignore` and `reviews/`) is left alone: reviews stay in
+  the cache, and the page says why. A `*` there would hide that project's new files.
 - Drafts sit in the same file: that is what feedback to the agent (later) will read.
 - `cpr/config.json` replaces `cpr.config.json` (`plugins`); the old file is still read when the
   new one is absent. `.cprignore` stays at the root for now: core reads it per revision, an
@@ -3796,9 +3813,11 @@ JSON do not change.
 1. **Unit** (red first): paths from branch names (slashes, remote prefixes); the file's bytes
    stable and sorted; a missing or invalid file; the reviewer from git config, and its absence;
    fork points on temp repositories (a branch off `main`, after `main` moved, after a rebase);
-   server: `POST /api/reviews` for an unknown branch (400), the default branch (refused), a
-   state round trip writing `cpr/reviews/<branch>/<email>.json` in the working tree with
-   nothing staged.
+   `cpr/.gitignore` written on the first review and never changed after, `git status` clean
+   after a review, the review file untracked once `.gitignore` is deleted, a foreign `cpr/`
+   folder left alone; server: `POST /api/reviews` for an unknown branch (400), the default
+   branch (refused), a state round trip writing `cpr/reviews/<branch>/<email>.json` in the
+   working tree with nothing staged.
 2. **E2E** (red first), a fixture branch "written by an agent": review it from the row menu
    (header, nothing marked); mark two symbols; a commit added that changes one of them; review
    again: one still reviewed, one "↻ changed", the new symbols unmarked; the commits page shows
@@ -3815,10 +3834,13 @@ JSON do not change.
 
 | Risk | Mitigation |
 |---|---|
-| Review files change the working tree: `git status` shows them; a checkout carries them, or git refuses when the target has its own version of the same file | New untracked files never block a checkout (V11 counts tracked changes only); one file per reviewer and branch makes "its own version" rare; the confirmation shows git's refusal, as today. |
-| An agent committing with `git add -A` takes the reviewer's open review into its commit | Harmless (no code, no symbols); the README suggests agents work in their own worktree. |
-| An agent can write review files too, marking its own work reviewed | The file names its reviewer and git says who committed it. Not enforced (later: a warning when a review file's last commit is not by its reviewer). |
-| The same reviewer on two machines edits one file: merge conflicts | Sorted JSON, one mark per line: a conflict is a few plain lines. |
+| Reviews stay on one machine by default | Asked. Deleting `cpr/.gitignore` shares them; the format is made for it. |
+| `git clean -fdx` deletes ignored files, reviews with them | Only with `-x`; the README says so. Shared reviews are in git. |
+| Each worktree has its own `cpr/`: an agent working in its own worktree does not see your reviews | Nothing reads them yet. Feedback to the agent (later) will write where the agent works, or give it the path. |
+| A project with its own `cpr/` folder | Left alone when it tracks files that are not CPR's; reviews stay in the cache. |
+| Shared: review files carried by a checkout, or git refusing one when the target has its own version of a file | New untracked files never block a checkout (V11 counts tracked changes only); one file per reviewer and branch makes "its own version" rare; the confirmation shows git's refusal, as today. |
+| Shared: an agent can write review files too, marking its own work reviewed | The file names its reviewer and git says who committed it. Not enforced (later: a warning when a review file's last commit is not by its reviewer). Local reviews: anything on the machine can write them. |
+| Shared: the same reviewer on two machines edits one file | Sorted JSON, one mark per line: a conflict is a few plain lines. |
 | Email addresses in the tree | The same as in commit metadata; a noreply address works the same. |
 | A renamed or deleted branch | The review stays as history; a new name starts a new review. |
 | A renamed file loses its marks (13 in the measurement) | I1's limit, unchanged. |
@@ -3831,7 +3853,7 @@ commits page shows progress); V15c (`cpr/config.json`). One branch.
 
 | # | Milestone | Output |
 |---|---|---|
-| V15a | Branch reviews | `cpr/reviews/<branch>/<reviewer>.json`; "Review ▸" in the row menu; `/review/<branch>/` with marks kept across new commits; the review header. |
+| V15a | Branch reviews | `cpr/reviews/<branch>/<reviewer>.json`, local by default (`cpr/.gitignore`); "Review ▸" in the row menu; `/review/<branch>/` with marks kept across new commits; the review header. |
 | V15b | Progress on the commits page | `GET /api/reviews`; "✓" or "+n" on reviewed branches' badges; dots on commits added since. |
 | V15c | `cpr/config.json` | Plugins read from `cpr/config.json`, else `cpr.config.json`. |
 
@@ -3839,7 +3861,7 @@ commits page shows progress); V15c (`cpr/config.json`). One branch.
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 71 | Where reviews live | **`cpr/reviews/` at the repository's root, in the working tree, meant to be committed; CPR never stages or commits** | Asked: shared in the repository. Git decides how they travel (commits, merges), as for any file; `.git` and the cache are not shared. |
+| 71 | Where reviews live | **`cpr/reviews/` at the repository's root, kept out of git by a `cpr/.gitignore` CPR writes once (`*`, `!config.json`) and never changes after; deleting it shares reviews through commits; CPR never stages or commits** | Asked: a folder at the root, then "gitignore it". `.git` cannot be shared and the cache is cleared with caches; `cpr/config.json` must still reach CI. Pytest and ruff keep their folders out of git the same way. |
 | 72 | What a branch review is keyed by | **The branch name without its remote; marks checked by fingerprint** | Measured: 97.7 % of marks still valid after a new commit; per pair, none. |
 | 73 | Whose review a file is | **One file per reviewer, named by `git config user.email`** | Two reviewers never write one file; the email is already in their commits. |
 | 74 | Where a branch review starts | **The fork point with the default branch, recomputed each time; not offered on the default branch** | What a pull request of the branch would show; the default branch has no fork point. |

@@ -1955,4 +1955,5 @@ symbols changed again, and 13 moved with a renamed file (`e75c1cf`; IDs hold pat
 each new pair from scratch means 1,197 symbols; keeping marks per branch leaves 170 (14 %).
 The graphs' `files` list non-code files too (docs, Markdown), so review files committed in
 `cpr/` would show there, with no symbols. So the plan keys reviews by branch and, as asked, keeps
-them in `cpr/reviews/` at the repository's root, one file per reviewer, for git to share.
+them in `cpr/reviews/` at the repository's root, one file per reviewer: out of git by default (a
+`cpr/.gitignore` with `*` and `!config.json`, as pytest and ruff do), shared by deleting it.
