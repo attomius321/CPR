@@ -12,8 +12,6 @@ import type {
   CheckoutResult,
   CheckoutTarget,
   Commit,
-  FeatureOptions,
-  FeatureRequest,
   FeatureStart,
   HistoryPage,
   HistoryRefs,
@@ -26,8 +24,10 @@ import { BranchesPanel } from './BranchesPanel.js';
 import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
 import { reviewChoices, reviewMarks, type ReviewChoice, type ReviewMark } from './branchReviews.js';
 import { CheckoutDialog } from './CheckoutDialog.js';
-import { startedNotice } from './features.js';
-import { StartFeatureDialog } from './StartFeatureDialog.js';
+import { featureChips, featureHref, startedNotice, type AgentChip } from './features.js';
+import { FeatureMark } from './FeatureMark.js';
+import { useFeatureStarter } from './FeatureStarter.js';
+import { useFeatures } from './useFeatures.js';
 import { RowMenu, type RowMenuItem } from './RowMenu.js';
 import {
   BLOCK,
@@ -124,24 +124,6 @@ export async function startDiff(pair: Pair): Promise<string> {
   return ((await response.json()) as { url: string }).url;
 }
 
-/** Starts a feature (V18): its branch, worktree and agent; rejects with the server's words. */
-async function postFeature(request: FeatureRequest): Promise<FeatureStart> {
-  const response = await fetch(`${COMMITS_PAGE}api/features`, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
-    body: JSON.stringify(request),
-  });
-  if (response.ok) return (await response.json()) as FeatureStart;
-  const text = await response.text();
-  let message = text;
-  try {
-    message = (JSON.parse(text) as { error?: string }).error ?? text;
-  } catch {
-    // a plain-text refusal
-  }
-  throw new Error(message);
-}
-
 /** Starts reviewing a branch (V15); resolves with its page's URL, or rejects with why not. */
 async function startReview(ref: string): Promise<string> {
   const response = await fetch(`${COMMITS_PAGE}api/reviews`, {
@@ -190,6 +172,15 @@ export function BackToCommits() {
 const scopeOfUrl = (): HistoryScope =>
   new URLSearchParams(window.location.search).get('scope') === 'current' ? 'current' : 'all';
 
+/** `?branch=<name>` (V18b: a feature's branch): its tip, once listed. */
+const branchOfUrl = (): string | null => new URLSearchParams(window.location.search).get('branch');
+
+/** The commit the cursor was on before listing anew, and how far down the view it was. */
+interface Keep {
+  sha: string;
+  offset: number;
+}
+
 /** What the page says after a checkout or a feature's start, above the rows. */
 interface Notice {
   text: string;
@@ -225,7 +216,8 @@ export function CommitsPage() {
     [],
   );
   // A branch to go to once every branch is listed: "This branch" did not list its tip.
-  const [goTo, setGoTo] = useState<string | null>(null);
+  const [goTo, setGoTo] = useState<string | null>(branchOfUrl);
+  const [keep, setKeep] = useState<Keep | null>(null);
   const choose = useCallback((next: HistoryScope) => {
     window.history.replaceState(null, '', next === 'all' ? COMMITS_PAGE : '?scope=current');
     setNotice(null);
@@ -239,10 +231,11 @@ export function CommitsPage() {
     [choose],
   );
   const arrived = useCallback(() => setGoTo(null), []);
-  const relist = useCallback((next: Notice | null, branch?: string) => {
+  const relist = useCallback((next: Notice | null, branch?: string, kept?: Keep) => {
     setNotice(next);
     // A new branch (a feature's): its tip once listed.
     if (branch) setGoTo(branch);
+    setKeep(kept ?? null);
     setGeneration((g) => g + 1);
   }, []);
   // A new scope or generation starts afresh: its own rows, lanes and picks.
@@ -257,6 +250,7 @@ export function CommitsPage() {
       onComparing={setComparing}
       panel={{ filter, onFilter: setFilter, toggled, onToggle: toggle }}
       goTo={goTo}
+      keep={keep}
       onGoElsewhere={goElsewhere}
       onArrived={arrived}
     />
@@ -272,6 +266,7 @@ function History({
   onComparing,
   panel,
   goTo,
+  keep,
   onGoElsewhere,
   onArrived,
 }: {
@@ -279,7 +274,7 @@ function History({
   onScope: (scope: HistoryScope) => void;
   notice: Notice | null;
   /** Lists anew, saying `notice`; with `branch`, the cursor goes to its tip. */
-  onRelist: (notice: Notice | null, branch?: string) => void;
+  onRelist: (notice: Notice | null, branch?: string, keep?: Keep) => void;
   comparing: boolean;
   onComparing: (comparing: boolean) => void;
   /** The branches panel's filter and folders, kept by the page across listings. */
@@ -289,8 +284,10 @@ function History({
     toggled: ReadonlySet<string>;
     onToggle: (key: string) => void;
   };
-  /** A branch whose tip to go to once listed (from "This branch"). */
+  /** A branch whose tip to go to once listed (from "This branch", `?branch=`, a new feature). */
   goTo: string | null;
+  /** Listed anew while reading: the commit to keep the cursor on, where it was in the view. */
+  keep: Keep | null;
   /** A branch this scope does not list: list every branch, then go to it. */
   onGoElsewhere: (name: string) => void;
   onArrived: () => void;
@@ -336,14 +333,6 @@ function History({
   );
   const [checkingOut, setCheckingOut] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
-  // Starting a feature (V18): the dialog with where it starts, then the start itself.
-  const [feature, setFeature] = useState<{
-    options: FeatureOptions;
-    base: { sha: string; from?: string };
-    taken: ReadonlySet<string>;
-  } | null>(null);
-  const [featureRunning, setFeatureRunning] = useState(false);
-  const [featureError, setFeatureError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean | null>(null);
 
   // Branch reviews (V15): marks on badges, dots on commits added since; read again when the
@@ -514,13 +503,21 @@ function History({
     if (tip && tip.row !== null) goToBranch(tip);
   }, [goTo, branches, onArrived, goToBranch]);
 
-  // The cursor starts on HEAD's row, once it is known.
+  // The cursor starts on HEAD's row, once it is known; listed anew while reading, on the commit
+  // it was on, where it was in the view.
   useLayoutEffect(() => {
-    if (placed.current || headRow === null) return;
+    if (placed.current || headRow === null || !first) return;
     placed.current = true;
+    const kept = keep ? first.commits.findIndex((c) => c.sha === keep.sha) : -1;
+    const box = scroller.current;
+    if (keep && kept >= 0 && box) {
+      setCursor(kept);
+      box.scrollTop = (list.current?.offsetTop ?? 0) + kept * ROW_HEIGHT - keep.offset;
+      return;
+    }
     setCursor(headRow);
     if ((headRow + 1) * ROW_HEIGHT > view.height) reveal(headRow, true);
-  }, [headRow, view.height, reveal]);
+  }, [headRow, view.height, reveal, keep, first]);
 
   const compare = useCallback(async (pair: Pair) => {
     setStarting(true);
@@ -561,43 +558,41 @@ function History({
   );
   const closeMenu = useCallback(() => setMenu(null), []);
 
-  /** The start dialog: at `sha` (a row's), else at the default branch's tip. */
-  const openFeature = useCallback((sha?: string) => {
-    setFeatureError(null);
-    Promise.all([fetchJson<FeatureOptions>('api/features/options'), fetchJson<RefList>('api/refs')])
-      .then(([options, refs]) => {
-        const base = sha ? { sha } : options.base;
-        if (!base) {
-          setError(
-            'No default branch to start from: start the feature from a commit (its menu: Start a feature here).',
-          );
-          return;
-        }
-        setFeature({
-          options,
-          base,
-          taken: new Set([
-            ...refs.branches.map((b) => b.name),
-            ...refs.remotes.map((r) => r.branch),
-          ]),
-        });
-      })
-      .catch((e: unknown) => setError(`Could not start a feature: ${(e as Error).message}`));
-  }, []);
-  const runFeature = useCallback(
-    async (request: FeatureRequest) => {
-      setFeatureRunning(true);
-      setFeatureError(null);
-      try {
-        const start = await postFeature(request);
-        onRelist(startedNotice(start), start.feature.branch);
-      } catch (e) {
-        setFeatureError((e as Error).message);
-        setFeatureRunning(false);
-      }
-    },
+  // Starting a feature (V18): the dialog, then the page listed anew on its branch.
+  const started = useCallback(
+    (start: FeatureStart) => onRelist(startedNotice(start), start.feature.branch),
     [onRelist],
   );
+  const starter = useFeatureStarter(started, setError);
+  const openFeature = starter.open;
+
+  // Each feature's mark on its branch's badges, a link to it (V18b); its agent's commits listed
+  // as they come, the cursor kept on its commit.
+  const { list: features, reviews: featureReviews } = useFeatures();
+  const chips = useMemo(
+    () => featureChips(features?.features ?? [], featureReviews, refs?.remotes ?? []),
+    [features, featureReviews, refs],
+  );
+  useEffect(() => {
+    if (!refs || !features) return;
+    const moved = features.features.some((f) => {
+      const listed = refs.branches.find((b) => b.name === f.branch);
+      return f.tip !== null && listed !== undefined && listed.sha !== f.tip;
+    });
+    if (!moved) return;
+    const box = scroller.current;
+    const sha = details.current.get(cursor)?.sha;
+    const top = (list.current?.offsetTop ?? 0) + cursor * ROW_HEIGHT;
+    onRelist(null, undefined, sha && box ? { sha, offset: top - box.scrollTop } : undefined);
+    // Only a feature's tip moving lists anew; the cursor is read as it is then.
+  }, [features, refs, onRelist]);
+
+  /** The feature whose branch's tip is this commit (V18b), if any. */
+  const featureOn = (sha: string) =>
+    (features?.features ?? [])
+      .filter((f) => f.tip === sha)
+      .slice(0, 1)
+      .map((f) => f.branch);
 
   /**
    * "Check out ▸" (V14), "Review ▸" when the row has branches (V15), and "Start a feature here"
@@ -638,6 +633,10 @@ function History({
             },
           },
         ]),
+    ...featureOn(sha).map((branch) => ({
+      label: 'Open its feature',
+      onSelect: () => window.location.assign(featureHref(branch)),
+    })),
     {
       label: 'Start a feature here',
       onSelect: () => {
@@ -720,7 +719,7 @@ function History({
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.target instanceof HTMLInputElement) return;
       // The menu and the dialogs take their own keys.
-      if (menu || confirm || feature) return;
+      if (menu || confirm || starter.isOpen) return;
       if (event.key === 'j' || event.key === 'k') {
         const next = Math.max(0, Math.min(rows - 1, cursor + (event.key === 'j' ? 1 : -1)));
         setCursor(next);
@@ -769,7 +768,7 @@ function History({
     reveal,
     menu,
     confirm,
-    feature,
+    starter.isOpen,
     openFeature,
     openMenu,
     comparing,
@@ -803,6 +802,7 @@ function History({
           scope={scope}
           current={first.branch}
           marks={marks.marks}
+          agents={chips}
           open={panelOpen}
           filter={panel.filter}
           onFilter={panel.onFilter}
@@ -935,6 +935,7 @@ function History({
                     onMenu={(x, y) => openMenu(row, x, y)}
                     branch={first.branch}
                     reviewed={marks.marks}
+                    agents={chips}
                     {...(commit && marks.added.has(commit.sha)
                       ? { added: marks.added.get(commit.sha) }
                       : {})}
@@ -970,17 +971,7 @@ function History({
           onClose={closeMenu}
         />
       )}
-      {feature && (
-        <StartFeatureDialog
-          options={feature.options}
-          base={feature.base}
-          taken={feature.taken}
-          running={featureRunning}
-          error={featureError}
-          onStart={(request) => void runFeature(request)}
-          onCancel={() => setFeature(null)}
-        />
-      )}
+      {starter.dialog}
       {confirm && (
         <CheckoutDialog
           choice={confirm.choice}
@@ -1109,6 +1100,7 @@ function CommitRow({
   graph,
   branch,
   reviewed,
+  agents,
   added,
 }: {
   row: number;
@@ -1129,6 +1121,8 @@ function CommitRow({
   branch: string | null;
   /** Each reviewed branch's mark, by ref name (V15, V16). */
   reviewed: ReadonlyMap<string, ReviewMark>;
+  /** Each feature's mark by ref name, a link to the feature (V18b). */
+  agents: ReadonlyMap<string, AgentChip & { href: string }>;
   /** The reviewed branches this commit was added to since their review. */
   added?: string[];
 }) {
@@ -1175,13 +1169,14 @@ function CommitRow({
       <span className="commit-subject" title={commit.subject}>
         {commit.subject}
       </span>
-      {rowBadges(commit.refs, branch, reviewed).map((badge) => (
+      {rowBadges(commit.refs, branch, reviewed, agents).map((badge) => (
         <span
           key={`${badge.kind}:${badge.label}`}
           className={`ref ref-${badge.kind}`}
           // A badge cut short (a narrow window, a long name) is named in full on hover.
           title={badge.title ?? badge.label}
         >
+          {badge.agent && <FeatureMark chip={badge.agent} />}
           {badge.label}
           {badge.review && (
             <span

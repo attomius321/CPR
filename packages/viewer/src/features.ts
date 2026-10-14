@@ -1,6 +1,12 @@
 // Features started from the commits page (V18): pure helpers for the start dialog and the
 // line the page shows after Start.
-import type { FeatureStart, PermissionMode } from '@cpr/core';
+import type {
+  BranchReviewList,
+  BranchReviewSummary,
+  FeatureStart,
+  FeatureSummary,
+  PermissionMode,
+} from '@cpr/core';
 
 /** The permission modes the dialog offers, as it names them. */
 export const PERMISSION_LABELS: Record<PermissionMode, string> = {
@@ -80,4 +86,136 @@ export function startedNotice({ feature, prompt }: FeatureStart): {
     };
   }
   return { text: `Started ${feature.branch}: Claude Code is working in ${where}.` };
+}
+
+/** What a feature needs from the person (V18b): the features view's groups. */
+export type FeatureGroup = 'needs-you' | 'working' | 'done';
+
+/** A feature's mark on its branch's badges and in the features view. */
+export interface AgentChip {
+  mark: string;
+  tone: 'working' | 'waiting' | 'ready' | 'failed' | 'idle' | 'done';
+  title: string;
+}
+
+export interface FeatureNext {
+  group: FeatureGroup;
+  /** What is next, in a few words: "Plan ready: read it and answer". */
+  text: string;
+  chip: AgentChip;
+}
+
+const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip => ({
+  mark,
+  tone,
+  title,
+});
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/**
+ * What a feature needs next: merged, it is done; while its agent works, nothing; else what the
+ * agent waits for, or — once it has commits — what its review says.
+ */
+export function featureNext(feature: FeatureSummary, review?: BranchReviewSummary): FeatureNext {
+  const needs = (text: string, c: AgentChip['mark'], tone: AgentChip['tone']): FeatureNext => ({
+    group: 'needs-you',
+    text,
+    chip: chip(c, tone, text),
+  });
+  if (feature.tip === null) return needs('Its branch is gone', '!', 'failed');
+  if (feature.merged) return { group: 'done', text: 'Merged', chip: chip('✓', 'done', 'Merged') };
+  const { agent } = feature;
+  switch (agent.state) {
+    case 'working':
+      return { group: 'working', text: 'Working', chip: chip('⚙', 'working', 'Working') };
+    case 'needs-you':
+      return needs(`Waiting: ${agent.waitingFor ?? 'for you'}`, '?', 'waiting');
+    case 'plan-ready':
+      return needs('Plan ready: read it and answer', '?', 'waiting');
+    case 'failed':
+      return needs('Its agent failed', '!', 'failed');
+    case 'not-started':
+      return needs(`Not started: ${(agent.error ?? '').split('\n')[0] ?? ''}`, '!', 'failed');
+    case 'no-agent':
+      return needs('No agent: give it the prompt', '!', 'failed');
+    case 'unknown':
+      return needs(`Its agent's state is unknown: ${agent.error ?? ''}`, '·', 'idle');
+    default:
+      break;
+  }
+  if (feature.ahead === 0) {
+    const text =
+      agent.state === 'stopped'
+        ? 'Stopped'
+        : agent.state === 'not-running'
+          ? 'Not running'
+          : 'Finished without commits';
+    return needs(text, '·', 'idle');
+  }
+  // Commits to look at: the review says what is next.
+  const since = review?.refs.find((r) => r.name === feature.branch)?.since ?? 0;
+  if (since > 0)
+    return needs(`${plural(since, 'commit')} since your review: review again`, '●', 'ready');
+  const verdict = review?.verdict?.head === feature.tip ? review.verdict : undefined;
+  if (verdict?.event === 'approve')
+    return needs('Approved: ask your agent to merge it', '●', 'ready');
+  if (verdict?.event === 'request-changes') {
+    return needs('Changes requested: send them to the agent', '●', 'ready');
+  }
+  if (verdict?.event === 'comment') return needs('Commented: send it to the agent', '●', 'ready');
+  return needs(review ? 'Review in progress' : 'Ready for review', '●', 'ready');
+}
+
+export interface FeatureRow {
+  feature: FeatureSummary;
+  next: FeatureNext;
+}
+
+/** The features view's groups, each in the order the features were started. */
+export function featureGroups(
+  features: readonly FeatureSummary[],
+  reviews: BranchReviewList | null,
+): { needsYou: FeatureRow[]; working: FeatureRow[]; done: FeatureRow[] } {
+  const groups = {
+    needsYou: [] as FeatureRow[],
+    working: [] as FeatureRow[],
+    done: [] as FeatureRow[],
+  };
+  for (const feature of features) {
+    const review = reviews?.reviews.find((r) => r.branch === feature.branch);
+    const next = featureNext(feature, review);
+    const key = next.group === 'needs-you' ? 'needsYou' : next.group;
+    groups[key].push({ feature, next });
+  }
+  return groups;
+}
+
+/** A link to a feature's row in the features view. */
+export const featureHref = (branch: string) => `/features?branch=${encodeURIComponent(branch)}`;
+
+/**
+ * Each open feature's mark by ref name — its branch, and that branch on each remote once pushed
+ * (`remotes`: the remote branches and the branch each is) — titled with the brief's first line
+ * and what is next, linking to the feature. A branch that is gone has none.
+ */
+export function featureChips(
+  features: readonly FeatureSummary[],
+  reviews: BranchReviewList | null,
+  remotes: readonly { name: string; branch: string }[],
+): Map<string, AgentChip & { href: string }> {
+  const chips = new Map<string, AgentChip & { href: string }>();
+  for (const { feature, next } of Object.values(featureGroups(features, reviews)).flat()) {
+    if (feature.tip === null) continue;
+    const about = feature.brief.trim().split('\n')[0] ?? feature.branch;
+    const value = {
+      ...next.chip,
+      title: `Feature: ${about} — ${next.text}`,
+      href: featureHref(feature.branch),
+    };
+    chips.set(feature.branch, value);
+    for (const remote of remotes)
+      if (remote.branch === feature.branch) chips.set(remote.name, value);
+  }
+  return chips;
 }

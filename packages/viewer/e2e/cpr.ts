@@ -490,8 +490,18 @@ export interface RunningFeatures extends Running {
   shas: string[];
   /** What the fake Claude Code started. */
   calls(): FakeClaudeCall[];
+  /** The sessions the fake stopped, by ID. */
+  stops(): string[];
   /** From now on the fake refuses to start, with Claude Code's trust message. */
   distrust(): void;
+  /** A feature's worktree folder. */
+  folder(branch: string): string;
+  /** Sets what the fake says of the newest session in a feature's worktree. */
+  session(branch: string, patch: { state: string; waitingFor?: string }): void;
+  /** Commits a file in a feature's worktree (as its agent would); its SHA. */
+  commit(branch: string, file: string, text: string, subject: string): string;
+  /** What the fake VS Code was asked to open, newest last. */
+  opened(): string[][];
 }
 
 /**
@@ -521,6 +531,9 @@ if (args[0] === '--bg') {
   process.stdout.write('backgrounded · ' + id + ' · ' + args[2] + '\\n');
 } else if (args[0] === 'agents') {
   process.stdout.write(JSON.stringify(list()));
+} else if (args[0] === 'stop') {
+  appendFileSync(join(dir, 'stops.txt'), args[1] + '\\n');
+  writeFileSync(sessions, JSON.stringify(list().map((s) => (s.id === args[1] ? { ...s, state: 'stopped' } : s))));
 } else if (args[0] === 'auth') {
   process.stdout.write(JSON.stringify({ loggedIn: true, authMethod: 'claude.ai', subscriptionType: 'pro' }));
 } else {
@@ -552,14 +565,44 @@ export async function serveFeatures({ agent = true } = {}): Promise<RunningFeatu
   const fake = mkdtempSync(join(tmpdir(), 'cpr-e2e-claude-'));
   const claude = agent ? fakeClaude(fake) : join(fake, 'not-installed');
   const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  // A fake VS Code: records what it is asked to open.
+  const code = join(fake, 'code');
+  writeFileSync(
+    code,
+    `#!/usr/bin/env node\nrequire('node:fs').appendFileSync(${JSON.stringify(join(fake, 'code.jsonl'))}, JSON.stringify(process.argv.slice(2)) + '\\n');\n`,
+    { mode: 0o755 },
+  );
   const { url, child } = await startCpr(['view'], repo, {
     CPR_CACHE_DIR: cache,
     CPR_CLAUDE: claude,
+    CPR_CODE: code,
   });
+  const lines = (file: string) =>
+    readFileSync(join(fake, file), { encoding: 'utf8', flag: 'a+' })
+      .split('\n')
+      .filter((line) => line !== '');
+  const folder = (branch: string) => `${repo}.worktrees/${branch.replaceAll('/', '-')}`;
   return {
     url,
     repo,
     shas,
+    folder,
+    stops: () => lines('stops.txt'),
+    opened: () => lines('code.jsonl').map((line) => JSON.parse(line) as string[]),
+    session(branch, patch) {
+      const file = join(fake, 'sessions.json');
+      const sessions = JSON.parse(readFileSync(file, 'utf8')) as { cwd: string }[];
+      const mine = sessions.filter((s) => s.cwd === folder(branch)).at(-1);
+      if (!mine) throw new Error(`no session in ${folder(branch)}`);
+      Object.assign(mine, patch);
+      writeFileSync(file, JSON.stringify(sessions));
+    },
+    commit(branch, file, text, subject) {
+      writeFileSync(join(folder(branch), file), text);
+      git(folder(branch), 'add', file);
+      git(folder(branch), 'commit', '-q', '-m', subject);
+      return git(folder(branch), 'rev-parse', 'HEAD');
+    },
     calls() {
       const file = join(fake, 'calls.jsonl');
       return readFileSync(file, { encoding: 'utf8', flag: 'a+' })

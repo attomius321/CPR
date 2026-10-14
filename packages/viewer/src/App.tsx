@@ -27,6 +27,10 @@ import type { BranchReviewInfo, Graph } from '@cpr/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import type { Loaded, Pair } from './commits.js';
 import { BackToCommits, CommitsPage, DiffProgress, fetchGraph, startDiff } from './CommitsPage.js';
+import { featureHref } from './features.js';
+import { FeaturesPage } from './FeaturesPage.js';
+import { PageTabs } from './PageTabs.js';
+import { useFeatures } from './useFeatures.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
 import {
@@ -71,6 +75,8 @@ type State =
   | { status: 'empty'; error?: string }
   /** `cpr view` with no graph here: pick commits to compare. */
   | { status: 'commits' }
+  /** `cpr view`'s features view (V18b), at `/features`. */
+  | { status: 'features' }
   /** A diff's page while it is analyzed, or once it failed or was stopped. */
   | { status: 'analyzing'; loaded: Exclude<Loaded, { kind: 'graph' }> }
   /**
@@ -327,7 +333,9 @@ export function App() {
           opened = false;
           await startDiff(loaded.pair).catch(() => undefined);
           if (live) await poll();
-        } else setState({ status: capabilities?.commits ? 'commits' : 'empty' });
+        } else if (!capabilities?.commits) setState({ status: 'empty' });
+        else
+          setState({ status: window.location.pathname === '/features' ? 'features' : 'commits' });
       };
       await poll();
     })();
@@ -430,6 +438,9 @@ export function App() {
     <div className="app" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
       <header className="bar">
         <strong className="brand">CPR</strong>
+        {(state.status === 'commits' || state.status === 'features') && (
+          <PageTabs active={state.status} />
+        )}
         {state.status === 'ready' && state.commits && <BackToCommits />}
         {state.status === 'ready' && state.branchReview && <ReviewOf review={state.branchReview} />}
         {state.status === 'ready' && <Summary graph={state.graph} />}
@@ -486,6 +497,7 @@ export function App() {
           <DropZone error={state.error} onFile={(file) => void load(file)} />
         )}
         {state.status === 'commits' && <CommitsPage />}
+        {state.status === 'features' && <FeaturesPage />}
         {state.status === 'analyzing' && <DiffProgress loaded={state.loaded} onRetry={retry} />}
         {state.status === 'ready' && (
           <ReactFlowProvider>
@@ -777,6 +789,8 @@ async function fetchCapabilities(): Promise<Capabilities | null> {
  */
 function ReviewOf({ review }: { review: BranchReviewInfo }) {
   const { branch, since, note } = review;
+  // The feature this branch is (V18b): a link to it.
+  const feature = useFeatures().list?.features.find((f) => f.branch === branch);
   const after =
     since === null
       ? 'first review'
@@ -786,6 +800,14 @@ function ReviewOf({ review }: { review: BranchReviewInfo }) {
   return (
     <span className="review-of" {...(note ? { title: note } : {})}>
       Review of <strong>{branch}</strong> · {after}
+      {feature && (
+        <>
+          {' · '}
+          <a className="review-feature" href={featureHref(branch)} title={feature.brief}>
+            Feature: {feature.brief.trim().split('\n')[0]}
+          </a>
+        </>
+      )}
     </span>
   );
 }

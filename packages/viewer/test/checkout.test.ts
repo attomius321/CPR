@@ -34,6 +34,25 @@ const labels = (c: Commit, status: Head = ON_MAIN) =>
   );
 
 describe('checkoutChoices', () => {
+  it('says where a branch checked out in another worktree is, as git would refuse it (V18b)', () => {
+    const refs: RefList = {
+      ...REFS,
+      branches: [
+        ...REFS.branches,
+        { name: 'feature/csv', sha: sha('h'), worktree: '/work/app.worktrees/feature-csv' },
+      ],
+    };
+    const row = commit('h', [{ kind: 'branch', name: 'feature/csv' }]);
+    expect(
+      checkoutChoices(row, refs, ON_MAIN).map((c) =>
+        c.disabled ? `${c.label} [${c.disabled}]` : c.label,
+      ),
+    ).toEqual([
+      'Check out branch feature/csv [checked out in /work/app.worktrees/feature-csv]',
+      'Check out this commit (detached HEAD)',
+    ]);
+  });
+
   it("offers the row's branches, the current one disabled, then the commit itself", () => {
     expect(
       labels(

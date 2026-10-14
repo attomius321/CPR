@@ -1,5 +1,6 @@
 import type { Commit, CommitRef, Graph } from '@cpr/core';
 import type { ReviewMark } from './branchReviews.js';
+import type { AgentChip } from './features.js';
 
 /** Two commits compared directly, by full SHA. */
 export interface Pair {
@@ -231,6 +232,8 @@ export interface Badge {
   title?: string;
   /** The branch is reviewed (V15, V16): "+2", "✓", "✗" or "…", and what it means. */
   review?: ReviewMark;
+  /** The branch is a feature's (V18b): its agent's mark, a link to the feature. */
+  agent?: AgentChip & { href: string };
 }
 
 /** Badges shown on a row before the rest are folded into "+N" (Qwik tags 9 packages at once). */
@@ -245,11 +248,13 @@ export function rowBadges(
   refs: readonly CommitRef[],
   branch: string | null,
   reviewed: ReadonlyMap<string, ReviewMark> = new Map(),
+  agents: ReadonlyMap<string, AgentChip & { href: string }> = new Map(),
 ): Badge[] {
   const head = refs.some((r) => r.kind === 'head');
   const review = (name: string) => {
     const mark = reviewed.get(name);
-    return mark === undefined ? {} : { review: mark };
+    const agent = agents.get(name);
+    return { ...(mark === undefined ? {} : { review: mark }), ...(agent ? { agent } : {}) };
   };
   const badges: Badge[] = refs.flatMap((ref): Badge[] => {
     if (ref.kind === 'head') {

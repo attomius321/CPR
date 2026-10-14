@@ -2,6 +2,8 @@ import { memo, useMemo, type RefObject } from 'react';
 import type { HistoryRefs, HistoryScope } from '@cpr/core';
 import { branchTree, type PanelEntry } from './branches.js';
 import type { ReviewMark } from './branchReviews.js';
+import { FeatureMark } from './FeatureMark.js';
+import type { AgentChip } from './features.js';
 
 type BranchEntry = Extract<PanelEntry, { kind: 'branch' }>;
 
@@ -33,6 +35,7 @@ export const BranchesPanel = memo(function BranchesPanel({
   scope,
   current,
   marks,
+  agents,
   open,
   filter,
   onFilter,
@@ -47,6 +50,8 @@ export const BranchesPanel = memo(function BranchesPanel({
   current: string | null;
   /** Each reviewed branch's mark, by ref name (V15, V16). */
   marks: ReadonlyMap<string, ReviewMark>;
+  /** Each feature's mark by ref name, a link to the feature (V18b). */
+  agents: ReadonlyMap<string, AgentChip & { href: string }>;
   open: boolean;
   /** The filter and the folders flipped open or closed: kept by the page across listings. */
   filter: string;
@@ -85,17 +90,22 @@ export const BranchesPanel = memo(function BranchesPanel({
         <p className="hint">{filter ? 'No branch matches' : 'No branches'}</p>
       ) : (
         <ul className="branches-list">
-          {entries.map((entry) => (
-            <li key={entry.key}>
-              <Entry
-                entry={entry}
-                scope={scope}
-                mark={entry.kind === 'branch' ? marks.get(entry.name) : undefined}
-                onToggle={onToggle}
-                onGo={onGo}
-              />
-            </li>
-          ))}
+          {entries.map((entry) => {
+            // A feature's mark: its own link beside the entry (no link inside a button).
+            const agent = entry.kind === 'branch' ? agents.get(entry.name) : undefined;
+            return (
+              <li key={entry.key} className={agent ? 'has-feature' : undefined}>
+                <Entry
+                  entry={entry}
+                  scope={scope}
+                  mark={entry.kind === 'branch' ? marks.get(entry.name) : undefined}
+                  onToggle={onToggle}
+                  onGo={onGo}
+                />
+                {agent && <FeatureMark chip={agent} />}
+              </li>
+            );
+          })}
         </ul>
       )}
     </aside>

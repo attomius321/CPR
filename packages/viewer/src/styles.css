@@ -2656,3 +2656,226 @@ kbd {
     background: color-mix(in srgb, var(--moved) 45%, transparent);
   }
 }
+
+/* ---- features (V18b) ------------------------------------------------------------------ */
+
+/* Commits · Features, in the bar. */
+.page-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.page-tabs a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.page-tabs a:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--moved) 8%, transparent);
+}
+
+.page-tabs a[aria-current='page'] {
+  color: var(--text);
+  background: color-mix(in srgb, var(--moved) 12%, transparent);
+  font-weight: 600;
+}
+
+/* How many features need the person: the waiting colour. */
+.page-count {
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--warning);
+  color: var(--panel);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* A feature's mark: what its agent is doing; on badges, a link to the feature. */
+.feature-mark {
+  --feature-tone: var(--context);
+  display: inline-block;
+  min-width: 14px;
+  margin-right: 5px;
+  padding: 0 3px;
+  border: 1px solid var(--feature-tone);
+  border-radius: 4px;
+  color: var(--feature-tone);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
+  text-decoration: none;
+  vertical-align: 1px;
+}
+
+a.feature-mark:hover {
+  background: var(--feature-tone);
+  color: var(--panel);
+}
+
+.feature-mark-working {
+  --feature-tone: var(--moved);
+}
+
+.feature-mark-waiting {
+  --feature-tone: var(--warning);
+}
+
+.feature-mark-ready {
+  --feature-tone: var(--added);
+}
+
+.feature-mark-failed {
+  --feature-tone: var(--removed);
+}
+
+.feature-mark-done {
+  --feature-tone: var(--added);
+}
+
+/* HEAD's badge is solid green: the mark is light on it. */
+.ref-head .feature-mark {
+  border-color: var(--panel);
+  color: var(--panel);
+}
+
+/* In the branches panel the mark is a link beside the entry (no link inside a button). */
+.branches-list li.has-feature {
+  display: flex;
+  align-items: center;
+}
+
+.branches-list li.has-feature .branches-branch {
+  flex: 1;
+  min-width: 0;
+}
+
+.branches-list li.has-feature .feature-mark {
+  flex: none;
+  margin: 0 8px 0 0;
+}
+
+.review-feature {
+  color: var(--moved);
+  text-decoration: none;
+}
+
+.review-feature:hover {
+  text-decoration: underline;
+}
+
+.features {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px 24px;
+}
+
+.feature-group h2 {
+  margin: 16px 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.feature-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.feature-row {
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.feature-row:first-child {
+  border-top: 0;
+}
+
+.feature-row.flash {
+  animation: commit-flash 1.2s ease-out;
+}
+
+.feature-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.feature-head .feature-mark {
+  margin-right: 0;
+}
+
+.feature-head a.ref {
+  text-decoration: none;
+}
+
+.feature-head a.ref:hover {
+  text-decoration: underline;
+}
+
+.feature-about {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feature-state {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.feature-state strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.feature-brief {
+  max-height: 40vh;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--bg);
+  font: inherit;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.feature-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.feature-actions .link {
+  font-family: inherit;
+}
+
+.feature-said {
+  color: var(--muted);
+}
