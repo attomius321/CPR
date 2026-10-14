@@ -1942,6 +1942,8 @@ dark: HEAD's row (`main` and 8 tags: a submenu of 10 badges, 368 × 335 px, wher
 it), and their confirmations; a 140-character branch in a scratch repository. No page errors.
 Not verified: Firefox, Safari, touch screens.
 
+Merged into main (2026-10-14). `main` verified after the merge: 558 unit tests, build, 66 e2e.
+
 ## V15 spike — what a new commit costs a review (2026-10-14, branch `milestone/v15-branch-reviews`)
 
 Measured before planning branch reviews. Outside `cpr pr`, marks and drafts are kept per pair of
