@@ -124,3 +124,4 @@ unless the change says otherwise — prove it with the comparisons.
 - `regression-check` — compare a branch with `main` on ky, zod, vite, RealWorld, Bitwarden, Qwik.
 - `framework-plugin` — add or change a framework plugin (`@cpr/plugin-*`).
 - `viewer-check` — check viewer changes in a browser: e2e, screenshots, first paint on real graphs.
+- `cpr-review` — read and address a review the user left on your branch in `cpr/reviews/`.
