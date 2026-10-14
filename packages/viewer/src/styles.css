@@ -1883,6 +1883,12 @@ kbd {
 }
 
 /* V14: "Check out ▸" and its submenu of targets, each named by the row's badge. */
+/* Holds "Check out" and its submenu for screen readers; a column, so the button stretches. */
+.menu-host {
+  display: flex;
+  flex-direction: column;
+}
+
 .menu-item.has-submenu {
   flex-direction: row;
   justify-content: space-between;

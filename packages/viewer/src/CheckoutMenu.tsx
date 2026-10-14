@@ -118,7 +118,7 @@ export function CheckoutMenu({
         event.stopPropagation();
       }}
     >
-      <div role="none">
+      <div role="none" className="menu-host">
         <button
           type="button"
           role="menuitem"

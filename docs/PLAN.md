@@ -3649,6 +3649,9 @@ compare with the parent); the line after a checkout ("Switched to branch wip") w
   entry highlights it, and the keys then act in the submenu. A click on "Check out" opens it
   with the first entry active, like → and Enter.
 - The menu's minimum width went from 240 to 160 px: it holds one entry.
+- "Check out" and its submenu sit in a wrapper (`role="none"`, `.menu-host`) for screen readers.
+  It is a flex column: in a plain block the button kept its own width (121 of 150 px), and the
+  user saw its highlight and arrow stop short of the menu's edge.
 - Headings for a tag or a commit no longer say "(detached HEAD)": the first words under them
   do ("Detaches HEAD at …").
 

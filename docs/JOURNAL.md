@@ -1928,6 +1928,9 @@ as a large badge ("Check out branch [wip]?"). Viewer only.
 - The submenu has to be measured where nothing narrows it (at the window's left edge, hidden):
   measured in place near the right edge, its shrink-to-fit width would be too small before it
   is moved to the left.
+- A `<button>` does not stretch to fill a plain block wrapper, though it does as a flex item:
+  wrapped for screen readers, "Check out" was 121 px wide in a 150 px menu. The user saw it
+  before any test did; an e2e test now checks that it fills the menu.
 - The menu opens after `/api/refs` and `/api/status` answer: a test that pressed Enter right
   after clicking "⋯" reached the page before the menu. It now waits for the menu.
 

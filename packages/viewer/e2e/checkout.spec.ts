@@ -55,6 +55,9 @@ test('offers what each row can check out, in a submenu', async ({ page }) => {
   const menu = await page.locator('.checkout-menu').first().boundingBox();
   const submenu = await page.locator('.submenu').boundingBox();
   expect(submenu!.x).toBeGreaterThanOrEqual(menu!.x + menu!.width - 8);
+  // "Check out" fills the menu's width (its padding and border aside), its arrow at the edge.
+  const item = await checkOut(page).boundingBox();
+  expect(item!.width).toBeCloseTo(menu!.width - 10, 0);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toHaveCount(0);
 
