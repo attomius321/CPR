@@ -2043,3 +2043,7 @@ three comments, Request changes in 12 ms (three code lines in the verdict), Appr
 in 73 ms (`origin` at the reviewed commit, upstream set, `git status` clean). Screenshots light
 and dark. No analysis code changed. Not verified: remotes that need credentials, slow
 `pre-push` hooks, Windows, macOS, Firefox and Safari.
+
+Merged into main (2026-10-14). `main` verified after the merge: 599 unit tests, build, 69 e2e.
+The reviewer approved V16 in CPR itself (one comment, on `ReviewProps`); its push was a no-op,
+`origin` already at the reviewed commit.

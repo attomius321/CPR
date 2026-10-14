@@ -427,7 +427,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V13 ✅ | Compare mode | The commits page opened as V9's picker: "Pick two…" leads the help line, every row has a pick circle (24 px), a bar holds a disabled Compare (52.6 px, 1.6 rows), and a click picks: three clicks to look at rows leave a pair picked and a comparison ready (CPR, Qwik, Bitwarden). Merged: browse by default (a click selects the row; 25 rows in view instead of 23 at 1440 × 900), and a "Compare mode" toggle (or `x`) for picking, left with Escape; first rows as fast as `main`. See below. |
 | V14 ✅ | Checkout submenu | The row menu lists every target as a sentence: on Qwik's HEAD row 10 entries, each starting "Check out", 8 ending "(detached HEAD)", 480 px wide (its max); a remote branch's entry is 117 characters. The names are plain text mid-sentence, while the rows draw them as coloured badges. Merged: "Check out ▸" with the targets in a submenu on hover (or c), each name as the row's badge with a muted note (Qwik's HEAD row: 10 badges in a 368 px column); the confirmation's heading with the name as a badge. See below. |
 | V15 ✅ | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Merged: "Review ▸" in the row menu (or r) compares a branch's fork point with its tip, marks kept across new commits (on a clone, 83 of 83 after one more commit, 2 symbols left); reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; "✓" or "+n" on reviewed branches' badges, a dot on commits added since. See below. |
-| V16 | Finish a review | A branch review has no end: outside `cpr pr` the reviewer can only mark symbols (the reviewer's V15 review: 86 of 87 marked, 0 comments, none possible), feedback to the agent goes through chat without a place, badges show no outcome, and approved work is pushed by hand. Built, not merged: comments and the Review tab on branch reviews; Approve, Request changes or Comment recorded with its comments in the review's JSON ("✓", "✗", "+n" on badges); Approve pushes the reviewed commit, by SHA; the default branch reviewable from where it was last pushed; `cpr pr` unchanged. See below. |
+| V16 ✅ | Finish a review | A branch review has no end: outside `cpr pr` the reviewer can only mark symbols (the reviewer's V15 review: 86 of 87 marked, 0 comments, none possible), feedback to the agent goes through chat without a place, badges show no outcome, and approved work is pushed by hand. Merged: comments and the Review tab on branch reviews; Approve, Request changes or Comment recorded with its comments in the review's JSON ("✓", "✗", "+n" on badges); Approve pushes the reviewed commit, by SHA; the default branch reviewable from where it was last pushed; `cpr pr` unchanged. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -3920,8 +3920,8 @@ and Safari; first rows drawn (not re-measured: the reviews request runs beside t
 
 ### V16 — Finish a review: verdict, feedback for the agent, push on approval
 
-**Status:** implemented (2026-10-14) on branch `milestone/v16-finish-review`; not merged yet.
-As built and results: "As built — V16" below.
+**Status:** merged into main (2026-10-14, from branch `milestone/v16-finish-review`). As built
+and results: "As built — V16" below.
 
 **Problem** (asked, after reviewing V15 in the viewer: "how to end review?"; then "Yes, plan
 it"; then: "Wouldn't it be better to save it as a JSON instead of md? … This would work locally,
