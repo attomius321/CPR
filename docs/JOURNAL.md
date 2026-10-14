@@ -2333,3 +2333,32 @@ six regression clones through `cpr view`'s API with the fake agent: 18 features 
 base, each checkout's `git status` unchanged, all removed after. Screenshots light and dark at
 1440 and 900 px, no page errors. No analysis code changed. Not verified: a real Claude Code
 started by CPR, Windows and macOS, Firefox and Safari.
+
+## V18b — The features view (2026-10-15, branch `milestone/v18-start-a-feature`)
+
+`/features` lists the features started from CPR grouped by what each needs from the person —
+Needs you, Working, Done — with its agent's state in words, its commits, files not committed, its
+review and whether it merges, and Review, Talk, Open in VS Code, Stop / Start the agent, Copy the
+prompt. "Commits · Features (n)" in the bar counts what needs the person. A feature and its branch
+lead to each other: the mark on the branch's badge (and in the branches panel), "Open its
+feature" on its row, the review page's header; the branch name on a feature goes to its tip
+(`/?branch=`). An agent's commits show on the commits page as they come, the cursor kept.
+
+**Learned**:
+- A feature waits on `main`'s row until its agent commits, and that row already shows three
+  badges: the first screenshot had both features' marks folded into "+2". The folded badge now
+  carries the most urgent mark; looking at real rows found it, the unit tests had one branch.
+- A link cannot sit inside a button: in the branches panel the mark is beside the entry.
+- Listing anew resets the cursor to HEAD (V11); doing that whenever an agent commits would move
+  the view under the reader, so the cursor's commit and its place in the view are kept.
+- The server keeps Claude Code's sessions 2 s (each call is ~155 ms): an e2e test that changes the
+  fake's state must wait for the page's next read, not reload at once.
+- Adding a menu entry made a checkout e2e premise ("the taller submenu moves up") false at that
+  window size; the window check it guards still holds.
+
+**Verification**: tests first (core 1, CLI 3, server 2, editor 2, viewer 6). 667 unit tests, 92
+e2e (5 new), all passing. Screenshots on a clone of this repository with three features, light
+and dark, 1440 and 900 px, no page errors. First rows against `main`'s build: Bitwarden 982–998
+against 984–1,042 ms, ky 975–991 against 973–1,004 ms; the bar 37 px on both. Not verified: a
+real Claude Code session stopped or attached, VS Code opening a worktree for real, Windows,
+macOS, Firefox, Safari.

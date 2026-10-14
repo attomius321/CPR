@@ -82,7 +82,13 @@ dialog says which: your subscription, or an API key) in the permission mode you 
 Code's default, Accept edits or Auto); CPR never grants it more. If Claude Code does not start —
 it must trust the repository, so run `claude` there once and accept — or is not installed (`claude`
 on `PATH`, or `CPR_CLAUDE`), the branch and worktree are kept and the page offers the prompt to
-copy. Its commits show on the page when you come back to it; review the branch as any other. In
+copy. **Features** (the tab beside Commits, which counts what needs you) lists them by what each
+needs from you — a plan to read, a permission to give, a branch to review, changes to send back —
+then those working, then those merged, each with its commits, files not committed yet, your review
+and whether it merges cleanly, and Review, Talk (copies `claude attach <id>` for a terminal), Open
+in VS Code (its worktree), Stop or Start the agent, Copy the prompt. A feature's branch carries its
+agent's mark on the commits page — a link to the feature — and the feature's branch name goes to
+its commits; its commits show as the agent makes them. Review the branch as any other. In
 `cpr/config.json`, `"features": { "branchPrefix": "feature/", "worktrees": "../{repo}.worktrees"
 }` and `"agent": { "permissionMode": "auto", "model": "opus" }` change the defaults.
 

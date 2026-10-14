@@ -4747,8 +4747,8 @@ Not verified: Windows and macOS; Firefox and Safari; moving through the panel wi
 
 ### V18 — Start a feature: a branch, a worktree and an agent, from the commits page
 
-**Status:** V18a built (2026-10-15) on branch `milestone/v18-start-a-feature`, not merged; V18b–d
-planned. As built and results: "As built — V18a" below.
+**Status:** V18a and V18b built (2026-10-15) on branch `milestone/v18-start-a-feature`, not
+merged; V18c–d planned. As built and results: "As built — V18a" and "As built — V18b" below.
 
 **Problem** (asked: "Let's continue with our agentic flow...from the commits view page, i would
 like to "Start a new feature" feature"; then, choosing among options: CPR starts the agent; the
@@ -5092,7 +5092,7 @@ on one branch.
 | # | Milestone | Output |
 |---|---|---|
 | V18a (built) | Start a feature | `cpr/features/`, one `cpr/` per repository; branch and worktree outside the checkout; the agent started (`claude --bg`), failures kept with their reason; `/api/features` with states; the dialog (header, `n`, "Start a feature here"); the page lists the new branch. |
-| V18b | The features view | `/features`: open features grouped by what they need (needs you, working, done), each with its state, commits, uncommitted files, review mark and merge check; Review, Talk (attach), Open in VS Code, Start/Stop, Copy the prompt; the tab bar with the count; agent chips on badges and in the branches panel; feature ↔ branch links (`/?branch=`, `/features?branch=`, "Open its feature", the review header); polling while an agent works, the history listed anew when a feature's tip moves; Open in VS Code in the feature's worktree; V11's menu names a branch's worktree. |
+| V18b (built) | The features view | `/features`: open features grouped by what they need (needs you, working, done), each with its state, commits, uncommitted files, review mark and merge check; Review, Talk (attach), Open in VS Code, Start/Stop, Copy the prompt; the tab bar with the count; agent chips on badges and in the branches panel; feature ↔ branch links (`/?branch=`, `/features?branch=`, "Open its feature", the review header); polling while an agent works, the history listed anew when a feature's tip moves; Open in VS Code in the feature's worktree; V11's menu names a branch's worktree. |
 | V18c | Talk and finish | In the features view: "Reply" and "Send the verdict" (resume); Clean up; AGENTS.md: features, merging from a worktree. |
 | V18d | Codex and other agents | Codex (`codex exec --json`, detached; states from its events; reply by `exec resume`); `agent.command` for any other (detached, log, running/exited); the agent picked in the dialog; `.worktreeinclude`. |
 
@@ -5182,6 +5182,60 @@ changed (goldens unchanged), so no regression-check run.
 Not verified: a real Claude Code started by CPR (skipped, as asked) — `--bg` with `--add-dir`,
 its sessions' states end to end, how long `--bg` takes when it starts its background service;
 Windows and macOS (worktree paths, `claude.exe` on `PATH`); Firefox and Safari.
+
+#### As built — V18b
+
+- **The groups**, as `featureGroups` decides them: **Done** only once merged; **Working** only while
+  the agent works; everything else **Needs you**, each with its next step in words — "Waiting:
+  permission prompt", "Plan ready: read it and answer", "Ready for review", "Changes requested:
+  send them to the agent", "2 commits since your review: review again", "Approved: ask your agent
+  to merge it", "Not started: Workspace not trusted.", "Its branch is gone". The tab counts Needs
+  you.
+- **One reader for the page** (`useFeatures`): the features and the reviews, read together (a
+  review changes what is next), shared by the tab bar, the page and the review header; on load,
+  on focus, and every 5 s only while an agent works or waits.
+- **Live listing**: a feature's tip that is not the listed one lists the history anew, the cursor
+  kept on its commit at its place in the view (when that commit is in the first 200 rows; else on
+  HEAD, as before).
+- **The marks**: on a branch's badge, before its name, a link to the feature; in the branches
+  panel beside the entry, since a link cannot sit inside the entry's button. The first screenshots
+  showed two new features' badges folded into "+2" on `main`'s row — where a feature sits until
+  its agent commits —, so "+N" now carries the most urgent mark among those it folds (failed,
+  waiting, ready, then working), linking to the features view.
+- **"Open its feature"** is in the menu of the row where a feature's branch is (its tip).
+- **Actions**: Stop only while the agent works or waits (`claude stop <id>`); Start the agent after
+  a failed start, a stop, a failure or once it is no longer listed; Talk copies `claude attach
+  <id>`; the merge check is asked per row, in the background, once per pair of tips (V17's
+  `git merge-tree`).
+- **Files not committed** count new files one by one and leave ignored ones out (`git status
+  --porcelain --untracked-files=all`).
+- **The tab bar** made the bar 4 px taller at first (37 to 41 px); without the tabs' vertical
+  padding it measures as `main`'s.
+- **Open in VS Code** from a review of a branch checked out in a feature's worktree opens that
+  worktree and maps the line in its working copy (the review page asks the refs where the branch
+  is checked out); V11's checkout menu says "checked out in <folder>".
+- **Trap**: the server keeps Claude Code's sessions for 2 s, so an e2e test that changes the fake's
+  state waits for the page's next read, not a reload. One checkout e2e check, "the taller submenu
+  moves up", now allows the submenu level with its entry: the row menu has more entries since V18.
+
+**Results (V18b).** Tests first: core 1, CLI 3, server 2, editor 2, viewer 6 failed before the code
+(groups, next steps and marks 4, the folded badge 1, the checkout menu 1). Now 667 unit tests (14
+new since V18a) and 92 e2e (5 new, with the fake agent: the groups as its state changes and the
+tab's count; the links both ways — the mark, the branch name, "Open its feature", the review
+header; an agent's commit arriving with the cursor kept; stop, start again, copy the prompt, Talk,
+Open in VS Code; a branch checked out elsewhere, and one deleted in a terminal: "Its branch is
+gone", no mark).
+
+On a clone of this repository with three features (one waiting for a permission, one finished
+with a commit and a file not committed, one working): the features view and the review header in
+light and dark at 1440 and 900 px, the marks on the commits page and in the branches panel; no
+page errors. Against `main`'s build, warm servers, 4 rounds each: first rows on Bitwarden
+982–998 ms (`main` 984–1,042 ms), on ky 975–991 ms (`main` 973–1,004 ms); the bar 37 px on both.
+No analysis code changed (goldens unchanged).
+
+Not verified: a real Claude Code (as for V18a) — `claude stop` and `claude attach` with a real
+session; VS Code opening a worktree for real (the tests use a fake `code`); Windows and macOS;
+Firefox and Safari.
 
 ### Phase 1 milestones
 
