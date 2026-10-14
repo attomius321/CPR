@@ -4864,6 +4864,13 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
   go, push only if the project does; say when it is ready for review in CPR; where the brief and
   reviews are (absolute paths) and that `cpr/AGENTS.md` says how to act on a review. The brief is
   at most 20,000 characters (Windows' command line holds 32,767).
+- **Whose account**: the agent is the person's own `claude`, logged in as they are: a Claude
+  subscription (here `authMethod: claude.ai`, `subscriptionType: pro`) or an API key. CPR never
+  handles credentials and never passes `--bare` (it takes an API key only). The dialog says which,
+  from `claude auth status` ("Claude Code · your Pro subscription"), and warns when
+  `ANTHROPIC_API_KEY` is set in `cpr view`'s environment, where the agent may use it instead.
+  Agents share the subscription's usage limits with the person's other sessions; one that hits
+  them stops and is resumed later.
 - **Permission mode**: Claude Code's own default unless the person picks "Accept edits" or "Auto"
   in the dialog (default from `agent.permissionMode`). CPR never passes `bypassPermissions` or
   `--dangerously-skip-permissions`; a person who wants that configures it in Claude Code.
