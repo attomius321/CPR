@@ -7,9 +7,39 @@ export interface Pair {
   head: string;
 }
 
-export interface Comparison extends Pair {
-  /** `a1b2c3d → e4f5a6b · 12 commits`. */
+/** What the picks compare, or why they cannot be compared. */
+export interface Comparison {
+  /** What Compare analyzes; null when nothing can be (the label says why). */
+  pair: Pair | null;
+  /** `a1b2c3d → e4f5a6b · 12 commits`, or why there is nothing to compare. */
   label: string;
+  /** The picks are on lines that diverged (V10c): `pair.base` is their fork point. */
+  diverged?: Diverged;
+}
+
+/** Two picks neither of which is an ancestor of the other. */
+export interface Diverged {
+  /** The pick on the base's side; its commits since the fork are not in the diff. */
+  other: string;
+  otherCommits: number;
+  /** The fork point's row. */
+  forkRow: number;
+  /** Why that side is the base: on the default branch's line, HEAD's line, or the lower row. */
+  by: 'default' | 'head' | 'older';
+}
+
+/** The history as `comparison` reads it. */
+export interface Lines {
+  /** Each row's parents as row numbers; one not in the history is below zero. */
+  parents: readonly (readonly number[])[];
+  /** HEAD's row: its first-parent line is the current branch's (lane 0). */
+  head: number | null;
+  /** The rows of the default branch's tips (the local branch's, the remotes'). */
+  trunk: readonly number[];
+  /** The whole shape is in: a parent not listed is outside the history (a shallow clone's edge). */
+  complete: boolean;
+  /** A row's SHA, if its details are loaded (the fork point's is needed to compare from it). */
+  shaAt: (row: number) => string | undefined;
 }
 
 export const shortSha = (sha: string): string => sha.slice(0, 7);
@@ -30,45 +60,136 @@ export interface Picked {
   parent?: string;
 }
 
+const plural = (n: number) => `${n} commit${n === 1 ? '' : 's'}`;
+
 /**
- * What the picks compare: of two, the lower row (older: in graph order an ancestor is always
- * lower) is the base; one commit is compared with its first parent. Null with nothing to
- * compare (a root commit has no parent). `parents` are the history's rows' parents.
+ * What the picks compare. One commit: against its first parent. Two, one an ancestor of the
+ * other: the ancestor is the base. Two on lines that diverged (V10c): head's side from their
+ * fork point, as a pull request shows it; the base's side is the pick on the default branch's
+ * line, else on HEAD's, else the lower row (`swapped` turns it round). Null with nothing to
+ * compare (nothing picked, a root commit alone).
  */
 export function comparison(
   picks: readonly Picked[],
-  parents: readonly (readonly number[])[],
+  lines: Lines,
+  swapped = false,
 ): Comparison | null {
-  let pair: (Pair & { rows: [base: number, head: number] }) | null = null;
   const [first, second] = picks;
-  if (first && !second) {
-    if (first.parent) {
-      const parentRow = parents[first.row]?.[0] ?? -1;
-      pair = { base: first.parent, head: first.sha, rows: [parentRow, first.row] };
-    }
-  } else if (first && second) {
-    const [older, newer] = first.row > second.row ? [first, second] : [second, first];
-    pair = { base: older.sha, head: newer.sha, rows: [older.row, newer.row] };
+  if (!first) return null;
+  if (!second) {
+    if (!first.parent) return null;
+    const parentRow = lines.parents[first.row]?.[0] ?? -1;
+    const pair = { base: first.parent, head: first.sha };
+    const arrow = `${shortSha(pair.base)} → ${shortSha(pair.head)}`;
+    // Before the shape is in, a parent may not be listed yet: no count to give.
+    if (parentRow < 0) return { pair, label: arrow };
+    const { only } = paint(lines.parents, parentRow, first.row);
+    return { pair, label: `${arrow} · ${plural(only[1])}` };
   }
-  if (!pair) return null;
-  const count = countBetween(parents, ...pair.rows);
-  const label = `${shortSha(pair.base)} → ${shortSha(pair.head)} · ${count} commit${count === 1 ? '' : 's'}`;
-  return { base: pair.base, head: pair.head, label };
+  const { fork, only, missing } = paint(lines.parents, first.row, second.row);
+  const [upper, lower] = first.row < second.row ? [first, second] : [second, first];
+  const names = `${shortSha(upper.sha)} and ${shortSha(lower.sha)}`;
+  if (fork === null) {
+    let label = `${names} share no history: nothing to compare`;
+    if (missing) {
+      label = lines.complete
+        ? `The fork point of ${names} is not in this clone`
+        : `Finding where ${names} forked…`;
+    }
+    return { pair: null, label };
+  }
+  const commits = (pick: Picked) => only[pick === first ? 0 : 1];
+  // An ancestor pair: the ancestor is the base (it is the fork point).
+  const ancestor = fork === first.row ? first : fork === second.row ? second : null;
+  if (ancestor !== null) {
+    const head = ancestor === first ? second : first;
+    return {
+      pair: { base: ancestor.sha, head: head.sha },
+      label: `${shortSha(ancestor.sha)} → ${shortSha(head.sha)} · ${plural(commits(head))}`,
+    };
+  }
+  let base = lower;
+  let by: Diverged['by'] = 'older';
+  for (const [tips, rule] of [
+    [lines.trunk, 'default'],
+    [lines.head === null ? [] : [lines.head], 'head'],
+  ] as const) {
+    const onFirst = onLine(lines.parents, tips, first.row);
+    if (onFirst !== onLine(lines.parents, tips, second.row)) {
+      base = onFirst ? first : second;
+      by = rule;
+      break;
+    }
+  }
+  if (swapped) base = base === first ? second : first;
+  const head = base === first ? second : first;
+  const diverged = { other: base.sha, otherCommits: commits(base), forkRow: fork, by };
+  const forkSha = lines.shaAt(fork);
+  // Its row's details are not loaded yet: the caller loads them.
+  if (forkSha === undefined)
+    return { pair: null, label: `Finding where ${names} forked…`, diverged };
+  return {
+    pair: { base: forkSha, head: head.sha },
+    label: `${shortSha(forkSha)} → ${shortSha(head.sha)} · ${plural(commits(head))}`,
+    diverged,
+  };
 }
 
-/** Commits head adds to base (`git rev-list --count base..head`), walked through the rows. */
-function countBetween(parents: readonly (readonly number[])[], base: number, head: number): number {
-  const reach = (from: number, stop: ReadonlySet<number>) => {
-    const seen = new Set<number>();
-    const todo = [from];
-    for (let row = todo.pop(); row !== undefined; row = todo.pop()) {
-      if (seen.has(row) || stop.has(row) || row < 0 || row >= parents.length) continue;
-      seen.add(row);
-      todo.push(...(parents[row] ?? []));
+/**
+ * Paints down from rows `a` and `b` in graph order (every child above its parents, so a row's
+ * marks are final when the walk reaches it): `only` counts the rows each side alone reaches
+ * (`git rev-list --left-right --count a...b`), `fork` is the first row both reach — a best common
+ * ancestor, `git merge-base` — or null. `missing`: a row reached by one side has a parent the
+ * rows do not hold (not listed yet, or outside a shallow clone).
+ */
+function paint(
+  parents: readonly (readonly number[])[],
+  a: number,
+  b: number,
+): { fork: number | null; only: [number, number]; missing: boolean } {
+  const marks = new Uint8Array(parents.length);
+  marks[a] = (marks[a] ?? 0) | 1;
+  marks[b] = (marks[b] ?? 0) | 2;
+  const only: [number, number] = [0, 0];
+  // Rows marked by one side and not reached yet: once none is left, nothing more is counted.
+  let single = a === b ? 0 : 2;
+  let fork: number | null = null;
+  let missing = false;
+  let row = Math.min(a, b);
+  for (; row < parents.length && single > 0; row++) {
+    const mark = marks[row] ?? 0;
+    if (mark === 0) continue;
+    if (mark === 3) fork ??= row;
+    else {
+      single--;
+      only[mark === 1 ? 0 : 1]++;
     }
-    return seen;
-  };
-  return reach(head, reach(base, new Set())).size;
+    for (const parent of parents[row] ?? []) {
+      if (parent < 0 || parent >= parents.length) {
+        if (mark !== 3) missing = true;
+        continue;
+      }
+      const before = marks[parent] ?? 0;
+      const after = before | mark;
+      if (after === before) continue;
+      if (before === 1 || before === 2) single--;
+      if (after === 1 || after === 2) single++;
+      marks[parent] = after;
+    }
+  }
+  // Rows still marked are reached by both: the first of them is the fork point.
+  for (; fork === null && row < parents.length; row++) if (marks[row] === 3) fork = row;
+  return { fork, only, missing };
+}
+
+/** Whether `row` is on the first-parent line from one of `tips`. */
+function onLine(parents: readonly (readonly number[])[], tips: readonly number[], row: number) {
+  return tips.some((tip) => {
+    let at = tip;
+    // Rows only grow along the line: past `row`, it is not on it.
+    while (at >= 0 && at < row) at = parents[at]?.[0] ?? -1;
+    return at === row;
+  });
 }
 
 /**

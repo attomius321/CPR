@@ -26,6 +26,7 @@ export const GraphCell = memo(function GraphCell({
   merge,
   head,
   picked,
+  fork = false,
   onJump,
 }: {
   row: LaneRow;
@@ -37,6 +38,8 @@ export const GraphCell = memo(function GraphCell({
   /** HEAD's commit: ringed, so it stands out. */
   head: boolean;
   picked: boolean;
+  /** The fork point of two diverged picks (V10c): a dashed ring. */
+  fork?: boolean;
   onJump: (row: number) => void;
 }) {
   const h = ROW_HEIGHT;
@@ -89,6 +92,7 @@ export const GraphCell = memo(function GraphCell({
       ))}
       {head && <circle className="head-ring" cx={cx} cy={mid} r={7} />}
       {picked && <circle className="pick-ring" cx={cx} cy={mid} r={head ? 10 : 7} />}
+      {fork && <circle className="fork-ring" cx={cx} cy={mid} r={head ? 10 : 7} />}
       <circle className={`commit-dot ${lane}${merge ? ' merge' : ''}`} cx={cx} cy={mid} r={4} />
     </svg>
   );

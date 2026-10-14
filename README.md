@@ -69,8 +69,13 @@ and every review file's first line points there. Claude Code loads it when it re
 
 A click selects a commit (j/k move the selection). To compare, turn on "Compare mode" (or press
 x): click one commit and another — the older is the base — and Compare (or x, Enter); one picked
-alone is compared with its parent; Escape leaves. A picked pair is compared directly (no merge-base)
-and analyzed then, in the background, with the same `--plugin`, `--project` and `--depth`: its
+alone is compared with its parent; Escape leaves. Two commits on branches that diverged are
+compared from where they forked, as a pull request is: the diff shows what one side added since,
+never the other side's work as reverted. That side is the one off the default branch (else off
+the branch checked out, else the newer); the bar says so — "9f8e7d6 → e4f5a6b · 5 commits ·
+diverged from a1b2c3d" —, the fork point's SHA goes to its row (ringed with dashes), and Swap
+compares the other side. A picked pair is analyzed then, in the background, with the same
+`--plugin`, `--project` and `--depth`: its
 page says what it is doing ("loading head · 12 s") and can stop it. Each diff has its own address
 (`/diff/<base>..<head>/`), so it can be reloaded or bookmarked; the last 8 stay ready while
 `cpr view` runs, and "← Commits" goes back to the list. `cpr view main` analyzes first, as before,

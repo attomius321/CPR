@@ -130,6 +130,7 @@ export {
   checkMerge,
   commitsBetween,
   defaultBranch,
+  defaultBranchTips,
   forkPoint,
   isAncestor,
   mergeBase,

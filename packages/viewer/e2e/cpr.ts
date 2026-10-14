@@ -366,3 +366,57 @@ export async function servePullRequest(
     },
   };
 }
+
+export interface RunningDiverged extends Running {
+  /** "Add square" on `main`, where `topic` forked; main's tip ("Add half"); topic's ("Change square"). */
+  fork: string;
+  main: string;
+  topic: string;
+}
+
+/**
+ * Two lines that diverged (V10c): `main` — the `callers` fixture's base, "Add square", then
+ * "Add cube" and "Add half" — and `topic`, forked at "Add square": "Add twice", then "Change
+ * square" (its body). All in `src/math.ts`. `checkout` is the branch checked out. Served by
+ * `cpr view` without revisions: the commits page.
+ */
+export async function serveDiverged(checkout: 'main' | 'topic' = 'main'): Promise<RunningDiverged> {
+  const { repo } = fixtureRepo('callers');
+  git(repo, 'checkout', '-q', 'main');
+  git(repo, 'branch', '-q', '-D', 'feature');
+  const path = join(repo, 'src/math.ts');
+  const fn = (name: string, body: string) =>
+    `\nexport function ${name}(a: number): number {\n  return ${body};\n}\n`;
+  const start = readFileSync(path, 'utf8') + fn('square', 'a * a');
+  writeFileSync(path, start);
+  commitAt(repo, 1, '-am', 'Add square');
+  const fork = git(repo, 'rev-parse', 'HEAD');
+  writeFileSync(path, start + fn('cube', 'a * a * a'));
+  commitAt(repo, 2, '-am', 'Add cube');
+  writeFileSync(path, start + fn('cube', 'a * a * a') + fn('half', 'a / 2'));
+  commitAt(repo, 3, '-am', 'Add half');
+  const main = git(repo, 'rev-parse', 'HEAD');
+  git(repo, 'checkout', '-q', '-b', 'topic', fork);
+  writeFileSync(path, start + fn('twice', 'a * 2'));
+  commitAt(repo, 4, '-am', 'Add twice');
+  writeFileSync(
+    path,
+    start.replace('return a * a;', 'return twice(a) * a / 2;') + fn('twice', 'a * 2'),
+  );
+  commitAt(repo, 5, '-am', 'Change square');
+  const topic = git(repo, 'rev-parse', 'HEAD');
+  git(repo, 'checkout', '-q', checkout);
+  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  const { url, child } = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
+  return {
+    url,
+    fork,
+    main,
+    topic,
+    stop() {
+      child.kill('SIGINT');
+      rmSync(repo, { recursive: true, force: true });
+      rmSync(cache, { recursive: true, force: true });
+    },
+  };
+}

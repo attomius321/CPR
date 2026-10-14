@@ -14,6 +14,7 @@ import {
   defaultCacheDir,
   fetchRefs,
   commitDetails,
+  defaultBranchTips,
   hasCommitGraph,
   historyState,
   isCommit,
@@ -504,6 +505,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
           state: () => historyState(repo),
           stream: (scope, onRows) => streamHistory(repo, scope, onRows),
           details: (shas) => commitDetails(repo, shas),
+          defaultBranch: () => defaultBranchTips(repo),
         },
         {
           onListed: (_scope, rows, ms) => {

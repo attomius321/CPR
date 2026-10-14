@@ -1768,6 +1768,14 @@ kbd {
   stroke-width: 1.5;
 }
 
+/* Where two diverged picks forked (V10c): what the diff is compared from. */
+.graph .fork-ring {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+  stroke-dasharray: 2.5 2;
+}
+
 .graph .arrow {
   cursor: pointer;
 }
@@ -2176,7 +2184,18 @@ kbd {
 
 .compare-label {
   flex: 1;
+}
+
+.compare-pair {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.compare-pair .fork-sha {
+  font: inherit;
+}
+
+.compare-diverged {
+  color: var(--muted);
 }
 
 .compare-bar .button,

@@ -1,5 +1,5 @@
 import { git, GitError } from './exec.js';
-import type { RefList } from './refs.js';
+import { listRefs, type RefList } from './refs.js';
 import type { GitRepo } from './repo.js';
 
 /** A ref of a reviewed branch (the local branch or a remote's) and the commits since review. */
@@ -143,6 +143,28 @@ export async function defaultBranch(repo: GitRepo, refs: RefList): Promise<strin
   return ['main', 'master'].find((name) => names.has(name)) ?? null;
 }
 
+/** The commits `branch` names: the local branch's and each remote's, each once. */
+function branchTips(refs: RefList, branch: string): string[] {
+  return [
+    ...new Set([
+      ...refs.branches.filter((b) => b.name === branch).map((b) => b.sha),
+      ...refs.remotes.filter((r) => r.branch === branch).map((r) => r.sha),
+    ]),
+  ];
+}
+
+/**
+ * The default branch and its tips, the local branch's and each remote's (V10c: the commits page
+ * takes a pick on their line as the base); null without a default branch.
+ */
+export async function defaultBranchTips(
+  repo: GitRepo,
+): Promise<{ name: string; tips: string[] } | null> {
+  const refs = await listRefs(repo);
+  const name = await defaultBranch(repo, refs);
+  return name === null ? null : { name, tips: branchTips(refs, name) };
+}
+
 /**
  * Where `tip` left the branch `branch`: the latest merge-base with its local branch and its
  * remotes' (a stale local `main` must not pull in commits the agent took from `origin/main`).
@@ -154,12 +176,8 @@ export async function forkPoint(
   branch: string,
   refs: RefList,
 ): Promise<string | null> {
-  const ends = [
-    ...refs.branches.filter((b) => b.name === branch).map((b) => b.sha),
-    ...refs.remotes.filter((r) => r.branch === branch).map((r) => r.sha),
-  ];
   let latest: string | null = null;
-  for (const end of new Set(ends)) {
+  for (const end of branchTips(refs, branch)) {
     const base = await mergeBase(repo, tip, end);
     if (base === null || base === latest) continue;
     if (latest === null || (await isAncestor(repo, latest, base))) latest = base;

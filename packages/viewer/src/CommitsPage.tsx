@@ -32,6 +32,7 @@ import {
   relativeDate,
   rowBadges,
   shortSha,
+  type Comparison,
   type Loaded,
   type Pair,
   type Picked,
@@ -222,8 +223,10 @@ function History({
   // Rows' details by row number, filled block by block; `loaded` re-renders when one arrives.
   const details = useRef(new Map<number, Commit>());
   const asked = useRef(new Set<number>());
-  const [, setLoaded] = useState(0);
+  const [loaded, setLoaded] = useState(0);
   const [picks, setPicks] = useState<Picked[]>([]);
+  // Diverged picks compared the other way round (V10c); picking again resets it.
+  const [swapped, setSwapped] = useState(false);
   const [cursor, setCursor] = useState(0);
   const [starting, setStarting] = useState(false);
   const [view, setView] = useState({ top: 0, height: 0 });
@@ -338,11 +341,10 @@ function History({
   const firstShown = Math.max(0, Math.floor(view.top / ROW_HEIGHT) - OVERSCAN);
   const lastShown = Math.min(rows - 1, Math.ceil((view.top + view.height) / ROW_HEIGHT) + OVERSCAN);
 
-  // Details of the rows near the view, a block at a time.
-  useEffect(() => {
-    if (!first || rows === 0) return;
-    for (const block of blocksAround(firstShown, lastShown, rows)) {
-      if (asked.current.has(block)) continue;
+  /** Loads a block of rows' details, unless asked for already. */
+  const loadBlock = useCallback(
+    (block: number) => {
+      if (!first || asked.current.has(block)) return;
       asked.current.add(block);
       fetchRows(scope, block * BLOCK, Math.min(rows, (block + 1) * BLOCK), first.version)
         .then((page) => {
@@ -353,8 +355,15 @@ function History({
           asked.current.delete(block);
           failed(e);
         });
-    }
-  }, [first, rows, firstShown, lastShown, scope, failed]);
+    },
+    [first, rows, scope, failed],
+  );
+
+  // Details of the rows near the view, a block at a time.
+  useEffect(() => {
+    if (rows === 0) return;
+    for (const block of blocksAround(firstShown, lastShown, rows)) loadBlock(block);
+  }, [rows, firstShown, lastShown, loadBlock]);
 
   /** Scrolls row `row` into view: to the middle when `center`, else just enough. */
   const reveal = useCallback((row: number, center = false) => {
@@ -473,7 +482,28 @@ function History({
     [onRelist],
   );
 
-  const current = comparison(picks, parents);
+  const current = useMemo(
+    () =>
+      comparison(
+        picks,
+        {
+          parents,
+          head: headRow,
+          trunk: shape?.defaultBranch?.rows ?? [],
+          complete: shape !== null,
+          shaAt: (row) => details.current.get(row)?.sha,
+        },
+        swapped,
+      ),
+    // `loaded`: a block of details came, maybe the fork point's.
+    [picks, parents, headRow, shape, swapped, loaded],
+  );
+  // Diverged picks: the fork point's details, wherever it is in the history.
+  const forkRow = current?.diverged?.forkRow;
+  useEffect(() => {
+    if (forkRow !== undefined && !details.current.has(forkRow))
+      loadBlock(Math.floor(forkRow / BLOCK));
+  }, [forkRow, loadBlock]);
   const pickRow = useCallback((row: number) => {
     const commit = details.current.get(row);
     if (!commit) return;
@@ -488,10 +518,12 @@ function History({
         next.sha,
       ).map((sha) => ps.find((p) => p.sha === sha) ?? next),
     );
+    setSwapped(false);
   }, []);
   /** Leaves compare mode: the picks go with it. */
   const stopComparing = useCallback(() => {
     setPicks([]);
+    setSwapped(false);
     setCompareError(null);
     onComparing(false);
   }, [onComparing]);
@@ -526,11 +558,11 @@ function History({
         // A focused button takes Enter itself.
         !(event.target instanceof HTMLButtonElement) &&
         comparing &&
-        current &&
+        current?.pair &&
         !starting
       ) {
         event.preventDefault();
-        void compare(current);
+        void compare(current.pair);
       } else return;
     };
     window.addEventListener('keydown', onKey);
@@ -669,6 +701,7 @@ function History({
                         merge={(parents[row]?.length ?? 0) > 1}
                         head={row === headRow}
                         picked={!!commit && picked.has(commit.sha)}
+                        fork={row === forkRow}
                         onJump={jump}
                       />
                     )
@@ -701,26 +734,106 @@ function History({
       )}
       {comparing && (
         <footer className="compare-bar">
-          <span className="compare-label">
-            {current ? current.label : 'Pick two commits, or one to compare with its parent'}
-          </span>
+          <CompareLabel
+            current={current}
+            swapped={swapped}
+            defaultBranch={shape?.defaultBranch?.name ?? null}
+            onJump={jump}
+          />
           {compareError && <span className="error">{compareError}</span>}
+          {current?.diverged && (
+            <button
+              type="button"
+              className="link"
+              title="Compare the other pick from the fork point"
+              onClick={() => setSwapped((s) => !s)}
+            >
+              Swap
+            </button>
+          )}
           {picks.length > 0 && (
-            <button type="button" className="link" onClick={() => setPicks([])}>
+            <button
+              type="button"
+              className="link"
+              onClick={() => {
+                setPicks([]);
+                setSwapped(false);
+              }}
+            >
               Clear
             </button>
           )}
           <button
             type="button"
             className="button compare"
-            disabled={!current || starting}
-            onClick={() => current && void compare(current)}
+            disabled={!current?.pair || starting}
+            onClick={() => current?.pair && void compare(current.pair)}
           >
             {starting ? 'Starting…' : 'Compare'}
           </button>
         </footer>
       )}
     </div>
+  );
+}
+
+/**
+ * What Compare will analyze. Diverged picks (V10c): the fork point's SHA goes to its row, and a
+ * note names the other pick, whose commits since the fork are not in the diff.
+ */
+function CompareLabel({
+  current,
+  swapped,
+  defaultBranch,
+  onJump,
+}: {
+  current: Comparison | null;
+  swapped: boolean;
+  /** The default branch's name, for why the other pick is the base's side. */
+  defaultBranch: string | null;
+  onJump: (row: number) => void;
+}) {
+  const plain = (label: string) => (
+    <span className="compare-label">
+      <span className="compare-pair">{label}</span>
+    </span>
+  );
+  if (!current) return plain('Pick two commits, or one to compare with its parent');
+  const { pair, diverged } = current;
+  if (!pair || !diverged) return plain(current.label);
+  const fork = shortSha(pair.base);
+  const other = shortSha(diverged.other);
+  const head = shortSha(pair.head);
+  const why = swapped
+    ? 'Swapped'
+    : {
+        default: `${other} is on ${defaultBranch ?? 'the default branch'}`,
+        head: `${other} is on the branch checked out`,
+        older: `${other} is the older pick`,
+      }[diverged.by];
+  return (
+    <span className="compare-label">
+      <span className="compare-pair">
+        <button
+          type="button"
+          className="link fork-sha"
+          title="Their fork point: go to its row"
+          onClick={() => onJump(diverged.forkRow)}
+        >
+          {fork}
+        </button>
+        {current.label.slice(fork.length)}
+      </span>
+      <span
+        className="compare-diverged"
+        title={`${why}: this diff shows what ${head} adds since they forked at ${fork}. Swap compares ${other} instead.`}
+      >
+        {' '}
+        · diverged from {other}: its {diverged.otherCommits} commit
+        {diverged.otherCommits === 1 ? '' : 's'} since the fork{' '}
+        {diverged.otherCommits === 1 ? 'is' : 'are'} not in this diff
+      </span>
+    </span>
   );
 }
 

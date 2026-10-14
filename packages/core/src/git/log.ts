@@ -63,6 +63,8 @@ export interface HistoryShape {
   /** HEAD's row; null without commits. */
   head: number | null;
   parents: number[][];
+  /** The default branch and the rows of its tips listed (V10c); absent when none is listed. */
+  defaultBranch?: { name: string; rows: number[] };
 }
 
 // Never tags as tips: they bring release lines no branch reaches (CPython's take its graph from
