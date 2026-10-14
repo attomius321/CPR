@@ -805,7 +805,10 @@ function CommitRow({
         >
           {badge.label}
           {badge.review && (
-            <span className="ref-review" title={badge.review.title}>
+            <span
+              className={`ref-review ref-review-${badge.review.tone}`}
+              title={badge.review.title}
+            >
               {badge.review.mark}
             </span>
           )}

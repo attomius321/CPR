@@ -125,8 +125,16 @@ describe('reviewMarks', () => {
 
   it('marks a branch with commits since its review "+n", else by its verdict at the tip', () => {
     const { marks, added } = reviewMarks(withVerdicts);
-    expect(marks.get('agent')).toEqual({ mark: '+2', title: '2 commits since your review' });
-    expect(marks.get('origin/topic')).toEqual({ mark: '✓', title: 'Approved and pushed' });
+    expect(marks.get('agent')).toEqual({
+      mark: '+2',
+      title: '2 commits since your review',
+      tone: 'since',
+    });
+    expect(marks.get('origin/topic')).toEqual({
+      mark: '✓',
+      title: 'Approved and pushed',
+      tone: 'approved',
+    });
     expect(added.get(sha('e'))).toEqual(['agent']);
     expect(added.has(sha('c'))).toBe(false);
     // Reviewed at the tip with changes requested; reviewed with no verdict yet.
@@ -135,9 +143,17 @@ describe('reviewMarks', () => {
         ...LIST,
         reviews: [{ ...LIST.reviews[1]!, ...(event ? { verdict: verdict(event, sha('c')) } : {}) }],
       }).marks.get('origin/topic');
-    expect(at('request-changes')).toEqual({ mark: '✗', title: 'Changes requested' });
-    expect(at('comment')).toEqual({ mark: '…', title: 'Commented, no verdict yet' });
-    expect(at(null)).toEqual({ mark: '…', title: 'Review in progress' });
+    expect(at('request-changes')).toEqual({
+      mark: '✗',
+      title: 'Changes requested',
+      tone: 'changes',
+    });
+    expect(at('comment')).toEqual({
+      mark: '…',
+      title: 'Commented, no verdict yet',
+      tone: 'progress',
+    });
+    expect(at(null)).toEqual({ mark: '…', title: 'Review in progress', tone: 'progress' });
   });
 
   it('says the verdict in the Review submenu too', () => {
@@ -166,12 +182,12 @@ describe('reviewMarks', () => {
         kind: 'head',
         label: 'HEAD → agent',
         title: 'HEAD: the branch agent is checked out',
-        review: { mark: '+2', title: '2 commits since your review' },
+        review: { mark: '+2', title: '2 commits since your review', tone: 'since' },
       },
       {
         kind: 'remote',
         label: 'origin/agent',
-        review: { mark: '+2', title: '2 commits since your review' },
+        review: { mark: '+2', title: '2 commits since your review', tone: 'since' },
       },
     ]);
   });

@@ -196,6 +196,9 @@ test('finishes a review: changes requested for the agent, then approved and push
   expect(() => originGit('rev-parse', '--verify', '--quiet', 'agent')).toThrow();
   await page.getByRole('link', { name: '← Commits' }).click();
   await expect(row(page, 'Agent: add cube').locator('.ref-review')).toHaveText('✗');
+  await expect(row(page, 'Agent: add cube').locator('.ref-review')).toHaveClass(
+    /ref-review-changes/,
+  );
 
   // The agent fixes it.
   git('checkout', '-q', 'agent');
@@ -226,9 +229,23 @@ test('finishes a review: changes requested for the agent, then approved and push
   );
   expect(originGit('rev-parse', 'agent')).toBe(fix);
   await page.getByRole('link', { name: '← Commits' }).click();
-  await expect(row(page, 'Agent: square returns early').locator('.ref-review').first()).toHaveText(
-    '✓',
-  );
+  const approved = row(page, 'Agent: square returns early').locator('.ref-review').first();
+  await expect(approved).toHaveText('✓');
+  // A filled chip in the verdict's colour, not a glyph in the badge's text colour.
+  await expect(approved).toHaveClass(/ref-review-approved/);
+  const look = await approved.evaluate((el) => {
+    const badge = el.parentElement!;
+    return {
+      background: getComputedStyle(el).backgroundColor,
+      color: getComputedStyle(el).color,
+      badgeColor: getComputedStyle(badge).color,
+      height: el.getBoundingClientRect().height,
+      badgeHeight: badge.getBoundingClientRect().height,
+    };
+  });
+  expect(look.background).not.toBe('rgba(0, 0, 0, 0)');
+  expect(look.color).not.toBe(look.badgeColor);
+  expect(look.height).toBeLessThan(look.badgeHeight);
 });
 
 test("reviews the agent's commits on main itself, and pushes them on approval (V16)", async ({

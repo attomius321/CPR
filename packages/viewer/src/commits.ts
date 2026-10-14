@@ -1,4 +1,5 @@
 import type { Commit, CommitRef, Graph } from '@cpr/core';
+import type { ReviewMark } from './branchReviews.js';
 
 /** Two commits compared directly, by full SHA. */
 export interface Pair {
@@ -108,7 +109,7 @@ export interface Badge {
   label: string;
   title?: string;
   /** The branch is reviewed (V15, V16): "+2", "✓", "✗" or "…", and what it means. */
-  review?: { mark: string; title: string };
+  review?: ReviewMark;
 }
 
 /** Badges shown on a row before the rest are folded into "+N" (Qwik tags 9 packages at once). */
@@ -122,7 +123,7 @@ const MAX_BADGES = 3;
 export function rowBadges(
   refs: readonly CommitRef[],
   branch: string | null,
-  reviewed: ReadonlyMap<string, { mark: string; title: string }> = new Map(),
+  reviewed: ReadonlyMap<string, ReviewMark> = new Map(),
 ): Badge[] {
   const head = refs.some((r) => r.kind === 'head');
   const review = (name: string) => {

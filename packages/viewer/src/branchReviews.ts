@@ -82,10 +82,11 @@ export function reviewChoices(
   return choices;
 }
 
-/** A reviewed branch's mark on its badges (V16), and what it means. */
+/** A reviewed branch's mark on its badges (V16), what it means, and its colour. */
 export interface ReviewMark {
   mark: string;
   title: string;
+  tone: 'since' | 'approved' | 'changes' | 'progress';
 }
 
 /**
@@ -107,12 +108,21 @@ export function reviewMarks(list: BranchReviewList | null): {
 
 function markOf(review: BranchReviewSummary, tip: string, since: number): ReviewMark {
   if (since > 0)
-    return { mark: `+${since}`, title: `${plural(since, 'commit')} since your review` };
+    return {
+      mark: `+${since}`,
+      title: `${plural(since, 'commit')} since your review`,
+      tone: 'since',
+    };
   const verdict = review.verdict?.head === tip ? review.verdict : undefined;
   if (verdict?.event === 'approve') {
-    return { mark: '✓', title: verdict.pushed ? 'Approved and pushed' : 'Approved' };
+    const title = verdict.pushed ? 'Approved and pushed' : 'Approved';
+    return { mark: '✓', title, tone: 'approved' };
   }
-  if (verdict?.event === 'request-changes') return { mark: '✗', title: 'Changes requested' };
-  if (verdict?.event === 'comment') return { mark: '…', title: 'Commented, no verdict yet' };
-  return { mark: '…', title: 'Review in progress' };
+  if (verdict?.event === 'request-changes') {
+    return { mark: '✗', title: 'Changes requested', tone: 'changes' };
+  }
+  if (verdict?.event === 'comment') {
+    return { mark: '…', title: 'Commented, no verdict yet', tone: 'progress' };
+  }
+  return { mark: '…', title: 'Review in progress', tone: 'progress' };
 }
