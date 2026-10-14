@@ -2246,3 +2246,5 @@ on `main`'s build. 619 unit tests, 82 e2e. Bitwarden (1,591 remote branches): th
 going to the deepest tip (row 37,633, 89–94 ms to its row drawn with details); first rows as
 `main`'s. Rows clipped from 800 to 1,920 px on this repository, Bitwarden and Qwik: 0 (before
 the badge fix, 3–8 between 900 and 1,100 px). Not verified: Windows, macOS, Firefox, Safari.
+
+Merged into main (2026-10-14). `main` verified after the merge: 619 unit tests, build, 82 e2e.
