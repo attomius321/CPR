@@ -118,6 +118,24 @@ describe('Histories', () => {
     expect(await unlisted.shape('all', 'v1')).not.toHaveProperty('defaultBranch');
   });
 
+  it('gives tips their rows once the listing is done; null when it does not list them (V10b)', async () => {
+    const fake = fakeSource();
+    const histories = new Histories(fake.source);
+    void histories.page('all', 0, 1);
+    await settle();
+    fake.streams[0]?.push(ROWS.slice(0, 2));
+    const tips = histories.tips('all', 'v1', [sha('x'), sha('c'), sha('z')]);
+    let answered = false;
+    void tips.then(() => (answered = true));
+    await settle();
+    expect(answered).toBe(false);
+
+    fake.streams[0]?.push(ROWS.slice(2));
+    fake.streams[0]?.end();
+    expect(await tips).toEqual([2, 0, null]);
+    expect(await histories.tips('all', 'old', [sha('c')])).toBeNull();
+  });
+
   it('reads rows anywhere in the history from the order kept, without listing again', async () => {
     const fake = fakeSource();
     const histories = new Histories(fake.source);

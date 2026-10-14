@@ -115,6 +115,7 @@ export {
   type HistoryPage,
   type HistoryRow,
   type HistoryScope,
+  type HistoryRefs,
   type HistoryShape,
   type HistoryState,
 } from './git/log.js';

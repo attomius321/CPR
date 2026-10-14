@@ -13,11 +13,13 @@ import type {
   CheckoutTarget,
   Commit,
   HistoryPage,
+  HistoryRefs,
   HistoryScope,
   HistoryShape,
   RefList,
   RepoStatus,
 } from '@cpr/core';
+import { BranchesPanel } from './BranchesPanel.js';
 import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
 import { reviewChoices, reviewMarks, type ReviewChoice, type ReviewMark } from './branchReviews.js';
 import { CheckoutDialog } from './CheckoutDialog.js';
@@ -71,6 +73,15 @@ async function fetchShape(scope: HistoryScope, version: string): Promise<History
   if (response.status === 409) throw new StaleHistory();
   if (!response.ok) throw new Error(await response.text());
   return (await response.json()) as HistoryShape;
+}
+
+/** The branches with their tips' rows in this listing (V10b). */
+async function fetchBranches(scope: HistoryScope, version: string): Promise<HistoryRefs> {
+  const query = new URLSearchParams({ scope, version });
+  const response = await fetch(`${COMMITS_PAGE}api/history/refs?${query}`);
+  if (response.status === 409) throw new StaleHistory();
+  if (!response.ok) throw new Error(await response.text());
+  return (await response.json()) as HistoryRefs;
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
@@ -176,11 +187,33 @@ export function CommitsPage() {
   const [notice, setNotice] = useState<Notice | null>(null);
   // Kept across generations; the picks are not.
   const [comparing, setComparing] = useState(false);
-  const choose = (next: HistoryScope) => {
+  // The branches panel's filter and folders flipped (V10b).
+  const [filter, setFilter] = useState('');
+  const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
+  const toggle = useCallback(
+    (key: string) =>
+      setToggled((keys) => {
+        const next = new Set(keys);
+        if (!next.delete(key)) next.add(key);
+        return next;
+      }),
+    [],
+  );
+  // A branch to go to once every branch is listed: "This branch" did not list its tip.
+  const [goTo, setGoTo] = useState<string | null>(null);
+  const choose = useCallback((next: HistoryScope) => {
     window.history.replaceState(null, '', next === 'all' ? COMMITS_PAGE : '?scope=current');
     setNotice(null);
     setScope(next);
-  };
+  }, []);
+  const goElsewhere = useCallback(
+    (name: string) => {
+      setGoTo(name);
+      choose('all');
+    },
+    [choose],
+  );
+  const arrived = useCallback(() => setGoTo(null), []);
   const relist = useCallback((next: Notice | null) => {
     setNotice(next);
     setGeneration((g) => g + 1);
@@ -195,6 +228,10 @@ export function CommitsPage() {
       onRelist={relist}
       comparing={comparing}
       onComparing={setComparing}
+      panel={{ filter, onFilter: setFilter, toggled, onToggle: toggle }}
+      goTo={goTo}
+      onGoElsewhere={goElsewhere}
+      onArrived={arrived}
     />
   );
 }
@@ -206,6 +243,10 @@ function History({
   onRelist,
   comparing,
   onComparing,
+  panel,
+  goTo,
+  onGoElsewhere,
+  onArrived,
 }: {
   scope: HistoryScope;
   onScope: (scope: HistoryScope) => void;
@@ -213,9 +254,27 @@ function History({
   onRelist: (notice: Notice | null) => void;
   comparing: boolean;
   onComparing: (comparing: boolean) => void;
+  /** The branches panel's filter and folders, kept by the page across listings. */
+  panel: {
+    filter: string;
+    onFilter: (filter: string) => void;
+    toggled: ReadonlySet<string>;
+    onToggle: (key: string) => void;
+  };
+  /** A branch whose tip to go to once listed (from "This branch"). */
+  goTo: string | null;
+  /** A branch this scope does not list: list every branch, then go to it. */
+  onGoElsewhere: (name: string) => void;
+  onArrived: () => void;
 }) {
   const [first, setFirst] = useState<HistoryPage | null>(null);
   const [shape, setShape] = useState<HistoryShape | null>(null);
+  // The branches with their tips' rows (V10b); the panel over the rows under 900 px.
+  const [refs, setRefs] = useState<HistoryRefs | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const filterRef = useRef<HTMLInputElement>(null);
+  // A row gone to from the panel flashes.
+  const [flash, setFlash] = useState<number | null>(null);
   // Listing or a menu failed (under the title); a comparison failed (in the compare bar).
   const [error, setError] = useState<string | null>(null);
   const [compareError, setCompareError] = useState<string | null>(null);
@@ -284,6 +343,12 @@ function History({
         page.commits.forEach((c, i) => details.current.set(i, c));
         asked.current.add(0);
         setFirst(page);
+        fetchBranches(scope, page.version)
+          .then((r) => live && setRefs(r))
+          .catch((e: unknown) => {
+            if (e instanceof StaleHistory) setStale(true);
+            else setError(`Could not list the branches: ${(e as Error).message}`);
+          });
         return fetchShape(scope, page.version).then((s) => live && setShape(s));
       })
       .catch(failed);
@@ -383,6 +448,32 @@ function History({
     },
     [reveal],
   );
+
+  // The panel's branches once the whole history is laid out: a tip anywhere can be reached.
+  const branches = shape ? refs : null;
+  /** A branch from the panel: its tip's row, flashed; else every branch, then there. */
+  const goToBranch = useCallback(
+    ({ name, row }: { name: string; row: number | null }) => {
+      setPanelOpen(false);
+      if (row !== null) {
+        jump(row);
+        setFlash(row);
+      } else if (scope === 'current') onGoElsewhere(name);
+    },
+    [jump, scope, onGoElsewhere],
+  );
+  useEffect(() => {
+    if (flash === null) return;
+    const timer = setTimeout(() => setFlash(null), 1200);
+    return () => clearTimeout(timer);
+  }, [flash]);
+  // Listed anew for a branch "This branch" did not hold: go there once it is.
+  useEffect(() => {
+    if (!goTo || !branches) return;
+    onArrived();
+    const tip = [...branches.branches, ...branches.remotes].find((b) => b.name === goTo);
+    if (tip && tip.row !== null) goToBranch(tip);
+  }, [goTo, branches, onArrived, goToBranch]);
 
   // The cursor starts on HEAD's row, once it is known.
   useLayoutEffect(() => {
@@ -552,7 +643,13 @@ function History({
         const box = list.current?.querySelector('.commit.cursor')?.getBoundingClientRect();
         // `r` reviews: straight to the row's branches.
         if (box) openMenu(cursor, box.left + 48, box.bottom, 'review');
-      } else if (event.key === 'Escape' && comparing) stopComparing();
+      } else if (event.key === '/') {
+        // Finds a branch: the panel's filter (shown first under 900 px).
+        event.preventDefault();
+        setPanelOpen(true);
+        requestAnimationFrame(() => filterRef.current?.focus());
+      } else if (event.key === 'Escape' && panelOpen) setPanelOpen(false);
+      else if (event.key === 'Escape' && comparing) stopComparing();
       else if (
         event.key === 'Enter' &&
         // A focused button takes Enter itself.
@@ -581,6 +678,7 @@ function History({
     comparing,
     onComparing,
     stopComparing,
+    panelOpen,
   ]);
 
   if (stale) {
@@ -602,116 +700,141 @@ function History({
   for (let row = firstShown; row <= lastShown; row++) shown.push(row);
   return (
     <div className={comparing ? 'commits comparing' : 'commits'}>
-      <div className="commits-scroll" ref={scroller} onScroll={measure}>
-        <h1 className="commits-title">
-          Commits
-          <span className="scopes" role="group" aria-label="Branches">
+      <div className="commits-body">
+        <BranchesPanel
+          refs={branches}
+          scope={scope}
+          current={first.branch}
+          marks={marks.marks}
+          open={panelOpen}
+          filter={panel.filter}
+          onFilter={panel.onFilter}
+          toggled={panel.toggled}
+          onToggle={panel.onToggle}
+          filterRef={filterRef}
+          onGo={goToBranch}
+        />
+        <div className="commits-scroll" ref={scroller} onScroll={measure}>
+          <h1 className="commits-title">
+            Commits
             <button
               type="button"
-              className={scope === 'all' ? 'scope active' : 'scope'}
-              aria-pressed={scope === 'all'}
-              onClick={() => onScope('all')}
+              className="branches-toggle"
+              aria-expanded={panelOpen}
+              title="Branches (/)"
+              onClick={() => setPanelOpen((o) => !o)}
             >
-              All branches
+              Branches
             </button>
+            <span className="scopes" role="group" aria-label="Branches">
+              <button
+                type="button"
+                className={scope === 'all' ? 'scope active' : 'scope'}
+                aria-pressed={scope === 'all'}
+                onClick={() => onScope('all')}
+              >
+                All branches
+              </button>
+              <button
+                type="button"
+                className={scope === 'current' ? 'scope active' : 'scope'}
+                aria-pressed={scope === 'current'}
+                onClick={() => onScope('current')}
+              >
+                This branch{first.branch ? ` (${first.branch})` : ''}
+              </button>
+            </span>
+            {first.head && headRow !== null && (
+              <button
+                type="button"
+                className="head-chip"
+                title="Go to HEAD"
+                onClick={() => jump(headRow)}
+              >
+                HEAD → {first.branch ?? `${shortSha(first.head)} (detached)`}
+              </button>
+            )}
+            <span className="commits-help">
+              {comparing
+                ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
+                : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch'}
+            </span>
             <button
               type="button"
-              className={scope === 'current' ? 'scope active' : 'scope'}
-              aria-pressed={scope === 'current'}
-              onClick={() => onScope('current')}
+              className="compare-mode"
+              aria-pressed={comparing}
+              title={comparing ? 'Leave compare mode (Esc)' : 'Pick commits to compare (x)'}
+              onClick={() => (comparing ? stopComparing() : onComparing(true))}
             >
-              This branch{first.branch ? ` (${first.branch})` : ''}
+              Compare mode
+              <kbd aria-hidden="true">{comparing ? 'Esc' : 'x'}</kbd>
             </button>
-          </span>
-          {first.head && headRow !== null && (
-            <button
-              type="button"
-              className="head-chip"
-              title="Go to HEAD"
-              onClick={() => jump(headRow)}
-            >
-              HEAD → {first.branch ?? `${shortSha(first.head)} (detached)`}
-            </button>
+          </h1>
+          {notice && (
+            <p className="checkout-notice" role="status">
+              {notice.text}
+              {notice.warning && <span className="warning"> · {notice.warning}</span>}
+            </p>
           )}
-          <span className="commits-help">
-            {comparing
-              ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
-              : 'j/k move · c checks out · r reviews · x picks to compare'}
-          </span>
-          <button
-            type="button"
-            className="compare-mode"
-            aria-pressed={comparing}
-            title={comparing ? 'Leave compare mode (Esc)' : 'Pick commits to compare (x)'}
-            onClick={() => (comparing ? stopComparing() : onComparing(true))}
-          >
-            Compare mode
-            <kbd aria-hidden="true">{comparing ? 'Esc' : 'x'}</kbd>
-          </button>
-        </h1>
-        {notice && (
-          <p className="checkout-notice" role="status">
-            {notice.text}
-            {notice.warning && <span className="warning"> · {notice.warning}</span>}
-          </p>
-        )}
-        {error && (
-          <p className="commits-error error" role="alert">
-            {error}
-          </p>
-        )}
-        {rows === 0 ? (
-          <p className="hint">No commits yet.</p>
-        ) : (
-          <ol
-            className="commit-list"
-            ref={list}
-            aria-label="Commits"
-            style={{ height: rows * ROW_HEIGHT }}
-          >
-            {shown.map((row) => {
-              const lane = lanes[row];
-              const commit = details.current.get(row);
-              return (
-                <CommitRow
-                  key={row}
-                  row={row}
-                  commit={commit}
-                  now={now}
-                  comparing={comparing}
-                  picked={!!commit && picked.has(commit.sha)}
-                  cursor={row === cursor}
-                  onClick={() => {
-                    setCursor(row);
-                    if (comparing) pickRow(row);
-                  }}
-                  onMenu={(x, y) => openMenu(row, x, y)}
-                  branch={first.branch}
-                  reviewed={marks.marks}
-                  {...(commit && marks.added.has(commit.sha)
-                    ? { added: marks.added.get(commit.sha) }
-                    : {})}
-                  graph={
-                    lane && (
-                      <GraphCell
-                        row={lane}
-                        index={row}
-                        spacing={spacing}
-                        width={graphWidth}
-                        merge={(parents[row]?.length ?? 0) > 1}
-                        head={row === headRow}
-                        picked={!!commit && picked.has(commit.sha)}
-                        fork={row === forkRow}
-                        onJump={jump}
-                      />
-                    )
-                  }
-                />
-              );
-            })}
-          </ol>
-        )}
-        {!shape && first.listed > 0 && <p className="hint listing">Listing the rest…</p>}
+          {error && (
+            <p className="commits-error error" role="alert">
+              {error}
+            </p>
+          )}
+          {rows === 0 ? (
+            <p className="hint">No commits yet.</p>
+          ) : (
+            <ol
+              className="commit-list"
+              ref={list}
+              aria-label="Commits"
+              style={{ height: rows * ROW_HEIGHT }}
+            >
+              {shown.map((row) => {
+                const lane = lanes[row];
+                const commit = details.current.get(row);
+                return (
+                  <CommitRow
+                    key={row}
+                    row={row}
+                    commit={commit}
+                    now={now}
+                    comparing={comparing}
+                    picked={!!commit && picked.has(commit.sha)}
+                    cursor={row === cursor}
+                    flash={row === flash}
+                    onClick={() => {
+                      setCursor(row);
+                      if (comparing) pickRow(row);
+                    }}
+                    onMenu={(x, y) => openMenu(row, x, y)}
+                    branch={first.branch}
+                    reviewed={marks.marks}
+                    {...(commit && marks.added.has(commit.sha)
+                      ? { added: marks.added.get(commit.sha) }
+                      : {})}
+                    graph={
+                      lane && (
+                        <GraphCell
+                          row={lane}
+                          index={row}
+                          spacing={spacing}
+                          width={graphWidth}
+                          merge={(parents[row]?.length ?? 0) > 1}
+                          head={row === headRow}
+                          picked={!!commit && picked.has(commit.sha)}
+                          fork={row === forkRow}
+                          onJump={jump}
+                        />
+                      )
+                    }
+                  />
+                );
+              })}
+            </ol>
+          )}
+          {!shape && first.listed > 0 && <p className="hint listing">Listing the rest…</p>}
+        </div>
       </div>
       {menu && (
         <RowMenu
@@ -844,6 +967,7 @@ function CommitRow({
   comparing,
   picked,
   cursor,
+  flash,
   onClick,
   onMenu,
   graph,
@@ -859,6 +983,8 @@ function CommitRow({
   comparing: boolean;
   picked: boolean;
   cursor: boolean;
+  /** Just gone to from the branches panel. */
+  flash: boolean;
   onClick: () => void;
   /** Opens the row's checkout menu at a point of the window. */
   onMenu: (x: number, y: number) => void;
@@ -873,7 +999,10 @@ function CommitRow({
   const style = { top: row * ROW_HEIGHT, height: ROW_HEIGHT };
   if (!commit) {
     return (
-      <li className={`commit loading${cursor ? ' cursor' : ''}`} style={style}>
+      <li
+        className={`commit loading${cursor ? ' cursor' : ''}${flash ? ' flash' : ''}`}
+        style={style}
+      >
         {graph}
         {comparing && <span className="commit-pick" />}
         <span className="loading-bar sha-bar" />
@@ -884,7 +1013,7 @@ function CommitRow({
   const head = commit.refs.some((ref) => ref.kind === 'head');
   return (
     <li
-      className={`commit${head ? ' head' : ''}${picked ? ' picked' : ''}${cursor ? ' cursor' : ''}`}
+      className={`commit${head ? ' head' : ''}${picked ? ' picked' : ''}${cursor ? ' cursor' : ''}${flash ? ' flash' : ''}`}
       style={style}
       onClick={onClick}
       onContextMenu={(event) => {

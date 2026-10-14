@@ -62,6 +62,21 @@ export class Histories {
     };
   }
 
+  /**
+   * The rows of `shas` in a listing, once it is done (tips sit deep): null for a SHA it does not
+   * list; null for all when `version` is stale.
+   */
+  async tips(
+    scope: HistoryScope,
+    version: string,
+    shas: readonly string[],
+  ): Promise<(number | null)[] | null> {
+    const listing = this.of(scope, version);
+    if (!listing) return null;
+    const rows = await listing.rows();
+    return shas.map((sha) => rows.get(sha) ?? null);
+  }
+
   /** Every row's parents as row numbers, once listed; null when `version` is stale. */
   async shape(scope: HistoryScope, version: string): Promise<HistoryShape | null> {
     const listing = this.of(scope, version);
@@ -97,6 +112,7 @@ class Listing {
   private waiting: { rows: number; resolve: () => void }[] = [];
   private readonly finished: Promise<void>;
   private shaped: Promise<HistoryShape> | undefined;
+  private rowOf: Map<string, number> | undefined;
 
   constructor(
     readonly state: HistoryState,
@@ -132,6 +148,14 @@ class Listing {
     if (this.failed) throw this.error;
   }
 
+  /** Each SHA's row, once listed. */
+  async rows(): Promise<Map<string, number>> {
+    await this.finished;
+    if (this.failed) throw this.error;
+    this.rowOf ??= new Map(this.shas.map((sha, i) => [sha, i]));
+    return this.rowOf;
+  }
+
   /** The shape, made once; `defaultBranch` is read then, with the listing done. */
   shape(
     defaultBranch: () => Promise<{ name: string; tips: string[] } | null>,
@@ -148,9 +172,7 @@ class Listing {
     defaultBranch: () => Promise<{ name: string; tips: string[] } | null>,
   ): Promise<HistoryShape> {
     // Read while git may still be listing.
-    const [, main] = await Promise.all([this.finished, defaultBranch()]);
-    if (this.failed) throw this.error;
-    const row = new Map(this.shas.map((sha, i) => [sha, i]));
+    const [row, main] = await Promise.all([this.rows(), defaultBranch()]);
     const { head, version } = this.state;
     const rows = (main?.tips ?? []).flatMap((tip) => row.get(tip) ?? []);
     return {

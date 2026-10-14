@@ -1642,8 +1642,17 @@ kbd {
   contain: inline-size;
 }
 
+/* The branches panel beside the rows (V10b); over them under 900 px. */
+.commits-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  position: relative;
+}
+
 .commits-scroll {
   flex: 1;
+  min-width: 0;
   overflow: auto;
   padding: 16px 24px;
   /* Rows are placed from the list's offset in this box. */
@@ -2378,4 +2387,171 @@ kbd {
 
 .review-of strong {
   color: var(--text);
+}
+
+/* ---- branches panel (V10b) ------------------------------------------------------------ */
+
+.branches {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 260px;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.branches-filter {
+  margin: 12px 8px 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.branches .hint {
+  padding: 12px;
+  font-size: 13px;
+}
+
+.branches-list {
+  flex: 1;
+  margin: 0;
+  padding: 4px 0 12px;
+  overflow: auto;
+  list-style: none;
+  font-size: 13px;
+}
+
+.branches-section {
+  margin: 10px 0 2px;
+  padding: 0 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.branches-folder,
+.branches-branch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 2px 12px 2px 8px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.branches-folder:hover,
+.branches-branch:hover {
+  background: color-mix(in srgb, var(--moved) 10%, transparent);
+}
+
+.branches-folder {
+  color: var(--muted);
+}
+
+.branches-caret {
+  width: 10px;
+  flex: none;
+}
+
+/* Names are cut, the full name in the title. */
+.branches-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.branches-count,
+.branches-track {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: normal;
+  white-space: nowrap;
+}
+
+.branches-section .branches-count {
+  margin-left: 4px;
+}
+
+.branches-track.gone {
+  color: var(--removed);
+}
+
+.branches-branch.current .branches-name {
+  font-weight: 600;
+}
+
+.branches-current {
+  flex: none;
+  color: var(--added);
+  font-size: 10px;
+}
+
+.branches-branch.unlisted {
+  color: var(--muted);
+  cursor: default;
+}
+
+.branches-branch.unlisted:hover {
+  background: none;
+}
+
+.branches-toggle {
+  display: none;
+  padding: 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.branches-toggle[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--moved) 18%, var(--panel));
+}
+
+@media (max-width: 899px) {
+  .branches {
+    display: none;
+  }
+
+  .branches.open {
+    display: flex;
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 5;
+    max-width: calc(100% - 32px);
+    box-shadow: 4px 0 16px rgb(0 0 0 / 20%);
+  }
+
+  .branches-toggle {
+    display: inline-block;
+  }
+}
+
+/* A row gone to from the panel. */
+.commit.flash {
+  animation: commit-flash 1.2s ease-out;
+}
+
+@keyframes commit-flash {
+  from {
+    background: color-mix(in srgb, var(--moved) 45%, transparent);
+  }
 }
