@@ -786,7 +786,28 @@ describe('cpr view: branch reviews', () => {
         return Promise.resolve();
       },
     }),
+    finish: async (info, review, read) => {
+      const code = await read('head', 'src/math.ts');
+      finished.push({ branch: info.branch, review, code });
+      const verdict = {
+        at: 'now',
+        comments: [],
+        event: review.event,
+        head: info.head,
+        summary: '',
+      };
+      return { verdict, text: `finished ${info.branch}`, unpushed: 0 };
+    },
+    pushAgain: (info) =>
+      info.branch === 'topic'
+        ? Promise.reject(new ReviewRefused('nothing approved to push'))
+        : Promise.resolve({
+            verdict: { at: 'now', comments: [], event: 'approve', head: info.head, summary: '' },
+            text: `pushed ${info.branch}`,
+            unpushed: 0,
+          }),
   };
+  const finished: { branch: string; review: unknown; code: string }[] = [];
   const graphOf = ({ base, head }: Pair): Graph => ({
     ...graph,
     revisions: {
@@ -814,7 +835,7 @@ describe('cpr view: branch reviews', () => {
         checkout: () => Promise.reject(new Error('no')),
         isCommit: () => Promise.resolve(true),
         diffs,
-        readFile: () => Promise.resolve(''),
+        readFile: (sha, path) => Promise.resolve(`// ${path} at ${sha.slice(0, 7)}`),
         state: () => ({
           read: () => Promise.resolve('pair state'),
           write: () => Promise.resolve(),
@@ -881,7 +902,7 @@ describe('cpr view: branch reviews', () => {
     expect((await get('/review/wip/')).body).toBe('<html>viewer</html>');
     expect(JSON.parse((await get('/review/wip/api/capabilities')).body)).toEqual({
       sources: true,
-      review: null,
+      review: { forge: 'local' },
       state: true,
       commits: true,
       branchReview: { branch: 'wip', ref: 'wip', base: A, head: B, reviewed: null, since: null },
@@ -915,6 +936,61 @@ describe('cpr view: branch reviews', () => {
     expect(JSON.parse((await get('/review/wip/api/capabilities')).body)).toMatchObject({
       branchReview: { head: C },
     });
+  });
+
+  it('finishes a review with a verdict, its comments checked against the change (V16)', async () => {
+    const comment = {
+      id: 'c1',
+      symbol: 'src/math.ts#add',
+      side: 'head',
+      path: 'src/math.ts',
+      otherPath: 'src/math.ts',
+      line: 2,
+      body: 'Why c = 0?',
+    };
+    const review = { event: 'request-changes', body: 'One thing.', comments: [comment] };
+    // wip's tip moved to C (the test before): its analysis ends.
+    runs.find((r) => r.pair.head === C)?.resolve(graphOf({ base: A, head: C }));
+    await settle();
+    expect((await send('POST', '/review/wip/api/review', review, { 'x-cpr': '' })).status).toBe(
+      403,
+    );
+    for (const bad of [
+      { ...comment, path: '../etc/passwd' },
+      { ...comment, symbol: 'src/nope.ts#x' },
+      { ...comment, body: ' ' },
+      { ...comment, line: 0 },
+    ]) {
+      const refused = await send('POST', '/review/wip/api/review', { ...review, comments: [bad] });
+      expect(refused.status).toBe(400);
+    }
+    const done = await send('POST', '/review/wip/api/review', {
+      ...review,
+      comments: [comment, { id: 'c2', symbol: 'src/math.ts#add', body: 'And the name?' }],
+    });
+    expect(done.status).toBe(200);
+    expect(await done.json()).toMatchObject({
+      text: 'finished wip',
+      verdict: { event: 'request-changes' },
+    });
+    expect(finished).toEqual([
+      {
+        branch: 'wip',
+        review: {
+          event: 'request-changes',
+          body: 'One thing.',
+          comments: [comment, { id: 'c2', symbol: 'src/math.ts#add', body: 'And the name?' }],
+        },
+        code: `// src/math.ts at ${C.slice(0, 7)}`,
+      },
+    ]);
+
+    // Pushing an approval again; refused when there is none.
+    const again = await send('POST', '/review/wip/api/review/push', {});
+    expect(again.status).toBe(200);
+    expect(await again.json()).toMatchObject({ text: 'pushed wip' });
+    // A pair picked in compare mode still has nowhere to send a review.
+    expect((await send('POST', `/diff/${A}..${B}/api/review`, review)).status).toBe(404);
   });
 
   it('says why a review cannot be opened', async () => {

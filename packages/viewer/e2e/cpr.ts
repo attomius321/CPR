@@ -126,6 +126,8 @@ function commitAt(repo: string, minutes: number, ...args: string[]): void {
 
 export interface RunningAgent extends Running {
   repo: string;
+  /** The bare repository `origin` points at (V16: Approve pushes there). */
+  origin: string;
   /** main's commit (the fork point), then the agent's commits, oldest first. */
   shas: string[];
   /** Stops `cpr view` and starts it again on the same repository (a new port): its URL. */
@@ -133,15 +135,21 @@ export interface RunningAgent extends Running {
 }
 
 /**
- * `main` with the `callers` fixture's base, and `agent`, a branch an agent wrote from it: "Agent:
- * add square", then "Agent: add cube" (two functions in `src/math.ts`). The reviewer is
- * reviewer@example.com. Served by `cpr view` without revisions: the commits page.
+ * `main` with the `callers` fixture's base, pushed to a bare `origin` and tracking it, and
+ * `agent`, a branch an agent wrote from it (not pushed): "Agent: add square", then "Agent: add
+ * cube" (two functions in `src/math.ts`). The reviewer is reviewer@example.com. Served by `cpr
+ * view` without revisions: the commits page.
  */
 export async function serveAgentBranch(): Promise<RunningAgent> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', 'main');
   git(repo, 'branch', '-q', '-D', 'feature');
   git(repo, 'config', 'user.email', 'reviewer@example.com');
+  const origin = mkdtempSync(join(tmpdir(), 'cpr-e2e-origin-'));
+  git(origin, 'init', '-q', '--bare');
+  git(repo, 'remote', 'add', 'origin', origin);
+  git(repo, 'push', '-q', '-u', 'origin', 'main');
+  git(repo, 'remote', 'set-head', 'origin', 'main');
   git(repo, 'checkout', '-q', '-b', 'agent');
   let math = readFileSync(join(repo, 'src/math.ts'), 'utf8');
   for (const [minutes, name, body] of [
@@ -164,6 +172,7 @@ export async function serveAgentBranch(): Promise<RunningAgent> {
       return running.url;
     },
     repo,
+    origin,
     shas,
     async restart() {
       running.child.kill('SIGINT');
@@ -172,7 +181,9 @@ export async function serveAgentBranch(): Promise<RunningAgent> {
     },
     stop() {
       running.child.kill('SIGINT');
-      rmSync(repo, { recursive: true, force: true });
+      // The server may still be saving the review (cleared drafts after a verdict): retry.
+      rmSync(repo, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      rmSync(origin, { recursive: true, force: true });
       rmSync(cache, { recursive: true, force: true });
     },
   };

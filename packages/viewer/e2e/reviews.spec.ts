@@ -38,6 +38,16 @@ const git = (...args: string[]) =>
     },
   }).trim();
 const changesTab = (page: Page) => page.getByRole('tab', { name: /Changes/ });
+const reviewTab = (page: Page) => page.getByRole('tab', { name: /Review/ });
+const originGit = (...args: string[]) => git('--git-dir', cpr.origin, ...args);
+/** Opens row `subject`'s Review submenu and reviews its first branch. */
+const review = async (page: Page, subject: string, entry: string) => {
+  await row(page, subject).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Review', exact: true }).hover();
+  const first = page.getByRole('menu', { name: 'Review' }).getByRole('menuitem').first();
+  await expect(first).toHaveText(entry);
+  await first.click();
+};
 const reviewFile = () => join(cpr.repo, 'cpr', 'reviews', 'agent', 'reviewer@example.com.json');
 
 test('reviews a branch, then only what the agent changed since', async ({ page }) => {
@@ -76,9 +86,9 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   expect(Object.keys(saved.marks).sort()).toEqual(['src/math.ts#cube', 'src/math.ts#square']);
   expect(git('status', '--porcelain', '--untracked-files=all')).toBe('');
 
-  // Back on the commits page the branch is reviewed.
+  // Back on the commits page the branch is being reviewed (V16: "✓" is an approval).
   await page.getByRole('link', { name: '← Commits' }).click();
-  await expect(row(page, 'Agent: add cube').locator('.ref-review')).toHaveText('✓');
+  await expect(row(page, 'Agent: add cube').locator('.ref-review')).toHaveText('…');
 
   // The agent changes square and adds half.
   git('checkout', '-q', 'agent');
@@ -117,4 +127,126 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   await page.goto(`${url}review/agent/`);
   await changesTab(page).click();
   await expect(changesTab(page)).toContainText('1/3');
+});
+
+test('finishes a review: changes requested for the agent, then approved and pushed (V16)', async ({
+  page,
+}) => {
+  const [, , cube] = cpr.shas;
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto(cpr.url);
+  await review(page, 'Agent: add cube', 'agent not reviewed yet');
+  await expect(page).toHaveURL(/\/review\/agent\/$/);
+
+  // A comment on square, then Request changes.
+  await changesTab(page).click();
+  await page.locator('.list-link', { hasText: 'square' }).click();
+  const panel = page.getByRole('complementary', { name: 'Symbol detail' });
+  await expect(panel.locator('.row-add').first()).toBeVisible();
+  await page.keyboard.press('c');
+  await page.keyboard.type('Return early for 0.');
+  await page.keyboard.press('Control+Enter');
+  await expect(panel.locator('.draft-body')).toHaveText('Return early for 0.');
+  await reviewTab(page).click();
+  await expect(reviewTab(page)).toContainText('1');
+  await page.getByLabel('Review summary').fill('One thing.');
+  await page.getByLabel('Request changes').check();
+  await page.getByRole('button', { name: 'Finish review' }).click();
+  const finished = page.locator('.finished');
+  await expect(finished).toContainText(
+    'Changes requested: the agent finds them in cpr/reviews/agent/',
+  );
+  await expect(reviewTab(page)).toContainText('0');
+
+  // For a chat: the text on the clipboard.
+  await page.getByRole('button', { name: 'Copy for the agent' }).click();
+  await expect(finished).toContainText('Copied.');
+  const text = await page.evaluate(() => navigator.clipboard.readText());
+  expect(text).toMatch(
+    new RegExp(
+      `^Address this review of the branch agent \\(reviewer@example\\.com, at ${short(cube)}\\): changes requested\\.`,
+    ),
+  );
+  expect(text).toMatch(
+    /\nsrc\/math\.ts:\d+ · square\n {4}export function square\(a: number\): number \{\nReturn early for 0\.\n/,
+  );
+
+  // In the review's JSON, for the agent; nothing pushed.
+  const saved = JSON.parse(readFileSync(reviewFile(), 'utf8')) as {
+    drafts: unknown[];
+    verdicts: { event: string; head: string; summary: string; comments: unknown[] }[];
+  };
+  expect(saved.drafts).toEqual([]);
+  expect(saved.verdicts).toEqual([
+    expect.objectContaining({
+      event: 'request-changes',
+      head: cube,
+      summary: 'One thing.',
+      comments: [
+        expect.objectContaining({
+          symbol: 'src/math.ts#square',
+          side: 'head',
+          path: 'src/math.ts',
+          body: 'Return early for 0.',
+          code: 'export function square(a: number): number {',
+        }),
+      ],
+    }),
+  ]);
+  expect(() => originGit('rev-parse', '--verify', '--quiet', 'agent')).toThrow();
+  await page.getByRole('link', { name: '← Commits' }).click();
+  await expect(row(page, 'Agent: add cube').locator('.ref-review')).toHaveText('✗');
+
+  // The agent fixes it.
+  git('checkout', '-q', 'agent');
+  const math = join(cpr.repo, 'src/math.ts');
+  writeFileSync(
+    math,
+    readFileSync(math, 'utf8').replace(
+      '  return a * a;\n',
+      '  if (a === 0) return 0;\n  return a * a;\n',
+    ),
+  );
+  git('commit', '-q', '-am', 'Agent: square returns early for 0');
+  const fix = git('rev-parse', 'HEAD');
+  git('checkout', '-q', 'main');
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(row(page, 'Agent: square returns early').locator('.ref-review')).toHaveText('+1');
+
+  // Reviewed again and approved: pushed, that commit exactly.
+  await review(page, 'Agent: square returns early', 'agent changes requested · 1 commit since');
+  await expect(page.locator('.review-of')).toHaveText(
+    'Review of agent · 1 commit since your last review',
+  );
+  await reviewTab(page).click();
+  await page.getByLabel('Approve').check();
+  await page.getByRole('button', { name: 'Approve and push 3 commits to origin/agent' }).click();
+  await expect(page.locator('.finished')).toContainText(
+    `Approved and pushed ${short(fix)} to origin/agent.`,
+  );
+  expect(originGit('rev-parse', 'agent')).toBe(fix);
+  await page.getByRole('link', { name: '← Commits' }).click();
+  await expect(row(page, 'Agent: square returns early').locator('.ref-review').first()).toHaveText(
+    '✓',
+  );
+});
+
+test("reviews the agent's commits on main itself, and pushes them on approval (V16)", async ({
+  page,
+}) => {
+  const math = join(cpr.repo, 'src/math.ts');
+  writeFileSync(math, `${readFileSync(math, 'utf8')}\nexport const half = (a: number) => a / 2;\n`);
+  git('commit', '-q', '-am', 'Agent: add half on main');
+  const tip = git('rev-parse', 'HEAD');
+  await page.goto(cpr.url);
+  await review(page, 'Agent: add half on main', 'main 1 unpushed commit');
+  await expect(page).toHaveURL(/\/review\/main\/$/);
+  await expect(page.locator('.review-of')).toHaveText('Review of main · first review');
+  await reviewTab(page).click();
+  await page.getByLabel('Approve').check();
+  await page.getByRole('button', { name: 'Approve and push 1 commit to origin/main' }).click();
+  await expect(page.locator('.finished')).toContainText(
+    `Approved and pushed ${short(tip)} to origin/main.`,
+  );
+  expect(originGit('rev-parse', 'main')).toBe(tip);
 });

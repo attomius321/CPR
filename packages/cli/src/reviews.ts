@@ -6,14 +6,25 @@ import {
   forkPoint,
   isCommit,
   listRefs,
+  listRemotes,
+  mergeBase,
+  pushCommit,
+  PushRefused,
+  setUpstream,
   trackedFiles,
+  upstreamOf,
   userEmail,
   type BranchReviewInfo,
   type BranchReviewList,
   type BranchReviewRef,
   type BranchReviewSummary,
+  type FinishResult,
   type GitRepo,
+  type LocalReview,
+  type PushOutcome,
   type RefList,
+  type Verdict,
+  type VerdictComment,
 } from '@cpr/core';
 import type { Pair } from './diffs.js';
 import type { StateName, StateStore } from './server.js';
@@ -31,6 +42,8 @@ export interface BranchReviewFile {
   reviewer: string;
   summary: string;
   updated: string;
+  /** Each finished review (V16): the verdict at a tip, its summary and comments. */
+  verdicts: Verdict[];
 }
 
 /** Written once into `cpr/`: reviews stay out of git until it is deleted. */
@@ -66,6 +79,17 @@ export interface BranchReviews {
   resolve(ref: string): Promise<{ info: BranchReviewInfo; pair: Pair }>;
   /** Where the review's marks and drafts are read and written. */
   state(info: BranchReviewInfo): StateStore;
+  /**
+   * Finishes the review (V16): appends the verdict with its comments (their code read with
+   * `read`, at the side's commit), clears the drafts, and on Approve pushes the reviewed tip.
+   */
+  finish(
+    info: BranchReviewInfo,
+    review: LocalReview,
+    read: (side: 'base' | 'head', path: string) => Promise<string>,
+  ): Promise<FinishResult>;
+  /** Pushes the last approval's tip again (after git refused it). */
+  pushAgain(info: BranchReviewInfo): Promise<FinishResult>;
 }
 
 /**
@@ -149,6 +173,7 @@ export async function readReview(path: string): Promise<BranchReviewFile | null>
     reviewer: text(v.reviewer),
     summary: text(v.summary),
     updated: text(v.updated),
+    verdicts: Array.isArray(v.verdicts) ? (v.verdicts as Verdict[]) : [],
   };
 }
 
@@ -188,6 +213,84 @@ export function branchReviews(
     return null;
   }
 
+  /** The review's file, created out of git (V15); one change at a time, read and written back. */
+  async function update(
+    info: BranchReviewInfo,
+    change: (next: BranchReviewFile, current: BranchReviewFile | null) => void,
+  ): Promise<BranchReviewFile> {
+    const where = await place();
+    const path = reviewPath(where.dir, info.branch, where.reviewer);
+    return serially(path, async () => {
+      const current = await readReview(path);
+      const next: BranchReviewFile = {
+        base: info.base,
+        branch: info.branch,
+        drafts: current?.drafts ?? [],
+        head: info.head,
+        marks: current?.marks ?? {},
+        reviewer: where.reviewer,
+        summary: current?.summary ?? '',
+        updated: now().toISOString(),
+        verdicts: current?.verdicts ?? [],
+      };
+      change(next, current);
+      // Out of git before anything is in the folder; an existing one is the project's.
+      if (where.gitignore) {
+        await mkdir(dirname(where.gitignore), { recursive: true });
+        await writeFile(where.gitignore, GITIGNORE, { flag: 'wx' }).catch(
+          (error: NodeJS.ErrnoException) => {
+            if (error.code !== 'EEXIST') throw error;
+          },
+        );
+      }
+      await mkdir(dirname(path), { recursive: true });
+      const temp = `${path}.${process.pid}.tmp`;
+      await writeFile(temp, serializeReview(next));
+      await rename(temp, path);
+      return next;
+    });
+  }
+
+  /**
+   * Where Approve pushes a review's tip (V16): the local branch's upstream; else the remote
+   * branch reviewed; else `origin` and the same name. Null without a remote.
+   */
+  async function pushTarget(
+    info: Pick<BranchReviewInfo, 'branch' | 'ref' | 'base' | 'head'>,
+    refs: RefList,
+  ): Promise<{ remote: string; branch: string; sha: string | null } | null> {
+    const local = refs.branches.find((b) => b.name === info.branch);
+    const upstream = local ? await upstreamOf(repo, local.name) : null;
+    if (upstream) return upstream;
+    const reviewed = refs.remotes.find((r) => r.name === info.ref);
+    if (reviewed) return { remote: reviewed.remote, branch: reviewed.branch, sha: reviewed.sha };
+    if (!(await listRemotes(repo)).includes('origin')) return null;
+    const there = refs.remotes.find((r) => r.name === `origin/${info.branch}`);
+    return { remote: 'origin', branch: info.branch, sha: there?.sha ?? null };
+  }
+
+  /** Pushes the reviewed tip, by SHA; the newer commits of the local branch stay local. */
+  async function push(info: BranchReviewInfo): Promise<{ push: PushOutcome; unpushed: number }> {
+    const refs = await listRefs(repo);
+    const local = refs.branches.find((b) => b.name === info.branch);
+    const unpushed =
+      local && local.sha !== info.head
+        ? (await commitsBetween(repo, info.head, local.sha, 0)).count
+        : 0;
+    const target = await pushTarget(info, refs);
+    if (!target) return { push: { none: 'no remote to push to' }, unpushed };
+    try {
+      if (target.sha !== info.head) await pushCommit(repo, info.head, target.remote, target.branch);
+      if (local && !(await upstreamOf(repo, local.name))) {
+        await setUpstream(repo, local.name, target.remote, target.branch);
+      }
+      return { push: { remote: target.remote, branch: target.branch, sha: info.head }, unpushed };
+    } catch (error) {
+      if (error instanceof PushRefused) return { push: { error: error.message }, unpushed };
+      throw error;
+    }
+  }
+
   return {
     async list() {
       const [where, refs] = await Promise.all([place(), listRefs(repo)]);
@@ -203,6 +306,7 @@ export function branchReviews(
           summaryRefs.push({ name: ref.name, tip: ref.sha, since: after.count });
           for (const sha of after.shas) added.add(sha);
         }
+        const verdict = review.verdicts.at(-1);
         reviews.push({
           branch,
           base: review.base,
@@ -211,6 +315,17 @@ export function branchReviews(
           marks: Object.keys(review.marks).length,
           refs: summaryRefs,
           added: [...added].slice(0, 100),
+          ...(verdict
+            ? {
+                verdict: {
+                  event: verdict.event,
+                  head: verdict.head,
+                  at: verdict.at,
+                  comments: verdict.comments.length,
+                  pushed: !!verdict.push && 'sha' in verdict.push,
+                },
+              }
+            : {}),
         });
       }
       return {
@@ -237,86 +352,168 @@ export function branchReviews(
       const tip = local?.sha ?? remote?.sha;
       if (!branch || !tip) throw new ReviewRefused(`no branch ${ref}`);
       const main = await defaultBranch(repo, refs);
-      if (!main)
+      if (!main) {
         throw new ReviewRefused('no default branch (origin/HEAD, main or master) to start from');
-      if (branch === main) {
-        throw new ReviewRefused(
-          `${main} is the default branch: there is no fork point to review from`,
-        );
       }
-      const base = await forkPoint(repo, tip, main, refs);
-      if (!base) throw new ReviewRefused(`${branch} has no commit in common with ${main}`);
-      if (base === tip)
-        throw new ReviewRefused(`${branch} is merged into ${main}: nothing to review`);
+      let base: string | null;
+      if (branch === main) {
+        // The default branch: the agent's commits since it was last pushed (V16).
+        if (!local) {
+          throw new ReviewRefused(
+            `${ref} is the default branch as pushed: review ${main} for its unpushed commits`,
+          );
+        }
+        const upstream = await upstreamOf(repo, main);
+        if (!upstream?.sha) {
+          throw new ReviewRefused(
+            `${main} is the default branch and has no upstream: nothing to compare it with`,
+          );
+        }
+        base = await mergeBase(repo, tip, upstream.sha);
+        if (base === tip) throw new ReviewRefused(`${main} has no unpushed commits`);
+        if (!base) throw new ReviewRefused(`${main} has no commit in common with its upstream`);
+      } else {
+        base = await forkPoint(repo, tip, main, refs);
+        if (!base) throw new ReviewRefused(`${branch} has no commit in common with ${main}`);
+        if (base === tip) {
+          throw new ReviewRefused(`${branch} is merged into ${main}: nothing to review`);
+        }
+      }
 
       const where = await place();
       const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
       const reviewed = review?.head || null;
       const after = review && reviewed ? await since(review, tip) : null;
+      const refName = local ? local.name : (remote?.name ?? ref);
+      const target = await pushTarget({ branch, ref: refName, base, head: tip }, refs);
+      const commits = target ? (await commitsBetween(repo, target.sha ?? base, tip, 0)).count : 0;
+      const verdict = review?.verdicts.at(-1);
       return {
         info: {
           branch,
-          ref: local ? local.name : (remote?.name ?? ref),
+          ref: refName,
           base,
           head: tip,
           reviewed,
           since: after ? after.count : null,
           ...(where.note ? { note: where.note } : {}),
+          ...(target ? { push: { remote: target.remote, branch: target.branch, commits } } : {}),
+          ...(verdict
+            ? { verdict: { event: verdict.event, head: verdict.head, at: verdict.at } }
+            : {}),
         },
         pair: { base, head: tip },
       };
     },
 
     state(info) {
-      const file = place().then((where) => ({
-        where,
-        path: reviewPath(where.dir, info.branch, where.reviewer),
-      }));
       return {
         async read(name: StateName) {
-          const { path } = await file;
-          const review = await readReview(path);
+          const where = await place();
+          const review = await readReview(reviewPath(where.dir, info.branch, where.reviewer));
           if (!review) return null;
           return name === 'review' ? review.marks : { drafts: review.drafts, body: review.summary };
         },
         async write(name: StateName, value: unknown) {
-          const { where, path } = await file;
-          await serially(path, async () => {
-            const current = await readReview(path);
-            const next: BranchReviewFile = {
-              base: info.base,
-              branch: info.branch,
-              drafts: current?.drafts ?? [],
-              head: info.head,
-              marks: current?.marks ?? {},
-              reviewer: where.reviewer,
-              summary: current?.summary ?? '',
-              updated: now().toISOString(),
-            };
+          await update(info, (next) => {
             if (name === 'review') next.marks = asMarks(value);
             else {
               const draft = (value ?? {}) as { drafts?: unknown; body?: unknown };
               next.drafts = Array.isArray(draft.drafts) ? (draft.drafts as unknown[]) : [];
               next.summary = typeof draft.body === 'string' ? draft.body : '';
             }
-            // Out of git before anything is in the folder; an existing one is the project's.
-            if (where.gitignore) {
-              await mkdir(dirname(where.gitignore), { recursive: true });
-              await writeFile(where.gitignore, GITIGNORE, { flag: 'wx' }).catch(
-                (error: NodeJS.ErrnoException) => {
-                  if (error.code !== 'EEXIST') throw error;
-                },
-              );
-            }
-            await mkdir(dirname(path), { recursive: true });
-            const temp = `${path}.${process.pid}.tmp`;
-            await writeFile(temp, serializeReview(next));
-            await rename(temp, path);
           });
         },
       };
     },
+
+    async finish(info, review, read) {
+      const comments: VerdictComment[] = await Promise.all(
+        review.comments.map(async ({ id, symbol, body, side, path, line }) => {
+          const placed = side && path && line ? { side, path, line } : null;
+          const code = placed
+            ? await read(placed.side, placed.path).then(
+                (text) => text.split('\n')[placed.line - 1],
+                () => undefined,
+              )
+            : undefined;
+          return {
+            id,
+            symbol,
+            body: body.trim(),
+            ...(placed ?? {}),
+            ...(code === undefined ? {} : { code }),
+          };
+        }),
+      );
+      const pushed = review.event === 'approve' ? await push(info) : null;
+      const verdict: Verdict = {
+        at: now().toISOString(),
+        comments,
+        event: review.event,
+        head: info.head,
+        summary: review.body.trim(),
+        ...(pushed ? { push: pushed.push } : {}),
+      };
+      // The drafts are in the verdict now: the next round starts empty.
+      const file = await update(info, (next) => {
+        next.verdicts = [...next.verdicts, verdict];
+        next.drafts = [];
+        next.summary = '';
+      });
+      return {
+        verdict,
+        text: verdictText(info, file.reviewer, verdict),
+        unpushed: pushed?.unpushed ?? 0,
+      };
+    },
+
+    async pushAgain(info) {
+      const where = await place();
+      const review = await readReview(reviewPath(where.dir, info.branch, where.reviewer));
+      const last = review?.verdicts.at(-1);
+      if (!last || last.event !== 'approve') throw new ReviewRefused('nothing approved to push');
+      const pushed = await push({ ...info, head: last.head });
+      const verdict: Verdict = { ...last, push: pushed.push };
+      const file = await update(info, (next) => {
+        next.verdicts = [...next.verdicts.slice(0, -1), verdict];
+      });
+      return {
+        verdict,
+        text: verdictText(info, file.reviewer, verdict),
+        unpushed: pushed.unpushed,
+      };
+    },
   };
+}
+
+/**
+ * A verdict as text for an agent's chat (V16): what was decided at which commit, the summary,
+ * then each comment with its file and line, symbol and code.
+ */
+export function verdictText(
+  info: Pick<BranchReviewInfo, 'branch' | 'base'>,
+  reviewer: string,
+  verdict: Verdict,
+): string {
+  const at = verdict.head.slice(0, 7);
+  if (verdict.event === 'approve') return `Approved the branch ${info.branch} at ${at}.\n`;
+  const what = verdict.event === 'request-changes' ? 'changes requested' : 'comments';
+  const name = (symbol: string) => symbol.slice(symbol.indexOf('#') + 1);
+  const lines = [
+    `Address this review of the branch ${info.branch} (${reviewer}, at ${at}): ${what}.`,
+  ];
+  if (verdict.summary) lines.push('', verdict.summary);
+  for (const c of verdict.comments) {
+    lines.push('');
+    if (c.path && c.line) {
+      const removed = c.side === 'base' ? ` (a removed line, at ${info.base.slice(0, 7)})` : '';
+      lines.push(`${c.path}:${c.line} · ${name(c.symbol)}${removed}`);
+      if (c.code !== undefined) lines.push(`    ${c.code}`);
+    } else lines.push(`About ${name(c.symbol)}:`);
+    lines.push(c.body);
+  }
+  return `${lines.join('\n')}\n`;
 }
 
 /** A branch's refs: the local branch and the remotes' branches of that name. */

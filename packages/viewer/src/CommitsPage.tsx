@@ -19,7 +19,7 @@ import type {
   RepoStatus,
 } from '@cpr/core';
 import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
-import { reviewChoices, reviewMarks, type ReviewChoice } from './branchReviews.js';
+import { reviewChoices, reviewMarks, type ReviewChoice, type ReviewMark } from './branchReviews.js';
 import { CheckoutDialog } from './CheckoutDialog.js';
 import { RowMenu, type RowMenuItem } from './RowMenu.js';
 import {
@@ -655,7 +655,7 @@ function History({
                   }}
                   onMenu={(x, y) => openMenu(row, x, y)}
                   branch={first.branch}
-                  reviewed={marks.since}
+                  reviewed={marks.marks}
                   {...(commit && marks.added.has(commit.sha)
                     ? { added: marks.added.get(commit.sha) }
                     : {})}
@@ -752,8 +752,8 @@ function CommitRow({
   graph: ReactNode;
   /** The branch checked out (null when HEAD is detached), for HEAD's badge. */
   branch: string | null;
-  /** Commits since each reviewed branch's review, by ref name (V15). */
-  reviewed: ReadonlyMap<string, number>;
+  /** Each reviewed branch's mark, by ref name (V15, V16). */
+  reviewed: ReadonlyMap<string, ReviewMark>;
   /** The reviewed branches this commit was added to since their review. */
   added?: string[];
 }) {
@@ -804,16 +804,9 @@ function CommitRow({
           {...(badge.title ? { title: badge.title } : {})}
         >
           {badge.label}
-          {badge.review !== undefined && (
-            <span
-              className="ref-review"
-              title={
-                badge.review === 0
-                  ? 'Reviewed up to here'
-                  : `${badge.review} commit${badge.review === 1 ? '' : 's'} since your review`
-              }
-            >
-              {badge.review === 0 ? '✓' : `+${badge.review}`}
+          {badge.review && (
+            <span className="ref-review" title={badge.review.title}>
+              {badge.review.mark}
             </span>
           )}
         </span>

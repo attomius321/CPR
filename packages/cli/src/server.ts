@@ -8,6 +8,8 @@ import {
   UnknownCheckoutTarget,
   type BranchReviewInfo,
   type CheckoutResult,
+  type FinishResult,
+  type LocalReview,
   type CheckoutTarget,
   type Graph,
   type HistoryScope,
@@ -86,6 +88,9 @@ interface Site {
   readSource: (side: Side, path: string) => Promise<string>;
   state?: StateStore | undefined;
   review?: ReviewTarget | undefined;
+  /** A branch review's own end (V16): its verdict recorded, pushed on Approve. */
+  finish?: (review: LocalReview) => Promise<FinishResult>;
+  pushAgain?: () => Promise<FinishResult>;
 }
 
 export interface ViewServer {
@@ -195,7 +200,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     diff = false,
     branchReview?: BranchReviewInfo,
   ): Promise<void> {
-    if (path === '/api/review') return postReview(req, res, site);
+    if (path === '/api/review') {
+      return site?.finish ? finishReview(req, res, site) : postReview(req, res, site);
+    }
+    if (path === '/api/review/push') return pushAgain(req, res, site);
     if (path.startsWith('/api/state/')) {
       return state(req, res, site, path.slice('/api/state/'.length));
     }
@@ -205,7 +213,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (path === '/api/capabilities') {
       const capabilities = {
         sources: site !== undefined || diff,
-        review: site?.review ? { forge: site.review.forge } : null,
+        review: branchReview
+          ? { forge: 'local' }
+          : site?.review
+            ? { forge: site.review.forge }
+            : null,
         state: branchReview
           ? true
           : diff
@@ -315,7 +327,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (!byBranch) reviewSites.set(graph, (byBranch = new Map<string, Site>()));
     let site = byBranch.get(info.branch);
     if (!site) {
-      site = { ...diffSite(repo, graph), state: reviews.state(info) };
+      const shared = diffSite(repo, graph);
+      site = {
+        ...shared,
+        state: reviews.state(info),
+        finish: (review) => reviews.finish(info, review, shared.readSource),
+        pushAgain: () => reviews.pushAgain(info),
+      };
       byBranch.set(info.branch, site);
     }
     return site;
@@ -481,6 +499,42 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     res.end();
   }
 
+  /** Finishes a branch review (V16): the verdict, its comments checked against the change. */
+  async function finishReview(
+    req: IncomingMessage,
+    res: ServerResponse,
+    site: Site,
+  ): Promise<void> {
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let review: LocalReview;
+    try {
+      review = parseLocalReview(await readBody(req, MAX_BODY_BYTES), site.graph, site.allowed);
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    const { finish } = site;
+    if (!finish) return send(res, 404, 'not a branch review');
+    return json(res, 200, await finish(review));
+  }
+
+  /** Pushes a branch review's approval again, after git refused it. */
+  async function pushAgain(
+    req: IncomingMessage,
+    res: ServerResponse,
+    site: Site | undefined,
+  ): Promise<void> {
+    if (!site?.pushAgain) return send(res, 404, 'not a branch review');
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    try {
+      return json(res, 200, await site.pushAgain());
+    } catch (error) {
+      if (error instanceof ReviewRefused) return json(res, 409, { error: error.message });
+      throw error;
+    }
+  }
+
   async function postReview(
     req: IncomingMessage,
     res: ServerResponse,
@@ -635,6 +689,53 @@ function count(text: string): number | null {
 function redirect(res: ServerResponse, location: string): void {
   res.writeHead(308, { location, 'cache-control': 'no-store' });
   res.end();
+}
+
+/**
+ * A branch review's verdict from the viewer (V16): the event, the summary, and comments on lines
+ * of the change (checked as for a forge) or about one of its symbols.
+ */
+export function parseLocalReview(
+  text: string,
+  graph: Graph,
+  allowed: Record<Side, Set<string>>,
+): LocalReview {
+  const value = JSON.parse(text) as Partial<Record<keyof LocalReview, unknown>> | null;
+  if (!value || typeof value !== 'object') throw new Error('not a review');
+  const { event, body, comments } = value;
+  if (!EVENTS.includes(event as ReviewEvent)) throw new Error(`unknown event '${String(event)}'`);
+  if (typeof body !== 'string') throw new Error('body must be a string');
+  if (!Array.isArray(comments)) throw new Error('comments must be a list');
+  const symbols = new Set(graph.nodes.map((n) => n.id));
+  return {
+    event: event as ReviewEvent,
+    body,
+    comments: comments.map((raw: unknown, i) => {
+      const c = (raw ?? {}) as Record<string, unknown>;
+      const where = `comment ${i + 1}`;
+      if (typeof c.id !== 'string' || c.id === '' || c.id.length > 100)
+        throw new Error(`${where}: id`);
+      if (typeof c.symbol !== 'string' || !symbols.has(c.symbol)) {
+        throw new Error(`${where}: ${String(c.symbol)} is not part of this change`);
+      }
+      if (typeof c.body !== 'string' || c.body.trim() === '') throw new Error(`${where}: empty`);
+      const about = { id: c.id, symbol: c.symbol, body: c.body };
+      if (c.side === undefined) return about;
+      // Checked as a forge's comment would be; its errors name this comment.
+      let placed: ReviewComment | undefined;
+      try {
+        [placed] = parseReview(
+          JSON.stringify({ event, body: '', comments: [{ ...c, body: c.body }] }),
+          allowed,
+        ).comments;
+      } catch (error) {
+        throw new Error((error as Error).message.replace(/^comment 1/, where), { cause: error });
+      }
+      if (!placed) throw new Error(`${where}: line`);
+      const { side, path, otherPath, line } = placed;
+      return { ...about, side, path, otherPath, line };
+    }),
+  };
 }
 
 /** `{ ref }`: a branch or remote branch name. */

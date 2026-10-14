@@ -1,14 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { rmSync } from 'node:fs';
 import {
   commitsBetween,
   defaultBranch,
   forkPoint,
   listRefs,
+  listRemotes,
   openRepo,
+  pushCommit,
+  PushRefused,
+  setUpstream,
   trackedFiles,
+  upstreamOf,
   userEmail,
 } from '../src/index.js';
-import { createRepo, type TestRepo } from './helpers/git-repo.js';
+import { createRepo, tempDir, type TestRepo } from './helpers/git-repo.js';
 
 /**
  * main: A ── B ── M; wip: B ── W1 ── W2 (an agent's branch); a remote `origin` (never fetched)
@@ -135,5 +141,71 @@ describe('trackedFiles', () => {
     const open = await openRepo(repo.root);
     expect(await trackedFiles(open, 'cpr')).toEqual(['cpr/config.json']);
     expect(await trackedFiles(open, 'none')).toEqual([]);
+  });
+});
+
+/** The repository of `branchRepo`, with a bare `origin` holding main at B (V16). */
+function pushRepo() {
+  const made = fresh();
+  const bare = tempDir();
+  made.repo.git('init', '--quiet', '--bare', bare);
+  made.repo.git('remote', 'set-url', 'origin', bare);
+  made.repo.git('push', '--quiet', 'origin', `${made.shas.B}:refs/heads/main`);
+  made.repo.git('fetch', '--quiet', 'origin');
+  made.repo.git('branch', '--set-upstream-to=origin/main', 'main');
+  bares.push(bare);
+  const remote = (...args: string[]) => made.repo.git('--git-dir', bare, ...args);
+  return { ...made, remote };
+}
+const bares: string[] = [];
+afterEach(() => {
+  for (const bare of bares.splice(0)) rmSync(bare, { recursive: true, force: true });
+});
+
+describe('upstreamOf and listRemotes', () => {
+  it("names a branch's remote and its name there, and the remotes", async () => {
+    const { repo, shas } = pushRepo();
+    const open = await openRepo(repo.root);
+    expect(await upstreamOf(open, 'main')).toEqual({
+      remote: 'origin',
+      branch: 'main',
+      sha: shas.B,
+    });
+    expect(await upstreamOf(open, 'wip')).toBeNull();
+    expect(await upstreamOf(open, 'nope')).toBeNull();
+    expect(await listRemotes(open)).toEqual(['origin']);
+  });
+});
+
+describe('pushCommit', () => {
+  it('pushes that commit and no later one, creating the branch, then tracks it', async () => {
+    const { repo, shas, remote } = pushRepo();
+    const open = await openRepo(repo.root);
+    // The reviewed commit is W1; the agent has committed W2 since.
+    await pushCommit(open, shas.W1, 'origin', 'wip');
+    expect(remote('rev-parse', 'wip')).toBe(shas.W1);
+    expect(repo.git('rev-parse', 'origin/wip')).toBe(shas.W1);
+    await setUpstream(open, 'wip', 'origin', 'wip');
+    expect(await upstreamOf(open, 'wip')).toEqual({
+      remote: 'origin',
+      branch: 'wip',
+      sha: shas.W1,
+    });
+
+    await pushCommit(open, shas.M, 'origin', 'main');
+    expect(remote('rev-parse', 'main')).toBe(shas.M);
+  });
+
+  it("refuses with git's words when the remote moved, and never forces", async () => {
+    const { repo, shas, remote } = pushRepo();
+    const open = await openRepo(repo.root);
+    await pushCommit(open, shas.M, 'origin', 'main');
+    // origin/main moved on to M: W2 is not a fast-forward of it.
+    const error = await pushCommit(open, shas.W2, 'origin', 'main').catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(PushRefused);
+    expect((error as Error).message).toMatch(/rejected|non-fast-forward|fetch first/);
+    expect(remote('rev-parse', 'main')).toBe(shas.M);
+    await expect(pushCommit(open, shas.W2, '-x', 'main')).rejects.toThrow(PushRefused);
+    await expect(pushCommit(open, 'W2', 'origin', 'main')).rejects.toThrow(PushRefused);
   });
 });
