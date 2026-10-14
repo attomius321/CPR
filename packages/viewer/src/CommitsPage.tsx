@@ -213,6 +213,8 @@ function History({
   // A row's checkout menu, then its confirmation (V11).
   const [menu, setMenu] = useState<{
     at: { x: number; y: number };
+    /** Opened with its "Check out" submenu shown (V14). */
+    submenu: boolean;
     choices: CheckoutChoice[];
     status: RepoStatus;
   } | null>(null);
@@ -349,14 +351,19 @@ function History({
     }
   }, []);
 
-  /** Opens row `row`'s checkout menu at a point of the window. */
-  const openMenu = useCallback((row: number, x: number, y: number) => {
+  /** Opens row `row`'s menu at a point of the window, its targets shown with `submenu`. */
+  const openMenu = useCallback((row: number, x: number, y: number, submenu = false) => {
     const commit = details.current.get(row);
     if (!commit) return;
     setCursor(row);
     Promise.all([fetchJson<RefList>('api/refs'), fetchJson<RepoStatus>('api/status')])
       .then(([refs, status]) =>
-        setMenu({ at: { x, y }, choices: checkoutChoices(commit, refs, status), status }),
+        setMenu({
+          at: { x, y },
+          submenu,
+          choices: checkoutChoices(commit, refs, status),
+          status,
+        }),
       )
       .catch((e: unknown) => setError(`Could not read the branches: ${(e as Error).message}`));
   }, []);
@@ -422,7 +429,8 @@ function History({
         pickRow(cursor);
       } else if (event.key === 'c') {
         const box = list.current?.querySelector('.commit.cursor')?.getBoundingClientRect();
-        if (box) openMenu(cursor, box.left + 48, box.bottom);
+        // `c` checks out: straight to the targets.
+        if (box) openMenu(cursor, box.left + 48, box.bottom, true);
       } else if (event.key === 'Escape' && comparing) stopComparing();
       else if (
         event.key === 'Enter' &&
@@ -583,6 +591,7 @@ function History({
         <CheckoutMenu
           choices={menu.choices}
           at={menu.at}
+          submenu={menu.submenu}
           onClose={closeMenu}
           onChoose={(choice) => {
             setMenu(null);

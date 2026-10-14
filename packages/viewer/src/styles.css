@@ -1845,7 +1845,7 @@ kbd {
   z-index: 20;
   display: flex;
   flex-direction: column;
-  min-width: 240px;
+  min-width: 160px;
   max-width: 480px;
   padding: 4px;
   background: var(--panel);
@@ -1880,6 +1880,73 @@ kbd {
 
 .menu-note {
   font-size: 12px;
+}
+
+/* V14: "Check out ▸" and its submenu of targets, each named by the row's badge. */
+/* Holds "Check out" and its submenu for screen readers; a column, so the button stretches. */
+.menu-host {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-item.has-submenu {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+/* The arrow is drawn, not read: empty alternative text keeps the item's name "Check out". */
+.menu-item.has-submenu::after {
+  content: '▸';
+  content: '▸' / '';
+  color: var(--muted);
+}
+
+.menu-item.has-submenu[aria-expanded='true']:not(.active) {
+  background: color-mix(in srgb, var(--moved) 7%, transparent);
+}
+
+.submenu {
+  min-width: 240px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+
+/* The name keeps its line: a note that does not fit beside it goes under it. */
+.menu-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  max-width: 100%;
+}
+
+.menu-target .ref {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-kind {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.menu-item:disabled .ref {
+  opacity: 0.6;
+}
+
+/* The confirmation names its target as the row does, at the heading's size. */
+.dialog h2 .dialog-ref {
+  display: inline-block;
+  /* Room for the "?" after it. */
+  max-width: calc(100% - 1em);
+  padding: 0 8px;
+  border-radius: 8px;
+  font-size: inherit;
+  white-space: normal;
 }
 
 .dialog-backdrop {
@@ -2007,6 +2074,10 @@ kbd {
 
 .ref-remote {
   color: var(--muted);
+}
+
+.ref-commit {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .ref-more {

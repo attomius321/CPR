@@ -3,7 +3,12 @@ import { shortSha } from './commits.js';
 
 /** One entry of a row's checkout menu (V11). */
 export interface CheckoutChoice {
+  /** The entry as a sentence: its accessible name. */
   label: string;
+  /** What is checked out, drawn as the row's badges draw it (V14). */
+  ref: { kind: 'branch' | 'remote' | 'tag' | 'commit'; name: string };
+  /** After the name: what it is and what checking it out does ("tag · detached HEAD"). */
+  note: string;
   target: CheckoutTarget;
   /** What the checkout does, for its confirmation. */
   what: string;
@@ -34,6 +39,8 @@ export function checkoutChoices(commit: Commit, refs: RefList, head: Head): Chec
     if (ref.kind === 'branch') {
       choices.push({
         label: `Check out branch ${ref.name}`,
+        ref: { kind: 'branch', name: ref.name },
+        note: 'branch',
         target: { kind: 'branch', name: ref.name },
         what: `Checks out the branch ${ref.name}, at ${at}.`,
         ...current(ref.name),
@@ -49,12 +56,16 @@ export function checkoutChoices(commit: Commit, refs: RefList, head: Head): Chec
     if (!local) {
       choices.push({
         label: `Check out ${remote.name} as ${remote.branch}`,
+        ref: { kind: 'remote', name: remote.name },
+        note: `remote · creates branch ${remote.branch}`,
         target,
         what: `Creates the branch ${remote.branch} at ${at}, tracking ${remote.name}, and checks it out.`,
       });
     } else if (local.upstream !== remote.name) {
       choices.push({
         label: `Check out ${remote.name} as ${remote.branch}`,
+        ref: { kind: 'remote', name: remote.name },
+        note: 'remote',
         target,
         what: '',
         disabled: `a local branch ${local.name} exists and does not track ${remote.name}`,
@@ -62,6 +73,8 @@ export function checkoutChoices(commit: Commit, refs: RefList, head: Head): Chec
     } else if (!onRow.has(local.name)) {
       choices.push({
         label: `Check out branch ${local.name} (tracks ${remote.name})`,
+        ref: { kind: 'branch', name: local.name },
+        note: `branch · tracks ${remote.name}`,
         target,
         what: `Checks out the branch ${local.name}, at ${shortSha(local.sha)}, which tracks ${remote.name}.`,
         ...current(local.name),
@@ -72,6 +85,8 @@ export function checkoutChoices(commit: Commit, refs: RefList, head: Head): Chec
     if (ref.kind === 'tag') {
       choices.push({
         label: `Check out tag ${ref.name} (detached HEAD)`,
+        ref: { kind: 'tag', name: ref.name },
+        note: 'tag · detached HEAD',
         target: { kind: 'tag', name: ref.name },
         what: `Detaches HEAD at ${at} (tag ${ref.name}): ${DETACHED}`,
       });
@@ -79,6 +94,8 @@ export function checkoutChoices(commit: Commit, refs: RefList, head: Head): Chec
   }
   choices.push({
     label: 'Check out this commit (detached HEAD)',
+    ref: { kind: 'commit', name: at },
+    note: 'this commit · detached HEAD',
     target: { kind: 'commit', sha: commit.sha },
     what: `Detaches HEAD at ${at}: ${DETACHED}`,
     ...(head.branch === null && head.head === commit.sha ? { disabled: 'checked out' } : {}),
