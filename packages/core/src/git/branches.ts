@@ -10,6 +10,50 @@ export interface BranchReviewRef {
   since: number;
 }
 
+/** A verdict's event: the same three as `cpr pr`'s. */
+export type VerdictEvent = 'comment' | 'approve' | 'request-changes';
+
+/** A comment of a finished review (V16): on a line of one side, or about a symbol. */
+export interface VerdictComment {
+  id: string;
+  symbol: string;
+  body: string;
+  side?: 'base' | 'head';
+  path?: string;
+  line?: number;
+  /** The line's code: at the reviewed tip (head), or at the fork point (base, removed code). */
+  code?: string;
+}
+
+/** What Approve's push did: the commit pushed, git's refusal, or why there was no push. */
+export type PushOutcome =
+  { remote: string; branch: string; sha: string } | { error: string } | { none: string };
+
+/** A finished branch review: the verdict at a tip, with its summary and comments. */
+export interface Verdict {
+  at: string;
+  comments: VerdictComment[];
+  event: VerdictEvent;
+  /** The tip reviewed. */
+  head: string;
+  summary: string;
+  push?: PushOutcome;
+}
+
+/** `POST ./api/review` on a branch review: the verdict, and the drafts as comments. */
+export interface LocalReview {
+  event: VerdictEvent;
+  body: string;
+  comments: (Omit<VerdictComment, 'code'> & { otherPath?: string })[];
+}
+
+/** What finishing answers: the verdict, its text for a chat, newer commits left unpushed. */
+export interface FinishResult {
+  verdict: Verdict;
+  text: string;
+  unpushed: number;
+}
+
 /** A branch review on the commits page (V15): what it covers, and what came after. */
 export interface BranchReviewSummary {
   /** The branch name without a remote. */
@@ -23,6 +67,8 @@ export interface BranchReviewSummary {
   refs: BranchReviewRef[];
   /** Commits on any of its refs since the review's head, newest first (at most 100). */
   added: string[];
+  /** The last verdict (V16). */
+  verdict?: { event: VerdictEvent; head: string; at: string; comments: number; pushed: boolean };
 }
 
 /** `GET /api/reviews`: the reviewer's branch reviews and where they are kept. */
@@ -50,6 +96,10 @@ export interface BranchReviewInfo {
   since: number | null;
   /** Why the review is kept in CPR's cache, not in `cpr/reviews/`. */
   note?: string;
+  /** Where Approve pushes (V16), and how many commits; absent without a remote. */
+  push?: { remote: string; branch: string; commits: number };
+  /** The last verdict (V16). */
+  verdict?: { event: VerdictEvent; head: string; at: string };
 }
 
 /**
@@ -131,13 +181,80 @@ export async function userEmail(repo: GitRepo): Promise<string | null> {
   }
 }
 
+/** A push git refused (V16): its words, or why CPR would not ask. */
+export class PushRefused extends Error {
+  override name = 'PushRefused';
+}
+
+/** The repository's remotes. */
+export async function listRemotes(repo: GitRepo): Promise<string[]> {
+  return (await git(repo.root, ['remote'])).split('\n').filter((r) => r !== '');
+}
+
+/**
+ * A local branch's upstream: its remote, the branch's name there, and where the remote branch
+ * was last seen (null once it is gone); null without an upstream.
+ */
+export async function upstreamOf(
+  repo: GitRepo,
+  branch: string,
+): Promise<{ remote: string; branch: string; sha: string | null } | null> {
+  const output = await git(repo.root, [
+    'for-each-ref',
+    '--format=%(upstream:remotename)%1f%(upstream:remoteref)%1f%(upstream)',
+    `refs/heads/${branch}`,
+  ]);
+  const [remote = '', remoteRef = '', tracking = ''] = output.trim().split('\x1f');
+  if (!remote || !remoteRef.startsWith('refs/heads/')) return null;
+  let sha: string | null = null;
+  try {
+    sha = (await git(repo.root, ['rev-parse', '--verify', '--quiet', tracking])).trim() || null;
+  } catch (error) {
+    if (!(error instanceof GitError)) throw error;
+  }
+  return { remote, branch: remoteRef.slice('refs/heads/'.length), sha };
+}
+
+/**
+ * Pushes the commit `sha` to `branch` on `remote` — that commit, never a later one, never
+ * forced: git refuses what is not a fast-forward, and its words come back as `PushRefused`.
+ */
+export async function pushCommit(
+  repo: GitRepo,
+  sha: string,
+  remote: string,
+  branch: string,
+): Promise<void> {
+  if (!/^[0-9a-f]{40}([0-9a-f]{24})?$/.test(sha)) throw new PushRefused(`not a commit: ${sha}`);
+  if (remote.startsWith('-') || branch.startsWith('-') || remote === '' || branch === '') {
+    throw new PushRefused(`not a remote branch: ${remote}/${branch}`);
+  }
+  try {
+    await git(repo.root, ['push', '--quiet', remote, `${sha}:refs/heads/${branch}`]);
+  } catch (error) {
+    if (error instanceof GitError) throw new PushRefused(error.stderr.trim(), { cause: error });
+    throw error;
+  }
+}
+
+/** Makes `remote/branch` the upstream of the local branch `local`. */
+export async function setUpstream(
+  repo: GitRepo,
+  local: string,
+  remote: string,
+  branch: string,
+): Promise<void> {
+  await git(repo.root, ['branch', `--set-upstream-to=${remote}/${branch}`, '--', local]);
+}
+
 /** Files git tracks under `folder` (repo-relative POSIX paths). */
 export async function trackedFiles(repo: GitRepo, folder: string): Promise<string[]> {
   const output = await git(repo.root, ['ls-files', '-z', '--full-name', '--', `:/${folder}`]);
   return output.split('\0').filter((path) => path !== '');
 }
 
-async function mergeBase(repo: GitRepo, a: string, b: string): Promise<string | null> {
+/** The best common ancestor of two commits; null without one. */
+export async function mergeBase(repo: GitRepo, a: string, b: string): Promise<string | null> {
   try {
     return (await git(repo.root, ['merge-base', a, b])).trim();
   } catch (error) {

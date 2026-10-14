@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { openRepo } from '@cpr/core';
+import { openRepo, readFileAtRevision, upstreamOf, type BranchReviewInfo } from '@cpr/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import {
@@ -82,6 +82,7 @@ describe('serializeReview', () => {
       drafts: [{ symbol: 'src/a.ts#a', body: 'why?', id: 'x' }],
       branch: 'agent',
       base: 'b',
+      verdicts: [],
     };
     const text = serializeReview(review);
     expect(text).toBe(
@@ -103,7 +104,8 @@ describe('serializeReview', () => {
         '  },',
         '  "reviewer": "ada@example.com",',
         '  "summary": "",',
-        '  "updated": "2026-10-14T10:12:00Z"',
+        '  "updated": "2026-10-14T10:12:00Z",',
+        '  "verdicts": []',
         '}',
         '',
       ].join('\n'),
@@ -173,6 +175,8 @@ describe('branchReviews', () => {
         head: shas.W2,
         reviewed: null,
         since: null,
+        // V16: where Approve would push, and how many commits.
+        push: { remote: 'origin', branch: 'agent', commits: 2 },
       },
       pair: { base: shas.B, head: shas.W2 },
     });
@@ -216,6 +220,7 @@ describe('branchReviews', () => {
       reviewer: 'ada@example.com',
       summary: 'Looks fine',
       updated: NOW.toISOString(),
+      verdicts: [],
     });
     expect(await store.read('review')).toEqual({ 'src/W1.ts#W1': 'x|y' });
     expect(await store.read('drafts')).toEqual({
@@ -288,5 +293,177 @@ describe('branchReviews', () => {
     expect(existsSync(join(repo.root, 'cpr'))).toBe(false);
     expect(existsSync(join(cache, 'state', open.id, 'reviews', 'agent', 'local.json'))).toBe(true);
     expect((await reviews.list()).place).toBe('cache');
+  });
+});
+
+/** `agentRepo` with a bare `origin` holding main at M, main tracking it (V16). */
+function pushedRepo() {
+  const made = fresh();
+  const bare = tempDir();
+  caches.push(bare);
+  made.repo.git('init', '--quiet', '--bare', bare);
+  made.repo.git('remote', 'set-url', 'origin', bare);
+  made.repo.git('push', '--quiet', 'origin', 'main');
+  made.repo.git('fetch', '--quiet', 'origin');
+  made.repo.git('branch', '--set-upstream-to=origin/main', 'main');
+  const remote = (...args: string[]) => made.repo.git('--git-dir', bare, ...args);
+  return { ...made, remote };
+}
+const reader =
+  (root: string, info: BranchReviewInfo) => async (side: 'base' | 'head', path: string) =>
+    readFileAtRevision(await openRepo(root), side === 'head' ? info.head : info.base, path);
+const APPROVE = { event: 'approve' as const, body: '', comments: [] };
+const REQUEST = {
+  event: 'request-changes' as const,
+  body: 'Two things.',
+  comments: [
+    {
+      id: 'c1',
+      symbol: 'src/W2.ts#W2',
+      side: 'head' as const,
+      path: 'src/W2.ts',
+      otherPath: 'src/W2.ts',
+      line: 1,
+      body: 'Rename it.',
+    },
+    { id: 'c2', symbol: 'src/W1.ts#W1', body: 'Why a constant?' },
+  ],
+};
+const reviewFile = (root: string, branch = 'agent') =>
+  readReview(join(root, 'cpr', 'reviews', branch, 'ada@example.com.json'));
+
+describe('finishing a branch review (V16)', () => {
+  it('records the verdict with each comment and its code, clears the drafts, pushes nothing', async () => {
+    const { repo, shas, remote } = pushedRepo();
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    const { info } = await reviews.resolve('agent');
+    await reviews.state(info).write('drafts', { drafts: [{ id: 'c1' }], body: 'Two things.' });
+
+    const result = await reviews.finish(info, REQUEST, reader(repo.root, info));
+    const file = await reviewFile(repo.root);
+    expect(file?.verdicts).toEqual([
+      {
+        at: NOW.toISOString(),
+        comments: [
+          {
+            body: 'Rename it.',
+            code: 'export const W2 = 1;',
+            id: 'c1',
+            line: 1,
+            path: 'src/W2.ts',
+            side: 'head',
+            symbol: 'src/W2.ts#W2',
+          },
+          { body: 'Why a constant?', id: 'c2', symbol: 'src/W1.ts#W1' },
+        ],
+        event: 'request-changes',
+        head: shas.W2,
+        summary: 'Two things.',
+      },
+    ]);
+    expect(file).toMatchObject({ drafts: [], summary: '', head: shas.W2 });
+    expect(result.verdict).toEqual(file?.verdicts[0]);
+    expect(() => remote('rev-parse', '--verify', '--quiet', 'agent')).toThrow();
+    // The text for a chat: the summary, then each comment with its place and code.
+    expect(result.text).toBe(
+      [
+        `Address this review of the branch agent (ada@example.com, at ${shas.W2.slice(0, 7)}): ` +
+          'changes requested.',
+        '',
+        'Two things.',
+        '',
+        'src/W2.ts:1 · W2',
+        '    export const W2 = 1;',
+        'Rename it.',
+        '',
+        'About W1:',
+        'Why a constant?',
+        '',
+      ].join('\n'),
+    );
+    // The commits page and the review page see the outcome.
+    expect((await reviews.list()).reviews[0]?.verdict).toEqual({
+      event: 'request-changes',
+      head: shas.W2,
+      at: NOW.toISOString(),
+      comments: 2,
+      pushed: false,
+    });
+    expect((await reviews.resolve('agent')).info.verdict).toEqual({
+      event: 'request-changes',
+      head: shas.W2,
+      at: NOW.toISOString(),
+    });
+  });
+
+  it('pushes the reviewed commit on Approve, not one the agent made since, then tracks it', async () => {
+    const { repo, shas, remote } = pushedRepo();
+    const open = await openRepo(repo.root);
+    const reviews = branchReviews(open, cache, { now: () => NOW });
+    const { info } = await reviews.resolve('agent');
+    expect(info.push).toEqual({ remote: 'origin', branch: 'agent', commits: 2 });
+    // The agent commits again while the review is open.
+    repo.git('switch', '--quiet', 'agent');
+    repo.write({ 'src/W3.ts': 'export const W3 = 1;\n' });
+    repo.commit('W3');
+    repo.git('switch', '--quiet', 'main');
+
+    const result = await reviews.finish(info, APPROVE, reader(repo.root, info));
+    expect(result.verdict.push).toEqual({ remote: 'origin', branch: 'agent', sha: shas.W2 });
+    expect(result.unpushed).toBe(1);
+    expect(remote('rev-parse', 'agent')).toBe(shas.W2);
+    expect(await upstreamOf(open, 'agent')).toMatchObject({ remote: 'origin', branch: 'agent' });
+    expect(result.text).toBe(`Approved the branch agent at ${shas.W2.slice(0, 7)}.\n`);
+    expect((await reviews.list()).reviews[0]?.verdict).toMatchObject({
+      event: 'approve',
+      pushed: true,
+    });
+  });
+
+  it("keeps the approval when git refuses the push, with git's words; pushes again when asked", async () => {
+    const { repo, shas, remote } = pushedRepo();
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    // Someone pushed another agent branch: W2 is not a fast-forward of it.
+    repo.git('push', '--quiet', 'origin', `${shas.M}:refs/heads/agent`);
+    const { info } = await reviews.resolve('agent');
+    const result = await reviews.finish(info, APPROVE, reader(repo.root, info));
+    expect(result.verdict.event).toBe('approve');
+    expect(result.verdict.push).toEqual({
+      error: expect.stringMatching(/rejected|fetch first/) as string,
+    });
+    expect(remote('rev-parse', 'agent')).toBe(shas.M);
+
+    remote('branch', '--quiet', '-D', 'agent');
+    const again = await reviews.pushAgain(info);
+    expect(again.verdict.push).toEqual({ remote: 'origin', branch: 'agent', sha: shas.W2 });
+    expect(remote('rev-parse', 'agent')).toBe(shas.W2);
+    const file = await reviewFile(repo.root);
+    expect(file?.verdicts).toHaveLength(1);
+    expect(file?.verdicts[0]?.push).toEqual({ remote: 'origin', branch: 'agent', sha: shas.W2 });
+  });
+
+  it('approves without a remote, and says there was nothing to push to', async () => {
+    const { repo } = fresh();
+    repo.git('remote', 'remove', 'origin');
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    const { info } = await reviews.resolve('agent');
+    expect(info.push).toBeUndefined();
+    const result = await reviews.finish(info, APPROVE, reader(repo.root, info));
+    expect(result.verdict.push).toEqual({ none: 'no remote to push to' });
+  });
+
+  it('reviews the default branch from where it was last pushed', async () => {
+    const { repo, shas, remote } = pushedRepo();
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    await expect(reviews.resolve('main')).rejects.toThrow(/no unpushed commits/);
+    await expect(reviews.resolve('origin/main')).rejects.toThrow(/default branch/);
+    // The agent commits on main itself.
+    repo.write({ 'src/X.ts': 'export const X = 1;\n' });
+    const X = repo.commit('X');
+    const { info, pair } = await reviews.resolve('main');
+    expect(pair).toEqual({ base: shas.M, head: X });
+    expect(info.push).toEqual({ remote: 'origin', branch: 'main', commits: 1 });
+    await reviews.finish(info, APPROVE, reader(repo.root, info));
+    expect(remote('rev-parse', 'main')).toBe(X);
   });
 });
