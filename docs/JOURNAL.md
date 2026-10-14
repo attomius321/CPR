@@ -2135,3 +2135,31 @@ Merged into main (2026-10-14). `main` verified after the merge: 602 unit tests, 
 The first use of the flow: the reviewer approved `92c5276` in CPR ("Merge into main") and pasted
 "Copy for the agent"; the agent read the verdict and `cpr/AGENTS.md` (CPR had written it with
 the verdict) and merged that commit, its parents the old `main` and `92c5276`.
+
+## V10c spike — what diverged picks show (2026-10-14, branch `milestone/v10c-picks-across-branches`)
+
+Measured on the regression clones (every branch listed, HEAD as checked out there) before
+refining V10's plan for picks across branches. Pairs picked among the rows a reader sees first
+are often diverged: among the first 25 rows, 19–74 % of pairs on Qwik, vite, zod and Bitwarden
+(0.7 % on this repository, whose branches are all merged). Against HEAD, the 20 unmerged remote
+tips nearest the top were diverged in 71 of 80 cases, and a direct diff — what the server runs
+today (`--no-merge-base`) — listed a median 99–208 files where the branch changed 5–15: 67–96 %
+of its files were the default branch's work shown as reverted. Through CPR, a Qwik branch read as
+43 files with 6 removed symbols and 3 findings; from its fork point, 7 files, none removed, 1
+finding. In all 71 pairs the branch's tip was the lower row, today's base: a fork-point diff with
+today's rule would have shown `main`'s work instead of the branch's.
+
+**Learned**:
+- The fork point can be found in the page from the shape alone: in graph order a row's children
+  are all above it, so painting down from both picks and taking the first row both reach gives a
+  best common ancestor, and counting rows reached by one side gives `rev-list --left-right
+  --count`. Against git on 1,800 random pairs (six repositories, rows < 2,000): fork 1,800 equal
+  to `git merge-base`, counts 1,800 equal, at most 2.0 ms. The server needs no change to diff
+  from it.
+- The first prototype stopped as soon as no one-sided row was left, which can happen before the
+  scan reaches the fork row (its flags already joined): every ancestor pair came out without a
+  fork. The rows still marked after the stop are all reached by both; the first of them is it.
+- Qwik has unrelated lines: 39 of 300 random pairs share no history (`git merge-base` exits 1).
+- Which side is the base matters as much as the fork point. "On HEAD's line" fixes the
+  measured case only while the default branch is checked out; here the agent's branch often is.
+  The default branch's line, then HEAD's, then the older row, covers both.
