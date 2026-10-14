@@ -2006,5 +2006,10 @@ dropdown" took two close-up screenshots to locate. Checked for the plan: the ser
 (`http://127.0.0.1:<port>`) is a secure context in Chromium, so the page may copy to the
 clipboard; graph nodes carry line ranges per side, so a comment's line names its symbol. So the
 plan gives branch reviews a local review target behind the same `/api/review`: a verdict
-recorded at the tip, and the comments written as Markdown an agent reads in
-`cpr/reviews/<branch>/`, or copies from the page.
+recorded at the tip with its comments in the review's JSON (the user preferred JSON to a
+Markdown file: one file, structured fields), text only for "Copy for the agent". Asked too:
+Approve pushes to the remote, only then, and `cpr pr` stays as it is. Checked in a temporary
+repository with a bare remote: `git push origin <sha>:refs/heads/<branch>` pushes that commit
+and no later one, updates `origin/<branch>`, creates a missing branch (then the upstream can be
+set), and a push that is not a fast-forward is refused with git's message. So Approve pushes the
+reviewed SHA, never the branch name, never forced.
