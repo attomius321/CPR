@@ -431,7 +431,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V15 ✅ | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Merged: "Review ▸" in the row menu (or r) compares a branch's fork point with its tip, marks kept across new commits (on a clone, 83 of 83 after one more commit, 2 symbols left); reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; "✓" or "+n" on reviewed branches' badges, a dot on commits added since. See below. |
 | V16 ✅ | Finish a review | A branch review has no end: outside `cpr pr` the reviewer can only mark symbols (the reviewer's V15 review: 86 of 87 marked, 0 comments, none possible), feedback to the agent goes through chat without a place, badges show no outcome, and approved work is pushed by hand. Merged: comments and the Review tab on branch reviews; Approve, Request changes or Comment recorded with its comments in the review's JSON ("✓", "✗", "+n" on badges); Approve pushes the reviewed commit, by SHA; the default branch reviewable from where it was last pushed; `cpr pr` unchanged. See below. |
 | V17 ✅ | Approve means "merge it" | Approve pushes the reviewed commit, which did nothing on 0 of 4 approvals here (the agent had pushed), while every approval was followed by asking for the merge in chat; merging the default branch into a reviewed branch shows "+6" for one commit; agents elsewhere get no instructions. Merged: Approve records the commit and the default branch to merge into, nothing pushed; "since" counts the branch's own commits; the Review tab says whether the merge will conflict; CPR writes `cpr/AGENTS.md` for any repository's agent (a headless Claude Code agent followed it: merged exactly the approved commit; on a conflict, resolved on its branch and asked for another review). See below. |
-| V18 | Start a feature | The commits page starts nothing: starting an agent on a feature is a terminal job — a branch and worktree by hand (12 ms on ky to 0.85 s on Bitwarden), Claude Code's own worktrees inside the checkout (ignored by 0 of 6 clones) and from the remote default branch, `claude --bg` refused by a trust step a script cannot take (3 of 3 folders), and nothing ties an agent to its branch. Planned: "Start a feature" (header, `n`, a row's menu): a brief, a branch at the chosen commit with its own worktree beside the checkout, the agent started in the background (Claude Code, or a configured command), its state on the branch and in the branches panel, plan first per feature; reviews and merges as V15–V17. See below. |
+| V18 | Start a feature | The commits page starts nothing: starting an agent on a feature is a terminal job — a branch and worktree by hand (12 ms on ky to 0.85 s on Bitwarden), Claude Code's own worktrees inside the checkout (ignored by 0 of 6 clones) and from the remote default branch, `claude --bg` refused by a trust step a script cannot take (3 of 3 folders), and nothing ties an agent to its branch. Planned: "Start a feature" (header, `n`, a row's menu): a brief, a branch at the chosen commit with its own worktree beside the checkout, the agent started in the background (Claude Code, or a configured command), its state on the branch and in the branches panel, plan first per feature; reviews and merges as V15–V17. V18a built, not merged: a feature from the header or a row, its worktree and agent in 0.1–0.9 s on the six clones, the checkout untouched; the agent's state on the page is V18b's. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -4747,7 +4747,8 @@ Not verified: Windows and macOS; Firefox and Safari; moving through the panel wi
 
 ### V18 — Start a feature: a branch, a worktree and an agent, from the commits page
 
-**Status:** planned (2026-10-15), on branch `milestone/v18-start-a-feature`; not started.
+**Status:** V18a built (2026-10-15) on branch `milestone/v18-start-a-feature`, not merged; V18b–d
+planned. As built and results: "As built — V18a" below.
 
 **Problem** (asked: "Let's continue with our agentic flow...from the commits view page, i would
 like to "Start a new feature" feature"; then, choosing among options: CPR starts the agent; the
@@ -5046,7 +5047,7 @@ on one branch.
 
 | # | Milestone | Output |
 |---|---|---|
-| V18a | Start a feature | `cpr/features/`, one `cpr/` per repository; branch and worktree outside the checkout; the agent started (`claude --bg`), failures kept with their reason; `/api/features` with states; the dialog (header, `n`, "Start a feature here"); the page lists the new branch. |
+| V18a (built) | Start a feature | `cpr/features/`, one `cpr/` per repository; branch and worktree outside the checkout; the agent started (`claude --bg`), failures kept with their reason; `/api/features` with states; the dialog (header, `n`, "Start a feature here"); the page lists the new branch. |
 | V18b | Features on the page | Agent chips on badges; "Features" in the branches panel; Talk (attach), Open in VS Code, Review, Start/Stop; plan ready; uncommitted files; polling while an agent works, the history listed anew when a feature's tip moves; Open in VS Code in the feature's worktree; V11's menu names a branch's worktree. |
 | V18c | Talk and finish | "Reply" and "Send to the agent" (resume); AGENTS.md: features, merging from a worktree; Clean up. |
 | V18d | Codex and other agents | Codex (`codex exec --json`, detached; states from its events; reply by `exec resume`); `agent.command` for any other (detached, log, running/exited); the agent picked in the dialog; `.worktreeinclude`. |
@@ -5070,6 +5071,71 @@ on one branch.
 several agents on one feature; the agent's actions live in CPR (a `-p` stream); answering
 permission prompts from CPR; briefs from an issue tracker; editing a brief after the start;
 reviewing a plan in CPR (Markdown has no symbols to review).
+
+#### As built — V18a
+
+- **No real-agent spike** (asked: "I trust it works..skip the test"). V18a is built on Claude
+  Code's documented behaviour (`--bg`, `agents --json --all`, `auth status`); tests and e2e run a
+  fake `claude` through `CPR_CLAUDE` (also the way to point CPR at another install), so no spec
+  can start a real agent. `--session-id` is not passed: the session is the one whose folder is
+  the feature's worktree, which needs nothing more of `--bg`.
+- **Awaiting `claude --bg`**: CPR waits for it to exit, not for its output to close (a background
+  service it starts may keep that open: V12's lesson with VS Code), 60 s at most.
+- **What the page shows of the agent**: after Start, a line ("Started feature/x: Claude Code is
+  working in …") and the cursor on the new branch. `/api/features` already answers each agent's
+  state and `POST /api/features/start` starts one again; the chips, the Features section and its
+  actions are V18b's.
+- **The base from the header** is not sent: the server takes the default branch's newest tip at
+  the start (the dialog shows the one it had when it opened; they differ only if the branch moved
+  meanwhile). "Start a feature here" sends the row's commit.
+- **Names are checked twice**: in the dialog as typed, by git's rules for branch names and the
+  names in use (local and remote branches), and by the server with `git check-ref-format
+  --branch`. The proposal: the brief's first line, five words, accents and apostrophes dropped,
+  at most 40 characters after `feature/`, `-2` when taken.
+- **The row menu** takes plain entries beside submenus ("Start a feature here").
+- **The header**: the first screenshots showed the new button and a longer help line pushing the
+  help to three lines and both buttons to a second row at 1440 px. "Start a feature" now sits with
+  Compare mode at the right, its key as a badge (`n`), as Compare mode shows `x`; the help line is
+  unchanged.
+- **One `cpr/` per repository** (decision 103) is in V18a: `reviewPlace` uses the main worktree;
+  `prepareCprFolder` (the folder's `.gitignore` and `AGENTS.md`) is shared by reviews and features.
+- **`listRefs`** names the worktree a branch is checked out in when it is not this one; V11's menu
+  uses it in V18b.
+- **Config**: `features.branchPrefix`, `features.worktrees` (relative to the main checkout,
+  `{repo}` its folder's name), `agent.permissionMode`, `agent.model` in `cpr/config.json`; unknown
+  values are ignored.
+
+**Results (V18a).** Tests first: core 5 of 5 failed (no functions), the CLI module and the
+viewer's helpers did not exist, the server's 4 new tests failed (no routes). Now 653 unit tests
+(34 new: core 5, CLI 21, server 4, viewer 4) and 87 e2e (5 new: a feature from the header — its
+branch at `main`'s tip in `<repo>.worktrees/…`, the checkout clean, the fake's `--bg`, `--name`,
+`--add-dir` and the brief with plan first, the record —; `n`, a name in use refused, Escape,
+Auto passed as `--permission-mode auto`; "Start a feature here" at a row's commit; a trust
+refusal kept with its words and the prompt copied; no agent at all). Three existing e2e
+expectations gained the new menu entry.
+
+On the six regression clones, through `cpr view`'s API with the fake agent, three features each:
+
+| Repo | `POST /api/features` | `GET /api/features` (3 features) | `…/options` | Checkout's `git status` |
+|---|---|---|---|---|
+| ky | 104–121 ms | 40–46 ms | 72 ms | unchanged |
+| zod | 161–193 ms | 37–43 ms | 83 ms | unchanged |
+| vite | 305–334 ms | 40–51 ms | 92 ms | unchanged |
+| Qwik | 443–506 ms | 42–47 ms | 88 ms | unchanged |
+| CPython | 571–588 ms | 42–48 ms | 180 ms | unchanged |
+| Bitwarden | 850–898 ms | 57–64 ms | 149 ms | unchanged |
+
+A start is mostly `git worktree add` (Bitwarden 644–854 ms of it, measured in the spike). Every
+branch was at its base (18 of 18); everything made was removed afterwards. The header against
+`main`'s build on a clone of this repository: with `main` checked out, the same at 1440, 1100 and
+900 px (42, 69, 70 px high; 25, 24, 24 rows in view); with a long branch name checked out, the
+same at 1440 and 900 px, 10 px higher at 1100 (one row fewer). Screenshots light and dark at 1440
+and 900 px: the dialog, a name in use, the line after Start; no page errors. No analysis code
+changed (goldens unchanged), so no regression-check run.
+
+Not verified: a real Claude Code started by CPR (skipped, as asked) — `--bg` with `--add-dir`,
+its sessions' states end to end, how long `--bg` takes when it starts its background service;
+Windows and macOS (worktree paths, `claude.exe` on `PATH`); Firefox and Safari.
 
 ### Phase 1 milestones
 

@@ -2300,3 +2300,36 @@ design for any repository, not shaped by how this one is worked on. Measured bef
 Not yet run: `claude --bg` end to end (states from start to `done`, `--bg --resume`, `--add-dir`
 and `--session-id` with `--bg`), which needs a repository the person has trusted; it is the first
 step of the plan.
+
+## V18a — Start a feature (2026-10-15, branch `milestone/v18-start-a-feature`)
+
+"Start a feature" in the commits page's header (or `n`, or "Start a feature here" in a row's
+menu) asks what the agent should build, proposes a branch named after it, creates the branch at
+the default branch's newest tip (or the row's commit) with its own worktree beside the checkout
+(`../<repo>.worktrees/<branch>`), records the brief in `cpr/features/<branch>.json` and starts
+Claude Code there in the background (`claude --bg --name <branch> --add-dir <cpr>`, the
+person's permission mode, plan first by default). A failed start keeps the feature with Claude
+Code's words; without an agent the prompt is offered to copy. Reviews now live in the main
+checkout's `cpr/`, shared by its worktrees.
+
+**Learned**:
+- The real-agent spike was skipped at the person's word; CPR relies on Claude Code's documented
+  interfaces only (`agents --json` for scripts, not `--bg`'s printed text) and the tests run a
+  fake through `CPR_CLAUDE`, which every feature spec sets: no test can start a real agent.
+- A start costs what `git worktree add` costs: 0.1 s on ky, 0.85–0.9 s on Bitwarden; listing three
+  features with their agents 37–64 ms, one `claude agents` call per list.
+- Adding a header button wrapped the help line to three lines and both buttons to a second row at
+  1440 px (seen only in a screenshot); grouped at the right with key badges, the header measures
+  as `main`'s except 10 px at 1100 px with a long branch checked out.
+- Playwright's `getByLabel('Branch')` matched the brief's field too once the brief said "branch"
+  (a label's text includes its text area's content): find fields by role and exact name.
+- `git branch -D` refuses a branch checked out in a worktree, even one whose folder was deleted,
+  until `git worktree prune`; a cleanup script that ignored the error left a branch the dialog then
+  rightly called taken.
+
+**Verification**: tests first (core 5 of 5, server 4, the CLI and viewer modules missing). 653
+unit tests (34 new), 87 e2e (5 new; 3 expectations gained the new menu entry), all passing. On the
+six regression clones through `cpr view`'s API with the fake agent: 18 features started at their
+base, each checkout's `git status` unchanged, all removed after. Screenshots light and dark at
+1440 and 900 px, no page errors. No analysis code changed. Not verified: a real Claude Code
+started by CPR, Windows and macOS, Firefox and Safari.

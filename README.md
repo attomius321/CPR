@@ -71,6 +71,21 @@ approval there says they may be pushed.
 **For agents**: CPR writes what to do with a review into `cpr/AGENTS.md`, beside the reviews,
 and every review file's first line points there. Claude Code loads it when it reads a review.
 
+Start the work there too: "Start a feature" (or `n`; "Start a feature here" in a commit's menu
+starts it at that commit) asks what the agent should build, names a branch after it (edit it if
+you like), creates the branch at the default branch's tip with its own worktree beside your
+checkout — `../<repo>.worktrees/<branch>`, so your checkout and `cpr view` are untouched and
+several features can run at once — records the brief in `cpr/features/<branch>.json`, and starts
+Claude Code there in the background (`claude --bg`) with the brief. "Plan first and wait for my
+OK" (on by default) has it stop after its plan. It runs on your own Claude Code login (the
+dialog says which: your subscription, or an API key) in the permission mode you pick (Claude
+Code's default, Accept edits or Auto); CPR never grants it more. If Claude Code does not start —
+it must trust the repository, so run `claude` there once and accept — or is not installed (`claude`
+on `PATH`, or `CPR_CLAUDE`), the branch and worktree are kept and the page offers the prompt to
+copy. Its commits show on the page when you come back to it; review the branch as any other. In
+`cpr/config.json`, `"features": { "branchPrefix": "feature/", "worktrees": "../{repo}.worktrees"
+}` and `"agent": { "permissionMode": "auto", "model": "opus" }` change the defaults.
+
 A click selects a commit (j/k move the selection). To compare, turn on "Compare mode" (or press
 x): click one commit and another — the older is the base — and Compare (or x, Enter); one picked
 alone is compared with its parent; Escape leaves. Two commits on branches that diverged are
