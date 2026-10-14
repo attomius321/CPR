@@ -422,7 +422,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V8 ✅ | A smooth viewer | Reported "flaky and laggy". Measured: Qwik `f7ed58cfc` blocks 603 ms zooming out and 731 ms over 8 j steps, a context toggle freezes it 769 ms; 9–23 % of map clicks on files zoom into the whole project. Causes: a zoom variable restyling the page each frame, per-frame checks of every edge, whole-list re-renders, layout on the main thread. Closed: V8a–V8c and V8e merged (on Qwik: zoom out 466 → 15 ms blocked, opening 2,568 → 620 ms, map clicks reaching the file 87 → 100 %); V8d deferred; see below. |
 | V9 ✅ | Pick two commits | `cpr view` without arguments is a usage error; another pair means stopping and running again. Merged: the current branch's commits as `cpr view`'s first page (100 rows in under 1 s on Qwik), pick two (or one against its parent), the diff analyzed on demand in a child process (Bitwarden 42 s, within 10 % of `cpr diff`; the server answers in 2 ms meanwhile), the last 8 kept. See below. |
 | V10a ✅, V10b–c | A commit graph | The commits page was a flat list of the current branch: on CPR and Qwik, 66 and 57 of the first 100 rows came from merged branches with nothing telling them apart, and other branches were not listed (1,539 unmerged on Bitwarden). V10a merged: every branch's history as a graph, lines over 100 rows as arrows (Bitwarden 20 lanes, 142 drawn whole), loaded lazily (CPython's 150,182 rows: first rows in 120 ms once listed). V10b and V10c on their own rows below. See below. |
-| V10b | Branches panel | A branch can only be found by scrolling: tips sit deep (median row 155 on this repository, 9,165 on Bitwarden; 4–74 tips per repository in the first 200 rows), and Bitwarden has 1,591 remote branches, 519 in no folder. Planned: a panel left of the graph — Local with ahead/behind, Remotes by nested folder, a filter, review marks — whose click goes to the tip's row anywhere in the history (`/api/history/refs` gives the rows). See below. |
+| V10b (built) | Branches panel | A branch can only be found by scrolling: tips sit deep (median row 155 on this repository, 9,165 on Bitwarden; 4–74 tips per repository in the first 200 rows), and Bitwarden has 1,591 remote branches, 519 in no folder. Planned: a panel left of the graph — Local with ahead/behind, Remotes by nested folder, a filter, review marks — whose click goes to the tip's row anywhere in the history (`/api/history/refs` gives the rows). Built: on Bitwarden the panel draws 1,591 remote branches 44–61 ms after the first rows and a click reaches the deepest tip (row 37,633) in 89–94 ms; badges now shrink, so rows keep their date beside it. See below. |
 | V10c ✅ | Picks across branches | Two picks on diverged branches are compared directly: the other side's work shows as reverted (HEAD against unmerged branches: 67–96 % of the direct diff's files are not the branch's; Qwik: 43 files, 6 removed symbols, against the branch's 7 files, 0 removed), and the lower pick, today's base, is the branch in 71 of 71 such pairs. Merged: compared from the fork point, found in the page (agrees with `git merge-base` and `rev-list` on 5,983 of 5,983 random pairs in six repositories, 157 of them with no shared history); the default branch's pick as the base (the branch as head against 1,868 of 1,868 diverged remote branches); the label, the fork marked, Swap; through `cpr view`, 12 of 12 graphs equal `cpr diff A B`. See below. |
 | V11 ✅ | Checkout from the commits page | The commits page showed every branch but checked nothing out, and did not notice a checkout made in a terminal (it showed the old HEAD until reloaded). Merged: a row menu (right-click, "⋯", c) checks out a branch, a remote branch as its tracking branch, a tag or the commit, after a confirmation; `git switch` never forced, git's refusals shown; the page lists anew after a checkout (109–115 ms on this repository) and on focus; HEAD stands out (solid "HEAD → main" badge, tinted row, ringed dot, a title chip). See below. |
 | V12 ✅ | Open in VS Code | The diff panel shows a symbol's lines, but going there in the editor is done by hand, and head's line number is not the working copy's: reviewing anything but the checked-out commit, 1–62 % of added lines sat at another line and up to 23 % were changed since (CPR, ky, zod). Merged: "Open in VS Code" (or `o`), Ctrl/⌘+click or a line number opens the line in the window that has the repository open (else a new one with it), at its place in the working copy; the server runs `code <repo root> --goto <file>:<line>:<col>`, found on any platform. 105 ms from the request to VS Code here. See below. |
@@ -4578,8 +4578,8 @@ the unit test.
 
 ### V10b — Branches panel: every branch a click away
 
-**Status:** planned (2026-10-14), on branch `milestone/v10b-branches-panel`; not started.
-Planned with V10 ("Branches panel" there, decision 53); refined here on today's page (V11–V17
+**Status:** built (2026-10-14) on branch `milestone/v10b-branches-panel`; not merged. As built
+and results: "As built — V10b" below. Planned with V10 ("Branches panel" there, decision 53); refined here on today's page (V11–V17
 since) and measurements.
 
 **Problem** (asked with V10: "exactly like git extension, or gitty up … with the branch trees on
@@ -4696,6 +4696,50 @@ layout; the e2e fixture; real repositories.
 **Not in V10b (later)**: actions from the panel (check out, review, delete, fetch); hiding
 branches from the graph (checkboxes); sorting by date; tags in the panel; the panel on a diff's
 page.
+
+#### As built — V10b
+
+- **Escape leaves the filter and keeps it**, not "clears it, then leaves it" as planned: the
+  viewer already has that rule for every text field (`App.tsx`), and the change list's search
+  follows it. The filter is a text field like that search: a search field clears itself on
+  Escape in Chromium, so the two would have behaved differently.
+- **Enter in the filter goes to the first branch listed.** The e2e test first tabbed from the
+  filter to the branch and landed on its remote's folder: type a few letters, then Enter.
+- **The filter and the folders opened are kept by the page**, across a scope switch or a listing
+  anew (a checkout); the panel draws them.
+- **The panel lists branches once the shape is in**: before it, the list is as tall as the first
+  rows, and a deep tip cannot be scrolled to.
+- **Badges shrink.** With the panel taking 260 px, rows with two long branch badges pushed their
+  author and date past the list's edge: on this repository 3 of 35 rows at 1,100 px and 8 at
+  900 px (`main`: none; it clipped 3 at 800 px, by the same cause). Badges now shrink with an
+  ellipsis once the subject has no room left, named in full on hover; the author can shrink, the
+  date cannot. Clipped rows, measured from 800 to 1,920 px on this repository, Bitwarden and
+  Qwik: 0 at every width.
+- **`Histories`** keeps one SHA-to-row map per listing, shared by the shape and the tips.
+- The browse-mode help gains "/ finds a branch".
+
+**Results (V10b)**. Tests first: 6 unit tests failed before the code (`branchTree` 4, `Histories`
+1, the server 1); on `main`'s build the 7 e2e tests of `branches.spec.ts` fail. Now 619 unit tests
+and 82 e2e (the badges' test fails without the shrink: 1 row clipped at 1,000 px).
+
+On the regression clones in Chromium (1440 × 900, warm server, 3 rounds):
+
+| | This repository | Bitwarden |
+|---|---|---|
+| Branches (local / remote) | 14 / 63 | 1 / 1,591 |
+| `/api/history/refs` | 5–6 ms | 26–28 ms |
+| Panel drawn after the first rows | 8–11 ms | 44–61 ms |
+| Panel entries / page elements | 23 / 524 | 628 / 2,622 |
+| Filter keystrokes: animation frames over 50 ms | 0 | 0 |
+| A click to the deepest tip, until its row is drawn with its details | 21 ms (row 4) | 89–94 ms (row 37,633, `origin/feature-personal-item-clone`), no frame over 50 ms |
+
+First rows against `main`'s build, back to back on Bitwarden: 1,119–1,142 ms against
+1,108–1,130 ms (both include the WSL font-layout cost V10a found). Screenshots of this repository,
+light and dark at 1440 px and the overlay at 800 px; no page errors. No analysis code changed.
+
+Not verified: Windows and macOS; Firefox and Safari; moving through the panel with arrow keys
+(not built: Tab and Enter); screen readers beyond the roles given (`complementary`, folders'
+`aria-expanded`).
 
 ### Phase 1 milestones
 
