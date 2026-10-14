@@ -2263,3 +2263,5 @@ no parents. The script now reads git's output the same way.
 widths identical (max, p95, mean); arrows zod 15 → 14, Qwik 241 → 240, Bitwarden 1,943 → 1,939
 (one per extra root), others unchanged; 0 errors after. V10a's published arrow counts are
 corrected in PLAN.md (a note under its table) and its journal entry. No product code changed.
+
+Merged into main (2026-10-14). `main` verified after the merge: 619 unit tests, build, 82 e2e; `lanes-check.mjs` on this repository: 0 errors.
