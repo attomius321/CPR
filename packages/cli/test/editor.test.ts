@@ -1,5 +1,5 @@
 import { chmodSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { openRepo } from '@cpr/core';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
@@ -8,6 +8,7 @@ import {
   invocation,
   openArgs,
   runVsCode,
+  vsCodeFolder,
   vsCodeOpener,
   type Host,
 } from '../src/editor.js';
@@ -267,5 +268,52 @@ describe('vsCodeOpener', () => {
     const result = await nowhere({ sha, file: 'src/a.ts', line: 1, column: 1 });
     expect(result).toMatchObject({ opened: false, reason: 'editor' });
     expect(!result.opened && result.message).toMatch(/not found.*CPR_CODE/);
+  });
+
+  it("opens a branch checked out in a feature's worktree there, at its line there (V18b)", async () => {
+    repo = createRepo();
+    repo.write({ 'src/a.ts': ten });
+    const sha = repo.commit('ten lines');
+    const worktree = join(tempDir(), 'feature');
+    repo.git('worktree', 'add', '--quiet', '-b', 'feature', worktree, sha);
+    // Two lines added above in the worktree only; the checkout's copy is as committed.
+    writeFileSync(join(worktree, 'src/a.ts'), `// one\n// two\n${ten}`);
+    process.env.FAKE_LOG = log;
+    const open = vsCodeOpener(await openRepo(repo.root), { CPR_CODE: fake, PATH: '' });
+    expect(await open({ sha, file: 'src/a.ts', line: 4, column: 1 }, worktree)).toMatchObject({
+      opened: true,
+      line: 6,
+    });
+    expect(JSON.parse(readFileSync(log, 'utf8'))).toEqual([
+      worktree,
+      '--goto',
+      `${worktree}/src/a.ts:6:1`,
+    ]);
+    rmSync(dirname(worktree), { recursive: true, force: true });
+  });
+});
+
+describe('vsCodeFolder', () => {
+  const dir = tempDir();
+  const log = join(dir, 'args.json');
+  const fake = join(dir, 'code');
+  beforeAll(() => {
+    writeFileSync(
+      fake,
+      "#!/usr/bin/env node\nrequire('node:fs').writeFileSync(process.env.FAKE_LOG, JSON.stringify(process.argv.slice(2)));\n",
+    );
+    chmodSync(fake, 0o755);
+  });
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("opens a feature's worktree folder in VS Code; says why it cannot", async () => {
+    process.env.FAKE_LOG = log;
+    expect(await vsCodeFolder({ CPR_CODE: fake, PATH: '' })('/work/app.worktrees/x')).toEqual({
+      opened: true,
+    });
+    expect(JSON.parse(readFileSync(log, 'utf8'))).toEqual(['/work/app.worktrees/x']);
+    const nowhere = await vsCodeFolder({ PATH: '' }, host('linux', { PATH: '' }))('/w');
+    expect(nowhere).toMatchObject({ opened: false });
+    expect(!nowhere.opened && nowhere.message).toMatch(/not found.*CPR_CODE/);
   });
 });

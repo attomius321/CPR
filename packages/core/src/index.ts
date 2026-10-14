@@ -167,6 +167,7 @@ export {
   branchNameProblem,
   listWorktrees,
   mainWorktree,
+  uncommittedFiles,
   WorktreeRefused,
   type Worktree,
 } from './git/worktrees.js';

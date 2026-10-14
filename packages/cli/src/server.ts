@@ -84,8 +84,11 @@ export interface ViewServerOptions {
   state?: StateStore;
   /** Enables the commits page at `/` and diffs under `/diff/<base>..<head>/`. */
   repository?: RepositoryOptions;
-  /** Enables `POST /api/open`: a file of a graph's change, opened in VS Code. */
-  open?: (request: OpenRequest) => Promise<OpenResult>;
+  /**
+   * Enables `POST /api/open`: a file of a graph's change, opened in VS Code; in `worktree` when
+   * the branch reviewed is checked out in another worktree (V18b).
+   */
+  open?: (request: OpenRequest, worktree?: string) => Promise<OpenResult>;
 }
 
 /** A graph served with its sources, review state and reviews. */
@@ -99,6 +102,8 @@ interface Site {
   finish?: (review: LocalReview) => Promise<FinishResult>;
   /** Whether the branch merges cleanly into the default branch (V17). */
   merge?: () => Promise<BranchMerge | null>;
+  /** The worktree the branch reviewed is checked out in, when not this one (V18b). */
+  worktree?: () => Promise<string | undefined>;
 }
 
 export interface ViewServer {
@@ -198,10 +203,32 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
       const { features } = repository;
       if (features) {
+        // The features view (V18b): the viewer's page, as at `/`.
+        if (url.pathname === '/features') return serveSite(req, res, url, '/', undefined);
         if (url.pathname === '/api/features') return featuresApi(req, res, features);
         if (url.pathname === '/api/features/options')
           return read(req, res, () => features.options());
-        if (url.pathname === '/api/features/start') return restartAgent(req, res, features);
+        if (url.pathname === '/api/features/start') {
+          return onBranch(req, res, (branch) =>
+            startingOne(res, () => features.startAgent(branch)),
+          );
+        }
+        if (url.pathname === '/api/features/stop') {
+          return onBranch(req, res, (branch) => answer(res, () => features.stopAgent(branch)));
+        }
+        if (url.pathname === '/api/features/open') {
+          return onBranch(req, res, (branch) =>
+            answer(res, () => features.openWorktree(branch).then(() => ({}))),
+          );
+        }
+        if (url.pathname === '/api/features/prompt') {
+          return ofBranch(req, res, url, (branch) =>
+            features.prompt(branch).then((prompt) => ({ prompt })),
+          );
+        }
+        if (url.pathname === '/api/features/merge') {
+          return ofBranch(req, res, url, (branch) => features.merge(branch));
+        }
       }
     }
     return serveSite(req, res, url, url.pathname, root);
@@ -350,6 +377,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         state: reviews.state(info),
         finish: (review) => reviews.finish(info, review, shared.readSource),
         merge: () => reviews.merge(info),
+        worktree: async () =>
+          (await repo.refs()).branches.find((b) => b.name === info.branch)?.worktree,
       };
       byBranch.set(info.branch, site);
     }
@@ -519,11 +548,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     return startingOne(res, () => features.start(request));
   }
 
-  /** Starts a feature's agent again. */
-  async function restartAgent(
+  /** A write about one feature: `POST { branch }`. */
+  async function onBranch(
     req: IncomingMessage,
     res: ServerResponse,
-    features: Features,
+    act: (branch: string) => Promise<void>,
   ): Promise<void> {
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
     if (!writable(req)) return send(res, 403, 'forbidden');
@@ -535,18 +564,38 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     } catch (error) {
       return send(res, 400, (error as Error).message);
     }
-    return startingOne(res, () => features.startAgent(branch));
+    return act(branch);
   }
 
-  /** One start at a time (a worktree and an agent each); refusals with their status. */
-  async function startingOne(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
-    if (startingFeature) return json(res, 409, { error: 'a feature is being started' });
-    startingFeature = true;
+  /** A read about one feature: `GET ?branch=`. */
+  async function ofBranch(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    value: (branch: string) => Promise<unknown>,
+  ): Promise<void> {
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    const branch = url.searchParams.get('branch');
+    if (!branch) return send(res, 400, "branch: a feature's branch");
+    return answer(res, () => value(branch));
+  }
+
+  /** The answer, or a feature's refusal with its status and words. */
+  async function answer(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
     try {
       return json(res, 200, await task());
     } catch (error) {
       if (error instanceof FeatureRefused) return json(res, error.status, { error: error.message });
       throw error;
+    }
+  }
+
+  /** One start at a time (a worktree and an agent each). */
+  async function startingOne(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
+    if (startingFeature) return json(res, 409, { error: 'a feature is being started' });
+    startingFeature = true;
+    try {
+      return await answer(res, task);
     } finally {
       startingFeature = false;
     }
@@ -673,7 +722,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     const { revisions } = site.graph;
     const sha = target.side === 'base' ? revisions.from : revisions.head.sha;
     if (!sha) return json(res, 404, { error: `no ${target.side} commit to open the file at` });
-    const result = await open({ sha, file: target.file, line: target.line, column: target.column });
+    const worktree = await site.worktree?.();
+    const result = await open(
+      { sha, file: target.file, line: target.line, column: target.column },
+      worktree,
+    );
     if (!result.opened) {
       return json(res, result.reason === 'missing' ? 404 : 502, { error: result.message });
     }

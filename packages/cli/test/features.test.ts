@@ -301,17 +301,31 @@ describe('features', () => {
       return Promise.resolve({ ok: true });
     });
     const sessions = vi.fn<ClaudeCode['sessions']>(() => Promise.resolve(listed));
+    const stop = vi.fn<ClaudeCode['stop']>((id) => {
+      for (const session of listed) if (session.id === id) session.state = 'stopped';
+      return Promise.resolve({ ok: true });
+    });
     const claude: ClaudeCode = {
       command: '/usr/bin/claude',
       start,
       sessions,
+      stop,
       account: () => Promise.resolve('your Pro subscription'),
     };
-    return { claude, listed, start, sessions };
+    return { claude, listed, start, sessions, stop };
   }
+  const opened: string[] = [];
   const service = (repo: TestRepo, claude: ClaudeCode | null) =>
     openRepo(repo.root).then((git) =>
-      features(git, cache, { claude: () => Promise.resolve(claude), now: () => NOW, env: {} }),
+      features(git, cache, {
+        claude: () => Promise.resolve(claude),
+        now: () => NOW,
+        env: {},
+        openFolder: (folder) => {
+          opened.push(folder);
+          return Promise.resolve({ opened: true });
+        },
+      }),
     );
 
   it("offers the default branch's tip, the agent and its account, and where worktrees go", async () => {
@@ -352,7 +366,7 @@ describe('features', () => {
       created: NOW.toISOString(),
       planFirst: true,
       brief: 'Export a review as CSV\n\nOne row per comment.',
-      worktree: { path: folder, exists: true },
+      worktree: { path: folder, exists: true, changed: 0 },
       tip: shas.B,
       ahead: 0,
       merged: false,
@@ -508,5 +522,68 @@ describe('features', () => {
       place: 'repository',
     });
     expect(sessions).not.toHaveBeenCalled();
+  });
+
+  it("counts what is not committed yet in a feature's worktree", async () => {
+    const { repo } = fresh();
+    const s = await service(repo, fakeClaude().claude);
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    expect(feature.worktree).toEqual({ path: feature.worktree.path, exists: true, changed: 0 });
+    const { writeFileSync } = await import('node:fs');
+    writeFileSync(join(feature.worktree.path, 'src/a.ts'), 'export const a = 2;\n');
+    writeFileSync(join(feature.worktree.path, 'src/new.ts'), 'export const n = 1;\n');
+    expect((await s.list()).features[0]?.worktree.changed).toBe(2);
+  });
+
+  it('gives the prompt again, stops the agent and opens the worktree', async () => {
+    const { repo } = fresh();
+    const { claude, stop, listed } = fakeClaude();
+    const s = await service(repo, claude);
+    const { feature, prompt } = await s.start({
+      brief: 'One',
+      branch: 'feature/one',
+      planFirst: false,
+    });
+    expect(await s.prompt('feature/one')).toBe(prompt);
+    await expect(s.prompt('feature/nope')).rejects.toMatchObject({ status: 404 });
+
+    expect((await s.stopAgent('feature/one')).feature.agent.state).toBe('stopped');
+    expect(stop).toHaveBeenCalledWith('s1');
+    listed.length = 0;
+    await expect(s.stopAgent('feature/one')).rejects.toMatchObject({
+      status: 409,
+      message: 'its agent is not running',
+    });
+
+    opened.length = 0;
+    await s.openWorktree('feature/one');
+    expect(opened).toEqual([feature.worktree.path]);
+    rmSync(feature.worktree.path, { recursive: true, force: true });
+    await expect(s.openWorktree('feature/one')).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('says whether a feature merges cleanly into the default branch, once per pair', async () => {
+    const { repo } = fresh();
+    const s = await service(repo, fakeClaude().claude);
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    const { execFileSync } = await import('node:child_process');
+    const { writeFileSync } = await import('node:fs');
+    const commit = (cwd: string, file: string, text: string) => {
+      writeFileSync(join(cwd, file), text);
+      execFileSync('git', ['-C', cwd, 'commit', '--quiet', '-am', file], {
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: 'A',
+          GIT_AUTHOR_EMAIL: 'a@x',
+          GIT_COMMITTER_NAME: 'A',
+          GIT_COMMITTER_EMAIL: 'a@x',
+        },
+      });
+    };
+    commit(feature.worktree.path, 'src/a.ts', 'export const a = 2;\n');
+    expect(await s.merge('feature/one')).toEqual({ into: 'main', clean: true });
+    commit(repo.root, 'src/a.ts', 'export const a = 3;\n');
+    expect(await s.merge('feature/one')).toEqual({ into: 'main', conflicts: ['src/a.ts'] });
+    await expect(s.merge('feature/nope')).rejects.toMatchObject({ status: 404 });
   });
 });

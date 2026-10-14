@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -8,6 +8,7 @@ import {
   listWorktrees,
   mainWorktree,
   openRepo,
+  uncommittedFiles,
   WorktreeRefused,
 } from '../src/index.js';
 import { createRepo, tempDir, type TestRepo } from './helpers/git-repo.js';
@@ -143,5 +144,25 @@ describe('branchNameProblem', () => {
     expect(await branchNameProblem(git, 'has space')).toBe('not a valid branch name: has space');
     expect(await branchNameProblem(git, '-x')).toBe('a branch name cannot start with -');
     expect(await branchNameProblem(git, '')).toBe('a branch needs a name');
+  });
+});
+
+describe('uncommittedFiles', () => {
+  it("counts a worktree's files not committed yet: changed, added, new; ignored ones not", async () => {
+    const { repo, shas } = fresh();
+    const folder = join(elsewhere(), 'feature-csv');
+    await addWorktree(await openRepo(repo.root), { folder, branch: 'feature/csv', base: shas.B });
+    expect(await uncommittedFiles(folder)).toBe(0);
+    writeFileSync(join(folder, 'a.ts'), 'export const a = 2;\n');
+    mkdirSync(join(folder, 'src'));
+    writeFileSync(join(folder, 'src', 'new.ts'), 'export const n = 1;\n');
+    writeFileSync(join(folder, 'src', 'other.ts'), 'export const o = 1;\n');
+    writeFileSync(join(folder, '.gitignore'), 'build/\n');
+    mkdirSync(join(folder, 'build'));
+    writeFileSync(join(folder, 'build', 'out.js'), '1;\n');
+    // a.ts, src/new.ts, src/other.ts, .gitignore; build/ is ignored.
+    expect(await uncommittedFiles(folder)).toBe(4);
+    // The checkout it came from is not counted.
+    expect(await uncommittedFiles(repo.root)).toBe(0);
   });
 });

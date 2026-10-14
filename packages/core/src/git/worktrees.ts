@@ -113,3 +113,21 @@ export async function addWorktree(
 function gitWords(error: GitError): string {
   return error.stderr.trim().replace(/^(fatal|error): /gm, '') || error.message;
 }
+
+/**
+ * How many files in the working tree at `folder` are not committed: changed, staged or new,
+ * each file of a new folder counted, ignored ones not (`git status --porcelain`).
+ */
+export async function uncommittedFiles(folder: string): Promise<number> {
+  const output = await git(folder, ['status', '--porcelain', '-z', '--untracked-files=all']);
+  let count = 0;
+  const entries = output.split('\0');
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i] ?? '';
+    if (entry === '') continue;
+    count++;
+    // A rename or copy names its source in the next entry.
+    if (/^[RC]/.test(entry)) i++;
+  }
+  return count;
+}

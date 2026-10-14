@@ -5,15 +5,18 @@ import { basename, dirname, join, relative, resolve } from 'node:path';
 import {
   addWorktree,
   branchNameProblem,
+  checkMerge,
   commitsBetween,
   defaultBranch,
   isAncestor,
   isCommit,
   listRefs,
   PERMISSION_MODES,
+  uncommittedFiles,
   userEmail,
   WorktreeRefused,
   type AgentKind,
+  type BranchMerge,
   type AgentStateName,
   type FeatureAgentState,
   type FeatureList,
@@ -70,7 +73,7 @@ export class FeatureRefused extends Error {
   override name = 'FeatureRefused';
   constructor(
     message: string,
-    readonly status: 400 | 404 | 409,
+    readonly status: 400 | 404 | 409 | 502,
   ) {
     super(message);
   }
@@ -367,6 +370,8 @@ export interface ClaudeCode {
   }): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Its sessions, finished ones included; null when it cannot list them. */
   sessions(): Promise<AgentSession[] | null>;
+  /** Stops a background session (`claude stop <id>`); its words when it cannot. */
+  stop(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Whose account it runs on. */
   account(): Promise<string | undefined>;
 }
@@ -404,6 +409,13 @@ export function claudeCode(
         ok: false,
         error: words || `${basename(command)} exited with code ${result.code ?? 'none'}`,
       };
+    },
+    async stop(id) {
+      const result = await run(command, ['stop', id], { cwd, timeoutMs: 20_000 });
+      sessions = null;
+      if (result.code === 0) return { ok: true };
+      const words = (result.stderr.trim() || result.stdout.trim()).split('\n').slice(-3).join('\n');
+      return { ok: false, error: words || `could not stop ${id}` };
     },
     sessions() {
       if (!sessions || Date.now() - sessions.at > 2_000) {
@@ -483,7 +495,20 @@ export interface Features {
   start(request: FeatureRequest): Promise<FeatureStart>;
   /** Starts a feature's agent again (after a failed start, or once it ended). */
   startAgent(branch: string): Promise<FeatureStart>;
+  /** The prompt its agent was given, to copy. */
+  prompt(branch: string): Promise<string>;
+  /** Stops its agent while it works or waits. */
+  stopAgent(branch: string): Promise<FeatureStart>;
+  /** Opens its worktree's folder in the editor (V12's VS Code). */
+  openWorktree(branch: string): Promise<void>;
+  /** Whether its branch merges cleanly into the default branch (V17's check), once per pair. */
+  merge(branch: string): Promise<BranchMerge>;
 }
+
+/** Opens a folder in the editor; why not when it cannot. */
+export type OpenFolder = (
+  folder: string,
+) => Promise<{ opened: true } | { opened: false; message: string }>;
 
 /** Features of `repo`, kept beside its reviews (`cpr/features/`, else CPR's cache). */
 export function features(
@@ -494,6 +519,7 @@ export function features(
     now = () => new Date(),
     env = process.env,
     root = repo.root,
+    openFolder,
   }: {
     /** Finds the agent (once a start or a list needs it); null when none is installed. */
     claude: () => Promise<ClaudeCode | null>;
@@ -501,6 +527,7 @@ export function features(
     env?: Readonly<Record<string, string | undefined>>;
     /** Where `cpr/config.json` is read. */
     root?: string;
+    openFolder?: OpenFolder;
   },
 ): Features {
   const place = () => reviewPlace(repo, cacheDir);
@@ -559,6 +586,8 @@ export function features(
         if (ahead > 0 && !merged) merged = await isAncestor(repo, tip, end);
       }
     }
+    const exists = existsSync(feature.worktree);
+    const changed = exists ? await uncommittedFiles(feature.worktree).catch(() => null) : null;
     return {
       branch: feature.branch,
       base: feature.base,
@@ -566,7 +595,7 @@ export function features(
       created: feature.created,
       planFirst: feature.planFirst,
       brief: feature.brief,
-      worktree: { path: feature.worktree, exists: existsSync(feature.worktree) },
+      worktree: { path: feature.worktree, exists, ...(changed === null ? {} : { changed }) },
       tip,
       ahead,
       merged,
@@ -584,6 +613,26 @@ export function features(
     ];
   }
 
+  /** The prompt a feature's agent is given. */
+  async function promptOf(where: ReviewPlace, feature: FeatureFile): Promise<string> {
+    return featurePrompt(feature, {
+      record: featurePath(featuresDir(where), feature.branch),
+      reviews: join(where.dir, ...feature.branch.split('/')),
+      agents: where.agents,
+      into: await defaultBranch(repo, await listRefs(repo)),
+    });
+  }
+
+  /** A feature's record; 404 without one. */
+  async function recorded(where: ReviewPlace, branch: string): Promise<FeatureFile> {
+    const feature = await readFeature(featurePath(featuresDir(where), branch));
+    if (!feature) throw new FeatureRefused(`no feature ${branch}`, 404);
+    return feature;
+  }
+
+  /** Merge checks by the default branch's tip and the feature's: they take seconds on some. */
+  const merges = new Map<string, Promise<BranchMerge>>();
+
   /** Starts the feature's agent and records how that went; the prompt it was given. */
   async function launch(
     where: ReviewPlace,
@@ -591,13 +640,7 @@ export function features(
     agent: ClaudeCode | null,
     permissionMode: PermissionMode,
   ): Promise<string> {
-    const refs = await listRefs(repo);
-    const prompt = featurePrompt(feature, {
-      record: featurePath(featuresDir(where), feature.branch),
-      reviews: join(where.dir, ...feature.branch.split('/')),
-      agents: where.agents,
-      into: await defaultBranch(repo, refs),
-    });
+    const prompt = await promptOf(where, feature);
     if (!agent) {
       feature.agent = null;
     } else {
@@ -728,8 +771,7 @@ export function features(
 
     async startAgent(branch) {
       const where = await place();
-      const feature = await readFeature(featurePath(featuresDir(where), branch));
-      if (!feature) throw new FeatureRefused(`no feature ${branch}`, 404);
+      const feature = await recorded(where, branch);
       const agent = await claude();
       if (!agent) {
         throw new FeatureRefused(
@@ -743,6 +785,55 @@ export function features(
       const mode = feature.agent?.permissionMode ?? config().permissionMode;
       const prompt = await launch(where, feature, agent, mode);
       return started(where, feature, prompt, agent);
+    },
+
+    async prompt(branch) {
+      const where = await place();
+      return promptOf(where, await recorded(where, branch));
+    },
+
+    async stopAgent(branch) {
+      const where = await place();
+      const feature = await recorded(where, branch);
+      const agent = feature.agent ? await claude() : null;
+      const sessions = agent ? await agent.sessions() : null;
+      const live = agentState(feature, sessions, 0, real);
+      if (!agent || !live.id || !['working', 'needs-you'].includes(live.state)) {
+        throw new FeatureRefused('its agent is not running', 409);
+      }
+      const stopped = await agent.stop(live.id);
+      if (!stopped.ok) throw new FeatureRefused(stopped.error, 409);
+      return started(where, feature, await promptOf(where, feature), agent);
+    },
+
+    async openWorktree(branch) {
+      const feature = await recorded(await place(), branch);
+      if (!existsSync(feature.worktree)) {
+        throw new FeatureRefused(`its worktree is gone: ${feature.worktree}`, 409);
+      }
+      if (!openFolder) throw new FeatureRefused('no editor to open it in', 409);
+      const result = await openFolder(feature.worktree);
+      if (!result.opened) throw new FeatureRefused(result.message, 502);
+    },
+
+    async merge(branch) {
+      const feature = await recorded(await place(), branch);
+      const refs = await listRefs(repo);
+      const tip = refs.branches.find((b) => b.name === feature.branch)?.sha;
+      if (!tip) throw new FeatureRefused(`its branch ${feature.branch} is gone`, 409);
+      const into = await defaultBranch(repo, refs);
+      if (!into) return { into: '', error: 'no default branch to merge into' };
+      // The local default branch, where the merge is made; else a remote's.
+      const target =
+        refs.branches.find((b) => b.name === into) ?? refs.remotes.find((r) => r.branch === into);
+      if (!target) return { into, error: `no branch ${into}` };
+      const key = `${target.sha}:${tip}`;
+      let check = merges.get(key);
+      if (!check) {
+        check = checkMerge(repo, target.sha, tip).then((result) => ({ into, ...result }));
+        merges.set(key, check);
+      }
+      return check;
     },
   };
 }

@@ -50,7 +50,8 @@ export interface FeatureSummary {
   created: string;
   planFirst: boolean;
   brief: string;
-  worktree: { path: string; exists: boolean };
+  /** Its worktree; `changed`: its files not committed yet (when it exists). */
+  worktree: { path: string; exists: boolean; changed?: number };
   /** The branch's tip; null once the branch is gone. */
   tip: string | null;
   /** The branch's commits since its base. */

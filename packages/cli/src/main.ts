@@ -45,7 +45,7 @@ import { frameworkHints, loadPlugins } from './plugins.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ReviewTarget } from './server.js';
-import { vsCodeOpener } from './editor.js';
+import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
 import { branchReviews } from './reviews.js';
 import {
@@ -530,7 +530,11 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       readFile: (sha, path) => readFileAtRevision(repo, sha, path),
       state: (graph) => fileStateStore(stateDir(cacheDir, repo.id, graph)),
       reviews: branchReviews(repo, cacheDir),
-      features: features(repo, cacheDir, { claude: agentFinder(repo.root, ctx.env), env: ctx.env }),
+      features: features(repo, cacheDir, {
+        claude: agentFinder(repo.root, ctx.env),
+        env: ctx.env,
+        openFolder: vsCodeFolder(ctx.env),
+      }),
     },
     open: vsCodeOpener(repo, ctx.env),
   });

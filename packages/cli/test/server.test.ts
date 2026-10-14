@@ -848,8 +848,8 @@ describe('cpr view: branch reviews', () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
     server = await startViewServer({
       viewerDir: viewer,
-      open: (request) => {
-        opens.push(request);
+      open: (request, worktree) => {
+        opens.push(worktree ? { ...request, worktree } : request);
         return Promise.resolve({ opened: true, line: 1, how: 'exact', moved: false });
       },
       repository: {
@@ -860,7 +860,13 @@ describe('cpr view: branch reviews', () => {
         }),
         status: () =>
           Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
-        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        // `topic` is checked out in a feature's worktree (V18).
+        refs: () =>
+          Promise.resolve({
+            branches: [{ name: 'topic', sha: C, worktree: '/work/app.worktrees/topic' }],
+            remotes: [],
+            tags: [],
+          }),
         checkout: () => Promise.reject(new Error('no')),
         isCommit: () => Promise.resolve(true),
         diffs,
@@ -1035,6 +1041,15 @@ describe('cpr view: branch reviews', () => {
     expect((await open('/review/wip/api/open', 'docs/other.md')).status).toBe(400);
     expect((await open(`/diff/${A}..${B}/api/open`, 'docs/api.md')).status).toBe(400);
     expect((await send('POST', '/review/wip/api/merge', {})).status).toBe(405);
+    // A branch checked out in a feature's worktree opens there (V18b).
+    expect((await open('/review/topic/api/open', 'docs/api.md')).status).toBe(200);
+    expect(opens.at(-1)).toEqual({
+      sha: C,
+      file: 'docs/api.md',
+      line: 1,
+      column: 1,
+      worktree: '/work/app.worktrees/topic',
+    });
     // Compare mode has no branch to merge.
     expect((await get(`/diff/${A}..${B}/api/merge`)).status).toBe(404);
   });
@@ -1089,7 +1104,24 @@ describe('cpr view: features (V18)', () => {
       if (branch === 'gone') return Promise.reject(new FeatureRefused('no feature gone', 404));
       return Promise.resolve({ feature: summary, prompt: 'Build it.' });
     },
+    prompt: (branch) =>
+      branch === 'feature/csv'
+        ? Promise.resolve('Build it.')
+        : Promise.reject(new FeatureRefused(`no feature ${branch}`, 404)),
+    stopAgent: (branch) => {
+      stopped.push(branch);
+      return branch === 'feature/csv'
+        ? Promise.resolve({ feature: summary, prompt: 'Build it.' })
+        : Promise.reject(new FeatureRefused('its agent is not running', 409));
+    },
+    openWorktree: (branch) => {
+      openedFeatures.push(branch);
+      return Promise.resolve();
+    },
+    merge: () => Promise.resolve({ into: 'main', conflicts: ['src/a.ts'] }),
   };
+  const stopped: string[] = [];
+  const openedFeatures: string[] = [];
   let server: ViewServer;
   let bare: ViewServer;
   const repository = (withFeatures: boolean) => ({
@@ -1172,6 +1204,38 @@ describe('cpr view: features (V18)', () => {
     expect(gone.status).toBe(404);
     expect(await gone.json()).toEqual({ error: 'no feature gone' });
     expect((await post('/api/features/start', { name: 'x' })).status).toBe(400);
+  });
+
+  it('serves the features view, a prompt, its merge check; stops an agent, opens a worktree (V18b)', async () => {
+    const page = await get('/features');
+    expect(page.status).toBe(200);
+    expect(await page.text()).toBe('<html>viewer</html>');
+    expect((await get('/features', bare)).status).toBe(404);
+
+    expect(await (await get('/api/features/prompt?branch=feature%2Fcsv')).json()).toEqual({
+      prompt: 'Build it.',
+    });
+    expect((await get('/api/features/prompt?branch=nope')).status).toBe(404);
+    expect((await get('/api/features/prompt')).status).toBe(400);
+    expect(await (await get('/api/features/merge?branch=feature%2Fcsv')).json()).toEqual({
+      into: 'main',
+      conflicts: ['src/a.ts'],
+    });
+
+    expect((await post('/api/features/stop', { branch: 'feature/csv' })).status).toBe(200);
+    const notRunning = await post('/api/features/stop', { branch: 'other' });
+    expect(notRunning.status).toBe(409);
+    expect(await notRunning.json()).toEqual({ error: 'its agent is not running' });
+    expect(stopped).toEqual(['feature/csv', 'other']);
+
+    expect((await post('/api/features/open', { branch: 'feature/csv' })).status).toBe(200);
+    expect(openedFeatures).toEqual(['feature/csv']);
+    for (const path of ['/api/features/stop', '/api/features/open']) {
+      expect((await post(path, { branch: 'x' }, { 'x-cpr': '' })).status, path).toBe(403);
+      expect((await get(path)).status, path).toBe(405);
+    }
+    expect(stopped.length).toBe(2);
+    expect(openedFeatures.length).toBe(1);
   });
 
   it('starts one feature at a time, and only for the page itself', async () => {
