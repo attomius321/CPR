@@ -431,6 +431,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V15 ✅ | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Merged: "Review ▸" in the row menu (or r) compares a branch's fork point with its tip, marks kept across new commits (on a clone, 83 of 83 after one more commit, 2 symbols left); reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; "✓" or "+n" on reviewed branches' badges, a dot on commits added since. See below. |
 | V16 ✅ | Finish a review | A branch review has no end: outside `cpr pr` the reviewer can only mark symbols (the reviewer's V15 review: 86 of 87 marked, 0 comments, none possible), feedback to the agent goes through chat without a place, badges show no outcome, and approved work is pushed by hand. Merged: comments and the Review tab on branch reviews; Approve, Request changes or Comment recorded with its comments in the review's JSON ("✓", "✗", "+n" on badges); Approve pushes the reviewed commit, by SHA; the default branch reviewable from where it was last pushed; `cpr pr` unchanged. See below. |
 | V17 ✅ | Approve means "merge it" | Approve pushes the reviewed commit, which did nothing on 0 of 4 approvals here (the agent had pushed), while every approval was followed by asking for the merge in chat; merging the default branch into a reviewed branch shows "+6" for one commit; agents elsewhere get no instructions. Merged: Approve records the commit and the default branch to merge into, nothing pushed; "since" counts the branch's own commits; the Review tab says whether the merge will conflict; CPR writes `cpr/AGENTS.md` for any repository's agent (a headless Claude Code agent followed it: merged exactly the approved commit; on a conflict, resolved on its branch and asked for another review). See below. |
+| V18 | Start a feature | The commits page starts nothing: starting an agent on a feature is a terminal job — a branch and worktree by hand (12 ms on ky to 0.85 s on Bitwarden), Claude Code's own worktrees inside the checkout (ignored by 0 of 6 clones) and from the remote default branch, `claude --bg` refused by a trust step a script cannot take (3 of 3 folders), and nothing ties an agent to its branch. Planned: "Start a feature" (header, `n`, a row's menu): a brief, a branch at the chosen commit with its own worktree beside the checkout, the agent started in the background (Claude Code, or a configured command), its state on the branch and in the branches panel, plan first per feature; reviews and merges as V15–V17. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -4743,6 +4744,289 @@ light and dark at 1440 px and the overlay at 800 px; no page errors. No analysis
 Not verified: Windows and macOS; Firefox and Safari; moving through the panel with arrow keys
 (not built: Tab and Enter); screen readers beyond the roles given (`complementary`, folders'
 `aria-expanded`).
+
+### V18 — Start a feature: a branch, a worktree and an agent, from the commits page
+
+**Status:** planned (2026-10-15), on branch `milestone/v18-start-a-feature`; not started.
+
+**Problem** (asked: "Let's continue with our agentic flow...from the commits view page, i would
+like to "Start a new feature" feature"; then, choosing among options: CPR starts the agent; the
+agent works in its own worktree; "plan first" is chosen per feature; and "Do not look at how this
+repo is worked on": the design is for any repository). Since V15–V17 CPR is where a person
+reviews an agent's branch and records a verdict the agent acts on. The loop's first step is not
+in CPR: the commits page checks out and reviews, but starts nothing. Starting a feature with an
+agent by hand, measured on the regression clones (ky, zod, vite, Qwik, Bitwarden, CPython) and
+with Claude Code 2.1.296:
+
+| Step | Measured |
+|---|---|
+| A branch and its worktree at a chosen commit (`git worktree add`, warm, 3 runs) | ky 12–20 ms (115 files, 1.7 MB); zod 66–85 ms (742, 17 MB); vite 165–178 ms (2,866, 30 MB); Qwik 315–402 ms (4,806, 56 MB); CPython 453–463 ms (6,545, 150 MB; 10.4 s cold); Bitwarden 644–854 ms (9,282, 173 MB) |
+| Claude Code's own worktrees (`--worktree`, and background sessions isolating themselves) | Branch `worktree-<name>` from the remote default branch (`worktree.baseRef: "fresh"`), not from a picked commit; the folder is `.claude/worktrees/<name>` inside the checkout |
+| A worktree inside the checkout | `.claude/worktrees/` is ignored by **0 of 6** clones: it shows in `git status`, and `git add -A` there picks it up. zod's root `tsconfig.json` includes `**/*.ts`, so a nested copy is type-checked with the project. In this repository a root `prettier --check .` fails on **58 files** of a nested copy (exit 1) |
+| Starting Claude Code in the background (`claude --bg --name …`) from a script | Refused in **3 of 3** folders tried (this repository's checkout, a worktree of it, a new repository's worktree), exit 1 in 0.7 s: "Workspace not trusted. Run `claude` in … once and accept the trust prompt". Trust is keyed on the main checkout's root (documented); only an interactive `claude` can accept it |
+| Claude Code headless (`claude -p`) in a worktree made with `git worktree add -b` | Edits and the commit landed on the feature branch in that worktree; the main checkout's branch and status unchanged (Claude Code skips its own isolation in a linked worktree, as documented); `--session-id` honoured; a one-file task: 8.5 s, $0.006 (Haiku) |
+| Which agent works on which branch | `claude agents --json --all`: background sessions with `cwd`, `name`, `state` (`working`, `blocked`, `done`, `failed`, `stopped`) and `waitingFor`, in **153–158 ms**; nothing names a branch; `-p` runs are not listed. The commits page shows none of it |
+
+Causes:
+- The commits page only reads, checks out and reviews; starting work is a terminal's job, with
+  commands that differ per agent and a trust step a script cannot take.
+- Agent tools that make worktrees choose the base and the branch name themselves, and put the
+  worktree inside the checkout, where the project's own tools and `git add -A` find it.
+- A background agent's only link to a branch is the folder it runs in.
+
+**Goal**: "Start a feature" on the commits page (a header button, `n`, and "Start a feature
+here" in a row's menu). The person writes what to build; CPR proposes a branch name, creates the
+branch at the chosen commit (the default branch's tip unless a row was picked) with its own
+worktree **outside** the checkout, records the brief in `cpr/features/`, and starts the agent
+there in the background: Claude Code by default, a command from `cpr/config.json` otherwise. The
+branch then shows its agent's state on its badge and in the branches panel — working, needs you,
+plan ready, ready for review, failed — with ways to talk to it. "Plan first and wait for my OK"
+is a checkbox, on by default. Once the branch has commits, reviewing, the verdict and the merge
+are V15–V17's, plus the worktree rules below. CPR never grants Claude Code's trust, never passes
+a permission mode the person did not pick, never removes a worktree that holds work, and merges
+nothing (decision 82). Without a feature started, nothing changes: the commits page, reviews,
+`cpr diff` and `cpr pr`.
+
+#### A feature (core, CLI)
+
+- **The record**: `cpr/features/<branch>.json` (the branch's slashes as folders, as reviews are
+  kept), keys sorted, `about` first, the same bytes for the same feature:
+
+  ```json
+  {
+    "about": "A feature started in CPR. Agents: read cpr/AGENTS.md before acting on it.",
+    "agent": { "kind": "claude", "permissionMode": "auto", "session": "<uuid>", "started": "…" },
+    "base": "<full SHA>",
+    "branch": "feature/export-review-as-csv",
+    "brief": "Export a branch review as CSV: …",
+    "by": "anton@example.com",
+    "created": "2026-10-15T09:00:00Z",
+    "from": "main",
+    "planFirst": true,
+    "worktree": "/home/anton/projects/app.worktrees/feature-export-review-as-csv"
+  }
+  ```
+
+  One file per feature, not per person: a branch is one feature. Kept where `reviewPlace` keeps
+  reviews (`cpr/`, else CPR's cache, with the same note). `cpr/.gitignore` already hides it.
+- **One `cpr/` per repository**: the main worktree's (the parent of `git rev-parse
+  --path-format=absolute --git-common-dir`), not the working tree `cpr view` runs in. Today each
+  worktree has its own `cpr/` (V15's risk table), so a `cpr view` opened in a feature's worktree
+  would split its reviews from the main checkout's. This changes `reviewPlace` for people who run
+  `cpr view` in a linked worktree; nothing changes in a single checkout.
+- **Branch name**: proposed from the brief's first line — lowercase words joined by `-`, at most
+  5 words and 40 characters, prefixed `feature/` (`features.branchPrefix` in `cpr/config.json`);
+  `-2`, `-3` when taken locally or on a remote. Editable. Checked with `git check-ref-format
+  --branch`; refused when it starts with `-` or exists locally or on a remote.
+- **Base**: the default branch's tip — of the local and remote default-branch refs (V10c's
+  `defaultBranchTips`), the one that contains the other; the local one when they diverged — or the
+  picked row's commit (full SHA, `isCommit`).
+- **The worktree**: `git worktree add -b <branch> <folder> <base>` (one command makes both;
+  never `-B` or `--force`). The folder is beside the checkout,
+  `../<checkout folder>.worktrees/<branch, slashes as ->`, configurable as
+  `features.worktrees` in `cpr/config.json` (`{repo}` stands for the checkout's folder name);
+  refused if it exists. Not inside the checkout (the table above); not in CPR's cache, which holds
+  throwaway worktrees (decision 5) and is cleared, while a feature's worktree holds work.
+- **`.worktreeinclude`** (Claude Code's file, `.gitignore` syntax): CPR copies the git-ignored
+  files it names (`.env`…) into the new worktree, as Claude Code does for the worktrees it makes;
+  tracked files never.
+- Core, `src/git/worktrees.ts`: `addWorktree`, `listWorktrees` (`git worktree list --porcelain`:
+  folder, HEAD, branch, locked, prunable; 2–3 ms), `removeWorktree` (never `--force`: git refuses
+  a worktree with changes or untracked files, and says so), `deleteMergedBranch` (`git branch -d`
+  only), `mainWorktree`. `listRefs` gains each local branch's `worktree`
+  (`%(worktreepath)`), so V11's menu can say "checked out in ../app.worktrees/x" instead of
+  offering a checkout git refuses.
+
+#### Starting the agent (CLI)
+
+- **Which agent** (`agent` in `cpr/config.json`):
+  - absent or `"claude"`: Claude Code, when `claude` is on the PATH (found as V12 finds `code`);
+    optional `permissionMode` and `model`;
+  - `{ "command": ["codex", "exec", "{prompt}"] }`: any command, run detached in the worktree
+    with `{prompt}` replaced, its output in a log file in CPR's cache (V18d);
+  - none found: the feature is still made, and "Copy for the agent" gives its prompt, as after a
+    verdict.
+- **Claude Code**: `claude --bg --name <branch> --add-dir <main worktree>/cpr
+  [--permission-mode <mode>] [--model <model>] "<prompt>"`, run with `execFile` (no shell) in
+  the worktree. The `--bg` text it prints is not parsed (not a stable format): the session is the
+  one `claude agents --json --all` lists with that worktree as `cwd` (a real path; unique per
+  feature). `--add-dir` lets it read its brief and, later, its reviews; Claude Code's worktree
+  isolation refuses its edits in the main checkout (documented), and AGENTS.md says not to.
+- **Failures keep the feature**: the branch, worktree and record stay; the feature reads "agent
+  not started" with Claude Code's own words and a way out, and "Start the agent" retries:
+  - "Workspace not trusted" → "Run `claude` in <main worktree> once and accept the trust prompt,
+    then start the agent." CPR never writes `~/.claude.json` (the trust is the person's to give);
+  - not installed, not logged in (`claude auth status` exits 1), or any other exit: its message.
+- **The prompt** (`featurePrompt` in `packages/cli/src/features.ts`): the brief; the branch, its
+  base and the default branch; with "plan first": "write a plan — what you will change and how
+  you will check it — then stop and wait for the person's OK before changing anything"; else
+  "plan, build and check it as the project's own instructions say"; commit on this branch as you
+  go, push only if the project does; say when it is ready for review in CPR; where the brief and
+  reviews are (absolute paths) and that `cpr/AGENTS.md` says how to act on a review. The brief is
+  at most 20,000 characters (Windows' command line holds 32,767).
+- **Permission mode**: Claude Code's own default unless the person picks "Accept edits" or "Auto"
+  in the dialog (default from `agent.permissionMode`). CPR never passes `bypassPermissions` or
+  `--dangerously-skip-permissions`; a person who wants that configures it in Claude Code.
+
+#### Agent state (CLI, server)
+
+- `GET /api/features` → `{ features: [...] }`, each `{ branch, base, created, planFirst,
+  worktree: { path, exists }, ahead, merged, agent: { kind, state, waitingFor?, id?, error? } }`;
+  `ahead` counts the branch's commits since its base, `merged` is V17's check against the default
+  branch.
+- Claude Code: one `claude agents --json --all` per answer, kept 2 s (153–158 ms each); matched by
+  real path. States: `working` → working; `blocked` → needs you (with `waitingFor`: "a permission
+  prompt", "input needed"…); `done` → plan ready (plan first, no commits), else ready for review
+  (commits), else done; `failed`, `stopped`; no session → not running.
+- Asked on load, on focus (as `/api/status` is), and every 5 s while the page is visible and an
+  agent is working or needs the person. No feature: no call to `claude` at all.
+- `POST /api/features` `{ brief, branch, base?, planFirst, permissionMode? }` → `{ feature }` or
+  400 (name, base, brief too long) / 409 (taken, folder exists); `POST
+  /api/features/<branch>/start|stop|clean`. Writes as every write: same-origin JSON with the
+  custom header, one at a time. The request never names a folder or a command: CPR computes the
+  folder and reads the command from `cpr/config.json`.
+
+#### The commits page (viewer)
+
+- **Start**: "Start a feature" in the header (left of Compare mode) and `n`; "Start a feature
+  here" in a row's menu (the base is that row). The dialog (`StartFeatureDialog.tsx`): "What
+  should the agent build?" (a text area, required); the branch name, proposed as the brief's
+  first line is typed and checked as it changes; "From main at a1b2c3d" (or the row's commit);
+  "Plan first and wait for my OK" (checked); the agent and its permission mode ("Claude Code ·
+  permission: default ▾", or the configured command, shown in full); the worktree's folder.
+  Ctrl+Enter starts, Escape cancels.
+- **After Start** (the history's version changed: a new branch): the page lists anew, the cursor
+  on the new branch's row, and a line: "Started feature/export-review-as-csv: Claude Code is
+  working in ../app.worktrees/feature-export-review-as-csv".
+- **Badges**: a feature's branch badge gains an agent chip before its name, next to V16's review
+  chips after it: working, needs you (its `waitingFor` in the title), plan ready, ready for review,
+  failed or not started. Shapes as well as colours, as V16's fix made review chips readable.
+- **Branches panel** (V10b): a "Features" section first, one entry per open feature with its
+  state and age; its menu, also on the tip row's menu as "Feature ▸": "Talk to the agent" (copies
+  `claude attach <id>`: it needs a terminal), "Open in VS Code" (the worktree's folder, V12's
+  finder), "Review" (V15, once it has commits), "Start the agent" / "Stop the agent" (`claude
+  stop <id>`), and "Clean up" once merged.
+
+#### Talking to the agent (V18c)
+
+- "Plan ready" and "needs you" are answered in the session: "Talk to the agent" gives the
+  command. From CPR, a "Reply" box on the feature resumes the session with the text (`claude --bg
+  --resume <session> "<text>"`, which continues a session that is not running, documented; what
+  it does with a session still running is checked first, see Order).
+- After a verdict on a feature's branch, the Review tab's note (V16–V17) offers "Send to the
+  agent": the same text as "Copy for the agent", sent the same way. Only on that click: nothing is
+  sent by itself (the person decides, as decision 82 has it).
+
+#### Reviews and merges from a worktree (AGENTS.md)
+
+- The feature's agent finds its reviews in the shared `cpr/` (given by `--add-dir`; the prompt
+  names the folder), and V17's rules apply.
+- Approve says "merge `head` into `into`": from the feature's worktree that fails when `into` is
+  checked out in the main checkout ("already used by worktree"), and Claude Code's isolation
+  refuses git in the main checkout anyway. `cpr/AGENTS.md` gains: "In a linked worktree, when
+  `into` is checked out in another worktree (`git worktree list`), do not merge here: say that
+  the approved commit is merged from that worktree." The person asks the agent there (or merges);
+  CPR still merges nothing.
+- A "Features" part of `AGENTS.md`: what a feature record is, plan first means stop after the
+  plan, never edit `cpr/`.
+
+#### Finishing a feature
+
+- Once merged into the default branch, "Clean up": `git worktree remove` (git refuses while
+  anything is uncommitted or untracked, and the page shows its message), `claude rm <id>`, `git
+  branch -d <branch>`. The record stays with `finished`; the panel lists open features only.
+- Not merged: "Stop the agent"; "Clean up" then needs a confirmation and removes the worktree
+  only (git refuses it with changes); the branch and its commits stay.
+
+#### Verification
+
+1. **Unit** (red first): core on temporary repositories — `addWorktree` (the branch at the base;
+   refused: an existing branch or folder, an invalid name, a name starting with `-`),
+   `listWorktrees`, `removeWorktree` (refused with changes and with untracked files),
+   `deleteMergedBranch` (refused unmerged), `mainWorktree` from a linked worktree, `listRefs`'s
+   `worktree`, `.worktreeinclude` (ignored files only). CLI — the name from a brief (words,
+   prefix, `-2`, cap), the record's bytes (sorted, `about` first), the folder, the prompt (plan
+   first or not, paths), the base rule (local/remote default branch ahead, behind, diverged);
+   reviews and features in the main worktree's `cpr/` when `cpr view` runs in a linked one; the
+   launcher with a fake `claude` on the PATH (records argv and cwd; prints `--bg`'s text; or
+   fails with the trust message: "agent not started", then "Start the agent" retries); states
+   from recorded `claude agents --json` answers (each state, `waitingFor`, symlinked paths, two
+   sessions in one folder: the newest). Server: `POST /api/features` (another site refused, 400,
+   409), `GET /api/features` (no features: `claude` never run), start, stop, clean.
+2. **E2E** (red first), the fake `claude` on the PATH: Start from the header — the branch on the
+   page with "working", the worktree on disk on that branch, the record, the fake's argv (`--bg`,
+   `--name`, `--add-dir`, the brief in the prompt, cwd the worktree); the fake turns `blocked` —
+   "needs you"; it commits and reports `done` — "ready for review", and Review (V15) opens it;
+   plan first with no commits — "plan ready"; the trust failure — the message, retry; "Start a
+   feature here" on a row — that base; merged — Clean up removes the worktree; a dirty worktree —
+   git's refusal; V11's menu says where a feature's branch is checked out. Every existing spec
+   passes.
+3. **A real agent** (first, see Order): Claude Code in a temporary repository the person trusts
+   once — plan first: the plan in the session, `done` with no commits, "plan ready"; a reply: it
+   builds and commits in its worktree, "ready for review"; Request changes, "Send to the agent":
+   a fix, "+1"; Approve: the feature's agent says to merge from the main checkout, which does.
+   Codex as a command agent once (V18d).
+4. **Real repositories**: on the six clones, a feature started at the default branch's tip — the
+   time from Start to the page listing the branch, `git status` of the checkout unchanged;
+   Bitwarden with three features: first rows against `main`'s build, `/api/features` time.
+5. **Nothing else changes**: no analysis code (goldens); review, checkout and commits specs
+   unchanged; a repository with no feature makes no `claude` call.
+6. **Cost**: Start answers within the worktree's time (≤ 0.9 s on Bitwarden, warm) plus
+   `claude --bg`'s return (measured in the first step); `/api/features` ≤ 200 ms with its 2 s
+   cache; first rows as fast as `main`.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| Claude Code does not trust the repository (3 of 3 folders here) | Said with Claude Code's words and the command that fixes it; the feature stays and "Start the agent" retries; CPR never grants trust. |
+| A background agent edits or runs commands unasked | Claude Code's permission mode decides: its default unless the person picked another; never bypassed by CPR. It works in its own worktree: the checkout is untouched. |
+| Agents cost money and run long | Started only by a click; the dialog names the agent, its mode and the brief; "Stop the agent" in the panel. |
+| Worktrees pile up (1.7–173 MB each, plus installs) | Listed under Features; Clean up once merged. |
+| A folder beside the checkout surprises, or cannot be written | The dialog shows it; configurable; git's error shown. |
+| Losing work | Nothing forced: git refuses to remove a worktree with changes; a branch is deleted only merged (`-d`). |
+| An agent merges from its worktree into a checked-out default branch | AGENTS.md says not to; git refuses the `switch`; Claude Code refuses git in the main checkout. |
+| Claude Code's background sessions are new; their text may change | Only `claude agents --json` is read (documented for scripts); the fake follows its documented fields; the version is checked in the first step. |
+| A committed `cpr/config.json` names a command | Shown in full in the dialog before Start; the same file already loads plugins (code). |
+| A person starts another session in a feature's worktree | The newest working session is shown; "2 sessions" in the title. |
+| Symlinked paths (macOS `/private/tmp`, WSL `/mnt`) | Compared as real paths. |
+| Reviews kept per worktree today | One `cpr/` per repository, the main worktree's. |
+
+**Order**: first a spike on a repository the person trusts once (`claude` run there by hand):
+`--bg` with `--add-dir` and `--session-id`; the states from Start to `done` with plan first;
+`--bg --resume` on a finished session and on one still running; the time `--bg` takes to return.
+Then V18a (core and CLI, server, the dialog), V18b (badges, Features, actions, polling), V18c
+(reply, send a verdict, AGENTS.md, clean up), V18d (command agents, `.worktreeinclude`), on one
+branch.
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V18a | Start a feature | `cpr/features/`, one `cpr/` per repository; branch and worktree outside the checkout; the agent started (`claude --bg`), failures kept with their reason; `/api/features` with states; the dialog (header, `n`, "Start a feature here"); the page lists the new branch. |
+| V18b | Features on the page | Agent chips on badges; "Features" in the branches panel; Talk (attach), Open in VS Code, Review, Start/Stop; plan ready; polling while an agent works; V11's menu names a branch's worktree. |
+| V18c | Talk and finish | "Reply" and "Send to the agent" (resume); AGENTS.md: features, merging from a worktree; Clean up. |
+| V18d | Other agents | `agent.command` in `cpr/config.json` (detached, log, running/exited); `.worktreeinclude`. |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 95 | Who starts the agent | **CPR, on the person's click, in the background: Claude Code (`claude --bg`) by default, a command from `cpr/config.json` otherwise; without one, "Copy for the agent"** | Asked ("CPR starts it"). `--bg` sessions outlive `cpr view`, can be attached to for questions and permission prompts, and report their state; a `claude -p` child cannot ask anything and is not listed. |
+| 96 | Where the agent works | **A new worktree per feature, beside the checkout (`../<repo>.worktrees/<branch>`, configurable); never inside it, never in the cache** | Asked ("own worktree"). Inside: 0 of 6 clones ignore `.claude/worktrees/`, zod type-checks `**/*.ts`, a root Prettier check failed on 58 files. The cache is for throwaway worktrees and is cleared. |
+| 97 | Branch and base | **CPR creates both (`git worktree add -b`): the default branch's tip or a picked row; the name proposed from the brief, `feature/` prefix, editable** | Claude Code's own worktrees branch from the remote default branch and name themselves `worktree-<name>`; the person picks where the feature starts. |
+| 98 | What the agent is told | **The brief in the prompt, the plan-first instruction when ticked, and where its brief and reviews are (`--add-dir <repo>/cpr`); the record in `cpr/features/<branch>.json`** | The agent reads its brief without looking; reviews reach it in its worktree; the record outlives the session. |
+| 99 | The agent's state | **From `claude agents --json --all`, by the worktree's folder; asked on load and focus, every 5 s while one works or waits** | The documented interface for scripts (153–158 ms); the folder is the only link to the branch; no polling when nothing runs. |
+| 100 | Trust and permissions | **CPR never grants trust or bypasses permissions; trust failures shown with the fix; the agent restartable; the person picks the permission mode** | Measured: 3 of 3 folders refused; trust is the person's decision, and so is what an agent may do unasked. |
+| 101 | Approve on a feature in a worktree | **Merged from the worktree that has the default branch (the main checkout), not the feature's; AGENTS.md says so; CPR still merges nothing** | `git switch main` fails in a linked worktree while the main checkout has it, and Claude Code refuses git in the main checkout; decision 82 stands. |
+| 102 | Plan first | **Per feature, on by default: the agent plans and stops; "plan ready" is a finished session with no commits** | Asked ("your choice per feature"). |
+| 103 | One `cpr/` per repository | **The main worktree's, for reviews and features** | With features in worktrees, a `cpr view` opened in one would otherwise keep its reviews apart. |
+| 104 | Cleaning up | **Offered once merged; nothing forced; branches deleted with `-d` only; the record kept** | Worktrees hold uncommitted work; git's refusals protect it. |
+
+**Not in V18 (later)**: cloud sessions (`claude --cloud`, whose branch comes back on `origin`);
+several agents on one feature; the agent's actions live in CPR (a `-p` stream); answering
+permission prompts from CPR; briefs from an issue tracker; editing a brief after the start;
+reviewing a plan in CPR (Markdown has no symbols to review).
 
 ### Phase 1 milestones
 

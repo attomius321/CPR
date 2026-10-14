@@ -2265,3 +2265,38 @@ widths identical (max, p95, mean); arrows zod 15 → 14, Qwik 241 → 240, Bitwa
 corrected in PLAN.md (a note under its table) and its journal entry. No product code changed.
 
 Merged into main (2026-10-14). `main` verified after the merge: 619 unit tests, build, 82 e2e; `lanes-check.mjs` on this repository: 0 errors.
+
+## V18 spike — what starting a feature with an agent takes (2026-10-15, branch `milestone/v18-start-a-feature`)
+
+Asked: "Start a new feature" from the commits page, continuing the agentic flow. The person chose
+CPR starting the agent, a worktree per feature and "plan first" per feature, and asked for a
+design for any repository, not shaped by how this one is worked on. Measured before planning:
+
+- `git worktree add` at the default branch's tip, warm, on the regression clones: ky 12–20 ms
+  (1.7 MB) to Bitwarden 644–854 ms (173 MB); CPython 453–463 ms warm but 10.4 s cold.
+- Claude Code's own worktrees (`--worktree`, and background sessions isolating themselves before
+  their first edit) live in `.claude/worktrees/` inside the checkout, on `worktree-<name>`
+  branched from the remote default branch. None of the six clones ignores that folder, zod's root
+  tsconfig includes `**/*.ts`, and in this repository a root `prettier --check .` failed on 58
+  files of a nested worktree (removed after). So CPR makes the worktree itself, beside the
+  checkout, at the commit the person picks; Claude Code skips its own isolation in a linked
+  worktree.
+- `claude --bg` refused all three folders tried (this repository's checkout, a worktree of it, a
+  new repository's worktree): "Workspace not trusted. Run `claude` in … once and accept the trust
+  prompt", exit 1 in 0.7 s. Trust is keyed on the main checkout's root and only an interactive
+  `claude` accepts it: a page cannot, and CPR must not write it. The feature must survive a
+  failed start and the agent be restartable.
+- `claude -p` (no trust step) in a worktree made with `git worktree add -b`, Haiku, a one-file
+  task: the commit landed on the feature branch, the main checkout untouched, `--session-id`
+  honoured, 8.5 s and $0.006; its stream has a `vcs_state_changed` event per commit. `-p` runs
+  are not in `claude agents --json`, and cannot ask for a permission or an answer: background
+  sessions can, and report `state` (`working`, `blocked`, `done`, `failed`, `stopped`) and
+  `waitingFor`, listed in 153–158 ms. The worktree folder is what ties a session to its branch.
+- From a feature's worktree, Approve's `git switch <default branch>` fails while the main checkout
+  has that branch, and Claude Code's isolation refuses git in the main checkout: the approved
+  merge happens from the main checkout. Reviews are kept per working tree today (`cpr/` at
+  `cpr view`'s root), so a `cpr view` opened in a worktree would keep its own.
+
+Not yet run: `claude --bg` end to end (states from start to `done`, `--bg --resume`, `--add-dir`
+and `--session-id` with `--bg`), which needs a repository the person has trusted; it is the first
+step of the plan.
