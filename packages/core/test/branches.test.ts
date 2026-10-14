@@ -1,15 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { rmSync } from 'node:fs';
 import {
+  checkMerge,
   commitsBetween,
   defaultBranch,
   forkPoint,
+  isAncestor,
   listRefs,
-  listRemotes,
   openRepo,
-  pushCommit,
-  PushRefused,
-  setUpstream,
   trackedFiles,
   upstreamOf,
   userEmail,
@@ -118,6 +116,57 @@ describe('commitsBetween', () => {
     expect(await commitsBetween(open, shas.B, shas.W2, 1)).toEqual({ count: 2, shas: [shas.W2] });
     expect(await commitsBetween(open, shas.W2, shas.W2)).toEqual({ count: 0, shas: [] });
   });
+
+  it('leaves out commits another ref has: the default branch merged into a branch (V17)', async () => {
+    const { repo, shas } = fresh();
+    const open = await openRepo(repo.root);
+    // Reviewed at W2; then main (M) is merged into wip: one commit of wip's own, the merge.
+    repo.git('switch', '--quiet', 'wip');
+    repo.git('merge', '--quiet', '--no-edit', 'main');
+    const merge = repo.git('rev-parse', 'HEAD');
+    expect((await commitsBetween(open, shas.W2, merge)).count).toBe(2);
+    expect(await commitsBetween(open, shas.W2, merge, 100, ['main', 'origin/main'])).toEqual({
+      count: 1,
+      shas: [merge],
+    });
+  });
+});
+
+describe('isAncestor', () => {
+  it('says whether a commit is in another', async () => {
+    const { repo, shas } = fresh();
+    const open = await openRepo(repo.root);
+    expect(await isAncestor(open, shas.B, shas.W2)).toBe(true);
+    expect(await isAncestor(open, shas.W2, 'main')).toBe(false);
+  });
+});
+
+describe('checkMerge', () => {
+  it('says a merge is clean, or names the conflicting files, touching nothing (V17)', async () => {
+    const { repo, shas } = fresh();
+    const open = await openRepo(repo.root);
+    const status = () => repo.git('status', '--porcelain', '--untracked-files=all');
+    const heads = () => repo.git('for-each-ref', '--format=%(refname) %(objectname)');
+    const before = { status: status(), heads: heads() };
+    expect(await checkMerge(open, 'main', shas.W2)).toEqual({ clean: true });
+
+    // Both sides change the same line of B.ts.
+    repo.write({ 'B.ts': 'export const B = 2;\n' });
+    repo.commit('main changes B');
+    repo.git('switch', '--quiet', 'wip');
+    repo.write({ 'B.ts': 'export const B = 3;\n', 'A.ts': 'export const A = 3;\n' });
+    const tip = repo.commit('wip changes B');
+    repo.git('switch', '--quiet', 'main');
+    repo.write({ 'A.ts': 'export const A = 2;\n' });
+    repo.commit('main changes A');
+    const after = { status: status(), heads: heads() };
+    expect(await checkMerge(open, 'main', tip)).toEqual({ conflicts: ['A.ts', 'B.ts'] });
+    // Nothing moved: no ref, no file, no index.
+    expect({ status: status(), heads: heads() }).toEqual(after);
+    expect(before.status).toBe('');
+
+    expect(await checkMerge(open, 'nope', tip)).toEqual({ error: expect.any(String) as string });
+  });
 });
 
 describe('userEmail', () => {
@@ -144,7 +193,7 @@ describe('trackedFiles', () => {
   });
 });
 
-/** The repository of `branchRepo`, with a bare `origin` holding main at B (V16). */
+/** The repository of `branchRepo`, with a bare `origin` holding main at B, tracked by main. */
 function pushRepo() {
   const made = fresh();
   const bare = tempDir();
@@ -154,16 +203,15 @@ function pushRepo() {
   made.repo.git('fetch', '--quiet', 'origin');
   made.repo.git('branch', '--set-upstream-to=origin/main', 'main');
   bares.push(bare);
-  const remote = (...args: string[]) => made.repo.git('--git-dir', bare, ...args);
-  return { ...made, remote };
+  return made;
 }
 const bares: string[] = [];
 afterEach(() => {
   for (const bare of bares.splice(0)) rmSync(bare, { recursive: true, force: true });
 });
 
-describe('upstreamOf and listRemotes', () => {
-  it("names a branch's remote and its name there, and the remotes", async () => {
+describe('upstreamOf', () => {
+  it("names a branch's remote and its name there", async () => {
     const { repo, shas } = pushRepo();
     const open = await openRepo(repo.root);
     expect(await upstreamOf(open, 'main')).toEqual({
@@ -173,39 +221,5 @@ describe('upstreamOf and listRemotes', () => {
     });
     expect(await upstreamOf(open, 'wip')).toBeNull();
     expect(await upstreamOf(open, 'nope')).toBeNull();
-    expect(await listRemotes(open)).toEqual(['origin']);
-  });
-});
-
-describe('pushCommit', () => {
-  it('pushes that commit and no later one, creating the branch, then tracks it', async () => {
-    const { repo, shas, remote } = pushRepo();
-    const open = await openRepo(repo.root);
-    // The reviewed commit is W1; the agent has committed W2 since.
-    await pushCommit(open, shas.W1, 'origin', 'wip');
-    expect(remote('rev-parse', 'wip')).toBe(shas.W1);
-    expect(repo.git('rev-parse', 'origin/wip')).toBe(shas.W1);
-    await setUpstream(open, 'wip', 'origin', 'wip');
-    expect(await upstreamOf(open, 'wip')).toEqual({
-      remote: 'origin',
-      branch: 'wip',
-      sha: shas.W1,
-    });
-
-    await pushCommit(open, shas.M, 'origin', 'main');
-    expect(remote('rev-parse', 'main')).toBe(shas.M);
-  });
-
-  it("refuses with git's words when the remote moved, and never forces", async () => {
-    const { repo, shas, remote } = pushRepo();
-    const open = await openRepo(repo.root);
-    await pushCommit(open, shas.M, 'origin', 'main');
-    // origin/main moved on to M: W2 is not a fast-forward of it.
-    const error = await pushCommit(open, shas.W2, 'origin', 'main').catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(PushRefused);
-    expect((error as Error).message).toMatch(/rejected|non-fast-forward|fetch first/);
-    expect(remote('rev-parse', 'main')).toBe(shas.M);
-    await expect(pushCommit(open, shas.W2, '-x', 'main')).rejects.toThrow(PushRefused);
-    await expect(pushCommit(open, 'W2', 'origin', 'main')).rejects.toThrow(PushRefused);
   });
 });

@@ -12,7 +12,9 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 /** A review's last verdict in words (V16), or its marks when it has none. */
 function outcome(review: BranchReviewSummary): string {
   const { verdict } = review;
-  if (verdict?.event === 'approve') return verdict.pushed ? 'approved and pushed' : 'approved';
+  if (verdict?.event === 'approve') {
+    return verdict.merged && verdict.into ? `approved · merged into ${verdict.into}` : 'approved';
+  }
   if (verdict?.event === 'request-changes') return 'changes requested';
   return `${review.marks} reviewed`;
 }
@@ -115,7 +117,8 @@ function markOf(review: BranchReviewSummary, tip: string, since: number): Review
     };
   const verdict = review.verdict?.head === tip ? review.verdict : undefined;
   if (verdict?.event === 'approve') {
-    const title = verdict.pushed ? 'Approved and pushed' : 'Approved';
+    const title =
+      verdict.merged && verdict.into ? `Approved · merged into ${verdict.into}` : 'Approved';
     return { mark: '✓', title, tone: 'approved' };
   }
   if (verdict?.event === 'request-changes') {

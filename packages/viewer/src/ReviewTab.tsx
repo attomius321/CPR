@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react';
-import type { FinishResult, Graph } from '@cpr/core';
+import { useEffect, useMemo, useState } from 'react';
+import type { BranchMerge, FinishResult, Graph } from '@cpr/core';
 import {
   canFinish,
   canSubmit,
+  checkMerge,
   describeDraft,
   finishReview,
   postReview,
-  pushAgain,
   toLocalReview,
   toReview,
   type ReviewDraft,
@@ -21,8 +21,11 @@ export interface ReviewProps {
   onRemove: (id: string) => void;
   /** The review was posted: its drafts are done. */
   onPosted: () => void;
-  /** A branch review (V16): its branch, and where Approve pushes. */
-  local?: { branch: string; push?: { remote: string; branch: string; commits: number } };
+  /**
+   * A branch review (V16): its branch, the tip reviewed, and the default branch an approval
+   * asks the agent to merge it into (V17; absent on the default branch's own review).
+   */
+  local?: { branch: string; head: string; into?: string };
 }
 
 const EVENTS: { value: ReviewEvent; label: string }[] = [
@@ -39,7 +42,7 @@ type Submission =
   | { status: 'finished'; result: FinishResult }
   | { status: 'failed'; error: string };
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const short = (sha: string) => sha.slice(0, 7);
 
 /** The pending review: comments written on symbols, a summary, the verdict, and submit. */
 export function ReviewTab({
@@ -58,7 +61,8 @@ export function ReviewTab({
   const site = forge === 'gitlab' ? 'GitLab' : 'GitHub';
 
   const local = forge === 'local';
-  const push = review.local?.push;
+  const into = review.local?.into;
+  const head = review.local ? short(review.local.head) : '';
   const submit = async () => {
     setSubmission({ status: 'posting' });
     try {
@@ -138,10 +142,14 @@ export function ReviewTab({
         </fieldset>
         {local && (
           <p className="muted small">
-            The verdict and its comments stay in this repository, for the agent to read; only
-            Approve pushes.
+            The verdict and its comments stay in this repository, for the agent to read.{' '}
+            {into
+              ? `Approve asks it to merge ${head} into ${into}.`
+              : 'Approve tells it these commits may be pushed.'}{' '}
+            CPR pushes nothing.
           </p>
         )}
+        {local && into && <MergeCheck branch={review.local?.branch ?? ''} />}
         {forge === 'gitlab' && event === 'request-changes' && (
           <p className="muted small">
             GitLab gets a note marked “Changes requested”, and your approval is withdrawn.
@@ -159,20 +167,12 @@ export function ReviewTab({
             ? local
               ? 'Finishing…'
               : 'Posting…'
-            : !local
-              ? `Submit review to ${site}`
-              : event !== 'approve'
-                ? 'Finish review'
-                : push && push.commits > 0
-                  ? `Approve and push ${plural(push.commits, 'commit')} to ${push.remote}/${push.branch}`
-                  : 'Approve'}
+            : local
+              ? 'Finish review'
+              : `Submit review to ${site}`}
         </button>
         {submission.status === 'finished' && (
-          <Finished
-            branch={review.local?.branch ?? ''}
-            result={submission.result}
-            onResult={(result) => setSubmission({ status: 'finished', result })}
-          />
+          <Finished branch={review.local?.branch ?? ''} result={submission.result} />
         )}
         {submission.status === 'posted' && (
           <p className="posted">
@@ -189,63 +189,63 @@ export function ReviewTab({
 }
 
 /**
- * What finishing a branch review did (V16): the push on Approve (or git's refusal, with "Push
- * again"); otherwise where the agent finds the comments, and "Copy for the agent".
+ * Whether the branch merges cleanly into the default branch (V17), checked in the background:
+ * nothing while git works (seconds on a long-lived branch), then clean or the conflicting files.
  */
-function Finished({
-  branch,
-  result,
-  onResult,
-}: {
-  branch: string;
-  result: FinishResult;
-  onResult: (result: FinishResult) => void;
-}) {
-  const [copied, setCopied] = useState<string | null>(null);
-  const [pushing, setPushing] = useState<string | null>(null);
-  const { verdict, unpushed } = result;
-  if (verdict.event === 'approve') {
-    const push = verdict.push;
+function MergeCheck({ branch }: { branch: string }) {
+  const [merge, setMerge] = useState<BranchMerge | { failed: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    checkMerge()
+      .then((result) => live && result && setMerge(result))
+      .catch((error: unknown) => live && setMerge({ failed: (error as Error).message }));
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (!merge) return null;
+  if ('failed' in merge || 'error' in merge) {
     return (
-      <div className="posted finished">
-        {push && 'sha' in push ? (
-          <p>
-            Approved and pushed {push.sha.slice(0, 7)} to {push.remote}/{push.branch}.
-            {unpushed > 0 && ` ${plural(unpushed, 'newer commit')} not pushed: not reviewed.`}
-          </p>
-        ) : push && 'error' in push ? (
-          <>
-            <p>Approved; git refused the push:</p>
-            <pre className="error">{push.error}</pre>
-            <button
-              type="button"
-              className="button"
-              disabled={pushing === 'pushing'}
-              onClick={() => {
-                setPushing('pushing');
-                pushAgain()
-                  .then((next) => {
-                    setPushing(null);
-                    onResult(next);
-                  })
-                  .catch((error: unknown) => setPushing((error as Error).message));
-              }}
-            >
-              {pushing === 'pushing' ? 'Pushing…' : 'Push again'}
-            </button>
-            {pushing && pushing !== 'pushing' && <p className="error">{pushing}</p>}
-          </>
-        ) : (
-          <p>Approved; {push && 'none' in push ? push.none : 'nothing pushed'}.</p>
-        )}
-      </div>
+      <p className="merge-check muted small">
+        Could not check the merge: {'failed' in merge ? merge.failed : merge.error}
+      </p>
     );
   }
+  if ('clean' in merge) {
+    return <p className="merge-check muted small">Merges cleanly into {merge.into}.</p>;
+  }
+  const shown = merge.conflicts.slice(0, 3).join(', ');
+  const more = merge.conflicts.length > 3 ? ` and ${merge.conflicts.length - 3} more` : '';
+  return (
+    <p className="merge-check conflicts small">
+      Conflicts with {merge.into} in {shown}
+      {more}: the agent resolves them on {branch} first.
+    </p>
+  );
+}
+
+/**
+ * What finishing a branch review recorded (V16), and what the agent does with it when asked:
+ * the merge (V17), the push of the default branch's commits, or the comments; "Copy for the
+ * agent" puts it in words for a chat.
+ */
+function Finished({ branch, result }: { branch: string; result: FinishResult }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const { verdict } = result;
+  const at = short(verdict.head);
   return (
     <div className="posted finished">
       <p>
-        {verdict.event === 'request-changes' ? 'Changes requested' : 'Comments recorded'}: the agent
-        finds them in {`cpr/reviews/${branch}/`} (the last of <code>verdicts</code>).
+        {verdict.event !== 'approve' ? (
+          <>
+            {verdict.event === 'request-changes' ? 'Changes requested' : 'Comments recorded'}: the
+            agent finds them in {`cpr/reviews/${branch}/`} (the last of <code>verdicts</code>).
+          </>
+        ) : verdict.into ? (
+          `Approved ${at}: the agent merges it into ${verdict.into} when you ask it to act on this review.`
+        ) : (
+          `Approved ${at}: the agent may push these commits when you ask it to act on this review.`
+        )}
       </p>
       <button
         type="button"

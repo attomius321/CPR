@@ -1499,6 +1499,15 @@ kbd {
   border-top: 1px solid var(--line);
 }
 
+/* Whether the branch merges cleanly into the default branch (V17). */
+.merge-check {
+  margin: 0;
+}
+
+.merge-check.conflicts {
+  color: var(--warning);
+}
+
 .submit-review .button:disabled {
   opacity: 0.5;
   cursor: default;

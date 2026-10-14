@@ -796,17 +796,14 @@ describe('cpr view: branch reviews', () => {
         head: info.head,
         summary: '',
       };
-      return { verdict, text: `finished ${info.branch}`, unpushed: 0 };
+      return { verdict, text: `finished ${info.branch}` };
     },
-    pushAgain: (info) =>
-      info.branch === 'topic'
-        ? Promise.reject(new ReviewRefused('nothing approved to push'))
-        : Promise.resolve({
-            verdict: { at: 'now', comments: [], event: 'approve', head: info.head, summary: '' },
-            text: `pushed ${info.branch}`,
-            unpushed: 0,
-          }),
+    merge: (info) => {
+      merges.push(info.head);
+      return Promise.resolve({ into: 'main', conflicts: ['src/math.ts'] });
+    },
   };
+  const merges: string[] = [];
   const finished: { branch: string; review: unknown; code: string }[] = [];
   const graphOf = ({ base, head }: Pair): Graph => ({
     ...graph,
@@ -985,12 +982,21 @@ describe('cpr view: branch reviews', () => {
       },
     ]);
 
-    // Pushing an approval again; refused when there is none.
-    const again = await send('POST', '/review/wip/api/review/push', {});
-    expect(again.status).toBe(200);
-    expect(await again.json()).toMatchObject({ text: 'pushed wip' });
+    // Approve pushes nothing (V17): there is no push to retry.
+    expect((await send('POST', '/review/wip/api/review/push', {})).status).toBe(405);
     // A pair picked in compare mode still has nowhere to send a review.
     expect((await send('POST', `/diff/${A}..${B}/api/review`, review)).status).toBe(404);
+  });
+
+  it('says whether the branch merges cleanly into the default branch (V17)', async () => {
+    expect(JSON.parse((await get('/review/wip/api/merge')).body)).toEqual({
+      into: 'main',
+      conflicts: ['src/math.ts'],
+    });
+    expect(merges).toEqual([C]);
+    expect((await send('POST', '/review/wip/api/merge', {})).status).toBe(405);
+    // Compare mode has no branch to merge.
+    expect((await get(`/diff/${A}..${B}/api/merge`)).status).toBe(404);
   });
 
   it('says why a review cannot be opened', async () => {

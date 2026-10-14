@@ -519,7 +519,8 @@ export function App() {
                         ? {
                             local: {
                               branch: state.branchReview.branch,
-                              ...(state.branchReview.push ? { push: state.branchReview.push } : {}),
+                              head: state.branchReview.head,
+                              ...(state.branchReview.into ? { into: state.branchReview.into } : {}),
                             },
                           }
                         : {}),
