@@ -1896,3 +1896,16 @@ errors; screenshots of both modes, light and dark, and of HEAD's row selected. N
 Firefox and Safari; a back-forward cache restoring the page (Chromium lists it anew).
 
 Merged into main (2026-10-13). `main` verified after the merge: 557 unit tests, build, 64 e2e.
+
+## V14 spike — the checkout menu's names (2026-10-14, branch `milestone/v14-checkout-submenu`)
+
+Measured before planning a checkout submenu, in Chromium on `cpr view` of the Qwik and
+Bitwarden clones (`main` at `c2e3486`, 1440 × 900). Qwik's HEAD row (`main` and 8 release tags)
+gets 10 entries, each starting "Check out" and 8 ending "(detached HEAD)"; the menu stops at its
+480 px max width and is 343 px tall. A remote branch's entry is 117 characters ("Check out
+origin/dependabot/… as dependabot/…") on two lines, and the confirmation repeats it as its
+heading. The names are plain text in the middle of each sentence, while the rows draw the same
+names as coloured badges. Refs per commit stay small (Qwik 1–8 but for one commit with 10 or
+more, Bitwarden 1–5, CPython 1–2); the longest name is 140 characters (a Bitwarden remote
+branch). So the plan puts the targets in a submenu under one "Check out" entry, each name as
+the row's badge with a muted note, and the name as a badge in the confirmation's heading.
