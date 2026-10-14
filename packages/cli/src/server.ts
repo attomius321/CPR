@@ -12,7 +12,9 @@ import {
   type FinishResult,
   type LocalReview,
   type CheckoutTarget,
+  type FeatureRequest,
   type Graph,
+  type PermissionMode,
   type HistoryRefs,
   type HistoryScope,
   type RefList,
@@ -21,6 +23,7 @@ import {
 import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
 import type { OpenRequest, OpenResult } from './editor.js';
+import { FeatureRefused, type Features } from './features.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 
@@ -62,6 +65,8 @@ export interface RepositoryOptions {
   state?: (graph: Graph) => StateStore;
   /** Branch reviews (V15): `/api/reviews`, and each review under `/review/<branch>/`. */
   reviews?: BranchReviews;
+  /** Features started from the page, each with its agent (V18): `/api/features…`. */
+  features?: Features;
 }
 
 export interface ViewServerOptions {
@@ -152,6 +157,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   const reviewSites = new WeakMap<Graph, Map<string, Site>>();
   let hosts: Set<string> = new Set();
   let checkingOut = false;
+  let startingFeature = false;
   const server = createServer((req, res) => {
     handle(req, res).catch((error: unknown) => send(res, 500, String(error)));
   });
@@ -190,6 +196,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/api/checkout') return checkoutTarget(req, res, repository);
       if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
       if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
+      const { features } = repository;
+      if (features) {
+        if (url.pathname === '/api/features') return featuresApi(req, res, features);
+        if (url.pathname === '/api/features/options')
+          return read(req, res, () => features.options());
+        if (url.pathname === '/api/features/start') return restartAgent(req, res, features);
+      }
     }
     return serveSite(req, res, url, url.pathname, root);
   }
@@ -488,6 +501,57 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
   }
 
+  /** The features (GET), or a new one: its branch, worktree and agent (POST), one at a time. */
+  async function featuresApi(
+    req: IncomingMessage,
+    res: ServerResponse,
+    features: Features,
+  ): Promise<void> {
+    if (req.method === 'GET') return json(res, 200, await features.list());
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let request: FeatureRequest;
+    try {
+      request = parseFeatureRequest(await readBody(req, MAX_BODY_BYTES));
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    return startingOne(res, () => features.start(request));
+  }
+
+  /** Starts a feature's agent again. */
+  async function restartAgent(
+    req: IncomingMessage,
+    res: ServerResponse,
+    features: Features,
+  ): Promise<void> {
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let branch: string;
+    try {
+      const value = JSON.parse(await readBody(req, MAX_BODY_BYTES)) as { branch?: unknown } | null;
+      if (typeof value?.branch !== 'string') throw new Error("branch: a feature's branch");
+      branch = value.branch;
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    return startingOne(res, () => features.startAgent(branch));
+  }
+
+  /** One start at a time (a worktree and an agent each); refusals with their status. */
+  async function startingOne(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
+    if (startingFeature) return json(res, 409, { error: 'a feature is being started' });
+    startingFeature = true;
+    try {
+      return json(res, 200, await task());
+    } catch (error) {
+      if (error instanceof FeatureRefused) return json(res, error.status, { error: error.message });
+      throw error;
+    } finally {
+      startingFeature = false;
+    }
+  }
+
   /** Starts analyzing two commits; answers where the diff will be. */
   async function startDiff(
     req: IncomingMessage,
@@ -664,6 +728,32 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
 function json(res: ServerResponse, status: number, value: unknown): void {
   send(res, status, JSON.stringify(value), TYPES['.json']);
+}
+
+/**
+ * `{ brief, branch, planFirst, base?, permissionMode? }`, each of its type; what they say is the
+ * features' to check (V18).
+ */
+function parseFeatureRequest(text: string): FeatureRequest {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('expected { brief, branch, planFirst }');
+  }
+  const { brief, branch, planFirst, base, permissionMode } = value;
+  if (typeof brief !== 'string') throw new Error('brief: what to build');
+  if (typeof branch !== 'string') throw new Error("branch: the new branch's name");
+  if (typeof planFirst !== 'boolean') throw new Error('planFirst: true or false');
+  if (base !== undefined && typeof base !== 'string') throw new Error('base: a full SHA');
+  if (permissionMode !== undefined && typeof permissionMode !== 'string') {
+    throw new Error('permissionMode: default, acceptEdits or auto');
+  }
+  return {
+    brief,
+    branch,
+    planFirst,
+    ...(base === undefined ? {} : { base }),
+    ...(permissionMode === undefined ? {} : { permissionMode: permissionMode as PermissionMode }),
+  };
 }
 
 const CHECKOUT_KINDS: readonly CheckoutTarget['kind'][] = ['branch', 'remote', 'tag', 'commit'];

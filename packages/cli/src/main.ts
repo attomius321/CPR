@@ -48,6 +48,13 @@ import { startViewServer, type ReviewTarget } from './server.js';
 import { vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
 import { branchReviews } from './reviews.js';
+import {
+  claudeCode,
+  features,
+  findClaude,
+  readFeatureConfig,
+  type ClaudeCode,
+} from './features.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -523,6 +530,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       readFile: (sha, path) => readFileAtRevision(repo, sha, path),
       state: (graph) => fileStateStore(stateDir(cacheDir, repo.id, graph)),
       reviews: branchReviews(repo, cacheDir),
+      features: features(repo, cacheDir, { claude: agentFinder(repo.root, ctx.env), env: ctx.env }),
     },
     open: vsCodeOpener(repo, ctx.env),
   });
@@ -551,6 +559,22 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   diffs.close();
   await server.close();
   return 0;
+}
+
+/** Claude Code for features (V18), found when first needed and looked for again until it is. */
+function agentFinder(
+  root: string,
+  env: Readonly<Record<string, string | undefined>>,
+): () => Promise<ClaudeCode | null> {
+  let found: ClaudeCode | null = null;
+  return async () => {
+    if (found) return found;
+    const command = await findClaude(env);
+    if (!command) return null;
+    const { model } = readFeatureConfig(root);
+    found = claudeCode(command, { cwd: root, ...(model ? { model } : {}) });
+    return found;
+  };
 }
 
 /**

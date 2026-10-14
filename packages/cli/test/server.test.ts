@@ -6,6 +6,9 @@ import {
   UnknownCheckoutTarget,
   type BranchReviewInfo,
   type CheckoutTarget,
+  type FeatureOptions,
+  type FeatureRequest,
+  type FeatureSummary,
   type Graph,
 } from '@cpr/core';
 import type { Review } from '@cpr/forge';
@@ -23,6 +26,7 @@ import { Diffs, type Pair, type RunDiff } from '../src/diffs.js';
 import { Histories } from '../src/history.js';
 import type { OpenRequest, OpenResult } from '../src/editor.js';
 import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
+import { FeatureRefused, type Features } from '../src/features.js';
 
 const graph = JSON.parse(
   readFileSync(
@@ -1041,6 +1045,154 @@ describe('cpr view: branch reviews', () => {
       body: JSON.stringify({ error: 'no branch nope' }),
     });
     expect((await get('/review/%E0%A4/api/graph')).status).toBe(400);
+  });
+});
+
+describe('cpr view: features (V18)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const summary: FeatureSummary = {
+    branch: 'feature/csv',
+    base: C,
+    from: 'main',
+    created: '2026-10-15T09:00:00.000Z',
+    planFirst: true,
+    brief: 'Export a review as CSV',
+    worktree: { path: '/work/app.worktrees/feature-csv', exists: true },
+    tip: C,
+    ahead: 0,
+    merged: false,
+    agent: { state: 'working', kind: 'claude', id: 's1' },
+  };
+  const options: FeatureOptions = {
+    base: { from: 'main', sha: C },
+    branchPrefix: 'feature/',
+    worktrees: '/work/app.worktrees/<branch>',
+    agent: { kind: 'claude', command: '/usr/bin/claude', permissionMode: 'default' },
+    maxBrief: 20000,
+  };
+  const started: FeatureRequest[] = [];
+  const restarted: string[] = [];
+  /** While set, a start waits for it. */
+  let gate: Promise<void> | null = null;
+  const features: Features = {
+    options: () => Promise.resolve(options),
+    list: () => Promise.resolve({ features: [summary], place: 'repository' }),
+    start: async (request) => {
+      started.push(request);
+      if (gate) await gate;
+      if (request.branch === 'main') throw new FeatureRefused('a branch main exists', 409);
+      return { feature: summary, prompt: 'Build it.' };
+    },
+    startAgent: (branch) => {
+      restarted.push(branch);
+      if (branch === 'gone') return Promise.reject(new FeatureRefused('no feature gone', 404));
+      return Promise.resolve({ feature: summary, prompt: 'Build it.' });
+    },
+  };
+  let server: ViewServer;
+  let bare: ViewServer;
+  const repository = (withFeatures: boolean) => ({
+    history: new Histories({
+      state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+      stream: () => Promise.resolve(),
+      details: () => Promise.resolve([]),
+    }),
+    status: () =>
+      Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+    refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+    checkout: () => Promise.reject(new Error('no')),
+    isCommit: () => Promise.resolve(true),
+    diffs: new Diffs(() => Promise.reject(new Error('no'))),
+    readFile: () => Promise.resolve(''),
+    ...(withFeatures ? { features } : {}),
+  });
+
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({ viewerDir: viewer, repository: repository(true) });
+    bare = await startViewServer({ viewerDir: viewer, repository: repository(false) });
+  });
+  afterAll(async () => {
+    await server.close();
+    await bare.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+
+  const get = (path: string, on = server) => fetch(new URL(path, on.url));
+  const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
+    fetch(new URL(path, server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      body: JSON.stringify(body),
+    });
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+  const request = { brief: 'Export a review as CSV', branch: 'feature/csv', planFirst: true };
+
+  it('lists features and what the start dialog needs', async () => {
+    expect(await (await get('/api/features')).json()).toEqual({
+      features: [summary],
+      place: 'repository',
+    });
+    expect(await (await get('/api/features/options')).json()).toEqual(options);
+    expect((await get('/api/features', bare)).status).toBe(404);
+  });
+
+  it('starts a feature as asked; refusals keep their status and words', async () => {
+    const ok = await post('/api/features', { ...request, base: C, permissionMode: 'auto' });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ feature: summary, prompt: 'Build it.' });
+    expect(started.at(-1)).toEqual({ ...request, base: C, permissionMode: 'auto' });
+
+    const taken = await post('/api/features', { ...request, branch: 'main' });
+    expect(taken.status).toBe(409);
+    expect(await taken.json()).toEqual({ error: 'a branch main exists' });
+
+    const before = started.length;
+    for (const body of [
+      null,
+      [],
+      { ...request, brief: 3 },
+      { ...request, branch: undefined },
+      { ...request, planFirst: 'yes' },
+      { ...request, base: 7 },
+      { ...request, permissionMode: 7 },
+    ]) {
+      expect((await post('/api/features', body)).status, JSON.stringify(body)).toBe(400);
+    }
+    expect(started.length).toBe(before);
+    expect((await get('/api/features/start')).status).toBe(405);
+  });
+
+  it('starts an agent again', async () => {
+    const ok = await post('/api/features/start', { branch: 'feature/csv' });
+    expect(ok.status).toBe(200);
+    expect(restarted).toEqual(['feature/csv']);
+    const gone = await post('/api/features/start', { branch: 'gone' });
+    expect(gone.status).toBe(404);
+    expect(await gone.json()).toEqual({ error: 'no feature gone' });
+    expect((await post('/api/features/start', { name: 'x' })).status).toBe(400);
+  });
+
+  it('starts one feature at a time, and only for the page itself', async () => {
+    let open = () => {};
+    gate = new Promise((resolve) => (open = resolve));
+    const first = post('/api/features', request);
+    await settle();
+    const second = await post('/api/features', request);
+    expect(second.status).toBe(409);
+    expect(await second.json()).toEqual({ error: 'a feature is being started' });
+    open();
+    gate = null;
+    expect((await first).status).toBe(200);
+
+    const before = started.length;
+    expect(
+      (await post('/api/features', request, { origin: 'https://attacker.example' })).status,
+    ).toBe(403);
+    expect((await post('/api/features', request, { 'x-cpr': '' })).status).toBe(403);
+    expect((await post('/api/features/start', { branch: 'x' }, { 'x-cpr': '' })).status).toBe(403);
+    expect(started.length).toBe(before);
   });
 });
 
