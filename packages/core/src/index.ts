@@ -151,6 +151,14 @@ export {
   type VerdictEvent,
 } from './git/branches.js';
 export {
+  addWorktree,
+  branchNameProblem,
+  listWorktrees,
+  mainWorktree,
+  WorktreeRefused,
+  type Worktree,
+} from './git/worktrees.js';
+export {
   checkout,
   CheckoutRefused,
   UnknownCheckoutTarget,

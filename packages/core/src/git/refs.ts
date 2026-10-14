@@ -1,3 +1,4 @@
+import { realpath } from 'node:fs/promises';
 import { git } from './exec.js';
 import type { GitRepo } from './repo.js';
 
@@ -10,6 +11,8 @@ export interface LocalBranch {
   behind?: number;
   /** The upstream was deleted (pruned, or never fetched). */
   gone?: boolean;
+  /** The worktree it is checked out in, when that is not this one (V18). */
+  worktree?: string;
 }
 
 /** A remote branch: `origin/topic` is `topic` on the remote `origin`. */
@@ -41,6 +44,7 @@ const FORMAT = [
   '%(*objecttype)',
   '%(upstream:short)',
   '%(upstream:track,nobracket)',
+  '%(worktreepath)',
 ].join('%1f');
 
 /** The repository's branches, remote branches and tags, by name (one `git for-each-ref`). */
@@ -63,13 +67,22 @@ export async function listRefs(repo: GitRepo): Promise<RefList> {
   const list: RefList = { branches: [], remotes: [], tags: [] };
   for (const line of output.split('\n')) {
     if (line === '') continue;
-    const [ref = '', sha = '', type = '', peeled = '', peeledType = '', upstream = '', track = ''] =
-      line.split('\x1f');
+    const [
+      ref = '',
+      sha = '',
+      type = '',
+      peeled = '',
+      peeledType = '',
+      upstream = '',
+      track = '',
+      worktree = '',
+    ] = line.split('\x1f');
     if (ref.startsWith('refs/heads/')) {
       list.branches.push({
         name: ref.slice('refs/heads/'.length),
         sha,
         ...(upstream ? { upstream, ...parseTrack(track) } : {}),
+        ...(worktree && !(await samePath(worktree, repo.root)) ? { worktree } : {}),
       });
     } else if (ref.startsWith('refs/remotes/')) {
       const name = ref.slice('refs/remotes/'.length);
@@ -83,6 +96,13 @@ export async function listRefs(repo: GitRepo): Promise<RefList> {
     }
   }
   return list;
+}
+
+/** Whether two paths name one folder (symbolic links resolved where they exist). */
+async function samePath(a: string, b: string): Promise<boolean> {
+  if (a === b) return true;
+  const real = (path: string) => realpath(path).catch(() => path);
+  return (await real(a)) === (await real(b));
 }
 
 /** `ahead 1, behind 2`, `gone` or nothing (in step). */
