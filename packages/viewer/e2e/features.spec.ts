@@ -181,6 +181,9 @@ const POLL = { timeout: 12_000 };
 const featureRow = (page: Page, branch: string) =>
   page.locator(`.feature-row[data-branch="${branch}"]`);
 const group = (page: Page, name: string) => page.getByRole('region', { name });
+/** The picked feature's panel, beside the list (V18c). */
+const panel = (page: Page, branch: string) =>
+  page.getByRole('region', { name: `Feature ${branch}` });
 const startFrom = async (page: Page, what: string) => {
   await page.getByRole('button', { name: 'Start a feature' }).click();
   await brief(page).fill(what);
@@ -247,7 +250,7 @@ test('a feature and its branch lead to each other', async ({ page }) => {
   await expect(page).toHaveURL(/\/features\?branch=/);
 
   // Its review names the feature, which leads back.
-  await featureRow(page, branch).getByRole('button', { name: 'Review' }).click();
+  await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
   const link = page.getByRole('link', { name: 'Feature: Add a half function' });
   await expect(link).toBeVisible();
   await link.click();
@@ -275,7 +278,7 @@ test('stop the agent, start it again, copy its prompt, open its worktree', async
   await page.goto(`${cpr.url}features`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  const row = featureRow(page, branch);
+  const row = panel(page, branch);
 
   await row.getByRole('button', { name: 'Stop the agent' }).click();
   await expect(row).toContainText('Stopped');
@@ -322,4 +325,174 @@ test("a feature's branch: checked out in its worktree, so not here; gone, it say
   await page.goto(cpr.url);
   await expect(page.locator('.commit').first()).toBeVisible();
   await expect(page.locator('.feature-mark')).toHaveCount(0);
+});
+
+// Talking to the agent (V18c): the features view as a list and a panel, the thread CPR's hooks
+// record, one box whose message continues the agent's session.
+const box = (page: Page, branch: string) =>
+  panel(page, branch).getByRole('textbox', { name: 'Reply to the agent' });
+const resumes = () => cpr.calls().filter((call) => call.args[1] === '--resume');
+
+test("the panel: the agent's plan, a reply that continues its session, its next report", async ({
+  page,
+}) => {
+  cpr = await serveFeatures();
+  await page.goto(`${cpr.url}features`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const here = panel(page, branch);
+  // Started with CPR's hooks: the prompt it got is the thread's first entry.
+  expect(cpr.calls()[0]?.args).toEqual(
+    expect.arrayContaining(['--settings', join(cpr.repo, 'cpr/claude-settings.json')]),
+  );
+  await expect(here.getByText("CPR's prompt")).toBeVisible(POLL);
+
+  // It plans and stops: Claude Code says blocked; the thread has its report.
+  cpr.report(branch, 'Plan\n1. Add half(a) to src/half.ts\nCheck: a unit test');
+  await expect(here.locator('.thread-agent')).toContainText('1. Add half(a) to src/half.ts', POLL);
+  await expect(featureRow(page, branch)).toContainText('Plan ready: read it and answer', POLL);
+
+  // The reply: the live session stopped, then continued with the text and no other flag.
+  await box(page, branch).fill('OK, name it half.');
+  await box(page, branch).press('Control+Enter');
+  await expect(here.locator('.thread-you')).toContainText('OK, name it half.', POLL);
+  expect(cpr.stops()).toEqual(['fake0']);
+  expect(resumes()).toEqual([
+    { args: ['--bg', '--resume', 'session-0', 'OK, name it half.'], cwd: cpr.folder(branch) },
+  ]);
+  await expect(here.locator('.thread-line')).toHaveText('Continued');
+  await expect(box(page, branch)).toHaveValue('');
+  await expect(featureRow(page, branch)).toContainText('Working', POLL);
+
+  // What it waits on shows in the thread; Talk answers it.
+  cpr.hook(branch, {
+    hook_event_name: 'PermissionRequest',
+    tool_name: 'Bash',
+    tool_input: { command: 'npm test' },
+  });
+  cpr.session(branch, { state: 'blocked', waitingFor: 'permission prompt' });
+  await expect(here.locator('.thread-waits')).toHaveText(
+    'Waiting: permission to run npm test',
+    POLL,
+  );
+});
+
+test('a working agent: Stop and send asks first, then ends its turn to send', async ({ page }) => {
+  cpr = await serveFeatures();
+  await page.goto(`${cpr.url}features`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const here = panel(page, branch);
+  await box(page, branch).fill('Use a / 2, not a * 0.5.');
+  await here.getByRole('button', { name: 'Stop and send' }).click();
+  await expect(here).toContainText("Sending stops the agent's turn");
+  expect(cpr.stops()).toEqual([]);
+  await here.getByRole('button', { name: 'Stop it and send' }).click();
+  await expect(here.locator('.thread-you')).toContainText('Use a / 2, not a * 0.5.', POLL);
+  expect(cpr.stops()).toEqual(['fake0']);
+  expect(resumes()).toHaveLength(1);
+});
+
+test('Send the verdict: a review fills the box, from the panel and from the Review tab', async ({
+  page,
+}) => {
+  cpr = await serveFeatures();
+  await page.goto(`${cpr.url}features`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  cpr.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  cpr.report(branch, 'Done: half() in src/half.ts.');
+  await expect(featureRow(page, branch)).toContainText('Ready for review', POLL);
+
+  // Changes requested in its review; the Review tab sends them to the agent's box.
+  await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
+  await page.getByRole('tab', { name: /Review/ }).click();
+  await page.getByLabel('Review summary').fill('Name it halve.');
+  await page.getByLabel('Request changes').check();
+  await page.getByRole('button', { name: 'Finish review' }).click();
+  await page.locator('.finished').getByRole('link', { name: 'Send to the agent' }).click();
+  await expect(page).toHaveURL(/\/features\?branch=feature%2Fadd-a-half-function&send=verdict$/);
+  await expect(box(page, branch)).toHaveValue(/Address this review of the branch/, POLL);
+  await expect(box(page, branch)).toHaveValue(/Name it halve\./);
+  await panel(page, branch).getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(panel(page, branch).locator('.thread-you')).toContainText('Name it halve.', POLL);
+  expect(resumes()[0]?.args[3]).toContain('Address this review of the branch');
+  // Sent: the panel no longer offers it.
+  await expect(panel(page, branch).getByRole('button', { name: 'Send the verdict' })).toHaveCount(
+    0,
+  );
+
+  // A newer verdict, read again: the panel offers it.
+  const review = join(
+    cpr.repo,
+    'cpr/reviews/feature/add-a-half-function/reviewer@example.com.json',
+  );
+  const file = JSON.parse(readFileSync(review, 'utf8')) as { verdicts: { at: string }[] };
+  file.verdicts.push({ ...file.verdicts[0], at: new Date(Date.now() + 60_000).toISOString() });
+  writeFileSync(review, JSON.stringify(file));
+  await page.reload();
+  await panel(page, branch).getByRole('button', { name: 'Send the verdict' }).click();
+  await expect(box(page, branch)).toHaveValue(/Name it halve\./);
+});
+
+test('a feature started before its messages were kept: a note, and the box still sends', async ({
+  page,
+}) => {
+  cpr = await serveFeatures();
+  await page.goto(`${cpr.url}features`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const record = join(cpr.repo, 'cpr/features/feature/add-a-half-function.json');
+  const saved = JSON.parse(readFileSync(record, 'utf8')) as { agent: { hooks?: boolean } };
+  delete saved.agent.hooks;
+  writeFileSync(record, JSON.stringify(saved));
+  cpr.session(branch, { state: 'done' });
+  await page.reload();
+  await expect(panel(page, branch)).toContainText(
+    "CPR keeps an agent's messages from V18c on: Talk shows this one's.",
+  );
+  // Claude Code's sessions are read at most every 2 s: wait for the page's next look.
+  await expect(featureRow(page, branch)).toContainText('Plan ready', POLL);
+  await box(page, branch).fill('Go on.');
+  await box(page, branch).press('Control+Enter');
+  await expect(panel(page, branch).getByRole('status')).toContainText('Sent', POLL);
+  expect(resumes()).toHaveLength(1);
+});
+
+test('narrow: the panel takes the page, and Features goes back to the list', async ({ page }) => {
+  cpr = await serveFeatures();
+  await page.setViewportSize({ width: 900, height: 800 });
+  await page.goto(`${cpr.url}features`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  await expect(panel(page, branch)).toBeVisible();
+  await expect(featureRow(page, branch)).toBeHidden();
+  await panel(page, branch).getByRole('button', { name: '← Features' }).click();
+  await expect(featureRow(page, branch)).toBeVisible();
+  await expect(panel(page, branch)).toBeHidden();
+  await expect(page).toHaveURL(`${cpr.url}features`);
+  await featureRow(page, branch).click();
+  await expect(panel(page, branch)).toBeVisible();
+  await page.reload();
+  await expect(panel(page, branch)).toBeVisible();
+});
+
+test('Clean up: once merged, its sessions, worktree and branch go, and so does the feature', async ({
+  page,
+}) => {
+  cpr = await serveFeatures();
+  await page.goto(`${cpr.url}features`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  cpr.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  cpr.session(branch, { state: 'done' });
+  git('merge', '--quiet', '--ff-only', branch);
+  await page.reload();
+  await expect(featureRow(page, branch)).toContainText('Merged', POLL);
+  await panel(page, branch).getByRole('button', { name: 'Clean up' }).click();
+  await expect(featureRow(page, branch)).toHaveCount(0, POLL);
+  expect(cpr.removed()).toEqual(['fake0']);
+  expect(existsSync(cpr.folder(branch))).toBe(false);
+  expect(git('branch', '--list', branch)).toBe('');
+  await expect(page.getByText('No features yet')).toBeVisible();
 });

@@ -92,6 +92,18 @@ its commits; its commits show as the agent makes them. Review the branch as any 
 `cpr/config.json`, `"features": { "branchPrefix": "feature/", "worktrees": "../{repo}.worktrees"
 }` and `"agent": { "permissionMode": "auto", "model": "opus" }` change the defaults.
 
+Pick a feature and its panel opens beside the list: its state and actions, then its thread —
+the agent's plan and reports, your messages, what it waits on (a permission to run a command, a
+question and its options) — and a box to answer it. Send continues the agent's own session with
+your words (CPR stops a session that is still alive first, then resumes it); while it works,
+"Stop and send" asks before ending its turn. After you finish a review of its branch, "Send the
+verdict" (or "Send to the agent" in the Review tab) fills the box with what you decided. Nothing
+is sent until you press Send. The thread comes from hooks CPR gives each agent it starts
+(`cpr/claude-settings.json`, kept in `cpr/threads/`, out of git); they only record, so
+permissions and questions are still answered in the session (Talk). Once a feature is merged,
+Clean up removes its agent's sessions, its worktree and its branch; an unmerged one only after
+you confirm, keeping the branch; never while files there are not committed.
+
 A click selects a commit (j/k move the selection). To compare, turn on "Compare mode" (or press
 x): click one commit and another — the older is the base — and Compare (or x, Enter); one picked
 alone is compared with its parent; Escape leaves. Two commits on branches that diverged are

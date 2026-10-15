@@ -670,6 +670,20 @@ describe('features', () => {
     expect(existsSync(settings)).toBe(true);
   });
 
+  it("saves the record before the agent starts: its first hooks find the feature's worktree", async () => {
+    const { repo } = fresh();
+    const { claude, start } = fakeClaude();
+    const record = join(repo.root, 'cpr', 'features', 'feature', 'one.json');
+    let seen: FeatureFile | null = null;
+    claude.start = (request) => {
+      seen = JSON.parse(readFileSync(record, 'utf8')) as FeatureFile;
+      return start(request);
+    };
+    const s = await service(repo, claude);
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    expect(seen).toMatchObject({ branch: 'feature/one', worktree: feature.worktree.path });
+  });
+
   it('a reply continues the same session: a live one is stopped first, never resumed with a flag', async () => {
     const { repo } = fresh();
     const { claude, listed, stop, resume } = fakeClaude();

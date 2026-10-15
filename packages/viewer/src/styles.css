@@ -2841,6 +2841,17 @@ a.feature-mark:hover {
   white-space: nowrap;
 }
 
+button.feature-about {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
 .feature-state {
   margin: 4px 0 0;
   color: var(--muted);
@@ -2879,4 +2890,163 @@ a.feature-mark:hover {
 
 .feature-said {
   color: var(--muted);
+}
+
+/* V18c: the list and, beside it, the picked feature's panel. */
+.features-body.has-panel {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.features-body.has-panel .feature-row {
+  cursor: pointer;
+}
+
+.features-body.has-panel .feature-row:hover {
+  background: var(--bg);
+}
+
+.feature-row.picked,
+.features-body.has-panel .feature-row.picked:hover {
+  box-shadow: inset 3px 0 0 var(--moved);
+  background: color-mix(in srgb, var(--moved) 7%, var(--panel));
+}
+
+.feature-panel {
+  position: sticky;
+  top: 0;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.feature-back {
+  display: none;
+  margin-bottom: 8px;
+}
+
+.feature-confirm {
+  font-size: 13px;
+}
+
+.feature-confirm .button {
+  margin-top: 0;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 55vh;
+  margin: 12px 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.thread-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.thread-you {
+  margin-left: 48px;
+  background: color-mix(in srgb, var(--moved) 9%, var(--panel));
+}
+
+.thread-who,
+.thread-cpr summary {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.thread-cpr summary {
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.thread-text {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.thread-cpr .thread-text {
+  margin-top: 6px;
+}
+
+.thread-waits {
+  padding: 6px 10px;
+  border-left: 3px solid var(--warning);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.thread-line {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.reply {
+  margin-top: 12px;
+}
+
+.reply textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.reply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 14px;
+  font-size: 13px;
+}
+
+.reply-actions .button {
+  margin-top: 4px;
+  padding: 6px 14px;
+}
+
+.reply-actions .button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media (max-width: 1099px) {
+  .features-body.has-panel {
+    display: block;
+  }
+
+  .features-body.has-panel .features-list {
+    display: none;
+  }
+
+  .feature-panel {
+    position: static;
+  }
+
+  .feature-back {
+    display: inline;
+  }
 }

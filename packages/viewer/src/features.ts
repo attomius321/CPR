@@ -3,9 +3,12 @@
 import type {
   BranchReviewList,
   BranchReviewSummary,
+  FeatureAgentState,
   FeatureStart,
   FeatureSummary,
+  FeatureThread,
   PermissionMode,
+  ThreadEntry,
 } from '@cpr/core';
 
 /** The permission modes the dialog offers, as it names them. */
@@ -218,4 +221,110 @@ export function featureChips(
       if (remote.branch === feature.branch) chips.set(remote.name, value);
   }
   return chips;
+}
+
+/** One line of a feature's thread as its panel shows it (V18c). */
+export interface ThreadItem {
+  /** CPR's prompt, the agent's report, the person's message, what it waits on, or a note. */
+  who: 'cpr' | 'agent' | 'you' | 'waits' | 'line';
+  at: string;
+  text: string;
+}
+
+/** Tools whose permission is to change a file (`file_path` in their input). */
+const EDITS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+
+/** What an agent waits on, in words: a question and its options, or a permission. */
+function waitsFor(entry: Extract<ThreadEntry, { kind: 'asks' }>, worktree?: string): string {
+  if (entry.questions) {
+    const asked = entry.questions.map((q) =>
+      q.options.length > 0 ? `${q.question} — ${q.options.join(' · ')}` : q.question,
+    );
+    return `Asks: ${asked.join('; ')}`;
+  }
+  let input: { command?: unknown; file_path?: unknown } = {};
+  try {
+    input = (JSON.parse(entry.input ?? '') as typeof input | null) ?? {};
+  } catch {
+    // Cut at 4 KB, or not JSON: only the tool is shown.
+  }
+  if (entry.tool === 'Bash' && typeof input.command === 'string') {
+    return `Waiting: permission to run ${input.command}`;
+  }
+  if (EDITS.has(entry.tool) && typeof input.file_path === 'string') {
+    const path = input.file_path;
+    const inside = worktree && [`${worktree}/`, `${worktree}\\`].find((p) => path.startsWith(p));
+    return `Waiting: permission to edit ${inside ? path.slice(inside.length) : path}`;
+  }
+  return `Waiting: permission to use ${entry.tool}`;
+}
+
+/**
+ * A thread's entries as the panel shows them: the first prompt is CPR's, later ones the person's
+ * messages; reports are the agent's; what it waited on in words; a session started after the
+ * first as a line. Ends and Claude Code's notices are left out (the state says as much).
+ */
+export function threadItems(entries: readonly ThreadEntry[], worktree?: string): ThreadItem[] {
+  const items: ThreadItem[] = [];
+  let started = false;
+  let prompted = false;
+  for (const entry of entries) {
+    const { at } = entry;
+    switch (entry.kind) {
+      case 'start':
+        if (started) {
+          const text =
+            entry.source === 'resume'
+              ? 'Continued'
+              : entry.source === 'fork'
+                ? 'A copy of the session started'
+                : 'Started again';
+          items.push({ who: 'line', at, text });
+        }
+        started = true;
+        break;
+      case 'prompt':
+        items.push({ who: prompted ? 'you' : 'cpr', at, text: entry.text });
+        prompted = true;
+        break;
+      case 'report':
+        items.push({ who: 'agent', at, text: entry.text });
+        break;
+      case 'asks':
+        items.push({ who: 'waits', at, text: waitsFor(entry, worktree) });
+        break;
+      default:
+        break;
+    }
+  }
+  return items;
+}
+
+/**
+ * How a message reaches the agent: sent (its turn ended, or it stopped), sent once its turn is
+ * stopped (it works, or waits on a prompt), or not at all (no session to continue).
+ */
+export function replyMode(agent: FeatureAgentState): 'send' | 'stop-and-send' | 'none' {
+  switch (agent.state) {
+    case 'working':
+      return 'stop-and-send';
+    case 'needs-you':
+      return agent.waitingFor ? 'stop-and-send' : 'send';
+    case 'plan-ready':
+    case 'ready':
+    case 'done':
+    case 'stopped':
+    case 'failed':
+      return 'send';
+    default:
+      return 'none';
+  }
+}
+
+/** The review's last verdict, when it is newer than the last message the agent got. */
+export function verdictToSend(thread: FeatureThread | null): FeatureThread['verdict'] | null {
+  const verdict = thread?.verdict;
+  if (!verdict) return null;
+  const last = thread.entries.findLast((e) => e.kind === 'prompt');
+  return !last || verdict.at > last.at ? verdict : null;
 }

@@ -1,4 +1,11 @@
-import type { BranchReviewSummary, FeatureStart, FeatureSummary } from '@cpr/core';
+import type {
+  BranchReviewSummary,
+  FeatureAgentState,
+  FeatureStart,
+  FeatureSummary,
+  FeatureThread,
+  ThreadEntry,
+} from '@cpr/core';
 import { describe, expect, it } from 'vitest';
 import {
   branchProblem,
@@ -6,7 +13,10 @@ import {
   featureGroups,
   featureNext,
   proposeBranch,
+  replyMode,
   startedNotice,
+  threadItems,
+  verdictToSend,
 } from '../src/features.js';
 
 describe('proposeBranch', () => {
@@ -252,5 +262,118 @@ describe('featureChips', () => {
       title: 'Feature: Export a review as CSV — Working',
       href: '/features?branch=feature%2Fcsv',
     });
+  });
+});
+
+describe('threadItems', () => {
+  const at = (n: number) => `2026-10-15T09:0${n}:00.000Z`;
+  /** An entry without its time and session (`Omit` taken over each kind). */
+  type Body<T> = T extends unknown ? Omit<T, 'at' | 'session'> : never;
+  const e = (n: number, entry: Body<ThreadEntry>, session = 's1') => ({
+    at: at(n),
+    session,
+    ...entry,
+  });
+
+  it("shows CPR's prompt, the agent's reports, the person's messages, and what the agent waits on", () => {
+    const items = threadItems(
+      [
+        e(0, { kind: 'start', source: 'startup' }),
+        e(0, { kind: 'prompt', text: 'You are starting a new feature…' }),
+        e(1, {
+          kind: 'asks',
+          tool: 'AskUserQuestion',
+          questions: [{ question: 'End with !?', options: ['Yes', 'No'] }],
+        }),
+        e(2, { kind: 'report', text: 'The plan' }),
+        e(2, { kind: 'notice', type: 'idle_prompt', message: 'Claude is waiting for your input' }),
+        e(2, { kind: 'end', reason: 'other' }),
+        e(3, { kind: 'start', source: 'resume' }),
+        e(3, { kind: 'prompt', text: 'OK, go ahead.' }),
+        e(4, {
+          kind: 'asks',
+          tool: 'Edit',
+          input: JSON.stringify({ file_path: '/w/app.worktrees/x/src/greet.js' }),
+        }),
+        e(5, {
+          kind: 'asks',
+          tool: 'Bash',
+          input: JSON.stringify({ command: 'git commit -m "Add farewell"' }),
+        }),
+        e(6, { kind: 'start', source: 'fork' }, 's2'),
+        e(6, { kind: 'asks', tool: 'WebFetch', input: '{"url":"https://example.com"}' }, 's2'),
+      ],
+      '/w/app.worktrees/x',
+    );
+    expect(items).toEqual([
+      { who: 'cpr', at: at(0), text: 'You are starting a new feature…' },
+      { who: 'waits', at: at(1), text: 'Asks: End with !? — Yes · No' },
+      { who: 'agent', at: at(2), text: 'The plan' },
+      { who: 'line', at: at(3), text: 'Continued' },
+      { who: 'you', at: at(3), text: 'OK, go ahead.' },
+      { who: 'waits', at: at(4), text: 'Waiting: permission to edit src/greet.js' },
+      { who: 'waits', at: at(5), text: 'Waiting: permission to run git commit -m "Add farewell"' },
+      { who: 'line', at: at(6), text: 'A copy of the session started' },
+      { who: 'waits', at: at(6), text: 'Waiting: permission to use WebFetch' },
+    ]);
+  });
+
+  it('says a later fresh start, and keeps a broken input readable', () => {
+    expect(
+      threadItems([
+        e(0, { kind: 'start', source: 'startup' }),
+        e(1, { kind: 'start', source: 'startup' }, 's2'),
+        e(1, { kind: 'asks', tool: 'Bash', input: '{"command":"npm run' }, 's2'),
+      ]),
+    ).toEqual([
+      { who: 'line', at: at(1), text: 'Started again' },
+      { who: 'waits', at: at(1), text: 'Waiting: permission to use Bash' },
+    ]);
+  });
+});
+
+describe('replyMode', () => {
+  const agent = (over: Partial<FeatureAgentState>): FeatureAgentState => ({
+    state: 'working',
+    kind: 'claude',
+    id: 's1',
+    ...over,
+  });
+  it('sends to an agent that finished or waits for an answer; asks first when that ends its turn', () => {
+    expect(replyMode(agent({ state: 'plan-ready' }))).toBe('send');
+    expect(replyMode(agent({ state: 'ready' }))).toBe('send');
+    expect(replyMode(agent({ state: 'done' }))).toBe('send');
+    expect(replyMode(agent({ state: 'stopped' }))).toBe('send');
+    expect(replyMode(agent({ state: 'failed' }))).toBe('send');
+    expect(replyMode(agent({ state: 'needs-you' }))).toBe('send');
+    expect(replyMode(agent({ state: 'working' }))).toBe('stop-and-send');
+    expect(replyMode(agent({ state: 'needs-you', waitingFor: 'permission prompt' }))).toBe(
+      'stop-and-send',
+    );
+    // No session to continue.
+    for (const state of ['not-running', 'not-started', 'no-agent', 'unknown'] as const) {
+      expect(replyMode(agent({ state }))).toBe('none');
+    }
+  });
+});
+
+describe('verdictToSend', () => {
+  const verdict = {
+    at: '2026-10-15T10:00:00.000Z',
+    event: 'request-changes' as const,
+    head: 'c'.repeat(40),
+    text: 'Address this review…',
+  };
+  const thread = (entries: ThreadEntry[], withVerdict = true): FeatureThread => ({
+    entries,
+    recorded: true,
+    ...(withVerdict ? { verdict } : {}),
+  });
+  const prompt = (at: string): ThreadEntry => ({ at, session: 's', kind: 'prompt', text: 'x' });
+  it('offers a verdict newer than the last message the agent got', () => {
+    expect(verdictToSend(thread([prompt('2026-10-15T09:00:00.000Z')]))).toBe(verdict);
+    expect(verdictToSend(thread([prompt('2026-10-15T10:05:00.000Z')]))).toBeNull();
+    expect(verdictToSend(thread([], false))).toBeNull();
+    expect(verdictToSend(null)).toBeNull();
   });
 });

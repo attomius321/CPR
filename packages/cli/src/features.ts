@@ -791,6 +791,8 @@ export function features(
     if (!agent) {
       feature.agent = null;
     } else {
+      // The session's first hooks run while `--bg` starts it: they look for this record.
+      await save(where, feature);
       const result = await agent.start({
         cwd: feature.worktree,
         name: feature.branch,
