@@ -2334,6 +2334,9 @@ base, each checkout's `git status` unchanged, all removed after. Screenshots lig
 1440 and 900 px, no page errors. No analysis code changed. Not verified: a real Claude Code
 started by CPR, Windows and macOS, Firefox and Safari.
 
+Merged into main (2026-10-15), V18a–c together. `main` verified after the merge: 692 unit
+tests, build, 98 e2e.
+
 ## V18b — The features view (2026-10-15, branch `milestone/v18-start-a-feature`)
 
 `/features` lists the features started from CPR grouped by what each needs from the person —
@@ -2362,6 +2365,9 @@ and dark, 1440 and 900 px, no page errors. First rows against `main`'s build: Bi
 against 984–1,042 ms, ky 975–991 against 973–1,004 ms; the bar 37 px on both. Not verified: a
 real Claude Code session stopped or attached, VS Code opening a worktree for real, Windows,
 macOS, Firefox, Safari.
+
+Merged into main (2026-10-15), V18a–c together. `main` verified after the merge: 692 unit
+tests, build, 98 e2e.
 
 ## V18c spike — answering a background agent from CPR (2026-10-15, branch `milestone/v18-start-a-feature`)
 
@@ -2481,3 +2487,6 @@ removed. Screenshots light and dark at 1440 and 900 px, no page errors. Not veri
 and questions from a real agent in the panel, a session woken outside CPR, `cpr view` closed
 while an agent works, an unmerged Clean up with a real agent, Windows and macOS, Firefox and
 Safari.
+
+Merged into main (2026-10-15), V18a–c together. `main` verified after the merge: 692 unit
+tests, build, 98 e2e.
