@@ -348,7 +348,9 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
   await expect(here.getByText("CPR's prompt")).toBeVisible(POLL);
 
   // It plans and stops: Claude Code says blocked; the thread has its report.
-  cpr.report(branch, 'Plan\n1. Add half(a) to src/half.ts\nCheck: a unit test');
+  // A plan longer than the thread's box (as real plans are).
+  const steps = Array.from({ length: 40 }, (_, i) => `${i + 2}. Another step`).join('\n');
+  cpr.report(branch, `Plan\n1. Add half(a) to src/half.ts\n${steps}\nCheck: a unit test`);
   await expect(here.locator('.thread-agent')).toContainText('1. Add half(a) to src/half.ts', POLL);
   await expect(featureRow(page, branch)).toContainText('Plan ready: read it and answer', POLL);
 
@@ -361,6 +363,8 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
     { args: ['--bg', '--resume', 'session-0', 'OK, name it half.'], cwd: cpr.folder(branch) },
   ]);
   await expect(here.locator('.thread-line')).toHaveText('Continued');
+  // The newest is in view: the thread opens at its end, and follows it.
+  await expect(here.locator('.thread-you')).toBeInViewport();
   await expect(box(page, branch)).toHaveValue('');
   await expect(featureRow(page, branch)).toContainText('Working', POLL);
 

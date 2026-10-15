@@ -371,10 +371,18 @@ function useThread(branch: string, version: unknown): [FeatureThread | null, () 
 const timeOf = (at: string) =>
   new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 
-/** What the agent was told and reported, newest last; what it waits on as a line. */
+/**
+ * What the agent was told and reported, newest last; what it waits on as a line. It opens at its
+ * end and follows new entries; a read with nothing new leaves it where the person scrolled.
+ */
 function Thread({ thread, worktree }: { thread: FeatureThread | null; worktree: string }) {
+  const list = useRef<HTMLOListElement>(null);
+  const items = thread ? threadItems(thread.entries, worktree) : [];
+  useLayoutEffect(() => {
+    const box = list.current;
+    if (box) box.scrollTop = box.scrollHeight;
+  }, [items.length]);
   if (!thread) return <p className="hint">Reading its messages…</p>;
-  const items = threadItems(thread.entries, worktree);
   return (
     <>
       {!thread.recorded && (
@@ -384,7 +392,7 @@ function Thread({ thread, worktree }: { thread: FeatureThread | null; worktree: 
         <p className="hint">Nothing yet: the agent's reports and your messages show here.</p>
       )}
       {items.length > 0 && (
-        <ol className="thread">
+        <ol ref={list} className="thread">
           {items.map((item, i) => {
             const key = `${i}:${item.at}`;
             if (item.who === 'line' || item.who === 'waits') {
