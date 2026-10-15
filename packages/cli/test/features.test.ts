@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import {
   agentState,
+  claudeCode,
   featureBase,
   featurePath,
   featurePrompt,
@@ -18,6 +19,7 @@ import {
   type AgentSession,
   type ClaudeCode,
   type FeatureFile,
+  type Run,
 } from '../src/features.js';
 import { reviewPlace } from '../src/reviews.js';
 
@@ -61,6 +63,8 @@ const fresh = () => {
   return made;
 };
 const NOW = new Date('2026-10-15T09:00:00Z');
+/** Where CPR's hook would be installed. */
+const HOOK = '/opt/cpr/dist/agent-hook.js';
 
 const record = (over: Partial<FeatureFile> = {}): FeatureFile => ({
   agent: { kind: 'claude', permissionMode: 'default', started: '2026-10-15T09:00:00.000Z' },
@@ -296,13 +300,32 @@ describe('features', () => {
         kind: 'background',
         startedAt: listed.length,
         id: 's1',
+        sessionId: 'session-1',
         state: 'working',
+        status: 'busy',
       });
       return Promise.resolve({ ok: true });
     });
     const sessions = vi.fn<ClaudeCode['sessions']>(() => Promise.resolve(listed));
     const stop = vi.fn<ClaudeCode['stop']>((id) => {
-      for (const session of listed) if (session.id === id) session.state = 'stopped';
+      for (const session of listed) {
+        if (session.id !== id) continue;
+        session.state = 'stopped';
+        delete session.status;
+      }
+      return Promise.resolve({ ok: true });
+    });
+    const resume = vi.fn<ClaudeCode['resume']>(({ sessionId }) => {
+      for (const session of listed) {
+        if (session.sessionId !== sessionId) continue;
+        session.state = 'working';
+        session.status = 'busy';
+      }
+      return Promise.resolve({ ok: true });
+    });
+    const remove = vi.fn<ClaudeCode['remove']>((id) => {
+      const at = listed.findIndex((session) => session.id === id);
+      if (at >= 0) listed.splice(at, 1);
       return Promise.resolve({ ok: true });
     });
     const claude: ClaudeCode = {
@@ -310,17 +333,21 @@ describe('features', () => {
       start,
       sessions,
       stop,
+      resume,
+      remove,
       account: () => Promise.resolve('your Pro subscription'),
     };
-    return { claude, listed, start, sessions, stop };
+    return { claude, listed, start, sessions, stop, resume, remove };
   }
   const opened: string[] = [];
-  const service = (repo: TestRepo, claude: ClaudeCode | null) =>
+  const service = (repo: TestRepo, claude: ClaudeCode | null, hook = HOOK) =>
     openRepo(repo.root).then((git) =>
       features(git, cache, {
         claude: () => Promise.resolve(claude),
         now: () => NOW,
         env: {},
+        hook,
+        node: '/usr/bin/node',
         openFolder: (folder) => {
           opened.push(folder);
           return Promise.resolve({ opened: true });
@@ -382,6 +409,7 @@ describe('features', () => {
       prompt,
       permissionMode: 'auto',
       addDir: join(repo.root, 'cpr'),
+      settings: join(repo.root, 'cpr', 'claude-settings.json'),
     });
     expect(prompt).toContain('One row per comment.');
     const saved = JSON.parse(
@@ -393,7 +421,7 @@ describe('features', () => {
       by: 'ada@example.com',
       planFirst: true,
       worktree: folder,
-      agent: { kind: 'claude', permissionMode: 'auto', started: NOW.toISOString() },
+      agent: { kind: 'claude', permissionMode: 'auto', started: NOW.toISOString(), hooks: true },
     });
     // The agents' instructions and the folder's .gitignore, as for reviews.
     expect(existsSync(join(repo.root, 'cpr', 'AGENTS.md'))).toBe(true);
@@ -585,5 +613,310 @@ describe('features', () => {
     commit(repo.root, 'src/a.ts', 'export const a = 3;\n');
     expect(await s.merge('feature/one')).toEqual({ into: 'main', conflicts: ['src/a.ts'] });
     await expect(s.merge('feature/nope')).rejects.toMatchObject({ status: 404 });
+  });
+
+  /** Commits in `cwd` as an agent would. */
+  const commitIn = async (cwd: string, file: string, text: string) => {
+    const { execFileSync } = await import('node:child_process');
+    const { writeFileSync } = await import('node:fs');
+    writeFileSync(join(cwd, file), text);
+    execFileSync('git', ['-C', cwd, 'add', file]);
+    execFileSync('git', ['-C', cwd, 'commit', '--quiet', '-m', file], {
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'A',
+        GIT_AUTHOR_EMAIL: 'a@x',
+        GIT_COMMITTER_NAME: 'A',
+        GIT_COMMITTER_EMAIL: 'a@x',
+      },
+    });
+  };
+
+  it("starts the agent with CPR's hooks: one settings file, rewritten when CPR moves or it is gone", async () => {
+    const { repo } = fresh();
+    const settings = join(repo.root, 'cpr', 'claude-settings.json');
+    const s = await service(repo, fakeClaude().claude);
+    await s.list();
+    // No feature: nothing written.
+    expect(existsSync(settings)).toBe(false);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const written = JSON.parse(readFileSync(settings, 'utf8')) as {
+      hooks: Record<string, { matcher?: string; hooks: { type: string; command: string }[] }[]>;
+    };
+    expect(Object.keys(written.hooks).sort()).toEqual([
+      'Notification',
+      'PermissionRequest',
+      'PreToolUse',
+      'SessionEnd',
+      'SessionStart',
+      'Stop',
+      'UserPromptSubmit',
+    ]);
+    const command = `'/usr/bin/node' '${HOOK}' '${join(repo.root, 'cpr')}'`;
+    for (const [event, entries] of Object.entries(written.hooks)) {
+      expect(entries).toEqual([
+        {
+          ...(event === 'PreToolUse' ? { matcher: 'AskUserQuestion' } : {}),
+          hooks: [{ type: 'command', command, timeout: 30 }],
+        },
+      ]);
+    }
+    // CPR installed elsewhere: the next look rewrites it, so older sessions find the hook.
+    await (await service(repo, fakeClaude().claude, '/new/cpr/agent-hook.js')).list();
+    expect(readFileSync(settings, 'utf8')).toContain('/new/cpr/agent-hook.js');
+    // Gone (a session would not wake without it): written again.
+    rmSync(settings);
+    await s.list();
+    expect(existsSync(settings)).toBe(true);
+  });
+
+  it('a reply continues the same session: a live one is stopped first, never resumed with a flag', async () => {
+    const { repo } = fresh();
+    const { claude, listed, stop, resume } = fakeClaude();
+    const s = await service(repo, claude);
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const session = listed[0] as AgentSession;
+
+    // Its turn ended, its process alive: stopped, then resumed with the text.
+    Object.assign(session, { state: 'blocked', status: 'idle' });
+    const replied = await s.reply({ branch: 'feature/one', text: 'OK, go ahead.' });
+    expect(stop).toHaveBeenCalledWith('s1');
+    expect(resume).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      cwd: feature.worktree.path,
+      text: 'OK, go ahead.',
+    });
+    expect(stop.mock.invocationCallOrder[0]).toBeLessThan(resume.mock.invocationCallOrder[0] ?? 0);
+    expect(replied).toEqual({
+      feature: expect.objectContaining({ branch: 'feature/one' }) as unknown,
+    });
+    expect(replied.feature.agent.state).toBe('working');
+
+    // Working: sending would end its turn, so only when asked to.
+    stop.mockClear();
+    await expect(s.reply({ branch: 'feature/one', text: 'Wait' })).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(/working/) as string,
+    });
+    expect(stop).not.toHaveBeenCalled();
+    await s.reply({ branch: 'feature/one', text: 'Wait', stop: true });
+    expect(stop).toHaveBeenCalledWith('s1');
+
+    // Stopped already: resumed only.
+    stop.mockClear();
+    Object.assign(session, { state: 'stopped' });
+    delete session.status;
+    await s.reply({ branch: 'feature/one', text: 'Go on' });
+    expect(stop).not.toHaveBeenCalled();
+    expect(resume).toHaveBeenLastCalledWith(expect.objectContaining({ text: 'Go on' }));
+  });
+
+  it('says when Claude Code made a copy, and refuses what it cannot send', async () => {
+    const { repo } = fresh();
+    const { claude, listed } = fakeClaude();
+    const s = await service(repo, claude);
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    Object.assign(listed[0] as AgentSession, { state: 'done', status: 'idle' });
+    claude.resume = () => {
+      listed.push({
+        cwd: feature.worktree.path,
+        kind: 'background',
+        startedAt: 99,
+        id: 's2',
+        sessionId: 'session-2',
+        state: 'working',
+        status: 'busy',
+      });
+      return Promise.resolve({ ok: true });
+    };
+    expect((await s.reply({ branch: 'feature/one', text: 'OK' })).copy).toBe('s2');
+
+    const refused = (text: string, status: number, words: RegExp) =>
+      expect(s.reply({ branch: 'feature/one', text })).rejects.toMatchObject({
+        status,
+        message: expect.stringMatching(words) as string,
+      });
+    await refused('  ', 400, /empty/);
+    await refused('x'.repeat(20_001), 400, /20,000/);
+    await expect(s.reply({ branch: 'feature/nope', text: 'OK' })).rejects.toMatchObject({
+      status: 404,
+    });
+    listed.length = 0;
+    await refused('OK', 409, /no session/);
+  });
+
+  it("gives a feature's thread, whether it is recorded, and its review's last verdict as text", async () => {
+    const { repo, shas } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { recordEvent } = await import('../src/thread.js');
+    const cpr = join(repo.root, 'cpr');
+    const cwd = feature.worktree.path;
+    await recordEvent(
+      cpr,
+      { hook_event_name: 'UserPromptSubmit', session_id: 'session-1', cwd, prompt: 'Start' },
+      '2026-10-15T09:00:01.000Z',
+    );
+    await recordEvent(
+      cpr,
+      { hook_event_name: 'Stop', session_id: 'session-1', cwd, last_assistant_message: 'The plan' },
+      '2026-10-15T09:00:02.000Z',
+    );
+    const thread = await s.thread('feature/one');
+    expect(thread).toEqual({
+      entries: [
+        { at: '2026-10-15T09:00:01.000Z', session: 'session-1', kind: 'prompt', text: 'Start' },
+        { at: '2026-10-15T09:00:02.000Z', session: 'session-1', kind: 'report', text: 'The plan' },
+      ],
+      recorded: true,
+    });
+
+    // A verdict on the branch: its text for the agent, as "Copy for the agent" has it.
+    const { writeFileSync } = await import('node:fs');
+    const review = join(cpr, 'reviews', 'feature', 'one', 'ada@example.com.json');
+    mkdirSync(dirname(review), { recursive: true });
+    writeFileSync(
+      review,
+      JSON.stringify({
+        base: shas.B,
+        branch: 'feature/one',
+        drafts: [],
+        head: shas.B,
+        marks: {},
+        reviewer: 'ada@example.com',
+        summary: '',
+        updated: NOW.toISOString(),
+        verdicts: [
+          {
+            at: '2026-10-15T09:30:00.000Z',
+            comments: [],
+            event: 'request-changes',
+            head: shas.B,
+            summary: 'Name it half.',
+          },
+        ],
+      }),
+    );
+    const { verdict } = await s.thread('feature/one');
+    expect(verdict).toMatchObject({
+      at: '2026-10-15T09:30:00.000Z',
+      event: 'request-changes',
+      head: shas.B,
+    });
+    expect(verdict?.text).toContain('Address this review of the branch feature/one');
+    expect(verdict?.text).toContain('Name it half.');
+    await expect(s.thread('feature/nope')).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('reads a finished plan as plan ready: Claude Code says blocked, the thread has its report', async () => {
+    const { repo } = fresh();
+    const { claude, listed } = fakeClaude();
+    const s = await service(repo, claude);
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { recordEvent } = await import('../src/thread.js');
+    const cpr = join(repo.root, 'cpr');
+    const cwd = feature.worktree.path;
+    Object.assign(listed[0] as AgentSession, { state: 'blocked', status: 'idle' });
+    await recordEvent(
+      cpr,
+      { hook_event_name: 'UserPromptSubmit', session_id: 'session-1', cwd, prompt: 'Start' },
+      '2026-10-15T09:00:01.000Z',
+    );
+    expect((await s.list()).features[0]?.agent.state).toBe('needs-you');
+    await recordEvent(
+      cpr,
+      { hook_event_name: 'Stop', session_id: 'session-1', cwd, last_assistant_message: 'The plan' },
+      '2026-10-15T09:00:02.000Z',
+    );
+    expect((await s.list()).features[0]?.agent.state).toBe('plan-ready');
+    // Waiting on something named: still needs you.
+    Object.assign(listed[0] as AgentSession, { waitingFor: 'permission prompt' });
+    expect((await s.list()).features[0]?.agent).toMatchObject({
+      state: 'needs-you',
+      waitingFor: 'permission prompt',
+    });
+  });
+
+  it('cleans up a merged feature: its sessions, worktree and branch; the record stays, finished', async () => {
+    const { repo } = fresh();
+    const { claude, remove } = fakeClaude();
+    const s = await service(repo, claude);
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    await commitIn(feature.worktree.path, 'src/c.ts', 'export const c = 1;\n');
+    repo.git('merge', '--quiet', '--ff-only', 'feature/one');
+    await s.clean({ branch: 'feature/one' });
+    expect(remove).toHaveBeenCalledWith('s1');
+    expect(existsSync(feature.worktree.path)).toBe(false);
+    expect(repo.git('branch', '--list', 'feature/one')).toBe('');
+    const saved = JSON.parse(
+      readFileSync(join(repo.root, 'cpr', 'features', 'feature', 'one.json'), 'utf8'),
+    ) as FeatureFile;
+    expect(saved.finished).toBe(NOW.toISOString());
+    expect((await s.list()).features).toEqual([]);
+  });
+
+  it('cleans up an unmerged feature only when asked: the worktree goes, the branch stays; never one with work', async () => {
+    const { repo } = fresh();
+    const { claude, remove, stop } = fakeClaude();
+    const s = await service(repo, claude);
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    await commitIn(feature.worktree.path, 'src/c.ts', 'export const c = 1;\n');
+    await expect(s.clean({ branch: 'feature/one' })).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(/not merged/) as string,
+    });
+    // Work not committed: nothing is touched, whatever is asked.
+    const { writeFileSync } = await import('node:fs');
+    writeFileSync(join(feature.worktree.path, 'notes.md'), 'todo\n');
+    await expect(s.clean({ branch: 'feature/one', unmerged: true })).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(/1 file not committed/) as string,
+    });
+    expect(remove).not.toHaveBeenCalled();
+    rmSync(join(feature.worktree.path, 'notes.md'));
+    await s.clean({ branch: 'feature/one', unmerged: true });
+    expect(stop).toHaveBeenCalledWith('s1');
+    expect(remove).toHaveBeenCalledWith('s1');
+    expect(existsSync(feature.worktree.path)).toBe(false);
+    expect(repo.git('branch', '--list', 'feature/one')).toContain('feature/one');
+  });
+});
+
+describe('claudeCode', () => {
+  it('starts with --settings, resumes with no other flag, and removes a session', async () => {
+    const calls: { args: string[]; cwd: string }[] = [];
+    const run: Run = (_command, args, { cwd }) => {
+      calls.push({ args, cwd });
+      return Promise.resolve({ code: 0, stdout: '', stderr: '' });
+    };
+    const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
+    await claude.start({
+      cwd: '/w',
+      name: 'feature/x',
+      prompt: 'Do it',
+      permissionMode: 'default',
+      addDir: '/repo/cpr',
+      settings: '/repo/cpr/claude-settings.json',
+    });
+    await claude.resume({ sessionId: 'session-1', cwd: '/w', text: 'OK' });
+    await claude.remove('s1');
+    expect(calls).toEqual([
+      {
+        args: [
+          '--bg',
+          '--name',
+          'feature/x',
+          '--add-dir',
+          '/repo/cpr',
+          '--settings',
+          '/repo/cpr/claude-settings.json',
+          'Do it',
+        ],
+        cwd: '/w',
+      },
+      { args: ['--bg', '--resume', 'session-1', 'OK'], cwd: '/w' },
+      { args: ['rm', 's1'], cwd: '/repo' },
+    ]);
   });
 });

@@ -1,17 +1,20 @@
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { basename, dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   addWorktree,
   branchNameProblem,
   checkMerge,
   commitsBetween,
   defaultBranch,
+  deleteMergedBranch,
   isAncestor,
   isCommit,
   listRefs,
   PERMISSION_MODES,
+  removeWorktree,
   uncommittedFiles,
   userEmail,
   WorktreeRefused,
@@ -21,16 +24,28 @@ import {
   type FeatureAgentState,
   type FeatureList,
   type FeatureOptions,
+  type FeatureReplied,
+  type FeatureReply,
   type FeatureRequest,
   type FeatureStart,
   type FeatureSummary,
+  type FeatureThread,
   type GitRepo,
   type PermissionMode,
   type RefList,
 } from '@cpr/core';
 import { localHost, onPath } from './editor.js';
 import { CONFIG_FILES } from './plugins.js';
-import { prepareCprFolder, reviewPlace, sortKeys, type ReviewPlace } from './reviews.js';
+import {
+  prepareCprFolder,
+  readReview,
+  reviewPath,
+  reviewPlace,
+  sortKeys,
+  verdictText,
+  type ReviewPlace,
+} from './reviews.js';
+import { readThread, turnEnded } from './thread.js';
 
 /** A feature on disk: `cpr/features/<branch>.json` (V18), one per branch. */
 export interface FeatureFile {
@@ -45,6 +60,8 @@ export interface FeatureFile {
   created: string;
   /** The branch `base` was the tip of; absent when a row was picked. */
   from?: string;
+  /** When it was cleaned up (V18c): no longer listed. */
+  finished?: string;
   planFirst: boolean;
   /** The feature's worktree folder. */
   worktree: string;
@@ -57,6 +74,8 @@ export interface FeatureAgentRecord {
   started?: string;
   /** Why the last start failed, in the agent's words. */
   error?: string;
+  /** Started with CPR's hooks (V18c): its thread is recorded. */
+  hooks?: boolean;
 }
 
 /** Every feature file's first key: where an agent that opens it finds its instructions. */
@@ -114,6 +133,7 @@ export async function readFeature(path: string): Promise<FeatureFile | null> {
     ...(text(v.by) ? { by: text(v.by) } : {}),
     created: text(v.created),
     ...(text(v.from) ? { from: text(v.from) } : {}),
+    ...(text(v.finished) ? { finished: text(v.finished) } : {}),
     planFirst: v.planFirst === true,
     worktree: text(v.worktree),
   };
@@ -129,6 +149,7 @@ function asAgent(value: unknown): FeatureAgentRecord | null {
     permissionMode: mode,
     ...(typeof v.started === 'string' ? { started: v.started } : {}),
     ...(typeof v.error === 'string' ? { error: v.error } : {}),
+    ...(v.hooks === true ? { hooks: true } : {}),
   };
 }
 
@@ -277,24 +298,39 @@ export function parseAccount(text: string): string | undefined {
   return undefined;
 }
 
+/** The newest session in a feature's worktree, matched by real path. */
+export function newestSession(
+  feature: FeatureFile,
+  sessions: AgentSession[] | null,
+  real: (path: string) => string,
+): AgentSession | undefined {
+  const folder = real(feature.worktree);
+  return (sessions ?? [])
+    .filter((s) => real(s.cwd) === folder)
+    .sort((a, b) => b.startedAt - a.startedAt)[0];
+}
+
+/** Claude Code's word for a session waiting on the person, or for one whose turn ended there. */
+const isBlocked = (session: AgentSession) =>
+  ['blocked', 'waiting'].includes(session.state ?? session.status ?? '');
+
 /**
  * What the page says of a feature's agent: the newest session working in its worktree (matched
  * by real path), else why there is none. `ahead` (commits since the base) tells a finished plan
- * from finished work.
+ * from finished work. `ended`: the thread says its last turn ended (V18c) — Claude Code reads a
+ * finished plan as `blocked` with nothing named it waits for, so that is a finished turn.
  */
 export function agentState(
   feature: FeatureFile,
   sessions: AgentSession[] | null,
   ahead: number,
   real: (path: string) => string,
+  ended = false,
 ): FeatureAgentState {
   const { agent } = feature;
   if (!agent) return { state: 'no-agent' };
   const kind = agent.kind;
-  const folder = real(feature.worktree);
-  const session = (sessions ?? [])
-    .filter((s) => real(s.cwd) === folder)
-    .sort((a, b) => b.startedAt - a.startedAt)[0];
+  const session = newestSession(feature, sessions, real);
   if (!session) {
     if (agent.error) return { state: 'not-started', kind, error: agent.error };
     if (sessions === null) {
@@ -312,6 +348,7 @@ export function agentState(
       return { state: 'working', kind, ...id };
     case 'blocked':
     case 'waiting':
+      if (ended && !session.waitingFor) return { state: finished(), kind, ...id };
       return { state: 'needs-you', kind, ...id, ...waiting };
     case 'failed':
       return { state: 'failed', kind, ...id };
@@ -367,11 +404,25 @@ export interface ClaudeCode {
     prompt: string;
     permissionMode: PermissionMode;
     addDir: string;
+    /** CPR's settings file (V18c): the hooks that record the thread. */
+    settings?: string;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Its sessions, finished ones included; null when it cannot list them. */
   sessions(): Promise<AgentSession[] | null>;
   /** Stops a background session (`claude stop <id>`); its words when it cannot. */
   stop(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
+  /**
+   * Continues a session that is not running with `text` (`claude --bg --resume <session>
+   * "<text>"`), with no other flag: any flag, or a running session, makes a copy without the
+   * hooks (V18c spike).
+   */
+  resume(request: {
+    sessionId: string;
+    cwd: string;
+    text: string;
+  }): Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Removes a background session (`claude rm <id>`); a worktree CPR made stays. */
+  remove(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Whose account it runs on. */
   account(): Promise<string | undefined>;
 }
@@ -395,6 +446,7 @@ export function claudeCode(
         request.name,
         '--add-dir',
         request.addDir,
+        ...(request.settings ? ['--settings', request.settings] : []),
         ...(request.permissionMode === 'default'
           ? []
           : ['--permission-mode', request.permissionMode]),
@@ -404,18 +456,29 @@ export function claudeCode(
       const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
       sessions = null;
       if (result.code === 0) return { ok: true };
-      const words = (result.stderr.trim() || result.stdout.trim()).split('\n').slice(-3).join('\n');
       return {
         ok: false,
-        error: words || `${basename(command)} exited with code ${result.code ?? 'none'}`,
+        error: wordsOf(result) || `${basename(command)} exited with code ${result.code ?? 'none'}`,
       };
     },
     async stop(id) {
       const result = await run(command, ['stop', id], { cwd, timeoutMs: 20_000 });
       sessions = null;
       if (result.code === 0) return { ok: true };
-      const words = (result.stderr.trim() || result.stdout.trim()).split('\n').slice(-3).join('\n');
-      return { ok: false, error: words || `could not stop ${id}` };
+      return { ok: false, error: wordsOf(result) || `could not stop ${id}` };
+    },
+    async resume(request) {
+      const args = ['--bg', '--resume', request.sessionId, request.text];
+      const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
+      sessions = null;
+      if (result.code === 0) return { ok: true };
+      return { ok: false, error: wordsOf(result) || `could not continue ${request.sessionId}` };
+    },
+    async remove(id) {
+      const result = await run(command, ['rm', id], { cwd, timeoutMs: 20_000 });
+      sessions = null;
+      if (result.code === 0) return { ok: true };
+      return { ok: false, error: wordsOf(result) || `could not remove ${id}` };
     },
     sessions() {
       if (!sessions || Date.now() - sessions.at > 2_000) {
@@ -436,6 +499,11 @@ export function claudeCode(
       return account.text;
     },
   };
+}
+
+/** The last lines a program wrote, its error output first. */
+function wordsOf(result: { stdout: string; stderr: string }): string {
+  return (result.stderr.trim() || result.stdout.trim()).split('\n').slice(-3).join('\n');
 }
 
 /** Claude Code's program: `CPR_CLAUDE` (a path or a command on PATH), else `claude` on PATH. */
@@ -503,7 +571,58 @@ export interface Features {
   openWorktree(branch: string): Promise<void>;
   /** Whether its branch merges cleanly into the default branch (V17's check), once per pair. */
   merge(branch: string): Promise<BranchMerge>;
+  /** Its thread (V18c): what its agent was given and reported, and its review's last verdict. */
+  thread(branch: string): Promise<FeatureThread>;
+  /** Sends a message to its agent: continues its session with the text (V18c). */
+  reply(request: FeatureReply): Promise<FeatureReplied>;
+  /**
+   * Cleans it up (V18c): its agent's sessions, its worktree and, once merged, its branch; the
+   * record stays, `finished`. Unmerged only when asked (`unmerged`); never with work not
+   * committed.
+   */
+  clean(request: { branch: string; unmerged?: boolean }): Promise<{ finished: string }>;
 }
+
+/** The hooks CPR passes to every feature's agent (V18c): each event, recorded by `agent-hook.js`. */
+const HOOKED_EVENTS = [
+  'SessionStart',
+  'UserPromptSubmit',
+  'PermissionRequest',
+  'PreToolUse',
+  'Notification',
+  'Stop',
+  'SessionEnd',
+] as const;
+
+/** A path as one word of a hook's command line (Claude Code runs it in a shell). */
+function shellWord(path: string, platform: NodeJS.Platform): string {
+  return platform === 'win32' ? `"${path}"` : `'${path.replaceAll("'", "'\\''")}'`;
+}
+
+/**
+ * CPR's settings file for its agents (V18c), `<cpr>/claude-settings.json`: every event runs
+ * `agent-hook.js` with the `cpr/` folder; `PreToolUse` only for questions. It decides nothing.
+ */
+export function agentSettings(
+  where: { node: string; hook: string; cpr: string },
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const command = [where.node, where.hook, where.cpr].map((p) => shellWord(p, platform)).join(' ');
+  const hooks = Object.fromEntries(
+    HOOKED_EVENTS.map((event) => [
+      event,
+      [
+        {
+          ...(event === 'PreToolUse' ? { matcher: 'AskUserQuestion' } : {}),
+          hooks: [{ type: 'command', command, timeout: 30 }],
+        },
+      ],
+    ]),
+  );
+  return `${JSON.stringify({ hooks }, null, 2)}\n`;
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Opens a folder in the editor; why not when it cannot. */
 export type OpenFolder = (
@@ -520,6 +639,8 @@ export function features(
     env = process.env,
     root = repo.root,
     openFolder,
+    hook = fileURLToPath(new URL('./agent-hook.js', import.meta.url)),
+    node = process.execPath,
   }: {
     /** Finds the agent (once a start or a list needs it); null when none is installed. */
     claude: () => Promise<ClaudeCode | null>;
@@ -528,6 +649,9 @@ export function features(
     /** Where `cpr/config.json` is read. */
     root?: string;
     openFolder?: OpenFolder;
+    /** CPR's hook (`dist/agent-hook.js`) and the Node that runs it. */
+    hook?: string;
+    node?: string;
   },
 ): Features {
   const place = () => reviewPlace(repo, cacheDir);
@@ -545,6 +669,22 @@ export function features(
   /** `features.worktrees` is relative to the checkout that holds `cpr/`. */
   const mainRoot = (where: ReviewPlace) =>
     where.place === 'repository' ? dirname(cprFolder(where)) : repo.root;
+
+  /**
+   * CPR's settings file, written when its text differs (CPR moved) or it is gone: a session that
+   * wakes reads it again, and does not start without it (V18c spike). Its path.
+   */
+  async function settingsFile(where: ReviewPlace): Promise<string> {
+    const path = join(cprFolder(where), 'claude-settings.json');
+    const text = agentSettings({ node, hook, cpr: cprFolder(where) });
+    if ((await readFile(path, 'utf8').catch(() => null)) !== text) {
+      await mkdir(dirname(path), { recursive: true });
+      const temp = `${path}.${process.pid}.tmp`;
+      await writeFile(temp, text);
+      await rename(temp, path);
+    }
+    return path;
+  }
 
   async function save(where: ReviewPlace, feature: FeatureFile): Promise<void> {
     const path = featurePath(featuresDir(where), feature.branch);
@@ -572,6 +712,7 @@ export function features(
   }
 
   async function summary(
+    where: ReviewPlace,
     feature: FeatureFile,
     refs: RefList,
     trunk: string[],
@@ -588,6 +729,12 @@ export function features(
     }
     const exists = existsSync(feature.worktree);
     const changed = exists ? await uncommittedFiles(feature.worktree).catch(() => null) : null;
+    // Blocked with nothing named: its thread tells a finished turn from a question (V18c).
+    const session = newestSession(feature, sessions, real);
+    const ended =
+      session && isBlocked(session) && !session.waitingFor
+        ? turnEnded(await readThread(cprFolder(where), feature.branch))
+        : false;
     return {
       branch: feature.branch,
       base: feature.base,
@@ -599,7 +746,7 @@ export function features(
       tip,
       ahead,
       merged,
-      agent: agentState(feature, sessions, ahead, real),
+      agent: agentState(feature, sessions, ahead, real, ended),
     };
   }
 
@@ -650,9 +797,10 @@ export function features(
         prompt,
         permissionMode,
         addDir: cprFolder(where),
+        settings: await settingsFile(where),
       });
       feature.agent = result.ok
-        ? { kind: 'claude', permissionMode, started: now().toISOString() }
+        ? { kind: 'claude', permissionMode, started: now().toISOString(), hooks: true }
         : { kind: 'claude', permissionMode, error: result.error };
     }
     await save(where, feature);
@@ -667,7 +815,28 @@ export function features(
   ) {
     const refs = await listRefs(repo);
     const sessions = feature.agent && agent ? await agent.sessions() : [];
-    return { feature: await summary(feature, refs, await trunkOf(refs), sessions), prompt };
+    return { feature: await summary(where, feature, refs, await trunkOf(refs), sessions), prompt };
+  }
+
+  /** A feature's agent, found; a refusal the page can show when there is none. */
+  async function agentOf(feature: FeatureFile): Promise<ClaudeCode> {
+    const agent = feature.agent ? await claude() : null;
+    if (!agent) {
+      throw new FeatureRefused(
+        'No agent to talk to: install Claude Code (claude on PATH), or set CPR_CLAUDE',
+        409,
+      );
+    }
+    return agent;
+  }
+
+  /** Whether a feature's commits are all in the default branch. */
+  async function isMerged(feature: FeatureFile, refs: RefList): Promise<boolean> {
+    const tip = refs.branches.find((b) => b.name === feature.branch)?.sha;
+    if (!tip || !(await isCommit(repo, feature.base))) return false;
+    if ((await commitsBetween(repo, feature.base, tip, 1)).count === 0) return false;
+    for (const end of await trunkOf(refs)) if (await isAncestor(repo, tip, end)) return true;
+    return false;
   }
 
   return {
@@ -696,15 +865,19 @@ export function features(
 
     async list() {
       const where = await place();
-      const list = await records(where);
+      const list = (await records(where)).filter((f) => !f.finished);
       const head = { place: where.place, ...(where.note ? { note: where.note } : {}) };
       if (list.length === 0) return { features: [], ...head };
+      // Agents may wake from agent view or `claude attach`: their settings file must be there.
+      if (list.some((f) => f.agent?.hooks)) await settingsFile(where);
       const refs = await listRefs(repo);
       const trunk = await trunkOf(refs);
       const agent = list.some((f) => f.agent) ? await claude() : null;
       const sessions = agent ? await agent.sessions() : null;
       const summaries: FeatureSummary[] = [];
-      for (const feature of list) summaries.push(await summary(feature, refs, trunk, sessions));
+      for (const feature of list) {
+        summaries.push(await summary(where, feature, refs, trunk, sessions));
+      }
       return { features: summaries, ...head };
     },
 
@@ -834,6 +1007,120 @@ export function features(
         merges.set(key, check);
       }
       return check;
+    },
+
+    async thread(branch) {
+      const where = await place();
+      const feature = await recorded(where, branch);
+      const entries = await readThread(cprFolder(where), branch);
+      const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
+      const verdict = review?.verdicts.at(-1);
+      const shown = (path: string) =>
+        where.place === 'repository' ? relative(repo.root, path).split(sep).join('/') : path;
+      return {
+        entries,
+        recorded: feature.agent?.hooks === true,
+        ...(review && verdict
+          ? {
+              verdict: {
+                at: verdict.at,
+                event: verdict.event,
+                head: verdict.head,
+                text: verdictText(review, review.reviewer, verdict, {
+                  review: shown(reviewPath(where.dir, branch, where.reviewer)),
+                  agents: shown(where.agents),
+                }),
+              },
+            }
+          : {}),
+      };
+    },
+
+    async reply({ branch, text, stop }) {
+      if (text.trim() === '') throw new FeatureRefused('a message cannot be empty', 400);
+      if (text.length > MAX_BRIEF) {
+        throw new FeatureRefused('a message is at most 20,000 characters', 400);
+      }
+      const where = await place();
+      const feature = await recorded(where, branch);
+      const agent = await agentOf(feature);
+      if (!existsSync(feature.worktree)) {
+        throw new FeatureRefused(`its worktree is gone: ${feature.worktree}`, 409);
+      }
+      // A session that wakes reads its settings file again, and does not start without it.
+      if (feature.agent?.hooks) await settingsFile(where);
+      const session = newestSession(feature, await agent.sessions(), real);
+      if (!session?.sessionId || !session.id) {
+        throw new FeatureRefused(
+          'its agent has no session to continue: start the agent again',
+          409,
+        );
+      }
+      // A live process is stopped first: a resume of a running session makes a copy.
+      const alive = session.status !== undefined;
+      const midTurn = alive && (session.status !== 'idle' || session.waitingFor !== undefined);
+      if (midTurn && !stop) {
+        const doing = session.waitingFor ? `waiting on a ${session.waitingFor}` : 'working';
+        throw new FeatureRefused(`its agent is ${doing}: sending stops its turn`, 409);
+      }
+      if (alive) {
+        const stopped = await agent.stop(session.id);
+        if (!stopped.ok) throw new FeatureRefused(stopped.error, 409);
+      }
+      const resumed = await agent.resume({
+        sessionId: session.sessionId,
+        cwd: feature.worktree,
+        text,
+      });
+      if (!resumed.ok) throw new FeatureRefused(resumed.error, 502);
+      const refs = await listRefs(repo);
+      const sessions = await agent.sessions();
+      const newest = newestSession(feature, sessions, real);
+      const copy = newest && newest.sessionId !== session.sessionId ? newest.id : undefined;
+      return {
+        feature: await summary(where, feature, refs, await trunkOf(refs), sessions),
+        ...(copy ? { copy } : {}),
+      };
+    },
+
+    async clean({ branch, unmerged }) {
+      const where = await place();
+      const feature = await recorded(where, branch);
+      const merged = await isMerged(feature, await listRefs(repo));
+      if (!merged && !unmerged) {
+        throw new FeatureRefused(
+          `${branch} is not merged into the default branch: clean up anyway to remove its worktree and keep the branch`,
+          409,
+        );
+      }
+      const exists = existsSync(feature.worktree);
+      const changed = exists ? await uncommittedFiles(feature.worktree) : 0;
+      if (changed > 0) {
+        throw new FeatureRefused(
+          `${plural(changed, 'file')} not committed in ${feature.worktree}: commit or remove ${changed === 1 ? 'it' : 'them'} first`,
+          409,
+        );
+      }
+      const agent = feature.agent ? await claude() : null;
+      if (agent) {
+        const folder = real(feature.worktree);
+        for (const session of (await agent.sessions()) ?? []) {
+          if (real(session.cwd) !== folder || !session.id) continue;
+          if (session.status !== undefined) await agent.stop(session.id);
+          const removed = await agent.remove(session.id);
+          if (!removed.ok) throw new FeatureRefused(removed.error, 409);
+        }
+      }
+      try {
+        if (exists) await removeWorktree(repo, feature.worktree);
+        if (merged) await deleteMergedBranch(repo, feature.branch);
+      } catch (error) {
+        if (error instanceof WorktreeRefused) throw new FeatureRefused(error.message, 409);
+        throw error;
+      }
+      feature.finished = now().toISOString();
+      await save(where, feature);
+      return { finished: feature.finished };
     },
   };
 }

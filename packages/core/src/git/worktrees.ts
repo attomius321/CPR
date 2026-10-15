@@ -109,6 +109,36 @@ export async function addWorktree(
   return { path: folder, head: base, branch };
 }
 
+/**
+ * Removes the worktree at `folder` (`git worktree remove`), its branch kept. Never forced: git
+ * refuses one with changes or untracked files, and that refusal is a `WorktreeRefused` in git's
+ * words.
+ */
+export async function removeWorktree(repo: GitRepo, folder: string): Promise<void> {
+  try {
+    await git(repo.root, ['worktree', 'remove', folder]);
+  } catch (error) {
+    if (error instanceof GitError) throw new WorktreeRefused(gitWords(error));
+    throw error;
+  }
+}
+
+/**
+ * Deletes `branch` only if it is merged (`git branch -d`, never `-D`): git refuses an unmerged
+ * one, and that refusal is a `WorktreeRefused` in git's words.
+ */
+export async function deleteMergedBranch(repo: GitRepo, branch: string): Promise<void> {
+  if (branch === '' || branch.startsWith('-')) {
+    throw new WorktreeRefused(`not a valid branch name: ${branch}`);
+  }
+  try {
+    await git(repo.root, ['branch', '-d', branch]);
+  } catch (error) {
+    if (error instanceof GitError) throw new WorktreeRefused(gitWords(error));
+    throw error;
+  }
+}
+
 /** git's own message, without its `fatal: ` prefix. */
 function gitWords(error: GitError): string {
   return error.stderr.trim().replace(/^(fatal|error): /gm, '') || error.message;

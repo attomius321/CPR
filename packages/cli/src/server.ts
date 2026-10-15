@@ -12,6 +12,7 @@ import {
   type FinishResult,
   type LocalReview,
   type CheckoutTarget,
+  type FeatureReply,
   type FeatureRequest,
   type Graph,
   type PermissionMode,
@@ -163,6 +164,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   let hosts: Set<string> = new Set();
   let checkingOut = false;
   let startingFeature = false;
+  /** Writes that must not overlap (V18c: two messages at once would make two sessions). */
+  const busy = new Set<string>();
   const server = createServer((req, res) => {
     handle(req, res).catch((error: unknown) => send(res, 500, String(error)));
   });
@@ -228,6 +231,19 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         }
         if (url.pathname === '/api/features/merge') {
           return ofBranch(req, res, url, (branch) => features.merge(branch));
+        }
+        if (url.pathname === '/api/features/thread') {
+          return ofBranch(req, res, url, (branch) => features.thread(branch));
+        }
+        if (url.pathname === '/api/features/reply') {
+          return written(req, res, parseFeatureReply, (request) =>
+            oneAtATime(res, 'a message is being sent', () => features.reply(request)),
+          );
+        }
+        if (url.pathname === '/api/features/clean') {
+          return written(req, res, parseFeatureClean, (request) =>
+            answer(res, () => features.clean(request)),
+          );
         }
       }
     }
@@ -567,6 +583,39 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     return act(branch);
   }
 
+  /** A write with a JSON body `parse` checks: 400 with its words when it does not. */
+  async function written<T>(
+    req: IncomingMessage,
+    res: ServerResponse,
+    parse: (text: string) => T,
+    act: (request: T) => Promise<void>,
+  ): Promise<void> {
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let request: T;
+    try {
+      request = parse(await readBody(req, MAX_BODY_BYTES));
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    return act(request);
+  }
+
+  /** One such write at a time: another meanwhile is refused (409) with `words`. */
+  async function oneAtATime(
+    res: ServerResponse,
+    words: string,
+    task: () => Promise<unknown>,
+  ): Promise<void> {
+    if (busy.has(words)) return json(res, 409, { error: words });
+    busy.add(words);
+    try {
+      return await answer(res, task);
+    } finally {
+      busy.delete(words);
+    }
+  }
+
   /** A read about one feature: `GET ?branch=`. */
   async function ofBranch(
     req: IncomingMessage,
@@ -807,6 +856,27 @@ function parseFeatureRequest(text: string): FeatureRequest {
     ...(base === undefined ? {} : { base }),
     ...(permissionMode === undefined ? {} : { permissionMode: permissionMode as PermissionMode }),
   };
+}
+
+/** `{ branch, text, stop? }`: a message for a feature's agent (V18c). */
+function parseFeatureReply(text: string): FeatureReply {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.branch !== 'string') throw new Error("branch: a feature's branch");
+  if (typeof value.text !== 'string') throw new Error('text: the message');
+  if (value.stop !== undefined && typeof value.stop !== 'boolean') {
+    throw new Error('stop: true or false');
+  }
+  return { branch: value.branch, text: value.text, ...(value.stop ? { stop: true } : {}) };
+}
+
+/** `{ branch, unmerged? }`: a feature to clean up (V18c). */
+function parseFeatureClean(text: string): { branch: string; unmerged?: boolean } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.branch !== 'string') throw new Error("branch: a feature's branch");
+  if (value.unmerged !== undefined && typeof value.unmerged !== 'boolean') {
+    throw new Error('unmerged: true or false');
+  }
+  return { branch: value.branch, ...(value.unmerged ? { unmerged: true } : {}) };
 }
 
 const CHECKOUT_KINDS: readonly CheckoutTarget['kind'][] = ['branch', 'remote', 'tag', 'commit'];

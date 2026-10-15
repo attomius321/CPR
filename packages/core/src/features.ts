@@ -1,5 +1,6 @@
 // Features started from the commits page (V18): what `cpr view`'s server answers and the viewer
 // reads. Types only; the CLI keeps the records and starts the agents.
+import type { VerdictEvent } from './git/branches.js';
 
 /** How a feature's agent is doing, as the commits page shows it. */
 export type AgentStateName =
@@ -105,4 +106,50 @@ export interface FeatureRequest {
 export interface FeatureStart {
   feature: FeatureSummary;
   prompt: string;
+}
+
+/** A question an agent asked (`AskUserQuestion`), with its options' labels. */
+export interface ThreadQuestion {
+  question: string;
+  options: string[];
+}
+
+/**
+ * One entry of a feature's thread (V18c), as CPR's hooks recorded it from its agent's sessions:
+ * a session's start and end, what it was given (CPR's prompt, then the person's messages), what
+ * it reported at the end of a turn, what it waited on, and Claude Code's notices.
+ */
+export type ThreadEntry = { at: string; session: string } & (
+  | { kind: 'start'; source: string }
+  | { kind: 'end'; reason?: string }
+  | { kind: 'prompt'; text: string }
+  | { kind: 'report'; text: string }
+  /** A permission (`tool` and its input, cut at 4 KB) or a question (`questions`). */
+  | { kind: 'asks'; tool: string; input?: string; questions?: ThreadQuestion[] }
+  | { kind: 'notice'; type: string; message?: string }
+);
+
+/** `GET /api/features/thread?branch=`. */
+export interface FeatureThread {
+  /** The last entries, oldest first. */
+  entries: ThreadEntry[];
+  /** The agent was started with CPR's hooks: its messages are recorded (features since V18c). */
+  recorded: boolean;
+  /** The branch review's last verdict and its text for the agent (V16's "Copy for the agent"). */
+  verdict?: { at: string; event: VerdictEvent; head: string; text: string };
+}
+
+/** `POST /api/features/reply`. */
+export interface FeatureReply {
+  branch: string;
+  text: string;
+  /** Stop the agent's turn to send (it works, or waits on a prompt). */
+  stop?: boolean;
+}
+
+/** A message sent to a feature's agent. */
+export interface FeatureReplied {
+  feature: FeatureSummary;
+  /** Claude Code started a copy of the session instead of continuing it: the copy's short ID. */
+  copy?: string;
 }

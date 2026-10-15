@@ -96,6 +96,24 @@ Never resolve it on the default branch: the resolution would be code nobody revi
    conflicts there and commit.
 3. Tell the person the branch needs another review; merge only after the next approval.
 
+## Approved in a linked worktree
+
+\`git worktree list\` shows where each branch is checked out. If you work in a linked worktree
+(a feature's) and \`into\` is checked out in another one (usually the main checkout),
+\`git switch <into>\` fails here: do not merge here. Say that \`head\` is approved and is to be
+merged from the worktree that has \`into\` checked out.
+
+## Features
+
+A feature started in CPR is a branch with a worktree of its own and a record in
+\`cpr/features/<branch>.json\`: the person's \`brief\`, the \`base\` it started from, and
+\`planFirst\`. If you were started on one:
+
+- Work only in its worktree, on its branch.
+- With \`planFirst\`, write the plan (what you will change and how you will check it), then stop
+  and wait for the person's OK before changing anything.
+- Commit on the branch as you go; say when it is ready for review.
+
 ## Comments
 
 Each has \`body\` (what to do) and \`symbol\` (\`<path>#<name>\`); on a line, also \`path\`,

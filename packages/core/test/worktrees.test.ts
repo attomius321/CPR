@@ -4,10 +4,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   addWorktree,
   branchNameProblem,
+  deleteMergedBranch,
   listRefs,
   listWorktrees,
   mainWorktree,
   openRepo,
+  removeWorktree,
   uncommittedFiles,
   WorktreeRefused,
 } from '../src/index.js';
@@ -164,5 +166,42 @@ describe('uncommittedFiles', () => {
     expect(await uncommittedFiles(folder)).toBe(4);
     // The checkout it came from is not counted.
     expect(await uncommittedFiles(repo.root)).toBe(0);
+  });
+});
+
+describe('removeWorktree and deleteMergedBranch', () => {
+  it("removes a clean worktree, keeps its branch; git's refusal of one with work is said", async () => {
+    const { repo, shas } = fresh();
+    const git = await openRepo(repo.root);
+    const folder = join(elsewhere(), 'feature-csv');
+    await addWorktree(git, { folder, branch: 'feature/csv', base: shas.B });
+    writeFileSync(join(folder, 'new.ts'), 'export const n = 1;\n');
+    // Never forced: an untracked file keeps the worktree, in git's words.
+    const refused = (await removeWorktree(git, folder).catch((e: unknown) => e)) as Error;
+    expect(refused).toBeInstanceOf(WorktreeRefused);
+    expect(refused.message).toMatch(/untracked/);
+    expect(existsSync(folder)).toBe(true);
+    rmSync(join(folder, 'new.ts'));
+    await removeWorktree(git, folder);
+    expect(existsSync(folder)).toBe(false);
+    expect((await listWorktrees(git)).map((w) => w.path)).toEqual([realpathSync(repo.root)]);
+    expect(repo.git('rev-parse', 'feature/csv')).toBe(shas.B);
+  });
+
+  it("deletes a merged branch only: an unmerged one stays, in git's words", async () => {
+    const { repo, shas } = fresh();
+    const git = await openRepo(repo.root);
+    repo.git('branch', 'merged', shas.A);
+    await deleteMergedBranch(git, 'merged');
+    expect(repo.git('branch', '--list', 'merged')).toBe('');
+    repo.git('switch', '--quiet', '-c', 'ahead');
+    repo.write({ 'c.ts': 'export const c = 1;\n' });
+    repo.commit('C');
+    repo.git('switch', '--quiet', 'main');
+    const refused = (await deleteMergedBranch(git, 'ahead').catch((e: unknown) => e)) as Error;
+    expect(refused).toBeInstanceOf(WorktreeRefused);
+    expect(refused.message).toMatch(/not fully merged/);
+    expect(repo.git('branch', '--list', 'ahead')).toContain('ahead');
+    await expect(deleteMergedBranch(git, '-D')).rejects.toBeInstanceOf(WorktreeRefused);
   });
 });

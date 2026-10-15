@@ -7,6 +7,7 @@ import {
   type BranchReviewInfo,
   type CheckoutTarget,
   type FeatureOptions,
+  type FeatureReply,
   type FeatureRequest,
   type FeatureSummary,
   type Graph,
@@ -1119,7 +1120,29 @@ describe('cpr view: features (V18)', () => {
       return Promise.resolve();
     },
     merge: () => Promise.resolve({ into: 'main', conflicts: ['src/a.ts'] }),
+    thread: (branch) =>
+      branch === 'feature/csv'
+        ? Promise.resolve({
+            entries: [{ at: C, session: 'x', kind: 'report', text: 'The plan' }],
+            recorded: true,
+          })
+        : Promise.reject(new FeatureRefused(`no feature ${branch}`, 404)),
+    reply: (request) => {
+      replies.push(request);
+      if (request.text === 'busy') {
+        return Promise.reject(
+          new FeatureRefused('its agent is working: sending stops its turn', 409),
+        );
+      }
+      return Promise.resolve({ feature: summary });
+    },
+    clean: (request) => {
+      cleaned.push(request);
+      return Promise.resolve({ finished: C });
+    },
   };
+  const replies: FeatureReply[] = [];
+  const cleaned: { branch: string; unmerged?: boolean }[] = [];
   const stopped: string[] = [];
   const openedFeatures: string[] = [];
   let server: ViewServer;
@@ -1257,6 +1280,49 @@ describe('cpr view: features (V18)', () => {
     expect((await post('/api/features', request, { 'x-cpr': '' })).status).toBe(403);
     expect((await post('/api/features/start', { branch: 'x' }, { 'x-cpr': '' })).status).toBe(403);
     expect(started.length).toBe(before);
+  });
+
+  it("gives a feature's thread, sends a message to its agent, cleans it up (V18c)", async () => {
+    expect(await (await get('/api/features/thread?branch=feature%2Fcsv')).json()).toEqual({
+      entries: [{ at: C, session: 'x', kind: 'report', text: 'The plan' }],
+      recorded: true,
+    });
+    expect((await get('/api/features/thread?branch=nope')).status).toBe(404);
+    expect((await get('/api/features/thread')).status).toBe(400);
+
+    const sent = await post('/api/features/reply', { branch: 'feature/csv', text: 'OK' });
+    expect(sent.status).toBe(200);
+    expect(await sent.json()).toEqual({ feature: summary });
+    await post('/api/features/reply', { branch: 'feature/csv', text: 'Now', stop: true });
+    const busy = await post('/api/features/reply', { branch: 'feature/csv', text: 'busy' });
+    expect(busy.status).toBe(409);
+    expect(await busy.json()).toEqual({ error: 'its agent is working: sending stops its turn' });
+    expect(replies).toEqual([
+      { branch: 'feature/csv', text: 'OK' },
+      { branch: 'feature/csv', text: 'Now', stop: true },
+      { branch: 'feature/csv', text: 'busy' },
+    ]);
+    for (const body of [
+      { branch: 'feature/csv' },
+      { text: 'x' },
+      { branch: 'x', text: 'y', stop: 'yes' },
+    ]) {
+      expect((await post('/api/features/reply', body)).status, JSON.stringify(body)).toBe(400);
+    }
+
+    expect((await post('/api/features/clean', { branch: 'feature/csv' })).status).toBe(200);
+    await post('/api/features/clean', { branch: 'feature/csv', unmerged: true });
+    expect(cleaned).toEqual([{ branch: 'feature/csv' }, { branch: 'feature/csv', unmerged: true }]);
+    expect((await post('/api/features/clean', { branch: 'x', unmerged: 'yes' })).status).toBe(400);
+
+    for (const path of ['/api/features/reply', '/api/features/clean']) {
+      expect((await post(path, { branch: 'x', text: 'y' }, { 'x-cpr': '' })).status, path).toBe(
+        403,
+      );
+      expect((await get(path)).status, path).toBe(405);
+    }
+    expect(replies).toHaveLength(3);
+    expect(cleaned).toHaveLength(2);
   });
 });
 
