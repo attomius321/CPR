@@ -471,7 +471,8 @@ test('narrow: the panel takes the page, and Features goes back to the list', asy
   await expect(featureRow(page, branch)).toBeVisible();
   await expect(panel(page, branch)).toBeHidden();
   await expect(page).toHaveURL(`${cpr.url}features`);
-  await featureRow(page, branch).click();
+  // The brief picks it (the branch name is a link to its commits).
+  await featureRow(page, branch).getByRole('button', { name: 'Add a half function' }).click();
   await expect(panel(page, branch)).toBeVisible();
   await page.reload();
   await expect(panel(page, branch)).toBeVisible();

@@ -252,14 +252,20 @@ function FeatureState({ row: { feature, next } }: { row: FeatureRow }) {
   );
 }
 
-/** A feature's mark, its branch (a link to its commits) and its review's mark. */
-function FeatureName({ row: { feature, next }, mark }: { row: FeatureRow; mark?: ReviewMark }) {
+/** A feature's mark: what it needs, as its branch's badges show it. */
+function FeatureChip({ row: { next } }: { row: FeatureRow }) {
+  return (
+    <span className={`feature-mark feature-mark-${next.chip.tone}`} aria-hidden="true">
+      {next.chip.mark}
+    </span>
+  );
+}
+
+/** A feature's branch (a link to its commits) and its review's mark. */
+function FeatureBranch({ row: { feature }, mark }: { row: FeatureRow; mark?: ReviewMark }) {
   const { branch } = feature;
   return (
     <>
-      <span className={`feature-mark feature-mark-${next.chip.tone}`} aria-hidden="true">
-        {next.chip.mark}
-      </span>
       {feature.tip === null ? (
         <span className="ref ref-branch">{branch}</span>
       ) : (
@@ -317,7 +323,7 @@ function FeatureItem({
       onClick={onPick}
     >
       <div className="feature-head">
-        <FeatureName row={row} mark={mark} />
+        <FeatureChip row={row} />
         <button
           type="button"
           className="feature-about"
@@ -333,6 +339,9 @@ function FeatureItem({
         <time className="commit-date" dateTime={feature.created}>
           {relativeDate(feature.created, Date.now())}
         </time>
+      </div>
+      <div className="feature-branch">
+        <FeatureBranch row={row} mark={mark} />
       </div>
       <FeatureState row={row} />
     </li>
@@ -525,7 +534,8 @@ function FeaturePanel({
         ← Features
       </button>
       <div className="feature-head">
-        <FeatureName row={row} mark={mark} />
+        <FeatureChip row={row} />
+        <FeatureBranch row={row} mark={mark} />
         <span className="feature-about" title={feature.brief}>
           {about}
         </span>

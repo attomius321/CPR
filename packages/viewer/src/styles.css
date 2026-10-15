@@ -2841,6 +2841,27 @@ a.feature-mark:hover {
   white-space: nowrap;
 }
 
+.feature-branch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 4px;
+}
+
+.feature-branch .ref {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feature-branch a.ref:hover {
+  text-decoration: underline;
+}
+
 button.feature-about {
   padding: 0;
   border: 0;
