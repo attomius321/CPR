@@ -1,4 +1,4 @@
-import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { execFileSync, execSync, spawn, type ChildProcess } from 'node:child_process';
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -474,6 +474,261 @@ export async function serveBranches(): Promise<Running> {
       child.kill('SIGINT');
       rmSync(repo, { recursive: true, force: true });
       rmSync(cache, { recursive: true, force: true });
+    },
+  };
+}
+
+/** What the fake Claude Code was asked to start: its arguments and folder. */
+export interface FakeClaudeCall {
+  args: string[];
+  cwd: string;
+}
+
+export interface RunningFeatures extends Running {
+  repo: string;
+  /** `main`'s commits, oldest first: the fixture's base and head. */
+  shas: string[];
+  /** What the fake Claude Code started. */
+  calls(): FakeClaudeCall[];
+  /** The sessions the fake stopped, by ID. */
+  stops(): string[];
+  /** From now on the fake refuses to start, with Claude Code's trust message. */
+  distrust(): void;
+  /** A feature's worktree folder. */
+  folder(branch: string): string;
+  /** Sets what the fake says of the newest session in a feature's worktree. */
+  session(branch: string, patch: { state: string; waitingFor?: string }): void;
+  /**
+   * The newest session in a feature's worktree ends its turn with `text` (V18c): its `Stop`
+   * hook runs, and it reads `blocked` and idle, as Claude Code reads a finished plan.
+   */
+  report(branch: string, text: string): void;
+  /** Runs the newest session's hooks for one event (`hook_event_name` and its fields). */
+  hook(branch: string, input: Record<string, unknown>): void;
+  /** The sessions the fake removed (`claude rm`), by ID. */
+  removed(): string[];
+  /** Commits a file in a feature's worktree (as its agent would); its SHA. */
+  commit(branch: string, file: string, text: string, subject: string): string;
+  /** What the fake VS Code was asked to open, newest last. */
+  opened(): string[][];
+}
+
+/**
+ * A fake Claude Code (V18): `--bg` records its arguments and folder and lists a working session
+ * there (or, distrusted, prints Claude Code's trust refusal and exits 1); `agents --json` lists
+ * the sessions, `auth status` a Pro subscription. As the real one did in the V18c spike, a
+ * session runs the hooks of the `--settings` file it started with (`SessionStart`,
+ * `UserPromptSubmit`; `SessionEnd` when stopped), `--bg --resume <session> "<text>"` continues
+ * a stopped session under its ID and copies a live one (without its settings), and `rm` removes
+ * one. Its state lives in `dir`.
+ */
+function fakeClaude(dir: string): string {
+  const script = join(dir, 'claude');
+  writeFileSync(
+    script,
+    `#!/usr/bin/env node
+const { execSync } = require('node:child_process');
+const { appendFileSync, existsSync, readFileSync, writeFileSync } = require('node:fs');
+const { join } = require('node:path');
+const dir = ${JSON.stringify(dir)};
+const sessions = join(dir, 'sessions.json');
+const list = () => (existsSync(sessions) ? JSON.parse(readFileSync(sessions, 'utf8')) : []);
+const save = (all) => writeFileSync(sessions, JSON.stringify(all));
+const args = process.argv.slice(2);
+// A session's hooks for one event, as Claude Code runs them: each command in a shell, the event on stdin.
+const hooks = (session, input) => {
+  if (!session.settings) return;
+  const event = { session_id: session.sessionId, cwd: session.cwd, ...input };
+  const entries = JSON.parse(readFileSync(session.settings, 'utf8')).hooks[event.hook_event_name] || [];
+  for (const entry of entries) {
+    if (entry.matcher && entry.matcher !== event.tool_name) continue;
+    for (const hook of entry.hooks) execSync(hook.command, { input: JSON.stringify(event), stdio: ['pipe', 'ignore', 'inherit'] });
+  }
+};
+const started = (fields) => {
+  const n = list().length;
+  const session = { id: 'fake' + n, sessionId: 'session-' + n, kind: 'background', startedAt: Date.now() + n, state: 'working', status: 'busy', ...fields };
+  save([...list(), session]);
+  return session;
+};
+if (args[0] === '--bg' && args[1] === '--resume') {
+  appendFileSync(join(dir, 'calls.jsonl'), JSON.stringify({ args, cwd: process.cwd() }) + '\\n');
+  const [, , id, text] = args;
+  const all = list();
+  const session = all.find((s) => s.sessionId === id);
+  if (!session) {
+    process.stderr.write('No conversation found with session ID: ' + id + '\\n');
+    process.exit(1);
+  }
+  if (session.status) {
+    // Running: a copy, which keeps none of the original's options.
+    const copy = started({ cwd: process.cwd(), name: session.name });
+    process.stdout.write('note: session ' + session.id + ' is already running in the background, so this started a copy as ' + copy.id + '.\\n');
+  } else {
+    Object.assign(session, { state: 'working', status: 'busy' });
+    delete session.waitingFor;
+    save(all);
+    hooks(session, { hook_event_name: 'SessionStart', source: 'resume' });
+    hooks(session, { hook_event_name: 'UserPromptSubmit', prompt: text });
+    process.stdout.write('note: woke session ' + session.id + ' with its saved options.\\n');
+  }
+} else if (args[0] === '--bg') {
+  if (existsSync(join(dir, 'distrust'))) {
+    process.stderr.write('Workspace not trusted. Run \`claude\` in ' + process.cwd() + ' once and accept the trust prompt, then retry.\\n');
+    process.exit(1);
+  }
+  appendFileSync(join(dir, 'calls.jsonl'), JSON.stringify({ args, cwd: process.cwd() }) + '\\n');
+  const at = args.indexOf('--settings');
+  const session = started({ cwd: process.cwd(), name: args[2], ...(at >= 0 ? { settings: args[at + 1] } : {}) });
+  hooks(session, { hook_event_name: 'SessionStart', source: 'startup' });
+  hooks(session, { hook_event_name: 'UserPromptSubmit', prompt: args.at(-1) });
+  process.stdout.write('backgrounded · ' + session.id + ' · ' + args[2] + '\\n');
+} else if (args[0] === 'agents') {
+  process.stdout.write(JSON.stringify(list().map(({ settings, ...shown }) => shown)));
+} else if (args[0] === 'stop') {
+  appendFileSync(join(dir, 'stops.txt'), args[1] + '\\n');
+  const all = list();
+  for (const session of all) {
+    if (session.id !== args[1]) continue;
+    session.state = 'stopped';
+    delete session.status;
+    hooks(session, { hook_event_name: 'SessionEnd', reason: 'other' });
+  }
+  save(all);
+} else if (args[0] === 'rm') {
+  appendFileSync(join(dir, 'removed.txt'), args[1] + '\\n');
+  save(list().filter((s) => s.id !== args[1]));
+  process.stdout.write('removed ' + args[1] + '\\n');
+} else if (args[0] === 'auth') {
+  process.stdout.write(JSON.stringify({ loggedIn: true, authMethod: 'claude.ai', subscriptionType: 'pro' }));
+} else {
+  process.exit(2);
+}
+`,
+    { mode: 0o755 },
+  );
+  return script;
+}
+
+/**
+ * `main` with the `callers` fixture's base and head, pushed to a bare `origin` (its default
+ * branch), and a fake Claude Code as `CPR_CLAUDE` (`agent: false`: one that is not installed).
+ * Served by `cpr view` without revisions; features' worktrees land beside the repository and go
+ * with it.
+ */
+export async function serveFeatures({ agent = true } = {}): Promise<RunningFeatures> {
+  const { repo } = fixtureRepo('callers');
+  git(repo, 'checkout', '-q', '-B', 'main');
+  git(repo, 'branch', '-q', '-D', 'feature');
+  git(repo, 'config', 'user.email', 'reviewer@example.com');
+  const origin = mkdtempSync(join(tmpdir(), 'cpr-e2e-origin-'));
+  git(origin, 'init', '-q', '--bare');
+  git(repo, 'remote', 'add', 'origin', origin);
+  git(repo, 'push', '-q', '-u', 'origin', 'main');
+  git(repo, 'remote', 'set-head', 'origin', 'main');
+  const shas = git(repo, 'rev-list', '--reverse', 'main').split('\n');
+  const fake = mkdtempSync(join(tmpdir(), 'cpr-e2e-claude-'));
+  const claude = agent ? fakeClaude(fake) : join(fake, 'not-installed');
+  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  // A fake VS Code: records what it is asked to open.
+  const code = join(fake, 'code');
+  writeFileSync(
+    code,
+    `#!/usr/bin/env node\nrequire('node:fs').appendFileSync(${JSON.stringify(join(fake, 'code.jsonl'))}, JSON.stringify(process.argv.slice(2)) + '\\n');\n`,
+    { mode: 0o755 },
+  );
+  const { url, child } = await startCpr(['view'], repo, {
+    CPR_CACHE_DIR: cache,
+    CPR_CLAUDE: claude,
+    CPR_CODE: code,
+  });
+  const lines = (file: string) =>
+    readFileSync(join(fake, file), { encoding: 'utf8', flag: 'a+' })
+      .split('\n')
+      .filter((line) => line !== '');
+  const folder = (branch: string) => `${repo}.worktrees/${branch.replaceAll('/', '-')}`;
+  interface FakeSession {
+    cwd: string;
+    sessionId: string;
+    settings?: string;
+    state?: string;
+    status?: string;
+    waitingFor?: string;
+  }
+  /** The newest session in a feature's worktree, changed by `change` and saved. */
+  const newest = (branch: string, change: (session: FakeSession) => void): FakeSession => {
+    const file = join(fake, 'sessions.json');
+    const sessions = JSON.parse(readFileSync(file, 'utf8')) as FakeSession[];
+    const mine = sessions.filter((s) => s.cwd === folder(branch)).at(-1);
+    if (!mine) throw new Error(`no session in ${folder(branch)}`);
+    change(mine);
+    writeFileSync(file, JSON.stringify(sessions));
+    return mine;
+  };
+  /** A session's hooks for one event, run as the fake (and Claude Code) runs them. */
+  const runHooks = (session: FakeSession, input: Record<string, unknown>) => {
+    if (!session.settings) return;
+    const event: Record<string, unknown> = {
+      session_id: session.sessionId,
+      cwd: session.cwd,
+      ...input,
+    };
+    const settings = JSON.parse(readFileSync(session.settings, 'utf8')) as {
+      hooks: Record<string, { matcher?: string; hooks: { command: string }[] }[]>;
+    };
+    for (const entry of settings.hooks[String(event.hook_event_name)] ?? []) {
+      if (entry.matcher && entry.matcher !== event.tool_name) continue;
+      for (const hook of entry.hooks) execSync(hook.command, { input: JSON.stringify(event) });
+    }
+  };
+  return {
+    url,
+    repo,
+    shas,
+    folder,
+    stops: () => lines('stops.txt'),
+    opened: () => lines('code.jsonl').map((line) => JSON.parse(line) as string[]),
+    session(branch, patch) {
+      newest(branch, (mine) => {
+        Object.assign(mine, patch);
+        // Claude Code's status follows: busy while it works, waiting on a prompt, idle after.
+        if (patch.state === 'working') mine.status = 'busy';
+        else if (patch.state === 'stopped' || patch.state === 'failed') delete mine.status;
+        else mine.status = patch.waitingFor ? 'waiting' : 'idle';
+      });
+    },
+    report(branch, text) {
+      const mine = newest(branch, (s) => Object.assign(s, { state: 'blocked', status: 'idle' }));
+      runHooks(mine, { hook_event_name: 'Stop', last_assistant_message: text });
+    },
+    hook(branch, input) {
+      runHooks(
+        newest(branch, () => {}),
+        input,
+      );
+    },
+    removed: () => lines('removed.txt'),
+    commit(branch, file, text, subject) {
+      writeFileSync(join(folder(branch), file), text);
+      git(folder(branch), 'add', file);
+      git(folder(branch), 'commit', '-q', '-m', subject);
+      return git(folder(branch), 'rev-parse', 'HEAD');
+    },
+    calls() {
+      const file = join(fake, 'calls.jsonl');
+      return readFileSync(file, { encoding: 'utf8', flag: 'a+' })
+        .split('\n')
+        .filter((line) => line !== '')
+        .map((line) => JSON.parse(line) as FakeClaudeCall);
+    },
+    distrust() {
+      writeFileSync(join(fake, 'distrust'), '');
+    },
+    stop() {
+      child.kill('SIGINT');
+      for (const dir of [repo, `${repo}.worktrees`, origin, fake, cache]) {
+        rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      }
     },
   };
 }

@@ -71,7 +71,7 @@ export async function findVsCode(host: Host): Promise<VsCode | null> {
 }
 
 /** A command's file on PATH; on Windows only with an extension from PATHEXT. */
-async function onPath(host: Host, name: string): Promise<string | null> {
+export async function onPath(host: Host, name: string): Promise<string | null> {
   const windows = host.platform === 'win32';
   const path = windows ? win32 : posix;
   const dirs = (host.env.PATH ?? host.env.Path ?? '').split(windows ? ';' : ':');
@@ -226,18 +226,26 @@ export function localHost(env: Readonly<Record<string, string | undefined>>): Ho
   };
 }
 
+/** Why VS Code was not found: `CPR_CODE`'s value, or where it was looked for. */
+const notFound = (env: Readonly<Record<string, string | undefined>>) => {
+  const custom = env.CPR_CODE?.trim();
+  return custom ? `CPR_CODE (${custom}) was not found` : NOT_FOUND;
+};
+
 /**
  * Opens a line of one side's file in VS Code, in the window that has the repository open (else
- * a new one with it), at the line where that code is in the working copy now.
+ * a new one with it), at the line where that code is in the working copy now. With `worktree`
+ * (a feature's, V18b), that folder and its working copy instead.
  */
 export function vsCodeOpener(
   repo: GitRepo,
   env: Readonly<Record<string, string | undefined>>,
   host: Host = localHost(env),
-): (request: OpenRequest) => Promise<OpenResult> {
+): (request: OpenRequest, worktree?: string) => Promise<OpenResult> {
   let found: Promise<VsCode | null> | undefined;
-  return async ({ sha, file, line, column }) => {
-    const where = await workingLine(repo, sha, file, line);
+  return async ({ sha, file, line, column }, worktree) => {
+    const root = worktree ?? repo.root;
+    const where = await workingLine({ ...repo, root }, sha, file, line);
     if (where.how === 'missing') {
       return { opened: false, reason: 'missing', message: `${file} is not in your working copy` };
     }
@@ -245,15 +253,10 @@ export function vsCodeOpener(
     const code = await found;
     if (!code) {
       found = undefined;
-      const custom = env.CPR_CODE?.trim();
-      return {
-        opened: false,
-        reason: 'editor',
-        message: custom ? `CPR_CODE (${custom}) was not found` : NOT_FOUND,
-      };
+      return { opened: false, reason: 'editor', message: notFound(env) };
     }
     try {
-      const folder = normalize(repo.root);
+      const folder = normalize(root);
       await runVsCode(invocation(code, openArgs(folder, file, where.line, column), env));
     } catch (error) {
       found = undefined; // looked up again next time: VS Code may have moved or been installed
@@ -265,5 +268,22 @@ export function vsCodeOpener(
       how: where.how,
       moved: where.how === 'exact' && where.line !== line,
     };
+  };
+}
+
+/** Opens a folder in VS Code (a feature's worktree, V18b): its window, else a new one. */
+export function vsCodeFolder(
+  env: Readonly<Record<string, string | undefined>>,
+  host: Host = localHost(env),
+): (folder: string) => Promise<{ opened: true } | { opened: false; message: string }> {
+  return async (folder) => {
+    const code = await findVsCode(host);
+    if (!code) return { opened: false, message: notFound(env) };
+    try {
+      await runVsCode(invocation(code, [normalize(folder)], env));
+      return { opened: true };
+    } catch (error) {
+      return { opened: false, message: (error as Error).message };
+    }
   };
 }

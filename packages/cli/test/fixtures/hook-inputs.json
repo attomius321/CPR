@@ -1,0 +1,215 @@
+[
+  {
+    "session_id": "b2a132c3-a35e-4d33-b865-edf03a395372",
+    "transcript_path": "/home/ada/.claude/projects/-work-app-worktrees-feature-x/b2a132c3-a35e-4d33-b865-edf03a395372.jsonl",
+    "cwd": "/work/app.worktrees/feature-x",
+    "scratchpad_dir": "/tmp/scratchpad",
+    "hook_event_name": "SessionStart",
+    "source": "startup",
+    "model": "claude-haiku-5-5",
+    "session_title": "spike-plan"
+  },
+  {
+    "session_id": "b2a132c3-a35e-4d33-b865-edf03a395372",
+    "transcript_path": "/home/ada/.claude/projects/-work-app-worktrees-feature-x/b2a132c3-a35e-4d33-b865-edf03a395372.jsonl",
+    "cwd": "/work/app.worktrees/feature-x",
+    "scratchpad_dir": "/tmp/scratchpad",
+    "prompt_id": "200cd1ed-6f7e-42b4-b00e-48cb005bc027",
+    "permission_mode": "auto",
+    "hook_event_name": "UserPromptSubmit",
+    "prompt": "You are working on branch feature/x in this worktree. Task: add a farewell(name) function to greet.js that returns 'Goodbye, ' + name. First, use the AskUserQuestion tool to ask me one question: should farewell end with an exclamation mark? Offer two options: 'Yes, end with !' and 'No punctuation'. Then write a short plan (what you will change and how you will check it), and stop and wait for my OK before changing anything.",
+    "session_title": "spike-plan"
+  },
+  {
+    "session_id": "b2a132c3-a35e-4d33-b865-edf03a395372",
+    "transcript_path": "/home/ada/.claude/projects/-work-app-worktrees-feature-x/b2a132c3-a35e-4d33-b865-edf03a395372.jsonl",
+    "cwd": "/work/app.worktrees/feature-x",
+    "scratchpad_dir": "/tmp/scratchpad",
+    "prompt_id": "200cd1ed-6f7e-42b4-b00e-48cb005bc027",
+    "permission_mode": "auto",
+    "effort": {
+      "level": "medium"
+    },
+    "hook_event_name": "PreToolUse",
+    "tool_name": "AskUserQuestion",
+    "tool_input": {
+      "questions": [
+        {
+          "question": "Should farewell(name) end with an exclamation mark?",
+          "header": "Punctuation",
+          "options": [
+            {
+              "label": "Yes, end with !",
+              "description": "farewell('Sam') returns 'Goodbye, Sam!'"
+            },
+            {
+              "label": "No punctuation",
+              "description": "farewell('Sam') returns 'Goodbye, Sam'"
+            }
+          ],
+          "multiSelect": false
+        }
+      ]
+    },
+    "tool_use_id": "toolu_018gCA5y6DSUfGPfCkanutHN"
+  },
+  {
+    "session_id": "b2a132c3-a35e-4d33-b865-edf03a395372",
+    "transcript_path": "/home/ada/.claude/projects/-work-app-worktrees-feature-x/b2a132c3-a35e-4d33-b865-edf03a395372.jsonl",
+    "cwd": "/work/app.worktrees/feature-x",
+    "scratchpad_dir": "/tmp/scratchpad",
+    "prompt_id": "200cd1ed-6f7e-42b4-b00e-48cb005bc027",
+    "permission_mode": "auto",
+    "effort": {
+      "level": "medium"
+    },
+    "hook_event_name": "Stop",
+    "stop_hook_active": false,
+    "last_assistant_message": "Your answer is **Yes, end with `!`**, so `farewell('Sam')` will return `'Goodbye, Sam!'`. I haven't changed anything.\n\n**Current state**\n- Worktree: `/work/app.worktrees/feature-x`, branch `feature/x`, clean.\n- `greet.js` is a single ES module export, `export function greet(name) { return 'Hello, ' + name; }`, using 2-space indent, single quotes and semicolons.\n- There is no `package.json` and no test directory, so I'll check the change with a one-off Node command.\n\n**Planned change**\n1. Add `export function farewell(name)` to `greet.js`, directly below `greet`, matching its style.\n2. Body: `return 'Goodbye, ' + name + '!';`\n3. Leave `greet` and the rest of the file untouched.\n4. Leave `README.md` alone unless you want a usage note added.\n\n**Planned check**\n- Run `node --input-type=module -e` to import `greet.js` and confirm `farewell('Sam')` returns `'Goodbye, Sam!'`, and that `greet('Sam')` still returns `'Hello, Sam'`.\n- If Node isn't installed, I'll say so and verify by reading the code instead.\n\n**Git afterwards**\n- Commit on `feature/x` with the `Co-Authored-By: Claude Haiku 5.5` trailer. I won't push unless you ask.\n\nReply OK and I'll make the change and run the check.",
+    "background_tasks": [],
+    "session_crons": []
+  },
+  {
+    "session_id": "b2a132c3-a35e-4d33-b865-edf03a395372",
+    "transcript_path": "/home/ada/.claude/projects/-work-app-worktrees-feature-x/b2a132c3-a35e-4d33-b865-edf03a395372.jsonl",
+    "cwd": "/work/app.worktrees/feature-x",
+    "scratchpad_dir": "/tmp/scratchpad",
+    "prompt_id": "200cd1ed-6f7e-42b4-b00e-48cb005bc027",
+    "hook_event_name": "Notification",
+    "message": "Claude is waiting for your input",
+    "notification_type": "idle_prompt"
+  },
+  {
+    "session_id": "b2a132c3-a35e-4d33-b865-edf03a395372",
+    "transcript_path": "/home/ada/.claude/projects/-work-app-worktrees-feature-x/b2a132c3-a35e-4d33-b865-edf03a395372.jsonl",
+    "cwd": "/work/app.worktrees/feature-x",
+    "scratchpad_dir": "/tmp/scratchpad",
+    "prompt_id": "200cd1ed-6f7e-42b4-b00e-48cb005bc027",
+    "hook_event_name": "SessionEnd",
+    "reason": "other"
+  },
+  {
+    "session_id": "b49d64f8-5373-4b85-9780-fe003bb48cf1",
+    "transcript_path": "/home/ada/.claude/projects/-work-app-worktrees-feature-x/b49d64f8-5373-4b85-9780-fe003bb48cf1.jsonl",
+    "cwd": "/work/app.worktrees/feature-x",
+    "scratchpad_dir": "/tmp/scratchpad",
+    "hook_event_name": "SessionStart",
+    "source": "fork",
+    "session_title": "spike-plan",
+    "seconds_since_last_response": 88,
+    "context_tokens": 50820,
+    "prompt_cache_likely_expired": false,
+    "estimated_cache_write_usd": 0.0102
+  },
+  {
+    "session_id": "b49d64f8-5373-4b85-9780-fe003bb48cf1",
+    "transcript_path": "/home/ada/.claude/projects/-work-app-worktrees-feature-x/b49d64f8-5373-4b85-9780-fe003bb48cf1.jsonl",
+    "cwd": "/work/app.worktrees/feature-x",
+    "scratchpad_dir": "/tmp/scratchpad",
+    "prompt_id": "bbc72a94-9318-4776-8fd7-c7e608cf3625",
+    "permission_mode": "default",
+    "effort": {
+      "level": "medium"
+    },
+    "hook_event_name": "PermissionRequest",
+    "tool_name": "Edit",
+    "tool_input": {
+      "file_path": "/work/app.worktrees/feature-x/greet.js",
+      "old_string": "export function greet(name) {\n  return 'Hello, ' + name;\n}",
+      "new_string": "export function greet(name) {\n  return 'Hello, ' + name;\n}\n\nexport function farewell(name) {\n  return 'Goodbye, ' + name + '!';\n}",
+      "replace_all": false
+    },
+    "permission_suggestions": [
+      {
+        "type": "setMode",
+        "mode": "acceptEdits",
+        "destination": "session"
+      }
+    ]
+  },
+  {
+    "session_id": "b49d64f8-5373-4b85-9780-fe003bb48cf1",
+    "transcript_path": "/home/ada/.claude/projects/-work-app-worktrees-feature-x/b49d64f8-5373-4b85-9780-fe003bb48cf1.jsonl",
+    "cwd": "/work/app.worktrees/feature-x",
+    "scratchpad_dir": "/tmp/scratchpad",
+    "prompt_id": "bbc72a94-9318-4776-8fd7-c7e608cf3625",
+    "hook_event_name": "Notification",
+    "message": "Claude needs your permission",
+    "notification_type": "permission_prompt"
+  },
+  {
+    "session_id": "b49d64f8-5373-4b85-9780-fe003bb48cf1",
+    "transcript_path": "/home/ada/.claude/projects/-work-app-worktrees-feature-x/b49d64f8-5373-4b85-9780-fe003bb48cf1.jsonl",
+    "cwd": "/work/app.worktrees/feature-x",
+    "scratchpad_dir": "/tmp/scratchpad",
+    "prompt_id": "bbc72a94-9318-4776-8fd7-c7e608cf3625",
+    "permission_mode": "default",
+    "effort": {
+      "level": "medium"
+    },
+    "hook_event_name": "PermissionRequest",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "node --input-type=module -e \"import { greet, farewell } from './greet.js'; const r = [farewell('Sam'), greet('Sam')]; console.log(JSON.stringify(r)); if (r[0] !== 'Goodbye, Sam!' || r[1] !== 'Hello, Sam') { process.exit(1); } console.log('OK');\"",
+      "description": "Import greet.js and check farewell and greet outputs"
+    },
+    "permission_suggestions": [
+      {
+        "type": "addRules",
+        "rules": [
+          {
+            "toolName": "Bash",
+            "ruleContent": "node --input-type=module -e \"import { greet, farewell } from './greet.js'; const r = [farewell('Sam'), greet('Sam')]; console.log(JSON.stringify(r)); if (r[0] !== 'Goodbye, Sam!' || r[1] !== 'Hello, Sam') { process.exit(1); } console.log('OK');\""
+          }
+        ],
+        "behavior": "allow",
+        "destination": "localSettings"
+      }
+    ]
+  },
+  {
+    "session_id": "b49d64f8-5373-4b85-9780-fe003bb48cf1",
+    "transcript_path": "/home/ada/.claude/projects/-work-app-worktrees-feature-x/b49d64f8-5373-4b85-9780-fe003bb48cf1.jsonl",
+    "cwd": "/work/app.worktrees/feature-x",
+    "scratchpad_dir": "/tmp/scratchpad",
+    "hook_event_name": "SessionStart",
+    "source": "resume",
+    "session_title": "spike-plan",
+    "seconds_since_last_response": 25,
+    "context_tokens": 55946,
+    "prompt_cache_likely_expired": false,
+    "estimated_cache_write_usd": 0.0112
+  },
+  {
+    "session_id": "32b77ec3-19ad-48c2-8bf0-9ac33926df1b",
+    "transcript_path": "/home/ada/.claude/projects/-work-app-worktrees-feature-x/32b77ec3-19ad-48c2-8bf0-9ac33926df1b.jsonl",
+    "cwd": "/work/app.worktrees/feature-x",
+    "scratchpad_dir": "/tmp/scratchpad",
+    "prompt_id": "abf69e62-a2ba-445a-840c-1f1135252f17",
+    "permission_mode": "auto",
+    "effort": {
+      "level": "medium"
+    },
+    "hook_event_name": "PermissionRequest",
+    "tool_name": "AskUserQuestion",
+    "tool_input": {
+      "questions": [
+        {
+          "question": "Which colour do you want: Red or Blue?",
+          "header": "Colour",
+          "options": [
+            {
+              "label": "Red",
+              "description": "Choose Red"
+            },
+            {
+              "label": "Blue",
+              "description": "Choose Blue"
+            }
+          ],
+          "multiSelect": false
+        }
+      ]
+    }
+  }
+]

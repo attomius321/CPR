@@ -13,16 +13,24 @@ export function RefBadge({ target, className }: { target: MenuChoice['ref']; cla
   );
 }
 
-/** An entry of a row's menu and its submenu: "Check out ▸" (V14), "Review ▸" (V15). */
-export interface RowMenuItem {
+/**
+ * An entry of a row's menu: with a submenu, "Check out ▸" (V14), "Review ▸" (V15); or an action,
+ * "Start a feature here" (V18).
+ */
+export type RowMenuItem = SubmenuItem | { label: string; onSelect: () => void };
+
+interface SubmenuItem {
   label: string;
   choices: readonly MenuChoice[];
   /** `index`: of the choice in `choices`. */
   onChoose: (index: number) => void;
 }
 
+const hasSubmenu = (item: RowMenuItem | undefined): item is SubmenuItem =>
+  item !== undefined && 'choices' in item;
+
 const firstEnabled = (item: RowMenuItem | undefined) =>
-  item?.choices.findIndex((c) => !c.disabled) ?? -1;
+  hasSubmenu(item) ? item.choices.findIndex((c) => !c.disabled) : -1;
 
 /**
  * A row's menu (V11), at the pointer or under the row. Each entry opens a submenu (V14) on
@@ -99,12 +107,15 @@ export function RowMenu({
   }, [onClose]);
 
   const openItem = (index: number) => {
+    const item = items[index];
+    if (item && !hasSubmenu(item)) return item.onSelect();
     setParent(index);
     setOpen(index);
     setInside(true);
-    setActive(firstEnabled(items[index]));
+    setActive(firstEnabled(item));
   };
-  const shown = open === null ? undefined : items[open];
+  const entry = open === null ? undefined : items[open];
+  const shown = hasSubmenu(entry) ? entry : undefined;
   const move = (step: number) => {
     const enabled = (shown?.choices ?? []).flatMap((c, i) => (c.disabled ? [] : [i]));
     if (enabled.length === 0) return;
@@ -140,65 +151,86 @@ export function RowMenu({
         event.stopPropagation();
       }}
     >
-      {items.map((item, i) => (
-        <div key={item.label} role="none" className="menu-host">
-          <button
-            ref={(element) => {
-              parents.current[i] = element;
-            }}
-            type="button"
-            role="menuitem"
-            aria-haspopup="menu"
-            aria-expanded={open === i}
-            className={
-              !inside && parent === i ? 'menu-item has-submenu active' : 'menu-item has-submenu'
-            }
-            onMouseEnter={() => {
-              setParent(i);
-              setOpen(i);
-              setInside(false);
-            }}
-            onClick={() => openItem(i)}
-          >
-            {item.label}
-          </button>
-          {open === i && (
-            <div
-              ref={targets}
-              className="checkout-menu submenu"
-              role="menu"
-              aria-label={item.label}
-              style={
-                subPlace
-                  ? { left: subPlace.x, top: subPlace.y }
-                  : { left: 0, top: 0, visibility: 'hidden' }
+      {items.map((item, i) =>
+        hasSubmenu(item) ? (
+          <div key={item.label} role="none" className="menu-host">
+            <button
+              ref={(element) => {
+                parents.current[i] = element;
+              }}
+              type="button"
+              role="menuitem"
+              aria-haspopup="menu"
+              aria-expanded={open === i}
+              className={
+                !inside && parent === i ? 'menu-item has-submenu active' : 'menu-item has-submenu'
               }
+              onMouseEnter={() => {
+                setParent(i);
+                setOpen(i);
+                setInside(false);
+              }}
+              onClick={() => openItem(i)}
             >
-              {item.choices.map((choice, j) => (
-                <button
-                  key={choice.label}
-                  type="button"
-                  role="menuitem"
-                  aria-label={choice.label}
-                  className={inside && j === active ? 'menu-item active' : 'menu-item'}
-                  disabled={!!choice.disabled}
-                  onMouseEnter={() => {
-                    setInside(true);
-                    if (!choice.disabled) setActive(j);
-                  }}
-                  onClick={() => item.onChoose(j)}
-                >
-                  <span className="menu-target">
-                    <RefBadge target={choice.ref} />{' '}
-                    <span className="menu-kind">{choice.note}</span>
-                  </span>
-                  {choice.disabled && <span className="menu-note">{choice.disabled}</span>}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+              {item.label}
+            </button>
+            {open === i && (
+              <div
+                ref={targets}
+                className="checkout-menu submenu"
+                role="menu"
+                aria-label={item.label}
+                style={
+                  subPlace
+                    ? { left: subPlace.x, top: subPlace.y }
+                    : { left: 0, top: 0, visibility: 'hidden' }
+                }
+              >
+                {item.choices.map((choice, j) => (
+                  <button
+                    key={choice.label}
+                    type="button"
+                    role="menuitem"
+                    aria-label={choice.label}
+                    className={inside && j === active ? 'menu-item active' : 'menu-item'}
+                    disabled={!!choice.disabled}
+                    onMouseEnter={() => {
+                      setInside(true);
+                      if (!choice.disabled) setActive(j);
+                    }}
+                    onClick={() => item.onChoose(j)}
+                  >
+                    <span className="menu-target">
+                      <RefBadge target={choice.ref} />{' '}
+                      <span className="menu-kind">{choice.note}</span>
+                    </span>
+                    {choice.disabled && <span className="menu-note">{choice.disabled}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div key={item.label} role="none" className="menu-host">
+            <button
+              ref={(element) => {
+                parents.current[i] = element;
+              }}
+              type="button"
+              role="menuitem"
+              className={!inside && parent === i ? 'menu-item active' : 'menu-item'}
+              onMouseEnter={() => {
+                setParent(i);
+                setOpen(null);
+                setInside(false);
+              }}
+              onClick={item.onSelect}
+            >
+              {item.label}
+            </button>
+          </div>
+        ),
+      )}
     </div>
   );
 }

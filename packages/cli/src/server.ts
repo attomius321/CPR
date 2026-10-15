@@ -12,7 +12,10 @@ import {
   type FinishResult,
   type LocalReview,
   type CheckoutTarget,
+  type FeatureReply,
+  type FeatureRequest,
   type Graph,
+  type PermissionMode,
   type HistoryRefs,
   type HistoryScope,
   type RefList,
@@ -21,6 +24,7 @@ import {
 import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
 import type { OpenRequest, OpenResult } from './editor.js';
+import { FeatureRefused, type Features } from './features.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 
@@ -62,6 +66,8 @@ export interface RepositoryOptions {
   state?: (graph: Graph) => StateStore;
   /** Branch reviews (V15): `/api/reviews`, and each review under `/review/<branch>/`. */
   reviews?: BranchReviews;
+  /** Features started from the page, each with its agent (V18): `/api/features…`. */
+  features?: Features;
 }
 
 export interface ViewServerOptions {
@@ -79,8 +85,11 @@ export interface ViewServerOptions {
   state?: StateStore;
   /** Enables the commits page at `/` and diffs under `/diff/<base>..<head>/`. */
   repository?: RepositoryOptions;
-  /** Enables `POST /api/open`: a file of a graph's change, opened in VS Code. */
-  open?: (request: OpenRequest) => Promise<OpenResult>;
+  /**
+   * Enables `POST /api/open`: a file of a graph's change, opened in VS Code; in `worktree` when
+   * the branch reviewed is checked out in another worktree (V18b).
+   */
+  open?: (request: OpenRequest, worktree?: string) => Promise<OpenResult>;
 }
 
 /** A graph served with its sources, review state and reviews. */
@@ -94,6 +103,8 @@ interface Site {
   finish?: (review: LocalReview) => Promise<FinishResult>;
   /** Whether the branch merges cleanly into the default branch (V17). */
   merge?: () => Promise<BranchMerge | null>;
+  /** The worktree the branch reviewed is checked out in, when not this one (V18b). */
+  worktree?: () => Promise<string | undefined>;
 }
 
 export interface ViewServer {
@@ -152,6 +163,9 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   const reviewSites = new WeakMap<Graph, Map<string, Site>>();
   let hosts: Set<string> = new Set();
   let checkingOut = false;
+  let startingFeature = false;
+  /** Writes that must not overlap (V18c: two messages at once would make two sessions). */
+  const busy = new Set<string>();
   const server = createServer((req, res) => {
     handle(req, res).catch((error: unknown) => send(res, 500, String(error)));
   });
@@ -190,6 +204,48 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/api/checkout') return checkoutTarget(req, res, repository);
       if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
       if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
+      const { features } = repository;
+      if (features) {
+        // The features view (V18b): the viewer's page, as at `/`.
+        if (url.pathname === '/features') return serveSite(req, res, url, '/', undefined);
+        if (url.pathname === '/api/features') return featuresApi(req, res, features);
+        if (url.pathname === '/api/features/options')
+          return read(req, res, () => features.options());
+        if (url.pathname === '/api/features/start') {
+          return onBranch(req, res, (branch) =>
+            startingOne(res, () => features.startAgent(branch)),
+          );
+        }
+        if (url.pathname === '/api/features/stop') {
+          return onBranch(req, res, (branch) => answer(res, () => features.stopAgent(branch)));
+        }
+        if (url.pathname === '/api/features/open') {
+          return onBranch(req, res, (branch) =>
+            answer(res, () => features.openWorktree(branch).then(() => ({}))),
+          );
+        }
+        if (url.pathname === '/api/features/prompt') {
+          return ofBranch(req, res, url, (branch) =>
+            features.prompt(branch).then((prompt) => ({ prompt })),
+          );
+        }
+        if (url.pathname === '/api/features/merge') {
+          return ofBranch(req, res, url, (branch) => features.merge(branch));
+        }
+        if (url.pathname === '/api/features/thread') {
+          return ofBranch(req, res, url, (branch) => features.thread(branch));
+        }
+        if (url.pathname === '/api/features/reply') {
+          return written(req, res, parseFeatureReply, (request) =>
+            oneAtATime(res, 'a message is being sent', () => features.reply(request)),
+          );
+        }
+        if (url.pathname === '/api/features/clean') {
+          return written(req, res, parseFeatureClean, (request) =>
+            answer(res, () => features.clean(request)),
+          );
+        }
+      }
     }
     return serveSite(req, res, url, url.pathname, root);
   }
@@ -337,6 +393,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         state: reviews.state(info),
         finish: (review) => reviews.finish(info, review, shared.readSource),
         merge: () => reviews.merge(info),
+        worktree: async () =>
+          (await repo.refs()).branches.find((b) => b.name === info.branch)?.worktree,
       };
       byBranch.set(info.branch, site);
     }
@@ -488,6 +546,110 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
   }
 
+  /** The features (GET), or a new one: its branch, worktree and agent (POST), one at a time. */
+  async function featuresApi(
+    req: IncomingMessage,
+    res: ServerResponse,
+    features: Features,
+  ): Promise<void> {
+    if (req.method === 'GET') return json(res, 200, await features.list());
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let request: FeatureRequest;
+    try {
+      request = parseFeatureRequest(await readBody(req, MAX_BODY_BYTES));
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    return startingOne(res, () => features.start(request));
+  }
+
+  /** A write about one feature: `POST { branch }`. */
+  async function onBranch(
+    req: IncomingMessage,
+    res: ServerResponse,
+    act: (branch: string) => Promise<void>,
+  ): Promise<void> {
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let branch: string;
+    try {
+      const value = JSON.parse(await readBody(req, MAX_BODY_BYTES)) as { branch?: unknown } | null;
+      if (typeof value?.branch !== 'string') throw new Error("branch: a feature's branch");
+      branch = value.branch;
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    return act(branch);
+  }
+
+  /** A write with a JSON body `parse` checks: 400 with its words when it does not. */
+  async function written<T>(
+    req: IncomingMessage,
+    res: ServerResponse,
+    parse: (text: string) => T,
+    act: (request: T) => Promise<void>,
+  ): Promise<void> {
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let request: T;
+    try {
+      request = parse(await readBody(req, MAX_BODY_BYTES));
+    } catch (error) {
+      return send(res, 400, (error as Error).message);
+    }
+    return act(request);
+  }
+
+  /** One such write at a time: another meanwhile is refused (409) with `words`. */
+  async function oneAtATime(
+    res: ServerResponse,
+    words: string,
+    task: () => Promise<unknown>,
+  ): Promise<void> {
+    if (busy.has(words)) return json(res, 409, { error: words });
+    busy.add(words);
+    try {
+      return await answer(res, task);
+    } finally {
+      busy.delete(words);
+    }
+  }
+
+  /** A read about one feature: `GET ?branch=`. */
+  async function ofBranch(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    value: (branch: string) => Promise<unknown>,
+  ): Promise<void> {
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    const branch = url.searchParams.get('branch');
+    if (!branch) return send(res, 400, "branch: a feature's branch");
+    return answer(res, () => value(branch));
+  }
+
+  /** The answer, or a feature's refusal with its status and words. */
+  async function answer(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
+    try {
+      return json(res, 200, await task());
+    } catch (error) {
+      if (error instanceof FeatureRefused) return json(res, error.status, { error: error.message });
+      throw error;
+    }
+  }
+
+  /** One start at a time (a worktree and an agent each). */
+  async function startingOne(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
+    if (startingFeature) return json(res, 409, { error: 'a feature is being started' });
+    startingFeature = true;
+    try {
+      return await answer(res, task);
+    } finally {
+      startingFeature = false;
+    }
+  }
+
   /** Starts analyzing two commits; answers where the diff will be. */
   async function startDiff(
     req: IncomingMessage,
@@ -609,7 +771,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     const { revisions } = site.graph;
     const sha = target.side === 'base' ? revisions.from : revisions.head.sha;
     if (!sha) return json(res, 404, { error: `no ${target.side} commit to open the file at` });
-    const result = await open({ sha, file: target.file, line: target.line, column: target.column });
+    const worktree = await site.worktree?.();
+    const result = await open(
+      { sha, file: target.file, line: target.line, column: target.column },
+      worktree,
+    );
     if (!result.opened) {
       return json(res, result.reason === 'missing' ? 404 : 502, { error: result.message });
     }
@@ -664,6 +830,53 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
 function json(res: ServerResponse, status: number, value: unknown): void {
   send(res, status, JSON.stringify(value), TYPES['.json']);
+}
+
+/**
+ * `{ brief, branch, planFirst, base?, permissionMode? }`, each of its type; what they say is the
+ * features' to check (V18).
+ */
+function parseFeatureRequest(text: string): FeatureRequest {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('expected { brief, branch, planFirst }');
+  }
+  const { brief, branch, planFirst, base, permissionMode } = value;
+  if (typeof brief !== 'string') throw new Error('brief: what to build');
+  if (typeof branch !== 'string') throw new Error("branch: the new branch's name");
+  if (typeof planFirst !== 'boolean') throw new Error('planFirst: true or false');
+  if (base !== undefined && typeof base !== 'string') throw new Error('base: a full SHA');
+  if (permissionMode !== undefined && typeof permissionMode !== 'string') {
+    throw new Error('permissionMode: default, acceptEdits or auto');
+  }
+  return {
+    brief,
+    branch,
+    planFirst,
+    ...(base === undefined ? {} : { base }),
+    ...(permissionMode === undefined ? {} : { permissionMode: permissionMode as PermissionMode }),
+  };
+}
+
+/** `{ branch, text, stop? }`: a message for a feature's agent (V18c). */
+function parseFeatureReply(text: string): FeatureReply {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.branch !== 'string') throw new Error("branch: a feature's branch");
+  if (typeof value.text !== 'string') throw new Error('text: the message');
+  if (value.stop !== undefined && typeof value.stop !== 'boolean') {
+    throw new Error('stop: true or false');
+  }
+  return { branch: value.branch, text: value.text, ...(value.stop ? { stop: true } : {}) };
+}
+
+/** `{ branch, unmerged? }`: a feature to clean up (V18c). */
+function parseFeatureClean(text: string): { branch: string; unmerged?: boolean } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.branch !== 'string') throw new Error("branch: a feature's branch");
+  if (value.unmerged !== undefined && typeof value.unmerged !== 'boolean') {
+    throw new Error('unmerged: true or false');
+  }
+  return { branch: value.branch, ...(value.unmerged ? { unmerged: true } : {}) };
 }
 
 const CHECKOUT_KINDS: readonly CheckoutTarget['kind'][] = ['branch', 'remote', 'tag', 'commit'];

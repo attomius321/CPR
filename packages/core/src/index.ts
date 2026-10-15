@@ -151,6 +151,34 @@ export {
   type VerdictEvent,
 } from './git/branches.js';
 export {
+  PERMISSION_MODES,
+  type AgentKind,
+  type AgentStateName,
+  type FeatureAgentState,
+  type FeatureList,
+  type FeatureOptions,
+  type FeatureReplied,
+  type FeatureReply,
+  type FeatureRequest,
+  type FeatureStart,
+  type FeatureSummary,
+  type FeatureThread,
+  type PermissionMode,
+  type ThreadEntry,
+  type ThreadQuestion,
+} from './features.js';
+export {
+  addWorktree,
+  branchNameProblem,
+  deleteMergedBranch,
+  listWorktrees,
+  mainWorktree,
+  removeWorktree,
+  uncommittedFiles,
+  WorktreeRefused,
+  type Worktree,
+} from './git/worktrees.js';
+export {
   checkout,
   CheckoutRefused,
   UnknownCheckoutTarget,

@@ -329,6 +329,57 @@ describe('graphLoaded', () => {
 });
 
 describe('rowBadges', () => {
+  it('puts the most urgent feature mark of the badges it folds on "+N" (V18b)', () => {
+    const chip = (mark: string, tone: 'working' | 'waiting', branch: string) => ({
+      mark,
+      tone,
+      title: `Feature: ${branch}`,
+      href: `/features?branch=${branch}`,
+    });
+    const agents = new Map([
+      ['feature/a', chip('⚙', 'working', 'feature/a')],
+      ['feature/b', chip('?', 'waiting', 'feature/b')],
+    ]);
+    const badges = rowBadges(
+      [
+        { kind: 'head', name: 'HEAD' },
+        { kind: 'branch', name: 'main' },
+        { kind: 'remote', name: 'origin/main' },
+        { kind: 'branch', name: 'feature/a' },
+        { kind: 'branch', name: 'feature/b' },
+      ],
+      'main',
+      new Map(),
+      agents,
+    );
+    expect(badges.at(-1)).toEqual({
+      kind: 'more',
+      label: '+2',
+      title: 'feature/a\nfeature/b',
+      agent: {
+        mark: '?',
+        tone: 'waiting',
+        title: 'Features here: feature/a, feature/b — one needs you',
+        href: '/features',
+      },
+    });
+    // Without features folded, "+N" carries no mark.
+    expect(
+      rowBadges(
+        [
+          { kind: 'head', name: 'HEAD' },
+          { kind: 'branch', name: 'main' },
+          { kind: 'tag', name: 'v1' },
+          { kind: 'tag', name: 'v2' },
+          { kind: 'tag', name: 'v3' },
+        ],
+        'main',
+        new Map(),
+        agents,
+      ).at(-1),
+    ).toEqual({ kind: 'more', label: '+2', title: 'v2\nv3' });
+  });
+
   it('joins HEAD and the branch it is on into one badge', () => {
     expect(
       rowBadges(

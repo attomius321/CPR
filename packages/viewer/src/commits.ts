@@ -1,5 +1,6 @@
 import type { Commit, CommitRef, Graph } from '@cpr/core';
 import type { ReviewMark } from './branchReviews.js';
+import type { AgentChip } from './features.js';
 
 /** Two commits compared directly, by full SHA. */
 export interface Pair {
@@ -231,6 +232,8 @@ export interface Badge {
   title?: string;
   /** The branch is reviewed (V15, V16): "+2", "✓", "✗" or "…", and what it means. */
   review?: ReviewMark;
+  /** The branch is a feature's (V18b): its agent's mark, a link to the feature. */
+  agent?: AgentChip & { href: string };
 }
 
 /** Badges shown on a row before the rest are folded into "+N" (Qwik tags 9 packages at once). */
@@ -245,11 +248,13 @@ export function rowBadges(
   refs: readonly CommitRef[],
   branch: string | null,
   reviewed: ReadonlyMap<string, ReviewMark> = new Map(),
+  agents: ReadonlyMap<string, AgentChip & { href: string }> = new Map(),
 ): Badge[] {
   const head = refs.some((r) => r.kind === 'head');
   const review = (name: string) => {
     const mark = reviewed.get(name);
-    return mark === undefined ? {} : { review: mark };
+    const agent = agents.get(name);
+    return { ...(mark === undefined ? {} : { review: mark }), ...(agent ? { agent } : {}) };
   };
   const badges: Badge[] = refs.flatMap((ref): Badge[] => {
     if (ref.kind === 'head') {
@@ -269,10 +274,53 @@ export function rowBadges(
   });
   if (badges.length <= MAX_BADGES) return badges;
   const folded = badges.slice(MAX_BADGES - 1);
+  const agent = foldedMark(folded);
   return [
     ...badges.slice(0, MAX_BADGES - 1),
-    { kind: 'more', label: `+${folded.length}`, title: folded.map((b) => b.label).join('\n') },
+    {
+      kind: 'more',
+      label: `+${folded.length}`,
+      title: folded.map((b) => b.label).join('\n'),
+      ...(agent ? { agent } : {}),
+    },
   ];
+}
+
+/** Which feature marks matter most: what needs the person, then what works, then what is done. */
+const URGENCY: readonly AgentChip['tone'][] = [
+  'failed',
+  'waiting',
+  'ready',
+  'idle',
+  'working',
+  'done',
+];
+
+/**
+ * The mark "+N" carries for the features it folds (V18b): the most urgent one's, a link to the
+ * features view, its title naming them and how many need the person.
+ */
+function foldedMark(folded: readonly Badge[]): (AgentChip & { href: string }) | undefined {
+  const marked = folded.filter((b) => b.agent);
+  const first = marked
+    .map((b) => b.agent as AgentChip)
+    .sort((a, b) => URGENCY.indexOf(a.tone) - URGENCY.indexOf(b.tone))[0];
+  if (!first) return undefined;
+  const needs = marked.filter((b) => !['working', 'done'].includes(b.agent?.tone ?? '')).length;
+  const state =
+    needs === 1
+      ? 'one needs you'
+      : needs > 1
+        ? `${needs} need you`
+        : first.tone === 'working'
+          ? 'working'
+          : 'done';
+  return {
+    mark: first.mark,
+    tone: first.tone,
+    title: `Features here: ${marked.map((b) => b.label).join(', ')} — ${state}`,
+    href: '/features',
+  };
 }
 
 const UNITS: [unit: string, seconds: number][] = [

@@ -47,7 +47,11 @@ test('offers what each row can check out, in a submenu', async ({ page }) => {
   await page.goto(cpr.url);
   // The menu holds "Check out" (and "Review", V15: the row has a branch); targets open on hover.
   await row(page, 'Try a wobble').click({ button: 'right' });
-  await expect(page.getByRole('menuitem')).toHaveText(['Check out', 'Review']);
+  await expect(page.getByRole('menuitem')).toHaveText([
+    'Check out',
+    'Review',
+    'Start a feature here',
+  ]);
   await expect(checkOut(page)).toHaveAttribute('aria-expanded', 'false');
   await checkOut(page).hover();
   await expect(checkOut(page)).toHaveAttribute('aria-expanded', 'true');
@@ -140,11 +144,12 @@ test('keeps the submenu in the window: on the left near the right edge, up near 
   const menu = (await page.locator('.checkout-menu').first().boundingBox())!;
   expect((await inWindow()).x).toBeLessThan(menu.x);
   await page.keyboard.press('Escape');
-  // Near the bottom the menu opens above the pointer; the taller submenu moves up further.
+  // Near the bottom the menu opens above the pointer; the submenu, level with its entry or moved
+  // up when it is the taller (since V18 the menu has a third entry), stays in the window.
   await page.mouse.click(400, 280, { button: 'right' });
   await checkOut(page).hover();
   const low = (await page.locator('.checkout-menu').first().boundingBox())!;
-  expect((await inWindow()).y).toBeLessThan(low.y);
+  expect((await inWindow()).y).toBeLessThanOrEqual(low.y);
 });
 
 test('checks out a branch: HEAD, lane 0 and the cursor follow', async ({ page }) => {

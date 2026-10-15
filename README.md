@@ -71,6 +71,39 @@ approval there says they may be pushed.
 **For agents**: CPR writes what to do with a review into `cpr/AGENTS.md`, beside the reviews,
 and every review file's first line points there. Claude Code loads it when it reads a review.
 
+Start the work there too: "Start a feature" (or `n`; "Start a feature here" in a commit's menu
+starts it at that commit) asks what the agent should build, names a branch after it (edit it if
+you like), creates the branch at the default branch's tip with its own worktree beside your
+checkout — `../<repo>.worktrees/<branch>`, so your checkout and `cpr view` are untouched and
+several features can run at once — records the brief in `cpr/features/<branch>.json`, and starts
+Claude Code there in the background (`claude --bg`) with the brief. "Plan first and wait for my
+OK" (on by default) has it stop after its plan. It runs on your own Claude Code login (the
+dialog says which: your subscription, or an API key) in the permission mode you pick (Claude
+Code's default, Accept edits or Auto); CPR never grants it more. If Claude Code does not start —
+it must trust the repository, so run `claude` there once and accept — or is not installed (`claude`
+on `PATH`, or `CPR_CLAUDE`), the branch and worktree are kept and the page offers the prompt to
+copy. **Features** (the tab beside Commits, which counts what needs you) lists them by what each
+needs from you — a plan to read, a permission to give, a branch to review, changes to send back —
+then those working, then those merged, each with its commits, files not committed yet, your review
+and whether it merges cleanly, and Review, Talk (copies `claude attach <id>` for a terminal), Open
+in VS Code (its worktree), Stop or Start the agent, Copy the prompt. A feature's branch carries its
+agent's mark on the commits page — a link to the feature — and the feature's branch name goes to
+its commits; its commits show as the agent makes them. Review the branch as any other. In
+`cpr/config.json`, `"features": { "branchPrefix": "feature/", "worktrees": "../{repo}.worktrees"
+}` and `"agent": { "permissionMode": "auto", "model": "opus" }` change the defaults.
+
+Pick a feature and its panel opens beside the list: its state and actions, then its thread —
+the agent's plan and reports, your messages, what it waits on (a permission to run a command, a
+question and its options) — and a box to answer it. Send continues the agent's own session with
+your words (CPR stops a session that is still alive first, then resumes it); while it works,
+"Stop and send" asks before ending its turn. After you finish a review of its branch, "Send the
+verdict" (or "Send to the agent" in the Review tab) fills the box with what you decided. Nothing
+is sent until you press Send. The thread comes from hooks CPR gives each agent it starts
+(`cpr/claude-settings.json`, kept in `cpr/threads/`, out of git); they only record, so
+permissions and questions are still answered in the session (Talk). Once a feature is merged,
+Clean up removes its agent's sessions, its worktree and its branch; an unmerged one only after
+you confirm, keeping the branch; never while files there are not committed.
+
 A click selects a commit (j/k move the selection). To compare, turn on "Compare mode" (or press
 x): click one commit and another — the older is the base — and Compare (or x, Enter); one picked
 alone is compared with its parent; Escape leaves. Two commits on branches that diverged are

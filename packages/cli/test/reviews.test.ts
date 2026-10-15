@@ -248,6 +248,15 @@ describe('branchReviews', () => {
     );
   });
 
+  it("tells a feature's agent about its record, plan first, and where an approval is merged (V18c)", () => {
+    expect(AGENTS).toContain('## Features');
+    expect(AGENTS).toContain('cpr/features/<branch>.json');
+    expect(AGENTS).toMatch(/`planFirst`.*stop/s);
+    expect(AGENTS).toContain('## Approved in a linked worktree');
+    expect(AGENTS).toContain('git worktree list');
+    expect(AGENTS).toMatch(/do not merge here/);
+  });
+
   it("rewrites the agents' instructions when CPR's differ, and points every review at them", async () => {
     const { repo } = fresh();
     repo.write({ 'cpr/AGENTS.md': '# an older CPR\n' });

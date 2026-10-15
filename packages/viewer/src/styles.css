@@ -1883,13 +1883,49 @@ kbd {
   color: var(--panel);
 }
 
-.compare-mode kbd {
+.compare-mode kbd,
+.start-feature kbd {
   padding: 0 5px;
   border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
   border-radius: 4px;
   font: inherit;
   font-size: 11px;
   font-weight: normal;
+}
+
+/* The header's actions, at its right: "Start a feature" (V18), then Compare mode. */
+.commits-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* "Start a feature" (V18), in the colour of something added. */
+.start-feature {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 6px 1px 10px;
+  border: 1px solid color-mix(in srgb, var(--added) 45%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--added) 9%, var(--panel));
+  color: var(--added);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.start-feature:hover {
+  border-color: var(--added);
+  background: color-mix(in srgb, var(--added) 16%, var(--panel));
+}
+
+.start-feature:focus-visible {
+  outline: 2px solid var(--added);
+  outline-offset: 1px;
 }
 
 /* Out of compare mode a click selects: the cursor row is the selection, and shows it. */
@@ -2086,6 +2122,64 @@ kbd {
 .dialog-buttons .button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* The start dialog (V18): a brief to write, so wider than a confirmation. */
+.feature-dialog {
+  width: min(640px, 100%);
+}
+
+.feature-field {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+  font-weight: 600;
+}
+
+.feature-field textarea,
+.feature-field input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-weight: normal;
+}
+
+.feature-field textarea {
+  resize: vertical;
+  min-height: 7em;
+}
+
+.feature-field input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.feature-field [aria-invalid='true'] {
+  border-color: var(--error);
+}
+
+.feature-from {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.feature-from .ref {
+  display: inline;
+}
+
+.feature-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+}
+
+.feature-agent select {
+  font: inherit;
 }
 
 .commit-sha {
@@ -2560,5 +2654,420 @@ kbd {
 @keyframes commit-flash {
   from {
     background: color-mix(in srgb, var(--moved) 45%, transparent);
+  }
+}
+
+/* ---- features (V18b) ------------------------------------------------------------------ */
+
+/* Commits · Features, in the bar. */
+.page-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.page-tabs a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* No taller than the brand beside it: the bar keeps its height. */
+  padding: 0 10px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.page-tabs a:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--moved) 8%, transparent);
+}
+
+.page-tabs a[aria-current='page'] {
+  color: var(--text);
+  background: color-mix(in srgb, var(--moved) 12%, transparent);
+  font-weight: 600;
+}
+
+/* How many features need the person: the waiting colour. */
+.page-count {
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--warning);
+  color: var(--panel);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* A feature's mark: what its agent is doing; on badges, a link to the feature. */
+.feature-mark {
+  --feature-tone: var(--context);
+  display: inline-block;
+  min-width: 14px;
+  margin-right: 5px;
+  padding: 0 3px;
+  border: 1px solid var(--feature-tone);
+  border-radius: 4px;
+  color: var(--feature-tone);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
+  text-decoration: none;
+  vertical-align: 1px;
+}
+
+a.feature-mark:hover {
+  background: var(--feature-tone);
+  color: var(--panel);
+}
+
+.feature-mark-working {
+  --feature-tone: var(--moved);
+}
+
+.feature-mark-waiting {
+  --feature-tone: var(--warning);
+}
+
+.feature-mark-ready {
+  --feature-tone: var(--added);
+}
+
+.feature-mark-failed {
+  --feature-tone: var(--removed);
+}
+
+.feature-mark-done {
+  --feature-tone: var(--added);
+}
+
+/* HEAD's badge is solid green: the mark is light on it. */
+.ref-head .feature-mark {
+  border-color: var(--panel);
+  color: var(--panel);
+}
+
+/* In the branches panel the mark is a link beside the entry (no link inside a button). */
+.branches-list li.has-feature {
+  display: flex;
+  align-items: center;
+}
+
+.branches-list li.has-feature .branches-branch {
+  flex: 1;
+  min-width: 0;
+}
+
+.branches-list li.has-feature .feature-mark {
+  flex: none;
+  margin: 0 8px 0 0;
+}
+
+.review-feature {
+  color: var(--moved);
+  text-decoration: none;
+}
+
+.review-feature:hover {
+  text-decoration: underline;
+}
+
+.features {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px 24px;
+}
+
+.feature-group h2 {
+  margin: 16px 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.feature-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.feature-row {
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.feature-row:first-child {
+  border-top: 0;
+}
+
+.feature-row.flash {
+  animation: commit-flash 1.2s ease-out;
+}
+
+.feature-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.feature-head .feature-mark {
+  margin-right: 0;
+}
+
+.feature-head a.ref {
+  text-decoration: none;
+}
+
+.feature-head a.ref:hover {
+  text-decoration: underline;
+}
+
+.feature-about {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feature-branch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 4px;
+}
+
+.feature-branch .ref {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feature-branch a.ref:hover {
+  text-decoration: underline;
+}
+
+button.feature-about {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.feature-state {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.feature-state strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.feature-brief {
+  max-height: 40vh;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--bg);
+  font: inherit;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.feature-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.feature-actions .link {
+  font-family: inherit;
+}
+
+.feature-said {
+  color: var(--muted);
+}
+
+/* V18c: the list and, beside it, the picked feature's panel. */
+.features-body.has-panel {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.features-body.has-panel .feature-row {
+  cursor: pointer;
+}
+
+.features-body.has-panel .feature-row:hover {
+  background: var(--bg);
+}
+
+.feature-row.picked,
+.features-body.has-panel .feature-row.picked:hover {
+  box-shadow: inset 3px 0 0 var(--moved);
+  background: color-mix(in srgb, var(--moved) 7%, var(--panel));
+}
+
+.feature-panel {
+  position: sticky;
+  top: 0;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.feature-back {
+  display: none;
+  margin-bottom: 8px;
+}
+
+.feature-confirm {
+  font-size: 13px;
+}
+
+.feature-confirm .button {
+  margin-top: 0;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 55vh;
+  margin: 12px 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.thread-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.thread-you {
+  margin-left: 48px;
+  background: color-mix(in srgb, var(--moved) 9%, var(--panel));
+}
+
+.thread-who,
+.thread-cpr summary {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.thread-cpr summary {
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.thread-text {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.thread-cpr .thread-text {
+  margin-top: 6px;
+}
+
+.thread-waits {
+  padding: 6px 10px;
+  border-left: 3px solid var(--warning);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.thread-line {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.reply {
+  margin-top: 12px;
+}
+
+.reply textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.reply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 14px;
+  font-size: 13px;
+}
+
+.reply-actions .button {
+  margin-top: 4px;
+  padding: 6px 14px;
+}
+
+.reply-actions .button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media (max-width: 1099px) {
+  .features-body.has-panel {
+    display: block;
+  }
+
+  .features-body.has-panel .features-list {
+    display: none;
+  }
+
+  .feature-panel {
+    position: static;
+  }
+
+  .feature-back {
+    display: inline;
   }
 }
