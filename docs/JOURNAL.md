@@ -2438,3 +2438,45 @@ repository's `.claude/settings.json` committed with a `SessionStart` hook and a
 - **The file must be there when it wakes**: moved away, the resume exited 0 but the session
   failed ("exit 1 before init — Error: Settings file not found: …"); with the file back, the next
   resume continued the same session.
+
+## V18c — Talking to the agent (2026-10-15, branch `milestone/v18-start-a-feature`)
+
+Asked to move "one abstraction up from Claude Code", starting simple with one box, beside the
+list. The features view is now a list and a panel: picking a feature shows its state and
+actions, its thread — CPR's prompt, the agent's plans and reports, the person's messages, what
+the agent waits on — and one box whose message continues the agent's own session. "Send the
+verdict" (and "Send to the agent" in the Review tab) fills the box with the review's verdict.
+Clean up removes a merged feature's sessions, worktree and branch. The thread is recorded by
+hooks CPR gives every agent it starts (`--settings <cpr>/claude-settings.json`), which decide
+nothing: answering permissions and questions in CPR is V18e, on the same hooks.
+
+**Learned**:
+- **A reply is stop, then resume with no flag.** Measured in the spike: a resume of a live
+  session, or with any flag, starts a copy without the hooks. With a real agent the same session
+  continued twice (1.6 s each), its hooks still firing.
+- **The first hooks fire before `--bg` returns.** CPR saved the feature's record after the start,
+  so the hook found no feature for the session's first events. The e2e fake caught it because it
+  runs the hooks of its `--settings` file as Claude Code does; a fake that only records argv would
+  not have.
+- **A hook is a process per event**: a script with Node's modules only costs 22–23 ms; going
+  through CPR's CLI, which loads the engine, 286 ms. `thread.ts` stays free of `@cpr/core`.
+- **Two layout bugs only a browser showed**: rows with no brief in the 360 px list (the branch
+  took the line), and, with a real agent's long plan, a thread that opened at its oldest entry
+  with the fix out of sight. Unit tests and the e2e specs with short messages passed both.
+- **A finished plan is `blocked`, not `done`**: with the thread's last report after its last
+  prompt, CPR reads it as "plan ready" — confirmed with the real agent.
+- **The 2 s session cache again**: an e2e that set the fake's state and reloaded pressed Send
+  while the page still said "Working", and the panel rightly asked before stopping the agent.
+  Tests wait for the page's next read, as V18b's journal says.
+- A limit, not tried: `git branch -d` checks the merge against the branch's upstream, else
+  `HEAD` (git's documented rule), so with another branch checked out where `cpr view` runs, Clean
+  up's branch deletion would be refused in git's words, the worktree already removed.
+
+**Verification**: tests first (core 2, thread 8, features 10, server 1, reviews 1, viewer 4, e2e
+8). 692 unit tests, 98 e2e, all passing. A real Claude Code (Haiku, Pro subscription, `auto`)
+driven through `cpr view`'s API: start 1.0 s, plan 13 s and "plan ready", reply 1.6 s and a commit
+13 s later, a verdict sent back 1.6 s and a fix 9 s later, Clean up 1.4 s; everything made was
+removed. Screenshots light and dark at 1440 and 900 px, no page errors. Not verified: permissions
+and questions from a real agent in the panel, a session woken outside CPR, `cpr view` closed
+while an agent works, an unmerged Clean up with a real agent, Windows and macOS, Firefox and
+Safari.

@@ -431,7 +431,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V15 ✅ | Branch reviews in the repository | Outside `cpr pr`, marks are kept per pair of revisions in CPR's cache: when an agent adds a commit, the pair is new and the marks start empty, on one machine. Measured on this repository's agent-written branches: per branch, 97.7 % of marks would still be valid after a new commit (1,027 of 1,051), and 170 symbols left to look at instead of 1,197. Merged: "Review ▸" in the row menu (or r) compares a branch's fork point with its tip, marks kept across new commits (on a clone, 83 of 83 after one more commit, 2 symbols left); reviews in `cpr/reviews/<branch>/<reviewer>.json`, out of git by default (`cpr/.gitignore`), shared by deleting that file; "✓" or "+n" on reviewed branches' badges, a dot on commits added since. See below. |
 | V16 ✅ | Finish a review | A branch review has no end: outside `cpr pr` the reviewer can only mark symbols (the reviewer's V15 review: 86 of 87 marked, 0 comments, none possible), feedback to the agent goes through chat without a place, badges show no outcome, and approved work is pushed by hand. Merged: comments and the Review tab on branch reviews; Approve, Request changes or Comment recorded with its comments in the review's JSON ("✓", "✗", "+n" on badges); Approve pushes the reviewed commit, by SHA; the default branch reviewable from where it was last pushed; `cpr pr` unchanged. See below. |
 | V17 ✅ | Approve means "merge it" | Approve pushes the reviewed commit, which did nothing on 0 of 4 approvals here (the agent had pushed), while every approval was followed by asking for the merge in chat; merging the default branch into a reviewed branch shows "+6" for one commit; agents elsewhere get no instructions. Merged: Approve records the commit and the default branch to merge into, nothing pushed; "since" counts the branch's own commits; the Review tab says whether the merge will conflict; CPR writes `cpr/AGENTS.md` for any repository's agent (a headless Claude Code agent followed it: merged exactly the approved commit; on a conflict, resolved on its branch and asked for another review). See below. |
-| V18 | Start a feature | The commits page starts nothing: starting an agent on a feature is a terminal job — a branch and worktree by hand (12 ms on ky to 0.85 s on Bitwarden), Claude Code's own worktrees inside the checkout (ignored by 0 of 6 clones) and from the remote default branch, `claude --bg` refused by a trust step a script cannot take (3 of 3 folders), and nothing ties an agent to its branch. Planned: "Start a feature" (header, `n`, a row's menu): a brief, a branch at the chosen commit with its own worktree beside the checkout, the agent started in the background (Claude Code, or a configured command), its state on the branch's badge and in a features view (decisions 105–106), each leading to the other, plan first per feature; reviews and merges as V15–V17. V18a–b built, not merged: a feature from the header or a row, its worktree and agent in 0.1–0.9 s on the six clones, the checkout untouched; the features view with each agent's state. V18c planned on a real session (spike): a background agent's plan, questions and permissions reach hooks CPR passes at the start, and a reply by `--resume` to a live session makes a copy without them; so one reply box beside the features list, on hooks that record from the first start (stop, then resume). See below. |
+| V18 | Start a feature | The commits page starts nothing: starting an agent on a feature is a terminal job — a branch and worktree by hand (12 ms on ky to 0.85 s on Bitwarden), Claude Code's own worktrees inside the checkout (ignored by 0 of 6 clones) and from the remote default branch, `claude --bg` refused by a trust step a script cannot take (3 of 3 folders), and nothing ties an agent to its branch. Planned: "Start a feature" (header, `n`, a row's menu): a brief, a branch at the chosen commit with its own worktree beside the checkout, the agent started in the background (Claude Code, or a configured command), its state on the branch's badge and in a features view (decisions 105–106), each leading to the other, plan first per feature; reviews and merges as V15–V17. V18a–c built, not merged: a feature from the header or a row, its worktree and agent in 0.1–0.9 s on the six clones, the checkout untouched; the features view with each agent's state; since V18c, the picked feature's panel beside the list with its thread, recorded by hooks CPR gives each agent (22–23 ms per event), and one box that continues the agent's session (stop, then resume: 1.6 s with a real Claude Code), Send the verdict, Clean up. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -4747,9 +4747,8 @@ Not verified: Windows and macOS; Firefox and Safari; moving through the panel wi
 
 ### V18 — Start a feature: a branch, a worktree and an agent, from the commits page
 
-**Status:** V18a and V18b built (2026-10-15) on branch `milestone/v18-start-a-feature`, not
-merged; V18c planned on the V18c spike (2026-10-15), V18d–e planned. As built and results: "As
-built — V18a" and "As built — V18b" below.
+**Status:** V18a, V18b and V18c built (2026-10-15) on branch `milestone/v18-start-a-feature`,
+not merged; V18d–e planned. As built and results: "As built — V18a", "— V18b" and "— V18c" below.
 
 **Problem** (asked: "Let's continue with our agentic flow...from the commits view page, i would
 like to "Start a new feature" feature"; then, choosing among options: CPR starts the agent; the
@@ -5232,7 +5231,7 @@ on one branch.
 |---|---|---|
 | V18a (built) | Start a feature | `cpr/features/`, one `cpr/` per repository; branch and worktree outside the checkout; the agent started (`claude --bg`), failures kept with their reason; `/api/features` with states; the dialog (header, `n`, "Start a feature here"); the page lists the new branch. |
 | V18b (built) | The features view | `/features`: open features grouped by what they need (needs you, working, done), each with its state, commits, uncommitted files, review mark and merge check; Review, Talk (attach), Open in VS Code, Start/Stop, Copy the prompt; the tab bar with the count; agent chips on badges and in the branches panel; feature ↔ branch links (`/?branch=`, `/features?branch=`, "Open its feature", the review header); polling while an agent works, the history listed anew when a feature's tip moves; Open in VS Code in the feature's worktree; V11's menu names a branch's worktree. |
-| V18c | Talk and finish | CPR's hooks at every first start (`--settings <cpr>/claude-settings.json`, `agent-hook.js`), recording into `cpr/threads/<branch>.jsonl` and deciding nothing; the features view as list and panel (`?branch=` the selection): the head and V18b's actions, the thread (reports, messages, what the agent waits on), one reply box (stop if live, resume with no flag), "Send the verdict" and the Review tab's "Send to the agent"; "plan ready" from a `blocked` session after its report; Clean up; AGENTS.md: features, merging from a worktree. |
+| V18c (built) | Talk and finish | CPR's hooks at every first start (`--settings <cpr>/claude-settings.json`, `agent-hook.js`), recording into `cpr/threads/<branch>.jsonl` and deciding nothing; the features view as list and panel (`?branch=` the selection): the head and V18b's actions, the thread (reports, messages, what the agent waits on), one reply box (stop if live, resume with no flag), "Send the verdict" and the Review tab's "Send to the agent"; "plan ready" from a `blocked` session after its report; Clean up; AGENTS.md: features, merging from a worktree. |
 | V18d | Codex and other agents | Codex (`codex exec --json`, detached; states from its events; reply by `exec resume`); `agent.command` for any other (detached, log, running/exited); the agent picked in the dialog; `.worktreeinclude`. |
 | V18e | Answers in CPR | What an agent waits on, answered in the panel through the hooks registered since V18c: a permission (an edit as a diff, a command; allow, or deny with a reason), a question (its options); the hook waits for the person up to its timeout, then Claude Code's own dialog (measured: the question comes again through `PermissionRequest`). |
 
@@ -5382,6 +5381,60 @@ No analysis code changed (goldens unchanged).
 
 Not verified: a real Claude Code (as for V18a) — `claude stop` and `claude attach` with a real
 session; VS Code opening a worktree for real (the tests use a fake `code`); Windows and macOS;
+Firefox and Safari.
+
+#### As built — V18c
+
+- **The record is saved before the agent starts**: the session's first hooks (`SessionStart`,
+  CPR's prompt) fire while `claude --bg` is still starting, and the hook finds a feature by its
+  record; saved after the start, as V18a did, those entries were dropped. The e2e fake, which
+  runs the hooks of its `--settings` file as Claude Code does, found it.
+- **`hooks: true`** in the record's `agent` tells a feature whose thread is recorded from one
+  started before V18c ("CPR keeps an agent's messages from V18c on: Talk shows this one's").
+- **The settings file** is written when a feature is started or a message sent, and on a list of
+  features that has a recorded one; `cpr view` builds its services lazily, so not at its own
+  start. A repository with no feature gets no file. The hook's command quotes each path for the
+  shell Claude Code runs it in (single quotes; double on Windows).
+- **The thread** keeps `PreToolUse` only for questions; a question seen by both hooks is one
+  entry, made so by the reader (`readThread`), not the hook. Entries are read whole (the last
+  200).
+- **Reply**: one at a time ("a message is being sent", 409). Sending to a working agent, or one
+  waiting on a prompt, is refused (409, "sending stops its turn") unless asked with `stop`; the
+  panel asks first ("Stop and send", then "Stop it and send"), also when the page's state was
+  older than the server's. A live but idle session is stopped without asking: nothing is lost.
+- **Clean up** refuses before touching anything while files in the worktree are not committed
+  (git would refuse its removal, but only after `claude rm` had removed the sessions); then
+  `claude rm` for each session in the worktree (a live one stopped first), `git worktree
+  remove`, `git branch -d` when merged. `removeWorktree` and `deleteMergedBranch` (core) were
+  planned in V18a and built now.
+- **The rows**: the first screenshots at 1440 px showed rows with no brief (the branch name took
+  the 360 px line); the brief leads the row now, the branch on a line below.
+- **The thread opens at its newest entry**: with a real agent the panel showed the plan and hid
+  the fix below the fold; it scrolls to the end when it shows and when an entry arrives, not on a
+  read with nothing new.
+- **"Send to the agent"** in the Review tab is a link to `/features?branch=<b>&send=verdict`;
+  the panel fills its box once the thread (with the verdict) is read.
+
+**Results (V18c).** Tests first: core 2, thread 8, features 10, server 1, reviews 1, viewer 4
+and e2e 8 (6 new; 2 V18b specs whose actions moved to the panel) failed for the right reasons.
+Now 692 unit tests (25 new since V18b) and 98 e2e (6 new), all passing. The hook, built: 22–23 ms
+per event, exit 0 on any input. With a real Claude Code (2.1.296, Haiku, the person's Pro
+subscription, its own default permission mode, `auto`) in a throwaway repository, driven
+through `cpr view`'s API: a start in 1.0 s; the plan in 13 s, read as "plan ready" (Claude Code:
+`blocked`, the thread: a report after the prompt); "OK, go ahead." continued the same session
+(no copy) in 1.6 s, which committed and read "ready" 13 s later; a "request changes" verdict's
+text, sent the same way (1.6 s), gave a fix commit 9 s later; after a merge into `main`, Clean up
+in 1.4 s (no session left, worktree and branch removed, the checkout's status clean). The thread
+held every step: CPR's prompt, the plan, "Continued", the messages, the reports. Screenshots
+light and dark at 1440 and 900 px with three features (a plan answered and a command waiting, a
+question with its options, one working), "Stop and send" asked, and the real agent's thread; no
+page errors. No analysis code changed (goldens unchanged); the commits page is unchanged.
+
+Not verified: permissions and questions from a real agent in the panel (the real run was in
+`auto` and asked nothing; the spike recorded both, and the e2e fake replays those inputs); a
+session that wakes from agent view or `claude attach` rather than from CPR; the thread while
+`cpr view` is closed (the hook writes files and needs no server, by design); Clean up of an
+unmerged feature with a real agent (unit and e2e only); Windows and macOS (the hook's quoting);
 Firefox and Safari.
 
 ### Phase 1 milestones
