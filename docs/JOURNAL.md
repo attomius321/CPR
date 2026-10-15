@@ -2423,3 +2423,18 @@ hook that cannot reach CPR (`cpr view` closed); the session's inbox socket; a se
 process the supervisor stopped after an hour idle; Windows and macOS. Four sessions, all removed
 with the repository; Claude Code's own records of them (transcripts, the trust entry) remain in
 `~/.claude` and `~/.claude.json` (`claude purge <path>` removes them).
+
+**Second run** (the two checks the V18c plan asked for first; one Haiku session in the same
+throwaway repository, recreated at the path the person had trusted, so no trust step; the
+repository's `.claude/settings.json` committed with a `SessionStart` hook and a
+`Bash(node --version)` allow rule; CPR's stand-in hooks in a settings file labelled `cpr-v1`):
+- **The person's settings still apply beside `--settings`**: the repository's hook, CPR's hooks
+  and the person's own `SessionStart` hook all ran (GSD's update check wrote its cache in the same
+  second as the session's start). No permission was asked for `node --version`; that may be
+  Claude Code's own list of read-only commands rather than the rule, so the rule is not shown.
+- **A waking session reads its settings file again**: rewritten as `cpr-v2` while the session was
+  stopped, the resume ("woke session … with its saved options (--name, --permission-mode,
+  --settings, --model)") ran the `cpr-v2` hooks.
+- **The file must be there when it wakes**: moved away, the resume exited 0 but the session
+  failed ("exit 1 before init — Error: Settings file not found: …"); with the file back, the next
+  resume continued the same session.

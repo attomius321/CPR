@@ -5027,10 +5027,13 @@ repository with no feature makes no call to `claude`, as before.
   text changes (as `AGENTS.md` is): `SessionStart`, `UserPromptSubmit`, `PermissionRequest`,
   `PreToolUse` (matcher `AskUserQuestion`), `Notification`, `Stop` and `SessionEnd`, each running
   `"<node>" "<agent-hook.js>" "<cpr folder>"` (absolute paths; `process.execPath`). A file, not
-  inline JSON: the spike passed a file, and if a waking session reads it again, a new install
-  path reaches older sessions when `cpr view` rewrites it (checked first, see Order). Every
-  event is registered now so that V18e changes only what CPR answers, for every feature started
-  since V18c.
+  inline JSON: a waking session reads it again (measured), so a new install path reaches older
+  sessions when `cpr view` rewrites it. It must be there when a session wakes: without it Claude
+  Code stops before starting ("Settings file not found", the session `failed`; with the file
+  back, a resume continues it). `cpr view` writes it when it starts and before every start or
+  reply. The person's own hooks and the repository's run beside it (measured). Every event is
+  registered now so that V18e changes only what CPR answers, for every feature started since
+  V18c.
 - **The thread**: `cpr/threads/<branch>.jsonl` (the branch's slashes as folders, as features and
   reviews are kept; `cpr/.gitignore` hides it), one JSON line per entry, `{ at, session, kind, … }`:
   - `start` (`SessionStart`: `startup`, `resume`, `fork`) and `end` (`SessionEnd`);
@@ -5125,11 +5128,11 @@ repository with no feature makes no call to `claude`, as before.
 | The thread holds what the agent saw (prompts, commands, excerpts of files) | In `cpr/`, git-ignored, on this machine, as reviews are; `asks` capped at 4 KB. |
 | Sending to a working agent loses its turn | "Stop and send", confirmed. |
 | Claude Code's hook inputs change | Only documented fields are read (`hook_event_name`, `session_id`, `cwd`, `source`, `prompt`, `last_assistant_message`, `tool_name`, `tool_input`, `notification_type`, `message`); the rest is ignored; the fake replays the spike's inputs. |
-| `--settings` replaces the person's own settings instead of adding to them | Checked first (see Order): the person's hooks and permission rules still apply in a session started with CPR's file. |
+| The settings file is deleted (`cpr/` removed by hand) | A session woken from agent view or `claude attach` then fails with Claude Code's "Settings file not found"; `cpr view` writes the file back when it starts and before each start or reply, and a resume then continues the session (measured). |
 
-**Order (V18c)**: first two checks with a real session (minutes, as the spike): a settings file
-rewritten while its session is stopped is read when it wakes; the person's own settings still
-apply beside CPR's file. Then the hook script and the settings file, the thread and the states,
+**Order (V18c)**: the two checks it needed first are done (journal, V18c spike, second run: the
+person's and the repository's hooks run beside CPR's file; a waking session reads the file
+again, and fails without it). Then the hook script and the settings file, the thread and the states,
 reply, the panel, Send the verdict; then Clean up and AGENTS.md (below).
 
 #### Reviews and merges from a worktree (AGENTS.md)
