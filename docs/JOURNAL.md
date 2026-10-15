@@ -2362,3 +2362,63 @@ and dark, 1440 and 900 px, no page errors. First rows against `main`'s build: Bi
 against 984–1,042 ms, ky 975–991 against 973–1,004 ms; the bar 37 px on both. Not verified: a
 real Claude Code session stopped or attached, VS Code opening a worktree for real, Windows,
 macOS, Firefox, Safari.
+
+## V18c spike — answering a background agent from CPR (2026-10-15, branch `milestone/v18-start-a-feature`)
+
+Asked: V18c moves "one abstraction up from Claude Code": not a chat with one input. Question:
+can CPR see and answer what a `claude --bg` session waits on (a question, a permission, a plan)
+while Claude Code keeps hosting the session? Run with Claude Code 2.1.296 (the background service
+ran its sessions on 2.1.300), Haiku, the person's Pro subscription and no API key. A throwaway
+repository in `~/projects` with a feature worktree beside it, as V18a makes them; `claude` run
+with a clean environment, as a `cpr view` started in a terminal would; a stand-in for CPR passed
+with `--settings`: command hooks that log every event and, for a question or a permission, wait
+for an answer file, as CPR's server would wait for the person.
+
+**Learned**:
+- **Trust**: a repository inside a trusted folder (`~/projects`) is not trusted: `--bg` exited 1
+  in 0.6 s, the message naming the worktree's folder. Once the person trusted the main checkout
+  (one interactive `claude` there), its worktree started: trust is the main checkout's, as
+  documented. `--bg` returned in 0.7–0.9 s, starting the background service.
+- **Permission mode**: without `--permission-mode` the session ran in `auto`, the account's own
+  default. In `auto` a classifier decides and permission requests are rare; `manual` is today's
+  name of the old default and prompts for edits and commands.
+- **Hooks from `--settings` run in a background session**: `SessionStart`, `UserPromptSubmit`,
+  `PreToolUse`, `PermissionRequest`, `Notification` (`permission_prompt` about 6 s after a
+  request, `idle_prompt` 60 s after a turn ends), `Stop`, `SessionEnd`; each with `session_id`
+  and `cwd`. The person's own hooks (`~/.claude/settings.json`) run there too.
+- **A question** (`AskUserQuestion`) reached a `PreToolUse` hook whole: question, header, options
+  and their descriptions. `allow` with `updatedInput.answers` after 20 s: the agent took the
+  answer. While that hook waits, `claude agents` says `working`.
+- **A permission** reached the `PermissionRequest` hook with `tool_name` and the full
+  `tool_input` (an `Edit`'s old and new text; a Bash command) and Claude Code's suggestion
+  (`acceptEdits` for the session). `allow`: it went on (edit, check, commit, 10–18 s each).
+  `deny` with a message ("read the diff in CPR first, do not commit"): the agent left the change
+  uncommitted and quoted the reason. While that hook waits, `claude agents` says `blocked` ·
+  `permission prompt`: the dialog is open beside the hook, the first answer wins.
+- **When a hook times out** (set to 15 s): the question's `PreToolUse` hook gave way to Claude
+  Code's dialog, which fired `PermissionRequest` for `AskUserQuestion`; answering that one with
+  `allow` and `updatedInput.answers` worked (12 s, "You picked Blue"). One hook can answer both
+  permissions and questions. If it times out too, the dialog stays: `blocked` · `input needed`
+  until someone attaches.
+- **The plan**: the `Stop` hook's `last_assistant_message` held the whole plan (Markdown); no
+  transcript to read. After it, with no commits, `claude agents` said `blocked` with no
+  `waitingFor`, not `done` as documented: V18b shows that as "Waiting: for you", not "Plan ready".
+  After the agent committed: `done`.
+- **Replies**: `--bg --resume <id> "text"` on a session whose process is alive (idle after its
+  turn) started a copy under a new ID, without the original's `--settings`: no hook fired, and it
+  then sat at a permission prompt nothing outside could answer. Any flag on a resume also made a
+  copy ("keeps its own saved options"). `claude stop` (0.66 s), then `--bg --resume <id> "text"`
+  with no flags (0.73 s) continued the same session with its saved permission mode, settings and
+  model: the hooks fired again and the reply arrived as the person's prompt. So the hooks must be
+  in the first launch.
+- **Clean up**: `claude rm` on the four sessions that ran in the CPR-made worktree removed the
+  sessions only; the worktree and branch stayed (after a merge into `main`), and `git worktree
+  remove` and `git branch -d` removed them.
+- A session renames itself (`spike-plan` became `greet-farewell-punctuation`), and `claude logs`
+  prints a terminal screen with escape codes: match sessions by folder, never parse logs.
+
+**Not tested**: a hook waiting longer than 20 s (documented default 600 s, `timeout` per hook); a
+hook that cannot reach CPR (`cpr view` closed); the session's inbox socket; a session whose
+process the supervisor stopped after an hour idle; Windows and macOS. Four sessions, all removed
+with the repository; Claude Code's own records of them (transcripts, the trust entry) remain in
+`~/.claude` and `~/.claude.json` (`claude purge <path>` removes them).
