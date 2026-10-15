@@ -2448,7 +2448,8 @@ the agent waits on — and one box whose message continues the agent's own sessi
 verdict" (and "Send to the agent" in the Review tab) fills the box with the review's verdict.
 Clean up removes a merged feature's sessions, worktree and branch. The thread is recorded by
 hooks CPR gives every agent it starts (`--settings <cpr>/claude-settings.json`), which decide
-nothing: answering permissions and questions in CPR is V18e, on the same hooks.
+nothing: answering permissions and questions in CPR is V20b (planned as V18e), on the same
+hooks.
 
 **Learned**:
 - **A reply is stop, then resume with no flag.** Measured in the spike: a resume of a live
