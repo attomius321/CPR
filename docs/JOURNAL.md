@@ -2385,7 +2385,8 @@ for an answer file, as CPR's server would wait for the person.
 - **Hooks from `--settings` run in a background session**: `SessionStart`, `UserPromptSubmit`,
   `PreToolUse`, `PermissionRequest`, `Notification` (`permission_prompt` about 6 s after a
   request, `idle_prompt` 60 s after a turn ends), `Stop`, `SessionEnd`; each with `session_id`
-  and `cwd`. The person's own hooks (`~/.claude/settings.json`) run there too.
+  and `cwd`. Whether the person's own hooks (`~/.claude/settings.json` has three) ran beside
+  them was not checked.
 - **A question** (`AskUserQuestion`) reached a `PreToolUse` hook whole: question, header, options
   and their descriptions. `allow` with `updatedInput.answers` after 20 s: the agent took the
   answer. While that hook waits, `claude agents` says `working`.
