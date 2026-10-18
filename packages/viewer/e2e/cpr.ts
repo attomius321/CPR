@@ -499,6 +499,11 @@ export interface RunningFeatures extends Running {
   /** Sets what the fake says of the newest session in a feature's worktree. */
   session(branch: string, patch: { state: string; waitingFor?: string }): void;
   /**
+   * The newest session in a feature's worktree is interrupted (Esc): as the real one did in the
+   * V21 spike, no hook runs and it reads `working` and idle until its next turn ends.
+   */
+  interrupt(branch: string): void;
+  /**
    * The newest session in a feature's worktree ends its turn with `text` (V18c): its `Stop`
    * hook runs, and it reads `blocked` and idle, as Claude Code reads a finished plan.
    */
@@ -696,6 +701,9 @@ export async function serveFeatures({ agent = true } = {}): Promise<RunningFeatu
         else if (patch.state === 'stopped' || patch.state === 'failed') delete mine.status;
         else mine.status = patch.waitingFor ? 'waiting' : 'idle';
       });
+    },
+    interrupt(branch) {
+      newest(branch, (mine) => Object.assign(mine, { state: 'working', status: 'idle' }));
     },
     report(branch, text) {
       const mine = newest(branch, (s) => Object.assign(s, { state: 'blocked', status: 'idle' }));
