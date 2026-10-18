@@ -3,7 +3,7 @@
 // tree (`agent-hook.ts`), so this module uses Node's own modules only: loading `@cpr/core` would
 // make each event cost ~290 ms instead of ~25 ms.
 import { realpathSync } from 'node:fs';
-import { appendFile, mkdir, readdir, readFile } from 'node:fs/promises';
+import { appendFile, mkdir, open, readdir, readFile, type FileHandle } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import type { ThreadEntry, ThreadQuestion } from '@cpr/core';
 
@@ -184,6 +184,43 @@ export async function readThread(
   limit = THREAD_LIMIT,
 ): Promise<ThreadEntry[]> {
   const content = await readFile(threadPath(cpr, branch), 'utf8').catch(() => '');
+  return parseThread(content).slice(-limit);
+}
+
+/** How much of a thread's end the features list reads: 40 of the longest entries seen (6 KB). */
+export const THREAD_END = 256 * 1024;
+
+/**
+ * A thread's last entries, from its file's last `bytes`, the line cut there dropped: what the
+ * features list needs (the newest report, prompt and question) at a cost that does not grow with
+ * the thread (V23: reading 5,000 entries whole took 9.6 ms, for each feature on every read).
+ */
+export async function readThreadEnd(
+  cpr: string,
+  branch: string,
+  bytes = THREAD_END,
+): Promise<ThreadEntry[]> {
+  let file: FileHandle;
+  try {
+    file = await open(threadPath(cpr, branch), 'r');
+  } catch {
+    return [];
+  }
+  try {
+    const { size } = await file.stat();
+    // One byte before the cut: a newline there means the cut is at a line's start.
+    const start = Math.max(0, size - bytes - 1);
+    const buffer = Buffer.alloc(size - start);
+    await file.read(buffer, 0, buffer.length, start);
+    const from = start === 0 ? 0 : buffer.indexOf(0x0a) + 1;
+    return from === 0 && start > 0 ? [] : parseThread(buffer.subarray(from).toString('utf8'));
+  } finally {
+    await file.close();
+  }
+}
+
+/** A thread file's entries, as `readThread` describes them. */
+function parseThread(content: string): ThreadEntry[] {
   const entries: ThreadEntry[] = [];
   /** The last question asked in each session, until something else happens there. */
   const asked = new Map<string, string>();
@@ -205,7 +242,7 @@ export async function readThread(
     }
     entries.push(entry);
   }
-  return entries.slice(-limit);
+  return entries;
 }
 
 /** Whether the agent's last turn ended: its last report comes after the last prompt. */
@@ -213,4 +250,12 @@ export function turnEnded(entries: readonly ThreadEntry[]): boolean {
   const last = (kind: ThreadEntry['kind']) => entries.findLastIndex((e) => e.kind === kind);
   const report = last('report');
   return report >= 0 && report > last('prompt');
+}
+
+/**
+ * When the agent last handed the turn back (V23): its newest report or question. Prompts are the
+ * person's or CPR's; notices and sessions' starts and ends (a `/clear`) are not the agent's acts.
+ */
+export function lastAction(entries: readonly ThreadEntry[]): string | undefined {
+  return entries.findLast((e) => e.kind === 'report' || e.kind === 'asks')?.at;
 }

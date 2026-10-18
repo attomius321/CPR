@@ -167,7 +167,9 @@ history scrolls, and commits load as they come into view.
 
 - **Branches panel.** Local branches, with `↑2 ↓1` against their upstream, and remote ones by
   folder. Filter it with `/`. A click selects the branch's newest commit, however deep in the
-  history it is.
+  history it is. Features you started come first: those waiting for you, the one whose agent
+  last reported or asked something on top, then those whose agent is working, each with how
+  long ago its agent acted (`4m`, `2h`).
 - **Check out** (right-click a commit, or c): one of its branches, a remote branch as a local
   one, a tag or the commit itself. CPR asks first and uses `git switch`, never forced: your local
   changes come along, or git refuses and nothing changes. A checkout made in a terminal shows

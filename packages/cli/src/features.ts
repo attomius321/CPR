@@ -47,7 +47,7 @@ import {
   verdictText,
   type ReviewPlace,
 } from './reviews.js';
-import { readThread, turnEnded } from './thread.js';
+import { lastAction, readThread, readThreadEnd, turnEnded } from './thread.js';
 
 /** A feature on disk: `cpr/features/<branch>.json` (V18), one per branch. */
 export interface FeatureFile {
@@ -743,12 +743,11 @@ export function features(
     }
     const exists = existsSync(feature.worktree);
     const changed = exists ? await uncommittedFiles(feature.worktree).catch(() => null) : null;
+    const thread = feature.agent ? await readThreadEnd(cprFolder(where), feature.branch) : [];
     // Blocked with nothing named: its thread tells a finished turn from a question (V18c).
     const session = newestSession(feature, sessions, real);
-    const ended =
-      session && isBlocked(session) && !session.waitingFor
-        ? turnEnded(await readThread(cprFolder(where), feature.branch))
-        : false;
+    const ended = session && isBlocked(session) && !session.waitingFor ? turnEnded(thread) : false;
+    const acted = feature.agent ? (lastAction(thread) ?? feature.agent.started) : undefined;
     return {
       branch: feature.branch,
       base: feature.base,
@@ -761,6 +760,7 @@ export function features(
       ahead,
       merged,
       agent: agentState(feature, sessions, ahead, real, ended),
+      ...(acted ? { lastAction: acted } : {}),
     };
   }
 

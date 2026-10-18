@@ -29,6 +29,8 @@ export interface TreeOptions {
   filter: string;
   /** Folders flipped from how they start: remotes open, folders closed. */
   toggled: ReadonlySet<string>;
+  /** Local branches listed before the current one, in this order (V23: `featuresFirst`). */
+  first?: readonly string[];
 }
 
 interface Folder {
@@ -40,20 +42,29 @@ interface Folder {
 const byName = (a: string, b: string) => a.localeCompare(b, 'en');
 
 /**
- * The panel's lines: Local (the current branch first, then by name) and Remotes, per remote,
- * in folders by `/` (folders first, by name). Folders start closed and remotes open, unless
- * `toggled`; with a filter, only matching branches stay and their folders open.
+ * The panel's lines: Local (`first` in its order, then the current branch, then by name) and
+ * Remotes, per remote, in folders by `/` (folders first, by name). Folders start closed and
+ * remotes open, unless `toggled`; with a filter, only matching branches stay and their folders
+ * open.
  */
 export function branchTree(refs: HistoryRefs, options: TreeOptions): PanelEntry[] {
   const needle = options.filter.trim().toLowerCase();
   const matches = (name: string) => name.toLowerCase().includes(needle);
   const entries: PanelEntry[] = [];
 
+  const rank = new Map(options.first?.map((name, i) => [name, i] as const));
   const local = refs.branches
     .filter((b) => matches(b.name))
-    .sort((a, b) =>
-      a.name === options.current ? -1 : b.name === options.current ? 1 : byName(a.name, b.name),
-    );
+    .sort((a, b) => {
+      const ra = rank.get(a.name);
+      const rb = rank.get(b.name);
+      if (ra !== undefined || rb !== undefined) return (ra ?? Infinity) - (rb ?? Infinity);
+      return a.name === options.current
+        ? -1
+        : b.name === options.current
+          ? 1
+          : byName(a.name, b.name);
+    });
   if (local.length > 0) {
     entries.push({ kind: 'section', key: 'local', label: 'Local', count: local.length });
     for (const b of local) {

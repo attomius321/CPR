@@ -279,6 +279,50 @@ test("an agent's commit shows on the commits page as it comes, the cursor where 
   await expect(row(page, 'base')).toHaveClass(/cursor/);
 });
 
+test("the branches panel: features that need you first, their agent's last action on top (V23)", async ({
+  page,
+}) => {
+  cpr = await serveFeatures();
+  await page.goto(cpr.url);
+  await startFrom(page, 'Add a half function');
+  await startFrom(page, 'Export the totals');
+  const half = 'feature/add-a-half-function';
+  const totals = 'feature/export-the-totals';
+  const branches = page.locator('.branches');
+  // Local first, then the remote's `main`.
+  const names = branches.locator('.branches-branch .branches-name');
+  const entry = (branch: string) =>
+    branches.locator('li.has-feature', { has: page.getByTitle(branch, { exact: true }) });
+
+  // Both agents work: the one started last on top, then the checked-out branch.
+  await expect(names).toHaveText([totals, half, 'main', 'main']);
+  await expect(entry(half).locator('.branches-age')).toHaveText('now');
+  await expect(entry(half).locator('.branches-age')).toHaveAttribute(
+    'title',
+    /^Last agent action (just now|1 minute ago) · /,
+  );
+
+  // The first one's plan is ready: it needs you, so it goes above the one at work.
+  cpr.report(half, 'The plan');
+  await expect(names).toHaveText([half, totals, 'main', 'main'], POLL);
+
+  // The other asks for a permission: the newer action on top.
+  cpr.session(totals, { state: 'blocked', waitingFor: 'permission prompt' });
+  cpr.hook(totals, {
+    hook_event_name: 'PermissionRequest',
+    tool_name: 'Bash',
+    tool_input: { command: 'npm test' },
+  });
+  await expect(names).toHaveText([totals, half, 'main', 'main'], POLL);
+
+  // Answered, it works again: below the one that needs you, newer as its action is.
+  cpr.session(totals, { state: 'working' });
+  await expect(names).toHaveText([half, totals, 'main', 'main'], POLL);
+  await expect(branches.locator('li.has-feature .feature-mark')).toHaveText(['?', '⚙']);
+  // Only the features have an age: not `main`, not the remote branch.
+  await expect(branches.locator('.branches-age')).toHaveCount(2);
+});
+
 test('stop the agent, start it again, copy its prompt, open its worktree', async ({ page }) => {
   // Without terminals (V21), Talk copies the command for one.
   cpr = await serveFeatures({ terminal: false });

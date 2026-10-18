@@ -119,4 +119,26 @@ describe('branchTree', () => {
     expect(show(tree('fix/t'))).toEqual(['# Remotes 1', '▾ origin/ 1', '  ▾ fix/ 1', '    two']);
     expect(tree('zzz')).toEqual([]);
   });
+
+  it('lists the local branches given first in that order, then the current one, then by name (V23)', () => {
+    const firstly = (first: string[], filter = '') =>
+      branchTree(REFS, { current: 'main', filter, toggled: new Set(), first });
+    // Features first: the one that needs the person and acted last on top. Remotes as they were.
+    expect(show(firstly(['wip', 'old']))).toEqual([
+      '# Local 4',
+      'wip',
+      'old',
+      '● main',
+      'alpha',
+      ...show(tree()).slice(5),
+    ]);
+    // A name that is no local branch (gone, or only a remote's) changes nothing.
+    expect(show(firstly(['gone', 'origin/topic']))).toEqual(show(tree()));
+    expect(show(firstly([]))).toEqual(show(tree()));
+    // The filter keeps the order.
+    const local = (entries: PanelEntry[]) =>
+      show(entries.filter((e) => e.kind === 'branch' && e.key.startsWith('local:')));
+    expect(local(firstly(['old', 'alpha'], 'L'))).toEqual(['old', 'alpha']);
+    expect(local(firstly(['alpha', 'old'], 'L'))).toEqual(['alpha', 'old']);
+  });
 });

@@ -1,10 +1,13 @@
-import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import type { ThreadEntry } from '@cpr/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import {
   hookMain,
+  lastAction,
   readThread,
+  readThreadEnd,
   recordEvent,
   threadEntry,
   threadPath,
@@ -163,6 +166,28 @@ describe('recordEvent and readThread', () => {
     ]);
   });
 
+  it("reads a thread's end only: its last entries whole, the line cut there dropped (V23)", async () => {
+    const { folder, worktree } = cpr();
+    for (let n = 0; n < 40; n++) {
+      await recordEvent(folder, { ...input('Stop'), cwd: worktree }, at(n));
+    }
+    const path = threadPath(folder, 'feature/x');
+    const whole = await readThread(folder, 'feature/x');
+    const size = statSync(path).size;
+    const half = await readThreadEnd(folder, 'feature/x', Math.floor(size / 2));
+    expect(half.length).toBeGreaterThan(10);
+    expect(half.length).toBeLessThan(30);
+    expect(half).toEqual(whole.slice(-half.length));
+    // Cut exactly where a line starts: that line is whole, so it is kept.
+    const last = readFileSync(path, 'utf8').trimEnd().split('\n').at(-1) ?? '';
+    expect(await readThreadEnd(folder, 'feature/x', Buffer.byteLength(last) + 1)).toEqual(
+      whole.slice(-1),
+    );
+    expect(await readThreadEnd(folder, 'feature/x', size * 2)).toEqual(whole);
+    expect(await readThreadEnd(folder, 'feature/x', size)).toEqual(whole);
+    expect(await readThreadEnd(folder, 'feature/none')).toEqual([]);
+  });
+
   it('a turn has ended when its last report comes after the last prompt', () => {
     const e = (kind: 'prompt' | 'report' | 'start') =>
       kind === 'start'
@@ -172,6 +197,28 @@ describe('recordEvent and readThread', () => {
     expect(turnEnded([e('prompt')])).toBe(false);
     expect(turnEnded([e('prompt'), e('report')])).toBe(true);
     expect(turnEnded([e('prompt'), e('report'), e('start'), e('prompt')])).toBe(false);
+  });
+
+  it("the agent's last action: its newest report or question, not the person's or Claude Code's entries (V23)", () => {
+    const at = (minute: number) => `2026-10-18T14:${String(minute).padStart(2, '0')}:00.000Z`;
+    const thread: ThreadEntry[] = [
+      { at: at(0), session: 's', kind: 'start', source: 'startup' },
+      { at: at(1), session: 's', kind: 'prompt', text: 'the brief' },
+      { at: at(5), session: 's', kind: 'asks', tool: 'Bash', input: '{"command":"ls"}' },
+      { at: at(9), session: 's', kind: 'report', text: 'The plan' },
+      // A minute idle, then the person: none of it is the agent handing the turn back.
+      { at: at(10), session: 's', kind: 'notice', type: 'idle_prompt' },
+      { at: at(20), session: 's', kind: 'end', reason: 'clear' },
+      { at: at(21), session: 't', kind: 'start', source: 'clear' },
+      { at: at(22), session: 't', kind: 'prompt', text: 'OK, go' },
+    ];
+    expect(lastAction(thread)).toBe(at(9));
+    expect(lastAction(thread.slice(0, 3))).toBe(at(5));
+    expect(lastAction([...thread, { at: at(30), session: 't', kind: 'asks', tool: 'Edit' }])).toBe(
+      at(30),
+    );
+    expect(lastAction(thread.slice(0, 2))).toBeUndefined();
+    expect(lastAction([])).toBeUndefined();
   });
 });
 

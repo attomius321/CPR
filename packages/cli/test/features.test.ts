@@ -435,6 +435,8 @@ describe('features', () => {
       ahead: 0,
       merged: false,
       agent: { state: 'working', kind: 'claude', id: 's1' },
+      // Nothing reported yet: when its agent started (V23).
+      lastAction: NOW.toISOString(),
     });
     expect(repo.git('rev-parse', 'feature/csv')).toBe(shas.B);
     expect(repo.git('branch', '--show-current')).toBe('main');
@@ -961,6 +963,49 @@ describe('features', () => {
       state: 'needs-you',
       waitingFor: 'permission prompt',
     });
+  });
+
+  it("lists when each agent last acted: its thread's newest report or question, else its start (V23)", async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    await s.start({ brief: 'Two', branch: 'feature/two', planFirst: true });
+    const lastActions = async () =>
+      Object.fromEntries((await s.list()).features.map((f) => [f.branch, f.lastAction]));
+    // Nothing reported yet: when the agents started.
+    expect(await lastActions()).toEqual({
+      'feature/one': NOW.toISOString(),
+      'feature/two': NOW.toISOString(),
+    });
+    const { recordEvent } = await import('../src/thread.js');
+    const cpr = join(repo.root, 'cpr');
+    const cwd = feature.worktree.path;
+    const event = (input: Record<string, unknown>, at: string) =>
+      recordEvent(cpr, { session_id: 'session-1', cwd, ...input }, at);
+    await event(
+      { hook_event_name: 'Stop', last_assistant_message: 'The plan' },
+      '2026-10-15T09:05:00.000Z',
+    );
+    // The person's answer and Claude Code's idle notice are not the agent's actions.
+    await event(
+      { hook_event_name: 'Notification', notification_type: 'idle_prompt', message: 'Waiting' },
+      '2026-10-15T09:06:00.000Z',
+    );
+    await event({ hook_event_name: 'UserPromptSubmit', prompt: 'OK' }, '2026-10-15T09:07:00.000Z');
+    expect(await lastActions()).toEqual({
+      'feature/one': '2026-10-15T09:05:00.000Z',
+      'feature/two': NOW.toISOString(),
+    });
+  });
+
+  it('lists no last action for a feature whose agent was never found (V23)', async () => {
+    const { repo } = fresh();
+    const s = await service(repo, null);
+    await s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true });
+    const [listed] = (await s.list()).features;
+    expect(listed?.agent.state).toBe('no-agent');
+    expect(listed).not.toHaveProperty('lastAction');
   });
 
   it('cleans up a merged feature: its sessions, worktree and branch; the record stays, finished', async () => {

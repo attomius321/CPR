@@ -62,6 +62,11 @@ export interface FeatureSummary {
   /** Its commits are all in the default branch. */
   merged: boolean;
   agent: FeatureAgentState;
+  /**
+   * When its agent last acted (V23): its thread's newest report or question, else when it last
+   * started; absent when no agent was found.
+   */
+  lastAction?: string;
 }
 
 export interface FeatureList {

@@ -224,6 +224,39 @@ export function featureChips(
   return chips;
 }
 
+/** A feature's branch, listed first in the branches panel, and when its agent last acted. */
+export interface FirstBranch {
+  branch: string;
+  at: string;
+}
+
+/**
+ * The branches the branches panel lists first (V23): the open features that need the person,
+ * then those whose agent works, each by its agent's last action (else when the feature was made),
+ * newest first. Merged features and gone branches need nothing: they are left out.
+ */
+export function featuresFirst(
+  features: readonly FeatureSummary[],
+  reviews: BranchReviewList | null,
+): FirstBranch[] {
+  const { needsYou, working } = featureGroups(features, reviews);
+  const newest = (rows: FeatureRow[]) =>
+    rows
+      .filter(({ feature }) => feature.tip !== null)
+      .map(({ feature }) => ({ branch: feature.branch, at: feature.lastAction ?? feature.created }))
+      .sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || a.branch.localeCompare(b.branch));
+  return [...newest(needsYou), ...newest(working)];
+}
+
+/** How long ago, in a few characters: `now`, `4m`, `2h`, `3d`. */
+export function shortAge(iso: string, now: number): string {
+  const minutes = Math.floor((now - Date.parse(iso)) / 60_000);
+  if (minutes < 1) return 'now';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  return hours < 24 ? `${hours}h` : `${Math.floor(hours / 24)}d`;
+}
+
 /** One line of a feature's thread as its panel shows it (V18c). */
 export interface ThreadItem {
   /** CPR's prompt, the agent's report, the person's message, what it waits on, or a note. */

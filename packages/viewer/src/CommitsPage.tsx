@@ -24,7 +24,13 @@ import { BranchesPanel } from './BranchesPanel.js';
 import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
 import { reviewChoices, reviewMarks, type ReviewChoice, type ReviewMark } from './branchReviews.js';
 import { CheckoutDialog } from './CheckoutDialog.js';
-import { featureChips, featureHref, startedNotice, type AgentChip } from './features.js';
+import {
+  featureChips,
+  featureHref,
+  featuresFirst,
+  startedNotice,
+  type AgentChip,
+} from './features.js';
 import { FeatureMark } from './FeatureMark.js';
 import { useFeatureStarter } from './FeatureStarter.js';
 import { useFeatures } from './useFeatures.js';
@@ -573,6 +579,11 @@ function History({
     () => featureChips(features?.features ?? [], featureReviews, refs?.remotes ?? []),
     [features, featureReviews, refs],
   );
+  // The features that need the person, first in the branches panel (V23).
+  const firstBranches = useMemo(
+    () => featuresFirst(features?.features ?? [], featureReviews),
+    [features, featureReviews],
+  );
   useEffect(() => {
     if (!refs || !features) return;
     const moved = features.features.some((f) => {
@@ -803,6 +814,7 @@ function History({
           current={first.branch}
           marks={marks.marks}
           agents={chips}
+          first={firstBranches}
           open={panelOpen}
           filter={panel.filter}
           onFilter={panel.onFilter}
