@@ -2580,6 +2580,8 @@ starts or ends normally was not measured — the page would say "Interrupted" un
 (5 s). Verified since, on the V21 branch, with Claude Code 2.1.302: Esc while it wrote read
 `working`, `idle` for 40 s, and the page said "Interrupted: waiting for you" 301 ms after it.
 
+Merged into main (2026-10-18). `main` verified after the merge: 693 unit tests, build, 98 e2e.
+
 ## V21 — The agent's terminal in its feature's panel (2026-10-18, branch `milestone/v21-agent-terminal`)
 
 Asked: "Yes. Go for it, implement it, starting with the bug". The interrupted-state fix first
@@ -2622,6 +2624,9 @@ Code's records of the folder too. One run's message was not submitted (typed bef
 said `idle`); not explained. Not verified: Windows, macOS, Firefox, Safari; a permission prompt
 in CPR's terminal (`auto` asked none); four real terminals at once.
 
+Merged into main (2026-10-18), after the state fix. `main` verified after the merge: 717 unit
+tests, build, 101 e2e.
+
 ## Fix — agents' reports drawn as Markdown (2026-10-18, branch `fix/thread-markdown`)
 
 Asked: "the output of agents is not rendered correctly, i see **Text**..etc..", in the Thread.
@@ -2645,3 +2650,7 @@ module), an e2e spec (a heading, bold, code, a nested list, HTML as text, a link
 with `**` kept), and V18c's panel spec, whose plan is now a numbered list (red on `main`'s build
 for both). The two real reports of `chore/update-readme` checked in light and dark at 1440 px:
 no `**` left, no page errors.
+
+Merged into main (2026-10-18), after V21: the journal and styles had both grown at the end
+(kept whole, V21's first), and the new e2e spec, which answers in the box, runs without
+terminals. `main` verified after the merge: 723 unit tests, build, 102 e2e.
