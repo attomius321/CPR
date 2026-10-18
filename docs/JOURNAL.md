@@ -2701,3 +2701,17 @@ the thread drawn as Markdown, Talk only without the terminal, `CPR_TERMINAL` and
 carried into it. The images are from before V21: the Features tab shows the thread with its box,
 not the terminal. `main` verified after the merge (same tree as the branch): 723 unit tests,
 build, 102 e2e.
+
+**Features screenshot retaken after V21** (2026-10-18, same branch): `features.png` now shows the
+Terminal tab with a real Claude Code (2.1.302, Haiku 5.5, the person's Pro subscription), not
+the e2e fake, whose `attach` only prints its ID. Three throwaway features in a small repository
+(`src/math.ts`, three tests) served by this branch's `cpr view`: one plan first (its plan in 10
+s), one in `auto` that stopped at a permission prompt, one that wrote `clamp`, ran the tests and
+committed (30 s); the picked one's plan in the terminal. A feature's worktree takes its trust
+from the main repository's folder (the parent folder `/` being trusted did not count: refused in
+`/tmp`), so the repository was made at the path the person had trusted for the V18c spike.
+Everything removed after: CPR's Clean up (sessions and worktrees), the folders, and Claude Code's
+records of the three worktrees (`claude purge`); the repository folder's older records and trust
+entry left as they were. The image shows the person's status line (model, folder, context) and
+nothing personal. The README re-checked against the CLI's help and the code: every flag and
+environment variable there (`CPR_VIEWER_DIR`, for tests, left out).
