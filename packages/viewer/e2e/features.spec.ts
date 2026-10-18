@@ -279,7 +279,7 @@ test("an agent's commit shows on the commits page as it comes, the cursor where 
   await expect(row(page, 'base')).toHaveClass(/cursor/);
 });
 
-test("the branches panel: features that need you first, their agent's last action on top (V22)", async ({
+test("the branches panel: features that need you first, their agent's last action on top (V23)", async ({
   page,
 }) => {
   cpr = await serveFeatures();

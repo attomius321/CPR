@@ -231,7 +231,7 @@ export interface FirstBranch {
 }
 
 /**
- * The branches the branches panel lists first (V22): the open features that need the person,
+ * The branches the branches panel lists first (V23): the open features that need the person,
  * then those whose agent works, each by its agent's last action (else when the feature was made),
  * newest first. Merged features and gone branches need nothing: they are left out.
  */

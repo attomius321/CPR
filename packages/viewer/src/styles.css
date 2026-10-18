@@ -2591,7 +2591,7 @@ kbd {
   color: var(--removed);
 }
 
-/* How long ago a feature's agent last acted (V22), at the entry's end. */
+/* How long ago a feature's agent last acted (V23), at the entry's end. */
 .branches-age {
   margin-left: auto;
   color: var(--muted);

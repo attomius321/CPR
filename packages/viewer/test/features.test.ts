@@ -274,7 +274,7 @@ describe('featureChips', () => {
 
 describe('featuresFirst', () => {
   const at = (hour: number) => `2026-10-18T${hour}:00:00.000Z`;
-  it("lists the features that need you, then working ones, each by its agent's last action, newest first (V22)", () => {
+  it("lists the features that need you, then working ones, each by its agent's last action, newest first (V23)", () => {
     const first = featuresFirst(
       [
         summary({ branch: 'feature/working-older', lastAction: at(10) }),

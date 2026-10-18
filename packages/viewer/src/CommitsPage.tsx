@@ -579,7 +579,7 @@ function History({
     () => featureChips(features?.features ?? [], featureReviews, refs?.remotes ?? []),
     [features, featureReviews, refs],
   );
-  // The features that need the person, first in the branches panel (V22).
+  // The features that need the person, first in the branches panel (V23).
   const firstBranches = useMemo(
     () => featuresFirst(features?.features ?? [], featureReviews),
     [features, featureReviews],

@@ -166,7 +166,7 @@ describe('recordEvent and readThread', () => {
     ]);
   });
 
-  it("reads a thread's end only: its last entries whole, the line cut there dropped (V22)", async () => {
+  it("reads a thread's end only: its last entries whole, the line cut there dropped (V23)", async () => {
     const { folder, worktree } = cpr();
     for (let n = 0; n < 40; n++) {
       await recordEvent(folder, { ...input('Stop'), cwd: worktree }, at(n));
@@ -199,7 +199,7 @@ describe('recordEvent and readThread', () => {
     expect(turnEnded([e('prompt'), e('report'), e('start'), e('prompt')])).toBe(false);
   });
 
-  it("the agent's last action: its newest report or question, not the person's or Claude Code's entries (V22)", () => {
+  it("the agent's last action: its newest report or question, not the person's or Claude Code's entries (V23)", () => {
     const at = (minute: number) => `2026-10-18T14:${String(minute).padStart(2, '0')}:00.000Z`;
     const thread: ThreadEntry[] = [
       { at: at(0), session: 's', kind: 'start', source: 'startup' },

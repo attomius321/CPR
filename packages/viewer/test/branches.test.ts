@@ -120,7 +120,7 @@ describe('branchTree', () => {
     expect(tree('zzz')).toEqual([]);
   });
 
-  it('lists the local branches given first in that order, then the current one, then by name (V22)', () => {
+  it('lists the local branches given first in that order, then the current one, then by name (V23)', () => {
     const firstly = (first: string[], filter = '') =>
       branchTree(REFS, { current: 'main', filter, toggled: new Set(), first });
     // Features first: the one that needs the person and acted last on top. Remotes as they were.

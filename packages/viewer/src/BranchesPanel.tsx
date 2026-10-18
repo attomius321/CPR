@@ -27,7 +27,7 @@ function tracking(entry: BranchEntry): { text: string; title: string } | null {
   return parts.length === 0 ? null : { text: parts.join(' '), title: says.join(', ') };
 }
 
-/** How long ago a feature's agent last acted (V22), drawn again each minute on its own. */
+/** How long ago a feature's agent last acted (V23), drawn again each minute on its own. */
 function Age({ at }: { at: string }) {
   const [, tick] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
@@ -47,7 +47,7 @@ function Age({ at }: { at: string }) {
 
 /**
  * The branches panel (V10b): Local and Remotes by folder, a filter on top; a click goes to the
- * branch's tip row. Local lists the features that need the person first (V22, `first`). Under
+ * branch's tip row. Local lists the features that need the person first (V23, `first`). Under
  * 900 px it is shown only while `open` (over the rows).
  */
 export const BranchesPanel = memo(function BranchesPanel({
@@ -73,7 +73,7 @@ export const BranchesPanel = memo(function BranchesPanel({
   marks: ReadonlyMap<string, ReviewMark>;
   /** Each feature's mark by ref name, a link to the feature (V18b). */
   agents: ReadonlyMap<string, AgentChip & { href: string }>;
-  /** The features' branches Local lists first, with when their agent last acted (V22). */
+  /** The features' branches Local lists first, with when their agent last acted (V23). */
   first: readonly FirstBranch[];
   open: boolean;
   /** The filter and the folders flipped open or closed: kept by the page across listings. */
@@ -150,7 +150,7 @@ function Entry({
   entry: PanelEntry;
   scope: HistoryScope;
   mark: ReviewMark | undefined;
-  /** When its feature's agent last acted (V22). */
+  /** When its feature's agent last acted (V23). */
   age: string | undefined;
   onToggle: (key: string) => void;
   onGo: (entry: BranchEntry) => void;

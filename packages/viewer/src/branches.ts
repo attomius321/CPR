@@ -29,7 +29,7 @@ export interface TreeOptions {
   filter: string;
   /** Folders flipped from how they start: remotes open, folders closed. */
   toggled: ReadonlySet<string>;
-  /** Local branches listed before the current one, in this order (V22: `featuresFirst`). */
+  /** Local branches listed before the current one, in this order (V23: `featuresFirst`). */
   first?: readonly string[];
 }
 

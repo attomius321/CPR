@@ -435,7 +435,7 @@ describe('features', () => {
       ahead: 0,
       merged: false,
       agent: { state: 'working', kind: 'claude', id: 's1' },
-      // Nothing reported yet: when its agent started (V22).
+      // Nothing reported yet: when its agent started (V23).
       lastAction: NOW.toISOString(),
     });
     expect(repo.git('rev-parse', 'feature/csv')).toBe(shas.B);
@@ -965,7 +965,7 @@ describe('features', () => {
     });
   });
 
-  it("lists when each agent last acted: its thread's newest report or question, else its start (V22)", async () => {
+  it("lists when each agent last acted: its thread's newest report or question, else its start (V23)", async () => {
     const { repo } = fresh();
     const { claude } = fakeClaude();
     const s = await service(repo, claude);
@@ -999,7 +999,7 @@ describe('features', () => {
     });
   });
 
-  it('lists no last action for a feature whose agent was never found (V22)', async () => {
+  it('lists no last action for a feature whose agent was never found (V23)', async () => {
     const { repo } = fresh();
     const s = await service(repo, null);
     await s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true });

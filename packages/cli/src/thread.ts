@@ -193,7 +193,7 @@ export const THREAD_END = 256 * 1024;
 /**
  * A thread's last entries, from its file's last `bytes`, the line cut there dropped: what the
  * features list needs (the newest report, prompt and question) at a cost that does not grow with
- * the thread (V22: reading 5,000 entries whole took 9.6 ms, for each feature on every read).
+ * the thread (V23: reading 5,000 entries whole took 9.6 ms, for each feature on every read).
  */
 export async function readThreadEnd(
   cpr: string,
@@ -253,7 +253,7 @@ export function turnEnded(entries: readonly ThreadEntry[]): boolean {
 }
 
 /**
- * When the agent last handed the turn back (V22): its newest report or question. Prompts are the
+ * When the agent last handed the turn back (V23): its newest report or question. Prompts are the
  * person's or CPR's; notices and sessions' starts and ends (a `/clear`) are not the agent's acts.
  */
 export function lastAction(entries: readonly ThreadEntry[]): string | undefined {

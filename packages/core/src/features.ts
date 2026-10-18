@@ -63,7 +63,7 @@ export interface FeatureSummary {
   merged: boolean;
   agent: FeatureAgentState;
   /**
-   * When its agent last acted (V22): its thread's newest report or question, else when it last
+   * When its agent last acted (V23): its thread's newest report or question, else when it last
    * started; absent when no agent was found.
    */
   lastAction?: string;
