@@ -3116,3 +3116,8 @@ button.feature-about {
   justify-content: space-between;
   margin-top: 6px;
 }
+
+.thread-readonly {
+  margin: 8px 0 0;
+  font-size: 13px;
+}

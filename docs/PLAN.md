@@ -5647,7 +5647,12 @@ worktree; the terminal on the commits page.
 - **`CPR_TERMINAL=off`** turns terminals off: the e2e case without them, and anyone who prefers
   Talk.
 - **Tabs**: "Thread · Terminal" above the panel's lower part, when terminals can run and the agent
-  has a listed session; Talk is not shown then.
+  has a listed session; Talk is not shown then. Then, after a first look (asked: "Do we need it
+  anymore?" — of the thread), the panel opens on the Terminal and the Thread is the feature's
+  history, read only: one way to answer the agent, not two (the box's reply stops the session).
+  `&thread` opens on the thread; "Send to the agent" from the Review tab types the verdict's line
+  into the terminal. The thread itself stays: the states (decision 117), Send the verdict's offer
+  and V20b read it, and it outlives the session. Without terminals the panel is V18c's.
 - **A reload opens a new client** rather than reconnecting to the old one by ID; the old one is
   hung up 10 s later. The kept output (1 MB) serves an event stream that drops and reconnects by
   itself: the page clears the screen and draws it again.

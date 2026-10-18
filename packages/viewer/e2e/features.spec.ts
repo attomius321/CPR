@@ -344,7 +344,8 @@ const resumes = () => cpr.calls().filter((call) => call.args[1] === '--resume');
 test("the panel: the agent's plan, a reply that continues its session, its next report", async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  // The box is where no terminal runs (V21).
+  cpr = await serveFeatures({ terminal: false });
   await page.goto(`${cpr.url}features`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -390,7 +391,8 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
 });
 
 test('a working agent: Stop and send asks first, then ends its turn to send', async ({ page }) => {
-  cpr = await serveFeatures();
+  // The box is where no terminal runs (V21).
+  cpr = await serveFeatures({ terminal: false });
   await page.goto(`${cpr.url}features`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -408,7 +410,8 @@ test('a working agent: Stop and send asks first, then ends its turn to send', as
 test('Send the verdict: a review fills the box, from the panel and from the Review tab', async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  // The box is where no terminal runs (V21).
+  cpr = await serveFeatures({ terminal: false });
   await page.goto(`${cpr.url}features`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -450,7 +453,8 @@ test('Send the verdict: a review fills the box, from the panel and from the Revi
 test('a feature started before its messages were kept: a note, and the box still sends', async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  // The box is where no terminal runs (V21).
+  cpr = await serveFeatures({ terminal: false });
   await page.goto(`${cpr.url}features`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -533,10 +537,13 @@ test("the agent's session in a terminal in its panel: keys, the thread, hang-up,
   const branch = 'feature/add-a-half-function';
   const here = panel(page, branch);
   await expect(here.getByRole('button', { name: 'Talk' })).toHaveCount(0);
-  await here.getByRole('tab', { name: 'Terminal' }).click();
+  // The panel opens on its terminal: how to talk to it now, with no box.
   await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
-  await expect(page).toHaveURL(`${cpr.url}features?branch=feature%2Fadd-a-half-function&terminal`);
-  // The terminal is how to talk to it now: the box is hidden.
+  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page).toHaveURL(`${cpr.url}features?branch=feature%2Fadd-a-half-function`);
   await expect(box(page, branch)).toBeHidden();
   await expect(here).toContainText('← in an empty prompt lists all your agents');
 
@@ -544,17 +551,20 @@ test("the agent's session in a terminal in its panel: keys, the thread, hang-up,
   await page.keyboard.press('Enter');
   await expect(screen(page, branch)).toContainText('got: hello');
 
-  // What was typed reached the agent as the person's message: the thread has it.
+  // What was typed reached the agent as the person's message: the thread, its history, has it.
   await here.getByRole('tab', { name: 'Thread' }).click();
   await expect(here.locator('.thread-you').last()).toContainText('hello', POLL);
-  await expect(box(page, branch)).toBeVisible();
+  await expect(page).toHaveURL(`${cpr.url}features?branch=feature%2Fadd-a-half-function&thread`);
+  // Read only: answering is the terminal's.
+  await expect(box(page, branch)).toBeHidden();
   // Leaving the terminal hangs it up; the session goes on.
   await expect.poll(() => cpr.hangups()).toEqual(['fake0']);
-  await expect(page).toHaveURL(`${cpr.url}features?branch=feature%2Fadd-a-half-function`);
-
-  // The address reopens it.
-  await page.goto(`${cpr.url}features?branch=feature%2Fadd-a-half-function&terminal`);
+  // The address keeps the thread; the thread leads back to the terminal.
+  await page.reload();
+  await expect(here.locator('.thread-you').last()).toContainText('hello', POLL);
+  await here.getByRole('button', { name: 'open its terminal' }).click();
   await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
+  await expect(page).toHaveURL(`${cpr.url}features?branch=feature%2Fadd-a-half-function`);
   expect(cpr.attaches()).toEqual(['fake0', 'fake0']);
 
   // It follows the panel's size.
@@ -587,9 +597,18 @@ test('Send the verdict types one line into the terminal, without Enter', async (
   await page.goto(`${cpr.url}features?branch=feature%2Fadd-a-half-function`);
   await expect(featureRow(page, branch)).toContainText('Ready for review', POLL);
   await requestChanges(page, branch);
-  await page.goto(`${cpr.url}features?branch=feature%2Fadd-a-half-function&terminal`);
+  // From the Review tab: the panel's terminal, the line typed into it.
+  await page.locator('.finished').getByRole('link', { name: 'Send to the agent' }).click();
+  await expect(screen(page, branch)).toContainText(
+    'Address this review of the branch feature/add-a-half-function',
+    POLL,
+  );
+  await expect(screen(page, branch)).not.toContainText('got:');
+  // From the panel, in a terminal opened anew.
+  await page.goto(`${cpr.url}features?branch=feature%2Fadd-a-half-function`);
   const here = panel(page, branch);
   await expect(screen(page, branch)).toContainText('Fake Claude Code', POLL);
+  await expect(screen(page, branch)).not.toContainText('Address this review');
   await here.getByRole('button', { name: 'Send the verdict' }).click();
   await expect(screen(page, branch)).toContainText(
     'Address this review of the branch feature/add-a-half-function',

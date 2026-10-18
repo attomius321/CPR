@@ -27,8 +27,14 @@ import { reloadFeatures, useFeatures } from './useFeatures.js';
 const branchOfUrl = (): string | null => new URLSearchParams(window.location.search).get('branch');
 /** `?send=verdict`: from the Review tab, the box filled with the review's verdict (V18c). */
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
-/** `&terminal`: the panel shows the agent's terminal (V21). */
-const terminalOfUrl = (): boolean => new URLSearchParams(window.location.search).has('terminal');
+/**
+ * `&thread` or `&terminal`: the panel's lower part as picked (V21); without either, the terminal
+ * where one can run, else the thread.
+ */
+const viewOfUrl = (): 'thread' | 'terminal' | null => {
+  const params = new URLSearchParams(window.location.search);
+  return params.has('thread') ? 'thread' : params.has('terminal') ? 'terminal' : null;
+};
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -474,11 +480,11 @@ function FeaturePanel({
   const filled = useRef(false);
   const mode = replyMode(agent);
   const verdict = verdictToSend(thread);
-  // V21: the agent's own session in a terminal, instead of the thread and box, when it can run.
+  // V21: the agent's own session in a terminal, where one can run: the panel opens on it, and the
+  // thread is its history, read only (one way to answer the agent: the box stops its session).
   const terminals = terminal?.available === true && agent.id !== undefined;
-  const [view, setView] = useState<'thread' | 'terminal'>(() =>
-    terminalOfUrl() ? 'terminal' : 'thread',
-  );
+  const [chosen, setChosen] = useState(viewOfUrl);
+  const view = chosen ?? (terminals ? 'terminal' : 'thread');
   const showTerminal = terminals && view === 'terminal';
   const [opened, setOpened] = useState<OpenedTerminal | null>(null);
   const [ended, setEnded] = useState<string | null>(null);
@@ -487,18 +493,31 @@ function FeaturePanel({
   // open, not once it is open (a stop from the head leaves its last lines in view).
   const [asking, setAsking] = useState(() => agent.state === 'stopped');
   const show = (next: 'thread' | 'terminal') => {
-    setView(next);
+    setChosen(next);
     setEnded(null);
     setAsking(agent.state === 'stopped');
     const href = featureHref(branch);
-    window.history.replaceState(null, '', next === 'terminal' ? `${href}&terminal` : href);
+    window.history.replaceState(null, '', next === 'thread' ? `${href}&thread` : href);
   };
+  /** Types the verdict's line into the open terminal, without Enter (decision 114). */
+  const typeVerdict = (into: OpenedTerminal, text: string) =>
+    toTerminal(into.id, 'in', { data: verdictLine(text) }).then(
+      () => into.focus(),
+      (e: unknown) => setSaid((e as Error).message),
+    );
 
+  // From the Review tab (`?send=verdict`): the verdict in the box, or typed into the terminal.
   useEffect(() => {
     if (!fillVerdict || filled.current || !verdict) return;
+    if (terminals) {
+      if (!showTerminal || !opened) return;
+      filled.current = true;
+      void typeVerdict(opened, verdict.text);
+      return;
+    }
     filled.current = true;
     setText(verdict.text);
-  }, [fillVerdict, verdict]);
+  }, [fillVerdict, verdict, terminals, showTerminal, opened]);
 
   const about = feature.brief.trim().split('\n')[0] ?? branch;
   const live = agent.state === 'working' || agent.state === 'needs-you';
@@ -759,12 +778,7 @@ function FeaturePanel({
                 type="button"
                 className="link"
                 title="Types its first line and where the review is; Enter sends it"
-                onClick={() =>
-                  void toTerminal(opened.id, 'in', { data: verdictLine(verdict.text) }).then(
-                    () => opened.focus(),
-                    (e: unknown) => setSaid((e as Error).message),
-                  )
-                }
+                onClick={() => void typeVerdict(opened, verdict.text)}
               >
                 Send the verdict
               </button>
@@ -774,8 +788,17 @@ function FeaturePanel({
       ) : (
         <Thread thread={thread} worktree={feature.worktree.path} />
       )}
+      {terminals && !showTerminal && (
+        <p className="hint thread-readonly">
+          The agent's messages and reports. To answer it,{' '}
+          <button type="button" className="link" onClick={() => show('terminal')}>
+            open its terminal
+          </button>
+          .
+        </p>
+      )}
       <form
-        hidden={showTerminal}
+        hidden={terminals}
         className="reply"
         onSubmit={(event) => {
           event.preventDefault();
