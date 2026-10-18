@@ -435,7 +435,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V20 | Other agents, and answers in CPR | Was V18d–e. V20a: Codex (`codex exec --json`, detached, replies by `exec resume`) and any configured agent command, picked in the start dialog, and `.worktreeinclude`. V20b: permissions (an edit as a diff, a command) and questions (their options) answered in the feature's panel through the hooks every feature has had since V18c (measured in the V18c spike). See below. |
 | V21 ✅ | The agent's terminal in its panel | A feature's agent is talked to in V18c's box (a reply stops the session, 1.6 s, and loses a turn in progress) or in a terminal elsewhere (Talk copies `claude attach`). Measured (V21 spike): `claude attach` in a pseudo-terminal, drawn by xterm.js in the page, gives the whole session — first output in 152–174 ms, a key to its echo 22 ms, a permission answered in the page, Esc, messages queued while the agent works — while Claude Code keeps hosting it and CPR's hooks keep recording. Planned: Terminal in the feature's panel (node-pty optional, Talk without it), output as events and keys as POSTs under the write rule, one terminal per open panel, dark in both themes; and the state after Esc (`idle` with `working`), wrong on `main` today. Merged (2026-10-18): with a real Claude Code, the session drawn and answered in the panel, Esc read as "Interrupted" 0.3 s later, a stop shown and reopened in 0.2 s; a key to its echo 32 ms through CPR. See below. |
 | V22 | Fixes: stale text outside the README | Found while rewriting the README (`chore/update-readme`, 2026-10-15). `cpr --help` and `cpr view --help` say the first page lists the current branch's commits (every branch since V10a); `@cpr/cli`'s description names only `cpr diff` and `cpr view`; the action's `plugins` input points to `cpr.config.json`, the older place; the sidebar's "No findings." ends with an emoji. Planned, not started. |
-| V23 | Branches that need you, first | Planned as V22, which `main` took meanwhile. The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. See below. |
+| V23 | Branches that need you, first | Planned as V22, which `main` took meanwhile. The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. Built (2026-10-18), waiting for review: on a clone of this repository with three open features, they are the first three entries instead of the 4th, 10th and 12th; `/api/features` unchanged (34 ms), each thread read from its last 256 KB (0.6 ms at any length). See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -5706,8 +5706,9 @@ once (unit-tested with fakes); the 140 MB per attach, not measured again.
 
 ### V23 — Branches that need you, first in the branches panel
 
-**Status:** planned (2026-10-18), on branch `feature/sort-branches-by-last-agent-action` (a
-feature started in CPR); not started.
+**Status:** built (2026-10-18) on branch `feature/sort-branches-by-last-agent-action` (a feature
+started in CPR), waiting for review. Planned as V22 with decisions 119–120, which `main` took
+meanwhile. As built and results: "As built (V23)" below.
 
 **Problem** (asked: "sort the commits from Commits page by last agent action...so i can see the
 branches that need my attention at the top", then "we need to sort the Branches from the left side
@@ -5808,6 +5809,43 @@ features view do not change.
 
 **Not in V23 (later)**: the features view's order (started order today); other branches by date;
 a toggle between orders; the remote branches.
+
+#### As built (V23)
+
+- **The thread's end only** (`readThreadEnd`, its last 256 KB, the line cut there dropped), as
+  the plan allowed if reading cost: a 5,000-entry thread (9.9 MB) took 9.6 ms whole, for each
+  feature on every read of the list; its end 0.6 ms at any length, with the same last action. The
+  longest entry in this repository's threads is 6.3 KB. The thread view still reads it whole.
+- **`featuresFirst` gives each branch with its time** (`{ branch, at }`): the order and the age
+  come from the same value.
+- **The e2e's last step** is a permission asked, then answered, not a second report then an
+  answer: once no agent works or waits, the page stops reading the list every 5 s (V18b), and a
+  change shows only when the page is back in view.
+- **Names are cut sooner**: the age takes about five characters of the 260 px panel
+  (`milestone/v10b-branches-panel` fits on `main`'s build, not beside `55m`). The full name is the
+  entry's title, as before.
+
+**Results (V23)**. Tests first: 6 unit tests failed before the code (`lastAction`, the list's
+`lastAction`, `featuresFirst`, `shortAge`, `branchTree`'s `first`, then `readThreadEnd`); a
+seventh, no `lastAction` without an agent, guards what was already true. The new e2e test fails
+on `main`'s build at its first order. Now 730 unit tests and 103 e2e.
+
+On a clone of this repository with copies of its feature records and threads, and two made-up
+features (a plan ready 55 minutes ago on `milestone/v10b-branches-panel`, a permission asked 5
+minutes ago on `fix/thread-markdown`), in Chromium at 1440 × 900:
+
+| | `main`'s build | This branch |
+|---|---|---|
+| Local entries of the three open features | 4th, 10th, 12th of 22 | 1st, 2nd, 3rd: the permission (5m), the plan (55m), then this feature at work (19m), then `● main` |
+| `/api/features`, median of 20 (three runs, back to back) | 33.2–34.1 ms | 33.5–34.0 ms |
+| Page errors (light, dark, the 880 px overlay) | none | none |
+
+The real `chore/update-readme` thread's last action is its report (2026-10-15 11:06), not the
+idle notice a minute later or the `/clear` three days after; merged since, it keeps its place by
+name.
+
+Not verified: a feature list of dozens of features; Firefox and Safari; Windows and macOS; a real
+Claude Code session acting while the page is open (the e2e fake runs CPR's real hooks).
 
 ### Phase 1 milestones
 
