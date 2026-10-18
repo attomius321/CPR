@@ -3071,3 +3071,48 @@ button.feature-about {
     display: inline;
   }
 }
+
+/* V21: the feature's agent session in a terminal, beside its thread. */
+.feature-views {
+  display: flex;
+  gap: 4px;
+  margin-top: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.feature-views button {
+  margin-bottom: -1px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px 6px 0 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.feature-views button.selected {
+  border-color: var(--line);
+  border-bottom-color: var(--panel);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.feature-terminal {
+  margin-top: 12px;
+}
+
+/* Dark in both themes: Claude Code draws for a dark terminal (V21 spike). */
+.agent-terminal-screen {
+  height: 60vh;
+  min-height: 240px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #111113;
+}
+
+.feature-terminal .reply-actions {
+  justify-content: space-between;
+  margin-top: 6px;
+}

@@ -504,8 +504,13 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     }),
   );
   let hinted = false;
-  // Terminals on features' agents (V21): node-pty is loaded only when one is asked for.
-  const terminals = agentTerminals();
+  // Terminals on features' agents (V21): node-pty is loaded only when one is asked for;
+  // `CPR_TERMINAL=off` turns them off (the panel keeps Talk).
+  const terminals = agentTerminals(
+    ctx.env.CPR_TERMINAL === 'off'
+      ? { pty: () => Promise.resolve({ error: 'terminals are turned off (CPR_TERMINAL=off)' }) }
+      : {},
+  );
   const server = await startViewServer({
     port,
     viewerDir: viewerDir(ctx),

@@ -280,7 +280,8 @@ test("an agent's commit shows on the commits page as it comes, the cursor where 
 });
 
 test('stop the agent, start it again, copy its prompt, open its worktree', async ({ page }) => {
-  cpr = await serveFeatures();
+  // Without terminals (V21), Talk copies the command for one.
+  cpr = await serveFeatures({ terminal: false });
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto(`${cpr.url}features`);
   await startFrom(page, 'Add a half function');
@@ -507,4 +508,107 @@ test('Clean up: once merged, its sessions, worktree and branch go, and so does t
   expect(existsSync(cpr.folder(branch))).toBe(false);
   expect(git('branch', '--list', branch)).toBe('');
   await expect(page.getByText('No features yet')).toBeVisible();
+});
+
+// The agent's terminal (V21): Claude Code's own interface, `claude attach` on the server, in the
+// feature's panel.
+const terminal = (page: Page, branch: string) => panel(page, branch).locator('.agent-terminal');
+const screen = (page: Page, branch: string) => terminal(page, branch).locator('.xterm-rows');
+/** Requests changes in the branch's review (V16), from its panel. */
+const requestChanges = async (page: Page, branch: string) => {
+  await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
+  await page.getByRole('tab', { name: /Review/ }).click();
+  await page.getByLabel('Review summary').fill('Name it halve.');
+  await page.getByLabel('Request changes').check();
+  await page.getByRole('button', { name: 'Finish review' }).click();
+  await expect(page.locator('.finished')).toBeVisible();
+};
+
+test("the agent's session in a terminal in its panel: keys, the thread, hang-up, reopen", async ({
+  page,
+}) => {
+  cpr = await serveFeatures();
+  await page.goto(`${cpr.url}features`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const here = panel(page, branch);
+  await expect(here.getByRole('button', { name: 'Talk' })).toHaveCount(0);
+  await here.getByRole('tab', { name: 'Terminal' }).click();
+  await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
+  await expect(page).toHaveURL(`${cpr.url}features?branch=feature%2Fadd-a-half-function&terminal`);
+  // The terminal is how to talk to it now: the box is hidden.
+  await expect(box(page, branch)).toBeHidden();
+  await expect(here).toContainText('← in an empty prompt lists all your agents');
+
+  await page.keyboard.type('hello');
+  await page.keyboard.press('Enter');
+  await expect(screen(page, branch)).toContainText('got: hello');
+
+  // What was typed reached the agent as the person's message: the thread has it.
+  await here.getByRole('tab', { name: 'Thread' }).click();
+  await expect(here.locator('.thread-you').last()).toContainText('hello', POLL);
+  await expect(box(page, branch)).toBeVisible();
+  // Leaving the terminal hangs it up; the session goes on.
+  await expect.poll(() => cpr.hangups()).toEqual(['fake0']);
+  await expect(page).toHaveURL(`${cpr.url}features?branch=feature%2Fadd-a-half-function`);
+
+  // The address reopens it.
+  await page.goto(`${cpr.url}features?branch=feature%2Fadd-a-half-function&terminal`);
+  await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
+  expect(cpr.attaches()).toEqual(['fake0', 'fake0']);
+
+  // It follows the panel's size.
+  const sizes = async () =>
+    ((await screen(page, branch).textContent()) ?? '').match(/\[\d+x\d+\]/g) ?? [];
+  const before = await sizes();
+  await page.setViewportSize({ width: 1500, height: 900 });
+  await expect.poll(async () => (await sizes()).length).toBeGreaterThan(before.length);
+  expect((await sizes()).at(-1)).not.toBe(before.at(-1));
+
+  // Stopped from the head: the terminal ends, and opens again.
+  await here.getByRole('button', { name: 'Stop the agent' }).click();
+  await expect(screen(page, branch)).toContainText('Session fake0 has exited', POLL);
+  await expect(here.getByRole('button', { name: 'Open again' })).toBeVisible();
+  // Opening it continues the stopped session: said first.
+  await here.getByRole('button', { name: 'Open again' }).click();
+  await expect(here).toContainText('Opening the terminal continues the stopped session');
+  await here.getByRole('button', { name: 'Open the terminal' }).click();
+  await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
+});
+
+test('Send the verdict types one line into the terminal, without Enter', async ({ page }) => {
+  cpr = await serveFeatures();
+  await page.goto(`${cpr.url}features`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  cpr.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  cpr.session(branch, { state: 'done' });
+  // A review with a verdict: request changes.
+  await page.goto(`${cpr.url}features?branch=feature%2Fadd-a-half-function`);
+  await expect(featureRow(page, branch)).toContainText('Ready for review', POLL);
+  await requestChanges(page, branch);
+  await page.goto(`${cpr.url}features?branch=feature%2Fadd-a-half-function&terminal`);
+  const here = panel(page, branch);
+  await expect(screen(page, branch)).toContainText('Fake Claude Code', POLL);
+  await here.getByRole('button', { name: 'Send the verdict' }).click();
+  await expect(screen(page, branch)).toContainText(
+    'Address this review of the branch feature/add-a-half-function',
+  );
+  // Typed, not sent: the person presses Enter.
+  await expect(screen(page, branch)).not.toContainText('got:');
+  await page.keyboard.press('Enter');
+  await expect(screen(page, branch)).toContainText('got: Address this review');
+});
+
+test('without terminals, the panel keeps Talk and no tab', async ({ page }) => {
+  cpr = await serveFeatures({ terminal: false });
+  await page.goto(`${cpr.url}features`);
+  await startFrom(page, 'Add a half function');
+  const here = panel(page, 'feature/add-a-half-function');
+  await expect(here.getByRole('button', { name: 'Talk' })).toBeVisible();
+  await expect(here.getByRole('tab')).toHaveCount(0);
+  await expect(here.getByRole('button', { name: 'Talk' })).toHaveAttribute(
+    'title',
+    /CPR_TERMINAL=off/,
+  );
 });

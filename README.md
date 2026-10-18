@@ -100,9 +100,22 @@ your words (CPR stops a session that is still alive first, then resumes it); whi
 verdict" (or "Send to the agent" in the Review tab) fills the box with what you decided. Nothing
 is sent until you press Send. The thread comes from hooks CPR gives each agent it starts
 (`cpr/claude-settings.json`, kept in `cpr/threads/`, out of git); they only record, so
-permissions and questions are still answered in the session (Talk). Once a feature is merged,
+permissions and questions are still answered in the session. Once a feature is merged,
 Clean up removes its agent's sessions, its worktree and its branch; an unmerged one only after
 you confirm, keeping the branch; never while files there are not committed.
+
+The panel's **Terminal** tab shows the agent's session as Claude Code draws it — the
+conversation, tool calls, permission prompts and questions, Esc, slash commands — so you answer
+it there without leaving CPR. It is `claude attach <id>` run by `cpr view` in the feature's
+worktree; Claude Code keeps hosting the session, and closing the tab (or the page) only hangs up
+that client: the agent goes on. While it is open the reply box is hidden, and "Send the verdict"
+types the verdict's first line and where the review is into the agent's input, for you to send
+with Enter. `&terminal` in the address reopens it; ← in an empty prompt opens Claude Code's list
+of all your agents, where you can switch away from this one. At most four terminals are open at
+once (each is a Claude Code process, about 140 MB). The terminal needs `node-pty`, an optional
+dependency: on Linux it is compiled when you install CPR (python3, make and a C++ compiler); macOS
+and Windows get a prebuilt one. Without it — or with `CPR_TERMINAL=off` — the panel keeps Talk,
+which copies `claude attach <id>` for a terminal of your own, and says why in its tooltip.
 
 A click selects a commit (j/k move the selection). To compare, turn on "Compare mode" (or press
 x): click one commit and another — the older is the base — and Compare (or x, Enter); one picked

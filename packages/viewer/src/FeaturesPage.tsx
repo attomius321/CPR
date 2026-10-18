@@ -5,7 +5,9 @@ import type {
   FeatureStart,
   FeatureSummary,
   FeatureThread,
+  TerminalAvailability,
 } from '@cpr/core';
+import { AgentTerminal, toTerminal, type OpenedTerminal } from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
 import { postJson, useFeatureStarter } from './FeatureStarter.js';
@@ -18,12 +20,15 @@ import {
   verdictToSend,
   type FeatureRow,
 } from './features.js';
+import { verdictLine } from './terminal.js';
 import { reloadFeatures, useFeatures } from './useFeatures.js';
 
 /** `?branch=<name>`: the feature picked (V18b's address, V18c's selection). */
 const branchOfUrl = (): string | null => new URLSearchParams(window.location.search).get('branch');
 /** `?send=verdict`: from the Review tab, the box filled with the review's verdict (V18c). */
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
+/** `&terminal`: the panel shows the agent's terminal (V21). */
+const terminalOfUrl = (): boolean => new URLSearchParams(window.location.search).has('terminal');
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -164,6 +169,7 @@ export function FeaturesPage() {
               row={current}
               mark={marks.get(current.feature.branch)}
               version={list}
+              terminal={list.terminal}
               fillVerdict={send === 'verdict' && current.feature.branch === branchOfUrl()}
               onNotice={setNotice}
               onError={setError}
@@ -439,6 +445,7 @@ function FeaturePanel({
   row,
   mark,
   version,
+  terminal,
   fillVerdict,
   onNotice,
   onError,
@@ -448,6 +455,8 @@ function FeaturePanel({
   mark: ReviewMark | undefined;
   /** The list as last read: the thread is read again with it. */
   version: unknown;
+  /** Whether its agent's session can be shown in a terminal (V21). */
+  terminal: TerminalAvailability | undefined;
   /** Fill the box with the review's verdict once it is read (`?send=verdict`). */
   fillVerdict: boolean;
   onNotice: (notice: Notice | null) => void;
@@ -465,6 +474,25 @@ function FeaturePanel({
   const filled = useRef(false);
   const mode = replyMode(agent);
   const verdict = verdictToSend(thread);
+  // V21: the agent's own session in a terminal, instead of the thread and box, when it can run.
+  const terminals = terminal?.available === true && agent.id !== undefined;
+  const [view, setView] = useState<'thread' | 'terminal'>(() =>
+    terminalOfUrl() ? 'terminal' : 'thread',
+  );
+  const showTerminal = terminals && view === 'terminal';
+  const [opened, setOpened] = useState<OpenedTerminal | null>(null);
+  const [ended, setEnded] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  // Attaching to a stopped session continues it (with no turn): asked when a terminal is to
+  // open, not once it is open (a stop from the head leaves its last lines in view).
+  const [asking, setAsking] = useState(() => agent.state === 'stopped');
+  const show = (next: 'thread' | 'terminal') => {
+    setView(next);
+    setEnded(null);
+    setAsking(agent.state === 'stopped');
+    const href = featureHref(branch);
+    window.history.replaceState(null, '', next === 'terminal' ? `${href}&terminal` : href);
+  };
 
   useEffect(() => {
     if (!fillVerdict || filled.current || !verdict) return;
@@ -569,11 +597,13 @@ function FeaturePanel({
             Review
           </button>
         )}
-        {agent.id && (
+        {agent.id && !terminals && (
           <button
             type="button"
             className="link"
-            title="Talk to the agent in a terminal: claude attach"
+            title={`Talk to the agent in a terminal: claude attach${
+              terminal && !terminal.available ? ` (no terminal here: ${terminal.reason})` : ''
+            }`}
             onClick={() =>
               act(() =>
                 copy(
@@ -678,8 +708,74 @@ function FeaturePanel({
         </p>
       )}
       {briefOpen && <pre className="feature-brief">{feature.brief}</pre>}
-      <Thread thread={thread} worktree={feature.worktree.path} />
+      {terminals && (
+        <div className="feature-views" role="tablist" aria-label="Talk to the agent">
+          {(['thread', 'terminal'] as const).map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="tab"
+              aria-selected={view === name}
+              className={view === name ? 'selected' : ''}
+              onClick={() => show(name)}
+            >
+              {name === 'thread' ? 'Thread' : 'Terminal'}
+            </button>
+          ))}
+        </div>
+      )}
+      {showTerminal ? (
+        <div className="feature-terminal">
+          {asking ? (
+            <p className="feature-confirm">
+              Opening the terminal continues the stopped session.{' '}
+              <button type="button" className="button" onClick={() => setAsking(false)}>
+                Open the terminal
+              </button>
+            </p>
+          ) : (
+            <AgentTerminal key={attempt} branch={branch} onOpened={setOpened} onEnded={setEnded} />
+          )}
+          {ended && (
+            <p className="feature-confirm">
+              The terminal {ended === 'exited' ? 'ended' : 'lost its session'}.{' '}
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  setEnded(null);
+                  setAsking(agent.state === 'stopped');
+                  setAttempt((n) => n + 1);
+                }}
+              >
+                Open again
+              </button>
+            </p>
+          )}
+          <div className="reply-actions">
+            <span className="hint">← in an empty prompt lists all your agents</span>
+            {verdict && opened && (
+              <button
+                type="button"
+                className="link"
+                title="Types its first line and where the review is; Enter sends it"
+                onClick={() =>
+                  void toTerminal(opened.id, 'in', { data: verdictLine(verdict.text) }).then(
+                    () => opened.focus(),
+                    (e: unknown) => setSaid((e as Error).message),
+                  )
+                }
+              >
+                Send the verdict
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <Thread thread={thread} worktree={feature.worktree.path} />
+      )}
       <form
+        hidden={showTerminal}
         className="reply"
         onSubmit={(event) => {
           event.preventDefault();

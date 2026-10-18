@@ -1,0 +1,143 @@
+import { useEffect, useRef, useState } from 'react';
+import type { Terminal } from '@xterm/xterm';
+import { postJson } from './FeatureStarter.js';
+import { keySender, TERMINAL_THEME } from './terminal.js';
+
+const WRITE_HEADERS = { 'content-type': 'application/json', 'x-cpr': '1' };
+
+/** A write to a terminal (`…/in`, `…/resize`, `…/close`): no answer but its status. */
+export async function toTerminal(id: string, action: string, body: unknown): Promise<void> {
+  const response = await fetch(`/api/terminals/${id}/${action}`, {
+    method: 'POST',
+    headers: WRITE_HEADERS,
+    body: JSON.stringify(body),
+    // A close sent while the page goes still reaches the server.
+    keepalive: action === 'close',
+  });
+  if (!response.ok) throw new Error(await response.text());
+}
+
+/** An open terminal: its ID, to type into it, and a way to give it the keys again. */
+export interface OpenedTerminal {
+  id: string;
+  focus(): void;
+}
+
+/**
+ * A feature's agent session as Claude Code draws it (V21): `claude attach` on the server in a
+ * pseudo-terminal, drawn by xterm.js (its own chunk, loaded when a terminal first opens) and
+ * fitted to its box. Claude Code keeps hosting the session: closing this hangs up only the
+ * client. `onOpened` gives the open terminal (to type into it), `onEnded` says it ended.
+ */
+export function AgentTerminal({
+  branch,
+  onOpened,
+  onEnded,
+}: {
+  branch: string;
+  onOpened: (opened: OpenedTerminal | null) => void;
+  onEnded: (why: string) => void;
+}) {
+  const box = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  // The latest callbacks, without opening the terminal again when they change.
+  const told = useRef({ onOpened, onEnded });
+  told.current = { onOpened, onEnded };
+
+  useEffect(() => {
+    let gone = false;
+    let id: string | null = null;
+    let events: EventSource | null = null;
+    let term: Terminal | null = null;
+    let observer: ResizeObserver | null = null;
+    let resizing: ReturnType<typeof setTimeout> | undefined;
+    const ended = (why: string) => {
+      events?.close();
+      told.current.onOpened(null);
+      told.current.onEnded(why);
+    };
+    (async () => {
+      const [{ Terminal }, { FitAddon }] = await Promise.all([
+        import('@xterm/xterm'),
+        import('@xterm/addon-fit'),
+        import('@xterm/xterm/css/xterm.css'),
+      ]);
+      const element = box.current;
+      if (gone || !element) return;
+      term = new Terminal({
+        theme: TERMINAL_THEME,
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+        fontSize: 13,
+        cursorBlink: true,
+        scrollback: 5000,
+      });
+      const fit = new FitAddon();
+      term.loadAddon(fit);
+      term.open(element);
+      fit.fit();
+      const opened = await postJson<{ id: string }>('/api/features/terminal', {
+        branch,
+        cols: term.cols,
+        rows: term.rows,
+      });
+      if (gone) {
+        void toTerminal(opened.id, 'close', {}).catch(() => {});
+        return;
+      }
+      const shown = term;
+      const terminal = (id = opened.id);
+      told.current.onOpened({ id: terminal, focus: () => shown.focus() });
+      events = new EventSource(`/api/terminals/${terminal}`);
+      let connected = false;
+      // A dropped stream reconnects and gets what was printed again: drawn anew.
+      events.addEventListener('open', () => {
+        if (connected) shown.reset();
+        connected = true;
+      });
+      events.addEventListener('out', (event) => {
+        shown.write(JSON.parse((event as MessageEvent<string>).data) as string);
+      });
+      events.addEventListener('exit', () => ended('exited'));
+      events.addEventListener('error', () => {
+        if (events?.readyState === EventSource.CLOSED) ended('lost');
+      });
+      shown.onData(
+        keySender(
+          (data) => toTerminal(terminal, 'in', { data }),
+          (failed) => setError(failed.message),
+        ),
+      );
+      shown.onResize(({ cols, rows }) => {
+        clearTimeout(resizing);
+        resizing = setTimeout(() => {
+          toTerminal(terminal, 'resize', { cols, rows }).catch(() => {});
+        }, 100);
+      });
+      observer = new ResizeObserver(() => fit.fit());
+      observer.observe(element);
+      shown.focus();
+    })().catch((failed: unknown) => {
+      if (!gone) setError((failed as Error).message);
+    });
+    return () => {
+      gone = true;
+      clearTimeout(resizing);
+      observer?.disconnect();
+      events?.close();
+      term?.dispose();
+      if (id) void toTerminal(id, 'close', {}).catch(() => {});
+      told.current.onOpened(null);
+    };
+  }, [branch]);
+
+  return (
+    <div className="agent-terminal">
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <div ref={box} className="agent-terminal-screen" />
+    </div>
+  );
+}

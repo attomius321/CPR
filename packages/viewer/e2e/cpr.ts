@@ -616,20 +616,20 @@ if (args[0] === '--bg' && args[1] === '--resume') {
   const all = list();
   const session = all.find((s) => s.id === id);
   if (!session) {
-    process.stdout.write('No job matching ' + id + '\n');
+    process.stdout.write('No job matching ' + id + '\\n');
     process.exit(0);
   }
-  appendFileSync(join(dir, 'attaches.txt'), id + '\n');
+  appendFileSync(join(dir, 'attaches.txt'), id + '\\n');
   if (!session.status) {
     session.status = 'idle';
     save(all);
     hooks(session, { hook_event_name: 'SessionStart', source: 'resume' });
   }
   const size = () => '[' + process.stdout.columns + 'x' + process.stdout.rows + ']';
-  process.stdout.write('Fake Claude Code · ' + id + ' ' + size() + '\r\n> ');
-  process.stdout.on('resize', () => process.stdout.write('\r\n' + size() + '\r\n> '));
+  process.stdout.write('Fake Claude Code · ' + id + ' ' + size() + '\\r\\n> ');
+  process.stdout.on('resize', () => process.stdout.write('\\r\\n' + size() + '\\r\\n> '));
   process.on('SIGHUP', () => {
-    appendFileSync(join(dir, 'hangups.txt'), id + '\n');
+    appendFileSync(join(dir, 'hangups.txt'), id + '\\n');
     process.exit(129);
   });
   let line = '';
@@ -637,8 +637,8 @@ if (args[0] === '--bg' && args[1] === '--resume') {
   process.stdin.setEncoding('utf8');
   process.stdin.on('data', (keys) => {
     for (const key of keys) {
-      if (key === '\r') {
-        process.stdout.write('\r\ngot: ' + line + '\r\n> ');
+      if (key === '\\r') {
+        process.stdout.write('\\r\\ngot: ' + line + '\\r\\n> ');
         hooks(session, { hook_event_name: 'UserPromptSubmit', prompt: line });
         line = '';
       } else {
@@ -650,7 +650,7 @@ if (args[0] === '--bg' && args[1] === '--resume') {
   setInterval(() => {
     const now = list().find((s) => s.id === id);
     if (now && now.status) return;
-    process.stdout.write('\r\nSession ' + id + ' has exited\r\n');
+    process.stdout.write('\\r\\nSession ' + id + ' has exited\\r\\n');
     process.exit(0);
   }, 200);
 } else {
@@ -664,11 +664,15 @@ if (args[0] === '--bg' && args[1] === '--resume') {
 
 /**
  * `main` with the `callers` fixture's base and head, pushed to a bare `origin` (its default
- * branch), and a fake Claude Code as `CPR_CLAUDE` (`agent: false`: one that is not installed).
+ * branch), and a fake Claude Code as `CPR_CLAUDE` (`agent: false`: one that is not installed;
+ * `terminal: false`: no terminals, V21).
  * Served by `cpr view` without revisions; features' worktrees land beside the repository and go
  * with it.
  */
-export async function serveFeatures({ agent = true } = {}): Promise<RunningFeatures> {
+export async function serveFeatures({
+  agent = true,
+  terminal = true,
+} = {}): Promise<RunningFeatures> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', '-B', 'main');
   git(repo, 'branch', '-q', '-D', 'feature');
@@ -693,6 +697,8 @@ export async function serveFeatures({ agent = true } = {}): Promise<RunningFeatu
     CPR_CACHE_DIR: cache,
     CPR_CLAUDE: claude,
     CPR_CODE: code,
+    // V21: terminals turned off, as where node-pty cannot run.
+    ...(terminal ? {} : { CPR_TERMINAL: 'off' }),
   });
   const lines = (file: string) =>
     readFileSync(join(fake, file), { encoding: 'utf8', flag: 'a+' })
