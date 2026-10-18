@@ -1,25 +1,88 @@
 # CPR
 
-Local-first code review that turns a change into a graph of changed symbols and the calls between them, so you review decisions instead of lines.
+**Coordinated Programming Runtime.** Start a feature with a coding agent, review what it changed
+as a graph of the symbols it touched, and send back a verdict. Everything runs on your machine.
+
+CPR turns a change into a graph of the functions, classes, methods and types it added, removed
+or modified, and the calls between them. Findings point at the risky parts: a symbol removed
+while code still uses it, new code that nothing calls, a signature changed under callers that
+were not updated. The aim is to review decisions, not lines.
+
+![A branch review in CPR: changed symbols of one package, coloured by what changed, with signature changes and findings marked](docs/images/viewer.png)
+
+[Quick start](#quick-start) ·
+[Commands](#commands) ·
+[Findings](#findings) ·
+[The viewer](#the-viewer) ·
+[Reviewing a branch](#reviewing-a-branch) ·
+[Features and agents](#features-and-agents) ·
+[Pull and merge requests](#pull-and-merge-requests) ·
+[CI](#ci) ·
+[Plugins](#framework-plugins) ·
+[Configuration](#configuration) ·
+[Development](#development)
+
+## What it does
+
+- **Shows a change as a graph.** One box per file, symbols coloured by what changed, findings as
+  badges, removed edges dashed. Click a symbol to see its own diff, its old and new signature,
+  and who uses it.
+- **Reviews any branch.** Mark symbols reviewed as you go. After new commits, only what is new or
+  changed since is left to look at.
+- **Works with agents.** Describe a feature, and CPR makes its branch and worktree and starts
+  Claude Code there. You read its plan, answer it, review its branch, and approve. The agent then
+  merges the commit you approved.
+- **Reads pull and merge requests.** Review a GitHub pull request or a GitLab merge request from
+  the graph and post your comments as one review.
+- **Runs in CI.** A GitHub Action and a GitLab CI template post the findings on the lines they
+  are about.
+- **Knows frameworks through plugins.** Angular templates and Qwik routes are code that plain
+  TypeScript analysis cannot see; the `angular` and `qwik` plugins add it.
+
+## Quick start
+
+You need git, Node 22.12 or newer and pnpm 12, on macOS or Linux (WSL included).
 
 ```sh
-cpr diff main            # what changed on this branch, symbol by symbol, with findings
-cpr diff main --json     # the graph as JSON (docs/graph-schema.md)
-cpr diff main --fail-on error   # for CI
-cpr view main            # review it as a graph in the browser
-cpr view                 # the history as a graph: check out, review a branch, or compare two commits
-cpr pr 123               # a GitHub pull request or GitLab merge request (cpr mr 123)
+git clone https://github.com/attomius321/CPR.git
+cd CPR
+pnpm install
+pnpm build
+alias cpr="node $PWD/packages/cli/dist/bin.js"   # add this line to your shell profile
 ```
 
+On Linux, `pnpm install` also compiles `node-pty` for [the agent's terminal](#features-and-agents)
+when python3, make and a C++ compiler are there. Without them it is skipped, and the rest works.
+
+Then, in any git repository with TypeScript or JavaScript:
+
+```sh
+cpr view          # the commits page: every branch, ready to check out, review or compare
+cpr view main     # this branch against main, in the browser
+cpr diff main     # the same, in the terminal
 ```
-main (273c27a) → HEAD (b769925), merge-base 273c27a
-4 files changed · 3 symbols changed: 1 removed, 1 added, 1 modified
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `cpr diff <base> [head]` | Compares `head` (default `HEAD`) with where it left `base`, as a pull request does, and prints the changed symbols and the findings. |
+| `cpr view [<base> [head]]` | Opens the viewer in the browser. Without revisions it opens on the commits page; with them, on that comparison. Runs until Ctrl+C. |
+| `cpr pr [<number>]` | Reviews a GitHub pull request or a GitLab merge request (`cpr mr` is the same command). In a CI job for one, the number comes from the job. |
+
+`cpr diff` in a repository where one function was added, one removed and one changed:
+
+```
+main (9b269bf) → HEAD (f3d543d), merge-base 9b269bf
+1 file changed · 3 symbols changed: 1 added, 1 removed, 1 modified
 
 Findings
   ✖ removed-still-referenced  src/math.ts#legacy
       legacy was removed but is still used by 1 symbol: old
-  ⚠ signature-changed         src/math.ts#add
-      add changed its signature; 1 of 2 users not updated: total
+  ⚠ orphan-added              src/math.ts#triple
+      triple is new and nothing references it
+  ℹ signature-changed         src/math.ts#add
+      add changed its signature compatibly; existing users keep working (2 users, 1 untouched)
 
 M  src/math.ts
      ~ function    add  (signature, body)  · used by 2
@@ -27,173 +90,256 @@ M  src/math.ts
      + function    triple
 ```
 
-![CPR viewer: changed symbols boxed by file, colored by status, with finding badges](docs/images/viewer.png)
+### Options
 
-The viewer (`packages/viewer`) draws the same graph: one box per file, symbols colored by what
-changed, findings as badges, removed edges dashed. `cpr view main` opens it; it also accepts a
-graph file from `cpr diff --out` (drag and drop).
+| Option | For | What it does |
+|---|---|---|
+| `--json` | diff, pr | Print the graph JSON instead of the summary ([graph schema](docs/graph-schema.md)). |
+| `--out <file>` | diff, pr | Also write the graph JSON to a file. The viewer opens such a file too (drag and drop). |
+| `--codequality <file>` | diff, pr | Also write the findings as a GitLab Code Quality report. |
+| `--fail-on <level>` | diff, pr | Exit 1 when a finding is at least `error`, `warning` or `info`. |
+| `--since <rev>` | all | Mark each changed symbol new, updated or the same as in an earlier head of the change (before a push or a rebase). |
+| `--project <path>` | all | The tsconfig to load, relative to the repository root (default `tsconfig.json`). |
+| `--depth <n>` | all | Hops of unchanged callers and callees to include (default 1). |
+| `--plugin <name\|path>` | all | Analyze with a plugin, such as `angular` or `qwik`. Repeatable. |
+| `--no-merge-base` | diff, view | Compare with `base` itself, not with where `head` left it. |
+| `--port <n>`, `--no-open` | view, pr | The viewer's port (default: any free one), and not opening the browser. |
+| `--summary` | pr | Print the summary instead of opening the viewer. |
+| `--post-findings <level>` | pr | Post new findings at or above the level as comments on their lines, instead of opening the viewer. |
+| `--forge github\|gitlab` | pr | For hosts whose name does not say which forge they are. |
+| `--remote <name>` | pr | The remote to read and fetch from (default `origin`). |
 
-`cpr view` without revisions opens at once on the repository's history: every branch, local and
-remote, drawn as a graph left of the commits, the current branch the straight line on the left
-(tags show on their commits). A line spanning more than 100 rows is two arrows; a click on one
-goes to its other end. "This branch" shows only the current branch's commits. The whole history
-scrolls; commits load as they come into view (git orders it once: a hint names `git
-commit-graph write` when that is slow). The branches panel on the left lists local branches (with
-`↑2 ↓1` against their upstream, or "gone") and remote ones by folder (`fix/`, `milestone/`), with a
-filter (`/`; Enter goes to the first branch listed); a click puts the selection on the branch's
-newest commit, however deep in the history, and from there c and r work as on any commit. Under
-900 px the panel opens from a "Branches" button. Right-click a commit (or "⋯") and point at "Check out",
-or press c, to check out one of its branches, a remote branch as its local branch, a tag or the
-commit itself (each named by its badge); CPR asks first, uses `git switch` (never forced: local changes come along, or git refuses and nothing changes)
-and redraws the graph. A checkout made elsewhere shows when the page is back in focus.
+Exit codes: `0` ok, `1` a failure or a `--fail-on` hit, `2` a usage error. `cpr <command> --help`
+lists the options of each command.
 
-To review a branch (an agent's, say), point at "Review" in the same menu, or press r: CPR
-compares the branch from where it left the default branch to its tip. Mark symbols reviewed as
-you go; after new commits, review it again and only what is new or changed since is left (marks
-stay on symbols that did not change). A reviewed branch's badge shows "✓", or "+2" for commits
-since, and those commits get a dot. Reviews are files in `cpr/reviews/<branch>/<your git
-email>.json`. The first one writes `cpr/.gitignore`, which keeps them out of git; delete it to
-commit and share them. `git clean -fdx` deletes ignored files, reviews with them. An agent that
-commits with `git add -A` in your working copy skips them while that `.gitignore` is there; agents
-working in their own worktree have their own `cpr/`.
+## Findings
 
-Comment on lines as you review (select a symbol, c), then finish in the Review tab: Request
-changes, Comment or Approve records your verdict and comments in the review's file, for the
-agent; "Copy for the agent" puts it on the clipboard as text. CPR pushes and merges nothing: an
-approval asks the agent to merge the commit you reviewed — that one, not newer ones — into the
-repository's default branch, when you tell it to act on the review ("check my review"). Before
-you approve, the Review tab says whether that merge is clean or which files conflict; on a
-conflict the agent resolves it on its branch, and you review that. A branch's badge shows "✓"
-approved, "✗" changes requested, "+2" for its own commits since, "…" while reviewing. The default
-branch (`main`) can be reviewed for its unpushed commits, from where it was last pushed; an
+| Rule | Reported when | Severity |
+|---|---|---|
+| `removed-still-referenced` | A removed symbol's name is still used in head, by code that used it before or imports from its file. | Error; a warning when only untyped code (JavaScript, `any`) still uses it. |
+| `orphan-added` | Nothing references an added symbol. | Warning; info when the package's entry exports it, or it is a default export. |
+| `signature-changed` | A changed symbol's signature changed and it has users. | Warning when the change may break a user that was not updated, in another file and outside tests; otherwise info. |
+| `exported-api-changed` | A published package's exported symbol is removed, no longer exported, or its signature breaks. | Warning. |
+
+Tests (`*.test.*`, `*.spec.*`, `test/`, `tests/`, `e2e/`, `__tests__/`, `__mocks__/`) are told
+apart from production code by their path. CPR prefers missing a finding to reporting a wrong
+one, and every finding links to its symbol and the symbols involved.
+
+## The viewer
+
+### Reading a change
+
+The canvas draws one box per file, and in it the symbols that changed: green added, red removed,
+orange modified, blue moved. Grey symbols are their unchanged callers and callees, for context.
+A symbol's chips say what changed in it (`signature`, `body`), its badge counts its findings, and
+dashed red edges are calls and references that went away.
+
+Click a symbol, use the change list, or press j and k, and the detail panel opens beside the
+canvas: the findings, the old and new signature, a line diff of just that symbol, and who uses
+it and what it uses. Selecting or marking a symbol never rearranges the graph.
+
+![Detail panel of an interface: a signature-changed warning, its signature, a line diff of just this symbol, and its users](docs/images/viewer-detail.png)
+
+Large changes stay navigable:
+
+- A changed symbol with more than 8 unchanged users or uses shows them as one node ("390 users
+  in 220 files"), which opens on click.
+- Zoomed out, the canvas is a map of file names. Click one to zoom in. Each pair of linked files
+  has one edge, heavier the more calls it stands for.
+- The change list has a search (`/`): it keeps the symbols whose path and name hold every word
+  you type, Enter opens the first, and j and k walk only the matches.
+- Layouts are made in the background. The change list and findings show at once, and a view you
+  have seen before comes back at once.
+
+In a monorepo, when the change spans two or more apps or libraries, each is a frame around its
+files, with its name, kind and folder. Frames are ordered so that callers come before what they
+call, and edges between projects are drawn heavier. The change list is then grouped by project.
+"only" on a project, or p (P goes back), shows one project at a time: its changes and everything
+they are linked to elsewhere.
+
+### The commits page
+
+`cpr view` without revisions opens on the repository's history: every branch, local and remote,
+drawn as a graph beside the commits, the current branch the straight line on the left. The whole
+history scrolls, and commits load as they come into view.
+
+![Commits page: the branches panel with a milestone branch selected, and the history drawn as a graph with branch badges](docs/images/commits.png)
+
+- **Branches panel.** Local branches, with `↑2 ↓1` against their upstream, and remote ones by
+  folder. Filter it with `/`. A click selects the branch's newest commit, however deep in the
+  history it is.
+- **Check out** (right-click a commit, or c): one of its branches, a remote branch as a local
+  one, a tag or the commit itself. CPR asks first and uses `git switch`, never forced: your local
+  changes come along, or git refuses and nothing changes. A checkout made in a terminal shows
+  when the page is back in focus.
+- **Review** (r): the branch from where it left the default branch to its tip. See
+  [Reviewing a branch](#reviewing-a-branch).
+- **Compare** (x, or "Compare mode"): click two commits, the older is the base, then Compare or
+  Enter. One commit alone is compared with its parent. Two commits on diverged branches are
+  compared from where they forked, as a pull request is, and Swap compares the other side.
+- **Start a feature** (n): see [Features and agents](#features-and-agents).
+
+Each comparison is analyzed in the background with the same `--plugin`, `--project` and `--depth`,
+and has its own address (`/diff/<base>..<head>/`), so it can be reloaded or bookmarked. The last 8
+stay ready while `cpr view` runs.
+
+### Open in VS Code
+
+Under `cpr view` and `cpr pr`, "Open in VS Code" (or o) opens the selected symbol in the window
+that has the repository open, else in a new one. Ctrl+click a line (Cmd+click on macOS), or click
+its number, to open that line. CPR finds where the line is in your working copy now: after a
+checkout or an edit it opens at the line's new place, and says so. It runs VS Code's `code`
+command on the machine where `cpr` runs, so WSL, Remote SSH and containers work too. Set
+`CPR_CODE` to use another editor command (Insiders, VSCodium, Cursor).
+
+### Keys
+
+| Key | On the commits page | In a change |
+|---|---|---|
+| j, k | Next, previous commit | Next, previous changed symbol |
+| / | Find a branch | Search the change list |
+| c | Check out | Comment on the selected symbol (in a review) |
+| r | Review the branch | Mark the selected symbol reviewed |
+| x | Compare mode | |
+| n | Start a feature | |
+| f | | Focus: only the selected symbol and its neighbours |
+| p, P | | Next, previous project |
+| o | | Open in VS Code |
+| Esc | Leave compare mode | Close the detail panel |
+
+n starts a feature from the Features tab too. In a comment box, the start dialog or a feature's
+reply box, Ctrl+Enter (Cmd+Enter on macOS) saves, starts or sends.
+
+## Reviewing a branch
+
+Pick "Review" in a commit's menu, or press r, and CPR compares the branch from where it left the
+default branch to its tip. Mark symbols reviewed as you go (r). After new commits, review it
+again: only what is new or changed since is left, and marks stay on the symbols that did not
+change.
+
+Comment on a symbol or one of its lines (select it, press c), then finish in the Review tab with
+**Request changes**, **Comment** or **Approve**. Your verdict and comments are written to the
+review's file, where the agent reads them; "Copy for the agent" puts them on the clipboard as
+text.
+
+![Review tab: two comments on symbols, a summary, and Request changes picked, ready to finish](docs/images/viewer-review.png)
+
+CPR pushes and merges nothing itself. An approval asks the agent to merge the commit you
+reviewed (that one, not newer ones) into the repository's default branch, when you tell it to
+act on the review ("check my review"). Before you approve, the Review tab says whether that merge
+is clean or which files conflict; on a conflict, the agent resolves it on its branch and you
+review that. The default branch (`main`) can be reviewed too, for its unpushed commits; an
 approval there says they may be pushed.
 
-**For agents**: CPR writes what to do with a review into `cpr/AGENTS.md`, beside the reviews,
-and every review file's first line points there. Claude Code loads it when it reads a review.
+A branch's badge shows how its review stands: `✓` approved, `✗` changes requested, `+2` for its
+own commits since your review, `…` while reviewing. Commits added since get a dot.
 
-Start the work there too: "Start a feature" (or `n`; "Start a feature here" in a commit's menu
-starts it at that commit) asks what the agent should build, names a branch after it (edit it if
-you like), creates the branch at the default branch's tip with its own worktree beside your
-checkout — `../<repo>.worktrees/<branch>`, so your checkout and `cpr view` are untouched and
-several features can run at once — records the brief in `cpr/features/<branch>.json`, and starts
-Claude Code there in the background (`claude --bg`) with the brief. "Plan first and wait for my
-OK" (on by default) has it stop after its plan. It runs on your own Claude Code login (the
-dialog says which: your subscription, or an API key) in the permission mode you pick (Claude
-Code's default, Accept edits or Auto); CPR never grants it more. If Claude Code does not start —
-it must trust the repository, so run `claude` there once and accept — or is not installed (`claude`
-on `PATH`, or `CPR_CLAUDE`), the branch and worktree are kept and the page offers the prompt to
-copy. **Features** (the tab beside Commits, which counts what needs you) lists them by what each
-needs from you — a plan to read, a permission to give, a branch to review, changes to send back —
-then those working, then those merged, each with its commits, files not committed yet, your review
-and whether it merges cleanly, and Review, Talk (copies `claude attach <id>` for a terminal), Open
-in VS Code (its worktree), Stop or Start the agent, Copy the prompt. A feature's branch carries its
-agent's mark on the commits page — a link to the feature — and the feature's branch name goes to
-its commits; its commits show as the agent makes them. Review the branch as any other. In
-`cpr/config.json`, `"features": { "branchPrefix": "feature/", "worktrees": "../{repo}.worktrees"
-}` and `"agent": { "permissionMode": "auto", "model": "opus" }` change the defaults.
+Where reviews live:
 
-Pick a feature and its panel opens beside the list: its state and actions, then its thread —
-the agent's plan and reports (drawn from their Markdown), your messages, what it waits on (a
-permission to run a command, a question and its options) — and a box to answer it. Send continues the agent's own session with
-your words (CPR stops a session that is still alive first, then resumes it); while it works,
-"Stop and send" asks before ending its turn. After you finish a review of its branch, "Send the
-verdict" (or "Send to the agent" in the Review tab) fills the box with what you decided. Nothing
-is sent until you press Send. The thread comes from hooks CPR gives each agent it starts
-(`cpr/claude-settings.json`, kept in `cpr/threads/`, out of git); they only record, so
-permissions and questions are still answered in the session. Once a feature is merged,
-Clean up removes its agent's sessions, its worktree and its branch; an unmerged one only after
-you confirm, keeping the branch; never while files there are not committed.
+- `cpr/reviews/<branch>/<your git email>.json`, in the repository.
+- The first review writes `cpr/.gitignore`, which keeps them out of git. Delete it to commit and
+  share them. `git clean -fdx` deletes ignored files, reviews with them.
+- `cpr/AGENTS.md` tells any agent what to do with a review, and every review file's first line
+  points there. Claude Code loads it when it reads a review.
 
-Where it can, the panel opens on the agent's **Terminal**: its session as Claude Code draws it —
-the conversation, tool calls, permission prompts and questions, Esc, slash commands — so you
-answer it there without leaving CPR. It is `claude attach <id>` run by `cpr view` in the
-feature's worktree; Claude Code keeps hosting the session, and leaving the tab (or the page) only
-hangs up that client: the agent goes on. The **Thread** tab is then the feature's history, read
-only, with no box (`&thread` in the address opens on it). "Send the verdict" (or "Send to the
-agent" in the Review tab) types the verdict's first line and where the review is into the
-agent's input, for you to send with Enter. ← in an empty prompt opens Claude Code's list of all
-your agents, where you can switch away from this one. At most four terminals are open at
-once (each is a Claude Code process, about 140 MB). The terminal needs `node-pty`, an optional
-dependency: on Linux it is compiled when you install CPR (python3, make and a C++ compiler); macOS
-and Windows get a prebuilt one. Without it — or with `CPR_TERMINAL=off` — the panel keeps Talk,
-which copies `claude attach <id>` for a terminal of your own, and says why in its tooltip.
+## Features and agents
 
-A click selects a commit (j/k move the selection). To compare, turn on "Compare mode" (or press
-x): click one commit and another — the older is the base — and Compare (or x, Enter); one picked
-alone is compared with its parent; Escape leaves. Two commits on branches that diverged are
-compared from where they forked, as a pull request is: the diff shows what one side added since,
-never the other side's work as reverted. That side is the one off the default branch (else off
-the branch checked out, else the newer); the bar says so — "9f8e7d6 → e4f5a6b · 5 commits ·
-diverged from a1b2c3d" —, the fork point's SHA goes to its row (ringed with dashes), and Swap
-compares the other side. A picked pair is analyzed then, in the background, with the same
-`--plugin`, `--project` and `--depth`: its
-page says what it is doing ("loading head · 12 s") and can stop it. Each diff has its own address
-(`/diff/<base>..<head>/`), so it can be reloaded or bookmarked; the last 8 stay ready while
-`cpr view` runs, and "← Commits" goes back to the list. `cpr view main` analyzes first, as before,
-and opens that diff with the commits a click away.
+"Start a feature" (n, or "Start a feature here" in a commit's menu) asks what the agent should
+build, and then:
 
-Large changes stay navigable: a changed symbol with more than 8 unchanged users (or uses) shows
-them as one node — "390 users in 220 files" — that opens on click; zoomed out, the canvas is a
-map of file names you click to zoom into, with one edge per pair of linked files, heavier the more
-symbol edges it stands for; and j/k, the change list or a finding take you to a symbol without
-anything moving. While the view of a change with more than 400 edges moves, only the selected
-symbol's edges are drawn; the rest come back when it stops. Layouts are made in the background:
-the change list and findings show at once, a new view (context, a project, a group) is drawn
-when ready — "Laying out…" meanwhile, the previous one still usable — and a view seen before
-comes back at once. To find one in hundreds, search the change list (press `/`): it
-keeps the symbols whose file path and name hold every word you type, Enter opens the first, and
-j/k walk only the matches.
+1. names a branch after it (edit it if you like) and creates it at the default branch's tip, or
+   at the commit you picked;
+2. gives the branch its own worktree beside your checkout, `../<repo>.worktrees/<branch>` (the
+   branch's slashes become dashes), so your checkout and `cpr view` are untouched and several
+   features can run at once;
+3. records the brief in `cpr/features/<branch>.json`;
+4. starts Claude Code there in the background (`claude --bg`) with the brief. With "Plan first
+   and wait for my OK" (on by default), the agent stops after its plan.
 
-In a monorepo, when what is drawn spans two or more apps or libraries, each is a frame around its
-files: its name, kind and folder, and how many of its symbols changed (a frame holding only
-unchanged neighbours is drawn lighter). Frames read in order: what calls comes before what it
-calls. Edges between projects are drawn heavier; on the map the projects' names are the largest
-labels, and a click inside a frame, off its files, zooms into the project. A summary also says across how many projects its
-symbols are ("390 users in 220 files across 5 projects"). The change list is then grouped by
-project — name, kind, how many of its changes you reviewed, paths from the project's folder — and
-a project folds away (j/k pass it by); the search also finds project names. "only" on a project,
-or `p` (`P` back), shows one project at a time: its changes, and everything they are linked to
-in other projects. Findings and the detail panel name the project (`web › src/app/foo.ts`).
+The agent runs on your own Claude Code login (the dialog says which: your subscription or an API
+key), in the permission mode you pick: Claude Code's default, Accept edits, or Auto. CPR never
+grants it more. If Claude Code does not start, the branch and worktree are kept and the page
+offers the prompt to copy. Claude Code has to trust the folder, so run `claude` there once and
+accept. It is found as `claude` on your `PATH`, or set `CPR_CLAUDE`.
 
-Click a symbol to see what changed in it, its findings, and who uses it:
+The **Features** tab lists features by what each needs from you (a plan to read, a permission to
+give, a branch to review, changes to send back), then those working, then those merged. The tab
+counts the ones that need you. Each feature shows its commits, files not committed yet, your
+review, and whether it merges cleanly, with these actions:
 
-![Detail panel: findings, old and new signature, a line diff of just this method, its users and callees](docs/images/viewer-detail.png)
+- **Review** its branch;
+- **Talk**, which copies `claude attach <id>` for a terminal of your own (only when CPR cannot
+  open the agent's terminal in the panel; its tooltip says why);
+- **Open in VS Code**, its worktree;
+- **Stop** or **Start** the agent;
+- **Copy the prompt**.
 
-Under `cpr view` and `cpr pr`, "Open in VS Code" beside the file (or `o`) opens the symbol in VS
-Code: in the window that has the repository open, else in a new window with it. Ctrl+click a line
-(⌘+click on macOS), or click its number, to open that line. CPR finds where the line is in your
-working copy now: after a checkout or an edit it opens at the line's new place and says so; a line
-changed since opens where it was. It runs VS Code's `code` command, from `PATH` or the usual
-install places, on the machine where `cpr` runs (WSL, Remote SSH and containers alike); set
-`CPR_CODE` to use another one (Insiders, VSCodium, Cursor).
+![Features tab: three features by what they need, and the picked one's thread with the agent's plan and a reply box](docs/images/features.png)
 
-`cpr pr` works with GitHub (and GitHub Enterprise) and GitLab (gitlab.com and self-managed). It
-reads the forge from the `origin` remote; tokens come from `GITHUB_TOKEN`/`GH_TOKEN` (or
-`gh auth login`) and `GITLAB_TOKEN`.
+Pick a feature and its panel opens beside the list, where it can on the agent's **Terminal**:
+its session as Claude Code draws it (the conversation, tool calls, permission prompts and
+questions, Esc, slash commands), so you answer it without leaving CPR.
 
-Under `cpr pr` you can review without leaving the graph: write comments on symbols (press `c`;
-click a +/− line to choose where it lands), then submit them from the Review tab as one review —
-comment, approve, or request changes. They arrive as inline comments on those lines.
+- It is `claude attach <id>`, run by `cpr view` in the feature's worktree. Claude Code keeps
+  hosting the session: leaving the tab or the page only hangs up that client, and the agent goes
+  on.
+- **Send the verdict:** after you finish a review of the feature's branch, this (or "Send to the
+  agent" in the Review tab) types the verdict's first line and where the review is into the
+  agent's input, for you to send with Enter.
+- ← in an empty prompt opens Claude Code's list of all your agents, where you can switch away
+  from this one.
+- At most four terminals are open at once (each is a Claude Code process, about 140 MB).
 
-Your reviewed marks and drafts are kept per pull request. When the author pushes again, run
-`cpr pr` again: symbols you reviewed that didn't change stay reviewed, the ones that did are
-flagged ↻, and your drafts follow their code to its new lines. To see only what the push
-changed, compare with the head you saw last — a rebase that touched nothing shows nothing:
+The **Thread** tab is the feature's history, read only (`&thread` in the address opens on it):
+the agent's plan and reports (drawn from their Markdown), your messages, and what it waited on
+(a permission to run a command, or a question and its options). The thread comes from hooks CPR
+gives each agent it starts (`cpr/claude-settings.json`, recorded in `cpr/threads/`, out of git).
+They only record, so permissions and questions are answered in the session itself.
+
+The terminal needs `node-pty`, an optional dependency: on Linux `pnpm install` compiles it
+(python3, make and a C++ compiler), and macOS and Windows get a prebuilt one. Without it, or with
+`CPR_TERMINAL=off`, the panel shows the thread with a box to answer in:
+
+- **The reply box:** Send continues the agent's own session with your words. CPR stops a session
+  that is still alive first, then resumes it. While the agent works, "Stop and send" asks before
+  ending its turn.
+- **Send the verdict** fills the box with what you decided. Nothing is sent until you press Send.
+
+A feature's branch carries its agent's mark on the commits page, and each leads to the other.
+Once a feature is merged, Clean up removes its agent's sessions, its worktree and its branch. An
+unmerged one is cleaned up only after you confirm, and keeps its branch. Neither happens while
+the worktree has files not committed.
+
+## Pull and merge requests
+
+`cpr pr 123` works with GitHub (and GitHub Enterprise) and GitLab (gitlab.com and self-managed).
+It reads the forge from the `origin` remote, fetches the change's head and target branch, and
+analyzes the same diff the forge shows. Tokens come from `GITHUB_TOKEN` or `GH_TOKEN` (or
+`gh auth login`), and `GITLAB_TOKEN`.
+
+- **Review from the graph.** Write comments on symbols (c; click a + or − line to choose where it
+  lands), then submit them from the Review tab as one review: comment, approve, or request
+  changes. They arrive as inline comments on those lines.
+- **Review again after a push.** Marks and drafts are kept per pull request. Run `cpr pr` again:
+  symbols you reviewed that did not change stay reviewed, those that did are flagged `↻`, and
+  drafts follow their code to its new lines.
+- **See only what a push changed.** Compare with the head you saw last. A rebase that touched
+  nothing shows nothing:
 
 ```sh
-cpr pr 123 --since 3c2b1a0   # each changed symbol: new, updated, or same as in 3c2b1a0
+cpr pr 123 --since 3c2b1a0   # each changed symbol: new, updated, or the same as in 3c2b1a0
 ```
 
-![Review tab: two draft comments on symbols, a summary, and "Request changes" ready to submit](docs/images/viewer-review.png)
+## CI
 
-In CI, post the findings instead of opening the viewer; findings already posted by an earlier
-run are not repeated. Inside a pull/merge request job, `cpr pr` finds the number itself:
+In CI, CPR posts the findings instead of opening the viewer. Findings an earlier run already
+posted are not repeated. Inside a pull or merge request job, `cpr pr` finds the number itself:
 
 ```sh
-cpr pr --post-findings warning --fail-on error   # GitHub (GITHUB_TOKEN) or GitLab (GITLAB_TOKEN)
+cpr pr --post-findings warning --fail-on error
 ```
 
-On GitHub, use the action:
+### GitHub Action
 
 ```yaml
 on: pull_request
@@ -210,10 +356,23 @@ jobs:
           fail-on: error           # empty: never fail
 ```
 
-The action builds CPR, runs it, writes the summary to the run's page, and outputs the graph
-JSON's path (`steps.<id>.outputs.graph`) for upload.
+| Input | Default | What it does |
+|---|---|---|
+| `post-findings` | `warning` | Post new findings at or above this level. Empty: don't post. |
+| `fail-on` | `error` | Fail the job on a finding at least this level. Empty: never. |
+| `plugins` | | Plugins, comma-separated (`angular`), besides those in `cpr/config.json`. |
+| `project`, `depth` | | As `--project` and `--depth`. |
+| `token` | `github.token` | Reads the pull request and posts comments (needs `pull-requests: write`). |
+| `pull-request` | the event's | The pull request number. |
+| `working-directory` | `.` | Where the repository is checked out. |
+| `setup-node` | `true` | Install Node 22 first. |
 
-On GitLab, include the template:
+The action builds CPR, runs it, writes the summary to the run's page, and outputs the graph
+JSON's path (`steps.<id>.outputs.graph`) for upload. Pull requests from forks get a read-only
+token, so review them without posting (this repository's own
+[workflow](.github/workflows/cpr.yml) does that).
+
+### GitLab CI
 
 ```yaml
 include:
@@ -221,10 +380,104 @@ include:
 ```
 
 Its `cpr` job runs on merge request pipelines. Without a token, findings appear in the merge
-request's Code Quality widget; add a masked `GITLAB_TOKEN` variable (api scope) to also get them
-as comments on their lines.
+request's Code Quality widget. Add a masked `GITLAB_TOKEN` variable (api scope) to also get them
+as comments on their lines. Override `CPR_POST_FINDINGS`, `CPR_FAIL_ON`, `CPR_PLUGINS` or
+`CPR_VERSION` in your own `cpr:` job.
 
-TypeScript and JavaScript for now. Symbols in `fixtures/`, `generated/` and similar folders are not analyzed; add a `.cprignore` (gitignore syntax) at the root of your repository to change that. It is read from your working folder, so it applies right away, even uncommitted, and to any commits you compare:
+## Framework plugins
+
+Framework knowledge comes as plugins, so the TypeScript and JavaScript analysis stays the same
+for every project. A plugin lets CPR see what plain TypeScript cannot: a template that calls a
+component's methods, a method the framework calls, decorator settings that are configuration
+rather than contract.
+
+```sh
+cpr diff main --plugin angular          # Angular templates, decorators, lifecycle hooks
+cpr diff main --plugin qwik             # Qwik routes, component$ props, MDX routes
+cpr diff main --plugin ./tools/my-plugin.mjs
+```
+
+Or turn one on for the repository in `cpr/config.json` (`{ "plugins": ["angular"] }`). In CI,
+use the action's `plugins` input or GitLab's `CPR_PLUGINS` variable. A short name means
+`@cpr/plugin-<name>`, found in your project first, then next to CPR; a path starts with `.` or
+`/`. A plugin that fails is skipped with a warning; it never fails the review.
+
+### Angular
+
+With `angular`, a template is code: its edits are changes (formatting aside), and what it calls
+counts as a use.
+
+- A method removed while its template still calls it is an error at the template line.
+- A method used only by a template, a lifecycle hook or a host listener is not an orphan.
+- Editing `@Component({ imports })` is not read as a new signature.
+- Templates see the repository's components, directives and pipes. A removed component still
+  placed, an input renamed while still bound, an output removed while still listened to, or a
+  pipe whose `transform` changed under a template that was not updated is reported.
+- With dependencies installed, templates also see Angular's and its libraries' components,
+  directives and pipes, read from their typings in `node_modules`. So `x$ | async` has a type,
+  and `(ngModelChange)="save($event)"` or `#f="ngForm"` are typed. In CI, install dependencies
+  before CPR runs.
+- In the viewer, a template opens with its own diff, and comments on its lines go to the `.html`
+  file.
+
+Repositories with several apps work at any depth, with nothing at the root. Each file's imports
+resolve with its own project's `paths` and `baseUrl`, each template is read with its app's
+Angular version and installed libraries, and an app's templates only use components of its own
+Angular workspace and of shared code outside every workspace.
+
+### Qwik
+
+With `qwik`, Qwik 1.x (`@builder.io/qwik-city`) and 2.x (`@qwik.dev/router`) are read by Qwik's
+own file rules, in the routes folder its Vite config names.
+
+- What Qwik's router calls by name is not an orphan: `onGet`, `head`, `onRequest` and the other
+  route exports, `routeLoader$` and `routeAction$` values (also re-exported, also through a form
+  library's wrapper when Qwik is installed), server plugins' handlers, entries and error pages.
+  A helper a route module exports but nothing calls is still an orphan.
+- A `component$`'s props are its signature, shown as
+  `const Badge = component$<{ label: string; tone: string }>`. An optional prop added is
+  compatible; a required prop added or one removed is a warning that names the JSX not updated,
+  also when the props are a named type whose definition changed. This works without
+  `node_modules`.
+- `.mdx` routes are templates: their imports, components and `{expressions}` are code, and prose
+  edits are no change. A component removed while a page still renders it is an error at that
+  line, a required prop a page does not pass is a warning, and a component only pages use is not
+  an orphan (components the MDX provider gives included).
+
+### Your own
+
+A plugin implements the `TsPlugin` interface exported by `@cpr/core`. The
+[plan](docs/PLAN.md#x1--plugins) describes the hooks, and
+[`tpl-plugin.ts`](packages/core/test/helpers/tpl-plugin.ts) is a complete example.
+
+## Configuration
+
+### `cpr/config.json`
+
+At the repository root (`cpr.config.json`, the older place, still works). Every key is optional.
+
+```jsonc
+{
+  "plugins": ["angular"],
+  "features": { "branchPrefix": "feature/", "worktrees": "../{repo}.worktrees" },
+  "agent": { "permissionMode": "default", "model": "opus" }
+}
+```
+
+| Key | Default | What it does |
+|---|---|---|
+| `plugins` | none | Plugins every run uses, by name or path. |
+| `features.branchPrefix` | `feature/` | The start of a new feature's branch name. |
+| `features.worktrees` | `../{repo}.worktrees` | Where features' worktrees go, relative to the checkout (`{repo}` is its folder name). |
+| `agent.permissionMode` | `default` | The permission mode the start dialog suggests: `default`, `acceptEdits` or `auto`. |
+| `agent.model` | Claude Code's | The model agents start with. |
+
+### `.cprignore`
+
+Symbols in `examples/`, `playground/`, `fixtures/`, `__fixtures__/`, `__snapshots__/` and
+`generated/` folders, and in `*.generated.*` files, are listed but not analyzed. A `.cprignore`
+at the repository root (gitignore syntax) changes that. It is read from your working folder, so
+it applies at once, even uncommitted, and to any commits you compare:
 
 ```gitignore
 # every `interfaces` folder, at any depth
@@ -235,94 +488,60 @@ interfaces/
 !apps/web/interfaces/public.ts
 ```
 
-In a monorepo the graph JSON also says which app or library each file belongs to (`projects`, see
-the [graph schema](docs/graph-schema.md#project)): workspace members (npm, Yarn, pnpm), Nx projects
-and, with `--plugin angular`, the projects of `angular.json`; when a repository declares none,
-its packages and folders with their own `tsconfig.json`.
+### Projects in a monorepo
 
-### Plugins
+The graph JSON says which app or library each file belongs to (`projects`, see the
+[graph schema](docs/graph-schema.md#project)). CPR finds them from workspace members (npm, Yarn,
+pnpm), Nx projects and, with `--plugin angular`, `angular.json`. When a repository declares none,
+its packages and the folders with their own `tsconfig.json` are the projects.
 
-Framework knowledge comes as plugins, so the TypeScript/JavaScript analysis stays the same for
-every project. A plugin can make CPR see what plain TypeScript cannot: a template that calls a
-component's methods, a method the framework calls, decorator settings that are configuration
-rather than contract. Turn one on per run or for the repository:
+### Environment variables
 
-```sh
-cpr diff main --plugin angular          # Angular templates, decorators, lifecycle hooks
-cpr diff main --plugin qwik             # Qwik routes, component$ props, MDX routes
-cpr diff main --plugin ./tools/my-plugin.mjs
-```
+| Variable | What it does |
+|---|---|
+| `GITHUB_TOKEN`, `GH_TOKEN` | GitHub token for `cpr pr` (else `gh auth token`). |
+| `GITLAB_TOKEN` | GitLab token for `cpr pr`. |
+| `GITHUB_API_URL`, `GITLAB_API_URL` | The forge's API, for self-hosted instances. |
+| `CPR_FORGE` | `github` or `gitlab`, when the host name does not say (as `--forge`). |
+| `CPR_CODE` | The editor command "Open in VS Code" runs (default: VS Code's `code`, from `PATH` or its usual install places). |
+| `CPR_CLAUDE` | The Claude Code program features start (default: `claude` on `PATH`). |
+| `CPR_TERMINAL` | `off`: no agent's terminal in a feature's panel; the panel keeps Talk and the reply box. |
+| `CPR_CACHE_DIR` | Where CPR keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/cpr`, else `~/Library/Caches/cpr` on macOS and `~/.cache/cpr` elsewhere. |
 
-With `angular`, a template is code: its edits are changes (formatting aside), and what it calls
-counts as a use. A method removed while its template still calls it is an error at the template
-line; a method used only by a template, a lifecycle hook or a host listener is no orphan; editing
-`@Component({ imports })` no longer reads as a new signature. Templates see the repo's components,
-directives and pipes too: a removed component still placed, an input renamed while still bound,
-an output removed while still listened to, or a pipe whose `transform` changed under a template
-that was not updated are reported. With dependencies installed, templates also see the
-components, directives and pipes of Angular and its libraries (read from their typings in
-`node_modules`): `x$ | async` has a type, so a field read only in `@if (org$ | async; as org)`
-counts as used, and `(ngModelChange)="save($event)"` or `#f="ngForm"` are typed — in CI, install
-dependencies before CPR runs. In the viewer, a template opens with its own diff, and comments on
-its lines go to the `.html` file.
+## Limits
 
-Repos holding several apps work too, at any depth and with nothing at the root: each file's
-imports resolve with its own project's `paths` and `baseUrl` (the `tsconfig.app.json`,
-`tsconfig.lib.json` or `tsconfig.json` it is built with), each template is read with its app's
-Angular version and installed libraries, and an app's templates only use components of its own
-Angular workspace (its `angular.json` folder) and of shared code outside every workspace.
-
-With `qwik`, what Qwik's router calls by name is no orphan: `onGet`, `head`, `onRequest` and the
-other route exports, `routeLoader$`/`routeAction$` values (also re-exported from elsewhere, also
-through a form library's wrapper when Qwik is installed), server plugins' handlers, entries and
-error pages — by Qwik's own file rules for 1.x (`@builder.io/qwik-city`) and 2.x
-(`@qwik.dev/router`), in the routes folder its Vite config names. A helper a route module exports
-but nothing calls is still an orphan. A `component$`'s props are its signature, shown as
-`const Badge = component$<{ label: string; tone: string }>`: an optional prop added is
-compatible, a required prop added or one removed is a warning naming the JSX that was not updated
-— also when the props are a named type (`component$<CardProps>`) whose definition changed. Props
-are read from the types in the code, so this works without `node_modules`. `.mdx` routes are
-templates: their imports, components and `{expressions}` are code (prose edits are no change), so
-a component removed while a page still renders it is an error at that line of the `.mdx`, a
-required prop a page does not pass is a warning naming it, and a component only pages use is no
-orphan — components the MDX provider gives (`providerImportSource`) included.
-
-```jsonc
-// cpr/config.json (or cpr.config.json, the older place), at the repository root
-{ "plugins": ["angular"] }
-```
-
-A short name means `@cpr/plugin-<name>`, found in your project first, then next to cpr; a path
-starts with `.` or `/`. In CI: the action's `plugins` input or GitLab's `CPR_PLUGINS` variable
-(comma-separated). A plugin that fails is skipped with a warning — it never fails the review.
-Writing one: the `TsPlugin` interface exported by `@cpr/core`
-([plan](docs/PLAN.md#x1--plugins)), and a complete example in
-[`tpl-plugin.ts`](packages/core/test/helpers/tpl-plugin.ts).
-
-- [Plan](docs/PLAN.md) · [Journal](docs/JOURNAL.md) · [Graph schema](docs/graph-schema.md)
+- TypeScript and JavaScript only (`.ts .tsx .js .jsx .mts .cts .mjs .cjs`). Other languages need
+  an adapter of their own.
+- Static analysis: no runtime or data-flow analysis.
+- Claude Code is the only agent features start for now. Codex and any configured agent command
+  are planned (V20 in the [plan](docs/PLAN.md)).
 
 ## Development
 
-Requires Node ≥ 22.12 and pnpm 12.
-
 ```sh
 pnpm install
-pnpm check        # format, lint, typecheck, test
-pnpm build        # compile packages to dist/
+pnpm check        # format, lint, typecheck, unit tests
+pnpm build        # compile the packages and bundle the viewer
+pnpm test:e2e     # viewer end-to-end tests (after pnpm build)
 node packages/cli/dist/bin.js diff main
 ```
 
 | Package | Role |
 |---|---|
-| `packages/core` | Analysis engine: git, symbols, diff, references, detectors, graph JSON |
-| `packages/cli` | `cpr` command line |
+| `packages/core` | The engine: git, symbols, diff, references, detectors, graph JSON |
+| `packages/cli` | The `cpr` command line and the viewer's local server |
 | `packages/forge` | GitHub and GitLab APIs |
-| `packages/viewer` | Graph viewer served by `cpr view` and `cpr pr` |
+| `packages/viewer` | The browser app `cpr view` and `cpr pr` serve |
 | `packages/plugin-angular`, `packages/plugin-qwik` | Framework plugins |
-| `spikes/ts7` | TypeScript 7 API experiment (outside the workspace) |
+| `action.yml`, `ci/gitlab/cpr.yml` | The GitHub Action and the GitLab CI template |
+| `spikes/` | Experiments outside the workspace |
 
-Changes to the analysis are checked on real repositories, not only fixtures:
+Changes to the analysis are checked on real repositories, not only on fixtures:
 `scripts/regression/` runs pinned commits of ky, zod, vite, RealWorld, Bitwarden and Qwik on two
 builds and compares edges, findings and time; `scripts/viewer/measure.mjs` times the viewer on a
 graph in Chromium. `CLAUDE.md` (and one per package) and `.claude/skills/` hold the working rules
-and procedures for Claude Code.
+for Claude Code in this repository.
+
+- [Plan](docs/PLAN.md): the design, every milestone and every decision.
+- [Journal](docs/JOURNAL.md): what each milestone learned and measured.
+- [Graph schema](docs/graph-schema.md): the graph JSON contract.

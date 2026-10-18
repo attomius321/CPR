@@ -2654,3 +2654,42 @@ no `**` left, no page errors.
 Merged into main (2026-10-18), after V21: the journal and styles had both grown at the end
 (kept whole, V21's first), and the new e2e spec, which answers in the box, runs without
 terminals. `main` verified after the merge: 723 unit tests, build, 102 e2e.
+
+## README rewrite (2026-10-15, branch `chore/update-readme`)
+
+Asked: the README was stale; make it readable, without emojis, and CPR now stands for
+Coordinated Programming Runtime (decision 119). What it was:
+
+- Each milestone had appended a paragraph: the commits page took 10 lines, starting a feature 25.
+- Its three screenshots were from 2026-10-01 (V1, V3, G2): no map, no project frames, no commits
+  page, no features.
+- The sample `cpr diff` output, copied from PLAN §9, predated D1: no `orphan-added`, and
+  `signature-changed` a warning where a compatible change is now `info`.
+- Feature worktrees were said to be `../<repo>.worktrees/<branch>`; the code turns the branch's
+  slashes into dashes.
+- No install steps, findings, keys, configuration keys or environment variables in one place.
+
+Now: the name and a short pitch, then a quick start; commands with one options table; the four
+findings; the viewer (a change, the commits page, VS Code, keys); reviewing a branch; features
+and agents; pull and merge requests; CI; plugins; configuration; limits; development.
+
+Five screenshots at 1440 × 900 from a fresh build, taken by a throwaway Playwright script outside
+the repository:
+
+- The V17 branch (`9ffd5ac`'s two parents: 49 symbols in 3 packages, 17 findings), reviewed in a
+  clone of this repository whose `main` was reset to before its merge: the graph zoomed in on
+  `@cpr/core`, the detail of `Verdict`, and the Review tab with two comments.
+- This repository's history for the commits page, the branches panel open on `milestone/`.
+- The e2e suite's fake Claude Code for the Features tab, so no real session and nothing from
+  `cpr/` is in an image.
+
+**Learned**: the README is where drift collected. Milestones kept it current by appending, which
+kept every fact and lost the order. The sample output came from the plan, which nothing
+regenerates. Stale text found outside the README is V22 in the plan, not part of this change.
+
+**Verification**: a script checked every flag the README names against the CLI's help (all
+there; `--bg` is Claude Code's), every configuration key, permission mode and environment
+variable against the code, the action's inputs against `action.yml`, and every relative link
+and anchor. No emoji outside code: the glyphs left (`✖ ⚠ ℹ` in the sample, `✓ ✗ ↻` as badges)
+are what CPR prints, kept in code formatting. The sample output is a real run on the `callers`
+fixture. `pnpm check` and `pnpm build` pass.
