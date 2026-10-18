@@ -51,6 +51,9 @@ pnpm build
 alias cpr="node $PWD/packages/cli/dist/bin.js"   # add this line to your shell profile
 ```
 
+On Linux, `pnpm install` also compiles `node-pty` for [the agent's terminal](#features-and-agents)
+when python3, make and a C++ compiler are there. Without them it is skipped, and the rest works.
+
 Then, in any git repository with TypeScript or JavaScript:
 
 ```sh
@@ -265,27 +268,42 @@ counts the ones that need you. Each feature shows its commits, files not committ
 review, and whether it merges cleanly, with these actions:
 
 - **Review** its branch;
-- **Talk**, which copies `claude attach <id>` for a terminal;
+- **Talk**, which copies `claude attach <id>` for a terminal of your own (only when CPR cannot
+  open the agent's terminal in the panel; its tooltip says why);
 - **Open in VS Code**, its worktree;
 - **Stop** or **Start** the agent;
 - **Copy the prompt**.
 
 ![Features tab: three features by what they need, and the picked one's thread with the agent's plan and a reply box](docs/images/features.png)
 
-Pick a feature and its panel opens beside the list:
+Pick a feature and its panel opens beside the list, where it can on the agent's **Terminal**:
+its session as Claude Code draws it (the conversation, tool calls, permission prompts and
+questions, Esc, slash commands), so you answer it without leaving CPR.
 
-- **The thread:** the agent's plan and reports, your messages, and what it waits on (a permission
-  to run a command, or a question and its options).
+- It is `claude attach <id>`, run by `cpr view` in the feature's worktree. Claude Code keeps
+  hosting the session: leaving the tab or the page only hangs up that client, and the agent goes
+  on.
+- **Send the verdict:** after you finish a review of the feature's branch, this (or "Send to the
+  agent" in the Review tab) types the verdict's first line and where the review is into the
+  agent's input, for you to send with Enter.
+- ← in an empty prompt opens Claude Code's list of all your agents, where you can switch away
+  from this one.
+- At most four terminals are open at once (each is a Claude Code process, about 140 MB).
+
+The **Thread** tab is the feature's history, read only (`&thread` in the address opens on it):
+the agent's plan and reports (drawn from their Markdown), your messages, and what it waited on
+(a permission to run a command, or a question and its options). The thread comes from hooks CPR
+gives each agent it starts (`cpr/claude-settings.json`, recorded in `cpr/threads/`, out of git).
+They only record, so permissions and questions are answered in the session itself.
+
+The terminal needs `node-pty`, an optional dependency: on Linux `pnpm install` compiles it
+(python3, make and a C++ compiler), and macOS and Windows get a prebuilt one. Without it, or with
+`CPR_TERMINAL=off`, the panel shows the thread with a box to answer in:
+
 - **The reply box:** Send continues the agent's own session with your words. CPR stops a session
   that is still alive first, then resumes it. While the agent works, "Stop and send" asks before
   ending its turn.
-- **Send the verdict:** after you finish a review of the feature's branch, this (or "Send to the
-  agent" in the Review tab) fills the box with what you decided. Nothing is sent until you press
-  Send.
-
-The thread comes from hooks CPR gives each agent it starts (`cpr/claude-settings.json`, recorded
-in `cpr/threads/`, out of git). They only record, so permissions and questions are still answered
-in the session itself (Talk).
+- **Send the verdict** fills the box with what you decided. Nothing is sent until you press Send.
 
 A feature's branch carries its agent's mark on the commits page, and each leads to the other.
 Once a feature is merged, Clean up removes its agent's sessions, its worktree and its branch. An
@@ -487,6 +505,7 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 | `CPR_FORGE` | `github` or `gitlab`, when the host name does not say (as `--forge`). |
 | `CPR_CODE` | The editor command "Open in VS Code" runs (default: VS Code's `code`, from `PATH` or its usual install places). |
 | `CPR_CLAUDE` | The Claude Code program features start (default: `claude` on `PATH`). |
+| `CPR_TERMINAL` | `off`: no agent's terminal in a feature's panel; the panel keeps Talk and the reply box. |
 | `CPR_CACHE_DIR` | Where CPR keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/cpr`, else `~/Library/Caches/cpr` on macOS and `~/.cache/cpr` elsewhere. |
 
 ## Limits

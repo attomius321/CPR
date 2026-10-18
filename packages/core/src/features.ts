@@ -30,6 +30,8 @@ export interface FeatureAgentState {
   kind?: AgentKind;
   /** What a session that needs the person waits for, in Claude Code's words. */
   waitingFor?: string;
+  /** Its turn was interrupted (Esc): it waits at its prompt, and no hook said so. */
+  interrupted?: true;
   /** Claude Code's short session ID, for `claude attach`. */
   id?: string;
   /** Why the agent did not start, or why its state is unknown. */
@@ -67,6 +69,18 @@ export interface FeatureList {
   /** Where features are kept: `cpr/features/`, else CPR's cache (`note` says why). */
   place: 'repository' | 'cache';
   note?: string;
+  /** Whether an agent's session can be shown in a terminal (V21); only with features. */
+  terminal?: TerminalAvailability;
+}
+
+/** Whether `cpr view` can run terminals (node-pty, optional), else why not (V21). */
+export type TerminalAvailability = { available: true } | { available: false; reason: string };
+
+/** `POST /api/features/terminal`: a terminal on the feature's agent's session, at that size. */
+export interface FeatureTerminalRequest {
+  branch: string;
+  cols: number;
+  rows: number;
 }
 
 /** What the start dialog needs. */

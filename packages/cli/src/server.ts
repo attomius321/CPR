@@ -14,6 +14,7 @@ import {
   type CheckoutTarget,
   type FeatureReply,
   type FeatureRequest,
+  type FeatureTerminalRequest,
   type Graph,
   type PermissionMode,
   type HistoryRefs,
@@ -27,6 +28,7 @@ import type { OpenRequest, OpenResult } from './editor.js';
 import { FeatureRefused, type Features } from './features.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
+import type { Terminals } from './terminal.js';
 
 export type Side = 'base' | 'head';
 
@@ -68,6 +70,8 @@ export interface RepositoryOptions {
   reviews?: BranchReviews;
   /** Features started from the page, each with its agent (V18): `/api/features…`. */
   features?: Features;
+  /** Terminals on agents' sessions (V21): `/api/terminals/<id>…`; closed with the server. */
+  terminals?: Terminals;
 }
 
 export interface ViewServerOptions {
@@ -133,6 +137,10 @@ const FULL_SHA = new RegExp(`^${SHA}$`);
 const DIFF_PATH = new RegExp(`^/diff/(${SHA})\\.\\.(${SHA})(/.*)?$`);
 /** `/review/<branch, URL-encoded>` and what follows: a branch's review, as a diff's page. */
 const REVIEW_PATH = /^\/review\/([^/]+)(\/.*)?$/;
+/** `/api/terminals/<id>`, its output; `…/in`, `…/resize`, `…/close` (V21). */
+const TERMINAL_PATH = /^\/api\/terminals\/([0-9a-z]+)(?:\/(in|resize|close))?$/;
+/** Most a terminal is sent at once: keys typed, or a line CPR types (V21). */
+const MAX_TERMINAL_INPUT = 64 * 1024;
 
 /**
  * Serves the viewer, `/api/graph` and `/api/source` on localhost only: one graph at `/`
@@ -166,6 +174,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   let startingFeature = false;
   /** Writes that must not overlap (V18c: two messages at once would make two sessions). */
   const busy = new Set<string>();
+  /** Terminals' output streams (V21), ended when the server closes. */
+  const streams = new Set<ServerResponse>();
   const server = createServer((req, res) => {
     handle(req, res).catch((error: unknown) => send(res, 500, String(error)));
   });
@@ -245,6 +255,16 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
             answer(res, () => features.clean(request)),
           );
         }
+        if (url.pathname === '/api/features/terminal') {
+          return written(req, res, parseFeatureTerminal, (request) =>
+            answer(res, () => features.terminal(request)),
+          );
+        }
+      }
+      const terminal = repository.terminals ? TERMINAL_PATH.exec(url.pathname) : null;
+      if (terminal && repository.terminals) {
+        const [, id = '', action] = terminal;
+        return terminalApi(req, res, repository.terminals, id, action);
       }
     }
     return serveSite(req, res, url, url.pathname, root);
@@ -601,6 +621,79 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     return act(request);
   }
 
+  /**
+   * A terminal (V21): `GET` streams its output as server-sent events (`out`, then `exit` and
+   * the end); `POST …/in { data }`, `…/resize { cols, rows }` and `…/close` are writes. Its ID
+   * is unguessable and made only by a write; a read from another site is refused too.
+   */
+  async function terminalApi(
+    req: IncomingMessage,
+    res: ServerResponse,
+    terminals: Terminals,
+    id: string,
+    action: string | undefined,
+  ): Promise<void> {
+    if (action === undefined) {
+      if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+      if (!sameSite(req)) return send(res, 403, 'forbidden');
+      // What it printed so far arrives while listening starts: kept until the head is sent.
+      let ready = false;
+      const queued: string[] = [];
+      const event = (name: string, data: unknown) => {
+        const text = `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
+        if (ready) res.write(text);
+        else queued.push(text);
+      };
+      const stop = terminals.listen(id, {
+        out: (data) => event('out', data),
+        exit: (code) => {
+          event('exit', { code });
+          streams.delete(res);
+          res.end();
+        },
+      });
+      if (!stop) return send(res, 404, 'no such terminal');
+      res.writeHead(200, {
+        'content-type': 'text/event-stream',
+        'cache-control': 'no-store',
+        connection: 'keep-alive',
+      });
+      ready = true;
+      if (queued.length > 0) res.write(queued.join(''));
+      else res.flushHeaders();
+      streams.add(res);
+      req.on('close', () => {
+        streams.delete(res);
+        stop();
+      });
+      return;
+    }
+    return written(
+      req,
+      res,
+      (text) => JSON.parse(text) as Record<string, unknown> | null,
+      (body) => {
+        let done: boolean;
+        if (action === 'in') {
+          if (typeof body?.data !== 'string' || body.data.length > MAX_TERMINAL_INPUT) {
+            return Promise.resolve(
+              send(res, 400, `data: what to type, at most ${MAX_TERMINAL_INPUT} characters`),
+            );
+          }
+          done = terminals.write(id, body.data);
+        } else if (action === 'resize') {
+          const size = terminalSize(body);
+          if (!size) return Promise.resolve(send(res, 400, 'cols, rows: whole numbers, 2 to 1000'));
+          done = terminals.resize(id, size.cols, size.rows);
+        } else done = terminals.close(id);
+        if (!done) return Promise.resolve(send(res, 404, 'no such terminal'));
+        res.writeHead(204, { 'cache-control': 'no-store' });
+        res.end();
+        return Promise.resolve();
+      },
+    );
+  }
+
   /** One such write at a time: another meanwhile is refused (409) with `words`. */
   async function oneAtATime(
     res: ServerResponse,
@@ -808,12 +901,17 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
   /** A write from the viewer itself: JSON, the custom header, and (if sent) our own origin. */
   function writable(req: IncomingMessage): boolean {
-    const origin = req.headers.origin;
     return (
       req.headers['x-cpr'] === '1' &&
       !!req.headers['content-type']?.startsWith('application/json') &&
-      (origin === undefined || hosts.has(origin.replace(/^http:\/\//, '')))
+      sameSite(req)
     );
+  }
+
+  /** No origin (a page's own request may send none), or our own. */
+  function sameSite(req: IncomingMessage): boolean {
+    const origin = req.headers.origin;
+    return origin === undefined || hosts.has(origin.replace(/^http:\/\//, ''));
   }
 
   await new Promise<void>((resolve, reject) => {
@@ -824,7 +922,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   hosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
   return {
     url: `http://127.0.0.1:${port}/`,
-    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+    close: () => {
+      // Open streams would keep the server from closing: the terminals end them.
+      repository?.terminals?.closeAll();
+      for (const stream of streams) stream.end();
+      return new Promise<void>((resolve) => server.close(() => resolve()));
+    },
   };
 }
 
@@ -867,6 +970,24 @@ function parseFeatureReply(text: string): FeatureReply {
     throw new Error('stop: true or false');
   }
   return { branch: value.branch, text: value.text, ...(value.stop ? { stop: true } : {}) };
+}
+
+/** `{ cols, rows }`: whole numbers from 2 to 1000; null otherwise. */
+function terminalSize(
+  value: Record<string, unknown> | null,
+): { cols: number; rows: number } | null {
+  const ok = (n: unknown): n is number =>
+    Number.isInteger(n) && (n as number) >= 2 && (n as number) <= 1000;
+  return ok(value?.cols) && ok(value.rows) ? { cols: value.cols, rows: value.rows } : null;
+}
+
+/** `{ branch, cols, rows }`: a terminal on a feature's agent session (V21). */
+function parseFeatureTerminal(text: string): FeatureTerminalRequest {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.branch !== 'string') throw new Error("branch: a feature's branch");
+  const size = terminalSize(value);
+  if (!size) throw new Error('cols, rows: whole numbers, 2 to 1000');
+  return { branch: value.branch, ...size };
 }
 
 /** `{ branch, unmerged? }`: a feature to clean up (V18c). */

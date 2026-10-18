@@ -29,12 +29,14 @@ import {
   type FeatureRequest,
   type FeatureStart,
   type FeatureSummary,
+  type FeatureTerminalRequest,
   type FeatureThread,
   type GitRepo,
   type PermissionMode,
   type RefList,
 } from '@cpr/core';
 import { localHost, onPath } from './editor.js';
+import { TerminalRefused, type Terminals } from './terminal.js';
 import { CONFIG_FILES } from './plugins.js';
 import {
   prepareCprFolder,
@@ -318,7 +320,8 @@ const isBlocked = (session: AgentSession) =>
  * What the page says of a feature's agent: the newest session working in its worktree (matched
  * by real path), else why there is none. `ahead` (commits since the base) tells a finished plan
  * from finished work. `ended`: the thread says its last turn ended (V18c) — Claude Code reads a
- * finished plan as `blocked` with nothing named it waits for, so that is a finished turn.
+ * finished plan as `blocked` with nothing named it waits for, so that is a finished turn. A
+ * turn interrupted with Esc fires no hook and reads `idle` with `working` until the next one ends.
  */
 export function agentState(
   feature: FeatureFile,
@@ -344,6 +347,9 @@ export function agentState(
   const waiting = session.waitingFor ? { waitingFor: session.waitingFor } : {};
   switch (session.state ?? session.status) {
     case 'working':
+      if (session.status !== 'idle') return { state: 'working', kind, ...id };
+      if (ended) return { state: finished(), kind, ...id };
+      return { state: 'needs-you', kind, ...id, ...waiting, interrupted: true };
     case 'busy':
       return { state: 'working', kind, ...id };
     case 'blocked':
@@ -576,6 +582,11 @@ export interface Features {
   /** Sends a message to its agent: continues its session with the text (V18c). */
   reply(request: FeatureReply): Promise<FeatureReplied>;
   /**
+   * Opens its agent's newest session in a terminal (V21): `claude attach <id>` in its worktree;
+   * the terminal's ID. A stopped session continues, with no turn.
+   */
+  terminal(request: FeatureTerminalRequest): Promise<{ id: string }>;
+  /**
    * Cleans it up (V18c): its agent's sessions, its worktree and, once merged, its branch; the
    * record stays, `finished`. Unmerged only when asked (`unmerged`); never with work not
    * committed.
@@ -641,6 +652,7 @@ export function features(
     openFolder,
     hook = fileURLToPath(new URL('./agent-hook.js', import.meta.url)),
     node = process.execPath,
+    terminals,
   }: {
     /** Finds the agent (once a start or a list needs it); null when none is installed. */
     claude: () => Promise<ClaudeCode | null>;
@@ -652,6 +664,8 @@ export function features(
     /** CPR's hook (`dist/agent-hook.js`) and the Node that runs it. */
     hook?: string;
     node?: string;
+    /** Terminals on agents' sessions (V21); without them, none. */
+    terminals?: Terminals;
   },
 ): Features {
   const place = () => reviewPlace(repo, cacheDir);
@@ -880,7 +894,8 @@ export function features(
       for (const feature of list) {
         summaries.push(await summary(where, feature, refs, trunk, sessions));
       }
-      return { features: summaries, ...head };
+      const terminal = await terminals?.available();
+      return { features: summaries, ...head, ...(terminal ? { terminal } : {}) };
     },
 
     async start(request) {
@@ -1036,6 +1051,39 @@ export function features(
             }
           : {}),
       };
+    },
+
+    async terminal({ branch, cols, rows }) {
+      const where = await place();
+      const feature = await recorded(where, branch);
+      if (!terminals) throw new FeatureRefused('no terminals here', 409);
+      const can = await terminals.available();
+      if (!can.available) throw new FeatureRefused(can.reason, 409);
+      const agent = await agentOf(feature);
+      if (!existsSync(feature.worktree)) {
+        throw new FeatureRefused(`its worktree is gone: ${feature.worktree}`, 409);
+      }
+      // A session that wakes reads its settings file again, and does not start without it.
+      if (feature.agent?.hooks) await settingsFile(where);
+      // `attach` to an ID Claude Code does not know exits 0, saying "No job matching…".
+      const session = newestSession(feature, await agent.sessions(), real);
+      if (!session?.id) {
+        throw new FeatureRefused('its agent has no session to open: start the agent again', 409);
+      }
+      try {
+        const id = await terminals.open({
+          command: agent.command,
+          args: ['attach', session.id],
+          cwd: feature.worktree,
+          cols,
+          rows,
+          env,
+        });
+        return { id };
+      } catch (error) {
+        if (error instanceof TerminalRefused) throw new FeatureRefused(error.message, 409);
+        throw error;
+      }
     },
 
     async reply({ branch, text, stop }) {

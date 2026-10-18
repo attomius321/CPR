@@ -22,6 +22,7 @@ import {
   type Run,
 } from '../src/features.js';
 import { reviewPlace } from '../src/reviews.js';
+import type { Terminals } from '../src/terminal.js';
 
 /**
  * main: A ── B; origin/main at A, origin/HEAD naming main; origin/taken at A. The repository
@@ -249,6 +250,23 @@ describe('agentState', () => {
     );
   });
 
+  it('reads a turn interrupted with Esc as waiting for the person', () => {
+    // Measured (V21 spike): after Esc no hook fires, and Claude Code says `status: idle` with
+    // `state: working` until the next turn ends.
+    const f = record();
+    expect(at(f, [session({ state: 'working', status: 'idle' })])).toEqual({
+      state: 'needs-you',
+      kind: 'claude',
+      id: 'abc',
+      interrupted: true,
+    });
+    expect(at(f, [session({ state: 'working', status: 'busy' })]).state).toBe('working');
+    // The thread says the turn ended with a report: finished, whatever `state` still says.
+    expect(
+      agentState(f, [session({ state: 'working', status: 'idle' })], 0, (p) => p, true),
+    ).toEqual({ state: 'plan-ready', kind: 'claude', id: 'abc' });
+  });
+
   it('takes the newest session there and ignores other folders', () => {
     const f = record();
     const sessions = [
@@ -339,19 +357,38 @@ describe('features', () => {
     };
     return { claude, listed, start, sessions, stop, resume, remove };
   }
+  /** Fake terminals (V21): records what it is asked to open. */
+  function fakeTerminals(reason?: string) {
+    const opening: Parameters<Terminals['open']>[0][] = [];
+    const terminals: Terminals = {
+      available: () => Promise.resolve(reason ? { available: false, reason } : { available: true }),
+      open: (request) => {
+        if (reason) return Promise.reject(new Error(reason));
+        opening.push(request);
+        return Promise.resolve(`t${opening.length}`);
+      },
+      listen: () => undefined,
+      write: () => false,
+      resize: () => false,
+      close: () => false,
+      closeAll: () => {},
+    };
+    return { terminals, opening };
+  }
   const opened: string[] = [];
-  const service = (repo: TestRepo, claude: ClaudeCode | null, hook = HOOK) =>
+  const service = (repo: TestRepo, claude: ClaudeCode | null, hook = HOOK, terminals?: Terminals) =>
     openRepo(repo.root).then((git) =>
       features(git, cache, {
         claude: () => Promise.resolve(claude),
         now: () => NOW,
-        env: {},
+        env: { PATH: '/usr/bin' },
         hook,
         node: '/usr/bin/node',
         openFolder: (folder) => {
           opened.push(folder);
           return Promise.resolve({ opened: true });
         },
+        ...(terminals ? { terminals } : {}),
       }),
     );
 
@@ -540,6 +577,80 @@ describe('features', () => {
     sessions.mockClear();
     await s.list();
     expect(sessions).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens its agent's session in a terminal: claude attach <id> in its worktree (V21)", async () => {
+    const { repo } = fresh();
+    const { claude, listed } = fakeClaude();
+    const { terminals, opening } = fakeTerminals();
+    const s = await service(repo, claude, HOOK, terminals);
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    // A session that wakes needs its settings file: written back before it is attached to.
+    const settings = join(repo.root, 'cpr', 'claude-settings.json');
+    rmSync(settings);
+    expect(await s.terminal({ branch: 'feature/one', cols: 100, rows: 30 })).toEqual({ id: 't1' });
+    expect(opening).toEqual([
+      {
+        command: '/usr/bin/claude',
+        args: ['attach', 's1'],
+        cwd: feature.worktree.path,
+        cols: 100,
+        rows: 30,
+        env: { PATH: '/usr/bin' },
+      },
+    ]);
+    expect(existsSync(settings)).toBe(true);
+
+    // The newest session in its worktree; a stopped one too (attach continues it).
+    listed.push({ ...(listed[0] as AgentSession), id: 's2', startedAt: 99, state: 'stopped' });
+    await s.terminal({ branch: 'feature/one', cols: 80, rows: 24 });
+    expect(opening[1]?.args).toEqual(['attach', 's2']);
+
+    // No session listed: attach to an unknown ID exits 0 saying nothing useful, so refused.
+    listed.length = 0;
+    await expect(s.terminal({ branch: 'feature/one', cols: 80, rows: 24 })).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(/no session/) as string,
+    });
+    await expect(s.terminal({ branch: 'feature/nope', cols: 80, rows: 24 })).rejects.toMatchObject({
+      status: 404,
+    });
+  });
+
+  it('says why no terminal opens: none here, or no agent (V21)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const missing = fakeTerminals('node-pty is not installed');
+    const s = await service(repo, claude, HOOK, missing.terminals);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    await expect(s.terminal({ branch: 'feature/one', cols: 80, rows: 24 })).rejects.toMatchObject({
+      status: 409,
+      message: 'node-pty is not installed',
+    });
+    const none = await service(repo, claude);
+    await expect(
+      none.terminal({ branch: 'feature/one', cols: 80, rows: 24 }),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('lists whether terminals can run, once there are features (V21)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude, HOOK, fakeTerminals().terminals);
+    expect((await s.list()).terminal).toBeUndefined();
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    expect((await s.list()).terminal).toEqual({ available: true });
+    const missing = await service(
+      repo,
+      claude,
+      HOOK,
+      fakeTerminals('node-pty is not installed').terminals,
+    );
+    expect((await missing.list()).terminal).toEqual({
+      available: false,
+      reason: 'node-pty is not installed',
+    });
+    expect((await (await service(repo, claude)).list()).terminal).toBeUndefined();
   });
 
   it('lists nothing and asks no agent when no feature was started', async () => {

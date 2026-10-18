@@ -159,6 +159,11 @@ describe('featureNext', () => {
     expect(
       next({ agent: { state: 'needs-you', kind: 'claude', waitingFor: 'permission prompt' } }),
     ).toEqual({ group: 'needs-you', text: 'Waiting: permission prompt', mark: '?' });
+    expect(next({ agent: { state: 'needs-you', kind: 'claude', interrupted: true } })).toEqual({
+      group: 'needs-you',
+      text: 'Interrupted: waiting for you',
+      mark: '?',
+    });
     expect(next({ agent: { state: 'plan-ready', kind: 'claude' } })).toEqual({
       group: 'needs-you',
       text: 'Plan ready: read it and answer',
@@ -346,6 +351,7 @@ describe('replyMode', () => {
     expect(replyMode(agent({ state: 'stopped' }))).toBe('send');
     expect(replyMode(agent({ state: 'failed' }))).toBe('send');
     expect(replyMode(agent({ state: 'needs-you' }))).toBe('send');
+    expect(replyMode(agent({ state: 'needs-you', interrupted: true }))).toBe('send');
     expect(replyMode(agent({ state: 'working' }))).toBe('stop-and-send');
     expect(replyMode(agent({ state: 'needs-you', waitingFor: 'permission prompt' }))).toBe(
       'stop-and-send',

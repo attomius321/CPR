@@ -45,6 +45,7 @@ import { frameworkHints, loadPlugins } from './plugins.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ReviewTarget } from './server.js';
+import { terminals as agentTerminals } from './terminal.js';
 import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
 import { branchReviews } from './reviews.js';
@@ -503,6 +504,13 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     }),
   );
   let hinted = false;
+  // Terminals on features' agents (V21): node-pty is loaded only when one is asked for;
+  // `CPR_TERMINAL=off` turns them off (the panel keeps Talk).
+  const terminals = agentTerminals(
+    ctx.env.CPR_TERMINAL === 'off'
+      ? { pty: () => Promise.resolve({ error: 'terminals are turned off (CPR_TERMINAL=off)' }) }
+      : {},
+  );
   const server = await startViewServer({
     port,
     viewerDir: viewerDir(ctx),
@@ -534,7 +542,9 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         claude: agentFinder(repo.root, ctx.env),
         env: ctx.env,
         openFolder: vsCodeFolder(ctx.env),
+        terminals,
       }),
+      terminals,
     },
     open: vsCodeOpener(repo, ctx.env),
   });

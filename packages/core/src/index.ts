@@ -162,8 +162,10 @@ export {
   type FeatureRequest,
   type FeatureStart,
   type FeatureSummary,
+  type FeatureTerminalRequest,
   type FeatureThread,
   type PermissionMode,
+  type TerminalAvailability,
   type ThreadEntry,
   type ThreadQuestion,
 } from './features.js';
