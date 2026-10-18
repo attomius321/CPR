@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { ThreadEntry } from '@cpr/core';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import {
   hookMain,
   lastAction,
   readThread,
+  readThreadEnd,
   recordEvent,
   threadEntry,
   threadPath,
@@ -163,6 +164,28 @@ describe('recordEvent and readThread', () => {
       'notice',
       'report',
     ]);
+  });
+
+  it("reads a thread's end only: its last entries whole, the line cut there dropped (V22)", async () => {
+    const { folder, worktree } = cpr();
+    for (let n = 0; n < 40; n++) {
+      await recordEvent(folder, { ...input('Stop'), cwd: worktree }, at(n));
+    }
+    const path = threadPath(folder, 'feature/x');
+    const whole = await readThread(folder, 'feature/x');
+    const size = statSync(path).size;
+    const half = await readThreadEnd(folder, 'feature/x', Math.floor(size / 2));
+    expect(half.length).toBeGreaterThan(10);
+    expect(half.length).toBeLessThan(30);
+    expect(half).toEqual(whole.slice(-half.length));
+    // Cut exactly where a line starts: that line is whole, so it is kept.
+    const last = readFileSync(path, 'utf8').trimEnd().split('\n').at(-1) ?? '';
+    expect(await readThreadEnd(folder, 'feature/x', Buffer.byteLength(last) + 1)).toEqual(
+      whole.slice(-1),
+    );
+    expect(await readThreadEnd(folder, 'feature/x', size * 2)).toEqual(whole);
+    expect(await readThreadEnd(folder, 'feature/x', size)).toEqual(whole);
+    expect(await readThreadEnd(folder, 'feature/none')).toEqual([]);
   });
 
   it('a turn has ended when its last report comes after the last prompt', () => {

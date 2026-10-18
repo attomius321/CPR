@@ -40,7 +40,10 @@ goes to its other end. "This branch" shows only the current branch's commits. Th
 scrolls; commits load as they come into view (git orders it once: a hint names `git
 commit-graph write` when that is slow). The branches panel on the left lists local branches (with
 `↑2 ↓1` against their upstream, or "gone") and remote ones by folder (`fix/`, `milestone/`), with a
-filter (`/`; Enter goes to the first branch listed); a click puts the selection on the branch's
+filter (`/`; Enter goes to the first branch listed). Features started in CPR come first in the
+local list: those that need you, the one whose agent last reported or asked something on top, then
+those whose agent is working, each with how long ago its agent acted (`4m`, `2h`); then the
+current branch and the others by name. A click puts the selection on the branch's
 newest commit, however deep in the history, and from there c and r work as on any commit. Under
 900 px the panel opens from a "Branches" button. Right-click a commit (or "⋯") and point at "Check out",
 or press c, to check out one of its branches, a remote branch as its local branch, a tag or the
