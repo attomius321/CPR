@@ -12,8 +12,10 @@ import {
   featureChips,
   featureGroups,
   featureNext,
+  featuresFirst,
   proposeBranch,
   replyMode,
+  shortAge,
   startedNotice,
   threadItems,
   verdictToSend,
@@ -267,6 +269,62 @@ describe('featureChips', () => {
       title: 'Feature: Export a review as CSV — Working',
       href: '/features?branch=feature%2Fcsv',
     });
+  });
+});
+
+describe('featuresFirst', () => {
+  const at = (hour: number) => `2026-10-18T${hour}:00:00.000Z`;
+  it("lists the features that need you, then working ones, each by its agent's last action, newest first (V22)", () => {
+    const first = featuresFirst(
+      [
+        summary({ branch: 'feature/working-older', lastAction: at(10) }),
+        summary({
+          branch: 'feature/plan',
+          agent: { state: 'plan-ready', kind: 'claude' },
+          lastAction: at(11),
+        }),
+        summary({
+          branch: 'feature/asks',
+          agent: { state: 'needs-you', kind: 'claude', waitingFor: 'permission prompt' },
+          lastAction: at(13),
+        }),
+        summary({ branch: 'feature/working-newer', lastAction: at(12) }),
+        // Nothing to do for the person: merged, or its branch gone (no entry to sort).
+        summary({ branch: 'feature/merged', ahead: 1, merged: true, lastAction: at(14) }),
+        summary({ branch: 'feature/gone', tip: null, lastAction: at(15) }),
+        // No agent was found: when the feature was made.
+        summary({ branch: 'feature/no-agent', agent: { state: 'no-agent' }, created: at(12) }),
+        // The same time: by name.
+        summary({
+          branch: 'feature/also-plan',
+          agent: { state: 'plan-ready', kind: 'claude' },
+          lastAction: at(11),
+        }),
+      ],
+      null,
+    );
+    expect(first).toEqual([
+      { branch: 'feature/asks', at: at(13) },
+      { branch: 'feature/no-agent', at: at(12) },
+      { branch: 'feature/also-plan', at: at(11) },
+      { branch: 'feature/plan', at: at(11) },
+      { branch: 'feature/working-newer', at: at(12) },
+      { branch: 'feature/working-older', at: at(10) },
+    ]);
+    expect(featuresFirst([], null)).toEqual([]);
+  });
+});
+
+describe('shortAge', () => {
+  it('says how long ago in a few characters', () => {
+    const now = Date.parse('2026-10-18T14:00:00.000Z');
+    expect(shortAge('2026-10-18T13:59:30.000Z', now)).toBe('now');
+    expect(shortAge('2026-10-18T14:00:05.000Z', now)).toBe('now');
+    expect(shortAge('2026-10-18T13:56:00.000Z', now)).toBe('4m');
+    expect(shortAge('2026-10-18T13:00:01.000Z', now)).toBe('59m');
+    expect(shortAge('2026-10-18T12:00:00.000Z', now)).toBe('2h');
+    expect(shortAge('2026-10-15T14:00:00.000Z', now)).toBe('3d');
+    expect(shortAge('2026-08-01T14:00:00.000Z', now)).toBe('78d');
   });
 });
 

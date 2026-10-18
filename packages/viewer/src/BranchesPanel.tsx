@@ -1,9 +1,10 @@
-import { memo, useMemo, type RefObject } from 'react';
+import { memo, useEffect, useMemo, useReducer, type RefObject } from 'react';
 import type { HistoryRefs, HistoryScope } from '@cpr/core';
 import { branchTree, type PanelEntry } from './branches.js';
 import type { ReviewMark } from './branchReviews.js';
+import { relativeDate } from './commits.js';
 import { FeatureMark } from './FeatureMark.js';
-import type { AgentChip } from './features.js';
+import { shortAge, type AgentChip, type FirstBranch } from './features.js';
 
 type BranchEntry = Extract<PanelEntry, { kind: 'branch' }>;
 
@@ -26,9 +27,28 @@ function tracking(entry: BranchEntry): { text: string; title: string } | null {
   return parts.length === 0 ? null : { text: parts.join(' '), title: says.join(', ') };
 }
 
+/** How long ago a feature's agent last acted (V22), drawn again each minute on its own. */
+function Age({ at }: { at: string }) {
+  const [, tick] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    const timer = setInterval(tick, 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  const now = Date.now();
+  return (
+    <span
+      className="branches-age"
+      title={`Last agent action ${relativeDate(at, now)} · ${new Date(at).toLocaleString()}`}
+    >
+      {shortAge(at, now)}
+    </span>
+  );
+}
+
 /**
  * The branches panel (V10b): Local and Remotes by folder, a filter on top; a click goes to the
- * branch's tip row. Under 900 px it is shown only while `open` (over the rows).
+ * branch's tip row. Local lists the features that need the person first (V22, `first`). Under
+ * 900 px it is shown only while `open` (over the rows).
  */
 export const BranchesPanel = memo(function BranchesPanel({
   refs,
@@ -36,6 +56,7 @@ export const BranchesPanel = memo(function BranchesPanel({
   current,
   marks,
   agents,
+  first,
   open,
   filter,
   onFilter,
@@ -52,6 +73,8 @@ export const BranchesPanel = memo(function BranchesPanel({
   marks: ReadonlyMap<string, ReviewMark>;
   /** Each feature's mark by ref name, a link to the feature (V18b). */
   agents: ReadonlyMap<string, AgentChip & { href: string }>;
+  /** The features' branches Local lists first, with when their agent last acted (V22). */
+  first: readonly FirstBranch[];
   open: boolean;
   /** The filter and the folders flipped open or closed: kept by the page across listings. */
   filter: string;
@@ -62,9 +85,12 @@ export const BranchesPanel = memo(function BranchesPanel({
   onGo: (entry: BranchEntry) => void;
 }) {
   const entries = useMemo(
-    () => (refs ? branchTree(refs, { current, filter, toggled }) : []),
-    [refs, current, filter, toggled],
+    () =>
+      refs ? branchTree(refs, { current, filter, toggled, first: first.map((f) => f.branch) }) : [],
+    [refs, current, filter, toggled, first],
   );
+  // Remote branches' names hold their remote: only the local entries match.
+  const ages = useMemo(() => new Map(first.map((f) => [f.branch, f.at] as const)), [first]);
   return (
     <aside className={open ? 'branches open' : 'branches'} aria-label="Branches">
       <input
@@ -99,6 +125,7 @@ export const BranchesPanel = memo(function BranchesPanel({
                   entry={entry}
                   scope={scope}
                   mark={entry.kind === 'branch' ? marks.get(entry.name) : undefined}
+                  age={entry.kind === 'branch' ? ages.get(entry.name) : undefined}
                   onToggle={onToggle}
                   onGo={onGo}
                 />
@@ -116,12 +143,15 @@ function Entry({
   entry,
   scope,
   mark,
+  age,
   onToggle,
   onGo,
 }: {
   entry: PanelEntry;
   scope: HistoryScope;
   mark: ReviewMark | undefined;
+  /** When its feature's agent last acted (V22). */
+  age: string | undefined;
   onToggle: (key: string) => void;
   onGo: (entry: BranchEntry) => void;
 }) {
@@ -178,6 +208,7 @@ function Entry({
           {track.text}
         </span>
       )}
+      {age && <Age at={age} />}
     </button>
   );
 }

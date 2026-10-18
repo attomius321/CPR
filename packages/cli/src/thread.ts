@@ -214,3 +214,11 @@ export function turnEnded(entries: readonly ThreadEntry[]): boolean {
   const report = last('report');
   return report >= 0 && report > last('prompt');
 }
+
+/**
+ * When the agent last handed the turn back (V22): its newest report or question. Prompts are the
+ * person's or CPR's; notices and sessions' starts and ends (a `/clear`) are not the agent's acts.
+ */
+export function lastAction(entries: readonly ThreadEntry[]): string | undefined {
+  return entries.findLast((e) => e.kind === 'report' || e.kind === 'asks')?.at;
+}
