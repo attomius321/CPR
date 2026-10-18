@@ -435,7 +435,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V20 | Other agents, and answers in CPR | Was V18d–e. V20a: Codex (`codex exec --json`, detached, replies by `exec resume`) and any configured agent command, picked in the start dialog, and `.worktreeinclude`. V20b: permissions (an edit as a diff, a command) and questions (their options) answered in the feature's panel through the hooks every feature has had since V18c (measured in the V18c spike). See below. |
 | V21 ✅ | The agent's terminal in its panel | A feature's agent is talked to in V18c's box (a reply stops the session, 1.6 s, and loses a turn in progress) or in a terminal elsewhere (Talk copies `claude attach`). Measured (V21 spike): `claude attach` in a pseudo-terminal, drawn by xterm.js in the page, gives the whole session — first output in 152–174 ms, a key to its echo 22 ms, a permission answered in the page, Esc, messages queued while the agent works — while Claude Code keeps hosting it and CPR's hooks keep recording. Planned: Terminal in the feature's panel (node-pty optional, Talk without it), output as events and keys as POSTs under the write rule, one terminal per open panel, dark in both themes; and the state after Esc (`idle` with `working`), wrong on `main` today. Merged (2026-10-18): with a real Claude Code, the session drawn and answered in the panel, Esc read as "Interrupted" 0.3 s later, a stop shown and reopened in 0.2 s; a key to its echo 32 ms through CPR. See below. |
 | V22 | Fixes: stale text outside the README | Found while rewriting the README (`chore/update-readme`, 2026-10-15). `cpr --help` and `cpr view --help` say the first page lists the current branch's commits (every branch since V10a); `@cpr/cli`'s description names only `cpr diff` and `cpr view`; the action's `plugins` input points to `cpr.config.json`, the older place; the sidebar's "No findings." ends with an emoji. Planned, not started. |
-| V23 | Branches that need you, first | Planned as V22, which `main` took meanwhile. The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. Built (2026-10-18), waiting for review: on a clone of this repository with three open features, they are the first three entries instead of the 4th, 10th and 12th; `/api/features` unchanged (34 ms), each thread read from its last 256 KB (0.6 ms at any length). See below. |
+| V23 ✅ | Branches that need you, first | Planned as V22, which `main` took meanwhile. The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. Merged (2026-10-18): on a clone of this repository with three open features, they are the first three entries instead of the 4th, 10th and 12th; `/api/features` unchanged (34 ms), each thread read from its last 256 KB (0.6 ms at any length). See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -5706,9 +5706,9 @@ once (unit-tested with fakes); the 140 MB per attach, not measured again.
 
 ### V23 — Branches that need you, first in the branches panel
 
-**Status:** built (2026-10-18) on branch `feature/sort-branches-by-last-agent-action` (a feature
-started in CPR), waiting for review. Planned as V22 with decisions 119–120, which `main` took
-meanwhile. As built and results: "As built (V23)" below.
+**Status:** merged into main (2026-10-18, from branch `feature/sort-branches-by-last-agent-action`,
+a feature started in CPR; approved in CPR at `4321040`). Planned as V22 with decisions 119–120,
+which `main` took meanwhile. As built and results: "As built (V23)" below.
 
 **Problem** (asked: "sort the commits from Commits page by last agent action...so i can see the
 branches that need my attention at the top", then "we need to sort the Branches from the left side
@@ -5798,7 +5798,7 @@ features view do not change.
 
 | # | Milestone | Output |
 |---|---|---|
-| V23 | Branches that need you, first | `lastAction` on each feature (its thread's newest report or question); `featuresFirst`; `branchTree`'s `first`; the panel's order and ages; README. |
+| V23 ✅ | Branches that need you, first | `lastAction` on each feature (its thread's newest report or question); `featuresFirst`; `branchTree`'s `first`; the panel's order and ages; README. |
 
 **Proposed decisions**:
 

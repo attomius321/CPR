@@ -2755,3 +2755,7 @@ and dark and the 880 px overlay: the three open features are the first three loc
 `main`'s 33.2–34.1 ms (median of 20, three runs each, back to back). No analysis code changed: no
 regression sets. Not verified: dozens of features; Firefox, Safari, Windows, macOS; a real Claude
 Code session acting while the page is open (the e2e fake runs CPR's real hooks).
+
+Merged into main (2026-10-18), approved in CPR at `4321040`: no conflicts (`main` had been merged
+into the branch before the review). `main` verified after the merge (same tree as the approved
+commit): 730 unit tests, build, 103 e2e.
