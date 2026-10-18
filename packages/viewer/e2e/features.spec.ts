@@ -209,6 +209,13 @@ test('the features view: what each feature needs, as its agent goes on', async (
   );
   await expect(page.locator('.page-tabs .page-count')).toHaveText('1');
 
+  // Esc in its session: no hook fires and Claude Code still says `working`, but it waits.
+  cpr.interrupt(branch);
+  await expect(group(page, 'Needs you').locator(row)).toContainText(
+    'Interrupted: waiting for you',
+    POLL,
+  );
+
   // It commits, leaves a file uncommitted and finishes: ready for review.
   cpr.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
   writeFileSync(join(cpr.folder(branch), 'notes.md'), 'todo\n');

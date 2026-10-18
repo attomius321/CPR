@@ -133,6 +133,7 @@ export function featureNext(feature: FeatureSummary, review?: BranchReviewSummar
     case 'working':
       return { group: 'working', text: 'Working', chip: chip('⚙', 'working', 'Working') };
     case 'needs-you':
+      if (agent.interrupted) return needs('Interrupted: waiting for you', '?', 'waiting');
       return needs(`Waiting: ${agent.waitingFor ?? 'for you'}`, '?', 'waiting');
     case 'plan-ready':
       return needs('Plan ready: read it and answer', '?', 'waiting');
