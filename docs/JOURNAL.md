@@ -2715,3 +2715,7 @@ records of the three worktrees (`claude purge`); the repository folder's older r
 entry left as they were. The image shows the person's status line (model, folder, context) and
 nothing personal. The README re-checked against the CLI's help and the code: every flag and
 environment variable there (`CPR_VIEWER_DIR`, for tests, left out).
+
+Merged into main (2026-10-18), the screenshot after the rewrite: no conflicts (`main` had not
+moved). `main` verified after the merge (same tree as the branch): 723 unit tests, build, 102
+e2e.
