@@ -274,7 +274,7 @@ review, and whether it merges cleanly, with these actions:
 - **Stop** or **Start** the agent;
 - **Copy the prompt**.
 
-![Features tab: three features by what they need, and the picked one's thread with the agent's plan and a reply box](docs/images/features.png)
+![Features tab: three agents by what they need from you, and the picked one's Claude Code session in the Terminal tab, its plan waiting for your OK](docs/images/features.png)
 
 Pick a feature and its panel opens beside the list, where it can on the agent's **Terminal**:
 its session as Claude Code draws it (the conversation, tool calls, permission prompts and
