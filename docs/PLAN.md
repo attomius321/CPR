@@ -5086,7 +5086,9 @@ repository with no feature makes no call to `claude`, as before.
   with Talk to answer it (V20b answers it here), a later start as a thin line ("continued", "copy
   started"); then the box, "Reply to the agent…", Send (Ctrl+Enter).
 - Messages are shown as written (Markdown as text, `white-space: pre-wrap`): no Markdown library
-  in V18c (a new runtime dependency needs a reason, and plans read as text).
+  in V18c (a new runtime dependency needs a reason, and plans read as text). Since 2026-10-18 the
+  agent's reports are drawn as Markdown (decision 118); the person's messages and CPR's prompt
+  are still shown as written.
 - **Send the verdict**: when the branch's review has a verdict newer than the last `prompt`, the
   panel offers it: it fills the box with `verdictText` (V16's text, the one "Copy for the agent"
   copies), to edit and send. The Review tab's note (V16–V17) gains "Send to the agent", which
@@ -5257,12 +5259,12 @@ Codex and other agents (V18d) and answers in CPR (V18e) moved to V20: V20a and V
 | 108 | What CPR's hooks do (V18c) | **Registered for every event at each first start; they record into the thread and decide nothing** | A session's options are fixed at its first start, so the hooks must be there from the start; recording only keeps V18c to one box ("start simple, with only one chatbox"), and V20b answers through them for every feature started since. |
 | 109 | Where a feature's conversation is shown (V18c) | **Beside the list in the features view: list and panel, `?branch=` the selection** | Asked, among beside the list, under the row, and a page of its own: the person answers one feature and goes to the next that needs them without leaving the page. |
 | 110 | Where the thread is kept (V18c) | **`cpr/threads/<branch>.jsonl`, written by the hook; the person's messages as the agent received them (`UserPromptSubmit`)** | Beside the record and reviews, git-ignored; not the cache, which is cleared; Claude Code's transcripts are not a documented interface. |
+| 118 | Agents' reports in the thread (fix, 2026-10-18) | **Drawn as Markdown: `marked`'s lexer (GitHub's flavour, line breaks kept) reads a report, CPR turns its tokens into React elements; HTML shows as text, links only to `http(s):` and `mailto:`; `marked` in its own chunk, loaded when a thread is first shown; the person's messages and CPR's prompt as written** | Asked ("the output of agents is not rendered correctly, i see **Text**"). One of this repository's agents wrote 34 bold spans, 74 code spans, 46 bullets, 14 numbered items and 8 headings in two reports. A parser of nested lists and tables by hand is where bugs hide; `marked`'s renderer makes HTML, which would need a sanitizer; its tokens drawn as elements need neither. 46 KB (13.7 KB gzip), not in the main bundle. |
 
 **Not in V18 (later)**: cloud sessions (`claude --cloud`, whose branch comes back on `origin`);
 several agents on one feature; the agent's actions live in CPR (a `-p` stream, or the
 transcript's tool calls in the panel); briefs from an issue tracker; editing a brief after the
-start; reviewing a plan in CPR (Markdown has no symbols to review); Markdown rendered in the
-thread; a message kept for the end of the agent's turn instead of "Stop and send" (a `Stop` hook
+start; reviewing a plan in CPR (Markdown has no symbols to review); a message kept for the end of the agent's turn instead of "Stop and send" (a `Stop` hook
 could hand it over; not measured); the session's inbox socket (its messages reach the agent as
 another session's, not the person's).
 

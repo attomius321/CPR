@@ -8,6 +8,7 @@ import type {
 } from '@cpr/core';
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
+import { markdownNodes, useMarkdown } from './markdown.js';
 import { postJson, useFeatureStarter } from './FeatureStarter.js';
 import {
   featureGroups,
@@ -373,15 +374,18 @@ const timeOf = (at: string) =>
 
 /**
  * What the agent was told and reported, newest last; what it waits on as a line. It opens at its
- * end and follows new entries; a read with nothing new leaves it where the person scrolled.
+ * end and follows new entries; a read with nothing new leaves it where the person scrolled. The
+ * agent's reports are drawn as Markdown (plain text until the lexer is loaded); the person's
+ * messages and CPR's prompt as written.
  */
 function Thread({ thread, worktree }: { thread: FeatureThread | null; worktree: string }) {
   const list = useRef<HTMLOListElement>(null);
   const items = thread ? threadItems(thread.entries, worktree) : [];
+  const lexer = useMarkdown();
   useLayoutEffect(() => {
     const box = list.current;
     if (box) box.scrollTop = box.scrollHeight;
-  }, [items.length]);
+  }, [items.length, lexer]);
   if (!thread) return <p className="hint">Reading its messages…</p>;
   return (
     <>
@@ -420,7 +424,13 @@ function Thread({ thread, worktree }: { thread: FeatureThread | null; worktree: 
                   {item.who === 'agent' ? 'Agent' : 'You'} ·{' '}
                   <time dateTime={item.at}>{timeOf(item.at)}</time>
                 </div>
-                <div className="thread-text">{item.text}</div>
+                {item.who === 'agent' && lexer ? (
+                  <div className="thread-text thread-markdown">
+                    {markdownNodes(lexer(item.text))}
+                  </div>
+                ) : (
+                  <div className="thread-text">{item.text}</div>
+                )}
               </li>
             );
           })}
