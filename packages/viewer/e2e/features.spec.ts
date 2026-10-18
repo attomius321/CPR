@@ -360,7 +360,11 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
   // A plan longer than the thread's box (as real plans are).
   const steps = Array.from({ length: 40 }, (_, i) => `${i + 2}. Another step`).join('\n');
   cpr.report(branch, `Plan\n1. Add half(a) to src/half.ts\n${steps}\nCheck: a unit test`);
-  await expect(here.locator('.thread-agent')).toContainText('1. Add half(a) to src/half.ts', POLL);
+  // Drawn as Markdown: the plan's steps are a numbered list.
+  await expect(here.locator('.thread-agent ol li').first()).toHaveText(
+    'Add half(a) to src/half.ts',
+    POLL,
+  );
   await expect(featureRow(page, branch)).toContainText('Plan ready: read it and answer', POLL);
 
   // The reply: the live session stopped, then continued with the text and no other flag.
@@ -630,4 +634,32 @@ test('without terminals, the panel keeps Talk and no tab', async ({ page }) => {
     'title',
     /CPR_TERMINAL=off/,
   );
+});
+
+test("an agent's report is drawn as Markdown; HTML in it, and your messages, stay as written", async ({
+  page,
+}) => {
+  // Your message goes through the box: where no terminal runs (V21).
+  cpr = await serveFeatures({ terminal: false });
+  await page.goto(`${cpr.url}features`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const here = panel(page, branch);
+  cpr.report(
+    branch,
+    '## Done\n\n**What changed**\n- **half** (`src/half.ts`): added.\n  - tested\n\n<b>raw</b> [docs](https://example.com)',
+  );
+  const report = here.locator('.thread-agent').last();
+  await expect(report.locator('h4')).toHaveText('Done', POLL);
+  await expect(report.locator('strong').first()).toHaveText('What changed');
+  await expect(report.locator('ul > li > strong')).toHaveText('half');
+  await expect(report.locator('code')).toHaveText('src/half.ts');
+  await expect(report.locator('ul ul li')).toHaveText('tested');
+  await expect(report).toContainText('<b>raw</b>');
+  await expect(report.locator('a')).toHaveAttribute('href', 'https://example.com');
+  await expect(report).not.toContainText('**');
+  // Your messages are shown as you typed them.
+  await box(page, branch).fill('Keep **this** as typed.');
+  await box(page, branch).press('Control+Enter');
+  await expect(here.locator('.thread-you').last()).toContainText('Keep **this** as typed.', POLL);
 });

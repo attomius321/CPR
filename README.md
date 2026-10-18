@@ -93,8 +93,8 @@ its commits; its commits show as the agent makes them. Review the branch as any 
 }` and `"agent": { "permissionMode": "auto", "model": "opus" }` change the defaults.
 
 Pick a feature and its panel opens beside the list: its state and actions, then its thread —
-the agent's plan and reports, your messages, what it waits on (a permission to run a command, a
-question and its options) — and a box to answer it. Send continues the agent's own session with
+the agent's plan and reports (drawn from their Markdown), your messages, what it waits on (a
+permission to run a command, a question and its options) — and a box to answer it. Send continues the agent's own session with
 your words (CPR stops a session that is still alive first, then resumes it); while it works,
 "Stop and send" asks before ending its turn. After you finish a review of its branch, "Send the
 verdict" (or "Send to the agent" in the Review tab) fills the box with what you decided. Nothing

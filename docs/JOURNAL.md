@@ -2621,3 +2621,27 @@ and written reaching the thread; Esc read as interrupted; a stop shown in 755 ms
 Code's records of the folder too. One run's message was not submitted (typed before Claude Code
 said `idle`); not explained. Not verified: Windows, macOS, Firefox, Safari; a permission prompt
 in CPR's terminal (`auto` asked none); four real terminals at once.
+
+## Fix — agents' reports drawn as Markdown (2026-10-18, branch `fix/thread-markdown`)
+
+Asked: "the output of agents is not rendered correctly, i see **Text**..etc..", in the Thread.
+V18c showed every message as written (`white-space: pre-wrap`), leaving Markdown for later; the
+two reports of this repository's own feature (`chore/update-readme`) held 34 bold spans, 74 code
+spans, 46 bullets, 14 numbered items and 8 headings. Now an agent's report is read by `marked`'s
+lexer (GitHub's flavour, line breaks kept as written) and its tokens are drawn as React elements
+in `src/markdown.ts`: no HTML string is made, so nothing needs sanitizing. HTML in a report shows
+as text; links and images become links only to `http(s):` and `mailto:`; task boxes are drawn
+read only. `marked` is loaded into its own chunk (46 KB, 13.7 KB gzip) when a thread is first
+shown, the report plain text until then; the main bundle grew 3.8 KB. The person's messages and
+CPR's prompt are shown as written (decision 118).
+
+**Learned**: `marked`'s lexer gives text unescaped (React escapes it once), a task's box as its
+own `checkbox` token, and with `breaks` a `br` token per line break. The thread is itself a list,
+so a report's top-level bullets came out as circles (the second level's) until set to discs.
+
+**Verification**: tests first — the renderer on agents' constructs (nested and numbered lists,
+headings, code, quotes, rules, tables, task lists, HTML as text, unsafe links dropped; red: no
+module), an e2e spec (a heading, bold, code, a nested list, HTML as text, a link; your message
+with `**` kept), and V18c's panel spec, whose plan is now a numbered list (red on `main`'s build
+for both). The two real reports of `chore/update-readme` checked in light and dark at 1440 px:
+no `**` left, no page errors.
