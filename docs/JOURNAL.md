@@ -2693,3 +2693,11 @@ variable against the code, the action's inputs against `action.yml`, and every r
 and anchor. No emoji outside code: the glyphs left (`✖ ⚠ ℹ` in the sample, `✓ ✗ ↻` as badges)
 are what CPR prints, kept in code formatting. The sample output is a real run on the `callers`
 fixture. `pnpm check` and `pnpm build` pass.
+
+Merged into main (2026-10-18), after V21 and two fixes, resolved on the branch first: V21 and
+decisions 111–118 had been taken on `main`, so the proposed fixes are V22 and the name is decision
+119; the journal kept whole, `main`'s entries first; the README rewrite kept, with V21's Terminal,
+the thread drawn as Markdown, Talk only without the terminal, `CPR_TERMINAL` and `node-pty`
+carried into it. The images are from before V21: the Features tab shows the thread with its box,
+not the terminal. `main` verified after the merge (same tree as the branch): 723 unit tests,
+build, 102 e2e.
