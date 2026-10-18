@@ -5,7 +5,9 @@ import type {
   FeatureStart,
   FeatureSummary,
   FeatureThread,
+  TerminalAvailability,
 } from '@cpr/core';
+import { AgentTerminal, toTerminal, type OpenedTerminal } from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
 import { postJson, useFeatureStarter } from './FeatureStarter.js';
@@ -18,12 +20,21 @@ import {
   verdictToSend,
   type FeatureRow,
 } from './features.js';
+import { verdictLine } from './terminal.js';
 import { reloadFeatures, useFeatures } from './useFeatures.js';
 
 /** `?branch=<name>`: the feature picked (V18b's address, V18c's selection). */
 const branchOfUrl = (): string | null => new URLSearchParams(window.location.search).get('branch');
 /** `?send=verdict`: from the Review tab, the box filled with the review's verdict (V18c). */
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
+/**
+ * `&thread` or `&terminal`: the panel's lower part as picked (V21); without either, the terminal
+ * where one can run, else the thread.
+ */
+const viewOfUrl = (): 'thread' | 'terminal' | null => {
+  const params = new URLSearchParams(window.location.search);
+  return params.has('thread') ? 'thread' : params.has('terminal') ? 'terminal' : null;
+};
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -164,6 +175,7 @@ export function FeaturesPage() {
               row={current}
               mark={marks.get(current.feature.branch)}
               version={list}
+              terminal={list.terminal}
               fillVerdict={send === 'verdict' && current.feature.branch === branchOfUrl()}
               onNotice={setNotice}
               onError={setError}
@@ -439,6 +451,7 @@ function FeaturePanel({
   row,
   mark,
   version,
+  terminal,
   fillVerdict,
   onNotice,
   onError,
@@ -448,6 +461,8 @@ function FeaturePanel({
   mark: ReviewMark | undefined;
   /** The list as last read: the thread is read again with it. */
   version: unknown;
+  /** Whether its agent's session can be shown in a terminal (V21). */
+  terminal: TerminalAvailability | undefined;
   /** Fill the box with the review's verdict once it is read (`?send=verdict`). */
   fillVerdict: boolean;
   onNotice: (notice: Notice | null) => void;
@@ -465,12 +480,44 @@ function FeaturePanel({
   const filled = useRef(false);
   const mode = replyMode(agent);
   const verdict = verdictToSend(thread);
+  // V21: the agent's own session in a terminal, where one can run: the panel opens on it, and the
+  // thread is its history, read only (one way to answer the agent: the box stops its session).
+  const terminals = terminal?.available === true && agent.id !== undefined;
+  const [chosen, setChosen] = useState(viewOfUrl);
+  const view = chosen ?? (terminals ? 'terminal' : 'thread');
+  const showTerminal = terminals && view === 'terminal';
+  const [opened, setOpened] = useState<OpenedTerminal | null>(null);
+  const [ended, setEnded] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  // Attaching to a stopped session continues it (with no turn): asked when a terminal is to
+  // open, not once it is open (a stop from the head leaves its last lines in view).
+  const [asking, setAsking] = useState(() => agent.state === 'stopped');
+  const show = (next: 'thread' | 'terminal') => {
+    setChosen(next);
+    setEnded(null);
+    setAsking(agent.state === 'stopped');
+    const href = featureHref(branch);
+    window.history.replaceState(null, '', next === 'thread' ? `${href}&thread` : href);
+  };
+  /** Types the verdict's line into the open terminal, without Enter (decision 114). */
+  const typeVerdict = (into: OpenedTerminal, text: string) =>
+    toTerminal(into.id, 'in', { data: verdictLine(text) }).then(
+      () => into.focus(),
+      (e: unknown) => setSaid((e as Error).message),
+    );
 
+  // From the Review tab (`?send=verdict`): the verdict in the box, or typed into the terminal.
   useEffect(() => {
     if (!fillVerdict || filled.current || !verdict) return;
+    if (terminals) {
+      if (!showTerminal || !opened) return;
+      filled.current = true;
+      void typeVerdict(opened, verdict.text);
+      return;
+    }
     filled.current = true;
     setText(verdict.text);
-  }, [fillVerdict, verdict]);
+  }, [fillVerdict, verdict, terminals, showTerminal, opened]);
 
   const about = feature.brief.trim().split('\n')[0] ?? branch;
   const live = agent.state === 'working' || agent.state === 'needs-you';
@@ -569,11 +616,13 @@ function FeaturePanel({
             Review
           </button>
         )}
-        {agent.id && (
+        {agent.id && !terminals && (
           <button
             type="button"
             className="link"
-            title="Talk to the agent in a terminal: claude attach"
+            title={`Talk to the agent in a terminal: claude attach${
+              terminal && !terminal.available ? ` (no terminal here: ${terminal.reason})` : ''
+            }`}
             onClick={() =>
               act(() =>
                 copy(
@@ -678,8 +727,78 @@ function FeaturePanel({
         </p>
       )}
       {briefOpen && <pre className="feature-brief">{feature.brief}</pre>}
-      <Thread thread={thread} worktree={feature.worktree.path} />
+      {terminals && (
+        <div className="feature-views" role="tablist" aria-label="Talk to the agent">
+          {(['thread', 'terminal'] as const).map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="tab"
+              aria-selected={view === name}
+              className={view === name ? 'selected' : ''}
+              onClick={() => show(name)}
+            >
+              {name === 'thread' ? 'Thread' : 'Terminal'}
+            </button>
+          ))}
+        </div>
+      )}
+      {showTerminal ? (
+        <div className="feature-terminal">
+          {asking ? (
+            <p className="feature-confirm">
+              Opening the terminal continues the stopped session.{' '}
+              <button type="button" className="button" onClick={() => setAsking(false)}>
+                Open the terminal
+              </button>
+            </p>
+          ) : (
+            <AgentTerminal key={attempt} branch={branch} onOpened={setOpened} onEnded={setEnded} />
+          )}
+          {ended && (
+            <p className="feature-confirm">
+              The terminal {ended === 'exited' ? 'ended' : 'lost its session'}.{' '}
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  setEnded(null);
+                  setAsking(agent.state === 'stopped');
+                  setAttempt((n) => n + 1);
+                }}
+              >
+                Open again
+              </button>
+            </p>
+          )}
+          <div className="reply-actions">
+            <span className="hint">← in an empty prompt lists all your agents</span>
+            {verdict && opened && (
+              <button
+                type="button"
+                className="link"
+                title="Types its first line and where the review is; Enter sends it"
+                onClick={() => void typeVerdict(opened, verdict.text)}
+              >
+                Send the verdict
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <Thread thread={thread} worktree={feature.worktree.path} />
+      )}
+      {terminals && !showTerminal && (
+        <p className="hint thread-readonly">
+          The agent's messages and reports. To answer it,{' '}
+          <button type="button" className="link" onClick={() => show('terminal')}>
+            open its terminal
+          </button>
+          .
+        </p>
+      )}
       <form
+        hidden={terminals}
         className="reply"
         onSubmit={(event) => {
           event.preventDefault();

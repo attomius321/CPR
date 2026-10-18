@@ -69,6 +69,18 @@ export interface FeatureList {
   /** Where features are kept: `cpr/features/`, else CPR's cache (`note` says why). */
   place: 'repository' | 'cache';
   note?: string;
+  /** Whether an agent's session can be shown in a terminal (V21); only with features. */
+  terminal?: TerminalAvailability;
+}
+
+/** Whether `cpr view` can run terminals (node-pty, optional), else why not (V21). */
+export type TerminalAvailability = { available: true } | { available: false; reason: string };
+
+/** `POST /api/features/terminal`: a terminal on the feature's agent's session, at that size. */
+export interface FeatureTerminalRequest {
+  branch: string;
+  cols: number;
+  rows: number;
 }
 
 /** What the start dialog needs. */
