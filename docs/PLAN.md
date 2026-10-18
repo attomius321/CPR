@@ -434,7 +434,8 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V18 ✅ | Start a feature | The commits page starts nothing: starting an agent on a feature is a terminal job — a branch and worktree by hand (12 ms on ky to 0.85 s on Bitwarden), Claude Code's own worktrees inside the checkout (ignored by 0 of 6 clones) and from the remote default branch, `claude --bg` refused by a trust step a script cannot take (3 of 3 folders), and nothing ties an agent to its branch. Planned: "Start a feature" (header, `n`, a row's menu): a brief, a branch at the chosen commit with its own worktree beside the checkout, the agent started in the background (Claude Code, or a configured command), its state on the branch's badge and in a features view (decisions 105–106), each leading to the other, plan first per feature; reviews and merges as V15–V17. V18a–c merged into main (2026-10-15): a feature from the header or a row, its worktree and agent in 0.1–0.9 s on the six clones, the checkout untouched; the features view with each agent's state; since V18c, the picked feature's panel beside the list with its thread, recorded by hooks CPR gives each agent (22–23 ms per event), and one box that continues the agent's session (stop, then resume: 1.6 s with a real Claude Code), Send the verdict, Clean up. See below. |
 | V20 | Other agents, and answers in CPR | Was V18d–e. V20a: Codex (`codex exec --json`, detached, replies by `exec resume`) and any configured agent command, picked in the start dialog, and `.worktreeinclude`. V20b: permissions (an edit as a diff, a command) and questions (their options) answered in the feature's panel through the hooks every feature has had since V18c (measured in the V18c spike). See below. |
 | V21 ✅ | The agent's terminal in its panel | A feature's agent is talked to in V18c's box (a reply stops the session, 1.6 s, and loses a turn in progress) or in a terminal elsewhere (Talk copies `claude attach`). Measured (V21 spike): `claude attach` in a pseudo-terminal, drawn by xterm.js in the page, gives the whole session — first output in 152–174 ms, a key to its echo 22 ms, a permission answered in the page, Esc, messages queued while the agent works — while Claude Code keeps hosting it and CPR's hooks keep recording. Planned: Terminal in the feature's panel (node-pty optional, Talk without it), output as events and keys as POSTs under the write rule, one terminal per open panel, dark in both themes; and the state after Esc (`idle` with `working`), wrong on `main` today. Merged (2026-10-18): with a real Claude Code, the session drawn and answered in the panel, Esc read as "Interrupted" 0.3 s later, a stop shown and reopened in 0.2 s; a key to its echo 32 ms through CPR. See below. |
-| V22 | Branches that need you, first | The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. See below. |
+| V22 | Fixes: stale text outside the README | Found while rewriting the README (`chore/update-readme`, 2026-10-15). `cpr --help` and `cpr view --help` say the first page lists the current branch's commits (every branch since V10a); `@cpr/cli`'s description names only `cpr diff` and `cpr view`; the action's `plugins` input points to `cpr.config.json`, the older place; the sidebar's "No findings." ends with an emoji. Planned, not started. |
+| V23 | Branches that need you, first | Planned as V22, which `main` took meanwhile. The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -5703,7 +5704,7 @@ Not verified: Windows (ConPTY) and macOS; Firefox and Safari; a permission promp
 CPR's terminal (`auto` asked none; the spike answered one in a terminal); four real terminals at
 once (unit-tested with fakes); the 140 MB per attach, not measured again.
 
-### V22 — Branches that need you, first in the branches panel
+### V23 — Branches that need you, first in the branches panel
 
 **Status:** planned (2026-10-18), on branch `feature/sort-branches-by-last-agent-action` (a
 feature started in CPR); not started.
@@ -5796,16 +5797,16 @@ features view do not change.
 
 | # | Milestone | Output |
 |---|---|---|
-| V22 | Branches that need you, first | `lastAction` on each feature (its thread's newest report or question); `featuresFirst`; `branchTree`'s `first`; the panel's order and ages; README. |
+| V23 | Branches that need you, first | `lastAction` on each feature (its thread's newest report or question); `featuresFirst`; `branchTree`'s `first`; the panel's order and ages; README. |
 
 **Proposed decisions**:
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 119 | What "the agent's last action" is | **Its thread's newest report or question; else when its agent last started; else when the feature was made** | Claude Code lists a session's start only. Those two entries are the agent handing the turn back; prompts are the person's, and notices and `/clear` came minutes to days after the agent's last act on this repository's thread. |
-| 120 | Where the order shows | **The branches panel's Local list: features that need you, then working ones, newest action first; then the checked-out branch and the rest by name. Remotes, rows and the features view as they are** | Asked ("sort the Branches from the left side of the commits page"). Rows are graph order; a pushed feature's remote branch stays in its folder; the features view keeps its order until asked. |
+| 120 | What "the agent's last action" is | **Its thread's newest report or question; else when its agent last started; else when the feature was made** | Claude Code lists a session's start only. Those two entries are the agent handing the turn back; prompts are the person's, and notices and `/clear` came minutes to days after the agent's last act on this repository's thread. |
+| 121 | Where the order shows | **The branches panel's Local list: features that need you, then working ones, newest action first; then the checked-out branch and the rest by name. Remotes, rows and the features view as they are** | Asked ("sort the Branches from the left side of the commits page"). Rows are graph order; a pushed feature's remote branch stays in its folder; the features view keeps its order until asked. |
 
-**Not in V22 (later)**: the features view's order (started order today); other branches by date;
+**Not in V23 (later)**: the features view's order (started order today); other branches by date;
 a toggle between orders; the remote branches.
 
 ### Phase 1 milestones
@@ -5857,3 +5858,4 @@ a toggle between orders; the remote branches.
 | 17 | Where review state lives | **In the CLI's cache, per change request** (`/api/state`); browser storage only for dropped graph files | Each run takes a free port and browser storage is per origin, so marks kept in the browser vanished on the next run. Per change request (not per head) so a new push keeps the review. |
 | 18 | GitLab CI without a token | **Read the MR from the pipeline's variables; report findings as Code Quality** | The job token can fetch the repository but cannot comment (and may not read merge requests); asking every project for a token before CPR shows anything is a poor first run. |
 | 19 | Who uses a class member | **Code that could run on an instance of its class** (R1): the object's class is the member's class, a subclass (use), an ancestor or interface (possible use), or unknown (kept); siblings are dropped; declarations become `overrides` edges | The language service answers rename questions, so it returns the whole class family: on an Angular app every `ngOnInit` "used" every other, and a property override listed every sibling's `this.prop`. |
+| 119 | What CPR stands for | **Coordinated Programming Runtime** (2026-10-15) | Asked with the README rewrite. Since V15–V18, CPR coordinates the person and their agents (a feature's branch, worktree and agent; reviews and verdicts the agent acts on), not only the review; the North Star is unchanged. |
