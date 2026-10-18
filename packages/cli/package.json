@@ -15,7 +15,10 @@
   },
   "dependencies": {
     "@cpr/core": "workspace:*",
-    "@cpr/viewer": "workspace:*",
-    "@cpr/forge": "workspace:*"
+    "@cpr/forge": "workspace:*",
+    "@cpr/viewer": "workspace:*"
+  },
+  "optionalDependencies": {
+    "node-pty": "1.1.0"
   }
 }

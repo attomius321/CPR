@@ -512,6 +512,9 @@ export interface RunningFeatures extends Running {
   hook(branch: string, input: Record<string, unknown>): void;
   /** The sessions the fake removed (`claude rm`), by ID. */
   removed(): string[];
+  /** The sessions attached to (`claude attach`, V21), and those whose client was hung up. */
+  attaches(): string[];
+  hangups(): string[];
   /** Commits a file in a feature's worktree (as its agent would); its SHA. */
   commit(branch: string, file: string, text: string, subject: string): string;
   /** What the fake VS Code was asked to open, newest last. */
@@ -606,6 +609,50 @@ if (args[0] === '--bg' && args[1] === '--resume') {
   process.stdout.write('removed ' + args[1] + '\\n');
 } else if (args[0] === 'auth') {
   process.stdout.write(JSON.stringify({ loggedIn: true, authMethod: 'claude.ai', subscriptionType: 'pro' }));
+} else if (args[0] === 'attach') {
+  // V21: a client of the session in a terminal. Like the real one: an unknown ID exits 0, a
+  // stopped session restarts without a turn, a hang-up leaves the session, a stop ends it.
+  const id = args[1];
+  const all = list();
+  const session = all.find((s) => s.id === id);
+  if (!session) {
+    process.stdout.write('No job matching ' + id + '\n');
+    process.exit(0);
+  }
+  appendFileSync(join(dir, 'attaches.txt'), id + '\n');
+  if (!session.status) {
+    session.status = 'idle';
+    save(all);
+    hooks(session, { hook_event_name: 'SessionStart', source: 'resume' });
+  }
+  const size = () => '[' + process.stdout.columns + 'x' + process.stdout.rows + ']';
+  process.stdout.write('Fake Claude Code · ' + id + ' ' + size() + '\r\n> ');
+  process.stdout.on('resize', () => process.stdout.write('\r\n' + size() + '\r\n> '));
+  process.on('SIGHUP', () => {
+    appendFileSync(join(dir, 'hangups.txt'), id + '\n');
+    process.exit(129);
+  });
+  let line = '';
+  process.stdin.setRawMode(true);
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', (keys) => {
+    for (const key of keys) {
+      if (key === '\r') {
+        process.stdout.write('\r\ngot: ' + line + '\r\n> ');
+        hooks(session, { hook_event_name: 'UserPromptSubmit', prompt: line });
+        line = '';
+      } else {
+        line += key;
+        process.stdout.write(key);
+      }
+    }
+  });
+  setInterval(() => {
+    const now = list().find((s) => s.id === id);
+    if (now && now.status) return;
+    process.stdout.write('\r\nSession ' + id + ' has exited\r\n');
+    process.exit(0);
+  }, 200);
 } else {
   process.exit(2);
 }
@@ -716,6 +763,8 @@ export async function serveFeatures({ agent = true } = {}): Promise<RunningFeatu
       );
     },
     removed: () => lines('removed.txt'),
+    attaches: () => lines('attaches.txt'),
+    hangups: () => lines('hangups.txt'),
     commit(branch, file, text, subject) {
       writeFileSync(join(folder(branch), file), text);
       git(folder(branch), 'add', file);

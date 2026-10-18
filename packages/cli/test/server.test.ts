@@ -28,6 +28,7 @@ import { Histories } from '../src/history.js';
 import type { OpenRequest, OpenResult } from '../src/editor.js';
 import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
 import { FeatureRefused, type Features } from '../src/features.js';
+import { terminals as makeTerminals, type Pty, type SpawnPty } from '../src/terminal.js';
 
 const graph = JSON.parse(
   readFileSync(
@@ -1140,6 +1141,7 @@ describe('cpr view: features (V18)', () => {
       cleaned.push(request);
       return Promise.resolve({ finished: C });
     },
+    terminal: () => Promise.reject(new FeatureRefused('no terminals here', 409)),
   };
   const replies: FeatureReply[] = [];
   const cleaned: { branch: string; unmerged?: boolean }[] = [];
@@ -1323,6 +1325,230 @@ describe('cpr view: features (V18)', () => {
     }
     expect(replies).toHaveLength(3);
     expect(cleaned).toHaveLength(2);
+  });
+});
+
+describe('cpr view: terminals (V21)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  /** Fake pseudo-terminals behind the real terminals: what each was asked, and how to print. */
+  const made: {
+    args: string[];
+    written: string[];
+    sizes: [number, number][];
+    signals: (string | undefined)[];
+    print: (data: string) => void;
+    exit: (code: number) => void;
+  }[] = [];
+  const spawn: SpawnPty = (_file, args) => {
+    let onData: (data: string) => void = () => {};
+    let onExit: (event: { exitCode: number }) => void = () => {};
+    const record = {
+      args,
+      written: [] as string[],
+      sizes: [] as [number, number][],
+      signals: [] as (string | undefined)[],
+      print: (data: string) => onData(data),
+      exit: (code: number) => onExit({ exitCode: code }),
+    };
+    made.push(record);
+    const pty: Pty = {
+      onData: (listener) => (onData = listener),
+      onExit: (listener) => (onExit = listener),
+      write: (data) => record.written.push(data),
+      resize: (cols, rows) => record.sizes.push([cols, rows]),
+      kill: (signal) => {
+        record.signals.push(signal);
+        onExit({ exitCode: 129 });
+      },
+    };
+    return pty;
+  };
+  const terminals = makeTerminals({ pty: () => Promise.resolve({ spawn }) });
+  const asked: { branch: string; cols: number; rows: number }[] = [];
+  const features = {
+    terminal: (request: { branch: string; cols: number; rows: number }) => {
+      asked.push(request);
+      if (request.branch !== 'feature/csv') {
+        return Promise.reject(new FeatureRefused('its agent has no session to open', 409));
+      }
+      return terminals
+        .open({ command: 'claude', args: ['attach', 's1'], cwd: '/w', env: {}, ...request })
+        .then((id) => ({ id }));
+    },
+  } as unknown as Features;
+  let server: ViewServer;
+
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        features,
+        terminals,
+      },
+    });
+  });
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+
+  const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
+    fetch(new URL(path, server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      body: JSON.stringify(body),
+    });
+  const open = async (branch = 'feature/csv') => {
+    const response = await post('/api/features/terminal', { branch, cols: 100, rows: 30 });
+    expect(response.status).toBe(200);
+    return ((await response.json()) as { id: string }).id;
+  };
+  /** Reads a terminal's events until `count` arrived (or its end). */
+  async function events(id: string, count: number, headers: Record<string, string> = {}) {
+    const response = await fetch(new URL(`/api/terminals/${id}`, server.url), { headers });
+    expect(response.headers.get('content-type')).toBe('text/event-stream');
+    const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+    const decoder = new TextDecoder();
+    const got: { event: string; data: unknown }[] = [];
+    let text = '';
+    while (got.length < count) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+      let end: number;
+      while ((end = text.indexOf('\n\n')) >= 0) {
+        const block = text.slice(0, end);
+        text = text.slice(end + 2);
+        const event = /^event: (.*)$/m.exec(block)?.[1] ?? 'message';
+        const data = /^data: (.*)$/m.exec(block)?.[1];
+        if (data !== undefined) got.push({ event, data: JSON.parse(data) as unknown });
+      }
+    }
+    await reader.cancel();
+    return got;
+  }
+
+  it("opens a terminal on a feature's agent session; refusals keep their status and words", async () => {
+    const id = await open();
+    expect(id).toMatch(/^[0-9a-f]{32}$/);
+    expect(asked.at(-1)).toEqual({ branch: 'feature/csv', cols: 100, rows: 30 });
+    expect(made.at(-1)?.args).toEqual(['attach', 's1']);
+
+    const none = await post('/api/features/terminal', { branch: 'x', cols: 80, rows: 24 });
+    expect(none.status).toBe(409);
+    expect(await none.json()).toEqual({ error: 'its agent has no session to open' });
+    const before = asked.length;
+    for (const body of [
+      { branch: 'feature/csv' },
+      { branch: 'feature/csv', cols: 0, rows: 24 },
+      { branch: 'feature/csv', cols: 80.5, rows: 24 },
+      { branch: 'feature/csv', cols: 80, rows: 5000 },
+      { cols: 80, rows: 24 },
+    ]) {
+      expect((await post('/api/features/terminal', body)).status, JSON.stringify(body)).toBe(400);
+    }
+    // Only the page itself starts a process.
+    const body = { branch: 'feature/csv', cols: 80, rows: 24 };
+    expect((await post('/api/features/terminal', body, { 'x-cpr': '' })).status).toBe(403);
+    const attacker = { origin: 'https://attacker.example' };
+    expect((await post('/api/features/terminal', body, attacker)).status).toBe(403);
+    expect(asked.length).toBe(before);
+  });
+
+  it('streams what it printed so far, then live, then its end', async () => {
+    const id = await open();
+    const pty = made.at(-1)!;
+    pty.print('Claude Code\r\n> ');
+    const reading = events(id, 3);
+    // The stream is open before the next output.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    pty.print('hi');
+    pty.exit(0);
+    expect(await reading).toEqual([
+      { event: 'out', data: 'Claude Code\r\n> ' },
+      { event: 'out', data: 'hi' },
+      { event: 'exit', data: { code: 0 } },
+    ]);
+    expect((await fetch(new URL(`/api/terminals/${id}`, server.url))).status).toBe(404);
+  });
+
+  it('writes keys and sizes, and hangs up; another site cannot read or write', async () => {
+    const id = await open();
+    const pty = made.at(-1)!;
+    expect((await post(`/api/terminals/${id}/in`, { data: 'yes\r' })).status).toBe(204);
+    expect((await post(`/api/terminals/${id}/resize`, { cols: 80, rows: 24 })).status).toBe(204);
+    expect(pty.written).toEqual(['yes\r']);
+    expect(pty.sizes).toEqual([[80, 24]]);
+
+    for (const [path, body] of [
+      ['in', { data: 3 }],
+      ['in', { data: 'x'.repeat(65_537) }],
+      ['resize', { cols: 80 }],
+      ['resize', { cols: 0, rows: 24 }],
+    ] as const) {
+      expect((await post(`/api/terminals/${id}/${path}`, body)).status, path).toBe(400);
+    }
+    expect((await post(`/api/terminals/${id}/in`, { data: 'x' }, { 'x-cpr': '' })).status).toBe(
+      403,
+    );
+    const attacker = { origin: 'https://attacker.example' };
+    expect(
+      (await fetch(new URL(`/api/terminals/${id}`, server.url), { headers: attacker })).status,
+    ).toBe(403);
+    expect(pty.written).toEqual(['yes\r']);
+    expect((await fetch(new URL(`/api/terminals/${id}/in`, server.url))).status).toBe(405);
+
+    expect((await post(`/api/terminals/${id}/close`, {})).status).toBe(204);
+    expect(pty.signals).toEqual(['SIGHUP']);
+    for (const path of ['in', 'resize', 'close']) {
+      const response = await post(`/api/terminals/${id}/${path}`, { data: 'x', cols: 8, rows: 8 });
+      expect(response.status, path).toBe(404);
+    }
+    expect((await fetch(new URL('/api/terminals/nope', server.url))).status).toBe(404);
+  });
+
+  it('hangs its terminals up and ends their streams when it closes', async () => {
+    const other = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        features,
+        terminals,
+      },
+    });
+    const id = await open();
+    const response = await fetch(new URL(`/api/terminals/${id}`, other.url));
+    const body = response.body as ReadableStream<Uint8Array>;
+    await other.close();
+    expect(made.at(-1)?.signals).toEqual(['SIGHUP']);
+    // The stream ended: reading it to the end returns.
+    const reader = body.getReader();
+    while (!(await reader.read()).done);
   });
 });
 
