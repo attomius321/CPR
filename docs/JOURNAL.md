@@ -2577,4 +2577,47 @@ sends; the features e2e with the fake's new `interrupt` (failed on `main`'s buil
 under Working). 693 unit tests, 98 e2e. Not verified with a real Claude Code after the fix (the
 states are the spike's); whether a session reads `idle` with `working` for a moment when a turn
 starts or ends normally was not measured — the page would say "Interrupted" until its next read
-(5 s).
+(5 s). Verified since, on the V21 branch, with Claude Code 2.1.302: Esc while it wrote read
+`working`, `idle` for 40 s, and the page said "Interrupted: waiting for you" 301 ms after it.
+
+## V21 — The agent's terminal in its feature's panel (2026-10-18, branch `milestone/v21-agent-terminal`)
+
+Asked: "Yes. Go for it, implement it, starting with the bug". The interrupted-state fix first
+(entry above), then V21a (terminals in the server) and V21b (the Terminal tab), on one branch.
+
+**Learned**:
+- **Esc still reads `working` and `idle` on Claude Code 2.1.302**, for the 40 s watched; CPR said
+  "Interrupted: waiting for you" 301 ms after it. A session reopened by `attach` after a stop
+  reads the same way, so the thread decides between finished and interrupted.
+- **Lines written in one go are typed, not pasted**: a 229-character write, then Enter as its own
+  write, reached the agent as a plain prompt; so did a burst typed at once. The spike's
+  `<pasted_content>` came from a bracketed paste, which CPR never sends.
+- **pnpm 12 approves builds with `allowBuilds`** in `pnpm-workspace.yaml`. A first "no compiler"
+  test passed for the wrong reason: pnpm reused the build from its store (0.17 s, `pty.node` in
+  place). With `--config.side-effects-cache=false`, the failed build left the install at exit 0
+  and node-pty dropped, as an optional dependency should be.
+- **`--no-optional` is not an option for the Action**: the lockfile's 80 optional packages
+  include the build's native binaries (rolldown, lightningcss).
+- **xterm.js draws only the visible rows**: a check that waits for the screen's text to grow by
+  400 characters never ends, and one that polls every 100 ms measures every key as 104–106 ms.
+  Measured again per animation frame: 32–33 ms, two frames.
+- **An event stream's head is the answer's status**: sending it before knowing whether the
+  terminal exists turns a 404 into "headers already sent". The server now listens first and
+  keeps what arrives until the head is out.
+- **The e2e fake is a script in a template literal**: its new `attach` used single backslashes,
+  which became line breaks inside the generated script's strings, and every fake call failed
+  (no `sessions.json`). Syntax-check a generated fake (`node --check`) when a spec fails before
+  its point.
+- **An open terminal and a stopped session**: asking "this continues the stopped session"
+  whenever the session reads stopped hid the terminal's last lines after a stop from the head; it
+  is asked only when a terminal is about to open.
+
+**Verification**: tests first, except `terminal.ts` (written before its tests, which then failed
+only for the missing module). 717 unit tests (24 new, one in a real pseudo-terminal), 101 e2e (3
+new). A real Claude Code (2.1.302, Haiku 5.5, the person's Pro subscription), five throwaway
+features through `cpr view`: the session drawn and a question answered in the page; prompts typed
+and written reaching the thread; Esc read as interrupted; a stop shown in 755 ms and reopened in
+230 ms; leaving the tab hanging up only the client; no page errors; everything removed, Claude
+Code's records of the folder too. One run's message was not submitted (typed before Claude Code
+said `idle`); not explained. Not verified: Windows, macOS, Firefox, Safari; a permission prompt
+in CPR's terminal (`auto` asked none); four real terminals at once.

@@ -433,7 +433,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V17 ✅ | Approve means "merge it" | Approve pushes the reviewed commit, which did nothing on 0 of 4 approvals here (the agent had pushed), while every approval was followed by asking for the merge in chat; merging the default branch into a reviewed branch shows "+6" for one commit; agents elsewhere get no instructions. Merged: Approve records the commit and the default branch to merge into, nothing pushed; "since" counts the branch's own commits; the Review tab says whether the merge will conflict; CPR writes `cpr/AGENTS.md` for any repository's agent (a headless Claude Code agent followed it: merged exactly the approved commit; on a conflict, resolved on its branch and asked for another review). See below. |
 | V18 ✅ | Start a feature | The commits page starts nothing: starting an agent on a feature is a terminal job — a branch and worktree by hand (12 ms on ky to 0.85 s on Bitwarden), Claude Code's own worktrees inside the checkout (ignored by 0 of 6 clones) and from the remote default branch, `claude --bg` refused by a trust step a script cannot take (3 of 3 folders), and nothing ties an agent to its branch. Planned: "Start a feature" (header, `n`, a row's menu): a brief, a branch at the chosen commit with its own worktree beside the checkout, the agent started in the background (Claude Code, or a configured command), its state on the branch's badge and in a features view (decisions 105–106), each leading to the other, plan first per feature; reviews and merges as V15–V17. V18a–c merged into main (2026-10-15): a feature from the header or a row, its worktree and agent in 0.1–0.9 s on the six clones, the checkout untouched; the features view with each agent's state; since V18c, the picked feature's panel beside the list with its thread, recorded by hooks CPR gives each agent (22–23 ms per event), and one box that continues the agent's session (stop, then resume: 1.6 s with a real Claude Code), Send the verdict, Clean up. See below. |
 | V20 | Other agents, and answers in CPR | Was V18d–e. V20a: Codex (`codex exec --json`, detached, replies by `exec resume`) and any configured agent command, picked in the start dialog, and `.worktreeinclude`. V20b: permissions (an edit as a diff, a command) and questions (their options) answered in the feature's panel through the hooks every feature has had since V18c (measured in the V18c spike). See below. |
-| V21 | The agent's terminal in its panel | A feature's agent is talked to in V18c's box (a reply stops the session, 1.6 s, and loses a turn in progress) or in a terminal elsewhere (Talk copies `claude attach`). Measured (V21 spike): `claude attach` in a pseudo-terminal, drawn by xterm.js in the page, gives the whole session — first output in 152–174 ms, a key to its echo 22 ms, a permission answered in the page, Esc, messages queued while the agent works — while Claude Code keeps hosting it and CPR's hooks keep recording. Planned: Terminal in the feature's panel (node-pty optional, Talk without it), output as events and keys as POSTs under the write rule, one terminal per open panel, dark in both themes; and the state after Esc (`idle` with `working`), wrong on `main` today. See below. |
+| V21 (built, not merged) | The agent's terminal in its panel | A feature's agent is talked to in V18c's box (a reply stops the session, 1.6 s, and loses a turn in progress) or in a terminal elsewhere (Talk copies `claude attach`). Measured (V21 spike): `claude attach` in a pseudo-terminal, drawn by xterm.js in the page, gives the whole session — first output in 152–174 ms, a key to its echo 22 ms, a permission answered in the page, Esc, messages queued while the agent works — while Claude Code keeps hosting it and CPR's hooks keep recording. Planned: Terminal in the feature's panel (node-pty optional, Talk without it), output as events and keys as POSTs under the write rule, one terminal per open panel, dark in both themes; and the state after Esc (`idle` with `working`), wrong on `main` today. Built on its branch (2026-10-18): with a real Claude Code, the session drawn and answered in the panel, Esc read as "Interrupted" 0.3 s later, a stop shown and reopened in 0.2 s; a key to its echo 32 ms through CPR. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -5466,8 +5466,9 @@ verification) when it starts; what V18 already designed and measured for them:
 
 ### V21 — The agent's terminal in its feature's panel
 
-**Status:** planned (2026-10-15), on branch `milestone/v21-agent-terminal`; not started. The
-spike is in the journal ("V21 spike").
+**Status:** built (2026-10-18) on branch `milestone/v21-agent-terminal`, not merged: V21a and
+V21b, on top of the state fix (`fix/agent-idle-after-interrupt`, merged into this branch). The
+spike is in the journal ("V21 spike"); as built and results under "As built (V21)" below.
 
 **Problem** (asked: "Can we somehow integrate this chat inside my app, instead of the current
 chat?"; then, of the ways compared, "is it easier to do like this?" — `claude attach` in a
@@ -5619,7 +5620,7 @@ unit tests), V21b (the panel, e2e), then the real-agent check and screenshots.
 | 113 | A terminal's lifetime | **One per open panel; hung up on close, 10 s after its stream goes, and when `cpr view` exits; at most 4** | 140 MB per attach; hanging up leaves the session running (measured). |
 | 114 | The box and the verdict while the terminal is open | **The box hidden; Send the verdict types one line (the verdict's first line and where the review is), without Enter** | A stop ends the attach; a paste reaches the agent as `<pasted_content>`; typed lines kept their backslashes; nothing is sent without the person (decision 82). |
 | 115 | The terminal's colors | **Dark in both themes** | Claude Code keeps its own theme; on white its marks vanished (measured). |
-| 116 | Installing node-pty | **An optional dependency, built where pnpm allows it; CI analysis installs skip it; without it, Talk** | No Linux prebuilds (a compiler is needed); the Action and the GitLab job never open a terminal. |
+| 116 | Installing node-pty | **An optional dependency whose build is allowed (`allowBuilds`); where it cannot build, pnpm drops it and the panel keeps Talk; the Action and GitLab installs unchanged** | No Linux prebuilds (a compiler is needed). As built: `--no-optional` would also drop the build's own native binaries, and a failed build fails no install (measured). |
 | 117 | `status: idle` with `state: working` | **A turn that ended without a report: "Interrupted: waiting for you"** | Esc fires no hook and leaves `state` at `working` until the next turn ends (measured). |
 
 **Not in V21 (later)**: CPR's own chat over the Agent SDK (decision 111); answering
@@ -5627,6 +5628,72 @@ permissions and questions with CPR's controls (V20b: the terminal answers them n
 is kept, to revisit); a terminal for Codex (V20a: `codex resume` in the same terminal, once
 Codex is started by CPR); keeping the terminal on its feature's session (←); a shell in the
 worktree; the terminal on the commits page.
+
+#### As built (V21)
+
+- **The state fix first**, on `fix/agent-idle-after-interrupt` (decision 117), merged into this
+  branch, which builds on it; it goes into `main` first.
+- **Where the page learns that terminals can run**: `/api/features` carries `terminal`
+  (`{ available: true }`, or `false` with the reason) once there are features, not
+  `/api/features/options`: the page reads the list anyway, the options only in the start dialog.
+  A repository with no feature does not load node-pty.
+- **Install** (decision 116 as built): pnpm 12 records the approval as
+  `allowBuilds: { node-pty: true }` in `pnpm-workspace.yaml` (`onlyBuiltDependencies` is pnpm
+  10's). The Action and the GitLab template are unchanged: `--no-optional` would also drop the
+  lockfile's 80 other optional packages, among them the build's own native binaries (rolldown,
+  lightningcss). Measured instead, in a clean worktree with `make`, `g++` and `c++` failing and
+  pnpm's build cache off: `pnpm install --frozen-lockfile` exits 0 and drops node-pty; CPR then
+  says "node-pty is not installed" and the panel keeps Talk.
+- **`CPR_TERMINAL=off`** turns terminals off: the e2e case without them, and anyone who prefers
+  Talk.
+- **Tabs**: "Thread · Terminal" above the panel's lower part, when terminals can run and the agent
+  has a listed session; Talk is not shown then.
+- **A reload opens a new client** rather than reconnecting to the old one by ID; the old one is
+  hung up 10 s later. The kept output (1 MB) serves an event stream that drops and reconnects by
+  itself: the page clears the screen and draws it again.
+- **A stopped session's question** is asked when a terminal is about to open, not while one is
+  open: a stop from the head leaves the terminal's last lines ("Session … has exited.") in view
+  with "Open again".
+- **The event stream's head**: the server listens first, keeping what arrives, then sends the
+  head and what it kept. The first version sent the head before knowing whether the terminal
+  existed, and an unknown ID then failed with "headers already sent" instead of 404.
+- **A reopened session reads like an interrupted one** (`working`, `idle`, measured): with the
+  thread's report after its last prompt, decision 117's rule reads it as finished ("plan ready"),
+  else as interrupted — waiting for the person either way.
+
+**Results.** Tests: 717 unit tests (24 new: terminal 13, one of them in a real pseudo-terminal;
+features 3, server 4, viewer 4) and 101 e2e (3 new: keys and the thread, hang-up, reopen, resize,
+stop and Open again; the verdict typed without Enter; no terminals). Red before, except
+`terminal.ts`, written before its tests (they failed only for the missing module). The V18b spec
+for Talk runs without terminals.
+
+A real Claude Code (2.1.302, Haiku 5.5, the person's Pro subscription, the account's default
+permission mode `auto`): five throwaway features in this repository through `cpr view`, driven in
+Chromium.
+
+| Check | Measured |
+|---|---|
+| The session in the Terminal tab | Drawn whole: header, CPR's prompt, a question with its options; first output 1.1 s after opening `&terminal` (page, xterm chunk, attach); the question answered with Enter in the page, then "plan ready" |
+| What reaches the agent | Typed slowly, typed at once, and one 229-character write then Enter (what Send the verdict does): each a plain prompt in the thread (`UserPromptSubmit`), none wrapped as pasted content |
+| Esc while it writes | Claude Code: `state: working`, `status: idle` for the 40 s watched; CPR: "needs you, interrupted" 301 ms after Esc; the row "Interrupted: waiting for you" |
+| Stop from the head | Claude Code's last lines ("Session a27d1f2d has exited.") 755 ms after the click; Open again asks first; the session back 230 ms after "Open the terminal" |
+| Leaving the tab | Our `claude attach` processes 1 → 0; the session went on (`working`, `idle`) |
+| Page errors | None |
+
+Everything made was removed: the sessions (Clean up's `claude rm`), worktrees, branches, records,
+threads, `cpr/config.json` (the model, Haiku), and Claude Code's records of the folder (`claude
+purge -y`). One run's typed message was not submitted: it was typed as soon as CPR's cached state
+said "plan ready", before Claude Code's own `idle`; the three runs that waited for `idle` all
+submitted. Not explained.
+
+Cost: a key to its echo through CPR with the fake agent, 30 keys watched every animation frame,
+32–33 ms (two frames); its first output 122 ms after opening. With the real agent, watched every
+100 ms: every key under 106 ms. xterm.js in its own chunks, 331 KB (83 KB gzip) and 4 KB of CSS,
+loaded when a terminal first opens; the main bundle 575.9 → 581.7 KB.
+
+Not verified: Windows (ConPTY) and macOS; Firefox and Safari; a permission prompt answered in
+CPR's terminal (`auto` asked none; the spike answered one in a terminal); four real terminals at
+once (unit-tested with fakes); the 140 MB per attach, not measured again.
 
 ### Phase 1 milestones
 
