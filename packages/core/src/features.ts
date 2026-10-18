@@ -30,6 +30,8 @@ export interface FeatureAgentState {
   kind?: AgentKind;
   /** What a session that needs the person waits for, in Claude Code's words. */
   waitingFor?: string;
+  /** Its turn was interrupted (Esc): it waits at its prompt, and no hook said so. */
+  interrupted?: true;
   /** Claude Code's short session ID, for `claude attach`. */
   id?: string;
   /** Why the agent did not start, or why its state is unknown. */

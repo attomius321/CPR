@@ -249,6 +249,23 @@ describe('agentState', () => {
     );
   });
 
+  it('reads a turn interrupted with Esc as waiting for the person', () => {
+    // Measured (V21 spike): after Esc no hook fires, and Claude Code says `status: idle` with
+    // `state: working` until the next turn ends.
+    const f = record();
+    expect(at(f, [session({ state: 'working', status: 'idle' })])).toEqual({
+      state: 'needs-you',
+      kind: 'claude',
+      id: 'abc',
+      interrupted: true,
+    });
+    expect(at(f, [session({ state: 'working', status: 'busy' })]).state).toBe('working');
+    // The thread says the turn ended with a report: finished, whatever `state` still says.
+    expect(
+      agentState(f, [session({ state: 'working', status: 'idle' })], 0, (p) => p, true),
+    ).toEqual({ state: 'plan-ready', kind: 'claude', id: 'abc' });
+  });
+
   it('takes the newest session there and ignores other folders', () => {
     const f = record();
     const sessions = [

@@ -318,7 +318,8 @@ const isBlocked = (session: AgentSession) =>
  * What the page says of a feature's agent: the newest session working in its worktree (matched
  * by real path), else why there is none. `ahead` (commits since the base) tells a finished plan
  * from finished work. `ended`: the thread says its last turn ended (V18c) — Claude Code reads a
- * finished plan as `blocked` with nothing named it waits for, so that is a finished turn.
+ * finished plan as `blocked` with nothing named it waits for, so that is a finished turn. A
+ * turn interrupted with Esc fires no hook and reads `idle` with `working` until the next one ends.
  */
 export function agentState(
   feature: FeatureFile,
@@ -344,6 +345,9 @@ export function agentState(
   const waiting = session.waitingFor ? { waitingFor: session.waitingFor } : {};
   switch (session.state ?? session.status) {
     case 'working':
+      if (session.status !== 'idle') return { state: 'working', kind, ...id };
+      if (ended) return { state: finished(), kind, ...id };
+      return { state: 'needs-you', kind, ...id, ...waiting, interrupted: true };
     case 'busy':
       return { state: 'working', kind, ...id };
     case 'blocked':
