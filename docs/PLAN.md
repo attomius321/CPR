@@ -434,6 +434,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V18 ✅ | Start a feature | The commits page starts nothing: starting an agent on a feature is a terminal job — a branch and worktree by hand (12 ms on ky to 0.85 s on Bitwarden), Claude Code's own worktrees inside the checkout (ignored by 0 of 6 clones) and from the remote default branch, `claude --bg` refused by a trust step a script cannot take (3 of 3 folders), and nothing ties an agent to its branch. Planned: "Start a feature" (header, `n`, a row's menu): a brief, a branch at the chosen commit with its own worktree beside the checkout, the agent started in the background (Claude Code, or a configured command), its state on the branch's badge and in a features view (decisions 105–106), each leading to the other, plan first per feature; reviews and merges as V15–V17. V18a–c merged into main (2026-10-15): a feature from the header or a row, its worktree and agent in 0.1–0.9 s on the six clones, the checkout untouched; the features view with each agent's state; since V18c, the picked feature's panel beside the list with its thread, recorded by hooks CPR gives each agent (22–23 ms per event), and one box that continues the agent's session (stop, then resume: 1.6 s with a real Claude Code), Send the verdict, Clean up. See below. |
 | V20 | Other agents, and answers in CPR | Was V18d–e. V20a: Codex (`codex exec --json`, detached, replies by `exec resume`) and any configured agent command, picked in the start dialog, and `.worktreeinclude`. V20b: permissions (an edit as a diff, a command) and questions (their options) answered in the feature's panel through the hooks every feature has had since V18c (measured in the V18c spike). See below. |
 | V21 ✅ | The agent's terminal in its panel | A feature's agent is talked to in V18c's box (a reply stops the session, 1.6 s, and loses a turn in progress) or in a terminal elsewhere (Talk copies `claude attach`). Measured (V21 spike): `claude attach` in a pseudo-terminal, drawn by xterm.js in the page, gives the whole session — first output in 152–174 ms, a key to its echo 22 ms, a permission answered in the page, Esc, messages queued while the agent works — while Claude Code keeps hosting it and CPR's hooks keep recording. Planned: Terminal in the feature's panel (node-pty optional, Talk without it), output as events and keys as POSTs under the write rule, one terminal per open panel, dark in both themes; and the state after Esc (`idle` with `working`), wrong on `main` today. Merged (2026-10-18): with a real Claude Code, the session drawn and answered in the panel, Esc read as "Interrupted" 0.3 s later, a stop shown and reopened in 0.2 s; a key to its echo 32 ms through CPR. See below. |
+| V22 | Branches that need you, first | The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -5701,6 +5702,111 @@ loaded when a terminal first opens; the main bundle 575.9 → 581.7 KB.
 Not verified: Windows (ConPTY) and macOS; Firefox and Safari; a permission prompt answered in
 CPR's terminal (`auto` asked none; the spike answered one in a terminal); four real terminals at
 once (unit-tested with fakes); the 140 MB per attach, not measured again.
+
+### V22 — Branches that need you, first in the branches panel
+
+**Status:** planned (2026-10-18), on branch `feature/sort-branches-by-last-agent-action` (a
+feature started in CPR); not started.
+
+**Problem** (asked: "sort the commits from Commits page by last agent action...so i can see the
+branches that need my attention at the top", then "we need to sort the Branches from the left side
+of the commits page"). The branches panel (V10b, decision 92) lists Local with the checked-out
+branch first, then by name. A feature's branch sits where its name falls:
+
+- On this repository (22 local branches, 70 remote, 2 open features) the features are 3rd and
+  4th only because `chore/` and `feature/` sort before `fix/` and `milestone/`; a feature named
+  `milestone/v22-…` would be the 23rd of 23 local entries.
+- The panel says what each feature needs (its mark: `?`, `●`, `⚙`), but not which agent acted
+  last: the person reads every entry to find the one that just stopped.
+- Claude Code gives no time of a session's last activity: `claude agents --json --all` (2.1.302)
+  lists `startedAt`, `state` and `status` only. CPR's thread (`cpr/threads/<branch>.jsonl`, V18c's
+  hooks) has a time for every report (a turn ended) and every question or permission asked.
+  Not everything there is the agent's: on this repository `chore/update-readme`'s last entries
+  are an `idle_prompt` notice a minute after its report and, three days later, a `/clear` (an end
+  and a start).
+- The commit rows cannot take this order: they are the graph (`git log --topo-order`, each commit
+  above its parents, lanes drawn from it), and a feature without commits sits on its base's row.
+- `/api/features` on `main`'s build: 34 ms (median of 20; 32–36 ms) on a clone of this
+  repository with its two features.
+
+**Goal**: in the panel's Local list, the features that need the person come first, the one whose
+agent acted last on top; then the features whose agent works, the same way; then the other
+branches as today (the checked-out one, then by name). Each feature's entry shows how long ago its
+agent acted. Without open features the panel is as today; Remotes, the commit rows and the
+features view do not change.
+
+#### When an agent last acted (core, CLI)
+
+- `FeatureSummary.lastAction?: string` (core, a type only): the time of the thread's newest
+  `report` or `asks` entry; else when its agent last started (`agent.started` in the record);
+  absent with neither (no agent was found).
+- Prompts are the person's or CPR's; notices (Claude Code's `idle_prompt` comes a minute after a
+  report) and sessions' starts and ends (`/clear` writes both) are not the agent handing the turn
+  back. None of them counts.
+- `thread.ts`: `lastAction(entries)`. `summary()` reads a feature's thread once, for it and for
+  `turnEnded` (read today only when a session is blocked with nothing named).
+- No graph change: no schema bump.
+
+#### The order (viewer)
+
+- `features.ts`: `featuresFirst(features, reviews)` — the branches of the open features that need
+  the person (`featureNext`'s `needs-you`), then those whose agent works, each newest
+  `lastAction` (else `created`) first, ties by name. Merged features and gone branches are left
+  out: they need nothing.
+- `branches.ts`: `TreeOptions.first?: readonly string[]` — those local branches first, in that
+  order; then the checked-out branch, then by name. The filter keeps the order. A name that is
+  not a local branch is ignored. Remotes do not change.
+- `BranchesPanel`: a short muted age after a feature's name (`now`, `4m`, `2h`, `3d`), titled with
+  the time in full. It ticks once a minute in its own component; the panel is not drawn again.
+- The commits page computes `first` from `useFeatures` (read on load, when the page is back in
+  view, and every 5 s while an agent works or waits).
+
+#### Verification
+
+1. **Unit** (red first): `lastAction` (reports and questions count; prompts, notices, starts and
+   ends do not; the newest wins; none, none); the server's `/api/features` carries it, and
+   `agent.started` without a thread; `featuresFirst` (needs-you before working, newest first,
+   `created` without `lastAction`, merged and gone left out); `branchTree` with `first` (in that
+   order, then the checked-out branch, then by name; the filter; unknown names ignored); without
+   `first`, the existing tests unchanged; the age's text.
+2. **E2E** (`features.spec.ts`, the fake Claude Code): two features — the one that reported last
+   is on top of Local, then the other, then `main`; the other reports and moves on top; a working
+   one goes below those that need you; the age is shown. Every existing spec passes,
+   `branches.spec.ts` unchanged.
+3. **Real data**: a clone of this repository with copies of its feature records and threads (not
+   the checkout: `cpr view` from a branch's build rewrites `cpr/claude-settings.json` to that
+   build's hook); screenshots light and dark, 1440 and 900 px; no page errors.
+4. **Cost**: `/api/features` within 5 ms of `main`'s; with a 5,000-entry thread, measured; if
+   reading it costs more than that, read the file's end only.
+5. **Nothing else changes**: no analysis code (no regression sets); `pnpm check`, build, e2e.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| The order moves while the person reads (read every 5 s while an agent works or waits) | Only features move, when one acts or changes state; the age says why |
+| A long thread read every 5 s per feature | Measured on 5,000 entries; the file's end only, if it costs |
+| Features started before V18c have no thread | `agent.started`, else `created` |
+| The checked-out branch is no longer first | It keeps its ●; only open features go above it, as asked |
+
+**Order**: the type and `lastAction` with their tests; the server; `featuresFirst` and
+`branchTree`; the panel and its age; the e2e; the real-data check.
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V22 | Branches that need you, first | `lastAction` on each feature (its thread's newest report or question); `featuresFirst`; `branchTree`'s `first`; the panel's order and ages; README. |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 119 | What "the agent's last action" is | **Its thread's newest report or question; else when its agent last started; else when the feature was made** | Claude Code lists a session's start only. Those two entries are the agent handing the turn back; prompts are the person's, and notices and `/clear` came minutes to days after the agent's last act on this repository's thread. |
+| 120 | Where the order shows | **The branches panel's Local list: features that need you, then working ones, newest action first; then the checked-out branch and the rest by name. Remotes, rows and the features view as they are** | Asked ("sort the Branches from the left side of the commits page"). Rows are graph order; a pushed feature's remote branch stays in its folder; the features view keeps its order until asked. |
+
+**Not in V22 (later)**: the features view's order (started order today); other branches by date;
+a toggle between orders; the remote branches.
 
 ### Phase 1 milestones
 
