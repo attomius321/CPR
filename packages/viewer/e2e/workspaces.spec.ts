@@ -1012,3 +1012,56 @@ test('the kinds explained: a tooltip after the picker, on hover, focus or a tap 
   await info(page).click();
   await expect(about).toBeVisible();
 });
+
+test('Merge on an approved workspace: CPR merges it in its own worktree, Land moves main (V26a)', async ({
+  page,
+}) => {
+  cpr = await serveWorkspaces({ terminal: false });
+  await page.goto(`${cpr.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const tip = cpr.commit(
+    branch,
+    'src/half.ts',
+    'export const half = (a: number) => a / 2;\n',
+    'Add half',
+  );
+  cpr.report(branch, 'Done: half() in src/half.ts.');
+  await expect(workspaceRow(page, branch)).toContainText('Ready for review', POLL);
+  // Not approved: no Merge.
+  await expect(panel(page, branch).getByRole('button', { name: /^Merge into/ })).toHaveCount(0);
+
+  await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
+  await page.getByRole('tab', { name: /Review/ }).click();
+  await page.getByLabel('Approve').check();
+  await page.getByRole('button', { name: 'Finish review' }).click();
+  await expect(page.locator('.finished')).toContainText(`Approved ${short(tip)}`);
+  await page.goto(`${cpr.url}?branch=${encodeURIComponent(branch)}`);
+
+  // Preselected: main, where the workspace started from.
+  const here = panel(page, branch);
+  await expect(here.getByLabel('Branch to merge into')).toHaveValue('main');
+  const main = git('rev-parse', 'main');
+  await here.getByRole('button', { name: 'Merge into main' }).click();
+
+  // The Merging section, above the workspaces: no check here, so it waits for Land.
+  const merging = page.getByRole('region', { name: 'Merging' });
+  await expect(page.locator('.workspace-group').first()).toHaveAttribute('aria-label', 'Merging');
+  const entry = merging.getByRole('listitem', { name: `Merge of ${branch}` });
+  await expect(entry.locator('.merge-row-state')).toHaveText(/^Merged, not checked/, POLL);
+  await expect(here.locator('p.merge-control')).toHaveText(/^Merged, not checked/);
+  expect(git('rev-parse', 'main')).toBe(main);
+  // The agent's worktree and the main checkout were not used to merge.
+  expect(git('status', '--porcelain', '--untracked-files=no')).toBe('');
+  expect(git('-C', cpr.folder(branch), 'rev-parse', 'HEAD')).toBe(tip);
+
+  await entry.getByRole('button', { name: 'Land' }).click();
+  await expect(entry.locator('.merge-row-state')).toHaveText(/^Landed: main is at/, POLL);
+  expect(git('log', '-1', '--format=%P%n%s', 'main')).toBe(
+    `${main} ${tip}\nMerge ${branch}: Add a half function`,
+  );
+  expect(existsSync(join(cpr.repo, 'src', 'half.ts'))).toBe(true);
+  // Merged: the workspace offers Clean up, and no Merge.
+  await expect(here.getByRole('button', { name: 'Clean up', exact: true })).toBeVisible(POLL);
+  await expect(here.getByRole('button', { name: /^Merge into/ })).toHaveCount(0);
+});

@@ -32,6 +32,8 @@ import {
   type AnalysisPhase,
   type ChangedLines,
   type Graph,
+  type AgentKind,
+  type MergeEntry,
   type Severity,
   type TsPlugin,
 } from '@cpr/core';
@@ -49,6 +51,8 @@ import { terminals as agentTerminals } from './terminal.js';
 import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
 import { branchReviews } from './reviews.js';
+import { merger, MergeRefused } from './merges.js';
+import { claudeMerger, codexMerger, type MergerAgent } from './merge-agent.js';
 import { codex, findCodex, type Codex } from './codex.js';
 import {
   claudeCode,
@@ -121,6 +125,7 @@ Commands:
                        compare or review
   pr [<number>]        Review a GitHub pull request or GitLab merge request (alias: mr);
                        in a CI job, the job's own
+  merge <branch>       Merge a branch's approved commit, check it, and land it
 
 Options:
   -h, --help           Show this help
@@ -203,6 +208,26 @@ Options:
   -h, --help           Show this help
 `;
 
+const MERGE_HELP = `Usage: cpr merge <branch> [options]
+
+Merges the commit your CPR review of <branch> approved into a target branch, as Merge
+in CPR does: with --no-ff, in a worktree in CPR's cache, never in your checkout. Then
+it runs the check (merge.checks in cpr/config.json, else the one guessed from the
+target's files) and moves the target by fast-forward: in the worktree that has it
+checked out, else its ref. merge.push: true pushes it after. Without a check, the
+merge waits for --land. A conflict goes to a merger agent (Claude Code or Codex,
+merge.agent, merge.model) that answers each region; CPR writes its answer, and the
+merge waits for your --approve.
+
+Options:
+  --into <branch>      Branch to merge into (default: the branch its workspace started
+                       from, else the one the approval names, else the default branch)
+  --land               Land the branch's merge that waits for it
+  --approve            Approve the merger agent's resolution of a conflict: it lands
+  --again <words>      Ask the merger agent again, with what to change in its resolution
+  -h, --help           Show this help
+`;
+
 /** Runs the CLI and returns the process exit code: 0 ok, 1 failure, 2 usage error. */
 export async function run(
   argv: readonly string[],
@@ -223,6 +248,7 @@ export async function run(
     if (command === 'diff') return await diff(rest, ctx);
     if (command === 'view') return await view(rest, ctx);
     if (command === 'pr' || command === 'mr') return await pr(rest, ctx);
+    if (command === 'merge') return await merge(rest, ctx);
   } catch (error) {
     if (error instanceof UsageError) {
       ctx.stderr(`cpr ${command}: ${error.message}\n\n${error.help}`);
@@ -551,6 +577,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         terminals,
       }),
       terminals,
+      merges: merger(repo, cacheDir, { mergerAgent: mergerFinder(repo.root, ctx.env) }),
     },
     open: vsCodeOpener(repo, ctx.env),
   });
@@ -581,6 +608,141 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   return 0;
 }
 
+/** A merge's state as `cpr merge` prints it, one line each. */
+function mergeLine(entry: MergeEntry): string {
+  const check = entry.check;
+  const time = check?.ms === undefined ? '' : ` (${(check.ms / 1000).toFixed(1)} s)`;
+  switch (entry.state) {
+    case 'queued':
+      return `queued: ${entry.head.slice(0, 7)} into ${entry.into}${entry.message ? ` (${entry.message})` : ''}`;
+    case 'merging':
+      return `merging into ${entry.into} at ${entry.base?.slice(0, 7) ?? '?'}`;
+    case 'resolving':
+      return `resolving: ${entry.conflicts?.length ?? 0} conflicting file(s), asked of the merger agent`;
+    case 'checking':
+      return `checking: ${check?.commands.join(' && ') ?? ''} (${check?.source ?? ''})`;
+    case 'needs-you': {
+      const regions = entry.resolution?.regions ?? [];
+      if (regions.length > 0 && entry.merge) {
+        const by = entry.resolution?.model ?? entry.resolution?.agent ?? '';
+        const tokens = entry.resolution?.usage
+          ? `, ${entry.resolution.usage.input} tokens in, ${entry.resolution.usage.output} out`
+          : '';
+        const checked =
+          check?.ok === false
+            ? `; its check failed: ${check.failed ?? ''}`
+            : check?.ok
+              ? `; checked${time}`
+              : '';
+        const lines = regions.map(
+          (r) =>
+            `  ${r.path}:${r.line}${r.note ? ` — ${r.note}` : ''}\n${r.text.replace(/^/gm, '    | ')}`,
+        );
+        return `needs you: review the resolution (${by}${tokens})${checked}\n${lines.join('\n')}\n  then --approve, or --again "<what to change>"`;
+      }
+      return `needs you: ${entry.message ?? ''}${entry.conflicts ? `\n  ${entry.conflicts.join('\n  ')}` : ''}`;
+    }
+    case 'ready':
+      return `ready to land${time}${entry.message ? `: ${entry.message}` : ''}`;
+    case 'landed': {
+      const pushed = entry.pushed
+        ? entry.pushed.ok
+          ? `, pushed to ${entry.pushed.remote}`
+          : `; not pushed: ${entry.pushed.error}`
+        : '';
+      return `landed: ${entry.into} is at ${entry.merge?.slice(0, 7) ?? entry.head.slice(0, 7)}${time}${pushed}${entry.message ? ` (${entry.message})` : ''}`;
+    }
+    case 'failed':
+      return check?.ok === false
+        ? `failed: ${check.failed ?? ''}${time}\n${check.output ?? ''}`
+        : `failed: ${entry.message ?? ''}`;
+  }
+}
+
+async function merge(argv: string[], ctx: CliContext): Promise<number> {
+  const { values, positionals } = parse(
+    {
+      args: argv,
+      allowPositionals: true,
+      options: {
+        into: { type: 'string' },
+        land: { type: 'boolean', default: false },
+        approve: { type: 'boolean', default: false },
+        again: { type: 'string' },
+        help: { type: 'boolean', short: 'h', default: false },
+      },
+    },
+    MERGE_HELP,
+  );
+  if (values.help) {
+    ctx.stdout(MERGE_HELP);
+    return 0;
+  }
+  const [branch, ...extra] = positionals;
+  if (!branch || extra.length > 0) throw new UsageError('one branch to merge', MERGE_HELP);
+  const repo = await openRepo(ctx.cwd);
+  let last = '';
+  const print = (entry: MergeEntry) => {
+    const line = mergeLine(entry);
+    if (line !== last) ctx.stdout(`${line}\n`);
+    last = line;
+  };
+  const merges = merger(repo, defaultCacheDir(ctx.env), {
+    onChange: print,
+    mergerAgent: mergerFinder(repo.root, ctx.env),
+  });
+  const done = (entry: MergeEntry | undefined) => (entry?.state === 'landed' ? 0 : 1);
+  try {
+    const targets = await merges.targets(branch);
+    if (values.approve || values.again !== undefined) {
+      const entry = targets.entry;
+      if (entry?.state !== 'needs-you' || !entry.resolution) {
+        ctx.stderr(`cpr merge: ${branch} has no resolution to review\n`);
+        return 1;
+      }
+      const after = values.approve
+        ? await merges.approve(entry.id)
+        : await merges.requestChanges(entry.id, values.again ?? '');
+      print(after);
+      await merges.idle();
+      const now = (await merges.list()).merges.find((e) => e.id === entry.id);
+      if (now) print(now);
+      return done(now);
+    }
+    if (values.land) {
+      if (targets.entry?.state !== 'ready') {
+        ctx.stderr(`cpr merge: ${branch} has no merge waiting to land\n`);
+        return 1;
+      }
+      const entry = await merges.land(targets.entry.id);
+      print(entry);
+      await merges.idle();
+      return done(entry);
+    }
+    const into = values.into ?? targets.into;
+    if (!into) throw new UsageError('no default branch: name one with --into', MERGE_HELP);
+    const queued = await merges.enqueue({ branch, into });
+    print(queued);
+    await merges.idle();
+    // Another CPR process (\`cpr view\`) merges in this repository: its progress, from the queue.
+    for (;;) {
+      const entry = (await merges.list()).merges.find((e) => e.id === queued.id);
+      if (!entry || !['queued', 'merging', 'resolving', 'checking'].includes(entry.state)) {
+        if (entry) print(entry);
+        return done(entry);
+      }
+      print(entry);
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+    }
+  } catch (error) {
+    if (error instanceof MergeRefused) {
+      ctx.stderr(`cpr merge: ${error.message}\n`);
+      return 1;
+    }
+    throw error;
+  }
+}
+
 /** Claude Code for workspaces (V18), found when first needed and looked for again until it is. */
 function agentFinder(
   root: string,
@@ -609,6 +771,25 @@ function codexFinder(
     if (!command) return null;
     found = codex(command, { cwd: root });
     return found;
+  };
+}
+
+/**
+ * The merger agent (V26c): `kind` (`merge.agent`), else `agent.kind`, else Claude Code, else
+ * Codex, whichever is installed.
+ */
+function mergerFinder(
+  root: string,
+  env: Readonly<Record<string, string | undefined>>,
+): (kind?: AgentKind) => Promise<MergerAgent | null> {
+  return async (kind) => {
+    const first = kind ?? readWorkspaceConfig(root).agent;
+    const order: AgentKind[] = first === 'codex' ? ['codex', 'claude'] : ['claude', 'codex'];
+    for (const each of kind ? [kind] : order) {
+      const command = each === 'claude' ? await findClaude(env) : await findCodex(env);
+      if (command) return each === 'claude' ? claudeMerger(command) : codexMerger(command);
+    }
+    return null;
   };
 }
 

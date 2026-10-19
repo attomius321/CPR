@@ -256,13 +256,12 @@ describe('branchReviews', () => {
     );
   });
 
-  it("tells a workspace's agent about its record, plan first, and where an approval is merged (V18c)", () => {
+  it("tells a workspace's agent about its record and plan first; CPR merges an approval (V18c, V26)", () => {
     expect(AGENTS).toContain('## Workspaces');
     expect(AGENTS).toContain('cpr/workspaces/<branch>.json');
     expect(AGENTS).toMatch(/`planFirst`.*stop/s);
-    expect(AGENTS).toContain('## Approved in a linked worktree');
-    expect(AGENTS).toContain('git worktree list');
-    expect(AGENTS).toMatch(/do not merge here/);
+    expect(AGENTS).not.toContain('## Approved in a linked worktree');
+    expect(AGENTS).toMatch(/Do not merge it yourself/);
   });
 
   it("rewrites the agents' instructions when CPR's differ, and points every review at them", async () => {
@@ -486,7 +485,7 @@ describe('finishing a branch review (V16, V17)', () => {
         summary: '',
       },
       text: [
-        `Approved the branch agent at ${shas.W2.slice(0, 7)}: merge ${shas.W2.slice(0, 7)} into main.`,
+        `Approved the branch agent at ${shas.W2.slice(0, 7)}: CPR merges ${shas.W2.slice(0, 7)} into main; do not merge it yourself.`,
         '',
         'The review: cpr/reviews/agent/ada@example.com.json; how to act on it: cpr/AGENTS.md.',
         '',

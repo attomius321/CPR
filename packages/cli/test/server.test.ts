@@ -11,6 +11,7 @@ import {
   type WorkspaceRequest,
   type WorkspaceSummary,
   type Graph,
+  type MergeEntry,
 } from '@cpr/core';
 import type { Review } from '@cpr/forge';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -28,6 +29,7 @@ import { Histories } from '../src/history.js';
 import type { OpenRequest, OpenResult } from '../src/editor.js';
 import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
 import { WorkspaceRefused, type Workspaces } from '../src/workspaces.js';
+import { MergeRefused, type Merger } from '../src/merges.js';
 import { terminals as makeTerminals, type Pty, type SpawnPty } from '../src/terminal.js';
 
 const graph = JSON.parse(
@@ -1421,6 +1423,150 @@ describe('cpr view: workspaces (V18)', () => {
     }
     expect(replies).toHaveLength(3);
     expect(cleaned).toHaveLength(2);
+  });
+});
+
+describe('cpr view: merges (V26a)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const entry: MergeEntry = {
+    id: 'm1',
+    branch: 'feature/csv',
+    head: C,
+    into: 'main',
+    title: 'Merge feature/csv: CSV',
+    state: 'queued',
+    queued: '2026-10-19T12:00:00.000Z',
+    updated: '2026-10-19T12:00:00.000Z',
+  };
+  const asked: string[] = [];
+  const merges: Merger = {
+    list: () => Promise.resolve({ merges: [entry] }),
+    targets: (branch) =>
+      Promise.resolve({
+        branches: ['develop', 'main'],
+        into: 'main',
+        head: C,
+        ...(branch === 'x' ? { blocked: 'x is not approved' } : {}),
+      }),
+    enqueue: (request) => {
+      asked.push(`enqueue ${request.branch} ${request.into}`);
+      return request.branch === 'x'
+        ? Promise.reject(new MergeRefused('x is not approved', 409))
+        : Promise.resolve(entry);
+    },
+    land: (id) => {
+      asked.push(`land ${id}`);
+      return Promise.resolve({ ...entry, state: 'landed' });
+    },
+    retry: (id) => {
+      asked.push(`retry ${id}`);
+      return Promise.resolve(entry);
+    },
+    approve: (id) => {
+      asked.push(`approve ${id}`);
+      return Promise.resolve({ ...entry, state: 'landed' });
+    },
+    requestChanges: (id, comments) => {
+      asked.push(`change ${id} ${comments}`);
+      return Promise.resolve(entry);
+    },
+    remove: (id) => {
+      asked.push(`remove ${id}`);
+      return id === 'm1'
+        ? Promise.resolve()
+        : Promise.reject(new MergeRefused(`no merge ${id}`, 404));
+    },
+    idle: () => Promise.resolve(),
+  };
+  let server: ViewServer;
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        merges,
+      },
+    });
+  });
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+  const get = (path: string) => fetch(new URL(path, server.url));
+  const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
+    fetch(new URL(path, server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      body: JSON.stringify(body),
+    });
+
+  it("lists the queue and a branch's targets; queues, lands, retries and removes", async () => {
+    expect(await (await get('/api/merges')).json()).toEqual({ merges: [entry] });
+    expect(await (await get('/api/merges/targets?branch=feature%2Fcsv')).json()).toEqual({
+      branches: ['develop', 'main'],
+      into: 'main',
+      head: C,
+    });
+    expect((await get('/api/merges/targets')).status).toBe(400);
+
+    expect(
+      await (await post('/api/merges', { branch: 'feature/csv', into: 'main' })).json(),
+    ).toEqual(entry);
+    const refused = await post('/api/merges', { branch: 'x', into: 'main' });
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toEqual({ error: 'x is not approved' });
+    for (const body of [null, { branch: 'a' }, { into: 'main' }, { branch: 3, into: 'main' }]) {
+      expect((await post('/api/merges', body)).status, JSON.stringify(body)).toBe(400);
+    }
+
+    expect(
+      (await (await post('/api/merges/land', { id: 'm1' })).json()) as MergeEntry,
+    ).toMatchObject({ state: 'landed' });
+    expect((await post('/api/merges/retry', { id: 'm1' })).status).toBe(200);
+    expect((await post('/api/merges/remove', { id: 'm1' })).status).toBe(200);
+    expect((await post('/api/merges/remove', { id: 'm2' })).status).toBe(404);
+    expect((await post('/api/merges/land', {})).status).toBe(400);
+    for (const path of [
+      '/api/merges',
+      '/api/merges/land',
+      '/api/merges/retry',
+      '/api/merges/remove',
+    ]) {
+      expect(
+        (await post(path, { id: 'm1', branch: 'a', into: 'b' }, { 'x-cpr': '' })).status,
+        path,
+      ).toBe(403);
+    }
+    expect((await get('/api/merges/land')).status).toBe(405);
+    // A resolution (V26c): approved, or asked again with the person's words.
+    expect((await post('/api/merges/approve', { id: 'm1' })).status).toBe(200);
+    expect(
+      (await post('/api/merges/request-changes', { id: 'm1', comments: 'Keep both.' })).status,
+    ).toBe(200);
+    expect((await post('/api/merges/request-changes', { id: 'm1' })).status).toBe(400);
+    expect(asked.slice(-2)).toEqual(['approve m1', 'change m1 Keep both.']);
+    asked.splice(-2);
+    expect(asked).toEqual([
+      'enqueue feature/csv main',
+      'enqueue x main',
+      'land m1',
+      'retry m1',
+      'remove m1',
+      'remove m2',
+    ]);
   });
 });
 

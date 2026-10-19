@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type {
   BranchMerge,
+  MergeEntry,
+  MergeList,
   WorkspaceReplied,
   WorkspaceStart,
   WorkspaceSummary,
@@ -12,6 +14,8 @@ import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
 import { markdownNodes, useMarkdown } from './markdown.js';
 import { useWorkspaceStarter } from './WorkspaceStarter.js';
+import { MergeControl } from './MergeControl.js';
+import { mergeActions, mergeState, toReview, type MergeAction } from './merges.js';
 import { postJson } from './http.js';
 import {
   workspaceGroups,
@@ -78,7 +82,7 @@ function useWide(): boolean {
  * on a wide window the first workspace is picked when none is.
  */
 export function WorkspacesPage() {
-  const { list, reviews } = useWorkspaces();
+  const { list, reviews, merges } = useWorkspaces();
   const [notice, setNotice] = useState<Notice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState(branchOfUrl);
@@ -144,6 +148,7 @@ export function WorkspacesPage() {
           {error}
         </p>
       )}
+      {list && list.workspaces.length === 0 && <Merging merges={merges} />}
       {!list ? (
         <p className="hint">Listing workspaces…</p>
       ) : list.workspaces.length === 0 ? (
@@ -160,6 +165,7 @@ export function WorkspacesPage() {
       ) : (
         <div className={`workspaces-body${current ? ' has-panel' : ''}`}>
           <div className="workspaces-list">
+            <Merging merges={merges} />
             {GROUPS.map(([key, title]) =>
               groups[key].length === 0 ? null : (
                 <section key={key} className="workspace-group" aria-label={title}>
@@ -199,6 +205,172 @@ export function WorkspacesPage() {
       )}
       {starter.dialog}
     </div>
+  );
+}
+
+const ACTION_NAMES: Record<MergeAction, string> = {
+  land: 'Land',
+  approve: 'Approve',
+  change: 'Request changes',
+  retry: 'Retry',
+  remove: 'Remove',
+};
+
+/**
+ * The merge queue (V26a), above Needs you while it has entries: each merge's branch, target and
+ * state, the end of a failed check's output, and Land, Retry or Remove.
+ */
+function Merging({ merges }: { merges: MergeList | null }) {
+  if (!merges || merges.merges.length === 0) return null;
+  return (
+    <section className="workspace-group merging" aria-label="Merging">
+      <h2>
+        Merging <span className="branches-count">{merges.merges.length}</span>
+      </h2>
+      {merges.elsewhere && (
+        <p className="hint">
+          Another CPR in this repository merges these: it shows them as it goes.
+        </p>
+      )}
+      <ul className="workspace-list">
+        {merges.merges.map((entry) => (
+          <MergeRow key={entry.id} entry={entry} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function MergeRow({ entry }: { entry: MergeEntry }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [output, setOutput] = useState(false);
+  const [changing, setChanging] = useState(false);
+  const [comments, setComments] = useState('');
+  const { text, tone } = mergeState(entry);
+  const post = (path: string, body: Record<string, string>) => {
+    setBusy(true);
+    setError(null);
+    postJson(path, { id: entry.id, ...body })
+      .then(() => {
+        setChanging(false);
+        setComments('');
+        return reloadWorkspaces();
+      })
+      .catch((e: unknown) => setError((e as Error).message))
+      .finally(() => setBusy(false));
+  };
+  const act = (action: MergeAction) => {
+    if (action === 'change') setChanging((open) => !open);
+    else post(`/api/merges/${action}`, {});
+  };
+  const regions = toReview(entry) ? (entry.resolution?.regions ?? []) : [];
+  const shown = entry.check?.output && entry.check.ok === false;
+  return (
+    <li className={`merge-row merge-tone-${tone}`} aria-label={`Merge of ${entry.branch}`}>
+      <div className="merge-row-head">
+        <span className="ref ref-branch">{entry.branch}</span>
+        <span className="merge-arrow" aria-hidden="true">
+          →
+        </span>
+        <span className="ref ref-branch">{entry.into}</span>
+        <span className="merge-row-state">{text}</span>
+        <span className="merge-row-actions">
+          {mergeActions(entry).map((action) => (
+            <button
+              key={action}
+              type="button"
+              className="link"
+              disabled={busy}
+              onClick={() => act(action)}
+            >
+              {ACTION_NAMES[action]}
+            </button>
+          ))}
+        </span>
+      </div>
+      {regions.length > 0 && (
+        <ol className="merge-regions" aria-label="Its resolution">
+          {regions.map((region, i) => (
+            <li key={i} className="merge-region">
+              <p className="merge-region-where small">
+                <span className="merge-file">
+                  {region.path}:{region.line}
+                </span>
+                {region.note && <span className="muted"> · {region.note}</span>}
+              </p>
+              <div className="merge-region-sides">
+                <MergeSide label={entry.into} lines={region.ours} />
+                {region.base && <MergeSide label="ancestor" lines={region.base} />}
+                <MergeSide label={entry.branch} lines={region.theirs} />
+              </div>
+              <MergeSide label="Written in its place" lines={region.text.split('\n')} written />
+            </li>
+          ))}
+        </ol>
+      )}
+      {changing && (
+        <form
+          className="merge-change"
+          onSubmit={(event) => {
+            event.preventDefault();
+            post('/api/merges/request-changes', { comments });
+          }}
+        >
+          <textarea
+            aria-label="What to change in the resolution"
+            placeholder="What to change: the merger agent answers again with your words"
+            rows={2}
+            value={comments}
+            onChange={(event) => setComments(event.target.value)}
+          />
+          <button type="submit" className="button" disabled={busy || comments.trim() === ''}>
+            Ask again
+          </button>
+        </form>
+      )}
+      {regions.length === 0 && entry.conflicts && (
+        <ul className="merge-files small">
+          {entry.conflicts.map((path) => (
+            <li key={path}>{path}</li>
+          ))}
+        </ul>
+      )}
+      {entry.state === 'needs-you' && entry.message && !entry.resolution?.needsYou && (
+        <p className="hint small">{entry.message}</p>
+      )}
+      {shown && (
+        <button type="button" className="link small" onClick={() => setOutput((o) => !o)}>
+          {output ? 'Hide its output' : 'Its output'}
+        </button>
+      )}
+      {shown && output && <pre className="merge-output">{entry.check?.output}</pre>}
+      {error && (
+        <p className="error small" role="alert">
+          {error}
+        </p>
+      )}
+    </li>
+  );
+}
+
+/** One side of a conflict region, or the text written in its place. */
+function MergeSide({
+  label,
+  lines,
+  written,
+}: {
+  label: string;
+  lines: string[];
+  written?: boolean;
+}) {
+  return (
+    <figure className={`merge-side${written ? ' merge-written' : ''}`}>
+      <figcaption className="small muted">{label}</figcaption>
+      <pre>
+        {lines.length === 0 || (lines.length === 1 && lines[0] === '') ? ' ' : lines.join('\n')}
+      </pre>
+    </figure>
   );
 }
 
@@ -627,6 +799,7 @@ function WorkspacePanel({
         </span>
       </div>
       <WorkspaceState row={row} />
+      {workspace.ahead > 0 && !workspace.merged && <MergeControl branch={branch} />}
       <div className="workspace-actions">
         <button type="button" className="link" onClick={() => setBriefOpen((o) => !o)}>
           {briefOpen ? 'Hide the brief' : 'The brief'}

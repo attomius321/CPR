@@ -16,6 +16,7 @@ import {
   type BriefParts,
   type WorkspaceRequest,
   type WorkspaceTerminalRequest,
+  type MergeRequest,
   type Graph,
   type AgentKind,
   type PermissionMode,
@@ -29,6 +30,7 @@ import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
 import type { OpenRequest, OpenResult } from './editor.js';
 import { WorkspaceRefused, type Workspaces } from './workspaces.js';
+import { MergeRefused, type Merger } from './merges.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 import type { Terminals } from './terminal.js';
@@ -75,6 +77,8 @@ export interface RepositoryOptions {
   workspaces?: Workspaces;
   /** Terminals on agents' sessions (V21): `/api/terminals/<id>…`; closed with the server. */
   terminals?: Terminals;
+  /** CPR's merger (V26): approved branches merged, checked and landed: `/api/merges…`. */
+  merges?: Merger;
 }
 
 export interface ViewServerOptions {
@@ -276,6 +280,38 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         if (url.pathname === '/api/workspaces/terminal') {
           return written(req, res, parseWorkspaceTerminal, (request) =>
             answer(res, () => workspaces.terminal(request)),
+          );
+        }
+      }
+      const { merges } = repository;
+      if (merges) {
+        if (url.pathname === '/api/merges') {
+          if (req.method === 'GET') return answer(res, () => merges.list());
+          return written(req, res, parseMergeRequest, (request) =>
+            answer(res, () => merges.enqueue(request)),
+          );
+        }
+        if (url.pathname === '/api/merges/targets') {
+          return ofBranch(req, res, url, (branch) => merges.targets(branch));
+        }
+        if (url.pathname === '/api/merges/approve') {
+          return written(req, res, parseMergeId, (id) => answer(res, () => merges.approve(id)));
+        }
+        if (url.pathname === '/api/merges/request-changes') {
+          return written(req, res, parseMergeChanges, ({ id, comments }) =>
+            answer(res, () => merges.requestChanges(id, comments)),
+          );
+        }
+        const action = /^\/api\/merges\/(land|retry|remove)$/.exec(url.pathname)?.[1];
+        if (action) {
+          return written(req, res, parseMergeId, (id) =>
+            answer(res, () =>
+              action === 'land'
+                ? merges.land(id)
+                : action === 'retry'
+                  ? merges.retry(id)
+                  : merges.remove(id).then(() => ({})),
+            ),
           );
         }
       }
@@ -740,12 +776,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     return answer(res, () => value(branch));
   }
 
-  /** The answer, or a workspace's refusal with its status and words. */
+  /** The answer, or a workspace's or a merge's refusal with its status and words. */
   async function answer(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
     try {
       return json(res, 200, await task());
     } catch (error) {
-      if (error instanceof WorkspaceRefused)
+      if (error instanceof WorkspaceRefused || error instanceof MergeRefused)
         return json(res, error.status, { error: error.message });
       throw error;
     }
@@ -1044,6 +1080,33 @@ function parseWorkspaceClean(text: string): { branch: string; unmerged?: boolean
     throw new Error('unmerged: true or false');
   }
   return { branch: value.branch, ...(value.unmerged ? { unmerged: true } : {}) };
+}
+
+/** `{ branch, into }`: a branch to merge, and the branch to merge it into (V26). */
+function parseMergeRequest(text: string): MergeRequest {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.branch !== 'string' || value.branch === '') {
+    throw new Error('branch: the branch to merge');
+  }
+  if (typeof value.into !== 'string' || value.into === '') {
+    throw new Error('into: the branch to merge into');
+  }
+  return { branch: value.branch, into: value.into };
+}
+
+/** `{ id, comments }`: what to change in a merge's resolution (V26c). */
+function parseMergeChanges(text: string): { id: string; comments: string } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.id !== 'string' || value.id === '') throw new Error('id: a queued merge');
+  if (typeof value.comments !== 'string') throw new Error('comments: what to change');
+  return { id: value.id, comments: value.comments };
+}
+
+/** `{ id }`: a queued merge. */
+function parseMergeId(text: string): string {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.id !== 'string' || value.id === '') throw new Error('id: a queued merge');
+  return value.id;
 }
 
 const CHECKOUT_KINDS: readonly CheckoutTarget['kind'][] = ['branch', 'remote', 'tag', 'commit'];
