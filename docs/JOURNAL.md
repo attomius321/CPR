@@ -2848,3 +2848,36 @@ the e2e server would need a hook it does not have.
 Both fixes merged into main (2026-10-19). `main` verified after the merges: 731 unit tests (the
 node-pty ones too, now that node-pty is built here), build, 104 of 104 e2e.
 
+
+## V24 spike — what a brief for an agent should hold (2026-10-19, branch `milestone/v24-structured-brief`)
+
+Asked: structure the "Start a workspace" dialog into several inputs (kind, title, goal…), after
+research on how to brief a coding agent.
+
+Measured on this repository: of 35 merges into `main`, 20 are milestones, 7 fixes, 4 chores or
+docs, 4 other; every workspace branch is `feature/` today. No real workspace records exist on
+this machine (only e2e fixtures), so how people fill the one text area is not measured.
+
+Read on 2026-10-19, what vendors ask a task to hold:
+- Claude Code best practices (https://code.claude.com/docs/en/best-practices): a check the agent
+  can run; for a bug the symptom, the likely location and what "fixed" looks like, then a failing
+  test; specs name files, state what is out of scope, end with a verification step; skip the plan
+  when the diff fits in a sentence.
+- Anthropic prompting guidance
+  (https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices):
+  give the why; material first, the request last.
+- Devin (https://docs.devin.ai/essential-guidelines/instructing-devin-effectively): context,
+  success criteria, patterns to reuse; "Make sure it works" as the bad example.
+- GitHub Copilot coding agent
+  (https://docs.github.com/en/copilot/tutorials/coding-agent/get-the-best-results): a clear
+  problem, complete acceptance criteria, which files.
+- Codex (https://developers.openai.com/codex/prompting): file paths; reproduction and constraints
+  matter more than a high-level description.
+- spec-kit's spec template and Kiro's requirements (EARS acceptance criteria): heavier, for
+  multi-step specs; GitHub issue forms: few required fields, the rest optional.
+
+Learned: the sources agree on three parts a single text area leaves to memory — the goal and
+why, how done is checked, the bounds — plus, for a bug, what happens against what should and
+how to reproduce it. That is the plan: a kind, a title, two required parts per kind, the rest
+optional. Not fetched: Cursor's and Linear's guidance; form-friction numbers were secondary and
+contradictory, so none are used.

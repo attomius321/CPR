@@ -436,6 +436,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V21 ✅ | The agent's terminal in its panel | A feature's agent is talked to in V18c's box (a reply stops the session, 1.6 s, and loses a turn in progress) or in a terminal elsewhere (Talk copies `claude attach`). Measured (V21 spike): `claude attach` in a pseudo-terminal, drawn by xterm.js in the page, gives the whole session — first output in 152–174 ms, a key to its echo 22 ms, a permission answered in the page, Esc, messages queued while the agent works — while Claude Code keeps hosting it and CPR's hooks keep recording. Planned: Terminal in the feature's panel (node-pty optional, Talk without it), output as events and keys as POSTs under the write rule, one terminal per open panel, dark in both themes; and the state after Esc (`idle` with `working`), wrong on `main` today. Merged (2026-10-18): with a real Claude Code, the session drawn and answered in the panel, Esc read as "Interrupted" 0.3 s later, a stop shown and reopened in 0.2 s; a key to its echo 32 ms through CPR. See below. |
 | V22 ✅ | Fixes: stale text outside the README | Found while rewriting the README (`chore/update-readme`, 2026-10-15). `cpr --help` and `cpr view --help` say the first page lists the current branch's commits (every branch since V10a); `@cpr/cli`'s description names only `cpr diff` and `cpr view`; the action's `plugins` input points to `cpr.config.json`, the older place; the sidebar's "No findings." ends with an emoji. Merged: all four fixed, and `cpr --help`'s `pr <number>` shown as optional (it has been since C1); a unit test keeps the help on every branch. |
 | V23 ✅ | Branches that need you, first | Planned as V22, which `main` took meanwhile. The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. Merged (2026-10-18): on a clone of this repository with three open features, they are the first three entries instead of the 4th, 10th and 12th; `/api/features` unchanged (34 ms), each thread read from its last 256 KB (0.6 ms at any length). See below. |
+| V24 | A structured brief | The "Start a workspace" dialog is one text area that is also the branch name and the workspace's name; every branch is `feature/`, while 11 of this repository's 35 merges were fixes or chores; nothing prompts for how done is checked, which every agent vendor's guidance asks for. Planned: a kind (Feature, Fix, Chore), a title, two required parts per kind with defaults for Fix and Chore, optional ones under More, assembled by the server into a brief with fixed headings; the kind's branch prefix; old workspaces unchanged. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -5846,6 +5847,181 @@ name.
 
 Not verified: a feature list of dozens of features; Firefox and Safari; Windows and macOS; a real
 Claude Code session acting while the page is open (the e2e fake runs CPR's real hooks).
+
+### V24 — A structured brief: kind, title, goal, done when
+
+**Status:** planned (2026-10-19), on branch `milestone/v24-structured-brief`; not started.
+
+**Problem** (asked: "The Create a workspace dialog need some structuring..like multiple inputs
+where the user is prompt about the feature/chore/fix. With a title, final goal, etc."). The
+dialog (`StartFeatureDialog.tsx`, V18) has one text area, "What should the agent build?". One
+string does three jobs: the agent's brief, the branch name (its first line's first five words)
+and the workspace's name in every list (its first line). Measured:
+
+| What | Today |
+|---|---|
+| Inputs about the work | 1 free-text area (placeholder: "what, why, what done looks like") |
+| Branch prefix | `feature/` for every workspace (`features.branchPrefix`, one value) |
+| This repository's merges into `main` | 35: 20 milestones, 7 fixes, 4 chores or docs, 4 other — a third is not a feature |
+| What the agent is told about "done" | Only what the person thought to write; the prompt adds "check it as the project's own instructions say" |
+| The name in lists | The brief's first line, however long; a brief that starts with context names the workspace after that context |
+
+What agent vendors ask for in a task, read on 2026-10-19 (sources in JOURNAL "V24 spike"):
+Anthropic's Claude Code best practices ("give Claude a check it can run"; for a bug "the
+symptom, the likely location, and what 'fixed' looks like"; specs "state what is out of scope"),
+Devin (context, success criteria, patterns to reuse; "Make sure it works" is the bad example),
+GitHub Copilot's coding agent (a clear problem, complete acceptance criteria, which files),
+Codex (file paths; a reproduction and constraints "matter more than a high-level description").
+All four ask for the same three things a single text area leaves to memory: **the goal and why,
+how done is checked, and the bounds** (where to look, what not to touch); bugs add **what
+happens against what should, and how to reproduce it**. Issue forms (GitHub) keep required
+fields few and mark the rest optional.
+
+Causes:
+- One text area, no prompt about the parts an agent needs; the placeholder is the only hint.
+- No kind: a fix gets a `feature/` branch and the same instructions as a feature.
+- The name is derived, not given.
+
+**Goal**: the dialog asks for the work in a few labelled parts, chosen by its **kind** —
+Feature, Fix or Chore: a **title** (the workspace's name and its branch), the parts that kind
+needs (two required at most, with defaults where a sensible one exists), and optional ones
+behind "More". CPR assembles them into the agent's brief in a fixed order with fixed headings,
+and the branch takes the kind's prefix (`feature/`, `fix/`, `chore/`). The record keeps the
+parts, so the panel shows them as written. Unchanged: workspaces started before V24 (their
+brief, name and branch as today), the agent's launch, plan first, permissions, the worktree,
+reviews and merges; `cpr diff`, `cpr pr` and the graph JSON.
+
+#### The kinds and their inputs (viewer)
+
+The kind is a segmented control at the top (Feature · Fix · Chore; `1` `2` `3` while it has
+focus), Feature by default, the last one picked remembered per repository (`localStorage`). The
+title is first in every kind; switching kind keeps every text typed (the fields with the same
+role carry over; the others are kept and come back).
+
+| Kind | Required | Pre-filled, editable | Under "More" (optional) |
+|---|---|---|---|
+| **Feature** | Title; **Goal** — "What should it do, and why?" | **Done when** — empty, required: "How will you know it works? A check the agent can run." | Where to look; Out of scope; Notes |
+| **Fix** | Title; **What happens** — "What goes wrong, and what should happen instead?" | **Done when** — "A test that fails today passes, and the project's checks pass." | **How to reproduce** (steps, a command, an error); Where to look; Notes |
+| **Chore** | Title; **What to change** — "What, and why now?" | **Done when** — "No behaviour changes, and the project's checks pass." | Where to look; Out of scope; Notes |
+
+- Three inputs visible per kind (title and two text areas), "More" collapsed unless a field in
+  it has text. A Fix's "How to reproduce" is optional: a bug seen once has no steps, and a
+  required field gets "unknown" typed into it.
+- **Done when** is required for a Feature only: Fix and Chore have a default that is right for
+  most of them. CPR does not guess the project's test command (precise beats complete: a wrong
+  command is worse than the agent reading the project's instructions, which the prompt points
+  to).
+- Branch: proposed from the **title** (not the brief), with the kind's prefix; editable as
+  today, and once edited no longer follows title or kind.
+- Lengths: the assembled brief is checked against `maxBrief` (20,000) as one text, the count
+  shown under the dialog when it is within 10 % of it.
+- **A draft**: the fields are kept per repository in `localStorage` while the dialog is open and
+  cleared after a start; Escape and Cancel keep it, "Clear" empties it. Several inputs make a
+  lost brief more costly than one text area did. Storage that throws is ignored.
+- Ctrl+Enter starts, Escape cancels, as today; Tab goes title → kind's fields → More → branch →
+  plan first → Start.
+
+#### The record, the request and the prompt (core, CLI)
+
+- `FeatureRequest` and the record gain `kind` (`feature` | `fix` | `chore`), `title` and
+  `parts` (`{ goal?, happens?, reproduce?, change?, doneWhen?, where?, outOfScope?, notes? }`,
+  absent when empty). The request no longer sends `brief`: the **server** assembles it
+  (`briefOf` in `packages/cli/src/features.ts`), so the record's `brief` stays what the agent
+  was told and every reader of `brief` (the panel's "The brief", `cpr/AGENTS.md` readers,
+  `featurePrompt`) works unchanged. Server checks: a known kind, a title, the kind's required
+  parts, the assembled length; 400 with the field's label otherwise.
+- Old records (no `kind`): read as before; their name is the brief's first line. New records:
+  the name is `title`. `FeatureSummary` gains `kind` and `title` (absent for old ones).
+- **The brief** (`briefOf`): Markdown headings in a fixed order, empty parts left out, the
+  person's text verbatim under each:
+
+  ```
+  # Fix: The date column sorts as text
+
+  ## What happens
+  …
+  ## How to reproduce
+  …
+  ## Where to look
+  …
+  ## Done when
+  A test that fails today passes, and the project's checks pass.
+  ```
+
+  Order: context first, the check last (Anthropic's guidance: the request after the material).
+  Headings, not XML tags: the brief is shown to the person in the panel and must read as
+  written, and the prompt is plain text to Claude Code and Codex alike.
+- **The prompt** (`featurePrompt`): unchanged except one line per kind after the brief, the
+  only instruction CPR adds: Fix — "Reproduce it first, with a failing test where the project
+  has tests, then fix the cause, not the symptom."; Chore — "Change no behaviour; if you find
+  you must, stop and say so."; Feature — none.
+- **Branch prefixes**: `features.branchPrefixes` in `cpr/config.json`
+  (`{ "feature": "feature/", "fix": "fix/", "chore": "chore/" }` by default);
+  `features.branchPrefix`, if set, stays the Feature prefix. `FeatureOptions.branchPrefix`
+  becomes `branchPrefixes`.
+- No graph JSON or analysis change.
+
+#### The workspace list and panel (viewer)
+
+- A row's name is the title (old workspaces: the brief's first line, as today), with the kind
+  as a small text tag before it (`fix`, `chore`; none for Feature, the common case).
+- "The brief" in the panel shows the assembled brief, as today; the review page's "Workspace: …"
+  uses the title.
+
+#### Verification
+
+1. **Unit, red first**: `briefOf` per kind (order, headings, empty parts left out, text kept
+   byte for byte, a part that contains `## ` lines); the per-kind prompt line; old records read
+   unchanged and named by their first line; request validation (missing title, missing required
+   part per kind, unknown kind, assembled length over 20,000); `proposeBranch` from the title
+   with each kind's prefix, `-2` when taken; config with `branchPrefix` only, `branchPrefixes`
+   only, both.
+2. **E2E** (`features.spec.ts`, rewritten where it fills the brief): each kind starts a
+   workspace whose fake agent received the expected brief; switching kind keeps text; Start
+   disabled until the kind's required fields have text; More opens itself when a field in it has
+   text; the draft survives Escape and a reload, and is gone after a start; an old record is
+   listed by its first line; keyboard path (Tab order, Ctrl+Enter).
+3. **Nothing else changes**: the e2e suite, the commits page and reviews; no analysis code, so
+   no regression sets.
+4. **Viewer** (`viewer-check`): the dialog in light and dark at 1440 × 900 and 390 × 844, each
+   kind, More open and closed: it fits without scrolling at 1440 × 900 with More closed;
+   screenshots against today's.
+5. **With a real agent**: one workspace of each kind started with a real Claude Code (headless,
+   Haiku, plan first) on a scratch repository with a planted bug: the Fix's plan names a failing
+   test first; the Chore's plan changes no behaviour; record what the plans say.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| A form is slower than one text area for a quick ask | Two required text areas at most, defaults for Fix and Chore; measure the clicks/keys from open to Start against today's |
+| Someone pastes a long spec | "Goal" and "Notes" take any length; the assembled limit is the only one |
+| Defaults the agent follows blindly ("a test that fails today") in a repo without tests | The Fix line says "where the project has tests"; Done when is editable |
+| Kinds people want that are not there (spike, refactor, docs) | Three kinds cover 31 of 35 merges here; a Refactor is a Chore, a Spike is "later" (its output is a finding, not a branch to merge, which reviews do not model) |
+| Older viewers or scripts posting `{ brief }` | The server keeps accepting `brief` alone as a Feature with the brief's first line as its title (one release), so nothing that posts today breaks |
+
+**Order**: `briefOf`, the record and the request first (unit tests), then the dialog, then the
+list and panel; the real-agent check last.
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V24a | Kinds and parts in the record | `kind`, `title`, `parts` in `FeatureRequest`, the record and `FeatureSummary`; `briefOf`; the per-kind prompt line; `branchPrefixes`; server validation; old records and `{ brief }` requests as before. |
+| V24b | The structured dialog | Kind control, the kind's inputs, More, the draft, branch from title and kind; the list's title and kind tag; e2e; screenshots. |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 122 | Which kinds | **Feature, Fix, Chore**; Refactor is a Chore, Spike later | The user's three; 31 of this repository's 35 merges; a spike's output is not a branch to merge |
+| 123 | Who assembles the brief | **The server**, from the parts; the record keeps both | One place for the format; `brief` stays what the agent was told, so every reader of it is unchanged |
+| 124 | Headings or XML tags in the brief | **Markdown headings** | The person reads the brief in the panel; plain text suits Claude Code and Codex alike |
+| 125 | Does CPR fill in a test command | **No**: Done when defaults are in words; the prompt points to the project's instructions | A guessed command that is wrong costs more than none |
+
+**Not in V24 (later)**: a Spike kind (a question and a written answer, no merge); templates per
+repository (`cpr/config.json` defining kinds and fields); attaching screenshots or logs as files;
+filling a brief from an issue or a review comment; an LLM rewriting the person's brief.
 
 ### Phase 1 milestones
 
