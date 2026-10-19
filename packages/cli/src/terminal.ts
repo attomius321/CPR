@@ -1,4 +1,4 @@
-// Terminals for features' agents (V21): `claude attach <id>` in a pseudo-terminal, its output
+// Terminals for workspaces' agents (V21): `claude attach <id>` in a pseudo-terminal, its output
 // streamed to the page and the person's keys written back. Claude Code keeps hosting the
 // session; a terminal is only a client of it, and hanging one up leaves the session running.
 import { randomBytes } from 'node:crypto';

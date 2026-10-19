@@ -38,7 +38,7 @@ pnpm test:e2e                                   # viewer Playwright tests (after
 (cd packages/viewer && npx playwright test e2e/qwik.spec.ts)       # one e2e spec
 pnpm format                                     # prettier --write
 node packages/cli/dist/bin.js diff <base> [head] [--plugin angular] [--out graph.json]   # in any git repo
-node packages/cli/dist/bin.js view [<base> [head]]    # opens the viewer (no revisions: the commits page)
+node packages/cli/dist/bin.js view [<base> [head]]    # opens the viewer (no revisions: Workspaces)
 ```
 
 ## Code

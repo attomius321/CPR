@@ -3,9 +3,9 @@
 // Codex's own files.
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import type { AgentStateName, FeatureAgentState, ThreadEntry } from '@cpr/core';
+import type { AgentStateName, WorkspaceAgentState, ThreadEntry } from '@cpr/core';
 import { localHost, onPath } from './editor.js';
-import { runProgram, type FeatureFile, type Run } from './features.js';
+import { runProgram, type WorkspaceFile, type Run } from './workspaces.js';
 
 /** Starts a program detached from `cpr view` (its own process group), in `cwd`; its process ID. */
 export type DetachedRun = (command: string, args: string[], cwd: string) => Promise<number>;
@@ -225,12 +225,12 @@ export async function findCodex(
  * `ahead` (commits since the base) tells a finished plan from finished work, as for Claude Code.
  */
 export function codexState(
-  feature: FeatureFile,
+  workspace: WorkspaceFile,
   entries: readonly ThreadEntry[],
   alive: boolean,
   ahead: number,
-): FeatureAgentState {
-  const { agent } = feature;
+): WorkspaceAgentState {
+  const { agent } = workspace;
   if (!agent) return { state: 'no-agent' };
   const kind = agent.kind;
   if (agent.error) return { state: 'not-started', kind, error: agent.error };
@@ -240,7 +240,7 @@ export function codexState(
   )?.session;
   const head = { kind, ...(session ? { id: session } : {}) };
   const finished = (): AgentStateName =>
-    ahead > 0 ? 'ready' : feature.planFirst ? 'plan-ready' : 'done';
+    ahead > 0 ? 'ready' : workspace.planFirst ? 'plan-ready' : 'done';
   const end = last.findLast((e): e is Extract<ThreadEntry, { kind: 'end' }> => e.kind === 'end');
   if (end) {
     if (end.reason === 'completed') return { state: finished(), ...head };

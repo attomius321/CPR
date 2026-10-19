@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import type { BranchReviewList, FeatureList } from '@cpr/core';
+import type { BranchReviewList, WorkspaceList } from '@cpr/core';
 
-/** The features and the reviews, read together: a review changes what a feature needs next. */
-export interface FeaturesState {
-  list: FeatureList | null;
+/** The workspaces and the reviews, read together: a review changes what a workspace needs next. */
+export interface WorkspacesState {
+  list: WorkspaceList | null;
   reviews: BranchReviewList | null;
 }
 
@@ -11,24 +11,25 @@ export interface FeaturesState {
 const POLL_MS = 5_000;
 
 // One reader for every component on the page (the tab bar, the page, the review header).
-let current: FeaturesState = { list: null, reviews: null };
-const listeners = new Set<(state: FeaturesState) => void>();
+let current: WorkspacesState = { list: null, reviews: null };
+const listeners = new Set<(state: WorkspacesState) => void>();
 let loading: Promise<void> | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
 
-const live = (state: FeaturesState) =>
-  state.list?.features.some((f) => f.agent.state === 'working' || f.agent.state === 'needs-you') ??
-  false;
+const live = (state: WorkspacesState) =>
+  state.list?.workspaces.some(
+    (f) => f.agent.state === 'working' || f.agent.state === 'needs-you',
+  ) ?? false;
 
 async function read<T>(path: string): Promise<T | null> {
   const response = await fetch(path);
   return response.ok ? ((await response.json()) as T) : null;
 }
 
-/** Reads the features (V18b) and the reviews again, and tells every reader. */
-export function reloadFeatures(): Promise<void> {
+/** Reads the workspaces (V18b) and the reviews again, and tells every reader. */
+export function reloadWorkspaces(): Promise<void> {
   loading ??= Promise.all([
-    read<FeatureList>('/api/features'),
+    read<WorkspaceList>('/api/workspaces'),
     read<BranchReviewList>('/api/reviews'),
   ])
     .then(([list, reviews]) => {
@@ -47,9 +48,9 @@ export function reloadFeatures(): Promise<void> {
  * Reads them anew, after any read under way (it may have started before a change, such as a
  * stop), and gives what was read.
  */
-export async function readFeaturesAgain(): Promise<FeaturesState> {
+export async function readWorkspacesAgain(): Promise<WorkspacesState> {
   await loading;
-  await reloadFeatures();
+  await reloadWorkspaces();
   return current;
 }
 
@@ -59,19 +60,19 @@ function schedule(): void {
   if (listeners.size === 0 || !live(current)) return;
   timer = setTimeout(() => {
     if (document.visibilityState === 'hidden') schedule();
-    else void reloadFeatures();
+    else void reloadWorkspaces();
   }, POLL_MS);
 }
 
 const onShown = () => {
-  if (document.visibilityState !== 'hidden') void reloadFeatures();
+  if (document.visibilityState !== 'hidden') void reloadWorkspaces();
 };
 
 /**
- * The features and reviews, read on mount, when the page is back in view, and every 5 s while
+ * The workspaces and reviews, read on mount, when the page is back in view, and every 5 s while
  * an agent works or waits for the person.
  */
-export function useFeatures(): FeaturesState {
+export function useWorkspaces(): WorkspacesState {
   const [state, setState] = useState(current);
   useEffect(() => {
     listeners.add(setState);
@@ -79,7 +80,7 @@ export function useFeatures(): FeaturesState {
       window.addEventListener('focus', onShown);
       document.addEventListener('visibilitychange', onShown);
     }
-    void reloadFeatures();
+    void reloadWorkspaces();
     return () => {
       listeners.delete(setState);
       if (listeners.size > 0) return;

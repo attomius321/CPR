@@ -113,7 +113,7 @@ describe('recordEvent and readThread', () => {
   }
   const at = (n: number) => `2026-10-15T09:00:0${n}.000Z`;
 
-  it("appends each event to its feature's thread, found by the worktree holding its folder", async () => {
+  it("appends each event to its workspace's thread, found by the worktree holding its folder", async () => {
     const { folder, worktree } = cpr();
     const placed = (event: Record<string, unknown>, cwd: string, n: number) =>
       recordEvent(folder, { ...event, cwd }, at(n));

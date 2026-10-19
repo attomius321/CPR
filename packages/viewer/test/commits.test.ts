@@ -329,7 +329,7 @@ describe('graphLoaded', () => {
 });
 
 describe('rowBadges', () => {
-  it('puts the most urgent feature mark of the badges it folds on "+N" (V18b)', () => {
+  it('puts the most urgent workspace mark of the badges it folds on "+N" (V18b)', () => {
     const chip = (mark: string, tone: 'working' | 'waiting', branch: string) => ({
       mark,
       tone,
@@ -363,7 +363,7 @@ describe('rowBadges', () => {
         href: '/',
       },
     });
-    // Without features folded, "+N" carries no mark.
+    // Without workspaces folded, "+N" carries no mark.
     expect(
       rowBadges(
         [

@@ -1,8 +1,8 @@
-// Features started from the commits page (V18): what `cpr view`'s server answers and the viewer
+// Workspaces started from the commits page (V18): what `cpr view`'s server answers and the viewer
 // reads. Types only; the CLI keeps the records and starts the agents.
 import type { VerdictEvent } from './git/branches.js';
 
-/** How a feature's agent is doing, as the commits page shows it. */
+/** How a workspace's agent is doing, as the commits page shows it. */
 export type AgentStateName =
   /** Working on it. */
   | 'working'
@@ -20,12 +20,12 @@ export type AgentStateName =
   | 'not-running'
   /** The start failed (`error` says why); the agent can be started again. */
   | 'not-started'
-  /** No agent found to start: the feature's prompt is copied instead. */
+  /** No agent found to start: the workspace's prompt is copied instead. */
   | 'no-agent'
   /** The agents could not be listed (`error`). */
   | 'unknown';
 
-export interface FeatureAgentState {
+export interface WorkspaceAgentState {
   state: AgentStateName;
   kind?: AgentKind;
   /** What a session that needs the person waits for, in Claude Code's words. */
@@ -55,7 +55,7 @@ export const WORK_KINDS: readonly WorkKind[] = ['feature', 'fix', 'refactor', 'c
 
 /** The parts of a brief the person writes (V24); each kind has some of them. */
 export interface BriefParts {
-  /** Feature: what it should do, and why. */
+  /** Workspace: what it should do, and why. */
   goal?: string;
   /** Fix: what goes wrong, and what should happen instead. */
   happens?: string;
@@ -92,8 +92,8 @@ export interface CheckGuess {
   source: string;
 }
 
-/** A feature and its agent, for the commits page. */
-export interface FeatureSummary {
+/** A workspace and its agent, for the commits page. */
+export interface WorkspaceSummary {
   branch: string;
   /** What it is for, and its name (V24); absent for workspaces started before. */
   kind?: WorkKind;
@@ -112,7 +112,7 @@ export interface FeatureSummary {
   ahead: number;
   /** Its commits are all in the default branch. */
   merged: boolean;
-  agent: FeatureAgentState;
+  agent: WorkspaceAgentState;
   /**
    * When its agent last acted (V23): its thread's newest report or question, else when it last
    * started; absent when no agent was found.
@@ -120,28 +120,28 @@ export interface FeatureSummary {
   lastAction?: string;
 }
 
-export interface FeatureList {
-  features: FeatureSummary[];
-  /** Where features are kept: `cpr/features/`, else CPR's cache (`note` says why). */
+export interface WorkspaceList {
+  workspaces: WorkspaceSummary[];
+  /** Where workspaces are kept: `cpr/features/`, else CPR's cache (`note` says why). */
   place: 'repository' | 'cache';
   note?: string;
-  /** Whether an agent's session can be shown in a terminal (V21); only with features. */
+  /** Whether an agent's session can be shown in a terminal (V21); only with workspaces. */
   terminal?: TerminalAvailability;
 }
 
 /** Whether `cpr view` can run terminals (node-pty, optional), else why not (V21). */
 export type TerminalAvailability = { available: true } | { available: false; reason: string };
 
-/** `POST /api/features/terminal`: a terminal on the feature's agent's session, at that size. */
-export interface FeatureTerminalRequest {
+/** `POST /api/workspaces/terminal`: a terminal on the workspace's agent's session, at that size. */
+export interface WorkspaceTerminalRequest {
   branch: string;
   cols: number;
   rows: number;
 }
 
 /** What the start dialog needs. */
-export interface FeatureOptions {
-  /** The default branch's tip, where a feature starts unless a row is picked. */
+export interface WorkspaceOptions {
+  /** The default branch's tip, where a workspace starts unless a row is picked. */
   base: { from: string; sha: string } | null;
   /** Proposed names start with their kind's (`fix/`, V24). */
   branchPrefixes: Record<WorkKind, string>;
@@ -172,10 +172,10 @@ export interface AgentOption {
 }
 
 /**
- * `POST /api/features`: a kind of work with its title and parts, which CPR makes the brief of
+ * `POST /api/workspaces`: a kind of work with its title and parts, which CPR makes the brief of
  * (V24); or, as before V24, the brief as one text.
  */
-export interface FeatureRequest {
+export interface WorkspaceRequest {
   kind?: WorkKind;
   title?: string;
   parts?: BriefParts;
@@ -190,9 +190,9 @@ export interface FeatureRequest {
   permissionMode?: PermissionMode;
 }
 
-/** A feature just made or restarted, with the prompt its agent was given (to copy). */
-export interface FeatureStart {
-  feature: FeatureSummary;
+/** A workspace just made or restarted, with the prompt its agent was given (to copy). */
+export interface WorkspaceStart {
+  workspace: WorkspaceSummary;
   prompt: string;
 }
 
@@ -203,7 +203,7 @@ export interface ThreadQuestion {
 }
 
 /**
- * One entry of a feature's thread (V18c), as CPR's hooks recorded it from its agent's sessions:
+ * One entry of a workspace's thread (V18c), as CPR's hooks recorded it from its agent's sessions:
  * a session's start and end, what it was given (CPR's prompt, then the person's messages), what
  * it reported at the end of a turn, what it waited on, and Claude Code's notices.
  */
@@ -222,27 +222,27 @@ export type ThreadEntry = {
   | { kind: 'notice'; type: string; message?: string }
 );
 
-/** `GET /api/features/thread?branch=`. */
-export interface FeatureThread {
+/** `GET /api/workspaces/thread?branch=`. */
+export interface WorkspaceThread {
   /** The last entries, oldest first. */
   entries: ThreadEntry[];
-  /** The agent was started with CPR's hooks: its messages are recorded (features since V18c). */
+  /** The agent was started with CPR's hooks: its messages are recorded (workspaces since V18c). */
   recorded: boolean;
   /** The branch review's last verdict and its text for the agent (V16's "Copy for the agent"). */
   verdict?: { at: string; event: VerdictEvent; head: string; text: string };
 }
 
-/** `POST /api/features/reply`. */
-export interface FeatureReply {
+/** `POST /api/workspaces/reply`. */
+export interface WorkspaceReply {
   branch: string;
   text: string;
   /** Stop the agent's turn to send (it works, or waits on a prompt). */
   stop?: boolean;
 }
 
-/** A message sent to a feature's agent. */
-export interface FeatureReplied {
-  feature: FeatureSummary;
+/** A message sent to a workspace's agent. */
+export interface WorkspaceReplied {
+  workspace: WorkspaceSummary;
   /** Claude Code started a copy of the session instead of continuing it: the copy's short ID. */
   copy?: string;
 }

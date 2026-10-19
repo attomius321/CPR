@@ -1,13 +1,13 @@
-// Features started from the commits page (V18): pure helpers for the start dialog and the
+// Workspaces started from the commits page (V18): pure helpers for the start dialog and the
 // line the page shows after Start.
 import type {
   AgentKind,
   BranchReviewList,
   BranchReviewSummary,
-  FeatureAgentState,
-  FeatureStart,
-  FeatureSummary,
-  FeatureThread,
+  WorkspaceAgentState,
+  WorkspaceStart,
+  WorkspaceSummary,
+  WorkspaceThread,
   PermissionMode,
   ThreadEntry,
 } from '@cpr/core';
@@ -20,10 +20,10 @@ const shellWord = (path: string) =>
   /^[\w./-]+$/.test(path) ? path : `'${path.replaceAll("'", "'\\''")}'`;
 
 /**
- * The command that continues a feature's agent session in a terminal (Talk): `claude attach
+ * The command that continues a workspace's agent session in a terminal (Talk): `claude attach
  * <id>`, or `codex resume <thread> -C <worktree>` (V20a, decision 133); null without a session.
  */
-export function talkCommand(agent: FeatureAgentState, worktree: string): string | null {
+export function talkCommand(agent: WorkspaceAgentState, worktree: string): string | null {
   if (!agent.id || !agent.kind) return null;
   return agent.kind === 'codex'
     ? `codex resume ${agent.id} -C ${shellWord(worktree)}`
@@ -86,43 +86,43 @@ export function branchProblem(name: string, taken: ReadonlySet<string>): string 
   return taken.has(name) ? `a branch ${name} exists` : null;
 }
 
-/** What the page says once a feature is made, and the prompt to copy when no agent took it. */
-export function startedNotice({ feature, prompt }: FeatureStart): {
+/** What the page says once a workspace is made, and the prompt to copy when no agent took it. */
+export function startedNotice({ workspace, prompt }: WorkspaceStart): {
   text: string;
   warning?: string;
   copy?: string;
 } {
-  const where = feature.worktree.path;
-  const { agent } = feature;
+  const where = workspace.worktree.path;
+  const { agent } = workspace;
   if (agent.state === 'no-agent') {
     return {
-      text: `Made ${feature.branch} in ${where}. No agent was found to start: give it the prompt.`,
+      text: `Made ${workspace.branch} in ${where}. No agent was found to start: give it the prompt.`,
       copy: prompt,
     };
   }
   const name = AGENT_NAMES[agent.kind ?? 'claude'];
   if (agent.state === 'not-started') {
     return {
-      text: `Made ${feature.branch} in ${where}, but ${name} did not start.`,
+      text: `Made ${workspace.branch} in ${where}, but ${name} did not start.`,
       ...(agent.error ? { warning: agent.error } : {}),
       copy: prompt,
     };
   }
-  return { text: `Started ${feature.branch}: ${name} is working in ${where}.` };
+  return { text: `Started ${workspace.branch}: ${name} is working in ${where}.` };
 }
 
-/** What a feature needs from the person (V18b): the features view's groups. */
-export type FeatureGroup = 'needs-you' | 'working' | 'done';
+/** What a workspace needs from the person (V18b): the workspaces view's groups. */
+export type WorkspaceGroup = 'needs-you' | 'working' | 'done';
 
-/** A feature's mark on its branch's badges and in the features view. */
+/** A workspace's mark on its branch's badges and in the workspaces view. */
 export interface AgentChip {
   mark: string;
   tone: 'working' | 'waiting' | 'ready' | 'failed' | 'idle' | 'done';
   title: string;
 }
 
-export interface FeatureNext {
-  group: FeatureGroup;
+export interface WorkspaceNext {
+  group: WorkspaceGroup;
   /** What is next, in a few words: "Plan ready: read it and answer". */
   text: string;
   chip: AgentChip;
@@ -137,18 +137,21 @@ const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip =
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
- * What a feature needs next: merged, it is done; while its agent works, nothing; else what the
+ * What a workspace needs next: merged, it is done; while its agent works, nothing; else what the
  * agent waits for, or — once it has commits — what its review says.
  */
-export function featureNext(feature: FeatureSummary, review?: BranchReviewSummary): FeatureNext {
-  const needs = (text: string, c: AgentChip['mark'], tone: AgentChip['tone']): FeatureNext => ({
+export function workspaceNext(
+  workspace: WorkspaceSummary,
+  review?: BranchReviewSummary,
+): WorkspaceNext {
+  const needs = (text: string, c: AgentChip['mark'], tone: AgentChip['tone']): WorkspaceNext => ({
     group: 'needs-you',
     text,
     chip: chip(c, tone, text),
   });
-  if (feature.tip === null) return needs('Its branch is gone', '!', 'failed');
-  if (feature.merged) return { group: 'done', text: 'Merged', chip: chip('✓', 'done', 'Merged') };
-  const { agent } = feature;
+  if (workspace.tip === null) return needs('Its branch is gone', '!', 'failed');
+  if (workspace.merged) return { group: 'done', text: 'Merged', chip: chip('✓', 'done', 'Merged') };
+  const { agent } = workspace;
   switch (agent.state) {
     case 'working':
       return { group: 'working', text: 'Working', chip: chip('⚙', 'working', 'Working') };
@@ -170,7 +173,7 @@ export function featureNext(feature: FeatureSummary, review?: BranchReviewSummar
     default:
       break;
   }
-  if (feature.ahead === 0) {
+  if (workspace.ahead === 0) {
     const text =
       agent.state === 'stopped'
         ? 'Stopped'
@@ -180,10 +183,10 @@ export function featureNext(feature: FeatureSummary, review?: BranchReviewSummar
     return needs(text, '·', 'idle');
   }
   // Commits to look at: the review says what is next.
-  const since = review?.refs.find((r) => r.name === feature.branch)?.since ?? 0;
+  const since = review?.refs.find((r) => r.name === workspace.branch)?.since ?? 0;
   if (since > 0)
     return needs(`${plural(since, 'commit')} since your review: review again`, '●', 'ready');
-  const verdict = review?.verdict?.head === feature.tip ? review.verdict : undefined;
+  const verdict = review?.verdict?.head === workspace.tip ? review.verdict : undefined;
   if (verdict?.event === 'approve')
     return needs('Approved: ask your agent to merge it', '●', 'ready');
   if (verdict?.event === 'request-changes') {
@@ -193,84 +196,87 @@ export function featureNext(feature: FeatureSummary, review?: BranchReviewSummar
   return needs(review ? 'Review in progress' : 'Ready for review', '●', 'ready');
 }
 
-export interface FeatureRow {
-  feature: FeatureSummary;
-  next: FeatureNext;
+export interface WorkspaceRow {
+  workspace: WorkspaceSummary;
+  next: WorkspaceNext;
 }
 
-/** The features view's groups, each in the order the features were started. */
-export function featureGroups(
-  features: readonly FeatureSummary[],
+/** The workspaces view's groups, each in the order the workspaces were started. */
+export function workspaceGroups(
+  workspaces: readonly WorkspaceSummary[],
   reviews: BranchReviewList | null,
-): { needsYou: FeatureRow[]; working: FeatureRow[]; done: FeatureRow[] } {
+): { needsYou: WorkspaceRow[]; working: WorkspaceRow[]; done: WorkspaceRow[] } {
   const groups = {
-    needsYou: [] as FeatureRow[],
-    working: [] as FeatureRow[],
-    done: [] as FeatureRow[],
+    needsYou: [] as WorkspaceRow[],
+    working: [] as WorkspaceRow[],
+    done: [] as WorkspaceRow[],
   };
-  for (const feature of features) {
-    const review = reviews?.reviews.find((r) => r.branch === feature.branch);
-    const next = featureNext(feature, review);
+  for (const workspace of workspaces) {
+    const review = reviews?.reviews.find((r) => r.branch === workspace.branch);
+    const next = workspaceNext(workspace, review);
     const key = next.group === 'needs-you' ? 'needsYou' : next.group;
-    groups[key].push({ feature, next });
+    groups[key].push({ workspace, next });
   }
   return groups;
 }
 
 /** A workspace's name: its title (V24), else its brief's first line, else its branch. */
-export function featureName(feature: FeatureSummary): string {
-  const first = feature.brief.trim().split('\n')[0]?.trim();
-  return feature.title ?? (first || feature.branch);
+export function workspaceName(workspace: WorkspaceSummary): string {
+  const first = workspace.brief.trim().split('\n')[0]?.trim();
+  return workspace.title ?? (first || workspace.branch);
 }
 
-/** A link to a feature's row in the features view. */
-export const featureHref = (branch: string) => `/?branch=${encodeURIComponent(branch)}`;
+/** A link to a workspace's row in the workspaces view. */
+export const workspaceHref = (branch: string) => `/?branch=${encodeURIComponent(branch)}`;
 
 /**
- * Each open feature's mark by ref name — its branch, and that branch on each remote once pushed
+ * Each open workspace's mark by ref name — its branch, and that branch on each remote once pushed
  * (`remotes`: the remote branches and the branch each is) — titled with the workspace's name and
- * what is next, linking to the feature. A branch that is gone has none.
+ * what is next, linking to the workspace. A branch that is gone has none.
  */
-export function featureChips(
-  features: readonly FeatureSummary[],
+export function workspaceChips(
+  workspaces: readonly WorkspaceSummary[],
   reviews: BranchReviewList | null,
   remotes: readonly { name: string; branch: string }[],
 ): Map<string, AgentChip & { href: string }> {
   const chips = new Map<string, AgentChip & { href: string }>();
-  for (const { feature, next } of Object.values(featureGroups(features, reviews)).flat()) {
-    if (feature.tip === null) continue;
+  for (const { workspace, next } of Object.values(workspaceGroups(workspaces, reviews)).flat()) {
+    if (workspace.tip === null) continue;
     const value = {
       ...next.chip,
-      title: `Workspace: ${featureName(feature)} — ${next.text}`,
-      href: featureHref(feature.branch),
+      title: `Workspace: ${workspaceName(workspace)} — ${next.text}`,
+      href: workspaceHref(workspace.branch),
     };
-    chips.set(feature.branch, value);
+    chips.set(workspace.branch, value);
     for (const remote of remotes)
-      if (remote.branch === feature.branch) chips.set(remote.name, value);
+      if (remote.branch === workspace.branch) chips.set(remote.name, value);
   }
   return chips;
 }
 
-/** A feature's branch, listed first in the branches panel, and when its agent last acted. */
+/** A workspace's branch, listed first in the branches panel, and when its agent last acted. */
 export interface FirstBranch {
   branch: string;
   at: string;
 }
 
 /**
- * The branches the branches panel lists first (V23): the open features that need the person,
- * then those whose agent works, each by its agent's last action (else when the feature was made),
- * newest first. Merged features and gone branches need nothing: they are left out.
+ * The branches the branches panel lists first (V23): the open workspaces that need the person,
+ * then those whose agent works, each by its agent's last action (else when the workspace was made),
+ * newest first. Merged workspaces and gone branches need nothing: they are left out.
  */
-export function featuresFirst(
-  features: readonly FeatureSummary[],
+export function workspacesFirst(
+  workspaces: readonly WorkspaceSummary[],
   reviews: BranchReviewList | null,
 ): FirstBranch[] {
-  const { needsYou, working } = featureGroups(features, reviews);
-  const newest = (rows: FeatureRow[]) =>
+  const { needsYou, working } = workspaceGroups(workspaces, reviews);
+  const newest = (rows: WorkspaceRow[]) =>
     rows
-      .filter(({ feature }) => feature.tip !== null)
-      .map(({ feature }) => ({ branch: feature.branch, at: feature.lastAction ?? feature.created }))
+      .filter(({ workspace }) => workspace.tip !== null)
+      .map(({ workspace }) => ({
+        branch: workspace.branch,
+        at: workspace.lastAction ?? workspace.created,
+      }))
       .sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || a.branch.localeCompare(b.branch));
   return [...newest(needsYou), ...newest(working)];
 }
@@ -284,7 +290,7 @@ export function shortAge(iso: string, now: number): string {
   return hours < 24 ? `${hours}h` : `${Math.floor(hours / 24)}d`;
 }
 
-/** One line of a feature's thread as its panel shows it (V18c). */
+/** One line of a workspace's thread as its panel shows it (V18c). */
 export interface ThreadItem {
   /** CPR's prompt, the agent's report, the person's message, what it waits on, or a note. */
   who: 'cpr' | 'agent' | 'you' | 'waits' | 'line';
@@ -365,7 +371,7 @@ export function threadItems(entries: readonly ThreadEntry[], worktree?: string):
  * How a message reaches the agent: sent (its turn ended, or it stopped), sent once its turn is
  * stopped (it works, or waits on a prompt), or not at all (no session to continue).
  */
-export function replyMode(agent: FeatureAgentState): 'send' | 'stop-and-send' | 'none' {
+export function replyMode(agent: WorkspaceAgentState): 'send' | 'stop-and-send' | 'none' {
   switch (agent.state) {
     case 'working':
       return 'stop-and-send';
@@ -383,7 +389,7 @@ export function replyMode(agent: FeatureAgentState): 'send' | 'stop-and-send' | 
 }
 
 /** The review's last verdict, when it is newer than the last message the agent got. */
-export function verdictToSend(thread: FeatureThread | null): FeatureThread['verdict'] | null {
+export function verdictToSend(thread: WorkspaceThread | null): WorkspaceThread['verdict'] | null {
   const verdict = thread?.verdict;
   if (!verdict) return null;
   const last = thread.entries.findLast((e) => e.kind === 'prompt');

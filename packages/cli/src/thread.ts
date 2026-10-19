@@ -1,4 +1,4 @@
-// A feature's thread (V18c): what CPR's hooks record of its agent's sessions, one JSON line per
+// A workspace's thread (V18c): what CPR's hooks record of its agent's sessions, one JSON line per
 // entry in `cpr/threads/<branch>.jsonl`. The hook runs once per event in the agent's process
 // tree (`agent-hook.ts`), so this module uses Node's own modules only: loading `@cpr/core` would
 // make each event cost ~290 ms instead of ~25 ms.
@@ -13,7 +13,7 @@ export const MAX_INPUT = 4096;
 /** Entries a thread read answers, the newest. */
 export const THREAD_LIMIT = 200;
 
-/** A branch's file under `dir`, its slashes as folders (as features and reviews are kept). */
+/** A branch's file under `dir`, its slashes as folders (as workspaces and reviews are kept). */
 function branchFile(dir: string, branch: string, extension: string): string | null {
   const parts = branch.split('/');
   if (parts.some((p) => p === '' || p === '.' || p === '..')) return null;
@@ -21,7 +21,7 @@ function branchFile(dir: string, branch: string, extension: string): string | nu
   return join(dir, ...parts, `${last}${extension}`);
 }
 
-/** Where a feature's thread is kept: `<cpr>/threads/<branch>.jsonl`. */
+/** Where a workspace's thread is kept: `<cpr>/threads/<branch>.jsonl`. */
 export function threadPath(cpr: string, branch: string): string {
   const path = branchFile(join(cpr, 'threads'), branch, '.jsonl');
   if (!path) throw new Error(`not a branch name: ${branch}`);
@@ -111,8 +111,8 @@ const real = (path: string) => {
   }
 };
 
-/** The branch of the feature whose worktree holds `cwd`, from the records in `<cpr>/features/`. */
-async function featureAt(cpr: string, cwd: string): Promise<string | null> {
+/** The branch of the workspace whose worktree holds `cwd`, from the records in `<cpr>/features/`. */
+async function workspaceAt(cpr: string, cwd: string): Promise<string | null> {
   const dir = join(cpr, 'features');
   const files = await readdir(dir, { recursive: true }).catch(() => [] as string[]);
   const here = real(cwd);
@@ -127,7 +127,7 @@ async function featureAt(cpr: string, cwd: string): Promise<string | null> {
     const branch = text(record.branch);
     const worktree = text(record.worktree);
     if (!branch || !worktree) continue;
-    // The file must be the branch's own: a copied or renamed record is not that feature.
+    // The file must be the branch's own: a copied or renamed record is not that workspace.
     const own = branchFile(dir, branch, '.json');
     if (!own || relative(dir, own) !== file) continue;
     const folder = real(worktree);
@@ -137,14 +137,14 @@ async function featureAt(cpr: string, cwd: string): Promise<string | null> {
 }
 
 /**
- * Records one hook's input in the thread of the feature whose worktree holds its `cwd`; the
- * thread's path, or null when there is nothing to record or no feature there.
+ * Records one hook's input in the thread of the workspace whose worktree holds its `cwd`; the
+ * thread's path, or null when there is nothing to record or no workspace there.
  */
 export async function recordEvent(cpr: string, input: unknown, at: string): Promise<string | null> {
   const entry = threadEntry(input, at);
   const cwd = text((input as { cwd?: unknown } | null)?.cwd);
   if (!entry || !cwd) return null;
-  const branch = await featureAt(cpr, cwd);
+  const branch = await workspaceAt(cpr, cwd);
   if (!branch) return null;
   const path = threadPath(cpr, branch);
   await mkdir(dirname(path), { recursive: true });
@@ -152,7 +152,7 @@ export async function recordEvent(cpr: string, input: unknown, at: string): Prom
   return path;
 }
 
-/** Appends an entry CPR writes itself to a feature's thread: a Codex run it stopped (V20a). */
+/** Appends an entry CPR writes itself to a workspace's thread: a Codex run it stopped (V20a). */
 export async function appendThread(cpr: string, branch: string, entry: ThreadEntry): Promise<void> {
   const path = threadPath(cpr, branch);
   await mkdir(dirname(path), { recursive: true });
@@ -181,7 +181,7 @@ function isEntry(value: unknown): value is ThreadEntry {
 }
 
 /**
- * A feature's thread, the last `limit` entries, oldest first; broken lines are skipped, and a
+ * A workspace's thread, the last `limit` entries, oldest first; broken lines are skipped, and a
  * question seen by both hooks (`PreToolUse`, then `PermissionRequest` when nothing answered it)
  * is one entry.
  */
@@ -194,13 +194,13 @@ export async function readThread(
   return parseThread(content).slice(-limit);
 }
 
-/** How much of a thread's end the features list reads: 40 of the longest entries seen (6 KB). */
+/** How much of a thread's end the workspaces list reads: 40 of the longest entries seen (6 KB). */
 export const THREAD_END = 256 * 1024;
 
 /**
  * A thread's last entries, from its file's last `bytes`, the line cut there dropped: what the
- * features list needs (the newest report, prompt and question) at a cost that does not grow with
- * the thread (V23: reading 5,000 entries whole took 9.6 ms, for each feature on every read).
+ * workspaces list needs (the newest report, prompt and question) at a cost that does not grow with
+ * the thread (V23: reading 5,000 entries whole took 9.6 ms, for each workspace on every read).
  */
 export async function readThreadEnd(
   cpr: string,

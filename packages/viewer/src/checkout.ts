@@ -35,7 +35,7 @@ const DETACHED = 'commits made there belong to no branch until you create one.';
  */
 export function checkoutChoices(commit: Commit, refs: RefList, head: Head): CheckoutChoice[] {
   const at = shortSha(commit.sha);
-  // Checked out here, or in another worktree (a feature's, V18b): git refuses both.
+  // Checked out here, or in another worktree (a workspace's, V18b): git refuses both.
   const current = (branch: string) => {
     if (branch === head.branch) return { disabled: 'checked out' };
     const elsewhere = refs.branches.find((b) => b.name === branch)?.worktree;

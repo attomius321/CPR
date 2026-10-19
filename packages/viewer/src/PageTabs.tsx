@@ -1,16 +1,16 @@
 import { useEffect, useMemo } from 'react';
-import { featureGroups } from './features.js';
-import { HISTORY_PAGE, WORKSPACES_PAGE } from './pages.js';
-import { useFeatures } from './useFeatures.js';
+import { workspaceGroups } from './workspaces.js';
+import { HISTORY_PAGE, WORKSPACES_PAGE, type Page } from './pages.js';
+import { useWorkspaces } from './useWorkspaces.js';
 
 /**
  * Workspaces · History (V25: Workspaces first), in the bar of both pages; the Workspaces tab
  * counts the workspaces that need the person. `w` and `h` go to each.
  */
-export function PageTabs({ active }: { active: 'commits' | 'features' }) {
-  const { list, reviews } = useFeatures();
+export function PageTabs({ active }: { active: Page }) {
+  const { list, reviews } = useWorkspaces();
   const count = useMemo(
-    () => (list ? featureGroups(list.features, reviews).needsYou.length : 0),
+    () => (list ? workspaceGroups(list.workspaces, reviews).needsYou.length : 0),
     [list, reviews],
   );
   useEffect(() => {
@@ -25,8 +25,8 @@ export function PageTabs({ active }: { active: 'commits' | 'features' }) {
         return;
       // A dialog or a menu takes its own keys (the agent's terminal is a text area).
       if (document.querySelector('[aria-modal="true"], [role="menu"]')) return;
-      if (event.key === 'w' && active !== 'features') window.location.assign(WORKSPACES_PAGE);
-      else if (event.key === 'h' && active !== 'commits') window.location.assign(HISTORY_PAGE);
+      if (event.key === 'w' && active !== 'workspaces') window.location.assign(WORKSPACES_PAGE);
+      else if (event.key === 'h' && active !== 'history') window.location.assign(HISTORY_PAGE);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -36,7 +36,7 @@ export function PageTabs({ active }: { active: 'commits' | 'features' }) {
       <a
         href={WORKSPACES_PAGE}
         title="Workspaces (w)"
-        aria-current={active === 'features' ? 'page' : undefined}
+        aria-current={active === 'workspaces' ? 'page' : undefined}
       >
         Workspaces
         {count > 0 && (
@@ -48,7 +48,7 @@ export function PageTabs({ active }: { active: 'commits' | 'features' }) {
       <a
         href={HISTORY_PAGE}
         title="History (h)"
-        aria-current={active === 'commits' ? 'page' : undefined}
+        aria-current={active === 'history' ? 'page' : undefined}
       >
         History
       </a>

@@ -484,7 +484,7 @@ export interface FakeClaudeCall {
   cwd: string;
 }
 
-export interface RunningFeatures extends Running {
+export interface RunningWorkspaces extends Running {
   repo: string;
   /** `main`'s commits, oldest first: the fixture's base and head. */
   shas: string[];
@@ -494,17 +494,17 @@ export interface RunningFeatures extends Running {
   stops(): string[];
   /** From now on the fake refuses to start, with Claude Code's trust message. */
   distrust(): void;
-  /** A feature's worktree folder. */
+  /** A workspace's worktree folder. */
   folder(branch: string): string;
-  /** Sets what the fake says of the newest session in a feature's worktree. */
+  /** Sets what the fake says of the newest session in a workspace's worktree. */
   session(branch: string, patch: { state: string; waitingFor?: string }): void;
   /**
-   * The newest session in a feature's worktree is interrupted (Esc): as the real one did in the
+   * The newest session in a workspace's worktree is interrupted (Esc): as the real one did in the
    * V21 spike, no hook runs and it reads `working` and idle until its next turn ends.
    */
   interrupt(branch: string): void;
   /**
-   * The newest session in a feature's worktree ends its turn with `text` (V18c): its `Stop`
+   * The newest session in a workspace's worktree ends its turn with `text` (V18c): its `Stop`
    * hook runs, and it reads `blocked` and idle, as Claude Code reads a finished plan.
    */
   report(branch: string, text: string): void;
@@ -515,14 +515,14 @@ export interface RunningFeatures extends Running {
   /** The sessions attached to (`claude attach`, V21), and those whose client was hung up. */
   attaches(): string[];
   hangups(): string[];
-  /** Commits a file in a feature's worktree (as its agent would); its SHA. */
+  /** Commits a file in a workspace's worktree (as its agent would); its SHA. */
   commit(branch: string, file: string, text: string, subject: string): string;
   /** What the fake VS Code was asked to open, newest last. */
   opened(): string[][];
   /** What the fake Codex was asked to run (V20a): `exec` and `exec resume`, with their folders. */
   codexCalls(): FakeClaudeCall[];
   /**
-   * Ends the fake Codex's turn in a feature's worktree: its last message `text`, or a failed
+   * Ends the fake Codex's turn in a workspace's worktree: its last message `text`, or a failed
    * turn in Codex's words (`fail`).
    */
   codexTurn(branch: string, turn: { text: string } | { fail: string }): void;
@@ -731,14 +731,14 @@ const wait = setInterval(() => {
  * branch), and a fake Claude Code as `CPR_CLAUDE` (`agent: false`: one that is not installed;
  * `terminal: false`: no terminals, V21); a fake Codex as `CPR_CODEX` with `codex: true` (V20a),
  * else none, whatever is installed.
- * Served by `cpr view` without revisions; features' worktrees land beside the repository and go
+ * Served by `cpr view` without revisions; workspaces' worktrees land beside the repository and go
  * with it.
  */
-export async function serveFeatures({
+export async function serveWorkspaces({
   agent = true,
   terminal = true,
   codex = false,
-} = {}): Promise<RunningFeatures> {
+} = {}): Promise<RunningWorkspaces> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', '-B', 'main');
   git(repo, 'branch', '-q', '-D', 'feature');
@@ -780,7 +780,7 @@ export async function serveFeatures({
     status?: string;
     waitingFor?: string;
   }
-  /** The newest session in a feature's worktree, changed by `change` and saved. */
+  /** The newest session in a workspace's worktree, changed by `change` and saved. */
   const newest = (branch: string, change: (session: FakeSession) => void): FakeSession => {
     const file = join(fake, 'sessions.json');
     const sessions = JSON.parse(readFileSync(file, 'utf8')) as FakeSession[];

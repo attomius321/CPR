@@ -133,7 +133,7 @@ let lexer: Lexer | null = null;
 let loading: Promise<Lexer> | null = null;
 
 /**
- * marked's lexer, loaded on first use into its own chunk (the features view's first paint does
+ * marked's lexer, loaded on first use into its own chunk (the workspaces view's first paint does
  * not wait for it); null until then, when a report shows as plain text.
  */
 export function useMarkdown(): Lexer | null {

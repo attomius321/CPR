@@ -12,7 +12,7 @@ import type {
   CheckoutResult,
   CheckoutTarget,
   Commit,
-  FeatureStart,
+  WorkspaceStart,
   HistoryPage,
   HistoryRefs,
   HistoryScope,
@@ -25,15 +25,15 @@ import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js'
 import { reviewChoices, reviewMarks, type ReviewChoice, type ReviewMark } from './branchReviews.js';
 import { CheckoutDialog } from './CheckoutDialog.js';
 import {
-  featureChips,
-  featureHref,
-  featuresFirst,
+  workspaceChips,
+  workspaceHref,
+  workspacesFirst,
   startedNotice,
   type AgentChip,
-} from './features.js';
-import { FeatureMark } from './FeatureMark.js';
-import { useFeatureStarter } from './FeatureStarter.js';
-import { useFeatures } from './useFeatures.js';
+} from './workspaces.js';
+import { WorkspaceMark } from './WorkspaceMark.js';
+import { useWorkspaceStarter } from './WorkspaceStarter.js';
+import { useWorkspaces } from './useWorkspaces.js';
 import { RowMenu, type RowMenuItem } from './RowMenu.js';
 import {
   BLOCK,
@@ -180,7 +180,7 @@ export function BackLink() {
 const scopeOfUrl = (): HistoryScope =>
   new URLSearchParams(window.location.search).get('scope') === 'current' ? 'current' : 'all';
 
-/** `?branch=<name>` (V18b: a feature's branch): its tip, once listed. */
+/** `?branch=<name>` (V18b: a workspace's branch): its tip, once listed. */
 const branchOfUrl = (): string | null => new URLSearchParams(window.location.search).get('branch');
 
 /** The commit the cursor was on before listing anew, and how far down the view it was. */
@@ -189,11 +189,11 @@ interface Keep {
   offset: number;
 }
 
-/** What the page says after a checkout or a feature's start, above the rows. */
+/** What the page says after a checkout or a workspace's start, above the rows. */
 interface Notice {
   text: string;
   warning?: string;
-  /** Text the person may copy from it: a feature's prompt when no agent took it (V18). */
+  /** Text the person may copy from it: a workspace's prompt when no agent took it (V18). */
   copy?: string;
 }
 
@@ -204,7 +204,7 @@ interface Notice {
  * diff; one picked is compared with its parent. A row's menu (right-click, "⋯", c or r) checks
  * out its branches, tags or the commit (V11), and reviews its branches (V15).
  */
-export function CommitsPage() {
+export function HistoryPage() {
   const [scope, setScope] = useState(scopeOfUrl);
   // Listing anew (after a checkout, or a change made elsewhere) starts a new generation.
   const [generation, setGeneration] = useState(0);
@@ -241,7 +241,7 @@ export function CommitsPage() {
   const arrived = useCallback(() => setGoTo(null), []);
   const relist = useCallback((next: Notice | null, branch?: string, kept?: Keep) => {
     setNotice(next);
-    // A new branch (a feature's): its tip once listed.
+    // A new branch (a workspace's): its tip once listed.
     if (branch) setGoTo(branch);
     setKeep(kept ?? null);
     setGeneration((g) => g + 1);
@@ -292,7 +292,7 @@ function History({
     toggled: ReadonlySet<string>;
     onToggle: (key: string) => void;
   };
-  /** A branch whose tip to go to once listed (from "This branch", `?branch=`, a new feature). */
+  /** A branch whose tip to go to once listed (from "This branch", `?branch=`, a new workspace). */
   goTo: string | null;
   /** Listed anew while reading: the commit to keep the cursor on, where it was in the view. */
   keep: Keep | null;
@@ -566,29 +566,29 @@ function History({
   );
   const closeMenu = useCallback(() => setMenu(null), []);
 
-  // Starting a feature (V18): the dialog, then the page listed anew on its branch.
+  // Starting a workspace (V18): the dialog, then the page listed anew on its branch.
   const started = useCallback(
-    (start: FeatureStart) => onRelist(startedNotice(start), start.feature.branch),
+    (start: WorkspaceStart) => onRelist(startedNotice(start), start.workspace.branch),
     [onRelist],
   );
-  const starter = useFeatureStarter(started, setError);
-  const openFeature = starter.open;
+  const starter = useWorkspaceStarter(started, setError);
+  const openWorkspace = starter.open;
 
-  // Each feature's mark on its branch's badges, a link to it (V18b); its agent's commits listed
+  // Each workspace's mark on its branch's badges, a link to it (V18b); its agent's commits listed
   // as they come, the cursor kept on its commit.
-  const { list: features, reviews: featureReviews } = useFeatures();
+  const { list: workspaces, reviews: workspaceReviews } = useWorkspaces();
   const chips = useMemo(
-    () => featureChips(features?.features ?? [], featureReviews, refs?.remotes ?? []),
-    [features, featureReviews, refs],
+    () => workspaceChips(workspaces?.workspaces ?? [], workspaceReviews, refs?.remotes ?? []),
+    [workspaces, workspaceReviews, refs],
   );
-  // The features that need the person, first in the branches panel (V23).
+  // The workspaces that need the person, first in the branches panel (V23).
   const firstBranches = useMemo(
-    () => featuresFirst(features?.features ?? [], featureReviews),
-    [features, featureReviews],
+    () => workspacesFirst(workspaces?.workspaces ?? [], workspaceReviews),
+    [workspaces, workspaceReviews],
   );
   useEffect(() => {
-    if (!refs || !features) return;
-    const moved = features.features.some((f) => {
+    if (!refs || !workspaces) return;
+    const moved = workspaces.workspaces.some((f) => {
       const listed = refs.branches.find((b) => b.name === f.branch);
       return f.tip !== null && listed !== undefined && listed.sha !== f.tip;
     });
@@ -597,18 +597,18 @@ function History({
     const sha = details.current.get(cursor)?.sha;
     const top = (list.current?.offsetTop ?? 0) + cursor * ROW_HEIGHT;
     onRelist(null, undefined, sha && box ? { sha, offset: top - box.scrollTop } : undefined);
-    // Only a feature's tip moving lists anew; the cursor is read as it is then.
-  }, [features, refs, onRelist]);
+    // Only a workspace's tip moving lists anew; the cursor is read as it is then.
+  }, [workspaces, refs, onRelist]);
 
-  /** The feature whose branch's tip is this commit (V18b), if any. */
-  const featureOn = (sha: string) =>
-    (features?.features ?? [])
+  /** The workspace whose branch's tip is this commit (V18b), if any. */
+  const workspaceOn = (sha: string) =>
+    (workspaces?.workspaces ?? [])
       .filter((f) => f.tip === sha)
       .slice(0, 1)
       .map((f) => f.branch);
 
   /**
-   * "Check out ▸" (V14), "Review ▸" when the row has branches (V15), and "Start a feature here"
+   * "Check out ▸" (V14), "Review ▸" when the row has branches (V15), and "Start a workspace here"
    * (V18).
    */
   const menuItems = ({
@@ -646,15 +646,15 @@ function History({
             },
           },
         ]),
-    ...featureOn(sha).map((branch) => ({
+    ...workspaceOn(sha).map((branch) => ({
       label: 'Open its workspace',
-      onSelect: () => window.location.assign(featureHref(branch)),
+      onSelect: () => window.location.assign(workspaceHref(branch)),
     })),
     {
       label: 'Start a workspace here',
       onSelect: () => {
         setMenu(null);
-        openFeature(sha);
+        openWorkspace(sha);
       },
     },
   ];
@@ -749,7 +749,7 @@ function History({
         // `r` reviews: straight to the row's branches.
         if (box) openMenu(cursor, box.left + 48, box.bottom, 'review');
       } else if (event.key === 'n') {
-        openFeature();
+        openWorkspace();
       } else if (event.key === '/') {
         // Finds a branch: the panel's filter (shown first under 900 px).
         event.preventDefault();
@@ -782,7 +782,7 @@ function History({
     menu,
     confirm,
     starter.isOpen,
-    openFeature,
+    openWorkspace,
     openMenu,
     comparing,
     onComparing,
@@ -874,9 +874,9 @@ function History({
               <span className="commits-actions">
                 <button
                   type="button"
-                  className="start-feature"
+                  className="start-workspace"
                   title="Start a workspace: a branch, its worktree and an agent (n)"
-                  onClick={() => openFeature()}
+                  onClick={() => openWorkspace()}
                 >
                   Start a workspace
                   <kbd aria-hidden="true">n</kbd>
@@ -1137,7 +1137,7 @@ function CommitRow({
   branch: string | null;
   /** Each reviewed branch's mark, by ref name (V15, V16). */
   reviewed: ReadonlyMap<string, ReviewMark>;
-  /** Each feature's mark by ref name, a link to the feature (V18b). */
+  /** Each workspace's mark by ref name, a link to the workspace (V18b). */
   agents: ReadonlyMap<string, AgentChip & { href: string }>;
   /** The reviewed branches this commit was added to since their review. */
   added?: string[];
@@ -1192,7 +1192,7 @@ function CommitRow({
           // A badge cut short (a narrow window, a long name) is named in full on hover.
           title={badge.title ?? badge.label}
         >
-          {badge.agent && <FeatureMark chip={badge.agent} />}
+          {badge.agent && <WorkspaceMark chip={badge.agent} />}
           {badge.label}
           {badge.review && (
             <span

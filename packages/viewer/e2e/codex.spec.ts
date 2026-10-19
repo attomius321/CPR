@@ -2,11 +2,11 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { serveFeatures, type RunningFeatures } from './cpr.js';
+import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
 
 // Codex as a workspace's agent (V20a): picked in the start dialog, run by CPR's runner (the
 // real one) on a fake Codex, its thread recorded from its events, replies by `exec resume`.
-let cpr: RunningFeatures;
+let cpr: RunningWorkspaces;
 const errors: string[] = [];
 
 test.beforeEach(({ page }) => {
@@ -24,8 +24,8 @@ const BRANCH = 'feature/add-a-half-function';
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Start a workspace' });
 const panel = (page: Page, branch = BRANCH) =>
   page.getByRole('region', { name: `Workspace ${branch}` });
-const featureRow = (page: Page, branch = BRANCH) =>
-  page.locator(`.feature-row[data-branch="${branch}"]`);
+const workspaceRow = (page: Page, branch = BRANCH) =>
+  page.locator(`.workspace-row[data-branch="${branch}"]`);
 const box = (page: Page) => panel(page).getByRole('textbox', { name: 'Reply to the agent' });
 /** Opens the start dialog and fills a Feature's title and goal. */
 const openDialog = async (page: Page) => {
@@ -54,7 +54,7 @@ const roots = () => {
 test('a workspace with Codex: picked in the dialog, its plan in the thread, a reply that resumes it', async ({
   page,
 }) => {
-  cpr = await serveFeatures({ codex: true });
+  cpr = await serveWorkspaces({ codex: true });
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto(`${cpr.url}history`);
   await openDialog(page);
@@ -95,7 +95,7 @@ test('a workspace with Codex: picked in the dialog, its plan in the thread, a re
   await page.goto(`${cpr.url}?branch=${encodeURIComponent(BRANCH)}`);
   const here = panel(page);
   await expect(here.getByText("CPR's prompt")).toBeVisible(POLL);
-  await expect(featureRow(page)).toContainText('Working', POLL);
+  await expect(workspaceRow(page)).toContainText('Working', POLL);
   await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveCount(0);
 
   // The turn ends with a plan: drawn in the thread, "plan ready".
@@ -104,7 +104,7 @@ test('a workspace with Codex: picked in the dialog, its plan in the thread, a re
     'Add half(a) to src/half.ts',
     POLL,
   );
-  await expect(featureRow(page)).toContainText('Plan ready: read it and answer', POLL);
+  await expect(workspaceRow(page)).toContainText('Plan ready: read it and answer', POLL);
   await here.getByRole('button', { name: 'Talk' }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     `codex resume thread-0 -C ${folder}`,
@@ -130,35 +130,35 @@ test('a workspace with Codex: picked in the dialog, its plan in the thread, a re
     cwd: folder,
   });
   await expect(here.locator('.thread-line')).toHaveText('Continued');
-  await expect(featureRow(page)).toContainText('Working', POLL);
+  await expect(workspaceRow(page)).toContainText('Working', POLL);
 
   // It commits and reports: ready for review.
   cpr.commit(BRANCH, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
   cpr.codexTurn(BRANCH, { text: 'Added half, committed.' });
   await expect(here.locator('.thread-agent').last()).toContainText('Added half, committed.', POLL);
-  await expect(featureRow(page)).toContainText('Ready for review', POLL);
+  await expect(workspaceRow(page)).toContainText('Ready for review', POLL);
 });
 
 test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean up archives its thread", async ({
   page,
 }) => {
-  cpr = await serveFeatures({ codex: true });
+  cpr = await serveWorkspaces({ codex: true });
   await page.goto(`${cpr.url}`);
   await startWithCodex(page);
   const here = panel(page);
-  await expect(featureRow(page)).toContainText('Working', POLL);
+  await expect(workspaceRow(page)).toContainText('Working', POLL);
   await expect(here.getByText("CPR's prompt")).toBeVisible(POLL);
 
   // Stop: the run ends (its process group), the thread says so.
   await here.getByRole('button', { name: 'Stop the agent' }).click();
-  await expect(featureRow(page)).toContainText('Stopped', POLL);
+  await expect(workspaceRow(page)).toContainText('Stopped', POLL);
 
   // Started again: a new run, which fails in Codex's words.
   await here.getByRole('button', { name: 'Start the agent' }).click();
-  await expect(featureRow(page)).toContainText('Working', POLL);
+  await expect(workspaceRow(page)).toContainText('Working', POLL);
   expect(cpr.codexCalls()).toHaveLength(2);
   cpr.codexTurn(BRANCH, { fail: 'unexpected status 401 Unauthorized' });
-  await expect(featureRow(page)).toContainText(
+  await expect(workspaceRow(page)).toContainText(
     'Its agent failed: unexpected status 401 Unauthorized',
     POLL,
   );
@@ -166,7 +166,7 @@ test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean
   // Clean up, unmerged: asked first; its threads archived, its worktree removed.
   await here.getByRole('button', { name: 'Clean up' }).click();
   await here.getByRole('button', { name: 'Clean up anyway' }).click();
-  await expect(featureRow(page)).toHaveCount(0, POLL);
+  await expect(workspaceRow(page)).toHaveCount(0, POLL);
   expect(cpr.codexArchived().sort()).toEqual(['thread-0', 'thread-1']);
   expect(existsSync(cpr.folder(BRANCH))).toBe(false);
   expect(
@@ -177,7 +177,7 @@ test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean
 test('the dialog offers the agents installed: Codex alone, or Claude Code alone, with no picker', async ({
   page,
 }) => {
-  cpr = await serveFeatures({ agent: false, codex: true });
+  cpr = await serveWorkspaces({ agent: false, codex: true });
   await page.goto(`${cpr.url}history`);
   await openDialog(page);
   await expect(dialog(page)).toContainText('Codex · your ChatGPT account');
@@ -186,7 +186,7 @@ test('the dialog offers the agents installed: Codex alone, or Claude Code alone,
   await expect(page.getByRole('status')).toContainText('Codex is working');
   cpr.stop();
 
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
   await openDialog(page);
   await expect(dialog(page)).toContainText('Claude Code · your Pro subscription');

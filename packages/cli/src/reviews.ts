@@ -176,7 +176,7 @@ export interface BranchReviews {
 
 /**
  * `cpr/reviews/` at the repository's root as the git user (`user.email`): the main checkout's,
- * which its linked worktrees share (V18), so a feature's worktree sees the same reviews. The
+ * which its linked worktrees share (V18), so a workspace's worktree sees the same reviews. The
  * cache instead, saying why, without a git user, or when `cpr/` holds files of the project
  * itself (a `*` in its `.gitignore` would hide that project's new files).
  */

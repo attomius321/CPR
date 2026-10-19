@@ -6,10 +6,10 @@ import {
   UnknownCheckoutTarget,
   type BranchReviewInfo,
   type CheckoutTarget,
-  type FeatureOptions,
-  type FeatureReply,
-  type FeatureRequest,
-  type FeatureSummary,
+  type WorkspaceOptions,
+  type WorkspaceReply,
+  type WorkspaceRequest,
+  type WorkspaceSummary,
   type Graph,
 } from '@cpr/core';
 import type { Review } from '@cpr/forge';
@@ -27,7 +27,7 @@ import { Diffs, type Pair, type RunDiff } from '../src/diffs.js';
 import { Histories } from '../src/history.js';
 import type { OpenRequest, OpenResult } from '../src/editor.js';
 import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
-import { FeatureRefused, type Features } from '../src/features.js';
+import { WorkspaceRefused, type Workspaces } from '../src/workspaces.js';
 import { terminals as makeTerminals, type Pty, type SpawnPty } from '../src/terminal.js';
 
 const graph = JSON.parse(
@@ -868,7 +868,7 @@ describe('cpr view: branch reviews', () => {
         }),
         status: () =>
           Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
-        // `topic` is checked out in a feature's worktree (V18).
+        // `topic` is checked out in a workspace's worktree (V18).
         refs: () =>
           Promise.resolve({
             branches: [{ name: 'topic', sha: C, worktree: '/work/app.worktrees/topic' }],
@@ -1049,7 +1049,7 @@ describe('cpr view: branch reviews', () => {
     expect((await open('/review/wip/api/open', 'docs/other.md')).status).toBe(400);
     expect((await open(`/diff/${A}..${B}/api/open`, 'docs/api.md')).status).toBe(400);
     expect((await send('POST', '/review/wip/api/merge', {})).status).toBe(405);
-    // A branch checked out in a feature's worktree opens there (V18b).
+    // A branch checked out in a workspace's worktree opens there (V18b).
     expect((await open('/review/topic/api/open', 'docs/api.md')).status).toBe(200);
     expect(opens.at(-1)).toEqual({
       sha: C,
@@ -1071,10 +1071,10 @@ describe('cpr view: branch reviews', () => {
   });
 });
 
-describe('cpr view: features (V18)', () => {
+describe('cpr view: workspaces (V18)', () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);
-  const summary: FeatureSummary = {
+  const summary: WorkspaceSummary = {
     branch: 'feature/csv',
     base: C,
     from: 'main',
@@ -1087,7 +1087,7 @@ describe('cpr view: features (V18)', () => {
     merged: false,
     agent: { state: 'working', kind: 'claude', id: 's1' },
   };
-  const options: FeatureOptions = {
+  const options: WorkspaceOptions = {
     base: { from: 'main', sha: C },
     branchPrefixes: {
       feature: 'feature/',
@@ -1107,29 +1107,29 @@ describe('cpr view: features (V18)', () => {
     agents: [{ kind: 'claude', command: '/usr/bin/claude', permissionMode: 'default' }],
     maxBrief: 20000,
   };
-  const started: FeatureRequest[] = [];
+  const started: WorkspaceRequest[] = [];
   const drafts: Record<string, unknown>[] = [];
   const restarted: string[] = [];
   /** While set, a start waits for it. */
   let gate: Promise<void> | null = null;
-  const features: Features = {
+  const workspaces: Workspaces = {
     options: () => Promise.resolve(options),
-    list: () => Promise.resolve({ features: [summary], place: 'repository' }),
+    list: () => Promise.resolve({ workspaces: [summary], place: 'repository' }),
     start: async (request) => {
       started.push(request);
       if (gate) await gate;
-      if (request.branch === 'main') throw new FeatureRefused('a branch main exists', 409);
-      return { feature: summary, prompt: 'Build it.' };
+      if (request.branch === 'main') throw new WorkspaceRefused('a branch main exists', 409);
+      return { workspace: summary, prompt: 'Build it.' };
     },
     startAgent: (branch) => {
       restarted.push(branch);
-      if (branch === 'gone') return Promise.reject(new FeatureRefused('no workspace gone', 404));
-      return Promise.resolve({ feature: summary, prompt: 'Build it.' });
+      if (branch === 'gone') return Promise.reject(new WorkspaceRefused('no workspace gone', 404));
+      return Promise.resolve({ workspace: summary, prompt: 'Build it.' });
     },
     prompt: (branch) =>
       branch === 'feature/csv'
         ? Promise.resolve('Build it.')
-        : Promise.reject(new FeatureRefused(`no workspace ${branch}`, 404)),
+        : Promise.reject(new WorkspaceRefused(`no workspace ${branch}`, 404)),
     draft: () => Promise.resolve(drafts.at(-1) ?? {}),
     saveDraft: (value) => {
       drafts.push(value);
@@ -1139,16 +1139,16 @@ describe('cpr view: features (V18)', () => {
       at === C
         ? Promise.resolve({ command: 'pnpm run check', source: 'package.json (scripts.check)' })
         : at === 'x'
-          ? Promise.reject(new FeatureRefused('the commit must be a full SHA: x', 400))
+          ? Promise.reject(new WorkspaceRefused('the commit must be a full SHA: x', 400))
           : Promise.resolve(null),
     stopAgent: (branch) => {
       stopped.push(branch);
       return branch === 'feature/csv'
-        ? Promise.resolve({ feature: summary, prompt: 'Build it.' })
-        : Promise.reject(new FeatureRefused('its agent is not running', 409));
+        ? Promise.resolve({ workspace: summary, prompt: 'Build it.' })
+        : Promise.reject(new WorkspaceRefused('its agent is not running', 409));
     },
     openWorktree: (branch) => {
-      openedFeatures.push(branch);
+      openedWorkspaces.push(branch);
       return Promise.resolve();
     },
     merge: () => Promise.resolve({ into: 'main', conflicts: ['src/a.ts'] }),
@@ -1158,29 +1158,29 @@ describe('cpr view: features (V18)', () => {
             entries: [{ at: C, session: 'x', kind: 'report', text: 'The plan' }],
             recorded: true,
           })
-        : Promise.reject(new FeatureRefused(`no workspace ${branch}`, 404)),
+        : Promise.reject(new WorkspaceRefused(`no workspace ${branch}`, 404)),
     reply: (request) => {
       replies.push(request);
       if (request.text === 'busy') {
         return Promise.reject(
-          new FeatureRefused('its agent is working: sending stops its turn', 409),
+          new WorkspaceRefused('its agent is working: sending stops its turn', 409),
         );
       }
-      return Promise.resolve({ feature: summary });
+      return Promise.resolve({ workspace: summary });
     },
     clean: (request) => {
       cleaned.push(request);
       return Promise.resolve({ finished: C });
     },
-    terminal: () => Promise.reject(new FeatureRefused('no terminals here', 409)),
+    terminal: () => Promise.reject(new WorkspaceRefused('no terminals here', 409)),
   };
-  const replies: FeatureReply[] = [];
+  const replies: WorkspaceReply[] = [];
   const cleaned: { branch: string; unmerged?: boolean }[] = [];
   const stopped: string[] = [];
-  const openedFeatures: string[] = [];
+  const openedWorkspaces: string[] = [];
   let server: ViewServer;
   let bare: ViewServer;
-  const repository = (withFeatures: boolean) => ({
+  const repository = (withWorkspaces: boolean) => ({
     history: new Histories({
       state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
       stream: () => Promise.resolve(),
@@ -1193,7 +1193,7 @@ describe('cpr view: features (V18)', () => {
     isCommit: () => Promise.resolve(true),
     diffs: new Diffs(() => Promise.reject(new Error('no'))),
     readFile: () => Promise.resolve(''),
-    ...(withFeatures ? { features } : {}),
+    ...(withWorkspaces ? { workspaces } : {}),
   });
 
   beforeAll(async () => {
@@ -1217,25 +1217,25 @@ describe('cpr view: features (V18)', () => {
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
   const request = { brief: 'Export a review as CSV', branch: 'feature/csv', planFirst: true };
 
-  it('lists features and what the start dialog needs', async () => {
-    expect(await (await get('/api/features')).json()).toEqual({
-      features: [summary],
+  it('lists workspaces and what the start dialog needs', async () => {
+    expect(await (await get('/api/workspaces')).json()).toEqual({
+      workspaces: [summary],
       place: 'repository',
     });
-    expect(await (await get('/api/features/options')).json()).toEqual(options);
-    expect((await get('/api/features', bare)).status).toBe(404);
+    expect(await (await get('/api/workspaces/options')).json()).toEqual(options);
+    expect((await get('/api/workspaces', bare)).status).toBe(404);
   });
 
-  it('starts a feature as asked; refusals keep their status and words', async () => {
-    const ok = await post('/api/features', { ...request, base: C, permissionMode: 'auto' });
+  it('starts a workspace as asked; refusals keep their status and words', async () => {
+    const ok = await post('/api/workspaces', { ...request, base: C, permissionMode: 'auto' });
     expect(ok.status).toBe(200);
-    expect(await ok.json()).toEqual({ feature: summary, prompt: 'Build it.' });
+    expect(await ok.json()).toEqual({ workspace: summary, prompt: 'Build it.' });
     expect(started.at(-1)).toEqual({ ...request, base: C, permissionMode: 'auto' });
     // The agent picked in the dialog (V20a).
-    expect((await post('/api/features', { ...request, agent: 'codex' })).status).toBe(200);
+    expect((await post('/api/workspaces', { ...request, agent: 'codex' })).status).toBe(200);
     expect(started.at(-1)).toEqual({ ...request, agent: 'codex' });
 
-    const taken = await post('/api/features', { ...request, branch: 'main' });
+    const taken = await post('/api/workspaces', { ...request, branch: 'main' });
     expect(taken.status).toBe(409);
     expect(await taken.json()).toEqual({ error: 'a branch main exists' });
 
@@ -1250,10 +1250,10 @@ describe('cpr view: features (V18)', () => {
       { ...request, permissionMode: 7 },
       { ...request, agent: 7 },
     ]) {
-      expect((await post('/api/features', body)).status, JSON.stringify(body)).toBe(400);
+      expect((await post('/api/workspaces', body)).status, JSON.stringify(body)).toBe(400);
     }
     expect(started.length).toBe(before);
-    expect((await get('/api/features/start')).status).toBe(405);
+    expect((await get('/api/workspaces/start')).status).toBe(405);
   });
 
   it('passes a kind of work on as asked; its fields must be text (V24)', async () => {
@@ -1264,10 +1264,10 @@ describe('cpr view: features (V18)', () => {
       branch: 'fix/dates',
       planFirst: false,
     };
-    expect((await post('/api/features', work)).status).toBe(200);
+    expect((await post('/api/workspaces', work)).status).toBe(200);
     expect(started.at(-1)).toEqual(work);
-    // What the parts say is the features' to check: an unknown part is passed on.
-    expect((await post('/api/features', { ...work, parts: { size: 'L' } })).status).toBe(200);
+    // What the parts say is the workspaces' to check: an unknown part is passed on.
+    expect((await post('/api/workspaces', { ...work, parts: { size: 'L' } })).status).toBe(200);
     expect(started.at(-1)?.parts).toEqual({ size: 'L' });
 
     const before = started.length;
@@ -1280,44 +1280,44 @@ describe('cpr view: features (V18)', () => {
       // Neither a brief nor a kind.
       { branch: 'fix/dates', planFirst: false },
     ]) {
-      expect((await post('/api/features', body)).status, JSON.stringify(body)).toBe(400);
+      expect((await post('/api/workspaces', body)).status, JSON.stringify(body)).toBe(400);
     }
     expect(started.length).toBe(before);
   });
 
   it('starts an agent again', async () => {
-    const ok = await post('/api/features/start', { branch: 'feature/csv' });
+    const ok = await post('/api/workspaces/start', { branch: 'feature/csv' });
     expect(ok.status).toBe(200);
     expect(restarted).toEqual(['feature/csv']);
-    const gone = await post('/api/features/start', { branch: 'gone' });
+    const gone = await post('/api/workspaces/start', { branch: 'gone' });
     expect(gone.status).toBe(404);
     expect(await gone.json()).toEqual({ error: 'no workspace gone' });
-    expect((await post('/api/features/start', { name: 'x' })).status).toBe(400);
+    expect((await post('/api/workspaces/start', { name: 'x' })).status).toBe(400);
   });
 
   it("keeps the start dialog's draft: an object, written only by the page itself (V24c)", async () => {
-    expect(await (await get('/api/features/draft')).json()).toEqual({});
+    expect(await (await get('/api/workspaces/draft')).json()).toEqual({});
     const draft = { kind: 'fix', title: 'Dates' };
-    expect((await post('/api/features/draft', draft)).status).toBe(200);
-    expect(await (await get('/api/features/draft')).json()).toEqual(draft);
+    expect((await post('/api/workspaces/draft', draft)).status).toBe(200);
+    expect(await (await get('/api/workspaces/draft')).json()).toEqual(draft);
     const before = drafts.length;
-    expect((await post('/api/features/draft', draft, { 'x-cpr': '' })).status).toBe(403);
+    expect((await post('/api/workspaces/draft', draft, { 'x-cpr': '' })).status).toBe(403);
     for (const body of [null, [], 'text', 3]) {
-      expect((await post('/api/features/draft', body)).status, JSON.stringify(body)).toBe(400);
+      expect((await post('/api/workspaces/draft', body)).status, JSON.stringify(body)).toBe(400);
     }
     expect(drafts.length).toBe(before);
-    expect((await get('/api/features/draft', bare)).status).toBe(404);
+    expect((await get('/api/workspaces/draft', bare)).status).toBe(404);
   });
 
   it("guesses a commit's check command for the start dialog, or says none (V24b)", async () => {
-    expect(await (await get(`/api/features/check?at=${C}`)).json()).toEqual({
+    expect(await (await get(`/api/workspaces/check?at=${C}`)).json()).toEqual({
       command: 'pnpm run check',
       source: 'package.json (scripts.check)',
     });
-    expect(await (await get(`/api/features/check?at=${'d'.repeat(40)}`)).json()).toEqual({});
-    expect((await get('/api/features/check?at=x')).status).toBe(400);
-    expect((await get('/api/features/check')).status).toBe(400);
-    expect((await get(`/api/features/check?at=${C}`, bare)).status).toBe(404);
+    expect(await (await get(`/api/workspaces/check?at=${'d'.repeat(40)}`)).json()).toEqual({});
+    expect((await get('/api/workspaces/check?at=x')).status).toBe(400);
+    expect((await get('/api/workspaces/check')).status).toBe(400);
+    expect((await get(`/api/workspaces/check?at=${C}`, bare)).status).toBe(404);
   });
 
   it('serves the workspaces view, a prompt, its merge check; stops an agent, opens a worktree (V18b)', async () => {
@@ -1329,38 +1329,38 @@ describe('cpr view: features (V18)', () => {
     expect((await get('/features')).status).toBe(200);
     expect((await get('/features', bare)).status).toBe(404);
 
-    expect(await (await get('/api/features/prompt?branch=feature%2Fcsv')).json()).toEqual({
+    expect(await (await get('/api/workspaces/prompt?branch=feature%2Fcsv')).json()).toEqual({
       prompt: 'Build it.',
     });
-    expect((await get('/api/features/prompt?branch=nope')).status).toBe(404);
-    expect((await get('/api/features/prompt')).status).toBe(400);
-    expect(await (await get('/api/features/merge?branch=feature%2Fcsv')).json()).toEqual({
+    expect((await get('/api/workspaces/prompt?branch=nope')).status).toBe(404);
+    expect((await get('/api/workspaces/prompt')).status).toBe(400);
+    expect(await (await get('/api/workspaces/merge?branch=feature%2Fcsv')).json()).toEqual({
       into: 'main',
       conflicts: ['src/a.ts'],
     });
 
-    expect((await post('/api/features/stop', { branch: 'feature/csv' })).status).toBe(200);
-    const notRunning = await post('/api/features/stop', { branch: 'other' });
+    expect((await post('/api/workspaces/stop', { branch: 'feature/csv' })).status).toBe(200);
+    const notRunning = await post('/api/workspaces/stop', { branch: 'other' });
     expect(notRunning.status).toBe(409);
     expect(await notRunning.json()).toEqual({ error: 'its agent is not running' });
     expect(stopped).toEqual(['feature/csv', 'other']);
 
-    expect((await post('/api/features/open', { branch: 'feature/csv' })).status).toBe(200);
-    expect(openedFeatures).toEqual(['feature/csv']);
-    for (const path of ['/api/features/stop', '/api/features/open']) {
+    expect((await post('/api/workspaces/open', { branch: 'feature/csv' })).status).toBe(200);
+    expect(openedWorkspaces).toEqual(['feature/csv']);
+    for (const path of ['/api/workspaces/stop', '/api/workspaces/open']) {
       expect((await post(path, { branch: 'x' }, { 'x-cpr': '' })).status, path).toBe(403);
       expect((await get(path)).status, path).toBe(405);
     }
     expect(stopped.length).toBe(2);
-    expect(openedFeatures.length).toBe(1);
+    expect(openedWorkspaces.length).toBe(1);
   });
 
-  it('starts one feature at a time, and only for the page itself', async () => {
+  it('starts one workspace at a time, and only for the page itself', async () => {
     let open = () => {};
     gate = new Promise((resolve) => (open = resolve));
-    const first = post('/api/features', request);
+    const first = post('/api/workspaces', request);
     await settle();
-    const second = await post('/api/features', request);
+    const second = await post('/api/workspaces', request);
     expect(second.status).toBe(409);
     expect(await second.json()).toEqual({ error: 'a workspace is being started' });
     open();
@@ -1369,26 +1369,28 @@ describe('cpr view: features (V18)', () => {
 
     const before = started.length;
     expect(
-      (await post('/api/features', request, { origin: 'https://attacker.example' })).status,
+      (await post('/api/workspaces', request, { origin: 'https://attacker.example' })).status,
     ).toBe(403);
-    expect((await post('/api/features', request, { 'x-cpr': '' })).status).toBe(403);
-    expect((await post('/api/features/start', { branch: 'x' }, { 'x-cpr': '' })).status).toBe(403);
+    expect((await post('/api/workspaces', request, { 'x-cpr': '' })).status).toBe(403);
+    expect((await post('/api/workspaces/start', { branch: 'x' }, { 'x-cpr': '' })).status).toBe(
+      403,
+    );
     expect(started.length).toBe(before);
   });
 
-  it("gives a feature's thread, sends a message to its agent, cleans it up (V18c)", async () => {
-    expect(await (await get('/api/features/thread?branch=feature%2Fcsv')).json()).toEqual({
+  it("gives a workspace's thread, sends a message to its agent, cleans it up (V18c)", async () => {
+    expect(await (await get('/api/workspaces/thread?branch=feature%2Fcsv')).json()).toEqual({
       entries: [{ at: C, session: 'x', kind: 'report', text: 'The plan' }],
       recorded: true,
     });
-    expect((await get('/api/features/thread?branch=nope')).status).toBe(404);
-    expect((await get('/api/features/thread')).status).toBe(400);
+    expect((await get('/api/workspaces/thread?branch=nope')).status).toBe(404);
+    expect((await get('/api/workspaces/thread')).status).toBe(400);
 
-    const sent = await post('/api/features/reply', { branch: 'feature/csv', text: 'OK' });
+    const sent = await post('/api/workspaces/reply', { branch: 'feature/csv', text: 'OK' });
     expect(sent.status).toBe(200);
-    expect(await sent.json()).toEqual({ feature: summary });
-    await post('/api/features/reply', { branch: 'feature/csv', text: 'Now', stop: true });
-    const busy = await post('/api/features/reply', { branch: 'feature/csv', text: 'busy' });
+    expect(await sent.json()).toEqual({ workspace: summary });
+    await post('/api/workspaces/reply', { branch: 'feature/csv', text: 'Now', stop: true });
+    const busy = await post('/api/workspaces/reply', { branch: 'feature/csv', text: 'busy' });
     expect(busy.status).toBe(409);
     expect(await busy.json()).toEqual({ error: 'its agent is working: sending stops its turn' });
     expect(replies).toEqual([
@@ -1401,15 +1403,17 @@ describe('cpr view: features (V18)', () => {
       { text: 'x' },
       { branch: 'x', text: 'y', stop: 'yes' },
     ]) {
-      expect((await post('/api/features/reply', body)).status, JSON.stringify(body)).toBe(400);
+      expect((await post('/api/workspaces/reply', body)).status, JSON.stringify(body)).toBe(400);
     }
 
-    expect((await post('/api/features/clean', { branch: 'feature/csv' })).status).toBe(200);
-    await post('/api/features/clean', { branch: 'feature/csv', unmerged: true });
+    expect((await post('/api/workspaces/clean', { branch: 'feature/csv' })).status).toBe(200);
+    await post('/api/workspaces/clean', { branch: 'feature/csv', unmerged: true });
     expect(cleaned).toEqual([{ branch: 'feature/csv' }, { branch: 'feature/csv', unmerged: true }]);
-    expect((await post('/api/features/clean', { branch: 'x', unmerged: 'yes' })).status).toBe(400);
+    expect((await post('/api/workspaces/clean', { branch: 'x', unmerged: 'yes' })).status).toBe(
+      400,
+    );
 
-    for (const path of ['/api/features/reply', '/api/features/clean']) {
+    for (const path of ['/api/workspaces/reply', '/api/workspaces/clean']) {
       expect((await post(path, { branch: 'x', text: 'y' }, { 'x-cpr': '' })).status, path).toBe(
         403,
       );
@@ -1458,17 +1462,17 @@ describe('cpr view: terminals (V21)', () => {
   };
   const terminals = makeTerminals({ pty: () => Promise.resolve({ spawn }) });
   const asked: { branch: string; cols: number; rows: number }[] = [];
-  const features = {
+  const workspaces = {
     terminal: (request: { branch: string; cols: number; rows: number }) => {
       asked.push(request);
       if (request.branch !== 'feature/csv') {
-        return Promise.reject(new FeatureRefused('its agent has no session to open', 409));
+        return Promise.reject(new WorkspaceRefused('its agent has no session to open', 409));
       }
       return terminals
         .open({ command: 'claude', args: ['attach', 's1'], cwd: '/w', env: {}, ...request })
         .then((id) => ({ id }));
     },
-  } as unknown as Features;
+  } as unknown as Workspaces;
   let server: ViewServer;
 
   beforeAll(async () => {
@@ -1488,7 +1492,7 @@ describe('cpr view: terminals (V21)', () => {
         isCommit: () => Promise.resolve(true),
         diffs: new Diffs(() => Promise.reject(new Error('no'))),
         readFile: () => Promise.resolve(''),
-        features,
+        workspaces,
         terminals,
       },
     });
@@ -1505,7 +1509,7 @@ describe('cpr view: terminals (V21)', () => {
       body: JSON.stringify(body),
     });
   const open = async (branch = 'feature/csv') => {
-    const response = await post('/api/features/terminal', { branch, cols: 100, rows: 30 });
+    const response = await post('/api/workspaces/terminal', { branch, cols: 100, rows: 30 });
     expect(response.status).toBe(200);
     return ((await response.json()) as { id: string }).id;
   };
@@ -1534,13 +1538,13 @@ describe('cpr view: terminals (V21)', () => {
     return got;
   }
 
-  it("opens a terminal on a feature's agent session; refusals keep their status and words", async () => {
+  it("opens a terminal on a workspace's agent session; refusals keep their status and words", async () => {
     const id = await open();
     expect(id).toMatch(/^[0-9a-f]{32}$/);
     expect(asked.at(-1)).toEqual({ branch: 'feature/csv', cols: 100, rows: 30 });
     expect(made.at(-1)?.args).toEqual(['attach', 's1']);
 
-    const none = await post('/api/features/terminal', { branch: 'x', cols: 80, rows: 24 });
+    const none = await post('/api/workspaces/terminal', { branch: 'x', cols: 80, rows: 24 });
     expect(none.status).toBe(409);
     expect(await none.json()).toEqual({ error: 'its agent has no session to open' });
     const before = asked.length;
@@ -1551,13 +1555,13 @@ describe('cpr view: terminals (V21)', () => {
       { branch: 'feature/csv', cols: 80, rows: 5000 },
       { cols: 80, rows: 24 },
     ]) {
-      expect((await post('/api/features/terminal', body)).status, JSON.stringify(body)).toBe(400);
+      expect((await post('/api/workspaces/terminal', body)).status, JSON.stringify(body)).toBe(400);
     }
     // Only the page itself starts a process.
     const body = { branch: 'feature/csv', cols: 80, rows: 24 };
-    expect((await post('/api/features/terminal', body, { 'x-cpr': '' })).status).toBe(403);
+    expect((await post('/api/workspaces/terminal', body, { 'x-cpr': '' })).status).toBe(403);
     const attacker = { origin: 'https://attacker.example' };
-    expect((await post('/api/features/terminal', body, attacker)).status).toBe(403);
+    expect((await post('/api/workspaces/terminal', body, attacker)).status).toBe(403);
     expect(asked.length).toBe(before);
   });
 
@@ -1629,7 +1633,7 @@ describe('cpr view: terminals (V21)', () => {
         isCommit: () => Promise.resolve(true),
         diffs: new Diffs(() => Promise.reject(new Error('no'))),
         readFile: () => Promise.resolve(''),
-        features,
+        workspaces,
         terminals,
       },
     });

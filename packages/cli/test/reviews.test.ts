@@ -248,7 +248,7 @@ describe('branchReviews', () => {
     );
   });
 
-  it("tells a feature's agent about its record, plan first, and where an approval is merged (V18c)", () => {
+  it("tells a workspace's agent about its record, plan first, and where an approval is merged (V18c)", () => {
     expect(AGENTS).toContain('## Features');
     expect(AGENTS).toContain('cpr/features/<branch>.json');
     expect(AGENTS).toMatch(/`planFirst`.*stop/s);

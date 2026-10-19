@@ -1902,7 +1902,7 @@ kbd {
 }
 
 .compare-mode kbd,
-.start-feature kbd {
+.start-workspace kbd {
   padding: 0 5px;
   border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
   border-radius: 4px;
@@ -1911,7 +1911,7 @@ kbd {
   font-weight: normal;
 }
 
-/* The header's actions, at its right: "Start a feature" (V18), then Compare mode. */
+/* The header's actions, at its right: "Start a workspace" (V18), then Compare mode. */
 .commits-actions {
   display: inline-flex;
   align-items: center;
@@ -1919,8 +1919,8 @@ kbd {
   margin-left: auto;
 }
 
-/* "Start a feature" (V18), in the colour of something added. */
-.start-feature {
+/* "Start a workspace" (V18), in the colour of something added. */
+.start-workspace {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1936,12 +1936,12 @@ kbd {
   cursor: pointer;
 }
 
-.start-feature:hover {
+.start-workspace:hover {
   border-color: var(--added);
   background: color-mix(in srgb, var(--added) 16%, var(--panel));
 }
 
-.start-feature:focus-visible {
+.start-workspace:focus-visible {
   outline: 2px solid var(--added);
   outline-offset: 1px;
 }
@@ -2144,7 +2144,7 @@ kbd {
 
 /* The start dialog (V18): a brief to write, so wider than a confirmation; with More open or on
    a phone it scrolls inside the window (V24c). */
-.feature-dialog {
+.workspace-dialog {
   width: min(640px, 100%);
   max-height: calc(100dvh - 32px);
   box-sizing: border-box;
@@ -2263,13 +2263,13 @@ kbd {
   font-weight: normal;
 }
 
-.feature-check-guess {
+.workspace-check-guess {
   margin: 4px 0 0;
   font-size: 12px;
   overflow-wrap: anywhere;
 }
 
-.feature-more {
+.workspace-more {
   display: block;
   margin: 12px 0 0;
   padding: 0;
@@ -2278,7 +2278,7 @@ kbd {
 }
 
 /* Clear stands apart from Cancel and Start, at the left. */
-.dialog-buttons .feature-clear {
+.dialog-buttons .workspace-clear {
   margin-right: auto;
 }
 
@@ -2295,15 +2295,15 @@ kbd {
   vertical-align: 1px;
 }
 
-.feature-field {
+.workspace-field {
   display: grid;
   gap: 4px;
   margin: 12px 0 0;
   font-weight: 600;
 }
 
-.feature-field textarea,
-.feature-field input {
+.workspace-field textarea,
+.workspace-field input {
   box-sizing: border-box;
   width: 100%;
   padding: 6px 8px;
@@ -2315,36 +2315,36 @@ kbd {
   font-weight: normal;
 }
 
-.feature-field textarea {
+.workspace-field textarea {
   resize: vertical;
 }
 
 /* The branch's name, as git shows it. */
-.feature-field .branch-input {
+.workspace-field .branch-input {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.feature-field [aria-invalid='true'] {
+.workspace-field [aria-invalid='true'] {
   border-color: var(--error);
 }
 
-.feature-from {
+.workspace-from {
   margin: 4px 0 0;
   overflow-wrap: anywhere;
 }
 
-.feature-from .ref {
+.workspace-from .ref {
   display: inline;
 }
 
-.feature-check {
+.workspace-check {
   display: flex;
   align-items: center;
   gap: 6px;
   margin: 12px 0 0;
 }
 
-.feature-agent select {
+.workspace-agent select {
   font: inherit;
 }
 
@@ -2757,7 +2757,7 @@ kbd {
   color: var(--removed);
 }
 
-/* How long ago a feature's agent last acted (V23), at the entry's end. */
+/* How long ago a workspace's agent last acted (V23), at the entry's end. */
 .branches-age {
   margin-left: auto;
   color: var(--muted);
@@ -2836,9 +2836,9 @@ kbd {
   }
 }
 
-/* ---- features (V18b) ------------------------------------------------------------------ */
+/* ---- workspaces (V18b) ------------------------------------------------------------------ */
 
-/* Commits · Features, in the bar. */
+/* Commits · Workspaces, in the bar. */
 .page-tabs {
   display: flex;
   gap: 4px;
@@ -2867,7 +2867,7 @@ kbd {
   font-weight: 600;
 }
 
-/* How many features need the person: the waiting colour. */
+/* How many workspaces need the person: the waiting colour. */
 .page-count {
   min-width: 16px;
   padding: 0 5px;
@@ -2880,16 +2880,16 @@ kbd {
   text-align: center;
 }
 
-/* A feature's mark: what its agent is doing; on badges, a link to the feature. */
-.feature-mark {
-  --feature-tone: var(--context);
+/* A workspace's mark: what its agent is doing; on badges, a link to the workspace. */
+.workspace-mark {
+  --workspace-tone: var(--context);
   display: inline-block;
   min-width: 14px;
   margin-right: 5px;
   padding: 0 3px;
-  border: 1px solid var(--feature-tone);
+  border: 1px solid var(--workspace-tone);
   border-radius: 4px;
-  color: var(--feature-tone);
+  color: var(--workspace-tone);
   font-size: 10px;
   font-weight: 700;
   line-height: 13px;
@@ -2898,70 +2898,70 @@ kbd {
   vertical-align: 1px;
 }
 
-a.feature-mark:hover {
-  background: var(--feature-tone);
+a.workspace-mark:hover {
+  background: var(--workspace-tone);
   color: var(--panel);
 }
 
-.feature-mark-working {
-  --feature-tone: var(--moved);
+.workspace-mark-working {
+  --workspace-tone: var(--moved);
 }
 
-.feature-mark-waiting {
-  --feature-tone: var(--warning);
+.workspace-mark-waiting {
+  --workspace-tone: var(--warning);
 }
 
-.feature-mark-ready {
-  --feature-tone: var(--added);
+.workspace-mark-ready {
+  --workspace-tone: var(--added);
 }
 
-.feature-mark-failed {
-  --feature-tone: var(--removed);
+.workspace-mark-failed {
+  --workspace-tone: var(--removed);
 }
 
-.feature-mark-done {
-  --feature-tone: var(--added);
+.workspace-mark-done {
+  --workspace-tone: var(--added);
 }
 
 /* HEAD's badge is solid green: the mark is light on it. */
-.ref-head .feature-mark {
+.ref-head .workspace-mark {
   border-color: var(--panel);
   color: var(--panel);
 }
 
 /* In the branches panel the mark is a link beside the entry (no link inside a button). */
-.branches-list li.has-feature {
+.branches-list li.has-workspace {
   display: flex;
   align-items: center;
 }
 
-.branches-list li.has-feature .branches-branch {
+.branches-list li.has-workspace .branches-branch {
   flex: 1;
   min-width: 0;
 }
 
-.branches-list li.has-feature .feature-mark {
+.branches-list li.has-workspace .workspace-mark {
   flex: none;
   margin: 0 8px 0 0;
 }
 
-.review-feature {
+.review-workspace {
   color: var(--moved);
   text-decoration: none;
 }
 
-.review-feature:hover {
+.review-workspace:hover {
   text-decoration: underline;
 }
 
-.features {
+.workspaces {
   flex: 1;
   min-width: 0;
   overflow: auto;
   padding: 16px 24px;
 }
 
-.feature-group h2 {
+.workspace-group h2 {
   margin: 16px 0 6px;
   color: var(--muted);
   font-size: 13px;
@@ -2970,7 +2970,7 @@ a.feature-mark:hover {
   text-transform: uppercase;
 }
 
-.feature-list {
+.workspace-list {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2979,39 +2979,39 @@ a.feature-mark:hover {
   background: var(--panel);
 }
 
-.feature-row {
+.workspace-row {
   padding: 10px 14px;
   border-top: 1px solid var(--line);
 }
 
-.feature-row:first-child {
+.workspace-row:first-child {
   border-top: 0;
 }
 
-.feature-row.flash {
+.workspace-row.flash {
   animation: commit-flash 1.2s ease-out;
 }
 
-.feature-head {
+.workspace-head {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
 }
 
-.feature-head .feature-mark {
+.workspace-head .workspace-mark {
   margin-right: 0;
 }
 
-.feature-head a.ref {
+.workspace-head a.ref {
   text-decoration: none;
 }
 
-.feature-head a.ref:hover {
+.workspace-head a.ref:hover {
   text-decoration: underline;
 }
 
-.feature-about {
+.workspace-about {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -3020,7 +3020,7 @@ a.feature-mark:hover {
   white-space: nowrap;
 }
 
-.feature-branch {
+.workspace-branch {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3028,7 +3028,7 @@ a.feature-mark:hover {
   margin-top: 4px;
 }
 
-.feature-branch .ref {
+.workspace-branch .ref {
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
@@ -3037,11 +3037,11 @@ a.feature-mark:hover {
   white-space: nowrap;
 }
 
-.feature-branch a.ref:hover {
+.workspace-branch a.ref:hover {
   text-decoration: underline;
 }
 
-button.feature-about {
+button.workspace-about {
   padding: 0;
   border: 0;
   background: none;
@@ -3052,18 +3052,18 @@ button.feature-about {
   cursor: pointer;
 }
 
-.feature-state {
+.workspace-state {
   margin: 4px 0 0;
   color: var(--muted);
   font-size: 13px;
 }
 
-.feature-state strong {
+.workspace-state strong {
   color: var(--text);
   font-weight: 600;
 }
 
-.feature-brief {
+.workspace-brief {
   max-height: 40vh;
   margin: 8px 0 0;
   padding: 8px 10px;
@@ -3075,7 +3075,7 @@ button.feature-about {
   white-space: pre-wrap;
 }
 
-.feature-actions {
+.workspace-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -3084,37 +3084,37 @@ button.feature-about {
   font-size: 13px;
 }
 
-.feature-actions .link {
+.workspace-actions .link {
   font-family: inherit;
 }
 
-.feature-said {
+.workspace-said {
   color: var(--muted);
 }
 
-/* V18c: the list and, beside it, the picked feature's panel. */
-.features-body.has-panel {
+/* V18c: the list and, beside it, the picked workspace's panel. */
+.workspaces-body.has-panel {
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
 
-.features-body.has-panel .feature-row {
+.workspaces-body.has-panel .workspace-row {
   cursor: pointer;
 }
 
-.features-body.has-panel .feature-row:hover {
+.workspaces-body.has-panel .workspace-row:hover {
   background: var(--bg);
 }
 
-.feature-row.picked,
-.features-body.has-panel .feature-row.picked:hover {
+.workspace-row.picked,
+.workspaces-body.has-panel .workspace-row.picked:hover {
   box-shadow: inset 3px 0 0 var(--moved);
   background: color-mix(in srgb, var(--moved) 7%, var(--panel));
 }
 
-.feature-panel {
+.workspace-panel {
   position: sticky;
   top: 0;
   margin-top: 16px;
@@ -3124,16 +3124,16 @@ button.feature-about {
   background: var(--panel);
 }
 
-.feature-back {
+.workspace-back {
   display: none;
   margin-bottom: 8px;
 }
 
-.feature-confirm {
+.workspace-confirm {
   font-size: 13px;
 }
 
-.feature-confirm .button {
+.workspace-confirm .button {
   margin-top: 0;
   padding: 4px 10px;
   font-size: 13px;
@@ -3234,32 +3234,32 @@ button.feature-about {
 }
 
 @media (max-width: 1099px) {
-  .features-body.has-panel {
+  .workspaces-body.has-panel {
     display: block;
   }
 
-  .features-body.has-panel .features-list {
+  .workspaces-body.has-panel .workspaces-list {
     display: none;
   }
 
-  .feature-panel {
+  .workspace-panel {
     position: static;
   }
 
-  .feature-back {
+  .workspace-back {
     display: inline;
   }
 }
 
-/* V21: the feature's agent session in a terminal, beside its thread. */
-.feature-views {
+/* V21: the workspace's agent session in a terminal, beside its thread. */
+.workspace-views {
   display: flex;
   gap: 4px;
   margin-top: 12px;
   border-bottom: 1px solid var(--line);
 }
 
-.feature-views button {
+.workspace-views button {
   margin-bottom: -1px;
   padding: 4px 10px;
   border: 1px solid transparent;
@@ -3271,14 +3271,14 @@ button.feature-about {
   cursor: pointer;
 }
 
-.feature-views button.selected {
+.workspace-views button.selected {
   border-color: var(--line);
   border-bottom-color: var(--panel);
   background: var(--panel);
   color: var(--text);
 }
 
-.feature-terminal {
+.workspace-terminal {
   margin-top: 12px;
 }
 
@@ -3291,7 +3291,7 @@ button.feature-about {
   background: #111113;
 }
 
-.feature-terminal .reply-actions {
+.workspace-terminal .reply-actions {
   justify-content: space-between;
   margin-top: 6px;
 }

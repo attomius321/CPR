@@ -2,11 +2,11 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { serveFeatures, type RunningFeatures } from './cpr.js';
+import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
 
-// Starting a feature from the commits page (V18a): a branch, its worktree beside the repository,
+// Starting a workspace from the commits page (V18a): a branch, its worktree beside the repository,
 // the record, and the agent started there — a fake Claude Code, never a real one.
-let cpr: RunningFeatures;
+let cpr: RunningWorkspaces;
 const errors: string[] = [];
 
 test.beforeEach(({ page }) => {
@@ -36,10 +36,10 @@ const row = (page: Page, subject: string) =>
     has: page.locator('.commit-subject').getByText(subject, { exact: true }),
   });
 
-test('starts a feature from the header: its branch, its worktree, the agent there', async ({
+test('starts a workspace from the header: its branch, its worktree, the agent there', async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   const main = cpr.shas.at(-1);
   await page.goto(`${cpr.url}history`);
   await page.getByRole('button', { name: 'Start a workspace' }).click();
@@ -101,7 +101,7 @@ test('starts a feature from the header: its branch, its worktree, the agent ther
 test('n starts one too; a name in use is refused before Start; Escape cancels', async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.keyboard.press('n');
@@ -132,8 +132,8 @@ test('n starts one too; a name in use is refused before Start; Escape cancels', 
   expect(cpr.calls()[0]?.args).toEqual(expect.arrayContaining(['--permission-mode', 'auto']));
 });
 
-test("Start a feature here: the row's commit is where it starts", async ({ page }) => {
-  cpr = await serveFeatures();
+test("Start a workspace here: the row's commit is where it starts", async ({ page }) => {
+  cpr = await serveWorkspaces();
   const [base] = cpr.shas;
   await page.goto(`${cpr.url}history`);
   await row(page, 'base').click({ button: 'right' });
@@ -146,10 +146,10 @@ test("Start a feature here: the row's commit is where it starts", async ({ page 
   await expect(page.locator('.commit.cursor')).toContainText('feature/fix-from-the-base');
 });
 
-test("an agent that does not start: the feature stays, with Claude Code's words and the prompt", async ({
+test("an agent that does not start: the workspace stays, with Claude Code's words and the prompt", async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   cpr.distrust();
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto(`${cpr.url}history`);
@@ -175,7 +175,7 @@ test("an agent that does not start: the feature stays, with Claude Code's words 
 test('without an agent: the branch and worktree are made, and the prompt is given', async ({
   page,
 }) => {
-  cpr = await serveFeatures({ agent: false });
+  cpr = await serveWorkspaces({ agent: false });
   await page.goto(`${cpr.url}history`);
   await page.getByRole('button', { name: 'Start a workspace' }).click();
   await expect(dialog(page)).toContainText('No agent found');
@@ -191,13 +191,13 @@ test('without an agent: the branch and worktree are made, and the prompt is give
   expect(git('rev-parse', 'feature/add-a-half-function')).toBe(cpr.shas.at(-1));
 });
 
-// The features view (V18b): what each feature needs, and each feature and its branch leading to
+// The workspaces view (V18b): what each workspace needs, and each workspace and its branch leading to
 // the other.
 const POLL = { timeout: 12_000 };
-const featureRow = (page: Page, branch: string) =>
-  page.locator(`.feature-row[data-branch="${branch}"]`);
+const workspaceRow = (page: Page, branch: string) =>
+  page.locator(`.workspace-row[data-branch="${branch}"]`);
 const group = (page: Page, name: string) => page.getByRole('region', { name });
-/** The picked feature's panel, beside the list (V18c). */
+/** The picked workspace's panel, beside the list (V18c). */
 const panel = (page: Page, branch: string) =>
   page.getByRole('region', { name: `Workspace ${branch}` });
 const startFrom = async (page: Page, what: string) => {
@@ -207,13 +207,13 @@ const startFrom = async (page: Page, what: string) => {
   await expect(dialog(page)).toBeHidden();
 };
 
-test('the features view: what each feature needs, as its agent goes on', async ({ page }) => {
-  cpr = await serveFeatures();
+test('the workspaces view: what each workspace needs, as its agent goes on', async ({ page }) => {
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}`);
   await expect(page.getByText('No workspaces yet')).toBeVisible();
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  const row = featureRow(page, branch);
+  const row = workspaceRow(page, branch);
   await expect(group(page, 'Working').locator(row)).toContainText('Working');
   await expect(page.getByRole('link', { name: 'Workspaces', exact: true })).toBeVisible();
 
@@ -243,8 +243,8 @@ test('the features view: what each feature needs, as its agent goes on', async (
   await expect(row).toContainText('Merges cleanly into main');
 });
 
-test('a feature and its branch lead to each other', async ({ page }) => {
-  cpr = await serveFeatures();
+test('a workspace and its branch lead to each other', async ({ page }) => {
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -252,27 +252,27 @@ test('a feature and its branch lead to each other', async ({ page }) => {
   cpr.session(branch, { state: 'done' });
   await page.reload();
 
-  // The branch's mark on the commits page goes to its feature, shown and flashed.
-  const mark = page.locator('.commit .ref', { hasText: branch }).locator('.feature-mark');
+  // The branch's mark on the commits page goes to its workspace, shown and flashed.
+  const mark = page.locator('.commit .ref', { hasText: branch }).locator('.workspace-mark');
   // Claude Code's sessions are read at most every 2 s: the page's next look sees it.
   await expect(mark).toHaveText('●', POLL);
   await expect(mark).toHaveAttribute('title', /Workspace: Add a half function — Ready for review/);
   await mark.click();
   await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-a-half-function`);
-  await expect(featureRow(page, branch)).toBeInViewport();
+  await expect(workspaceRow(page, branch)).toBeInViewport();
 
-  // The branch on the feature goes to its tip on the commits page.
-  await featureRow(page, branch).getByRole('link', { name: branch }).click();
+  // The branch on the workspace goes to its tip on the commits page.
+  await workspaceRow(page, branch).getByRole('link', { name: branch }).click();
   await expect(page).toHaveURL(`${cpr.url}history?branch=feature%2Fadd-a-half-function`);
   await expect(page.locator('.commit.cursor')).toContainText('Add half');
 
-  // The tip's menu: "Open its feature"; the branches panel shows the mark too.
-  await expect(page.locator('.branches li.has-feature .feature-mark')).toHaveText('●');
+  // The tip's menu: "Open its workspace"; the branches panel shows the mark too.
+  await expect(page.locator('.branches li.has-workspace .workspace-mark')).toHaveText('●');
   await page.locator('.commit.cursor').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Open its workspace' }).click();
   await expect(page).toHaveURL(/\/\?branch=/);
 
-  // Its review names the feature, which leads back.
+  // Its review names the workspace, which leads back.
   await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
   const link = page.getByRole('link', { name: 'Workspace: Add a half function' });
   await expect(link).toBeVisible();
@@ -282,13 +282,13 @@ test('a feature and its branch lead to each other', async ({ page }) => {
     '/?branch=feature%2Fadd-a-half-function',
   );
   await link.click();
-  await expect(featureRow(page, branch)).toBeVisible();
+  await expect(workspaceRow(page, branch)).toBeVisible();
 });
 
 test("an agent's commit shows on the commits page as it comes, the cursor where it was", async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -300,10 +300,10 @@ test("an agent's commit shows on the commits page as it comes, the cursor where 
   await expect(row(page, 'base')).toHaveClass(/cursor/);
 });
 
-test("the branches panel: features that need you first, their agent's last action on top (V23)", async ({
+test("the branches panel: workspaces that need you first, their agent's last action on top (V23)", async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
   await startFrom(page, 'Add a half function');
   await startFrom(page, 'Export the totals');
@@ -313,7 +313,7 @@ test("the branches panel: features that need you first, their agent's last actio
   // Local first, then the remote's `main`.
   const names = branches.locator('.branches-branch .branches-name');
   const entry = (branch: string) =>
-    branches.locator('li.has-feature', { has: page.getByTitle(branch, { exact: true }) });
+    branches.locator('li.has-workspace', { has: page.getByTitle(branch, { exact: true }) });
 
   // Both agents work: the one started last on top, then the checked-out branch.
   await expect(names).toHaveText([totals, half, 'main', 'main']);
@@ -339,14 +339,14 @@ test("the branches panel: features that need you first, their agent's last actio
   // Answered, it works again: below the one that needs you, newer as its action is.
   cpr.session(totals, { state: 'working' });
   await expect(names).toHaveText([half, totals, 'main', 'main'], POLL);
-  await expect(branches.locator('li.has-feature .feature-mark')).toHaveText(['?', '⚙']);
-  // Only the features have an age: not `main`, not the remote branch.
+  await expect(branches.locator('li.has-workspace .workspace-mark')).toHaveText(['?', '⚙']);
+  // Only the workspaces have an age: not `main`, not the remote branch.
   await expect(branches.locator('.branches-age')).toHaveCount(2);
 });
 
 test('stop the agent, start it again, copy its prompt, open its worktree', async ({ page }) => {
   // Without terminals (V21), Talk copies the command for one.
-  cpr = await serveFeatures({ terminal: false });
+  cpr = await serveWorkspaces({ terminal: false });
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
@@ -374,10 +374,10 @@ test('stop the agent, start it again, copy its prompt, open its worktree', async
   expect(cpr.opened()).toEqual([[cpr.folder(branch)]]);
 });
 
-test("a feature's branch: checked out in its worktree, so not here; gone, it says so", async ({
+test("a workspace's branch: checked out in its worktree, so not here; gone, it says so", async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -389,18 +389,18 @@ test("a feature's branch: checked out in its worktree, so not here; gone, it say
   );
   await page.keyboard.press('Escape');
 
-  // Deleted in a terminal: the feature says so; no mark anywhere.
+  // Deleted in a terminal: the workspace says so; no mark anywhere.
   git('worktree', 'remove', '--force', cpr.folder(branch));
   git('branch', '-D', branch);
   await page.goto(`${cpr.url}`);
-  await expect(featureRow(page, branch)).toContainText('Its branch is gone');
-  await expect(featureRow(page, branch).getByRole('link', { name: branch })).toHaveCount(0);
+  await expect(workspaceRow(page, branch)).toContainText('Its branch is gone');
+  await expect(workspaceRow(page, branch).getByRole('link', { name: branch })).toHaveCount(0);
   await page.goto(`${cpr.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
-  await expect(page.locator('.feature-mark')).toHaveCount(0);
+  await expect(page.locator('.workspace-mark')).toHaveCount(0);
 });
 
-// Talking to the agent (V18c): the features view as a list and a panel, the thread CPR's hooks
+// Talking to the agent (V18c): the workspaces view as a list and a panel, the thread CPR's hooks
 // record, one box whose message continues the agent's session.
 const box = (page: Page, branch: string) =>
   panel(page, branch).getByRole('textbox', { name: 'Reply to the agent' });
@@ -410,7 +410,7 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
   page,
 }) => {
   // The box is where no terminal runs (V21).
-  cpr = await serveFeatures({ terminal: false });
+  cpr = await serveWorkspaces({ terminal: false });
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -430,7 +430,7 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
     'Add half(a) to src/half.ts',
     POLL,
   );
-  await expect(featureRow(page, branch)).toContainText('Plan ready: read it and answer', POLL);
+  await expect(workspaceRow(page, branch)).toContainText('Plan ready: read it and answer', POLL);
 
   // The reply: the live session stopped, then continued with the text and no other flag.
   await box(page, branch).fill('OK, name it half.');
@@ -444,7 +444,7 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
   // The newest is in view: the thread opens at its end, and follows it.
   await expect(here.locator('.thread-you')).toBeInViewport();
   await expect(box(page, branch)).toHaveValue('');
-  await expect(featureRow(page, branch)).toContainText('Working', POLL);
+  await expect(workspaceRow(page, branch)).toContainText('Working', POLL);
 
   // What it waits on shows in the thread; Talk answers it.
   cpr.hook(branch, {
@@ -461,7 +461,7 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
 
 test('a working agent: Stop and send asks first, then ends its turn to send', async ({ page }) => {
   // The box is where no terminal runs (V21).
-  cpr = await serveFeatures({ terminal: false });
+  cpr = await serveWorkspaces({ terminal: false });
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -480,13 +480,13 @@ test('Send the verdict: a review fills the box, from the panel and from the Revi
   page,
 }) => {
   // The box is where no terminal runs (V21).
-  cpr = await serveFeatures({ terminal: false });
+  cpr = await serveWorkspaces({ terminal: false });
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   cpr.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
   cpr.report(branch, 'Done: half() in src/half.ts.');
-  await expect(featureRow(page, branch)).toContainText('Ready for review', POLL);
+  await expect(workspaceRow(page, branch)).toContainText('Ready for review', POLL);
 
   // Changes requested in its review; the Review tab sends them to the agent's box.
   await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
@@ -519,11 +519,11 @@ test('Send the verdict: a review fills the box, from the panel and from the Revi
   await expect(box(page, branch)).toHaveValue(/Name it halve\./);
 });
 
-test('a feature started before its messages were kept: a note, and the box still sends', async ({
+test('a workspace started before its messages were kept: a note, and the box still sends', async ({
   page,
 }) => {
   // The box is where no terminal runs (V21).
-  cpr = await serveFeatures({ terminal: false });
+  cpr = await serveWorkspaces({ terminal: false });
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -537,36 +537,36 @@ test('a feature started before its messages were kept: a note, and the box still
     "CPR keeps an agent's messages from V18c on: Talk shows this one's.",
   );
   // Claude Code's sessions are read at most every 2 s: wait for the page's next look.
-  await expect(featureRow(page, branch)).toContainText('Plan ready', POLL);
+  await expect(workspaceRow(page, branch)).toContainText('Plan ready', POLL);
   await box(page, branch).fill('Go on.');
   await box(page, branch).press('Control+Enter');
   await expect(panel(page, branch).getByRole('status')).toContainText('Sent', POLL);
   expect(resumes()).toHaveLength(1);
 });
 
-test('narrow: the panel takes the page, and Features goes back to the list', async ({ page }) => {
-  cpr = await serveFeatures();
+test('narrow: the panel takes the page, and Workspaces goes back to the list', async ({ page }) => {
+  cpr = await serveWorkspaces();
   await page.setViewportSize({ width: 900, height: 800 });
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   await expect(panel(page, branch)).toBeVisible();
-  await expect(featureRow(page, branch)).toBeHidden();
+  await expect(workspaceRow(page, branch)).toBeHidden();
   await panel(page, branch).getByRole('button', { name: '← Workspaces' }).click();
-  await expect(featureRow(page, branch)).toBeVisible();
+  await expect(workspaceRow(page, branch)).toBeVisible();
   await expect(panel(page, branch)).toBeHidden();
   await expect(page).toHaveURL(`${cpr.url}`);
   // The brief picks it (the branch name is a link to its commits).
-  await featureRow(page, branch).getByRole('button', { name: 'Add a half function' }).click();
+  await workspaceRow(page, branch).getByRole('button', { name: 'Add a half function' }).click();
   await expect(panel(page, branch)).toBeVisible();
   await page.reload();
   await expect(panel(page, branch)).toBeVisible();
 });
 
-test('Clean up: once merged, its sessions, worktree and branch go, and so does the feature', async ({
+test('Clean up: once merged, its sessions, worktree and branch go, and so does the workspace', async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -574,9 +574,9 @@ test('Clean up: once merged, its sessions, worktree and branch go, and so does t
   cpr.session(branch, { state: 'done' });
   git('merge', '--quiet', '--ff-only', branch);
   await page.reload();
-  await expect(featureRow(page, branch)).toContainText('Merged', POLL);
+  await expect(workspaceRow(page, branch)).toContainText('Merged', POLL);
   await panel(page, branch).getByRole('button', { name: 'Clean up' }).click();
-  await expect(featureRow(page, branch)).toHaveCount(0, POLL);
+  await expect(workspaceRow(page, branch)).toHaveCount(0, POLL);
   expect(cpr.removed()).toEqual(['fake0']);
   expect(existsSync(cpr.folder(branch))).toBe(false);
   expect(git('branch', '--list', branch)).toBe('');
@@ -584,7 +584,7 @@ test('Clean up: once merged, its sessions, worktree and branch go, and so does t
 });
 
 // The agent's terminal (V21): Claude Code's own interface, `claude attach` on the server, in the
-// feature's panel.
+// workspace's panel.
 const terminal = (page: Page, branch: string) => panel(page, branch).locator('.agent-terminal');
 const screen = (page: Page, branch: string) => terminal(page, branch).locator('.xterm-rows');
 /** Requests changes in the branch's review (V16), from its panel. */
@@ -600,7 +600,7 @@ const requestChanges = async (page: Page, branch: string) => {
 test("the agent's session in a terminal in its panel: keys, the thread, hang-up, reopen", async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -656,7 +656,7 @@ test("the agent's session in a terminal in its panel: keys, the thread, hang-up,
 });
 
 test('Send the verdict types one line into the terminal, without Enter', async ({ page }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -664,7 +664,7 @@ test('Send the verdict types one line into the terminal, without Enter', async (
   cpr.session(branch, { state: 'done' });
   // A review with a verdict: request changes.
   await page.goto(`${cpr.url}?branch=feature%2Fadd-a-half-function`);
-  await expect(featureRow(page, branch)).toContainText('Ready for review', POLL);
+  await expect(workspaceRow(page, branch)).toContainText('Ready for review', POLL);
   await requestChanges(page, branch);
   // From the Review tab: the panel's terminal, the line typed into it.
   await page.locator('.finished').getByRole('link', { name: 'Send to the agent' }).click();
@@ -689,7 +689,7 @@ test('Send the verdict types one line into the terminal, without Enter', async (
 });
 
 test('without terminals, the panel keeps Talk and no tab', async ({ page }) => {
-  cpr = await serveFeatures({ terminal: false });
+  cpr = await serveWorkspaces({ terminal: false });
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
   const here = panel(page, 'feature/add-a-half-function');
@@ -705,7 +705,7 @@ test("an agent's report is drawn as Markdown; HTML in it, and your messages, sta
   page,
 }) => {
   // Your message goes through the box: where no terminal runs (V21).
-  cpr = await serveFeatures({ terminal: false });
+  cpr = await serveWorkspaces({ terminal: false });
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -734,7 +734,7 @@ test("an agent's report is drawn as Markdown; HTML in it, and your messages, sta
 test('Workspaces is the first page, History beside it; old addresses, keys and links (V25)', async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(cpr.url);
   const tabs = page.getByRole('navigation', { name: 'Pages' }).getByRole('link');
   await expect(tabs).toHaveText(['Workspaces', 'History']);
@@ -742,7 +742,7 @@ test('Workspaces is the first page, History beside it; old addresses, keys and l
   await expect(page.getByText('No workspaces yet')).toBeVisible();
 
   // The old addresses, kept for bookmarks, show as today's with what they carried.
-  for (const old of ['workspaces', 'features']) {
+  for (const old of ['workspaces', 'workspaces']) {
     await page.goto(`${cpr.url}${old}?branch=feature%2Fx`);
     await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fx`);
     await expect(page.getByText('No workspaces yet')).toBeVisible();
@@ -771,7 +771,7 @@ const info = (page: Page) => dialog(page).getByRole('button', { name: 'About the
 test('each kind starts a workspace: its brief, its line, its branch, its tag (V24c)', async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
   const kinds = [
     ['Fix', 'What happens', 'fix/', 'Reproduce it first, with a failing test'],
@@ -804,15 +804,15 @@ test('each kind starts a workspace: its brief, its line, its branch, its tag (V2
 
   // The list names each by its title, its kind before it.
   await page.goto(`${cpr.url}`);
-  const fix = featureRow(page, 'fix/fix-the-totals');
-  await expect(fix.locator('.feature-about')).toHaveText('fixFix the totals');
+  const fix = workspaceRow(page, 'fix/fix-the-totals');
+  await expect(fix.locator('.workspace-about')).toHaveText('fixFix the totals');
   await expect(fix.locator('.kind-tag')).toHaveText('fix');
 });
 
 test('Done when names the check guessed at the start commit; switching kinds keeps every text (V24c)', async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   writeFileSync(
     join(cpr.repo, 'package.json'),
     JSON.stringify({ scripts: { check: 'eslint . && vitest run' } }),
@@ -877,9 +877,9 @@ test('Done when names the check guessed at the start commit; switching kinds kee
 test('the draft outlives Escape and a reload; after a start only the kind is kept (V24c)', async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   const draft = async () =>
-    (await (await page.request.get(`${cpr.url}api/features/draft`)).json()) as {
+    (await (await page.request.get(`${cpr.url}api/workspaces/draft`)).json()) as {
       title?: string;
     };
   await page.goto(`${cpr.url}history`);
@@ -905,7 +905,7 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
 test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, branch (V24c)', async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.keyboard.press('n');
@@ -936,11 +936,11 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
 });
 
 test('a workspace started before V24 is named by its brief, with no kind', async ({ page }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
   // What a page from before V24 posts: one brief.
   const status = await page.evaluate(async () => {
-    const response = await fetch('/api/features', {
+    const response = await fetch('/api/workspaces', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-cpr': '1' },
       body: JSON.stringify({
@@ -956,15 +956,15 @@ test('a workspace started before V24 is named by its brief, with no kind', async
     "The person's brief:\n\nExport the totals\n\nAs CSV.",
   );
   await page.goto(`${cpr.url}`);
-  const row = featureRow(page, 'feature/old');
-  await expect(row.locator('.feature-about')).toHaveText('Export the totals');
+  const row = workspaceRow(page, 'feature/old');
+  await expect(row.locator('.workspace-about')).toHaveText('Export the totals');
   await expect(row.locator('.kind-tag')).toHaveCount(0);
 });
 
 test('the kinds explained: a tooltip after the picker, on hover, focus or a tap (V24c)', async ({
   page,
 }) => {
-  cpr = await serveFeatures();
+  cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
   await page.getByRole('button', { name: 'Start a workspace' }).click();
   await kind(page, 'Fix').click();

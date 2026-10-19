@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type {
   AgentKind,
   CheckGuess,
-  FeatureOptions,
-  FeatureRequest,
+  WorkspaceOptions,
+  WorkspaceRequest,
   PermissionMode,
   WorkKindSpec,
 } from '@cpr/core';
@@ -22,7 +22,7 @@ import {
   checkWords,
   type BriefForm,
 } from './brief.js';
-import { AGENT_NAMES, branchProblem, PERMISSION_LABELS, proposeBranch } from './features.js';
+import { AGENT_NAMES, branchProblem, PERMISSION_LABELS, proposeBranch } from './workspaces.js';
 import { getJson, postJson } from './http.js';
 import { shortSha } from './commits.js';
 
@@ -36,7 +36,7 @@ const SAVE_AFTER_MS = 400;
  * permission mode, and where its worktree goes. The form is kept as a draft by `cpr view` until
  * it starts. Ctrl+Enter starts, Escape cancels.
  */
-export function StartFeatureDialog({
+export function StartWorkspaceDialog({
   options,
   base,
   taken,
@@ -46,7 +46,7 @@ export function StartFeatureDialog({
   onStart,
   onCancel,
 }: {
-  options: FeatureOptions;
+  options: WorkspaceOptions;
   /** A picked row's commit; else the default branch's tip (`options.base`). */
   base: { sha: string; from?: string };
   /** Branch names in use, locally or on a remote. */
@@ -55,7 +55,7 @@ export function StartFeatureDialog({
   draft: unknown;
   running: boolean;
   error: string | null;
-  onStart: (request: FeatureRequest) => void;
+  onStart: (request: WorkspaceRequest) => void;
   onCancel: () => void;
 }) {
   const { kinds } = options;
@@ -80,7 +80,7 @@ export function StartFeatureDialog({
   // The check command, guessed at the commit it starts from (V24b); words until it comes.
   useEffect(() => {
     let current = true;
-    getJson<Partial<CheckGuess>>(`/api/features/check?at=${base.sha}`)
+    getJson<Partial<CheckGuess>>(`/api/workspaces/check?at=${base.sha}`)
       .then((found) => {
         if (!current || !found.command || !found.source) return;
         const next = { command: found.command, source: found.source };
@@ -99,7 +99,7 @@ export function StartFeatureDialog({
   const latest = useRef(form);
   latest.current = form;
   const started = useRef(false);
-  const save = (value: object) => void postJson('/api/features/draft', value).catch(() => {});
+  const save = (value: object) => void postJson('/api/workspaces/draft', value).catch(() => {});
   const edit = (next: BriefForm) => {
     setForm(next);
     if (saving.current) clearTimeout(saving.current);
@@ -158,10 +158,10 @@ export function StartFeatureDialog({
   return (
     <div className="dialog-backdrop">
       <div
-        className="dialog feature-dialog"
+        className="dialog workspace-dialog"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="feature-title"
+        aria-labelledby="workspace-title"
         onKeyDown={(event) => {
           if (event.key === 'Escape' && !running) onCancel();
           else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) start();
@@ -170,7 +170,7 @@ export function StartFeatureDialog({
           event.stopPropagation();
         }}
       >
-        <h2 id="feature-title">Start a workspace</h2>
+        <h2 id="workspace-title">Start a workspace</h2>
         <div className="kind-row">
           <div
             className="kind-picker"
@@ -247,7 +247,7 @@ export function StartFeatureDialog({
             </div>
           )}
         </div>
-        <label className="feature-field">
+        <label className="workspace-field">
           Title
           <input
             type="text"
@@ -257,7 +257,7 @@ export function StartFeatureDialog({
             onChange={(event) => edit({ ...form, title: event.target.value })}
           />
         </label>
-        <label className="feature-field">
+        <label className="workspace-field">
           {heading(main)}
           <textarea
             rows={5}
@@ -266,7 +266,7 @@ export function StartFeatureDialog({
             onChange={(event) => edit({ ...form, main: event.target.value })}
           />
         </label>
-        <label className="feature-field">
+        <label className="workspace-field">
           <span>
             Done when <span className="field-optional">optional</span>
           </span>
@@ -278,13 +278,13 @@ export function StartFeatureDialog({
           />
         </label>
         {guess && (
-          <p className="dialog-note feature-check-guess">
+          <p className="dialog-note workspace-check-guess">
             Check: <code>{guess.command}</code>, from {guess.source}
           </p>
         )}
         <button
           type="button"
-          className="link feature-more"
+          className="link workspace-more"
           aria-expanded={moreOpen}
           onClick={() => setMoreShown(!moreOpen)}
         >
@@ -292,7 +292,7 @@ export function StartFeatureDialog({
         </button>
         {moreOpen &&
           more.map((part) => (
-            <label key={part} className="feature-field">
+            <label key={part} className="workspace-field">
               <span>
                 {heading(part)} <span className="field-optional">optional</span>
               </span>
@@ -312,7 +312,7 @@ export function StartFeatureDialog({
             {options.maxBrief.toLocaleString('en')}.
           </p>
         )}
-        <label className="feature-field">
+        <label className="workspace-field">
           Branch
           <input
             type="text"
@@ -323,7 +323,7 @@ export function StartFeatureDialog({
             onChange={(event) => edit({ ...form, branch: event.target.value })}
           />
         </label>
-        <p className="dialog-note feature-from">
+        <p className="dialog-note workspace-from">
           From{' '}
           {base.from ? (
             <>
@@ -335,7 +335,7 @@ export function StartFeatureDialog({
           <code>{shortSha(base.sha)}</code>, in <code title={folder}>{folder}</code>
         </p>
         {form.title.trim() !== '' && problem && <p className="error">{problem}</p>}
-        <label className="feature-check">
+        <label className="workspace-check">
           <input
             type="checkbox"
             checked={planFirst}
@@ -344,7 +344,7 @@ export function StartFeatureDialog({
           Plan first and wait for my OK
         </label>
         {agent ? (
-          <p className="dialog-note feature-agent">
+          <p className="dialog-note workspace-agent">
             {options.agents.length > 1 ? (
               <label>
                 agent{' '}
@@ -401,7 +401,7 @@ export function StartFeatureDialog({
         <div className="dialog-buttons">
           <button
             type="button"
-            className="link feature-clear"
+            className="link workspace-clear"
             disabled={running}
             title="Empty the form; the kind stays"
             onClick={() => edit(newForm(spec, guess))}

@@ -1,20 +1,20 @@
 import { useCallback, useState, type ReactNode } from 'react';
-import type { FeatureOptions, FeatureRequest, FeatureStart, RefList } from '@cpr/core';
+import type { WorkspaceOptions, WorkspaceRequest, WorkspaceStart, RefList } from '@cpr/core';
 import { getJson, postJson } from './http.js';
-import { StartFeatureDialog } from './StartFeatureDialog.js';
-import { reloadFeatures } from './useFeatures.js';
+import { StartWorkspaceDialog } from './StartWorkspaceDialog.js';
+import { reloadWorkspaces } from './useWorkspaces.js';
 
 /**
- * Starting a feature (V18), from any page: `open(sha?)` shows the dialog — at a row's commit, or
- * at the default branch's tip — and `dialog` is what to draw. `onStarted` gets the new feature;
+ * Starting a workspace (V18), from any page: `open(sha?)` shows the dialog — at a row's commit, or
+ * at the default branch's tip — and `dialog` is what to draw. `onStarted` gets the new workspace;
  * `onError` why the dialog could not open.
  */
-export function useFeatureStarter(
-  onStarted: (start: FeatureStart) => void,
+export function useWorkspaceStarter(
+  onStarted: (start: WorkspaceStart) => void,
   onError: (message: string) => void,
 ): { open: (sha?: string) => void; dialog: ReactNode; isOpen: boolean } {
   const [shown, setShown] = useState<{
-    options: FeatureOptions;
+    options: WorkspaceOptions;
     base: { sha: string; from?: string };
     taken: ReadonlySet<string>;
     /** The draft `cpr view` keeps (V24c), as saved. */
@@ -27,10 +27,10 @@ export function useFeatureStarter(
     (sha?: string) => {
       setError(null);
       Promise.all([
-        getJson<FeatureOptions>('/api/features/options'),
+        getJson<WorkspaceOptions>('/api/workspaces/options'),
         getJson<RefList>('/api/refs'),
         // No draft is no reason not to open.
-        getJson<unknown>('/api/features/draft').catch(() => null),
+        getJson<unknown>('/api/workspaces/draft').catch(() => null),
       ])
         .then(([options, refs, draft]) => {
           const base = sha ? { sha } : options.base;
@@ -56,14 +56,14 @@ export function useFeatureStarter(
   );
 
   const start = useCallback(
-    async (request: FeatureRequest) => {
+    async (request: WorkspaceRequest) => {
       setRunning(true);
       setError(null);
       try {
-        const started = await postJson<FeatureStart>('/api/features', request);
+        const started = await postJson<WorkspaceStart>('/api/workspaces', request);
         setShown(null);
         setRunning(false);
-        void reloadFeatures();
+        void reloadWorkspaces();
         onStarted(started);
       } catch (e) {
         setError((e as Error).message);
@@ -74,7 +74,7 @@ export function useFeatureStarter(
   );
 
   const dialog = shown && (
-    <StartFeatureDialog
+    <StartWorkspaceDialog
       options={shown.options}
       base={shown.base}
       taken={shown.taken}

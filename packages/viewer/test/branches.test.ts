@@ -123,7 +123,7 @@ describe('branchTree', () => {
   it('lists the local branches given first in that order, then the current one, then by name (V23)', () => {
     const firstly = (first: string[], filter = '') =>
       branchTree(REFS, { current: 'main', filter, toggled: new Set(), first });
-    // Features first: the one that needs the person and acted last on top. Remotes as they were.
+    // Workspaces first: the one that needs the person and acted last on top. Remotes as they were.
     expect(show(firstly(['wip', 'old']))).toEqual([
       '# Local 4',
       'wip',

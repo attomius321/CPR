@@ -52,11 +52,11 @@ import { branchReviews } from './reviews.js';
 import { codex, findCodex, type Codex } from './codex.js';
 import {
   claudeCode,
-  features,
+  workspaces,
   findClaude,
-  readFeatureConfig,
+  readWorkspaceConfig,
   type ClaudeCode,
-} from './features.js';
+} from './workspaces.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -509,7 +509,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     }),
   );
   let hinted = false;
-  // Terminals on features' agents (V21): node-pty is loaded only when one is asked for;
+  // Terminals on workspaces' agents (V21): node-pty is loaded only when one is asked for;
   // `CPR_TERMINAL=off` turns them off (the panel keeps Talk).
   const terminals = agentTerminals(
     ctx.env.CPR_TERMINAL === 'off'
@@ -543,7 +543,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       readFile: (sha, path) => readFileAtRevision(repo, sha, path),
       state: (graph) => fileStateStore(stateDir(cacheDir, repo.id, graph)),
       reviews: branchReviews(repo, cacheDir),
-      features: features(repo, cacheDir, {
+      workspaces: workspaces(repo, cacheDir, {
         claude: agentFinder(repo.root, ctx.env),
         codex: codexFinder(repo.root, ctx.env),
         env: ctx.env,
@@ -581,7 +581,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   return 0;
 }
 
-/** Claude Code for features (V18), found when first needed and looked for again until it is. */
+/** Claude Code for workspaces (V18), found when first needed and looked for again until it is. */
 function agentFinder(
   root: string,
   env: Readonly<Record<string, string | undefined>>,
@@ -591,13 +591,13 @@ function agentFinder(
     if (found) return found;
     const command = await findClaude(env);
     if (!command) return null;
-    const { model } = readFeatureConfig(root);
+    const { model } = readWorkspaceConfig(root);
     found = claudeCode(command, { cwd: root, ...(model ? { model } : {}) });
     return found;
   };
 }
 
-/** Codex for features (V20a), found as Claude Code is. */
+/** Codex for workspaces (V20a), found as Claude Code is. */
 function codexFinder(
   root: string,
   env: Readonly<Record<string, string | undefined>>,

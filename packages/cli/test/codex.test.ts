@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import { codex, codexArgs, codexState, parseCodexAccount, type DetachedRun } from '../src/codex.js';
 import { runCodex } from '../src/codex-run.js';
-import type { FeatureFile } from '../src/features.js';
-import type { Run } from '../src/features.js';
+import type { WorkspaceFile } from '../src/workspaces.js';
+import type { Run } from '../src/workspaces.js';
 
 const RUNNER = fileURLToPath(new URL('../src/codex-run.ts', import.meta.url));
 
@@ -393,7 +393,7 @@ describe('parseCodexAccount (V20a)', () => {
 
 describe('codexState (V20a)', () => {
   const STARTED = '2026-10-19T12:00:00.000Z';
-  const feature = (over: Partial<FeatureFile> = {}): FeatureFile => ({
+  const workspace = (over: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
     agent: { kind: 'codex', started: STARTED, run: 'r1', pid: 4242 },
     base: 'a'.repeat(40),
     branch: 'feature/csv',
@@ -409,8 +409,8 @@ describe('codexState (V20a)', () => {
   const started = [e(0, { kind: 'start', source: 'startup' }), e(0, { kind: 'prompt', text: 'P' })];
 
   it('reads a run that lives as working, before its first event too', () => {
-    expect(codexState(feature(), [], true, 0)).toEqual({ state: 'working', kind: 'codex' });
-    expect(codexState(feature(), started, true, 0)).toEqual({
+    expect(codexState(workspace(), [], true, 0)).toEqual({ state: 'working', kind: 'codex' });
+    expect(codexState(workspace(), started, true, 0)).toEqual({
       state: 'working',
       kind: 'codex',
       id: T,
@@ -423,34 +423,34 @@ describe('codexState (V20a)', () => {
       e(1, { kind: 'report', text: 'Plan' }),
       e(1, { kind: 'end', reason: 'completed' }),
     ];
-    expect(codexState(feature(), done, false, 0)).toEqual({
+    expect(codexState(workspace(), done, false, 0)).toEqual({
       state: 'plan-ready',
       kind: 'codex',
       id: T,
     });
-    expect(codexState(feature(), done, false, 2).state).toBe('ready');
-    expect(codexState(feature({ planFirst: false }), done, false, 0).state).toBe('done');
+    expect(codexState(workspace(), done, false, 2).state).toBe('ready');
+    expect(codexState(workspace({ planFirst: false }), done, false, 0).state).toBe('done');
     // A run that ended normally ended, whatever its old process ID now is.
-    expect(codexState(feature(), done, true, 0).state).toBe('plan-ready');
+    expect(codexState(workspace(), done, true, 0).state).toBe('plan-ready');
   });
 
   it('reads a stop, a failure with its reason, and an end without a word', () => {
     const ended = (reason: string) => [...started, e(1, { kind: 'end', reason })];
-    expect(codexState(feature(), ended('stopped'), false, 0)).toEqual({
+    expect(codexState(workspace(), ended('stopped'), false, 0)).toEqual({
       state: 'stopped',
       kind: 'codex',
       id: T,
     });
-    expect(codexState(feature(), ended('unexpected status 401'), false, 0)).toEqual({
+    expect(codexState(workspace(), ended('unexpected status 401'), false, 0)).toEqual({
       state: 'failed',
       kind: 'codex',
       id: T,
       error: 'unexpected status 401',
     });
     expect(
-      codexState(feature(), [...started, e(1, { kind: 'report', text: 'Plan' })], false, 0).state,
+      codexState(workspace(), [...started, e(1, { kind: 'report', text: 'Plan' })], false, 0).state,
     ).toBe('plan-ready');
-    expect(codexState(feature(), started, false, 0)).toEqual({
+    expect(codexState(workspace(), started, false, 0)).toEqual({
       state: 'failed',
       kind: 'codex',
       id: T,
@@ -465,7 +465,7 @@ describe('codexState (V20a)', () => {
       e(1, { kind: 'end', reason: 'completed' }),
     ];
     // The same millisecond as the earlier end: runs are told apart by their IDs, not their times.
-    const again = feature({ agent: { kind: 'codex', started: at(1), run: 'r2', pid: 4343 } });
+    const again = workspace({ agent: { kind: 'codex', started: at(1), run: 'r2', pid: 4343 } });
     expect(codexState(again, before, true, 0)).toEqual({ state: 'working', kind: 'codex', id: T });
     const resumed = [
       ...before,
@@ -476,7 +476,7 @@ describe('codexState (V20a)', () => {
   });
 
   it('says when it did not start', () => {
-    const failed = feature({ agent: { kind: 'codex', error: 'Codex is not logged in' } });
+    const failed = workspace({ agent: { kind: 'codex', error: 'Codex is not logged in' } });
     expect(codexState(failed, [], false, 0)).toEqual({
       state: 'not-started',
       kind: 'codex',

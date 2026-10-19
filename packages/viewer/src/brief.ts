@@ -138,7 +138,7 @@ export function formReady(form: BriefForm): boolean {
 }
 
 /**
- * A saved draft (`/api/features/draft`), read as a form: null when it is not one of a known
+ * A saved draft (`/api/workspaces/draft`), read as a form: null when it is not one of a known
  * kind; anything not text is left out; no Done when saved is the kind's default.
  */
 export function readDraft(

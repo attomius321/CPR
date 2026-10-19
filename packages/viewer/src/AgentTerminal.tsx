@@ -24,7 +24,7 @@ export interface OpenedTerminal {
 }
 
 /**
- * A feature's agent session as Claude Code draws it (V21): `claude attach` on the server in a
+ * A workspace's agent session as Claude Code draws it (V21): `claude attach` on the server in a
  * pseudo-terminal, drawn by xterm.js (its own chunk, loaded when a terminal first opens) and
  * fitted to its box. Claude Code keeps hosting the session: closing this hangs up only the
  * client. `onOpened` gives the open terminal (to type into it), `onEnded` says it ended.
@@ -75,7 +75,7 @@ export function AgentTerminal({
       term.loadAddon(fit);
       term.open(element);
       fit.fit();
-      const opened = await postJson<{ id: string }>('/api/features/terminal', {
+      const opened = await postJson<{ id: string }>('/api/workspaces/terminal', {
         branch,
         cols: term.cols,
         rows: term.rows,

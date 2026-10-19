@@ -3,8 +3,8 @@ import type { HistoryRefs, HistoryScope } from '@cpr/core';
 import { branchTree, type PanelEntry } from './branches.js';
 import type { ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
-import { FeatureMark } from './FeatureMark.js';
-import { shortAge, type AgentChip, type FirstBranch } from './features.js';
+import { WorkspaceMark } from './WorkspaceMark.js';
+import { shortAge, type AgentChip, type FirstBranch } from './workspaces.js';
 
 type BranchEntry = Extract<PanelEntry, { kind: 'branch' }>;
 
@@ -27,7 +27,7 @@ function tracking(entry: BranchEntry): { text: string; title: string } | null {
   return parts.length === 0 ? null : { text: parts.join(' '), title: says.join(', ') };
 }
 
-/** How long ago a feature's agent last acted (V23), drawn again each minute on its own. */
+/** How long ago a workspace's agent last acted (V23), drawn again each minute on its own. */
 function Age({ at }: { at: string }) {
   const [, tick] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
@@ -47,7 +47,7 @@ function Age({ at }: { at: string }) {
 
 /**
  * The branches panel (V10b): Local and Remotes by folder, a filter on top; a click goes to the
- * branch's tip row. Local lists the features that need the person first (V23, `first`). Under
+ * branch's tip row. Local lists the workspaces that need the person first (V23, `first`). Under
  * 900 px it is shown only while `open` (over the rows).
  */
 export const BranchesPanel = memo(function BranchesPanel({
@@ -71,9 +71,9 @@ export const BranchesPanel = memo(function BranchesPanel({
   current: string | null;
   /** Each reviewed branch's mark, by ref name (V15, V16). */
   marks: ReadonlyMap<string, ReviewMark>;
-  /** Each feature's mark by ref name, a link to the feature (V18b). */
+  /** Each workspace's mark by ref name, a link to the workspace (V18b). */
   agents: ReadonlyMap<string, AgentChip & { href: string }>;
-  /** The features' branches Local lists first, with when their agent last acted (V23). */
+  /** The workspaces' branches Local lists first, with when their agent last acted (V23). */
   first: readonly FirstBranch[];
   open: boolean;
   /** The filter and the folders flipped open or closed: kept by the page across listings. */
@@ -117,10 +117,10 @@ export const BranchesPanel = memo(function BranchesPanel({
       ) : (
         <ul className="branches-list">
           {entries.map((entry) => {
-            // A feature's mark: its own link beside the entry (no link inside a button).
+            // A workspace's mark: its own link beside the entry (no link inside a button).
             const agent = entry.kind === 'branch' ? agents.get(entry.name) : undefined;
             return (
-              <li key={entry.key} className={agent ? 'has-feature' : undefined}>
+              <li key={entry.key} className={agent ? 'has-workspace' : undefined}>
                 <Entry
                   entry={entry}
                   scope={scope}
@@ -129,7 +129,7 @@ export const BranchesPanel = memo(function BranchesPanel({
                   onToggle={onToggle}
                   onGo={onGo}
                 />
-                {agent && <FeatureMark chip={agent} />}
+                {agent && <WorkspaceMark chip={agent} />}
               </li>
             );
           })}
@@ -150,7 +150,7 @@ function Entry({
   entry: PanelEntry;
   scope: HistoryScope;
   mark: ReviewMark | undefined;
-  /** When its feature's agent last acted (V23). */
+  /** When its workspace's agent last acted (V23). */
   age: string | undefined;
   onToggle: (key: string) => void;
   onGo: (entry: BranchEntry) => void;

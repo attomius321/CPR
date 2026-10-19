@@ -3,10 +3,13 @@
 React 19 + `@xyflow/react` 12 + dagre, bundled by Vite into `dist/`. `cpr view`/`cpr pr` serve it
 with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packages/cli/src/server.ts`);
 `?graph=<url>` loads any graph JSON instead (used by `scripts/viewer/measure.mjs`). Under
-`cpr view` (V9) the root is the commits page (`/api/commits`, `POST /api/diffs`) and each diff is
+`cpr view` the root is Workspaces (V25; `src/WorkspacesPage.tsx`, `/api/workspaces…`), `/history`
+is History (`/api/history…`, `POST /api/diffs`), and each diff is
 served under `/diff/<base>..<head>/`: the viewer must keep calling its own API with **relative**
 URLs (`./api/…`) and loading files relative to the page (`base: './'`), so every call reaches that
-diff. Only the commits page's endpoints are absolute (`/api/commits`, `/api/diffs`).
+diff. Only the two pages' endpoints are absolute (`/api/history…`, `/api/workspaces…`, `/api/diffs`).
+Pages and their addresses, and a diff's way back: `src/pages.ts`. In code a workspace is a
+"workspace": "feature" is only the kind of work (a guard test, `packages/cli/test/naming.test.ts`).
 
 ## Where things are
 
@@ -24,7 +27,7 @@ diff. Only the commits page's endpoints are absolute (`/api/commits`, `/api/diff
   `src/comments.ts` (draft comments and anchors), `src/store.ts` (server or browser state).
 - `src/commits.ts` (**pure**: picking, which end is the base, diverged picks' fork point found from
   the shape (V10c; checked against git by `scripts/viewer/compare-check.mjs`), the label, reading `api/graph`'s
-  202/502/404 while a diff is analyzed), `src/CommitsPage.tsx` (the commits page, a diff's progress; not `Commits.tsx`: macOS file systems ignore case, and TypeScript then resolves it to `commits.ts`).
+  202/502/404 while a diff is analyzed), `src/HistoryPage.tsx` (History, a diff's progress; never `Commits.tsx` beside `commits.ts`: macOS file systems ignore case).
 - `src/ProjectNode.tsx`, `FileNode.tsx`, `SymbolNode.tsx`, `SummaryNode.tsx`; `src/styles.css`
   (one flat stylesheet: check a new class name is not taken — the sidebar's review bar is
   `.progress`).
@@ -72,7 +75,7 @@ diff. Only the commits page's endpoints are absolute (`/api/commits`, `/api/diff
   `comments.test.ts`, `commits.test.ts` (vitest from the repo root).
 - E2E: `e2e/*.spec.ts` (Playwright, after `pnpm build`). `e2e/cpr.ts` turns a fixture's base/head
   into a repo and serves `cpr view` (`serveFixture`, which opens `/diff/<pair>/`), a fake forge
-  pull request (`servePullRequest`), or five commits for the commits page (`serveCommits`). Every
+  pull request (`servePullRequest`), five commits for History (`serveCommits`), or workspaces with a fake agent (`serveWorkspaces`). Every
   spec checks there were no page errors.
 - Count minimap nodes, not DOM nodes: off-screen nodes are not in the DOM.
 - For layout or performance work, measure on real graphs with the `viewer-check` skill.
