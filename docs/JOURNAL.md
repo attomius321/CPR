@@ -3285,3 +3285,49 @@ per run. A workspace agent's context was 66K–474K. Not verified: Bitwarden's a
 conflicts; Codex as the merger with a real Codex.
 
 Merged into main (2026-10-20).
+
+## V27 spike — Codex in the panel's terminal, through its app server (2026-10-20, branch `milestone/v27-codex-terminal`)
+
+Asked: make a Codex workspace's terminal work (V20a left it out: its turns in a terminal would
+not reach CPR's thread, decision 133); "try codex agents". Codex 0.163.0, the latest release
+(2026-10-15). Run in a throwaway repository with a linked worktree as CPR makes them, on a
+private app server (`codex app-server --listen unix://…`), the person's own daemon left alone.
+
+**Learned**:
+- **Codex 0.163 has the binding: a shared app-server daemon** (`codex agents` browses it, `codex
+  app-server daemon version` names its socket) **and a TUI that joins it**: `codex resume
+  <thread> --remote unix://<socket> -C <worktree>`. Every client of one thread gets its events.
+- **The socket speaks WebSocket**, JSON-RPC inside without the `jsonrpc` field (101 Switching
+  Protocols on an HTTP upgrade). `codex app-server proxy` relays raw bytes, so it answered
+  nothing to plain JSON lines (2 of 2). Node has no WebSocket client over a unix socket: the
+  spike's client did the upgrade and the frames itself (~70 lines).
+- **CPR as a client starts the thread**: `thread/start` (the worktree, `workspace-write`, the
+  branch's git folders as writable roots, `approvalPolicy`), then `turn/start`. Codex committed
+  in the linked worktree, 4.2 s for the turn. The server holds the thread with those options.
+- **A turn typed in the TUI reaches CPR**: `turn/started`, the person's `userMessage`, each
+  agent message and command, `turn/completed`, 3.0 s. It committed from the sandbox too (the
+  thread's writable roots stayed: V20a's `exec resume` lost them).
+- **A turn CPR starts shows in the open TUI**: its answer was drawn 0.9 s after `turn/start`.
+- **No client needs to stay**: a 15 s turn finished after CPR's client was killed 3 s in, and a
+  new client's `thread/read` (`includeTurns`) gave every turn back (CPR's, the TUI's, the one it
+  missed) with their items and times. CPR need not record the thread itself.
+- **"Needs you" exists for Codex here.** With `approvalPolicy: on-request`, a command the sandbox
+  refused became `item/commandExecution/requestApproval` to the clients, and the thread's status
+  `active` with `waitingOnApproval`. A TUI that joined later drew Codex's own prompt ("Would you
+  like to run the following command?", its reason, y / esc). Declined from CPR's client:
+  `serverRequest/resolved` to all, the command `declined`, nothing written, the turn finished.
+- **The TUI asks "Trust this folder?" once per worktree**, and Enter writes `[projects."<path>"]
+  trust_level = "trusted"` into the person's `~/.codex/config.toml`. `-c projects."<path>"…` is
+  ignored, on the TUI and on the server alike (Codex's warning: "session-flags: … is ignored").
+  It is the person's decision, made in their terminal. The spike's three entries were removed.
+- **`workspace-write` lets commands write anywhere in `/tmp`** by default (`exclude_slash_tmp`,
+  `exclude_tmpdir_env_var` turn it off): a write "outside the folder" there asked nothing.
+- **Memory**: a private app server 269 MB (and 50 MB for its Node wrapper); the person's daemon,
+  already running, 212 MB. On the daemon, CPR adds no process.
+- The person's daemon answered the same `initialize` over the same transport (1 ms); nothing
+  else was asked of it.
+
+**Not tested**: CPR's threads on the person's daemon end to end (only `initialize`); a thread
+`codex exec` made (V20a's), resumed on the app server; the daemon restarting during a turn
+(`daemon update` "may interrupt running work"); a TUI's memory; macOS, Windows. The 4 threads
+were archived (`codex unarchive` brings them back).

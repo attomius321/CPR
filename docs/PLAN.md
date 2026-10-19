@@ -439,6 +439,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V24 ✅ | A structured brief | The "Start a workspace" dialog is one text area that is also the branch name and the workspace's name; every branch is `feature/`, while 11 of this repository's 35 merges were fixes or chores; nothing prompts for how done is checked, which every agent vendor's guidance asks for. Planned: a kind (Feature, Fix, Refactor, Chore, Spike), a title, one required part per kind, an optional Done when filled in with a check command guessed from the repository's root files (on 16 repositories: 13 the documented command, 2 heavy, 1 close, 0 wrong), optional parts under More, assembled by the server into a brief with Markdown headings; the kind's branch prefix; old workspaces unchanged. Merged (2026-10-19): the guess on 16 repositories gives the 16 planned commands in 13–17 ms; the dialog fits at 1440 × 900 and 390 × 844; a real Claude Code's plans follow each kind's line. See below. |
 | V25 ✅ | Workspaces first, History beneath | `cpr view` opens on the commits page (`/`) and Workspaces is the second tab. A diff's way back is "← Commits". The code says "feature" for a workspace 1,949 times (12 files, `/api/features`, `cpr/features/`), and since V24 "feature" is also a kind of work. Planned: `/` Workspaces, `/history` History (today's commits page), tabs "Workspaces · History", old addresses rewritten, a back link to where a diff came from; "workspace" in code, API and on disk (`cpr/workspaces/`, moved once from `cpr/features/`); the kind "feature" kept. Merged (2026-10-19): 801 unit tests, 114 e2e; first paint of `/` as `main`'s `/workspaces` (109 ms); a repository's old records moved by the first reader. See below. |
 | V26 ✅ | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. V26a built: Merge into ▾ after Approve, CPR merges in its own worktree, runs the check, lands by fast-forward; `cpr merge`. Next: keep-both by rule (V26b); a fresh agent for the rest, from the conflict alone, every resolution reviewed (V26c). See below. |
+| V27 | Codex in the panel's terminal | A Codex workspace has no terminal (decision 133): `exec` turns are recorded by CPR's runner, and a terminal's would not be. Spike: Codex 0.163's app-server daemon is the binding — CPR as a client starts the thread, a TUI joined with `codex resume --remote` reaches CPR (every item, 3.0 s) and shows CPR's turns (0.9 s), turns outlive the client and come back with `thread/read`, and approvals give "needs you". Planned: CPR on the daemon (V27a), Codex's terminal tab (V27b). See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -6852,6 +6853,89 @@ by rule (V26b) would have refused both (additions that share lines; an edit of t
 **Not in V26 (later)**: a duplicate-lines warning on a resolution's review (both wrong answers in the replays kept text twice); Bitwarden's and Qwik's conflicts replayed; Codex as the merger with a real Codex; several merges at once (each on its own worktree), squash or rebase merges
 (`merge.style`), resolving submodule pointers, lockfiles regenerated instead of merged (none
 conflicted in the merges measured).
+
+### V27 — Codex in the panel's terminal, through its app server
+
+**Status:** planned (2026-10-20), on branch `milestone/v27-codex-terminal`; not started.
+
+**Problem** (asked: "Why codex can't run in terminal?" … "Think of a way to make it work … try
+codex agents, run a spike"). V20a runs Codex as `codex exec` through CPR's runner, which records
+its thread from Codex's output. A Codex workspace has no terminal tab (decision 133): `codex
+resume` in a terminal would not reach that thread, and V20a's resume lost the sandbox's writable
+roots, so it could not commit in the worktree. Codex workspaces also never say "needs you"
+(decision 131). Measured in the V27 spike (Codex 0.163.0, the latest):
+
+| What | Measured |
+|---|---|
+| CPR as a client of an app server: `thread/start` in the worktree, the branch's git folders writable, `turn/start` | committed in the linked worktree, 4.2 s for the turn |
+| A turn typed in `codex resume <thread> --remote unix://…` (the TUI joined to that thread) | reached CPR's client, every item, 3.0 s; committed from the sandbox |
+| A turn CPR starts while the TUI is open | drawn in the TUI 0.9 s after `turn/start` |
+| CPR's client gone mid-turn, a new one later | the turn finished; `thread/read` gave all 4 turns back with their items and times |
+| An approval (`approvalPolicy: on-request`) | `waitingOnApproval` on the thread's status; Codex's own prompt in a TUI that joined later; answered from CPR, resolved for all |
+| Trust | "Trust this folder?" once per worktree in the TUI; `-c projects…` ignored |
+| The app server's memory | 269 MB for a private one; the person's daemon (212 MB) already runs |
+
+**Goal**: a Codex workspace's panel gets a terminal, as Claude Code's has: Codex's own TUI on
+the workspace's thread, and what is typed there in the thread CPR shows. Its state says "needs
+you" when Codex waits for an approval. Unchanged: Claude Code workspaces; a Codex workspace when
+no app server can be reached (V20a's `exec`, as today).
+
+#### Design
+
+- **Codex workspaces run on the person's app-server daemon**: its socket from `codex app-server
+  daemon version` (started with `daemon start` when it is not running). It is theirs already, it
+  keeps threads running when `cpr view` stops, and `codex agents` lists CPR's workspaces with
+  their other sessions.
+- **CPR is a client** over WebSocket on that unix socket: its own small client (the HTTP upgrade,
+  text frames, ping), no new dependency. `initialize`, then per workspace:
+  - start: `thread/start` (the worktree, `workspace-write`, the branch's git folders as writable
+    roots as V20a gives them, `approvalPolicy: on-request`), `turn/start` with the prompt;
+  - a reply from the box: `turn/start`, or `turn/steer` while a turn runs (no stop, no lost turn);
+  - stop: `turn/interrupt`;
+  - its thread: `thread/read` with `includeTurns` (items as V18c's thread entries), and the
+    notifications while connected; no runner and no thread file for these workspaces.
+- **State** from the thread's status: `active` → working; `active` + `waitingOnApproval` →
+  needs you; `idle` → ready or done (V20a's rule on commits); a failed turn → failed.
+- **The terminal tab**: `codex resume <thread> --remote unix://<socket> -C <worktree>` under
+  CPR's terminals (node-pty), as `claude attach` is for Claude Code. The first time in a
+  worktree, Codex asks to trust it: the person answers there.
+- **Approvals** are answered in the terminal, Codex's own prompt. Answering them in the panel is
+  V20b's, for both agents.
+- **A workspace started by V20a** (`exec`) keeps V20a's path until it is started again.
+
+#### Verification
+
+1. Tests first: the WebSocket client (handshake, frames in both directions, ping, a fragmented
+   message, close) against a fake server; the thread from `thread/read`; the state from status
+   and turns; the terminal's command; the fallback to `exec` without a daemon.
+2. A fake app server for e2e (a WebSocket server on a unix socket), answering as the spike's
+   logs show: Codex's terminal tab, a turn there in the thread, "needs you".
+3. Real use with the person's daemon: a workspace started, a turn typed in its terminal and in
+   the box, an approval answered in the terminal, `cpr view` restarted mid-turn.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| The app server is `[experimental]`: its protocol may change between Codex versions | The version from `initialize`; methods checked against `generate-ts` per version; V20a's `exec` when a call fails |
+| The daemon restarts (an update "may interrupt running work") | Threads are on disk: `thread/resume` after a reconnect; the state says what happened |
+| The daemon is the person's: CPR's threads sit among theirs | Named after the workspace (`thread/name/set`), archived at Clean up as V20a does |
+| The trust prompt in every new worktree | Said in the panel before the terminal opens; the person decides |
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V27a | CPR on Codex's app server | The client, start, reply, stop and the thread through the daemon; "needs you"; `exec` when no daemon |
+| V27b | Codex's terminal | The terminal tab for Codex workspaces (`codex resume --remote`), the trust note |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 154 | Which app server | **The person's daemon, started when it is not running** | Threads outlive `cpr view`; `codex agents` shows them; no second 270 MB process |
+| 155 | Where a Codex thread comes from | **`thread/read` and the server's events; no runner, no thread file** | The server keeps every turn, from any client (4 of 4 read back after a reconnect) |
+| 156 | Trust | **The person answers Codex's prompt in the terminal** | It writes their config; `-c` cannot set it, and CPR should not decide it |
 
 ### Phase 1 milestones
 
