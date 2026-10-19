@@ -3012,3 +3012,38 @@ Merged into main (2026-10-19): V24a–c, no conflicts (`main` had not moved sinc
 started; the merge's tree is the branch's). `main` verified after the merge: 761 unit tests, lint,
 typecheck, build, 110 of 110 e2e.
 
+## V20 spike — what Codex 0.163 gives a supervisor (2026-10-19, branch `milestone/v20-other-agents`)
+
+Asked to plan V20 only; during it: "V20b is not necessary anymore right?" — yes: V21's terminal
+answers permissions and questions in the panel, so V20b is dropped (decision 129) and V20 is
+Codex and other agents. Codex 0.163.0 from npm into the scratchpad, `CODEX_HOME` a throwaway
+folder (the person's `~/.codex` untouched), no login: no turn reached the model.
+
+**Learned**:
+- **V18's Codex design was never run**: written against 0.162's documentation. 0.163 adds a
+  daemon (`app-server`, started on demand), `codex agents` (a full-screen browser, no JSON),
+  `queue`, and stable hooks.
+- **`exec --json` says its thread at once**: `thread.started` with the ID is the first line,
+  before any model call; then `turn.started`; a failed turn ends `turn.failed` and exit 1 (18 s
+  of retries without a login). `exec` reads stdin when it is not a terminal: a detached start must
+  close it. `exec resume <id>` continued the same ID; a new `exec` made a new one; each thread's
+  transcript is a `rollout-…-<id>.jsonl` under `$CODEX_HOME/sessions/`.
+- **Codex's hooks are Claude Code's**, nearly: `hooks.json`, the same event names (plus
+  `Interrupt`), the same input fields (`session_id`, `transcript_path`, `cwd`, `hook_event_name`,
+  `source`, `prompt`). But **untrusted hooks are skipped without a word**: a `hooks.json` in
+  `CODEX_HOME` ran nothing until `--dangerously-bypass-hook-trust`. Trust is per hook
+  (`trusted_hash`). CPR never gave Claude Code's trust; it will not give Codex's — its events are
+  enough (decision 130).
+- **A sandboxed Codex cannot commit**: under `workspace-write` (via `codex sandbox`) a file in the
+  folder was written, but `.git` was read-only — `git commit` failed in a linked worktree like
+  CPR's and in a plain checkout ("index.lock: Read-only file system"), and naming the main `.git`
+  as a writable root did not change it. CPR's prompt says to commit as it goes: decision 131 is
+  left to a spike with a login.
+- **The daemon's JSON-RPC** has what a supervisor wants (`thread/list`, `turn/start`,
+  `turn/interrupt`, approval and question requests to the client) but is marked experimental.
+- **`.worktreeinclude`**: none of the 16 repositories of the V24 spike has one, or a root `.env`
+  template: later.
+
+**Not measured** (needs a Codex login): a real turn's items, `--approve-for-me` on `git commit`,
+`codex resume` in V21's terminal, SIGTERM mid-turn, a reply after a completed turn.
+

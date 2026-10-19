@@ -432,7 +432,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V16 ✅ | Finish a review | A branch review has no end: outside `cpr pr` the reviewer can only mark symbols (the reviewer's V15 review: 86 of 87 marked, 0 comments, none possible), feedback to the agent goes through chat without a place, badges show no outcome, and approved work is pushed by hand. Merged: comments and the Review tab on branch reviews; Approve, Request changes or Comment recorded with its comments in the review's JSON ("✓", "✗", "+n" on badges); Approve pushes the reviewed commit, by SHA; the default branch reviewable from where it was last pushed; `cpr pr` unchanged. See below. |
 | V17 ✅ | Approve means "merge it" | Approve pushes the reviewed commit, which did nothing on 0 of 4 approvals here (the agent had pushed), while every approval was followed by asking for the merge in chat; merging the default branch into a reviewed branch shows "+6" for one commit; agents elsewhere get no instructions. Merged: Approve records the commit and the default branch to merge into, nothing pushed; "since" counts the branch's own commits; the Review tab says whether the merge will conflict; CPR writes `cpr/AGENTS.md` for any repository's agent (a headless Claude Code agent followed it: merged exactly the approved commit; on a conflict, resolved on its branch and asked for another review). See below. |
 | V18 ✅ | Start a feature | The commits page starts nothing: starting an agent on a feature is a terminal job — a branch and worktree by hand (12 ms on ky to 0.85 s on Bitwarden), Claude Code's own worktrees inside the checkout (ignored by 0 of 6 clones) and from the remote default branch, `claude --bg` refused by a trust step a script cannot take (3 of 3 folders), and nothing ties an agent to its branch. Planned: "Start a feature" (header, `n`, a row's menu): a brief, a branch at the chosen commit with its own worktree beside the checkout, the agent started in the background (Claude Code, or a configured command), its state on the branch's badge and in a features view (decisions 105–106), each leading to the other, plan first per feature; reviews and merges as V15–V17. V18a–c merged into main (2026-10-15): a feature from the header or a row, its worktree and agent in 0.1–0.9 s on the six clones, the checkout untouched; the features view with each agent's state; since V18c, the picked feature's panel beside the list with its thread, recorded by hooks CPR gives each agent (22–23 ms per event), and one box that continues the agent's session (stop, then resume: 1.6 s with a real Claude Code), Send the verdict, Clean up. See below. |
-| V20 | Other agents, and answers in CPR | Was V18d–e. V20a: Codex (`codex exec --json`, detached, replies by `exec resume`) and any configured agent command, picked in the start dialog, and `.worktreeinclude`. V20b: permissions (an edit as a diff, a command) and questions (their options) answered in the feature's panel through the hooks every feature has had since V18c (measured in the V18c spike). See below. |
+| V20 | Codex and other agents | CPR starts Claude Code only: Codex and other agents get a prompt to copy and nothing after. Measured on Codex 0.163 (no login here): `exec --json` gives its thread ID at once and its states as events, `exec resume` continues a thread, there is no JSON list of sessions, its hooks have Claude Code's shape but need the person's trust, and its sandbox keeps `.git` read-only, so it cannot commit. Planned: an agent seam with Claude Code behind it unchanged; Codex started detached, its state and thread from its events (V20a, after a spike with a Codex login); any configured agent command (V20c). The former V20b, answers in CPR, is dropped: V21's terminal answers them. See below. |
 | V21 ✅ | The agent's terminal in its panel | A feature's agent is talked to in V18c's box (a reply stops the session, 1.6 s, and loses a turn in progress) or in a terminal elsewhere (Talk copies `claude attach`). Measured (V21 spike): `claude attach` in a pseudo-terminal, drawn by xterm.js in the page, gives the whole session — first output in 152–174 ms, a key to its echo 22 ms, a permission answered in the page, Esc, messages queued while the agent works — while Claude Code keeps hosting it and CPR's hooks keep recording. Planned: Terminal in the feature's panel (node-pty optional, Talk without it), output as events and keys as POSTs under the write rule, one terminal per open panel, dark in both themes; and the state after Esc (`idle` with `working`), wrong on `main` today. Merged (2026-10-18): with a real Claude Code, the session drawn and answered in the panel, Esc read as "Interrupted" 0.3 s later, a stop shown and reopened in 0.2 s; a key to its echo 32 ms through CPR. See below. |
 | V22 ✅ | Fixes: stale text outside the README | Found while rewriting the README (`chore/update-readme`, 2026-10-15). `cpr --help` and `cpr view --help` say the first page lists the current branch's commits (every branch since V10a); `@cpr/cli`'s description names only `cpr diff` and `cpr view`; the action's `plugins` input points to `cpr.config.json`, the older place; the sidebar's "No findings." ends with an emoji. Merged: all four fixed, and `cpr --help`'s `pr <number>` shown as optional (it has been since C1); a unit test keeps the help on every branch. |
 | V23 ✅ | Branches that need you, first | Planned as V22, which `main` took meanwhile. The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. Merged (2026-10-18): on a clone of this repository with three open features, they are the first three entries instead of the 4th, 10th and 12th; `/api/features` unchanged (34 ms), each thread read from its last 256 KB (0.6 ms at any length). See below. |
@@ -5445,29 +5445,161 @@ session that wakes from agent view or `claude attach` rather than from CPR; the 
 unmerged feature with a real agent (unit and e2e only); Windows and macOS (the hook's quoting);
 Firefox and Safari.
 
-### V20 — Other agents, and answers in CPR
+### V20 — Codex and other agents
 
-**Status:** planned (2026-10-15), not started. Moved out of V18 (asked: "Rename V18d and V18e
-into V20"): V20a was V18d, V20b was V18e. Each gets its own plan (the problem measured, design,
-verification) when it starts; what V18 already designed and measured for them:
+**Status:** planned (2026-10-19), on branch `milestone/v20-other-agents`; not started. Planned in
+October as "Other agents, and answers in CPR" (V20a was V18d, V20b was V18e). V20b is dropped
+(decision 129): V21's terminal answers permissions and questions in the panel.
 
-- **V20a, Codex and other agents**: V18's "Starting the agent" (Codex 0.162: `codex exec --json`
-  started detached, its states from its JSONL events, replies by `codex exec resume`; a
-  configured `agent.command` for any other agent; the agent picked in the dialog), and
-  `.worktreeinclude` under "A feature"; V18's verification step 3 for Codex.
-- **V20b, answers in CPR**: the V18c spike (journal) — a `PermissionRequest` hook gets the tool
-  and its whole input (an `Edit`'s old and new text, the command) and answers allow, or deny with
-  a reason the agent reads; a question reaches `PreToolUse` on `AskUserQuestion` with its
-  options and is answered with `updatedInput.answers`, and again through `PermissionRequest`
-  when the first hook timed out. Every feature started since V18c already runs CPR's hooks for
-  these events (decision 108); they record and decide nothing until V20b.
+**Problem** (V18's "the agent picked in the dialog", moved here). CPR starts Claude Code only:
+someone who works with Codex or another agent gets "No agent found" and a prompt to copy, and
+then nothing CPR shows follows that agent. Measured on `main` (`5b182ed`):
+
+| What | Today |
+|---|---|
+| Agents CPR can start | 1: `claude --bg` (`claudeCode` in `packages/cli/src/features.ts`) |
+| Where Claude Code is assumed | Eight of the `Features` service's methods: start and start again (`--bg`), the list's states (`claude agents --json`), stop, the terminal (`claude attach`), replies (`--bg --resume`), clean-up (`claude rm`), the dialog's account (`claude auth status`); the hooks (`claude-settings.json`); `AgentKind = 'claude'` in the record |
+| Codex's design in V18 | Written against Codex 0.162 from its documentation; never run (no Codex entry in the journal) |
+
+What Codex 0.163.0 does, measured here on 2026-10-19 (npm `@openai/codex`, a throwaway
+`CODEX_HOME`, no login: no turn could reach the model; JOURNAL "V20 spike"):
+
+| What | Measured |
+|---|---|
+| `codex exec --json` | First line `thread.started` with the thread's ID, before any model call; then `turn.started`, items, `turn.completed` or `turn.failed`; exit 1 after a failed turn (18 s of retries without a login) |
+| Its input | Reads stdin when it is not a terminal ("Reading additional input from stdin…"): started detached, stdin must be closed |
+| Replies | `codex exec resume <id> "<text>"` continues the same thread (same ID, same transcript); a new `exec` starts a new one. Transcripts: `$CODEX_HOME/sessions/<y>/<m>/<d>/rollout-…-<id>.jsonl` |
+| A list of sessions | `codex agents` is a full-screen browser only; no JSON list from the CLI. The daemon's JSON-RPC (`thread/list`, `turn/start`, approval requests) is marked experimental |
+| Hooks | Stable. `hooks.json` with Claude Code's event names (`SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `Stop`, `SessionEnd`, and `Interrupt`); the hook's input has Claude Code's fields (`session_id`, `transcript_path`, `cwd`, `hook_event_name`, `source`, `prompt`). **Untrusted hooks are skipped without a word**: they ran only with `--dangerously-bypass-hook-trust`. Trust is per hook (`trusted_hash`), the person's to give |
+| Sandbox | `workspace-write`: the folder is writable, **`.git` is read-only**: `git commit` failed in a CPR-style worktree and in a plain checkout alike ("index.lock: Read-only file system"); naming the main `.git` as a writable root did not help |
+
+Causes:
+- `features.ts` talks to Claude Code directly: there is no agent seam to add Codex behind.
+- Codex has no background supervisor like `claude --bg` and no JSON list of sessions: CPR must
+  start it detached and keep what it says.
+- A sandboxed Codex cannot commit, while CPR's prompt says "Commit your work as you go" and its
+  reviews read commits.
+
+**Goal**: in the start dialog, the agent is picked among those installed — Claude Code, Codex, or
+a command configured for any other agent — and the workspace then shows that agent's state and
+thread, takes replies, opens its terminal and is cleaned up as a Claude Code workspace is, as far
+as the agent allows. Unchanged: Claude Code workspaces (their start, states, hooks, terminal,
+replies), V24's brief and kinds (every agent gets the same prompt), reviews and merges; without
+Codex or a configured command, the dialog and every page are as today.
+
+#### An agent seam (CLI)
+
+- `packages/cli/src/agents.ts`: an `Agent` interface with what the `Features` service asks of
+  one — `start`, `state` (from what it keeps), `stop`, `reply`, `terminal` (the command a
+  terminal runs, or none), `clean`, `account` — and three: `claudeAgent` (today's `ClaudeCode`
+  behind it, unchanged), `codexAgent`, `commandAgent`. `features()` takes `agents()` instead of
+  `claude()`.
+- The record's `agent.kind` becomes `'claude' | 'codex' | 'command'`, and keeps what each needs:
+  Codex its `thread` (ID), the process's `pid`, its `log`; a command its `pid` and `log`. Records
+  from before V20 are Claude Code's, as today.
+- `FeatureOptions.agent` becomes `agents` (those found, each with its account) and `agent` (the
+  default: `agent` in `cpr/config.json`, else Claude Code, else Codex, else a configured command).
+
+#### Codex (CLI)
+
+- **Start**: `codex exec --json -C <worktree> -s workspace-write [-m <model>] "<prompt>"`, run
+  detached with stdin closed, its stdout appended to `<cache>/state/<repo id>/agents/<branch
+  as dashes>.jsonl` and stderr beside it, `unref`'d so it outlives `cpr view`. CPR waits for the
+  `thread.started` line (5 s at most) and records the thread's ID; the commit question is
+  decision 131. Never `--dangerously-bypass-approvals-and-sandbox`, `--dangerously-bypass-hook-
+  trust`, `--worktree` (CPR made it) or `--add-dir` (in Codex it makes a folder writable, and
+  `cpr/` is the person's): the prompt names the record and `cpr/AGENTS.md` by path, as today
+  (Codex reads the repository's own `AGENTS.md` itself).
+- **State**, from the process and the log's last event (decision 130): the process alive and the
+  last event not an ended turn → working; `turn.completed` → plan ready, ready for review or done,
+  by commits and "plan first", as for Claude Code; `turn.failed`, or the process gone with no
+  ended turn → failed, with the last `error` event's message. Never "needs you": `exec` does not
+  stop to ask.
+- **Thread**, from the same log: CPR's prompt and each reply (CPR writes a line of its own,
+  `{"type":"cpr.prompt",…}`, before it starts a turn), the agent's messages (`agent_message`
+  items) as reports, a failed turn as a notice — the `ThreadEntry` kinds V18c has, so the panel
+  draws them unchanged.
+- **Reply**: `codex exec resume <thread> "<text>"`, detached, appending to the same log; while a
+  turn runs, "Stop it and send" stops it first, as for Claude Code.
+- **Stop**: SIGTERM to the recorded process (checked first that it is the `codex` started for this
+  worktree, against PID reuse).
+- **Terminal** (V21): `codex resume <thread>` in the panel's terminal when no turn runs — Codex's
+  own interactive view of the same thread, where it can ask and the person can answer. While a
+  turn runs, the panel shows the thread only.
+- **Clean up**: `codex archive <thread>`, then the worktree and branch as today.
+- **Account**: `codex login status` ("Logged in using ChatGPT", "…an API key", "Not logged in").
+
+#### Any other agent (CLI)
+
+- `agent` in `cpr/config.json` may be `{ "command": ["gemini", "-p", "{prompt}"] }`: run
+  detached in the worktree with `{prompt}` replaced (an argument, never through a shell), stdin
+  closed, its output in a log in CPR's cache. Offered in the dialog when its program is found.
+- State from the process: running → working; exit 0 → ready for review or done, by commits;
+  otherwise failed, with the log's last lines. Its thread is CPR's prompt and the log's last
+  4 KB as one report. No replies, no terminal, nothing to clean up but the worktree.
+
+#### The dialog and the panel (viewer)
+
+- The start dialog's agent line becomes a picker when more than one is found: "Claude Code ·
+  your Pro subscription · permission …", "Codex · ChatGPT · workspace-write", "gemini (configured)".
+  Claude Code's permission mode only for Claude Code.
+- The panel and the list read the state as today; actions the agent cannot take are not drawn
+  (Codex: no "Talk"; a command: no reply box, no terminal). The thread says which agent it is.
+
+#### Verification
+
+1. **Spike first, with a Codex login** (none here): one Codex 0.163 turn in a CPR-style worktree,
+   plan first and not; the JSONL items of a real turn (messages, commands, file changes); a reply
+   by `exec resume`; `codex resume` in V21's terminal; SIGTERM mid-turn; and decision 131's
+   question — whether `git commit` gets through with `--approve-for-me`, and what the agent does
+   when it does not.
+2. **Unit, red first**: the Codex log read into states and thread entries (from the spike's real
+   lines, and the ones measured here: `thread.started`, `turn.failed`, `error`); the command
+   agent's states from exit codes; the record with each kind, and records from before V20 read as
+   Claude Code's; config `agent` in its three forms; the dialog's options with one, two and three
+   agents found.
+3. **E2E** with a fake `codex` (as the fake `claude`: a script writing the measured JSONL): start
+   with Codex picked, its states, a reply, Stop, clean up; a configured command; Claude Code
+   workspaces unchanged (the existing 110 tests).
+4. **Nothing else changes**: without Codex or a configured command, `/api/features/options` and
+   every page as on `main`; no analysis code, so no regression sets.
+5. **Real agents**: one workspace each with a real Claude Code and a real Codex, through
+   `cpr view`, on a scratch repository: started, a plan, a reply, its commits reviewed.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| A sandboxed Codex cannot commit (measured) | Spike first; decision 131 picks between `--approve-for-me` and leaving the changes for the person, with the panel's "files not committed" saying so |
+| Codex's `--json` events change between versions | Read only `thread.started`, `turn.*`, `error` and `agent_message`; anything else ignored; the version recorded with each workspace |
+| A recorded PID reused by another program | The process's command line checked (`/proc`, `ps -o command=`) before it counts as alive or is stopped |
+| Codex's daemon API would answer more (lists, approvals) | Experimental today; revisit when stable (not in V20) |
+| A configured command that needs a terminal | Documented: commands run without one; such agents use their own terminal |
+
+**Order**: the spike (needs a Codex login), then the agent seam with Claude Code behind it and
+nothing changed (all tests green), then Codex, then commands, then the dialog.
 
 #### Milestones
 
 | # | Milestone | Output |
 |---|---|---|
-| V20a | Codex and other agents | Codex (`codex exec --json`, detached; states from its events; reply by `exec resume`); `agent.command` for any other (detached, log, running/exited); the agent picked in the dialog; `.worktreeinclude`. |
-| V20b | Answers in CPR | What an agent waits on, answered in the panel through the hooks registered since V18c: a permission (an edit as a diff, a command; allow, or deny with a reason), a question (its options); the hook waits for the person up to its timeout, then Claude Code's own dialog (measured: the question comes again through `PermissionRequest`). |
+| V20a | Codex | The agent seam (Claude Code behind it, unchanged); Codex started detached, its state and thread from its JSONL, replies by `exec resume`, Stop, `codex resume` in the terminal, clean-up by `archive`; the agent picked in the dialog. |
+| ~~V20b~~ | ~~Answers in CPR~~ | Dropped (decision 129). |
+| V20c | Any agent command | `agent: { "command": [...] }`: started detached, state from its exit, its log's end as the thread. |
+
+**Decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 129 | V20b, answers to permissions and questions in CPR | **Dropped** | Asked ("V20b is not necessary anymore right?"). V21's terminal shows the agent's own prompts in the panel and answers them (measured in the V21 spike). What V20b alone would add — answers without node-pty, answers from the list, an edit as a diff before allowing it — has not been asked for; the hooks V18c registered stay, recording only |
+| 130 | Where a Codex workspace's state and thread come from | **Its own `exec --json` events, in a log CPR keeps; not hooks** | Measured: Codex's hooks have Claude Code's shape but run only once the person trusts each one; untrusted they are skipped silently, and `--dangerously-bypass-hook-trust` would also run any hooks a repository brings. The events need nothing trusted |
+| 131 | How a Codex agent commits, with `.git` read-only in its sandbox | **Open: decided by the spike** — `--approve-for-me` (Codex's automatic review of the escalation), else the prompt tells it to leave its changes and CPR's panel asks the person to commit | Measured: `git commit` fails under `workspace-write` in any checkout. Never `danger-full-access` |
+| 132 | Flags CPR never passes to Codex | **`--dangerously-bypass-approvals-and-sandbox`, `--dangerously-bypass-hook-trust`, `--worktree`, `--add-dir`** | The first two are the person's to choose, not CPR's; CPR made the worktree; `--add-dir` makes a folder writable |
+
+**Not in V20 (later)**: `.worktreeinclude` (copying git-ignored files such as `.env` into a new
+worktree; 0 of the 16 repositories of the V24 spike have one, or a root `.env` template); driving
+Codex through its daemon's JSON-RPC (experimental); answers in CPR without a terminal (the former
+V20b); more than one agent in one workspace.
 
 ### V21 — The agent's terminal in its feature's panel
 
