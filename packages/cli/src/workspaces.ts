@@ -29,16 +29,16 @@ import {
   type BriefParts,
   type CheckGuess,
   type AgentStateName,
-  type FeatureAgentState,
-  type FeatureList,
-  type FeatureOptions,
-  type FeatureReplied,
-  type FeatureReply,
-  type FeatureRequest,
-  type FeatureStart,
-  type FeatureSummary,
-  type FeatureTerminalRequest,
-  type FeatureThread,
+  type WorkspaceAgentState,
+  type WorkspaceList,
+  type WorkspaceOptions,
+  type WorkspaceReplied,
+  type WorkspaceReply,
+  type WorkspaceRequest,
+  type WorkspaceStart,
+  type WorkspaceSummary,
+  type WorkspaceTerminalRequest,
+  type WorkspaceThread,
   type GitRepo,
   type PermissionMode,
   type RefList,
@@ -66,12 +66,13 @@ import {
   readThreadEnd,
   threadPath,
   turnEnded,
+  workspacesFolder,
 } from './thread.js';
 
-/** A feature on disk: `cpr/features/<branch>.json` (V18), one per branch. */
-export interface FeatureFile {
+/** A workspace on disk: `cpr/workspaces/<branch>.json` (V18; `cpr/features/` before V25), one per branch. */
+export interface WorkspaceFile {
   /** The agent started for it; null when none was found. */
-  agent: FeatureAgentRecord | null;
+  agent: WorkspaceAgentRecord | null;
   /** The commit the branch started at (full SHA). */
   base: string;
   branch: string;
@@ -88,11 +89,11 @@ export interface FeatureFile {
   parts?: BriefParts;
   planFirst: boolean;
   title?: string;
-  /** The feature's worktree folder. */
+  /** The workspace's worktree folder. */
   worktree: string;
 }
 
-export interface FeatureAgentRecord {
+export interface WorkspaceAgentRecord {
   kind: AgentKind;
   /** Claude Code's permission mode. */
   permissionMode?: PermissionMode;
@@ -107,9 +108,9 @@ export interface FeatureAgentRecord {
   hooks?: boolean;
 }
 
-/** Every feature file's first key: where an agent that opens it finds its instructions. */
-export const FEATURE_ABOUT =
-  'A feature started in CPR. Agents: read cpr/AGENTS.md before acting on it.';
+/** Every workspace file's first key: where an agent that opens it finds its instructions. */
+export const WORKSPACE_ABOUT =
+  'A workspace started in CPR. Agents: read cpr/AGENTS.md before acting on it.';
 
 /** Longest brief: it goes on the agent's command line (Windows takes 32,767 characters). */
 export const MAX_BRIEF = 20_000;
@@ -224,7 +225,7 @@ export function briefOf(kind: WorkKind, title: string, parts: BriefParts): strin
 const FULL_SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 
 /** A request the server answers with `status` and the message. */
-export class FeatureRefused extends Error {
+export class WorkspaceRefused extends Error {
   override name = 'FeatureRefused';
   constructor(
     message: string,
@@ -234,23 +235,23 @@ export class FeatureRefused extends Error {
   }
 }
 
-/** A feature's file: the branch's slashes as folders. */
-export function featurePath(dir: string, branch: string): string {
+/** A workspace's file: the branch's slashes as folders. */
+export function workspacePath(dir: string, branch: string): string {
   const parts = branch.split('/');
   if (parts.some((p) => p === '' || p === '.' || p === '..')) {
-    throw new FeatureRefused(`not a branch name: ${branch}`, 400);
+    throw new WorkspaceRefused(`not a branch name: ${branch}`, 400);
   }
   const last = parts.pop() as string;
   return join(dir, ...parts, `${last}.json`);
 }
 
 /** Sorted keys, two-space indent, a final newline; `about` first. */
-export function serializeFeature(feature: FeatureFile): string {
-  return `${JSON.stringify(sortKeys({ ...feature, about: FEATURE_ABOUT }), null, 2)}\n`;
+export function serializeWorkspace(workspace: WorkspaceFile): string {
+  return `${JSON.stringify(sortKeys({ ...workspace, about: WORKSPACE_ABOUT }), null, 2)}\n`;
 }
 
-/** A feature file, or null when it is missing or not one. */
-export async function readFeature(path: string): Promise<FeatureFile | null> {
+/** A workspace file, or null when it is missing or not one. */
+export async function readWorkspace(path: string): Promise<WorkspaceFile | null> {
   let value: unknown;
   try {
     value = JSON.parse(await readFile(path, 'utf8'));
@@ -258,7 +259,7 @@ export async function readFeature(path: string): Promise<FeatureFile | null> {
     return null;
   }
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const v = value as Partial<Record<keyof FeatureFile, unknown>>;
+  const v = value as Partial<Record<keyof WorkspaceFile, unknown>>;
   const text = (x: unknown) => (typeof x === 'string' ? x : '');
   if (!text(v.branch) || !text(v.base) || !text(v.worktree)) return null;
   return {
@@ -295,9 +296,9 @@ function partsRead(value: unknown): { parts?: BriefParts } {
   return Object.keys(parts).length > 0 ? { parts } : {};
 }
 
-function asAgent(value: unknown): FeatureAgentRecord | null {
+function asAgent(value: unknown): WorkspaceAgentRecord | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const v = value as Partial<Record<keyof FeatureAgentRecord, unknown>>;
+  const v = value as Partial<Record<keyof WorkspaceAgentRecord, unknown>>;
   const kind = AGENT_KINDS.find((k) => k === v.kind);
   if (!kind) return null;
   const mode = PERMISSION_MODES.find((m) => m === v.permissionMode) ?? 'default';
@@ -313,8 +314,8 @@ function asAgent(value: unknown): FeatureAgentRecord | null {
 }
 
 /**
- * Where a feature's worktree goes: beside the checkout, `../<checkout>.worktrees/<branch>`, the
- * branch's slashes as dashes; `pattern` (`features.worktrees` in `cpr/config.json`, relative to
+ * Where a workspace's worktree goes: beside the checkout, `../<checkout>.worktrees/<branch>`, the
+ * branch's slashes as dashes; `pattern` (`workspaces.worktrees` in `cpr/config.json`, relative to
  * the checkout, `{repo}` for its folder name) moves the folder that holds them.
  */
 export function worktreeFolder(main: string, branch: string, pattern?: string): string {
@@ -326,10 +327,10 @@ export function worktreeFolder(main: string, branch: string, pattern?: string): 
 }
 
 /**
- * Where a feature starts by default: the default branch's newest tip — of the local branch and
+ * Where a workspace starts by default: the default branch's newest tip — of the local branch and
  * the remotes', the one that holds the others; the local one when they diverged.
  */
-export async function featureBase(
+export async function workspaceBase(
   repo: GitRepo,
   refs: RefList,
 ): Promise<{ from: string; sha: string } | null> {
@@ -354,28 +355,28 @@ export async function featureBase(
 
 /**
  * What the agent is told: the brief, its kind's line (V24), its branch and worktree, where its
- * record and reviews are. A record from before V24 is a feature.
+ * record and reviews are. A record from before V24 is a workspace.
  */
-export function featurePrompt(
-  feature: FeatureFile,
+export function workspacePrompt(
+  workspace: WorkspaceFile,
   where: { record: string; reviews: string; agents: string; into: string | null },
 ): string {
-  const kind = feature.kind ?? 'feature';
-  const start = feature.from
-    ? `${feature.from} at ${feature.base.slice(0, 7)}`
-    : `the commit ${feature.base.slice(0, 7)}`;
+  const kind = workspace.kind ?? 'feature';
+  const start = workspace.from
+    ? `${workspace.from} at ${workspace.base.slice(0, 7)}`
+    : `the commit ${workspace.base.slice(0, 7)}`;
   const { line } = KINDS[kind];
   return [
-    `You are starting a new ${kind} in this repository, on the branch ${feature.branch}, ` +
+    `You are starting a new ${kind} in this repository, on the branch ${workspace.branch}, ` +
       `started from ${start}. This folder is a git worktree of its own with that branch ` +
       'checked out: work only here.',
     '',
     "The person's brief:",
     '',
-    feature.brief.trim(),
+    workspace.brief.trim(),
     '',
     ...(line ? [line, ''] : []),
-    feature.planFirst
+    workspace.planFirst
       ? 'First write a plan: what you will change and how you will check it, then stop and ' +
         "wait for the person's OK before changing anything."
       : "Plan it, build it and check it as the project's own instructions say.",
@@ -383,7 +384,7 @@ export function featurePrompt(
     kind === 'spike'
       ? 'Commit nothing unless the brief asks for it. When you have the answer, say it: the ' +
         'person reads your report in CPR.'
-      : `Commit your work on ${feature.branch} as you go. Push only if the project's instructions ` +
+      : `Commit your work on ${workspace.branch} as you go. Push only if the project's instructions ` +
         'say so. When it is ready, say so: the person reviews the branch in CPR' +
         (where.into ? `, and an approved commit is merged into ${where.into}.` : '.'),
     '',
@@ -466,13 +467,13 @@ export function parseAccount(text: string): string | undefined {
   return undefined;
 }
 
-/** The newest session in a feature's worktree, matched by real path. */
+/** The newest session in a workspace's worktree, matched by real path. */
 export function newestSession(
-  feature: FeatureFile,
+  workspace: WorkspaceFile,
   sessions: AgentSession[] | null,
   real: (path: string) => string,
 ): AgentSession | undefined {
-  const folder = real(feature.worktree);
+  const folder = real(workspace.worktree);
   return (sessions ?? [])
     .filter((s) => real(s.cwd) === folder)
     .sort((a, b) => b.startedAt - a.startedAt)[0];
@@ -483,23 +484,23 @@ const isBlocked = (session: AgentSession) =>
   ['blocked', 'waiting'].includes(session.state ?? session.status ?? '');
 
 /**
- * What the page says of a feature's agent: the newest session working in its worktree (matched
+ * What the page says of a workspace's agent: the newest session working in its worktree (matched
  * by real path), else why there is none. `ahead` (commits since the base) tells a finished plan
  * from finished work. `ended`: the thread says its last turn ended (V18c) — Claude Code reads a
  * finished plan as `blocked` with nothing named it waits for, so that is a finished turn. A
  * turn interrupted with Esc fires no hook and reads `idle` with `working` until the next one ends.
  */
 export function agentState(
-  feature: FeatureFile,
+  workspace: WorkspaceFile,
   sessions: AgentSession[] | null,
   ahead: number,
   real: (path: string) => string,
   ended = false,
-): FeatureAgentState {
-  const { agent } = feature;
+): WorkspaceAgentState {
+  const { agent } = workspace;
   if (!agent) return { state: 'no-agent' };
   const kind = agent.kind;
-  const session = newestSession(feature, sessions, real);
+  const session = newestSession(workspace, sessions, real);
   if (!session) {
     if (agent.error) return { state: 'not-started', kind, error: agent.error };
     if (sessions === null) {
@@ -509,7 +510,7 @@ export function agentState(
   }
   const id = session.id ? { id: session.id } : {};
   const finished = (): AgentStateName =>
-    ahead > 0 ? 'ready' : feature.planFirst ? 'plan-ready' : 'done';
+    ahead > 0 ? 'ready' : workspace.planFirst ? 'plan-ready' : 'done';
   const waiting = session.waitingFor ? { waitingFor: session.waitingFor } : {};
   switch (session.state ?? session.status) {
     case 'working':
@@ -691,8 +692,8 @@ export async function findClaude(
   return onPath(host, 'claude');
 }
 
-/** What `cpr/config.json` says of features and their agent; anything unknown is ignored. */
-export interface FeatureConfig {
+/** What `cpr/config.json` says of workspaces and their agent; anything unknown is ignored. */
+export interface WorkspaceConfig {
   branchPrefixes: Record<WorkKind, string>;
   worktrees?: string;
   /** The agent offered first (`agent.kind`, V20a). */
@@ -708,12 +709,12 @@ export interface FeatureConfig {
  * `agent.kind` names the agent offered first (V20a); `agent.permissionMode` and `agent.model`
  * are Claude Code's.
  */
-export function readFeatureConfig(root: string): FeatureConfig {
+export function readWorkspaceConfig(root: string): WorkspaceConfig {
   const branchPrefixes = Object.fromEntries(WORK_KINDS.map((k) => [k, `${k}/`])) as Record<
     WorkKind,
     string
   >;
-  const config: FeatureConfig = { branchPrefixes, permissionMode: 'default' };
+  const config: WorkspaceConfig = { branchPrefixes, permissionMode: 'default' };
   const file = CONFIG_FILES.find((name) => existsSync(join(root, name)));
   if (!file) return config;
   let value: unknown;
@@ -722,22 +723,26 @@ export function readFeatureConfig(root: string): FeatureConfig {
   } catch {
     return config;
   }
+  type Section = { branchPrefix?: unknown; branchPrefixes?: unknown; worktrees?: unknown };
   const v = (value && typeof value === 'object' ? value : {}) as {
-    features?: { branchPrefix?: unknown; branchPrefixes?: unknown; worktrees?: unknown };
+    workspaces?: Section;
+    /** The section's name before V25, still read when `workspaces` is not there. */
+    features?: Section;
     agent?: unknown;
   };
-  if (typeof v.features?.branchPrefix === 'string') {
-    branchPrefixes.feature = v.features.branchPrefix;
+  const section = v.workspaces ?? v.features;
+  if (typeof section?.branchPrefix === 'string') {
+    branchPrefixes.feature = section.branchPrefix;
   }
-  const prefixes = v.features?.branchPrefixes;
+  const prefixes = section?.branchPrefixes;
   if (prefixes && typeof prefixes === 'object') {
     for (const kind of WORK_KINDS) {
       const prefix = (prefixes as Record<string, unknown>)[kind];
       if (typeof prefix === 'string') branchPrefixes[kind] = prefix;
     }
   }
-  if (typeof v.features?.worktrees === 'string' && v.features.worktrees !== '') {
-    config.worktrees = v.features.worktrees;
+  if (typeof section?.worktrees === 'string' && section.worktrees !== '') {
+    config.worktrees = section.worktrees;
   }
   const agent = (v.agent && typeof v.agent === 'object' ? v.agent : {}) as {
     kind?: unknown;
@@ -756,65 +761,67 @@ export function readFeatureConfig(root: string): FeatureConfig {
  * A start request's brief, checked: made from its kind, title and parts (V24), empty parts left
  * out; or, from a request made before V24, its brief as given.
  */
-function workOf(request: FeatureRequest): Pick<FeatureFile, 'brief' | 'kind' | 'title' | 'parts'> {
+function workOf(
+  request: WorkspaceRequest,
+): Pick<WorkspaceFile, 'brief' | 'kind' | 'title' | 'parts'> {
   const { kind, title, parts } = request;
   if (kind === undefined && title === undefined && parts === undefined) {
     const brief = request.brief ?? '';
     if (brief.trim() === '') {
-      throw new FeatureRefused('a workspace needs a brief: what to build', 400);
+      throw new WorkspaceRefused('a workspace needs a brief: what to build', 400);
     }
     if (brief.length > MAX_BRIEF) {
-      throw new FeatureRefused('a brief is at most 20,000 characters', 400);
+      throw new WorkspaceRefused('a brief is at most 20,000 characters', 400);
     }
     return { brief };
   }
   if (request.brief !== undefined) {
-    throw new FeatureRefused('a workspace takes a brief or a kind of work, not both', 400);
+    throw new WorkspaceRefused('a workspace takes a brief or a kind of work, not both', 400);
   }
   if (!WORK_KINDS.includes(kind as WorkKind)) {
-    throw new FeatureRefused(`unknown kind: ${String(kind)}`, 400);
+    throw new WorkspaceRefused(`unknown kind: ${String(kind)}`, 400);
   }
   const of = kind as WorkKind;
   const name = (title ?? '').trim();
-  if (name === '') throw new FeatureRefused('a workspace needs a title', 400);
-  if (/[\r\n]/.test(name)) throw new FeatureRefused('a title is one line', 400);
+  if (name === '') throw new WorkspaceRefused('a workspace needs a title', 400);
+  if (/[\r\n]/.test(name)) throw new WorkspaceRefused('a title is one line', 400);
   if (name.length > MAX_TITLE) {
-    throw new FeatureRefused(`a title is at most ${MAX_TITLE} characters`, 400);
+    throw new WorkspaceRefused(`a title is at most ${MAX_TITLE} characters`, 400);
   }
   const own = partsOf(of);
   const kept: BriefParts = {};
   for (const [part, text] of Object.entries(parts ?? {})) {
     if (!own.includes(part as BriefPart)) {
       const heading = Object.hasOwn(HEADINGS, part) ? HEADINGS[part as BriefPart] : part;
-      throw new FeatureRefused(`a ${of} has no "${heading}"`, 400);
+      throw new WorkspaceRefused(`a ${of} has no "${heading}"`, 400);
     }
     if (typeof text === 'string' && text.trim() !== '') kept[part as BriefPart] = text;
   }
   const required = KINDS[of].required;
   if (!kept[required]) {
-    throw new FeatureRefused(`a ${of} needs "${HEADINGS[required]}"`, 400);
+    throw new WorkspaceRefused(`a ${of} needs "${HEADINGS[required]}"`, 400);
   }
   const brief = briefOf(of, name, kept);
   if (brief.length > MAX_BRIEF) {
-    throw new FeatureRefused('a brief is at most 20,000 characters, its parts together', 400);
+    throw new WorkspaceRefused('a brief is at most 20,000 characters, its parts together', 400);
   }
   return { brief, kind: of, title: name, parts: kept };
 }
 
-/** An agent found for a feature: Claude Code or Codex (V20a). */
+/** An agent found for a workspace: Claude Code or Codex (V20a). */
 type FoundAgent = { kind: 'claude'; claude: ClaudeCode } | { kind: 'codex'; codex: Codex };
 
 /** Each agent's name, as messages say it. */
 const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
-/** What the server needs of features. */
-export interface Features {
-  options(): Promise<FeatureOptions>;
-  list(): Promise<FeatureList>;
+/** What the server needs of workspaces. */
+export interface Workspaces {
+  options(): Promise<WorkspaceOptions>;
+  list(): Promise<WorkspaceList>;
   /** Makes the branch, its worktree and record, then starts the agent. Rejects with `FeatureRefused`. */
-  start(request: FeatureRequest): Promise<FeatureStart>;
-  /** Starts a feature's agent again (after a failed start, or once it ended). */
-  startAgent(branch: string): Promise<FeatureStart>;
+  start(request: WorkspaceRequest): Promise<WorkspaceStart>;
+  /** Starts a workspace's agent again (after a failed start, or once it ended). */
+  startAgent(branch: string): Promise<WorkspaceStart>;
   /** The prompt its agent was given, to copy. */
   prompt(branch: string): Promise<string>;
   /**
@@ -829,20 +836,20 @@ export interface Features {
   draft(): Promise<Record<string, unknown>>;
   saveDraft(value: Record<string, unknown>): Promise<void>;
   /** Stops its agent while it works or waits. */
-  stopAgent(branch: string): Promise<FeatureStart>;
+  stopAgent(branch: string): Promise<WorkspaceStart>;
   /** Opens its worktree's folder in the editor (V12's VS Code). */
   openWorktree(branch: string): Promise<void>;
   /** Whether its branch merges cleanly into the default branch (V17's check), once per pair. */
   merge(branch: string): Promise<BranchMerge>;
   /** Its thread (V18c): what its agent was given and reported, and its review's last verdict. */
-  thread(branch: string): Promise<FeatureThread>;
+  thread(branch: string): Promise<WorkspaceThread>;
   /** Sends a message to its agent: continues its session with the text (V18c). */
-  reply(request: FeatureReply): Promise<FeatureReplied>;
+  reply(request: WorkspaceReply): Promise<WorkspaceReplied>;
   /**
    * Opens its agent's newest session in a terminal (V21): `claude attach <id>` in its worktree;
    * the terminal's ID. A stopped session continues, with no turn.
    */
-  terminal(request: FeatureTerminalRequest): Promise<{ id: string }>;
+  terminal(request: WorkspaceTerminalRequest): Promise<{ id: string }>;
   /**
    * Cleans it up (V18c): its agent's sessions, its worktree and, once merged, its branch; the
    * record stays, `finished`. Unmerged only when asked (`unmerged`); never with work not
@@ -851,7 +858,7 @@ export interface Features {
   clean(request: { branch: string; unmerged?: boolean }): Promise<{ finished: string }>;
 }
 
-/** The hooks CPR passes to every feature's agent (V18c): each event, recorded by `agent-hook.js`. */
+/** The hooks CPR passes to every workspace's agent (V18c): each event, recorded by `agent-hook.js`. */
 const HOOKED_EVENTS = [
   'SessionStart',
   'UserPromptSubmit',
@@ -897,8 +904,8 @@ export type OpenFolder = (
   folder: string,
 ) => Promise<{ opened: true } | { opened: false; message: string }>;
 
-/** Features of `repo`, kept beside its reviews (`cpr/features/`, else CPR's cache). */
-export function features(
+/** Workspaces of `repo`, kept beside its reviews (`cpr/workspaces/`, else CPR's cache). */
+export function workspaces(
   repo: GitRepo,
   cacheDir: string,
   {
@@ -927,9 +934,16 @@ export function features(
     /** Terminals on agents' sessions (V21); without them, none. */
     terminals?: Terminals;
   },
-): Features {
-  const place = () => reviewPlace(repo, cacheDir);
-  const config = () => readFeatureConfig(root);
+): Workspaces {
+  /** Where reviews and workspaces are kept; `cpr/features/` moved first (V25), or noted when left. */
+  const place = async (): Promise<ReviewPlace> => {
+    const where = await reviewPlace(repo, cacheDir);
+    if (!(await workspacesFolder(dirname(where.dir))).left) return where;
+    const left =
+      'cpr/features/, where workspaces were kept before, is still here: CPR reads cpr/workspaces/.';
+    return { ...where, note: where.note ? `${where.note} ${left}` : left };
+  };
+  const config = () => readWorkspaceConfig(root);
   const real = (path: string) => {
     try {
       return realpathSync(path);
@@ -939,8 +953,8 @@ export function features(
   };
   /** The folder holding `cpr/` (or its stand-in in the cache): the agent may read it. */
   const cprFolder = (where: ReviewPlace) => dirname(where.dir);
-  const featuresDir = (where: ReviewPlace) => join(cprFolder(where), 'features');
-  /** `features.worktrees` is relative to the checkout that holds `cpr/`. */
+  const workspacesDir = (where: ReviewPlace) => join(cprFolder(where), 'workspaces');
+  /** `workspaces.worktrees` is relative to the checkout that holds `cpr/`. */
   const mainRoot = (where: ReviewPlace) =>
     where.place === 'repository' ? dirname(cprFolder(where)) : repo.root;
 
@@ -960,24 +974,24 @@ export function features(
     return path;
   }
 
-  async function save(where: ReviewPlace, feature: FeatureFile): Promise<void> {
-    const path = featurePath(featuresDir(where), feature.branch);
+  async function save(where: ReviewPlace, workspace: WorkspaceFile): Promise<void> {
+    const path = workspacePath(workspacesDir(where), workspace.branch);
     await mkdir(dirname(path), { recursive: true });
     const temp = `${path}.${process.pid}.tmp`;
-    await writeFile(temp, serializeFeature(feature));
+    await writeFile(temp, serializeWorkspace(workspace));
     await rename(temp, path);
   }
 
-  async function records(where: ReviewPlace): Promise<FeatureFile[]> {
-    const dir = featuresDir(where);
+  async function records(where: ReviewPlace): Promise<WorkspaceFile[]> {
+    const dir = workspacesDir(where);
     const files = await readdir(dir, { recursive: true }).catch(() => [] as string[]);
-    const list: FeatureFile[] = [];
+    const list: WorkspaceFile[] = [];
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
-      const feature = await readFeature(join(dir, file));
-      // The file must be the branch's: a copied or renamed file is not that feature.
-      if (feature && relative(dir, featurePath(dir, feature.branch)) === file) {
-        list.push(feature);
+      const workspace = await readWorkspace(join(dir, file));
+      // The file must be the branch's: a copied or renamed file is not that workspace.
+      if (workspace && relative(dir, workspacePath(dir, workspace.branch)) === file) {
+        list.push(workspace);
       }
     }
     return list.sort(
@@ -987,41 +1001,41 @@ export function features(
 
   async function summary(
     where: ReviewPlace,
-    feature: FeatureFile,
+    workspace: WorkspaceFile,
     refs: RefList,
     trunk: string[],
     sessions: AgentSession[] | null,
-  ): Promise<FeatureSummary> {
-    const tip = refs.branches.find((b) => b.name === feature.branch)?.sha ?? null;
+  ): Promise<WorkspaceSummary> {
+    const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha ?? null;
     let ahead = 0;
     let merged = false;
-    if (tip && (await isCommit(repo, feature.base))) {
-      ahead = (await commitsBetween(repo, feature.base, tip, 1)).count;
+    if (tip && (await isCommit(repo, workspace.base))) {
+      ahead = (await commitsBetween(repo, workspace.base, tip, 1)).count;
       for (const end of trunk) {
         if (ahead > 0 && !merged) merged = await isAncestor(repo, tip, end);
       }
     }
-    const exists = existsSync(feature.worktree);
-    const changed = exists ? await uncommittedFiles(feature.worktree).catch(() => null) : null;
-    const thread = feature.agent ? await readThreadEnd(cprFolder(where), feature.branch) : [];
+    const exists = existsSync(workspace.worktree);
+    const changed = exists ? await uncommittedFiles(workspace.worktree).catch(() => null) : null;
+    const thread = workspace.agent ? await readThreadEnd(cprFolder(where), workspace.branch) : [];
     // Blocked with nothing named: its thread tells a finished turn from a question (V18c).
-    const session = newestSession(feature, sessions, real);
+    const session = newestSession(workspace, sessions, real);
     const ended = session && isBlocked(session) && !session.waitingFor ? turnEnded(thread) : false;
-    const acted = feature.agent ? (lastAction(thread) ?? feature.agent.started) : undefined;
+    const acted = workspace.agent ? (lastAction(thread) ?? workspace.agent.started) : undefined;
     const agent =
-      feature.agent?.kind === 'codex'
-        ? codexState(feature, thread, await codexAlive(feature), ahead)
-        : agentState(feature, sessions, ahead, real, ended);
+      workspace.agent?.kind === 'codex'
+        ? codexState(workspace, thread, await codexAlive(workspace), ahead)
+        : agentState(workspace, sessions, ahead, real, ended);
     return {
-      branch: feature.branch,
-      ...(feature.kind ? { kind: feature.kind } : {}),
-      ...(feature.title ? { title: feature.title } : {}),
-      base: feature.base,
-      ...(feature.from ? { from: feature.from } : {}),
-      created: feature.created,
-      planFirst: feature.planFirst,
-      brief: feature.brief,
-      worktree: { path: feature.worktree, exists, ...(changed === null ? {} : { changed }) },
+      branch: workspace.branch,
+      ...(workspace.kind ? { kind: workspace.kind } : {}),
+      ...(workspace.title ? { title: workspace.title } : {}),
+      base: workspace.base,
+      ...(workspace.from ? { from: workspace.from } : {}),
+      created: workspace.created,
+      planFirst: workspace.planFirst,
+      brief: workspace.brief,
+      worktree: { path: workspace.worktree, exists, ...(changed === null ? {} : { changed }) },
       tip,
       ahead,
       merged,
@@ -1040,26 +1054,26 @@ export function features(
     ];
   }
 
-  /** The prompt a feature's agent is given. */
-  async function promptOf(where: ReviewPlace, feature: FeatureFile): Promise<string> {
-    return featurePrompt(feature, {
-      record: featurePath(featuresDir(where), feature.branch),
-      reviews: join(where.dir, ...feature.branch.split('/')),
+  /** The prompt a workspace's agent is given. */
+  async function promptOf(where: ReviewPlace, workspace: WorkspaceFile): Promise<string> {
+    return workspacePrompt(workspace, {
+      record: workspacePath(workspacesDir(where), workspace.branch),
+      reviews: join(where.dir, ...workspace.branch.split('/')),
       agents: where.agents,
       into: await defaultBranch(repo, await listRefs(repo)),
     });
   }
 
-  /** A feature's record; 404 without one. */
-  async function recorded(where: ReviewPlace, branch: string): Promise<FeatureFile> {
-    const feature = await readFeature(featurePath(featuresDir(where), branch));
-    if (!feature) throw new FeatureRefused(`no workspace ${branch}`, 404);
-    return feature;
+  /** A workspace's record; 404 without one. */
+  async function recorded(where: ReviewPlace, branch: string): Promise<WorkspaceFile> {
+    const workspace = await readWorkspace(workspacePath(workspacesDir(where), branch));
+    if (!workspace) throw new WorkspaceRefused(`no workspace ${branch}`, 404);
+    return workspace;
   }
 
   const draftFile = join(cacheDir, 'state', repo.id, 'start-draft.json');
 
-  /** Merge checks by the default branch's tip and the feature's: they take seconds on some. */
+  /** Merge checks by the default branch's tip and the workspace's: they take seconds on some. */
   const merges = new Map<string, Promise<BranchMerge>>();
   /** Check commands by commit: a commit's files never change. */
   const checks = new Map<string, Promise<CheckGuess | null>>();
@@ -1084,49 +1098,49 @@ export function features(
     return null;
   }
 
-  /** Starts the feature's agent and records how that went; the prompt it was given. */
+  /** Starts the workspace's agent and records how that went; the prompt it was given. */
   async function launch(
     where: ReviewPlace,
-    feature: FeatureFile,
+    workspace: WorkspaceFile,
     agent: FoundAgent | null,
     permissionMode: PermissionMode,
   ): Promise<string> {
-    const prompt = await promptOf(where, feature);
+    const prompt = await promptOf(where, workspace);
     if (!agent) {
-      feature.agent = null;
+      workspace.agent = null;
     } else if (agent.kind === 'codex') {
-      feature.agent = await launchCodex(where, feature, agent.codex, prompt);
-      await save(where, feature);
-      await firstEntry(where, feature);
+      workspace.agent = await launchCodex(where, workspace, agent.codex, prompt);
+      await save(where, workspace);
+      await firstEntry(where, workspace);
     } else {
       // The session's first hooks run while `--bg` starts it: they look for this record.
-      await save(where, feature);
+      await save(where, workspace);
       const result = await agent.claude.start({
-        cwd: feature.worktree,
-        name: feature.branch,
+        cwd: workspace.worktree,
+        name: workspace.branch,
         prompt,
         permissionMode,
         addDir: cprFolder(where),
         settings: await settingsFile(where),
       });
-      feature.agent = result.ok
+      workspace.agent = result.ok
         ? { kind: 'claude', permissionMode, started: now().toISOString(), hooks: true }
         : { kind: 'claude', permissionMode, error: result.error };
     }
-    await save(where, feature);
+    await save(where, workspace);
     return prompt;
   }
 
   /**
-   * Starts Codex on a feature (V20a): `codex exec` through CPR's runner, which records its
+   * Starts Codex on a workspace (V20a): `codex exec` through CPR's runner, which records its
    * thread; its sandbox may also write what a commit on the branch writes (decision 130).
    */
   async function launchCodex(
     where: ReviewPlace,
-    feature: FeatureFile,
+    workspace: WorkspaceFile,
     agent: Codex,
     prompt: string,
-  ): Promise<FeatureAgentRecord> {
+  ): Promise<WorkspaceAgentRecord> {
     // Not logged in, `exec` retries for about 25 s and fails with a 401 (V20a spike).
     if ((await agent.account()) === 'not logged in') {
       return {
@@ -1137,10 +1151,10 @@ export function features(
     const run = randomUUID();
     const started = now().toISOString();
     const result = await agent.start({
-      cwd: feature.worktree,
-      thread: threadPath(cprFolder(where), feature.branch),
+      cwd: workspace.worktree,
+      thread: threadPath(cprFolder(where), workspace.branch),
       run,
-      writable: await commitFolders(feature.worktree, feature.branch),
+      writable: await commitFolders(workspace.worktree, workspace.branch),
       prompt,
     });
     return result.ok
@@ -1154,31 +1168,35 @@ export function features(
    * hooks have them before `--bg` returns (measured with a real Codex: 5.3 s to the page's next
    * read without it; its thread starts 150 ms after the run, V20a spike).
    */
-  async function firstEntry(where: ReviewPlace, feature: FeatureFile): Promise<void> {
-    const run = feature.agent?.run;
+  async function firstEntry(where: ReviewPlace, workspace: WorkspaceFile): Promise<void> {
+    const run = workspace.agent?.run;
     if (!run) return;
     for (let waited = 0; waited < 3_000; waited += 50) {
-      const entries = await readThreadEnd(cprFolder(where), feature.branch);
-      if (entries.some((e) => e.run === run) || !(await codexAlive(feature))) return;
+      const entries = await readThreadEnd(cprFolder(where), workspace.branch);
+      if (entries.some((e) => e.run === run) || !(await codexAlive(workspace))) return;
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
   }
 
-  /** Whether a Codex feature's last run still runs (its runner's process). */
-  async function codexAlive(feature: FeatureFile): Promise<boolean> {
-    const pid = feature.agent?.pid;
+  /** Whether a Codex workspace's last run still runs (its runner's process). */
+  async function codexAlive(workspace: WorkspaceFile): Promise<boolean> {
+    const pid = workspace.agent?.pid;
     if (!pid) return false;
     return (await codex())?.alive(pid) ?? processAlive(pid);
   }
 
-  /** Stops a Codex feature's run; ends it in the thread when its runner could not. */
-  async function stopCodex(where: ReviewPlace, feature: FeatureFile, agent: Codex): Promise<void> {
-    if (feature.agent?.pid) await agent.stop(feature.agent.pid);
-    const run = feature.agent?.run;
-    const entries = await readThreadEnd(cprFolder(where), feature.branch);
+  /** Stops a Codex workspace's run; ends it in the thread when its runner could not. */
+  async function stopCodex(
+    where: ReviewPlace,
+    workspace: WorkspaceFile,
+    agent: Codex,
+  ): Promise<void> {
+    if (workspace.agent?.pid) await agent.stop(workspace.agent.pid);
+    const run = workspace.agent?.run;
+    const entries = await readThreadEnd(cprFolder(where), workspace.branch);
     if (entries.some((e) => e.run === run && e.kind === 'end')) return;
     const session = entries.findLast((e) => e.kind === 'start')?.session ?? '';
-    await appendThread(cprFolder(where), feature.branch, {
+    await appendThread(cprFolder(where), workspace.branch, {
       at: now().toISOString(),
       session,
       ...(run ? { run } : {}),
@@ -1187,18 +1205,21 @@ export function features(
     });
   }
 
-  async function started(where: ReviewPlace, feature: FeatureFile, prompt: string) {
+  async function started(where: ReviewPlace, workspace: WorkspaceFile, prompt: string) {
     const refs = await listRefs(repo);
-    const agent = feature.agent?.kind === 'claude' ? await claude() : null;
+    const agent = workspace.agent?.kind === 'claude' ? await claude() : null;
     const sessions = agent ? await agent.sessions() : [];
-    return { feature: await summary(where, feature, refs, await trunkOf(refs), sessions), prompt };
+    return {
+      workspace: await summary(where, workspace, refs, await trunkOf(refs), sessions),
+      prompt,
+    };
   }
 
-  /** A feature's agent, found; a refusal the page can show when there is none. */
-  async function agentOf(feature: FeatureFile): Promise<ClaudeCode> {
-    const agent = feature.agent ? await claude() : null;
+  /** A workspace's agent, found; a refusal the page can show when there is none. */
+  async function agentOf(workspace: WorkspaceFile): Promise<ClaudeCode> {
+    const agent = workspace.agent ? await claude() : null;
     if (!agent) {
-      throw new FeatureRefused(
+      throw new WorkspaceRefused(
         'No agent to talk to: install Claude Code (claude on PATH), or set CPR_CLAUDE',
         409,
       );
@@ -1212,52 +1233,55 @@ export function features(
    */
   async function replyCodex(
     where: ReviewPlace,
-    feature: FeatureFile,
+    workspace: WorkspaceFile,
     text: string,
     stop: boolean,
-  ): Promise<FeatureReplied> {
+  ): Promise<WorkspaceReplied> {
     const agent = await codex();
     if (!agent) {
-      throw new FeatureRefused(
+      throw new WorkspaceRefused(
         'No agent to talk to: install Codex (codex on PATH), or set CPR_CODEX',
         409,
       );
     }
-    if (!existsSync(feature.worktree)) {
-      throw new FeatureRefused(`its worktree is gone: ${feature.worktree}`, 409);
+    if (!existsSync(workspace.worktree)) {
+      throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
     }
-    const thread = await readThreadEnd(cprFolder(where), feature.branch);
-    const state = codexState(feature, thread, await codexAlive(feature), 0);
+    const thread = await readThreadEnd(cprFolder(where), workspace.branch);
+    const state = codexState(workspace, thread, await codexAlive(workspace), 0);
     if (!state.id) {
-      throw new FeatureRefused('its agent has no session to continue: start the agent again', 409);
+      throw new WorkspaceRefused(
+        'its agent has no session to continue: start the agent again',
+        409,
+      );
     }
     if (state.state === 'working') {
-      if (!stop) throw new FeatureRefused('its agent is working: sending stops its turn', 409);
-      await stopCodex(where, feature, agent);
+      if (!stop) throw new WorkspaceRefused('its agent is working: sending stops its turn', 409);
+      await stopCodex(where, workspace, agent);
     }
     const run = randomUUID();
     const startedAt = now().toISOString();
     const resumed = await agent.resume({
-      cwd: feature.worktree,
-      thread: threadPath(cprFolder(where), feature.branch),
+      cwd: workspace.worktree,
+      thread: threadPath(cprFolder(where), workspace.branch),
       run,
-      writable: await commitFolders(feature.worktree, feature.branch),
+      writable: await commitFolders(workspace.worktree, workspace.branch),
       sessionId: state.id,
       text,
     });
-    if (!resumed.ok) throw new FeatureRefused(resumed.error, 502);
-    feature.agent = { kind: 'codex', started: startedAt, run, pid: resumed.pid };
-    await save(where, feature);
-    await firstEntry(where, feature);
+    if (!resumed.ok) throw new WorkspaceRefused(resumed.error, 502);
+    workspace.agent = { kind: 'codex', started: startedAt, run, pid: resumed.pid };
+    await save(where, workspace);
+    await firstEntry(where, workspace);
     const refs = await listRefs(repo);
-    return { feature: await summary(where, feature, refs, await trunkOf(refs), []) };
+    return { workspace: await summary(where, workspace, refs, await trunkOf(refs), []) };
   }
 
-  /** Whether a feature's commits are all in the default branch. */
-  async function isMerged(feature: FeatureFile, refs: RefList): Promise<boolean> {
-    const tip = refs.branches.find((b) => b.name === feature.branch)?.sha;
-    if (!tip || !(await isCommit(repo, feature.base))) return false;
-    if ((await commitsBetween(repo, feature.base, tip, 1)).count === 0) return false;
+  /** Whether a workspace's commits are all in the default branch. */
+  async function isMerged(workspace: WorkspaceFile, refs: RefList): Promise<boolean> {
+    const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha;
+    if (!tip || !(await isCommit(repo, workspace.base))) return false;
+    if ((await commitsBetween(repo, workspace.base, tip, 1)).count === 0) return false;
     for (const end of await trunkOf(refs)) if (await isAncestor(repo, tip, end)) return true;
     return false;
   }
@@ -1290,7 +1314,7 @@ export function features(
       // The default first: `agent.kind`, else Claude Code, else Codex (decision 132).
       agents.sort((a, b) => Number(b.kind === first) - Number(a.kind === first));
       return {
-        base: await featureBase(repo, refs),
+        base: await workspaceBase(repo, refs),
         branchPrefixes,
         kinds: workKinds(),
         worktrees: join(dirname(worktreeFolder(mainRoot(where), 'x', worktrees)), '<branch>'),
@@ -1303,36 +1327,36 @@ export function features(
       const where = await place();
       const list = (await records(where)).filter((f) => !f.finished);
       const head = { place: where.place, ...(where.note ? { note: where.note } : {}) };
-      if (list.length === 0) return { features: [], ...head };
+      if (list.length === 0) return { workspaces: [], ...head };
       // Agents may wake from agent view or `claude attach`: their settings file must be there.
       if (list.some((f) => f.agent?.hooks)) await settingsFile(where);
       const refs = await listRefs(repo);
       const trunk = await trunkOf(refs);
       const agent = list.some((f) => f.agent?.kind === 'claude') ? await claude() : null;
       const sessions = agent ? await agent.sessions() : null;
-      const summaries: FeatureSummary[] = [];
-      for (const feature of list) {
-        summaries.push(await summary(where, feature, refs, trunk, sessions));
+      const summaries: WorkspaceSummary[] = [];
+      for (const workspace of list) {
+        summaries.push(await summary(where, workspace, refs, trunk, sessions));
       }
       const terminal = await terminals?.available();
-      return { features: summaries, ...head, ...(terminal ? { terminal } : {}) };
+      return { workspaces: summaries, ...head, ...(terminal ? { terminal } : {}) };
     },
 
     async start(request) {
       const work = workOf(request);
       if (request.agent !== undefined && !AGENT_KINDS.includes(request.agent)) {
-        throw new FeatureRefused(`unknown agent: ${String(request.agent)}`, 400);
+        throw new WorkspaceRefused(`unknown agent: ${String(request.agent)}`, 400);
       }
       const permissionMode = request.permissionMode ?? config().permissionMode;
       if (!PERMISSION_MODES.includes(permissionMode)) {
-        throw new FeatureRefused(`unknown permission mode: ${String(permissionMode)}`, 400);
+        throw new WorkspaceRefused(`unknown permission mode: ${String(permissionMode)}`, 400);
       }
       const agent = request.agent ? await found(request.agent) : await defaultAgent();
       if (request.agent && !agent) {
-        throw new FeatureRefused(`${AGENT_NAMES[request.agent]} is not installed`, 409);
+        throw new WorkspaceRefused(`${AGENT_NAMES[request.agent]} is not installed`, 409);
       }
       if (agent?.kind === 'codex' && request.permissionMode !== undefined) {
-        throw new FeatureRefused(
+        throw new WorkspaceRefused(
           "a permission mode is Claude Code's: Codex runs in its sandbox",
           400,
         );
@@ -1343,35 +1367,35 @@ export function features(
         const taken =
           refs.branches.some((b) => b.name === request.branch) ||
           refs.remotes.some((r) => r.branch === request.branch);
-        throw new FeatureRefused(problem, taken ? 409 : 400);
+        throw new WorkspaceRefused(problem, taken ? 409 : 400);
       }
       let base: { from?: string; sha: string };
       if (request.base !== undefined) {
         if (!FULL_SHA.test(request.base)) {
-          throw new FeatureRefused(`the base must be a full SHA: ${request.base}`, 400);
+          throw new WorkspaceRefused(`the base must be a full SHA: ${request.base}`, 400);
         }
         if (!(await isCommit(repo, request.base))) {
-          throw new FeatureRefused(`not a commit: ${request.base}`, 400);
+          throw new WorkspaceRefused(`not a commit: ${request.base}`, 400);
         }
         base = { sha: request.base };
       } else {
-        const found = await featureBase(repo, refs);
+        const found = await workspaceBase(repo, refs);
         if (!found) {
-          throw new FeatureRefused('no default branch to start from: pick a commit', 400);
+          throw new WorkspaceRefused('no default branch to start from: pick a commit', 400);
         }
         base = found;
       }
       const where = await place();
       const folder = worktreeFolder(mainRoot(where), request.branch, config().worktrees);
-      if (existsSync(folder)) throw new FeatureRefused(`${folder} exists`, 409);
+      if (existsSync(folder)) throw new WorkspaceRefused(`${folder} exists`, 409);
       try {
         await addWorktree(repo, { folder, branch: request.branch, base: base.sha });
       } catch (error) {
-        if (error instanceof WorktreeRefused) throw new FeatureRefused(error.message, 409);
+        if (error instanceof WorktreeRefused) throw new WorkspaceRefused(error.message, 409);
         throw error;
       }
       const by = await userEmail(repo);
-      const feature: FeatureFile = {
+      const workspace: WorkspaceFile = {
         agent: null,
         base: base.sha,
         branch: request.branch,
@@ -1383,30 +1407,30 @@ export function features(
         worktree: folder,
       };
       await prepareCprFolder(where);
-      const prompt = await launch(where, feature, agent, permissionMode);
-      return started(where, feature, prompt);
+      const prompt = await launch(where, workspace, agent, permissionMode);
+      return started(where, workspace, prompt);
     },
 
     async startAgent(branch) {
       const where = await place();
-      const feature = await recorded(where, branch);
-      // The agent it was started with; a feature made without one gets the default.
-      const kind = feature.agent?.kind;
+      const workspace = await recorded(where, branch);
+      // The agent it was started with; a workspace made without one gets the default.
+      const kind = workspace.agent?.kind;
       const agent = kind ? await found(kind) : await defaultAgent();
       if (!agent) {
-        throw new FeatureRefused(
+        throw new WorkspaceRefused(
           kind
             ? `No agent to start: ${AGENT_NAMES[kind]} is not installed`
             : 'No agent to start: install Claude Code (claude on PATH, or CPR_CLAUDE) or Codex (codex on PATH, or CPR_CODEX)',
           409,
         );
       }
-      if (!existsSync(feature.worktree)) {
-        throw new FeatureRefused(`its worktree is gone: ${feature.worktree}`, 409);
+      if (!existsSync(workspace.worktree)) {
+        throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
       }
-      const mode = feature.agent?.permissionMode ?? config().permissionMode;
-      const prompt = await launch(where, feature, agent, mode);
-      return started(where, feature, prompt);
+      const mode = workspace.agent?.permissionMode ?? config().permissionMode;
+      const prompt = await launch(where, workspace, agent, mode);
+      return started(where, workspace, prompt);
     },
 
     async prompt(branch) {
@@ -1434,8 +1458,9 @@ export function features(
     },
 
     async check(at) {
-      if (!FULL_SHA.test(at)) throw new FeatureRefused(`the commit must be a full SHA: ${at}`, 400);
-      if (!(await isCommit(repo, at))) throw new FeatureRefused(`not a commit: ${at}`, 400);
+      if (!FULL_SHA.test(at))
+        throw new WorkspaceRefused(`the commit must be a full SHA: ${at}`, 400);
+      if (!(await isCommit(repo, at))) throw new WorkspaceRefused(`not a commit: ${at}`, 400);
       let guess = checks.get(at);
       if (!guess) {
         guess = treeAt(repo, at).then(guessCheck);
@@ -1446,43 +1471,43 @@ export function features(
 
     async stopAgent(branch) {
       const where = await place();
-      const feature = await recorded(where, branch);
-      if (feature.agent?.kind === 'codex') {
+      const workspace = await recorded(where, branch);
+      if (workspace.agent?.kind === 'codex') {
         const agent = await codex();
         const thread = await readThreadEnd(cprFolder(where), branch);
-        const live = codexState(feature, thread, await codexAlive(feature), 0);
+        const live = codexState(workspace, thread, await codexAlive(workspace), 0);
         if (!agent || live.state !== 'working') {
-          throw new FeatureRefused('its agent is not running', 409);
+          throw new WorkspaceRefused('its agent is not running', 409);
         }
-        await stopCodex(where, feature, agent);
-        return started(where, feature, await promptOf(where, feature));
+        await stopCodex(where, workspace, agent);
+        return started(where, workspace, await promptOf(where, workspace));
       }
-      const agent = feature.agent ? await claude() : null;
+      const agent = workspace.agent ? await claude() : null;
       const sessions = agent ? await agent.sessions() : null;
-      const live = agentState(feature, sessions, 0, real);
+      const live = agentState(workspace, sessions, 0, real);
       if (!agent || !live.id || !['working', 'needs-you'].includes(live.state)) {
-        throw new FeatureRefused('its agent is not running', 409);
+        throw new WorkspaceRefused('its agent is not running', 409);
       }
       const stopped = await agent.stop(live.id);
-      if (!stopped.ok) throw new FeatureRefused(stopped.error, 409);
-      return started(where, feature, await promptOf(where, feature));
+      if (!stopped.ok) throw new WorkspaceRefused(stopped.error, 409);
+      return started(where, workspace, await promptOf(where, workspace));
     },
 
     async openWorktree(branch) {
-      const feature = await recorded(await place(), branch);
-      if (!existsSync(feature.worktree)) {
-        throw new FeatureRefused(`its worktree is gone: ${feature.worktree}`, 409);
+      const workspace = await recorded(await place(), branch);
+      if (!existsSync(workspace.worktree)) {
+        throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
       }
-      if (!openFolder) throw new FeatureRefused('no editor to open it in', 409);
-      const result = await openFolder(feature.worktree);
-      if (!result.opened) throw new FeatureRefused(result.message, 502);
+      if (!openFolder) throw new WorkspaceRefused('no editor to open it in', 409);
+      const result = await openFolder(workspace.worktree);
+      if (!result.opened) throw new WorkspaceRefused(result.message, 502);
     },
 
     async merge(branch) {
-      const feature = await recorded(await place(), branch);
+      const workspace = await recorded(await place(), branch);
       const refs = await listRefs(repo);
-      const tip = refs.branches.find((b) => b.name === feature.branch)?.sha;
-      if (!tip) throw new FeatureRefused(`its branch ${feature.branch} is gone`, 409);
+      const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha;
+      if (!tip) throw new WorkspaceRefused(`its branch ${workspace.branch} is gone`, 409);
       const into = await defaultBranch(repo, refs);
       if (!into) return { into: '', error: 'no default branch to merge into' };
       // The local default branch, where the merge is made; else a remote's.
@@ -1500,7 +1525,7 @@ export function features(
 
     async thread(branch) {
       const where = await place();
-      const feature = await recorded(where, branch);
+      const workspace = await recorded(where, branch);
       const entries = await readThread(cprFolder(where), branch);
       const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
       const verdict = review?.verdicts.at(-1);
@@ -1509,7 +1534,7 @@ export function features(
       return {
         entries,
         // Claude Code's hooks record it (V18c), CPR's runner records Codex's (V20a).
-        recorded: feature.agent?.hooks === true || feature.agent?.kind === 'codex',
+        recorded: workspace.agent?.hooks === true || workspace.agent?.kind === 'codex',
         ...(review && verdict
           ? {
               verdict: {
@@ -1528,60 +1553,61 @@ export function features(
 
     async terminal({ branch, cols, rows }) {
       const where = await place();
-      const feature = await recorded(where, branch);
-      if (feature.agent?.kind === 'codex') {
-        throw new FeatureRefused(
+      const workspace = await recorded(where, branch);
+      if (workspace.agent?.kind === 'codex') {
+        throw new WorkspaceRefused(
           'Codex has no terminal in CPR: Talk copies `codex resume`, to run in yours',
           409,
         );
       }
-      if (!terminals) throw new FeatureRefused('no terminals here', 409);
+      if (!terminals) throw new WorkspaceRefused('no terminals here', 409);
       const can = await terminals.available();
-      if (!can.available) throw new FeatureRefused(can.reason, 409);
-      const agent = await agentOf(feature);
-      if (!existsSync(feature.worktree)) {
-        throw new FeatureRefused(`its worktree is gone: ${feature.worktree}`, 409);
+      if (!can.available) throw new WorkspaceRefused(can.reason, 409);
+      const agent = await agentOf(workspace);
+      if (!existsSync(workspace.worktree)) {
+        throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
       }
       // A session that wakes reads its settings file again, and does not start without it.
-      if (feature.agent?.hooks) await settingsFile(where);
+      if (workspace.agent?.hooks) await settingsFile(where);
       // `attach` to an ID Claude Code does not know exits 0, saying "No job matching…".
-      const session = newestSession(feature, await agent.sessions(), real);
+      const session = newestSession(workspace, await agent.sessions(), real);
       if (!session?.id) {
-        throw new FeatureRefused('its agent has no session to open: start the agent again', 409);
+        throw new WorkspaceRefused('its agent has no session to open: start the agent again', 409);
       }
       try {
         const id = await terminals.open({
           command: agent.command,
           args: ['attach', session.id],
-          cwd: feature.worktree,
+          cwd: workspace.worktree,
           cols,
           rows,
           env,
         });
         return { id };
       } catch (error) {
-        if (error instanceof TerminalRefused) throw new FeatureRefused(error.message, 409);
+        if (error instanceof TerminalRefused) throw new WorkspaceRefused(error.message, 409);
         throw error;
       }
     },
 
     async reply({ branch, text, stop }) {
-      if (text.trim() === '') throw new FeatureRefused('a message cannot be empty', 400);
+      if (text.trim() === '') throw new WorkspaceRefused('a message cannot be empty', 400);
       if (text.length > MAX_BRIEF) {
-        throw new FeatureRefused('a message is at most 20,000 characters', 400);
+        throw new WorkspaceRefused('a message is at most 20,000 characters', 400);
       }
       const where = await place();
-      const feature = await recorded(where, branch);
-      if (feature.agent?.kind === 'codex') return replyCodex(where, feature, text, stop === true);
-      const agent = await agentOf(feature);
-      if (!existsSync(feature.worktree)) {
-        throw new FeatureRefused(`its worktree is gone: ${feature.worktree}`, 409);
+      const workspace = await recorded(where, branch);
+      if (workspace.agent?.kind === 'codex')
+        return replyCodex(where, workspace, text, stop === true);
+      const agent = await agentOf(workspace);
+      if (!existsSync(workspace.worktree)) {
+        throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
       }
       // A session that wakes reads its settings file again, and does not start without it.
-      if (feature.agent?.hooks) await settingsFile(where);
-      const session = newestSession(feature, await agent.sessions(), real);
+      if (workspace.agent?.hooks) await settingsFile(where);
+      const session = newestSession(workspace, await agent.sessions(), real);
       if (!session?.sessionId || !session.id) {
-        throw new FeatureRefused(
+        throw new WorkspaceRefused(
           'its agent has no session to continue: start the agent again',
           409,
         );
@@ -1591,76 +1617,76 @@ export function features(
       const midTurn = alive && (session.status !== 'idle' || session.waitingFor !== undefined);
       if (midTurn && !stop) {
         const doing = session.waitingFor ? `waiting on a ${session.waitingFor}` : 'working';
-        throw new FeatureRefused(`its agent is ${doing}: sending stops its turn`, 409);
+        throw new WorkspaceRefused(`its agent is ${doing}: sending stops its turn`, 409);
       }
       if (alive) {
         const stopped = await agent.stop(session.id);
-        if (!stopped.ok) throw new FeatureRefused(stopped.error, 409);
+        if (!stopped.ok) throw new WorkspaceRefused(stopped.error, 409);
       }
       const resumed = await agent.resume({
         sessionId: session.sessionId,
-        cwd: feature.worktree,
+        cwd: workspace.worktree,
         text,
       });
-      if (!resumed.ok) throw new FeatureRefused(resumed.error, 502);
+      if (!resumed.ok) throw new WorkspaceRefused(resumed.error, 502);
       const refs = await listRefs(repo);
       const sessions = await agent.sessions();
-      const newest = newestSession(feature, sessions, real);
+      const newest = newestSession(workspace, sessions, real);
       const copy = newest && newest.sessionId !== session.sessionId ? newest.id : undefined;
       return {
-        feature: await summary(where, feature, refs, await trunkOf(refs), sessions),
+        workspace: await summary(where, workspace, refs, await trunkOf(refs), sessions),
         ...(copy ? { copy } : {}),
       };
     },
 
     async clean({ branch, unmerged }) {
       const where = await place();
-      const feature = await recorded(where, branch);
-      const merged = await isMerged(feature, await listRefs(repo));
+      const workspace = await recorded(where, branch);
+      const merged = await isMerged(workspace, await listRefs(repo));
       if (!merged && !unmerged) {
-        throw new FeatureRefused(
+        throw new WorkspaceRefused(
           `${branch} is not merged into the default branch: clean up anyway to remove its worktree and keep the branch`,
           409,
         );
       }
-      const exists = existsSync(feature.worktree);
-      const changed = exists ? await uncommittedFiles(feature.worktree) : 0;
+      const exists = existsSync(workspace.worktree);
+      const changed = exists ? await uncommittedFiles(workspace.worktree) : 0;
       if (changed > 0) {
-        throw new FeatureRefused(
-          `${plural(changed, 'file')} not committed in ${feature.worktree}: commit or remove ${changed === 1 ? 'it' : 'them'} first`,
+        throw new WorkspaceRefused(
+          `${plural(changed, 'file')} not committed in ${workspace.worktree}: commit or remove ${changed === 1 ? 'it' : 'them'} first`,
           409,
         );
       }
-      const agent = feature.agent?.kind === 'claude' ? await claude() : null;
-      const codexAgent = feature.agent?.kind === 'codex' ? await codex() : null;
+      const agent = workspace.agent?.kind === 'claude' ? await claude() : null;
+      const codexAgent = workspace.agent?.kind === 'codex' ? await codex() : null;
       if (codexAgent) {
-        if (await codexAlive(feature)) await stopCodex(where, feature, codexAgent);
+        if (await codexAlive(workspace)) await stopCodex(where, workspace, codexAgent);
         // Out of Codex's lists, not deleted (decision 134): an archived one fails the same way.
-        const entries = await readThread(cprFolder(where), feature.branch, Infinity);
+        const entries = await readThread(cprFolder(where), workspace.branch, Infinity);
         const threads = new Set(entries.filter((e) => e.kind === 'start').map((e) => e.session));
         for (const thread of threads) {
           if (thread !== '') await codexAgent.archive(thread).catch(() => undefined);
         }
       }
       if (agent) {
-        const folder = real(feature.worktree);
+        const folder = real(workspace.worktree);
         for (const session of (await agent.sessions()) ?? []) {
           if (real(session.cwd) !== folder || !session.id) continue;
           if (session.status !== undefined) await agent.stop(session.id);
           const removed = await agent.remove(session.id);
-          if (!removed.ok) throw new FeatureRefused(removed.error, 409);
+          if (!removed.ok) throw new WorkspaceRefused(removed.error, 409);
         }
       }
       try {
-        if (exists) await removeWorktree(repo, feature.worktree);
-        if (merged) await deleteMergedBranch(repo, feature.branch);
+        if (exists) await removeWorktree(repo, workspace.worktree);
+        if (merged) await deleteMergedBranch(repo, workspace.branch);
       } catch (error) {
-        if (error instanceof WorktreeRefused) throw new FeatureRefused(error.message, 409);
+        if (error instanceof WorktreeRefused) throw new WorkspaceRefused(error.message, 409);
         throw error;
       }
-      feature.finished = now().toISOString();
-      await save(where, feature);
-      return { finished: feature.finished };
+      workspace.finished = now().toISOString();
+      await save(where, workspace);
+      return { finished: workspace.finished };
     },
   };
 }

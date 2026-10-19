@@ -1,33 +1,34 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type {
   BranchMerge,
-  FeatureReplied,
-  FeatureStart,
-  FeatureSummary,
-  FeatureThread,
+  WorkspaceReplied,
+  WorkspaceStart,
+  WorkspaceSummary,
+  WorkspaceThread,
   TerminalAvailability,
 } from '@cpr/core';
 import { AgentTerminal, toTerminal, type OpenedTerminal } from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
 import { markdownNodes, useMarkdown } from './markdown.js';
-import { useFeatureStarter } from './FeatureStarter.js';
+import { useWorkspaceStarter } from './WorkspaceStarter.js';
 import { postJson } from './http.js';
 import {
-  featureGroups,
-  featureHref,
-  featureName,
+  workspaceGroups,
+  workspaceHref,
+  workspaceName,
   replyMode,
   startedNotice,
   talkCommand,
   threadItems,
   verdictToSend,
-  type FeatureRow,
-} from './features.js';
+  type WorkspaceRow,
+} from './workspaces.js';
+import { HISTORY_PAGE, WORKSPACES_PAGE } from './pages.js';
 import { verdictLine } from './terminal.js';
-import { readFeaturesAgain, reloadFeatures, useFeatures } from './useFeatures.js';
+import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 
-/** `?branch=<name>`: the feature picked (V18b's address, V18c's selection). */
+/** `?branch=<name>`: the workspace picked (V18b's address, V18c's selection). */
 const branchOfUrl = (): string | null => new URLSearchParams(window.location.search).get('branch');
 /** `?send=verdict`: from the Review tab, the box filled with the review's verdict (V18c). */
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
@@ -71,38 +72,38 @@ function useWide(): boolean {
 }
 
 /**
- * The features view (V18b, V18c): the features started from CPR, grouped by what each needs from
- * the person — needs you, working, done —, and beside them the picked feature: its state and
+ * The workspaces view (V18b, V18c): the workspaces started from CPR, grouped by what each needs from
+ * the person — needs you, working, done —, and beside them the picked workspace: its state and
  * actions, what its agent reported and was told, and a box to answer it. `?branch=` picks one;
- * on a wide window the first feature is picked when none is.
+ * on a wide window the first workspace is picked when none is.
  */
-export function FeaturesPage() {
-  const { list, reviews } = useFeatures();
+export function WorkspacesPage() {
+  const { list, reviews } = useWorkspaces();
   const [notice, setNotice] = useState<Notice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState(branchOfUrl);
   const [flashed, setFlashed] = useState(branchOfUrl);
   const [send] = useState(sendOfUrl);
   const wide = useWide();
-  /** Picks a feature (or none), the address following without a new history entry. */
+  /** Picks a workspace (or none), the address following without a new history entry. */
   const pick = useCallback((branch: string | null) => {
     setPicked(branch);
-    window.history.replaceState(null, '', branch ? featureHref(branch) : '/workspaces');
+    window.history.replaceState(null, '', branch ? workspaceHref(branch) : WORKSPACES_PAGE);
   }, []);
   const started = useCallback(
-    (start: FeatureStart) => {
+    (start: WorkspaceStart) => {
       setNotice(startedNotice(start));
-      pick(start.feature.branch);
-      setFlashed(start.feature.branch);
+      pick(start.workspace.branch);
+      setFlashed(start.workspace.branch);
     },
     [pick],
   );
-  const starter = useFeatureStarter(started, setError);
-  const groups = useMemo(() => featureGroups(list?.features ?? [], reviews), [list, reviews]);
+  const starter = useWorkspaceStarter(started, setError);
+  const groups = useMemo(() => workspaceGroups(list?.workspaces ?? [], reviews), [list, reviews]);
   const marks = useMemo(() => reviewMarks(reviews).marks, [reviews]);
   const rows = [...groups.needsYou, ...groups.working, ...groups.done];
   const current =
-    rows.find((r) => r.feature.branch === picked) ?? (wide && !picked ? rows[0] : undefined);
+    rows.find((r) => r.workspace.branch === picked) ?? (wide && !picked ? rows[0] : undefined);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -116,7 +117,7 @@ export function FeaturesPage() {
   }, [starter]);
 
   return (
-    <div className="features">
+    <div className="workspaces">
       <h1 className="commits-title">
         Workspaces
         <span className="commits-help">
@@ -126,7 +127,7 @@ export function FeaturesPage() {
         <span className="commits-actions">
           <button
             type="button"
-            className="start-feature"
+            className="start-workspace"
             title="Start a workspace: a branch, its worktree and an agent (n)"
             onClick={() => starter.open()}
           >
@@ -136,6 +137,8 @@ export function FeaturesPage() {
         </span>
       </h1>
       {notice && <NoticeLine notice={notice} />}
+      {/* Why they are kept where they are (CPR's cache), or a folder left from before (V25). */}
+      {list?.note && <p className="hint workspaces-note">{list.note}</p>}
       {error && (
         <p className="commits-error error" role="alert">
           {error}
@@ -143,29 +146,35 @@ export function FeaturesPage() {
       )}
       {!list ? (
         <p className="hint">Listing workspaces…</p>
-      ) : list.features.length === 0 ? (
-        <p className="hint">
-          No workspaces yet. Start one: describe the work, and CPR makes its branch and worktree and
-          starts an agent there.
-        </p>
+      ) : list.workspaces.length === 0 ? (
+        <div className="hint workspaces-empty">
+          <p>
+            No workspaces yet. Start one: describe the work, and CPR makes its branch and worktree
+            and starts an agent there.
+          </p>
+          <p>
+            Start a workspace above (n), or pick a commit to start from in the repository&apos;s{' '}
+            <a href={HISTORY_PAGE}>History</a> (h).
+          </p>
+        </div>
       ) : (
-        <div className={`features-body${current ? ' has-panel' : ''}`}>
-          <div className="features-list">
+        <div className={`workspaces-body${current ? ' has-panel' : ''}`}>
+          <div className="workspaces-list">
             {GROUPS.map(([key, title]) =>
               groups[key].length === 0 ? null : (
-                <section key={key} className="feature-group" aria-label={title}>
+                <section key={key} className="workspace-group" aria-label={title}>
                   <h2>
                     {title} <span className="branches-count">{groups[key].length}</span>
                   </h2>
-                  <ul className="feature-list">
+                  <ul className="workspace-list">
                     {groups[key].map((row) => (
-                      <FeatureItem
-                        key={row.feature.branch}
+                      <WorkspaceItem
+                        key={row.workspace.branch}
                         row={row}
-                        mark={marks.get(row.feature.branch)}
+                        mark={marks.get(row.workspace.branch)}
                         picked={row === current}
-                        flashed={row.feature.branch === flashed}
-                        onPick={() => pick(row.feature.branch)}
+                        flashed={row.workspace.branch === flashed}
+                        onPick={() => pick(row.workspace.branch)}
                       />
                     ))}
                   </ul>
@@ -174,13 +183,13 @@ export function FeaturesPage() {
             )}
           </div>
           {current && (
-            <FeaturePanel
-              key={current.feature.branch}
+            <WorkspacePanel
+              key={current.workspace.branch}
               row={current}
-              mark={marks.get(current.feature.branch)}
+              mark={marks.get(current.workspace.branch)}
               version={list}
               terminal={list.terminal}
-              fillVerdict={send === 'verdict' && current.feature.branch === branchOfUrl()}
+              fillVerdict={send === 'verdict' && current.workspace.branch === branchOfUrl()}
               onNotice={setNotice}
               onError={setError}
               onBack={() => pick(null)}
@@ -220,21 +229,21 @@ function NoticeLine({ notice }: { notice: Notice }) {
   );
 }
 
-/** Whether a feature with commits merges into the default branch (V17's check), read once. */
-function useMergeCheck(feature: FeatureSummary): BranchMerge | null {
+/** Whether a workspace with commits merges into the default branch (V17's check), read once. */
+function useMergeCheck(workspace: WorkspaceSummary): BranchMerge | null {
   const [merge, setMerge] = useState<BranchMerge | null>(null);
-  const wanted = feature.ahead > 0 && !feature.merged && feature.tip !== null;
+  const wanted = workspace.ahead > 0 && !workspace.merged && workspace.tip !== null;
   useEffect(() => {
     if (!wanted) return;
     let live = true;
-    fetch(`/api/features/merge?branch=${encodeURIComponent(feature.branch)}`)
+    fetch(`/api/workspaces/merge?branch=${encodeURIComponent(workspace.branch)}`)
       .then((response) => (response.ok ? (response.json() as Promise<BranchMerge>) : null))
       .then((check) => live && setMerge(check))
       .catch(() => {});
     return () => {
       live = false;
     };
-  }, [wanted, feature.branch, feature.tip]);
+  }, [wanted, workspace.branch, workspace.tip]);
   return wanted ? merge : null;
 }
 
@@ -247,19 +256,19 @@ function mergeText(merge: BranchMerge | null): string | null {
   return null;
 }
 
-/** What is next for a feature, then its facts: commits, files not committed, the merge check. */
-function FeatureState({ row: { feature, next } }: { row: FeatureRow }) {
-  const merge = useMergeCheck(feature);
+/** What is next for a workspace, then its facts: commits, files not committed, the merge check. */
+function WorkspaceState({ row: { workspace, next } }: { row: WorkspaceRow }) {
+  const merge = useMergeCheck(workspace);
   const facts = [
-    feature.ahead > 0 ? plural(feature.ahead, 'commit') : 'no commits yet',
-    feature.worktree.changed
-      ? `${plural(feature.worktree.changed, 'file')} not committed yet`
+    workspace.ahead > 0 ? plural(workspace.ahead, 'commit') : 'no commits yet',
+    workspace.worktree.changed
+      ? `${plural(workspace.worktree.changed, 'file')} not committed yet`
       : null,
-    feature.worktree.exists ? null : 'its worktree is gone',
+    workspace.worktree.exists ? null : 'its worktree is gone',
     mergeText(merge),
   ].filter((fact): fact is string => fact !== null);
   return (
-    <p className="feature-state">
+    <p className="workspace-state">
       <strong>{next.text}</strong>
       {facts.map((fact) => (
         <span key={fact}> · {fact}</span>
@@ -269,31 +278,31 @@ function FeatureState({ row: { feature, next } }: { row: FeatureRow }) {
 }
 
 /** A workspace's kind before its name (V24c): none for a Feature, the common case. */
-function KindTag({ feature }: { feature: FeatureSummary }) {
-  if (!feature.kind || feature.kind === 'feature') return null;
-  return <span className="kind-tag">{feature.kind}</span>;
+function KindTag({ workspace }: { workspace: WorkspaceSummary }) {
+  if (!workspace.kind || workspace.kind === 'feature') return null;
+  return <span className="kind-tag">{workspace.kind}</span>;
 }
 
-/** A feature's mark: what it needs, as its branch's badges show it. */
-function FeatureChip({ row: { next } }: { row: FeatureRow }) {
+/** A workspace's mark: what it needs, as its branch's badges show it. */
+function WorkspaceChip({ row: { next } }: { row: WorkspaceRow }) {
   return (
-    <span className={`feature-mark feature-mark-${next.chip.tone}`} aria-hidden="true">
+    <span className={`workspace-mark workspace-mark-${next.chip.tone}`} aria-hidden="true">
       {next.chip.mark}
     </span>
   );
 }
 
-/** A feature's branch (a link to its commits) and its review's mark. */
-function FeatureBranch({ row: { feature }, mark }: { row: FeatureRow; mark?: ReviewMark }) {
-  const { branch } = feature;
+/** A workspace's branch (a link to its commits) and its review's mark. */
+function WorkspaceBranch({ row: { workspace }, mark }: { row: WorkspaceRow; mark?: ReviewMark }) {
+  const { branch } = workspace;
   return (
     <>
-      {feature.tip === null ? (
+      {workspace.tip === null ? (
         <span className="ref ref-branch">{branch}</span>
       ) : (
         <a
           className="ref ref-branch"
-          href={`/?branch=${encodeURIComponent(branch)}`}
+          href={`${HISTORY_PAGE}?branch=${encodeURIComponent(branch)}`}
           title={`${branch}: its commits`}
           onClick={(event) => event.stopPropagation()}
         >
@@ -309,15 +318,15 @@ function FeatureBranch({ row: { feature }, mark }: { row: FeatureRow; mark?: Rev
   );
 }
 
-/** A feature in the list: what it is and what it needs; a click picks it. */
-function FeatureItem({
+/** A workspace in the list: what it is and what it needs; a click picks it. */
+function WorkspaceItem({
   row,
   mark,
   picked,
   flashed,
   onPick,
 }: {
-  row: FeatureRow;
+  row: WorkspaceRow;
   mark: ReviewMark | undefined;
   picked: boolean;
   flashed: boolean;
@@ -325,7 +334,7 @@ function FeatureItem({
 }) {
   const item = useRef<HTMLLIElement>(null);
   const [flash, setFlash] = useState(false);
-  const { feature } = row;
+  const { workspace } = row;
 
   // Shown from a link or just started: in view, flashed.
   useLayoutEffect(() => {
@@ -339,48 +348,48 @@ function FeatureItem({
   return (
     <li
       ref={item}
-      className={`feature-row${picked ? ' picked' : ''}${flash ? ' flash' : ''}`}
-      data-branch={feature.branch}
+      className={`workspace-row${picked ? ' picked' : ''}${flash ? ' flash' : ''}`}
+      data-branch={workspace.branch}
       onClick={onPick}
     >
-      <div className="feature-head">
-        <FeatureChip row={row} />
+      <div className="workspace-head">
+        <WorkspaceChip row={row} />
         <button
           type="button"
-          className="feature-about"
-          title={feature.brief}
+          className="workspace-about"
+          title={workspace.brief}
           aria-current={picked ? 'true' : undefined}
           onClick={(event) => {
             event.stopPropagation();
             onPick();
           }}
         >
-          <KindTag feature={feature} />
-          {featureName(feature)}
+          <KindTag workspace={workspace} />
+          {workspaceName(workspace)}
         </button>
-        <time className="commit-date" dateTime={feature.created}>
-          {relativeDate(feature.created, Date.now())}
+        <time className="commit-date" dateTime={workspace.created}>
+          {relativeDate(workspace.created, Date.now())}
         </time>
       </div>
-      <div className="feature-branch">
-        <FeatureBranch row={row} mark={mark} />
+      <div className="workspace-branch">
+        <WorkspaceBranch row={row} mark={mark} />
       </div>
-      <FeatureState row={row} />
+      <WorkspaceState row={row} />
     </li>
   );
 }
 
 /**
- * A feature's thread (V18c), read when it is picked and with every read of the list (on focus,
+ * A workspace's thread (V18c), read when it is picked and with every read of the list (on focus,
  * every 5 s while an agent works or waits).
  */
-function useThread(branch: string, version: unknown): [FeatureThread | null, () => void] {
-  const [thread, setThread] = useState<FeatureThread | null>(null);
+function useThread(branch: string, version: unknown): [WorkspaceThread | null, () => void] {
+  const [thread, setThread] = useState<WorkspaceThread | null>(null);
   const [asked, setAsked] = useState(0);
   useEffect(() => {
     let live = true;
-    fetch(`/api/features/thread?branch=${encodeURIComponent(branch)}`)
-      .then((response) => (response.ok ? (response.json() as Promise<FeatureThread>) : null))
+    fetch(`/api/workspaces/thread?branch=${encodeURIComponent(branch)}`)
+      .then((response) => (response.ok ? (response.json() as Promise<WorkspaceThread>) : null))
       .then((read) => live && setThread(read))
       .catch(() => {});
     return () => {
@@ -399,7 +408,7 @@ const timeOf = (at: string) =>
  * agent's reports are drawn as Markdown (plain text until the lexer is loaded); the person's
  * messages and CPR's prompt as written.
  */
-function Thread({ thread, worktree }: { thread: FeatureThread | null; worktree: string }) {
+function Thread({ thread, worktree }: { thread: WorkspaceThread | null; worktree: string }) {
   const list = useRef<HTMLOListElement>(null);
   const items = thread ? threadItems(thread.entries, worktree) : [];
   const lexer = useMarkdown();
@@ -462,11 +471,11 @@ function Thread({ thread, worktree }: { thread: FeatureThread | null; worktree: 
 }
 
 /**
- * The picked feature (V18c): its state and actions, its thread, and one box whose message
+ * The picked workspace (V18c): its state and actions, its thread, and one box whose message
  * continues the agent's session. Nothing is sent without Send (decision 82); sending to an agent
  * that works, or waits on a prompt, ends its turn, so that is asked first.
  */
-function FeaturePanel({
+function WorkspacePanel({
   row,
   mark,
   version,
@@ -476,7 +485,7 @@ function FeaturePanel({
   onError,
   onBack,
 }: {
-  row: FeatureRow;
+  row: WorkspaceRow;
   mark: ReviewMark | undefined;
   /** The list as last read: the thread is read again with it. */
   version: unknown;
@@ -488,8 +497,8 @@ function FeaturePanel({
   onError: (message: string | null) => void;
   onBack: () => void;
 }) {
-  const { feature } = row;
-  const { branch, agent } = feature;
+  const { workspace } = row;
+  const { branch, agent } = workspace;
   const [thread, reloadThread] = useThread(branch, version);
   const [briefOpen, setBriefOpen] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
@@ -504,7 +513,7 @@ function FeaturePanel({
   // Claude Code's only: Codex's turns in a terminal would not reach its thread (decision 133).
   const terminals =
     terminal?.available === true && agent.id !== undefined && agent.kind === 'claude';
-  const talk = talkCommand(agent, feature.worktree.path);
+  const talk = talkCommand(agent, workspace.worktree.path);
   const [chosen, setChosen] = useState(viewOfUrl);
   const view = chosen ?? (terminals ? 'terminal' : 'thread');
   const showTerminal = terminals && view === 'terminal';
@@ -518,7 +527,7 @@ function FeaturePanel({
     setChosen(next);
     setEnded(null);
     setAsking(agent.state === 'stopped');
-    const href = featureHref(branch);
+    const href = workspaceHref(branch);
     window.history.replaceState(null, '', next === 'thread' ? `${href}&thread` : href);
   };
   /** Types the verdict's line into the open terminal, without Enter (decision 114). */
@@ -555,7 +564,7 @@ function FeaturePanel({
       .catch((e: unknown) => setSaid(`${(e as Error).message}`))
       .finally(() => {
         setBusy(false);
-        void reloadFeatures();
+        void reloadWorkspaces();
         reloadThread();
       });
   };
@@ -573,7 +582,7 @@ function FeaturePanel({
     }
     setConfirming(null);
     act(() =>
-      postJson<FeatureReplied>('/api/features/reply', {
+      postJson<WorkspaceReplied>('/api/workspaces/reply', {
         branch,
         text,
         ...(stop ? { stop: true } : {}),
@@ -594,7 +603,7 @@ function FeaturePanel({
   const clean = (unmerged: boolean) => {
     setConfirming(null);
     act(() =>
-      postJson('/api/features/clean', { branch, ...(unmerged ? { unmerged: true } : {}) }).then(
+      postJson('/api/workspaces/clean', { branch, ...(unmerged ? { unmerged: true } : {}) }).then(
         () => {
           onNotice({ text: `Cleaned up ${branch}: its worktree is removed.` });
           onBack();
@@ -605,24 +614,24 @@ function FeaturePanel({
   };
 
   return (
-    <section className="feature-panel" aria-label={`Workspace ${branch}`}>
-      <button type="button" className="link feature-back" onClick={onBack}>
+    <section className="workspace-panel" aria-label={`Workspace ${branch}`}>
+      <button type="button" className="link workspace-back" onClick={onBack}>
         ← Workspaces
       </button>
-      <div className="feature-head">
-        <FeatureChip row={row} />
-        <FeatureBranch row={row} mark={mark} />
-        <span className="feature-about" title={feature.brief}>
-          <KindTag feature={feature} />
-          {featureName(feature)}
+      <div className="workspace-head">
+        <WorkspaceChip row={row} />
+        <WorkspaceBranch row={row} mark={mark} />
+        <span className="workspace-about" title={workspace.brief}>
+          <KindTag workspace={workspace} />
+          {workspaceName(workspace)}
         </span>
       </div>
-      <FeatureState row={row} />
-      <div className="feature-actions">
+      <WorkspaceState row={row} />
+      <div className="workspace-actions">
         <button type="button" className="link" onClick={() => setBriefOpen((o) => !o)}>
           {briefOpen ? 'Hide the brief' : 'The brief'}
         </button>
-        {feature.ahead > 0 && feature.tip !== null && (
+        {workspace.ahead > 0 && workspace.tip !== null && (
           <button
             type="button"
             className="link"
@@ -654,13 +663,15 @@ function FeaturePanel({
             Talk
           </button>
         )}
-        {feature.worktree.exists && (
+        {workspace.worktree.exists && (
           <button
             type="button"
             className="link"
             disabled={busy}
             onClick={() =>
-              act(() => postJson('/api/features/open', { branch }).then(() => 'Opened in VS Code'))
+              act(() =>
+                postJson('/api/workspaces/open', { branch }).then(() => 'Opened in VS Code'),
+              )
             }
           >
             Open in VS Code
@@ -672,20 +683,20 @@ function FeaturePanel({
             className="link"
             disabled={busy}
             onClick={() =>
-              act(() => postJson('/api/features/stop', { branch }).then(() => 'Stopped'))
+              act(() => postJson('/api/workspaces/stop', { branch }).then(() => 'Stopped'))
             }
           >
             Stop the agent
           </button>
         )}
-        {restartable && feature.worktree.exists && (
+        {restartable && workspace.worktree.exists && (
           <button
             type="button"
             className="link"
             disabled={busy}
             onClick={() =>
               act(() =>
-                postJson<FeatureStart>('/api/features/start', { branch }).then((start) => {
+                postJson<WorkspaceStart>('/api/workspaces/start', { branch }).then((start) => {
                   onNotice(startedNotice(start));
                   return null;
                 }),
@@ -702,7 +713,7 @@ function FeaturePanel({
           onClick={() =>
             act(async () => {
               const response = await fetch(
-                `/api/features/prompt?branch=${encodeURIComponent(branch)}`,
+                `/api/workspaces/prompt?branch=${encodeURIComponent(branch)}`,
               );
               if (!response.ok) throw new Error(await response.text());
               const { prompt } = (await response.json()) as { prompt: string };
@@ -712,29 +723,29 @@ function FeaturePanel({
         >
           Copy the prompt
         </button>
-        {(feature.merged || !live) && (
+        {(workspace.merged || !live) && (
           <button
             type="button"
             className="link"
             disabled={busy}
             title={
-              feature.merged
+              workspace.merged
                 ? 'Remove its sessions, its worktree and its merged branch'
                 : 'Not merged: remove its worktree, keep the branch'
             }
-            onClick={() => (feature.merged ? clean(false) : setConfirming('clean'))}
+            onClick={() => (workspace.merged ? clean(false) : setConfirming('clean'))}
           >
-            {feature.merged ? 'Clean up' : 'Clean up…'}
+            {workspace.merged ? 'Clean up' : 'Clean up…'}
           </button>
         )}
         {said && (
-          <span className="feature-said" role="status">
+          <span className="workspace-said" role="status">
             {said}
           </span>
         )}
       </div>
       {confirming === 'clean' && (
-        <p className="feature-confirm">
+        <p className="workspace-confirm">
           {branch} is not merged: Clean up removes its worktree and keeps the branch and its
           commits.{' '}
           <button type="button" className="button" onClick={() => clean(true)}>
@@ -745,9 +756,9 @@ function FeaturePanel({
           </button>
         </p>
       )}
-      {briefOpen && <pre className="feature-brief">{feature.brief}</pre>}
+      {briefOpen && <pre className="workspace-brief">{workspace.brief}</pre>}
       {terminals && (
-        <div className="feature-views" role="tablist" aria-label="Talk to the agent">
+        <div className="workspace-views" role="tablist" aria-label="Talk to the agent">
           {(['thread', 'terminal'] as const).map((name) => (
             <button
               key={name}
@@ -763,9 +774,9 @@ function FeaturePanel({
         </div>
       )}
       {showTerminal ? (
-        <div className="feature-terminal">
+        <div className="workspace-terminal">
           {asking ? (
-            <p className="feature-confirm">
+            <p className="workspace-confirm">
               Opening the terminal continues the stopped session.{' '}
               <button type="button" className="button" onClick={() => setAsking(false)}>
                 Open the terminal
@@ -775,7 +786,7 @@ function FeaturePanel({
             <AgentTerminal key={attempt} branch={branch} onOpened={setOpened} onEnded={setEnded} />
           )}
           {ended && (
-            <p className="feature-confirm">
+            <p className="workspace-confirm">
               The terminal {ended === 'exited' ? 'ended' : 'lost its session'}.{' '}
               <button
                 type="button"
@@ -783,8 +794,8 @@ function FeaturePanel({
                 onClick={() => {
                   setEnded(null);
                   // A stop ends the terminal before the list says so: the state is read anew.
-                  void readFeaturesAgain().then(({ list }) => {
-                    const now = list?.features.find((f) => f.branch === branch)?.agent.state;
+                  void readWorkspacesAgain().then(({ list }) => {
+                    const now = list?.workspaces.find((f) => f.branch === branch)?.agent.state;
                     setAsking((now ?? agent.state) === 'stopped');
                     setAttempt((n) => n + 1);
                   });
@@ -809,7 +820,7 @@ function FeaturePanel({
           </div>
         </div>
       ) : (
-        <Thread thread={thread} worktree={feature.worktree.path} />
+        <Thread thread={thread} worktree={workspace.worktree.path} />
       )}
       {terminals && !showTerminal && (
         <p className="hint thread-readonly">
@@ -857,7 +868,7 @@ function FeaturePanel({
             <span className="hint">No session to continue: start the agent again.</span>
           )}
           {confirming === 'send' ? (
-            <span className="feature-confirm">
+            <span className="workspace-confirm">
               Sending stops the agent's turn
               {agent.waitingFor ? ` and what it waits on (${agent.waitingFor})` : ''}.{' '}
               <button type="button" className="button" disabled={busy} onClick={() => send(true)}>

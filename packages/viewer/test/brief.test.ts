@@ -14,7 +14,7 @@ import {
   type BriefForm,
 } from '../src/brief.js';
 
-/** The kinds as `cpr view` gives them (`/api/features/options`). */
+/** The kinds as `cpr view` gives them (`/api/workspaces/options`). */
 const KINDS: WorkKindSpec[] = [
   {
     kind: 'feature',

@@ -12,10 +12,10 @@ import {
   type FinishResult,
   type LocalReview,
   type CheckoutTarget,
-  type FeatureReply,
+  type WorkspaceReply,
   type BriefParts,
-  type FeatureRequest,
-  type FeatureTerminalRequest,
+  type WorkspaceRequest,
+  type WorkspaceTerminalRequest,
   type Graph,
   type AgentKind,
   type PermissionMode,
@@ -28,7 +28,7 @@ import {
 import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
 import type { OpenRequest, OpenResult } from './editor.js';
-import { FeatureRefused, type Features } from './features.js';
+import { WorkspaceRefused, type Workspaces } from './workspaces.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 import type { Terminals } from './terminal.js';
@@ -71,8 +71,8 @@ export interface RepositoryOptions {
   state?: (graph: Graph) => StateStore;
   /** Branch reviews (V15): `/api/reviews`, and each review under `/review/<branch>/`. */
   reviews?: BranchReviews;
-  /** Features started from the page, each with its agent (V18): `/api/features…`. */
-  features?: Features;
+  /** Workspaces started from the page, each with its agent (V18): `/api/workspaces…`. */
+  workspaces?: Workspaces;
   /** Terminals on agents' sessions (V21): `/api/terminals/<id>…`; closed with the server. */
   terminals?: Terminals;
 }
@@ -174,7 +174,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   const reviewSites = new WeakMap<Graph, Map<string, Site>>();
   let hosts: Set<string> = new Set();
   let checkingOut = false;
-  let startingFeature = false;
+  let startingWorkspace = false;
   /** Writes that must not overlap (V18c: two messages at once would make two sessions). */
   const busy = new Set<string>();
   /** Terminals' output streams (V21), ended when the server closes. */
@@ -209,6 +209,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/api/reviews' && repository.reviews) {
         return reviewsApi(req, res, repository, repository.reviews);
       }
+      // The history page (V25; at `/` before, which is now the workspaces view).
+      if (url.pathname === '/history') return serveSite(req, res, url, '/', undefined);
       if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
       if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
       if (url.pathname === '/api/history/refs') return historyRefs(req, res, url, repository);
@@ -217,63 +219,63 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/api/checkout') return checkoutTarget(req, res, repository);
       if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
       if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
-      const { features } = repository;
-      if (features) {
-        // The workspaces view (V18b): the viewer's page, as at `/`; `/features` is its old address.
+      const { workspaces } = repository;
+      if (workspaces) {
+        // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves them to `/`.
         if (url.pathname === '/workspaces' || url.pathname === '/features')
           return serveSite(req, res, url, '/', undefined);
-        if (url.pathname === '/api/features') return featuresApi(req, res, features);
-        if (url.pathname === '/api/features/options')
-          return read(req, res, () => features.options());
-        if (url.pathname === '/api/features/draft') {
-          if (req.method === 'GET') return json(res, 200, await features.draft());
+        if (url.pathname === '/api/workspaces') return workspacesApi(req, res, workspaces);
+        if (url.pathname === '/api/workspaces/options')
+          return read(req, res, () => workspaces.options());
+        if (url.pathname === '/api/workspaces/draft') {
+          if (req.method === 'GET') return json(res, 200, await workspaces.draft());
           return written(req, res, parseDraft, (draft) =>
-            answer(res, () => features.saveDraft(draft).then(() => ({}))),
+            answer(res, () => workspaces.saveDraft(draft).then(() => ({}))),
           );
         }
-        if (url.pathname === '/api/features/check') {
+        if (url.pathname === '/api/workspaces/check') {
           if (req.method !== 'GET') return send(res, 405, 'method not allowed');
           const at = url.searchParams.get('at');
           if (!at) return send(res, 400, 'at: the commit a workspace starts from');
-          return answer(res, () => features.check(at).then((guess) => guess ?? {}));
+          return answer(res, () => workspaces.check(at).then((guess) => guess ?? {}));
         }
-        if (url.pathname === '/api/features/start') {
+        if (url.pathname === '/api/workspaces/start') {
           return onBranch(req, res, (branch) =>
-            startingOne(res, () => features.startAgent(branch)),
+            startingOne(res, () => workspaces.startAgent(branch)),
           );
         }
-        if (url.pathname === '/api/features/stop') {
-          return onBranch(req, res, (branch) => answer(res, () => features.stopAgent(branch)));
+        if (url.pathname === '/api/workspaces/stop') {
+          return onBranch(req, res, (branch) => answer(res, () => workspaces.stopAgent(branch)));
         }
-        if (url.pathname === '/api/features/open') {
+        if (url.pathname === '/api/workspaces/open') {
           return onBranch(req, res, (branch) =>
-            answer(res, () => features.openWorktree(branch).then(() => ({}))),
+            answer(res, () => workspaces.openWorktree(branch).then(() => ({}))),
           );
         }
-        if (url.pathname === '/api/features/prompt') {
+        if (url.pathname === '/api/workspaces/prompt') {
           return ofBranch(req, res, url, (branch) =>
-            features.prompt(branch).then((prompt) => ({ prompt })),
+            workspaces.prompt(branch).then((prompt) => ({ prompt })),
           );
         }
-        if (url.pathname === '/api/features/merge') {
-          return ofBranch(req, res, url, (branch) => features.merge(branch));
+        if (url.pathname === '/api/workspaces/merge') {
+          return ofBranch(req, res, url, (branch) => workspaces.merge(branch));
         }
-        if (url.pathname === '/api/features/thread') {
-          return ofBranch(req, res, url, (branch) => features.thread(branch));
+        if (url.pathname === '/api/workspaces/thread') {
+          return ofBranch(req, res, url, (branch) => workspaces.thread(branch));
         }
-        if (url.pathname === '/api/features/reply') {
-          return written(req, res, parseFeatureReply, (request) =>
-            oneAtATime(res, 'a message is being sent', () => features.reply(request)),
+        if (url.pathname === '/api/workspaces/reply') {
+          return written(req, res, parseWorkspaceReply, (request) =>
+            oneAtATime(res, 'a message is being sent', () => workspaces.reply(request)),
           );
         }
-        if (url.pathname === '/api/features/clean') {
-          return written(req, res, parseFeatureClean, (request) =>
-            answer(res, () => features.clean(request)),
+        if (url.pathname === '/api/workspaces/clean') {
+          return written(req, res, parseWorkspaceClean, (request) =>
+            answer(res, () => workspaces.clean(request)),
           );
         }
-        if (url.pathname === '/api/features/terminal') {
-          return written(req, res, parseFeatureTerminal, (request) =>
-            answer(res, () => features.terminal(request)),
+        if (url.pathname === '/api/workspaces/terminal') {
+          return written(req, res, parseWorkspaceTerminal, (request) =>
+            answer(res, () => workspaces.terminal(request)),
           );
         }
       }
@@ -582,25 +584,25 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
   }
 
-  /** The features (GET), or a new one: its branch, worktree and agent (POST), one at a time. */
-  async function featuresApi(
+  /** The workspaces (GET), or a new one: its branch, worktree and agent (POST), one at a time. */
+  async function workspacesApi(
     req: IncomingMessage,
     res: ServerResponse,
-    features: Features,
+    workspaces: Workspaces,
   ): Promise<void> {
-    if (req.method === 'GET') return json(res, 200, await features.list());
+    if (req.method === 'GET') return json(res, 200, await workspaces.list());
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
     if (!writable(req)) return send(res, 403, 'forbidden');
-    let request: FeatureRequest;
+    let request: WorkspaceRequest;
     try {
-      request = parseFeatureRequest(await readBody(req, MAX_BODY_BYTES));
+      request = parseWorkspaceRequest(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
       return send(res, 400, (error as Error).message);
     }
-    return startingOne(res, () => features.start(request));
+    return startingOne(res, () => workspaces.start(request));
   }
 
-  /** A write about one feature: `POST { branch }`. */
+  /** A write about one workspace: `POST { branch }`. */
   async function onBranch(
     req: IncomingMessage,
     res: ServerResponse,
@@ -611,7 +613,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     let branch: string;
     try {
       const value = JSON.parse(await readBody(req, MAX_BODY_BYTES)) as { branch?: unknown } | null;
-      if (typeof value?.branch !== 'string') throw new Error("branch: a feature's branch");
+      if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
       branch = value.branch;
     } catch (error) {
       return send(res, 400, (error as Error).message);
@@ -725,7 +727,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
   }
 
-  /** A read about one feature: `GET ?branch=`. */
+  /** A read about one workspace: `GET ?branch=`. */
   async function ofBranch(
     req: IncomingMessage,
     res: ServerResponse,
@@ -734,28 +736,29 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   ): Promise<void> {
     if (req.method !== 'GET') return send(res, 405, 'method not allowed');
     const branch = url.searchParams.get('branch');
-    if (!branch) return send(res, 400, "branch: a feature's branch");
+    if (!branch) return send(res, 400, "branch: a workspace's branch");
     return answer(res, () => value(branch));
   }
 
-  /** The answer, or a feature's refusal with its status and words. */
+  /** The answer, or a workspace's refusal with its status and words. */
   async function answer(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
     try {
       return json(res, 200, await task());
     } catch (error) {
-      if (error instanceof FeatureRefused) return json(res, error.status, { error: error.message });
+      if (error instanceof WorkspaceRefused)
+        return json(res, error.status, { error: error.message });
       throw error;
     }
   }
 
   /** One start at a time (a worktree and an agent each). */
   async function startingOne(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
-    if (startingFeature) return json(res, 409, { error: 'a workspace is being started' });
-    startingFeature = true;
+    if (startingWorkspace) return json(res, 409, { error: 'a workspace is being started' });
+    startingWorkspace = true;
     try {
       return await answer(res, task);
     } finally {
-      startingFeature = false;
+      startingWorkspace = false;
     }
   }
 
@@ -953,9 +956,9 @@ function json(res: ServerResponse, status: number, value: unknown): void {
 
 /**
  * `{ kind, title, parts, branch, planFirst, base?, agent?, permissionMode? }` (V24, V20a), or `brief` instead
- * of the kind, title and parts, each of its type; what they say is the features' to check (V18).
+ * of the kind, title and parts, each of its type; what they say is the workspaces' to check (V18).
  */
-function parseFeatureRequest(text: string): FeatureRequest {
+function parseWorkspaceRequest(text: string): WorkspaceRequest {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('expected { kind, title, parts, branch, planFirst }');
@@ -1004,10 +1007,10 @@ function parseDraft(text: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-/** `{ branch, text, stop? }`: a message for a feature's agent (V18c). */
-function parseFeatureReply(text: string): FeatureReply {
+/** `{ branch, text, stop? }`: a message for a workspace's agent (V18c). */
+function parseWorkspaceReply(text: string): WorkspaceReply {
   const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (typeof value?.branch !== 'string') throw new Error("branch: a feature's branch");
+  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
   if (typeof value.text !== 'string') throw new Error('text: the message');
   if (value.stop !== undefined && typeof value.stop !== 'boolean') {
     throw new Error('stop: true or false');
@@ -1024,19 +1027,19 @@ function terminalSize(
   return ok(value?.cols) && ok(value.rows) ? { cols: value.cols, rows: value.rows } : null;
 }
 
-/** `{ branch, cols, rows }`: a terminal on a feature's agent session (V21). */
-function parseFeatureTerminal(text: string): FeatureTerminalRequest {
+/** `{ branch, cols, rows }`: a terminal on a workspace's agent session (V21). */
+function parseWorkspaceTerminal(text: string): WorkspaceTerminalRequest {
   const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (typeof value?.branch !== 'string') throw new Error("branch: a feature's branch");
+  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
   const size = terminalSize(value);
   if (!size) throw new Error('cols, rows: whole numbers, 2 to 1000');
   return { branch: value.branch, ...size };
 }
 
-/** `{ branch, unmerged? }`: a feature to clean up (V18c). */
-function parseFeatureClean(text: string): { branch: string; unmerged?: boolean } {
+/** `{ branch, unmerged? }`: a workspace to clean up (V18c). */
+function parseWorkspaceClean(text: string): { branch: string; unmerged?: boolean } {
   const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (typeof value?.branch !== 'string') throw new Error("branch: a feature's branch");
+  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
   if (value.unmerged !== undefined && typeof value.unmerged !== 'boolean') {
     throw new Error('unmerged: true or false');
   }

@@ -1,6 +1,7 @@
 import type { Commit, CommitRef, Graph } from '@cpr/core';
 import type { ReviewMark } from './branchReviews.js';
-import type { AgentChip } from './features.js';
+import type { AgentChip } from './workspaces.js';
+import { WORKSPACES_PAGE } from './pages.js';
 
 /** Two commits compared directly, by full SHA. */
 export interface Pair {
@@ -232,7 +233,7 @@ export interface Badge {
   title?: string;
   /** The branch is reviewed (V15, V16): "+2", "✓", "✗" or "…", and what it means. */
   review?: ReviewMark;
-  /** The branch is a feature's (V18b): its agent's mark, a link to the feature. */
+  /** The branch is a workspace's (V18b): its agent's mark, a link to the workspace. */
   agent?: AgentChip & { href: string };
 }
 
@@ -286,7 +287,7 @@ export function rowBadges(
   ];
 }
 
-/** Which feature marks matter most: what needs the person, then what works, then what is done. */
+/** Which workspace marks matter most: what needs the person, then what works, then what is done. */
 const URGENCY: readonly AgentChip['tone'][] = [
   'failed',
   'waiting',
@@ -297,8 +298,8 @@ const URGENCY: readonly AgentChip['tone'][] = [
 ];
 
 /**
- * The mark "+N" carries for the features it folds (V18b): the most urgent one's, a link to the
- * features view, its title naming them and how many need the person.
+ * The mark "+N" carries for the workspaces it folds (V18b): the most urgent one's, a link to the
+ * workspaces view, its title naming them and how many need the person.
  */
 function foldedMark(folded: readonly Badge[]): (AgentChip & { href: string }) | undefined {
   const marked = folded.filter((b) => b.agent);
@@ -319,7 +320,7 @@ function foldedMark(folded: readonly Badge[]): (AgentChip & { href: string }) | 
     mark: first.mark,
     tone: first.tone,
     title: `Workspaces here: ${marked.map((b) => b.label).join(', ')} — ${state}`,
-    href: '/workspaces',
+    href: WORKSPACES_PAGE,
   };
 }
 

@@ -1,10 +1,18 @@
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import {
   commitFolders,
   listRefs,
   openRepo,
-  type FeatureRequest,
+  type WorkspaceRequest,
   type ThreadEntry,
   type WorkKind,
 } from '@cpr/core';
@@ -14,23 +22,23 @@ import {
   agentState,
   briefOf,
   claudeCode,
-  featureBase,
-  featurePath,
-  featurePrompt,
-  features,
-  FeatureRefused,
+  workspaceBase,
+  workspacePath,
+  workspacePrompt,
+  workspaces,
+  WorkspaceRefused,
   parseAccount,
   parseSessions,
-  readFeature,
-  readFeatureConfig,
-  serializeFeature,
+  readWorkspace,
+  readWorkspaceConfig,
+  serializeWorkspace,
   workKinds,
   worktreeFolder,
   type AgentSession,
   type ClaudeCode,
-  type FeatureFile,
+  type WorkspaceFile,
   type Run,
-} from '../src/features.js';
+} from '../src/workspaces.js';
 import { reviewPlace } from '../src/reviews.js';
 import type { Terminals } from '../src/terminal.js';
 import type { Codex } from '../src/codex.js';
@@ -78,7 +86,7 @@ const NOW = new Date('2026-10-15T09:00:00Z');
 /** Where CPR's hook would be installed. */
 const HOOK = '/opt/cpr/dist/agent-hook.js';
 
-const record = (over: Partial<FeatureFile> = {}): FeatureFile => ({
+const record = (over: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
   agent: { kind: 'claude', permissionMode: 'default', started: '2026-10-15T09:00:00.000Z' },
   base: 'a'.repeat(40),
   branch: 'feature/csv',
@@ -91,37 +99,37 @@ const record = (over: Partial<FeatureFile> = {}): FeatureFile => ({
   ...over,
 });
 
-describe('featurePath and serializeFeature', () => {
-  it("nests a branch's folders; the same feature gives the same bytes, about first", () => {
-    expect(featurePath('/f', 'feature/csv')).toBe(join('/f', 'feature', 'csv.json'));
-    expect(() => featurePath('/f', '../out')).toThrow(FeatureRefused);
-    const text = serializeFeature(record());
+describe('workspacePath and serializeWorkspace', () => {
+  it("nests a branch's folders; the same workspace gives the same bytes, about first", () => {
+    expect(workspacePath('/f', 'feature/csv')).toBe(join('/f', 'feature', 'csv.json'));
+    expect(() => workspacePath('/f', '../out')).toThrow(WorkspaceRefused);
+    const text = serializeWorkspace(record());
     expect(text.split('\n').slice(0, 3)).toEqual([
       '{',
-      '  "about": "A feature started in CPR. Agents: read cpr/AGENTS.md before acting on it.",',
+      '  "about": "A workspace started in CPR. Agents: read cpr/AGENTS.md before acting on it.",',
       '  "agent": {',
     ]);
     const keys = Object.keys(JSON.parse(text) as object);
     expect(keys).toEqual([...keys].sort());
-    expect(serializeFeature({ ...record() })).toBe(text);
+    expect(serializeWorkspace({ ...record() })).toBe(text);
   });
 
   it('reads a record back; a missing or broken file is none', async () => {
     const dir = tempDir();
     folders.push(dir);
-    const path = featurePath(dir, 'feature/csv');
+    const path = workspacePath(dir, 'feature/csv');
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, serializeFeature(record()));
-    expect(await readFeature(path)).toEqual(record());
+    writeFileSync(path, serializeWorkspace(record()));
+    expect(await readWorkspace(path)).toEqual(record());
     writeFileSync(path, '{ nope');
-    expect(await readFeature(path)).toBeNull();
-    expect(await readFeature(join(dir, 'missing.json'))).toBeNull();
+    expect(await readWorkspace(path)).toBeNull();
+    expect(await readWorkspace(join(dir, 'missing.json'))).toBeNull();
   });
 
   it("reads a record's kind, title and parts (V24); what is not one of them is left out", async () => {
     const dir = tempDir();
     folders.push(dir);
-    const path = featurePath(dir, 'fix/dates');
+    const path = workspacePath(dir, 'fix/dates');
     mkdirSync(dirname(path), { recursive: true });
     const fix = record({
       branch: 'fix/dates',
@@ -129,25 +137,25 @@ describe('featurePath and serializeFeature', () => {
       title: 'Dates sort as text',
       parts: { happens: 'They sort 1, 10, 2.', doneWhen: 'A test passes.' },
     });
-    writeFileSync(path, serializeFeature(fix));
-    expect(await readFeature(path)).toEqual(fix);
+    writeFileSync(path, serializeWorkspace(fix));
+    expect(await readWorkspace(path)).toEqual(fix);
     writeFileSync(
       path,
-      serializeFeature({
+      serializeWorkspace({
         ...fix,
         kind: 'bug' as WorkKind,
         title: 7 as unknown as string,
         parts: { happens: 'H', size: 'L', notes: 3 } as never,
       }),
     );
-    const read = await readFeature(path);
+    const read = await readWorkspace(path);
     expect(read?.kind).toBeUndefined();
     expect(read?.title).toBeUndefined();
     expect(read?.parts).toEqual({ happens: 'H' });
   });
 });
 
-describe('readFeatureConfig (V24)', () => {
+describe('readWorkspaceConfig (V24)', () => {
   const DEFAULTS = {
     feature: 'feature/',
     fix: 'fix/',
@@ -160,22 +168,35 @@ describe('readFeatureConfig (V24)', () => {
     folders.push(root);
     mkdirSync(join(root, 'cpr'));
     writeFileSync(join(root, 'cpr', 'config.json'), JSON.stringify(config));
-    return readFeatureConfig(root).branchPrefixes;
+    return readWorkspaceConfig(root).branchPrefixes;
   };
   it("gives each kind its branch prefix; a config's prefixes override only their kinds", () => {
     expect(configured({})).toEqual(DEFAULTS);
     // Before V24, one prefix: still the Feature's.
-    expect(configured({ features: { branchPrefix: 'feat/' } })).toEqual({
+    expect(configured({ workspaces: { branchPrefix: 'feat/' } })).toEqual({
       ...DEFAULTS,
       feature: 'feat/',
     });
     expect(
-      configured({ features: { branchPrefixes: { fix: 'bugfix/', size: 'x/', chore: 7 } } }),
+      configured({ workspaces: { branchPrefixes: { fix: 'bugfix/', size: 'x/', chore: 7 } } }),
     ).toEqual({ ...DEFAULTS, fix: 'bugfix/' });
     // Both: the per-kind one wins for its kind.
     expect(
-      configured({ features: { branchPrefix: 'feat/', branchPrefixes: { feature: 'f/' } } }),
+      configured({ workspaces: { branchPrefix: 'feat/', branchPrefixes: { feature: 'f/' } } }),
     ).toEqual({ ...DEFAULTS, feature: 'f/' });
+  });
+
+  it('reads the section by its name before V25, features, when workspaces is not there', () => {
+    expect(configured({ features: { branchPrefixes: { fix: 'bugfix/' } } })).toEqual({
+      ...DEFAULTS,
+      fix: 'bugfix/',
+    });
+    expect(
+      configured({
+        features: { branchPrefixes: { fix: 'old/' } },
+        workspaces: { branchPrefixes: {} },
+      }),
+    ).toEqual(DEFAULTS);
   });
 });
 
@@ -187,22 +208,22 @@ describe('worktreeFolder', () => {
   });
 });
 
-describe('featureBase', () => {
+describe('workspaceBase', () => {
   it("is the default branch's newest tip: local or remote, the local one when they diverged", async () => {
     const { repo, shas } = fresh();
     const git = await openRepo(repo.root);
     // Local main (B) is ahead of origin/main (A).
-    expect(await featureBase(git, await listRefs(git))).toEqual({ from: 'main', sha: shas.B });
+    expect(await workspaceBase(git, await listRefs(git))).toEqual({ from: 'main', sha: shas.B });
     // origin/main ahead of the local main.
     repo.write({ 'src/c.ts': 'export const c = 1;\n' });
     const C = repo.commit('C');
     repo.git('update-ref', 'refs/remotes/origin/main', C);
     repo.git('reset', '--quiet', '--hard', shas.B);
-    expect(await featureBase(git, await listRefs(git))).toEqual({ from: 'main', sha: C });
+    expect(await workspaceBase(git, await listRefs(git))).toEqual({ from: 'main', sha: C });
     // Diverged: the local one.
     repo.write({ 'src/d.ts': 'export const d = 1;\n' });
     const D = repo.commit('D');
-    expect(await featureBase(git, await listRefs(git))).toEqual({ from: 'main', sha: D });
+    expect(await workspaceBase(git, await listRefs(git))).toEqual({ from: 'main', sha: D });
   });
 
   it('is none without a default branch', async () => {
@@ -212,19 +233,19 @@ describe('featureBase', () => {
     repo.commit('A');
     repo.git('branch', '--move', 'main', 'trunk');
     const git = await openRepo(repo.root);
-    expect(await featureBase(git, await listRefs(git))).toBeNull();
+    expect(await workspaceBase(git, await listRefs(git))).toBeNull();
   });
 });
 
-describe('featurePrompt', () => {
+describe('workspacePrompt', () => {
   const where = {
-    record: '/work/app/cpr/features/feature/csv.json',
+    record: '/work/app/cpr/workspaces/feature/csv.json',
     reviews: '/work/app/cpr/reviews/feature/csv',
     agents: '/work/app/cpr/AGENTS.md',
     into: 'main',
   };
   it('gives the brief, the branch, where things are, and plan first when asked', () => {
-    const text = featurePrompt(record(), where);
+    const text = workspacePrompt(record(), where);
     expect(text).toContain('Export a review as CSV');
     expect(text).toContain('feature/csv');
     expect(text).toContain('aaaaaaa');
@@ -232,8 +253,8 @@ describe('featurePrompt', () => {
     expect(text).toContain(where.reviews);
     expect(text).toContain(where.agents);
     expect(text).toMatch(/plan.*then stop and wait for the person's OK/s);
-    expect(featurePrompt(record({ planFirst: false }), where)).not.toMatch(/then stop and wait/);
-    expect(featurePrompt(record({ planFirst: false }), where)).toMatch(/Commit your work/);
+    expect(workspacePrompt(record({ planFirst: false }), where)).not.toMatch(/then stop and wait/);
+    expect(workspacePrompt(record({ planFirst: false }), where)).toMatch(/Commit your work/);
   });
 
   it('adds one line per kind after the brief, and names the work by its kind (V24)', () => {
@@ -245,7 +266,7 @@ describe('featurePrompt', () => {
     };
     const lines = Object.values(kinds);
     for (const [kind, line] of Object.entries(kinds)) {
-      const text = featurePrompt(record({ kind: kind as WorkKind, title: 'T' }), where);
+      const text = workspacePrompt(record({ kind: kind as WorkKind, title: 'T' }), where);
       expect(text).toMatch(line);
       expect(text).toContain(`You are starting a new ${kind} in this repository`);
       // After the brief, before the plan.
@@ -253,14 +274,14 @@ describe('featurePrompt', () => {
       expect(text.search(line)).toBeLessThan(text.indexOf('First write a plan'));
       for (const other of lines) if (other !== line) expect(text).not.toMatch(other);
     }
-    // A feature, and a record from before V24, get no line.
-    for (const feature of [record({ kind: 'feature', title: 'T' }), record()]) {
-      const text = featurePrompt(feature, where);
+    // A workspace, and a record from before V24, get no line.
+    for (const workspace of [record({ kind: 'feature', title: 'T' }), record()]) {
+      const text = workspacePrompt(workspace, where);
       expect(text).toContain('You are starting a new feature in this repository');
       for (const line of lines) expect(text).not.toMatch(line);
     }
     // A spike's answer is its report: nothing to commit unless asked.
-    const spike = featurePrompt(record({ kind: 'spike', title: 'T' }), where);
+    const spike = workspacePrompt(record({ kind: 'spike', title: 'T' }), where);
     expect(spike).not.toMatch(/Commit your work/);
     expect(spike).toMatch(/Commit nothing unless the brief asks for it/);
   });
@@ -401,10 +422,10 @@ describe('agentState', () => {
     id: 'abc',
     ...over,
   });
-  const at = (f: FeatureFile, sessions: AgentSession[] | null, ahead = 0) =>
+  const at = (f: WorkspaceFile, sessions: AgentSession[] | null, ahead = 0) =>
     agentState(f, sessions, ahead, (p) => p);
 
-  it("maps the session in the feature's worktree to what the page says", () => {
+  it("maps the session in the workspace's worktree to what the page says", () => {
     const f = record();
     expect(at(f, [session({ state: 'working' })])).toEqual({
       state: 'working',
@@ -486,7 +507,7 @@ describe('reviewPlace in a linked worktree', () => {
   });
 });
 
-describe('features', () => {
+describe('workspaces', () => {
   /** A fake Claude Code: records what it is asked to start, lists the sessions given. */
   function fakeClaude() {
     const listed: AgentSession[] = [];
@@ -562,7 +583,7 @@ describe('features', () => {
     codexAgent: Codex | null = null,
   ) =>
     openRepo(repo.root).then((git) =>
-      features(git, cache, {
+      workspaces(git, cache, {
         claude: () => Promise.resolve(claude),
         codex: () => Promise.resolve(codexAgent),
         now: () => NOW,
@@ -631,18 +652,18 @@ describe('features', () => {
     expect(without.agents).toEqual([]);
   });
 
-  it('starts a feature: the branch at the base in its worktree, the record, the agent there', async () => {
+  it('starts a workspace: the branch at the base in its worktree, the record, the agent there', async () => {
     const { repo, shas } = fresh();
     const { claude, start } = fakeClaude();
     const service_ = await service(repo, claude);
-    const { feature, prompt } = await service_.start({
+    const { workspace, prompt } = await service_.start({
       brief: 'Export a review as CSV\n\nOne row per comment.',
       branch: 'feature/csv',
       planFirst: true,
       permissionMode: 'auto',
     });
     const folder = join(dirname(repo.root), `${basename(repo.root)}.worktrees`, 'feature-csv');
-    expect(feature).toEqual({
+    expect(workspace).toEqual({
       branch: 'feature/csv',
       base: shas.B,
       from: 'main',
@@ -671,8 +692,8 @@ describe('features', () => {
     });
     expect(prompt).toContain('One row per comment.');
     const saved = JSON.parse(
-      readFileSync(join(repo.root, 'cpr', 'features', 'feature', 'csv.json'), 'utf8'),
-    ) as FeatureFile;
+      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'csv.json'), 'utf8'),
+    ) as WorkspaceFile;
     expect(saved).toMatchObject({
       branch: 'feature/csv',
       base: shas.B,
@@ -689,11 +710,11 @@ describe('features', () => {
   it('starts at a picked commit, without `from`', async () => {
     const { repo, shas } = fresh();
     const { claude } = fakeClaude();
-    const { feature } = await (
+    const { workspace } = await (
       await service(repo, claude)
     ).start({ brief: 'Fix', branch: 'fix/one', base: shas.A, planFirst: false });
-    expect(feature.base).toBe(shas.A);
-    expect(feature.from).toBeUndefined();
+    expect(workspace.base).toBe(shas.A);
+    expect(workspace.from).toBeUndefined();
     expect(repo.git('rev-parse', 'fix/one')).toBe(shas.A);
   });
 
@@ -706,7 +727,7 @@ describe('features', () => {
       where: '  ',
       doneWhen: 'A test that fails today passes.',
     };
-    const { feature, prompt } = await s.start({
+    const { workspace, prompt } = await s.start({
       kind: 'fix',
       title: ' Dates sort as text ',
       parts,
@@ -714,11 +735,11 @@ describe('features', () => {
       planFirst: false,
     });
     const brief = briefOf('fix', 'Dates sort as text', parts);
-    expect(feature).toMatchObject({ kind: 'fix', title: 'Dates sort as text', brief });
+    expect(workspace).toMatchObject({ kind: 'fix', title: 'Dates sort as text', brief });
     expect(prompt).toContain(brief);
     expect(prompt).toMatch(/Reproduce it first/);
     expect(start.mock.calls[0]?.[0].prompt).toBe(prompt);
-    const saved = await readFeature(join(repo.root, 'cpr', 'features', 'fix', 'dates.json'));
+    const saved = await readWorkspace(join(repo.root, 'cpr', 'workspaces', 'fix', 'dates.json'));
     // Empty parts are not kept.
     expect(saved).toMatchObject({
       kind: 'fix',
@@ -733,9 +754,9 @@ describe('features', () => {
       branch: 'feature/csv',
       planFirst: false,
     });
-    expect(old.feature.kind).toBeUndefined();
-    expect(old.feature.title).toBeUndefined();
-    expect(old.feature.brief).toBe('Export a review as CSV');
+    expect(old.workspace.kind).toBeUndefined();
+    expect(old.workspace.title).toBeUndefined();
+    expect(old.workspace.brief).toBe('Export a review as CSV');
   });
 
   it('guesses the check command at the commit a workspace starts from (V24b)', async () => {
@@ -749,7 +770,7 @@ describe('features', () => {
       source: 'package.json (scripts.test)',
     });
     expect(await s.check(shas.B)).toBeNull();
-    const refused = (at: string) => s.check(at).catch((e: unknown) => e as FeatureRefused);
+    const refused = (at: string) => s.check(at).catch((e: unknown) => e as WorkspaceRefused);
     expect(await refused('main')).toMatchObject({ status: 400, message: /full SHA/ });
     expect(await refused('0'.repeat(40))).toMatchObject({ status: 400, message: /not a commit/ });
   });
@@ -782,9 +803,9 @@ describe('features', () => {
         branch: 'fix/x',
         planFirst: true,
         ...over,
-      } as FeatureRequest;
-      const error = (await s.start(request).catch((e: unknown) => e)) as FeatureRefused;
-      expect(error, JSON.stringify(over)).toBeInstanceOf(FeatureRefused);
+      } as WorkspaceRequest;
+      const error = (await s.start(request).catch((e: unknown) => e)) as WorkspaceRefused;
+      expect(error, JSON.stringify(over)).toBeInstanceOf(WorkspaceRefused);
       expect(error.status).toBe(400);
       expect(error.message).toMatch(words);
     };
@@ -810,8 +831,8 @@ describe('features', () => {
     const start = (over: Record<string, unknown>) =>
       s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true, ...over });
     const refused = async (over: Record<string, unknown>, status: number, words: RegExp) => {
-      const error = (await start(over).catch((e: unknown) => e)) as FeatureRefused;
-      expect(error).toBeInstanceOf(FeatureRefused);
+      const error = (await start(over).catch((e: unknown) => e)) as WorkspaceRefused;
+      expect(error).toBeInstanceOf(WorkspaceRefused);
       expect(error.status).toBe(status);
       expect(error.message).toMatch(words);
     };
@@ -829,7 +850,7 @@ describe('features', () => {
     expect(launched).not.toHaveBeenCalled();
   });
 
-  it('keeps the feature when the agent does not start, and starts it again later', async () => {
+  it('keeps the workspace when the agent does not start, and starts it again later', async () => {
     const { repo } = fresh();
     const { claude, start } = fakeClaude();
     claude.start = () =>
@@ -839,35 +860,35 @@ describe('features', () => {
           'Workspace not trusted. Run `claude` in /x once and accept the trust prompt, then retry.',
       });
     const s = await service(repo, claude);
-    const { feature } = await s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true });
-    expect(feature.agent).toEqual({
+    const { workspace } = await s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true });
+    expect(workspace.agent).toEqual({
       state: 'not-started',
       kind: 'claude',
       error:
         'Workspace not trusted. Run `claude` in /x once and accept the trust prompt, then retry.',
     });
-    expect(feature.worktree.exists).toBe(true);
+    expect(workspace.worktree.exists).toBe(true);
 
     claude.start = start;
     const again = await s.startAgent('feature/x');
-    expect(again.feature.agent.state).toBe('working');
-    expect((await s.list()).features.map((f) => f.agent.state)).toEqual(['working']);
+    expect(again.workspace.agent.state).toBe('working');
+    expect((await s.list()).workspaces.map((f) => f.agent.state)).toEqual(['working']);
   });
 
-  it('makes the feature without an agent and hands back its prompt', async () => {
+  it('makes the workspace without an agent and hands back its prompt', async () => {
     const { repo } = fresh();
     const s = await service(repo, null);
-    const { feature, prompt } = await s.start({
+    const { workspace, prompt } = await s.start({
       brief: 'Do it',
       branch: 'feature/x',
       planFirst: true,
     });
-    expect(feature.agent).toEqual({ state: 'no-agent' });
+    expect(workspace.agent).toEqual({ state: 'no-agent' });
     expect(prompt).toContain('Do it');
     await expect(s.startAgent('feature/x')).rejects.toThrow(/No agent/);
   });
 
-  it('lists features with their commits since the base and their agents', async () => {
+  it('lists workspaces with their commits since the base and their agents', async () => {
     const { repo } = fresh();
     const { claude, listed } = fakeClaude();
     const s = await service(repo, claude);
@@ -888,11 +909,32 @@ describe('features', () => {
     const list = await s.list();
     expect(list.place).toBe('repository');
     expect(
-      list.features.map((f) => ({ branch: f.branch, ahead: f.ahead, state: f.agent.state })),
+      list.workspaces.map((f) => ({ branch: f.branch, ahead: f.ahead, state: f.agent.state })),
     ).toEqual([
       { branch: 'feature/one', ahead: 1, state: 'ready' },
       { branch: 'feature/two', ahead: 0, state: 'plan-ready' },
     ]);
+  });
+
+  it('lists a workspace recorded before V25, its cpr/features/ moved; with both, says so', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    const cpr = join(repo.root, 'cpr');
+    renameSync(join(cpr, 'workspaces'), join(cpr, 'features'));
+    const list = await s.list();
+    expect(list.workspaces.map((w) => w.branch)).toEqual(['feature/one']);
+    expect(list.note).toBeUndefined();
+    expect(existsSync(join(cpr, 'features'))).toBe(false);
+    expect(readFileSync(join(cpr, 'workspaces', 'feature', 'one.json'), 'utf8')).toContain(
+      '"about": "A workspace started in CPR.',
+    );
+
+    mkdirSync(join(cpr, 'features'));
+    expect((await s.list()).note).toBe(
+      'cpr/features/, where workspaces were kept before, is still here: CPR reads cpr/workspaces/.',
+    );
   });
 
   it('asks Claude Code for its sessions once for a whole list', async () => {
@@ -911,7 +953,7 @@ describe('features', () => {
     const { claude, listed } = fakeClaude();
     const { terminals, opening } = fakeTerminals();
     const s = await service(repo, claude, HOOK, terminals);
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
     // A session that wakes needs its settings file: written back before it is attached to.
     const settings = join(repo.root, 'cpr', 'claude-settings.json');
     rmSync(settings);
@@ -920,7 +962,7 @@ describe('features', () => {
       {
         command: '/usr/bin/claude',
         args: ['attach', 's1'],
-        cwd: feature.worktree.path,
+        cwd: workspace.worktree.path,
         cols: 100,
         rows: 30,
         env: { PATH: '/usr/bin' },
@@ -960,7 +1002,7 @@ describe('features', () => {
     ).rejects.toMatchObject({ status: 409 });
   });
 
-  it('lists whether terminals can run, once there are features (V21)', async () => {
+  it('lists whether terminals can run, once there are workspaces (V21)', async () => {
     const { repo } = fresh();
     const { claude } = fakeClaude();
     const s = await service(repo, claude, HOOK, fakeTerminals().terminals);
@@ -980,31 +1022,31 @@ describe('features', () => {
     expect((await (await service(repo, claude)).list()).terminal).toBeUndefined();
   });
 
-  it('lists nothing and asks no agent when no feature was started', async () => {
+  it('lists nothing and asks no agent when no workspace was started', async () => {
     const { repo } = fresh();
     const { claude, sessions } = fakeClaude();
     expect(await (await service(repo, claude)).list()).toEqual({
-      features: [],
+      workspaces: [],
       place: 'repository',
     });
     expect(sessions).not.toHaveBeenCalled();
   });
 
-  it("counts what is not committed yet in a feature's worktree", async () => {
+  it("counts what is not committed yet in a workspace's worktree", async () => {
     const { repo } = fresh();
     const s = await service(repo, fakeClaude().claude);
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
-    expect(feature.worktree).toEqual({ path: feature.worktree.path, exists: true, changed: 0 });
-    writeFileSync(join(feature.worktree.path, 'src/a.ts'), 'export const a = 2;\n');
-    writeFileSync(join(feature.worktree.path, 'src/new.ts'), 'export const n = 1;\n');
-    expect((await s.list()).features[0]?.worktree.changed).toBe(2);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    expect(workspace.worktree).toEqual({ path: workspace.worktree.path, exists: true, changed: 0 });
+    writeFileSync(join(workspace.worktree.path, 'src/a.ts'), 'export const a = 2;\n');
+    writeFileSync(join(workspace.worktree.path, 'src/new.ts'), 'export const n = 1;\n');
+    expect((await s.list()).workspaces[0]?.worktree.changed).toBe(2);
   });
 
   it('gives the prompt again, stops the agent and opens the worktree', async () => {
     const { repo } = fresh();
     const { claude, stop, listed } = fakeClaude();
     const s = await service(repo, claude);
-    const { feature, prompt } = await s.start({
+    const { workspace, prompt } = await s.start({
       brief: 'One',
       branch: 'feature/one',
       planFirst: false,
@@ -1012,7 +1054,7 @@ describe('features', () => {
     expect(await s.prompt('feature/one')).toBe(prompt);
     await expect(s.prompt('feature/nope')).rejects.toMatchObject({ status: 404 });
 
-    expect((await s.stopAgent('feature/one')).feature.agent.state).toBe('stopped');
+    expect((await s.stopAgent('feature/one')).workspace.agent.state).toBe('stopped');
     expect(stop).toHaveBeenCalledWith('s1');
     listed.length = 0;
     await expect(s.stopAgent('feature/one')).rejects.toMatchObject({
@@ -1022,15 +1064,15 @@ describe('features', () => {
 
     opened.length = 0;
     await s.openWorktree('feature/one');
-    expect(opened).toEqual([feature.worktree.path]);
-    rmSync(feature.worktree.path, { recursive: true, force: true });
+    expect(opened).toEqual([workspace.worktree.path]);
+    rmSync(workspace.worktree.path, { recursive: true, force: true });
     await expect(s.openWorktree('feature/one')).rejects.toMatchObject({ status: 409 });
   });
 
-  it('says whether a feature merges cleanly into the default branch, once per pair', async () => {
+  it('says whether a workspace merges cleanly into the default branch, once per pair', async () => {
     const { repo } = fresh();
     const s = await service(repo, fakeClaude().claude);
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
     const { execFileSync } = await import('node:child_process');
     const commit = (cwd: string, file: string, text: string) => {
       writeFileSync(join(cwd, file), text);
@@ -1044,7 +1086,7 @@ describe('features', () => {
         },
       });
     };
-    commit(feature.worktree.path, 'src/a.ts', 'export const a = 2;\n');
+    commit(workspace.worktree.path, 'src/a.ts', 'export const a = 2;\n');
     expect(await s.merge('feature/one')).toEqual({ into: 'main', clean: true });
     commit(repo.root, 'src/a.ts', 'export const a = 3;\n');
     expect(await s.merge('feature/one')).toEqual({ into: 'main', conflicts: ['src/a.ts'] });
@@ -1072,7 +1114,7 @@ describe('features', () => {
     const settings = join(repo.root, 'cpr', 'claude-settings.json');
     const s = await service(repo, fakeClaude().claude);
     await s.list();
-    // No feature: nothing written.
+    // No workspace: nothing written.
     expect(existsSync(settings)).toBe(false);
     await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
     const written = JSON.parse(readFileSync(settings, 'utf8')) as {
@@ -1105,25 +1147,25 @@ describe('features', () => {
     expect(existsSync(settings)).toBe(true);
   });
 
-  it("saves the record before the agent starts: its first hooks find the feature's worktree", async () => {
+  it("saves the record before the agent starts: its first hooks find the workspace's worktree", async () => {
     const { repo } = fresh();
     const { claude, start } = fakeClaude();
-    const record = join(repo.root, 'cpr', 'features', 'feature', 'one.json');
-    let seen: FeatureFile | null = null;
+    const record = join(repo.root, 'cpr', 'workspaces', 'feature', 'one.json');
+    let seen: WorkspaceFile | null = null;
     claude.start = (request) => {
-      seen = JSON.parse(readFileSync(record, 'utf8')) as FeatureFile;
+      seen = JSON.parse(readFileSync(record, 'utf8')) as WorkspaceFile;
       return start(request);
     };
     const s = await service(repo, claude);
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
-    expect(seen).toMatchObject({ branch: 'feature/one', worktree: feature.worktree.path });
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    expect(seen).toMatchObject({ branch: 'feature/one', worktree: workspace.worktree.path });
   });
 
   it('a reply continues the same session: a live one is stopped first, never resumed with a flag', async () => {
     const { repo } = fresh();
     const { claude, listed, stop, resume } = fakeClaude();
     const s = await service(repo, claude);
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
     const session = listed[0] as AgentSession;
 
     // Its turn ended, its process alive: stopped, then resumed with the text.
@@ -1132,14 +1174,14 @@ describe('features', () => {
     expect(stop).toHaveBeenCalledWith('s1');
     expect(resume).toHaveBeenCalledWith({
       sessionId: 'session-1',
-      cwd: feature.worktree.path,
+      cwd: workspace.worktree.path,
       text: 'OK, go ahead.',
     });
     expect(stop.mock.invocationCallOrder[0]).toBeLessThan(resume.mock.invocationCallOrder[0] ?? 0);
     expect(replied).toEqual({
-      feature: expect.objectContaining({ branch: 'feature/one' }) as unknown,
+      workspace: expect.objectContaining({ branch: 'feature/one' }) as unknown,
     });
-    expect(replied.feature.agent.state).toBe('working');
+    expect(replied.workspace.agent.state).toBe('working');
 
     // Working: sending would end its turn, so only when asked to.
     stop.mockClear();
@@ -1164,11 +1206,11 @@ describe('features', () => {
     const { repo } = fresh();
     const { claude, listed } = fakeClaude();
     const s = await service(repo, claude);
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
     Object.assign(listed[0] as AgentSession, { state: 'done', status: 'idle' });
     claude.resume = () => {
       listed.push({
-        cwd: feature.worktree.path,
+        cwd: workspace.worktree.path,
         kind: 'background',
         startedAt: 99,
         id: 's2',
@@ -1194,14 +1236,14 @@ describe('features', () => {
     await refused('OK', 409, /no session/);
   });
 
-  it("gives a feature's thread, whether it is recorded, and its review's last verdict as text", async () => {
+  it("gives a workspace's thread, whether it is recorded, and its review's last verdict as text", async () => {
     const { repo, shas } = fresh();
     const { claude } = fakeClaude();
     const s = await service(repo, claude);
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
     const { recordEvent } = await import('../src/thread.js');
     const cpr = join(repo.root, 'cpr');
-    const cwd = feature.worktree.path;
+    const cwd = workspace.worktree.path;
     await recordEvent(
       cpr,
       { hook_event_name: 'UserPromptSubmit', session_id: 'session-1', cwd, prompt: 'Start' },
@@ -1261,26 +1303,26 @@ describe('features', () => {
     const { repo } = fresh();
     const { claude, listed } = fakeClaude();
     const s = await service(repo, claude);
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
     const { recordEvent } = await import('../src/thread.js');
     const cpr = join(repo.root, 'cpr');
-    const cwd = feature.worktree.path;
+    const cwd = workspace.worktree.path;
     Object.assign(listed[0] as AgentSession, { state: 'blocked', status: 'idle' });
     await recordEvent(
       cpr,
       { hook_event_name: 'UserPromptSubmit', session_id: 'session-1', cwd, prompt: 'Start' },
       '2026-10-15T09:00:01.000Z',
     );
-    expect((await s.list()).features[0]?.agent.state).toBe('needs-you');
+    expect((await s.list()).workspaces[0]?.agent.state).toBe('needs-you');
     await recordEvent(
       cpr,
       { hook_event_name: 'Stop', session_id: 'session-1', cwd, last_assistant_message: 'The plan' },
       '2026-10-15T09:00:02.000Z',
     );
-    expect((await s.list()).features[0]?.agent.state).toBe('plan-ready');
+    expect((await s.list()).workspaces[0]?.agent.state).toBe('plan-ready');
     // Waiting on something named: still needs you.
     Object.assign(listed[0] as AgentSession, { waitingFor: 'permission prompt' });
-    expect((await s.list()).features[0]?.agent).toMatchObject({
+    expect((await s.list()).workspaces[0]?.agent).toMatchObject({
       state: 'needs-you',
       waitingFor: 'permission prompt',
     });
@@ -1290,10 +1332,10 @@ describe('features', () => {
     const { repo } = fresh();
     const { claude } = fakeClaude();
     const s = await service(repo, claude);
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
     await s.start({ brief: 'Two', branch: 'feature/two', planFirst: true });
     const lastActions = async () =>
-      Object.fromEntries((await s.list()).features.map((f) => [f.branch, f.lastAction]));
+      Object.fromEntries((await s.list()).workspaces.map((f) => [f.branch, f.lastAction]));
     // Nothing reported yet: when the agents started.
     expect(await lastActions()).toEqual({
       'feature/one': NOW.toISOString(),
@@ -1301,7 +1343,7 @@ describe('features', () => {
     });
     const { recordEvent } = await import('../src/thread.js');
     const cpr = join(repo.root, 'cpr');
-    const cwd = feature.worktree.path;
+    const cwd = workspace.worktree.path;
     const event = (input: Record<string, unknown>, at: string) =>
       recordEvent(cpr, { session_id: 'session-1', cwd, ...input }, at);
     await event(
@@ -1320,55 +1362,55 @@ describe('features', () => {
     });
   });
 
-  it('lists no last action for a feature whose agent was never found (V23)', async () => {
+  it('lists no last action for a workspace whose agent was never found (V23)', async () => {
     const { repo } = fresh();
     const s = await service(repo, null);
     await s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true });
-    const [listed] = (await s.list()).features;
+    const [listed] = (await s.list()).workspaces;
     expect(listed?.agent.state).toBe('no-agent');
     expect(listed).not.toHaveProperty('lastAction');
   });
 
-  it('cleans up a merged feature: its sessions, worktree and branch; the record stays, finished', async () => {
+  it('cleans up a merged workspace: its sessions, worktree and branch; the record stays, finished', async () => {
     const { repo } = fresh();
     const { claude, remove } = fakeClaude();
     const s = await service(repo, claude);
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
-    await commitIn(feature.worktree.path, 'src/c.ts', 'export const c = 1;\n');
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    await commitIn(workspace.worktree.path, 'src/c.ts', 'export const c = 1;\n');
     repo.git('merge', '--quiet', '--ff-only', 'feature/one');
     await s.clean({ branch: 'feature/one' });
     expect(remove).toHaveBeenCalledWith('s1');
-    expect(existsSync(feature.worktree.path)).toBe(false);
+    expect(existsSync(workspace.worktree.path)).toBe(false);
     expect(repo.git('branch', '--list', 'feature/one')).toBe('');
     const saved = JSON.parse(
-      readFileSync(join(repo.root, 'cpr', 'features', 'feature', 'one.json'), 'utf8'),
-    ) as FeatureFile;
+      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'one.json'), 'utf8'),
+    ) as WorkspaceFile;
     expect(saved.finished).toBe(NOW.toISOString());
-    expect((await s.list()).features).toEqual([]);
+    expect((await s.list()).workspaces).toEqual([]);
   });
 
-  it('cleans up an unmerged feature only when asked: the worktree goes, the branch stays; never one with work', async () => {
+  it('cleans up an unmerged workspace only when asked: the worktree goes, the branch stays; never one with work', async () => {
     const { repo } = fresh();
     const { claude, remove, stop } = fakeClaude();
     const s = await service(repo, claude);
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
-    await commitIn(feature.worktree.path, 'src/c.ts', 'export const c = 1;\n');
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    await commitIn(workspace.worktree.path, 'src/c.ts', 'export const c = 1;\n');
     await expect(s.clean({ branch: 'feature/one' })).rejects.toMatchObject({
       status: 409,
       message: expect.stringMatching(/not merged/) as string,
     });
     // Work not committed: nothing is touched, whatever is asked.
-    writeFileSync(join(feature.worktree.path, 'notes.md'), 'todo\n');
+    writeFileSync(join(workspace.worktree.path, 'notes.md'), 'todo\n');
     await expect(s.clean({ branch: 'feature/one', unmerged: true })).rejects.toMatchObject({
       status: 409,
       message: expect.stringMatching(/1 file not committed/) as string,
     });
     expect(remove).not.toHaveBeenCalled();
-    rmSync(join(feature.worktree.path, 'notes.md'));
+    rmSync(join(workspace.worktree.path, 'notes.md'));
     await s.clean({ branch: 'feature/one', unmerged: true });
     expect(stop).toHaveBeenCalledWith('s1');
     expect(remove).toHaveBeenCalledWith('s1');
-    expect(existsSync(feature.worktree.path)).toBe(false);
+    expect(existsSync(workspace.worktree.path)).toBe(false);
     expect(repo.git('branch', '--list', 'feature/one')).toContain('feature/one');
   });
 
@@ -1422,11 +1464,11 @@ describe('features', () => {
     return { codex, fake, start, resume, stop, archive, end, live };
   }
   const THREAD_ID = '01a1552c-bfcb-76b1-8112-774913d628c1';
-  /** Writes thread entries as CPR's runner would, marked with the feature's last run. */
+  /** Writes thread entries as CPR's runner would, marked with the workspace's last run. */
   const recordRun = (repo: TestRepo, branch: string, entries: Record<string, unknown>[]) => {
     const file = join(repo.root, 'cpr', 'threads', ...`${branch}.jsonl`.split('/'));
-    const record = join(repo.root, 'cpr', 'features', ...`${branch}.json`.split('/'));
-    const { run } = (JSON.parse(readFileSync(record, 'utf8')) as FeatureFile).agent ?? {};
+    const record = join(repo.root, 'cpr', 'workspaces', ...`${branch}.json`.split('/'));
+    const { run } = (JSON.parse(readFileSync(record, 'utf8')) as WorkspaceFile).agent ?? {};
     mkdirSync(dirname(file), { recursive: true });
     for (const entry of entries) {
       const line = { at: NOW.toISOString(), session: THREAD_ID, run, ...entry };
@@ -1441,9 +1483,9 @@ describe('features', () => {
     const alive = vi.spyOn(codex, 'alive');
     const account = vi.spyOn(codex, 'account');
     const s = await service(repo, claude, HOOK, undefined, codex);
-    expect((await s.list()).features).toEqual([]);
+    expect((await s.list()).workspaces).toEqual([]);
     await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
-    expect((await s.list()).features.map((f) => f.agent.kind)).toEqual(['claude']);
+    expect((await s.list()).workspaces.map((f) => f.agent.kind)).toEqual(['claude']);
     expect(alive).not.toHaveBeenCalled();
     expect(account).not.toHaveBeenCalled();
   });
@@ -1463,7 +1505,7 @@ describe('features', () => {
     writeFileSync(join(repo.root, 'cpr', 'config.json'), '{ "agent": { "kind": "codex" } }\n');
     const configured = await (await service(repo, claude, HOOK, undefined, codex)).options();
     expect(configured.agents.map((a) => a.kind)).toEqual(['codex', 'claude']);
-    expect(readFeatureConfig(repo.root).agent).toBe('codex');
+    expect(readWorkspaceConfig(repo.root).agent).toBe('codex');
   });
 
   it("starts Codex in its worktree through the runner, its branch's git folders writable (V20a)", async () => {
@@ -1471,7 +1513,7 @@ describe('features', () => {
     const { claude, start: claudeStart } = fakeClaude();
     const { codex, start } = fakeCodex();
     const s = await service(repo, claude, HOOK, undefined, codex);
-    const { feature, prompt } = await s.start({
+    const { workspace, prompt } = await s.start({
       kind: 'feature',
       title: 'Export as CSV',
       parts: { goal: 'One row per comment.' },
@@ -1491,11 +1533,11 @@ describe('features', () => {
     expect(prompt).toContain('One row per comment.');
     expect(prompt).toContain(join(repo.root, 'cpr', 'AGENTS.md'));
     // Answered once its thread started: its ID is known, CPR's prompt in the thread.
-    expect(feature.agent).toEqual({ state: 'working', kind: 'codex', id: THREAD_ID });
-    expect(feature.base).toBe(shas.B);
+    expect(workspace.agent).toEqual({ state: 'working', kind: 'codex', id: THREAD_ID });
+    expect(workspace.base).toBe(shas.B);
     const saved = JSON.parse(
-      readFileSync(join(repo.root, 'cpr', 'features', 'feature', 'csv.json'), 'utf8'),
-    ) as FeatureFile;
+      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'csv.json'), 'utf8'),
+    ) as WorkspaceFile;
     expect(saved.agent).toEqual({
       kind: 'codex',
       started: NOW.toISOString(),
@@ -1507,7 +1549,7 @@ describe('features', () => {
       { kind: 'report', text: '1. Plan.' },
       { kind: 'end', reason: 'completed' },
     ]);
-    const [listed] = (await s.list()).features;
+    const [listed] = (await s.list()).workspaces;
     expect(listed?.agent).toEqual({ state: 'plan-ready', kind: 'codex', id: THREAD_ID });
     const thread = await s.thread('feature/csv');
     expect(thread.recorded).toBe(true);
@@ -1523,14 +1565,14 @@ describe('features', () => {
     const { repo } = fresh();
     const { codex, start } = fakeCodex('not logged in');
     const s = await service(repo, null, HOOK, undefined, codex);
-    const { feature } = await s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true });
+    const { workspace } = await s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true });
     expect(start).not.toHaveBeenCalled();
-    expect(feature.agent).toEqual({
+    expect(workspace.agent).toEqual({
       state: 'not-started',
       kind: 'codex',
       error: 'Codex is not logged in: run `codex login`, then start the agent.',
     });
-    expect(feature.worktree.exists).toBe(true);
+    expect(workspace.worktree.exists).toBe(true);
     await expect(
       s.start({
         brief: 'Do it',
@@ -1566,9 +1608,9 @@ describe('features', () => {
     // nothing to continue.
     fake.silent = true;
     const started = Date.now();
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
     expect(Date.now() - started).toBeLessThan(2_000);
-    expect(feature.agent).toEqual({
+    expect(workspace.agent).toEqual({
       state: 'failed',
       kind: 'codex',
       error: 'Codex ended without a word',
@@ -1586,15 +1628,15 @@ describe('features', () => {
     const replied = await s.reply({ branch: 'feature/one', text: 'OK, go ahead.' });
     expect(stop).not.toHaveBeenCalled();
     expect(resume).toHaveBeenCalledWith({
-      cwd: feature.worktree.path,
+      cwd: workspace.worktree.path,
       thread: join(repo.root, 'cpr', 'threads', 'feature', 'one.jsonl'),
       run: expect.stringMatching(/^[0-9a-f-]{36}$/) as string,
-      writable: await commitFolders(feature.worktree.path, 'feature/one'),
+      writable: await commitFolders(workspace.worktree.path, 'feature/one'),
       sessionId: THREAD_ID,
       text: 'OK, go ahead.',
     });
     // Answered once the run took the message: it is in the thread already.
-    expect(replied.feature.agent).toEqual({ state: 'working', kind: 'codex', id: THREAD_ID });
+    expect(replied.workspace.agent).toEqual({ state: 'working', kind: 'codex', id: THREAD_ID });
     expect((await s.thread('feature/one')).entries.at(-1)).toMatchObject({
       kind: 'prompt',
       text: 'OK, go ahead.',
@@ -1614,25 +1656,25 @@ describe('features', () => {
     const { codex, stop } = fakeCodex();
     const s = await service(repo, null, HOOK, undefined, codex);
     await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
-    const { feature } = await s.stopAgent('feature/one');
+    const { workspace } = await s.stopAgent('feature/one');
     expect(stop).toHaveBeenCalledWith(4242);
-    expect(feature.agent).toEqual({ state: 'stopped', kind: 'codex', id: THREAD_ID });
+    expect(workspace.agent).toEqual({ state: 'stopped', kind: 'codex', id: THREAD_ID });
     await expect(s.stopAgent('feature/one')).rejects.toMatchObject({ status: 409 });
     // Started again: a new run, with CPR's prompt.
     const again = await s.startAgent('feature/one');
-    expect(again.feature.agent.state).toBe('working');
+    expect(again.workspace.agent.state).toBe('working');
   });
 
   it('cleans up a Codex workspace: a live run stopped, its threads archived, its worktree removed (V20a)', async () => {
     const { repo } = fresh();
     const { codex, stop, archive } = fakeCodex();
     const s = await service(repo, null, HOOK, undefined, codex);
-    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
     await s.clean({ branch: 'feature/one', unmerged: true });
     expect(stop).toHaveBeenCalledWith(4242);
     expect(archive).toHaveBeenCalledWith(THREAD_ID);
     expect(archive).toHaveBeenCalledTimes(1);
-    expect(existsSync(feature.worktree.path)).toBe(false);
+    expect(existsSync(workspace.worktree.path)).toBe(false);
   });
 });
 

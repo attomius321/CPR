@@ -12,11 +12,11 @@ import {
   type ReviewDraft,
   type ReviewEvent,
 } from './comments.js';
-import { featureHref } from './features.js';
+import { workspaceHref } from './workspaces.js';
 import { label } from './flow.js';
 import { openInEditor } from './open.js';
 import { OpenIcon } from './OpenIcon.js';
-import { useFeatures } from './useFeatures.js';
+import { useWorkspaces } from './useWorkspaces.js';
 
 export interface ReviewProps {
   forge: 'github' | 'gitlab' | 'local';
@@ -272,12 +272,12 @@ function MergeCheck({ branch, canOpen }: { branch: string; canOpen: boolean }) {
 /**
  * What finishing a branch review recorded (V16), and what the agent does with it when asked:
  * the merge (V17), the push of the default branch's commits, or the comments; "Copy for the
- * agent" puts it in words for a chat; on a feature's branch, "Send to the agent" opens its panel
+ * agent" puts it in words for a chat; on a workspace's branch, "Send to the agent" opens its panel
  * with the words in its box (V18c).
  */
 function Finished({ branch, result }: { branch: string; result: FinishResult }) {
   const [copied, setCopied] = useState<string | null>(null);
-  const feature = useFeatures().list?.features.some((f) => f.branch === branch) ?? false;
+  const workspace = useWorkspaces().list?.workspaces.some((f) => f.branch === branch) ?? false;
   const { verdict } = result;
   const at = short(verdict.head);
   return (
@@ -306,10 +306,10 @@ function Finished({ branch, result }: { branch: string; result: FinishResult }) 
       >
         Copy for the agent
       </button>
-      {feature && (
+      {workspace && (
         <>
           {' '}
-          <a className="button" href={`${featureHref(branch)}&send=verdict`}>
+          <a className="button" href={`${workspaceHref(branch)}&send=verdict`}>
             Send to the agent
           </a>
         </>

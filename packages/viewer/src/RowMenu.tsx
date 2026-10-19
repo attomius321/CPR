@@ -15,7 +15,7 @@ export function RefBadge({ target, className }: { target: MenuChoice['ref']; cla
 
 /**
  * An entry of a row's menu: with a submenu, "Check out ▸" (V14), "Review ▸" (V15); or an action,
- * "Start a feature here" (V18).
+ * "Start a workspace here" (V18).
  */
 export type RowMenuItem = SubmenuItem | { label: string; onSelect: () => void };
 

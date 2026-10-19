@@ -57,7 +57,7 @@ when python3, make and a C++ compiler are there. Without them it is skipped, and
 Then, in any git repository with TypeScript or JavaScript:
 
 ```sh
-cpr view          # the commits page: every branch, ready to check out, review or compare
+cpr view          # your workspaces, and History: every branch, to check out, review or compare
 cpr view main     # this branch against main, in the browser
 cpr diff main     # the same, in the terminal
 ```
@@ -67,7 +67,7 @@ cpr diff main     # the same, in the terminal
 | Command | What it does |
 |---|---|
 | `cpr diff <base> [head]` | Compares `head` (default `HEAD`) with where it left `base`, as a pull request does, and prints the changed symbols and the findings. |
-| `cpr view [<base> [head]]` | Opens the viewer in the browser. Without revisions it opens on the commits page; with them, on that comparison. Runs until Ctrl+C. |
+| `cpr view [<base> [head]]` | Opens the viewer in the browser. Without revisions it opens on Workspaces, beside the repository's History; with them, on that comparison. Runs until Ctrl+C. |
 | `cpr pr [<number>]` | Reviews a GitHub pull request or a GitLab merge request (`cpr mr` is the same command). In a CI job for one, the number comes from the job. |
 
 `cpr diff` in a repository where one function was added, one removed and one changed:
@@ -157,13 +157,14 @@ call, and edges between projects are drawn heavier. The change list is then grou
 "only" on a project, or p (P goes back), shows one project at a time: its changes and everything
 they are linked to elsewhere.
 
-### The commits page
+### History
 
-`cpr view` without revisions opens on the repository's history: every branch, local and remote,
-drawn as a graph beside the commits, the current branch the straight line on the left. The whole
+`cpr view` without revisions opens on [Workspaces](#workspaces-and-agents). Beside it, **History**
+(`/history`, or h) is the repository's history: every branch, local and remote, drawn as a graph
+beside the commits, the current branch the straight line on the left. The whole
 history scrolls, and commits load as they come into view.
 
-![Commits page: the branches panel with a milestone branch selected, and the history drawn as a graph with branch badges](docs/images/commits.png)
+![History: the branches panel with its milestone folder open, and the history drawn as a graph with branch badges](docs/images/history.png)
 
 - **Branches panel.** Local branches, with `↑2 ↓1` against their upstream, and remote ones by
   folder. Filter it with `/`. A click selects the branch's newest commit, however deep in the
@@ -183,7 +184,8 @@ history scrolls, and commits load as they come into view.
 
 Each comparison is analyzed in the background with the same `--plugin`, `--project` and `--depth`,
 and has its own address (`/diff/<base>..<head>/`), so it can be reloaded or bookmarked. The last 8
-stay ready while `cpr view` runs.
+stay ready while `cpr view` runs. Its ← link goes back where it was opened: History, or
+Workspaces for a workspace's review.
 
 ### Open in VS Code
 
@@ -196,7 +198,7 @@ command on the machine where `cpr` runs, so WSL, Remote SSH and containers work 
 
 ### Keys
 
-| Key | On the commits page | In a change |
+| Key | In History | In a change |
 |---|---|---|
 | j, k | Next, previous commit | Next, previous changed symbol |
 | / | Find a branch | Search the change list |
@@ -204,12 +206,13 @@ command on the machine where `cpr` runs, so WSL, Remote SSH and containers work 
 | r | Review the branch | Mark the selected symbol reviewed |
 | x | Compare mode | |
 | n | Start a workspace | |
+| w, h | Workspaces, History | |
 | f | | Focus: only the selected symbol and its neighbours |
 | p, P | | Next, previous project |
 | o | | Open in VS Code |
 | Esc | Leave compare mode | Close the detail panel |
 
-n starts a workspace from the Workspaces tab too. In a comment box, the start dialog or a workspace's
+n starts a workspace on Workspaces too, and w and h go between the two pages. In a comment box, the start dialog or a workspace's
 reply box, Ctrl+Enter (Cmd+Enter on macOS) saves, starts or sends.
 
 ## Reviewing a branch
@@ -275,7 +278,7 @@ starts; Clear empties it. CPR then:
 3. gives the branch its own worktree beside your checkout, `../<repo>.worktrees/<branch>` (the
    branch's slashes become dashes), so your checkout and `cpr view` are untouched and several
    workspaces can run at once;
-4. records the brief, and the parts it was made of, in `cpr/features/<branch>.json`;
+4. records the brief, and the parts it was made of, in `cpr/workspaces/<branch>.json` (`cpr/features/` before V25, moved there the first time);
 5. starts the agent you picked there in the background with the brief: Claude Code (`claude
    --bg`) or [Codex](#codex). With "Plan first and wait for my OK" (on by default), the agent
    stops after its plan.
@@ -287,8 +290,8 @@ Code's default, Accept edits, or Auto. CPR never grants it more. If Claude Code 
 offers the prompt to copy. Claude Code has to trust the folder, so run `claude` there once and
 accept. It is found as `claude` on your `PATH`, or set `CPR_CLAUDE`.
 
-The **Workspaces** tab (`/workspaces`) lists workspaces by what each needs from you (a plan to read, a permission to
-give, a branch to review, changes to send back), then those working, then those merged. The tab
+**Workspaces**, the first page (`/`), lists workspaces by what each needs from you (a plan to read, a permission to
+give, a branch to review, changes to send back), then those working, then those merged. Its tab
 counts the ones that need you. Each workspace shows its title (a fix, refactor, chore or spike
 marked so), its commits, files not committed yet, your review, and whether it merges cleanly, with
 these actions:
@@ -301,7 +304,7 @@ these actions:
 - **Stop** or **Start** the agent;
 - **Copy the prompt**.
 
-![Workspaces tab: three agents by what they need from you, and the picked one's Claude Code session in the Terminal tab, its plan waiting for your OK](docs/images/features.png)
+![Workspaces: three agents by what they need from you, and the picked one's Claude Code session in the Terminal tab, its plan waiting for your OK](docs/images/features.png)
 
 Pick a workspace and its panel opens beside the list, where it can on the agent's **Terminal**:
 its session as Claude Code draws it (the conversation, tool calls, permission prompts and
@@ -332,7 +335,7 @@ The terminal needs `node-pty`, an optional dependency: on Linux `pnpm install` c
   ending its turn.
 - **Send the verdict** fills the box with what you decided. Nothing is sent until you press Send.
 
-A workspace's branch carries its agent's mark on the commits page, and each leads to the other.
+A workspace's branch carries its agent's mark in History, and each leads to the other.
 Once a workspace is merged, Clean up removes its agent's sessions, its worktree and its branch. An
 unmerged one is cleaned up only after you confirm, and keeps its branch. Neither happens while
 the worktree has files not committed.
@@ -511,7 +514,7 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 ```jsonc
 {
   "plugins": ["angular"],
-  "features": { "branchPrefixes": { "fix": "bugfix/" }, "worktrees": "../{repo}.worktrees" },
+  "workspaces": { "branchPrefixes": { "fix": "bugfix/" }, "worktrees": "../{repo}.worktrees" },
   "agent": { "kind": "claude", "permissionMode": "default", "model": "opus" }
 }
 ```
@@ -519,9 +522,11 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 | Key | Default | What it does |
 |---|---|---|
 | `plugins` | none | Plugins every run uses, by name or path. |
-| `features.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, per kind of work; an object with some kinds changes only those. |
-| `features.branchPrefix` | `feature/` | The Feature prefix, as before kinds of work; `branchPrefixes.feature` wins over it. |
-| `features.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout (`{repo}` is its folder name). |
+| `workspaces.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, per kind of work; an object with some kinds changes only those. |
+| `workspaces.branchPrefix` | `feature/` | The Feature prefix, as before kinds of work; `branchPrefixes.feature` wins over it. |
+| `workspaces.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout (`{repo}` is its folder name). |
+
+Before V25 the `workspaces` section was called `features`; that name is still read when `workspaces` is not there.
 | `agent.kind` | `claude` | The agent the start dialog offers first, when installed: `claude` or `codex`. |
 | `agent.permissionMode` | `default` | The permission mode the start dialog suggests for Claude Code: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's | The model Claude Code starts with (Codex's is its own configuration's). |

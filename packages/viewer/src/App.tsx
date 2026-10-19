@@ -26,11 +26,11 @@ import { flushSync } from 'react-dom';
 import type { BranchReviewInfo, Graph } from '@cpr/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import type { Loaded, Pair } from './commits.js';
-import { BackToCommits, CommitsPage, DiffProgress, fetchGraph, startDiff } from './CommitsPage.js';
-import { featureHref, featureName } from './features.js';
-import { FeaturesPage } from './FeaturesPage.js';
+import { BackLink, HistoryPage, DiffProgress, fetchGraph, startDiff } from './HistoryPage.js';
+import { workspaceHref, workspaceName } from './workspaces.js';
+import { WorkspacesPage } from './WorkspacesPage.js';
 import { PageTabs } from './PageTabs.js';
-import { useFeatures } from './useFeatures.js';
+import { useWorkspaces } from './useWorkspaces.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
 import {
@@ -57,6 +57,7 @@ import {
 import { ProjectNode } from './ProjectNode.js';
 import { MAP_ZOOM, mapZoomStyle } from './mapzoom.js';
 import { Resizer } from './Resizer.js';
+import { pageOfPath } from './pages.js';
 import { Sidebar, type SidebarTab } from './Sidebar.js';
 import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
 import { SummaryNode } from './SummaryNode.js';
@@ -73,10 +74,10 @@ const nodeTypes = {
 type State =
   | { status: 'loading' }
   | { status: 'empty'; error?: string }
-  /** `cpr view` with no graph here: pick commits to compare. */
-  | { status: 'commits' }
-  /** `cpr view`'s workspaces view (V18b), at `/workspaces` (formerly `/features`). */
-  | { status: 'features' }
+  /** `cpr view`'s History, at `/history`: pick commits to compare. */
+  | { status: 'history' }
+  /** `cpr view`'s first page, Workspaces (V25: at `/`; `/workspaces` and `/workspaces` before). */
+  | { status: 'workspaces' }
   /** A diff's page while it is analyzed, or once it failed or was stopped. */
   | { status: 'analyzing'; loaded: Exclude<Loaded, { kind: 'graph' }> }
   /**
@@ -104,7 +105,7 @@ interface Capabilities {
   review: { forge: Forge } | null;
   /** `/api/state` keeps reviewed marks and drafts in the CLI's cache. */
   state?: boolean;
-  /** `cpr view`: the commits page, and diffs analyzed when picked. */
+  /** `cpr view`: History, and diffs analyzed when picked. */
   commits?: boolean;
   /** `cpr view`, `cpr pr`: `/api/open` opens a file of the change in VS Code. */
   open?: boolean;
@@ -334,13 +335,15 @@ export function App() {
           await startDiff(loaded.pair).catch(() => undefined);
           if (live) await poll();
         } else if (!capabilities?.commits) setState({ status: 'empty' });
-        else if (window.location.pathname === '/features') {
-          // The workspaces view's old address: kept for bookmarks.
-          const { search, hash } = window.location;
-          window.history.replaceState(null, '', `/workspaces${search}${hash}`);
-          setState({ status: 'features' });
-        } else
-          setState({ status: window.location.pathname === '/workspaces' ? 'features' : 'commits' });
+        else {
+          const { page, moved } = pageOfPath(window.location.pathname);
+          // An old address of Workspaces, kept for bookmarks: shown as today's.
+          if (moved) {
+            const { search, hash } = window.location;
+            window.history.replaceState(null, '', `${moved}${search}${hash}`);
+          }
+          setState({ status: page });
+        }
       };
       await poll();
     })();
@@ -443,10 +446,10 @@ export function App() {
     <div className="app" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
       <header className="bar">
         <strong className="brand">CPR</strong>
-        {(state.status === 'commits' || state.status === 'features') && (
+        {(state.status === 'history' || state.status === 'workspaces') && (
           <PageTabs active={state.status} />
         )}
-        {state.status === 'ready' && state.commits && <BackToCommits />}
+        {state.status === 'ready' && state.commits && <BackLink />}
         {state.status === 'ready' && state.branchReview && <ReviewOf review={state.branchReview} />}
         {state.status === 'ready' && <Summary graph={state.graph} />}
         <div className="spacer" />
@@ -501,8 +504,8 @@ export function App() {
         {state.status === 'empty' && (
           <DropZone error={state.error} onFile={(file) => void load(file)} />
         )}
-        {state.status === 'commits' && <CommitsPage />}
-        {state.status === 'features' && <FeaturesPage />}
+        {state.status === 'history' && <HistoryPage />}
+        {state.status === 'workspaces' && <WorkspacesPage />}
         {state.status === 'analyzing' && <DiffProgress loaded={state.loaded} onRetry={retry} />}
         {state.status === 'ready' && (
           <ReactFlowProvider>
@@ -794,8 +797,8 @@ async function fetchCapabilities(): Promise<Capabilities | null> {
  */
 function ReviewOf({ review }: { review: BranchReviewInfo }) {
   const { branch, since, note } = review;
-  // The feature this branch is (V18b): a link to it.
-  const feature = useFeatures().list?.features.find((f) => f.branch === branch);
+  // The workspace this branch is (V18b): a link to it.
+  const workspace = useWorkspaces().list?.workspaces.find((f) => f.branch === branch);
   const after =
     since === null
       ? 'first review'
@@ -805,11 +808,11 @@ function ReviewOf({ review }: { review: BranchReviewInfo }) {
   return (
     <span className="review-of" {...(note ? { title: note } : {})}>
       Review of <strong>{branch}</strong> · {after}
-      {feature && (
+      {workspace && (
         <>
           {' · '}
-          <a className="review-feature" href={featureHref(branch)} title={feature.brief}>
-            Workspace: {featureName(feature)}
+          <a className="review-workspace" href={workspaceHref(branch)} title={workspace.brief}>
+            Workspace: {workspaceName(workspace)}
           </a>
         </>
       )}

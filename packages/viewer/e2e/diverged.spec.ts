@@ -38,7 +38,7 @@ test.describe('with main checked out', () => {
     page,
   }) => {
     const { fork, main, topic } = cpr;
-    await pickBoth(page, cpr.url);
+    await pickBoth(page, `${cpr.url}history`);
     await expect(page.locator('.compare-label')).toHaveText(
       `${short(fork)} → ${short(topic)} · 2 commits · diverged from ${short(main)}: its 2 commits since the fork are not in this diff`,
     );
@@ -59,7 +59,7 @@ test.describe('with main checked out', () => {
 
   test("swaps the sides: main's changes since the fork", async ({ page }) => {
     const { fork, main, topic } = cpr;
-    await pickBoth(page, cpr.url);
+    await pickBoth(page, `${cpr.url}history`);
     await page.getByRole('button', { name: 'Swap' }).click();
     await expect(page.locator('.compare-label')).toHaveText(
       `${short(fork)} → ${short(main)} · 2 commits · diverged from ${short(topic)}: its 2 commits since the fork are not in this diff`,
@@ -72,7 +72,7 @@ test.describe('with main checked out', () => {
   });
 
   test('compares a commit and its ancestor as before: no fork point, no Swap', async ({ page }) => {
-    await page.goto(cpr.url);
+    await page.goto(`${cpr.url}history`);
     await page.getByRole('button', { name: 'Compare mode' }).click();
     await row(page, 'Add twice').click();
     await row(page, 'Add square').click();
@@ -93,7 +93,7 @@ test.describe('with the branch checked out', () => {
 
   test("still takes main's side as the base: the default branch", async ({ page }) => {
     const { fork, main, topic } = cpr;
-    await pickBoth(page, cpr.url);
+    await pickBoth(page, `${cpr.url}history`);
     await expect(page.locator('.compare-label')).toHaveText(
       `${short(fork)} → ${short(topic)} · 2 commits · diverged from ${short(main)}: its 2 commits since the fork are not in this diff`,
     );

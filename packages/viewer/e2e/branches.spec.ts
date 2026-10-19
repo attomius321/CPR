@@ -30,7 +30,7 @@ const folder = (page: Page, label: string) =>
   });
 const cursorSubject = (page: Page) => page.locator('.commit.cursor .commit-subject');
 
-async function open(page: Page, url = cpr.url) {
+async function open(page: Page, url = `${cpr.url}history`) {
   await page.goto(url);
   await expect(panel(page).locator('.branches-branch').first()).toBeVisible();
 }
@@ -112,9 +112,9 @@ test('from "This branch", a branch it does not list: every branch, then its tip'
 }) => {
   await open(page);
   await page.getByRole('button', { name: 'This branch (main)' }).click();
-  await expect(page).toHaveURL(`${cpr.url}?scope=current`);
+  await expect(page).toHaveURL(`${cpr.url}history?scope=current`);
   await entry(page, 'topic').click();
-  await expect(page).toHaveURL(cpr.url);
+  await expect(page).toHaveURL(`${cpr.url}history`);
   await expect(cursorSubject(page)).toHaveText('Topic work');
   await expect(page.getByRole('button', { name: 'All branches' })).toHaveAttribute(
     'aria-pressed',
@@ -139,7 +139,7 @@ test('rows keep their date in view beside the panel: long badges shrink first', 
 }) => {
   for (const width of [1000, 820]) {
     await page.setViewportSize({ width, height: 720 });
-    await page.goto(cpr.url);
+    await page.goto(`${cpr.url}history`);
     await expect(page.locator('.commit:not(.loading)').first()).toBeVisible();
     const clipped = await page.evaluate(() => {
       const list = document.querySelector('.commit-list')?.getBoundingClientRect();
@@ -159,7 +159,7 @@ test('rows keep their date in view beside the panel: long badges shrink first', 
 
 test('under 900 px, a button opens the panel over the rows', async ({ page }) => {
   await page.setViewportSize({ width: 760, height: 720 });
-  await page.goto(cpr.url);
+  await page.goto(`${cpr.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await expect(panel(page)).toBeHidden();
   const toggle = page.getByRole('button', { name: 'Branches', exact: true });

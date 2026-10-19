@@ -63,6 +63,14 @@ const fresh = () => {
 };
 const NOW = new Date('2026-10-14T10:12:00Z');
 
+describe('AGENTS', () => {
+  it('tells agents about workspaces and where they are kept (V25)', () => {
+    expect(AGENTS).toContain('## Workspaces');
+    expect(AGENTS).toContain('`cpr/workspaces/<branch>.json`');
+    expect(AGENTS).not.toMatch(/\bfeatures?\b/);
+  });
+});
+
 describe('reviewPath', () => {
   it("nests a branch's folders and names the file by its reviewer", () => {
     expect(reviewPath('/r', 'milestone/v14-checkout', 'ada@example.com')).toBe(
@@ -248,9 +256,9 @@ describe('branchReviews', () => {
     );
   });
 
-  it("tells a feature's agent about its record, plan first, and where an approval is merged (V18c)", () => {
-    expect(AGENTS).toContain('## Features');
-    expect(AGENTS).toContain('cpr/features/<branch>.json');
+  it("tells a workspace's agent about its record, plan first, and where an approval is merged (V18c)", () => {
+    expect(AGENTS).toContain('## Workspaces');
+    expect(AGENTS).toContain('cpr/workspaces/<branch>.json');
     expect(AGENTS).toMatch(/`planFirst`.*stop/s);
     expect(AGENTS).toContain('## Approved in a linked worktree');
     expect(AGENTS).toContain('git worktree list');

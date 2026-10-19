@@ -44,7 +44,7 @@ const names = (entries: Locator) =>
   entries.evaluateAll((items) => items.map((item) => item.getAttribute('aria-label')));
 
 test('offers what each row can check out, in a submenu', async ({ page }) => {
-  await page.goto(cpr.url);
+  await page.goto(`${cpr.url}history`);
   // The menu holds "Check out" (and "Review", V15: the row has a branch); targets open on hover.
   await row(page, 'Try a wobble').click({ button: 'right' });
   await expect(page.getByRole('menuitem')).toHaveText([
@@ -98,7 +98,7 @@ test('offers what each row can check out, in a submenu', async ({ page }) => {
 test('the submenu from the keyboard: c opens it, ← and → move between the menus', async ({
   page,
 }) => {
-  await page.goto(cpr.url);
+  await page.goto(`${cpr.url}history`);
   await row(page, 'Try a wobble').click();
   await page.keyboard.press('c');
   // Straight into the targets, the first one active.
@@ -128,7 +128,7 @@ test('keeps the submenu in the window: on the left near the right edge, up near 
   page,
 }) => {
   await page.setViewportSize({ width: 900, height: 300 });
-  await page.goto(cpr.url);
+  await page.goto(`${cpr.url}history`);
   const inWindow = async () => {
     const box = (await page.locator('.submenu').boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(8);
@@ -154,7 +154,7 @@ test('keeps the submenu in the window: on the left near the right edge, up near 
 
 test('checks out a branch: HEAD, lane 0 and the cursor follow', async ({ page }) => {
   const [, , square] = cpr.shas;
-  await page.goto(cpr.url);
+  await page.goto(`${cpr.url}history`);
   await choose(page, 'Try a wobble', 'Check out branch wip');
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading')).toHaveText('Check out branch wip?');
@@ -181,7 +181,7 @@ test('checks out a remote branch as a local one from the keyboard, and a tag det
   page,
 }) => {
   const [, , , cube] = cpr.shas;
-  await page.goto(cpr.url);
+  await page.goto(`${cpr.url}history`);
   // The cursor starts on HEAD, row 2; row 0 is origin/topic's.
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText(/^Add half/);
   await page.keyboard.press('k');
@@ -223,7 +223,7 @@ test('checks out a remote branch as a local one from the keyboard, and a tag det
 test("shows git's refusal and changes nothing", async ({ page }) => {
   const half = cpr.shas[4];
   appendFileSync(join(cpr.repo, 'src/math.ts'), '// a local change\n');
-  await page.goto(cpr.url);
+  await page.goto(`${cpr.url}history`);
   await choose(page, 'base', 'Check out this commit (detached HEAD)');
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText(
@@ -241,7 +241,7 @@ test("shows git's refusal and changes nothing", async ({ page }) => {
 });
 
 test('shows a checkout made elsewhere when the page is back', async ({ page }) => {
-  await page.goto(cpr.url);
+  await page.goto(`${cpr.url}history`);
   await expect(row(page, 'Add half').locator('.ref').first()).toHaveText('HEAD → main');
   execFileSync('git', ['switch', '-q', 'wip'], { cwd: cpr.repo });
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));

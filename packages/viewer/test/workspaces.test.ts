@@ -1,19 +1,19 @@
 import type {
   BranchReviewSummary,
-  FeatureAgentState,
-  FeatureStart,
-  FeatureSummary,
-  FeatureThread,
+  WorkspaceAgentState,
+  WorkspaceStart,
+  WorkspaceSummary,
+  WorkspaceThread,
   ThreadEntry,
 } from '@cpr/core';
 import { describe, expect, it } from 'vitest';
 import {
   branchProblem,
-  featureChips,
-  featureGroups,
-  featureName,
-  featureNext,
-  featuresFirst,
+  workspaceChips,
+  workspaceGroups,
+  workspaceName,
+  workspaceNext,
+  workspacesFirst,
   proposeBranch,
   replyMode,
   shortAge,
@@ -21,7 +21,7 @@ import {
   talkCommand,
   threadItems,
   verdictToSend,
-} from '../src/features.js';
+} from '../src/workspaces.js';
 
 describe('proposeBranch', () => {
   const none = new Set<string>();
@@ -80,7 +80,7 @@ describe('branchProblem', () => {
 });
 
 describe('startedNotice', () => {
-  const feature: FeatureSummary = {
+  const workspace: WorkspaceSummary = {
     branch: 'feature/csv',
     base: 'c'.repeat(40),
     from: 'main',
@@ -93,12 +93,12 @@ describe('startedNotice', () => {
     merged: false,
     agent: { state: 'working', kind: 'claude', id: 's1' },
   };
-  const start = (agent: FeatureSummary['agent']): FeatureStart => ({
-    feature: { ...feature, agent },
+  const start = (agent: WorkspaceSummary['agent']): WorkspaceStart => ({
+    workspace: { ...workspace, agent },
     prompt: 'Build it.',
   });
-  it('says where the feature is and whether its agent started', () => {
-    expect(startedNotice(start(feature.agent))).toEqual({
+  it('says where the workspace is and whether its agent started', () => {
+    expect(startedNotice(start(workspace.agent))).toEqual({
       text: 'Started feature/csv: Claude Code is working in /work/app.worktrees/feature-csv.',
     });
     expect(
@@ -151,7 +151,7 @@ describe('talkCommand (V20a)', () => {
 });
 
 const TIP = 'b'.repeat(40);
-const summary = (over: Partial<FeatureSummary> = {}): FeatureSummary => ({
+const summary = (over: Partial<WorkspaceSummary> = {}): WorkspaceSummary => ({
   branch: 'feature/csv',
   base: 'a'.repeat(40),
   from: 'main',
@@ -183,13 +183,13 @@ const verdict = (event: 'approve' | 'request-changes' | 'comment', head = TIP) =
   merged: false,
 });
 
-describe('featureNext', () => {
-  const next = (f: Partial<FeatureSummary>, r?: Partial<BranchReviewSummary>) => {
-    const { group, text, chip } = featureNext(summary(f), r ? review(r) : undefined);
+describe('workspaceNext', () => {
+  const next = (f: Partial<WorkspaceSummary>, r?: Partial<BranchReviewSummary>) => {
+    const { group, text, chip } = workspaceNext(summary(f), r ? review(r) : undefined);
     return { group, text, mark: chip.mark };
   };
 
-  it("says what each feature needs from the person, by its agent's state", () => {
+  it("says what each workspace needs from the person, by its agent's state", () => {
     expect(next({})).toEqual({ group: 'working', text: 'Working', mark: '⚙' });
     expect(
       next({ agent: { state: 'needs-you', kind: 'claude', waitingFor: 'permission prompt' } }),
@@ -268,9 +268,9 @@ describe('featureNext', () => {
   });
 });
 
-describe('featureGroups', () => {
-  it('groups features by what they need, the reviews matched by branch', () => {
-    const groups = featureGroups(
+describe('workspaceGroups', () => {
+  it('groups workspaces by what they need, the reviews matched by branch', () => {
+    const groups = workspaceGroups(
       [
         summary({ branch: 'feature/a' }),
         summary({ branch: 'feature/b', agent: { state: 'plan-ready', kind: 'claude' } }),
@@ -284,50 +284,54 @@ describe('featureGroups', () => {
         reviews: [review({ branch: 'feature/d', refs: [], verdict: verdict('request-changes') })],
       },
     );
-    expect(groups.needsYou.map((r) => [r.feature.branch, r.next.text])).toEqual([
+    expect(groups.needsYou.map((r) => [r.workspace.branch, r.next.text])).toEqual([
       ['feature/b', 'Plan ready: read it and answer'],
       ['feature/d', 'Changes requested: send them to the agent'],
     ]);
-    expect(groups.working.map((r) => r.feature.branch)).toEqual(['feature/a']);
-    expect(groups.done.map((r) => r.feature.branch)).toEqual(['feature/c']);
+    expect(groups.working.map((r) => r.workspace.branch)).toEqual(['feature/a']);
+    expect(groups.done.map((r) => r.workspace.branch)).toEqual(['feature/c']);
   });
 });
 
-describe('featureName (V24c)', () => {
+describe('workspaceName (V24c)', () => {
   it("is the workspace's title; before V24, its brief's first line; else its branch", () => {
     expect(
-      featureName(summary({ kind: 'fix', title: 'Dates sort as text', brief: '# Fix: …' })),
+      workspaceName(summary({ kind: 'fix', title: 'Dates sort as text', brief: '# Fix: …' })),
     ).toBe('Dates sort as text');
-    expect(featureName(summary())).toBe('Export a review as CSV');
-    expect(featureName(summary({ brief: '\n  \n' }))).toBe('feature/csv');
+    expect(workspaceName(summary())).toBe('Export a review as CSV');
+    expect(workspaceName(summary({ brief: '\n  \n' }))).toBe('feature/csv');
   });
 
   it("titles a branch's chip with the workspace's name", () => {
-    const chips = featureChips([summary({ kind: 'fix', title: 'Dates' })], null, []);
+    const chips = workspaceChips([summary({ kind: 'fix', title: 'Dates' })], null, []);
     expect(chips.get('feature/csv')?.title).toBe('Workspace: Dates — Working');
   });
 });
 
-describe('featureChips', () => {
-  it("marks a feature's branch, local and pushed, with a link to the feature", () => {
-    const chips = featureChips([summary(), summary({ branch: 'feature/gone', tip: null })], null, [
-      { name: 'origin/feature/csv', branch: 'feature/csv' },
-      { name: 'origin/other', branch: 'other' },
-    ]);
+describe('workspaceChips', () => {
+  it("marks a workspace's branch, local and pushed, with a link to the workspace", () => {
+    const chips = workspaceChips(
+      [summary(), summary({ branch: 'feature/gone', tip: null })],
+      null,
+      [
+        { name: 'origin/feature/csv', branch: 'feature/csv' },
+        { name: 'origin/other', branch: 'other' },
+      ],
+    );
     expect([...chips.keys()]).toEqual(['feature/csv', 'origin/feature/csv']);
     expect(chips.get('feature/csv')).toEqual({
       mark: '⚙',
       tone: 'working',
       title: 'Workspace: Export a review as CSV — Working',
-      href: '/workspaces?branch=feature%2Fcsv',
+      href: '/?branch=feature%2Fcsv',
     });
   });
 });
 
-describe('featuresFirst', () => {
+describe('workspacesFirst', () => {
   const at = (hour: number) => `2026-10-18T${hour}:00:00.000Z`;
-  it("lists the features that need you, then working ones, each by its agent's last action, newest first (V23)", () => {
-    const first = featuresFirst(
+  it("lists the workspaces that need you, then working ones, each by its agent's last action, newest first (V23)", () => {
+    const first = workspacesFirst(
       [
         summary({ branch: 'feature/working-older', lastAction: at(10) }),
         summary({
@@ -344,7 +348,7 @@ describe('featuresFirst', () => {
         // Nothing to do for the person: merged, or its branch gone (no entry to sort).
         summary({ branch: 'feature/merged', ahead: 1, merged: true, lastAction: at(14) }),
         summary({ branch: 'feature/gone', tip: null, lastAction: at(15) }),
-        // No agent was found: when the feature was made.
+        // No agent was found: when the workspace was made.
         summary({ branch: 'feature/no-agent', agent: { state: 'no-agent' }, created: at(12) }),
         // The same time: by name.
         summary({
@@ -363,7 +367,7 @@ describe('featuresFirst', () => {
       { branch: 'feature/working-newer', at: at(12) },
       { branch: 'feature/working-older', at: at(10) },
     ]);
-    expect(featuresFirst([], null)).toEqual([]);
+    expect(workspacesFirst([], null)).toEqual([]);
   });
 });
 
@@ -448,7 +452,7 @@ describe('threadItems', () => {
 });
 
 describe('replyMode', () => {
-  const agent = (over: Partial<FeatureAgentState>): FeatureAgentState => ({
+  const agent = (over: Partial<WorkspaceAgentState>): WorkspaceAgentState => ({
     state: 'working',
     kind: 'claude',
     id: 's1',
@@ -480,7 +484,7 @@ describe('verdictToSend', () => {
     head: 'c'.repeat(40),
     text: 'Address this review…',
   };
-  const thread = (entries: ThreadEntry[], withVerdict = true): FeatureThread => ({
+  const thread = (entries: ThreadEntry[], withVerdict = true): WorkspaceThread => ({
     entries,
     recorded: true,
     ...(withVerdict ? { verdict } : {}),

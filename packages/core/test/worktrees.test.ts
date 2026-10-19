@@ -17,7 +17,7 @@ import {
 import { createRepo, tempDir, type TestRepo } from './helpers/git-repo.js';
 
 /** main: A ── B; a remote `origin` (never fetched) with origin/taken at A. */
-function featureRepo() {
+function workspaceRepo() {
   const repo = createRepo();
   repo.write({ 'a.ts': 'export const a = 1;\n' });
   const A = repo.commit('A');
@@ -30,7 +30,7 @@ function featureRepo() {
 
 const repos: TestRepo[] = [];
 const fresh = () => {
-  const made = featureRepo();
+  const made = workspaceRepo();
   repos.push(made.repo);
   return made;
 };
@@ -108,8 +108,8 @@ describe('listWorktrees and mainWorktree', () => {
     );
 
     expect(realpathSync(mainWorktree(git))).toBe(repo.root);
-    const fromFeature = await openRepo(folder);
-    expect(realpathSync(mainWorktree(fromFeature))).toBe(repo.root);
+    const fromWorkspace = await openRepo(folder);
+    expect(realpathSync(mainWorktree(fromWorkspace))).toBe(repo.root);
   });
 });
 
@@ -124,15 +124,15 @@ describe('listRefs and worktrees', () => {
     const branches = (await listRefs(git)).branches;
     expect(branches.find((b) => b.name === 'main')).toEqual({ name: 'main', sha: shas.B });
     expect(branches.find((b) => b.name === 'idle')).toEqual({ name: 'idle', sha: shas.A });
-    const feature = branches.find((b) => b.name === 'feature/csv');
-    expect(realpathSync(feature?.worktree ?? '')).toBe(realpathSync(folder));
+    const workspace = branches.find((b) => b.name === 'feature/csv');
+    expect(realpathSync(workspace?.worktree ?? '')).toBe(realpathSync(folder));
 
-    // From the feature's worktree, `main` is the one checked out elsewhere.
-    const fromFeature = (await listRefs(await openRepo(folder))).branches;
-    expect(realpathSync(fromFeature.find((b) => b.name === 'main')?.worktree ?? '')).toBe(
+    // From the workspace's worktree, `main` is the one checked out elsewhere.
+    const fromWorkspace = (await listRefs(await openRepo(folder))).branches;
+    expect(realpathSync(fromWorkspace.find((b) => b.name === 'main')?.worktree ?? '')).toBe(
       repo.root,
     );
-    expect(fromFeature.find((b) => b.name === 'feature/csv')?.worktree).toBeUndefined();
+    expect(fromWorkspace.find((b) => b.name === 'feature/csv')?.worktree).toBeUndefined();
   });
 });
 

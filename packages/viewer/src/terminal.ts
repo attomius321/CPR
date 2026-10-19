@@ -1,4 +1,4 @@
-// A feature's agent session in a terminal (V21): what the panel sends to it, kept pure.
+// A workspace's agent session in a terminal (V21): what the panel sends to it, kept pure.
 import type { ITheme } from '@xterm/xterm';
 
 /**

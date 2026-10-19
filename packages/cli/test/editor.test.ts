@@ -270,7 +270,7 @@ describe('vsCodeOpener', () => {
     expect(!result.opened && result.message).toMatch(/not found.*CPR_CODE/);
   });
 
-  it("opens a branch checked out in a feature's worktree there, at its line there (V18b)", async () => {
+  it("opens a branch checked out in a workspace's worktree there, at its line there (V18b)", async () => {
     repo = createRepo();
     repo.write({ 'src/a.ts': ten });
     const sha = repo.commit('ten lines');
@@ -306,7 +306,7 @@ describe('vsCodeFolder', () => {
   });
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-  it("opens a feature's worktree folder in VS Code; says why it cannot", async () => {
+  it("opens a workspace's worktree folder in VS Code; says why it cannot", async () => {
     process.env.FAKE_LOG = log;
     expect(await vsCodeFolder({ CPR_CODE: fake, PATH: '' })('/work/app.worktrees/x')).toEqual({
       opened: true,

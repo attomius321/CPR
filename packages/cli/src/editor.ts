@@ -235,7 +235,7 @@ const notFound = (env: Readonly<Record<string, string | undefined>>) => {
 /**
  * Opens a line of one side's file in VS Code, in the window that has the repository open (else
  * a new one with it), at the line where that code is in the working copy now. With `worktree`
- * (a feature's, V18b), that folder and its working copy instead.
+ * (a workspace's, V18b), that folder and its working copy instead.
  */
 export function vsCodeOpener(
   repo: GitRepo,
@@ -271,7 +271,7 @@ export function vsCodeOpener(
   };
 }
 
-/** Opens a folder in VS Code (a feature's worktree, V18b): its window, else a new one. */
+/** Opens a folder in VS Code (a workspace's worktree, V18b): its window, else a new one. */
 export function vsCodeFolder(
   env: Readonly<Record<string, string | undefined>>,
   host: Host = localHost(env),
