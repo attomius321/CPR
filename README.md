@@ -164,7 +164,7 @@ they are linked to elsewhere.
 beside the commits, the current branch the straight line on the left. The whole
 history scrolls, and commits load as they come into view.
 
-![History: the branches panel with a milestone branch selected, and the history drawn as a graph with branch badges](docs/images/commits.png)
+![History: the branches panel with its milestone folder open, and the history drawn as a graph with branch badges](docs/images/history.png)
 
 - **Branches panel.** Local branches, with `↑2 ↓1` against their upstream, and remote ones by
   folder. Filter it with `/`. A click selects the branch's newest commit, however deep in the
@@ -278,7 +278,7 @@ starts; Clear empties it. CPR then:
 3. gives the branch its own worktree beside your checkout, `../<repo>.worktrees/<branch>` (the
    branch's slashes become dashes), so your checkout and `cpr view` are untouched and several
    workspaces can run at once;
-4. records the brief, and the parts it was made of, in `cpr/features/<branch>.json`;
+4. records the brief, and the parts it was made of, in `cpr/workspaces/<branch>.json` (`cpr/features/` before V25, moved there the first time);
 5. starts the agent you picked there in the background with the brief: Claude Code (`claude
    --bg`) or [Codex](#codex). With "Plan first and wait for my OK" (on by default), the agent
    stops after its plan.
@@ -514,7 +514,7 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 ```jsonc
 {
   "plugins": ["angular"],
-  "features": { "branchPrefixes": { "fix": "bugfix/" }, "worktrees": "../{repo}.worktrees" },
+  "workspaces": { "branchPrefixes": { "fix": "bugfix/" }, "worktrees": "../{repo}.worktrees" },
   "agent": { "kind": "claude", "permissionMode": "default", "model": "opus" }
 }
 ```
@@ -522,9 +522,11 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 | Key | Default | What it does |
 |---|---|---|
 | `plugins` | none | Plugins every run uses, by name or path. |
-| `features.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, per kind of work; an object with some kinds changes only those. |
-| `features.branchPrefix` | `feature/` | The Feature prefix, as before kinds of work; `branchPrefixes.feature` wins over it. |
-| `features.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout (`{repo}` is its folder name). |
+| `workspaces.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, per kind of work; an object with some kinds changes only those. |
+| `workspaces.branchPrefix` | `feature/` | The Feature prefix, as before kinds of work; `branchPrefixes.feature` wins over it. |
+| `workspaces.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout (`{repo}` is its folder name). |
+
+Before V25 the `workspaces` section was called `features`; that name is still read when `workspaces` is not there.
 | `agent.kind` | `claude` | The agent the start dialog offers first, when installed: `claude` or `codex`. |
 | `agent.permissionMode` | `default` | The permission mode the start dialog suggests for Claude Code: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's | The model Claude Code starts with (Codex's is its own configuration's). |

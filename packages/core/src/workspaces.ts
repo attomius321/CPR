@@ -122,7 +122,7 @@ export interface WorkspaceSummary {
 
 export interface WorkspaceList {
   workspaces: WorkspaceSummary[];
-  /** Where workspaces are kept: `cpr/features/`, else CPR's cache (`note` says why). */
+  /** Where workspaces are kept: `cpr/workspaces/`, else CPR's cache (`note` says why). */
   place: 'repository' | 'cache';
   note?: string;
   /** Whether an agent's session can be shown in a terminal (V21); only with workspaces. */

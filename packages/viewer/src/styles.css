@@ -216,6 +216,11 @@ code {
   color: var(--muted);
 }
 
+/* What the list says of where workspaces are kept (V25), under the title. */
+.workspaces-note {
+  padding: 0 24px 8px;
+}
+
 /* Workspaces with none yet (V25): what to do, then a way to start. */
 .workspaces-empty p {
   margin: 0 0 12px;

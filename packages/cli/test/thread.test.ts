@@ -1,4 +1,12 @@
-import { mkdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { ThreadEntry } from '@cpr/core';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -12,6 +20,7 @@ import {
   threadEntry,
   threadPath,
   turnEnded,
+  workspacesFolder,
 } from '../src/thread.js';
 
 /** What Claude Code 2.1.300 gave the hooks in the V18c spike, one input per event and kind. */
@@ -99,14 +108,17 @@ describe('recordEvent and readThread', () => {
   afterEach(() => {
     for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
   });
-  /** A `cpr/` folder with the record of `feature/x`, whose worktree is `<tmp>/app.worktrees/feature-x`. */
-  function cpr() {
+  /**
+   * A `cpr/` folder with the record of `feature/x`, whose worktree is `<tmp>/app.worktrees/feature-x`,
+   * in `records` (`features` before V25).
+   */
+  function cpr(records = 'workspaces') {
     const root = tempDir();
     folders.push(root);
     const folder = join(root, 'cpr');
     const worktree = join(root, 'app.worktrees', 'feature-x');
     mkdirSync(join(worktree, 'src'), { recursive: true });
-    const record = join(folder, 'features', 'feature', 'x.json');
+    const record = join(folder, records, 'feature', 'x.json');
     mkdirSync(dirname(record), { recursive: true });
     writeFileSync(record, JSON.stringify({ branch: 'feature/x', base: 'a'.repeat(40), worktree }));
     return { folder, worktree, root };
@@ -129,6 +141,15 @@ describe('recordEvent and readThread', () => {
     const thread = await readThread(folder, 'feature/x');
     expect(thread.map((e) => e.kind)).toEqual(['start', 'prompt', 'report']);
     expect(turnEnded(thread)).toBe(true);
+  });
+
+  it('finds a workspace recorded before V25, in cpr/features/, moved first to cpr/workspaces/', async () => {
+    const { folder, worktree } = cpr('features');
+    expect(await recordEvent(folder, { ...input('Stop'), cwd: worktree }, at(1))).toBe(
+      threadPath(folder, 'feature/x'),
+    );
+    expect(existsSync(join(folder, 'features'))).toBe(false);
+    expect(existsSync(join(folder, 'workspaces', 'feature', 'x.json'))).toBe(true);
   });
 
   it('matches real paths: a worktree reached through a symbolic link', async () => {
@@ -245,5 +266,50 @@ describe('hookMain', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('workspacesFolder (V25)', () => {
+  const folders: string[] = [];
+  afterEach(() => {
+    for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
+  });
+  const cprWith = (...records: string[]) => {
+    const folder = join(tempDir(), 'cpr');
+    folders.push(dirname(folder));
+    for (const path of records) {
+      mkdirSync(dirname(join(folder, path)), { recursive: true });
+      writeFileSync(join(folder, path), path);
+    }
+    return folder;
+  };
+
+  it('moves cpr/features/ to cpr/workspaces/ once, when only the old one is there', async () => {
+    const folder = cprWith('features/feature/x.json', 'features/fix/y.json');
+    // Two readers at once (the list and a hook): one moves, both find the records.
+    const [a, b] = await Promise.all([workspacesFolder(folder), workspacesFolder(folder)]);
+    expect(a).toEqual({ dir: join(folder, 'workspaces') });
+    expect(b).toEqual(a);
+    expect(readFileSync(join(folder, 'workspaces', 'fix', 'y.json'), 'utf8')).toBe(
+      'features/fix/y.json',
+    );
+    expect(existsSync(join(folder, 'features'))).toBe(false);
+  });
+
+  it('keeps cpr/workspaces/ when there; with both, says the old one is left', async () => {
+    expect(await workspacesFolder(cprWith('workspaces/feature/x.json'))).toEqual({
+      dir: expect.stringMatching(/workspaces$/) as unknown,
+    });
+    const both = cprWith('workspaces/feature/x.json', 'features/fix/y.json');
+    expect(await workspacesFolder(both)).toEqual({ dir: join(both, 'workspaces'), left: true });
+    expect(readFileSync(join(both, 'features', 'fix', 'y.json'), 'utf8')).toBe(
+      'features/fix/y.json',
+    );
+  });
+
+  it('makes nothing when neither is there', async () => {
+    const folder = cprWith();
+    expect(await workspacesFolder(folder)).toEqual({ dir: join(folder, 'workspaces') });
+    expect(existsSync(folder)).toBe(false);
   });
 });

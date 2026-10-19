@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import {
   commitFolders,
@@ -91,14 +99,14 @@ const record = (over: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
   ...over,
 });
 
-describe('featurePath and serializeFeature', () => {
+describe('workspacePath and serializeWorkspace', () => {
   it("nests a branch's folders; the same workspace gives the same bytes, about first", () => {
     expect(workspacePath('/f', 'feature/csv')).toBe(join('/f', 'feature', 'csv.json'));
     expect(() => workspacePath('/f', '../out')).toThrow(WorkspaceRefused);
     const text = serializeWorkspace(record());
     expect(text.split('\n').slice(0, 3)).toEqual([
       '{',
-      '  "about": "A feature started in CPR. Agents: read cpr/AGENTS.md before acting on it.",',
+      '  "about": "A workspace started in CPR. Agents: read cpr/AGENTS.md before acting on it.",',
       '  "agent": {',
     ]);
     const keys = Object.keys(JSON.parse(text) as object);
@@ -147,7 +155,7 @@ describe('featurePath and serializeFeature', () => {
   });
 });
 
-describe('readFeatureConfig (V24)', () => {
+describe('readWorkspaceConfig (V24)', () => {
   const DEFAULTS = {
     feature: 'feature/',
     fix: 'fix/',
@@ -200,7 +208,7 @@ describe('worktreeFolder', () => {
   });
 });
 
-describe('featureBase', () => {
+describe('workspaceBase', () => {
   it("is the default branch's newest tip: local or remote, the local one when they diverged", async () => {
     const { repo, shas } = fresh();
     const git = await openRepo(repo.root);
@@ -229,9 +237,9 @@ describe('featureBase', () => {
   });
 });
 
-describe('featurePrompt', () => {
+describe('workspacePrompt', () => {
   const where = {
-    record: '/work/app/cpr/features/feature/csv.json',
+    record: '/work/app/cpr/workspaces/feature/csv.json',
     reviews: '/work/app/cpr/reviews/feature/csv',
     agents: '/work/app/cpr/AGENTS.md',
     into: 'main',
@@ -633,7 +641,7 @@ describe('workspaces', () => {
       ['spike', 'Spike', 'Question*, What is known, Where to look, Notes, Done when'],
     ]);
     expect(Object.fromEntries(kinds.map((k) => [k.kind, k.doneWhen]))).toEqual({
-      workspace: undefined,
+      feature: undefined,
       fix: 'A test that fails today passes, and {checks pass}.',
       refactor:
         'Behaviour is unchanged: existing tests pass without changing what they assert, and {checks pass}.',
@@ -684,7 +692,7 @@ describe('workspaces', () => {
     });
     expect(prompt).toContain('One row per comment.');
     const saved = JSON.parse(
-      readFileSync(join(repo.root, 'cpr', 'features', 'feature', 'csv.json'), 'utf8'),
+      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'csv.json'), 'utf8'),
     ) as WorkspaceFile;
     expect(saved).toMatchObject({
       branch: 'feature/csv',
@@ -731,7 +739,7 @@ describe('workspaces', () => {
     expect(prompt).toContain(brief);
     expect(prompt).toMatch(/Reproduce it first/);
     expect(start.mock.calls[0]?.[0].prompt).toBe(prompt);
-    const saved = await readWorkspace(join(repo.root, 'cpr', 'features', 'fix', 'dates.json'));
+    const saved = await readWorkspace(join(repo.root, 'cpr', 'workspaces', 'fix', 'dates.json'));
     // Empty parts are not kept.
     expect(saved).toMatchObject({
       kind: 'fix',
@@ -906,6 +914,27 @@ describe('workspaces', () => {
       { branch: 'feature/one', ahead: 1, state: 'ready' },
       { branch: 'feature/two', ahead: 0, state: 'plan-ready' },
     ]);
+  });
+
+  it('lists a workspace recorded before V25, its cpr/features/ moved; with both, says so', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    const cpr = join(repo.root, 'cpr');
+    renameSync(join(cpr, 'workspaces'), join(cpr, 'features'));
+    const list = await s.list();
+    expect(list.workspaces.map((w) => w.branch)).toEqual(['feature/one']);
+    expect(list.note).toBeUndefined();
+    expect(existsSync(join(cpr, 'features'))).toBe(false);
+    expect(readFileSync(join(cpr, 'workspaces', 'feature', 'one.json'), 'utf8')).toContain(
+      '"about": "A workspace started in CPR.',
+    );
+
+    mkdirSync(join(cpr, 'features'));
+    expect((await s.list()).note).toBe(
+      'cpr/features/, where workspaces were kept before, is still here: CPR reads cpr/workspaces/.',
+    );
   });
 
   it('asks Claude Code for its sessions once for a whole list', async () => {
@@ -1121,7 +1150,7 @@ describe('workspaces', () => {
   it("saves the record before the agent starts: its first hooks find the workspace's worktree", async () => {
     const { repo } = fresh();
     const { claude, start } = fakeClaude();
-    const record = join(repo.root, 'cpr', 'features', 'feature', 'one.json');
+    const record = join(repo.root, 'cpr', 'workspaces', 'feature', 'one.json');
     let seen: WorkspaceFile | null = null;
     claude.start = (request) => {
       seen = JSON.parse(readFileSync(record, 'utf8')) as WorkspaceFile;
@@ -1354,7 +1383,7 @@ describe('workspaces', () => {
     expect(existsSync(workspace.worktree.path)).toBe(false);
     expect(repo.git('branch', '--list', 'feature/one')).toBe('');
     const saved = JSON.parse(
-      readFileSync(join(repo.root, 'cpr', 'features', 'feature', 'one.json'), 'utf8'),
+      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'one.json'), 'utf8'),
     ) as WorkspaceFile;
     expect(saved.finished).toBe(NOW.toISOString());
     expect((await s.list()).workspaces).toEqual([]);
@@ -1438,7 +1467,7 @@ describe('workspaces', () => {
   /** Writes thread entries as CPR's runner would, marked with the workspace's last run. */
   const recordRun = (repo: TestRepo, branch: string, entries: Record<string, unknown>[]) => {
     const file = join(repo.root, 'cpr', 'threads', ...`${branch}.jsonl`.split('/'));
-    const record = join(repo.root, 'cpr', 'features', ...`${branch}.json`.split('/'));
+    const record = join(repo.root, 'cpr', 'workspaces', ...`${branch}.json`.split('/'));
     const { run } = (JSON.parse(readFileSync(record, 'utf8')) as WorkspaceFile).agent ?? {};
     mkdirSync(dirname(file), { recursive: true });
     for (const entry of entries) {
@@ -1507,7 +1536,7 @@ describe('workspaces', () => {
     expect(workspace.agent).toEqual({ state: 'working', kind: 'codex', id: THREAD_ID });
     expect(workspace.base).toBe(shas.B);
     const saved = JSON.parse(
-      readFileSync(join(repo.root, 'cpr', 'features', 'feature', 'csv.json'), 'utf8'),
+      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'csv.json'), 'utf8'),
     ) as WorkspaceFile;
     expect(saved.agent).toEqual({
       kind: 'codex',

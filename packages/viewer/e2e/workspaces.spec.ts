@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
@@ -85,7 +85,7 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
   expect(call?.args.at(-1)).toContain("then stop and wait for the person's OK");
   // The record, beside the reviews.
   const record = JSON.parse(
-    readFileSync(join(cpr.repo, 'cpr/features/feature/add-a-half-function.json'), 'utf8'),
+    readFileSync(join(cpr.repo, 'cpr/workspaces/feature/add-a-half-function.json'), 'utf8'),
   ) as { base: string; planFirst: boolean; worktree: string; by: string };
   expect(record).toMatchObject({
     kind: 'feature',
@@ -527,7 +527,7 @@ test('a workspace started before its messages were kept: a note, and the box sti
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  const record = join(cpr.repo, 'cpr/features/feature/add-a-half-function.json');
+  const record = join(cpr.repo, 'cpr/workspaces/feature/add-a-half-function.json');
   const saved = JSON.parse(readFileSync(record, 'utf8')) as { agent: { hooks?: boolean } };
   delete saved.agent.hooks;
   writeFileSync(record, JSON.stringify(saved));
@@ -757,6 +757,22 @@ test('Workspaces is the first page, History beside it; old addresses, keys and l
   await expect(page).toHaveURL(cpr.url);
   await page.getByRole('link', { name: 'History', exact: true }).last().click();
   await expect(page).toHaveURL(`${cpr.url}history`);
+});
+
+test("the records' folder before V25 left beside today's: Workspaces says so (V25)", async ({
+  page,
+}) => {
+  cpr = await serveWorkspaces();
+  // Both hold something (an empty cpr/workspaces/ is replaced by the move).
+  for (const folder of ['workspaces', 'features']) {
+    mkdirSync(join(cpr.repo, 'cpr', folder), { recursive: true });
+    writeFileSync(join(cpr.repo, 'cpr', folder, 'notes.txt'), folder);
+  }
+  await page.goto(cpr.url);
+  await expect(page.getByText('No workspaces yet')).toBeVisible();
+  await expect(page.locator('.workspaces-note')).toHaveText(
+    'cpr/features/, where workspaces were kept before, is still here: CPR reads cpr/workspaces/.',
+  );
 });
 
 // The structured brief (V24c): a kind of work, its title and parts, which the server makes the

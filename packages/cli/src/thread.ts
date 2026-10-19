@@ -3,7 +3,16 @@
 // tree (`agent-hook.ts`), so this module uses Node's own modules only: loading `@cpr/core` would
 // make each event cost ~290 ms instead of ~25 ms.
 import { realpathSync } from 'node:fs';
-import { appendFile, mkdir, open, readdir, readFile, type FileHandle } from 'node:fs/promises';
+import {
+  access,
+  appendFile,
+  mkdir,
+  open,
+  readdir,
+  readFile,
+  rename,
+  type FileHandle,
+} from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import type { ThreadEntry, ThreadQuestion } from '@cpr/core';
 
@@ -19,6 +28,27 @@ function branchFile(dir: string, branch: string, extension: string): string | nu
   if (parts.some((p) => p === '' || p === '.' || p === '..')) return null;
   const last = parts.pop() as string;
   return join(dir, ...parts, `${last}${extension}`);
+}
+
+/**
+ * Where workspaces are kept: `<cpr>/workspaces/` (V25). Their folder before, `<cpr>/features/`, is
+ * moved there by one `rename` when only it is there (an empty `workspaces/` is replaced); with both,
+ * the old one is `left` as it is.
+ */
+export async function workspacesFolder(cpr: string): Promise<{ dir: string; left?: true }> {
+  const dir = join(cpr, 'workspaces');
+  const old = join(cpr, 'features');
+  try {
+    await rename(old, dir);
+    return { dir };
+  } catch {
+    // No old folder (often: moved already, or by another reader just now), or both are there.
+    const left = await access(old).then(
+      () => true,
+      () => false,
+    );
+    return left ? { dir, left } : { dir };
+  }
 }
 
 /** Where a workspace's thread is kept: `<cpr>/threads/<branch>.jsonl`. */
@@ -111,9 +141,9 @@ const real = (path: string) => {
   }
 };
 
-/** The branch of the workspace whose worktree holds `cwd`, from the records in `<cpr>/features/`. */
+/** The branch of the workspace whose worktree holds `cwd`, from the records in `<cpr>/workspaces/`. */
 async function workspaceAt(cpr: string, cwd: string): Promise<string | null> {
-  const dir = join(cpr, 'features');
+  const { dir } = await workspacesFolder(cpr);
   const files = await readdir(dir, { recursive: true }).catch(() => [] as string[]);
   const here = real(cwd);
   for (const file of files) {

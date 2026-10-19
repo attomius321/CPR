@@ -66,9 +66,10 @@ import {
   readThreadEnd,
   threadPath,
   turnEnded,
+  workspacesFolder,
 } from './thread.js';
 
-/** A workspace on disk: `cpr/features/<branch>.json` (V18), one per branch. */
+/** A workspace on disk: `cpr/workspaces/<branch>.json` (V18; `cpr/features/` before V25), one per branch. */
 export interface WorkspaceFile {
   /** The agent started for it; null when none was found. */
   agent: WorkspaceAgentRecord | null;
@@ -109,7 +110,7 @@ export interface WorkspaceAgentRecord {
 
 /** Every workspace file's first key: where an agent that opens it finds its instructions. */
 export const WORKSPACE_ABOUT =
-  'A feature started in CPR. Agents: read cpr/AGENTS.md before acting on it.';
+  'A workspace started in CPR. Agents: read cpr/AGENTS.md before acting on it.';
 
 /** Longest brief: it goes on the agent's command line (Windows takes 32,767 characters). */
 export const MAX_BRIEF = 20_000;
@@ -903,7 +904,7 @@ export type OpenFolder = (
   folder: string,
 ) => Promise<{ opened: true } | { opened: false; message: string }>;
 
-/** Workspaces of `repo`, kept beside its reviews (`cpr/features/`, else CPR's cache). */
+/** Workspaces of `repo`, kept beside its reviews (`cpr/workspaces/`, else CPR's cache). */
 export function workspaces(
   repo: GitRepo,
   cacheDir: string,
@@ -934,7 +935,14 @@ export function workspaces(
     terminals?: Terminals;
   },
 ): Workspaces {
-  const place = () => reviewPlace(repo, cacheDir);
+  /** Where reviews and workspaces are kept; `cpr/features/` moved first (V25), or noted when left. */
+  const place = async (): Promise<ReviewPlace> => {
+    const where = await reviewPlace(repo, cacheDir);
+    if (!(await workspacesFolder(dirname(where.dir))).left) return where;
+    const left =
+      'cpr/features/, where workspaces were kept before, is still here: CPR reads cpr/workspaces/.';
+    return { ...where, note: where.note ? `${where.note} ${left}` : left };
+  };
   const config = () => readWorkspaceConfig(root);
   const real = (path: string) => {
     try {
@@ -945,7 +953,7 @@ export function workspaces(
   };
   /** The folder holding `cpr/` (or its stand-in in the cache): the agent may read it. */
   const cprFolder = (where: ReviewPlace) => dirname(where.dir);
-  const workspacesDir = (where: ReviewPlace) => join(cprFolder(where), 'features');
+  const workspacesDir = (where: ReviewPlace) => join(cprFolder(where), 'workspaces');
   /** `workspaces.worktrees` is relative to the checkout that holds `cpr/`. */
   const mainRoot = (where: ReviewPlace) =>
     where.place === 'repository' ? dirname(cprFolder(where)) : repo.root;

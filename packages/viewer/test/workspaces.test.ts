@@ -183,7 +183,7 @@ const verdict = (event: 'approve' | 'request-changes' | 'comment', head = TIP) =
   merged: false,
 });
 
-describe('featureNext', () => {
+describe('workspaceNext', () => {
   const next = (f: Partial<WorkspaceSummary>, r?: Partial<BranchReviewSummary>) => {
     const { group, text, chip } = workspaceNext(summary(f), r ? review(r) : undefined);
     return { group, text, mark: chip.mark };
@@ -268,7 +268,7 @@ describe('featureNext', () => {
   });
 });
 
-describe('featureGroups', () => {
+describe('workspaceGroups', () => {
   it('groups workspaces by what they need, the reviews matched by branch', () => {
     const groups = workspaceGroups(
       [
@@ -293,7 +293,7 @@ describe('featureGroups', () => {
   });
 });
 
-describe('featureName (V24c)', () => {
+describe('workspaceName (V24c)', () => {
   it("is the workspace's title; before V24, its brief's first line; else its branch", () => {
     expect(
       workspaceName(summary({ kind: 'fix', title: 'Dates sort as text', brief: '# Fix: …' })),
@@ -308,7 +308,7 @@ describe('featureName (V24c)', () => {
   });
 });
 
-describe('featureChips', () => {
+describe('workspaceChips', () => {
   it("marks a workspace's branch, local and pushed, with a link to the workspace", () => {
     const chips = workspaceChips(
       [summary(), summary({ branch: 'feature/gone', tip: null })],
@@ -328,7 +328,7 @@ describe('featureChips', () => {
   });
 });
 
-describe('featuresFirst', () => {
+describe('workspacesFirst', () => {
   const at = (hour: number) => `2026-10-18T${hour}:00:00.000Z`;
   it("lists the workspaces that need you, then working ones, each by its agent's last action, newest first (V23)", () => {
     const first = workspacesFirst(

@@ -99,14 +99,14 @@ Never resolve it on the default branch: the resolution would be code nobody revi
 ## Approved in a linked worktree
 
 \`git worktree list\` shows where each branch is checked out. If you work in a linked worktree
-(a feature's) and \`into\` is checked out in another one (usually the main checkout),
+(a workspace's) and \`into\` is checked out in another one (usually the main checkout),
 \`git switch <into>\` fails here: do not merge here. Say that \`head\` is approved and is to be
 merged from the worktree that has \`into\` checked out.
 
-## Features
+## Workspaces
 
-A feature started in CPR is a branch with a worktree of its own and a record in
-\`cpr/features/<branch>.json\`: the person's \`brief\`, the \`base\` it started from, and
+A workspace started in CPR is a branch with a worktree of its own and a record in
+\`cpr/workspaces/<branch>.json\`: the person's \`brief\`, the \`base\` it started from, and
 \`planFirst\`. If you were started on one:
 
 - Work only in its worktree, on its branch.

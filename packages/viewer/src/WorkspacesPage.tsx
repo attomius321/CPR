@@ -137,6 +137,8 @@ export function WorkspacesPage() {
         </span>
       </h1>
       {notice && <NoticeLine notice={notice} />}
+      {/* Why they are kept where they are (CPR's cache), or a folder left from before (V25). */}
+      {list?.note && <p className="hint workspaces-note">{list.note}</p>}
       {error && (
         <p className="commits-error error" role="alert">
           {error}
