@@ -152,7 +152,10 @@ export {
 } from './git/branches.js';
 export {
   PERMISSION_MODES,
+  WORK_KINDS,
   type AgentKind,
+  type BriefPart,
+  type BriefParts,
   type AgentStateName,
   type FeatureAgentState,
   type FeatureList,
@@ -168,6 +171,8 @@ export {
   type TerminalAvailability,
   type ThreadEntry,
   type ThreadQuestion,
+  type WorkKind,
+  type WorkKindSpec,
 } from './features.js';
 export {
   addWorktree,

@@ -2904,3 +2904,28 @@ Learned:
 - The package manager is not always npm, pnpm or yarn: zod's `packageManager` is `nub`, and
   `nub run test` is what its CONTRIBUTING says, so the field's name is used as given.
 
+## V24a — Kinds and parts in the record (2026-10-19, branch `milestone/v24-structured-brief`)
+
+A start request may now give a kind (Feature, Fix, Refactor, Chore, Spike), a title and the
+kind's parts instead of one brief. The server checks them, makes the brief (`briefOf`: `# Fix:
+<title>`, then each part with text under its heading, Done when last), and keeps kind, title and
+parts in the record beside it; the list gives kind and title. The prompt adds the kind's one
+line after the brief. Branch prefixes are per kind (`features.branchPrefixes`). Nothing in the
+dialog changed yet: it still posts one brief, which makes a record exactly as before.
+
+**Learned**:
+- One table of headings in the brief's order gives every kind's order, so the server's list of
+  kinds for the dialog and the brief agree by construction; the dialog will render that list
+  rather than keep a copy (the viewer may not import runtime code from core).
+- "`pnpm run check` passes" and "the project's checks pass" need different verbs: the Done when
+  token is `{checks pass}`, verb included, never at the start of a sentence.
+- Turning an old `{ brief }` request into a Feature would have changed what an old client's agent
+  is told (its whole brief under "## Goal"); it stays a record as before V24.
+- A spike's prompt cannot keep "Commit your work … the person reviews the branch": it contradicts
+  the spike's line. Its closing paragraph says to commit nothing unless asked.
+
+**Verification**: tests first — 9 new unit tests and the changed options test red before the code
+(`briefOf is not a function`, missing fields, no kind line), green after; 740 unit tests, lint,
+typecheck, build, 104 of 104 e2e (the dialog still posts one brief). No analysis code changed: no
+regression sets. Not verified yet: a real agent given a kind's brief (V24c).
+

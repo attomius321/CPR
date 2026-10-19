@@ -461,7 +461,7 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 ```jsonc
 {
   "plugins": ["angular"],
-  "features": { "branchPrefix": "feature/", "worktrees": "../{repo}.worktrees" },
+  "features": { "branchPrefixes": { "fix": "bugfix/" }, "worktrees": "../{repo}.worktrees" },
   "agent": { "permissionMode": "default", "model": "opus" }
 }
 ```
@@ -469,7 +469,8 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 | Key | Default | What it does |
 |---|---|---|
 | `plugins` | none | Plugins every run uses, by name or path. |
-| `features.branchPrefix` | `feature/` | The start of a new workspace's branch name. |
+| `features.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, per kind of work; an object with some kinds changes only those. |
+| `features.branchPrefix` | `feature/` | The Feature prefix, as before kinds of work; `branchPrefixes.feature` wins over it. |
 | `features.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout (`{repo}` is its folder name). |
 | `agent.permissionMode` | `default` | The permission mode the start dialog suggests: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's | The model agents start with. |

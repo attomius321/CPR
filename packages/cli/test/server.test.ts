@@ -1083,7 +1083,20 @@ describe('cpr view: features (V18)', () => {
   };
   const options: FeatureOptions = {
     base: { from: 'main', sha: C },
-    branchPrefix: 'feature/',
+    branchPrefixes: {
+      feature: 'feature/',
+      fix: 'fix/',
+      refactor: 'refactor/',
+      chore: 'chore/',
+      spike: 'spike/',
+    },
+    kinds: [
+      {
+        kind: 'fix',
+        name: 'Fix',
+        parts: [{ part: 'happens', heading: 'What happens', required: true }],
+      },
+    ],
     worktrees: '/work/app.worktrees/<branch>',
     agent: { kind: 'claude', command: '/usr/bin/claude', permissionMode: 'default' },
     maxBrief: 20000,
@@ -1219,6 +1232,35 @@ describe('cpr view: features (V18)', () => {
     }
     expect(started.length).toBe(before);
     expect((await get('/api/features/start')).status).toBe(405);
+  });
+
+  it('passes a kind of work on as asked; its fields must be text (V24)', async () => {
+    const work = {
+      kind: 'fix',
+      title: 'Dates sort as text',
+      parts: { happens: 'They sort 1, 10, 2.', doneWhen: 'A test passes.' },
+      branch: 'fix/dates',
+      planFirst: false,
+    };
+    expect((await post('/api/features', work)).status).toBe(200);
+    expect(started.at(-1)).toEqual(work);
+    // What the parts say is the features' to check: an unknown part is passed on.
+    expect((await post('/api/features', { ...work, parts: { size: 'L' } })).status).toBe(200);
+    expect(started.at(-1)?.parts).toEqual({ size: 'L' });
+
+    const before = started.length;
+    for (const body of [
+      { ...work, kind: 3 },
+      { ...work, title: ['T'] },
+      { ...work, parts: 'H' },
+      { ...work, parts: ['H'] },
+      { ...work, parts: { happens: 3 } },
+      // Neither a brief nor a kind.
+      { branch: 'fix/dates', planFirst: false },
+    ]) {
+      expect((await post('/api/features', body)).status, JSON.stringify(body)).toBe(400);
+    }
+    expect(started.length).toBe(before);
   });
 
   it('starts an agent again', async () => {

@@ -32,7 +32,7 @@ export function StartFeatureDialog({
   const [typed, setTyped] = useState<string | null>(null);
   const [planFirst, setPlanFirst] = useState(true);
   const [mode, setMode] = useState<PermissionMode>(options.agent?.permissionMode ?? 'default');
-  const branch = typed ?? proposeBranch(brief, options.branchPrefix, taken);
+  const branch = typed ?? proposeBranch(brief, options.branchPrefixes.feature, taken);
   const problem = branchProblem(branch, taken);
   const tooLong = brief.length > options.maxBrief;
   const ready = brief.trim() !== '' && !problem && !tooLong && !running;

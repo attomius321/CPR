@@ -13,6 +13,7 @@ import {
   type LocalReview,
   type CheckoutTarget,
   type FeatureReply,
+  type BriefParts,
   type FeatureRequest,
   type FeatureTerminalRequest,
   type Graph,
@@ -21,6 +22,7 @@ import {
   type HistoryScope,
   type RefList,
   type RepoStatus,
+  type WorkKind,
 } from '@cpr/core';
 import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
@@ -937,16 +939,29 @@ function json(res: ServerResponse, status: number, value: unknown): void {
 }
 
 /**
- * `{ brief, branch, planFirst, base?, permissionMode? }`, each of its type; what they say is the
- * features' to check (V18).
+ * `{ kind, title, parts, branch, planFirst, base?, permissionMode? }` (V24), or `brief` instead
+ * of the kind, title and parts, each of its type; what they say is the features' to check (V18).
  */
 function parseFeatureRequest(text: string): FeatureRequest {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('expected { brief, branch, planFirst }');
+    throw new Error('expected { kind, title, parts, branch, planFirst }');
   }
-  const { brief, branch, planFirst, base, permissionMode } = value;
-  if (typeof brief !== 'string') throw new Error('brief: what to build');
+  const { brief, kind, title, parts, branch, planFirst, base, permissionMode } = value;
+  if (brief === undefined && kind === undefined) {
+    throw new Error('kind: feature, fix, refactor, chore or spike');
+  }
+  if (brief !== undefined && typeof brief !== 'string') throw new Error('brief: what to build');
+  if (kind !== undefined && typeof kind !== 'string') {
+    throw new Error('kind: feature, fix, refactor, chore or spike');
+  }
+  if (title !== undefined && typeof title !== 'string') throw new Error("title: the work's name");
+  const textOnly = (v: unknown) =>
+    v !== null &&
+    typeof v === 'object' &&
+    !Array.isArray(v) &&
+    Object.values(v).every((x) => typeof x === 'string');
+  if (parts !== undefined && !textOnly(parts)) throw new Error('parts: each a text');
   if (typeof branch !== 'string') throw new Error("branch: the new branch's name");
   if (typeof planFirst !== 'boolean') throw new Error('planFirst: true or false');
   if (base !== undefined && typeof base !== 'string') throw new Error('base: a full SHA');
@@ -954,7 +969,10 @@ function parseFeatureRequest(text: string): FeatureRequest {
     throw new Error('permissionMode: default, acceptEdits or auto');
   }
   return {
-    brief,
+    ...(brief === undefined ? {} : { brief }),
+    ...(kind === undefined ? {} : { kind: kind as WorkKind }),
+    ...(title === undefined ? {} : { title }),
+    ...(parts === undefined ? {} : { parts: parts as BriefParts }),
     branch,
     planFirst,
     ...(base === undefined ? {} : { base }),

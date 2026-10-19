@@ -5850,8 +5850,8 @@ Claude Code session acting while the page is open (the e2e fake runs CPR's real 
 
 ### V24 — A structured brief: kind, title, goal, done when
 
-**Status:** planned (2026-10-19), on branch `milestone/v24-structured-brief`; not started. Plan
-revised the same day with the user's answers: Spike and Refactor are kinds of their own; "Done
+**Status:** in progress on branch `milestone/v24-structured-brief`: V24a built (2026-10-19);
+V24b and V24c not started. Plan revised the same day with the user's answers: Spike and Refactor are kinds of their own; "Done
 when" is optional for every kind; CPR guesses the project's check command; the brief's format
 left to the plan (Markdown headings, decision 124).
 
@@ -6074,7 +6074,7 @@ first), then the dialog, then the list and panel; the real-agent check last.
 
 | # | Milestone | Output |
 |---|---|---|
-| V24a | Kinds and parts in the record | `kind`, `title`, `parts` in `FeatureRequest`, the record and `FeatureSummary`; `briefOf`; the per-kind prompt line; `branchPrefixes`; server validation; old records and `{ brief }` requests as before. |
+| V24a ✅ | Kinds and parts in the record | `kind`, `title`, `parts` in `FeatureRequest`, the record and `FeatureSummary`; `briefOf`; the per-kind prompt line; `branchPrefixes`; server validation; old records and `{ brief }` requests as before. |
 | V24b | The check guess | `guessCheck` and `GET /api/features/check`; the 16-repository comparison repeated through it. |
 | V24c | The structured dialog | Kind control, the kind's inputs, Done when with the guess, More, the draft, branch from title and kind; the list's title and kind tag; e2e; screenshots; the real-agent check. |
 
@@ -6093,6 +6093,25 @@ first), then the dialog, then the list and panel; the real-agent check last.
 a guess from agent instructions; attaching screenshots or logs as files; filling a brief from an
 issue or a review comment; an LLM rewriting the person's brief; spike answers as a document kind
 in reviews.
+
+**As built (V24a)**:
+- The start dialog's options carry the kinds (`kinds`: each one's name, its parts in the brief's
+  order with their headings, which one is required, Done when's default), so V24c's dialog
+  renders the server's one table instead of a copy: the brief's order and the dialog's are the
+  same by construction. `branchPrefix` became `branchPrefixes`; today's dialog uses the Feature's.
+- Done when's defaults say `{checks pass}` where the plan said `<check>`: the token carries its
+  verb, because "`pnpm run check` passes" and "the project's checks pass" do not agree with one
+  verb. The Chore's default reads "Nothing else changes, and {checks pass}." so the token is never
+  at the start of a sentence.
+- A request with `brief` alone makes a record as before V24 (no kind, no title), not a Feature
+  with the brief's first line as title: as a Feature, an old client's agent would get its whole
+  brief under "## Goal", which is not what it was told before.
+- A title is one line of at most 200 characters (not in the plan): it names the workspace in
+  lists and proposes its branch.
+- The prompt names the work by its kind ("You are starting a new fix", "This fix's record"), and
+  a Spike's closing paragraph says to commit nothing unless the brief asks and to give the answer
+  in the report, instead of "Commit your work … the person reviews the branch".
+- The brief's sections are separated by blank lines.
 
 ### Phase 1 milestones
 

@@ -44,9 +44,51 @@ export type AgentKind = 'claude';
 export type PermissionMode = 'default' | 'acceptEdits' | 'auto';
 export const PERMISSION_MODES: readonly PermissionMode[] = ['default', 'acceptEdits', 'auto'];
 
+/**
+ * What a workspace is for (V24): it picks the brief's parts, the branch's prefix and the one line
+ * CPR adds to the agent's prompt.
+ */
+export type WorkKind = 'feature' | 'fix' | 'refactor' | 'chore' | 'spike';
+export const WORK_KINDS: readonly WorkKind[] = ['feature', 'fix', 'refactor', 'chore', 'spike'];
+
+/** The parts of a brief the person writes (V24); each kind has some of them. */
+export interface BriefParts {
+  /** Feature: what it should do, and why. */
+  goal?: string;
+  /** Fix: what goes wrong, and what should happen instead. */
+  happens?: string;
+  /** Refactor: what, and why its current shape is a problem. */
+  restructure?: string;
+  /** Chore: what, and why now. */
+  change?: string;
+  /** Spike: what to find out, and what the answer will decide. */
+  question?: string;
+  known?: string;
+  reproduce?: string;
+  where?: string;
+  outOfScope?: string;
+  notes?: string;
+  doneWhen?: string;
+}
+export type BriefPart = keyof BriefParts;
+
+/** A kind of work as the start dialog offers it (V24). */
+export interface WorkKindSpec {
+  kind: WorkKind;
+  /** Its name, as the brief's first line says it: "Fix". */
+  name: string;
+  /** Its parts in the brief's order: the one it needs first, Done when last. */
+  parts: { part: BriefPart; heading: string; required?: true }[];
+  /** Done when's text until the person changes it; `{checks pass}` stands for the check. */
+  doneWhen?: string;
+}
+
 /** A feature and its agent, for the commits page. */
 export interface FeatureSummary {
   branch: string;
+  /** What it is for, and its name (V24); absent for workspaces started before. */
+  kind?: WorkKind;
+  title?: string;
   /** The commit the branch started at, and the branch it was taken from (absent: a picked row). */
   base: string;
   from?: string;
@@ -92,8 +134,10 @@ export interface FeatureTerminalRequest {
 export interface FeatureOptions {
   /** The default branch's tip, where a feature starts unless a row is picked. */
   base: { from: string; sha: string } | null;
-  /** Proposed names start with it (`feature/`). */
-  branchPrefix: string;
+  /** Proposed names start with their kind's (`fix/`, V24). */
+  branchPrefixes: Record<WorkKind, string>;
+  /** The kinds of work and their parts (V24). */
+  kinds: WorkKindSpec[];
   /** Where a worktree goes, `<branch>` standing for the branch's folder name. */
   worktrees: string;
   /** The agent CPR starts; null when none is installed. */
@@ -111,9 +155,15 @@ export interface FeatureOptions {
   maxBrief: number;
 }
 
-/** `POST /api/features`. */
+/**
+ * `POST /api/features`: a kind of work with its title and parts, which CPR makes the brief of
+ * (V24); or, as before V24, the brief as one text.
+ */
 export interface FeatureRequest {
-  brief: string;
+  kind?: WorkKind;
+  title?: string;
+  parts?: BriefParts;
+  brief?: string;
   branch: string;
   /** A full SHA; the default branch's tip when absent. */
   base?: string;
