@@ -80,28 +80,20 @@ person asks you to (for example "check my review"), not because you came across 
 - \`request-changes\`: fix each comment in new commits on the branch. Then say, one line per
   comment, what you changed (with the commit) or why you did not.
 - \`comment\`: answer each comment; change code only where a comment asks for it.
-- \`approve\` with \`into\` (the repository's default branch): merge the approved commit \`head\`
-  into \`into\` — that commit, not the branch's tip: later commits are not approved.
-  \`git switch <into>\`, then \`git merge --no-ff <head>\`, unless the project merges another way.
+- \`approve\` with \`into\`: the approved commit \`head\` is to be merged into \`into\`, and CPR
+  merges it (its merger: Merge in CPR, or \`cpr merge <branch>\`). Do not merge it yourself
+  unless the person asks you to; there is nothing to do.
 - \`approve\` without \`into\` (a review of the default branch's unpushed commits): those commits,
   up to \`head\`, may be pushed.
 - Push only when and what the project's own instructions say.
 
 ## A merge conflict
 
-Never resolve it on the default branch: the resolution would be code nobody reviewed.
+When CPR says the branch conflicts with \`into\` (before the review, or when it merged):
 
-1. \`git merge --abort\`: the default branch is as it was.
-2. On the reviewed branch, merge the default branch in (\`git merge <into>\`), resolve the
-   conflicts there and commit.
-3. Tell the person the branch needs another review; merge only after the next approval.
-
-## Approved in a linked worktree
-
-\`git worktree list\` shows where each branch is checked out. If you work in a linked worktree
-(a workspace's) and \`into\` is checked out in another one (usually the main checkout),
-\`git switch <into>\` fails here: do not merge here. Say that \`head\` is approved and is to be
-merged from the worktree that has \`into\` checked out.
+1. On the branch, merge \`into\` in (\`git merge <into>\`), resolve the conflicts there and
+   commit. Never resolve them on \`into\`: the resolution would be code nobody reviewed.
+2. Tell the person the branch needs another review.
 
 ## Workspaces
 
@@ -584,7 +576,7 @@ export function branchReviews(
 
 /**
  * A verdict as text for an agent's chat (V16): what was decided at which commit — for an
- * approval, the merge it asks for (V17) —, the summary, each comment with its file and line,
+ * approval, the merge CPR makes (V26) —, the summary, each comment with its file and line,
  * symbol and code, then where the review and the agents' instructions are.
  */
 export function verdictText(
@@ -599,7 +591,7 @@ export function verdictText(
   if (verdict.event === 'approve') {
     lines.push(
       verdict.into
-        ? `Approved the branch ${info.branch} at ${at}: merge ${at} into ${verdict.into}.`
+        ? `Approved the branch ${info.branch} at ${at}: CPR merges ${at} into ${verdict.into}; do not merge it yourself.`
         : `Approved the unpushed commits of ${info.branch} up to ${at}: they may be pushed.`,
     );
   } else {
