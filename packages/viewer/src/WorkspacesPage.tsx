@@ -15,7 +15,7 @@ import { relativeDate } from './commits.js';
 import { markdownNodes, useMarkdown } from './markdown.js';
 import { useWorkspaceStarter } from './WorkspaceStarter.js';
 import { MergeControl } from './MergeControl.js';
-import { mergeActions, mergeState, type MergeAction } from './merges.js';
+import { mergeActions, mergeState, toReview, type MergeAction } from './merges.js';
 import { postJson } from './http.js';
 import {
   workspaceGroups,
@@ -210,6 +210,8 @@ export function WorkspacesPage() {
 
 const ACTION_NAMES: Record<MergeAction, string> = {
   land: 'Land',
+  approve: 'Approve',
+  change: 'Request changes',
   retry: 'Retry',
   remove: 'Remove',
 };
@@ -243,15 +245,26 @@ function MergeRow({ entry }: { entry: MergeEntry }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState(false);
+  const [changing, setChanging] = useState(false);
+  const [comments, setComments] = useState('');
   const { text, tone } = mergeState(entry);
-  const act = (action: MergeAction) => {
+  const post = (path: string, body: Record<string, string>) => {
     setBusy(true);
     setError(null);
-    postJson(`/api/merges/${action}`, { id: entry.id })
-      .then(() => reloadWorkspaces())
+    postJson(path, { id: entry.id, ...body })
+      .then(() => {
+        setChanging(false);
+        setComments('');
+        return reloadWorkspaces();
+      })
       .catch((e: unknown) => setError((e as Error).message))
       .finally(() => setBusy(false));
   };
+  const act = (action: MergeAction) => {
+    if (action === 'change') setChanging((open) => !open);
+    else post(`/api/merges/${action}`, {});
+  };
+  const regions = toReview(entry) ? (entry.resolution?.regions ?? []) : [];
   const shown = entry.check?.output && entry.check.ok === false;
   return (
     <li className={`merge-row merge-tone-${tone}`} aria-label={`Merge of ${entry.branch}`}>
@@ -276,14 +289,54 @@ function MergeRow({ entry }: { entry: MergeEntry }) {
           ))}
         </span>
       </div>
-      {entry.conflicts && (
+      {regions.length > 0 && (
+        <ol className="merge-regions" aria-label="Its resolution">
+          {regions.map((region, i) => (
+            <li key={i} className="merge-region">
+              <p className="merge-region-where small">
+                <span className="merge-file">
+                  {region.path}:{region.line}
+                </span>
+                {region.note && <span className="muted"> · {region.note}</span>}
+              </p>
+              <div className="merge-region-sides">
+                <MergeSide label={entry.into} lines={region.ours} />
+                {region.base && <MergeSide label="ancestor" lines={region.base} />}
+                <MergeSide label={entry.branch} lines={region.theirs} />
+              </div>
+              <MergeSide label="Written in its place" lines={region.text.split('\n')} written />
+            </li>
+          ))}
+        </ol>
+      )}
+      {changing && (
+        <form
+          className="merge-change"
+          onSubmit={(event) => {
+            event.preventDefault();
+            post('/api/merges/request-changes', { comments });
+          }}
+        >
+          <textarea
+            aria-label="What to change in the resolution"
+            placeholder="What to change: the merger agent answers again with your words"
+            rows={2}
+            value={comments}
+            onChange={(event) => setComments(event.target.value)}
+          />
+          <button type="submit" className="button" disabled={busy || comments.trim() === ''}>
+            Ask again
+          </button>
+        </form>
+      )}
+      {regions.length === 0 && entry.conflicts && (
         <ul className="merge-files small">
           {entry.conflicts.map((path) => (
             <li key={path}>{path}</li>
           ))}
         </ul>
       )}
-      {entry.state === 'needs-you' && entry.message && (
+      {entry.state === 'needs-you' && entry.message && !entry.resolution?.needsYou && (
         <p className="hint small">{entry.message}</p>
       )}
       {shown && (
@@ -298,6 +351,26 @@ function MergeRow({ entry }: { entry: MergeEntry }) {
         </p>
       )}
     </li>
+  );
+}
+
+/** One side of a conflict region, or the text written in its place. */
+function MergeSide({
+  label,
+  lines,
+  written,
+}: {
+  label: string;
+  lines: string[];
+  written?: boolean;
+}) {
+  return (
+    <figure className={`merge-side${written ? ' merge-written' : ''}`}>
+      <figcaption className="small muted">{label}</figcaption>
+      <pre>
+        {lines.length === 0 || (lines.length === 1 && lines[0] === '') ? ' ' : lines.join('\n')}
+      </pre>
+    </figure>
   );
 }
 

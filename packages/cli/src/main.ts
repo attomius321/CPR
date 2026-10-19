@@ -32,6 +32,7 @@ import {
   type AnalysisPhase,
   type ChangedLines,
   type Graph,
+  type AgentKind,
   type MergeEntry,
   type Severity,
   type TsPlugin,
@@ -51,6 +52,7 @@ import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
 import { branchReviews } from './reviews.js';
 import { merger, MergeRefused } from './merges.js';
+import { claudeMerger, codexMerger, type MergerAgent } from './merge-agent.js';
 import { codex, findCodex, type Codex } from './codex.js';
 import {
   claudeCode,
@@ -213,12 +215,16 @@ in CPR does: with --no-ff, in a worktree in CPR's cache, never in your checkout.
 it runs the check (merge.checks in cpr/config.json, else the one guessed from the
 target's files) and moves the target by fast-forward: in the worktree that has it
 checked out, else its ref. merge.push: true pushes it after. Without a check, the
-merge waits for --land. A conflict stops the merge: nothing changes.
+merge waits for --land. A conflict goes to a merger agent (Claude Code or Codex,
+merge.agent, merge.model) that answers each region; CPR writes its answer, and the
+merge waits for your --approve.
 
 Options:
   --into <branch>      Branch to merge into (default: the branch its workspace started
                        from, else the one the approval names, else the default branch)
   --land               Land the branch's merge that waits for it
+  --approve            Approve the merger agent's resolution of a conflict: it lands
+  --again <words>      Ask the merger agent again, with what to change in its resolution
   -h, --help           Show this help
 `;
 
@@ -571,7 +577,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         terminals,
       }),
       terminals,
-      merges: merger(repo, cacheDir),
+      merges: merger(repo, cacheDir, { mergerAgent: mergerFinder(repo.root, ctx.env) }),
     },
     open: vsCodeOpener(repo, ctx.env),
   });
@@ -611,10 +617,31 @@ function mergeLine(entry: MergeEntry): string {
       return `queued: ${entry.head.slice(0, 7)} into ${entry.into}${entry.message ? ` (${entry.message})` : ''}`;
     case 'merging':
       return `merging into ${entry.into} at ${entry.base?.slice(0, 7) ?? '?'}`;
+    case 'resolving':
+      return `resolving: ${entry.conflicts?.length ?? 0} conflicting file(s), asked of the merger agent`;
     case 'checking':
       return `checking: ${check?.commands.join(' && ') ?? ''} (${check?.source ?? ''})`;
-    case 'needs-you':
+    case 'needs-you': {
+      const regions = entry.resolution?.regions ?? [];
+      if (regions.length > 0 && entry.merge) {
+        const by = entry.resolution?.model ?? entry.resolution?.agent ?? '';
+        const tokens = entry.resolution?.usage
+          ? `, ${entry.resolution.usage.input} tokens in, ${entry.resolution.usage.output} out`
+          : '';
+        const checked =
+          check?.ok === false
+            ? `; its check failed: ${check.failed ?? ''}`
+            : check?.ok
+              ? `; checked${time}`
+              : '';
+        const lines = regions.map(
+          (r) =>
+            `  ${r.path}:${r.line}${r.note ? ` — ${r.note}` : ''}\n${r.text.replace(/^/gm, '    | ')}`,
+        );
+        return `needs you: review the resolution (${by}${tokens})${checked}\n${lines.join('\n')}\n  then --approve, or --again "<what to change>"`;
+      }
       return `needs you: ${entry.message ?? ''}${entry.conflicts ? `\n  ${entry.conflicts.join('\n  ')}` : ''}`;
+    }
     case 'ready':
       return `ready to land${time}${entry.message ? `: ${entry.message}` : ''}`;
     case 'landed': {
@@ -640,6 +667,8 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
       options: {
         into: { type: 'string' },
         land: { type: 'boolean', default: false },
+        approve: { type: 'boolean', default: false },
+        again: { type: 'string' },
         help: { type: 'boolean', short: 'h', default: false },
       },
     },
@@ -658,10 +687,28 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
     if (line !== last) ctx.stdout(`${line}\n`);
     last = line;
   };
-  const merges = merger(repo, defaultCacheDir(ctx.env), { onChange: print });
+  const merges = merger(repo, defaultCacheDir(ctx.env), {
+    onChange: print,
+    mergerAgent: mergerFinder(repo.root, ctx.env),
+  });
   const done = (entry: MergeEntry | undefined) => (entry?.state === 'landed' ? 0 : 1);
   try {
     const targets = await merges.targets(branch);
+    if (values.approve || values.again !== undefined) {
+      const entry = targets.entry;
+      if (entry?.state !== 'needs-you' || !entry.resolution) {
+        ctx.stderr(`cpr merge: ${branch} has no resolution to review\n`);
+        return 1;
+      }
+      const after = values.approve
+        ? await merges.approve(entry.id)
+        : await merges.requestChanges(entry.id, values.again ?? '');
+      print(after);
+      await merges.idle();
+      const now = (await merges.list()).merges.find((e) => e.id === entry.id);
+      if (now) print(now);
+      return done(now);
+    }
     if (values.land) {
       if (targets.entry?.state !== 'ready') {
         ctx.stderr(`cpr merge: ${branch} has no merge waiting to land\n`);
@@ -680,7 +727,7 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
     // Another CPR process (\`cpr view\`) merges in this repository: its progress, from the queue.
     for (;;) {
       const entry = (await merges.list()).merges.find((e) => e.id === queued.id);
-      if (!entry || !['queued', 'merging', 'checking'].includes(entry.state)) {
+      if (!entry || !['queued', 'merging', 'resolving', 'checking'].includes(entry.state)) {
         if (entry) print(entry);
         return done(entry);
       }
@@ -724,6 +771,25 @@ function codexFinder(
     if (!command) return null;
     found = codex(command, { cwd: root });
     return found;
+  };
+}
+
+/**
+ * The merger agent (V26c): `kind` (`merge.agent`), else `agent.kind`, else Claude Code, else
+ * Codex, whichever is installed.
+ */
+function mergerFinder(
+  root: string,
+  env: Readonly<Record<string, string | undefined>>,
+): (kind?: AgentKind) => Promise<MergerAgent | null> {
+  return async (kind) => {
+    const first = kind ?? readWorkspaceConfig(root).agent;
+    const order: AgentKind[] = first === 'codex' ? ['codex', 'claude'] : ['claude', 'codex'];
+    for (const each of kind ? [kind] : order) {
+      const command = each === 'claude' ? await findClaude(env) : await findCodex(env);
+      if (command) return each === 'claude' ? claudeMerger(command) : codexMerger(command);
+    }
+    return null;
   };
 }
 

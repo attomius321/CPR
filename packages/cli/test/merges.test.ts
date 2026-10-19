@@ -4,7 +4,14 @@ import { openRepo, type Verdict } from '@cpr/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { run } from '../src/main.js';
-import { merger, MergeRefused, readMergeConfig, type RunCheck } from '../src/merges.js';
+import {
+  merger,
+  MergeRefused,
+  readMergeConfig,
+  type ChangedSymbols,
+  type RunCheck,
+} from '../src/merges.js';
+import type { MergerAgent } from '../src/merge-agent.js';
 import { AGENTS, serializeReview } from '../src/reviews.js';
 import { serializeWorkspace, type WorkspaceFile } from '../src/workspaces.js';
 
@@ -89,9 +96,49 @@ function fakeChecks() {
   return { asked, run };
 }
 
-async function make(repo: TestRepo, runCheck = fakeChecks().run) {
-  return merger(await openRepo(repo.root), cache, { now: () => NOW, runCheck });
+async function make(
+  repo: TestRepo,
+  runCheck = fakeChecks().run,
+  more: Parameters<typeof merger>[2] = {},
+) {
+  return merger(await openRepo(repo.root), cache, { now: () => NOW, runCheck, ...more });
 }
+
+/** A merger agent that answers `answers` in turn; what it was asked. */
+function fakeAgent(...answers: string[]) {
+  const asked: { cwd: string; prompt: string; model?: string }[] = [];
+  const agent: MergerAgent = {
+    kind: 'claude',
+    run: (request) => {
+      asked.push(request);
+      const text = answers[asked.length - 1] ?? answers.at(-1) ?? '';
+      return Promise.resolve({ ok: true, text, usage: { input: 1200, output: 80 }, ms: 4000 });
+    },
+  };
+  return { asked, agent, find: () => Promise.resolve(agent) };
+}
+
+/**
+ * main and topic both change src/a.ts's one line from `export const a = 1;`: one region. Main
+ * also adds src/m.ts and topic src/t.ts (no conflict there).
+ */
+function conflicting() {
+  const made = setup();
+  const { repo } = made;
+  repo.git('switch', '--quiet', 'topic');
+  repo.write({ 'src/a.ts': 'export const a = "topic";\n' });
+  const T2 = repo.commit('T2: a is topic');
+  repo.git('switch', '--quiet', 'main');
+  repo.write({ 'src/a.ts': 'export const a = "main";\n' });
+  const M2 = repo.commit('M2: a is main');
+  review(repo, 'topic', { head: T2, into: 'main' });
+  return { ...made, shas: { ...made.shas, T2, M2 } };
+}
+
+const BOTH = JSON.stringify({
+  regions: { '1': 'export const a = "main" + "topic";' },
+  notes: { '1': 'kept both values' },
+});
 
 const subject = (repo: TestRepo, sha: string) => repo.git('log', '-1', '--format=%s', sha);
 const parents = (repo: TestRepo, sha: string) =>
@@ -446,6 +493,175 @@ describe('merging, checking and landing (V26a)', () => {
     const [entry] = (await m.list()).merges;
     expect(entry?.pushed).toEqual({ ok: true, remote: 'origin' });
     expect(repo.git('--git-dir', remote, 'rev-parse', 'main')).toBe(entry?.merge);
+  });
+});
+
+describe('the merger agent (V26c)', () => {
+  it('answers each region; CPR writes it, commits the merge, checks it, and waits for review', async () => {
+    const { repo, shas } = conflicting();
+    config(repo, { checks: 'ok' });
+    const agent = fakeAgent(BOTH);
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+
+    const [entry] = (await m.list()).merges;
+    expect(entry).toMatchObject({ state: 'needs-you', base: shas.M2, check: { ok: true } });
+    expect(entry?.resolution).toEqual({
+      agent: 'claude',
+      model: 'sonnet',
+      regions: [
+        {
+          path: 'src/a.ts',
+          line: 1,
+          ours: ['export const a = "main";'],
+          base: ['export const a = 1;'],
+          theirs: ['export const a = "topic";'],
+          text: 'export const a = "main" + "topic";',
+          note: 'kept both values',
+        },
+      ],
+      usage: { input: 1200, output: 80 },
+      ms: 4000,
+    });
+    const merge = entry?.merge ?? '';
+    expect(parents(repo, merge)).toEqual([shas.M2, shas.T2]);
+    expect(subject(repo, merge)).toBe('Merge topic: T2: a is topic');
+    expect(repo.git('show', `${merge}:src/a.ts`)).toBe('export const a = "main" + "topic";');
+    // Not landed before the person reviews it.
+    expect(repo.git('rev-parse', 'main')).toBe(shas.M2);
+
+    // Asked in CPR's merge worktree, with the region and the sides: not the other files.
+    expect(agent.asked).toHaveLength(1);
+    expect(agent.asked[0]?.cwd.startsWith(cache)).toBe(true);
+    expect(agent.asked[0]?.model).toBe('sonnet');
+    const prompt = agent.asked[0]?.prompt ?? '';
+    expect(prompt).toContain('main (ours): M2: a is main');
+    expect(prompt).toContain('topic (theirs): T2: a is topic');
+    expect(prompt).toContain('<<<<<<< main\nexport const a = "main";\n||||||| ancestor');
+    expect(prompt).not.toContain('export const m');
+
+    const landed = await m.approve(id);
+    expect(landed.state).toBe('landed');
+    expect(repo.git('rev-parse', 'main')).toBe(merge);
+    expect(readFileSync(join(repo.root, 'src', 'a.ts'), 'utf8')).toBe(
+      'export const a = "main" + "topic";\n',
+    );
+  });
+
+  it('stops when the agent says the person must decide: no merge, the worktree clean', async () => {
+    const { repo, shas } = conflicting();
+    const agent = fakeAgent('{"needsYou": "region 1: main and topic set a to different values"}');
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry).toMatchObject({ state: 'needs-you', conflicts: ['src/a.ts'] });
+    expect(entry?.resolution).toMatchObject({
+      regions: [],
+      needsYou: 'region 1: main and topic set a to different values',
+    });
+    expect(entry?.merge).toBeUndefined();
+    await expect(m.approve(id)).rejects.toThrow(/nothing to approve/);
+    const worktree = join(cache, 'worktrees', (await openRepo(repo.root)).id, 'merge');
+    expect(repo.git('-C', worktree, 'status', '--porcelain')).toBe('');
+    expect(repo.git('rev-parse', 'main')).toBe(shas.M2);
+  });
+
+  it('takes no answer that leaves a region out', async () => {
+    const { repo } = conflicting();
+    const m = await make(repo, fakeChecks().run, {
+      mergerAgent: fakeAgent('{"regions": {}}').find,
+    });
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry?.state).toBe('needs-you');
+    expect(entry?.message).toMatch(
+      /the merger agent's answer: the answer has no text for region 1/,
+    );
+    expect(entry?.merge).toBeUndefined();
+  });
+
+  it("runs again with the person's words and the earlier answer", async () => {
+    const { repo } = conflicting();
+    const again = JSON.stringify({ regions: { '1': 'export const a = "main";' } });
+    const agent = fakeAgent(BOTH, again);
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const queued = await m.requestChanges(id, "Keep main's value.");
+    expect(queued.state).toBe('queued');
+    await m.idle();
+
+    expect(agent.asked).toHaveLength(2);
+    expect(agent.asked[1]?.prompt).toContain(
+      "Your earlier answer was reviewed: Keep main's value.\nIt was:",
+    );
+    expect(agent.asked[1]?.prompt).toContain('"1":"export const a = \\"main\\" + \\"topic\\";"');
+    const [entry] = (await m.list()).merges;
+    expect(entry?.resolution?.regions[0]?.text).toBe('export const a = "main";');
+    expect(entry?.again).toBeUndefined();
+  });
+
+  it('gives the agent cpr/merge.md, the symbols both sides changed, and merge.model', async () => {
+    const { repo } = conflicting();
+    config(repo, { model: 'opus' });
+    writeFileSync(join(repo.root, 'cpr', 'merge.md'), 'Prefer main for constants.\n');
+    const agent = fakeAgent(BOTH);
+    const asked: string[] = [];
+    const changedSymbols: ChangedSymbols = (from, to, files) => {
+      asked.push(`${from.slice(0, 7)}..${to.slice(0, 7)} ${files.join(',')}`);
+      return Promise.resolve([
+        { path: 'src/a.ts', name: 'a', kind: 'variable', status: 'modified' },
+        ...(to === repo.git('rev-parse', 'main')
+          ? [{ path: 'src/a.ts', name: 'onlyMain', kind: 'function', status: 'added' as const }]
+          : []),
+      ]);
+    };
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find, changedSymbols });
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const prompt = agent.asked[0]?.prompt ?? '';
+    expect(agent.asked[0]?.model).toBe('opus');
+    expect(prompt).toContain(
+      "The project's merge rules (cpr/merge.md):\n\nPrefer main for constants.",
+    );
+    expect(prompt).toContain('- src/a.ts: a (variable): main modified, topic modified');
+    expect(prompt).not.toContain('onlyMain');
+    expect(asked).toHaveLength(2);
+    expect(asked.every((a) => a.endsWith(' src/a.ts'))).toBe(true);
+  });
+
+  it('gives no one a file deleted on one side', async () => {
+    const { repo, shas } = setup();
+    repo.git('switch', '--quiet', 'topic');
+    repo.git('rm', '--quiet', 'src/a.ts');
+    const T2 = repo.commit('T2: remove a');
+    repo.git('switch', '--quiet', 'main');
+    repo.write({ 'src/a.ts': 'export const a = "main";\n' });
+    repo.commit('M2');
+    review(repo, 'topic', { head: T2, into: 'main' });
+    const agent = fakeAgent(BOTH);
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find });
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry).toMatchObject({ state: 'needs-you', conflicts: ['src/a.ts'] });
+    expect(entry?.message).toMatch(/src\/a\.ts is deleted on one side/);
+    expect(agent.asked).toEqual([]);
+    expect(shas.M).not.toBe(repo.git('rev-parse', 'main'));
+  });
+
+  it('does not land a resolution whose check failed', async () => {
+    const { repo } = conflicting();
+    config(repo, { checks: 'fail' });
+    const m = await make(repo, fakeChecks().run, { mergerAgent: fakeAgent(BOTH).find });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry).toMatchObject({ state: 'needs-you', check: { ok: false } });
+    await expect(m.approve(id)).rejects.toThrow(/its check failed/);
   });
 });
 

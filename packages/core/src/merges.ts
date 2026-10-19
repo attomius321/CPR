@@ -1,5 +1,6 @@
 // CPR's merger (V26): approved branches merged in a worktree of CPR's own, checked, and landed by
 // fast-forward. What `cpr view`'s server answers and the viewer reads. Types only.
+import type { AgentKind } from './workspaces.js';
 
 /** Where a queued merge is. */
 export const MERGE_STATES = [
@@ -7,9 +8,14 @@ export const MERGE_STATES = [
   'queued',
   /** `git merge --no-ff` in CPR's merge worktree. */
   'merging',
+  /** It conflicted: the merger agent answers each region (V26c). */
+  'resolving',
   /** The check runs on the merge. */
   'checking',
-  /** It conflicts (`conflicts`), or what git said needs the person (`message`). */
+  /**
+   * A resolution to review (`resolution`), a conflict nobody resolved (`conflicts`), or what
+   * needs the person (`message`).
+   */
   'needs-you',
   /** Merged and checked: to land. No check, or a refused landing, waits for Land. */
   'ready',
@@ -35,6 +41,33 @@ export interface MergeCheckRun {
   output?: string;
 }
 
+/** A conflict region and what the merger agent answered for it (V26c). */
+export interface MergeRegion {
+  path: string;
+  /** Its first line in the conflicted file, 1-based. */
+  line: number;
+  /** The target's side, the ancestor's (null when git did not write it), the branch's side. */
+  ours: string[];
+  base: string[] | null;
+  theirs: string[];
+  /** The text written in its place. */
+  text: string;
+  /** The agent's line on what it kept. */
+  note?: string;
+}
+
+/** How the merger agent resolved a merge's conflicts, for the person to review (V26c). */
+export interface MergeResolution {
+  agent: AgentKind;
+  model?: string;
+  /** Empty when it said the person must decide (`needsYou`). */
+  regions: MergeRegion[];
+  needsYou?: string;
+  /** Its run: tokens in and out, when the agent says, and how long it took. */
+  usage?: { input: number; output: number };
+  ms: number;
+}
+
 /** A queue entry (V26a). */
 export interface MergeEntry {
   id: string;
@@ -53,8 +86,12 @@ export interface MergeEntry {
   base?: string;
   /** The merge commit. */
   merge?: string;
-  /** Conflicting paths (state `needs-you`). */
+  /** Conflicting paths. */
   conflicts?: string[];
+  /** The merger agent's resolution (V26c): reviewed before the merge lands. */
+  resolution?: MergeResolution;
+  /** The person's words on an earlier resolution, for the next run, and that run's texts. */
+  again?: { comments: string; previous: string[] };
   /** Absent: none was found or set, and the merge waits for Land. */
   check?: MergeCheckRun;
   /** Why it waits or failed, in git's words where git said it. */

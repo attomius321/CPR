@@ -294,6 +294,14 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         if (url.pathname === '/api/merges/targets') {
           return ofBranch(req, res, url, (branch) => merges.targets(branch));
         }
+        if (url.pathname === '/api/merges/approve') {
+          return written(req, res, parseMergeId, (id) => answer(res, () => merges.approve(id)));
+        }
+        if (url.pathname === '/api/merges/request-changes') {
+          return written(req, res, parseMergeChanges, ({ id, comments }) =>
+            answer(res, () => merges.requestChanges(id, comments)),
+          );
+        }
         const action = /^\/api\/merges\/(land|retry|remove)$/.exec(url.pathname)?.[1];
         if (action) {
           return written(req, res, parseMergeId, (id) =>
@@ -1084,6 +1092,14 @@ function parseMergeRequest(text: string): MergeRequest {
     throw new Error('into: the branch to merge into');
   }
   return { branch: value.branch, into: value.into };
+}
+
+/** `{ id, comments }`: what to change in a merge's resolution (V26c). */
+function parseMergeChanges(text: string): { id: string; comments: string } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.id !== 'string' || value.id === '') throw new Error('id: a queued merge');
+  if (typeof value.comments !== 'string') throw new Error('comments: what to change');
+  return { id: value.id, comments: value.comments };
 }
 
 /** `{ id }`: a queued merge. */

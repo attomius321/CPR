@@ -46,6 +46,68 @@ describe('mergeState (V26a)', () => {
   });
 });
 
+describe('a resolution to review (V26c)', () => {
+  const region = {
+    path: 'src/a.ts',
+    line: 1,
+    ours: ['a = 1'],
+    base: ['a = 0'],
+    theirs: ['a = 2'],
+    text: 'a = 3',
+  };
+  const resolution = { agent: 'claude' as const, model: 'sonnet', regions: [region], ms: 4000 };
+
+  it('says the agent is resolving, then what it resolved and how the check went', () => {
+    expect(mergeState(entry({ state: 'resolving', conflicts: ['src/a.ts'] }))).toEqual({
+      text: 'Resolving 1 conflicting file: the merger agent answers each region',
+      tone: 'wait',
+    });
+    expect(
+      mergeState(
+        entry({
+          state: 'needs-you',
+          merge: M,
+          resolution: { ...resolution, usage: { input: 3100, output: 120 } },
+          check: { ...check, ok: true, ms: 4200 },
+        }),
+      ),
+    ).toEqual({
+      text: 'Resolved 1 region (sonnet, 3.2K tokens) · checked in 4.2 s: review it',
+      tone: 'you',
+    });
+    expect(
+      mergeState(
+        entry({
+          state: 'needs-you',
+          merge: M,
+          resolution,
+          check: { ...check, ok: false, failed: 'pnpm check' },
+        }),
+      ).text,
+    ).toBe('Resolved 1 region (sonnet) · its check failed: pnpm check');
+    expect(
+      mergeState(
+        entry({
+          state: 'needs-you',
+          conflicts: ['src/a.ts'],
+          resolution: { ...resolution, regions: [], needsYou: 'a: two values' },
+          message: 'the merger agent: a: two values',
+        }),
+      ),
+    ).toEqual({ text: 'The merger agent: a: two values', tone: 'bad' });
+  });
+
+  it('offers Approve and Request changes on a resolution; no Approve when its check failed', () => {
+    const resolved = entry({ state: 'needs-you', merge: M, resolution });
+    expect(mergeActions(resolved)).toEqual(['approve', 'change', 'retry', 'remove']);
+    expect(mergeActions({ ...resolved, check: { ...check, ok: false } })).toEqual([
+      'change',
+      'retry',
+      'remove',
+    ]);
+  });
+});
+
 describe('mergeActions (V26a)', () => {
   it('offers Land when ready, Retry when stopped, Remove unless it runs', () => {
     expect(mergeActions(entry({}))).toEqual(['remove']);

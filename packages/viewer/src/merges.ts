@@ -7,6 +7,9 @@ export type MergeTone = 'wait' | 'you' | 'done' | 'bad';
 const short = (sha: string) => sha.slice(0, 7);
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+/** Tokens, short: `950`, `3.1K`. */
+const tokens = (n: number) => (n < 1000 ? String(n) : `${(n / 1000).toFixed(1)}K`);
+
 /** A check's time: `4.2 s`, `1 min 21 s`. */
 export function duration(ms: number): string {
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)} s`;
@@ -26,6 +29,11 @@ export function mergeState(entry: MergeEntry): { text: string; tone: MergeTone }
       };
     case 'merging':
       return { text: `Merging into ${entry.into}`, tone: 'wait' };
+    case 'resolving':
+      return {
+        text: `Resolving ${plural(entry.conflicts?.length ?? 0, 'conflicting file')}: the merger agent answers each region`,
+        tone: 'wait',
+      };
     case 'checking':
       return { text: `Checking: ${check?.commands.join(' && ') ?? ''}`, tone: 'wait' };
     case 'ready':
@@ -44,13 +52,40 @@ export function mergeState(entry: MergeEntry): { text: string; tone: MergeTone }
       const at = entry.merge ? `${entry.into} is at ${short(entry.merge)}` : (entry.message ?? '');
       return { text: [`Landed: ${at}`, took, pushed].filter(Boolean).join(' · '), tone: 'done' };
     }
-    case 'needs-you':
+    case 'needs-you': {
+      const regions = entry.resolution?.regions ?? [];
+      if (regions.length > 0 && entry.merge) {
+        const usage = entry.resolution?.usage;
+        const by = [
+          entry.resolution?.model ?? entry.resolution?.agent,
+          usage ? `${tokens(usage.input + usage.output)} tokens` : null,
+        ]
+          .filter(Boolean)
+          .join(', ');
+        const checked =
+          check?.ok === false
+            ? ` · its check failed: ${check.failed ?? ''}`
+            : check?.ok
+              ? ` · checked in ${duration(check.ms ?? 0)}: review it`
+              : ': review it';
+        return {
+          text: `Resolved ${plural(regions.length, 'region')} (${by})${checked}`,
+          tone: check?.ok === false ? 'bad' : 'you',
+        };
+      }
+      if (entry.resolution?.needsYou && entry.message) {
+        return {
+          text: `${entry.message.charAt(0).toUpperCase()}${entry.message.slice(1)}`,
+          tone: 'bad',
+        };
+      }
       return entry.conflicts
         ? {
             text: `Conflicts with ${entry.into} in ${plural(entry.conflicts.length, 'file')}`,
             tone: 'bad',
           }
         : { text: entry.message ?? 'Needs you', tone: 'bad' };
+    }
     case 'failed':
       return check?.ok === false
         ? { text: `The check failed: ${check.failed ?? ''}`, tone: 'bad' }
@@ -58,12 +93,23 @@ export function mergeState(entry: MergeEntry): { text: string; tone: MergeTone }
   }
 }
 
-export type MergeAction = 'land' | 'retry' | 'remove';
+export type MergeAction = 'land' | 'approve' | 'change' | 'retry' | 'remove';
 
-/** What a row offers: Land when ready, Retry when it stopped, Remove unless it runs. */
+/** Whether a merge waits for the person's review of the merger agent's resolution (V26c). */
+export const toReview = (entry: MergeEntry) =>
+  entry.state === 'needs-you' &&
+  Boolean(entry.merge) &&
+  (entry.resolution?.regions.length ?? 0) > 0;
+
+/**
+ * What a row offers: Land when ready; Approve (unless its check failed) and Request changes on a
+ * resolution; Retry when it stopped; Remove unless it runs.
+ */
 export function mergeActions(entry: MergeEntry): MergeAction[] {
-  if (entry.state === 'merging' || entry.state === 'checking') return [];
+  if (['merging', 'resolving', 'checking'].includes(entry.state)) return [];
   return [
+    ...(toReview(entry) && entry.check?.ok !== false ? (['approve'] as const) : []),
+    ...(toReview(entry) ? (['change'] as const) : []),
     ...(entry.state === 'ready' ? (['land'] as const) : []),
     ...(entry.state === 'failed' || entry.state === 'needs-you' ? (['retry'] as const) : []),
     'remove',
@@ -72,5 +118,5 @@ export function mergeActions(entry: MergeEntry): MergeAction[] {
 
 /** Whether the queue is to be read again soon: something in it runs or waits its turn. */
 export function mergeLive(merges: readonly MergeEntry[]): boolean {
-  return merges.some((e) => ['queued', 'merging', 'checking'].includes(e.state));
+  return merges.some((e) => ['queued', 'merging', 'resolving', 'checking'].includes(e.state));
 }

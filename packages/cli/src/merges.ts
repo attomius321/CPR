@@ -7,8 +7,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
+  abortMerge,
+  analyzeGit,
+  commitResolution,
   commitSubject,
+  conflictKinds,
   defaultBranch,
+  mergeBase,
   fastForwardBranch,
   isAncestor,
   listRefs,
@@ -20,8 +25,10 @@ import {
   upstreamOf,
   type GitRepo,
   type MergeCheckRun,
+  type AgentKind,
   type MergeEntry,
   type MergeList,
+  type MergeRegion,
   type MergeRequest,
   type MergeTargets,
   type RefList,
@@ -31,11 +38,24 @@ import { guessCheck, treeAt } from './check.js';
 import { CONFIG_FILES } from './plugins.js';
 import { readReview, reviewPath, reviewPlace } from './reviews.js';
 import { readWorkspace, workspacePath, type WorkspaceFile } from './workspaces.js';
+import {
+  applyAnswer,
+  conflictRegions,
+  mergerPrompt,
+  parseAnswer,
+  type MergerAgent,
+  type MergerInput,
+} from './merge-agent.js';
 
-/** What `cpr/config.json` says of merges: `merge.checks` (one command or several), `merge.push`. */
+/**
+ * What `cpr/config.json` says of merges: `merge.checks` (one command or several), `merge.push`,
+ * and the merger agent's `merge.agent` and `merge.model` (V26c).
+ */
 export interface MergeConfig {
   checks?: string[];
   push: boolean;
+  agent?: AgentKind;
+  model?: string;
 }
 
 /** The merge section of the config file in `root`; anything unknown is ignored. */
@@ -52,11 +72,18 @@ export function readMergeConfig(root: string): MergeConfig {
   const v = (merge && typeof merge === 'object' ? merge : {}) as {
     checks?: unknown;
     push?: unknown;
+    agent?: unknown;
+    model?: unknown;
   };
   const listed =
     typeof v.checks === 'string' ? [v.checks] : Array.isArray(v.checks) ? v.checks : [];
   const checks = listed.filter((c): c is string => typeof c === 'string' && c.trim() !== '');
-  return { ...(checks.length > 0 ? { checks } : {}), push: v.push === true };
+  return {
+    ...(checks.length > 0 ? { checks } : {}),
+    push: v.push === true,
+    ...(v.agent === 'claude' || v.agent === 'codex' ? { agent: v.agent } : {}),
+    ...(typeof v.model === 'string' && v.model !== '' ? { model: v.model } : {}),
+  };
 }
 
 const configFile = (root: string) => CONFIG_FILES.find((name) => existsSync(join(root, name)));
@@ -77,6 +104,9 @@ export type RunCheck = (
   command: string,
   cwd: string,
 ) => Promise<{ code: number | null; output: string }>;
+
+/** States in which a merge runs: never removed, merged again after a stop. */
+const RUNNING = new Set<MergeEntry['state']>(['merging', 'resolving', 'checking']);
 
 /** A check may take long (this repository's check, build and e2e: about 2.5 min). */
 const CHECK_TIMEOUT_MS = 60 * 60_000;
@@ -115,6 +145,52 @@ export const runShell: RunCheck = (command, cwd) =>
 const lastLines = (text: string) =>
   text.replace(/\n+$/, '').split('\n').slice(-OUTPUT_LINES).join('\n');
 
+/** A symbol a side changed, as CPR's analysis names it. */
+export interface ChangedSymbol {
+  path: string;
+  name: string;
+  kind: string;
+  status: string;
+}
+
+/** The symbols `to` changed against `from` in `files` (V26c): CPR's analysis of those files. */
+export type ChangedSymbols = (
+  from: string,
+  to: string,
+  files: readonly string[],
+) => Promise<ChangedSymbol[]>;
+
+/** CPR's own analysis of only `files` (others ignored), without context around them. */
+function analyzedSymbols(repo: GitRepo, cacheDir: string): ChangedSymbols {
+  return async (from, to, files) => {
+    const wanted = new Set(files);
+    const ignore = (path: string) =>
+      path.endsWith('/') ? !files.some((f) => f.startsWith(path)) : !wanted.has(path);
+    const analysis = await analyzeGit({
+      cwd: repo.root,
+      base: from,
+      head: to,
+      mergeBase: false,
+      depth: 0,
+      cacheDir,
+      ignore,
+    });
+    return analysis.changes.flatMap((change) => {
+      const decl = change.head ?? change.base;
+      if (!decl) return [];
+      const hash = change.id.indexOf('#');
+      return [
+        {
+          path: change.id.slice(0, hash),
+          name: change.id.slice(hash + 1),
+          kind: decl.kind,
+          status: change.status,
+        },
+      ];
+    });
+  };
+}
+
 /** What the server and `cpr merge` need of the merger. */
 export interface Merger {
   list(): Promise<MergeList>;
@@ -126,6 +202,10 @@ export interface Merger {
   land(id: string): Promise<MergeEntry>;
   /** Queues a failed or stopped merge again. */
   retry(id: string): Promise<MergeEntry>;
+  /** Approves the merger agent's resolution (V26c): the merge lands. */
+  approve(id: string): Promise<MergeEntry>;
+  /** Asks the merger agent again, with the person's words on its resolution (V26c). */
+  requestChanges(id: string, comments: string): Promise<MergeEntry>;
   /** Takes an entry out of the queue (not while it merges or checks). */
   remove(id: string): Promise<void>;
   /** Resolves once nothing in the queue can go further. */
@@ -141,6 +221,8 @@ export function merger(
     runCheck = runShell,
     root = repo.root,
     onChange,
+    mergerAgent = () => Promise.resolve(null),
+    changedSymbols = analyzedSymbols(repo, cacheDir),
   }: {
     now?: () => Date;
     runCheck?: RunCheck;
@@ -148,6 +230,10 @@ export function merger(
     root?: string;
     /** Each change of an entry, as it is written (`cpr merge` prints them). */
     onChange?: (entry: MergeEntry) => void;
+    /** The merger agent of `kind` (`merge.agent`, else the default), when installed (V26c). */
+    mergerAgent?: (kind?: AgentKind) => Promise<MergerAgent | null>;
+    /** The symbols a side changed in the conflicting files; CPR's analysis by default. */
+    changedSymbols?: ChangedSymbols;
   } = {},
 ): Merger {
   const stateDir = join(cacheDir, 'state', repo.id);
@@ -201,6 +287,7 @@ export function merger(
     base: undefined,
     merge: undefined,
     conflicts: undefined,
+    resolution: undefined,
     check: undefined,
     message: undefined,
   };
@@ -293,13 +380,10 @@ export function merger(
     }
     await set(id, { ...fresh, state: 'merging', base: tip.sha });
     await resetMergeWorktree(repo, worktree, tip.sha);
-    const outcome = await mergeInWorktree(worktree, entry.head, entry.title);
+    const outcome = await mergeInWorktree(worktree, entry.head, entry.title, { keep: true });
     if ('conflicts' in outcome) {
-      await set(id, {
-        state: 'needs-you',
-        conflicts: outcome.conflicts,
-        message: `${entry.head.slice(0, 7)} conflicts with ${entry.into}: merge ${entry.into} into ${entry.branch}, resolve it there, and review it again`,
-      });
+      const merged = await resolve(entry, tip.sha, outcome.conflicts);
+      if (merged) await checkMerge(id, tip.sha, merged, true);
       return;
     }
     if ('error' in outcome) {
@@ -314,17 +398,26 @@ export function merger(
       });
       return;
     }
-    const check = await checkOf(tip.sha);
+    await checkMerge(id, tip.sha, outcome.merged, false);
+  }
+
+  /**
+   * Runs the check on a merge. A clean one that passed lands; a resolved one (V26c) waits for
+   * the person's review either way, its check's result with it.
+   */
+  async function checkMerge(id: string, base: string, merged: string, resolved: boolean) {
+    const check = await checkOf(base);
     if (!check) {
       await set(id, {
-        state: 'ready',
-        merge: outcome.merged,
-        message:
-          'no check to run: set merge.checks in cpr/config.json, or Land once you have checked it',
+        state: resolved ? 'needs-you' : 'ready',
+        merge: merged,
+        message: resolved
+          ? 'no check to run: review the resolution, then Approve lands it'
+          : 'no check to run: set merge.checks in cpr/config.json, or Land once you have checked it',
       });
       return;
     }
-    await set(id, { state: 'checking', merge: outcome.merged, check: { ...check } });
+    await set(id, { state: 'checking', merge: merged, check: { ...check } });
     const started = Date.now();
     let output = '';
     for (const command of check.commands) {
@@ -332,7 +425,7 @@ export function merger(
       output += result.output;
       if (result.code !== 0) {
         await set(id, {
-          state: 'failed',
+          state: resolved ? 'needs-you' : 'failed',
           check: {
             ...check,
             ok: false,
@@ -345,10 +438,143 @@ export function merger(
       }
     }
     const passed = await set(id, {
-      state: 'ready',
+      state: resolved ? 'needs-you' : 'ready',
       check: { ...check, ok: true, ms: Date.now() - started, output: lastLines(output) },
     });
-    await landEntry(passed);
+    if (!resolved) await landEntry(passed);
+  }
+
+  /** Each side's title: a workspace's title and goal, else its last commit's subject. */
+  async function sidesOf(entry: MergeEntry, base: string): Promise<MergerInput['sides']> {
+    const { workspace } = await recordsOf(entry.branch);
+    const goal = workspace?.parts?.goal?.trim().split('\n')[0];
+    const branch = workspace?.title
+      ? `${workspace.title}${goal ? ` — ${goal}` : ''}`
+      : await commitSubject(repo, entry.head);
+    return { into: await commitSubject(repo, base), branch };
+  }
+
+  /** The symbols both sides changed in `files` since their merge base; none when unknown. */
+  async function bothChanged(
+    base: string,
+    head: string,
+    files: string[],
+  ): Promise<NonNullable<MergerInput['symbols']>> {
+    try {
+      const ancestor = await mergeBase(repo, base, head);
+      if (!ancestor) return [];
+      const [ours, theirs] = await Promise.all([
+        changedSymbols(ancestor, base, files),
+        changedSymbols(ancestor, head, files),
+      ]);
+      return ours.flatMap((o) => {
+        const t = theirs.find((x) => x.path === o.path && x.name === o.name);
+        return t
+          ? [{ path: o.path, name: o.name, kind: o.kind, into: o.status, branch: t.status }]
+          : [];
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * The merger agent's resolution of a conflicted merge left in the worktree (V26c): its answer
+   * written between each region's markers and the merge committed, its SHA; else the merge
+   * aborted and the entry at `needs-you`, saying why, and null.
+   */
+  async function resolve(
+    entry: MergeEntry,
+    base: string,
+    conflicts: string[],
+  ): Promise<string | null> {
+    const { id } = entry;
+    const stop = async (message: string, fields: Partial<MergeEntry> = {}) => {
+      await abortMerge(worktree);
+      await set(id, { state: 'needs-you', conflicts, message, again: undefined, ...fields });
+      return null;
+    };
+    const kinds = await conflictKinds(worktree);
+    const kept = [...kinds].filter(([, kind]) => kind !== 'text');
+    if (kept.length > 0) {
+      const words = {
+        deleted: 'is deleted on one side',
+        submodule: 'is a submodule',
+        binary: 'is binary',
+      };
+      return stop(
+        `${kept.map(([path, kind]) => `${path} ${words[kind as keyof typeof words]}`).join('; ')}: not given to the merger agent. Merge ${entry.into} into ${entry.branch}, resolve it there, and review it again`,
+      );
+    }
+    const config = readMergeConfig(root);
+    const agent = await mergerAgent(config.agent);
+    if (!agent) {
+      return stop(
+        `${entry.head.slice(0, 7)} conflicts with ${entry.into}: merge ${entry.into} into ${entry.branch}, resolve it there, and review it again (no merger agent: install Claude Code or Codex)`,
+      );
+    }
+    const model = config.model ?? (agent.kind === 'claude' ? 'sonnet' : undefined);
+    await set(id, { state: 'resolving', conflicts });
+    const files = await Promise.all(
+      conflicts.map(async (path) => ({ path, text: await readFile(join(worktree, path), 'utf8') })),
+    );
+    const rules = await readFile(join(root, 'cpr', 'merge.md'), 'utf8').catch(() => undefined);
+    const prompt = mergerPrompt({
+      branch: entry.branch,
+      into: entry.into,
+      head: entry.head,
+      base,
+      sides: await sidesOf(entry, base),
+      files,
+      symbols: await bothChanged(base, entry.head, conflicts),
+      ...(rules ? { rules } : {}),
+      ...(entry.again ? { again: entry.again } : {}),
+    });
+    const run = await agent.run({ cwd: worktree, prompt, ...(model ? { model } : {}) });
+    if (!run.ok) return stop(`the merger agent did not answer: ${run.error}`);
+    const about = {
+      agent: agent.kind,
+      ...(model ? { model } : {}),
+      ...(run.usage ? { usage: run.usage } : {}),
+      ms: run.ms,
+    };
+    const perFile = files.map((file) => ({ ...file, regions: conflictRegions(file.text) }));
+    const count = perFile.reduce((n, f) => n + f.regions.length, 0);
+    const answer = parseAnswer(run.text, count);
+    if ('needsYou' in answer) {
+      return stop(`the merger agent: ${answer.needsYou}`, {
+        resolution: { ...about, regions: [], needsYou: answer.needsYou },
+      });
+    }
+    if ('error' in answer) return stop(`the merger agent's answer: ${answer.error}`);
+    const regions: MergeRegion[] = [];
+    let n = 0;
+    for (const file of perFile) {
+      const texts = file.regions.map((_, i) => answer.texts[n + i] ?? '');
+      file.regions.forEach((region, i) => {
+        const note = answer.notes[n + i];
+        regions.push({
+          path: file.path,
+          line: region.start + 1,
+          ours: region.ours,
+          base: region.base,
+          theirs: region.theirs,
+          text: texts[i] ?? '',
+          ...(note ? { note } : {}),
+        });
+      });
+      n += file.regions.length;
+      await writeFile(join(worktree, file.path), applyAnswer(file.text, file.regions, texts));
+    }
+    let merged: string;
+    try {
+      merged = await commitResolution(worktree, conflicts, entry.title);
+    } catch (error) {
+      if (error instanceof MergeStepRefused) return stop(error.message);
+      throw error;
+    }
+    await set(id, { conflicts, resolution: { ...about, regions }, again: undefined });
+    return merged;
   }
 
   /** Moves `into` to the merge, or says why not; merged again when `into` moved meanwhile. */
@@ -406,7 +632,7 @@ export function merger(
   }
 
   /** States that hold a branch: a later merge into it waits until they are done. */
-  const holding = new Set<MergeEntry['state']>(['merging', 'checking', 'ready']);
+  const holding = new Set<MergeEntry['state']>(['merging', 'resolving', 'checking', 'ready']);
 
   /** A pid lock: one CPR process merges in a repository; null when another holds it. */
   async function lock(): Promise<(() => Promise<void>) | null> {
@@ -440,8 +666,7 @@ export function merger(
     try {
       // A process that stopped mid-merge left its entry merging or checking: merged again.
       await change((merges) => {
-        for (const e of merges)
-          if (e.state === 'merging' || e.state === 'checking') e.state = 'queued';
+        for (const e of merges) if (RUNNING.has(e.state)) e.state = 'queued';
       });
       for (;;) {
         const merges = await read();
@@ -494,10 +719,7 @@ export function merger(
     async list() {
       const merges = await read();
       // Queued by another process, or left by one that stopped: merged here.
-      if (
-        merges.some((e) => e.state === 'queued' || e.state === 'merging' || e.state === 'checking')
-      )
-        kick();
+      if (merges.some((e) => e.state === 'queued' || RUNNING.has(e.state))) kick();
       const elsewhere = !running && existsSync(lockFile) && (await lockedElsewhere());
       return { merges, ...(elsewhere ? { elsewhere: true as const } : {}) };
     },
@@ -548,14 +770,46 @@ export function merger(
       if (!['failed', 'needs-you'].includes(entry.state)) {
         throw new MergeRefused(`${entry.branch} is ${entry.state}: nothing to retry`, 409);
       }
-      const after = await set(id, { ...fresh, state: 'queued' });
+      const after = await set(id, { ...fresh, again: undefined, state: 'queued' });
+      kick();
+      return after;
+    },
+
+    async approve(id) {
+      const entry = await entryOf(id);
+      if (entry.state !== 'needs-you' || !entry.resolution || !entry.merge) {
+        throw new MergeRefused(`${entry.branch} has no resolution: nothing to approve`, 409);
+      }
+      if (entry.check?.ok === false) {
+        throw new MergeRefused(
+          `its check failed (${entry.check.failed ?? ''}): request changes, or fix it on the branch`,
+          409,
+        );
+      }
+      const after = await landEntry(await set(id, { state: 'ready', message: undefined }));
+      kick();
+      return after;
+    },
+
+    async requestChanges(id, comments) {
+      if (comments.trim() === '') throw new MergeRefused('say what to change', 400);
+      const entry = await entryOf(id);
+      const regions = entry.resolution?.regions ?? [];
+      if (entry.state !== 'needs-you' || regions.length === 0) {
+        throw new MergeRefused(`${entry.branch} has no resolution to change`, 409);
+      }
+      const after = await set(id, {
+        ...fresh,
+        state: 'queued',
+        again: { comments, previous: regions.map((r) => r.text) },
+      });
       kick();
       return after;
     },
 
     async remove(id) {
       const entry = await entryOf(id);
-      if (entry.state === 'merging' || entry.state === 'checking') {
+      if (RUNNING.has(entry.state)) {
         throw new MergeRefused(`${entry.branch} is ${entry.state}: wait for it`, 409);
       }
       await change((merges) => {

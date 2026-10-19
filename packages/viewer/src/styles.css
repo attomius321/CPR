@@ -3488,3 +3488,62 @@ p.merge-control {
   padding-left: 8px;
   border-left: 3px solid var(--merge-tone, var(--line));
 }
+
+/* A resolution to review (V26c): each region's sides, then what was written in its place. */
+.merge-regions {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.merge-region + .merge-region {
+  margin-top: 10px;
+}
+
+.merge-region-where {
+  margin: 0 0 4px;
+}
+
+.merge-region-sides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 6px;
+}
+
+.merge-side {
+  min-width: 0;
+  margin: 0;
+}
+
+.merge-side pre {
+  max-height: 200px;
+  margin: 2px 0 0;
+  padding: 4px 6px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.merge-written {
+  margin-top: 6px;
+}
+
+.merge-written pre {
+  border-color: var(--warning);
+}
+
+.merge-change {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+
+.merge-change textarea {
+  flex: 1;
+  min-width: 0;
+}

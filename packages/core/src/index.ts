@@ -185,13 +185,19 @@ export {
   pushCommit,
   resetMergeWorktree,
   type MergeOutcome,
+  abortMerge,
+  commitResolution,
+  conflictKinds,
+  type ConflictKind,
 } from './git/merging.js';
 export {
   MERGE_STATES,
   type MergeCheckRun,
   type MergeEntry,
   type MergeList,
+  type MergeRegion,
   type MergeRequest,
+  type MergeResolution,
   type MergeState,
   type MergeTargets,
 } from './merges.js';

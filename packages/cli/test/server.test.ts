@@ -1463,6 +1463,14 @@ describe('cpr view: merges (V26a)', () => {
       asked.push(`retry ${id}`);
       return Promise.resolve(entry);
     },
+    approve: (id) => {
+      asked.push(`approve ${id}`);
+      return Promise.resolve({ ...entry, state: 'landed' });
+    },
+    requestChanges: (id, comments) => {
+      asked.push(`change ${id} ${comments}`);
+      return Promise.resolve(entry);
+    },
     remove: (id) => {
       asked.push(`remove ${id}`);
       return id === 'm1'
@@ -1543,6 +1551,14 @@ describe('cpr view: merges (V26a)', () => {
       ).toBe(403);
     }
     expect((await get('/api/merges/land')).status).toBe(405);
+    // A resolution (V26c): approved, or asked again with the person's words.
+    expect((await post('/api/merges/approve', { id: 'm1' })).status).toBe(200);
+    expect(
+      (await post('/api/merges/request-changes', { id: 'm1', comments: 'Keep both.' })).status,
+    ).toBe(200);
+    expect((await post('/api/merges/request-changes', { id: 'm1' })).status).toBe(400);
+    expect(asked.slice(-2)).toEqual(['approve m1', 'change m1 Keep both.']);
+    asked.splice(-2);
     expect(asked).toEqual([
       'enqueue feature/csv main',
       'enqueue x main',
