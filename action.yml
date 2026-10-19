@@ -29,7 +29,7 @@ inputs:
   plugins:
     description: >-
       Plugins to analyze with, separated by commas (e.g. angular), besides those in
-      cpr.config.json.
+      cpr/config.json.
     default: ''
   working-directory:
     description: Where the repository is checked out.

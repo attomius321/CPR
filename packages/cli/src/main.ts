@@ -116,8 +116,9 @@ const HELP = `Usage: cpr <command> [options]
 Commands:
   diff <base> [head]   Compare head (default: HEAD) against base
   view [<base> [head]] Same comparison, reviewed in the browser; without revisions,
-                       pick two commits of the current branch there
-  pr <number>          Review a GitHub pull request or GitLab merge request (alias: mr)
+                       the commits page: every branch's history, to compare or review
+  pr [<number>]        Review a GitHub pull request or GitLab merge request (alias: mr);
+                       in a CI job, the job's own
 
 Options:
   -h, --help           Show this help
@@ -146,10 +147,11 @@ Options:
 
 const VIEW_HELP = `Usage: cpr view [<base> [head]] [options]
 
-Serves the graph viewer on localhost until Ctrl+C. Its first page lists the current
-branch's commits: pick two to compare them (the older is the base), or one against its
-parent; each pair is analyzed when picked. With <base>, analyzes like \`cpr diff\` first
-and opens that comparison.
+Serves the graph viewer on localhost until Ctrl+C. Its first page is the commits page:
+every branch's history, local and remote, as a graph. In Compare mode (x), pick two
+commits to compare them (the older is the base), or one against its parent; each pair is
+analyzed when picked. With <base>, analyzes like \`cpr diff\` first and opens that
+comparison.
 
 Options:
   --port <n>           Port to listen on (default: any free port)

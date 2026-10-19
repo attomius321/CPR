@@ -2759,3 +2759,20 @@ Code session acting while the page is open (the e2e fake runs CPR's real hooks).
 Merged into main (2026-10-18), approved in CPR at `4321040`: no conflicts (`main` had been merged
 into the branch before the review). `main` verified after the merge (same tree as the approved
 commit): 730 unit tests, build, 103 e2e.
+
+## V22 — Stale text outside the README (2026-10-19, branch `fix/v22-stale-text`)
+
+Found while rewriting the README (2026-10-15). Fixed:
+- `cpr --help` and `cpr view --help` said the first page lists the current branch's commits; it
+  has listed every branch since V10a, and picks happen in Compare mode since V13. Both now say so.
+- `cpr --help` showed `pr <number>`; the number is optional since C1 (a CI job's own).
+- `@cpr/cli`'s description named `cpr diff` and `cpr view`, not `cpr pr`.
+- The action's `plugins` input pointed to `cpr.config.json`, the older place; now
+  `cpr/config.json`, as the README and the GitLab template say.
+- The sidebar's "No findings." ended with an emoji.
+
+**Verification**: a unit test first (`cpr` and `cpr view --help` say "every branch", never
+"current branch"), red on the old help, green after. 730 of 732 unit tests: the two that load
+node-pty fail here and on `main` alike (node-gyp is not in this container, so node-pty is not
+built). Build. No analysis code changed: no regression sets.
+

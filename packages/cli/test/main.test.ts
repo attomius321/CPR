@@ -31,6 +31,14 @@ describe('cpr', () => {
     expect(stdout).toContain('Usage: cpr');
   });
 
+  it("describes cpr view's first page as every branch's history (V10a), not the current branch's", async () => {
+    for (const argv of [[], ['view', '--help']]) {
+      const { stdout } = await cpr(argv);
+      expect(stdout).not.toMatch(/current\s+branch/);
+      expect(stdout).toMatch(/every\s+branch/);
+    }
+  });
+
   it('prints the version and schema version', async () => {
     const { code, stdout } = await cpr(['--version']);
     expect(code).toBe(0);

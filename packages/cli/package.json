@@ -1,7 +1,7 @@
 {
   "name": "@cpr/cli",
   "version": "0.0.0",
-  "description": "CPR command line: cpr diff, cpr view.",
+  "description": "CPR command line: cpr diff, cpr view, cpr pr.",
   "private": true,
   "type": "module",
   "bin": {
