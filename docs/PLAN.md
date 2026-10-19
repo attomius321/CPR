@@ -437,7 +437,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V22 ✅ | Fixes: stale text outside the README | Found while rewriting the README (`chore/update-readme`, 2026-10-15). `cpr --help` and `cpr view --help` say the first page lists the current branch's commits (every branch since V10a); `@cpr/cli`'s description names only `cpr diff` and `cpr view`; the action's `plugins` input points to `cpr.config.json`, the older place; the sidebar's "No findings." ends with an emoji. Merged: all four fixed, and `cpr --help`'s `pr <number>` shown as optional (it has been since C1); a unit test keeps the help on every branch. |
 | V23 ✅ | Branches that need you, first | Planned as V22, which `main` took meanwhile. The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. Merged (2026-10-18): on a clone of this repository with three open features, they are the first three entries instead of the 4th, 10th and 12th; `/api/features` unchanged (34 ms), each thread read from its last 256 KB (0.6 ms at any length). See below. |
 | V24 ✅ | A structured brief | The "Start a workspace" dialog is one text area that is also the branch name and the workspace's name; every branch is `feature/`, while 11 of this repository's 35 merges were fixes or chores; nothing prompts for how done is checked, which every agent vendor's guidance asks for. Planned: a kind (Feature, Fix, Refactor, Chore, Spike), a title, one required part per kind, an optional Done when filled in with a check command guessed from the repository's root files (on 16 repositories: 13 the documented command, 2 heavy, 1 close, 0 wrong), optional parts under More, assembled by the server into a brief with Markdown headings; the kind's branch prefix; old workspaces unchanged. Merged (2026-10-19): the guess on 16 repositories gives the 16 planned commands in 13–17 ms; the dialog fits at 1440 × 900 and 390 × 844; a real Claude Code's plans follow each kind's line. See below. |
-| V25 | Workspaces first, History beneath | `cpr view` opens on the commits page (`/`) and Workspaces is the second tab. A diff's way back is "← Commits". The code says "feature" for a workspace 1,949 times (12 files, `/api/features`, `cpr/features/`), and since V24 "feature" is also a kind of work. Planned: `/` Workspaces, `/history` History (today's commits page), tabs "Workspaces · History", old addresses rewritten, a back link to where a diff came from; "workspace" in code, API and on disk (`cpr/workspaces/`, moved once from `cpr/features/`); the kind "feature" kept. See below. |
+| V25 | Workspaces first, History beneath | `cpr view` opens on the commits page (`/`) and Workspaces is the second tab. A diff's way back is "← Commits". The code says "feature" for a workspace 1,949 times (12 files, `/api/features`, `cpr/features/`), and since V24 "feature" is also a kind of work. Planned: `/` Workspaces, `/history` History (today's commits page), tabs "Workspaces · History", old addresses rewritten, a back link to where a diff came from; "workspace" in code, API and on disk (`cpr/workspaces/`, moved once from `cpr/features/`); the kind "feature" kept. Built (V25a–c), not merged: 801 unit tests, 114 e2e; first paint of `/` as `main`'s `/workspaces` (109 ms); a repository's old records moved by the first reader. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -6402,7 +6402,9 @@ the agents said so, as they did of the record paths that did not exist.
 
 ### V25 — Workspaces first, History beneath
 
-**Status:** planned (2026-10-19), on branch `milestone/v25-workspaces-home`; not started.
+**Status:** built on branch `milestone/v25-workspaces-home` (V25a–c, 2026-10-19); not merged. Decisions
+135–140 confirmed by the user before V25a ("always keep workspaces as the first page"; the kind
+kept "because they are indeed a feature").
 
 **Problem** (asked: "I don't like the commits page name … and that we still work with commits,
 this app is one abstraction higher than git branches … it works with worktrees, and I call a
@@ -6514,7 +6516,7 @@ green before and after), then V25c (disk).
 | V25b | One word in the code | Files, types, state, CSS and API renamed from features to workspaces and from commits page to history; the kind "feature" kept; the guard test |
 | V25c | Records on disk | `cpr/workspaces/`, a one-time move of `cpr/features/`, `AGENTS.md`'s text |
 
-**Proposed decisions**:
+**Decisions** (135–140 confirmed; 141 made while building):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
@@ -6524,9 +6526,56 @@ green before and after), then V25c (disk).
 | 138 | Old records | **Move `cpr/features/` once, with `rename`** | Reading both forever would keep the old word in the code. A copy would leave two sources |
 | 139 | "feature" as a kind | **Kept** | It is the kind most branches are (V24). Renaming it would change branch prefixes people already use |
 | 140 | A key for History | **`h`** (the tabs' keys: `w` Workspaces, `h` History) | Neither is bound on either page today (checked: no handler for `h` or `w` in `packages/viewer/src`) |
+| 141 | `cpr/config.json`'s `features` section | **Now `workspaces`; `features` still read when `workspaces` is not there** | It is the person's file, which CPR cannot move as it moves its records. Like the old addresses, the old name keeps working |
 
 **Not in V25 (later)**: a workspace's own history (its commits drawn alone, in its panel), and
 starting a workspace from a History branch that has none.
+
+#### As built (V25)
+
+- **The way back from a diff** is read from the page's `document.referrer`, not from history
+  state as planned. A diff is opened with `location.assign` (History's Compare, a workspace's
+  Review), so the opening page cannot leave state on it. The referrer outlives a reload, and is
+  empty for a bookmark (then "← History"). `src/pages.ts` holds the rule, unit-tested.
+- **The empty state** has no Start button of its own. The page header's "Start a workspace" is right
+  above it, and a second one broke strict locators in 4 specs. It says "Start a workspace above
+  (n)" and links to History.
+- **A workspace's branch link** went to `/?branch=` (History, when History was at `/`). That address
+  now picks a workspace, so it goes to `/history?branch=`. Found by reading the code, not a test.
+- **The rename** was done by a script on TypeScript's syntax tree, not by text: identifiers, module
+  paths, `/api/features…`, CSS classes, comments and test titles (1,437 edits; 12 files renamed;
+  `CommitsPage` → `HistoryPage`; page states `'workspaces'` and `'history'`). What it got wrong and
+  was put back: three objects keyed by kind (typecheck found them), one more in a test (`toEqual`
+  ignores an undefined key, so only reading the diff found it), the fixtures' git branch named
+  `feature` (`shas.feature` in 4 test files), and comments on the Feature kind. `/api/features`
+  without its leading slash in one spec was missed by both passes; e2e found it.
+- **"Workspace" is taken twice more** in the code: npm/pnpm workspaces (`core/src/workspace.ts`) and
+  Angular workspaces in the plugin. Different files and no shared names, so left as they are.
+- **The commits list's CSS classes** (`commits-*`) are kept: they name the list, which History still
+  is.
+- **Moving the records**: `workspacesFolder` in `thread.ts`, since the agent's hook (a process of its
+  own, Node modules only) reads the records too. An agent running across the upgrade can fire its
+  hook before any `cpr view`; then the hook moves them. On Linux `rename` replaces an empty
+  `cpr/workspaces/`, so "both" means both hold something.
+- **The list's note is now shown** on Workspaces (`.workspaces-note`). The plan put the "old folder
+  left" note in the API only. The cache note (why workspaces are not in `cpr/`) was never shown
+  either; now it is.
+
+**Results.** Tests first, red before: server 1, viewer unit 4 (`pages.test.ts`), CLI help 1, config
+1, the move 3, the hook 1, the list 1, `AGENTS.md` 1, the guard test 1 (red with a new `featureCount`), e2e 2
+(the pages, old addresses and keys; the note). 801 unit tests (788 on `main`), 114 of 114 e2e.
+Matches of `feature` in code and tests: 1,949 → 565, mostly `feature/…` branch names and the kind
+in tests; 5 identifiers in `src`, all listed by the guard test. In Chromium on throwaway
+repositories: Workspaces with two workspaces, empty, and History, light and dark at 1440 and 390 px,
+no page errors. First paint, same server, 5–9 rounds back to back: `main`'s `/workspaces` 109 ms,
+V25's `/` 109 ms; `main`'s `/` (commits) 60 ms, V25's `/history` 60 ms. History at 390 px is cramped
+(its help wraps into a narrow column, Compare mode is cut), the same on `main`. On a repository whose
+two records were in `cpr/features/`, the built CLI's hook moved them and recorded its event,
+`cpr view` listed both in 40 ms, and a `cpr/features/` made again showed the note. README's History
+screenshot retaken (`history.png`). Not verified: a real Claude Code or Codex session running across
+the move (the hook was run by hand with a recorded event); Windows, where `rename` onto an existing
+folder fails even when it is empty (then the old folder is reported left); the README's Workspaces
+screenshot (`features.png`, three real agents) is not retaken and still shows the old tab order.
 
 ### Phase 1 milestones
 
