@@ -3008,3 +3008,7 @@ kept the title from being hovered (the e2e timed out), so it takes none. On a ph
 stop red first, green after; 761 unit tests, 110 of 110 e2e; screenshots at 1440 × 900 and
 390 × 844, light and dark: the kinds and the ⓘ on one line, the tooltip inside the dialog.
 
+Merged into main (2026-10-19): V24a–c, no conflicts (`main` had not moved since the branch
+started; the merge's tree is the branch's). `main` verified after the merge: 761 unit tests, lint,
+typecheck, build, 110 of 110 e2e.
+
