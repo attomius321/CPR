@@ -3109,3 +3109,23 @@ login, a person's own writable roots, network inside the sandbox.
 Merged into main (2026-10-19): V20a, no conflicts (`main` had not moved since the branch
 started; the merge's tree is the branch's). `main` verified after the merge: 788 unit tests, lint,
 typecheck, build, 113 of 113 e2e.
+
+## V25 spike — what "workspaces first" touches (2026-10-19, branch `milestone/v25-workspaces-home`)
+
+Asked: the commits page's name, and that CPR still starts from commits when it works one level
+higher, in worktrees the person calls workspaces. Measured on `main` (`d604c2d`):
+
+- `/` is the commits page (V10a, before workspaces existed). Workspaces is the second tab at
+  `/workspaces` (V18b; `/features` redirects there). A diff's way back is always "← Commits".
+- On screen, workspaces are already called workspaces (V24). Underneath they are still
+  "features": 1,949 matches in code and tests, 12 file names, `/api/features` (30 uses),
+  `cpr/features/<branch>.json`, and the "Features" section of the `cpr/AGENTS.md` CPR writes.
+  Since V24 "feature" is also one of the five kinds of work (`WorkKind`, the `feature/` prefix), so
+  a text replace would break the kinds. The rename has to go symbol by symbol.
+- `repository.features` is set on every `cpr view` (`main.ts`), so Workspaces can always be the
+  first page. Its empty state exists already ("No workspaces yet …") but has no action.
+- 54 of the e2e's 90 `goto` calls open `/` and expect the commits page.
+- `h` and `w` are not bound on either page.
+
+Planned as V25 (PLAN.md): Workspaces at `/`, History at `/history`, then the rename, then the
+records on disk.
