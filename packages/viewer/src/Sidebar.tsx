@@ -246,7 +246,7 @@ export function Sidebar({
               onSelect={onSelect}
             />
           ))}
-          {findings.length === 0 && <p className="muted pad">No findings. 🎉</p>}
+          {findings.length === 0 && <p className="muted pad">No findings.</p>}
         </div>
       )}
       <p className="keys">
