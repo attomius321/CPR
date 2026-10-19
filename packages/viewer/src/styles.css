@@ -1668,10 +1668,19 @@ kbd {
   font-size: 18px;
 }
 
-/* The keys fill the space before Compare mode, wrapping inside it, so the toggle stays at the
-   right, in line with the list, whether its help is short or long. */
+/* The keys and the actions wrap as one: the keys fill the space before the actions, wrapping
+   inside it, and the actions sit on their first line. Wrapped apart, the actions' row moved with
+   the keys' line count, which differs between browse and compare mode (wider fonts than macOS'). */
+.commits-tail {
+  flex: 1 1 480px;
+  display: flex;
+  align-items: baseline;
+  gap: 4px 16px;
+}
+
 .commits-help {
-  flex: 1 1 240px;
+  flex: 1 1 0;
+  min-width: 0;
   color: var(--muted);
   font-size: 13px;
   font-weight: normal;
