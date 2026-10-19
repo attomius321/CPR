@@ -24,6 +24,7 @@ import {
   verdictToSend,
   type FeatureRow,
 } from './features.js';
+import { HISTORY_PAGE, WORKSPACES_PAGE } from './pages.js';
 import { verdictLine } from './terminal.js';
 import { readFeaturesAgain, reloadFeatures, useFeatures } from './useFeatures.js';
 
@@ -87,7 +88,7 @@ export function FeaturesPage() {
   /** Picks a feature (or none), the address following without a new history entry. */
   const pick = useCallback((branch: string | null) => {
     setPicked(branch);
-    window.history.replaceState(null, '', branch ? featureHref(branch) : '/workspaces');
+    window.history.replaceState(null, '', branch ? featureHref(branch) : WORKSPACES_PAGE);
   }, []);
   const started = useCallback(
     (start: FeatureStart) => {
@@ -144,10 +145,16 @@ export function FeaturesPage() {
       {!list ? (
         <p className="hint">Listing workspaces…</p>
       ) : list.features.length === 0 ? (
-        <p className="hint">
-          No workspaces yet. Start one: describe the work, and CPR makes its branch and worktree and
-          starts an agent there.
-        </p>
+        <div className="hint workspaces-empty">
+          <p>
+            No workspaces yet. Start one: describe the work, and CPR makes its branch and worktree
+            and starts an agent there.
+          </p>
+          <p>
+            Start a workspace above (n), or pick a commit to start from in the repository&apos;s{' '}
+            <a href={HISTORY_PAGE}>History</a> (h).
+          </p>
+        </div>
       ) : (
         <div className={`features-body${current ? ' has-panel' : ''}`}>
           <div className="features-list">
@@ -293,7 +300,7 @@ function FeatureBranch({ row: { feature }, mark }: { row: FeatureRow; mark?: Rev
       ) : (
         <a
           className="ref ref-branch"
-          href={`/?branch=${encodeURIComponent(branch)}`}
+          href={`${HISTORY_PAGE}?branch=${encodeURIComponent(branch)}`}
           title={`${branch}: its commits`}
           onClick={(event) => event.stopPropagation()}
         >

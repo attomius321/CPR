@@ -52,9 +52,10 @@ import {
 } from './commits.js';
 import { GraphCell, ROW_HEIGHT } from './GraphCell.js';
 import { laneSpacing, layoutLanes } from './lanes.js';
+import { backLink, HISTORY_PAGE } from './pages.js';
 
-/** The commits page and the diffs it starts live at the server's root (`cpr view`). */
-const COMMITS_PAGE = '/';
+/** History's API and the diffs it starts live at the server's root (`cpr view`). */
+const API_ROOT = '/';
 
 const WRITE_HEADERS = { 'content-type': 'application/json', 'x-cpr': '1' };
 
@@ -72,7 +73,7 @@ async function fetchRows(
 ): Promise<HistoryPage> {
   const query = new URLSearchParams({ scope, from: String(from), to: String(to) });
   if (version) query.set('version', version);
-  const response = await fetch(`${COMMITS_PAGE}api/history?${query}`);
+  const response = await fetch(`${API_ROOT}api/history?${query}`);
   if (response.status === 409) throw new StaleHistory();
   if (!response.ok) throw new Error(await response.text());
   return (await response.json()) as HistoryPage;
@@ -80,7 +81,7 @@ async function fetchRows(
 
 async function fetchShape(scope: HistoryScope, version: string): Promise<HistoryShape> {
   const query = new URLSearchParams({ scope, version });
-  const response = await fetch(`${COMMITS_PAGE}api/history/shape?${query}`);
+  const response = await fetch(`${API_ROOT}api/history/shape?${query}`);
   if (response.status === 409) throw new StaleHistory();
   if (!response.ok) throw new Error(await response.text());
   return (await response.json()) as HistoryShape;
@@ -89,21 +90,21 @@ async function fetchShape(scope: HistoryScope, version: string): Promise<History
 /** The branches with their tips' rows in this listing (V10b). */
 async function fetchBranches(scope: HistoryScope, version: string): Promise<HistoryRefs> {
   const query = new URLSearchParams({ scope, version });
-  const response = await fetch(`${COMMITS_PAGE}api/history/refs?${query}`);
+  const response = await fetch(`${API_ROOT}api/history/refs?${query}`);
   if (response.status === 409) throw new StaleHistory();
   if (!response.ok) throw new Error(await response.text());
   return (await response.json()) as HistoryRefs;
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${COMMITS_PAGE}${path}`);
+  const response = await fetch(`${API_ROOT}${path}`);
   if (!response.ok) throw new Error(await response.text());
   return (await response.json()) as T;
 }
 
 /** Checks out a target; resolves with where HEAD is, or rejects with git's (or CPR's) words. */
 async function postCheckout(target: CheckoutTarget): Promise<CheckoutResult> {
-  const response = await fetch(`${COMMITS_PAGE}api/checkout`, {
+  const response = await fetch(`${API_ROOT}api/checkout`, {
     method: 'POST',
     headers: WRITE_HEADERS,
     body: JSON.stringify(target),
@@ -121,7 +122,7 @@ async function postCheckout(target: CheckoutTarget): Promise<CheckoutResult> {
 
 /** Starts analyzing a pair (or finds it analyzed); resolves with its page's URL. */
 export async function startDiff(pair: Pair): Promise<string> {
-  const response = await fetch(`${COMMITS_PAGE}api/diffs`, {
+  const response = await fetch(`${API_ROOT}api/diffs`, {
     method: 'POST',
     headers: WRITE_HEADERS,
     body: JSON.stringify(pair),
@@ -132,7 +133,7 @@ export async function startDiff(pair: Pair): Promise<string> {
 
 /** Starts reviewing a branch (V15); resolves with its page's URL, or rejects with why not. */
 async function startReview(ref: string): Promise<string> {
-  const response = await fetch(`${COMMITS_PAGE}api/reviews`, {
+  const response = await fetch(`${API_ROOT}api/reviews`, {
     method: 'POST',
     headers: WRITE_HEADERS,
     body: JSON.stringify({ ref }),
@@ -143,12 +144,12 @@ async function startReview(ref: string): Promise<string> {
 
 /** The reviewer's branch reviews (V15); null when the server keeps none. */
 async function fetchReviews(): Promise<BranchReviewList | null> {
-  const response = await fetch(`${COMMITS_PAGE}api/reviews`);
+  const response = await fetch(`${API_ROOT}api/reviews`);
   return response.ok ? ((await response.json()) as BranchReviewList) : null;
 }
 
 async function stopDiff(pair: Pair): Promise<void> {
-  await fetch(`${COMMITS_PAGE}api/diffs/stop`, {
+  await fetch(`${API_ROOT}api/diffs/stop`, {
     method: 'POST',
     headers: WRITE_HEADERS,
     body: JSON.stringify(pair),
@@ -166,11 +167,12 @@ export async function fetchGraph(url: string): Promise<Loaded> {
   }
 }
 
-/** "← Commits", on a diff's page. */
-export function BackToCommits() {
+/** "← History" or "← Workspaces", on a diff's page: back where it was opened from (V25). */
+export function BackLink() {
+  const { href, label } = backLink(document.referrer, window.location.origin);
   return (
-    <a className="back" href={COMMITS_PAGE} title="Back to the commits">
-      ← Commits
+    <a className="back" href={href} title={`Back to ${label}`}>
+      ← {label}
     </a>
   );
 }
@@ -225,7 +227,7 @@ export function CommitsPage() {
   const [goTo, setGoTo] = useState<string | null>(branchOfUrl);
   const [keep, setKeep] = useState<Keep | null>(null);
   const choose = useCallback((next: HistoryScope) => {
-    window.history.replaceState(null, '', next === 'all' ? COMMITS_PAGE : '?scope=current');
+    window.history.replaceState(null, '', next === 'all' ? HISTORY_PAGE : '?scope=current');
     setNotice(null);
     setScope(next);
   }, []);
@@ -825,7 +827,7 @@ function History({
         />
         <div className="commits-scroll" ref={scroller} onScroll={measure}>
           <h1 className="commits-title">
-            Commits
+            History
             <button
               type="button"
               className="branches-toggle"
@@ -1267,12 +1269,14 @@ export function DiffProgress({
           disabled={stopping}
           onClick={() => {
             setStopping(true);
-            void stopDiff(pair).finally(() => window.location.assign(COMMITS_PAGE));
+            void stopDiff(pair).finally(() =>
+              window.location.assign(backLink(document.referrer, window.location.origin).href),
+            );
           }}
         >
           Stop
         </button>{' '}
-        <BackToCommits />
+        <BackLink />
       </div>
     );
   }
@@ -1289,7 +1293,7 @@ export function DiffProgress({
       <button type="button" className="button" onClick={() => onRetry(pair)}>
         Analyze again
       </button>{' '}
-      <BackToCommits />
+      <BackLink />
     </div>
   );
 }

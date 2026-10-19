@@ -216,6 +216,11 @@ code {
   color: var(--muted);
 }
 
+/* Workspaces with none yet (V25): what to do, then a way to start. */
+.workspaces-empty p {
+  margin: 0 0 12px;
+}
+
 /* Before the first layout arrives (V8e): where the canvas will be. */
 .canvas > .canvas-waiting {
   flex: 1 0 240px;

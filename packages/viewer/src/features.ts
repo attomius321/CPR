@@ -224,7 +224,7 @@ export function featureName(feature: FeatureSummary): string {
 }
 
 /** A link to a feature's row in the features view. */
-export const featureHref = (branch: string) => `/workspaces?branch=${encodeURIComponent(branch)}`;
+export const featureHref = (branch: string) => `/?branch=${encodeURIComponent(branch)}`;
 
 /**
  * Each open feature's mark by ref name — its branch, and that branch on each remote once pushed

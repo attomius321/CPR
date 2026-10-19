@@ -319,7 +319,7 @@ describe('featureChips', () => {
       mark: '⚙',
       tone: 'working',
       title: 'Workspace: Export a review as CSV — Working',
-      href: '/workspaces?branch=feature%2Fcsv',
+      href: '/?branch=feature%2Fcsv',
     });
   });
 });

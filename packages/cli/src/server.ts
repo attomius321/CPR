@@ -209,6 +209,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/api/reviews' && repository.reviews) {
         return reviewsApi(req, res, repository, repository.reviews);
       }
+      // The history page (V25; at `/` before, which is now the workspaces view).
+      if (url.pathname === '/history') return serveSite(req, res, url, '/', undefined);
       if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
       if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
       if (url.pathname === '/api/history/refs') return historyRefs(req, res, url, repository);
@@ -219,7 +221,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
       const { features } = repository;
       if (features) {
-        // The workspaces view (V18b): the viewer's page, as at `/`; `/features` is its old address.
+        // The workspaces view's old addresses (V18b, `/features` before it); the viewer moves them to `/`.
         if (url.pathname === '/workspaces' || url.pathname === '/features')
           return serveSite(req, res, url, '/', undefined);
         if (url.pathname === '/api/features') return featuresApi(req, res, features);

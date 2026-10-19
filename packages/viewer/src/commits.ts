@@ -1,6 +1,7 @@
 import type { Commit, CommitRef, Graph } from '@cpr/core';
 import type { ReviewMark } from './branchReviews.js';
 import type { AgentChip } from './features.js';
+import { WORKSPACES_PAGE } from './pages.js';
 
 /** Two commits compared directly, by full SHA. */
 export interface Pair {
@@ -319,7 +320,7 @@ function foldedMark(folded: readonly Badge[]): (AgentChip & { href: string }) | 
     mark: first.mark,
     tone: first.tone,
     title: `Workspaces here: ${marked.map((b) => b.label).join(', ')} — ${state}`,
-    href: '/workspaces',
+    href: WORKSPACES_PAGE,
   };
 }
 

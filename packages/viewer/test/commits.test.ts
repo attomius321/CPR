@@ -334,7 +334,7 @@ describe('rowBadges', () => {
       mark,
       tone,
       title: `Workspace: ${branch}`,
-      href: `/workspaces?branch=${branch}`,
+      href: `/?branch=${branch}`,
     });
     const agents = new Map([
       ['feature/a', chip('⚙', 'working', 'feature/a')],
@@ -360,7 +360,7 @@ describe('rowBadges', () => {
         mark: '?',
         tone: 'waiting',
         title: 'Workspaces here: feature/a, feature/b — one needs you',
-        href: '/workspaces',
+        href: '/',
       },
     });
     // Without features folded, "+N" carries no mark.

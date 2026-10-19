@@ -510,6 +510,12 @@ describe('cpr view: commits and diffs', () => {
     });
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+  it('serves the history page at /history, the viewer as at / (V25)', async () => {
+    const page = await get('/history');
+    expect(page.status).toBe(200);
+    expect(page.body).toBe('<html>viewer</html>');
+  });
+
   it('lists rows of the history with their details, then its shape', async () => {
     const first = await get('/api/history?scope=all&from=0&to=2');
     expect(first.status).toBe(200);

@@ -56,7 +56,7 @@ test('a workspace with Codex: picked in the dialog, its plan in the thread, a re
 }) => {
   cpr = await serveFeatures({ codex: true });
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto(cpr.url);
+  await page.goto(`${cpr.url}history`);
   await openDialog(page);
   // Both installed: Claude Code first (no `agent.kind`), with its permission mode.
   const agent = dialog(page).getByLabel('agent');
@@ -92,7 +92,7 @@ test('a workspace with Codex: picked in the dialog, its plan in the thread, a re
   expect(call?.args.at(-1)).toContain('## Goal\nReturn a / 2, and test it.\n');
 
   // Its panel: CPR's prompt in the thread, recorded by the runner; no terminal, Talk instead.
-  await page.goto(`${cpr.url}workspaces?branch=${encodeURIComponent(BRANCH)}`);
+  await page.goto(`${cpr.url}?branch=${encodeURIComponent(BRANCH)}`);
   const here = panel(page);
   await expect(here.getByText("CPR's prompt")).toBeVisible(POLL);
   await expect(featureRow(page)).toContainText('Working', POLL);
@@ -143,7 +143,7 @@ test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean
   page,
 }) => {
   cpr = await serveFeatures({ codex: true });
-  await page.goto(`${cpr.url}workspaces`);
+  await page.goto(`${cpr.url}`);
   await startWithCodex(page);
   const here = panel(page);
   await expect(featureRow(page)).toContainText('Working', POLL);
@@ -178,7 +178,7 @@ test('the dialog offers the agents installed: Codex alone, or Claude Code alone,
   page,
 }) => {
   cpr = await serveFeatures({ agent: false, codex: true });
-  await page.goto(cpr.url);
+  await page.goto(`${cpr.url}history`);
   await openDialog(page);
   await expect(dialog(page)).toContainText('Codex · your ChatGPT account');
   await expect(dialog(page).getByLabel('agent')).toHaveCount(0);
@@ -187,7 +187,7 @@ test('the dialog offers the agents installed: Codex alone, or Claude Code alone,
   cpr.stop();
 
   cpr = await serveFeatures();
-  await page.goto(cpr.url);
+  await page.goto(`${cpr.url}history`);
   await openDialog(page);
   await expect(dialog(page)).toContainText('Claude Code · your Pro subscription');
   await expect(dialog(page).getByLabel('agent')).toHaveCount(0);
