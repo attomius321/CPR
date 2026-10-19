@@ -6849,7 +6849,7 @@ in the other order, **2 wrong** (lines kept twice; a replaced paragraph kept and
 duplicate text: a duplicate-lines warning on the review is the next precision step; keep-both
 by rule (V26b) would have refused both (additions that share lines; an edit of the same lines).
 
-**Not in V26 (later)**: several merges at once (each on its own worktree), squash or rebase merges
+**Not in V26 (later)**: a duplicate-lines warning on a resolution's review (both wrong answers in the replays kept text twice); Bitwarden's and Qwik's conflicts replayed; Codex as the merger with a real Codex; several merges at once (each on its own worktree), squash or rebase merges
 (`merge.style`), resolving submodule pointers, lockfiles regenerated instead of merged (none
 conflicted in the merges measured).
 
