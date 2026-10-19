@@ -6572,7 +6572,8 @@ V25's `/` 109 ms; `main`'s `/` (commits) 60 ms, V25's `/history` 60 ms. History 
 (its help wraps into a narrow column, Compare mode is cut), the same on `main`. On a repository whose
 two records were in `cpr/features/`, the built CLI's hook moved them and recorded its event,
 `cpr view` listed both in 40 ms, and a `cpr/features/` made again showed the note. README's History
-screenshot retaken (`history.png`). Not verified: a real Claude Code or Codex session running across
+screenshot retaken (`history.png`). `cpr diff` on this repository's last 5 merges, `main`'s build
+and this one: the same graph JSON but for `stats.durationMs` (within ±4 %). Not verified: a real Claude Code or Codex session running across
 the move (the hook was run by hand with a recorded event); Windows, where `rename` onto an existing
 folder fails even when it is empty (then the old folder is reported left); the README's Workspaces
 screenshot (`features.png`, three real agents) is not retaken and still shows the old tab order.
