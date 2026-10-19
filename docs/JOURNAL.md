@@ -3283,3 +3283,5 @@ check, compared with the merge that was committed:
 Input tokens per run: 5.5K–59K, **median 10.0K** (target: under 20K); output 0.9K–10K; 7–49 s
 per run. A workspace agent's context was 66K–474K. Not verified: Bitwarden's and Qwik's
 conflicts; Codex as the merger with a real Codex.
+
+Merged into main (2026-10-20).
