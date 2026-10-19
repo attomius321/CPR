@@ -6585,7 +6585,9 @@ screenshot (`features.png`, three real agents) is not retaken and still shows th
 
 **Problem** (asked: "I want a merger agent, who specializes in merging branches"; "I don't like the
 idea of the workspace's own agent doing it … it already has polluted context … we need to optimise
-token generation also"). Since V17 an Approve is a note for the branch's agent, and `cpr/AGENTS.md`
+token generation also"; "I need to have the possibility to choose which branch merges into which.
+Most of my working projects are old, and they have master … or I need to merge into another
+branch"; "the merger agent needs a skill for that … does he need a heavy skill?"). Since V17 an Approve is a note for the branch's agent, and `cpr/AGENTS.md`
 tells that agent to merge. A workspace's agent works in a linked worktree while the default branch
 is checked out in the main checkout, so `AGENTS.md` tells it not to merge there, and the merge
 comes back to the person. Measured (2026-10-19):
@@ -6637,6 +6639,19 @@ and `cpr diff`/`cpr pr`.
   the entry says so and waits for the person at `ready`, never landed unasked.
 - **After landing**, the workspace offers Clean up as today (V18b). Landing does not clean up.
 
+#### Into which branch
+
+- **Merge into ▾**: the person picks the target from the repository's branches (local, and remote
+  ones as a local branch of the same name). Preselected, in order: the branch the workspace
+  started from (its record's `from`, V18), the Approve verdict's `into` (V17), then the default
+  branch (`origin/HEAD`, else `main`, else `master`, as `defaultBranch` finds it today). An old
+  project on `master`, or work merged into `develop` or a release branch, is the same path.
+- The queue entry records its target. Everything above applies to any target: the merge worktree
+  starts at its tip, landing fast-forwards it in the worktree that has it checked out, else
+  `update-ref`. One merge at a time per repository, whatever the target, since two targets can be
+  checked out in one checkout over time.
+- `cpr merge <branch> [--into <target>]`.
+
 #### Conflicts: a rule, then an agent
 
 - **Keep both** (no tokens): every conflicting file is text, and each region's ancestor side is
@@ -6652,7 +6667,13 @@ and `cpr diff`/`cpr pr`.
   - each side's title and goal from its record, or its last commit subject: a line or two each;
   - the check command, and when it failed, the end of its output.
 
-  It must resolve the markers, run the check, and stop. It never commits, pushes, or touches
+  It must resolve the markers, run the check, and stop. **Its instructions** (the "skill") are
+  CPR's, written into that prompt, the same for Claude Code and Codex, and short (target: 1K
+  tokens): edit only the listed files and only between markers; keep what both sides meant; never
+  commit, push or switch branches; run the check; report one line per region; and when both sides
+  cannot be kept, stop with "needs you" and why, never pick one. Not a Claude Code skill file in the
+  repository: the workspaces' agents would load it too, and Codex does not read those. A project
+  can add its own merge rules in `cpr/merge.md` (optional, short), which only the merger is given. It never commits, pushes, or touches
   another branch. Edits outside the merge worktree are denied (permission mode `acceptEdits`, the
   worktree its only folder; Codex `-s workspace-write`). CPR commits its result as the merge.
   `merge.model` picks the model (default: a smaller one, Claude Code `sonnet`; Codex its
@@ -6696,7 +6717,11 @@ and `cpr diff`/`cpr pr`.
      (back to `queued`);
    - keep-both: this section's cases as fixtures (two journal entries; JSON keys; overlap
      refused; equal additions kept once; JSON that would not parse refused);
-   - the agent's prompt from a fixture conflict (its regions, symbols, titles; nothing else);
+   - the agent's prompt from a fixture conflict (its regions, symbols, titles, the instructions,
+     `cpr/merge.md` when there; nothing else), and the instructions' size (≤ 1K tokens);
+   - the target: preselected from the workspace's `from`, then the verdict, then the default
+     branch; a repository on `master`; a merge into a branch that is not the default, landed in
+     the worktree that has it;
    - submodule and binary → `needs-you`;
    - `AGENTS.md`;
    - e2e: Merge, the Merging rows, the review of a resolution, Land.
@@ -6730,9 +6755,9 @@ gap on its own. Then V26b (keep-both), then V26c (the merger agent and the token
 
 | # | Milestone | Output |
 |---|---|---|
-| V26a | Merge, check, land | The queue, CPR's merge worktree, `--no-ff` merge of the approved commit, `merge.checks`, landing by fast-forward or `update-ref`, `merge.push`; Merge on an approved workspace or branch review; the Merging rows; `cpr merge`; `AGENTS.md` without merging |
+| V26a | Merge, check, land | Merge into ▾ (any branch; preselected from the workspace's `from`, the verdict, the default branch), the queue, CPR's merge worktree, `--no-ff` merge of the approved commit, `merge.checks`, landing by fast-forward or `update-ref`, `merge.push`; Merge on an approved workspace or branch review; the Merging rows; `cpr merge`; `AGENTS.md` without merging |
 | V26b | Keep both | The rule (empty ancestor, no shared lines, JSON parses), its result checked and reviewed; this section's replays as fixtures |
-| V26c | The merger agent | A fresh session from the conflict alone (regions, both sides' symbols, titles, check output), `merge.model`, `merge.agent`, confined to the worktree; its resolution reviewed; tokens per run measured |
+| V26c | The merger agent | A fresh session from the conflict alone (regions, both sides' symbols, titles, check output; CPR's short instructions and `cpr/merge.md`), `merge.model`, `merge.agent`, confined to the worktree; its resolution reviewed; tokens per run measured |
 
 **Proposed decisions**:
 
@@ -6745,9 +6770,12 @@ gap on its own. Then V26b (keep-both), then V26c (the merger agent and the token
 | 146 | Clean merges | **No agent, no review: Approve was the yes** | Most merges are clean. A plain merge plus the check can be explained line by line |
 | 147 | Conflicts | **Rule, then agent; every resolution reviewed before landing** | Measured: the rule was right on 7 of 7 and refused 5. A wrong merge costs more trust than a slow one |
 | 148 | The agent's model | **`merge.model`, default `sonnet`** | Resolving a few regions with their symbols needs less than building a feature; the person can raise it |
+| 149 | Into which branch | **Any, picked at Merge; preselected: the workspace's `from`, the verdict's `into`, the default branch** | Old projects use `master`, others `develop` or release branches. Work goes back where it started from |
+| 150 | The merger's skill | **Light: ~1K tokens of CPR's own instructions in its prompt, plus an optional `cpr/merge.md`** | What a conflict needs is assembled per conflict. A heavy skill would be read on every run, which is the cost V26 removes. A skill file in the repository would reach the workspaces' agents too, and Codex does not read it |
 
 **Not in V26 (later)**: several merges at once (each on its own worktree), squash or rebase merges
-(`merge.style`), resolving submodule pointers, merging into a branch other than the default.
+(`merge.style`), resolving submodule pointers, lockfiles regenerated instead of merged (none
+conflicted in the merges measured).
 
 ### Phase 1 milestones
 
