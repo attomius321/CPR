@@ -2774,5 +2774,8 @@ Found while rewriting the README (2026-10-15). Fixed:
 **Verification**: a unit test first (`cpr` and `cpr view --help` say "every branch", never
 "current branch"), red on the old help, green after. 730 of 732 unit tests: the two that load
 node-pty fail here and on `main` alike (node-gyp is not in this container, so node-pty is not
-built). Build. No analysis code changed: no regression sets.
+built). Build. E2e: 99 of 103; the two terminal tests need node-pty (as above), and
+`commits.spec.ts:161` (compare mode's toggle position) fails on `main`'s build too. A fourth,
+`reviews.spec.ts:353`, failed once removing its temp directory (`ENOTEMPTY`) and passed 3 of 3
+alone. No analysis code changed: no regression sets. Not verified: the terminal e2e tests.
 
