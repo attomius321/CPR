@@ -380,7 +380,7 @@ export function StartFeatureDialog({
               </label>
             ) : (
               <span title="Codex's workspace-write sandbox: it writes in its worktree and may commit on its branch; nothing else in git">
-                sandbox: its worktree, commits on its branch
+                sandbox: its worktree and branch
               </span>
             )}
           </p>

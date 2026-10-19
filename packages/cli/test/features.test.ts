@@ -1372,18 +1372,37 @@ describe('features', () => {
     expect(repo.git('branch', '--list', 'feature/one')).toContain('feature/one');
   });
 
-  /** A fake Codex (V20a): records its runs; a run lives until stopped or `end`ed. */
+  /**
+   * A fake Codex (V20a): records its runs; a run lives until stopped or `end`ed and, as CPR's
+   * runner does, writes its thread's first entries a moment after it starts — unless `silent`,
+   * when it dies before its thread starts.
+   */
   function fakeCodex(account = 'your ChatGPT account') {
     const live = new Set<number>();
     let next = 4241;
-    const start = vi.fn<Codex['start']>(() => {
-      live.add(++next);
-      return Promise.resolve({ ok: true, pid: next });
-    });
-    const resume = vi.fn<Codex['resume']>(() => {
-      live.add(++next);
-      return Promise.resolve({ ok: true, pid: next });
-    });
+    const fake = { silent: false };
+    const run = (
+      request: { thread: string; run: string; prompt?: string; text?: string },
+      source: string,
+    ) => {
+      const pid = ++next;
+      if (fake.silent) return Promise.resolve({ ok: true as const, pid });
+      live.add(pid);
+      setTimeout(() => {
+        mkdirSync(dirname(request.thread), { recursive: true });
+        const at = NOW.toISOString();
+        const head = { at, session: THREAD_ID, run: request.run };
+        const text = request.prompt ?? request.text;
+        writeFileSync(
+          request.thread,
+          `${JSON.stringify({ ...head, kind: 'start', source })}\n${JSON.stringify({ ...head, kind: 'prompt', text })}\n`,
+          { flag: 'a' },
+        );
+      }, 30);
+      return Promise.resolve({ ok: true as const, pid });
+    };
+    const start = vi.fn<Codex['start']>((request) => run(request, 'startup'));
+    const resume = vi.fn<Codex['resume']>((request) => run(request, 'resume'));
     const stop = vi.fn<Codex['stop']>((pid) => {
       live.delete(pid);
       return Promise.resolve();
@@ -1400,7 +1419,7 @@ describe('features', () => {
     };
     /** The run ends, as the runner records it. */
     const end = (pid: number) => live.delete(pid);
-    return { codex, start, resume, stop, archive, end, live };
+    return { codex, fake, start, resume, stop, archive, end, live };
   }
   const THREAD_ID = '01a1552c-bfcb-76b1-8112-774913d628c1';
   /** Writes thread entries as CPR's runner would, marked with the feature's last run. */
@@ -1457,7 +1476,8 @@ describe('features', () => {
     });
     expect(prompt).toContain('One row per comment.');
     expect(prompt).toContain(join(repo.root, 'cpr', 'AGENTS.md'));
-    expect(feature.agent).toEqual({ state: 'working', kind: 'codex' });
+    // Answered once its thread started: its ID is known, CPR's prompt in the thread.
+    expect(feature.agent).toEqual({ state: 'working', kind: 'codex', id: THREAD_ID });
     expect(feature.base).toBe(shas.B);
     const saved = JSON.parse(
       readFileSync(join(repo.root, 'cpr', 'features', 'feature', 'csv.json'), 'utf8'),
@@ -1470,8 +1490,6 @@ describe('features', () => {
     });
     // Codex's words in the thread: a turn ended with a plan.
     recordRun(repo, 'feature/csv', [
-      { kind: 'start', source: 'startup' },
-      { kind: 'prompt', text: prompt },
       { kind: 'report', text: '1. Plan.' },
       { kind: 'end', reason: 'completed' },
     ]);
@@ -1528,14 +1546,23 @@ describe('features', () => {
 
   it('replies to Codex by resuming its thread; a run that lives is stopped first, when asked (V20a)', async () => {
     const { repo } = fresh();
-    const { codex, resume, stop, end } = fakeCodex();
+    const { codex, fake, resume, stop } = fakeCodex();
     const s = await service(repo, null, HOOK, undefined, codex);
+    // A run that dies before its thread starts: a start does not wait for it, and there is
+    // nothing to continue.
+    fake.silent = true;
+    const started = Date.now();
     const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
-    // Before its thread started there is nothing to continue.
-    end(4242);
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(feature.agent).toEqual({
+      state: 'failed',
+      kind: 'codex',
+      error: 'Codex ended without a word',
+    });
     await expect(s.reply({ branch: 'feature/one', text: 'Go' })).rejects.toMatchObject({
       status: 409,
     });
+    fake.silent = false;
     recordRun(repo, 'feature/one', [
       { kind: 'start', source: 'startup' },
       { kind: 'prompt', text: 'P' },
@@ -1552,7 +1579,12 @@ describe('features', () => {
       sessionId: THREAD_ID,
       text: 'OK, go ahead.',
     });
-    expect(replied.feature.agent.state).toBe('working');
+    // Answered once the run took the message: it is in the thread already.
+    expect(replied.feature.agent).toEqual({ state: 'working', kind: 'codex', id: THREAD_ID });
+    expect((await s.thread('feature/one')).entries.at(-1)).toMatchObject({
+      kind: 'prompt',
+      text: 'OK, go ahead.',
+    });
     // Working: only when asked to stop it.
     await expect(s.reply({ branch: 'feature/one', text: 'Wait' })).rejects.toMatchObject({
       status: 409,
@@ -1568,10 +1600,6 @@ describe('features', () => {
     const { codex, stop } = fakeCodex();
     const s = await service(repo, null, HOOK, undefined, codex);
     await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
-    recordRun(repo, 'feature/one', [
-      { kind: 'start', source: 'startup' },
-      { kind: 'prompt', text: 'P' },
-    ]);
     const { feature } = await s.stopAgent('feature/one');
     expect(stop).toHaveBeenCalledWith(4242);
     expect(feature.agent).toEqual({ state: 'stopped', kind: 'codex', id: THREAD_ID });
@@ -1586,10 +1614,6 @@ describe('features', () => {
     const { codex, stop, archive } = fakeCodex();
     const s = await service(repo, null, HOOK, undefined, codex);
     const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
-    recordRun(repo, 'feature/one', [
-      { kind: 'start', source: 'startup' },
-      { kind: 'prompt', text: 'P' },
-    ]);
     await s.clean({ branch: 'feature/one', unmerged: true });
     expect(stop).toHaveBeenCalledWith(4242);
     expect(archive).toHaveBeenCalledWith(THREAD_ID);

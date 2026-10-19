@@ -1096,6 +1096,8 @@ export function features(
       feature.agent = null;
     } else if (agent.kind === 'codex') {
       feature.agent = await launchCodex(where, feature, agent.codex, prompt);
+      await save(where, feature);
+      await firstEntry(where, feature);
     } else {
       // The session's first hooks run while `--bg` starts it: they look for this record.
       await save(where, feature);
@@ -1144,6 +1146,22 @@ export function features(
     return result.ok
       ? { kind: 'codex', started, run, pid: result.pid }
       : { kind: 'codex', error: result.error };
+  }
+
+  /**
+   * Waits for a Codex run's first thread entry, 3 s at most, unless its runner is gone: a start or
+   * a reply then answers with its thread's ID and the message in its thread, as Claude Code's
+   * hooks have them before `--bg` returns (measured with a real Codex: 5.3 s to the page's next
+   * read without it; its thread starts 150 ms after the run, V20a spike).
+   */
+  async function firstEntry(where: ReviewPlace, feature: FeatureFile): Promise<void> {
+    const run = feature.agent?.run;
+    if (!run) return;
+    for (let waited = 0; waited < 3_000; waited += 50) {
+      const entries = await readThreadEnd(cprFolder(where), feature.branch);
+      if (entries.some((e) => e.run === run) || !(await codexAlive(feature))) return;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
   }
 
   /** Whether a Codex feature's last run still runs (its runner's process). */
@@ -1230,6 +1248,7 @@ export function features(
     if (!resumed.ok) throw new FeatureRefused(resumed.error, 502);
     feature.agent = { kind: 'codex', started: startedAt, run, pid: resumed.pid };
     await save(where, feature);
+    await firstEntry(where, feature);
     const refs = await listRefs(repo);
     return { feature: await summary(where, feature, refs, await trunkOf(refs), []) };
   }

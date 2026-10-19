@@ -64,7 +64,7 @@ test('a workspace with Codex: picked in the dialog, its plan in the thread, a re
   await expect(dialog(page).getByLabel('permission')).toBeVisible();
   await agent.selectOption({ label: 'Codex' });
   await expect(dialog(page)).toContainText(
-    'Codex · your ChatGPT account · sandbox: its worktree, commits on its branch',
+    'Codex · your ChatGPT account · sandbox: its worktree and branch',
   );
   await expect(dialog(page).getByLabel('permission')).toHaveCount(0);
   await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
