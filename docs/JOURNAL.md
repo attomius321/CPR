@@ -3105,3 +3105,7 @@ reply; Stop in 0.21 s with nothing left running; Clean up in 0.9 s, its thread a
 light and dark at 1440, 900 and 390 px, no page errors; the main bundle +1.0 KB. Everything made
 was removed and the throwaway Codex threads archived. Not verified: Windows and macOS, an API key
 login, a person's own writable roots, network inside the sandbox.
+
+Merged into main (2026-10-19): V20a, no conflicts (`main` had not moved since the branch
+started; the merge's tree is the branch's). `main` verified after the merge: 788 unit tests, lint,
+typecheck, build, 113 of 113 e2e.
