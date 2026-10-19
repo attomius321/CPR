@@ -3163,3 +3163,6 @@ repositories, light and dark, 1440 and 390 px, no page errors. First paint: `/` 
 `main`'s `/workspaces`, `/history` 60 ms like `main`'s `/`. The built CLI moved two old records
 from its hook, listed them in 40 ms and showed the note for a leftover `cpr/features/`. Not
 verified: a real agent session across the move; Windows; the README's Workspaces screenshot.
+
+Merged into main (2026-10-19): V25a–c, no conflicts (`main` had not moved since the branch
+started). `main` verified after the merge: 801 unit tests, lint, typecheck, build, 114 of 114 e2e.
