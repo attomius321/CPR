@@ -6581,7 +6581,7 @@ screenshot (`features.png`, three real agents) is not retaken and still shows th
 
 ### V26 — A merger: approved branches merged by CPR, an agent only for conflicts
 
-**Status:** V26a built (2026-10-19), on branch `milestone/v26-merger`; V26b and V26c not started.
+**Status:** V26a built (2026-10-19), on branch `milestone/v26-merger`; V26c in progress; V26b after it, if needed.
 
 **Problem** (asked: "I want a merger agent, who specializes in merging branches"; "I don't like the
 idea of the workspace's own agent doing it … it already has polluted context … we need to optimise
@@ -6748,8 +6748,11 @@ and `cpr diff`/`cpr pr`.
 | A project with no check command | Never landed unasked: `ready` waits for Land |
 | Two `cpr view`s on one repository | The queue file is locked while a merge runs; the second shows the queue read-only |
 
-**Order**: V26a (the clean path, landing, no agent) first: it is most merges and fixes the main
-gap on its own. Then V26b (keep-both), then V26c (the merger agent and the token measurements).
+**Order** (changed 2026-10-19): V26a (the clean path, landing, no agent) first: it is most merges
+and fixes the main gap on its own. Then V26c (the merger agent, for every conflict), then V26b
+only if the replays show the agent slow or wrong where both sides only added: keep-both applied
+to 6 of 11 conflicts here but 1 of 21 on Bitwarden and 0 of 7 on Qwik, and every resolution is
+reviewed either way.
 
 #### Milestones
 
@@ -6804,6 +6807,39 @@ merge of this branch in a clone of this repository: merged and checked (install,
 e2e) in 188 s; the landing refused by an untracked file the merge brings, with nothing changed;
 landed in 278 ms once it was removed, a local change kept. Found that way: `merge.push` was read
 after landing, from the config the landing brought; it is read before now.
+
+#### V26c as planned (2026-10-19)
+
+Measured first: a Claude Code `-p` run with CPR's own system prompt (`--system-prompt`), tools
+limited and no MCP servers took 2,349 input tokens and 2.9 s for a one-line answer (`sonnet`).
+Claude Code's Edit needs the file read first: for this repository's `JOURNAL.md` (3,000+ lines)
+that is ~100K tokens, the cost V26 is to remove.
+
+- **The agent writes no file.** It is given the conflict and answers, for each numbered region,
+  the text that replaces it (or "needs you" and why), as JSON in its last message. CPR writes each
+  answer between that region's markers, checks no markers are left, commits the merge (its
+  message `Merge <branch>: <title>`), and runs the check. Read-only tools only: Claude Code
+  `--tools Read,Grep,Glob` (it may look at a file when the region is not enough), Codex `-s
+  read-only`. One run, `claude -p` or `codex exec`, waited for: no session to follow, and its
+  usage comes with its answer.
+- **Its prompt**: CPR's instructions (≤ 1K tokens, the system prompt for Claude Code), then
+  `cpr/merge.md` when there, both sides' titles (the workspace's title and goal, else the last
+  commit subjects), and each region in git's diff3 style (ours, the ancestor, theirs) with 3
+  lines around. The symbols both sides changed in the conflicting files, by CPR's analysis of
+  each side against the merge base, limited to those files.
+- **Not given to anyone**: a file deleted on one side, a submodule pointer, a binary file:
+  `needs-you`, as before.
+- **The review is the regions.** A resolved merge waits at `needs-you` with each region: the two
+  sides, the ancestor, and the answer, plus the check's result. Approve → `ready` → landed.
+  Request changes → a new run with the person's words and the earlier answer.
+- **A clean merge whose check failed** stays `failed` (not given to the agent): there is no region
+  to answer, and the fix belongs on the branch.
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 151 | How the agent changes files | **It does not: it answers each region's text, CPR writes it** | Edit would read whole files (~100K tokens for this repository's journal); the answer is confined by construction; the review is region by region |
+| 152 | Which run | **One `claude -p` / `codex exec` run, waited for, read-only tools** | Bounded, its usage in its answer; nothing to attach to or clean up |
+| 153 | A failed check after a clean merge | **`failed`, not the agent's** | No region to answer: what fails is the branch's code, fixed on the branch and reviewed again |
 
 **Not in V26 (later)**: several merges at once (each on its own worktree), squash or rebase merges
 (`merge.style`), resolving submodule pointers, lockfiles regenerated instead of merged (none
