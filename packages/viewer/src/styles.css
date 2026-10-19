@@ -221,6 +221,10 @@ code {
   margin: 0 0 12px;
 }
 
+.workspaces-empty a {
+  color: var(--moved);
+}
+
 /* Before the first layout arrives (V8e): where the canvas will be. */
 .canvas > .canvas-waiting {
   flex: 1 0 240px;
