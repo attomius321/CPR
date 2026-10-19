@@ -2845,3 +2845,6 @@ out, and it may hold the old state. `readFeaturesAgain` waits for it, then reads
 `features.spec.ts` 22 of 22. Not covered by a deterministic test: holding back `/api/features` in
 the e2e server would need a hook it does not have.
 
+Both fixes merged into main (2026-10-19). `main` verified after the merges: 731 unit tests (the
+node-pty ones too, now that node-pty is built here), build, 104 of 104 e2e.
+
