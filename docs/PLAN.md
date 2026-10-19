@@ -6847,7 +6847,7 @@ equal in the regions (its note flagged the test the committed merge also changed
 in the other order, **2 wrong** (lines kept twice; a replaced paragraph kept and a duplicate ID),
 1 "needs you", rightly. Input tokens: median 10.0K (5.5K–59K), 7–49 s a run. Both wrong ones
 duplicate text: a duplicate-lines warning on the review is the next precision step; keep-both
-by rule (V26b) would not have changed them (both were edits, not additions alone).
+by rule (V26b) would have refused both (additions that share lines; an edit of the same lines).
 
 **Not in V26 (later)**: several merges at once (each on its own worktree), squash or rebase merges
 (`merge.style`), resolving submodule pointers, lockfiles regenerated instead of merged (none
