@@ -42,6 +42,8 @@ import {
 import { reviewPlace } from '../src/reviews.js';
 import type { Terminals } from '../src/terminal.js';
 import type { Codex } from '../src/codex.js';
+import { codexServer } from '../src/app-server.js';
+import { fakeAppServer, type FakeAppServer } from './fake-app-server.js';
 
 /**
  * main: A ── B; origin/main at A, origin/HEAD naming main; origin/taken at A. The repository
@@ -1419,7 +1421,7 @@ describe('workspaces', () => {
    * runner does, writes its thread's first entries a moment after it starts — unless `silent`,
    * when it dies before its thread starts.
    */
-  function fakeCodex(account = 'your ChatGPT account') {
+  function fakeCodex(account = 'your ChatGPT account', server: FakeAppServer | null = null) {
     const live = new Set<number>();
     let next = 4241;
     const fake = { silent: false };
@@ -1458,6 +1460,7 @@ describe('workspaces', () => {
       stop,
       archive,
       account: () => Promise.resolve(account),
+      server: () => Promise.resolve(server ? codexServer(server.address, { waitMs: 500 }) : null),
     };
     /** The run ends, as the runner records it. */
     const end = (pid: number) => live.delete(pid);
@@ -1675,6 +1678,220 @@ describe('workspaces', () => {
     expect(archive).toHaveBeenCalledWith(THREAD_ID);
     expect(archive).toHaveBeenCalledTimes(1);
     expect(existsSync(workspace.worktree.path)).toBe(false);
+  });
+
+  /** Codex 0.163's app server, faked (V27a), on a socket that goes with the test. */
+  const appServer = async () => {
+    const dir = tempDir();
+    folders.push(dir);
+    const server = await fakeAppServer(join(dir, 's.sock'), {
+      now: () => Math.floor(NOW.getTime() / 1000),
+    });
+    closing.push(() => server.close());
+    return server;
+  };
+  const closing: (() => Promise<void>)[] = [];
+  afterEach(async () => {
+    for (const close of closing.splice(0)) await close();
+  });
+
+  it("starts Codex on its app server: a thread in the worktree, its branch's git folders writable, named after the branch (V27a)", async () => {
+    const { repo } = fresh();
+    const server = await appServer();
+    const { codex, start } = fakeCodex(undefined, server);
+    const s = await service(repo, null, HOOK, undefined, codex);
+    const { workspace, prompt } = await s.start({
+      brief: 'Do it',
+      branch: 'feature/csv',
+      planFirst: true,
+    });
+    const folder = worktreeFolder(repo.root, 'feature/csv');
+    // No runner, no `exec`: the server holds the thread.
+    expect(start).not.toHaveBeenCalled();
+    const [thread] = server.threads;
+    expect(thread).toMatchObject({
+      cwd: folder,
+      name: 'feature/csv',
+      sandbox: 'workspace-write',
+      approvalPolicy: 'on-request',
+      writableRoots: await commitFolders(folder, 'feature/csv'),
+    });
+    expect(workspace.agent).toEqual({
+      state: 'working',
+      kind: 'codex',
+      id: thread?.id,
+      remote: server.address,
+    });
+    const saved = JSON.parse(
+      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'csv.json'), 'utf8'),
+    ) as WorkspaceFile;
+    expect(saved.agent).toEqual({ kind: 'codex', started: NOW.toISOString(), thread: thread?.id });
+    // Its thread, from the server: CPR's prompt is there once the start answered.
+    const read = await s.thread('feature/csv');
+    expect(read.recorded).toBe(true);
+    expect(read.entries).toEqual([
+      { at: NOW.toISOString(), session: thread?.id, kind: 'start', source: 'startup' },
+      { at: NOW.toISOString(), session: thread?.id, kind: 'prompt', text: prompt },
+    ]);
+    expect(existsSync(join(repo.root, 'cpr', 'threads', 'feature', 'csv.jsonl'))).toBe(false);
+  });
+
+  it('reads its state from the server: needs you on an approval, its plan ready, a turn typed in its terminal (V27a)', async () => {
+    const { repo } = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(undefined, server);
+    const s = await service(repo, null, HOOK, undefined, codex);
+    await s.start({ brief: 'Do it', branch: 'feature/csv', planFirst: true });
+    const id = server.threads[0]?.id ?? '';
+    const head = { kind: 'codex', id, remote: server.address };
+    server.ask(id, 'May I run pnpm install with the network?', 'pnpm install');
+    const [waiting] = (await s.list()).workspaces;
+    expect(waiting?.agent).toEqual({ state: 'needs-you', ...head, waitingFor: 'approval prompt' });
+    expect(waiting?.lastAction).toBe(NOW.toISOString());
+    expect((await s.thread('feature/csv')).entries.at(-1)).toMatchObject({
+      kind: 'report',
+      text: 'May I run pnpm install with the network?',
+    });
+    server.reply(id, '1. Plan');
+    expect((await s.list()).workspaces[0]?.agent).toEqual({ state: 'plan-ready', ...head });
+    // The person types in Codex's own terminal (`codex resume --remote`): CPR sees it.
+    server.typed(id, 'Go ahead, from the terminal');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect((await s.list()).workspaces[0]?.agent.state).toBe('working');
+    expect((await s.thread('feature/csv')).entries.at(-1)).toMatchObject({
+      kind: 'prompt',
+      text: 'Go ahead, from the terminal',
+    });
+  });
+
+  it('gives Codex a message: a new turn once one finished, joined to the turn that runs, a wait stopped only when asked (V27a)', async () => {
+    const { repo } = fresh();
+    const server = await appServer();
+    const { codex, resume } = fakeCodex(undefined, server);
+    const s = await service(repo, null, HOOK, undefined, codex);
+    await s.start({ brief: 'Do it', branch: 'feature/csv', planFirst: true });
+    const id = server.threads[0]?.id ?? '';
+    const methods = () => server.calls.map((c) => c.method);
+    // Working: the message joins its turn, nothing stopped (no `stop` needed).
+    const steered = await s.reply({ branch: 'feature/csv', text: 'Also test it' });
+    expect(steered.workspace.agent.state).toBe('working');
+    expect(methods()).toContain('turn/steer');
+    expect(methods()).not.toContain('turn/interrupt');
+    server.reply(id, 'Plan');
+    await s.reply({ branch: 'feature/csv', text: 'OK, go ahead.' });
+    expect(server.thread(id).turns).toHaveLength(2);
+    expect(
+      (await s.thread('feature/csv')).entries
+        .filter((e) => e.kind === 'prompt')
+        .map((e) => (e as { text: string }).text)
+        .slice(1),
+    ).toEqual(['Also test it', 'OK, go ahead.']);
+    // Waiting on an approval: sending stops its turn, so only when asked.
+    server.ask(id, 'May I?', 'curl example.com');
+    await expect(s.reply({ branch: 'feature/csv', text: 'No' })).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(
+        /waiting on an approval prompt: sending stops its turn/,
+      ) as string,
+    });
+    await s.reply({ branch: 'feature/csv', text: 'Skip that.', stop: true });
+    expect(server.thread(id).turns.map((t) => t.status)).toEqual([
+      'completed',
+      'interrupted',
+      'inProgress',
+    ]);
+    expect(resume).not.toHaveBeenCalled();
+  });
+
+  it('stops its turn, starts a new thread when started again, and archives both at Clean up (V27a)', async () => {
+    const { repo } = fresh();
+    const server = await appServer();
+    const { codex, archive } = fakeCodex(undefined, server);
+    const s = await service(repo, null, HOOK, undefined, codex);
+    const { workspace } = await s.start({
+      brief: 'Do it',
+      branch: 'feature/csv',
+      planFirst: false,
+    });
+    const first = server.threads[0]?.id ?? '';
+    const stopped = await s.stopAgent('feature/csv');
+    expect(stopped.workspace.agent).toMatchObject({ state: 'stopped', id: first });
+    await expect(s.stopAgent('feature/csv')).rejects.toMatchObject({ status: 409 });
+    const again = await s.startAgent('feature/csv');
+    const second = server.threads[1]?.id ?? '';
+    expect(again.workspace.agent).toMatchObject({ state: 'working', id: second });
+    const saved = JSON.parse(
+      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'csv.json'), 'utf8'),
+    ) as WorkspaceFile;
+    expect(saved.agent).toMatchObject({ thread: second, threads: [first] });
+    await s.clean({ branch: 'feature/csv', unmerged: true });
+    // The running turn interrupted first; both threads archived on the server, not by `codex archive`.
+    expect(server.thread(second).turns.at(-1)?.status).toBe('interrupted');
+    expect(server.threads.map((t) => t.archived)).toEqual([true, true]);
+    expect(archive).not.toHaveBeenCalled();
+    expect(existsSync(workspace.worktree.path)).toBe(false);
+  });
+
+  it('after the server restarted: its cut turn reads stopped, a message resumes its thread; gone, its state is unknown (V27a)', async () => {
+    const { repo } = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(undefined, server);
+    const s = await service(repo, null, HOOK, undefined, codex);
+    await s.start({ brief: 'Do it', branch: 'feature/csv', planFirst: true });
+    const id = server.threads[0]?.id ?? '';
+    server.restart();
+    expect((await s.list()).workspaces[0]?.agent.state).toBe('stopped');
+    await s.reply({ branch: 'feature/csv', text: 'Carry on' });
+    expect(server.thread(id).turns.at(-1)?.status).toBe('inProgress');
+    await server.close();
+    const [gone] = (await s.list()).workspaces;
+    expect(gone?.agent).toMatchObject({
+      state: 'unknown',
+      id,
+      error: expect.stringMatching(/^Codex's app server: /) as string,
+    });
+  });
+
+  it("keeps V20a's exec without a daemon, and for a workspace exec started until it is started again (V27a)", async () => {
+    const { repo } = fresh();
+    // No daemon: `exec` through the runner, as V20a.
+    const plain = fakeCodex();
+    const s = await service(repo, null, HOOK, undefined, plain.codex);
+    await s.start({ brief: 'Do it', branch: 'feature/one', planFirst: true });
+    expect(plain.start).toHaveBeenCalledTimes(1);
+    // A daemon later: the exec workspace keeps its runner and thread file...
+    const server = await appServer();
+    const both = fakeCodex(undefined, server);
+    const t = await service(repo, null, HOOK, undefined, both.codex);
+    recordRun(repo, 'feature/one', [
+      { kind: 'report', text: 'Plan' },
+      { kind: 'end', reason: 'completed' },
+    ]);
+    expect((await t.list()).workspaces[0]?.agent).toEqual({
+      state: 'plan-ready',
+      kind: 'codex',
+      id: THREAD_ID,
+    });
+    await t.reply({ branch: 'feature/one', text: 'Go' });
+    expect(both.resume).toHaveBeenCalledTimes(1);
+    expect(server.threads).toEqual([]);
+    // ...until it is started again: then on the server, its exec threads still archived at Clean up.
+    await t.stopAgent('feature/one');
+    const again = await t.startAgent('feature/one');
+    expect(again.workspace.agent).toMatchObject({ state: 'working', remote: server.address });
+    await t.clean({ branch: 'feature/one', unmerged: true });
+    expect(both.archive).toHaveBeenCalledWith(THREAD_ID);
+    expect(server.threads[0]?.archived).toBe(true);
+  });
+
+  it('starts nothing on the server when Codex is not logged in (V27a)', async () => {
+    const { repo } = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex('not logged in', server);
+    const s = await service(repo, null, HOOK, undefined, codex);
+    const { workspace } = await s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true });
+    expect(workspace.agent).toMatchObject({ state: 'not-started', kind: 'codex' });
+    expect(server.calls).toEqual([]);
   });
 });
 
