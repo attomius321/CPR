@@ -1,5 +1,13 @@
 import { execFileSync, execSync, spawn, type ChildProcess } from 'node:child_process';
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -60,7 +68,13 @@ async function startCpr(
 ): Promise<{ url: string; child: ChildProcess }> {
   const child = spawn(process.execPath, [cli, ...args, '--no-open'], {
     cwd,
-    env: { ...env, ...extraEnv },
+    // Never a real agent: a spec that wants one passes a fake (V26c's merger would find yours).
+    env: {
+      ...env,
+      CPR_CLAUDE: '/nonexistent/claude',
+      CPR_CODEX: '/nonexistent/codex',
+      ...extraEnv,
+    },
   });
   const url = await new Promise<string>((resolve, reject) => {
     let output = '';
@@ -126,6 +140,11 @@ function commitAt(repo: string, minutes: number, ...args: string[]): void {
 
 export interface RunningAgent extends Running {
   repo: string;
+  /**
+   * With `merger`, a fake Claude Code for CPR's merger agent (V26c): each `-p` run answers the
+   * next of `answers` (the last again when none is left); what it was asked, newest last.
+   */
+  mergerPrompts(): string[];
   /** The bare repository `origin` points at (V16: Approve pushes there). */
   origin: string;
   /** main's commit (the fork point), then the agent's commits, oldest first. */
@@ -142,6 +161,7 @@ export interface RunningAgent extends Running {
  */
 export async function serveAgentBranch(
   extraEnv: Record<string, string> = {},
+  { merger }: { merger?: string[] } = {},
 ): Promise<RunningAgent> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', 'main');
@@ -168,12 +188,38 @@ export async function serveAgentBranch(
     ...git(repo, 'rev-list', '--reverse', 'main..agent').split('\n'),
   ];
   const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  const prompts = join(cache, 'merger-prompts.jsonl');
+  if (merger) {
+    const fake = join(cache, 'fake-claude');
+    writeFileSync(join(cache, 'merger-answers.json'), JSON.stringify(merger));
+    writeFileSync(
+      fake,
+      `#!/usr/bin/env node
+const fs = require('node:fs');
+const input = fs.readFileSync(0, 'utf8');
+fs.appendFileSync(${JSON.stringify(prompts)}, JSON.stringify(input) + '\\n');
+const answers = JSON.parse(fs.readFileSync(${JSON.stringify(join(cache, 'merger-answers.json'))}, 'utf8'));
+const n = fs.readFileSync(${JSON.stringify(prompts)}, 'utf8').split('\\n').filter(Boolean).length;
+const result = answers[Math.min(n, answers.length) - 1];
+process.stdout.write(JSON.stringify({ result, is_error: false, usage: { input_tokens: Math.ceil(input.length / 4), output_tokens: Math.ceil(result.length / 4) } }));
+`,
+      { mode: 0o755 },
+    );
+    extraEnv = { CPR_CLAUDE: fake, ...extraEnv };
+  }
   let running = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache, ...extraEnv });
   return {
     get url() {
       return running.url;
     },
     repo,
+    mergerPrompts: () =>
+      existsSync(prompts)
+        ? readFileSync(prompts, 'utf8')
+            .split('\n')
+            .filter((line) => line !== '')
+            .map((line) => JSON.parse(line) as string)
+        : [],
     origin,
     shas,
     async restart() {
