@@ -140,11 +140,14 @@ export function merger(
     now = () => new Date(),
     runCheck = runShell,
     root = repo.root,
+    onChange,
   }: {
     now?: () => Date;
     runCheck?: RunCheck;
     /** Where `cpr/config.json` is read. */
     root?: string;
+    /** Each change of an entry, as it is written (`cpr merge` prints them). */
+    onChange?: (entry: MergeEntry) => void;
   } = {},
 ): Merger {
   const stateDir = join(cacheDir, 'state', repo.id);
@@ -187,6 +190,9 @@ export function merger(
         if (fields[key] === undefined) delete entry[key];
       }
       return { ...entry };
+    }).then((entry) => {
+      onChange?.(entry);
+      return entry;
     });
   }
 
@@ -473,6 +479,11 @@ export function merger(
   return {
     async list() {
       const merges = await read();
+      // Queued by another process, or left by one that stopped: merged here.
+      if (
+        merges.some((e) => e.state === 'queued' || e.state === 'merging' || e.state === 'checking')
+      )
+        kick();
       const elsewhere = !running && existsSync(lockFile) && (await lockedElsewhere());
       return { merges, ...(elsewhere ? { elsewhere: true as const } : {}) };
     },

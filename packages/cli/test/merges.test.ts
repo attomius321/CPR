@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { openRepo, type Verdict } from '@cpr/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
+import { run } from '../src/main.js';
 import { merger, MergeRefused, readMergeConfig, type RunCheck } from '../src/merges.js';
 import { AGENTS, serializeReview } from '../src/reviews.js';
 import { serializeWorkspace, type WorkspaceFile } from '../src/workspaces.js';
@@ -502,6 +503,59 @@ describe('into which branch (V26a)', () => {
     const [entry] = (await m.list()).merges;
     expect(entry).toMatchObject({ state: 'landed', base: shas.M });
     expect(repo.git('rev-parse', 'release')).toBe(entry?.merge);
+  });
+});
+
+describe('cpr merge (V26a)', () => {
+  async function cprMerge(repo: TestRepo, ...args: string[]) {
+    let stdout = '';
+    let stderr = '';
+    const code = await run(['merge', ...args], {
+      cwd: repo.root,
+      stdout: (text) => (stdout += text),
+      stderr: (text) => (stderr += text),
+      openUrl: () => undefined,
+      waitForExit: () => Promise.resolve(),
+      env: { ...process.env, CPR_CACHE_DIR: cache },
+    });
+    return { code, stdout, stderr };
+  }
+
+  it('merges, checks and lands, printing each state', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'test -f src/t.ts' });
+    const { code, stdout } = await cprMerge(repo, 'topic');
+    expect(code).toBe(0);
+    const merge = repo.git('rev-parse', 'main');
+    expect(stdout.split('\n').map((line) => line.replace(/ \(\d+\.\d s\)/, ''))).toEqual([
+      `queued: ${shas.T.slice(0, 7)} into main`,
+      `merging into main at ${shas.M.slice(0, 7)}`,
+      'checking: test -f src/t.ts (cpr/config.json (merge.checks))',
+      'ready to land',
+      `landed: main is at ${merge.slice(0, 7)}`,
+      '',
+    ]);
+  });
+
+  it('says why it does not merge, and waits for --land without a check', async () => {
+    const { repo, shas } = setup();
+    let result = await cprMerge(repo, 'topic');
+    expect(result).toMatchObject({
+      code: 1,
+      stderr: expect.stringMatching(/not approved/) as unknown,
+    });
+
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    result = await cprMerge(repo, 'topic', '--into', 'main');
+    expect(result.code).toBe(1);
+    expect(result.stdout).toMatch(/ready to land: no check/);
+    expect(repo.git('rev-parse', 'main')).toBe(shas.M);
+
+    result = await cprMerge(repo, 'topic', '--land');
+    expect(result.code).toBe(0);
+    expect(result.stdout).toMatch(/^landed: main is at/m);
+    expect(repo.git('rev-parse', 'main')).not.toBe(shas.M);
   });
 });
 
