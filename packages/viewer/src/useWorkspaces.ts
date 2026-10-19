@@ -1,17 +1,25 @@
 import { useEffect, useState } from 'react';
-import type { BranchReviewList, WorkspaceList } from '@cpr/core';
+import type { BranchReviewList, MergeList, WorkspaceList } from '@cpr/core';
+import { mergeLive } from './merges.js';
 
-/** The workspaces and the reviews, read together: a review changes what a workspace needs next. */
+/**
+ * The workspaces, the reviews and the merge queue (V26), read together: a review changes what a
+ * workspace needs next, and an approval is merged.
+ */
 export interface WorkspacesState {
   list: WorkspaceList | null;
   reviews: BranchReviewList | null;
+  /** Null where CPR does not merge (no repository). */
+  merges: MergeList | null;
 }
 
 /** While an agent works or waits, how often its state is read again. */
 const POLL_MS = 5_000;
+/** While a merge is queued, merging or checking. */
+const MERGE_POLL_MS = 1_500;
 
 // One reader for every component on the page (the tab bar, the page, the review header).
-let current: WorkspacesState = { list: null, reviews: null };
+let current: WorkspacesState = { list: null, reviews: null, merges: null };
 const listeners = new Set<(state: WorkspacesState) => void>();
 let loading: Promise<void> | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -20,6 +28,8 @@ const live = (state: WorkspacesState) =>
   state.list?.workspaces.some(
     (f) => f.agent.state === 'working' || f.agent.state === 'needs-you',
   ) ?? false;
+
+const merging = (state: WorkspacesState) => mergeLive(state.merges?.merges ?? []);
 
 async function read<T>(path: string): Promise<T | null> {
   const response = await fetch(path);
@@ -31,9 +41,10 @@ export function reloadWorkspaces(): Promise<void> {
   loading ??= Promise.all([
     read<WorkspaceList>('/api/workspaces'),
     read<BranchReviewList>('/api/reviews'),
+    read<MergeList>('/api/merges'),
   ])
-    .then(([list, reviews]) => {
-      current = { list, reviews };
+    .then(([list, reviews, merges]) => {
+      current = { list, reviews, merges };
       for (const listener of listeners) listener(current);
     })
     .catch(() => {})
@@ -54,14 +65,19 @@ export async function readWorkspacesAgain(): Promise<WorkspacesState> {
   return current;
 }
 
-/** The next read, while a page reads them and an agent works or waits; none when hidden. */
+/**
+ * The next read, while a page reads them and an agent works or waits, or a merge runs; none when
+ * hidden.
+ */
 function schedule(): void {
   clearTimeout(timer);
-  if (listeners.size === 0 || !live(current)) return;
+  if (listeners.size === 0) return;
+  const wait = merging(current) ? MERGE_POLL_MS : live(current) ? POLL_MS : null;
+  if (wait === null) return;
   timer = setTimeout(() => {
     if (document.visibilityState === 'hidden') schedule();
     else void reloadWorkspaces();
-  }, POLL_MS);
+  }, wait);
 }
 
 const onShown = () => {
@@ -69,8 +85,8 @@ const onShown = () => {
 };
 
 /**
- * The workspaces and reviews, read on mount, when the page is back in view, and every 5 s while
- * an agent works or waits for the person.
+ * The workspaces, reviews and merges, read on mount, when the page is back in view, every 5 s
+ * while an agent works or waits for the person, and every 1.5 s while a merge runs.
  */
 export function useWorkspaces(): WorkspacesState {
   const [state, setState] = useState(current);

@@ -30,8 +30,8 @@ were not updated. The aim is to review decisions, not lines.
 - **Reviews any branch.** Mark symbols reviewed as you go. After new commits, only what is new or
   changed since is left to look at.
 - **Works with agents.** Describe the work, and CPR makes its branch and worktree and starts
-  Claude Code or Codex there. You read its plan, answer it, review its branch, and approve. The agent then
-  merges the commit you approved.
+  Claude Code or Codex there. You read its plan, answer it, review its branch, and approve. CPR then
+  merges the commit you approved, runs your check on the merge, and moves the branch.
 - **Reads pull and merge requests.** Review a GitHub pull request or a GitLab merge request from
   the graph and post your comments as one review.
 - **Runs in CI.** A GitHub Action and a GitLab CI template post the findings on the lines they
@@ -69,6 +69,7 @@ cpr diff main     # the same, in the terminal
 | `cpr diff <base> [head]` | Compares `head` (default `HEAD`) with where it left `base`, as a pull request does, and prints the changed symbols and the findings. |
 | `cpr view [<base> [head]]` | Opens the viewer in the browser. Without revisions it opens on Workspaces, beside the repository's History; with them, on that comparison. Runs until Ctrl+C. |
 | `cpr pr [<number>]` | Reviews a GitHub pull request or a GitLab merge request (`cpr mr` is the same command). In a CI job for one, the number comes from the job. |
+| `cpr merge <branch>` | Merges the commit your review of `branch` approved, as Merge does in the viewer ([Merging](#merging)): `--into <branch>` picks the target, `--land` lands a merge that waits for you. |
 
 `cpr diff` in a repository where one function was added, one removed and one changed:
 
@@ -229,12 +230,9 @@ text.
 
 ![Review tab: two comments on symbols, a summary, and Request changes picked, ready to finish](docs/images/viewer-review.png)
 
-CPR pushes and merges nothing itself. An approval asks the agent to merge the commit you
-reviewed (that one, not newer ones) into the repository's default branch, when you tell it to
-act on the review ("check my review"). Before you approve, the Review tab says whether that merge
-is clean or which files conflict; on a conflict, the agent resolves it on its branch and you
-review that. The default branch (`main`) can be reviewed too, for its unpushed commits; an
-approval there says they may be pushed.
+Before you approve, the Review tab says whether the branch merges cleanly or which files conflict;
+on a conflict, the agent resolves it on its branch and you review that. The default branch
+(`main`) can be reviewed too, for its unpushed commits; an approval there says they may be pushed.
 
 A branch's badge shows how its review stands: `✓` approved, `✗` changes requested, `+2` for its
 own commits since your review, `…` while reviewing. Commits added since get a dot.
@@ -246,6 +244,33 @@ Where reviews live:
   share them. `git clean -fdx` deletes ignored files, reviews with them.
 - `cpr/AGENTS.md` tells any agent what to do with a review, and every review file's first line
   points there. Claude Code loads it when it reads a review.
+
+### Merging
+
+An approved branch gets **Merge into** in its Review tab and in its workspace's panel. The target
+is preselected: the branch the workspace started from, else the one the approval names, else the
+default branch (`main`, or `master` in older projects). Pick any other branch in the list.
+
+CPR merges the commit you approved (that one, not newer ones) with `git merge --no-ff`, in a
+worktree of its own in its cache. Your checkout and the agent's worktree are not used. Then:
+
+1. It runs the check on the merge: `merge.checks` in `cpr/config.json`, else the command it guesses
+   from the target's files (a `check` or `test` script after its package manager's install, a
+   Makefile target, `cargo test`, …).
+2. When the check passes, it moves the target by fast-forward. If the target is checked out
+   (usually in your main checkout), the fast-forward runs there, so the files move with the
+   branch. git refuses when your local changes would be overwritten. Then nothing changes and Land
+   tries again. A target checked out nowhere has its ref moved, only if it has not moved since.
+3. With `merge.push: true` it pushes the target. This is off by default.
+
+Merges go one at a time, each on the result of the last. The Merging section at the top of
+Workspaces shows each one: queued, merging, checking, ready to land, landed or failed, with the
+end of a failed check's output. Without a check, a merge waits there for **Land**. A conflict stops
+the merge with the files named, and nothing changes. Resolve it on the branch, review it again,
+then Retry. A target that moved before landing is merged again on its new tip.
+
+The queue is kept in CPR's cache. `cpr merge <branch>` does the same from a terminal and prints
+each step.
 
 ## Workspaces and agents
 
@@ -515,7 +540,8 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 {
   "plugins": ["angular"],
   "workspaces": { "branchPrefixes": { "fix": "bugfix/" }, "worktrees": "../{repo}.worktrees" },
-  "agent": { "kind": "claude", "permissionMode": "default", "model": "opus" }
+  "agent": { "kind": "claude", "permissionMode": "default", "model": "opus" },
+  "merge": { "checks": ["pnpm install --frozen-lockfile", "pnpm check"], "push": false }
 }
 ```
 
@@ -525,11 +551,13 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 | `workspaces.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, per kind of work; an object with some kinds changes only those. |
 | `workspaces.branchPrefix` | `feature/` | The Feature prefix, as before kinds of work; `branchPrefixes.feature` wins over it. |
 | `workspaces.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout (`{repo}` is its folder name). |
-
-Before V25 the `workspaces` section was called `features`; that name is still read when `workspaces` is not there.
 | `agent.kind` | `claude` | The agent the start dialog offers first, when installed: `claude` or `codex`. |
 | `agent.permissionMode` | `default` | The permission mode the start dialog suggests for Claude Code: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's | The model Claude Code starts with (Codex's is its own configuration's). |
+| `merge.checks` | guessed | The check a merge runs before it lands ([Merging](#merging)): a command, or a list run in order through the shell in CPR's merge worktree. Add an install first when the check needs dependencies, e.g. `["pnpm install --frozen-lockfile", "pnpm check"]`. |
+| `merge.push` | `false` | Push the target branch after a merge lands. |
+
+Before V25 the `workspaces` section was called `features`; that name is still read when `workspaces` is not there.
 
 ### `.cprignore`
 

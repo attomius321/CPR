@@ -1,0 +1,6 @@
+{
+  "merge": {
+    "checks": ["pnpm install --frozen-lockfile", "pnpm check", "pnpm build", "pnpm test:e2e"],
+    "push": true
+  }
+}

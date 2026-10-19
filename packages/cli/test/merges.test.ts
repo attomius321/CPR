@@ -249,6 +249,25 @@ describe('merging, checking and landing (V26a)', () => {
     });
   });
 
+  it("installs first when the check is guessed from package.json: CPR's worktree has no dependencies", async () => {
+    const { repo, shas } = setup();
+    repo.write({
+      'package.json': JSON.stringify({ scripts: { check: 'tsc' }, packageManager: 'pnpm@12.1.0' }),
+    });
+    repo.commit('a package');
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    const checks = fakeChecks();
+    const m = await make(repo, checks.run);
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry?.check).toMatchObject({
+      commands: ['pnpm install', 'pnpm run check'],
+      source: 'package.json (scripts.check), after an install',
+      ok: true,
+    });
+  });
+
   it('never lands unasked without a check: it waits at ready for Land', async () => {
     const { repo, shas } = setup();
     review(repo, 'topic', { head: shas.T, into: 'main' });

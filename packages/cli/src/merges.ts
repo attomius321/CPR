@@ -262,12 +262,24 @@ export function merger(
     };
   }
 
-  /** The check of a merge: `merge.checks`, else the command guessed from `into`'s tip (V24b). */
+  /**
+   * The check of a merge: `merge.checks`, else the command guessed from `into`'s tip (V24b), a
+   * package script after its package manager's install.
+   */
   async function checkOf(base: string): Promise<Pick<MergeCheckRun, 'commands' | 'source'> | null> {
     const { checks } = readMergeConfig(root);
     if (checks) return { commands: checks, source: `${configFile(root)} (merge.checks)` };
     const guess = await guessCheck(await treeAt(repo, base));
-    return guess ? { commands: [guess.command], source: guess.source } : null;
+    if (!guess) return null;
+    // A package script needs the dependencies, which CPR's worktree does not have at first.
+    if (guess.source.startsWith('package.json')) {
+      const manager = guess.command.split(' ')[0] ?? 'npm';
+      return {
+        commands: [`${manager} install`, guess.command],
+        source: `${guess.source}, after an install`,
+      };
+    }
+    return { commands: [guess.command], source: guess.source };
   }
 
   /** Merges, checks and, when the check passed, lands one entry. */

@@ -3197,3 +3197,26 @@ generation"). Measured:
 
 Planned as V26 (PLAN.md): Merge, check and land with no agent (V26a); keep-both by rule (V26b); a
 fresh merger agent from the conflict alone, every resolution reviewed (V26c).
+
+## V26a — Merge, check, land (2026-10-19, branch `milestone/v26-merger`)
+
+Approve, then **Merge into ▾** (the Review tab, a workspace's panel, or `cpr merge <branch>`):
+CPR merges the approved commit with `--no-ff` in a worktree in its cache, runs the check
+(`merge.checks`, else the V24b guess at the target's tip), and moves the target by fast-forward
+in the worktree that has it checked out, else by `update-ref` from the value it was merged on.
+The Merging section heads Workspaces while the queue has entries. `cpr/AGENTS.md` no longer
+tells an agent to merge an approval.
+
+**Learned**:
+- **A function named `process` shadows Node's global** in the module, and TypeScript said so only
+  as "Property 'pid' does not exist on type '(entry) => Promise<void>'".
+- **A guessed package script fails in a fresh worktree**: CPR's merge worktree has no
+  `node_modules`. Linking the main checkout's, as `cpr diff`'s worktrees do, would make pnpm's
+  workspace links resolve into the main checkout, so the check would run the wrong code. So a
+  `package.json` guess runs its package manager's install first, and the worktree keeps ignored
+  files between merges.
+- **A merge waiting at `ready` must hold the next one into the same branch.** Otherwise the next
+  is merged on a tip about to move, lands first, and the first is merged again.
+- **`git merge --ff-only` in the checkout that has the branch** refuses with "Your local changes
+  to the following files would be overwritten by merge", and leaves the branch and the files
+  as they were. That is the landing's guard, tested with a change to a file the merge brings.

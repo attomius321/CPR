@@ -3414,3 +3414,77 @@ button.workspace-about {
 .thread-markdown ul ul ul {
   list-style: square;
 }
+
+/* The merge queue (V26a): one row per merge, its tone on its left edge. */
+.merge-row {
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+  border-left: 3px solid var(--merge-tone, var(--line));
+}
+
+.merge-row:first-child {
+  border-top: 0;
+}
+
+.merge-tone-wait {
+  --merge-tone: var(--moved);
+}
+
+.merge-tone-you {
+  --merge-tone: var(--warning);
+}
+
+.merge-tone-done {
+  --merge-tone: var(--added);
+}
+
+.merge-tone-bad {
+  --merge-tone: var(--removed);
+}
+
+.merge-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.merge-arrow {
+  color: var(--muted);
+}
+
+.merge-row-state {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.merge-row-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.merge-output {
+  max-height: 240px;
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.merge-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+p.merge-control {
+  padding-left: 8px;
+  border-left: 3px solid var(--merge-tone, var(--line));
+}

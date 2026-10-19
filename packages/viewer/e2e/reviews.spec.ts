@@ -251,16 +251,18 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await expect(page.locator('.merge-check')).toHaveText('Merges cleanly into main.');
   await page.getByLabel('Approve').check();
   await expect(page.locator('.submit-review')).toContainText(
-    `Approve asks it to merge ${short(fix)} into main. CPR pushes nothing.`,
+    `Approve, then Merge: CPR merges ${short(fix)} into main (or a branch you pick), checks it and lands it.`,
   );
+  // Not approved yet: nothing to merge.
+  await expect(page.getByRole('button', { name: /^Merge into/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText(
-    `Approved ${short(fix)}: the agent merges it into main when you ask it to act on this review.`,
+    `Approved ${short(fix)}: Merge it into main or another branch below; CPR merges, checks and lands it.`,
   );
   await page.getByRole('button', { name: 'Copy for the agent' }).click();
   await expect(page.locator('.finished')).toContainText('Copied.');
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-    `Approved the branch agent at ${short(fix)}: merge ${short(fix)} into main.\n\n` +
+    `Approved the branch agent at ${short(fix)}: CPR merges ${short(fix)} into main; do not merge it yourself.\n\n` +
       'The review: cpr/reviews/agent/reviewer@example.com.json; how to act on it: cpr/AGENTS.md.\n',
   );
   expect(() => originGit('rev-parse', '--verify', '--quiet', 'agent')).toThrow();
@@ -269,7 +271,9 @@ test('finishes a review: changes requested for the agent, then approved to merge
   expect(verdicts.at(-1)).toMatchObject({ event: 'approve', head: fix, into: 'main' });
   // What an agent opening it reads first, and the instructions beside it.
   expect(readFileSync(reviewFile(), 'utf8').split('\n')[1]).toContain('cpr/AGENTS.md');
-  expect(readFileSync(join(cpr.repo, 'cpr', 'AGENTS.md'), 'utf8')).toContain('git merge --no-ff');
+  const agents = readFileSync(join(cpr.repo, 'cpr', 'AGENTS.md'), 'utf8');
+  expect(agents).not.toContain('git merge --no-ff');
+  expect(agents).toContain('Do not merge it yourself');
   expect(git('status', '--porcelain', '--untracked-files=all')).toBe('');
   await page.getByRole('link', { name: '← History' }).click();
   const approved = row(page, 'Agent: square returns early').locator('.ref-review').first();
@@ -291,9 +295,36 @@ test('finishes a review: changes requested for the agent, then approved to merge
   expect(look.color).not.toBe(look.badgeColor);
   expect(look.height).toBeLessThan(look.badgeHeight);
 
-  // The agent merges the approved commit, as cpr/AGENTS.md says: the badge says so.
-  git('merge', '-q', '--no-ff', '--no-edit', fix);
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  // CPR merges the approved commit (V26a): Merge into ▾ on the review, preselected main.
+  await review(page, 'Agent: square returns early', 'agent approved');
+  await reviewTab(page).click();
+  const target = page.getByLabel('Branch to merge into');
+  await expect(target).toHaveValue('main');
+  await expect(target.locator('option')).toHaveText(['main']);
+  const main = git('rev-parse', 'main');
+  await page.getByRole('button', { name: 'Merge into main' }).click();
+  // No check in this repository: merged in CPR's worktree, waiting for Land; main unchanged.
+  await expect(page.locator('p.merge-control')).toHaveText(
+    /^Merged, not checked: no check to run: set merge.checks in cpr\/config.json/,
+  );
+  expect(git('rev-parse', 'main')).toBe(main);
+
+  await page.goto(cpr.url);
+  const merging = page.getByRole('region', { name: 'Merging' });
+  const entry = merging.getByRole('listitem', { name: 'Merge of agent' });
+  await expect(entry.locator('.merge-row-state')).toHaveText(/^Merged, not checked/);
+  await entry.getByRole('button', { name: 'Land' }).click();
+  await expect(entry.locator('.merge-row-state')).toHaveText(/^Landed: main is at [0-9a-f]{7}$/);
+  const merge = git('rev-parse', 'main');
+  expect(git('log', '-1', '--format=%P%n%s', merge)).toBe(
+    `${main} ${fix}\nMerge agent: Agent: square returns early for 0`,
+  );
+  // Fast-forwarded in this checkout, which has main: its files are the merge's.
+  expect(git('status', '--porcelain', '--untracked-files=all')).toBe('');
+  expect(readFileSync(math, 'utf8')).toContain('if (a === 0) return 0;');
+  await expect(entry.getByRole('button', { name: 'Land' })).toHaveCount(0);
+
+  await page.goto(`${cpr.url}history`);
   await expect(
     row(page, 'Agent: square returns early').locator('.ref-review').first(),
   ).toHaveAttribute('title', 'Approved · merged into main');
@@ -325,6 +356,18 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   await page.getByLabel('Approve').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText(`Approved ${short(cube)}`);
+  // CPR's merge stops at the conflict (V26a): nothing changes, the file is named.
+  const main = git('rev-parse', 'main');
+  await page.getByRole('button', { name: 'Merge into main' }).click();
+  await expect(page.locator('p.merge-control')).toHaveText('Conflicts with main in 1 file');
+  expect(git('rev-parse', 'main')).toBe(main);
+  await page.goto(cpr.url);
+  const entry = page.getByRole('listitem', { name: 'Merge of agent' });
+  await expect(entry.locator('.merge-files li')).toHaveText(['src/math.ts']);
+  await expect(entry).toContainText('merge main into agent, resolve it there, and review it again');
+  await entry.getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByRole('region', { name: 'Merging' })).toHaveCount(0);
+  await page.goto(`${cpr.url}history`);
 
   // The agent merges main into its branch and resolves the conflict there.
   git('checkout', '-q', 'agent');
@@ -336,7 +379,6 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   writeFileSync(math, theirs);
   git('commit', '-q', '-am', 'Merge main into agent');
   git('checkout', '-q', 'main');
-  await page.getByRole('link', { name: '← History' }).click();
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   // One commit since the approval, the merge; main's own commit is not the branch's.
   const merged = row(page, 'Merge main into agent');

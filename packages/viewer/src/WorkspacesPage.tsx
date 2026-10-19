@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type {
   BranchMerge,
+  MergeEntry,
+  MergeList,
   WorkspaceReplied,
   WorkspaceStart,
   WorkspaceSummary,
@@ -12,6 +14,8 @@ import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
 import { markdownNodes, useMarkdown } from './markdown.js';
 import { useWorkspaceStarter } from './WorkspaceStarter.js';
+import { MergeControl } from './MergeControl.js';
+import { mergeActions, mergeState, type MergeAction } from './merges.js';
 import { postJson } from './http.js';
 import {
   workspaceGroups,
@@ -78,7 +82,7 @@ function useWide(): boolean {
  * on a wide window the first workspace is picked when none is.
  */
 export function WorkspacesPage() {
-  const { list, reviews } = useWorkspaces();
+  const { list, reviews, merges } = useWorkspaces();
   const [notice, setNotice] = useState<Notice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState(branchOfUrl);
@@ -144,6 +148,7 @@ export function WorkspacesPage() {
           {error}
         </p>
       )}
+      {list && list.workspaces.length === 0 && <Merging merges={merges} />}
       {!list ? (
         <p className="hint">Listing workspaces…</p>
       ) : list.workspaces.length === 0 ? (
@@ -160,6 +165,7 @@ export function WorkspacesPage() {
       ) : (
         <div className={`workspaces-body${current ? ' has-panel' : ''}`}>
           <div className="workspaces-list">
+            <Merging merges={merges} />
             {GROUPS.map(([key, title]) =>
               groups[key].length === 0 ? null : (
                 <section key={key} className="workspace-group" aria-label={title}>
@@ -199,6 +205,99 @@ export function WorkspacesPage() {
       )}
       {starter.dialog}
     </div>
+  );
+}
+
+const ACTION_NAMES: Record<MergeAction, string> = {
+  land: 'Land',
+  retry: 'Retry',
+  remove: 'Remove',
+};
+
+/**
+ * The merge queue (V26a), above Needs you while it has entries: each merge's branch, target and
+ * state, the end of a failed check's output, and Land, Retry or Remove.
+ */
+function Merging({ merges }: { merges: MergeList | null }) {
+  if (!merges || merges.merges.length === 0) return null;
+  return (
+    <section className="workspace-group merging" aria-label="Merging">
+      <h2>
+        Merging <span className="branches-count">{merges.merges.length}</span>
+      </h2>
+      {merges.elsewhere && (
+        <p className="hint">
+          Another CPR in this repository merges these: it shows them as it goes.
+        </p>
+      )}
+      <ul className="workspace-list">
+        {merges.merges.map((entry) => (
+          <MergeRow key={entry.id} entry={entry} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function MergeRow({ entry }: { entry: MergeEntry }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [output, setOutput] = useState(false);
+  const { text, tone } = mergeState(entry);
+  const act = (action: MergeAction) => {
+    setBusy(true);
+    setError(null);
+    postJson(`/api/merges/${action}`, { id: entry.id })
+      .then(() => reloadWorkspaces())
+      .catch((e: unknown) => setError((e as Error).message))
+      .finally(() => setBusy(false));
+  };
+  const shown = entry.check?.output && entry.check.ok === false;
+  return (
+    <li className={`merge-row merge-tone-${tone}`} aria-label={`Merge of ${entry.branch}`}>
+      <div className="merge-row-head">
+        <span className="ref ref-branch">{entry.branch}</span>
+        <span className="merge-arrow" aria-hidden="true">
+          →
+        </span>
+        <span className="ref ref-branch">{entry.into}</span>
+        <span className="merge-row-state">{text}</span>
+        <span className="merge-row-actions">
+          {mergeActions(entry).map((action) => (
+            <button
+              key={action}
+              type="button"
+              className="link"
+              disabled={busy}
+              onClick={() => act(action)}
+            >
+              {ACTION_NAMES[action]}
+            </button>
+          ))}
+        </span>
+      </div>
+      {entry.conflicts && (
+        <ul className="merge-files small">
+          {entry.conflicts.map((path) => (
+            <li key={path}>{path}</li>
+          ))}
+        </ul>
+      )}
+      {entry.state === 'needs-you' && entry.message && (
+        <p className="hint small">{entry.message}</p>
+      )}
+      {shown && (
+        <button type="button" className="link small" onClick={() => setOutput((o) => !o)}>
+          {output ? 'Hide its output' : 'Its output'}
+        </button>
+      )}
+      {shown && output && <pre className="merge-output">{entry.check?.output}</pre>}
+      {error && (
+        <p className="error small" role="alert">
+          {error}
+        </p>
+      )}
+    </li>
   );
 }
 
@@ -627,6 +726,7 @@ function WorkspacePanel({
         </span>
       </div>
       <WorkspaceState row={row} />
+      {workspace.ahead > 0 && !workspace.merged && <MergeControl branch={branch} />}
       <div className="workspace-actions">
         <button type="button" className="link" onClick={() => setBriefOpen((o) => !o)}>
           {briefOpen ? 'Hide the brief' : 'The brief'}

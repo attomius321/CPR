@@ -438,7 +438,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V23 ✅ | Branches that need you, first | Planned as V22, which `main` took meanwhile. The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. Merged (2026-10-18): on a clone of this repository with three open features, they are the first three entries instead of the 4th, 10th and 12th; `/api/features` unchanged (34 ms), each thread read from its last 256 KB (0.6 ms at any length). See below. |
 | V24 ✅ | A structured brief | The "Start a workspace" dialog is one text area that is also the branch name and the workspace's name; every branch is `feature/`, while 11 of this repository's 35 merges were fixes or chores; nothing prompts for how done is checked, which every agent vendor's guidance asks for. Planned: a kind (Feature, Fix, Refactor, Chore, Spike), a title, one required part per kind, an optional Done when filled in with a check command guessed from the repository's root files (on 16 repositories: 13 the documented command, 2 heavy, 1 close, 0 wrong), optional parts under More, assembled by the server into a brief with Markdown headings; the kind's branch prefix; old workspaces unchanged. Merged (2026-10-19): the guess on 16 repositories gives the 16 planned commands in 13–17 ms; the dialog fits at 1440 × 900 and 390 × 844; a real Claude Code's plans follow each kind's line. See below. |
 | V25 ✅ | Workspaces first, History beneath | `cpr view` opens on the commits page (`/`) and Workspaces is the second tab. A diff's way back is "← Commits". The code says "feature" for a workspace 1,949 times (12 files, `/api/features`, `cpr/features/`), and since V24 "feature" is also a kind of work. Planned: `/` Workspaces, `/history` History (today's commits page), tabs "Workspaces · History", old addresses rewritten, a back link to where a diff came from; "workspace" in code, API and on disk (`cpr/workspaces/`, moved once from `cpr/features/`); the kind "feature" kept. Merged (2026-10-19): 801 unit tests, 114 e2e; first paint of `/` as `main`'s `/workspaces` (109 ms); a repository's old records moved by the first reader. See below. |
-| V26 | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. Planned: Merge after Approve; CPR merges in its own worktree, runs the check, lands by fast-forward (V26a); keep-both by rule (V26b); a fresh agent for the rest, from the conflict alone, every resolution reviewed (V26c). See below. |
+| V26 | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. V26a built: Merge into ▾ after Approve, CPR merges in its own worktree, runs the check, lands by fast-forward; `cpr merge`. Next: keep-both by rule (V26b); a fresh agent for the rest, from the conflict alone, every resolution reviewed (V26c). See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -6581,7 +6581,7 @@ screenshot (`features.png`, three real agents) is not retaken and still shows th
 
 ### V26 — A merger: approved branches merged by CPR, an agent only for conflicts
 
-**Status:** planned (2026-10-19), on branch `milestone/v26-merger`; not started.
+**Status:** V26a built (2026-10-19), on branch `milestone/v26-merger`; V26b and V26c not started.
 
 **Problem** (asked: "I want a merger agent, who specializes in merging branches"; "I don't like the
 idea of the workspace's own agent doing it … it already has polluted context … we need to optimise
@@ -6772,6 +6772,32 @@ gap on its own. Then V26b (keep-both), then V26c (the merger agent and the token
 | 148 | The agent's model | **`merge.model`, default `sonnet`** | Resolving a few regions with their symbols needs less than building a feature; the person can raise it |
 | 149 | Into which branch | **Any, picked at Merge; preselected: the workspace's `from`, the verdict's `into`, the default branch** | Old projects use `master`, others `develop` or release branches. Work goes back where it started from |
 | 150 | The merger's skill | **Light: ~1K tokens of CPR's own instructions in its prompt, plus an optional `cpr/merge.md`** | What a conflict needs is assembled per conflict. A heavy skill would be read on every run, which is the cost V26 removes. A skill file in the repository would reach the workspaces' agents too, and Codex does not read it |
+
+#### V26a as built
+
+What differs from the plan, and why:
+
+- **The git steps are in core** (`git/merging.ts`: reset the merge worktree, merge, fast-forward,
+  push), the queue in the CLI (`merges.ts`), as `worktrees.ts` and `workspaces.ts` split them.
+- **The merge worktree keeps ignored files** between merges (`git clean -d` without `-x`):
+  installed dependencies stay, so a check does not start from nothing each time. It does not link
+  the main checkout's `node_modules` as `cpr diff`'s worktrees do. pnpm's workspace links would
+  resolve into the main checkout, and the check would test the wrong code.
+- **A check guessed from `package.json` runs its package manager's install first** (`pnpm
+  install`, then `pnpm run check`). Without it, the first merge of every JS project fails on
+  missing dependencies. `merge.checks` replaces both.
+- **A conflict is `needs-you` with its paths**, and the merge is aborted. Until V26b/V26c resolve
+  conflicts, Retry merges again once the branch is fixed and approved again.
+- **A merge waiting at `ready` holds later merges into the same branch.** They would be merged on
+  a tip that is about to move, then merged again. A conflict or a failure holds nothing.
+- **The queue follows other processes**: listing it merges what is queued, so a `cpr merge` in a
+  terminal is merged by a `cpr view` that is open, or by itself. While one process merges, the
+  other's `cpr merge` follows the entry through the queue file.
+- **The approval's text** (Copy for the agent, Send the verdict) says CPR merges it and the agent
+  should not. `cpr/AGENTS.md` loses "Approved in a linked worktree". Its conflict section keeps the
+  branch's agent resolving on the branch.
+- **This repository's `cpr/config.json`** sets `merge.checks` (install, check, build, e2e) and
+  `merge.push: true` (decision 145).
 
 **Not in V26 (later)**: several merges at once (each on its own worktree), squash or rebase merges
 (`merge.style`), resolving submodule pointers, lockfiles regenerated instead of merged (none
