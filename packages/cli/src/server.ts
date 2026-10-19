@@ -224,6 +224,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         if (url.pathname === '/api/features') return featuresApi(req, res, features);
         if (url.pathname === '/api/features/options')
           return read(req, res, () => features.options());
+        if (url.pathname === '/api/features/draft') {
+          if (req.method === 'GET') return json(res, 200, await features.draft());
+          return written(req, res, parseDraft, (draft) =>
+            answer(res, () => features.saveDraft(draft).then(() => ({}))),
+          );
+        }
         if (url.pathname === '/api/features/check') {
           if (req.method !== 'GET') return send(res, 405, 'method not allowed');
           const at = url.searchParams.get('at');
@@ -984,6 +990,15 @@ function parseFeatureRequest(text: string): FeatureRequest {
     ...(base === undefined ? {} : { base }),
     ...(permissionMode === undefined ? {} : { permissionMode: permissionMode as PermissionMode }),
   };
+}
+
+/** The start dialog's draft (V24c): any object; what it holds is the dialog's to read. */
+function parseDraft(text: string): Record<string, unknown> {
+  const value = JSON.parse(text) as unknown;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('a draft is an object');
+  }
+  return value as Record<string, unknown>;
 }
 
 /** `{ branch, text, stop? }`: a message for a feature's agent (V18c). */

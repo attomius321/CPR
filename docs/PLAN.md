@@ -436,7 +436,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V21 ✅ | The agent's terminal in its panel | A feature's agent is talked to in V18c's box (a reply stops the session, 1.6 s, and loses a turn in progress) or in a terminal elsewhere (Talk copies `claude attach`). Measured (V21 spike): `claude attach` in a pseudo-terminal, drawn by xterm.js in the page, gives the whole session — first output in 152–174 ms, a key to its echo 22 ms, a permission answered in the page, Esc, messages queued while the agent works — while Claude Code keeps hosting it and CPR's hooks keep recording. Planned: Terminal in the feature's panel (node-pty optional, Talk without it), output as events and keys as POSTs under the write rule, one terminal per open panel, dark in both themes; and the state after Esc (`idle` with `working`), wrong on `main` today. Merged (2026-10-18): with a real Claude Code, the session drawn and answered in the panel, Esc read as "Interrupted" 0.3 s later, a stop shown and reopened in 0.2 s; a key to its echo 32 ms through CPR. See below. |
 | V22 ✅ | Fixes: stale text outside the README | Found while rewriting the README (`chore/update-readme`, 2026-10-15). `cpr --help` and `cpr view --help` say the first page lists the current branch's commits (every branch since V10a); `@cpr/cli`'s description names only `cpr diff` and `cpr view`; the action's `plugins` input points to `cpr.config.json`, the older place; the sidebar's "No findings." ends with an emoji. Merged: all four fixed, and `cpr --help`'s `pr <number>` shown as optional (it has been since C1); a unit test keeps the help on every branch. |
 | V23 ✅ | Branches that need you, first | Planned as V22, which `main` took meanwhile. The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. Merged (2026-10-18): on a clone of this repository with three open features, they are the first three entries instead of the 4th, 10th and 12th; `/api/features` unchanged (34 ms), each thread read from its last 256 KB (0.6 ms at any length). See below. |
-| V24 | A structured brief | The "Start a workspace" dialog is one text area that is also the branch name and the workspace's name; every branch is `feature/`, while 11 of this repository's 35 merges were fixes or chores; nothing prompts for how done is checked, which every agent vendor's guidance asks for. Planned: a kind (Feature, Fix, Refactor, Chore, Spike), a title, one required part per kind, an optional Done when filled in with a check command guessed from the repository's root files (on 16 repositories: 13 the documented command, 2 heavy, 1 close, 0 wrong), optional parts under More, assembled by the server into a brief with Markdown headings; the kind's branch prefix; old workspaces unchanged. See below. |
+| V24 | A structured brief | The "Start a workspace" dialog is one text area that is also the branch name and the workspace's name; every branch is `feature/`, while 11 of this repository's 35 merges were fixes or chores; nothing prompts for how done is checked, which every agent vendor's guidance asks for. Planned: a kind (Feature, Fix, Refactor, Chore, Spike), a title, one required part per kind, an optional Done when filled in with a check command guessed from the repository's root files (on 16 repositories: 13 the documented command, 2 heavy, 1 close, 0 wrong), optional parts under More, assembled by the server into a brief with Markdown headings; the kind's branch prefix; old workspaces unchanged. Built (V24a–c), not merged: the guess on 16 repositories gives the 16 planned commands in 13–17 ms; the dialog fits at 1440 × 900 and 390 × 844; a real Claude Code's plans follow each kind's line. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -5850,8 +5850,7 @@ Claude Code session acting while the page is open (the e2e fake runs CPR's real 
 
 ### V24 — A structured brief: kind, title, goal, done when
 
-**Status:** in progress on branch `milestone/v24-structured-brief`: V24a and V24b built
-(2026-10-19); V24c not started. Plan revised the same day with the user's answers: Spike and Refactor are kinds of their own; "Done
+**Status:** built on branch `milestone/v24-structured-brief` (V24a–c, 2026-10-19); not merged. Plan revised the same day with the user's answers: Spike and Refactor are kinds of their own; "Done
 when" is optional for every kind; CPR guesses the project's check command; the brief's format
 left to the plan (Markdown headings, decision 124).
 
@@ -5913,8 +5912,8 @@ worktree, reviews and merges; `cpr diff`, `cpr pr` and the graph JSON.
 #### The kinds and their inputs (viewer)
 
 The kind is a segmented control at the top (Feature · Fix · Refactor · Chore · Spike; `1`–`5`
-while it has focus), Feature by default, the last one picked remembered per repository
-(`localStorage`). Required: the title and the kind's one part. `<check>` is the guessed command
+while it has focus), Feature by default, the last one picked remembered per repository (with the
+draft, decision 128). Required: the title and the kind's one part. `<check>` is the guessed command
 (below), else the words "the project's checks".
 
 | Kind | Required part | Done when (optional, pre-filled) | Under "More" (optional) | Branch |
@@ -5937,9 +5936,9 @@ while it has focus), Feature by default, the last one picked remembered per repo
   edited no longer follows title or kind.
 - Lengths: the assembled brief is checked against `maxBrief` (20,000) as one text, the count
   shown under the dialog when it is within 10 % of it.
-- **A draft**: the fields are kept per repository in `localStorage` while the dialog is open and
-  cleared after a start; Escape and Cancel keep it, "Clear" empties it. Storage that throws is
-  ignored.
+- **A draft**: the fields are kept per repository while the dialog is open and cleared after a
+  start; Escape and Cancel keep it, "Clear" empties it. (Built in CPR's cache, not
+  `localStorage`: decision 128.)
 - Ctrl+Enter starts, Escape cancels, as today; Tab goes kind → title → required part → Done
   when → More → branch → plan first → Start.
 
@@ -6076,7 +6075,7 @@ first), then the dialog, then the list and panel; the real-agent check last.
 |---|---|---|
 | V24a ✅ | Kinds and parts in the record | `kind`, `title`, `parts` in `FeatureRequest`, the record and `FeatureSummary`; `briefOf`; the per-kind prompt line; `branchPrefixes`; server validation; old records and `{ brief }` requests as before. |
 | V24b ✅ | The check guess | `guessCheck` and `GET /api/features/check`; the 16-repository comparison repeated through it. |
-| V24c | The structured dialog | Kind control, the kind's inputs, Done when with the guess, More, the draft, branch from title and kind; the list's title and kind tag; e2e; screenshots; the real-agent check. |
+| V24c ✅ | The structured dialog | Kind control, the kind's inputs, Done when with the guess, More, the draft, branch from title and kind; the list's title and kind tag; e2e; screenshots; the real-agent check. |
 
 **Decisions**:
 
@@ -6088,6 +6087,7 @@ first), then the dialog, then the list and panel; the real-agent check last.
 | 125 | Does CPR fill in a check command | **Yes, guessed from root files, shown with its source, editable** | Asked (revised 2026-10-19; proposed "no"). Measured on 16 repositories: 13 the documented command, 2 right but heavy, 1 close, 0 wrong. Seen and editable before Start, so precision is the person's to keep |
 | 126 | Is Done when required | **No, for any kind** | Asked. Filled in for four kinds, so it is there unless removed; an empty one falls back to the project's own instructions |
 | 127 | Where a spike's answer goes | **The agent's final report**, in the thread | Repositories keep spikes in different places or not at all; the thread is CPR's own record. A brief can ask for a file instead |
+| 128 | Where the start dialog's draft and last kind are kept | **CPR's cache, per repository** (`/api/features/draft`), not browser storage | Found building V24c: `cpr view` takes a free port per run and browser storage is per origin (decision 17), so a draft in `localStorage` would be gone at the next `cpr view`. The cache is per user, so nothing lands in the repository |
 
 **Not in V24 (later)**: templates per repository (`cpr/config.json` defining kinds and fields);
 a guess from agent instructions; attaching screenshots or logs as files; filling a brief from an
@@ -6126,6 +6126,41 @@ in reviews.
 **Results (V24b)**: through `guessCheck` and `treeAt` on the same 16 repositories, the same 16
 commands as the planning table. 13–17 ms per guess on full clones (Bitwarden 15–17 ms, this
 repository 13–15 ms; three runs each), against the 50 ms target.
+
+**As built (V24c)**:
+- The draft and the last kind are kept by `cpr view` in CPR's cache (`/api/features/draft`), not
+  in `localStorage` (decision 128); after a start the draft is cut to the kind. Edits are saved
+  400 ms after typing pauses, Start saves at once, Cancel and Escape save what is pending.
+- The kind picker is a radio group: `1`–`5` and the arrow keys while it has focus, one tab stop.
+  The title has the focus when the dialog opens (the kind is remembered, so typing starts
+  there); Shift+Tab reaches the kinds.
+- The dialog shows "Check: `<command>`, from <source>" under Done when when a command was
+  guessed; Done when and More's fields say "optional".
+- The dialog scrolls inside the window when it is taller than it (More open, a phone).
+- The viewer counts the brief's length as the server makes it (`briefLength`), checked against
+  `briefOf` by a test, for the count shown within 10 % of 20,000.
+- `getJson` and `postJson` moved to `http.ts`: the dialog and its starter imported each other.
+- The kind tag is the kind's own word (`fix`, `refactor`, `chore`, `spike`), in the list, the
+  panel's head, and the review page's "Workspace: <title>".
+
+**Results (V24c)**:
+
+| What | Before (V24b's build) | V24c |
+|---|---|---|
+| Dialog height, 1440 × 900, More closed | 463 px | 645 px; fits (no scroll) for each kind, light and dark |
+| Dialog, 390 × 844, More closed | — | 685 px; fits; the five kinds on one line (289 of 308 px) |
+| More open (Spike) | — | 912 px of content in an 866 px dialog at 1440 × 900: scrolls inside it |
+| Inputs to fill for a quick ask | 1 (the brief) | 2 (title, the kind's part), 1 Tab between; a kind other than the last is 1 more key |
+| e2e | 104 | 109 (5 new; 4 of them red on V24b's build, 1 guards what stays) |
+
+With a real Claude Code (2.1.303, Haiku, `claude -p`, read-only tools, plan first) given CPR's
+own prompt for each kind on a scratch repository with a date sort that compares strings: the Fix's
+plan writes a failing test first and fixes the comparator, not the one pair; the Refactor's keeps
+`test/totals.test.js` unchanged and asks before adding tests; the Chore's changes only the README;
+the Spike's commits nothing, keeps experiments out of the project and ends in a written answer;
+the Feature's (no Done when) plans tests and `npm test` itself. 21–46 s each. Not through
+`claude --bg` (its trust prompt cannot be answered by a script, V18) and not in a real worktree:
+the agents said so, as they did of the record paths that did not exist.
 
 ### Phase 1 milestones
 

@@ -1102,6 +1102,7 @@ describe('cpr view: features (V18)', () => {
     maxBrief: 20000,
   };
   const started: FeatureRequest[] = [];
+  const drafts: Record<string, unknown>[] = [];
   const restarted: string[] = [];
   /** While set, a start waits for it. */
   let gate: Promise<void> | null = null;
@@ -1123,6 +1124,11 @@ describe('cpr view: features (V18)', () => {
       branch === 'feature/csv'
         ? Promise.resolve('Build it.')
         : Promise.reject(new FeatureRefused(`no workspace ${branch}`, 404)),
+    draft: () => Promise.resolve(drafts.at(-1) ?? {}),
+    saveDraft: (value) => {
+      drafts.push(value);
+      return Promise.resolve();
+    },
     check: (at) =>
       at === C
         ? Promise.resolve({ command: 'pnpm run check', source: 'package.json (scripts.check)' })
@@ -1277,6 +1283,20 @@ describe('cpr view: features (V18)', () => {
     expect(gone.status).toBe(404);
     expect(await gone.json()).toEqual({ error: 'no workspace gone' });
     expect((await post('/api/features/start', { name: 'x' })).status).toBe(400);
+  });
+
+  it("keeps the start dialog's draft: an object, written only by the page itself (V24c)", async () => {
+    expect(await (await get('/api/features/draft')).json()).toEqual({});
+    const draft = { kind: 'fix', title: 'Dates' };
+    expect((await post('/api/features/draft', draft)).status).toBe(200);
+    expect(await (await get('/api/features/draft')).json()).toEqual(draft);
+    const before = drafts.length;
+    expect((await post('/api/features/draft', draft, { 'x-cpr': '' })).status).toBe(403);
+    for (const body of [null, [], 'text', 3]) {
+      expect((await post('/api/features/draft', body)).status, JSON.stringify(body)).toBe(400);
+    }
+    expect(drafts.length).toBe(before);
+    expect((await get('/api/features/draft', bare)).status).toBe(404);
   });
 
   it("guesses a commit's check command for the start dialog, or says none (V24b)", async () => {

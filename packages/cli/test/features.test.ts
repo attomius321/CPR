@@ -17,6 +17,7 @@ import {
   readFeature,
   readFeatureConfig,
   serializeFeature,
+  workKinds,
   worktreeFolder,
   type AgentSession,
   type ClaudeCode,
@@ -309,6 +310,30 @@ describe('briefOf (V24)', () => {
     expect(
       briefOf('feature', '  CSV  ', { goal: `\n\n${text}\n  \n`, where: '   ', notes: '' }),
     ).toBe(`# Feature: CSV\n\n## Goal\n${text.trimEnd()}\n`);
+  });
+});
+
+describe("the start dialog's length of a brief (V24c)", () => {
+  it("is the length of the brief the server makes, so the dialog's count is the server's", async () => {
+    const { briefLength, formParts, newForm } = await import('../../viewer/src/brief.js');
+    const kinds = workKinds();
+    const forms = [
+      { kind: 'fix', title: '  Dates  ', main: '\n\n  They sort.\n  \n', more: { notes: 'N ' } },
+      { kind: 'feature', title: 'CSV', main: 'Export it.', more: { where: ' ', outOfScope: 'O' } },
+      {
+        kind: 'spike',
+        title: 'Q',
+        main: 'Why?',
+        more: { known: 'K', reproduce: 'not a Spike part' },
+      },
+    ] as const;
+    for (const over of forms) {
+      const spec = kinds.find((k) => k.kind === over.kind)!;
+      const form = { ...newForm(spec, null), ...over, more: { ...over.more } };
+      expect(briefLength(form, spec), over.kind).toBe(
+        briefOf(over.kind, form.title, formParts(form, spec)).length,
+      );
+    }
   });
 });
 
@@ -710,6 +735,22 @@ describe('features', () => {
     const refused = (at: string) => s.check(at).catch((e: unknown) => e as FeatureRefused);
     expect(await refused('main')).toMatchObject({ status: 400, message: /full SHA/ });
     expect(await refused('0'.repeat(40))).toMatchObject({ status: 400, message: /not a commit/ });
+  });
+
+  it("keeps the start dialog's draft in CPR's cache, not in the repository (V24c)", async () => {
+    const { repo } = fresh();
+    const s = await service(repo, null);
+    expect(await s.draft()).toEqual({});
+    const draft = { kind: 'fix', title: 'Dates', main: 'They sort as text.', more: {} };
+    await s.saveDraft(draft);
+    expect(await s.draft()).toEqual(draft);
+    // Another service on the same repository (a new `cpr view`, another port) reads it.
+    expect(await (await service(repo, null)).draft()).toEqual(draft);
+    expect(repo.git('status', '--porcelain')).toBe('');
+    const file = join(cache, 'state', (await openRepo(repo.root)).id, 'start-draft.json');
+    expect(existsSync(file)).toBe(true);
+    writeFileSync(file, '{ nope');
+    expect(await s.draft()).toEqual({});
   });
 
   it('refuses a kind of work that is not complete, before touching anything (V24)', async () => {

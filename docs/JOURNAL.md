@@ -2951,3 +2951,43 @@ change. 749 unit tests, lint, typecheck, build. On the 16 repositories of the V2
 16 commands as planned; 13–17 ms per guess on full clones (Bitwarden 15–17 ms). Not verified: the
 dialog showing it (V24c).
 
+## V24c — The structured dialog (2026-10-19, branch `milestone/v24-structured-brief`)
+
+"Start a workspace" asks for a kind (Feature, Fix, Refactor, Chore, Spike), a title, the kind's
+one required part, Done when (filled in for four kinds, with the guessed check command) and, under
+More, the kind's optional parts. Switching kind keeps every text. The branch follows the title and
+the kind's prefix. The form is a draft `cpr view` keeps until the workspace starts. The list, the
+panel and the review page name a workspace by its title, its kind tagged before it.
+
+**Learned**:
+- **A draft in `localStorage` would not survive the next `cpr view`**: each run takes a free port,
+  and browser storage is per origin — the reason review state moved to the server in decision 17.
+  The draft is kept in CPR's cache instead (decision 128), with the last kind.
+- **Saving a draft and clearing it race**: the dialog's unmount (after a start) and the starter's
+  "clear" would both post, in an order React decides. The dialog owns it: Start saves the form at
+  once, and its unmount after a successful start saves only the kind.
+- **Five kinds need 329 px**; a 390 px phone gives the picker 308. Tighter padding under 480 px
+  puts them on one line (289 px).
+- **The `.link` class sets a monospace font**: the More toggle needed its family back.
+- **"An agent's report is drawn as Markdown" raced on `main` too** (2 of 6 alone): it replied as
+  soon as the report was drawn, while the list, read every 5 s, still said the agent worked, so
+  the panel asked "Stop it and send" instead of sending. Filling two fields shifted the timing
+  (5 of 6 on this branch); the test now waits for "Plan ready" first (8 of 8).
+- **A real agent reads more than the brief**: in the scratch repository, Haiku's plans also noted
+  what did not match it (a brief saying "several" test files where there was one, a date bug the
+  Spike was not asked about but found), and asked rather than guessed.
+
+**Verification**: unit tests first for the pure parts (`brief.ts`: 7 red, the module missing; the
+server's draft and its endpoint: 2 red) and a test that the dialog's count of the brief is the
+server's `briefOf` length; `featureName` was written with its test, not before. 761 unit tests,
+lint, typecheck, build. E2E: the 22 workspace tests moved to the new fields; 5 new (each kind's
+brief and line, the guess and kind switches, the draft through Escape, reload and a start, the
+keyboard, a pre-V24 record): 4 red on V24b's build, the fifth guards what stays; 109 of 109,
+twice.
+Screenshots at 1440 × 900 and 390 × 844, light and dark, each kind, More closed and open: fits
+without scrolling with More closed (645 and 685 px); with More open it scrolls inside the window.
+With a real Claude Code (Haiku, `claude -p` with CPR's own prompt, read-only, plan first) for each
+kind: each plan follows its kind's line (PLAN.md, V24 results). Not verified: `claude --bg` from
+the dialog with a real agent (its trust prompt, V18), Firefox and Safari, a screen reader on the
+radio group.
+

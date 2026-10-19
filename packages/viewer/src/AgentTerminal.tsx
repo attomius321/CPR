@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Terminal } from '@xterm/xterm';
-import { postJson } from './FeatureStarter.js';
+import { postJson } from './http.js';
 import { keySender, TERMINAL_THEME } from './terminal.js';
 
 const WRITE_HEADERS = { 'content-type': 'application/json', 'x-cpr': '1' };

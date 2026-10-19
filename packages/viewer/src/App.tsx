@@ -27,7 +27,7 @@ import type { BranchReviewInfo, Graph } from '@cpr/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import type { Loaded, Pair } from './commits.js';
 import { BackToCommits, CommitsPage, DiffProgress, fetchGraph, startDiff } from './CommitsPage.js';
-import { featureHref } from './features.js';
+import { featureHref, featureName } from './features.js';
 import { FeaturesPage } from './FeaturesPage.js';
 import { PageTabs } from './PageTabs.js';
 import { useFeatures } from './useFeatures.js';
@@ -809,7 +809,7 @@ function ReviewOf({ review }: { review: BranchReviewInfo }) {
         <>
           {' · '}
           <a className="review-feature" href={featureHref(branch)} title={feature.brief}>
-            Workspace: {feature.brief.trim().split('\n')[0]}
+            Workspace: {featureName(feature)}
           </a>
         </>
       )}

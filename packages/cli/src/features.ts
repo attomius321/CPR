@@ -789,6 +789,12 @@ export interface Features {
    * (V24b), for the start dialog's Done when; null when none is found.
    */
   check(at: string): Promise<CheckGuess | null>;
+  /**
+   * The start dialog's draft (V24c, decision 128): kept in CPR's cache for the repository, so a
+   * new `cpr view` (another port, other browser storage) has it; `{}` when none.
+   */
+  draft(): Promise<Record<string, unknown>>;
+  saveDraft(value: Record<string, unknown>): Promise<void>;
   /** Stops its agent while it works or waits. */
   stopAgent(branch: string): Promise<FeatureStart>;
   /** Opens its worktree's folder in the editor (V12's VS Code). */
@@ -1011,6 +1017,8 @@ export function features(
     return feature;
   }
 
+  const draftFile = join(cacheDir, 'state', repo.id, 'start-draft.json');
+
   /** Merge checks by the default branch's tip and the feature's: they take seconds on some. */
   const merges = new Map<string, Promise<BranchMerge>>();
   /** Check commands by commit: a commit's files never change. */
@@ -1199,6 +1207,25 @@ export function features(
     async prompt(branch) {
       const where = await place();
       return promptOf(where, await recorded(where, branch));
+    },
+
+    async draft() {
+      try {
+        const value = JSON.parse(await readFile(draftFile, 'utf8')) as unknown;
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          return value as Record<string, unknown>;
+        }
+      } catch {
+        // none yet, or not JSON
+      }
+      return {};
+    },
+
+    async saveDraft(value) {
+      await mkdir(dirname(draftFile), { recursive: true });
+      const temp = `${draftFile}.${process.pid}.tmp`;
+      await writeFile(temp, `${JSON.stringify(value)}\n`);
+      await rename(temp, draftFile);
     },
 
     async check(at) {
