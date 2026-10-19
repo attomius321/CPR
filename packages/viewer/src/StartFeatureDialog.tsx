@@ -11,6 +11,7 @@ import {
   formParts,
   formReady,
   HINTS,
+  KIND_ABOUT,
   morePartsOf,
   newForm,
   readDraft,
@@ -63,6 +64,8 @@ export function StartFeatureDialog({
   );
   const [guess, setGuess] = useState<CheckGuess | null>(null);
   const [moreShown, setMoreShown] = useState(false);
+  // The kinds' info: while hovered or focused, or once tapped.
+  const [about, setAbout] = useState(false);
   const [planFirst, setPlanFirst] = useState(true);
   const [mode, setMode] = useState<PermissionMode>(options.agent?.permissionMode ?? 'default');
   const spec = specOf(form.kind);
@@ -161,41 +164,81 @@ export function StartFeatureDialog({
         }}
       >
         <h2 id="feature-title">Start a workspace</h2>
-        <div
-          className="kind-picker"
-          role="radiogroup"
-          aria-label="Kind of work"
-          onKeyDown={(event) => {
-            const n = Number(event.key);
-            const to =
-              n >= 1 && n <= kinds.length
-                ? kinds[n - 1]
-                : event.key === 'ArrowRight' || event.key === 'ArrowDown'
-                  ? kinds[(at + 1) % kinds.length]
-                  : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
-                    ? kinds[(at - 1 + kinds.length) % kinds.length]
-                    : undefined;
-            if (!to) return;
-            event.preventDefault();
-            pick(to);
-            const radios = event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]');
-            radios[kinds.indexOf(to)]?.focus();
-          }}
-        >
-          {kinds.map((kind, i) => (
+        <div className="kind-row">
+          <div
+            className="kind-picker"
+            role="radiogroup"
+            aria-label="Kind of work"
+            onKeyDown={(event) => {
+              const n = Number(event.key);
+              const to =
+                n >= 1 && n <= kinds.length
+                  ? kinds[n - 1]
+                  : event.key === 'ArrowRight' || event.key === 'ArrowDown'
+                    ? kinds[(at + 1) % kinds.length]
+                    : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+                      ? kinds[(at - 1 + kinds.length) % kinds.length]
+                      : undefined;
+              if (!to) return;
+              event.preventDefault();
+              pick(to);
+              const radios = event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]');
+              radios[kinds.indexOf(to)]?.focus();
+            }}
+          >
+            {kinds.map((kind, i) => (
+              <button
+                key={kind.kind}
+                type="button"
+                role="radio"
+                aria-checked={kind.kind === form.kind}
+                tabIndex={kind.kind === form.kind ? 0 : -1}
+                className={kind.kind === form.kind ? 'kind active' : 'kind'}
+                title={`${kind.name} (${i + 1})`}
+                onClick={() => pick(kind)}
+              >
+                {kind.name}
+              </button>
+            ))}
+          </div>
+          <span
+            className="kind-info"
+            onMouseEnter={() => setAbout(true)}
+            onMouseLeave={() => setAbout(false)}
+          >
             <button
-              key={kind.kind}
               type="button"
-              role="radio"
-              aria-checked={kind.kind === form.kind}
-              tabIndex={kind.kind === form.kind ? 0 : -1}
-              className={kind.kind === form.kind ? 'kind active' : 'kind'}
-              title={`${kind.name} (${i + 1})`}
-              onClick={() => pick(kind)}
+              className="kind-info-button"
+              aria-label="About the kinds of work"
+              aria-expanded={about}
+              {...(about ? { 'aria-describedby': 'kind-about' } : {})}
+              onFocus={() => setAbout(true)}
+              onBlur={() => setAbout(false)}
+              // A tap shows it where there is no hover; focus has already shown it on a click.
+              onClick={() => setAbout(true)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Escape' || !about) return;
+                // Hides the info, not the dialog.
+                event.preventDefault();
+                event.stopPropagation();
+                setAbout(false);
+              }}
             >
-              {kind.name}
+              ⓘ
             </button>
-          ))}
+          </span>
+          {about && (
+            <div id="kind-about" role="tooltip" className="kind-about">
+              <dl>
+                {kinds.map((kind) => (
+                  <div key={kind.kind} className={kind.kind === form.kind ? 'current' : undefined}>
+                    <dt>{kind.name}</dt>
+                    <dd>{KIND_ABOUT[kind.kind]}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
         </div>
         <label className="feature-field">
           Title

@@ -2142,6 +2142,71 @@ kbd {
   overflow: auto;
 }
 
+/* The kinds and their info button; the info spans the dialog below them (V24c). */
+.kind-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kind-info-button {
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: help;
+}
+
+.kind-info-button:hover,
+.kind-info-button[aria-expanded='true'] {
+  color: var(--moved);
+}
+
+.kind-about {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 1;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 20%);
+  font-size: 13px;
+  /* It covers the title for a moment: what is under it keeps the pointer. */
+  pointer-events: none;
+}
+
+.kind-about dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.kind-about dl > div {
+  display: grid;
+  grid-template-columns: 5.5em 1fr;
+  gap: 8px;
+}
+
+.kind-about dt {
+  font-weight: 600;
+}
+
+.kind-about dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+.kind-about .current dd {
+  color: var(--text);
+}
+
 /* The kind of work (V24c), as the commits page's scopes: one segmented control. */
 .kind-picker {
   display: flex;
@@ -2171,10 +2236,10 @@ kbd {
   font-weight: 600;
 }
 
-/* The five on one line on a phone (390 px: 308 px for them). */
+/* The five and their info on one line on a phone (390 px: 308 px for them). */
 @media (max-width: 480px) {
   .kind {
-    padding: 3px 8px;
+    padding: 3px 6px;
   }
 }
 

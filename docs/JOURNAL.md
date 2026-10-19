@@ -2991,3 +2991,20 @@ kind: each plan follows its kind's line (PLAN.md, V24 results). Not verified: `c
 the dialog with a real agent (its trust prompt, V18), Firefox and Safari, a screen reader on the
 radio group.
 
+### V24c, then: what each kind is for
+
+Asked once V24c was built: "an info tooltip after the Workspace type selection with a little
+description for each type". An ⓘ after the kinds shows each kind's line (Feature: something new;
+Fix: something that goes wrong, reproduced with a failing test first; Refactor: a better shape,
+behaviour and tests' assertions kept; Chore: upkeep, nothing else changes; Spike: a question,
+answered in a report, nothing committed), the picked one marked. It shows on hover, while the
+button has the focus, or once tapped, and Escape hides it without closing the dialog.
+
+**Learned**: the tooltip spans the dialog under the kinds, over the title; taking the pointer, it
+kept the title from being hovered (the e2e timed out), so it takes none. On a phone the ⓘ pushed
+"Spike" to a second line again: the kinds' padding is 6 px there.
+
+**Verification**: the tooltip's e2e (hover, focus, Escape, a tap) and the keyboard e2e's new tab
+stop red first, green after; 761 unit tests, 110 of 110 e2e; screenshots at 1440 × 900 and
+390 × 844, light and dark: the kinds and the ⓘ on one line, the tooltip inside the dialog.
+

@@ -261,7 +261,8 @@ Every kind takes a title (the workspace's name and its branch's), and under **Mo
 notes, and what is out of scope or how to reproduce. Done when is optional; it names the check
 command CPR guesses from the start commit's root files (`package.json`'s `check` or `test` script
 with its package manager, a Makefile's `check` or `test` target, `scripts/test.sh`, `cargo test`,
-`go test ./...`, `pytest`), and says where it found it. The kind is picked with `1`–`5` too, and
+`go test ./...`, `pytest`), and says where it found it. The ⓘ after the kinds says what each is
+for. The kind is picked with `1`–`5` too, and
 the form is kept as a draft (in CPR's cache, so it outlives a new `cpr view`) until the workspace
 starts; Clear empties it. CPR then:
 

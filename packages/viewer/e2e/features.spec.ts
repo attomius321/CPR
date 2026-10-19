@@ -746,6 +746,7 @@ const part = (page: Page, name: string) => dialog(page).getByRole('textbox', { n
 const doneWhen = (page: Page) => part(page, 'Done when optional');
 const startButton = (page: Page) =>
   dialog(page).getByRole('button', { name: 'Start', exact: true });
+const info = (page: Page) => dialog(page).getByRole('button', { name: 'About the kinds of work' });
 
 test('each kind starts a workspace: its brief, its line, its branch, its tag (V24c)', async ({
   page,
@@ -881,7 +882,7 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
   await expect(part(page, 'What happens')).toHaveValue('');
 });
 
-test('the keyboard: digits and arrows pick a kind; Tab goes kind, title, part, Done when, More, branch (V24c)', async ({
+test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, branch (V24c)', async ({
   page,
 }) => {
   cpr = await serveFeatures();
@@ -889,6 +890,8 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, title, part, D
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.keyboard.press('n');
   await expect(title(page)).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(info(page)).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await expect(kind(page, 'Feature')).toBeFocused();
   await page.keyboard.press('2');
@@ -899,6 +902,7 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, title, part, D
   await page.keyboard.press('5');
   await expect(kind(page, 'Spike')).toHaveAttribute('aria-checked', 'true');
   for (const next of [
+    info(page),
     title(page),
     part(page, 'Question'),
     doneWhen(page),
@@ -935,4 +939,40 @@ test('a workspace started before V24 is named by its brief, with no kind', async
   const row = featureRow(page, 'feature/old');
   await expect(row.locator('.feature-about')).toHaveText('Export the totals');
   await expect(row.locator('.kind-tag')).toHaveCount(0);
+});
+
+test('the kinds explained: a tooltip after the picker, on hover, focus or a tap (V24c)', async ({
+  page,
+}) => {
+  cpr = await serveFeatures();
+  await page.goto(cpr.url);
+  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await kind(page, 'Fix').click();
+  const about = dialog(page).getByRole('tooltip');
+  await expect(about).toBeHidden();
+  await info(page).hover();
+  await expect(about).toBeVisible();
+  await expect(about.locator('dt')).toHaveText(['Feature', 'Fix', 'Refactor', 'Chore', 'Spike']);
+  await expect(about).toContainText('Something that goes wrong');
+  await expect(about).toContainText('A question to answer');
+  // The kind picked is marked.
+  await expect(about.locator('.current dt')).toHaveText('Fix');
+  await expect(info(page)).toHaveAttribute('aria-describedby', 'kind-about');
+  await title(page).hover();
+  await expect(about).toBeHidden();
+
+  // From the keyboard: shown while the button has the focus; Escape hides it, not the dialog.
+  await kind(page, 'Fix').focus();
+  await page.keyboard.press('Tab');
+  await expect(info(page)).toBeFocused();
+  await expect(about).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(about).toBeHidden();
+  await expect(dialog(page)).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(about).toBeHidden();
+
+  // A tap (no hover on a phone) shows it too.
+  await info(page).click();
+  await expect(about).toBeVisible();
 });

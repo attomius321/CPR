@@ -6131,6 +6131,9 @@ repository 13–15 ms; three runs each), against the 50 ms target.
 - The draft and the last kind are kept by `cpr view` in CPR's cache (`/api/features/draft`), not
   in `localStorage` (decision 128); after a start the draft is cut to the kind. Edits are saved
   400 ms after typing pauses, Start saves at once, Cancel and Escape save what is pending.
+- An info button (ⓘ) after the kinds shows what each is for, in a line, the picked one marked
+  (asked after V24c was built): on hover, while it has the focus, or once tapped; Escape hides it,
+  not the dialog. It spans the dialog under the kinds and takes no pointer events.
 - The kind picker is a radio group: `1`–`5` and the arrow keys while it has focus, one tab stop.
   The title has the focus when the dialog opens (the kind is remembered, so typing starts
   there); Shift+Tab reaches the kinds.
@@ -6148,10 +6151,10 @@ repository 13–15 ms; three runs each), against the 50 ms target.
 | What | Before (V24b's build) | V24c |
 |---|---|---|
 | Dialog height, 1440 × 900, More closed | 463 px | 645 px; fits (no scroll) for each kind, light and dark |
-| Dialog, 390 × 844, More closed | — | 685 px; fits; the five kinds on one line (289 of 308 px) |
+| Dialog, 390 × 844, More closed | — | 685 px; fits; the five kinds and their info on one line |
 | More open (Spike) | — | 912 px of content in an 866 px dialog at 1440 × 900: scrolls inside it |
 | Inputs to fill for a quick ask | 1 (the brief) | 2 (title, the kind's part), 1 Tab between; a kind other than the last is 1 more key |
-| e2e | 104 | 109 (5 new; 4 of them red on V24b's build, 1 guards what stays) |
+| e2e | 104 | 110 (6 new; 4 red on V24b's build, 1 guards what stays; the info's red before it existed) |
 
 With a real Claude Code (2.1.303, Haiku, `claude -p`, read-only tools, plan first) given CPR's
 own prompt for each kind on a scratch repository with a date sort that compares strings: the Fix's

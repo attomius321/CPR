@@ -34,6 +34,15 @@ export const HINTS: Record<BriefPart, string> = {
   doneWhen: 'How will you know it works? A check the agent can run.',
 };
 
+/** What each kind is for, in a line: the start dialog's info beside the kinds. */
+export const KIND_ABOUT: Record<WorkKind, string> = {
+  feature: 'Something new the code should do.',
+  fix: 'Something that goes wrong. The agent reproduces it with a failing test first.',
+  refactor: 'A better shape for code that works. Behaviour and what tests assert stay.',
+  chore: 'Upkeep: dependencies, config, docs, tooling. Nothing else changes.',
+  spike: 'A question to answer. The agent reports what it found and commits nothing.',
+};
+
 /** The check with its verb, for Done when's `{checks pass}`. */
 export function checkWords(guess: CheckGuess | null): string {
   return guess ? `\`${guess.command}\` passes` : "the project's checks pass";
