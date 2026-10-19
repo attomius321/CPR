@@ -43,6 +43,16 @@ export function reloadFeatures(): Promise<void> {
   return loading;
 }
 
+/**
+ * Reads them anew, after any read under way (it may have started before a change, such as a
+ * stop), and gives what was read.
+ */
+export async function readFeaturesAgain(): Promise<FeaturesState> {
+  await loading;
+  await reloadFeatures();
+  return current;
+}
+
 /** The next read, while a page reads them and an agent works or waits; none when hidden. */
 function schedule(): void {
   clearTimeout(timer);

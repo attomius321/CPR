@@ -22,7 +22,7 @@ import {
   type FeatureRow,
 } from './features.js';
 import { verdictLine } from './terminal.js';
-import { reloadFeatures, useFeatures } from './useFeatures.js';
+import { readFeaturesAgain, reloadFeatures, useFeatures } from './useFeatures.js';
 
 /** `?branch=<name>`: the feature picked (V18b's address, V18c's selection). */
 const branchOfUrl = (): string | null => new URLSearchParams(window.location.search).get('branch');
@@ -773,8 +773,12 @@ function FeaturePanel({
                 className="button"
                 onClick={() => {
                   setEnded(null);
-                  setAsking(agent.state === 'stopped');
-                  setAttempt((n) => n + 1);
+                  // A stop ends the terminal before the list says so: the state is read anew.
+                  void readFeaturesAgain().then(({ list }) => {
+                    const now = list?.features.find((f) => f.branch === branch)?.agent.state;
+                    setAsking((now ?? agent.state) === 'stopped');
+                    setAttempt((n) => n + 1);
+                  });
                 }}
               >
                 Open again
