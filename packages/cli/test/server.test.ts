@@ -1123,6 +1123,12 @@ describe('cpr view: features (V18)', () => {
       branch === 'feature/csv'
         ? Promise.resolve('Build it.')
         : Promise.reject(new FeatureRefused(`no workspace ${branch}`, 404)),
+    check: (at) =>
+      at === C
+        ? Promise.resolve({ command: 'pnpm run check', source: 'package.json (scripts.check)' })
+        : at === 'x'
+          ? Promise.reject(new FeatureRefused('the commit must be a full SHA: x', 400))
+          : Promise.resolve(null),
     stopAgent: (branch) => {
       stopped.push(branch);
       return branch === 'feature/csv'
@@ -1271,6 +1277,17 @@ describe('cpr view: features (V18)', () => {
     expect(gone.status).toBe(404);
     expect(await gone.json()).toEqual({ error: 'no workspace gone' });
     expect((await post('/api/features/start', { name: 'x' })).status).toBe(400);
+  });
+
+  it("guesses a commit's check command for the start dialog, or says none (V24b)", async () => {
+    expect(await (await get(`/api/features/check?at=${C}`)).json()).toEqual({
+      command: 'pnpm run check',
+      source: 'package.json (scripts.check)',
+    });
+    expect(await (await get(`/api/features/check?at=${'d'.repeat(40)}`)).json()).toEqual({});
+    expect((await get('/api/features/check?at=x')).status).toBe(400);
+    expect((await get('/api/features/check')).status).toBe(400);
+    expect((await get(`/api/features/check?at=${C}`, bare)).status).toBe(404);
   });
 
   it('serves the workspaces view, a prompt, its merge check; stops an agent, opens a worktree (V18b)', async () => {

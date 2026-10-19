@@ -224,6 +224,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         if (url.pathname === '/api/features') return featuresApi(req, res, features);
         if (url.pathname === '/api/features/options')
           return read(req, res, () => features.options());
+        if (url.pathname === '/api/features/check') {
+          if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+          const at = url.searchParams.get('at');
+          if (!at) return send(res, 400, 'at: the commit a workspace starts from');
+          return answer(res, () => features.check(at).then((guess) => guess ?? {}));
+        }
         if (url.pathname === '/api/features/start') {
           return onBranch(req, res, (branch) =>
             startingOne(res, () => features.startAgent(branch)),

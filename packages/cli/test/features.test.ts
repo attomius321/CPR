@@ -696,6 +696,22 @@ describe('features', () => {
     expect(old.feature.brief).toBe('Export a review as CSV');
   });
 
+  it('guesses the check command at the commit a workspace starts from (V24b)', async () => {
+    const { repo, shas } = fresh();
+    const s = await service(repo, null);
+    expect(await s.check(shas.B)).toBeNull();
+    repo.write({ 'package.json': JSON.stringify({ scripts: { test: 'vitest run' } }) });
+    const C = repo.commit('C');
+    expect(await s.check(C)).toEqual({
+      command: 'npm run test',
+      source: 'package.json (scripts.test)',
+    });
+    expect(await s.check(shas.B)).toBeNull();
+    const refused = (at: string) => s.check(at).catch((e: unknown) => e as FeatureRefused);
+    expect(await refused('main')).toMatchObject({ status: 400, message: /full SHA/ });
+    expect(await refused('0'.repeat(40))).toMatchObject({ status: 400, message: /not a commit/ });
+  });
+
   it('refuses a kind of work that is not complete, before touching anything (V24)', async () => {
     const { repo } = fresh();
     const { claude, start: launched } = fakeClaude();

@@ -23,6 +23,7 @@ import {
   type BranchMerge,
   type BriefPart,
   type BriefParts,
+  type CheckGuess,
   type AgentStateName,
   type FeatureAgentState,
   type FeatureList,
@@ -40,6 +41,7 @@ import {
   type WorkKind,
   type WorkKindSpec,
 } from '@cpr/core';
+import { guessCheck, treeAt } from './check.js';
 import { localHost, onPath } from './editor.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
 import { CONFIG_FILES } from './plugins.js';
@@ -782,6 +784,11 @@ export interface Features {
   startAgent(branch: string): Promise<FeatureStart>;
   /** The prompt its agent was given, to copy. */
   prompt(branch: string): Promise<string>;
+  /**
+   * The check command guessed from the root files of the commit a workspace would start from
+   * (V24b), for the start dialog's Done when; null when none is found.
+   */
+  check(at: string): Promise<CheckGuess | null>;
   /** Stops its agent while it works or waits. */
   stopAgent(branch: string): Promise<FeatureStart>;
   /** Opens its worktree's folder in the editor (V12's VS Code). */
@@ -1006,6 +1013,8 @@ export function features(
 
   /** Merge checks by the default branch's tip and the feature's: they take seconds on some. */
   const merges = new Map<string, Promise<BranchMerge>>();
+  /** Check commands by commit: a commit's files never change. */
+  const checks = new Map<string, Promise<CheckGuess | null>>();
 
   /** Starts the feature's agent and records how that went; the prompt it was given. */
   async function launch(
@@ -1190,6 +1199,17 @@ export function features(
     async prompt(branch) {
       const where = await place();
       return promptOf(where, await recorded(where, branch));
+    },
+
+    async check(at) {
+      if (!FULL_SHA.test(at)) throw new FeatureRefused(`the commit must be a full SHA: ${at}`, 400);
+      if (!(await isCommit(repo, at))) throw new FeatureRefused(`not a commit: ${at}`, 400);
+      let guess = checks.get(at);
+      if (!guess) {
+        guess = treeAt(repo, at).then(guessCheck);
+        checks.set(at, guess);
+      }
+      return guess;
     },
 
     async stopAgent(branch) {

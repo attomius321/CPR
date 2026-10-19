@@ -5850,8 +5850,8 @@ Claude Code session acting while the page is open (the e2e fake runs CPR's real 
 
 ### V24 — A structured brief: kind, title, goal, done when
 
-**Status:** in progress on branch `milestone/v24-structured-brief`: V24a built (2026-10-19);
-V24b and V24c not started. Plan revised the same day with the user's answers: Spike and Refactor are kinds of their own; "Done
+**Status:** in progress on branch `milestone/v24-structured-brief`: V24a and V24b built
+(2026-10-19); V24c not started. Plan revised the same day with the user's answers: Spike and Refactor are kinds of their own; "Done
 when" is optional for every kind; CPR guesses the project's check command; the brief's format
 left to the plan (Markdown headings, decision 124).
 
@@ -6075,7 +6075,7 @@ first), then the dialog, then the list and panel; the real-agent check last.
 | # | Milestone | Output |
 |---|---|---|
 | V24a ✅ | Kinds and parts in the record | `kind`, `title`, `parts` in `FeatureRequest`, the record and `FeatureSummary`; `briefOf`; the per-kind prompt line; `branchPrefixes`; server validation; old records and `{ brief }` requests as before. |
-| V24b | The check guess | `guessCheck` and `GET /api/features/check`; the 16-repository comparison repeated through it. |
+| V24b ✅ | The check guess | `guessCheck` and `GET /api/features/check`; the 16-repository comparison repeated through it. |
 | V24c | The structured dialog | Kind control, the kind's inputs, Done when with the guess, More, the draft, branch from title and kind; the list's title and kind tag; e2e; screenshots; the real-agent check. |
 
 **Decisions**:
@@ -6112,6 +6112,20 @@ in reviews.
   a Spike's closing paragraph says to commit nothing unless the brief asks and to give the answer
   in the report, instead of "Commit your work … the person reviews the branch".
 - The brief's sections are separated by blank lines.
+
+**As built (V24b)**: as planned, plus:
+- The tree is read with `git ls-tree` (the root's names, and `scripts/test.sh` asked for by
+  path); only the files a rule needs are read (`package.json`, the Makefile, `Cargo.toml`).
+  Lockfiles are known by name, never read: `pnpm-lock.yaml` runs to megabytes.
+- `GNUmakefile` and `makefile` count as a Makefile; a line `test := …` sets a variable and is not a
+  target.
+- A `packageManager` that is not a plain program name is ignored for the lockfile's, so the
+  dialog never shows an arbitrary command from it.
+- Guesses are kept per commit while `cpr view` runs (a commit's files never change).
+
+**Results (V24b)**: through `guessCheck` and `treeAt` on the same 16 repositories, the same 16
+commands as the planning table. 13–17 ms per guess on full clones (Bitwarden 15–17 ms, this
+repository 13–15 ms; three runs each), against the 50 ms target.
 
 ### Phase 1 milestones
 

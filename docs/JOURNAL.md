@@ -2929,3 +2929,25 @@ dialog changed yet: it still posts one brief, which makes a record exactly as be
 typecheck, build, 104 of 104 e2e (the dialog still posts one brief). No analysis code changed: no
 regression sets. Not verified yet: a real agent given a kind's brief (V24c).
 
+## V24b — The check guess (2026-10-19, branch `milestone/v24-structured-brief`)
+
+`GET /api/features/check?at=<commit>` answers the check command guessed from that commit's root
+files and where it came from (`{ command, source }`, or `{}`), for the start dialog's Done when.
+The rules are the plan's, first match wins: `package.json`'s `check` then `test` script with its
+package manager, a Makefile's `check` then `test` target, `scripts/test.sh`, `cargo test`
+(`--workspace` with a `[workspace]` table), `go test ./...`, `pytest` (through `uv` with
+`uv.lock`).
+
+**Learned**:
+- Timing a blobless clone measures the network: ripgrep and axum took 697 and 491 ms the first
+  time, because git fetched `Cargo.toml`, never read before; 14 ms once it was local. Measured
+  again on a full clone.
+- A Makefile line `test := …` sets a variable, yet matches `^test\s*:`; a target is `test:`
+  not followed by `=`.
+
+**Verification**: tests first — 7 `guessCheck`/`treeAt` tests (the module did not exist), the
+service's `check` and the endpoint red, green after; `treeAt` reads the commit, not an uncommitted
+change. 749 unit tests, lint, typecheck, build. On the 16 repositories of the V24 spike, the same
+16 commands as planned; 13–17 ms per guess on full clones (Bitwarden 15–17 ms). Not verified: the
+dialog showing it (V24c).
+

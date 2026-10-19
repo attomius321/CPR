@@ -83,6 +83,13 @@ export interface WorkKindSpec {
   doneWhen?: string;
 }
 
+/** A repository's check command, guessed from a commit's root files, and from which (V24b). */
+export interface CheckGuess {
+  command: string;
+  /** The file and what in it: "package.json (scripts.check)". */
+  source: string;
+}
+
 /** A feature and its agent, for the commits page. */
 export interface FeatureSummary {
   branch: string;

@@ -17,3 +17,17 @@ export async function readFileAtRevision(
     throw error;
   }
 }
+
+/**
+ * The names at a commit's root, or of the given paths that exist there (`git ls-tree
+ * --name-only`); a folder's name, not its files.
+ */
+export async function listTreeAt(
+  repo: GitRepo,
+  sha: string,
+  paths: readonly string[] = [],
+): Promise<string[]> {
+  if (!/^[0-9a-f]{7,64}$/i.test(sha)) throw new CprError(`not a commit SHA: ${sha}`);
+  const out = await git(repo.root, ['ls-tree', '--name-only', sha, '--', ...paths]);
+  return out.split('\n').filter((name) => name !== '');
+}

@@ -100,7 +100,7 @@ export {
   type ProjectSide,
   type ProjectSource,
 } from './projects.js';
-export { readFileAtRevision } from './git/show.js';
+export { listTreeAt, readFileAtRevision } from './git/show.js';
 export { mapLine, workingLine, type LineHunk, type WorkingLine } from './git/working-line.js';
 export {
   commitDetails,
@@ -156,6 +156,7 @@ export {
   type AgentKind,
   type BriefPart,
   type BriefParts,
+  type CheckGuess,
   type AgentStateName,
   type FeatureAgentState,
   type FeatureList,
