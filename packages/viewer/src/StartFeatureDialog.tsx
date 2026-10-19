@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type {
+  AgentKind,
   CheckGuess,
   FeatureOptions,
   FeatureRequest,
@@ -21,7 +22,7 @@ import {
   checkWords,
   type BriefForm,
 } from './brief.js';
-import { branchProblem, PERMISSION_LABELS, proposeBranch } from './features.js';
+import { AGENT_NAMES, branchProblem, PERMISSION_LABELS, proposeBranch } from './features.js';
 import { getJson, postJson } from './http.js';
 import { shortSha } from './commits.js';
 
@@ -31,8 +32,9 @@ const SAVE_AFTER_MS = 400;
 /**
  * "Start a workspace" (V18, V24c): the kind of work, its title and parts (what the server makes
  * the agent's brief of), the branch (named after the title until edited), where it starts, plan
- * first, the agent with its account and permission mode, and where its worktree goes. The form
- * is kept as a draft by `cpr view` until it starts. Ctrl+Enter starts, Escape cancels.
+ * first, the agent — picked among those installed (V20a) — with its account and Claude Code's
+ * permission mode, and where its worktree goes. The form is kept as a draft by `cpr view` until
+ * it starts. Ctrl+Enter starts, Escape cancels.
  */
 export function StartFeatureDialog({
   options,
@@ -67,7 +69,12 @@ export function StartFeatureDialog({
   // The kinds' info: while hovered or focused, or once tapped.
   const [about, setAbout] = useState(false);
   const [planFirst, setPlanFirst] = useState(true);
-  const [mode, setMode] = useState<PermissionMode>(options.agent?.permissionMode ?? 'default');
+  // The agents installed, the default first (V20a).
+  const [picked, setPicked] = useState<AgentKind | undefined>(options.agents[0]?.kind);
+  const agent = options.agents.find((a) => a.kind === picked) ?? null;
+  const [mode, setMode] = useState<PermissionMode>(
+    options.agents.find((a) => a.kind === 'claude')?.permissionMode ?? 'default',
+  );
   const spec = specOf(form.kind);
 
   // The check command, guessed at the commit it starts from (V24b); words until it comes.
@@ -139,13 +146,13 @@ export function StartFeatureDialog({
       planFirst,
       // The default branch's tip is the server's to find at the start; a row is that commit.
       ...(base.from ? {} : { base: base.sha }),
-      ...(options.agent ? { permissionMode: mode } : {}),
+      ...(agent ? { agent: agent.kind } : {}),
+      ...(agent?.kind === 'claude' ? { permissionMode: mode } : {}),
     });
   };
   const pick = (kind: WorkKindSpec) => {
     if (kind.kind !== form.kind) edit(withKind(form, spec, kind, guess));
   };
-  const { agent } = options;
   const folder = options.worktrees.replace('<branch>', branch.replaceAll('/', '-'));
   const at = kinds.indexOf(spec);
   return (
@@ -338,26 +345,50 @@ export function StartFeatureDialog({
         </label>
         {agent ? (
           <p className="dialog-note feature-agent">
-            <span title={agent.command}>Claude Code</span>
+            {options.agents.length > 1 ? (
+              <label>
+                agent{' '}
+                <select
+                  value={agent.kind}
+                  title={agent.command}
+                  onChange={(event) => setPicked(event.target.value as AgentKind)}
+                >
+                  {options.agents.map((a) => (
+                    <option key={a.kind} value={a.kind}>
+                      {AGENT_NAMES[a.kind]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <span title={agent.command}>{AGENT_NAMES[agent.kind]}</span>
+            )}
             {agent.account && <> · {agent.account}</>} ·{' '}
-            <label>
-              permission{' '}
-              <select
-                value={mode}
-                onChange={(event) => setMode(event.target.value as PermissionMode)}
-              >
-                {(Object.keys(PERMISSION_LABELS) as PermissionMode[]).map((m) => (
-                  <option key={m} value={m}>
-                    {PERMISSION_LABELS[m]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {agent.kind === 'claude' ? (
+              <label>
+                permission{' '}
+                <select
+                  value={mode}
+                  onChange={(event) => setMode(event.target.value as PermissionMode)}
+                >
+                  {(Object.keys(PERMISSION_LABELS) as PermissionMode[]).map((m) => (
+                    <option key={m} value={m}>
+                      {PERMISSION_LABELS[m]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <span title="Codex's workspace-write sandbox: it writes in its worktree and may commit on its branch; nothing else in git">
+                sandbox: its worktree, commits on its branch
+              </span>
+            )}
           </p>
         ) : (
           <p className="dialog-note">
-            No agent found (Claude Code: <code>claude</code> on PATH, or <code>CPR_CLAUDE</code>):
-            the branch and its worktree are made, and you get the prompt to give an agent.
+            No agent found (Claude Code: <code>claude</code> on PATH, or <code>CPR_CLAUDE</code>;
+            Codex: <code>codex</code> on PATH, or <code>CPR_CODEX</code>): the branch and its
+            worktree are made, and you get the prompt to give an agent.
           </p>
         )}
         {agent?.apiKey && (

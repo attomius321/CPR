@@ -1,12 +1,15 @@
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   addWorktree,
+  AGENT_KINDS,
   branchNameProblem,
   checkMerge,
+  commitFolders,
   commitsBetween,
   defaultBranch,
   deleteMergedBranch,
@@ -20,6 +23,7 @@ import {
   WorktreeRefused,
   WORK_KINDS,
   type AgentKind,
+  type AgentOption,
   type BranchMerge,
   type BriefPart,
   type BriefParts,
@@ -42,6 +46,7 @@ import {
   type WorkKindSpec,
 } from '@cpr/core';
 import { guessCheck, treeAt } from './check.js';
+import { codexState, processAlive, type Codex } from './codex.js';
 import { localHost, onPath } from './editor.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
 import { CONFIG_FILES } from './plugins.js';
@@ -54,7 +59,14 @@ import {
   verdictText,
   type ReviewPlace,
 } from './reviews.js';
-import { lastAction, readThread, readThreadEnd, turnEnded } from './thread.js';
+import {
+  appendThread,
+  lastAction,
+  readThread,
+  readThreadEnd,
+  threadPath,
+  turnEnded,
+} from './thread.js';
 
 /** A feature on disk: `cpr/features/<branch>.json` (V18), one per branch. */
 export interface FeatureFile {
@@ -82,9 +94,13 @@ export interface FeatureFile {
 
 export interface FeatureAgentRecord {
   kind: AgentKind;
-  permissionMode: PermissionMode;
-  /** When it last started. */
+  /** Claude Code's permission mode. */
+  permissionMode?: PermissionMode;
+  /** When it last started: for Codex, its last run (V20a). */
   started?: string;
+  /** Codex: its last run's ID, on the thread entries it wrote, and its runner's process (V20a). */
+  run?: string;
+  pid?: number;
   /** Why the last start failed, in the agent's words. */
   error?: string;
   /** Started with CPR's hooks (V18c): its thread is recorded. */
@@ -282,12 +298,15 @@ function partsRead(value: unknown): { parts?: BriefParts } {
 function asAgent(value: unknown): FeatureAgentRecord | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const v = value as Partial<Record<keyof FeatureAgentRecord, unknown>>;
-  if (v.kind !== 'claude') return null;
+  const kind = AGENT_KINDS.find((k) => k === v.kind);
+  if (!kind) return null;
   const mode = PERMISSION_MODES.find((m) => m === v.permissionMode) ?? 'default';
   return {
-    kind: v.kind,
-    permissionMode: mode,
+    kind,
+    ...(kind === 'claude' ? { permissionMode: mode } : {}),
     ...(typeof v.started === 'string' ? { started: v.started } : {}),
+    ...(typeof v.run === 'string' && v.run !== '' ? { run: v.run } : {}),
+    ...(typeof v.pid === 'number' && Number.isInteger(v.pid) && v.pid > 0 ? { pid: v.pid } : {}),
     ...(typeof v.error === 'string' ? { error: v.error } : {}),
     ...(v.hooks === true ? { hooks: true } : {}),
   };
@@ -676,6 +695,9 @@ export async function findClaude(
 export interface FeatureConfig {
   branchPrefixes: Record<WorkKind, string>;
   worktrees?: string;
+  /** The agent offered first (`agent.kind`, V20a). */
+  agent?: AgentKind;
+  /** Claude Code's permission mode and model. */
   permissionMode: PermissionMode;
   model?: string;
 }
@@ -683,6 +705,8 @@ export interface FeatureConfig {
 /**
  * `features.branchPrefixes` sets a kind's prefix (V24), each kind its own by default (`fix/`);
  * `features.branchPrefix`, from before V24, sets the Feature's unless `branchPrefixes` does.
+ * `agent.kind` names the agent offered first (V20a); `agent.permissionMode` and `agent.model`
+ * are Claude Code's.
  */
 export function readFeatureConfig(root: string): FeatureConfig {
   const branchPrefixes = Object.fromEntries(WORK_KINDS.map((k) => [k, `${k}/`])) as Record<
@@ -716,9 +740,12 @@ export function readFeatureConfig(root: string): FeatureConfig {
     config.worktrees = v.features.worktrees;
   }
   const agent = (v.agent && typeof v.agent === 'object' ? v.agent : {}) as {
+    kind?: unknown;
     permissionMode?: unknown;
     model?: unknown;
   };
+  const kind = AGENT_KINDS.find((k) => k === agent.kind);
+  if (kind) config.agent = kind;
   const mode = PERMISSION_MODES.find((m) => m === agent.permissionMode);
   if (mode) config.permissionMode = mode;
   if (typeof agent.model === 'string' && agent.model !== '') config.model = agent.model;
@@ -773,6 +800,12 @@ function workOf(request: FeatureRequest): Pick<FeatureFile, 'brief' | 'kind' | '
   }
   return { brief, kind: of, title: name, parts: kept };
 }
+
+/** An agent found for a feature: Claude Code or Codex (V20a). */
+type FoundAgent = { kind: 'claude'; claude: ClaudeCode } | { kind: 'codex'; codex: Codex };
+
+/** Each agent's name, as messages say it. */
+const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
 /** What the server needs of features. */
 export interface Features {
@@ -870,6 +903,7 @@ export function features(
   cacheDir: string,
   {
     claude,
+    codex = () => Promise.resolve(null),
     now = () => new Date(),
     env = process.env,
     root = repo.root,
@@ -878,8 +912,10 @@ export function features(
     node = process.execPath,
     terminals,
   }: {
-    /** Finds the agent (once a start or a list needs it); null when none is installed. */
+    /** Finds Claude Code (once a start or a list needs it); null when it is not installed. */
     claude: () => Promise<ClaudeCode | null>;
+    /** Finds Codex (V20a), the same way; none by default. */
+    codex?: () => Promise<Codex | null>;
     now?: () => Date;
     env?: Readonly<Record<string, string | undefined>>;
     /** Where `cpr/config.json` is read. */
@@ -972,6 +1008,10 @@ export function features(
     const session = newestSession(feature, sessions, real);
     const ended = session && isBlocked(session) && !session.waitingFor ? turnEnded(thread) : false;
     const acted = feature.agent ? (lastAction(thread) ?? feature.agent.started) : undefined;
+    const agent =
+      feature.agent?.kind === 'codex'
+        ? codexState(feature, thread, await codexAlive(feature), ahead)
+        : agentState(feature, sessions, ahead, real, ended);
     return {
       branch: feature.branch,
       ...(feature.kind ? { kind: feature.kind } : {}),
@@ -985,7 +1025,7 @@ export function features(
       tip,
       ahead,
       merged,
-      agent: agentState(feature, sessions, ahead, real, ended),
+      agent,
       ...(acted ? { lastAction: acted } : {}),
     };
   }
@@ -1024,20 +1064,42 @@ export function features(
   /** Check commands by commit: a commit's files never change. */
   const checks = new Map<string, Promise<CheckGuess | null>>();
 
+  /** The agent of `kind`, when it is installed. */
+  async function found(kind: AgentKind): Promise<FoundAgent | null> {
+    if (kind === 'claude') {
+      const agent = await claude();
+      return agent ? { kind, claude: agent } : null;
+    }
+    const agent = await codex();
+    return agent ? { kind, codex: agent } : null;
+  }
+
+  /** The agent a workspace gets unless one is picked: `agent.kind`, else Claude Code, else Codex. */
+  async function defaultAgent(): Promise<FoundAgent | null> {
+    const first = config().agent;
+    for (const kind of first ? [first, ...AGENT_KINDS.filter((k) => k !== first)] : AGENT_KINDS) {
+      const agent = await found(kind);
+      if (agent) return agent;
+    }
+    return null;
+  }
+
   /** Starts the feature's agent and records how that went; the prompt it was given. */
   async function launch(
     where: ReviewPlace,
     feature: FeatureFile,
-    agent: ClaudeCode | null,
+    agent: FoundAgent | null,
     permissionMode: PermissionMode,
   ): Promise<string> {
     const prompt = await promptOf(where, feature);
     if (!agent) {
       feature.agent = null;
+    } else if (agent.kind === 'codex') {
+      feature.agent = await launchCodex(where, feature, agent.codex, prompt);
     } else {
       // The session's first hooks run while `--bg` starts it: they look for this record.
       await save(where, feature);
-      const result = await agent.start({
+      const result = await agent.claude.start({
         cwd: feature.worktree,
         name: feature.branch,
         prompt,
@@ -1053,14 +1115,64 @@ export function features(
     return prompt;
   }
 
-  async function started(
+  /**
+   * Starts Codex on a feature (V20a): `codex exec` through CPR's runner, which records its
+   * thread; its sandbox may also write what a commit on the branch writes (decision 130).
+   */
+  async function launchCodex(
     where: ReviewPlace,
     feature: FeatureFile,
+    agent: Codex,
     prompt: string,
-    agent: ClaudeCode | null,
-  ) {
+  ): Promise<FeatureAgentRecord> {
+    // Not logged in, `exec` retries for about 25 s and fails with a 401 (V20a spike).
+    if ((await agent.account()) === 'not logged in') {
+      return {
+        kind: 'codex',
+        error: 'Codex is not logged in: run `codex login`, then start the agent.',
+      };
+    }
+    const run = randomUUID();
+    const started = now().toISOString();
+    const result = await agent.start({
+      cwd: feature.worktree,
+      thread: threadPath(cprFolder(where), feature.branch),
+      run,
+      writable: await commitFolders(feature.worktree, feature.branch),
+      prompt,
+    });
+    return result.ok
+      ? { kind: 'codex', started, run, pid: result.pid }
+      : { kind: 'codex', error: result.error };
+  }
+
+  /** Whether a Codex feature's last run still runs (its runner's process). */
+  async function codexAlive(feature: FeatureFile): Promise<boolean> {
+    const pid = feature.agent?.pid;
+    if (!pid) return false;
+    return (await codex())?.alive(pid) ?? processAlive(pid);
+  }
+
+  /** Stops a Codex feature's run; ends it in the thread when its runner could not. */
+  async function stopCodex(where: ReviewPlace, feature: FeatureFile, agent: Codex): Promise<void> {
+    if (feature.agent?.pid) await agent.stop(feature.agent.pid);
+    const run = feature.agent?.run;
+    const entries = await readThreadEnd(cprFolder(where), feature.branch);
+    if (entries.some((e) => e.run === run && e.kind === 'end')) return;
+    const session = entries.findLast((e) => e.kind === 'start')?.session ?? '';
+    await appendThread(cprFolder(where), feature.branch, {
+      at: now().toISOString(),
+      session,
+      ...(run ? { run } : {}),
+      kind: 'end',
+      reason: 'stopped',
+    });
+  }
+
+  async function started(where: ReviewPlace, feature: FeatureFile, prompt: string) {
     const refs = await listRefs(repo);
-    const sessions = feature.agent && agent ? await agent.sessions() : [];
+    const agent = feature.agent?.kind === 'claude' ? await claude() : null;
+    const sessions = agent ? await agent.sessions() : [];
     return { feature: await summary(where, feature, refs, await trunkOf(refs), sessions), prompt };
   }
 
@@ -1076,6 +1188,52 @@ export function features(
     return agent;
   }
 
+  /**
+   * A message to Codex (V20a): its thread continued with the text (`exec resume`), its sandbox as
+   * at the start; a run that lives is stopped first, only when asked (it loses its turn).
+   */
+  async function replyCodex(
+    where: ReviewPlace,
+    feature: FeatureFile,
+    text: string,
+    stop: boolean,
+  ): Promise<FeatureReplied> {
+    const agent = await codex();
+    if (!agent) {
+      throw new FeatureRefused(
+        'No agent to talk to: install Codex (codex on PATH), or set CPR_CODEX',
+        409,
+      );
+    }
+    if (!existsSync(feature.worktree)) {
+      throw new FeatureRefused(`its worktree is gone: ${feature.worktree}`, 409);
+    }
+    const thread = await readThreadEnd(cprFolder(where), feature.branch);
+    const state = codexState(feature, thread, await codexAlive(feature), 0);
+    if (!state.id) {
+      throw new FeatureRefused('its agent has no session to continue: start the agent again', 409);
+    }
+    if (state.state === 'working') {
+      if (!stop) throw new FeatureRefused('its agent is working: sending stops its turn', 409);
+      await stopCodex(where, feature, agent);
+    }
+    const run = randomUUID();
+    const startedAt = now().toISOString();
+    const resumed = await agent.resume({
+      cwd: feature.worktree,
+      thread: threadPath(cprFolder(where), feature.branch),
+      run,
+      writable: await commitFolders(feature.worktree, feature.branch),
+      sessionId: state.id,
+      text,
+    });
+    if (!resumed.ok) throw new FeatureRefused(resumed.error, 502);
+    feature.agent = { kind: 'codex', started: startedAt, run, pid: resumed.pid };
+    await save(where, feature);
+    const refs = await listRefs(repo);
+    return { feature: await summary(where, feature, refs, await trunkOf(refs), []) };
+  }
+
   /** Whether a feature's commits are all in the default branch. */
   async function isMerged(feature: FeatureFile, refs: RefList): Promise<boolean> {
     const tip = refs.branches.find((b) => b.name === feature.branch)?.sha;
@@ -1087,25 +1245,37 @@ export function features(
 
   return {
     async options() {
-      const [refs, agent] = await Promise.all([listRefs(repo), claude()]);
+      const [refs, claudeCode, codexAgent] = await Promise.all([listRefs(repo), claude(), codex()]);
       const where = await place();
-      const { branchPrefixes, worktrees, permissionMode } = config();
+      const { branchPrefixes, worktrees, permissionMode, agent: first } = config();
       const apiKey = Boolean(env.ANTHROPIC_API_KEY);
-      const account = agent ? await agent.account() : undefined;
+      const agents: AgentOption[] = [];
+      if (claudeCode) {
+        const account = await claudeCode.account();
+        agents.push({
+          kind: 'claude',
+          command: claudeCode.command,
+          ...(account ? { account } : {}),
+          ...(apiKey ? { apiKey } : {}),
+          permissionMode,
+        });
+      }
+      if (codexAgent) {
+        const account = await codexAgent.account();
+        agents.push({
+          kind: 'codex',
+          command: codexAgent.command,
+          ...(account ? { account } : {}),
+        });
+      }
+      // The default first: `agent.kind`, else Claude Code, else Codex (decision 132).
+      agents.sort((a, b) => Number(b.kind === first) - Number(a.kind === first));
       return {
         base: await featureBase(repo, refs),
         branchPrefixes,
         kinds: workKinds(),
         worktrees: join(dirname(worktreeFolder(mainRoot(where), 'x', worktrees)), '<branch>'),
-        agent: agent
-          ? {
-              kind: 'claude',
-              command: agent.command,
-              ...(account ? { account } : {}),
-              ...(apiKey ? { apiKey } : {}),
-              permissionMode,
-            }
-          : null,
+        agents,
         maxBrief: MAX_BRIEF,
       };
     },
@@ -1119,7 +1289,7 @@ export function features(
       if (list.some((f) => f.agent?.hooks)) await settingsFile(where);
       const refs = await listRefs(repo);
       const trunk = await trunkOf(refs);
-      const agent = list.some((f) => f.agent) ? await claude() : null;
+      const agent = list.some((f) => f.agent?.kind === 'claude') ? await claude() : null;
       const sessions = agent ? await agent.sessions() : null;
       const summaries: FeatureSummary[] = [];
       for (const feature of list) {
@@ -1131,9 +1301,22 @@ export function features(
 
     async start(request) {
       const work = workOf(request);
+      if (request.agent !== undefined && !AGENT_KINDS.includes(request.agent)) {
+        throw new FeatureRefused(`unknown agent: ${String(request.agent)}`, 400);
+      }
       const permissionMode = request.permissionMode ?? config().permissionMode;
       if (!PERMISSION_MODES.includes(permissionMode)) {
         throw new FeatureRefused(`unknown permission mode: ${String(permissionMode)}`, 400);
+      }
+      const agent = request.agent ? await found(request.agent) : await defaultAgent();
+      if (request.agent && !agent) {
+        throw new FeatureRefused(`${AGENT_NAMES[request.agent]} is not installed`, 409);
+      }
+      if (agent?.kind === 'codex' && request.permissionMode !== undefined) {
+        throw new FeatureRefused(
+          "a permission mode is Claude Code's: Codex runs in its sandbox",
+          400,
+        );
       }
       const refs = await listRefs(repo);
       const problem = await branchNameProblem(repo, request.branch, refs);
@@ -1181,18 +1364,21 @@ export function features(
         worktree: folder,
       };
       await prepareCprFolder(where);
-      const agent = await claude();
       const prompt = await launch(where, feature, agent, permissionMode);
-      return started(where, feature, prompt, agent);
+      return started(where, feature, prompt);
     },
 
     async startAgent(branch) {
       const where = await place();
       const feature = await recorded(where, branch);
-      const agent = await claude();
+      // The agent it was started with; a feature made without one gets the default.
+      const kind = feature.agent?.kind;
+      const agent = kind ? await found(kind) : await defaultAgent();
       if (!agent) {
         throw new FeatureRefused(
-          'No agent to start: install Claude Code (claude on PATH), or set CPR_CLAUDE',
+          kind
+            ? `No agent to start: ${AGENT_NAMES[kind]} is not installed`
+            : 'No agent to start: install Claude Code (claude on PATH, or CPR_CLAUDE) or Codex (codex on PATH, or CPR_CODEX)',
           409,
         );
       }
@@ -1201,7 +1387,7 @@ export function features(
       }
       const mode = feature.agent?.permissionMode ?? config().permissionMode;
       const prompt = await launch(where, feature, agent, mode);
-      return started(where, feature, prompt, agent);
+      return started(where, feature, prompt);
     },
 
     async prompt(branch) {
@@ -1242,6 +1428,16 @@ export function features(
     async stopAgent(branch) {
       const where = await place();
       const feature = await recorded(where, branch);
+      if (feature.agent?.kind === 'codex') {
+        const agent = await codex();
+        const thread = await readThreadEnd(cprFolder(where), branch);
+        const live = codexState(feature, thread, await codexAlive(feature), 0);
+        if (!agent || live.state !== 'working') {
+          throw new FeatureRefused('its agent is not running', 409);
+        }
+        await stopCodex(where, feature, agent);
+        return started(where, feature, await promptOf(where, feature));
+      }
       const agent = feature.agent ? await claude() : null;
       const sessions = agent ? await agent.sessions() : null;
       const live = agentState(feature, sessions, 0, real);
@@ -1250,7 +1446,7 @@ export function features(
       }
       const stopped = await agent.stop(live.id);
       if (!stopped.ok) throw new FeatureRefused(stopped.error, 409);
-      return started(where, feature, await promptOf(where, feature), agent);
+      return started(where, feature, await promptOf(where, feature));
     },
 
     async openWorktree(branch) {
@@ -1293,7 +1489,8 @@ export function features(
         where.place === 'repository' ? relative(repo.root, path).split(sep).join('/') : path;
       return {
         entries,
-        recorded: feature.agent?.hooks === true,
+        // Claude Code's hooks record it (V18c), CPR's runner records Codex's (V20a).
+        recorded: feature.agent?.hooks === true || feature.agent?.kind === 'codex',
         ...(review && verdict
           ? {
               verdict: {
@@ -1313,6 +1510,12 @@ export function features(
     async terminal({ branch, cols, rows }) {
       const where = await place();
       const feature = await recorded(where, branch);
+      if (feature.agent?.kind === 'codex') {
+        throw new FeatureRefused(
+          'Codex has no terminal in CPR: Talk copies `codex resume`, to run in yours',
+          409,
+        );
+      }
       if (!terminals) throw new FeatureRefused('no terminals here', 409);
       const can = await terminals.available();
       if (!can.available) throw new FeatureRefused(can.reason, 409);
@@ -1350,6 +1553,7 @@ export function features(
       }
       const where = await place();
       const feature = await recorded(where, branch);
+      if (feature.agent?.kind === 'codex') return replyCodex(where, feature, text, stop === true);
       const agent = await agentOf(feature);
       if (!existsSync(feature.worktree)) {
         throw new FeatureRefused(`its worktree is gone: ${feature.worktree}`, 409);
@@ -1408,7 +1612,17 @@ export function features(
           409,
         );
       }
-      const agent = feature.agent ? await claude() : null;
+      const agent = feature.agent?.kind === 'claude' ? await claude() : null;
+      const codexAgent = feature.agent?.kind === 'codex' ? await codex() : null;
+      if (codexAgent) {
+        if (await codexAlive(feature)) await stopCodex(where, feature, codexAgent);
+        // Out of Codex's lists, not deleted (decision 134): an archived one fails the same way.
+        const entries = await readThread(cprFolder(where), feature.branch, Infinity);
+        const threads = new Set(entries.filter((e) => e.kind === 'start').map((e) => e.session));
+        for (const thread of threads) {
+          if (thread !== '') await codexAgent.archive(thread).catch(() => undefined);
+        }
+      }
       if (agent) {
         const folder = real(feature.worktree);
         for (const session of (await agent.sessions()) ?? []) {

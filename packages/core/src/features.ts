@@ -32,13 +32,15 @@ export interface FeatureAgentState {
   waitingFor?: string;
   /** Its turn was interrupted (Esc): it waits at its prompt, and no hook said so. */
   interrupted?: true;
-  /** Claude Code's short session ID, for `claude attach`. */
+  /** Claude Code's short session ID, for `claude attach`; Codex's thread ID, for `codex resume`. */
   id?: string;
   /** Why the agent did not start, or why its state is unknown. */
   error?: string;
 }
 
-export type AgentKind = 'claude';
+/** The agents CPR starts: Claude Code (V18) and Codex (V20a). */
+export type AgentKind = 'claude' | 'codex';
+export const AGENT_KINDS: readonly AgentKind[] = ['claude', 'codex'];
 
 /** Claude Code's permission modes CPR may start an agent in; `default` passes none. */
 export type PermissionMode = 'default' | 'acceptEdits' | 'auto';
@@ -147,19 +149,26 @@ export interface FeatureOptions {
   kinds: WorkKindSpec[];
   /** Where a worktree goes, `<branch>` standing for the branch's folder name. */
   worktrees: string;
-  /** The agent CPR starts; null when none is installed. */
-  agent: {
-    kind: AgentKind;
-    /** The program run, as found. */
-    command: string;
-    /** Whose account it runs on (`claude auth status`), e.g. "your Pro subscription". */
-    account?: string;
-    /** An API key in `cpr view`'s environment, which the agent may use instead. */
-    apiKey?: boolean;
-    permissionMode: PermissionMode;
-  } | null;
+  /** The agents installed, the default first (V20a); empty when there is none. */
+  agents: AgentOption[];
   /** Longest brief accepted. */
   maxBrief: number;
+}
+
+/** An agent the start dialog offers (V20a). */
+export interface AgentOption {
+  kind: AgentKind;
+  /** The program run, as found. */
+  command: string;
+  /**
+   * Whose account it runs on (`claude auth status`, `codex login status`), e.g. "your Pro
+   * subscription", "your ChatGPT account".
+   */
+  account?: string;
+  /** Claude Code: an API key in `cpr view`'s environment, which it may use instead. */
+  apiKey?: boolean;
+  /** Claude Code: the permission mode it starts in unless the person picks another. */
+  permissionMode?: PermissionMode;
 }
 
 /**
@@ -175,6 +184,9 @@ export interface FeatureRequest {
   /** A full SHA; the default branch's tip when absent. */
   base?: string;
   planFirst: boolean;
+  /** The agent to start (V20a); the default one when absent. */
+  agent?: AgentKind;
+  /** Claude Code's permission mode. */
   permissionMode?: PermissionMode;
 }
 
@@ -195,7 +207,12 @@ export interface ThreadQuestion {
  * a session's start and end, what it was given (CPR's prompt, then the person's messages), what
  * it reported at the end of a turn, what it waited on, and Claude Code's notices.
  */
-export type ThreadEntry = { at: string; session: string } & (
+export type ThreadEntry = {
+  at: string;
+  session: string;
+  /** The CPR run of Codex it belongs to (V20a): which entries are its last run's. */
+  run?: string;
+} & (
   | { kind: 'start'; source: string }
   | { kind: 'end'; reason?: string }
   | { kind: 'prompt'; text: string }
