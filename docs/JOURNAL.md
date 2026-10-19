@@ -2881,3 +2881,26 @@ why, how done is checked, the bounds — plus, for a bug, what happens against w
 how to reproduce it. That is the plan: a kind, a title, two required parts per kind, the rest
 optional. Not fetched: Cursor's and Linear's guidance; form-friction numbers were secondary and
 contradictory, so none are used.
+
+Revised the same day with the user's answers: Spike and Refactor are kinds of their own; Done
+when is optional; CPR guesses the check command; the brief's format left to the plan (Markdown
+headings). Measured for the guess, on the default branches of 16 repositories (shallow blobless
+clones: this one, ky, zod, vite, the Angular RealWorld app, Bitwarden, Qwik, TypeScript's Go
+port, React, Express, Requests, Flask, FastAPI, ripgrep, axum, cobra): a rule over root files
+(`package.json` `check` then `test` with the package manager from `packageManager` or the
+lockfile; `make`; `scripts/test.sh`; `cargo test`; `go test ./...`; `pytest`) gave the command
+the repository's agent instructions, CONTRIBUTING or CI use in 13, a right but heavy one in 2
+(Qwik's `test` builds everything and runs e2e; vite's runs three suites), a close one in 1
+(Flask: `uv run pytest`, CI runs `tox`), none wrong.
+
+Learned:
+- `check` is rare: only this repository has one; `test` is the convention, and its weight varies
+  from one tool (zod) to a full build and e2e (Qwik).
+- `cargo test` alone misses a workspace's other crates: ripgrep's CI runs `--workspace`, so the
+  rule adds it when `Cargo.toml` has `[workspace]`.
+- 7 of 16 have `CLAUDE.md` or `AGENTS.md` (Bitwarden's in `.claude/`), but their commands sit
+  among alternatives (Qwik lists six); parsing them would guess worse than the manifests, and the
+  agent reads them anyway.
+- The package manager is not always npm, pnpm or yarn: zod's `packageManager` is `nub`, and
+  `nub run test` is what its CONTRIBUTING says, so the field's name is used as given.
+

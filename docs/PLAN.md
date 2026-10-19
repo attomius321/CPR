@@ -436,7 +436,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V21 ✅ | The agent's terminal in its panel | A feature's agent is talked to in V18c's box (a reply stops the session, 1.6 s, and loses a turn in progress) or in a terminal elsewhere (Talk copies `claude attach`). Measured (V21 spike): `claude attach` in a pseudo-terminal, drawn by xterm.js in the page, gives the whole session — first output in 152–174 ms, a key to its echo 22 ms, a permission answered in the page, Esc, messages queued while the agent works — while Claude Code keeps hosting it and CPR's hooks keep recording. Planned: Terminal in the feature's panel (node-pty optional, Talk without it), output as events and keys as POSTs under the write rule, one terminal per open panel, dark in both themes; and the state after Esc (`idle` with `working`), wrong on `main` today. Merged (2026-10-18): with a real Claude Code, the session drawn and answered in the panel, Esc read as "Interrupted" 0.3 s later, a stop shown and reopened in 0.2 s; a key to its echo 32 ms through CPR. See below. |
 | V22 ✅ | Fixes: stale text outside the README | Found while rewriting the README (`chore/update-readme`, 2026-10-15). `cpr --help` and `cpr view --help` say the first page lists the current branch's commits (every branch since V10a); `@cpr/cli`'s description names only `cpr diff` and `cpr view`; the action's `plugins` input points to `cpr.config.json`, the older place; the sidebar's "No findings." ends with an emoji. Merged: all four fixed, and `cpr --help`'s `pr <number>` shown as optional (it has been since C1); a unit test keeps the help on every branch. |
 | V23 ✅ | Branches that need you, first | Planned as V22, which `main` took meanwhile. The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. Merged (2026-10-18): on a clone of this repository with three open features, they are the first three entries instead of the 4th, 10th and 12th; `/api/features` unchanged (34 ms), each thread read from its last 256 KB (0.6 ms at any length). See below. |
-| V24 | A structured brief | The "Start a workspace" dialog is one text area that is also the branch name and the workspace's name; every branch is `feature/`, while 11 of this repository's 35 merges were fixes or chores; nothing prompts for how done is checked, which every agent vendor's guidance asks for. Planned: a kind (Feature, Fix, Chore), a title, two required parts per kind with defaults for Fix and Chore, optional ones under More, assembled by the server into a brief with fixed headings; the kind's branch prefix; old workspaces unchanged. See below. |
+| V24 | A structured brief | The "Start a workspace" dialog is one text area that is also the branch name and the workspace's name; every branch is `feature/`, while 11 of this repository's 35 merges were fixes or chores; nothing prompts for how done is checked, which every agent vendor's guidance asks for. Planned: a kind (Feature, Fix, Refactor, Chore, Spike), a title, one required part per kind, an optional Done when filled in with a check command guessed from the repository's root files (on 16 repositories: 13 the documented command, 2 heavy, 1 close, 0 wrong), optional parts under More, assembled by the server into a brief with Markdown headings; the kind's branch prefix; old workspaces unchanged. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -5850,7 +5850,10 @@ Claude Code session acting while the page is open (the e2e fake runs CPR's real 
 
 ### V24 — A structured brief: kind, title, goal, done when
 
-**Status:** planned (2026-10-19), on branch `milestone/v24-structured-brief`; not started.
+**Status:** planned (2026-10-19), on branch `milestone/v24-structured-brief`; not started. Plan
+revised the same day with the user's answers: Spike and Refactor are kinds of their own; "Done
+when" is optional for every kind; CPR guesses the project's check command; the brief's format
+left to the plan (Markdown headings, decision 124).
 
 **Problem** (asked: "The Create a workspace dialog need some structuring..like multiple inputs
 where the user is prompt about the feature/chore/fix. With a title, final goal, etc."). The
@@ -5877,59 +5880,101 @@ how done is checked, and the bounds** (where to look, what not to touch); bugs a
 happens against what should, and how to reproduce it**. Issue forms (GitHub) keep required
 fields few and mark the rest optional.
 
+**Guessing the check command** (measured on 16 repositories' default branches, 2026-10-19: this
+one, the six regression repositories, TypeScript (Go port), React, Express, Requests, Flask,
+FastAPI, ripgrep, axum, cobra). The rule below, from root files only, against what the
+repository's agent instructions, CONTRIBUTING or CI run:
+
+| Result | Repositories |
+|---|---|
+| Same command, or one that runs it (13) | CPR `pnpm run check`; ky, Express, Bitwarden `npm run test`; RealWorld `bun run test`; React `yarn run test`; zod `nub run test`; TypeScript `npm run test` (= `hereby test`); axum, ripgrep `cargo test --workspace`; cobra, Requests `make test`; FastAPI `bash scripts/test.sh` |
+| Right but heavy (2) | Qwik `pnpm run test` builds everything and runs e2e (its AGENTS.md says `pnpm test.unit`); vite's runs unit, serve and build suites |
+| Close (1) | Flask `uv run pytest` (CI: `tox` through `uv`) |
+| None found, words instead (0) | — |
+
+No guess was wrong; 2 of 16 were slow. 7 of 16 repositories have agent instructions
+(`CLAUDE.md`/`AGENTS.md`); the prompt already tells the agent to follow them, and the guess
+is shown with its source and is editable, so a heavy guess costs the person one edit.
+
 Causes:
 - One text area, no prompt about the parts an agent needs; the placeholder is the only hint.
 - No kind: a fix gets a `feature/` branch and the same instructions as a feature.
 - The name is derived, not given.
 
 **Goal**: the dialog asks for the work in a few labelled parts, chosen by its **kind** —
-Feature, Fix or Chore: a **title** (the workspace's name and its branch), the parts that kind
-needs (two required at most, with defaults where a sensible one exists), and optional ones
-behind "More". CPR assembles them into the agent's brief in a fixed order with fixed headings,
-and the branch takes the kind's prefix (`feature/`, `fix/`, `chore/`). The record keeps the
-parts, so the panel shows them as written. Unchanged: workspaces started before V24 (their
-brief, name and branch as today), the agent's launch, plan first, permissions, the worktree,
-reviews and merges; `cpr diff`, `cpr pr` and the graph JSON.
+Feature, Fix, Refactor, Chore or Spike: a **title** (the workspace's name and its branch), the
+one part that kind needs, **Done when** (optional; filled in for every kind but Feature, with the
+guessed check command), and optional parts behind "More". CPR assembles them into the agent's
+brief in a fixed order with fixed headings, and the branch takes the kind's prefix. The record
+keeps the parts, so the panel shows them as written. Unchanged: workspaces started before V24
+(their brief, name and branch as today), the agent's launch, plan first, permissions, the
+worktree, reviews and merges; `cpr diff`, `cpr pr` and the graph JSON.
 
 #### The kinds and their inputs (viewer)
 
-The kind is a segmented control at the top (Feature · Fix · Chore; `1` `2` `3` while it has
-focus), Feature by default, the last one picked remembered per repository (`localStorage`). The
-title is first in every kind; switching kind keeps every text typed (the fields with the same
-role carry over; the others are kept and come back).
+The kind is a segmented control at the top (Feature · Fix · Refactor · Chore · Spike; `1`–`5`
+while it has focus), Feature by default, the last one picked remembered per repository
+(`localStorage`). Required: the title and the kind's one part. `<check>` is the guessed command
+(below), else the words "the project's checks".
 
-| Kind | Required | Pre-filled, editable | Under "More" (optional) |
-|---|---|---|---|
-| **Feature** | Title; **Goal** — "What should it do, and why?" | **Done when** — empty, required: "How will you know it works? A check the agent can run." | Where to look; Out of scope; Notes |
-| **Fix** | Title; **What happens** — "What goes wrong, and what should happen instead?" | **Done when** — "A test that fails today passes, and the project's checks pass." | **How to reproduce** (steps, a command, an error); Where to look; Notes |
-| **Chore** | Title; **What to change** — "What, and why now?" | **Done when** — "No behaviour changes, and the project's checks pass." | Where to look; Out of scope; Notes |
+| Kind | Required part | Done when (optional, pre-filled) | Under "More" (optional) | Branch |
+|---|---|---|---|---|
+| **Feature** | **Goal** — "What should it do, and why?" | empty; placeholder "e.g. `<check>` passes, and …" | Where to look; Out of scope; Notes | `feature/` |
+| **Fix** | **What happens** — "What goes wrong, and what should happen instead?" | "A test that fails today passes, and `<check>` passes." | How to reproduce; Where to look; Notes | `fix/` |
+| **Refactor** | **What to restructure** — "What, and why is the current shape a problem?" | "Behaviour is unchanged: existing tests pass without changing what they assert, and `<check>` passes." | Where to look; Out of scope; Notes | `refactor/` |
+| **Chore** | **What to change** — "What, and why now?" (dependencies, config, docs, tooling) | "`<check>` passes." | Where to look; Out of scope; Notes | `chore/` |
+| **Spike** | **Question** — "What do you want to find out, and what will you decide with the answer?" | "A written answer: what was tried, what was measured, and a recommendation." | What is known; Where to look; Notes | `spike/` |
 
-- Three inputs visible per kind (title and two text areas), "More" collapsed unless a field in
-  it has text. A Fix's "How to reproduce" is optional: a bug seen once has no steps, and a
-  required field gets "unknown" typed into it.
-- **Done when** is required for a Feature only: Fix and Chore have a default that is right for
-  most of them. CPR does not guess the project's test command (precise beats complete: a wrong
-  command is worse than the agent reading the project's instructions, which the prompt points
-  to).
-- Branch: proposed from the **title** (not the brief), with the kind's prefix; editable as
-  today, and once edited no longer follows title or kind.
+- Visible per kind: title, the required part, Done when; "More" collapsed unless a field in it
+  has text. Optional means the brief leaves an empty part out; an empty Done when leaves the
+  prompt's "check it as the project's own instructions say" as the only word on it.
+- Under Done when, when a command was guessed: "`pnpm run check` from package.json (scripts.check)"
+  — the command and where it came from, so a wrong or heavy guess is seen before Start.
+- **Switching kind** keeps every text typed: the required part is one text area whose label
+  changes; Done when changes to the new kind's default only while it still equals the old
+  kind's default (edited text is kept); More's fields are kept and shown where the kind has them.
+- Branch: proposed from the **title**, with the kind's prefix; editable as today, and once
+  edited no longer follows title or kind.
 - Lengths: the assembled brief is checked against `maxBrief` (20,000) as one text, the count
   shown under the dialog when it is within 10 % of it.
 - **A draft**: the fields are kept per repository in `localStorage` while the dialog is open and
-  cleared after a start; Escape and Cancel keep it, "Clear" empties it. Several inputs make a
-  lost brief more costly than one text area did. Storage that throws is ignored.
-- Ctrl+Enter starts, Escape cancels, as today; Tab goes title → kind's fields → More → branch →
-  plan first → Start.
+  cleared after a start; Escape and Cancel keep it, "Clear" empties it. Storage that throws is
+  ignored.
+- Ctrl+Enter starts, Escape cancels, as today; Tab goes kind → title → required part → Done
+  when → More → branch → plan first → Start.
+
+#### Guessing the check command (CLI)
+
+`GET /api/features/check?at=<commit>` → `{ command, source }` or `{}`, read from the commit the
+workspace starts at (`git cat-file` of a few root files; the worktree does not exist yet). The
+dialog asks when it opens and when the start commit changes; it shows words until the answer
+comes, and keeps words if the request fails. First match wins:
+
+1. `package.json` `scripts.check`, else `scripts.test` (not npm's `echo "Error: no test
+   specified" && exit 1`) → `<pm> run check|test`. `<pm>`: the `packageManager` field's name,
+   else the lockfile (`pnpm-lock.yaml` pnpm, `yarn.lock` yarn, `bun.lock`/`bun.lockb` bun,
+   else npm).
+2. `Makefile` with a `check:` or `test:` target → `make check|test`.
+3. `scripts/test.sh` → `bash scripts/test.sh`.
+4. `Cargo.toml` → `cargo test`, with `--workspace` when it has a `[workspace]` table.
+5. `go.mod` → `go test ./...`.
+6. `pyproject.toml`, `setup.py`, `tox.ini` or `pytest.ini` → `uv run pytest` with `uv.lock`,
+   else `python -m pytest`.
+
+Root files only: a monorepo's root command is what its people run (10 of 10 JavaScript
+repositories above had one). Agent instructions are not parsed: their commands sit in prose and
+code blocks with many alternatives (Qwik's lists 6), and the agent reads them anyway.
 
 #### The record, the request and the prompt (core, CLI)
 
-- `FeatureRequest` and the record gain `kind` (`feature` | `fix` | `chore`), `title` and
-  `parts` (`{ goal?, happens?, reproduce?, change?, doneWhen?, where?, outOfScope?, notes? }`,
-  absent when empty). The request no longer sends `brief`: the **server** assembles it
-  (`briefOf` in `packages/cli/src/features.ts`), so the record's `brief` stays what the agent
-  was told and every reader of `brief` (the panel's "The brief", `cpr/AGENTS.md` readers,
-  `featurePrompt`) works unchanged. Server checks: a known kind, a title, the kind's required
-  parts, the assembled length; 400 with the field's label otherwise.
+- `FeatureRequest` and the record gain `kind` (`feature` | `fix` | `refactor` | `chore` |
+  `spike`), `title` and `parts` (`{ goal?, happens?, restructure?, change?, question?, known?,
+  reproduce?, doneWhen?, where?, outOfScope?, notes? }`, absent when empty). The request no
+  longer sends `brief`: the **server** assembles it (`briefOf` in
+  `packages/cli/src/features.ts`), so the record's `brief` stays what the agent was told and
+  every reader of `brief` (the panel's "The brief", `featurePrompt`) works unchanged. Server
+  checks: a known kind, a title, the kind's required part, only the kind's parts, the assembled
+  length; 400 with the field's label otherwise.
 - Old records (no `kind`): read as before; their name is the brief's first line. New records:
   the name is `title`. `FeatureSummary` gains `kind` and `title` (absent for old ones).
 - **The brief** (`briefOf`): Markdown headings in a fixed order, empty parts left out, the
@@ -5945,83 +5990,109 @@ role carry over; the others are kept and come back).
   ## Where to look
   …
   ## Done when
-  A test that fails today passes, and the project's checks pass.
+  A test that fails today passes, and `pnpm run check` passes.
   ```
 
-  Order: context first, the check last (Anthropic's guidance: the request after the material).
-  Headings, not XML tags: the brief is shown to the person in the panel and must read as
-  written, and the prompt is plain text to Claude Code and Codex alike.
+  Order: the required part, then context (reproduce, known, where, out of scope, notes), Done
+  when last (Anthropic's guidance: the material first, the request and its check last).
 - **The prompt** (`featurePrompt`): unchanged except one line per kind after the brief, the
-  only instruction CPR adds: Fix — "Reproduce it first, with a failing test where the project
-  has tests, then fix the cause, not the symptom."; Chore — "Change no behaviour; if you find
-  you must, stop and say so."; Feature — none.
-- **Branch prefixes**: `features.branchPrefixes` in `cpr/config.json`
-  (`{ "feature": "feature/", "fix": "fix/", "chore": "chore/" }` by default);
-  `features.branchPrefix`, if set, stays the Feature prefix. `FeatureOptions.branchPrefix`
-  becomes `branchPrefixes`.
+  only instruction CPR adds:
+
+  | Kind | Line |
+  |---|---|
+  | Feature | none |
+  | Fix | "Reproduce it first, with a failing test where the project has tests, then fix the cause, not the symptom." |
+  | Refactor | "Change structure, not behaviour: do not change what existing tests assert; if behaviour must change, stop and say so." |
+  | Chore | "Keep to what is asked; if it needs a change in behaviour, stop and say so." |
+  | Spike | "The answer is what is asked for, not a change to merge: put it in your final report; keep experiments out of the project's code unless the brief says otherwise." |
+
+- **Branch prefixes**: `features.branchPrefixes` in `cpr/config.json` (default `{ "feature":
+  "feature/", "fix": "fix/", "refactor": "refactor/", "chore": "chore/", "spike": "spike/" }`,
+  a partial object overrides only its kinds); `features.branchPrefix`, if set, stays the Feature
+  prefix. `FeatureOptions.branchPrefix` becomes `branchPrefixes`.
 - No graph JSON or analysis change.
 
 #### The workspace list and panel (viewer)
 
 - A row's name is the title (old workspaces: the brief's first line, as today), with the kind
-  as a small text tag before it (`fix`, `chore`; none for Feature, the common case).
+  as a small text tag before it (`fix`, `refactor`, `chore`, `spike`; none for Feature, the
+  common case).
 - "The brief" in the panel shows the assembled brief, as today; the review page's "Workspace: …"
   uses the title.
+- A Spike's answer is its agent's final report, in the thread as today; reviews and merges are
+  unchanged for it (its branch is usually empty, and Clean up ends it).
 
 #### Verification
 
-1. **Unit, red first**: `briefOf` per kind (order, headings, empty parts left out, text kept
-   byte for byte, a part that contains `## ` lines); the per-kind prompt line; old records read
-   unchanged and named by their first line; request validation (missing title, missing required
-   part per kind, unknown kind, assembled length over 20,000); `proposeBranch` from the title
-   with each kind's prefix, `-2` when taken; config with `branchPrefix` only, `branchPrefixes`
-   only, both.
-2. **E2E** (`features.spec.ts`, rewritten where it fills the brief): each kind starts a
-   workspace whose fake agent received the expected brief; switching kind keeps text; Start
-   disabled until the kind's required fields have text; More opens itself when a field in it has
-   text; the draft survives Escape and a reload, and is gone after a start; an old record is
-   listed by its first line; keyboard path (Tab order, Ctrl+Enter).
-3. **Nothing else changes**: the e2e suite, the commits page and reviews; no analysis code, so
+1. **Unit, red first**:
+   - `briefOf` per kind: order, headings, empty parts left out, text kept byte for byte, a part
+     that contains `## ` lines; the per-kind prompt line.
+   - `guessCheck` on fixture trees built as git commits: each rule, the order between them
+     (`package.json` with `check` and `test`; `Makefile` beside `Cargo.toml`), npm's placeholder
+     `test` skipped, each package manager source, Cargo with and without `[workspace]`, none →
+     `{}`; read from the given commit, not the working copy.
+   - Request validation: missing title, missing required part per kind, a part the kind does not
+     have, unknown kind, assembled length over 20,000; `{ brief }` alone still accepted as a
+     Feature.
+   - Old records read unchanged and named by their first line; `proposeBranch` from the title
+     with each kind's prefix, `-2` when taken; config with `branchPrefix` only, `branchPrefixes`
+     only (partial), both.
+2. **The guess on real repositories**: the 16 above again through `/api/features/check`, the
+   same results as the table; its time on Bitwarden's full clone (target: under 50 ms).
+3. **E2E** (`features.spec.ts`, rewritten where it fills the brief): each kind starts a
+   workspace whose fake agent received the expected brief and line; the guessed command and its
+   source under Done when; switching kind keeps text and swaps an unedited Done when only;
+   Start disabled until the title and required part have text; More opens itself when a field in
+   it has text; the draft survives Escape and a reload, and is gone after a start; an old record
+   is listed by its first line; keyboard path (Tab order, `1`–`5`, Ctrl+Enter).
+4. **Nothing else changes**: the e2e suite, the commits page and reviews; no analysis code, so
    no regression sets.
-4. **Viewer** (`viewer-check`): the dialog in light and dark at 1440 × 900 and 390 × 844, each
-   kind, More open and closed: it fits without scrolling at 1440 × 900 with More closed;
-   screenshots against today's.
-5. **With a real agent**: one workspace of each kind started with a real Claude Code (headless,
+5. **Viewer** (`viewer-check`): the dialog in light and dark at 1440 × 900 and 390 × 844, each
+   kind, More open and closed: it fits without scrolling at 1440 × 900 with More closed; the five
+   kinds fit on one line at 390 px; screenshots against today's.
+6. **With a real agent**: one workspace of each kind started with a real Claude Code (headless,
    Haiku, plan first) on a scratch repository with a planted bug: the Fix's plan names a failing
-   test first; the Chore's plan changes no behaviour; record what the plans say.
+   test first; the Refactor's and Chore's change no test assertions; the Spike's report answers
+   the question and its branch has no commits; record what the plans say.
 
 **Risks**
 
 | Risk | Mitigation |
 |---|---|
-| A form is slower than one text area for a quick ask | Two required text areas at most, defaults for Fix and Chore; measure the clicks/keys from open to Start against today's |
-| Someone pastes a long spec | "Goal" and "Notes" take any length; the assembled limit is the only one |
-| Defaults the agent follows blindly ("a test that fails today") in a repo without tests | The Fix line says "where the project has tests"; Done when is editable |
-| Kinds people want that are not there (spike, refactor, docs) | Three kinds cover 31 of 35 merges here; a Refactor is a Chore, a Spike is "later" (its output is a finding, not a branch to merge, which reviews do not model) |
+| A form is slower than one text area for a quick ask | Two required inputs (title, one part); Done when filled in; measure keys from open to Start against today's |
+| A guessed command is wrong or heavy (Qwik, vite) | Shown with its source under Done when, editable; root files only, so no guess from prose; measured on 16 repositories: 0 wrong, 2 heavy |
+| A guess runs against an old start commit with different scripts | Read from the start commit, the tree the agent gets |
+| Someone pastes a long spec | Parts take any length; the assembled limit is the only one |
+| Five kinds crowd the control at 390 px | Short labels; measured in step 5; below that width the control wraps |
+| A spike's agent commits anyway | The prompt line says not to; the branch's review shows any commit as usual |
 | Older viewers or scripts posting `{ brief }` | The server keeps accepting `brief` alone as a Feature with the brief's first line as its title (one release), so nothing that posts today breaks |
 
-**Order**: `briefOf`, the record and the request first (unit tests), then the dialog, then the
-list and panel; the real-agent check last.
+**Order**: `briefOf`, the record and the request, then `guessCheck` and its endpoint (unit tests
+first), then the dialog, then the list and panel; the real-agent check last.
 
 #### Milestones
 
 | # | Milestone | Output |
 |---|---|---|
 | V24a | Kinds and parts in the record | `kind`, `title`, `parts` in `FeatureRequest`, the record and `FeatureSummary`; `briefOf`; the per-kind prompt line; `branchPrefixes`; server validation; old records and `{ brief }` requests as before. |
-| V24b | The structured dialog | Kind control, the kind's inputs, More, the draft, branch from title and kind; the list's title and kind tag; e2e; screenshots. |
+| V24b | The check guess | `guessCheck` and `GET /api/features/check`; the 16-repository comparison repeated through it. |
+| V24c | The structured dialog | Kind control, the kind's inputs, Done when with the guess, More, the draft, branch from title and kind; the list's title and kind tag; e2e; screenshots; the real-agent check. |
 
-**Proposed decisions**:
+**Decisions**:
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 122 | Which kinds | **Feature, Fix, Chore**; Refactor is a Chore, Spike later | The user's three; 31 of this repository's 35 merges; a spike's output is not a branch to merge |
+| 122 | Which kinds | **Feature, Fix, Refactor, Chore, Spike** | Asked (revised 2026-10-19: Spike and Refactor of their own). Refactor differs from Chore in what done means (tests' assertions unchanged); a Spike's output is an answer, not a branch to merge |
 | 123 | Who assembles the brief | **The server**, from the parts; the record keeps both | One place for the format; `brief` stays what the agent was told, so every reader of it is unchanged |
-| 124 | Headings or XML tags in the brief | **Markdown headings** | The person reads the brief in the panel; plain text suits Claude Code and Codex alike |
-| 125 | Does CPR fill in a test command | **No**: Done when defaults are in words; the prompt points to the project's instructions | A guessed command that is wrong costs more than none |
+| 124 | Headings or XML tags in the brief | **Markdown headings** | Left to the plan. The person reads the brief in the panel as written; Claude Code and Codex both read Markdown; headings carry the same structure tags would, and an agent's own instructions (CLAUDE.md, AGENTS.md) are Markdown too |
+| 125 | Does CPR fill in a check command | **Yes, guessed from root files, shown with its source, editable** | Asked (revised 2026-10-19; proposed "no"). Measured on 16 repositories: 13 the documented command, 2 right but heavy, 1 close, 0 wrong. Seen and editable before Start, so precision is the person's to keep |
+| 126 | Is Done when required | **No, for any kind** | Asked. Filled in for four kinds, so it is there unless removed; an empty one falls back to the project's own instructions |
+| 127 | Where a spike's answer goes | **The agent's final report**, in the thread | Repositories keep spikes in different places or not at all; the thread is CPR's own record. A brief can ask for a file instead |
 
-**Not in V24 (later)**: a Spike kind (a question and a written answer, no merge); templates per
-repository (`cpr/config.json` defining kinds and fields); attaching screenshots or logs as files;
-filling a brief from an issue or a review comment; an LLM rewriting the person's brief.
+**Not in V24 (later)**: templates per repository (`cpr/config.json` defining kinds and fields);
+a guess from agent instructions; attaching screenshots or logs as files; filling a brief from an
+issue or a review comment; an LLM rewriting the person's brief; spike answers as a document kind
+in reviews.
 
 ### Phase 1 milestones
 
