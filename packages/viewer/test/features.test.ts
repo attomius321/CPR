@@ -266,8 +266,8 @@ describe('featureChips', () => {
     expect(chips.get('feature/csv')).toEqual({
       mark: '⚙',
       tone: 'working',
-      title: 'Feature: Export a review as CSV — Working',
-      href: '/features?branch=feature%2Fcsv',
+      title: 'Workspace: Export a review as CSV — Working',
+      href: '/workspaces?branch=feature%2Fcsv',
     });
   });
 });

@@ -1,6 +1,6 @@
 # CPR
 
-**Coordinated Programming Runtime.** Start a feature with a coding agent, review what it changed
+**Coordinated Programming Runtime.** Start a workspace with a coding agent, review what it changed
 as a graph of the symbols it touched, and send back a verdict. Everything runs on your machine.
 
 CPR turns a change into a graph of the functions, classes, methods and types it added, removed
@@ -15,7 +15,7 @@ were not updated. The aim is to review decisions, not lines.
 [Findings](#findings) ·
 [The viewer](#the-viewer) ·
 [Reviewing a branch](#reviewing-a-branch) ·
-[Features and agents](#features-and-agents) ·
+[Workspaces and agents](#workspaces-and-agents) ·
 [Pull and merge requests](#pull-and-merge-requests) ·
 [CI](#ci) ·
 [Plugins](#framework-plugins) ·
@@ -29,7 +29,7 @@ were not updated. The aim is to review decisions, not lines.
   and who uses it.
 - **Reviews any branch.** Mark symbols reviewed as you go. After new commits, only what is new or
   changed since is left to look at.
-- **Works with agents.** Describe a feature, and CPR makes its branch and worktree and starts
+- **Works with agents.** Describe the work, and CPR makes its branch and worktree and starts
   Claude Code there. You read its plan, answer it, review its branch, and approve. The agent then
   merges the commit you approved.
 - **Reads pull and merge requests.** Review a GitHub pull request or a GitLab merge request from
@@ -51,7 +51,7 @@ pnpm build
 alias cpr="node $PWD/packages/cli/dist/bin.js"   # add this line to your shell profile
 ```
 
-On Linux, `pnpm install` also compiles `node-pty` for [the agent's terminal](#features-and-agents)
+On Linux, `pnpm install` also compiles `node-pty` for [the agent's terminal](#workspaces-and-agents)
 when python3, make and a C++ compiler are there. Without them it is skipped, and the rest works.
 
 Then, in any git repository with TypeScript or JavaScript:
@@ -167,7 +167,7 @@ history scrolls, and commits load as they come into view.
 
 - **Branches panel.** Local branches, with `↑2 ↓1` against their upstream, and remote ones by
   folder. Filter it with `/`. A click selects the branch's newest commit, however deep in the
-  history it is. Features you started come first: those waiting for you, the one whose agent
+  history it is. Workspaces you started come first: those waiting for you, the one whose agent
   last reported or asked something on top, then those whose agent is working, each with how
   long ago its agent acted (`4m`, `2h`).
 - **Check out** (right-click a commit, or c): one of its branches, a remote branch as a local
@@ -179,7 +179,7 @@ history scrolls, and commits load as they come into view.
 - **Compare** (x, or "Compare mode"): click two commits, the older is the base, then Compare or
   Enter. One commit alone is compared with its parent. Two commits on diverged branches are
   compared from where they forked, as a pull request is, and Swap compares the other side.
-- **Start a feature** (n): see [Features and agents](#features-and-agents).
+- **Start a workspace** (n): see [Workspaces and agents](#workspaces-and-agents).
 
 Each comparison is analyzed in the background with the same `--plugin`, `--project` and `--depth`,
 and has its own address (`/diff/<base>..<head>/`), so it can be reloaded or bookmarked. The last 8
@@ -203,13 +203,13 @@ command on the machine where `cpr` runs, so WSL, Remote SSH and containers work 
 | c | Check out | Comment on the selected symbol (in a review) |
 | r | Review the branch | Mark the selected symbol reviewed |
 | x | Compare mode | |
-| n | Start a feature | |
+| n | Start a workspace | |
 | f | | Focus: only the selected symbol and its neighbours |
 | p, P | | Next, previous project |
 | o | | Open in VS Code |
 | Esc | Leave compare mode | Close the detail panel |
 
-n starts a feature from the Features tab too. In a comment box, the start dialog or a feature's
+n starts a workspace from the Workspaces tab too. In a comment box, the start dialog or a workspace's
 reply box, Ctrl+Enter (Cmd+Enter on macOS) saves, starts or sends.
 
 ## Reviewing a branch
@@ -244,16 +244,16 @@ Where reviews live:
 - `cpr/AGENTS.md` tells any agent what to do with a review, and every review file's first line
   points there. Claude Code loads it when it reads a review.
 
-## Features and agents
+## Workspaces and agents
 
-"Start a feature" (n, or "Start a feature here" in a commit's menu) asks what the agent should
+"Start a workspace" (n, or "Start a workspace here" in a commit's menu) asks what the agent should
 build, and then:
 
 1. names a branch after it (edit it if you like) and creates it at the default branch's tip, or
    at the commit you picked;
 2. gives the branch its own worktree beside your checkout, `../<repo>.worktrees/<branch>` (the
    branch's slashes become dashes), so your checkout and `cpr view` are untouched and several
-   features can run at once;
+   workspaces can run at once;
 3. records the brief in `cpr/features/<branch>.json`;
 4. starts Claude Code there in the background (`claude --bg`) with the brief. With "Plan first
    and wait for my OK" (on by default), the agent stops after its plan.
@@ -264,9 +264,9 @@ grants it more. If Claude Code does not start, the branch and worktree are kept 
 offers the prompt to copy. Claude Code has to trust the folder, so run `claude` there once and
 accept. It is found as `claude` on your `PATH`, or set `CPR_CLAUDE`.
 
-The **Features** tab lists features by what each needs from you (a plan to read, a permission to
+The **Workspaces** tab (`/workspaces`) lists workspaces by what each needs from you (a plan to read, a permission to
 give, a branch to review, changes to send back), then those working, then those merged. The tab
-counts the ones that need you. Each feature shows its commits, files not committed yet, your
+counts the ones that need you. Each workspace shows its commits, files not committed yet, your
 review, and whether it merges cleanly, with these actions:
 
 - **Review** its branch;
@@ -276,23 +276,23 @@ review, and whether it merges cleanly, with these actions:
 - **Stop** or **Start** the agent;
 - **Copy the prompt**.
 
-![Features tab: three agents by what they need from you, and the picked one's Claude Code session in the Terminal tab, its plan waiting for your OK](docs/images/features.png)
+![Workspaces tab: three agents by what they need from you, and the picked one's Claude Code session in the Terminal tab, its plan waiting for your OK](docs/images/features.png)
 
-Pick a feature and its panel opens beside the list, where it can on the agent's **Terminal**:
+Pick a workspace and its panel opens beside the list, where it can on the agent's **Terminal**:
 its session as Claude Code draws it (the conversation, tool calls, permission prompts and
 questions, Esc, slash commands), so you answer it without leaving CPR.
 
-- It is `claude attach <id>`, run by `cpr view` in the feature's worktree. Claude Code keeps
+- It is `claude attach <id>`, run by `cpr view` in the workspace's worktree. Claude Code keeps
   hosting the session: leaving the tab or the page only hangs up that client, and the agent goes
   on.
-- **Send the verdict:** after you finish a review of the feature's branch, this (or "Send to the
+- **Send the verdict:** after you finish a review of the workspace's branch, this (or "Send to the
   agent" in the Review tab) types the verdict's first line and where the review is into the
   agent's input, for you to send with Enter.
 - ← in an empty prompt opens Claude Code's list of all your agents, where you can switch away
   from this one.
 - At most four terminals are open at once (each is a Claude Code process, about 140 MB).
 
-The **Thread** tab is the feature's history, read only (`&thread` in the address opens on it):
+The **Thread** tab is the workspace's history, read only (`&thread` in the address opens on it):
 the agent's plan and reports (drawn from their Markdown), your messages, and what it waited on
 (a permission to run a command, or a question and its options). The thread comes from hooks CPR
 gives each agent it starts (`cpr/claude-settings.json`, recorded in `cpr/threads/`, out of git).
@@ -307,8 +307,8 @@ The terminal needs `node-pty`, an optional dependency: on Linux `pnpm install` c
   ending its turn.
 - **Send the verdict** fills the box with what you decided. Nothing is sent until you press Send.
 
-A feature's branch carries its agent's mark on the commits page, and each leads to the other.
-Once a feature is merged, Clean up removes its agent's sessions, its worktree and its branch. An
+A workspace's branch carries its agent's mark on the commits page, and each leads to the other.
+Once a workspace is merged, Clean up removes its agent's sessions, its worktree and its branch. An
 unmerged one is cleaned up only after you confirm, and keeps its branch. Neither happens while
 the worktree has files not committed.
 
@@ -469,8 +469,8 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 | Key | Default | What it does |
 |---|---|---|
 | `plugins` | none | Plugins every run uses, by name or path. |
-| `features.branchPrefix` | `feature/` | The start of a new feature's branch name. |
-| `features.worktrees` | `../{repo}.worktrees` | Where features' worktrees go, relative to the checkout (`{repo}` is its folder name). |
+| `features.branchPrefix` | `feature/` | The start of a new workspace's branch name. |
+| `features.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout (`{repo}` is its folder name). |
 | `agent.permissionMode` | `default` | The permission mode the start dialog suggests: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's | The model agents start with. |
 
@@ -506,8 +506,8 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 | `GITHUB_API_URL`, `GITLAB_API_URL` | The forge's API, for self-hosted instances. |
 | `CPR_FORGE` | `github` or `gitlab`, when the host name does not say (as `--forge`). |
 | `CPR_CODE` | The editor command "Open in VS Code" runs (default: VS Code's `code`, from `PATH` or its usual install places). |
-| `CPR_CLAUDE` | The Claude Code program features start (default: `claude` on `PATH`). |
-| `CPR_TERMINAL` | `off`: no agent's terminal in a feature's panel; the panel keeps Talk and the reply box. |
+| `CPR_CLAUDE` | The Claude Code program workspaces start (default: `claude` on `PATH`). |
+| `CPR_TERMINAL` | `off`: no agent's terminal in a workspace's panel; the panel keeps Talk and the reply box. |
 | `CPR_CACHE_DIR` | Where CPR keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/cpr`, else `~/Library/Caches/cpr` on macOS and `~/.cache/cpr` elsewhere. |
 
 ## Limits
@@ -515,7 +515,7 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 - TypeScript and JavaScript only (`.ts .tsx .js .jsx .mts .cts .mjs .cjs`). Other languages need
   an adapter of their own.
 - Static analysis: no runtime or data-flow analysis.
-- Claude Code is the only agent features start for now. Codex and any configured agent command
+- Claude Code is the only agent workspaces start for now. Codex and any configured agent command
   are planned (V20 in the [plan](docs/PLAN.md)).
 
 ## Development

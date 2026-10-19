@@ -196,7 +196,7 @@ export function featureGroups(
 }
 
 /** A link to a feature's row in the features view. */
-export const featureHref = (branch: string) => `/features?branch=${encodeURIComponent(branch)}`;
+export const featureHref = (branch: string) => `/workspaces?branch=${encodeURIComponent(branch)}`;
 
 /**
  * Each open feature's mark by ref name — its branch, and that branch on each remote once pushed
@@ -214,7 +214,7 @@ export function featureChips(
     const about = feature.brief.trim().split('\n')[0] ?? feature.branch;
     const value = {
       ...next.chip,
-      title: `Feature: ${about} — ${next.text}`,
+      title: `Workspace: ${about} — ${next.text}`,
       href: featureHref(feature.branch),
     };
     chips.set(feature.branch, value);

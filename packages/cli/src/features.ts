@@ -787,7 +787,7 @@ export function features(
   /** A feature's record; 404 without one. */
   async function recorded(where: ReviewPlace, branch: string): Promise<FeatureFile> {
     const feature = await readFeature(featurePath(featuresDir(where), branch));
-    if (!feature) throw new FeatureRefused(`no feature ${branch}`, 404);
+    if (!feature) throw new FeatureRefused(`no workspace ${branch}`, 404);
     return feature;
   }
 
@@ -900,7 +900,7 @@ export function features(
 
     async start(request) {
       const brief = request.brief.trim();
-      if (brief === '') throw new FeatureRefused('a feature needs a brief: what to build', 400);
+      if (brief === '') throw new FeatureRefused('a workspace needs a brief: what to build', 400);
       if (request.brief.length > MAX_BRIEF) {
         throw new FeatureRefused('a brief is at most 20,000 characters', 400);
       }

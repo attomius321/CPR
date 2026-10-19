@@ -333,8 +333,8 @@ describe('rowBadges', () => {
     const chip = (mark: string, tone: 'working' | 'waiting', branch: string) => ({
       mark,
       tone,
-      title: `Feature: ${branch}`,
-      href: `/features?branch=${branch}`,
+      title: `Workspace: ${branch}`,
+      href: `/workspaces?branch=${branch}`,
     });
     const agents = new Map([
       ['feature/a', chip('⚙', 'working', 'feature/a')],
@@ -359,8 +359,8 @@ describe('rowBadges', () => {
       agent: {
         mark: '?',
         tone: 'waiting',
-        title: 'Features here: feature/a, feature/b — one needs you',
-        href: '/features',
+        title: 'Workspaces here: feature/a, feature/b — one needs you',
+        href: '/workspaces',
       },
     });
     // Without features folded, "+N" carries no mark.

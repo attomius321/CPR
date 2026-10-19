@@ -645,11 +645,11 @@ function History({
           },
         ]),
     ...featureOn(sha).map((branch) => ({
-      label: 'Open its feature',
+      label: 'Open its workspace',
       onSelect: () => window.location.assign(featureHref(branch)),
     })),
     {
-      label: 'Start a feature here',
+      label: 'Start a workspace here',
       onSelect: () => {
         setMenu(null);
         openFeature(sha);
@@ -872,10 +872,10 @@ function History({
               <button
                 type="button"
                 className="start-feature"
-                title="Start a feature: a branch, its worktree and an agent (n)"
+                title="Start a workspace: a branch, its worktree and an agent (n)"
                 onClick={() => openFeature()}
               >
-                Start a feature
+                Start a workspace
                 <kbd aria-hidden="true">n</kbd>
               </button>
               <button

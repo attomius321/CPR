@@ -216,8 +216,9 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
       const { features } = repository;
       if (features) {
-        // The features view (V18b): the viewer's page, as at `/`.
-        if (url.pathname === '/features') return serveSite(req, res, url, '/', undefined);
+        // The workspaces view (V18b): the viewer's page, as at `/`; `/features` is its old address.
+        if (url.pathname === '/workspaces' || url.pathname === '/features')
+          return serveSite(req, res, url, '/', undefined);
         if (url.pathname === '/api/features') return featuresApi(req, res, features);
         if (url.pathname === '/api/features/options')
           return read(req, res, () => features.options());
@@ -734,7 +735,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
   /** One start at a time (a worktree and an agent each). */
   async function startingOne(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
-    if (startingFeature) return json(res, 409, { error: 'a feature is being started' });
+    if (startingFeature) return json(res, 409, { error: 'a workspace is being started' });
     startingFeature = true;
     try {
       return await answer(res, task);

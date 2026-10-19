@@ -75,7 +75,7 @@ type State =
   | { status: 'empty'; error?: string }
   /** `cpr view` with no graph here: pick commits to compare. */
   | { status: 'commits' }
-  /** `cpr view`'s features view (V18b), at `/features`. */
+  /** `cpr view`'s workspaces view (V18b), at `/workspaces` (formerly `/features`). */
   | { status: 'features' }
   /** A diff's page while it is analyzed, or once it failed or was stopped. */
   | { status: 'analyzing'; loaded: Exclude<Loaded, { kind: 'graph' }> }
@@ -334,8 +334,13 @@ export function App() {
           await startDiff(loaded.pair).catch(() => undefined);
           if (live) await poll();
         } else if (!capabilities?.commits) setState({ status: 'empty' });
-        else
-          setState({ status: window.location.pathname === '/features' ? 'features' : 'commits' });
+        else if (window.location.pathname === '/features') {
+          // The workspaces view's old address: kept for bookmarks.
+          const { search, hash } = window.location;
+          window.history.replaceState(null, '', `/workspaces${search}${hash}`);
+          setState({ status: 'features' });
+        } else
+          setState({ status: window.location.pathname === '/workspaces' ? 'features' : 'commits' });
       };
       await poll();
     })();
@@ -804,7 +809,7 @@ function ReviewOf({ review }: { review: BranchReviewInfo }) {
         <>
           {' · '}
           <a className="review-feature" href={featureHref(branch)} title={feature.brief}>
-            Feature: {feature.brief.trim().split('\n')[0]}
+            Workspace: {feature.brief.trim().split('\n')[0]}
           </a>
         </>
       )}

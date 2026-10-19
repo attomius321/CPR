@@ -318,8 +318,8 @@ function foldedMark(folded: readonly Badge[]): (AgentChip & { href: string }) | 
   return {
     mark: first.mark,
     tone: first.tone,
-    title: `Features here: ${marked.map((b) => b.label).join(', ')} — ${state}`,
-    href: '/features',
+    title: `Workspaces here: ${marked.map((b) => b.label).join(', ')} — ${state}`,
+    href: '/workspaces',
   };
 }
 

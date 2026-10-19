@@ -1103,13 +1103,13 @@ describe('cpr view: features (V18)', () => {
     },
     startAgent: (branch) => {
       restarted.push(branch);
-      if (branch === 'gone') return Promise.reject(new FeatureRefused('no feature gone', 404));
+      if (branch === 'gone') return Promise.reject(new FeatureRefused('no workspace gone', 404));
       return Promise.resolve({ feature: summary, prompt: 'Build it.' });
     },
     prompt: (branch) =>
       branch === 'feature/csv'
         ? Promise.resolve('Build it.')
-        : Promise.reject(new FeatureRefused(`no feature ${branch}`, 404)),
+        : Promise.reject(new FeatureRefused(`no workspace ${branch}`, 404)),
     stopAgent: (branch) => {
       stopped.push(branch);
       return branch === 'feature/csv'
@@ -1127,7 +1127,7 @@ describe('cpr view: features (V18)', () => {
             entries: [{ at: C, session: 'x', kind: 'report', text: 'The plan' }],
             recorded: true,
           })
-        : Promise.reject(new FeatureRefused(`no feature ${branch}`, 404)),
+        : Promise.reject(new FeatureRefused(`no workspace ${branch}`, 404)),
     reply: (request) => {
       replies.push(request);
       if (request.text === 'busy') {
@@ -1227,14 +1227,17 @@ describe('cpr view: features (V18)', () => {
     expect(restarted).toEqual(['feature/csv']);
     const gone = await post('/api/features/start', { branch: 'gone' });
     expect(gone.status).toBe(404);
-    expect(await gone.json()).toEqual({ error: 'no feature gone' });
+    expect(await gone.json()).toEqual({ error: 'no workspace gone' });
     expect((await post('/api/features/start', { name: 'x' })).status).toBe(400);
   });
 
-  it('serves the features view, a prompt, its merge check; stops an agent, opens a worktree (V18b)', async () => {
-    const page = await get('/features');
+  it('serves the workspaces view, a prompt, its merge check; stops an agent, opens a worktree (V18b)', async () => {
+    const page = await get('/workspaces');
     expect(page.status).toBe(200);
     expect(await page.text()).toBe('<html>viewer</html>');
+    expect((await get('/workspaces', bare)).status).toBe(404);
+    // The view's old address, kept for bookmarks.
+    expect((await get('/features')).status).toBe(200);
     expect((await get('/features', bare)).status).toBe(404);
 
     expect(await (await get('/api/features/prompt?branch=feature%2Fcsv')).json()).toEqual({
@@ -1270,7 +1273,7 @@ describe('cpr view: features (V18)', () => {
     await settle();
     const second = await post('/api/features', request);
     expect(second.status).toBe(409);
-    expect(await second.json()).toEqual({ error: 'a feature is being started' });
+    expect(await second.json()).toEqual({ error: 'a workspace is being started' });
     open();
     gate = null;
     expect((await first).status).toBe(200);
