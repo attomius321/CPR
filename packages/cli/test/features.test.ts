@@ -1434,6 +1434,20 @@ describe('features', () => {
     }
   };
 
+  it("asks Codex nothing for a repository with no workspace, or Claude Code's alone (V20a)", async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const { codex } = fakeCodex();
+    const alive = vi.spyOn(codex, 'alive');
+    const account = vi.spyOn(codex, 'account');
+    const s = await service(repo, claude, HOOK, undefined, codex);
+    expect((await s.list()).features).toEqual([]);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    expect((await s.list()).features.map((f) => f.agent.kind)).toEqual(['claude']);
+    expect(alive).not.toHaveBeenCalled();
+    expect(account).not.toHaveBeenCalled();
+  });
+
   it('offers the agents installed, the default first: agent.kind, else Claude Code (V20a)', async () => {
     const { repo } = fresh();
     const { claude } = fakeClaude();
