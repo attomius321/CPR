@@ -3012,3 +3012,53 @@ Merged into main (2026-10-19): V24a–c, no conflicts (`main` had not moved sinc
 started; the merge's tree is the branch's). `main` verified after the merge: 761 unit tests, lint,
 typecheck, build, 110 of 110 e2e.
 
+
+## V20a spike — what running Codex in a CPR worktree takes (2026-10-19, branch `feature/codex-agent-integration`)
+
+Asked, as a workspace started in CPR: "Integrate codex agent into CPR. It is already planned";
+done when Codex is started in a workspace and prompted. V18 planned Codex on 0.162 without
+running it. Run with Codex 0.163 (`codex-cli`, npm), logged in with ChatGPT, the person's
+`gpt-6-luna` at medium effort, in a throwaway repository with a worktree beside it made as V18a
+makes them (`git worktree add -b feature/farewell ../app.worktrees/feature-farewell main`).
+
+**Learned**:
+- **Codex cannot commit in a linked worktree from `workspace-write`.** It edited `greet.js`, then
+  `git add`/`git commit` failed 3 of 3 times: a linked worktree's git folder is
+  `<checkout>/.git/worktrees/<name>`, outside the sandbox ("Git tried to create an index lock
+  under the parent repo's `.git/worktrees/` directory, which is read-only"). The change was left
+  uncommitted, and CPR's flow reviews commits. `--add-dir <checkout>/.git` did not help: Codex
+  keeps any `.git` read-only even inside a writable root. Writable roots for the worktree's git
+  folder, `objects`, `refs` and `logs`: committed (10.5 s); narrowed to the branch's own ref and
+  reflog folders (`refs/heads/feature`, `logs/refs/heads/feature`): committed too (12.0 s).
+- **`--approve-for-me`** cannot be given with `-s` ("cannot be used with '--approve-for-me'");
+  alone it escalated the refused commit to Codex's automatic reviewer, which approved it, and the
+  commit ran outside the sandbox (12.6 s).
+- **`exec resume` keeps the thread, not its options.** A resume continued with its context
+  (3.2–12.8 s per turn), but a session started with `--add-dir`s could not commit after a resume,
+  nor one started with `--approve-for-me` (2 of 2): resume takes no `-s`, `--add-dir` or
+  `--approve-for-me` and starts from Codex's configuration. `-c sandbox_mode="workspace-write" -c
+  sandbox_workspace_write.writable_roots=[…]` on the resume committed (6.1 s).
+- **Events**: `thread.started` with the thread ID 150 ms after the start, `turn.started` at
+  0.6 s, `item.started`/`item.completed` (`agent_message`, `command_execution` with its output,
+  `file_change` with paths), `turn.completed` with token usage, or `turn.failed` with
+  `error.message`; transient `error` events while reconnecting. No event has a time. A turn's
+  first `agent_message` is a preamble ("I'll inspect …"), its last the answer. Codex writes
+  "Reading additional input from stdin..." to stderr even with stdin closed.
+- **Not logged in** (an empty `CODEX_HOME`): `codex login status` says "Not logged in", exit 1, in
+  40 ms ("Logged in using ChatGPT" otherwise); `exec` retried for about 25 s, then failed its turn
+  with a 401 and exit 1.
+- **Stop**: spawned detached from Node, `codex` is a Node script (`codex.js`) running the native
+  binary in the same process group; the sandboxed shell has a group of its own. SIGTERM to the
+  group ended all of them in 0.1 s; the thread then resumed with its context ("I was running
+  `sleep 25`; the command was stopped before it finished").
+- **Its instructions**: the repository's `AGENTS.md` in the worktree was followed (1 of 1); a file
+  in the main checkout's `cpr/` was read from the sandbox (1 of 1); `exec` asked for no trust in a
+  folder Codex had never seen.
+- **Archive**: `codex archive <thread>` 70 ms; again on the same thread, or an unknown one, exit 1
+  ("failed to archive session").
+- `codex` 0.163 also has `agents` (a TUI over its app-server daemon) and `queue` (a message for a
+  session there), and hooks that need the person's trust; `exec` sessions are none of these.
+
+**Not tested**: `--approve-for-me`'s reviewer refusing; Codex with an API key; network inside the
+sandbox (off by default: installs and pushes would fail); Windows and macOS. Twelve threads, in
+the throwaway repository, removed with it; their session files stay in `~/.codex`.
