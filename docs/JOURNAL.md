@@ -2806,3 +2806,8 @@ Workspaces tab current. 731 of 731 unit tests (node-pty built here: `npm i -g no
 `commits.spec.ts:161` fails on `main`'s build too (the toggle drops a line in compare mode at
 1280 px, measured the same on both), and `features.spec.ts:683` is flaky on both (1 of 4 on
 `main`, 5 of 6 here). No analysis code changed: no regression sets.
+
+Merged into main (2026-10-19): no conflicts, `main`'s tree the branch's. `main` verified after the
+merge: 731 of 731 unit tests, build, 101 of 104 e2e — `commits.spec.ts:161` as on the branch,
+and `interdiff.spec.ts` (2), which timed out in the full run and passed 6 of 6 alone (flaky, as
+after V22's merge; not this change).
