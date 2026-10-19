@@ -50,7 +50,7 @@ test('offers what each row can check out, in a submenu', async ({ page }) => {
   await expect(page.getByRole('menuitem')).toHaveText([
     'Check out',
     'Review',
-    'Start a feature here',
+    'Start a workspace here',
   ]);
   await expect(checkOut(page)).toHaveAttribute('aria-expanded', 'false');
   await checkOut(page).hover();

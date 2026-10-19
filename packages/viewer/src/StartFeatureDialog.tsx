@@ -64,14 +64,14 @@ export function StartFeatureDialog({
           event.stopPropagation();
         }}
       >
-        <h2 id="feature-title">Start a feature</h2>
+        <h2 id="feature-title">Start a workspace</h2>
         <label className="feature-field">
           What should the agent build?
           <textarea
             autoFocus
             rows={7}
             value={brief}
-            placeholder="The feature, as you would brief a colleague: what, why, what done looks like."
+            placeholder="The work, as you would brief a colleague: what, why, what done looks like."
             onChange={(event) => setBrief(event.target.value)}
           />
         </label>

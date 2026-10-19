@@ -17,8 +17,8 @@ export function PageTabs({ active }: { active: 'commits' | 'features' }) {
       <a href="/" aria-current={active === 'commits' ? 'page' : undefined}>
         Commits
       </a>
-      <a href="/features" aria-current={active === 'features' ? 'page' : undefined}>
-        Features
+      <a href="/workspaces" aria-current={active === 'features' ? 'page' : undefined}>
+        Workspaces
         {count > 0 && (
           <span className="page-count" title={`${count} need${count === 1 ? 's' : ''} you`}>
             {count}

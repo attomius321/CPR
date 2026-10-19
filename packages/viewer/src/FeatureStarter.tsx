@@ -54,7 +54,7 @@ export function useFeatureStarter(
           const base = sha ? { sha } : options.base;
           if (!base) {
             onError(
-              'No default branch to start from: start the feature from a commit (its menu: Start a feature here).',
+              'No default branch to start from: start the workspace from a commit (its menu: Start a workspace here).',
             );
             return;
           }
@@ -67,7 +67,7 @@ export function useFeatureStarter(
             ]),
           });
         })
-        .catch((e: unknown) => onError(`Could not start a feature: ${(e as Error).message}`));
+        .catch((e: unknown) => onError(`Could not start a workspace: ${(e as Error).message}`));
     },
     [onError],
   );

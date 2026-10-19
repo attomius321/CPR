@@ -84,7 +84,7 @@ export function FeaturesPage() {
   /** Picks a feature (or none), the address following without a new history entry. */
   const pick = useCallback((branch: string | null) => {
     setPicked(branch);
-    window.history.replaceState(null, '', branch ? featureHref(branch) : '/features');
+    window.history.replaceState(null, '', branch ? featureHref(branch) : '/workspaces');
   }, []);
   const started = useCallback(
     (start: FeatureStart) => {
@@ -115,19 +115,19 @@ export function FeaturesPage() {
   return (
     <div className="features">
       <h1 className="commits-title">
-        Features
+        Workspaces
         <span className="commits-help">
-          What each feature's agent needs from you · pick one to answer it · a branch name goes to
+          What each workspace's agent needs from you · pick one to answer it · a branch name goes to
           its commits · n starts one
         </span>
         <span className="commits-actions">
           <button
             type="button"
             className="start-feature"
-            title="Start a feature: a branch, its worktree and an agent (n)"
+            title="Start a workspace: a branch, its worktree and an agent (n)"
             onClick={() => starter.open()}
           >
-            Start a feature
+            Start a workspace
             <kbd aria-hidden="true">n</kbd>
           </button>
         </span>
@@ -139,11 +139,11 @@ export function FeaturesPage() {
         </p>
       )}
       {!list ? (
-        <p className="hint">Listing features…</p>
+        <p className="hint">Listing workspaces…</p>
       ) : list.features.length === 0 ? (
         <p className="hint">
-          No features yet. Start one: describe it, and CPR makes its branch and worktree and starts
-          an agent there.
+          No workspaces yet. Start one: describe the work, and CPR makes its branch and worktree and
+          starts an agent there.
         </p>
       ) : (
         <div className={`features-body${current ? ' has-panel' : ''}`}>
@@ -594,9 +594,9 @@ function FeaturePanel({
   };
 
   return (
-    <section className="feature-panel" aria-label={`Feature ${branch}`}>
+    <section className="feature-panel" aria-label={`Workspace ${branch}`}>
       <button type="button" className="link feature-back" onClick={onBack}>
-        ← Features
+        ← Workspaces
       </button>
       <div className="feature-head">
         <FeatureChip row={row} />
