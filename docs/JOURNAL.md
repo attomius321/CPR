@@ -2772,7 +2772,7 @@ Found while rewriting the README (2026-10-15). Fixed:
 - The sidebar's "No findings." ended with an emoji.
 
 **Verification**: a unit test first (`cpr` and `cpr view --help` say "every branch", never
-"current branch"), red on the old help, green after. 730 of 732 unit tests: the two that load
+"current branch"), red on the old help, green after. 729 of 731 unit tests: the two that load
 node-pty fail here and on `main` alike (node-gyp is not in this container, so node-pty is not
 built). Build. E2e: 99 of 103; the two terminal tests need node-pty (as above), and
 `commits.spec.ts:161` (compare mode's toggle position) fails on `main`'s build too. A fourth,
