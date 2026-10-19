@@ -3240,3 +3240,46 @@ cpr/config.json") with `main` and the files as they were; with that file removed
 fast-forwarded the checkout in 278 ms, its unrelated `.nvmrc` change kept. Not verified: the
 merge of a real workspace from a `cpr view` with a real agent; V26b and V26c.
 
+
+## V26c — The merger agent (2026-10-20, branch `milestone/v26-merger`)
+
+A conflict goes to one `claude -p` (or `codex exec`) run in CPR's merge worktree, read-only:
+CPR's instructions (1,410 characters, ~350 tokens) as its system prompt, then the sides'
+titles, the symbols both changed, `cpr/merge.md`, and each region in diff3 style with 3 lines
+around. It answers each region's text as JSON, or `needsYou`. CPR writes the answers, commits
+the merge, runs the check; the Merging section shows each region (both sides, the ancestor,
+what was written) with Approve and Request changes.
+
+**Learned**:
+- **Claude Code's Edit reads the whole file first.** This repository's `JOURNAL.md` is ~100K
+  tokens, so an agent that edits would cost more than the workspace agent V26 avoids. An agent
+  that answers text per region reads only the regions; it may still read a file (Read, Grep,
+  Glob) when a region is not enough, and one did (59K tokens, below).
+- **A one-line `claude -p` costs 2,349 input tokens** with `--system-prompt` (Claude Code's own
+  replaced), `--tools` limited and `--strict-mcp-config`: the floor of every run.
+- **The e2e fixtures would have run the developer's own Claude Code**: the merger finds
+  `claude` on PATH. Every e2e `cpr view` now starts with `CPR_CLAUDE` and `CPR_CODEX` pointing
+  nowhere, and a spec that wants an agent passes a fake.
+- **Some merges change lines outside the conflict** (a test adapted to the other side, an ID
+  renumbered). The agent cannot, by design: it said so in its note once, and kept two equal IDs
+  once. The check and the review are what catch them.
+- The 12 prompt and answer tests were written with the module, not seen red; the 7 flow tests
+  and the server's routes were red first.
+
+**Verification**: 852 unit tests, 117 e2e (a resolution asked again, approved and landed; one
+left to the person, nothing merged). **Replays**: this repository's 11 merges whose parents
+conflict (of 79), each through `cpr merge` in a clone with the real Claude Code (`sonnet`), no
+check, compared with the merge that was committed:
+
+| Result | Merges |
+|---|---|
+| Equal to what was committed (blank lines aside in 2) | 5 |
+| Equal but for a list's indentation (33 lines, `git diff -w` empty) | 1 |
+| Equal in the regions; the committed merge also changed a test outside them, which the agent's note asked to check | 1 |
+| Both sides kept, in the other order, one paragraph in the other side's words | 1 |
+| Wrong: two lines kept twice (1); a README paragraph the target had replaced kept, and two plan rows with one ID (1) | 2 |
+| "Needs you": a README section moved on one side, changed on the other; it named the three changes and where they belong | 1 |
+
+Input tokens per run: 5.5K–59K, **median 10.0K** (target: under 20K); output 0.9K–10K; 7–49 s
+per run. A workspace agent's context was 66K–474K. Not verified: Bitwarden's and Qwik's
+conflicts; Codex as the merger with a real Codex.

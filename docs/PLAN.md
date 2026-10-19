@@ -6581,7 +6581,7 @@ screenshot (`features.png`, three real agents) is not retaken and still shows th
 
 ### V26 — A merger: approved branches merged by CPR, an agent only for conflicts
 
-**Status:** V26a built (2026-10-19), on branch `milestone/v26-merger`; V26c in progress; V26b after it, if needed.
+**Status:** V26a and V26c built (2026-10-19/20), on branch `milestone/v26-merger`; V26b after the replays, if needed.
 
 **Problem** (asked: "I want a merger agent, who specializes in merging branches"; "I don't like the
 idea of the workspace's own agent doing it … it already has polluted context … we need to optimise
@@ -6840,6 +6840,14 @@ that is ~100K tokens, the cost V26 is to remove.
 | 151 | How the agent changes files | **It does not: it answers each region's text, CPR writes it** | Edit would read whole files (~100K tokens for this repository's journal); the answer is confined by construction; the review is region by region |
 | 152 | Which run | **One `claude -p` / `codex exec` run, waited for, read-only tools** | Bounded, its usage in its answer; nothing to attach to or clean up |
 | 153 | A failed check after a clean merge | **`failed`, not the agent's** | No region to answer: what fails is the branch's code, fixed on the branch and reviewed again |
+
+**V26c results**: 852 unit tests, 117 e2e. This repository's 11 conflicting merges replayed with
+the real Claude Code (`sonnet`): 5 equal to what was committed, 1 equal but for indentation, 1
+equal in the regions (its note flagged the test the committed merge also changed), 1 both kept
+in the other order, **2 wrong** (lines kept twice; a replaced paragraph kept and a duplicate ID),
+1 "needs you", rightly. Input tokens: median 10.0K (5.5K–59K), 7–49 s a run. Both wrong ones
+duplicate text: a duplicate-lines warning on the review is the next precision step; keep-both
+by rule (V26b) would not have changed them (both were edits, not additions alone).
 
 **Not in V26 (later)**: several merges at once (each on its own worktree), squash or rebase merges
 (`merge.style`), resolving submodule pointers, lockfiles regenerated instead of merged (none
