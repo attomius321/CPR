@@ -2779,3 +2779,8 @@ built). Build. E2e: 99 of 103; the two terminal tests need node-pty (as above), 
 `reviews.spec.ts:353`, failed once removing its temp directory (`ENOTEMPTY`) and passed 3 of 3
 alone. No analysis code changed: no regression sets. Not verified: the terminal e2e tests.
 
+Merged into main (2026-10-19): no conflicts, `main`'s tree the branch's. `main` verified after the
+merge: 729 of 731 unit tests (the two node-pty ones, as above), build, 97 of 103 e2e — the same
+three as on the branch, and `interdiff.spec.ts` (2) and `reviews.spec.ts:75`, which passed on the
+branch with the same tree and passed 8 of 9 when run alone afterwards (flaky, not this change).
+
