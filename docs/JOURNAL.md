@@ -3166,3 +3166,34 @@ verified: a real agent session across the move; Windows; the README's Workspaces
 
 Merged into main (2026-10-19): V25a–c, no conflicts (`main` had not moved since the branch
 started). `main` verified after the merge: 801 unit tests, lint, typecheck, build, 114 of 114 e2e.
+
+## V26 spike — what merging takes, and what it would cost an agent (2026-10-19, branch `milestone/v26-merger`)
+
+Asked: a merger agent, not the workspace's own ("it already has polluted context … optimise token
+generation"). Measured:
+
+- **A workspace agent's context** at its last turn, from Claude Code's session files for this
+  repository's 5 workspaces (6 sessions): 66K–474K tokens, 28–432 turns. A merge run in that
+  session would be carried on top of it.
+- **Conflicts**, replaying with `git merge-tree --write-tree` (2–3 ms median) the last merges on
+  the default branch and the merges of the default branch into each branch before it. The second
+  matters: of the last 73 merges here, 5 conflict when replayed, and 6 more conflicts were
+  resolved on the branch before its merge, so the final merge replays clean. Here 11, Bitwarden
+  21 (80 merges; 11 the `jslib` submodule), Qwik 7, Vite 0.
+- **Most conflicts are both sides adding.** In git's diff3 style, the ancestor's side is empty in
+  16 of 20 regions here (journal and plan entries), 31 of 46 on Bitwarden (`messages.json` keys),
+  3 of 12 on Qwik.
+- **"Keep both" needs a guard.** Taken blindly, it was refused or wrong where one side's addition
+  already held the other's (a branch that had merged the other side's keys before): it would
+  duplicate them. With the guard "the additions share no lines but blank lines and lone brackets",
+  it applied to 7 conflicts and was right on 7: 5 equal to what was committed (blank lines
+  aside), 1 where the merge also added an unrelated entry, 1 with the same keys in the other order
+  (valid JSON, 435 keys). It refused 5.
+- **What an agent would read** for a conflict: its regions with 3 lines around, 0.6K–5.8K tokens
+  (11 conflicts here, median ~1.3K). That is 1–3 % of a workspace agent's context.
+- **Landing is the risky step.** The default branch is checked out in the main checkout. Moving its
+  ref from elsewhere would leave that checkout's files behind its branch. A fast-forward made in
+  that checkout (`merge --ff-only`) moves both, and git refuses when local changes would be lost.
+
+Planned as V26 (PLAN.md): Merge, check and land with no agent (V26a); keep-both by rule (V26b); a
+fresh merger agent from the conflict alone, every resolution reviewed (V26c).
