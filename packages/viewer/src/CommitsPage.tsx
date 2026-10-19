@@ -863,31 +863,33 @@ function History({
                 HEAD → {first.branch ?? `${shortSha(first.head)} (detached)`}
               </button>
             )}
-            <span className="commits-help">
-              {comparing
-                ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
-                : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch'}
-            </span>
-            <span className="commits-actions">
-              <button
-                type="button"
-                className="start-feature"
-                title="Start a workspace: a branch, its worktree and an agent (n)"
-                onClick={() => openFeature()}
-              >
-                Start a workspace
-                <kbd aria-hidden="true">n</kbd>
-              </button>
-              <button
-                type="button"
-                className="compare-mode"
-                aria-pressed={comparing}
-                title={comparing ? 'Leave compare mode (Esc)' : 'Pick commits to compare (x)'}
-                onClick={() => (comparing ? stopComparing() : onComparing(true))}
-              >
-                Compare mode
-                <kbd aria-hidden="true">{comparing ? 'Esc' : 'x'}</kbd>
-              </button>
+            <span className="commits-tail">
+              <span className="commits-help">
+                {comparing
+                  ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
+                  : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch'}
+              </span>
+              <span className="commits-actions">
+                <button
+                  type="button"
+                  className="start-feature"
+                  title="Start a workspace: a branch, its worktree and an agent (n)"
+                  onClick={() => openFeature()}
+                >
+                  Start a workspace
+                  <kbd aria-hidden="true">n</kbd>
+                </button>
+                <button
+                  type="button"
+                  className="compare-mode"
+                  aria-pressed={comparing}
+                  title={comparing ? 'Leave compare mode (Esc)' : 'Pick commits to compare (x)'}
+                  onClick={() => (comparing ? stopComparing() : onComparing(true))}
+                >
+                  Compare mode
+                  <kbd aria-hidden="true">{comparing ? 'Esc' : 'x'}</kbd>
+                </button>
+              </span>
             </span>
           </h1>
           {notice && (
