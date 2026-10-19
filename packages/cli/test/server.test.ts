@@ -1083,12 +1083,26 @@ describe('cpr view: features (V18)', () => {
   };
   const options: FeatureOptions = {
     base: { from: 'main', sha: C },
-    branchPrefix: 'feature/',
+    branchPrefixes: {
+      feature: 'feature/',
+      fix: 'fix/',
+      refactor: 'refactor/',
+      chore: 'chore/',
+      spike: 'spike/',
+    },
+    kinds: [
+      {
+        kind: 'fix',
+        name: 'Fix',
+        parts: [{ part: 'happens', heading: 'What happens', required: true }],
+      },
+    ],
     worktrees: '/work/app.worktrees/<branch>',
     agent: { kind: 'claude', command: '/usr/bin/claude', permissionMode: 'default' },
     maxBrief: 20000,
   };
   const started: FeatureRequest[] = [];
+  const drafts: Record<string, unknown>[] = [];
   const restarted: string[] = [];
   /** While set, a start waits for it. */
   let gate: Promise<void> | null = null;
@@ -1110,6 +1124,17 @@ describe('cpr view: features (V18)', () => {
       branch === 'feature/csv'
         ? Promise.resolve('Build it.')
         : Promise.reject(new FeatureRefused(`no workspace ${branch}`, 404)),
+    draft: () => Promise.resolve(drafts.at(-1) ?? {}),
+    saveDraft: (value) => {
+      drafts.push(value);
+      return Promise.resolve();
+    },
+    check: (at) =>
+      at === C
+        ? Promise.resolve({ command: 'pnpm run check', source: 'package.json (scripts.check)' })
+        : at === 'x'
+          ? Promise.reject(new FeatureRefused('the commit must be a full SHA: x', 400))
+          : Promise.resolve(null),
     stopAgent: (branch) => {
       stopped.push(branch);
       return branch === 'feature/csv'
@@ -1221,6 +1246,35 @@ describe('cpr view: features (V18)', () => {
     expect((await get('/api/features/start')).status).toBe(405);
   });
 
+  it('passes a kind of work on as asked; its fields must be text (V24)', async () => {
+    const work = {
+      kind: 'fix',
+      title: 'Dates sort as text',
+      parts: { happens: 'They sort 1, 10, 2.', doneWhen: 'A test passes.' },
+      branch: 'fix/dates',
+      planFirst: false,
+    };
+    expect((await post('/api/features', work)).status).toBe(200);
+    expect(started.at(-1)).toEqual(work);
+    // What the parts say is the features' to check: an unknown part is passed on.
+    expect((await post('/api/features', { ...work, parts: { size: 'L' } })).status).toBe(200);
+    expect(started.at(-1)?.parts).toEqual({ size: 'L' });
+
+    const before = started.length;
+    for (const body of [
+      { ...work, kind: 3 },
+      { ...work, title: ['T'] },
+      { ...work, parts: 'H' },
+      { ...work, parts: ['H'] },
+      { ...work, parts: { happens: 3 } },
+      // Neither a brief nor a kind.
+      { branch: 'fix/dates', planFirst: false },
+    ]) {
+      expect((await post('/api/features', body)).status, JSON.stringify(body)).toBe(400);
+    }
+    expect(started.length).toBe(before);
+  });
+
   it('starts an agent again', async () => {
     const ok = await post('/api/features/start', { branch: 'feature/csv' });
     expect(ok.status).toBe(200);
@@ -1229,6 +1283,31 @@ describe('cpr view: features (V18)', () => {
     expect(gone.status).toBe(404);
     expect(await gone.json()).toEqual({ error: 'no workspace gone' });
     expect((await post('/api/features/start', { name: 'x' })).status).toBe(400);
+  });
+
+  it("keeps the start dialog's draft: an object, written only by the page itself (V24c)", async () => {
+    expect(await (await get('/api/features/draft')).json()).toEqual({});
+    const draft = { kind: 'fix', title: 'Dates' };
+    expect((await post('/api/features/draft', draft)).status).toBe(200);
+    expect(await (await get('/api/features/draft')).json()).toEqual(draft);
+    const before = drafts.length;
+    expect((await post('/api/features/draft', draft, { 'x-cpr': '' })).status).toBe(403);
+    for (const body of [null, [], 'text', 3]) {
+      expect((await post('/api/features/draft', body)).status, JSON.stringify(body)).toBe(400);
+    }
+    expect(drafts.length).toBe(before);
+    expect((await get('/api/features/draft', bare)).status).toBe(404);
+  });
+
+  it("guesses a commit's check command for the start dialog, or says none (V24b)", async () => {
+    expect(await (await get(`/api/features/check?at=${C}`)).json()).toEqual({
+      command: 'pnpm run check',
+      source: 'package.json (scripts.check)',
+    });
+    expect(await (await get(`/api/features/check?at=${'d'.repeat(40)}`)).json()).toEqual({});
+    expect((await get('/api/features/check?at=x')).status).toBe(400);
+    expect((await get('/api/features/check')).status).toBe(400);
+    expect((await get(`/api/features/check?at=${C}`, bare)).status).toBe(404);
   });
 
   it('serves the workspaces view, a prompt, its merge check; stops an agent, opens a worktree (V18b)', async () => {

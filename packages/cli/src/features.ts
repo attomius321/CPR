@@ -18,8 +18,12 @@ import {
   uncommittedFiles,
   userEmail,
   WorktreeRefused,
+  WORK_KINDS,
   type AgentKind,
   type BranchMerge,
+  type BriefPart,
+  type BriefParts,
+  type CheckGuess,
   type AgentStateName,
   type FeatureAgentState,
   type FeatureList,
@@ -34,7 +38,10 @@ import {
   type GitRepo,
   type PermissionMode,
   type RefList,
+  type WorkKind,
+  type WorkKindSpec,
 } from '@cpr/core';
+import { guessCheck, treeAt } from './check.js';
 import { localHost, onPath } from './editor.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
 import { CONFIG_FILES } from './plugins.js';
@@ -64,7 +71,11 @@ export interface FeatureFile {
   from?: string;
   /** When it was cleaned up (V18c): no longer listed. */
   finished?: string;
+  /** What it is for, its name, and the parts `brief` was made of (V24); absent before V24. */
+  kind?: WorkKind;
+  parts?: BriefParts;
   planFirst: boolean;
+  title?: string;
   /** The feature's worktree folder. */
   worktree: string;
 }
@@ -86,6 +97,113 @@ export const FEATURE_ABOUT =
 
 /** Longest brief: it goes on the agent's command line (Windows takes 32,767 characters). */
 export const MAX_BRIEF = 20_000;
+
+/** Longest title: a workspace's name in lists and the start of its branch's (V24). */
+export const MAX_TITLE = 200;
+
+/** Each part's heading in the brief, in the brief's order (V24). */
+const HEADINGS: Record<BriefPart, string> = {
+  goal: 'Goal',
+  happens: 'What happens',
+  restructure: 'What to restructure',
+  change: 'What to change',
+  question: 'Question',
+  reproduce: 'How to reproduce',
+  known: 'What is known',
+  where: 'Where to look',
+  outOfScope: 'Out of scope',
+  notes: 'Notes',
+  doneWhen: 'Done when',
+};
+const ORDER = Object.keys(HEADINGS) as BriefPart[];
+
+/**
+ * The kinds of work (V24, decision 122): the one part each needs, its others, Done when's text
+ * until the person changes it, and the one line the agent's prompt adds after the brief.
+ */
+const KINDS: Record<
+  WorkKind,
+  { name: string; required: BriefPart; optional: BriefPart[]; doneWhen?: string; line?: string }
+> = {
+  feature: { name: 'Feature', required: 'goal', optional: ['where', 'outOfScope', 'notes'] },
+  fix: {
+    name: 'Fix',
+    required: 'happens',
+    optional: ['reproduce', 'where', 'notes'],
+    doneWhen: 'A test that fails today passes, and {checks pass}.',
+    line:
+      'Reproduce it first, with a failing test where the project has tests, then fix the cause, ' +
+      'not the symptom.',
+  },
+  refactor: {
+    name: 'Refactor',
+    required: 'restructure',
+    optional: ['where', 'outOfScope', 'notes'],
+    doneWhen:
+      'Behaviour is unchanged: existing tests pass without changing what they assert, and ' +
+      '{checks pass}.',
+    line:
+      'Change structure, not behaviour: do not change what existing tests assert; if behaviour ' +
+      'must change, stop and say so.',
+  },
+  chore: {
+    name: 'Chore',
+    required: 'change',
+    optional: ['where', 'outOfScope', 'notes'],
+    doneWhen: 'Nothing else changes, and {checks pass}.',
+    line: 'Keep to what is asked; if it needs a change in behaviour, stop and say so.',
+  },
+  spike: {
+    name: 'Spike',
+    required: 'question',
+    optional: ['known', 'where', 'notes'],
+    doneWhen: 'A written answer: what was tried, what was measured, and a recommendation.',
+    line:
+      'The answer is what is asked for, not a change to merge: put it in your final report; ' +
+      "keep experiments out of the project's code unless the brief says otherwise.",
+  },
+};
+
+/** A kind's parts in the brief's order, Done when last. */
+const partsOf = (kind: WorkKind): BriefPart[] => {
+  const { required, optional } = KINDS[kind];
+  return ORDER.filter(
+    (part) => part === required || part === 'doneWhen' || optional.includes(part),
+  );
+};
+
+/** The kinds as the start dialog offers them. */
+export function workKinds(): WorkKindSpec[] {
+  return WORK_KINDS.map((kind) => {
+    const { name, required, doneWhen } = KINDS[kind];
+    return {
+      kind,
+      name,
+      parts: partsOf(kind).map((part) => ({
+        part,
+        heading: HEADINGS[part],
+        ...(part === required ? { required: true as const } : {}),
+      })),
+      ...(doneWhen ? { doneWhen } : {}),
+    };
+  });
+}
+
+/** A part's text as written, without the blank lines and spaces around it. */
+const written = (text: string | undefined) => (text ?? '').replace(/^\s*\n/, '').trimEnd();
+
+/**
+ * The brief CPR gives the agent (V24, decisions 123–124): `# <Kind>: <title>`, then each part
+ * with text under its heading in the brief's order, Done when last; the person's text as written.
+ */
+export function briefOf(kind: WorkKind, title: string, parts: BriefParts): string {
+  const sections = [`# ${KINDS[kind].name}: ${title.trim()}`];
+  for (const part of partsOf(kind)) {
+    const text = written(parts[part]);
+    if (text.trim() !== '') sections.push(`## ${HEADINGS[part]}\n${text}`);
+  }
+  return `${sections.join('\n\n')}\n`;
+}
 
 const FULL_SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 
@@ -136,9 +254,29 @@ export async function readFeature(path: string): Promise<FeatureFile | null> {
     created: text(v.created),
     ...(text(v.from) ? { from: text(v.from) } : {}),
     ...(text(v.finished) ? { finished: text(v.finished) } : {}),
+    ...kindOf(v.kind),
+    ...partsRead(v.parts),
     planFirst: v.planFirst === true,
+    ...(text(v.title) ? { title: text(v.title) } : {}),
     worktree: text(v.worktree),
   };
+}
+
+function kindOf(value: unknown): { kind?: WorkKind } {
+  const kind = WORK_KINDS.find((k) => k === value);
+  return kind ? { kind } : {};
+}
+
+/** The parts CPR knows, each with text. */
+function partsRead(value: unknown): { parts?: BriefParts } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const v = value as Record<string, unknown>;
+  const parts: BriefParts = {};
+  for (const part of ORDER) {
+    const text = v[part];
+    if (typeof text === 'string' && text.trim() !== '') parts[part] = text;
+  }
+  return Object.keys(parts).length > 0 ? { parts } : {};
 }
 
 function asAgent(value: unknown): FeatureAgentRecord | null {
@@ -195,16 +333,21 @@ export async function featureBase(
   return sha ? { from: name, sha } : null;
 }
 
-/** What the agent is told: the brief, its branch and worktree, where its record and reviews are. */
+/**
+ * What the agent is told: the brief, its kind's line (V24), its branch and worktree, where its
+ * record and reviews are. A record from before V24 is a feature.
+ */
 export function featurePrompt(
   feature: FeatureFile,
   where: { record: string; reviews: string; agents: string; into: string | null },
 ): string {
+  const kind = feature.kind ?? 'feature';
   const start = feature.from
     ? `${feature.from} at ${feature.base.slice(0, 7)}`
     : `the commit ${feature.base.slice(0, 7)}`;
+  const { line } = KINDS[kind];
   return [
-    `You are starting a new feature in this repository, on the branch ${feature.branch}, ` +
+    `You are starting a new ${kind} in this repository, on the branch ${feature.branch}, ` +
       `started from ${start}. This folder is a git worktree of its own with that branch ` +
       'checked out: work only here.',
     '',
@@ -212,16 +355,20 @@ export function featurePrompt(
     '',
     feature.brief.trim(),
     '',
+    ...(line ? [line, ''] : []),
     feature.planFirst
       ? 'First write a plan: what you will change and how you will check it, then stop and ' +
         "wait for the person's OK before changing anything."
       : "Plan it, build it and check it as the project's own instructions say.",
     '',
-    `Commit your work on ${feature.branch} as you go. Push only if the project's instructions ` +
-      'say so. When it is ready, say so: the person reviews the branch in CPR' +
-      (where.into ? `, and an approved commit is merged into ${where.into}.` : '.'),
+    kind === 'spike'
+      ? 'Commit nothing unless the brief asks for it. When you have the answer, say it: the ' +
+        'person reads your report in CPR.'
+      : `Commit your work on ${feature.branch} as you go. Push only if the project's instructions ` +
+        'say so. When it is ready, say so: the person reviews the branch in CPR' +
+        (where.into ? `, and an approved commit is merged into ${where.into}.` : '.'),
     '',
-    `This feature's record: ${where.record}. Reviews of the branch will be in ${where.reviews}; ` +
+    `This ${kind}'s record: ${where.record}. Reviews of the branch will be in ${where.reviews}; ` +
       `${where.agents} says how to act on one. Never edit anything in ${dirname(where.agents)}.`,
     '',
   ].join('\n');
@@ -527,14 +674,22 @@ export async function findClaude(
 
 /** What `cpr/config.json` says of features and their agent; anything unknown is ignored. */
 export interface FeatureConfig {
-  branchPrefix: string;
+  branchPrefixes: Record<WorkKind, string>;
   worktrees?: string;
   permissionMode: PermissionMode;
   model?: string;
 }
 
+/**
+ * `features.branchPrefixes` sets a kind's prefix (V24), each kind its own by default (`fix/`);
+ * `features.branchPrefix`, from before V24, sets the Feature's unless `branchPrefixes` does.
+ */
 export function readFeatureConfig(root: string): FeatureConfig {
-  const config: FeatureConfig = { branchPrefix: 'feature/', permissionMode: 'default' };
+  const branchPrefixes = Object.fromEntries(WORK_KINDS.map((k) => [k, `${k}/`])) as Record<
+    WorkKind,
+    string
+  >;
+  const config: FeatureConfig = { branchPrefixes, permissionMode: 'default' };
   const file = CONFIG_FILES.find((name) => existsSync(join(root, name)));
   if (!file) return config;
   let value: unknown;
@@ -544,10 +699,19 @@ export function readFeatureConfig(root: string): FeatureConfig {
     return config;
   }
   const v = (value && typeof value === 'object' ? value : {}) as {
-    features?: { branchPrefix?: unknown; worktrees?: unknown };
+    features?: { branchPrefix?: unknown; branchPrefixes?: unknown; worktrees?: unknown };
     agent?: unknown;
   };
-  if (typeof v.features?.branchPrefix === 'string') config.branchPrefix = v.features.branchPrefix;
+  if (typeof v.features?.branchPrefix === 'string') {
+    branchPrefixes.feature = v.features.branchPrefix;
+  }
+  const prefixes = v.features?.branchPrefixes;
+  if (prefixes && typeof prefixes === 'object') {
+    for (const kind of WORK_KINDS) {
+      const prefix = (prefixes as Record<string, unknown>)[kind];
+      if (typeof prefix === 'string') branchPrefixes[kind] = prefix;
+    }
+  }
   if (typeof v.features?.worktrees === 'string' && v.features.worktrees !== '') {
     config.worktrees = v.features.worktrees;
   }
@@ -561,6 +725,55 @@ export function readFeatureConfig(root: string): FeatureConfig {
   return config;
 }
 
+/**
+ * A start request's brief, checked: made from its kind, title and parts (V24), empty parts left
+ * out; or, from a request made before V24, its brief as given.
+ */
+function workOf(request: FeatureRequest): Pick<FeatureFile, 'brief' | 'kind' | 'title' | 'parts'> {
+  const { kind, title, parts } = request;
+  if (kind === undefined && title === undefined && parts === undefined) {
+    const brief = request.brief ?? '';
+    if (brief.trim() === '') {
+      throw new FeatureRefused('a workspace needs a brief: what to build', 400);
+    }
+    if (brief.length > MAX_BRIEF) {
+      throw new FeatureRefused('a brief is at most 20,000 characters', 400);
+    }
+    return { brief };
+  }
+  if (request.brief !== undefined) {
+    throw new FeatureRefused('a workspace takes a brief or a kind of work, not both', 400);
+  }
+  if (!WORK_KINDS.includes(kind as WorkKind)) {
+    throw new FeatureRefused(`unknown kind: ${String(kind)}`, 400);
+  }
+  const of = kind as WorkKind;
+  const name = (title ?? '').trim();
+  if (name === '') throw new FeatureRefused('a workspace needs a title', 400);
+  if (/[\r\n]/.test(name)) throw new FeatureRefused('a title is one line', 400);
+  if (name.length > MAX_TITLE) {
+    throw new FeatureRefused(`a title is at most ${MAX_TITLE} characters`, 400);
+  }
+  const own = partsOf(of);
+  const kept: BriefParts = {};
+  for (const [part, text] of Object.entries(parts ?? {})) {
+    if (!own.includes(part as BriefPart)) {
+      const heading = Object.hasOwn(HEADINGS, part) ? HEADINGS[part as BriefPart] : part;
+      throw new FeatureRefused(`a ${of} has no "${heading}"`, 400);
+    }
+    if (typeof text === 'string' && text.trim() !== '') kept[part as BriefPart] = text;
+  }
+  const required = KINDS[of].required;
+  if (!kept[required]) {
+    throw new FeatureRefused(`a ${of} needs "${HEADINGS[required]}"`, 400);
+  }
+  const brief = briefOf(of, name, kept);
+  if (brief.length > MAX_BRIEF) {
+    throw new FeatureRefused('a brief is at most 20,000 characters, its parts together', 400);
+  }
+  return { brief, kind: of, title: name, parts: kept };
+}
+
 /** What the server needs of features. */
 export interface Features {
   options(): Promise<FeatureOptions>;
@@ -571,6 +784,17 @@ export interface Features {
   startAgent(branch: string): Promise<FeatureStart>;
   /** The prompt its agent was given, to copy. */
   prompt(branch: string): Promise<string>;
+  /**
+   * The check command guessed from the root files of the commit a workspace would start from
+   * (V24b), for the start dialog's Done when; null when none is found.
+   */
+  check(at: string): Promise<CheckGuess | null>;
+  /**
+   * The start dialog's draft (V24c, decision 128): kept in CPR's cache for the repository, so a
+   * new `cpr view` (another port, other browser storage) has it; `{}` when none.
+   */
+  draft(): Promise<Record<string, unknown>>;
+  saveDraft(value: Record<string, unknown>): Promise<void>;
   /** Stops its agent while it works or waits. */
   stopAgent(branch: string): Promise<FeatureStart>;
   /** Opens its worktree's folder in the editor (V12's VS Code). */
@@ -750,6 +974,8 @@ export function features(
     const acted = feature.agent ? (lastAction(thread) ?? feature.agent.started) : undefined;
     return {
       branch: feature.branch,
+      ...(feature.kind ? { kind: feature.kind } : {}),
+      ...(feature.title ? { title: feature.title } : {}),
       base: feature.base,
       ...(feature.from ? { from: feature.from } : {}),
       created: feature.created,
@@ -791,8 +1017,12 @@ export function features(
     return feature;
   }
 
+  const draftFile = join(cacheDir, 'state', repo.id, 'start-draft.json');
+
   /** Merge checks by the default branch's tip and the feature's: they take seconds on some. */
   const merges = new Map<string, Promise<BranchMerge>>();
+  /** Check commands by commit: a commit's files never change. */
+  const checks = new Map<string, Promise<CheckGuess | null>>();
 
   /** Starts the feature's agent and records how that went; the prompt it was given. */
   async function launch(
@@ -859,12 +1089,13 @@ export function features(
     async options() {
       const [refs, agent] = await Promise.all([listRefs(repo), claude()]);
       const where = await place();
-      const { branchPrefix, worktrees, permissionMode } = config();
+      const { branchPrefixes, worktrees, permissionMode } = config();
       const apiKey = Boolean(env.ANTHROPIC_API_KEY);
       const account = agent ? await agent.account() : undefined;
       return {
         base: await featureBase(repo, refs),
-        branchPrefix,
+        branchPrefixes,
+        kinds: workKinds(),
         worktrees: join(dirname(worktreeFolder(mainRoot(where), 'x', worktrees)), '<branch>'),
         agent: agent
           ? {
@@ -899,11 +1130,7 @@ export function features(
     },
 
     async start(request) {
-      const brief = request.brief.trim();
-      if (brief === '') throw new FeatureRefused('a workspace needs a brief: what to build', 400);
-      if (request.brief.length > MAX_BRIEF) {
-        throw new FeatureRefused('a brief is at most 20,000 characters', 400);
-      }
+      const work = workOf(request);
       const permissionMode = request.permissionMode ?? config().permissionMode;
       if (!PERMISSION_MODES.includes(permissionMode)) {
         throw new FeatureRefused(`unknown permission mode: ${String(permissionMode)}`, 400);
@@ -946,7 +1173,7 @@ export function features(
         agent: null,
         base: base.sha,
         branch: request.branch,
-        brief: request.brief,
+        ...work,
         ...(by ? { by } : {}),
         created: now().toISOString(),
         ...(base.from ? { from: base.from } : {}),
@@ -980,6 +1207,36 @@ export function features(
     async prompt(branch) {
       const where = await place();
       return promptOf(where, await recorded(where, branch));
+    },
+
+    async draft() {
+      try {
+        const value = JSON.parse(await readFile(draftFile, 'utf8')) as unknown;
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          return value as Record<string, unknown>;
+        }
+      } catch {
+        // none yet, or not JSON
+      }
+      return {};
+    },
+
+    async saveDraft(value) {
+      await mkdir(dirname(draftFile), { recursive: true });
+      const temp = `${draftFile}.${process.pid}.tmp`;
+      await writeFile(temp, `${JSON.stringify(value)}\n`);
+      await rename(temp, draftFile);
+    },
+
+    async check(at) {
+      if (!FULL_SHA.test(at)) throw new FeatureRefused(`the commit must be a full SHA: ${at}`, 400);
+      if (!(await isCommit(repo, at))) throw new FeatureRefused(`not a commit: ${at}`, 400);
+      let guess = checks.get(at);
+      if (!guess) {
+        guess = treeAt(repo, at).then(guessCheck);
+        checks.set(at, guess);
+      }
+      return guess;
     },
 
     async stopAgent(branch) {

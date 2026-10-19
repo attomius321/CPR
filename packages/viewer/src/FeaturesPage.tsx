@@ -11,10 +11,12 @@ import { AgentTerminal, toTerminal, type OpenedTerminal } from './AgentTerminal.
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
 import { markdownNodes, useMarkdown } from './markdown.js';
-import { postJson, useFeatureStarter } from './FeatureStarter.js';
+import { useFeatureStarter } from './FeatureStarter.js';
+import { postJson } from './http.js';
 import {
   featureGroups,
   featureHref,
+  featureName,
   replyMode,
   startedNotice,
   threadItems,
@@ -265,6 +267,12 @@ function FeatureState({ row: { feature, next } }: { row: FeatureRow }) {
   );
 }
 
+/** A workspace's kind before its name (V24c): none for a Feature, the common case. */
+function KindTag({ feature }: { feature: FeatureSummary }) {
+  if (!feature.kind || feature.kind === 'feature') return null;
+  return <span className="kind-tag">{feature.kind}</span>;
+}
+
 /** A feature's mark: what it needs, as its branch's badges show it. */
 function FeatureChip({ row: { next } }: { row: FeatureRow }) {
   return (
@@ -327,7 +335,6 @@ function FeatureItem({
     return () => clearTimeout(timer);
   }, [flashed]);
 
-  const about = feature.brief.trim().split('\n')[0] ?? feature.branch;
   return (
     <li
       ref={item}
@@ -347,7 +354,8 @@ function FeatureItem({
             onPick();
           }}
         >
-          {about}
+          <KindTag feature={feature} />
+          {featureName(feature)}
         </button>
         <time className="commit-date" dateTime={feature.created}>
           {relativeDate(feature.created, Date.now())}
@@ -529,7 +537,6 @@ function FeaturePanel({
     setText(verdict.text);
   }, [fillVerdict, verdict, terminals, showTerminal, opened]);
 
-  const about = feature.brief.trim().split('\n')[0] ?? branch;
   const live = agent.state === 'working' || agent.state === 'needs-you';
   const restartable =
     agent.kind !== undefined &&
@@ -602,7 +609,8 @@ function FeaturePanel({
         <FeatureChip row={row} />
         <FeatureBranch row={row} mark={mark} />
         <span className="feature-about" title={feature.brief}>
-          {about}
+          <KindTag feature={feature} />
+          {featureName(feature)}
         </span>
       </div>
       <FeatureState row={row} />

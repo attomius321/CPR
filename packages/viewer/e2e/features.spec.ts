@@ -23,7 +23,13 @@ const git = (...args: string[]) =>
   execFileSync('git', args, { cwd: cpr.repo, encoding: 'utf8' }).trim();
 const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Start a workspace' });
-const brief = (page: Page) => dialog(page).getByLabel('What should the agent build?');
+const title = (page: Page) => dialog(page).getByRole('textbox', { name: 'Title' });
+const goal = (page: Page) => dialog(page).getByRole('textbox', { name: 'Goal' });
+/** A Feature's title, and its goal (V24c). */
+const fillWork = async (page: Page, what: string, why = what) => {
+  await title(page).fill(what);
+  await goal(page).fill(why);
+};
 const branch = (page: Page) => dialog(page).getByRole('textbox', { name: 'Branch', exact: true });
 const row = (page: Page, subject: string) =>
   page.locator('.commit', {
@@ -38,9 +44,9 @@ test('starts a feature from the header: its branch, its worktree, the agent ther
   await page.goto(cpr.url);
   await page.getByRole('button', { name: 'Start a workspace' }).click();
   await expect(dialog(page)).toBeVisible();
-  await expect(brief(page)).toBeFocused();
-  await brief(page).fill('Add a half function\n\nReturn a / 2, and test it.');
-  // Named after the brief's first line; where it starts and where its worktree goes.
+  await expect(title(page)).toBeFocused();
+  await fillWork(page, 'Add a half function', 'Return a / 2, and test it.');
+  // Named after the title; where it starts and where its worktree goes.
   await expect(branch(page)).toHaveValue('feature/add-a-half-function');
   const folder = `${cpr.repo}.worktrees/feature-add-a-half-function`;
   await expect(dialog(page)).toContainText(`From main at ${short(main)}, in ${folder}`);
@@ -73,13 +79,18 @@ test('starts a feature from the header: its branch, its worktree, the agent ther
     '--add-dir',
     join(cpr.repo, 'cpr'),
   ]);
-  expect(call?.args.at(-1)).toContain('Return a / 2, and test it.');
+  expect(call?.args.at(-1)).toContain(
+    '# Feature: Add a half function\n\n## Goal\nReturn a / 2, and test it.\n',
+  );
   expect(call?.args.at(-1)).toContain("then stop and wait for the person's OK");
   // The record, beside the reviews.
   const record = JSON.parse(
     readFileSync(join(cpr.repo, 'cpr/features/feature/add-a-half-function.json'), 'utf8'),
   ) as { base: string; planFirst: boolean; worktree: string; by: string };
   expect(record).toMatchObject({
+    kind: 'feature',
+    title: 'Add a half function',
+    parts: { goal: 'Return a / 2, and test it.' },
     base: main,
     planFirst: true,
     worktree: folder,
@@ -95,7 +106,7 @@ test('n starts one too; a name in use is refused before Start; Escape cancels', 
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.keyboard.press('n');
   await expect(dialog(page)).toBeVisible();
-  await brief(page).fill('Something');
+  await fillWork(page, 'Something');
   await branch(page).fill('main');
   await expect(dialog(page)).toContainText('a branch main exists');
   await expect(dialog(page).getByRole('button', { name: 'Start', exact: true })).toBeDisabled();
@@ -104,14 +115,19 @@ test('n starts one too; a name in use is refused before Start; Escape cancels', 
   // A permission mode other than Claude Code's default goes to the agent.
   await branch(page).fill('feature/something');
   await dialog(page).getByLabel('permission').selectOption({ label: 'Auto' });
-  await brief(page).press('Escape');
+  await title(page).press('Escape');
   await expect(dialog(page)).toBeHidden();
   expect(cpr.calls()).toEqual([]);
 
+  // Escape keeps the draft (V24c), the branch typed included; Clear empties it.
   await page.keyboard.press('n');
-  await brief(page).fill('Something else');
+  await expect(title(page)).toHaveValue('Something');
+  await expect(branch(page)).toHaveValue('feature/something');
+  await dialog(page).getByRole('button', { name: 'Clear' }).click();
+  await expect(title(page)).toHaveValue('');
+  await fillWork(page, 'Something else');
   await dialog(page).getByLabel('permission').selectOption({ label: 'Auto' });
-  await brief(page).press('Control+Enter');
+  await title(page).press('Control+Enter');
   await expect(page.getByRole('status')).toContainText('Started feature/something-else');
   expect(cpr.calls()[0]?.args).toEqual(expect.arrayContaining(['--permission-mode', 'auto']));
 });
@@ -123,7 +139,7 @@ test("Start a feature here: the row's commit is where it starts", async ({ page 
   await row(page, 'base').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Start a workspace here' }).click();
   await expect(dialog(page)).toContainText(`From the commit ${short(base)}`);
-  await brief(page).fill('Fix from the base');
+  await fillWork(page, 'Fix from the base');
   await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Started feature/fix-from-the-base');
   expect(git('rev-parse', 'feature/fix-from-the-base')).toBe(base);
@@ -138,7 +154,7 @@ test("an agent that does not start: the feature stays, with Claude Code's words 
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto(cpr.url);
   await page.getByRole('button', { name: 'Start a workspace' }).click();
-  await brief(page).fill('Add a half function');
+  await fillWork(page, 'Add a half function');
   await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
   const folder = `${cpr.repo}.worktrees/feature-add-a-half-function`;
   const status = page.getByRole('status');
@@ -163,7 +179,7 @@ test('without an agent: the branch and worktree are made, and the prompt is give
   await page.goto(cpr.url);
   await page.getByRole('button', { name: 'Start a workspace' }).click();
   await expect(dialog(page)).toContainText('No agent found');
-  await brief(page).fill('Add a half function');
+  await fillWork(page, 'Add a half function');
   await dialog(page).getByRole('button', { name: 'Make the branch' }).click();
   await expect(page.getByRole('status')).toContainText(
     'Made feature/add-a-half-function in ' +
@@ -186,8 +202,8 @@ const panel = (page: Page, branch: string) =>
   page.getByRole('region', { name: `Workspace ${branch}` });
 const startFrom = async (page: Page, what: string) => {
   await page.getByRole('button', { name: 'Start a workspace' }).click();
-  await brief(page).fill(what);
-  await brief(page).press('Control+Enter');
+  await fillWork(page, what);
+  await goal(page).press('Control+Enter');
   await expect(dialog(page)).toBeHidden();
 };
 
@@ -702,7 +718,9 @@ test("an agent's report is drawn as Markdown; HTML in it, and your messages, sta
   await expect(report).toContainText('<b>raw</b>');
   await expect(report.locator('a')).toHaveAttribute('href', 'https://example.com');
   await expect(report).not.toContainText('**');
-  // Your messages are shown as you typed them.
+  // Your messages are shown as you typed them. Sent once the list says the turn ended: before
+  // that, sending would stop a working agent, and asks first.
+  await expect(here).toContainText('Plan ready', POLL);
   await box(page, branch).fill('Keep **this** as typed.');
   await box(page, branch).press('Control+Enter');
   await expect(here.locator('.thread-you').last()).toContainText('Keep **this** as typed.', POLL);
@@ -719,4 +737,242 @@ test('the workspaces view at its old address, /features: the address becomes /wo
     'aria-current',
     'page',
   );
+});
+
+// The structured brief (V24c): a kind of work, its title and parts, which the server makes the
+// agent's brief of; Done when with the check command guessed at the start commit; a draft.
+const kind = (page: Page, name: string) => dialog(page).getByRole('radio', { name });
+const part = (page: Page, name: string) => dialog(page).getByRole('textbox', { name });
+const doneWhen = (page: Page) => part(page, 'Done when optional');
+const startButton = (page: Page) =>
+  dialog(page).getByRole('button', { name: 'Start', exact: true });
+const info = (page: Page) => dialog(page).getByRole('button', { name: 'About the kinds of work' });
+
+test('each kind starts a workspace: its brief, its line, its branch, its tag (V24c)', async ({
+  page,
+}) => {
+  cpr = await serveFeatures();
+  await page.goto(cpr.url);
+  const kinds = [
+    ['Fix', 'What happens', 'fix/', 'Reproduce it first, with a failing test'],
+    ['Refactor', 'What to restructure', 'refactor/', 'Change structure, not behaviour'],
+    ['Chore', 'What to change', 'chore/', 'Keep to what is asked'],
+    ['Spike', 'Question', 'spike/', 'The answer is what is asked for, not a change to merge'],
+  ] as const;
+  let last = 'Feature';
+  for (const [name, heading, prefix, line] of kinds) {
+    await page.getByRole('button', { name: 'Start a workspace' }).click();
+    // The kind picked last is picked again.
+    await expect(kind(page, last)).toHaveAttribute('aria-checked', 'true');
+    await kind(page, name).click();
+    await title(page).fill(`${name} the totals`);
+    await part(page, heading).fill(`Why ${name}.`);
+    const slug = `${prefix}${name.toLowerCase()}-the-totals`;
+    await expect(branch(page)).toHaveValue(slug);
+    await startButton(page).click();
+    await expect(page.getByRole('status')).toContainText(`Started ${slug}`);
+    const prompt = cpr.calls().at(-1)?.args.at(-1) ?? '';
+    expect(prompt).toContain(`# ${name}: ${name} the totals\n\n## ${heading}\nWhy ${name}.\n`);
+    expect(prompt).toContain(line);
+    expect(prompt).toContain(`You are starting a new ${name.toLowerCase()} in this repository`);
+    last = name;
+  }
+  // No check command here (no package.json): Done when says it in words.
+  expect(cpr.calls()[0]?.args.at(-1)).toContain(
+    "## Done when\nA test that fails today passes, and the project's checks pass.\n",
+  );
+
+  // The list names each by its title, its kind before it.
+  await page.goto(`${cpr.url}workspaces`);
+  const fix = featureRow(page, 'fix/fix-the-totals');
+  await expect(fix.locator('.feature-about')).toHaveText('fixFix the totals');
+  await expect(fix.locator('.kind-tag')).toHaveText('fix');
+});
+
+test('Done when names the check guessed at the start commit; switching kinds keeps every text (V24c)', async ({
+  page,
+}) => {
+  cpr = await serveFeatures();
+  writeFileSync(
+    join(cpr.repo, 'package.json'),
+    JSON.stringify({ scripts: { check: 'eslint . && vitest run' } }),
+  );
+  git('add', 'package.json');
+  git('commit', '-q', '-m', 'Add a check');
+  await page.goto(cpr.url);
+  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  // A Feature has no Done when of its own; the check is offered as an example.
+  await expect(doneWhen(page)).toHaveValue('');
+  await expect(doneWhen(page)).toHaveAttribute('placeholder', /e\.g\. `npm run check` passes/);
+  await expect(dialog(page)).toContainText(
+    'Check: npm run check, from package.json (scripts.check)',
+  );
+
+  await kind(page, 'Fix').click();
+  await expect(doneWhen(page)).toHaveValue(
+    'A test that fails today passes, and `npm run check` passes.',
+  );
+  await expect(startButton(page)).toBeDisabled();
+  await title(page).fill('Dates sort as text');
+  await expect(startButton(page)).toBeDisabled();
+  await part(page, 'What happens').fill('They sort 1, 10, 2.');
+  await expect(startButton(page)).toBeEnabled();
+
+  // More: closed until asked for, or until a field in it has text.
+  const more = dialog(page).getByRole('button', { name: /^▸ More: How to reproduce/ });
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await more.click();
+  await part(page, 'Where to look optional').fill('src/table.ts');
+
+  // Another kind: the same text under its own label; an untouched Done when becomes its own.
+  await kind(page, 'Chore').click();
+  await expect(part(page, 'What to change')).toHaveValue('They sort 1, 10, 2.');
+  await expect(doneWhen(page)).toHaveValue('Nothing else changes, and `npm run check` passes.');
+  await expect(part(page, 'Where to look optional')).toHaveValue('src/table.ts');
+  await expect(branch(page)).toHaveValue('chore/dates-sort-as-text');
+  // Edited, Done when stays.
+  await doneWhen(page).fill('The table test passes.');
+  await kind(page, 'Fix').click();
+  await expect(doneWhen(page)).toHaveValue('The table test passes.');
+  await expect(part(page, 'What happens')).toHaveValue('They sort 1, 10, 2.');
+
+  await startButton(page).click();
+  await expect(page.getByRole('status')).toContainText('Started fix/dates-sort-as-text');
+  expect(cpr.calls().at(-1)?.args.at(-1)).toContain(
+    [
+      '# Fix: Dates sort as text',
+      '',
+      '## What happens',
+      'They sort 1, 10, 2.',
+      '',
+      '## Where to look',
+      'src/table.ts',
+      '',
+      '## Done when',
+      'The table test passes.',
+    ].join('\n'),
+  );
+});
+
+test('the draft outlives Escape and a reload; after a start only the kind is kept (V24c)', async ({
+  page,
+}) => {
+  cpr = await serveFeatures();
+  const draft = async () =>
+    (await (await page.request.get(`${cpr.url}api/features/draft`)).json()) as {
+      title?: string;
+    };
+  await page.goto(cpr.url);
+  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await kind(page, 'Fix').click();
+  await title(page).fill('Dates sort as text');
+  await part(page, 'What happens').fill('They sort 1, 10, 2.');
+  await expect.poll(async () => (await draft()).title).toBe('Dates sort as text');
+  await page.reload();
+  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await expect(kind(page, 'Fix')).toHaveAttribute('aria-checked', 'true');
+  await expect(title(page)).toHaveValue('Dates sort as text');
+  await expect(part(page, 'What happens')).toHaveValue('They sort 1, 10, 2.');
+  await title(page).press('Control+Enter');
+  await expect(page.getByRole('status')).toContainText('Started fix/dates-sort-as-text');
+  await expect.poll(draft).toEqual({ kind: 'fix' });
+  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await expect(kind(page, 'Fix')).toHaveAttribute('aria-checked', 'true');
+  await expect(title(page)).toHaveValue('');
+  await expect(part(page, 'What happens')).toHaveValue('');
+});
+
+test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, branch (V24c)', async ({
+  page,
+}) => {
+  cpr = await serveFeatures();
+  await page.goto(cpr.url);
+  await expect(page.locator('.commit').first()).toBeVisible();
+  await page.keyboard.press('n');
+  await expect(title(page)).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(info(page)).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(kind(page, 'Feature')).toBeFocused();
+  await page.keyboard.press('2');
+  await expect(kind(page, 'Fix')).toBeFocused();
+  await expect(kind(page, 'Fix')).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('ArrowRight');
+  await expect(kind(page, 'Refactor')).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('5');
+  await expect(kind(page, 'Spike')).toHaveAttribute('aria-checked', 'true');
+  for (const next of [
+    info(page),
+    title(page),
+    part(page, 'Question'),
+    doneWhen(page),
+    dialog(page).getByRole('button', { name: /More:/ }),
+    branch(page),
+    dialog(page).getByLabel('Plan first and wait for my OK'),
+  ]) {
+    await page.keyboard.press('Tab');
+    await expect(next).toBeFocused();
+  }
+});
+
+test('a workspace started before V24 is named by its brief, with no kind', async ({ page }) => {
+  cpr = await serveFeatures();
+  await page.goto(cpr.url);
+  // What a page from before V24 posts: one brief.
+  const status = await page.evaluate(async () => {
+    const response = await fetch('/api/features', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+      body: JSON.stringify({
+        brief: 'Export the totals\n\nAs CSV.',
+        branch: 'feature/old',
+        planFirst: false,
+      }),
+    });
+    return response.status;
+  });
+  expect(status).toBe(200);
+  expect(cpr.calls()[0]?.args.at(-1)).toContain(
+    "The person's brief:\n\nExport the totals\n\nAs CSV.",
+  );
+  await page.goto(`${cpr.url}workspaces`);
+  const row = featureRow(page, 'feature/old');
+  await expect(row.locator('.feature-about')).toHaveText('Export the totals');
+  await expect(row.locator('.kind-tag')).toHaveCount(0);
+});
+
+test('the kinds explained: a tooltip after the picker, on hover, focus or a tap (V24c)', async ({
+  page,
+}) => {
+  cpr = await serveFeatures();
+  await page.goto(cpr.url);
+  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await kind(page, 'Fix').click();
+  const about = dialog(page).getByRole('tooltip');
+  await expect(about).toBeHidden();
+  await info(page).hover();
+  await expect(about).toBeVisible();
+  await expect(about.locator('dt')).toHaveText(['Feature', 'Fix', 'Refactor', 'Chore', 'Spike']);
+  await expect(about).toContainText('Something that goes wrong');
+  await expect(about).toContainText('A question to answer');
+  // The kind picked is marked.
+  await expect(about.locator('.current dt')).toHaveText('Fix');
+  await expect(info(page)).toHaveAttribute('aria-describedby', 'kind-about');
+  await title(page).hover();
+  await expect(about).toBeHidden();
+
+  // From the keyboard: shown while the button has the focus; Escape hides it, not the dialog.
+  await kind(page, 'Fix').focus();
+  await page.keyboard.press('Tab');
+  await expect(info(page)).toBeFocused();
+  await expect(about).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(about).toBeHidden();
+  await expect(dialog(page)).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(about).toBeHidden();
+
+  // A tap (no hover on a phone) shows it too.
+  await info(page).click();
+  await expect(about).toBeVisible();
 });

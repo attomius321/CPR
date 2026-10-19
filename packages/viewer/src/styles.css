@@ -2133,9 +2133,157 @@ kbd {
   cursor: default;
 }
 
-/* The start dialog (V18): a brief to write, so wider than a confirmation. */
+/* The start dialog (V18): a brief to write, so wider than a confirmation; with More open or on
+   a phone it scrolls inside the window (V24c). */
 .feature-dialog {
   width: min(640px, 100%);
+  max-height: calc(100dvh - 32px);
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+/* The kinds and their info button; the info spans the dialog below them (V24c). */
+.kind-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kind-info-button {
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: help;
+}
+
+.kind-info-button:hover,
+.kind-info-button[aria-expanded='true'] {
+  color: var(--moved);
+}
+
+.kind-about {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 1;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 20%);
+  font-size: 13px;
+  /* It covers the title for a moment: what is under it keeps the pointer. */
+  pointer-events: none;
+}
+
+.kind-about dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.kind-about dl > div {
+  display: grid;
+  grid-template-columns: 5.5em 1fr;
+  gap: 8px;
+}
+
+.kind-about dt {
+  font-weight: 600;
+}
+
+.kind-about dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+.kind-about .current dd {
+  color: var(--text);
+}
+
+/* The kind of work (V24c), as the commits page's scopes: one segmented control. */
+.kind-picker {
+  display: flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.kind {
+  padding: 3px 12px;
+  border: 0;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.kind + .kind {
+  border-left: 1px solid var(--line);
+}
+
+.kind.active {
+  background: color-mix(in srgb, var(--moved) 18%, var(--panel));
+  font-weight: 600;
+}
+
+/* The five and their info on one line on a phone (390 px: 308 px for them). */
+@media (max-width: 480px) {
+  .kind {
+    padding: 3px 6px;
+  }
+}
+
+.kind:focus-visible {
+  outline: 2px solid var(--moved);
+  outline-offset: -2px;
+}
+
+.field-optional {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.feature-check-guess {
+  margin: 4px 0 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.feature-more {
+  display: block;
+  margin: 12px 0 0;
+  padding: 0;
+  font-family: inherit;
+  text-align: left;
+}
+
+/* Clear stands apart from Cancel and Start, at the left. */
+.dialog-buttons .feature-clear {
+  margin-right: auto;
+}
+
+/* A workspace's kind before its name in the list and its panel (V24c). */
+.kind-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: normal;
+  vertical-align: 1px;
 }
 
 .feature-field {
@@ -2160,10 +2308,10 @@ kbd {
 
 .feature-field textarea {
   resize: vertical;
-  min-height: 7em;
 }
 
-.feature-field input {
+/* The branch's name, as git shows it. */
+.feature-field .branch-input {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 

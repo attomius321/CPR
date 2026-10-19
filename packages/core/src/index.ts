@@ -100,7 +100,7 @@ export {
   type ProjectSide,
   type ProjectSource,
 } from './projects.js';
-export { readFileAtRevision } from './git/show.js';
+export { listTreeAt, readFileAtRevision } from './git/show.js';
 export { mapLine, workingLine, type LineHunk, type WorkingLine } from './git/working-line.js';
 export {
   commitDetails,
@@ -152,7 +152,11 @@ export {
 } from './git/branches.js';
 export {
   PERMISSION_MODES,
+  WORK_KINDS,
   type AgentKind,
+  type BriefPart,
+  type BriefParts,
+  type CheckGuess,
   type AgentStateName,
   type FeatureAgentState,
   type FeatureList,
@@ -168,6 +172,8 @@ export {
   type TerminalAvailability,
   type ThreadEntry,
   type ThreadQuestion,
+  type WorkKind,
+  type WorkKindSpec,
 } from './features.js';
 export {
   addWorktree,

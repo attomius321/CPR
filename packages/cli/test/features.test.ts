@@ -1,10 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import { listRefs, openRepo } from '@cpr/core';
+import { listRefs, openRepo, type FeatureRequest, type WorkKind } from '@cpr/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import {
   agentState,
+  briefOf,
   claudeCode,
   featureBase,
   featurePath,
@@ -14,7 +15,9 @@ import {
   parseAccount,
   parseSessions,
   readFeature,
+  readFeatureConfig,
   serializeFeature,
+  workKinds,
   worktreeFolder,
   type AgentSession,
   type ClaudeCode,
@@ -100,12 +103,71 @@ describe('featurePath and serializeFeature', () => {
     folders.push(dir);
     const path = featurePath(dir, 'feature/csv');
     mkdirSync(dirname(path), { recursive: true });
-    const { writeFileSync } = await import('node:fs');
     writeFileSync(path, serializeFeature(record()));
     expect(await readFeature(path)).toEqual(record());
     writeFileSync(path, '{ nope');
     expect(await readFeature(path)).toBeNull();
     expect(await readFeature(join(dir, 'missing.json'))).toBeNull();
+  });
+
+  it("reads a record's kind, title and parts (V24); what is not one of them is left out", async () => {
+    const dir = tempDir();
+    folders.push(dir);
+    const path = featurePath(dir, 'fix/dates');
+    mkdirSync(dirname(path), { recursive: true });
+    const fix = record({
+      branch: 'fix/dates',
+      kind: 'fix',
+      title: 'Dates sort as text',
+      parts: { happens: 'They sort 1, 10, 2.', doneWhen: 'A test passes.' },
+    });
+    writeFileSync(path, serializeFeature(fix));
+    expect(await readFeature(path)).toEqual(fix);
+    writeFileSync(
+      path,
+      serializeFeature({
+        ...fix,
+        kind: 'bug' as WorkKind,
+        title: 7 as unknown as string,
+        parts: { happens: 'H', size: 'L', notes: 3 } as never,
+      }),
+    );
+    const read = await readFeature(path);
+    expect(read?.kind).toBeUndefined();
+    expect(read?.title).toBeUndefined();
+    expect(read?.parts).toEqual({ happens: 'H' });
+  });
+});
+
+describe('readFeatureConfig (V24)', () => {
+  const DEFAULTS = {
+    feature: 'feature/',
+    fix: 'fix/',
+    refactor: 'refactor/',
+    chore: 'chore/',
+    spike: 'spike/',
+  };
+  const configured = (config: unknown) => {
+    const root = tempDir();
+    folders.push(root);
+    mkdirSync(join(root, 'cpr'));
+    writeFileSync(join(root, 'cpr', 'config.json'), JSON.stringify(config));
+    return readFeatureConfig(root).branchPrefixes;
+  };
+  it("gives each kind its branch prefix; a config's prefixes override only their kinds", () => {
+    expect(configured({})).toEqual(DEFAULTS);
+    // Before V24, one prefix: still the Feature's.
+    expect(configured({ features: { branchPrefix: 'feat/' } })).toEqual({
+      ...DEFAULTS,
+      feature: 'feat/',
+    });
+    expect(
+      configured({ features: { branchPrefixes: { fix: 'bugfix/', size: 'x/', chore: 7 } } }),
+    ).toEqual({ ...DEFAULTS, fix: 'bugfix/' });
+    // Both: the per-kind one wins for its kind.
+    expect(
+      configured({ features: { branchPrefix: 'feat/', branchPrefixes: { feature: 'f/' } } }),
+    ).toEqual({ ...DEFAULTS, feature: 'f/' });
   });
 });
 
@@ -164,6 +226,114 @@ describe('featurePrompt', () => {
     expect(text).toMatch(/plan.*then stop and wait for the person's OK/s);
     expect(featurePrompt(record({ planFirst: false }), where)).not.toMatch(/then stop and wait/);
     expect(featurePrompt(record({ planFirst: false }), where)).toMatch(/Commit your work/);
+  });
+
+  it('adds one line per kind after the brief, and names the work by its kind (V24)', () => {
+    const kinds = {
+      fix: /Reproduce it first, with a failing test where the project has tests/,
+      refactor: /Change structure, not behaviour: do not change what existing tests assert/,
+      chore: /Keep to what is asked; if it needs a change in behaviour, stop and say so/,
+      spike: /The answer is what is asked for, not a change to merge/,
+    };
+    const lines = Object.values(kinds);
+    for (const [kind, line] of Object.entries(kinds)) {
+      const text = featurePrompt(record({ kind: kind as WorkKind, title: 'T' }), where);
+      expect(text).toMatch(line);
+      expect(text).toContain(`You are starting a new ${kind} in this repository`);
+      // After the brief, before the plan.
+      expect(text.indexOf('Export a review as CSV')).toBeLessThan(text.search(line));
+      expect(text.search(line)).toBeLessThan(text.indexOf('First write a plan'));
+      for (const other of lines) if (other !== line) expect(text).not.toMatch(other);
+    }
+    // A feature, and a record from before V24, get no line.
+    for (const feature of [record({ kind: 'feature', title: 'T' }), record()]) {
+      const text = featurePrompt(feature, where);
+      expect(text).toContain('You are starting a new feature in this repository');
+      for (const line of lines) expect(text).not.toMatch(line);
+    }
+    // A spike's answer is its report: nothing to commit unless asked.
+    const spike = featurePrompt(record({ kind: 'spike', title: 'T' }), where);
+    expect(spike).not.toMatch(/Commit your work/);
+    expect(spike).toMatch(/Commit nothing unless the brief asks for it/);
+  });
+});
+
+describe('briefOf (V24)', () => {
+  it('puts the title and the parts under fixed headings, in a fixed order, Done when last', () => {
+    // Keys in another order than the brief's: the order is the kind's, not the object's.
+    const brief = briefOf('fix', 'The date column sorts as text', {
+      doneWhen: 'A test that fails today passes, and `pnpm run check` passes.',
+      where: 'packages/viewer/src/table.ts',
+      happens: 'Dates sort 1, 10, 2.\nThey should sort by date.',
+      notes: 'Seen on Firefox.',
+      reproduce: 'Open a review, sort by Date.',
+    });
+    expect(brief).toBe(
+      [
+        '# Fix: The date column sorts as text',
+        '',
+        '## What happens',
+        'Dates sort 1, 10, 2.',
+        'They should sort by date.',
+        '',
+        '## How to reproduce',
+        'Open a review, sort by Date.',
+        '',
+        '## Where to look',
+        'packages/viewer/src/table.ts',
+        '',
+        '## Notes',
+        'Seen on Firefox.',
+        '',
+        '## Done when',
+        'A test that fails today passes, and `pnpm run check` passes.',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('names each kind and its parts', () => {
+    expect(briefOf('feature', 'CSV', { goal: 'G', outOfScope: 'O' })).toBe(
+      '# Feature: CSV\n\n## Goal\nG\n\n## Out of scope\nO\n',
+    );
+    expect(briefOf('refactor', 'R', { restructure: 'S' })).toBe(
+      '# Refactor: R\n\n## What to restructure\nS\n',
+    );
+    expect(briefOf('chore', 'C', { change: 'X' })).toBe('# Chore: C\n\n## What to change\nX\n');
+    expect(briefOf('spike', 'Q', { question: 'Why?', known: 'K' })).toBe(
+      '# Spike: Q\n\n## Question\nWhy?\n\n## What is known\nK\n',
+    );
+  });
+
+  it("leaves empty parts out and keeps the person's text as written, Markdown included", () => {
+    const text = '    indented first line\n\n## not a heading of ours\n- a list\n';
+    expect(
+      briefOf('feature', '  CSV  ', { goal: `\n\n${text}\n  \n`, where: '   ', notes: '' }),
+    ).toBe(`# Feature: CSV\n\n## Goal\n${text.trimEnd()}\n`);
+  });
+});
+
+describe("the start dialog's length of a brief (V24c)", () => {
+  it("is the length of the brief the server makes, so the dialog's count is the server's", async () => {
+    const { briefLength, formParts, newForm } = await import('../../viewer/src/brief.js');
+    const kinds = workKinds();
+    const forms = [
+      { kind: 'fix', title: '  Dates  ', main: '\n\n  They sort.\n  \n', more: { notes: 'N ' } },
+      { kind: 'feature', title: 'CSV', main: 'Export it.', more: { where: ' ', outOfScope: 'O' } },
+      {
+        kind: 'spike',
+        title: 'Q',
+        main: 'Why?',
+        more: { known: 'K', reproduce: 'not a Spike part' },
+      },
+    ] as const;
+    for (const over of forms) {
+      const spec = kinds.find((k) => k.kind === over.kind)!;
+      const form = { ...newForm(spec, null), ...over, more: { ...over.more } };
+      expect(briefLength(form, spec), over.kind).toBe(
+        briefOf(over.kind, form.title, formParts(form, spec)).length,
+      );
+    }
   });
 });
 
@@ -395,10 +565,16 @@ describe('features', () => {
   it("offers the default branch's tip, the agent and its account, and where worktrees go", async () => {
     const { repo, shas } = fresh();
     const { claude } = fakeClaude();
-    const options = await (await service(repo, claude)).options();
+    const { kinds, ...options } = await (await service(repo, claude)).options();
     expect(options).toEqual({
       base: { from: 'main', sha: shas.B },
-      branchPrefix: 'feature/',
+      branchPrefixes: {
+        feature: 'feature/',
+        fix: 'fix/',
+        refactor: 'refactor/',
+        chore: 'chore/',
+        spike: 'spike/',
+      },
       worktrees: join(dirname(repo.root), `${basename(repo.root)}.worktrees`, '<branch>'),
       agent: {
         kind: 'claude',
@@ -407,6 +583,32 @@ describe('features', () => {
         permissionMode: 'default',
       },
       maxBrief: 20000,
+    });
+    // The kinds as the dialog offers them (V24): each one's parts in the brief's order.
+    expect(
+      kinds.map((k) => [
+        k.kind,
+        k.name,
+        k.parts.map((p) => (p.required ? `${p.heading}*` : p.heading)).join(', '),
+      ]),
+    ).toEqual([
+      ['feature', 'Feature', 'Goal*, Where to look, Out of scope, Notes, Done when'],
+      ['fix', 'Fix', 'What happens*, How to reproduce, Where to look, Notes, Done when'],
+      [
+        'refactor',
+        'Refactor',
+        'What to restructure*, Where to look, Out of scope, Notes, Done when',
+      ],
+      ['chore', 'Chore', 'What to change*, Where to look, Out of scope, Notes, Done when'],
+      ['spike', 'Spike', 'Question*, What is known, Where to look, Notes, Done when'],
+    ]);
+    expect(Object.fromEntries(kinds.map((k) => [k.kind, k.doneWhen]))).toEqual({
+      feature: undefined,
+      fix: 'A test that fails today passes, and {checks pass}.',
+      refactor:
+        'Behaviour is unchanged: existing tests pass without changing what they assert, and {checks pass}.',
+      chore: 'Nothing else changes, and {checks pass}.',
+      spike: 'A written answer: what was tried, what was measured, and a recommendation.',
     });
     const without = await (await service(repo, null)).options();
     expect(without.agent).toBeNull();
@@ -476,6 +678,112 @@ describe('features', () => {
     expect(feature.base).toBe(shas.A);
     expect(feature.from).toBeUndefined();
     expect(repo.git('rev-parse', 'fix/one')).toBe(shas.A);
+  });
+
+  it('starts a kind of work: the brief assembled from its parts, the record keeping both (V24)', async () => {
+    const { repo } = fresh();
+    const { claude, start } = fakeClaude();
+    const s = await service(repo, claude);
+    const parts = {
+      happens: 'Dates sort 1, 10, 2.',
+      where: '  ',
+      doneWhen: 'A test that fails today passes.',
+    };
+    const { feature, prompt } = await s.start({
+      kind: 'fix',
+      title: ' Dates sort as text ',
+      parts,
+      branch: 'fix/dates',
+      planFirst: false,
+    });
+    const brief = briefOf('fix', 'Dates sort as text', parts);
+    expect(feature).toMatchObject({ kind: 'fix', title: 'Dates sort as text', brief });
+    expect(prompt).toContain(brief);
+    expect(prompt).toMatch(/Reproduce it first/);
+    expect(start.mock.calls[0]?.[0].prompt).toBe(prompt);
+    const saved = await readFeature(join(repo.root, 'cpr', 'features', 'fix', 'dates.json'));
+    // Empty parts are not kept.
+    expect(saved).toMatchObject({
+      kind: 'fix',
+      title: 'Dates sort as text',
+      parts: { happens: 'Dates sort 1, 10, 2.', doneWhen: 'A test that fails today passes.' },
+      brief,
+    });
+    expect(saved?.parts).not.toHaveProperty('where');
+    // A request from before V24 makes a record as before: no kind, no title.
+    const old = await s.start({
+      brief: 'Export a review as CSV',
+      branch: 'feature/csv',
+      planFirst: false,
+    });
+    expect(old.feature.kind).toBeUndefined();
+    expect(old.feature.title).toBeUndefined();
+    expect(old.feature.brief).toBe('Export a review as CSV');
+  });
+
+  it('guesses the check command at the commit a workspace starts from (V24b)', async () => {
+    const { repo, shas } = fresh();
+    const s = await service(repo, null);
+    expect(await s.check(shas.B)).toBeNull();
+    repo.write({ 'package.json': JSON.stringify({ scripts: { test: 'vitest run' } }) });
+    const C = repo.commit('C');
+    expect(await s.check(C)).toEqual({
+      command: 'npm run test',
+      source: 'package.json (scripts.test)',
+    });
+    expect(await s.check(shas.B)).toBeNull();
+    const refused = (at: string) => s.check(at).catch((e: unknown) => e as FeatureRefused);
+    expect(await refused('main')).toMatchObject({ status: 400, message: /full SHA/ });
+    expect(await refused('0'.repeat(40))).toMatchObject({ status: 400, message: /not a commit/ });
+  });
+
+  it("keeps the start dialog's draft in CPR's cache, not in the repository (V24c)", async () => {
+    const { repo } = fresh();
+    const s = await service(repo, null);
+    expect(await s.draft()).toEqual({});
+    const draft = { kind: 'fix', title: 'Dates', main: 'They sort as text.', more: {} };
+    await s.saveDraft(draft);
+    expect(await s.draft()).toEqual(draft);
+    // Another service on the same repository (a new `cpr view`, another port) reads it.
+    expect(await (await service(repo, null)).draft()).toEqual(draft);
+    expect(repo.git('status', '--porcelain')).toBe('');
+    const file = join(cache, 'state', (await openRepo(repo.root)).id, 'start-draft.json');
+    expect(existsSync(file)).toBe(true);
+    writeFileSync(file, '{ nope');
+    expect(await s.draft()).toEqual({});
+  });
+
+  it('refuses a kind of work that is not complete, before touching anything (V24)', async () => {
+    const { repo } = fresh();
+    const { claude, start: launched } = fakeClaude();
+    const s = await service(repo, claude);
+    const refused = async (over: Record<string, unknown>, words: RegExp) => {
+      const request = {
+        kind: 'fix',
+        title: 'Dates',
+        parts: { happens: 'H' },
+        branch: 'fix/x',
+        planFirst: true,
+        ...over,
+      } as FeatureRequest;
+      const error = (await s.start(request).catch((e: unknown) => e)) as FeatureRefused;
+      expect(error, JSON.stringify(over)).toBeInstanceOf(FeatureRefused);
+      expect(error.status).toBe(400);
+      expect(error.message).toMatch(words);
+    };
+    await refused({ kind: 'bug' }, /unknown kind: bug/);
+    await refused({ title: '  ' }, /needs a title/);
+    await refused({ title: 'One\nTwo' }, /a title is one line/);
+    await refused({ title: 'One\rTwo' }, /a title is one line/);
+    await refused({ title: 'x'.repeat(201) }, /a title is at most 200 characters/);
+    await refused({ parts: { happens: ' \n ' } }, /a fix needs "What happens"/);
+    await refused({ parts: { happens: 'H', goal: 'G' } }, /a fix has no "Goal"/);
+    await refused({ parts: { happens: 'H', size: 'L' } }, /a fix has no "size"/);
+    await refused({ parts: { happens: 'x'.repeat(20_000) } }, /20,000/);
+    await refused({ brief: 'Both' }, /a brief or a kind of work, not both/);
+    await refused({ kind: undefined, title: undefined, parts: undefined }, /brief/);
+    expect(repo.git('branch', '--list', 'fix/*')).toBe('');
+    expect(launched).not.toHaveBeenCalled();
   });
 
   it('refuses a bad request before touching anything', async () => {
@@ -670,7 +978,6 @@ describe('features', () => {
     const s = await service(repo, fakeClaude().claude);
     const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
     expect(feature.worktree).toEqual({ path: feature.worktree.path, exists: true, changed: 0 });
-    const { writeFileSync } = await import('node:fs');
     writeFileSync(join(feature.worktree.path, 'src/a.ts'), 'export const a = 2;\n');
     writeFileSync(join(feature.worktree.path, 'src/new.ts'), 'export const n = 1;\n');
     expect((await s.list()).features[0]?.worktree.changed).toBe(2);
@@ -708,7 +1015,6 @@ describe('features', () => {
     const s = await service(repo, fakeClaude().claude);
     const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
     const { execFileSync } = await import('node:child_process');
-    const { writeFileSync } = await import('node:fs');
     const commit = (cwd: string, file: string, text: string) => {
       writeFileSync(join(cwd, file), text);
       execFileSync('git', ['-C', cwd, 'commit', '--quiet', '-am', file], {
@@ -731,7 +1037,6 @@ describe('features', () => {
   /** Commits in `cwd` as an agent would. */
   const commitIn = async (cwd: string, file: string, text: string) => {
     const { execFileSync } = await import('node:child_process');
-    const { writeFileSync } = await import('node:fs');
     writeFileSync(join(cwd, file), text);
     execFileSync('git', ['-C', cwd, 'add', file]);
     execFileSync('git', ['-C', cwd, 'commit', '--quiet', '-m', file], {
@@ -900,7 +1205,6 @@ describe('features', () => {
     });
 
     // A verdict on the branch: its text for the agent, as "Copy for the agent" has it.
-    const { writeFileSync } = await import('node:fs');
     const review = join(cpr, 'reviews', 'feature', 'one', 'ada@example.com.json');
     mkdirSync(dirname(review), { recursive: true });
     writeFileSync(
@@ -1037,7 +1341,6 @@ describe('features', () => {
       message: expect.stringMatching(/not merged/) as string,
     });
     // Work not committed: nothing is touched, whatever is asked.
-    const { writeFileSync } = await import('node:fs');
     writeFileSync(join(feature.worktree.path, 'notes.md'), 'todo\n');
     await expect(s.clean({ branch: 'feature/one', unmerged: true })).rejects.toMatchObject({
       status: 409,

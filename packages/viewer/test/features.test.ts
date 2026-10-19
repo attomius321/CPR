@@ -11,6 +11,7 @@ import {
   branchProblem,
   featureChips,
   featureGroups,
+  featureName,
   featureNext,
   featuresFirst,
   proposeBranch,
@@ -253,6 +254,21 @@ describe('featureGroups', () => {
     ]);
     expect(groups.working.map((r) => r.feature.branch)).toEqual(['feature/a']);
     expect(groups.done.map((r) => r.feature.branch)).toEqual(['feature/c']);
+  });
+});
+
+describe('featureName (V24c)', () => {
+  it("is the workspace's title; before V24, its brief's first line; else its branch", () => {
+    expect(
+      featureName(summary({ kind: 'fix', title: 'Dates sort as text', brief: '# Fix: …' })),
+    ).toBe('Dates sort as text');
+    expect(featureName(summary())).toBe('Export a review as CSV');
+    expect(featureName(summary({ brief: '\n  \n' }))).toBe('feature/csv');
+  });
+
+  it("titles a branch's chip with the workspace's name", () => {
+    const chips = featureChips([summary({ kind: 'fix', title: 'Dates' })], null, []);
+    expect(chips.get('feature/csv')?.title).toBe('Workspace: Dates — Working');
   });
 });
 

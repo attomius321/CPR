@@ -1,33 +1,8 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import type { FeatureOptions, FeatureRequest, FeatureStart, RefList } from '@cpr/core';
+import { getJson, postJson } from './http.js';
 import { StartFeatureDialog } from './StartFeatureDialog.js';
 import { reloadFeatures } from './useFeatures.js';
-
-const WRITE_HEADERS = { 'content-type': 'application/json', 'x-cpr': '1' };
-
-/** A write's answer, or the server's words (`{ error }` or text) as an error. */
-export async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(path, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
-    body: JSON.stringify(body),
-  });
-  const text = await response.text();
-  if (response.ok) return JSON.parse(text) as T;
-  let message = text;
-  try {
-    message = (JSON.parse(text) as { error?: string }).error ?? text;
-  } catch {
-    // a plain-text refusal
-  }
-  throw new Error(message);
-}
-
-async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(path);
-  if (!response.ok) throw new Error(await response.text());
-  return (await response.json()) as T;
-}
 
 /**
  * Starting a feature (V18), from any page: `open(sha?)` shows the dialog — at a row's commit, or
@@ -42,6 +17,8 @@ export function useFeatureStarter(
     options: FeatureOptions;
     base: { sha: string; from?: string };
     taken: ReadonlySet<string>;
+    /** The draft `cpr view` keeps (V24c), as saved. */
+    draft: unknown;
   } | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +26,13 @@ export function useFeatureStarter(
   const open = useCallback(
     (sha?: string) => {
       setError(null);
-      Promise.all([getJson<FeatureOptions>('/api/features/options'), getJson<RefList>('/api/refs')])
-        .then(([options, refs]) => {
+      Promise.all([
+        getJson<FeatureOptions>('/api/features/options'),
+        getJson<RefList>('/api/refs'),
+        // No draft is no reason not to open.
+        getJson<unknown>('/api/features/draft').catch(() => null),
+      ])
+        .then(([options, refs, draft]) => {
           const base = sha ? { sha } : options.base;
           if (!base) {
             onError(
@@ -65,6 +47,7 @@ export function useFeatureStarter(
               ...refs.branches.map((b) => b.name),
               ...refs.remotes.map((r) => r.branch),
             ]),
+            draft,
           });
         })
         .catch((e: unknown) => onError(`Could not start a workspace: ${(e as Error).message}`));
@@ -95,6 +78,7 @@ export function useFeatureStarter(
       options={shown.options}
       base={shown.base}
       taken={shown.taken}
+      draft={shown.draft}
       running={running}
       error={error}
       onStart={(request) => void start(request)}

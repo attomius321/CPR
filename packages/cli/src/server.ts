@@ -13,6 +13,7 @@ import {
   type LocalReview,
   type CheckoutTarget,
   type FeatureReply,
+  type BriefParts,
   type FeatureRequest,
   type FeatureTerminalRequest,
   type Graph,
@@ -21,6 +22,7 @@ import {
   type HistoryScope,
   type RefList,
   type RepoStatus,
+  type WorkKind,
 } from '@cpr/core';
 import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
@@ -222,6 +224,18 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         if (url.pathname === '/api/features') return featuresApi(req, res, features);
         if (url.pathname === '/api/features/options')
           return read(req, res, () => features.options());
+        if (url.pathname === '/api/features/draft') {
+          if (req.method === 'GET') return json(res, 200, await features.draft());
+          return written(req, res, parseDraft, (draft) =>
+            answer(res, () => features.saveDraft(draft).then(() => ({}))),
+          );
+        }
+        if (url.pathname === '/api/features/check') {
+          if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+          const at = url.searchParams.get('at');
+          if (!at) return send(res, 400, 'at: the commit a workspace starts from');
+          return answer(res, () => features.check(at).then((guess) => guess ?? {}));
+        }
         if (url.pathname === '/api/features/start') {
           return onBranch(req, res, (branch) =>
             startingOne(res, () => features.startAgent(branch)),
@@ -937,16 +951,29 @@ function json(res: ServerResponse, status: number, value: unknown): void {
 }
 
 /**
- * `{ brief, branch, planFirst, base?, permissionMode? }`, each of its type; what they say is the
- * features' to check (V18).
+ * `{ kind, title, parts, branch, planFirst, base?, permissionMode? }` (V24), or `brief` instead
+ * of the kind, title and parts, each of its type; what they say is the features' to check (V18).
  */
 function parseFeatureRequest(text: string): FeatureRequest {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('expected { brief, branch, planFirst }');
+    throw new Error('expected { kind, title, parts, branch, planFirst }');
   }
-  const { brief, branch, planFirst, base, permissionMode } = value;
-  if (typeof brief !== 'string') throw new Error('brief: what to build');
+  const { brief, kind, title, parts, branch, planFirst, base, permissionMode } = value;
+  if (brief === undefined && kind === undefined) {
+    throw new Error('kind: feature, fix, refactor, chore or spike');
+  }
+  if (brief !== undefined && typeof brief !== 'string') throw new Error('brief: what to build');
+  if (kind !== undefined && typeof kind !== 'string') {
+    throw new Error('kind: feature, fix, refactor, chore or spike');
+  }
+  if (title !== undefined && typeof title !== 'string') throw new Error("title: the work's name");
+  const textOnly = (v: unknown) =>
+    v !== null &&
+    typeof v === 'object' &&
+    !Array.isArray(v) &&
+    Object.values(v).every((x) => typeof x === 'string');
+  if (parts !== undefined && !textOnly(parts)) throw new Error('parts: each a text');
   if (typeof branch !== 'string') throw new Error("branch: the new branch's name");
   if (typeof planFirst !== 'boolean') throw new Error('planFirst: true or false');
   if (base !== undefined && typeof base !== 'string') throw new Error('base: a full SHA');
@@ -954,12 +981,24 @@ function parseFeatureRequest(text: string): FeatureRequest {
     throw new Error('permissionMode: default, acceptEdits or auto');
   }
   return {
-    brief,
+    ...(brief === undefined ? {} : { brief }),
+    ...(kind === undefined ? {} : { kind: kind as WorkKind }),
+    ...(title === undefined ? {} : { title }),
+    ...(parts === undefined ? {} : { parts: parts as BriefParts }),
     branch,
     planFirst,
     ...(base === undefined ? {} : { base }),
     ...(permissionMode === undefined ? {} : { permissionMode: permissionMode as PermissionMode }),
   };
+}
+
+/** The start dialog's draft (V24c): any object; what it holds is the dialog's to read. */
+function parseDraft(text: string): Record<string, unknown> {
+  const value = JSON.parse(text) as unknown;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('a draft is an object');
+  }
+  return value as Record<string, unknown>;
 }
 
 /** `{ branch, text, stop? }`: a message for a feature's agent (V18c). */

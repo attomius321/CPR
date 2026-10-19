@@ -195,13 +195,19 @@ export function featureGroups(
   return groups;
 }
 
+/** A workspace's name: its title (V24), else its brief's first line, else its branch. */
+export function featureName(feature: FeatureSummary): string {
+  const first = feature.brief.trim().split('\n')[0]?.trim();
+  return feature.title ?? (first || feature.branch);
+}
+
 /** A link to a feature's row in the features view. */
 export const featureHref = (branch: string) => `/workspaces?branch=${encodeURIComponent(branch)}`;
 
 /**
  * Each open feature's mark by ref name — its branch, and that branch on each remote once pushed
- * (`remotes`: the remote branches and the branch each is) — titled with the brief's first line
- * and what is next, linking to the feature. A branch that is gone has none.
+ * (`remotes`: the remote branches and the branch each is) — titled with the workspace's name and
+ * what is next, linking to the feature. A branch that is gone has none.
  */
 export function featureChips(
   features: readonly FeatureSummary[],
@@ -211,10 +217,9 @@ export function featureChips(
   const chips = new Map<string, AgentChip & { href: string }>();
   for (const { feature, next } of Object.values(featureGroups(features, reviews)).flat()) {
     if (feature.tip === null) continue;
-    const about = feature.brief.trim().split('\n')[0] ?? feature.branch;
     const value = {
       ...next.chip,
-      title: `Workspace: ${about} — ${next.text}`,
+      title: `Workspace: ${featureName(feature)} — ${next.text}`,
       href: featureHref(feature.branch),
     };
     chips.set(feature.branch, value);

@@ -246,16 +246,37 @@ Where reviews live:
 
 ## Workspaces and agents
 
-"Start a workspace" (n, or "Start a workspace here" in a commit's menu) asks what the agent should
-build, and then:
+"Start a workspace" (n, or "Start a workspace here" in a commit's menu) asks what the work is, in
+a few parts:
 
-1. names a branch after it (edit it if you like) and creates it at the default branch's tip, or
-   at the commit you picked;
-2. gives the branch its own worktree beside your checkout, `../<repo>.worktrees/<branch>` (the
+| Kind | It asks for | Done when, filled in | Branch |
+|---|---|---|---|
+| Feature | Goal: what it should do, and why | (empty) | `feature/` |
+| Fix | What happens, and what should | A test that fails today passes, and the check passes. | `fix/` |
+| Refactor | What to restructure, and why | Behaviour is unchanged: existing tests pass without changing what they assert, and the check passes. | `refactor/` |
+| Chore | What to change, and why now | Nothing else changes, and the check passes. | `chore/` |
+| Spike | The question, and what the answer will decide | A written answer: what was tried, what was measured, and a recommendation. | `spike/` |
+
+Every kind takes a title (the workspace's name and its branch's), and under **More** where to look,
+notes, and what is out of scope or how to reproduce. Done when is optional; it names the check
+command CPR guesses from the start commit's root files (`package.json`'s `check` or `test` script
+with its package manager, a Makefile's `check` or `test` target, `scripts/test.sh`, `cargo test`,
+`go test ./...`, `pytest`), and says where it found it. The ⓘ after the kinds says what each is
+for. The kind is picked with `1`–`5` too, and
+the form is kept as a draft (in CPR's cache, so it outlives a new `cpr view`) until the workspace
+starts; Clear empties it. CPR then:
+
+1. makes the agent's brief from the parts, under fixed headings (`# Fix: <title>`, `## What
+   happens`, …, `## Done when` last), and adds one line for the kind: a fix is reproduced with a
+   failing test first, a refactor and a chore change no behaviour, a spike answers in its report
+   and commits nothing unless asked;
+2. names a branch after the title (edit it if you like) and creates it at the default branch's
+   tip, or at the commit you picked;
+3. gives the branch its own worktree beside your checkout, `../<repo>.worktrees/<branch>` (the
    branch's slashes become dashes), so your checkout and `cpr view` are untouched and several
    workspaces can run at once;
-3. records the brief in `cpr/features/<branch>.json`;
-4. starts Claude Code there in the background (`claude --bg`) with the brief. With "Plan first
+4. records the brief, and the parts it was made of, in `cpr/features/<branch>.json`;
+5. starts Claude Code there in the background (`claude --bg`) with the brief. With "Plan first
    and wait for my OK" (on by default), the agent stops after its plan.
 
 The agent runs on your own Claude Code login (the dialog says which: your subscription or an API
@@ -266,8 +287,9 @@ accept. It is found as `claude` on your `PATH`, or set `CPR_CLAUDE`.
 
 The **Workspaces** tab (`/workspaces`) lists workspaces by what each needs from you (a plan to read, a permission to
 give, a branch to review, changes to send back), then those working, then those merged. The tab
-counts the ones that need you. Each workspace shows its commits, files not committed yet, your
-review, and whether it merges cleanly, with these actions:
+counts the ones that need you. Each workspace shows its title (a fix, refactor, chore or spike
+marked so), its commits, files not committed yet, your review, and whether it merges cleanly, with
+these actions:
 
 - **Review** its branch;
 - **Talk**, which copies `claude attach <id>` for a terminal of your own (only when CPR cannot
@@ -461,7 +483,7 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 ```jsonc
 {
   "plugins": ["angular"],
-  "features": { "branchPrefix": "feature/", "worktrees": "../{repo}.worktrees" },
+  "features": { "branchPrefixes": { "fix": "bugfix/" }, "worktrees": "../{repo}.worktrees" },
   "agent": { "permissionMode": "default", "model": "opus" }
 }
 ```
@@ -469,7 +491,8 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 | Key | Default | What it does |
 |---|---|---|
 | `plugins` | none | Plugins every run uses, by name or path. |
-| `features.branchPrefix` | `feature/` | The start of a new workspace's branch name. |
+| `features.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, per kind of work; an object with some kinds changes only those. |
+| `features.branchPrefix` | `feature/` | The Feature prefix, as before kinds of work; `branchPrefixes.feature` wins over it. |
 | `features.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout (`{repo}` is its folder name). |
 | `agent.permissionMode` | `default` | The permission mode the start dialog suggests: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's | The model agents start with. |
