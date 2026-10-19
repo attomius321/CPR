@@ -825,7 +825,7 @@ function WorkspacePanel({
             type="button"
             className="link"
             title={`Talk to the agent in a terminal: ${talk}${
-              agent.kind === 'codex'
+              agent.kind === 'codex' && !agent.remote
                 ? ' (its turns there are not recorded in this thread)'
                 : terminal && !terminal.available
                   ? ` (no terminal here: ${terminal.reason})`

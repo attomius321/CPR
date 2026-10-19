@@ -12,6 +12,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mockApi, type Recorded } from '../../forge/test/mock-api.js';
+import {
+  daemonStartOutput,
+  fakeAppServer,
+  type FakeAppServer,
+} from '../../cli/test/fake-app-server.js';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const fixtures = join(root, 'packages/core/test/fixtures/diff');
@@ -574,6 +579,8 @@ export interface RunningWorkspaces extends Running {
   codexTurn(branch: string, turn: { text: string } | { fail: string }): void;
   /** The threads the fake Codex archived. */
   codexArchived(): string[];
+  /** With `appServer` (V27a): Codex's app server, faked, which `daemon start` names. */
+  codexServer: FakeAppServer | null;
 }
 
 /**
@@ -722,7 +729,8 @@ if (args[0] === '--bg' && args[1] === '--resume') {
  * resume` record their arguments and folder, print Codex 0.163's first events (a new thread is
  * `thread-<n>`), then wait until the test ends the turn (`codex-turn-<worktree folder>.json`):
  * the turn's message and `turn.completed`, or `turn.failed`; it exits once the test's folders
- * are removed. `archive` records the thread.
+ * are removed. `archive` records the thread. `app-server daemon start` names the socket in
+ * `app-server-socket` as Codex 0.163 does (V27a), and fails without one, as a Codex with no daemon.
  */
 function fakeCodex(dir: string): string {
   const script = join(dir, 'codex');
@@ -741,6 +749,12 @@ if (args[0] === 'login') {
 if (args[0] === 'archive') {
   appendFileSync(join(dir, 'codex-archived.txt'), args[1] + '\\n');
   process.stderr.write('Archived session ' + args[1] + '.\\n');
+  process.exit(0);
+}
+if (args.join(' ') === 'app-server daemon start') {
+  const socket = join(dir, 'app-server-socket');
+  if (!existsSync(socket)) process.exit(2);
+  process.stdout.write(readFileSync(socket, 'utf8'));
   process.exit(0);
 }
 if (args[0] !== 'exec') process.exit(2);
@@ -776,7 +790,7 @@ const wait = setInterval(() => {
  * `main` with the `callers` fixture's base and head, pushed to a bare `origin` (its default
  * branch), and a fake Claude Code as `CPR_CLAUDE` (`agent: false`: one that is not installed;
  * `terminal: false`: no terminals, V21); a fake Codex as `CPR_CODEX` with `codex: true` (V20a),
- * else none, whatever is installed.
+ * else none, whatever is installed; with `appServer: true`, its app server too (V27a).
  * Served by `cpr view` without revisions; workspaces' worktrees land beside the repository and go
  * with it.
  */
@@ -784,6 +798,7 @@ export async function serveWorkspaces({
   agent = true,
   terminal = true,
   codex = false,
+  appServer = false,
 } = {}): Promise<RunningWorkspaces> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', '-B', 'main');
@@ -798,6 +813,10 @@ export async function serveWorkspaces({
   const fake = mkdtempSync(join(tmpdir(), 'cpr-e2e-claude-'));
   const claude = agent ? fakeClaude(fake) : join(fake, 'not-installed');
   const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  const codexServer = appServer ? await fakeAppServer(join(fake, 's.sock')) : null;
+  if (codexServer) {
+    writeFileSync(join(fake, 'app-server-socket'), daemonStartOutput(codexServer.path));
+  }
   // A fake VS Code: records what it is asked to open.
   const code = join(fake, 'code');
   writeFileSync(
@@ -908,8 +927,10 @@ export async function serveWorkspaces({
       );
     },
     codexArchived: () => lines('codex-archived.txt'),
+    codexServer,
     stop() {
       child.kill('SIGINT');
+      void codexServer?.close();
       for (const dir of [repo, `${repo}.worktrees`, origin, fake, cache]) {
         rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
       }

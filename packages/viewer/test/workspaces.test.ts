@@ -148,6 +148,16 @@ describe('talkCommand (V20a)', () => {
     expect(talkCommand({ state: 'no-agent' }, '/w/x')).toBeNull();
     expect(talkCommand({ state: 'working', kind: 'codex' }, '/w/x')).toBeNull();
   });
+
+  it("joins Codex's thread on its app server: the TUI there, its turns in the thread (V27a)", () => {
+    const remote = 'unix:///home/someone/.codex/app-server-control/app-server-control.sock';
+    expect(talkCommand({ state: 'ready', kind: 'codex', id: 'T1', remote }, '/w/feature-csv')).toBe(
+      `codex resume T1 --remote ${remote} -C /w/feature-csv`,
+    );
+    expect(
+      talkCommand({ state: 'ready', kind: 'codex', id: 'T1', remote: 'unix:///my socket' }, '/w'),
+    ).toBe("codex resume T1 --remote 'unix:///my socket' -C /w");
+  });
 });
 
 const TIP = 'b'.repeat(40);
@@ -474,6 +484,17 @@ describe('replyMode', () => {
     for (const state of ['not-running', 'not-started', 'no-agent', 'unknown'] as const) {
       expect(replyMode(agent({ state }))).toBe('none');
     }
+  });
+
+  it('sends to Codex on its app server while it works: the message joins its turn (V27a)', () => {
+    const codex = (over: Partial<WorkspaceAgentState>) =>
+      agent({ kind: 'codex', remote: 'unix:///s.sock', ...over });
+    expect(replyMode(codex({ state: 'working' }))).toBe('send');
+    expect(replyMode(codex({ state: 'needs-you', waitingFor: 'approval prompt' }))).toBe(
+      'stop-and-send',
+    );
+    // Through CPR's runner (V20a), a message still stops its run.
+    expect(replyMode(agent({ kind: 'codex', state: 'working' }))).toBe('stop-and-send');
   });
 });
 

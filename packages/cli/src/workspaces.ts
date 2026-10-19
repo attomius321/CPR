@@ -1388,17 +1388,15 @@ export function workspaces(
       throw new WorkspaceRefused(`Codex's app server: ${(read as Error).message}`, 502);
     }
     const state = serverState(workspace, read, 0, server.address);
-    if (state.state === 'needs-you') {
+    if (state.state === 'needs-you' && !stop) {
       const what = state.waitingFor ?? 'you';
-      if (!stop) {
-        throw new WorkspaceRefused(
-          `its agent is waiting on ${/^[aeiou]/.test(what) ? 'an' : 'a'} ${what}: sending stops its turn`,
-          409,
-        );
-      }
-      await server.interrupt(thread);
+      throw new WorkspaceRefused(
+        `its agent is waiting on ${/^[aeiou]/.test(what) ? 'an' : 'a'} ${what}: sending stops its turn`,
+        409,
+      );
     }
     try {
+      if (state.state === 'needs-you') await server.interrupt(thread);
       await server.send({ thread, text });
     } catch (error) {
       throw new WorkspaceRefused(`Codex's app server: ${(error as Error).message}`, 502);
@@ -1609,7 +1607,11 @@ export function workspaces(
         if (!server || !['working', 'needs-you'].includes(live)) {
           throw new WorkspaceRefused('its agent is not running', 409);
         }
-        await server.interrupt(workspace.agent?.thread ?? '');
+        try {
+          await server.interrupt(workspace.agent?.thread ?? '');
+        } catch (error) {
+          throw new WorkspaceRefused(`Codex's app server: ${(error as Error).message}`, 502);
+        }
         return started(where, workspace, await promptOf(where, workspace));
       }
       if (workspace.agent?.kind === 'codex') {
