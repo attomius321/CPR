@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
-import { basename, dirname } from 'node:path';
+import { realpath } from 'node:fs/promises';
+import { basename, dirname, join } from 'node:path';
 import { git, GitError } from './exec.js';
 import { listRefs, type RefList } from './refs.js';
 import type { GitRepo } from './repo.js';
@@ -160,4 +161,26 @@ export async function uncommittedFiles(folder: string): Promise<number> {
     if (/^[RC]/.test(entry)) i++;
   }
   return count;
+}
+
+/**
+ * The folders a commit on `branch` in the worktree at `folder` writes to (V20a): the worktree's
+ * own git folder (index, HEAD, its reflog), the shared `objects`, and the folders holding the
+ * branch's ref and reflog, those that exist. What Codex's sandbox must let it write to commit
+ * there, and nothing more: other branches' refs, `config` and hooks are not in it.
+ */
+export async function commitFolders(folder: string, branch: string): Promise<string[]> {
+  const [gitDir = '', commonDir = ''] = (
+    await git(folder, ['rev-parse', '--path-format=absolute', '--git-dir', '--git-common-dir'])
+  )
+    .trimEnd()
+    .split('\n');
+  const common = await realpath(commonDir);
+  const refFolder = dirname(join('refs', 'heads', ...branch.split('/')));
+  return [
+    await realpath(gitDir),
+    join(common, 'objects'),
+    join(common, refFolder),
+    join(common, 'logs', refFolder),
+  ].filter((path, i) => i < 2 || existsSync(path));
 }

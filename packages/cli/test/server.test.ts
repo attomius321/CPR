@@ -1098,7 +1098,7 @@ describe('cpr view: features (V18)', () => {
       },
     ],
     worktrees: '/work/app.worktrees/<branch>',
-    agent: { kind: 'claude', command: '/usr/bin/claude', permissionMode: 'default' },
+    agents: [{ kind: 'claude', command: '/usr/bin/claude', permissionMode: 'default' }],
     maxBrief: 20000,
   };
   const started: FeatureRequest[] = [];
@@ -1225,6 +1225,9 @@ describe('cpr view: features (V18)', () => {
     expect(ok.status).toBe(200);
     expect(await ok.json()).toEqual({ feature: summary, prompt: 'Build it.' });
     expect(started.at(-1)).toEqual({ ...request, base: C, permissionMode: 'auto' });
+    // The agent picked in the dialog (V20a).
+    expect((await post('/api/features', { ...request, agent: 'codex' })).status).toBe(200);
+    expect(started.at(-1)).toEqual({ ...request, agent: 'codex' });
 
     const taken = await post('/api/features', { ...request, branch: 'main' });
     expect(taken.status).toBe(409);
@@ -1239,6 +1242,7 @@ describe('cpr view: features (V18)', () => {
       { ...request, planFirst: 'yes' },
       { ...request, base: 7 },
       { ...request, permissionMode: 7 },
+      { ...request, agent: 7 },
     ]) {
       expect((await post('/api/features', body)).status, JSON.stringify(body)).toBe(400);
     }

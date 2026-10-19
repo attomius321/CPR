@@ -19,6 +19,7 @@ import {
   featureName,
   replyMode,
   startedNotice,
+  talkCommand,
   threadItems,
   verdictToSend,
   type FeatureRow,
@@ -500,7 +501,10 @@ function FeaturePanel({
   const verdict = verdictToSend(thread);
   // V21: the agent's own session in a terminal, where one can run: the panel opens on it, and the
   // thread is its history, read only (one way to answer the agent: the box stops its session).
-  const terminals = terminal?.available === true && agent.id !== undefined;
+  // Claude Code's only: Codex's turns in a terminal would not reach its thread (decision 133).
+  const terminals =
+    terminal?.available === true && agent.id !== undefined && agent.kind === 'claude';
+  const talk = talkCommand(agent, feature.worktree.path);
   const [chosen, setChosen] = useState(viewOfUrl);
   const view = chosen ?? (terminals ? 'terminal' : 'thread');
   const showTerminal = terminals && view === 'terminal';
@@ -634,21 +638,18 @@ function FeaturePanel({
             Review
           </button>
         )}
-        {agent.id && !terminals && (
+        {talk && !terminals && (
           <button
             type="button"
             className="link"
-            title={`Talk to the agent in a terminal: claude attach${
-              terminal && !terminal.available ? ` (no terminal here: ${terminal.reason})` : ''
+            title={`Talk to the agent in a terminal: ${talk}${
+              agent.kind === 'codex'
+                ? ' (its turns there are not recorded in this thread)'
+                : terminal && !terminal.available
+                  ? ` (no terminal here: ${terminal.reason})`
+                  : ''
             }`}
-            onClick={() =>
-              act(() =>
-                copy(
-                  `claude attach ${agent.id ?? ''}`,
-                  `claude attach ${agent.id ?? ''}: paste it in a terminal`,
-                ),
-              )
-            }
+            onClick={() => act(() => copy(talk, `${talk}: paste it in a terminal`))}
           >
             Talk
           </button>

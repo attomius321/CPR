@@ -1,6 +1,7 @@
 // Features started from the commits page (V18): pure helpers for the start dialog and the
 // line the page shows after Start.
 import type {
+  AgentKind,
   BranchReviewList,
   BranchReviewSummary,
   FeatureAgentState,
@@ -10,6 +11,24 @@ import type {
   PermissionMode,
   ThreadEntry,
 } from '@cpr/core';
+
+/** Each agent's name (V20a). */
+export const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
+
+/** A path as one word of a POSIX shell's command line, quoted only when it needs it. */
+const shellWord = (path: string) =>
+  /^[\w./-]+$/.test(path) ? path : `'${path.replaceAll("'", "'\\''")}'`;
+
+/**
+ * The command that continues a feature's agent session in a terminal (Talk): `claude attach
+ * <id>`, or `codex resume <thread> -C <worktree>` (V20a, decision 133); null without a session.
+ */
+export function talkCommand(agent: FeatureAgentState, worktree: string): string | null {
+  if (!agent.id || !agent.kind) return null;
+  return agent.kind === 'codex'
+    ? `codex resume ${agent.id} -C ${shellWord(worktree)}`
+    : `claude attach ${agent.id}`;
+}
 
 /** The permission modes the dialog offers, as it names them. */
 export const PERMISSION_LABELS: Record<PermissionMode, string> = {
@@ -81,14 +100,15 @@ export function startedNotice({ feature, prompt }: FeatureStart): {
       copy: prompt,
     };
   }
+  const name = AGENT_NAMES[agent.kind ?? 'claude'];
   if (agent.state === 'not-started') {
     return {
-      text: `Made ${feature.branch} in ${where}, but Claude Code did not start.`,
+      text: `Made ${feature.branch} in ${where}, but ${name} did not start.`,
       ...(agent.error ? { warning: agent.error } : {}),
       copy: prompt,
     };
   }
-  return { text: `Started ${feature.branch}: Claude Code is working in ${where}.` };
+  return { text: `Started ${feature.branch}: ${name} is working in ${where}.` };
 }
 
 /** What a feature needs from the person (V18b): the features view's groups. */
@@ -137,8 +157,10 @@ export function featureNext(feature: FeatureSummary, review?: BranchReviewSummar
       return needs(`Waiting: ${agent.waitingFor ?? 'for you'}`, '?', 'waiting');
     case 'plan-ready':
       return needs('Plan ready: read it and answer', '?', 'waiting');
-    case 'failed':
-      return needs('Its agent failed', '!', 'failed');
+    case 'failed': {
+      const why = agent.error?.split('\n')[0];
+      return needs(why ? `Its agent failed: ${why}` : 'Its agent failed', '!', 'failed');
+    }
     case 'not-started':
       return needs(`Not started: ${(agent.error ?? '').split('\n')[0] ?? ''}`, '!', 'failed');
     case 'no-agent':

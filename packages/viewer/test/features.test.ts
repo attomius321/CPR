@@ -18,6 +18,7 @@ import {
   replyMode,
   shortAge,
   startedNotice,
+  talkCommand,
   threadItems,
   verdictToSend,
 } from '../src/features.js';
@@ -116,6 +117,37 @@ describe('startedNotice', () => {
       copy: 'Build it.',
     });
   });
+
+  it('names the agent that was started (V20a)', () => {
+    expect(startedNotice(start({ state: 'working', kind: 'codex' }))).toEqual({
+      text: 'Started feature/csv: Codex is working in /work/app.worktrees/feature-csv.',
+    });
+    expect(
+      startedNotice(
+        start({ state: 'not-started', kind: 'codex', error: 'Codex is not logged in' }),
+      ),
+    ).toEqual({
+      text: 'Made feature/csv in /work/app.worktrees/feature-csv, but Codex did not start.',
+      warning: 'Codex is not logged in',
+      copy: 'Build it.',
+    });
+  });
+});
+
+describe('talkCommand (V20a)', () => {
+  it("is the command that continues the agent's session in a terminal", () => {
+    expect(talkCommand({ state: 'ready', kind: 'claude', id: 's1' }, '/w/x')).toBe(
+      'claude attach s1',
+    );
+    expect(talkCommand({ state: 'ready', kind: 'codex', id: 'T1' }, '/w/feature-csv')).toBe(
+      'codex resume T1 -C /w/feature-csv',
+    );
+    expect(talkCommand({ state: 'ready', kind: 'codex', id: 'T1' }, "/my work/it's")).toBe(
+      "codex resume T1 -C '/my work/it'\\''s'",
+    );
+    expect(talkCommand({ state: 'no-agent' }, '/w/x')).toBeNull();
+    expect(talkCommand({ state: 'working', kind: 'codex' }, '/w/x')).toBeNull();
+  });
 });
 
 const TIP = 'b'.repeat(40);
@@ -177,6 +209,10 @@ describe('featureNext', () => {
       text: 'Its agent failed',
       mark: '!',
     });
+    // Codex's words, when the run said why (V20a).
+    expect(
+      next({ agent: { state: 'failed', kind: 'codex', error: 'unexpected status 401\nmore' } }),
+    ).toEqual({ group: 'needs-you', text: 'Its agent failed: unexpected status 401', mark: '!' });
     expect(
       next({
         agent: { state: 'not-started', kind: 'claude', error: 'Workspace not trusted.\nMore' },

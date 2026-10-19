@@ -30,7 +30,7 @@ were not updated. The aim is to review decisions, not lines.
 - **Reviews any branch.** Mark symbols reviewed as you go. After new commits, only what is new or
   changed since is left to look at.
 - **Works with agents.** Describe the work, and CPR makes its branch and worktree and starts
-  Claude Code there. You read its plan, answer it, review its branch, and approve. The agent then
+  Claude Code or Codex there. You read its plan, answer it, review its branch, and approve. The agent then
   merges the commit you approved.
 - **Reads pull and merge requests.** Review a GitHub pull request or a GitLab merge request from
   the graph and post your comments as one review.
@@ -276,12 +276,14 @@ starts; Clear empties it. CPR then:
    branch's slashes become dashes), so your checkout and `cpr view` are untouched and several
    workspaces can run at once;
 4. records the brief, and the parts it was made of, in `cpr/features/<branch>.json`;
-5. starts Claude Code there in the background (`claude --bg`) with the brief. With "Plan first
-   and wait for my OK" (on by default), the agent stops after its plan.
+5. starts the agent you picked there in the background with the brief: Claude Code (`claude
+   --bg`) or [Codex](#codex). With "Plan first and wait for my OK" (on by default), the agent
+   stops after its plan.
 
-The agent runs on your own Claude Code login (the dialog says which: your subscription or an API
-key), in the permission mode you pick: Claude Code's default, Accept edits, or Auto. CPR never
-grants it more. If Claude Code does not start, the branch and worktree are kept and the page
+The dialog offers the agents installed, Claude Code first unless `agent.kind` in
+[`cpr/config.json`](#configuration) says `codex`. Claude Code runs on your own Claude Code login
+(the dialog says which: your subscription or an API key), in the permission mode you pick: Claude
+Code's default, Accept edits, or Auto. CPR never grants it more. If Claude Code does not start, the branch and worktree are kept and the page
 offers the prompt to copy. Claude Code has to trust the folder, so run `claude` there once and
 accept. It is found as `claude` on your `PATH`, or set `CPR_CLAUDE`.
 
@@ -292,8 +294,9 @@ marked so), its commits, files not committed yet, your review, and whether it me
 these actions:
 
 - **Review** its branch;
-- **Talk**, which copies `claude attach <id>` for a terminal of your own (only when CPR cannot
-  open the agent's terminal in the panel; its tooltip says why);
+- **Talk**, which copies `claude attach <id>` (Codex: `codex resume <thread> -C <worktree>`) for
+  a terminal of your own (only when CPR cannot open the agent's terminal in the panel; its tooltip
+  says why);
 - **Open in VS Code**, its worktree;
 - **Stop** or **Start** the agent;
 - **Copy the prompt**.
@@ -333,6 +336,31 @@ A workspace's branch carries its agent's mark on the commits page, and each lead
 Once a workspace is merged, Clean up removes its agent's sessions, its worktree and its branch. An
 unmerged one is cleaned up only after you confirm, and keeps its branch. Neither happens while
 the worktree has files not committed.
+
+### Codex
+
+Pick **Codex** in the start dialog (it is found as `codex` on your `PATH`, or set `CPR_CODEX`).
+It runs on your own Codex login (`codex login`: your ChatGPT account or an API key); if it is not
+logged in, the workspace is kept and says so. Its model and reasoning effort are your Codex
+configuration's (`~/.codex/config.toml`).
+
+- CPR runs `codex exec --json` in the worktree, in the background, through a small runner of its
+  own that writes what Codex does into the workspace's thread (`cpr/threads/`): CPR's prompt,
+  your messages, Codex's last message of each turn as its report, and how the run ended. The run
+  goes on when `cpr view` closes.
+- **Sandbox:** Codex's `workspace-write`, so it writes only in its worktree. A worktree's git data
+  lives in your checkout's `.git`, which that sandbox keeps read-only, so CPR also lets it write
+  what a commit on its own branch needs: the worktree's git folder, git's objects, and the folders
+  of the branch's ref and its log. Other branches, git's config and hooks stay read-only. Network
+  access is whatever your Codex configuration allows. CPR never passes Codex's bypass flags.
+- The panel shows the thread with the reply box: Send continues Codex's thread (`codex exec
+  resume`); while it works, "Stop and send" asks first. Codex never stops to ask for a
+  permission, so a workspace is working, then has a plan or work ready, or failed in Codex's
+  words.
+- There is no Terminal tab for Codex: Talk copies `codex resume <thread> -C <worktree>`, which
+  continues the thread in your terminal (what you do there is not in CPR's thread).
+- Stop ends the run (Codex and the commands it runs). Clean up also archives the workspace's Codex
+  threads (`codex unarchive` brings one back).
 
 ## Pull and merge requests
 
@@ -484,7 +512,7 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 {
   "plugins": ["angular"],
   "features": { "branchPrefixes": { "fix": "bugfix/" }, "worktrees": "../{repo}.worktrees" },
-  "agent": { "permissionMode": "default", "model": "opus" }
+  "agent": { "kind": "claude", "permissionMode": "default", "model": "opus" }
 }
 ```
 
@@ -494,8 +522,9 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 | `features.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, per kind of work; an object with some kinds changes only those. |
 | `features.branchPrefix` | `feature/` | The Feature prefix, as before kinds of work; `branchPrefixes.feature` wins over it. |
 | `features.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout (`{repo}` is its folder name). |
-| `agent.permissionMode` | `default` | The permission mode the start dialog suggests: `default`, `acceptEdits` or `auto`. |
-| `agent.model` | Claude Code's | The model agents start with. |
+| `agent.kind` | `claude` | The agent the start dialog offers first, when installed: `claude` or `codex`. |
+| `agent.permissionMode` | `default` | The permission mode the start dialog suggests for Claude Code: `default`, `acceptEdits` or `auto`. |
+| `agent.model` | Claude Code's | The model Claude Code starts with (Codex's is its own configuration's). |
 
 ### `.cprignore`
 
@@ -530,6 +559,7 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 | `CPR_FORGE` | `github` or `gitlab`, when the host name does not say (as `--forge`). |
 | `CPR_CODE` | The editor command "Open in VS Code" runs (default: VS Code's `code`, from `PATH` or its usual install places). |
 | `CPR_CLAUDE` | The Claude Code program workspaces start (default: `claude` on `PATH`). |
+| `CPR_CODEX` | The Codex program workspaces start (default: `codex` on `PATH`). |
 | `CPR_TERMINAL` | `off`: no agent's terminal in a workspace's panel; the panel keeps Talk and the reply box. |
 | `CPR_CACHE_DIR` | Where CPR keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/cpr`, else `~/Library/Caches/cpr` on macOS and `~/.cache/cpr` elsewhere. |
 

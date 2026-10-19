@@ -519,6 +519,15 @@ export interface RunningFeatures extends Running {
   commit(branch: string, file: string, text: string, subject: string): string;
   /** What the fake VS Code was asked to open, newest last. */
   opened(): string[][];
+  /** What the fake Codex was asked to run (V20a): `exec` and `exec resume`, with their folders. */
+  codexCalls(): FakeClaudeCall[];
+  /**
+   * Ends the fake Codex's turn in a feature's worktree: its last message `text`, or a failed
+   * turn in Codex's words (`fail`).
+   */
+  codexTurn(branch: string, turn: { text: string } | { fail: string }): void;
+  /** The threads the fake Codex archived. */
+  codexArchived(): string[];
 }
 
 /**
@@ -663,15 +672,72 @@ if (args[0] === '--bg' && args[1] === '--resume') {
 }
 
 /**
+ * A fake Codex (V20a), as CPR's runner runs it: `login status` says ChatGPT; `exec` and `exec
+ * resume` record their arguments and folder, print Codex 0.163's first events (a new thread is
+ * `thread-<n>`), then wait until the test ends the turn (`codex-turn-<worktree folder>.json`):
+ * the turn's message and `turn.completed`, or `turn.failed`; it exits once the test's folders
+ * are removed. `archive` records the thread.
+ */
+function fakeCodex(dir: string): string {
+  const script = join(dir, 'codex');
+  writeFileSync(
+    script,
+    `#!/usr/bin/env node
+const { appendFileSync, existsSync, readFileSync, rmSync } = require('node:fs');
+const { basename, join } = require('node:path');
+const dir = ${JSON.stringify(dir)};
+const args = process.argv.slice(2);
+const out = (event) => process.stdout.write(JSON.stringify(event) + '\\n');
+if (args[0] === 'login') {
+  process.stderr.write('Logged in using ChatGPT\\n');
+  process.exit(0);
+}
+if (args[0] === 'archive') {
+  appendFileSync(join(dir, 'codex-archived.txt'), args[1] + '\\n');
+  process.stderr.write('Archived session ' + args[1] + '.\\n');
+  process.exit(0);
+}
+if (args[0] !== 'exec') process.exit(2);
+const calls = join(dir, 'codex-calls.jsonl');
+const started = existsSync(calls) ? readFileSync(calls, 'utf8').split('\\n').filter((l) => l && !l.includes('"resume"')).length : 0;
+appendFileSync(calls, JSON.stringify({ args, cwd: process.cwd() }) + '\\n');
+const resumed = args[1] === 'resume';
+out({ type: 'thread.started', thread_id: resumed ? args[args.indexOf('--') + 1] : 'thread-' + started });
+out({ type: 'turn.started' });
+const turn = join(dir, 'codex-turn-' + basename(process.cwd()) + '.json');
+const wait = setInterval(() => {
+  // The test is over (its folders removed): the turn never ends.
+  if (!existsSync(dir)) process.exit(1);
+  if (!existsSync(turn)) return;
+  const ended = JSON.parse(readFileSync(turn, 'utf8'));
+  rmSync(turn);
+  clearInterval(wait);
+  if (ended.fail) {
+    out({ type: 'turn.failed', error: { message: ended.fail } });
+    process.exit(1);
+  }
+  out({ type: 'item.completed', item: { id: 'item_0', type: 'agent_message', text: ended.text } });
+  out({ type: 'turn.completed', usage: { input_tokens: 1, output_tokens: 1 } });
+  process.exit(0);
+}, 50);
+`,
+    { mode: 0o755 },
+  );
+  return script;
+}
+
+/**
  * `main` with the `callers` fixture's base and head, pushed to a bare `origin` (its default
  * branch), and a fake Claude Code as `CPR_CLAUDE` (`agent: false`: one that is not installed;
- * `terminal: false`: no terminals, V21).
+ * `terminal: false`: no terminals, V21); a fake Codex as `CPR_CODEX` with `codex: true` (V20a),
+ * else none, whatever is installed.
  * Served by `cpr view` without revisions; features' worktrees land beside the repository and go
  * with it.
  */
 export async function serveFeatures({
   agent = true,
   terminal = true,
+  codex = false,
 } = {}): Promise<RunningFeatures> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', '-B', 'main');
@@ -696,6 +762,7 @@ export async function serveFeatures({
   const { url, child } = await startCpr(['view'], repo, {
     CPR_CACHE_DIR: cache,
     CPR_CLAUDE: claude,
+    CPR_CODEX: codex ? fakeCodex(fake) : join(fake, 'no-codex'),
     CPR_CODE: code,
     // V21: terminals turned off, as where node-pty cannot run.
     ...(terminal ? {} : { CPR_TERMINAL: 'off' }),
@@ -787,6 +854,14 @@ export async function serveFeatures({
     distrust() {
       writeFileSync(join(fake, 'distrust'), '');
     },
+    codexCalls: () => lines('codex-calls.jsonl').map((line) => JSON.parse(line) as FakeClaudeCall),
+    codexTurn(branch, turn) {
+      writeFileSync(
+        join(fake, `codex-turn-${branch.replaceAll('/', '-')}.json`),
+        JSON.stringify(turn),
+      );
+    },
+    codexArchived: () => lines('codex-archived.txt'),
     stop() {
       child.kill('SIGINT');
       for (const dir of [repo, `${repo}.worktrees`, origin, fake, cache]) {

@@ -1,6 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import { listRefs, openRepo, type FeatureRequest, type WorkKind } from '@cpr/core';
+import {
+  commitFolders,
+  listRefs,
+  openRepo,
+  type FeatureRequest,
+  type ThreadEntry,
+  type WorkKind,
+} from '@cpr/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import {
@@ -26,6 +33,7 @@ import {
 } from '../src/features.js';
 import { reviewPlace } from '../src/reviews.js';
 import type { Terminals } from '../src/terminal.js';
+import type { Codex } from '../src/codex.js';
 
 /**
  * main: A ── B; origin/main at A, origin/HEAD naming main; origin/taken at A. The repository
@@ -546,10 +554,17 @@ describe('features', () => {
     return { terminals, opening };
   }
   const opened: string[] = [];
-  const service = (repo: TestRepo, claude: ClaudeCode | null, hook = HOOK, terminals?: Terminals) =>
+  const service = (
+    repo: TestRepo,
+    claude: ClaudeCode | null,
+    hook = HOOK,
+    terminals?: Terminals,
+    codexAgent: Codex | null = null,
+  ) =>
     openRepo(repo.root).then((git) =>
       features(git, cache, {
         claude: () => Promise.resolve(claude),
+        codex: () => Promise.resolve(codexAgent),
         now: () => NOW,
         env: { PATH: '/usr/bin' },
         hook,
@@ -576,12 +591,14 @@ describe('features', () => {
         spike: 'spike/',
       },
       worktrees: join(dirname(repo.root), `${basename(repo.root)}.worktrees`, '<branch>'),
-      agent: {
-        kind: 'claude',
-        command: '/usr/bin/claude',
-        account: 'your Pro subscription',
-        permissionMode: 'default',
-      },
+      agents: [
+        {
+          kind: 'claude',
+          command: '/usr/bin/claude',
+          account: 'your Pro subscription',
+          permissionMode: 'default',
+        },
+      ],
       maxBrief: 20000,
     });
     // The kinds as the dialog offers them (V24): each one's parts in the brief's order.
@@ -611,7 +628,7 @@ describe('features', () => {
       spike: 'A written answer: what was tried, what was measured, and a recommendation.',
     });
     const without = await (await service(repo, null)).options();
-    expect(without.agent).toBeNull();
+    expect(without.agents).toEqual([]);
   });
 
   it('starts a feature: the branch at the base in its worktree, the record, the agent there', async () => {
@@ -1353,6 +1370,269 @@ describe('features', () => {
     expect(remove).toHaveBeenCalledWith('s1');
     expect(existsSync(feature.worktree.path)).toBe(false);
     expect(repo.git('branch', '--list', 'feature/one')).toContain('feature/one');
+  });
+
+  /**
+   * A fake Codex (V20a): records its runs; a run lives until stopped or `end`ed and, as CPR's
+   * runner does, writes its thread's first entries a moment after it starts — unless `silent`,
+   * when it dies before its thread starts.
+   */
+  function fakeCodex(account = 'your ChatGPT account') {
+    const live = new Set<number>();
+    let next = 4241;
+    const fake = { silent: false };
+    const run = (
+      request: { thread: string; run: string; prompt?: string; text?: string },
+      source: string,
+    ) => {
+      const pid = ++next;
+      if (fake.silent) return Promise.resolve({ ok: true as const, pid });
+      live.add(pid);
+      setTimeout(() => {
+        mkdirSync(dirname(request.thread), { recursive: true });
+        const at = NOW.toISOString();
+        const head = { at, session: THREAD_ID, run: request.run };
+        const text = request.prompt ?? request.text;
+        writeFileSync(
+          request.thread,
+          `${JSON.stringify({ ...head, kind: 'start', source })}\n${JSON.stringify({ ...head, kind: 'prompt', text })}\n`,
+          { flag: 'a' },
+        );
+      }, 30);
+      return Promise.resolve({ ok: true as const, pid });
+    };
+    const start = vi.fn<Codex['start']>((request) => run(request, 'startup'));
+    const resume = vi.fn<Codex['resume']>((request) => run(request, 'resume'));
+    const stop = vi.fn<Codex['stop']>((pid) => {
+      live.delete(pid);
+      return Promise.resolve();
+    });
+    const archive = vi.fn<Codex['archive']>(() => Promise.resolve());
+    const codex: Codex = {
+      command: '/usr/bin/codex',
+      start,
+      resume,
+      alive: (pid) => live.has(pid),
+      stop,
+      archive,
+      account: () => Promise.resolve(account),
+    };
+    /** The run ends, as the runner records it. */
+    const end = (pid: number) => live.delete(pid);
+    return { codex, fake, start, resume, stop, archive, end, live };
+  }
+  const THREAD_ID = '01a1552c-bfcb-76b1-8112-774913d628c1';
+  /** Writes thread entries as CPR's runner would, marked with the feature's last run. */
+  const recordRun = (repo: TestRepo, branch: string, entries: Record<string, unknown>[]) => {
+    const file = join(repo.root, 'cpr', 'threads', ...`${branch}.jsonl`.split('/'));
+    const record = join(repo.root, 'cpr', 'features', ...`${branch}.json`.split('/'));
+    const { run } = (JSON.parse(readFileSync(record, 'utf8')) as FeatureFile).agent ?? {};
+    mkdirSync(dirname(file), { recursive: true });
+    for (const entry of entries) {
+      const line = { at: NOW.toISOString(), session: THREAD_ID, run, ...entry };
+      writeFileSync(file, `${JSON.stringify(line)}\n`, { flag: 'a' });
+    }
+  };
+
+  it("asks Codex nothing for a repository with no workspace, or Claude Code's alone (V20a)", async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const { codex } = fakeCodex();
+    const alive = vi.spyOn(codex, 'alive');
+    const account = vi.spyOn(codex, 'account');
+    const s = await service(repo, claude, HOOK, undefined, codex);
+    expect((await s.list()).features).toEqual([]);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    expect((await s.list()).features.map((f) => f.agent.kind)).toEqual(['claude']);
+    expect(alive).not.toHaveBeenCalled();
+    expect(account).not.toHaveBeenCalled();
+  });
+
+  it('offers the agents installed, the default first: agent.kind, else Claude Code (V20a)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const { codex } = fakeCodex();
+    const both = await (await service(repo, claude, HOOK, undefined, codex)).options();
+    expect(both.agents).toEqual([
+      expect.objectContaining({ kind: 'claude', permissionMode: 'default' }),
+      { kind: 'codex', command: '/usr/bin/codex', account: 'your ChatGPT account' },
+    ]);
+    const alone = await (await service(repo, null, HOOK, undefined, codex)).options();
+    expect(alone.agents.map((a) => a.kind)).toEqual(['codex']);
+    mkdirSync(join(repo.root, 'cpr'), { recursive: true });
+    writeFileSync(join(repo.root, 'cpr', 'config.json'), '{ "agent": { "kind": "codex" } }\n');
+    const configured = await (await service(repo, claude, HOOK, undefined, codex)).options();
+    expect(configured.agents.map((a) => a.kind)).toEqual(['codex', 'claude']);
+    expect(readFeatureConfig(repo.root).agent).toBe('codex');
+  });
+
+  it("starts Codex in its worktree through the runner, its branch's git folders writable (V20a)", async () => {
+    const { repo, shas } = fresh();
+    const { claude, start: claudeStart } = fakeClaude();
+    const { codex, start } = fakeCodex();
+    const s = await service(repo, claude, HOOK, undefined, codex);
+    const { feature, prompt } = await s.start({
+      kind: 'feature',
+      title: 'Export as CSV',
+      parts: { goal: 'One row per comment.' },
+      branch: 'feature/csv',
+      planFirst: true,
+      agent: 'codex',
+    });
+    const folder = worktreeFolder(repo.root, 'feature/csv');
+    expect(claudeStart).not.toHaveBeenCalled();
+    expect(start).toHaveBeenCalledWith({
+      cwd: folder,
+      thread: join(repo.root, 'cpr', 'threads', 'feature', 'csv.jsonl'),
+      run: expect.stringMatching(/^[0-9a-f-]{36}$/) as string,
+      writable: await commitFolders(folder, 'feature/csv'),
+      prompt,
+    });
+    expect(prompt).toContain('One row per comment.');
+    expect(prompt).toContain(join(repo.root, 'cpr', 'AGENTS.md'));
+    // Answered once its thread started: its ID is known, CPR's prompt in the thread.
+    expect(feature.agent).toEqual({ state: 'working', kind: 'codex', id: THREAD_ID });
+    expect(feature.base).toBe(shas.B);
+    const saved = JSON.parse(
+      readFileSync(join(repo.root, 'cpr', 'features', 'feature', 'csv.json'), 'utf8'),
+    ) as FeatureFile;
+    expect(saved.agent).toEqual({
+      kind: 'codex',
+      started: NOW.toISOString(),
+      run: start.mock.lastCall?.[0].run,
+      pid: 4242,
+    });
+    // Codex's words in the thread: a turn ended with a plan.
+    recordRun(repo, 'feature/csv', [
+      { kind: 'report', text: '1. Plan.' },
+      { kind: 'end', reason: 'completed' },
+    ]);
+    const [listed] = (await s.list()).features;
+    expect(listed?.agent).toEqual({ state: 'plan-ready', kind: 'codex', id: THREAD_ID });
+    const thread = await s.thread('feature/csv');
+    expect(thread.recorded).toBe(true);
+    expect(thread.entries.map((e: ThreadEntry) => e.kind)).toEqual([
+      'start',
+      'prompt',
+      'report',
+      'end',
+    ]);
+  });
+
+  it('keeps a workspace whose Codex is not logged in, and refuses what Codex does not take (V20a)', async () => {
+    const { repo } = fresh();
+    const { codex, start } = fakeCodex('not logged in');
+    const s = await service(repo, null, HOOK, undefined, codex);
+    const { feature } = await s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true });
+    expect(start).not.toHaveBeenCalled();
+    expect(feature.agent).toEqual({
+      state: 'not-started',
+      kind: 'codex',
+      error: 'Codex is not logged in: run `codex login`, then start the agent.',
+    });
+    expect(feature.worktree.exists).toBe(true);
+    await expect(
+      s.start({
+        brief: 'Do it',
+        branch: 'feature/y',
+        planFirst: true,
+        agent: 'codex',
+        permissionMode: 'auto',
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringMatching(/Claude Code/) as string,
+    });
+    await expect(
+      s.start({ brief: 'Do it', branch: 'feature/y', planFirst: true, agent: 'claude' }),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(/Claude Code is not installed/) as string,
+    });
+    await expect(
+      s.start({ brief: 'Do it', branch: 'feature/y', planFirst: true, agent: 'gemini' as never }),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(repo.git('branch', '--list', 'feature/y')).toBe('');
+    await expect(s.terminal({ branch: 'feature/x', cols: 80, rows: 24 })).rejects.toMatchObject({
+      status: 409,
+    });
+  });
+
+  it('replies to Codex by resuming its thread; a run that lives is stopped first, when asked (V20a)', async () => {
+    const { repo } = fresh();
+    const { codex, fake, resume, stop } = fakeCodex();
+    const s = await service(repo, null, HOOK, undefined, codex);
+    // A run that dies before its thread starts: a start does not wait for it, and there is
+    // nothing to continue.
+    fake.silent = true;
+    const started = Date.now();
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(feature.agent).toEqual({
+      state: 'failed',
+      kind: 'codex',
+      error: 'Codex ended without a word',
+    });
+    await expect(s.reply({ branch: 'feature/one', text: 'Go' })).rejects.toMatchObject({
+      status: 409,
+    });
+    fake.silent = false;
+    recordRun(repo, 'feature/one', [
+      { kind: 'start', source: 'startup' },
+      { kind: 'prompt', text: 'P' },
+      { kind: 'report', text: 'Plan' },
+      { kind: 'end', reason: 'completed' },
+    ]);
+    const replied = await s.reply({ branch: 'feature/one', text: 'OK, go ahead.' });
+    expect(stop).not.toHaveBeenCalled();
+    expect(resume).toHaveBeenCalledWith({
+      cwd: feature.worktree.path,
+      thread: join(repo.root, 'cpr', 'threads', 'feature', 'one.jsonl'),
+      run: expect.stringMatching(/^[0-9a-f-]{36}$/) as string,
+      writable: await commitFolders(feature.worktree.path, 'feature/one'),
+      sessionId: THREAD_ID,
+      text: 'OK, go ahead.',
+    });
+    // Answered once the run took the message: it is in the thread already.
+    expect(replied.feature.agent).toEqual({ state: 'working', kind: 'codex', id: THREAD_ID });
+    expect((await s.thread('feature/one')).entries.at(-1)).toMatchObject({
+      kind: 'prompt',
+      text: 'OK, go ahead.',
+    });
+    // Working: only when asked to stop it.
+    await expect(s.reply({ branch: 'feature/one', text: 'Wait' })).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(/sending stops its turn/) as string,
+    });
+    await s.reply({ branch: 'feature/one', text: 'Wait', stop: true });
+    expect(stop).toHaveBeenCalledWith(4243);
+    expect(resume).toHaveBeenLastCalledWith(expect.objectContaining({ text: 'Wait' }));
+  });
+
+  it('stops Codex: its run, and an end recorded when its runner left none (V20a)', async () => {
+    const { repo } = fresh();
+    const { codex, stop } = fakeCodex();
+    const s = await service(repo, null, HOOK, undefined, codex);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { feature } = await s.stopAgent('feature/one');
+    expect(stop).toHaveBeenCalledWith(4242);
+    expect(feature.agent).toEqual({ state: 'stopped', kind: 'codex', id: THREAD_ID });
+    await expect(s.stopAgent('feature/one')).rejects.toMatchObject({ status: 409 });
+    // Started again: a new run, with CPR's prompt.
+    const again = await s.startAgent('feature/one');
+    expect(again.feature.agent.state).toBe('working');
+  });
+
+  it('cleans up a Codex workspace: a live run stopped, its threads archived, its worktree removed (V20a)', async () => {
+    const { repo } = fresh();
+    const { codex, stop, archive } = fakeCodex();
+    const s = await service(repo, null, HOOK, undefined, codex);
+    const { feature } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    await s.clean({ branch: 'feature/one', unmerged: true });
+    expect(stop).toHaveBeenCalledWith(4242);
+    expect(archive).toHaveBeenCalledWith(THREAD_ID);
+    expect(archive).toHaveBeenCalledTimes(1);
+    expect(existsSync(feature.worktree.path)).toBe(false);
   });
 });
 

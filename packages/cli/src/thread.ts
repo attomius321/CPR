@@ -152,6 +152,13 @@ export async function recordEvent(cpr: string, input: unknown, at: string): Prom
   return path;
 }
 
+/** Appends an entry CPR writes itself to a feature's thread: a Codex run it stopped (V20a). */
+export async function appendThread(cpr: string, branch: string, entry: ThreadEntry): Promise<void> {
+  const path = threadPath(cpr, branch);
+  await mkdir(dirname(path), { recursive: true });
+  await appendFile(path, `${JSON.stringify(entry)}\n`);
+}
+
 /** The hook's work (`agent-hook.ts`): never throws, whatever it is given; decides nothing. */
 export async function hookMain(stdin: string, cpr: string | undefined, at: string): Promise<void> {
   if (!cpr) return;

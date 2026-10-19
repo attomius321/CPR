@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   addWorktree,
   branchNameProblem,
+  commitFolders,
   deleteMergedBranch,
   listRefs,
   listWorktrees,
@@ -203,5 +204,40 @@ describe('removeWorktree and deleteMergedBranch', () => {
     expect(refused.message).toMatch(/not fully merged/);
     expect(repo.git('branch', '--list', 'ahead')).toContain('ahead');
     await expect(deleteMergedBranch(git, '-D')).rejects.toBeInstanceOf(WorktreeRefused);
+  });
+});
+
+describe('commitFolders (V20a)', () => {
+  it("names what a commit on a worktree's branch writes: its git folder, objects, its ref's folders", async () => {
+    const { repo, shas } = fresh();
+    const git = await openRepo(repo.root);
+    const folder = join(elsewhere(), 'feature-csv');
+    await addWorktree(git, { folder, branch: 'feature/csv', base: shas.A });
+    const common = realpathSync(join(repo.root, '.git'));
+    expect(await commitFolders(folder, 'feature/csv')).toEqual([
+      join(common, 'worktrees', 'feature-csv'),
+      join(common, 'objects'),
+      join(common, 'refs', 'heads', 'feature'),
+      join(common, 'logs', 'refs', 'heads', 'feature'),
+    ]);
+    // A branch with no folder: the folder of every branch's ref; a reflog that is not kept, none.
+    const flat = join(elsewhere(), 'flat');
+    repo.git('config', 'core.logAllRefUpdates', 'false');
+    await addWorktree(git, { folder: flat, branch: 'flat', base: shas.A });
+    rmSync(join(common, 'logs', 'refs', 'heads', 'flat'), { force: true });
+    rmSync(join(common, 'logs', 'refs', 'heads', 'feature'), { recursive: true, force: true });
+    rmSync(join(common, 'logs', 'refs', 'heads', 'main'), { force: true });
+    expect(await commitFolders(flat, 'flat')).toEqual([
+      join(common, 'worktrees', 'flat'),
+      join(common, 'objects'),
+      join(common, 'refs', 'heads'),
+      join(common, 'logs', 'refs', 'heads'),
+    ]);
+    rmSync(join(common, 'logs', 'refs', 'heads'), { recursive: true, force: true });
+    expect(await commitFolders(flat, 'flat')).toEqual([
+      join(common, 'worktrees', 'flat'),
+      join(common, 'objects'),
+      join(common, 'refs', 'heads'),
+    ]);
   });
 });

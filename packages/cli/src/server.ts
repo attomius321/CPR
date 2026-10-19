@@ -17,6 +17,7 @@ import {
   type FeatureRequest,
   type FeatureTerminalRequest,
   type Graph,
+  type AgentKind,
   type PermissionMode,
   type HistoryRefs,
   type HistoryScope,
@@ -951,7 +952,7 @@ function json(res: ServerResponse, status: number, value: unknown): void {
 }
 
 /**
- * `{ kind, title, parts, branch, planFirst, base?, permissionMode? }` (V24), or `brief` instead
+ * `{ kind, title, parts, branch, planFirst, base?, agent?, permissionMode? }` (V24, V20a), or `brief` instead
  * of the kind, title and parts, each of its type; what they say is the features' to check (V18).
  */
 function parseFeatureRequest(text: string): FeatureRequest {
@@ -959,7 +960,7 @@ function parseFeatureRequest(text: string): FeatureRequest {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('expected { kind, title, parts, branch, planFirst }');
   }
-  const { brief, kind, title, parts, branch, planFirst, base, permissionMode } = value;
+  const { brief, kind, title, parts, branch, planFirst, base, agent, permissionMode } = value;
   if (brief === undefined && kind === undefined) {
     throw new Error('kind: feature, fix, refactor, chore or spike');
   }
@@ -977,6 +978,7 @@ function parseFeatureRequest(text: string): FeatureRequest {
   if (typeof branch !== 'string') throw new Error("branch: the new branch's name");
   if (typeof planFirst !== 'boolean') throw new Error('planFirst: true or false');
   if (base !== undefined && typeof base !== 'string') throw new Error('base: a full SHA');
+  if (agent !== undefined && typeof agent !== 'string') throw new Error('agent: claude or codex');
   if (permissionMode !== undefined && typeof permissionMode !== 'string') {
     throw new Error('permissionMode: default, acceptEdits or auto');
   }
@@ -988,6 +990,7 @@ function parseFeatureRequest(text: string): FeatureRequest {
     branch,
     planFirst,
     ...(base === undefined ? {} : { base }),
+    ...(agent === undefined ? {} : { agent: agent as AgentKind }),
     ...(permissionMode === undefined ? {} : { permissionMode: permissionMode as PermissionMode }),
   };
 }

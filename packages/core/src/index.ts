@@ -151,9 +151,11 @@ export {
   type VerdictEvent,
 } from './git/branches.js';
 export {
+  AGENT_KINDS,
   PERMISSION_MODES,
   WORK_KINDS,
   type AgentKind,
+  type AgentOption,
   type BriefPart,
   type BriefParts,
   type CheckGuess,
@@ -178,6 +180,7 @@ export {
 export {
   addWorktree,
   branchNameProblem,
+  commitFolders,
   deleteMergedBranch,
   listWorktrees,
   mainWorktree,

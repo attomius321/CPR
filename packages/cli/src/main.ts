@@ -49,6 +49,7 @@ import { terminals as agentTerminals } from './terminal.js';
 import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
 import { branchReviews } from './reviews.js';
+import { codex, findCodex, type Codex } from './codex.js';
 import {
   claudeCode,
   features,
@@ -542,6 +543,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       reviews: branchReviews(repo, cacheDir),
       features: features(repo, cacheDir, {
         claude: agentFinder(repo.root, ctx.env),
+        codex: codexFinder(repo.root, ctx.env),
         env: ctx.env,
         openFolder: vsCodeFolder(ctx.env),
         terminals,
@@ -589,6 +591,21 @@ function agentFinder(
     if (!command) return null;
     const { model } = readFeatureConfig(root);
     found = claudeCode(command, { cwd: root, ...(model ? { model } : {}) });
+    return found;
+  };
+}
+
+/** Codex for features (V20a), found as Claude Code is. */
+function codexFinder(
+  root: string,
+  env: Readonly<Record<string, string | undefined>>,
+): () => Promise<Codex | null> {
+  let found: Codex | null = null;
+  return async () => {
+    if (found) return found;
+    const command = await findCodex(env);
+    if (!command) return null;
+    found = codex(command, { cwd: root });
     return found;
   };
 }
