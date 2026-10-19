@@ -449,6 +449,31 @@ describe('merging, checking and landing (V26a)', () => {
   });
 });
 
+describe('the config a landing reads (V26a)', () => {
+  it('decides the push before landing: not from the config file the landing brings', async () => {
+    const { repo, shas } = setup();
+    const remote = tempDir();
+    folders.push(remote);
+    repo.git('init', '--quiet', '--bare', remote);
+    repo.git('remote', 'add', 'origin', remote);
+    repo.git('push', '--quiet', '-u', 'origin', 'main');
+    // The branch commits a config that pushes; the checkout has none.
+    repo.git('switch', '--quiet', 'topic');
+    repo.write({ 'cpr/config.json': JSON.stringify({ merge: { checks: 'ok', push: true } }) });
+    const T2 = repo.commit('T2: push merges');
+    repo.git('switch', '--quiet', 'main');
+    review(repo, 'topic', { head: T2, into: 'main' });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const landed = await m.land(id);
+    expect(landed.state).toBe('landed');
+    expect(existsSync(join(repo.root, 'cpr', 'config.json'))).toBe(true);
+    expect(landed.pushed).toBeUndefined();
+    expect(repo.git('--git-dir', remote, 'rev-parse', 'main')).toBe(shas.M);
+  });
+});
+
 describe('into which branch (V26a)', () => {
   it('preselects the workspace’s from, else the verdict’s into, else the default branch', async () => {
     const { repo, shas } = setup();

@@ -3220,3 +3220,23 @@ tells an agent to merge an approval.
 - **`git merge --ff-only` in the checkout that has the branch** refuses with "Your local changes
   to the following files would be overwritten by merge", and leaves the branch and the files
   as they were. That is the landing's guard, tested with a change to a file the merge brings.
+- **The config was read after landing**, from the checkout the landing had just changed. In the
+  real run below, the branch brought this repository's `cpr/config.json` (`merge.push: true`)
+  into a clone whose own config said `false`, and CPR pushed the clone's `main` to its `origin`,
+  this checkout. Local `main` moved to the test merge; it was put back with `update-ref` from
+  that value (GitHub's `main` was never pushed to). Now the push is decided before landing, with
+  a test: a landing that brings a pushing config does not push.
+
+**Verification**: tests first — 22 merger tests red (no module), then 4 more (`cpr merge` ×2, the
+install before a guessed package script, the push decided before landing), each red first; the
+routes with a fake merger; the viewer's row text and actions (3). 831 unit tests, lint,
+typecheck, build; 115 e2e (Merge and Land from a branch review and from a workspace, a conflict
+named and removed; the V17 review texts updated). `cpr diff` on this repository's last 5 merges,
+`main`'s build and this one: the same graph JSON (45–731 nodes) but for `stats.durationMs`.
+Real use, a clone of this repository merging this branch into its `main` with
+`merge.checks` (install, check, build, e2e): merged on `d17fc40`, checked in 188 s, then the
+landing was refused ("untracked working tree files would be overwritten by merge:
+cpr/config.json") with `main` and the files as they were; with that file removed, `--land`
+fast-forwarded the checkout in 278 ms, its unrelated `.nvmrc` change kept. Not verified: the
+merge of a real workspace from a `cpr view` with a real agent; V26b and V26c.
+

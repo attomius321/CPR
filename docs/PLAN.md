@@ -6799,6 +6799,12 @@ What differs from the plan, and why:
 - **This repository's `cpr/config.json`** sets `merge.checks` (install, check, build, e2e) and
   `merge.push: true` (decision 145).
 
+**V26a results**: 831 unit tests, 115 e2e. `cpr diff` unchanged on the last 5 merges. A real
+merge of this branch in a clone of this repository: merged and checked (install, check, build,
+e2e) in 188 s; the landing refused by an untracked file the merge brings, with nothing changed;
+landed in 278 ms once it was removed, a local change kept. Found that way: `merge.push` was read
+after landing, from the config the landing brought; it is read before now.
+
 **Not in V26 (later)**: several merges at once (each on its own worktree), squash or rebase merges
 (`merge.style`), resolving submodule pointers, lockfiles regenerated instead of merged (none
 conflicted in the merges measured).

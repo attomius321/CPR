@@ -364,6 +364,8 @@ export function merger(
         message: `${into} moved since the merge: merging again on its tip`,
       });
     }
+    // Read before landing: the landing may bring another config file into `root`.
+    const { push: pushing } = readMergeConfig(root);
     const holder = (await listWorktrees(repo)).find((w) => w.branch === into && !w.prunable);
     try {
       await fastForwardBranch(repo, {
@@ -387,7 +389,7 @@ export function merger(
       landed: now().toISOString(),
       message: undefined,
     });
-    if (!readMergeConfig(root).push) return landed;
+    if (!pushing) return landed;
     return set(id, { pushed: await push(into, merge) });
   }
 
