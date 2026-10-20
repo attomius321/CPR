@@ -25,6 +25,7 @@ const dialog = (page: Page) => page.getByRole('dialog', { name: 'Start a workspa
 const panel = (page: Page) => page.getByRole('region', { name: `Workspace ${BRANCH}` });
 const workspaceRow = (page: Page) => page.locator(`.workspace-row[data-branch="${BRANCH}"]`);
 const box = (page: Page) => panel(page).getByRole('textbox', { name: 'Reply to the agent' });
+const screen = (page: Page) => panel(page).locator('.agent-terminal .xterm-rows');
 
 /** Starts a workspace with Codex (the only agent installed), from the page open. */
 const start = async (page: Page) => {
@@ -35,10 +36,10 @@ const start = async (page: Page) => {
   await expect(dialog(page)).toBeHidden();
 };
 
-test('Codex on its app server: its thread from there, a turn typed in its terminal, an approval it waits on, a message that joins its turn', async ({
+test('Codex on its app server, without terminals: its thread from there, a turn typed in your terminal, an approval it waits on, a message that joins its turn', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces({ agent: false, codex: true, appServer: true });
+  cpr = await serveWorkspaces({ agent: false, codex: true, appServer: true, terminal: false });
   const server = cpr.codexServer!;
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto(cpr.url);
@@ -146,4 +147,63 @@ test('Codex on its app server: Stop interrupts its turn, Start again makes a new
   expect(server.threads.map((t) => t.archived)).toEqual([true, true]);
   expect(cpr.codexArchived()).toEqual([]);
   expect(existsSync(cpr.folder(BRANCH))).toBe(false);
+});
+
+test("Codex's own terminal in its panel: the trust it asks for, a turn typed there followed, Stop ending its commands (V27b)", async ({
+  page,
+}) => {
+  cpr = await serveWorkspaces({ agent: false, codex: true, appServer: true });
+  const server = cpr.codexServer!;
+  await page.goto(cpr.url);
+  await start(page);
+  const here = panel(page);
+  const folder = cpr.folder(BRANCH);
+  const id = server.threads[0]!.id;
+
+  // The panel opens on Codex's terminal, its thread joined; no box, no Talk.
+  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(box(page)).toBeHidden();
+  await expect(here.getByRole('button', { name: 'Talk' })).toHaveCount(0);
+  await expect(here).toContainText("? in an empty prompt lists Codex's keys");
+  // Codex asks to trust the worktree first: the panel says so, and the answer is the person's.
+  await expect(screen(page)).toContainText('Trust this folder?', POLL);
+  await expect(here.locator('.terminal-trust')).toContainText(
+    'Codex asks first whether you trust this worktree',
+  );
+  expect(cpr.codexResumes()).toEqual([
+    { args: ['resume', id, '--remote', server.address, '-C', folder], cwd: realpathSync(folder) },
+  ]);
+  await page.keyboard.press('Enter');
+  await expect(screen(page)).toContainText(`Fake Codex · ${id}`, POLL);
+  expect(server.trusted[realpathSync(folder)]).toBe('trusted');
+
+  // Its plan, then a turn typed in the terminal: the row follows while the terminal is open,
+  // without the page losing focus.
+  server.reply(id, 'Plan: add half(a).');
+  await expect(workspaceRow(page)).toContainText('Plan ready', POLL);
+  await page.keyboard.type('Go ahead.');
+  await page.keyboard.press('Enter');
+  await expect(screen(page)).toContainText('sent: Go ahead.', POLL);
+  await expect(workspaceRow(page)).toContainText('Working', POLL);
+
+  // The thread, read only, has it; leaving the terminal hangs it up, the thread goes on.
+  await here.getByRole('tab', { name: 'Thread' }).click();
+  await expect(here.locator('.thread-you').last()).toContainText('Go ahead.', POLL);
+  await expect(box(page)).toBeHidden();
+  await expect.poll(() => cpr.codexHangups()).toEqual([id]);
+  expect(server.thread(id).turns.at(-1)?.status).toBe('inProgress');
+
+  // Opened again: trusted now, nothing to say first.
+  await here.getByRole('button', { name: 'open its terminal' }).click();
+  await expect(screen(page)).toContainText(`Fake Codex · ${id}`, POLL);
+  await expect(here.locator('.terminal-trust')).toHaveCount(0);
+
+  // Stop ends the turn and the command it left running.
+  server.command(id, 'pnpm dev');
+  await here.getByRole('button', { name: 'Stop the agent' }).click();
+  await expect(workspaceRow(page)).toContainText('Stopped', POLL);
+  expect(server.thread(id).terminals).toEqual([]);
 });

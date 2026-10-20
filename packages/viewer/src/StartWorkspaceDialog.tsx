@@ -379,7 +379,7 @@ export function StartWorkspaceDialog({
                 </select>
               </label>
             ) : (
-              <span title="Codex's workspace-write sandbox: it writes in its worktree and may commit on its branch; nothing else in git">
+              <span title="Codex's workspace-write sandbox: it writes in its worktree and may commit on its branch; nothing else in git. Codex then marks this repository trusted in your Codex configuration, as it does for any writable sandbox.">
                 sandbox: its worktree and branch
               </span>
             )}

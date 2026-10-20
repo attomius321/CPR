@@ -581,6 +581,9 @@ export interface RunningWorkspaces extends Running {
   codexArchived(): string[];
   /** With `appServer` (V27a): Codex's app server, faked, which `daemon start` names. */
   codexServer: FakeAppServer | null;
+  /** Codex's TUI joined to it (V27b): each `resume … --remote` with its folder, and hang-ups. */
+  codexResumes(): FakeClaudeCall[];
+  codexHangups(): string[];
 }
 
 /**
@@ -731,6 +734,10 @@ if (args[0] === '--bg' && args[1] === '--resume') {
  * the turn's message and `turn.completed`, or `turn.failed`; it exits once the test's folders
  * are removed. `archive` records the thread. `app-server daemon start` names the socket in
  * `app-server-socket` as Codex 0.163 does (V27a), and fails without one, as a Codex with no daemon.
+ * `resume <thread> --remote <address> -C <folder>` is its TUI joined to that server (V27b): it
+ * asks to trust a folder Codex's configuration does not name, as Codex does, and gives each line
+ * typed to the thread through CPR's own client (built); a hang-up or Ctrl+C on an empty line ends
+ * it, the thread going on.
  */
 function fakeCodex(dir: string): string {
   const script = join(dir, 'codex');
@@ -756,6 +763,65 @@ if (args.join(' ') === 'app-server daemon start') {
   if (!existsSync(socket)) process.exit(2);
   process.stdout.write(readFileSync(socket, 'utf8'));
   process.exit(0);
+}
+if (args[0] === 'resume' && args[2] === '--remote') {
+  const [, thread, , address] = args;
+  appendFileSync(join(dir, 'codex-resumes.jsonl'), JSON.stringify({ args, cwd: process.cwd() }) + '\\n');
+  const out = (text) => process.stdout.write(text);
+  process.on('SIGHUP', () => {
+    appendFileSync(join(dir, 'codex-hangups.txt'), thread + '\\n');
+    process.exit(0);
+  });
+  setInterval(() => existsSync(dir) || process.exit(1), 200);
+  (async () => {
+    const { connectAppServer, codexServer } = await import(${JSON.stringify(join(root, 'packages/cli/dist/app-server.js'))});
+    const server = codexServer(address);
+    const ask = async (method, params) => {
+      const connection = await connectAppServer(address);
+      try {
+        return await connection.request(method, params);
+      } finally {
+        connection.close();
+      }
+    };
+    const folder = process.cwd();
+    const projects = (await ask('config/read', { cwd: folder })).config.projects || {};
+    let trusting = !projects[folder];
+    if (trusting) out('Trust this folder? Your trust decision will be saved.\\r\\n> 1. Trust and continue\\r\\n');
+    else out('Fake Codex · ' + thread + '\\r\\n> ');
+    let line = '';
+    process.stdin.setRawMode(true);
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', async (keys) => {
+      for (const key of keys) {
+        if (trusting) {
+          if (key !== '\\r') continue;
+          trusting = false;
+          await ask('fake/trust', { folder });
+          out('Fake Codex · ' + thread + '\\r\\n> ');
+        } else if (key === '\\x03') {
+          if (line === '') {
+            out('\\r\\nDisconnected from this task. Any running work continues.\\r\\n');
+            process.exit(0);
+          }
+          line = '';
+          out('\\r\\n> ');
+        } else if (key === '\\r') {
+          const text = line;
+          line = '';
+          await server.send({ thread, text });
+          out('\\r\\nsent: ' + text + '\\r\\n> ');
+        } else {
+          line += key;
+          out(key);
+        }
+      }
+    });
+  })().catch((error) => {
+    out('fake codex: ' + error.message + '\\r\\n');
+    process.exit(1);
+  });
+  return;
 }
 if (args[0] !== 'exec') process.exit(2);
 const calls = join(dir, 'codex-calls.jsonl');
@@ -928,6 +994,9 @@ export async function serveWorkspaces({
     },
     codexArchived: () => lines('codex-archived.txt'),
     codexServer,
+    codexResumes: () =>
+      lines('codex-resumes.jsonl').map((line) => JSON.parse(line) as FakeClaudeCall),
+    codexHangups: () => lines('codex-hangups.txt'),
     stop() {
       child.kill('SIGINT');
       void codexServer?.close();

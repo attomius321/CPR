@@ -343,7 +343,8 @@ questions, Esc, slash commands), so you answer it without leaving CPR.
   agent's input, for you to send with Enter.
 - ← in an empty prompt opens Claude Code's list of all your agents, where you can switch away
   from this one.
-- At most four terminals are open at once (each is a Claude Code process, about 140 MB).
+- At most four terminals are open at once (each is a Claude Code process, about 140 MB, or a
+  Codex one, about 315 MB).
 
 The **Thread** tab is the workspace's history, read only (`&thread` in the address opens on it):
 the agent's plan and reports (drawn from their Markdown), your messages, and what it waited on
@@ -383,16 +384,23 @@ configuration's (`~/.codex/config.toml`).
   what a commit on its own branch needs: the worktree's git folder, git's objects, and the folders
   of the branch's ref and its log. Other branches, git's config and hooks stay read-only. Network
   access is whatever your Codex configuration allows. CPR never passes Codex's bypass flags.
+  Codex marks the repository trusted in your Codex configuration (`~/.codex/config.toml`) when a
+  workspace starts, as it does for any writable sandbox; CPR cannot start it otherwise.
+- **Its terminal:** the panel opens on Codex's own terminal, joined to the workspace's thread
+  (`codex resume <thread> --remote unix://<socket> -C <worktree>`, run by `cpr view`), as Claude
+  Code's is: what you type there is in the thread, its approval prompts are answered there, and
+  leaving the tab only hangs up that client. The first time in a worktree, Codex asks whether you
+  trust it, and the panel says so first: the answer is yours, saved in your Codex configuration.
+  Ctrl+C on an empty prompt leaves; `?` lists Codex's keys.
 - **Approvals:** Codex asks before it runs what its sandbox refuses (`on-request`). The workspace
-  then says "Waiting: approval prompt", and its thread shows what Codex said before asking, if
-  it said anything. You answer in
-  Codex's own terminal: **Talk** copies `codex resume <thread> --remote unix://<socket> -C
-  <worktree>`, which joins the same thread. The first time in a worktree, Codex asks whether you
-  trust the folder; that answer goes into your Codex configuration, so CPR leaves it to you.
-- **The reply box:** a message while Codex works joins its turn (Send, nothing stopped); once the
-  turn ended, it starts the next. To a turn waiting on an approval, "Stop and send" asks first.
-- Stop interrupts its turn. Start starts a new thread. Clean up also archives the workspace's
-  threads (`codex unarchive` brings one back).
+  then says "Waiting: approval prompt", and its thread shows what Codex said before asking, if it
+  said anything. You answer in its terminal.
+- **Without terminals** (no `node-pty`, or `CPR_TERMINAL=off`), the panel keeps the reply box: a
+  message while Codex works joins its turn (Send, nothing stopped); once the turn ended, it starts
+  the next; to a turn waiting on an approval, "Stop and send" asks first. Talk copies the command
+  above, for a terminal of your own.
+- Stop interrupts its turn and ends the commands it left running. Start starts a new thread.
+  Clean up also archives the workspace's threads (`codex unarchive` brings one back).
 - **Without an app server** (an older Codex, or a daemon that does not start), CPR runs `codex
   exec --json` in the worktree through a small runner of its own, which writes what Codex does
   into `cpr/threads/`. Send then continues the thread with `codex exec resume`, "Stop and send"
@@ -612,7 +620,7 @@ its packages and the folders with their own `tsconfig.json` are the projects.
   an adapter of their own.
 - Static analysis: no runtime or data-flow analysis.
 - Workspaces start Claude Code or Codex. Any configured agent command is planned (V20c in the
-  [plan](docs/PLAN.md)). There is no Terminal tab for Codex yet (V27b): Talk copies its command.
+  [plan](docs/PLAN.md)).
 
 ## Development
 

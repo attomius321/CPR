@@ -9,6 +9,7 @@ import type {
   WorkspaceSummary,
   WorkspaceThread,
   PermissionMode,
+  TerminalAvailability,
   ThreadEntry,
 } from '@cpr/core';
 
@@ -29,6 +30,34 @@ export function talkCommand(agent: WorkspaceAgentState, worktree: string): strin
   if (agent.kind === 'claude') return `claude attach ${agent.id}`;
   const remote = agent.remote ? ` --remote ${shellWord(agent.remote)}` : '';
   return `codex resume ${agent.id}${remote} -C ${shellWord(worktree)}`;
+}
+
+/**
+ * Whether a workspace's panel opens its agent's terminal, where terminals can run: Claude Code's
+ * session (V21), or Codex's thread on its app server (V27b). Codex through CPR's runner (V20a)
+ * has none: its turns there would not reach the thread.
+ */
+export function opensTerminal(
+  agent: WorkspaceAgentState,
+  terminal: TerminalAvailability | undefined,
+): boolean {
+  if (terminal?.available !== true || agent.id === undefined) return false;
+  return agent.kind === 'claude' || (agent.kind === 'codex' && agent.remote !== undefined);
+}
+
+/**
+ * Whether opening the terminal asks first: `claude attach` restarts a stopped session (V21);
+ * joining a stopped Codex thread starts nothing.
+ */
+export function asksBeforeOpening(agent: WorkspaceAgentState): boolean {
+  return agent.kind === 'claude' && agent.state === 'stopped';
+}
+
+/** The line under an agent's terminal: its way to its other sessions, or to its keys. */
+export function terminalHint(agent: WorkspaceAgentState): string {
+  return agent.kind === 'codex'
+    ? "? in an empty prompt lists Codex's keys"
+    : '← in an empty prompt lists all your agents';
 }
 
 /** The permission modes the dialog offers, as it names them. */
