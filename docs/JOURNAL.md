@@ -3949,3 +3949,47 @@ session's temp folder.
 **Decided with the person**: Electron, not Tauri ("Should we go with Chromium? is it better?",
 then "Yes, plan go with Electron"); CPR's own title bar after Orca's, with the OS's buttons on
 CPR's colour. Plan: PLAN.md, N1.
+
+## N1 — CPR's own window: Electron, the launcher, Orca's title bar (2026-10-20, branch `feature/tauri-integration`)
+
+N1a: `cpr view` and `cpr pr` open the viewer in an Electron app (`packages/desktop`) when it is
+set up (`pnpm app:setup`), else the browser. N1b: `cpr app install` puts CPR in the desktop's apps;
+opened there, the app starts the repository's `cpr view` itself, and a start page opens
+repositories. N1c: CPR's own title bar after Orca's, with the system's buttons on CPR's colour.
+
+**Learned**:
+- **pnpm adds exclusions on its own.** Electron 44.9.2, out that day, was refused by the
+  repository's minimum release age, and `pnpm install` added `minimumReleaseAgeExclude:
+  electron@44.9.2` to `pnpm-workspace.yaml` to get past it. Removed; 44.9.0 pinned (decision 203).
+  Read the workspace file's diff after adding a dependency.
+- **Electron cancels a close in silence.** A page whose `beforeunload` asks keeps the window open
+  and nothing is shown: the app must answer `will-prevent-unload` itself (the system's dialog).
+- **Playwright and Electron's events.** Keys typed by Playwright (the DevTools protocol) never
+  reach `before-input-event`, where the app takes zoom: `webContents.sendInputEvent` does. A page's
+  `beforeunload` reaches Playwright too, which, with no listener, dismisses a dialog Electron never
+  shows and fails on "No dialog is showing".
+- **A sandboxed preload is CommonJS and loads nothing of its own**: one `.cts` file, with
+  `import x = require('electron')` (`verbatimModuleSyntax`). Logic it shares with the main process
+  (which keys) is duplicated in a few lines rather than bundled.
+- **Ask the main process for the screen.** Under Xvfb, `Gdk.pixbuf_get_from_window` gave a white
+  image of Electron's window as it did of WebKit's; Electron's `desktopCapturer` gives the screen,
+  the system's buttons included (Playwright's screenshots have the page only).
+- **The title in the shell's render re-rendered the whole shell** at each read of the workspaces;
+  moved to a component of its own. Not the cause of the shell's keys test failing in full runs: it
+  fails on `main` too under load (4 of 12 runs at 6 workers; 3 of 12 on the branch) — a card's
+  group changes as the fake agent moves on, and the focused card is mounted anew. Not changed
+  here: its own `fix/` branch.
+- **`app.ts` beside `App.tsx`** would be one file to macOS's file systems in an import of
+  `./App.js`: the viewer's side of the app is `desktop.ts`.
+- **A launcher reads no shell profile**: node from nvm, and `claude`, `codex`, `code` on the
+  `PATH`, are recorded by `cpr app install` and again by each `cpr view` that opens the window.
+
+**Verification**: 33 desktop, 16 CLI and 7 viewer unit tests, red before; `pnpm check` 1,047. 16
+e2e on the real app under Xvfb (7 from `cpr view`, 5 from the launcher, 4 of the title bar); the
+full suite 154 of 156 (the shell's keys test, failing on `main` too under load; a Codex spec's
+lazily loaded chunk lost to its server's stop). From the launcher to History's first paint
+383–493 ms (5 runs); on the 445-symbol diff `j` 32–33 ms, Chromium's; memory 771–893 MB summed over
+the app's processes. Screenshots of History, a workspace, Settings in light and a diff, with the
+system's buttons, taken with `desktopCapturer`. Not verified: macOS, Windows, native Linux window
+managers, Ubuntu 24.04's AppArmor on a real install, WSLg's Start menu, a real agent in the app's
+terminal, a GPU.
