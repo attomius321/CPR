@@ -44,6 +44,7 @@ import {
 } from './commits.js';
 import { GraphCell, ROW_HEIGHT } from './GraphCell.js';
 import { Help } from './Help.js';
+import { MoreIcon } from './icons.js';
 import { laneSpacing, layoutLanes } from './lanes.js';
 import { backLink, HISTORY_PAGE } from './pages.js';
 import { useShell, type Notice } from './shell-context.js';
@@ -1181,7 +1182,7 @@ function CommitRow({
           onMenu(box.right - 8, box.bottom);
         }}
       >
-        ⋯
+        <MoreIcon />
       </button>
     </li>
   );

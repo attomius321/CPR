@@ -4,9 +4,14 @@ import type { ReactNode } from 'react';
  * CPR's icons (V29): 16 px line drawings in the text's colour. Inline SVG, so no icon library is
  * bundled; each is decorative (`aria-hidden`), named by the control that holds it.
  */
-function Icon({ children }: { children: ReactNode }) {
+function Icon({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <svg className="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+    <svg
+      className={className ? `icon ${className}` : 'icon'}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
       {children}
     </svg>
   );
@@ -60,5 +65,18 @@ export const CprIcon = () => (
     <circle cx="5" cy="5" r="2" />
     <circle cx="11" cy="11" r="2" />
     <path d="M5 7v2a2 2 0 0 0 2 2h2" />
+  </Icon>
+);
+
+/** Open or folded (a folder, a project, More): down when open, right when folded. */
+export const ChevronIcon = ({ open }: { open: boolean }) => (
+  <Icon className={open ? 'chevron open' : 'chevron'}>
+    <path d="M6 4l4 4-4 4" />
+  </Icon>
+);
+
+export const CloseIcon = () => (
+  <Icon>
+    <path d="M4 4l8 8M12 4l-8 8" />
   </Icon>
 );

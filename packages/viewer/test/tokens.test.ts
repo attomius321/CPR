@@ -105,7 +105,7 @@ describe('the tokens (V29b)', () => {
 
 describe('the fonts (V29b, decision 180)', () => {
   // Every family a system lacks is a font-matching miss: on Linux they held History's first rows
-  // for 850–900 ms (V29a). Only the bundled families and generic ones are named.
+  // for 850–900 ms (V29a). Only the bundled families are named, and monospace after them.
   const SYSTEM_NAMES =
     /system-ui|-apple-system|Segoe UI|ui-monospace|SFMono|Menlo|Consolas|Helvetica|Arial|Roboto/;
   const sources = readdirSync(new URL('../src/', import.meta.url))
@@ -113,12 +113,19 @@ describe('the fonts (V29b, decision 180)', () => {
     .map((file) => [file, readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8')]);
 
   it('are the bundled pair, for text and for code', () => {
-    expect(base.get('--sans')).toBe("'Geist Variable', sans-serif");
+    // monospace after Geist, not sans-serif: Chromium on Linux matched sans-serif as a name, 283
+    // ms a time; monospace in a millisecond, with the symbols Geist lacks.
+    expect(base.get('--sans')).toBe("'Geist Variable', monospace");
     expect(base.get('--mono')).toBe("'Geist Mono Variable', monospace");
   });
 
   it('name no font a system may lack', () => {
     const named = sources.filter(([, text]) => SYSTEM_NAMES.test(text ?? '')).map(([f]) => f);
     expect(named).toEqual([]);
+  });
+
+  it('put no sans-serif after Geist, anywhere', () => {
+    const declared = /(font(-family)?|--sans):[^;{}]*sans-serif/;
+    expect(sources.filter(([, text]) => declared.test(text ?? '')).map(([f]) => f)).toEqual([]);
   });
 });

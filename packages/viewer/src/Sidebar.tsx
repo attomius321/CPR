@@ -3,6 +3,7 @@ import { groupOf, label, tone } from './flow.js';
 import { pathInProject, projectOf } from './projects.js';
 import { byProject, type FileChanges } from './review.js';
 import { ReviewTab, type ReviewProps } from './ReviewTab.js';
+import { ChevronIcon, CloseIcon } from './icons.js';
 
 const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 } as const;
 
@@ -164,7 +165,7 @@ export function Sidebar({
                   onClick={() => onSearch('')}
                   aria-label="Clear search"
                 >
-                  ×
+                  <CloseIcon />
                 </button>
               </>
             )}
@@ -198,7 +199,9 @@ export function Sidebar({
                           onClick={() => onCollapse(of.folder)}
                           title={of.folder === '' ? 'repository root' : of.folder}
                         >
-                          <span className="list-project-caret">{folded ? '▸' : '▾'}</span>
+                          <span className="list-project-caret" aria-hidden="true">
+                            <ChevronIcon open={!folded} />
+                          </span>
                           <span className="list-project-name">{of.name}</span>
                           {of.kind && (
                             <span className="project-kind">

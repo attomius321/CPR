@@ -1,8 +1,12 @@
 /* The look (V29b): after the reference — dark by default, dense, flat, hairline lines — in one
-   font pair served by CPR. Only the bundled families and generic ones are named: every name a
-   system lacks is a font-matching miss (V29a: 850–900 ms before History's first rows on Linux). */
+   font pair served by CPR. Font names cost on Linux, where Chromium asks fontconfig (V29a: 850–
+   900 ms before History's first rows): no system family is named, and not sans-serif after
+   Geist either (matched as a name, 283 ms a time, four times before the first paint). monospace
+   matches in a millisecond, and its font here (DejaVu Sans Mono) has what Geist lacks (✓ ⚙ ↻):
+   a glyph found nowhere in the stack is a search of every font (~100 ms; marking reviewed took
+   250 ms instead of 33). */
 :root {
-  --sans: 'Geist Variable', sans-serif;
+  --sans: 'Geist Variable', monospace;
   --mono: 'Geist Mono Variable', monospace;
 }
 
@@ -1053,6 +1057,9 @@ input[type='radio'] {
 }
 
 .close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   align-self: flex-start;
   width: 28px;
   height: 28px;
@@ -1175,8 +1182,14 @@ input[type='radio'] {
   border: 0;
   background: none;
   color: var(--moved);
-  font: 12px var(--mono);
+  font: inherit;
   cursor: pointer;
+}
+
+/* A symbol's name as a link: as code. */
+.neighbours .link,
+.finding .link {
+  font: 12px var(--mono);
 }
 
 .link:hover:not(:disabled) {
@@ -1267,13 +1280,12 @@ input[type='radio'] {
 }
 
 .search-clear {
-  padding: 0 4px;
+  display: inline-flex;
+  padding: 2px;
   border: 0;
+  border-radius: 4px;
   background: none;
   color: var(--muted);
-  font: inherit;
-  font-size: 16px;
-  line-height: 1;
   cursor: pointer;
 }
 
@@ -1338,9 +1350,9 @@ input[type='radio'] {
 
 .list-project-caret {
   flex: none;
-  width: 10px;
+  display: inline-flex;
+  align-self: center;
   color: var(--muted);
-  font-size: 11px;
 }
 
 .list-project-name {
@@ -2085,11 +2097,11 @@ kbd {
 /* ---- checkout (V11) ------------------------------------------------------------------ */
 
 .commit-menu {
+  display: inline-flex;
   visibility: hidden;
-  padding: 0 4px;
+  padding: 2px;
+  border-radius: 4px;
   color: var(--muted);
-  font-size: 14px;
-  line-height: 1;
 }
 
 .commit-menu:hover {
@@ -2264,10 +2276,6 @@ kbd {
   font-size: 13px;
 }
 
-.dialog-buttons .link {
-  font-family: inherit;
-}
-
 /* The start dialog (V18): a brief to write, so wider than a confirmation; with More open or on
    a phone it scrolls inside the window (V24c). */
 .workspace-dialog {
@@ -2399,7 +2407,9 @@ kbd {
 }
 
 .workspace-more {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin: 12px 0 0;
   padding: 0;
   font-family: inherit;
@@ -2828,8 +2838,9 @@ kbd {
 }
 
 .branches-caret {
-  width: 10px;
+  display: inline-flex;
   flex: none;
+  color: var(--muted);
 }
 
 /* Names are cut, the full name in the title. */
@@ -3556,10 +3567,6 @@ p.merge-control {
   overflow: auto;
 }
 
-.settings .link {
-  font-family: inherit;
-}
-
 .settings-bar h1 {
   margin: 0;
   font-size: 14px;
@@ -3854,6 +3861,17 @@ p.settings-placeholders {
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* Right when folded, down when open. */
+.icon.chevron {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.12s;
+}
+
+.icon.chevron.open {
+  transform: rotate(90deg);
 }
 
 .icon-button {

@@ -841,7 +841,7 @@ test('Done when names the check guessed at the start commit; switching kinds kee
   await expect(startButton(page)).toBeEnabled();
 
   // More: closed until asked for, or until a field in it has text.
-  const more = dialog(page).getByRole('button', { name: /^▸ More: How to reproduce/ });
+  const more = dialog(page).getByRole('button', { name: /^More: How to reproduce/ });
   await expect(more).toHaveAttribute('aria-expanded', 'false');
   await more.click();
   await part(page, 'Where to look optional').fill('src/table.ts');

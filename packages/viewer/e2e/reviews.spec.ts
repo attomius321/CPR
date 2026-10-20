@@ -101,15 +101,19 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   }
   await expect(changesTab(page)).toContainText('2/2');
 
-  // In cpr/reviews/, out of git.
-  await expect.poll(() => existsSync(reviewFile())).toBe(true);
-  const saved = JSON.parse(readFileSync(reviewFile(), 'utf8')) as {
-    base: string;
-    head: string;
-    marks: Record<string, string>;
-  };
-  expect(saved).toMatchObject({ base, head: cube });
-  expect(Object.keys(saved.marks).sort()).toEqual(['src/math.ts#cube', 'src/math.ts#square']);
+  // In cpr/reviews/, out of git, written mark by mark: read once both have landed.
+  const read = () =>
+    existsSync(reviewFile())
+      ? (JSON.parse(readFileSync(reviewFile(), 'utf8')) as {
+          base: string;
+          head: string;
+          marks: Record<string, string>;
+        })
+      : null;
+  await expect
+    .poll(() => Object.keys(read()?.marks ?? {}).sort())
+    .toEqual(['src/math.ts#cube', 'src/math.ts#square']);
+  expect(read()).toMatchObject({ base, head: cube });
   expect(git('status', '--porcelain', '--untracked-files=all')).toBe('');
 
   // Back on the commits page the branch is being reviewed (V16: "✓" is an approval).

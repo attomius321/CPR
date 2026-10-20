@@ -91,7 +91,7 @@ test("the fonts are CPR's: every request goes to its server, and History fetches
   );
   expect(new Set(loaded)).toEqual(new Set(['Geist Variable', 'Geist Mono Variable']));
   expect(await page.locator('body').evaluate((b) => getComputedStyle(b).fontFamily)).toBe(
-    '"Geist Variable", sans-serif',
+    '"Geist Variable", monospace',
   );
   expect(
     await page
