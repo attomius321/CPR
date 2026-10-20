@@ -441,7 +441,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V26 ✅ | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. Merged (2026-10-20): V26a, Merge into ▾ after Approve, CPR merges in its own worktree, runs the check, lands by fast-forward, `cpr merge`; V26c, a fresh agent for every conflict, from the conflict alone, every resolution reviewed. V26b (keep both by rule) dropped (decision 164): every conflict goes to the agent. See below. |
 | V27 ✅ | Codex in the panel's terminal | A Codex workspace has no terminal (decision 133): `exec` turns are recorded by CPR's runner, and a terminal's would not be. Spike: Codex 0.163's app-server daemon is the binding — CPR as a client starts the thread, a TUI joined with `codex resume --remote` reaches CPR (every item, 3.0 s) and shows CPR's turns (0.9 s), turns outlive the client and come back with `thread/read`, and approvals give "needs you". Merged (2026-10-20). V27a: Codex workspaces on the person's daemon — with the real Codex, started in 1.8 s, committed from its sandbox, a message joined its running turn (in the thread 0.8 s after Send), a turn outlived a `cpr view` restart, an approval read "Waiting: approval prompt"; `exec` without a daemon. V27b, Codex's terminal tab: the panel opens on Codex's own TUI on the thread (trust asked there, said by the panel first), a turn typed there in the thread 128 ms after Enter, an approval answered there cleared "needs you" in 22 ms, Stop ends the turn and its commands (45 ms; V27a's left them running), the list read while a terminal is open; any writable start makes Codex trust the repository (since V20a), now said. See below. |
 | V28 ✅ | Every agent's prompts in the project's settings | CPR writes all 13 texts its agents are told (a start prompt per kind, the two plan sentences, the verdict's 4 sentences, `cpr/AGENTS.md`, the merger's instructions), and a project can change none of them; `cpr/merge.md` only adds to the merger's. This repository's own rules disagree with the Spike prompt. Planned: each prompt whole, with placeholders and CPR's text as its default, changed on a Settings page and saved under `prompts` in `cpr/config.json` (shared once committed); written with `jsonc-parser` so the rest of the file stays byte for byte (a `JSON.stringify` rewrite failed this repository's `pnpm check`); with no `prompts`, today's prompts byte for byte. Merged (2026-10-20): Settings (s) lists the 13 prompts by agent, saves only `prompts`; with none, `main`'s 48 start prompts, the merger's, `AGENTS.md` and 8 verdict texts byte for byte (decision 171's 20 aside); a saved Fix prompt reached the next Fix agent; the real Claude Code followed a changed Spike prompt and the merger a changed rule. See below. |
-| V29 | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only, decision 172). Steps: V29a the shell, V29b the look, V29c usage, V29d the branch's changes. See below. |
+| V29 | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only: 59 % and 53 % live when its copy on disk said 20 % and 22 %). Confirmed: Claude's live source, History, Geist and Geist Mono. Steps: V29a the shell, V29b the look, V29c usage, V29d the branch's changes. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -7371,8 +7371,8 @@ changed prompt; Windows.
 ### V29 — A workbench: pages and workspaces in a sidenav, a new look, usage at the bottom
 
 **Status:** planned (2026-10-20), replanned the same day; on branch `milestone/v29-workbench`; not
-started. Before V29a the person picks: decision 172 (where Claude Code's usage comes from: it
-reads a secret), 178 (the page's name) and 180 (the font pair).
+started. Decisions 172 (Claude Code's usage from the endpoint `/usage` reads), 178 (History) and
+180 (Geist and Geist Mono) confirmed by the person (2026-10-20); the others proposed.
 
 **Problem** (asked: "I want to focus now on UI improvements. Found this one as a reference. I like
 this layout more … Love the fact that i can see the session usage for each found subscription at
@@ -7413,7 +7413,7 @@ Where usage can come from, measured on this machine (Claude Code 2.1.303 on a Pr
 | Claude Code's status line input, `rate_limits.five_hour`/`seven_day` (`used_percentage`, `resets_at`) | Session and weekly windows | After each answer, only where a TUI draws it | CPR's own `statusLine` in the agent's settings, which replaces the person's (theirs shows in today's terminal) |
 | `~/.claude.json`, `cachedUsageUtilization` | 5-hour 20 %, weekly 22 %, and a `limits` list with kind, percent and reset | **16.3 h old** with a session running: written when `/usage` is opened | A file read, no secret |
 | Claude Code's transcripts (`apiErrorParams.rate_limit_info`) | Which window was hit, and its reset | Only at the limit (2 of this repository's sessions) | A file read |
-| `GET api.anthropic.com/api/oauth/usage` with the OAuth token Claude Code stored | What `/usage` shows, for the whole account | Live | One request; reads a secret (`~/.claude/.credentials.json` on Linux, the Keychain on macOS). Not measured: needs the person's yes |
+| `GET api.anthropic.com/api/oauth/usage` with the OAuth token Claude Code stored | What `/usage` shows, for the whole account | Live | One request, 218–355 ms (3 reads); reads a secret (`~/.claude/.credentials.json` on Linux, the Keychain on macOS). Measured once the person said yes: **59 % and 53 %** while the copy on disk said 20 % and 22 % (17.5 h old, its 5-hour window already reset); 29 keys, 3 with a value; no rate-limit headers |
 
 What causes it:
 - CPR grew page by page: History first (V10a), Workspaces as a second tab (V18b), made the first
@@ -7507,10 +7507,11 @@ What causes it:
   Light · System", kept in `localStorage`, set as `data-theme` on `<html>` before the first paint
   (an inline script in `index.html`, so the page does not flash). React Flow's `colorMode` follows
   it (`"system"` today).
-- **Type** (decision 180): a sans and a mono, bundled from `@fontsource-variable` packages (OFL
-  1.1) and served by CPR, no request outside it. Latin and Latin Extended, variable weight: Inter
-  48 + 85 KB and JetBrains Mono 40 + 15 KB, or Geist 29 + 17 KB and Geist Mono 23 + 15 KB; a
-  browser fetches Latin Extended only for a page that uses it. System fonts as the fallback. One
+- **Type** (decision 180): **Geist** for text and **Geist Mono** for code, SHAs, branch names and
+  the terminal, bundled from `@fontsource-variable/geist` and `@fontsource-variable/geist-mono`
+  (5.3.0, OFL 1.1) and served by CPR, no request outside it. Variable weight, Latin 29 + 23 KB and
+  Latin Extended 17 + 15 KB; a browser fetches Latin Extended only for a page that uses it.
+  System fonts as the fallback. One
   scale: 11, 12, 13 (body), 14 and 16 px; tabular figures for numbers, times and percentages.
 - **Density and shape**: 28 px rows and buttons, 26 px small buttons, 4/8/12/16 px spacing, 6 px
   radius (4 for chips), 1 px lines, no shadow but on menus and dialogs, a 2 px blue focus ring.
@@ -7545,7 +7546,9 @@ What causes it:
   `five_hour`/`seven_day`. The plan from `~/.claude.json`'s `oauthAccount` (`organizationType`
   `claude_pro` → Pro). **Read only**: CPR never refreshes the token. If the refresh token rotates,
   as OAuth servers commonly do (not checked), a refresh by CPR would sign Claude Code out. An
-  expired or unreadable token, or a failed request, gives `cachedUsageUtilization` with its age.
+  expired or unreadable token, or a failed request, gives `cachedUsageUtilization` with its age;
+  a cached window whose `resets_at` has passed is not shown (here the copy's 5-hour window had
+  reset 15 h before: its 20 % said nothing about the 59 % then used).
   The token stays in the server process: never sent to the page, never logged, sent only to
   `api.anthropic.com`.
 - The cached copy holds about 20 more keys under code names, one at 100 % here
@@ -7595,7 +7598,7 @@ What causes it:
    numbers equal `/usage` and `/status` within the same minute.
 6. **Cost**: first paint of `/history` within 10 % of `main`'s (60 ms) with the fonts; Bitwarden's
    graph: first paint, select and pan as `main` (`scripts/viewer/measure.mjs`, back to back);
-   `/api/usage` from memory under 5 ms; a page fetches at most 90 KB of fonts for Latin text.
+   `/api/usage` from memory under 5 ms; a page fetches at most 55 KB of fonts for Latin text.
 
 **Risks**
 
@@ -7613,7 +7616,7 @@ What causes it:
 
 **Order**: V29a (the shell) first, since the person's main ask is the layout and every later step
 draws inside it. V29b (the look) next, on a layout that no longer changes. V29c (usage) needs only
-the status bar and decision 172: it can move before V29b once that is answered. V29d (the
+the status bar, and decision 172 is answered: it can move before V29b. V29d (the
 branch's changes) last.
 
 #### Milestones
@@ -7625,23 +7628,24 @@ branch's changes) last.
 | V29c | Usage | `usage.ts` (Claude Code, Codex), `/api/usage` with its 60-s copy, the status bar's right side |
 | V29d | The branch's changes | `/api/workspaces/changes`, the workspace's right panel |
 
-**Proposed decisions** (they replace the first plan's 172–179; 176 supersedes V25's 136):
+**Decisions** (172, 178 and 180 confirmed by the person; the rest proposed. They replace the first
+plan's 172–179; 176 supersedes V25's 136):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 172 | Where Claude Code's usage comes from | **The usage endpoint `/usage` reads, with the token Claude Code stored; read only, never refreshed; `~/.claude.json`'s copy with its age otherwise.** Needs the person's yes | The only live source for the whole account. The copy on disk was 16.3 h old with a session running. The status line reaches only sessions CPR started and a TUI draws, and CPR's would replace the person's own |
+| 172 | Where Claude Code's usage comes from | **The usage endpoint `/usage` reads, with the token Claude Code stored; read only, never refreshed; `~/.claude.json`'s copy with its age otherwise** (confirmed: "use the truthful source") | The only live source for the whole account: 59 % and 53 % when the copy on disk, 17.5 h old, said 20 % and 22 %. The status line reaches only sessions CPR started and a TUI draws, and CPR's would replace the person's own |
 | 173 | Which windows | **What each vendor reports, labelled by length** | The Codex Go plan here has one 30-day window: "5h · wk" would be wrong for it |
 | 174 | Which subscriptions are "found" | **A logged-in agent CPR can start whose vendor reports windows** | An API-key login has no windows to show |
 | 175 | How fresh | **A server copy, refreshed when older than 60 s while a page asks; 5 min after a 429** | Codex's read takes 789 ms and both reach the vendor; a number with its age is honest |
 | 176 | The Workspaces page | **Gone: workspaces in the sidenav, one opens in the main area; `/` opens History** (supersedes 136) | The person's ask. History is the page with the most to do when no workspace is picked |
 | 177 | A workspace's address | **`/?branch=` kept** | CPR has put it in links already (a diff's way back, threads); a new path would need one more rewrite |
-| 178 | The page's name | **History (decision 135), unless the person wants "Commits" back** | The person called it Commits in this ask, and asked to rename it away from that in V25 |
+| 178 | The page's name | **History** (confirmed; decision 135 stands) | The person called it Commits in this ask, then chose History |
 | 179 | Theme | **Dark by default; light and system kept, chosen per browser in Settings** | The reference is dark; a light-system person can still have light |
-| 180 | The font pair | **Inter + JetBrains Mono**, bundled (or Geist + Geist Mono: smaller, more geometric) | Inter is the closest to the reference's SF Pro; both are OFL; a page fetches 88 KB of them for Latin text (Geist's pair: 52 KB); system fonts differ per machine (DejaVu Sans here) |
+| 180 | The font pair | **Geist + Geist Mono**, bundled (confirmed, from a mock in three pairs) | Modern and geometric, one family for text and code; 52 KB for Latin text (Inter's pair 88 KB); system fonts differ per machine (DejaVu Sans here) |
 | 181 | Vendors in the status bar | **Names, not logos** | Their marks are theirs; a name reads as well at 11 px |
 | 182 | A diff page | **In the shell with the sidenav as a 48 px rail by default** | The person keeps the sidenav everywhere; open, it would take the canvas from 1,140 to 900 px at 1440 |
 | 183 | The right panel | **The branch's changes, not a file tree; last** | CPR reviews changes; a tree of the worktree is the editor's, one click away |
-| 184 | New dependencies | **`@fontsource-variable/<sans>` and `<mono>`, build assets only** | Served by CPR, nothing loaded from elsewhere; no icon library (inline SVG) |
+| 184 | New dependencies | **`@fontsource-variable/geist` and `@fontsource-variable/geist-mono`, build assets only** | Served by CPR, nothing loaded from elsewhere; no icon library (inline SVG) |
 
 **Not in V29 (later)**: two terminals side by side (the reference splits Claude Code and Codex);
 a plain shell in a workspace's worktree; a file tree; pinned workspaces (the reference pins

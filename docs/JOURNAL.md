@@ -3681,3 +3681,18 @@ Measured on `main` (`ede9e12`), Chromium at 1440×900:
   48 px rail takes 4 %.
 - **e2e**: 40 of the 125 tests, in 4 specs, start from the Workspaces page; 24 open `/` and expect
   it.
+
+## V29 decisions — the live Claude source, History, Geist (2026-10-20, branch `milestone/v29-workbench`)
+
+The person chose Geist and Geist Mono (decision 180, from a mock of the planned sidenav, workspace
+and status bar in three pairs), kept History (178), and said yes to the live source for Claude
+Code's usage (172: "use the truthful source").
+
+**Measured** once allowed: `GET api.anthropic.com/api/oauth/usage` with the stored access token
+and `anthropic-beta: oauth-2025-04-20`, three reads 2 s apart: 200 in 355, 218 and 265 ms, the
+same 2,289 bytes, no rate-limit headers. It said 59 % (5-hour) and 53 % (weekly), while
+`~/.claude.json`'s copy, 17.5 h old, said 20 % and 22 %. That copy's 5-hour window had reset
+15 h before, so its number described nothing current: the plan now drops a cached window whose
+reset has passed. The answer has 29 keys; 3 have a value (`five_hour`, `seven_day` and
+`iguana_necktie`, a code name), and `limits` lists the two meant to be shown, with kind and
+reset. The token was read in the script's process only and not printed.
