@@ -179,6 +179,8 @@ test("Codex's own terminal in its panel: the trust it asks for, a turn typed the
   await page.keyboard.press('Enter');
   await expect(screen(page)).toContainText(`Fake Codex · ${id}`, POLL);
   expect(server.trusted[realpathSync(folder)]).toBe('trusted');
+  // Answered: the note has done its work.
+  await expect(here.locator('.terminal-trust')).toHaveCount(0);
 
   // Its plan, then a turn typed in the terminal: the row follows while the terminal is open,
   // without the page losing focus.

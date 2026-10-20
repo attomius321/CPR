@@ -3436,3 +3436,38 @@ stripped; the trust questions measured in throwaway `CODEX_HOME`s with a private
 Codex's colors in CPR's terminal theme. Cleaned up: the thread archived, the repository removed,
 and the 4 trust entries this session's runs wrote taken out of the person's config (two older ones,
 for folders of an earlier spike that no longer exist, left as they are).
+
+## V27b — Codex's terminal in its workspace's panel (2026-10-20, branch `milestone/v27-codex-terminal`)
+
+Asked: "Start v27b". A Codex workspace on the app server gets V21's Terminal tab: Codex's own TUI
+joined to its thread (`codex resume <thread> --remote <address> -C <worktree>`), the panel opening
+on it, the thread read only. When Codex will ask to trust the worktree, the panel says so first.
+Stop ends the turn and the commands it left. The list is read while any terminal is open. The
+start dialog and the README say that Codex trusts the repository on any writable start.
+
+**Learned**:
+- **The trust note must go once it is answered.** Planned to stand while the terminal was open,
+  it still sat above an approval in the real run, after the person had trusted the worktree. Any
+  key in the terminal answers Codex's first question, so the first key now takes it away.
+- **A fake in a template literal, again**: the first fake TUI wrote `\n` where the template needed
+  `\\n`; the generated `codex` failed to parse, `daemon start` failed with it, and CPR quietly ran
+  `exec` (the e2e saw "working" and no thread). A syntax check that copies the template's text
+  without reading its escapes passed: it must interpret them. V21 found the same trap.
+- **Codex takes a fast run of keys for a paste**: with no delay between keys (Playwright's
+  default), the Enter after them did not submit; at 60 ms a key it did (128 ms to the thread).
+- **Stop's own time is milliseconds**: `turn/interrupt` 10 ms, idle at 12 ms, the clean 0 ms;
+  `POST /api/workspaces/stop` 45 ms with the command ended. The driver's 4.06 s was Playwright's
+  click waiting for the button to settle: measure the API when a page number looks wrong.
+- **The terminal panel overflows at 390 px**, for Claude Code too (the page 670 px wide): V21's,
+  found here, proposed as its own fix.
+- The TUI measured 100 MB (and 50 MB for its Node wrapper) when it joins, 266 MB once a thread's
+  history is drawn (spike): four Codex terminals can hold over a gigabyte.
+
+**Verification**: tests first (client 2, trust 2, service 2, panel 3, reads 2, e2e 1; the e2e red
+without the held reads at "Working", and without the first-key rule at the note). 899 unit tests
+(852 on `main`), 120 of 120 e2e. Real Codex 0.163 on the person's daemon through `cpr view` in
+Chromium: the trust question 0.29 s after the page opened and answered in the panel; a commit
+from the sandbox in 15 s; a turn typed in 128 ms to the thread; an approval answered with `y` in
+the panel's terminal (22 ms to clear "needs you"); Stop 45 ms with the command ended; no page
+errors; screenshots light and dark at 1440 and 390 px. Cleaned up: 5 threads archived, the
+throwaway repositories deleted, the person's Codex configuration as it was before the runs.

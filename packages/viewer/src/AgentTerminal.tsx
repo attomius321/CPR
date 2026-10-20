@@ -108,12 +108,15 @@ export function AgentTerminal({
       events.addEventListener('error', () => {
         if (events?.readyState === EventSource.CLOSED) ended('lost');
       });
-      shown.onData(
-        keySender(
-          (data) => toTerminal(terminal, 'in', { data }),
-          (failed) => setError(failed.message),
-        ),
+      const send = keySender(
+        (data) => toTerminal(terminal, 'in', { data }),
+        (failed) => setError(failed.message),
       );
+      shown.onData((data) => {
+        // Codex's trust question is the first thing in its terminal: a key answers it (V27b).
+        setTrust(false);
+        send(data);
+      });
       shown.onResize(({ cols, rows }) => {
         clearTimeout(resizing);
         resizing = setTimeout(() => {
