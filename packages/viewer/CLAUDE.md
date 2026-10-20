@@ -3,8 +3,9 @@
 React 19 + `@xyflow/react` 12 + dagre, bundled by Vite into `dist/`. `cpr view`/`cpr pr` serve it
 with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packages/cli/src/server.ts`);
 `?graph=<url>` loads any graph JSON instead (used by `scripts/viewer/measure.mjs`). Under
-`cpr view` the root is Workspaces (V25; `src/WorkspacesPage.tsx`, `/api/workspaces…`), `/history`
-is History (`/api/history…`, `POST /api/diffs`), and each diff is
+`cpr view` the pages live in a shell (V29a, `src/Shell.tsx`): a sidenav with History
+(`/history`, `/api/history…`, `POST /api/diffs`), Settings and the workspaces
+(`/api/workspaces…`), each opened in place; `/` alone is History. Each diff is
 served under `/diff/<base>..<head>/`: the viewer must keep calling its own API with **relative**
 URLs (`./api/…`) and loading files relative to the page (`base: './'`), so every call reaches that
 diff. Only the two pages' endpoints are absolute (`/api/history…`, `/api/workspaces…`, `/api/diffs`).
@@ -30,7 +31,17 @@ Pages and their addresses, and a diff's way back: `src/pages.ts`. In code a work
   202/502/404 while a diff is analyzed), `src/HistoryPage.tsx` (History, a diff's progress; never `Commits.tsx` beside `commits.ts`: macOS file systems ignore case).
 - `src/ProjectNode.tsx`, `FileNode.tsx`, `SymbolNode.tsx`, `SummaryNode.tsx`; `src/styles.css`
   (one flat stylesheet: check a new class name is not taken — the sidebar's review bar is
-  `.progress`).
+  `.progress`). Colours are tokens on `:root` (dark) and `:root[data-theme='light']`, contrast
+  tested by `test/tokens.test.ts`; `src/theme.ts` and `index.html`'s inline script set the theme.
+
+## Fonts (V29b)
+
+Geist and Geist Mono from `@fontsource-variable`, preloaded in `index.html`. **Name no other
+family**, not even `sans-serif` after Geist: on Linux each name is a fontconfig match (V29a:
+850–900 ms before History's first rows; V29b: `sans-serif` after a web font, 283 ms a time).
+`monospace` closes both stacks: it matches in ~1 ms and has the symbols Geist lacks (✓ ⚙ ↻); a
+glyph found in no family of the stack costs ~100 ms. Prefer an icon (`src/icons.tsx`) to a new
+symbol glyph. Measure first paint (`/history`) and Bitwarden's graph after any font change.
 
 ## Rules
 

@@ -57,7 +57,7 @@ when python3, make and a C++ compiler are there. Without them it is skipped, and
 Then, in any git repository with TypeScript or JavaScript:
 
 ```sh
-cpr view          # your workspaces, and History: every branch, to check out, review or compare
+cpr view          # History and your workspaces: every branch, to check out, review or compare
 cpr view main     # this branch against main, in the browser
 cpr diff main     # the same, in the terminal
 ```
@@ -67,7 +67,7 @@ cpr diff main     # the same, in the terminal
 | Command | What it does |
 |---|---|
 | `cpr diff <base> [head]` | Compares `head` (default `HEAD`) with where it left `base`, as a pull request does, and prints the changed symbols and the findings. |
-| `cpr view [<base> [head]]` | Opens the viewer in the browser. Without revisions it opens on Workspaces, beside the repository's History; with them, on that comparison. Runs until Ctrl+C. |
+| `cpr view [<base> [head]]` | Opens the viewer in the browser. Without revisions it opens on the repository's History, with your workspaces in the sidenav; with them, on that comparison. Runs until Ctrl+C. |
 | `cpr pr [<number>]` | Reviews a GitHub pull request or a GitLab merge request (`cpr mr` is the same command). In a CI job for one, the number comes from the job. |
 | `cpr merge <branch>` | Merges the commit your review of `branch` approved, as Merge does in the viewer ([Merging](#merging)): `--into <branch>` picks the target, `--land` lands a merge that waits for you. |
 
@@ -160,10 +160,33 @@ they are linked to elsewhere.
 
 ### History
 
-`cpr view` without revisions opens on [Workspaces](#workspaces-and-agents). Beside it, **History**
-(`/history`, or h) is the repository's history: every branch, local and remote, drawn as a graph
-beside the commits, the current branch the straight line on the left. The whole
-history scrolls, and commits load as they come into view.
+`cpr view` without revisions opens on **History** (`/history`, or h): the repository's history,
+every branch, local and remote, drawn as a graph beside the commits, the current branch the
+straight line on the left. The sidenav on the left lists the pages (History, Settings) and, under
+them, your [workspaces](#workspaces-and-agents); a click opens one beside it, without loading the
+page again. The status bar along the bottom says what the last action did. The whole
+history scrolls, and commits load as they come into view; its keys are behind the "?" in its
+toolbar.
+
+The pages are dark. **Appearance** in Settings makes them light, or follows your system, in this
+browser. They are set in Geist and Geist Mono, which `cpr view` serves itself: nothing is fetched
+from elsewhere.
+
+**Usage.** The status bar's right side shows the subscription of each agent CPR can start and
+how much of each window is used, as its vendor counts it: `Claude Pro · 5h 59% · wk 66%`,
+`Codex Go · 30d 0%`. Amber from 80 % (or when Claude warns), red at the limit; a hover says
+when each window resets and how old the numbers are. `cpr view` reads them at most once a
+minute, while a page asks:
+
+- **Claude Code**: from the endpoint Claude Code's own `/usage` reads, with the token Claude
+  Code stored (`~/.claude/.credentials.json`, or the Keychain on macOS). CPR only reads it: it
+  never renews it, never gives it to the page, and sends it to `api.anthropic.com` only. When the
+  token has expired or the request fails, the bar shows the copy Claude Code kept the last time
+  `/usage` was opened, with its age.
+- **Codex**: from its app server (`account/rateLimits/read`); without one, from your newest
+  Codex session. An API-key login has no windows and is not shown.
+
+`CPR_USAGE=off` reads none of it.
 
 ![History: the branches panel with its milestone folder open, and the history drawn as a graph with branch badges](docs/images/history.png)
 
@@ -185,8 +208,9 @@ history scrolls, and commits load as they come into view.
 
 Each comparison is analyzed in the background with the same `--plugin`, `--project` and `--depth`,
 and has its own address (`/diff/<base>..<head>/`), so it can be reloaded or bookmarked. The last 8
-stay ready while `cpr view` runs. Its ← link goes back where it was opened: History, or
-Workspaces for a workspace's review.
+stay ready while `cpr view` runs. Its ← link goes back where it was opened: History, or the
+workspace for its review. A comparison has the sidenav too, folded to a rail of icons and
+workspace marks so the graph keeps its width; [ opens it.
 
 ### Open in VS Code
 
@@ -207,13 +231,16 @@ command on the machine where `cpr` runs, so WSL, Remote SSH and containers work 
 | r | Review the branch | Mark the selected symbol reviewed |
 | x | Compare mode | |
 | n | Start a workspace | |
-| w, h, s | Workspaces, History, Settings | |
+| h, s | History, Settings | |
+| w | The workspaces in the sidenav: ↑ and ↓ move, Enter opens | |
+| [ | Fold the sidenav to a rail, or open it | Open the sidenav, or fold it |
+| ] | | In a workspace: hide or show its branch's changes |
 | f | | Focus: only the selected symbol and its neighbours |
 | p, P | | Next, previous project |
 | o | | Open in VS Code |
 | Esc | Leave compare mode | Close the detail panel |
 
-n starts a workspace on Workspaces too, and w, h and s go between the three pages. In a comment box, the start dialog, a workspace's
+n, h, s, w and [ work on Settings and in a workspace too. In a comment box, the start dialog, a workspace's
 reply box or a prompt in Settings, Ctrl+Enter (Cmd+Enter on macOS) saves, starts or sends.
 
 ## Reviewing a branch
@@ -263,9 +290,9 @@ worktree of its own in its cache. Your checkout and the agent's worktree are not
    tries again. A target checked out nowhere has its ref moved, only if it has not moved since.
 3. With `merge.push: true` it pushes the target. This is off by default.
 
-Merges go one at a time, each on the result of the last. The Merging section at the top of
-Workspaces shows each one: queued, merging, checking, ready to land, landed or failed, with the
-end of a failed check's output. Without a check, a merge waits there for **Land**. A conflict stops
+Merges go one at a time, each on the result of the last. The sidenav's Merging group shows each
+one, and a click opens it (`/?merge=<branch>`): queued, merging, checking, ready to land, landed or
+failed, with the end of a failed check's output. Without a check, a merge waits there for **Land**. A conflict stops
 the merge with the files named, and nothing changes. Resolve it on the branch, review it again,
 then Retry. A target that moved before landing is merged again on its new tip.
 
@@ -316,24 +343,24 @@ Code's default, Accept edits, or Auto. CPR never grants it more. If Claude Code 
 offers the prompt to copy. Claude Code has to trust the folder, so run `claude` there once and
 accept. It is found as `claude` on your `PATH`, or set `CPR_CLAUDE`.
 
-**Workspaces**, the first page (`/`), lists workspaces by what each needs from you (a plan to read, a permission to
-give, a branch to review, changes to send back), then those working, then those merged. Its tab
-counts the ones that need you. Each workspace shows its title (a fix, refactor, chore or spike
-marked so), its commits, files not committed yet, your review, and whether it merges cleanly, with
-these actions:
+The sidenav lists your workspaces under the pages, by what each needs from you (a plan to read, a
+permission to give, a branch to review, changes to send back), then those working, then those
+merged. Its Workspaces heading counts the ones that need you, and + starts one (n). Each card
+shows the workspace's title (a fix, refactor, chore or spike marked so), what is next, its
+commits, files not committed yet, whether it merges cleanly, and its branch. A click opens it
+beside the sidenav (`/?branch=<branch>`), with these actions:
 
 - **Review** its branch;
-- **Talk**, which copies `claude attach <id>` (Codex: `codex resume <thread> --remote <its app
-  server> -C <worktree>`) for a terminal of your own (only when CPR cannot open the agent's
-  terminal in the panel; its tooltip says why);
-- **Open in VS Code**, its worktree;
 - **Stop** or **Start** the agent;
-- **Copy the prompt**.
+- under **⋯**: **Open in VS Code** (its worktree), **Copy the prompt**, **Clean up**, and **Talk**,
+  which copies `claude attach <id>` (Codex: `codex resume <thread> --remote <its app server> -C
+  <worktree>`) for a terminal of your own (only when CPR cannot open the agent's terminal; its
+  tooltip says why).
 
 ![Workspaces: three agents by what they need from you, and the picked one's Claude Code session in the Terminal tab, its plan waiting for your OK](docs/images/features.png)
 
-Pick a workspace and its panel opens beside the list, where it can on the agent's **Terminal**:
-its session as Claude Code draws it (the conversation, tool calls, permission prompts and
+A workspace opens, where it can, on the agent's **Terminal**, down to the status bar: its session
+as Claude Code draws it (the conversation, tool calls, permission prompts and
 questions, Esc, slash commands), so you answer it without leaving CPR.
 
 - It is `claude attach <id>`, run by `cpr view` in the workspace's worktree. Claude Code keeps
@@ -347,7 +374,15 @@ questions, Esc, slash commands), so you answer it without leaving CPR.
 - At most four terminals are open at once (each is a Claude Code process, about 140 MB, or a
   Codex one, about 315 MB).
 
-The **Thread** tab is the workspace's history, read only (`&thread` in the address opens on it):
+At the terminal's right, where the window has room (1440 px wide with the sidenav open, about 1,250
+with it folded), the workspace's **Changes**: its branch's commits since it left the default branch
+and the files they change with their lines (what Review will show), then the files its worktree has
+not committed. They are read again with the workspace list (every 5 s while the agent works). A
+file opens in VS Code in the worktree at its first change. `]` or the button beside ⋯ hides them,
+remembered in the browser.
+
+The **Brief** tab is what the agent was asked (`&brief`). The **Thread** tab is the workspace's
+history, read only (`&thread` in the address opens on it):
 the agent's plan and reports (drawn from their Markdown), your messages, and what it waited on
 (a permission to run a command, or a question and its options). The thread comes from hooks CPR
 gives each agent it starts (`cpr/claude-settings.json`, recorded in `cpr/threads/`, out of git).
@@ -652,6 +687,7 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 | `CPR_CLAUDE` | The Claude Code program workspaces start (default: `claude` on `PATH`). |
 | `CPR_CODEX` | The Codex program workspaces start (default: `codex` on `PATH`). |
 | `CPR_TERMINAL` | `off`: no agent's terminal in a workspace's panel; the panel keeps Talk and the reply box. |
+| `CPR_USAGE` | `off`: no subscription usage is read, and the status bar shows none. |
 | `CPR_CACHE_DIR` | Where CPR keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/cpr`, else `~/Library/Caches/cpr` on macOS and `~/.cache/cpr` elsewhere. |
 
 ## Limits

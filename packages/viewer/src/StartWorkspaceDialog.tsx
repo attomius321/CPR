@@ -25,6 +25,7 @@ import {
 import { AGENT_NAMES, branchProblem, PERMISSION_LABELS, proposeBranch } from './workspaces.js';
 import { getJson, postJson } from './http.js';
 import { shortSha } from './commits.js';
+import { ChevronIcon } from './icons.js';
 
 /** How long typing pauses before the draft is saved. */
 const SAVE_AFTER_MS = 400;
@@ -288,7 +289,8 @@ export function StartWorkspaceDialog({
           aria-expanded={moreOpen}
           onClick={() => setMoreShown(!moreOpen)}
         >
-          {moreOpen ? '▾' : '▸'} More: {more.map(heading).join(', ')}
+          <ChevronIcon open={moreOpen} />
+          More: {more.map(heading).join(', ')}
         </button>
         {moreOpen &&
           more.map((part) => (

@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { realpath } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
+import type { FileChangeStatus } from './changed-files.js';
 import { git, GitError } from './exec.js';
 import { listRefs, type RefList } from './refs.js';
 import type { GitRepo } from './repo.js';
@@ -161,6 +162,58 @@ export async function uncommittedFiles(folder: string): Promise<number> {
     if (/^[RC]/.test(entry)) i++;
   }
   return count;
+}
+
+/** How a file in a working tree differs from its last commit (V29d), `git status`'s two letters in a word. */
+export type WorktreeFileStatus = FileChangeStatus | 'untracked' | 'conflicted';
+
+/** A file not committed in a working tree. */
+export interface WorktreeFile {
+  status: WorktreeFileStatus;
+  /** Path from the working tree's root, POSIX. */
+  path: string;
+  /** Before a rename or copy staged. */
+  previousPath?: string;
+}
+
+/**
+ * The files not committed in the working tree at `folder`, as `uncommittedFiles` counts them:
+ * changed, staged or new, each file of a new folder listed, ignored ones not.
+ */
+export async function worktreeStatus(folder: string): Promise<WorktreeFile[]> {
+  return parseWorktreeStatus(
+    await git(folder, ['status', '--porcelain', '-z', '--untracked-files=all']),
+  );
+}
+
+/**
+ * Parses `git status --porcelain -z`: `XY <path>\0`, a rename or copy followed by the path it
+ * came from. A file gone from the disk is deleted whatever was staged; both sides changing it in a
+ * merge is a conflict.
+ */
+export function parseWorktreeStatus(output: string): WorktreeFile[] {
+  const entries = output.split('\0');
+  const files: WorktreeFile[] = [];
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i] ?? '';
+    if (entry === '') continue;
+    const xy = entry.slice(0, 2);
+    const path = entry.slice(3);
+    const previousPath = /[RC]/.test(xy) ? entries[++i] : undefined;
+    files.push({ status: statusOf(xy), path, ...(previousPath ? { previousPath } : {}) });
+  }
+  return files;
+}
+
+function statusOf(xy: string): WorktreeFileStatus {
+  if (xy === '??') return 'untracked';
+  if (xy.includes('U') || xy === 'AA' || xy === 'DD') return 'conflicted';
+  if (xy.includes('D')) return 'deleted';
+  if (xy.includes('R')) return 'renamed';
+  if (xy.includes('C')) return 'copied';
+  if (xy.startsWith('A')) return 'added';
+  if (xy.includes('T')) return 'type-changed';
+  return 'modified';
 }
 
 /**

@@ -26,11 +26,10 @@ import { flushSync } from 'react-dom';
 import type { BranchReviewInfo, Graph } from '@cpr/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import type { Loaded, Pair } from './commits.js';
-import { BackLink, HistoryPage, DiffProgress, fetchGraph, startDiff } from './HistoryPage.js';
+import { BackLink, DiffProgress, fetchGraph, startDiff } from './HistoryPage.js';
 import { workspaceHref, workspaceName } from './workspaces.js';
-import { WorkspacesPage } from './WorkspacesPage.js';
-import { PageTabs } from './PageTabs.js';
-import { SettingsPage } from './SettingsPage.js';
+import { DiffShell } from './DiffShell.js';
+import { Shell } from './Shell.js';
 import { useWorkspaces } from './useWorkspaces.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
@@ -58,12 +57,12 @@ import {
 import { ProjectNode } from './ProjectNode.js';
 import { MAP_ZOOM, mapZoomStyle } from './mapzoom.js';
 import { Resizer } from './Resizer.js';
-import { pageOfPath } from './pages.js';
 import { Sidebar, type SidebarTab } from './Sidebar.js';
 import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
 import { SummaryNode } from './SummaryNode.js';
 import { SymbolNode } from './SymbolNode.js';
 import { useLayout } from './useLayout.js';
+import { useTheme } from './theme.js';
 
 const nodeTypes = {
   symbol: SymbolNode,
@@ -75,12 +74,11 @@ const nodeTypes = {
 type State =
   | { status: 'loading' }
   | { status: 'empty'; error?: string }
-  /** `cpr view`'s History, at `/history`: pick commits to compare. */
-  | { status: 'history' }
-  /** `cpr view`'s first page, Workspaces (V25: at `/`; `/workspaces` and `/workspaces` before). */
-  | { status: 'workspaces' }
-  /** `cpr view`'s Settings, at `/settings`: every agent's prompts (V28b). */
-  | { status: 'settings' }
+  /**
+   * `cpr view` with no diff here: the shell (V29a) — the sidenav with the pages and the
+   * workspaces, and History, Settings, a workspace or a merge beside it.
+   */
+  | { status: 'shell'; repo?: string }
   /** A diff's page while it is analyzed, or once it failed or was stopped. */
   | { status: 'analyzing'; loaded: Exclude<Loaded, { kind: 'graph' }> }
   /**
@@ -114,6 +112,8 @@ interface Capabilities {
   open?: boolean;
   /** `cpr view`: this page is a branch's review (V15). */
   branchReview?: BranchReviewInfo;
+  /** `cpr view`: the repository's folder name (V29a). */
+  repo?: string;
 }
 
 /** How often a diff's page asks how its analysis is going. */
@@ -159,6 +159,8 @@ function saveWidths(widths: Widths): void {
 
 export function App() {
   const [state, setState] = useState<State>({ status: 'loading' });
+  /** A diff of `cpr view`: in the shell's sidenav and status bar (V29a), with the repository's name. */
+  const [inView, setInView] = useState<{ repo?: string } | null>(null);
   const [typeReferences, setTypeReferences] = useState(false);
   const [context, setContext] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -312,6 +314,9 @@ export function App() {
     let timer: ReturnType<typeof setTimeout> | undefined;
     void (async () => {
       const capabilities = served ? await fetchCapabilities() : null;
+      if (live && capabilities?.commits) {
+        setInView(capabilities.repo ? { repo: capabilities.repo } : {});
+      }
       let opened = attempt === 0;
       const poll = async (): Promise<void> => {
         const loaded = await fetchGraph(url);
@@ -338,15 +343,8 @@ export function App() {
           await startDiff(loaded.pair).catch(() => undefined);
           if (live) await poll();
         } else if (!capabilities?.commits) setState({ status: 'empty' });
-        else {
-          const { page, moved } = pageOfPath(window.location.pathname);
-          // An old address of Workspaces, kept for bookmarks: shown as today's.
-          if (moved) {
-            const { search, hash } = window.location;
-            window.history.replaceState(null, '', `${moved}${search}${hash}`);
-          }
-          setState({ status: page });
-        }
+        else
+          setState({ status: 'shell', ...(capabilities.repo ? { repo: capabilities.repo } : {}) });
       };
       await poll();
     })();
@@ -445,13 +443,11 @@ export function App() {
     [expanded, layout],
   );
 
-  return (
+  if (state.status === 'shell') return <Shell repo={state.repo} />;
+  const page = (
     <div className="app" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
       <header className="bar">
         <strong className="brand">CPR</strong>
-        {(state.status === 'history' ||
-          state.status === 'workspaces' ||
-          state.status === 'settings') && <PageTabs active={state.status} />}
         {state.status === 'ready' && state.commits && <BackLink />}
         {state.status === 'ready' && state.branchReview && <ReviewOf review={state.branchReview} />}
         {state.status === 'ready' && <Summary graph={state.graph} />}
@@ -507,9 +503,6 @@ export function App() {
         {state.status === 'empty' && (
           <DropZone error={state.error} onFile={(file) => void load(file)} />
         )}
-        {state.status === 'history' && <HistoryPage />}
-        {state.status === 'workspaces' && <WorkspacesPage />}
-        {state.status === 'settings' && <SettingsPage />}
         {state.status === 'analyzing' && <DiffProgress loaded={state.loaded} onRetry={retry} />}
         {state.status === 'ready' && (
           <ReactFlowProvider>
@@ -621,6 +614,9 @@ export function App() {
       {layout && <Legend frames={layout.nodes[0]?.type === 'project'} />}
     </div>
   );
+  // Only a diff: the shell's own pages are drawn by Shell, and while loading it is not known yet.
+  const diff = state.status === 'ready' || state.status === 'analyzing';
+  return inView && diff ? <DiffShell repo={inView.repo}>{page}</DiffShell> : page;
 }
 
 interface CanvasProps {
@@ -753,6 +749,7 @@ function Canvas({
     return () => cancelAnimationFrame(frame);
   }, [selected, focus, scope, layoutNodes, size, reveal, resizing, pending, fitView]);
 
+  const theme = useTheme();
   return (
     <ReactFlow<Node, Edge>
       nodes={nodes}
@@ -764,7 +761,7 @@ function Canvas({
       fitView
       onlyRenderVisibleElements
       {...(map ? { className: 'map' } : {})}
-      colorMode="system"
+      colorMode={theme}
       minZoom={0.05}
       nodesConnectable={false}
       // The layout is computed: a drag that starts on a box pans the canvas instead of moving it.

@@ -5,7 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { serveAgentBranch, type RunningAgent } from './cpr.js';
 
 // CPR's merger agent (V26c): a conflict answered region by region by a fake Claude Code, written
-// by CPR, reviewed in the Merging section, asked again, then approved and landed.
+// by CPR, reviewed in the merge the sidenav opens, asked again, then approved and landed.
 let cpr: RunningAgent;
 const errors: string[] = [];
 
@@ -73,8 +73,11 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
   await page.getByRole('button', { name: 'Merge into main' }).click();
 
   // Resolved by the agent, written by CPR, waiting for review: main has not moved.
-  await page.goto(cpr.url);
-  const entry = page.getByRole('listitem', { name: 'Merge of agent' });
+  // In the sidenav's Merging group; opened in the main area (V29a).
+  await page.goto(`${cpr.url}history`);
+  await page.locator('.sidenav [data-merge="agent"]').getByRole('link').click();
+  await expect(page).toHaveURL(`${cpr.url}?merge=agent`);
+  const entry = page.getByRole('region', { name: 'Merge of agent' });
   await expect(entry.locator('.merge-row-state')).toHaveText(
     /^Resolved 1 region \(sonnet, [\d.K]+ tokens\): review it$/,
   );
@@ -122,8 +125,11 @@ test('the merger agent says you must decide: nothing is merged', async ({ page }
   const main = git('rev-parse', 'main');
   await approve(page);
   await page.getByRole('button', { name: 'Merge into main' }).click();
-  await page.goto(cpr.url);
-  const entry = page.getByRole('listitem', { name: 'Merge of agent' });
+  // In the sidenav's Merging group; opened in the main area (V29a).
+  await page.goto(`${cpr.url}history`);
+  await page.locator('.sidenav [data-merge="agent"]').getByRole('link').click();
+  await expect(page).toHaveURL(`${cpr.url}?merge=agent`);
+  const entry = page.getByRole('region', { name: 'Merge of agent' });
   await expect(entry.locator('.merge-row-state')).toHaveText(
     'The merger agent: region 1: double or square first?',
   );

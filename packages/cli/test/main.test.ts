@@ -31,13 +31,13 @@ describe('cpr', () => {
     expect(stdout).toContain('Usage: cpr');
   });
 
-  it("describes cpr view's first page as Workspaces and History as every branch's (V25)", async () => {
+  it('describes cpr view as History, every branch, with the workspaces beside it (V25, V29a)', async () => {
     for (const argv of [[], ['view', '--help']]) {
       const { stdout } = await cpr(argv);
       expect(stdout).not.toMatch(/current\s+branch/);
       expect(stdout).not.toMatch(/commits\s+page/);
-      expect(stdout).toMatch(/Workspaces/);
-      expect(stdout).toMatch(/History[^]*every\s+branch/);
+      expect(stdout).not.toMatch(/first\s+page\s+is\s+Workspaces/);
+      expect(stdout).toMatch(/History[^]*every\s+branch[^]*workspaces/);
     }
   });
 

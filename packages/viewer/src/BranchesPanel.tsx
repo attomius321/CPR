@@ -5,6 +5,7 @@ import type { ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
 import { WorkspaceMark } from './WorkspaceMark.js';
 import { shortAge, type AgentChip, type FirstBranch } from './workspaces.js';
+import { ChevronIcon } from './icons.js';
 
 type BranchEntry = Extract<PanelEntry, { kind: 'branch' }>;
 
@@ -173,7 +174,7 @@ function Entry({
         onClick={() => onToggle(entry.key)}
       >
         <span className="branches-caret" aria-hidden="true">
-          {entry.open ? '▾' : '▸'}
+          <ChevronIcon open={entry.open} />
         </span>
         <span className="branches-name">{entry.label}/</span>
         <span className="branches-count">{entry.count}</span>

@@ -1,7 +1,6 @@
 import type { Commit, CommitRef, Graph } from '@cpr/core';
 import type { ReviewMark } from './branchReviews.js';
 import type { AgentChip } from './workspaces.js';
-import { WORKSPACES_PAGE } from './pages.js';
 
 /** Two commits compared directly, by full SHA. */
 export interface Pair {
@@ -298,13 +297,14 @@ const URGENCY: readonly AgentChip['tone'][] = [
 ];
 
 /**
- * The mark "+N" carries for the workspaces it folds (V18b): the most urgent one's, a link to the
- * workspaces view, its title naming them and how many need the person.
+ * The mark "+N" carries for the workspaces it folds (V18b): the most urgent one's, a link to that
+ * workspace (V29a: there is no Workspaces page to list them), its title naming them all and how
+ * many need the person.
  */
 function foldedMark(folded: readonly Badge[]): (AgentChip & { href: string }) | undefined {
   const marked = folded.filter((b) => b.agent);
   const first = marked
-    .map((b) => b.agent as AgentChip)
+    .map((b) => b.agent as AgentChip & { href: string })
     .sort((a, b) => URGENCY.indexOf(a.tone) - URGENCY.indexOf(b.tone))[0];
   if (!first) return undefined;
   const needs = marked.filter((b) => !['working', 'done'].includes(b.agent?.tone ?? '')).length;
@@ -320,7 +320,7 @@ function foldedMark(folded: readonly Badge[]): (AgentChip & { href: string }) | 
     mark: first.mark,
     tone: first.tone,
     title: `Workspaces here: ${marked.map((b) => b.label).join(', ')} — ${state}`,
-    href: WORKSPACES_PAGE,
+    href: first.href,
   };
 }
 

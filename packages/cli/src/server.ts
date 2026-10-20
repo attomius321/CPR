@@ -32,6 +32,7 @@ import type { OpenRequest, OpenResult } from './editor.js';
 import { WorkspaceRefused, type Workspaces } from './workspaces.js';
 import { MergeRefused, type Merger } from './merges.js';
 import { parsePromptChange, PromptRefused, type PromptSettingsService } from './prompts.js';
+import type { UsageService } from './usage.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 import type { Terminals } from './terminal.js';
@@ -56,6 +57,8 @@ export interface ReviewTarget {
 
 /** `cpr view`: the repository's commits, and the diffs between them picked in the viewer. */
 export interface RepositoryOptions {
+  /** The repository's folder name, shown at the top of the viewer's sidenav (V29a). */
+  name?: string;
   /** The commits page's history: rows and their details, its shape (`GET /api/history…`). */
   history: Histories;
   /** HEAD, the history's version, local changes and an operation in progress. */
@@ -82,6 +85,8 @@ export interface RepositoryOptions {
   merges?: Merger;
   /** Every agent's prompts (V28): `/api/settings/prompts`. */
   settings?: PromptSettingsService;
+  /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 60-s copy. */
+  usage?: UsageService;
 }
 
 export interface ViewServerOptions {
@@ -255,9 +260,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           return onBranch(req, res, (branch) => answer(res, () => workspaces.stopAgent(branch)));
         }
         if (url.pathname === '/api/workspaces/open') {
-          return onBranch(req, res, (branch) =>
-            answer(res, () => workspaces.openWorktree(branch).then(() => ({}))),
+          return written(req, res, parseWorkspaceOpen, ({ branch, file }) =>
+            answer(res, () => workspaces.openWorktree(branch, file).then(() => ({}))),
           );
+        }
+        if (url.pathname === '/api/workspaces/changes') {
+          return ofBranch(req, res, url, (branch) => workspaces.changes(branch));
         }
         if (url.pathname === '/api/workspaces/prompt') {
           return ofBranch(req, res, url, (branch) =>
@@ -286,7 +294,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           );
         }
       }
-      const { settings } = repository;
+      const { settings, usage } = repository;
+      // Each subscription's windows of use (V29c): read only, the tokens stay in this process.
+      if (usage && url.pathname === '/api/usage') {
+        if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+        return answer(res, () => usage.report());
+      }
       // Every agent's prompts (V28b).
       if (settings && url.pathname === '/settings') return serveSite(req, res, url, '/', undefined);
       if (settings && url.pathname === '/api/settings/prompts') {
@@ -371,6 +384,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
             : site?.state !== undefined,
         ...(options.open && (site !== undefined || diff) ? { open: true } : {}),
         ...(repository ? { commits: true } : {}),
+        ...(repository?.name ? { repo: repository.name } : {}),
         ...(branchReview ? { branchReview } : {}),
       };
       return send(res, 200, JSON.stringify(capabilities), TYPES['.json']);
@@ -1096,6 +1110,30 @@ function parseWorkspaceClean(text: string): { branch: string; unmerged?: boolean
     throw new Error('unmerged: true or false');
   }
   return { branch: value.branch, ...(value.unmerged ? { unmerged: true } : {}) };
+}
+
+/**
+ * `{ branch, file?, previousPath? }`: a workspace's worktree to open, or a file in it (V29d) and,
+ * for a renamed file, where it was.
+ */
+function parseWorkspaceOpen(text: string): {
+  branch: string;
+  file?: { path: string; previousPath?: string };
+} {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
+  if (value.file === undefined) return { branch: value.branch };
+  if (typeof value.file !== 'string' || value.file === '') {
+    throw new Error('file: a path in its worktree');
+  }
+  if (value.previousPath !== undefined && typeof value.previousPath !== 'string') {
+    throw new Error('previousPath: where a renamed file was');
+  }
+  const { previousPath } = value;
+  return {
+    branch: value.branch,
+    file: { path: value.file, ...(previousPath ? { previousPath } : {}) },
+  };
 }
 
 /** `{ branch, into }`: a branch to merge, and the branch to merge it into (V26). */

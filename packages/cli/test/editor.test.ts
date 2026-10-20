@@ -312,6 +312,14 @@ describe('vsCodeFolder', () => {
       opened: true,
     });
     expect(JSON.parse(readFileSync(log, 'utf8'))).toEqual(['/work/app.worktrees/x']);
+    // A file in it, at a line (V29d): the folder's window, at the line.
+    const at = { file: 'src/a b.ts', line: 12 };
+    await vsCodeFolder({ CPR_CODE: fake, PATH: '' })('/work/app.worktrees/x', at);
+    expect(JSON.parse(readFileSync(log, 'utf8'))).toEqual([
+      '/work/app.worktrees/x',
+      '--goto',
+      '/work/app.worktrees/x/src/a b.ts:12:1',
+    ]);
     const nowhere = await vsCodeFolder({ PATH: '' }, host('linux', { PATH: '' }))('/w');
     expect(nowhere).toMatchObject({ opened: false });
     expect(!nowhere.opened && nowhere.message).toMatch(/not found.*CPR_CODE/);

@@ -187,6 +187,7 @@ function lastingServer(
       server.read(thread, view),
     ),
     archive: retried((server, thread: string) => server.archive(thread)),
+    limits: retried((server) => server.limits()),
   };
 }
 

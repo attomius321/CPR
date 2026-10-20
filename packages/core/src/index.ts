@@ -10,11 +10,19 @@ export {
 } from './git/revisions.js';
 export {
   listChangedFiles,
+  listLineCounts,
   parseNameStatus,
+  parseNumstat,
   type ChangedFile,
   type FileChangeStatus,
+  type LineCount,
 } from './git/changed-files.js';
-export { listChangedLines, parseChangedLines, type ChangedLines } from './git/changed-lines.js';
+export {
+  firstChangedLine,
+  listChangedLines,
+  parseChangedLines,
+  type ChangedLines,
+} from './git/changed-lines.js';
 export { checkoutRevision, defaultCacheDir, type CheckoutOptions } from './git/worktree.js';
 export type {
   Dangling,
@@ -171,6 +179,9 @@ export {
   type CheckGuess,
   type AgentStateName,
   type WorkspaceAgentState,
+  type WorkspaceChanges,
+  type WorkspaceCommit,
+  type WorkspaceFileChange,
   type WorkspaceList,
   type WorkspaceOptions,
   type WorkspaceReplied,
@@ -201,6 +212,7 @@ export {
   conflictKinds,
   type ConflictKind,
 } from './git/merging.js';
+export type { UsageReport, UsageSubscription, UsageWindow } from './usage.js';
 export {
   MERGE_STATES,
   type MergeCheckRun,
@@ -219,10 +231,14 @@ export {
   deleteMergedBranch,
   listWorktrees,
   mainWorktree,
+  parseWorktreeStatus,
   removeWorktree,
   uncommittedFiles,
+  worktreeStatus,
   WorktreeRefused,
   type Worktree,
+  type WorktreeFile,
+  type WorktreeFileStatus,
 } from './git/worktrees.js';
 export {
   checkout,

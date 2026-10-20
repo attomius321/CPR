@@ -1,12 +1,17 @@
 import { afterAll, describe, expect, it } from 'vitest';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   CprError,
+  firstChangedLine,
   listChangedFiles,
   listChangedLines,
+  listLineCounts,
   NoMergeBaseError,
   openRepo,
   parseChangedLines,
   parseNameStatus,
+  parseNumstat,
   resolveRevisions,
   type ChangedFile,
 } from '../src/index.js';
@@ -151,5 +156,88 @@ describe('parseChangedLines', () => {
       'src/y.ts': [3, 10, 11],
       'café "q".ts': [1],
     });
+  });
+});
+
+describe('parseNumstat (V29d)', () => {
+  it('reads lines per file: renames under both paths, binary files as null, spaces and tabs', () => {
+    const output = [
+      '3\t1\tsrc/a b.ts',
+      '0\t0\t',
+      'old\tname.ts',
+      'new name.ts',
+      '-\t-\tlogo.png',
+      '12\t0\tsrc/added.ts',
+      '',
+    ].join('\0');
+    expect(parseNumstat(output)).toEqual([
+      { path: 'src/a b.ts', added: 3, removed: 1 },
+      { path: 'new name.ts', previousPath: 'old\tname.ts', added: 0, removed: 0 },
+      { path: 'logo.png', added: null, removed: null },
+      { path: 'src/added.ts', added: 12, removed: 0 },
+    ]);
+    expect(parseNumstat('')).toEqual([]);
+  });
+
+  it('rejects output it cannot read', () => {
+    expect(() => parseNumstat('3\tsrc/a.ts\0')).toThrow('unexpected git diff --numstat record');
+  });
+});
+
+describe('listLineCounts and firstChangedLine (V29d)', () => {
+  const { repo, shas } = createBranchedRepo();
+  afterAll(() => repo.cleanup());
+
+  it("counts each file's lines between two commits, renames detected", async () => {
+    const counts = await listLineCounts(await openRepo(repo.root), shas.root, shas.feature);
+    expect([...counts].sort((a, b) => a.path.localeCompare(b.path))).toEqual([
+      { path: 'src/a.ts', added: 1, removed: 1 },
+      { path: 'src/added.ts', added: 1, removed: 0 },
+      { path: 'src/gone.ts', added: 0, removed: 1 },
+      { path: 'src/new.ts', previousPath: 'src/old.ts', added: 0, removed: 0 },
+    ]);
+  });
+
+  it('counts the working copy against a commit without a second one: tracked files only', async () => {
+    const git = await openRepo(repo.root);
+    repo.write({
+      'src/main-only.ts': 'export {};\nexport const x = 1;\n',
+      'src/untracked.ts': '1;\n',
+    });
+    try {
+      expect(await listLineCounts(git, 'HEAD')).toEqual([
+        { path: 'src/main-only.ts', added: 1, removed: 0 },
+      ]);
+    } finally {
+      repo.git('checkout', '--quiet', '--', 'src/main-only.ts');
+      repo.git('clean', '--quiet', '--force', '--', 'src/untracked.ts');
+    }
+  });
+
+  it("finds a file's first change in the working copy against a commit", async () => {
+    const git = await openRepo(repo.root);
+    repo.git('switch', '--quiet', 'feature');
+    try {
+      writeFileSync(
+        join(repo.root, 'src', 'new.ts'),
+        'export function old() {\n  return "a body long enough for rename detection";\n}\nexport const more = 1;\n',
+      );
+      // Committed and uncommitted changes alike; a rename found through both of its paths.
+      expect(await firstChangedLine(git, shas.root, ['src/a.ts'])).toBe(1);
+      expect(await firstChangedLine(git, shas.root, ['src/new.ts', 'src/old.ts'])).toBe(4);
+      // Its new path alone: the whole file is new, from its first line.
+      expect(await firstChangedLine(git, shas.root, ['src/new.ts'])).toBe(1);
+      // Only lines removed: the line before them.
+      writeFileSync(join(repo.root, 'src', 'a.ts'), '');
+      expect(await firstChangedLine(git, shas.feature, ['src/a.ts'])).toBe(1);
+      // No change, or a file git does not track: none.
+      expect(await firstChangedLine(git, shas.feature, ['src/added.ts'])).toBeNull();
+      writeFileSync(join(repo.root, 'src', 'loose.ts'), '1;\n');
+      expect(await firstChangedLine(git, shas.feature, ['src/loose.ts'])).toBeNull();
+    } finally {
+      repo.git('checkout', '--quiet', '--', '.');
+      repo.git('clean', '--quiet', '--force');
+      repo.git('switch', '--quiet', 'main');
+    }
   });
 });

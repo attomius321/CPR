@@ -21,6 +21,7 @@ import {
 } from './open.js';
 import { OpenIcon } from './OpenIcon.js';
 import { pathInProject, projectOf } from './projects.js';
+import { CloseIcon } from './icons.js';
 
 const sources = new Map<string, Promise<string>>();
 
@@ -193,7 +194,7 @@ export function DetailPanel({
             </button>
           )}
           <button className="close" onClick={onClose} aria-label="Close">
-            ×
+            <CloseIcon />
           </button>
         </div>
       </header>

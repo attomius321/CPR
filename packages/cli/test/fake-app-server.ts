@@ -222,6 +222,10 @@ export interface FakeAppServer {
   command(thread: string, command: string): void;
   /** Codex's trust entries (`projects` in its config), by folder: what `config/read` answers. */
   trusted: Record<string, string>;
+  /** Who is signed in (`account/read`, V29c): a ChatGPT Go plan unless a test says otherwise. */
+  account: Record<string, unknown> | null;
+  /** The account's windows (`account/rateLimits/read`): Go's one 30-day window, 0 % used. */
+  rateLimits: Record<string, unknown>;
   /** The server restarts: running turns interrupted, every thread not loaded, clients cut. */
   restart(): void;
   close(): Promise<void>;
@@ -250,6 +254,22 @@ export async function fakeAppServer(
   /** The connections that opted into experimental methods. */
   const experimental = new Set<FakeSocket>();
   const trusted: Record<string, string> = {};
+  // As Codex 0.163 answered on a Go plan (V29 spike).
+  const usage = {
+    account: { type: 'chatgpt', email: 'person@example.com', planType: 'go' } as Record<
+      string,
+      unknown
+    > | null,
+    rateLimits: {
+      limitId: 'codex',
+      limitName: null,
+      primary: { usedPercent: 0, windowDurationMins: 43_200, resetsAt: 1_795_046_400 },
+      secondary: null,
+      credits: { hasCredits: false, unlimited: false, balance: null },
+      planType: 'go',
+      rateLimitReachedType: null,
+    } as Record<string, unknown>,
+  };
   const needsExperimental = (method: string, socket: FakeSocket) => {
     if (!experimental.has(socket)) {
       throw Object.assign(new Error(`${method} requires experimentalApi capability`), {
@@ -483,6 +503,12 @@ export async function fakeAppServer(
         const limit = typeof params.limit === 'number' ? params.limit : turns.length;
         return { data: turns.slice(0, limit), nextCursor: null, backwardsCursor: null };
       },
+      'account/read': () => ({ account: usage.account, requiresOpenaiAuth: true }),
+      'account/rateLimits/read': () => ({
+        ordinaryUsageAllowed: true,
+        rateLimits: usage.rateLimits,
+        rateLimitsByLimitId: { codex: usage.rateLimits },
+      }),
       'config/read': () => ({
         config: {
           projects: Object.fromEntries(
@@ -606,6 +632,18 @@ export async function fakeAppServer(
       t.terminals.push(value);
     },
     trusted,
+    get account() {
+      return usage.account;
+    },
+    set account(value) {
+      usage.account = value;
+    },
+    get rateLimits() {
+      return usage.rateLimits;
+    },
+    set rateLimits(value) {
+      usage.rateLimits = value;
+    },
     typed(thread, value) {
       const t = loaded(thread);
       if (t.turns.at(-1)?.status === 'inProgress') throw new Error(`a turn runs on ${thread}`);

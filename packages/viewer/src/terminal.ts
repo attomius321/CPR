@@ -43,22 +43,22 @@ export function keySender(
 
 /**
  * Dark in both of the page's themes: Claude Code keeps its own theme whatever the terminal's
- * background, and on white its marks vanished (V21 spike). The page's dark tokens.
+ * background, and on white its marks vanished (V21 spike). Black, as the reference's (V29b).
  */
 export const TERMINAL_THEME: ITheme = {
-  background: '#111113',
-  foreground: '#ececf0',
-  cursor: '#ececf0',
-  cursorAccent: '#111113',
-  selectionBackground: '#34343a',
-  black: '#1c1c1f',
+  background: '#000000',
+  foreground: '#e6e6e9',
+  cursor: '#e6e6e9',
+  cursorAccent: '#000000',
+  selectionBackground: '#3a3a42',
+  black: '#1f1f23',
   red: '#f85149',
   green: '#3fb950',
   yellow: '#d29922',
   blue: '#58a6ff',
   magenta: '#a371f7',
   cyan: '#39c5bb',
-  white: '#ececf0',
+  white: '#e6e6e9',
   brightBlack: '#6e6e76',
   brightRed: '#ff7b72',
   brightGreen: '#56d364',

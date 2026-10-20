@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PromptKey, PromptSetting, PromptSettings } from '@cpr/core';
+import { Help } from './Help.js';
 import { getJson, postJson } from './http.js';
+import { useShell } from './shell-context.js';
+import { setTheme, useTheme, type Theme } from './theme.js';
 import {
   draftProblem,
   gitNote,
@@ -70,13 +73,21 @@ export function SettingsPage() {
     () => settings?.prompts.filter((p) => isEdited(p, drafts[p.key])).map((p) => p.key) ?? [],
     [settings, drafts],
   );
-  // Leaving with an unsaved change asks first (the tabs are links too).
+  // Leaving with an unsaved change asks first: closing or reloading the page (the browser asks),
+  // and going elsewhere in the shell (V29a), which does not load another page.
+  const setLeaveGuard = useShell()?.setLeaveGuard;
   useEffect(() => {
     if (edited.length === 0) return;
     const onLeave = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener('beforeunload', onLeave);
-    return () => window.removeEventListener('beforeunload', onLeave);
-  }, [edited.length]);
+    setLeaveGuard?.(
+      `Leave Settings? ${edited.length === 1 ? 'A prompt is' : `${edited.length} prompts are`} changed and not saved.`,
+    );
+    return () => {
+      window.removeEventListener('beforeunload', onLeave);
+      setLeaveGuard?.(null);
+    };
+  }, [edited.length, setLeaveGuard]);
 
   const show = (key: PromptKey) => {
     setOpen(key);
@@ -120,13 +131,14 @@ export function SettingsPage() {
   const current = settings?.prompts.find((p) => p.key === open);
   return (
     <div className="settings">
-      <h1 className="commits-title">
-        Settings
-        <span className="commits-help">
+      <div className="commits-title settings-bar">
+        <h1>Settings</h1>
+        <Help label="About Settings">
           What CPR tells each agent · CPR&apos;s text until you change it · saved in{' '}
           {settings?.file ?? 'cpr/config.json'}, for everyone once committed
-        </span>
-      </h1>
+        </Help>
+        <Appearance />
+      </div>
       {error && (
         <p className="commits-error error" role="alert">
           {error}
@@ -186,6 +198,37 @@ export function SettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+const THEMES: { theme: Theme; label: string }[] = [
+  { theme: 'dark', label: 'Dark' },
+  { theme: 'light', label: 'Light' },
+  { theme: 'system', label: 'System' },
+];
+
+/** The page's theme for this browser (V29b, decision 179): dark unless chosen. */
+function Appearance() {
+  const theme = useTheme();
+  return (
+    <span className="appearance">
+      <span className="appearance-label" id="appearance-label">
+        Appearance <span className="field-optional">(this browser)</span>
+      </span>
+      <span className="scopes" role="group" aria-labelledby="appearance-label">
+        {THEMES.map((choice) => (
+          <button
+            key={choice.theme}
+            type="button"
+            className={theme === choice.theme ? 'scope active' : 'scope'}
+            aria-pressed={theme === choice.theme}
+            onClick={() => setTheme(choice.theme)}
+          >
+            {choice.label}
+          </button>
+        ))}
+      </span>
+    </span>
   );
 }
 

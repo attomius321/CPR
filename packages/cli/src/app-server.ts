@@ -211,6 +211,12 @@ export interface CodexServer {
   read(thread: string, view: { turns: number; items: 'summary' | 'full' }): Promise<CodexThread>;
   /** Out of Codex's lists (`thread/archive`), not deleted: `codex unarchive` brings it back. */
   archive(thread: string): Promise<void>;
+  /**
+   * The account's plan and its windows of use (V29c): `account/read`, then
+   * `account/rateLimits/read` (it asks OpenAI: 0.8 s). Null for a login that has no windows (an
+   * API key); `rateLimits` as Codex sent it, read field by field by `usage.ts`.
+   */
+  limits(): Promise<{ plan?: string; rateLimits: unknown } | null>;
 }
 
 const text = (value: unknown): string | undefined =>
@@ -447,6 +453,19 @@ export function codexServer(
     archive: (thread) =>
       using(async (connection) => {
         await connection.request('thread/archive', { threadId: thread });
+      }),
+    limits: () =>
+      using(async (connection) => {
+        const read = await connection.request<{ account?: { type?: unknown; planType?: unknown } }>(
+          'account/read',
+          { refreshToken: false },
+        );
+        if (read.account?.type !== 'chatgpt') return null;
+        const plan = text(read.account.planType);
+        const limits = await connection.request<{ rateLimits?: unknown }>(
+          'account/rateLimits/read',
+        );
+        return { ...(plan ? { plan } : {}), rateLimits: limits.rateLimits ?? null };
       }),
   };
 }

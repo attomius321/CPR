@@ -74,7 +74,8 @@ test('Codex on its app server, without terminals: its thread from there, a turn 
   const here = panel(page);
   await expect(here.getByText("CPR's prompt")).toBeVisible(POLL);
   await expect(workspaceRow(page)).toContainText('Working', POLL);
-  const talk = here.getByRole('button', { name: 'Talk' });
+  await here.getByRole('button', { name: 'More actions' }).click();
+  const talk = here.getByRole('menuitem', { name: 'Talk' });
   await expect(talk).not.toHaveAttribute('title', /not recorded/);
   await talk.click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
@@ -141,7 +142,8 @@ test('Codex on its app server: Stop interrupts its turn, Start again makes a new
     POLL,
   );
 
-  await here.getByRole('button', { name: 'Clean up' }).click();
+  await here.getByRole('button', { name: 'More actions' }).click();
+  await here.getByRole('menuitem', { name: 'Clean up…' }).click();
   await here.getByRole('button', { name: 'Clean up anyway' }).click();
   await expect(workspaceRow(page)).toHaveCount(0, POLL);
   expect(server.threads.map((t) => t.archived)).toEqual([true, true]);
@@ -166,8 +168,11 @@ test("Codex's own terminal in its panel: the trust it asks for, a turn typed the
     'true',
   );
   await expect(box(page)).toBeHidden();
-  await expect(here.getByRole('button', { name: 'Talk' })).toHaveCount(0);
-  await expect(here).toContainText("? in an empty prompt lists Codex's keys");
+  await expect(here.getByRole('menuitem', { name: 'Talk' })).toHaveCount(0);
+  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
+    'title',
+    /\? in an empty prompt lists Codex's keys/,
+  );
   // Codex asks to trust the worktree first: the panel says so, and the answer is the person's.
   await expect(screen(page)).toContainText('Trust this folder?', POLL);
   await expect(here.locator('.terminal-trust')).toContainText(

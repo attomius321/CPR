@@ -43,12 +43,16 @@ test('lists local branches and remote ones by folder, folders closed', async ({ 
     'a-branch-whose-name-runs-on-long-enough-to-crowd-its-row',
     'oldgone',
     'wip↑2 ↓1',
-    '▾origin/6',
-    '▸feature/1',
-    '▸fix/2',
+    'origin/6',
+    'feature/1',
+    'fix/2',
     'a-branch-whose-name-runs-on-long-enough-to-crowd-its-row',
     'topic',
     'wip',
+  ]);
+  // Folded but origin/ (V29b: chevrons, not ▸ and ▾).
+  await expect(panel(page).locator('.branches-folder[aria-expanded="true"]')).toHaveText([
+    'origin/6',
   ]);
   await expect(entry(page, 'wip').first().locator('.branches-track')).toHaveAttribute(
     'title',
@@ -77,9 +81,14 @@ test('opens folders, and filters on the whole name', async ({ page }) => {
   await filter.fill('DEEP');
   await expect(panel(page).locator('.branches-section')).toHaveText(['Remotes 1']);
   await expect(panel(page).locator('.branches-folder, .branches-branch')).toHaveText([
-    '▾origin/1',
-    '▾feature/1',
+    'origin/1',
+    'feature/1',
     'deep',
+  ]);
+  // Open folders, their chevrons down (V29b).
+  await expect(panel(page).locator('.branches-folder[aria-expanded="true"]')).toHaveText([
+    'origin/1',
+    'feature/1',
   ]);
   await filter.fill('zzz');
   await expect(panel(page)).toContainText('No branch matches');

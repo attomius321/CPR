@@ -12,7 +12,6 @@ import type {
   CheckoutResult,
   CheckoutTarget,
   Commit,
-  WorkspaceStart,
   HistoryPage,
   HistoryRefs,
   HistoryScope,
@@ -24,15 +23,8 @@ import { BranchesPanel } from './BranchesPanel.js';
 import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
 import { reviewChoices, reviewMarks, type ReviewChoice, type ReviewMark } from './branchReviews.js';
 import { CheckoutDialog } from './CheckoutDialog.js';
-import {
-  workspaceChips,
-  workspaceHref,
-  workspacesFirst,
-  startedNotice,
-  type AgentChip,
-} from './workspaces.js';
+import { workspaceChips, workspaceHref, workspacesFirst, type AgentChip } from './workspaces.js';
 import { WorkspaceMark } from './WorkspaceMark.js';
-import { useWorkspaceStarter } from './WorkspaceStarter.js';
 import { useWorkspaces } from './useWorkspaces.js';
 import { RowMenu, type RowMenuItem } from './RowMenu.js';
 import {
@@ -51,8 +43,11 @@ import {
   type Picked,
 } from './commits.js';
 import { GraphCell, ROW_HEIGHT } from './GraphCell.js';
+import { Help } from './Help.js';
+import { MoreIcon } from './icons.js';
 import { laneSpacing, layoutLanes } from './lanes.js';
 import { backLink, HISTORY_PAGE } from './pages.js';
+import { useShell, type Notice } from './shell-context.js';
 
 /** History's API and the diffs it starts live at the server's root (`cpr view`). */
 const API_ROOT = '/';
@@ -189,14 +184,6 @@ interface Keep {
   offset: number;
 }
 
-/** What the page says after a checkout or a workspace's start, above the rows. */
-interface Notice {
-  text: string;
-  warning?: string;
-  /** Text the person may copy from it: a workspace's prompt when no agent took it (V18). */
-  copy?: string;
-}
-
 /**
  * The repository's history as a graph (V10): every branch, or the current one ("This branch",
  * `?scope=current`). A click selects a row. In compare mode (V13: its toggle, or x) a click (or
@@ -208,7 +195,8 @@ export function HistoryPage() {
   const [scope, setScope] = useState(scopeOfUrl);
   // Listing anew (after a checkout, or a change made elsewhere) starts a new generation.
   const [generation, setGeneration] = useState(0);
-  const [notice, setNotice] = useState<Notice | null>(null);
+  // What a checkout or a start says goes to the shell's status bar (V29a).
+  const shell = useShell();
   // Kept across generations; the picks are not.
   const [comparing, setComparing] = useState(false);
   // The branches panel's filter and folders flipped (V10b).
@@ -228,7 +216,6 @@ export function HistoryPage() {
   const [keep, setKeep] = useState<Keep | null>(null);
   const choose = useCallback((next: HistoryScope) => {
     window.history.replaceState(null, '', next === 'all' ? HISTORY_PAGE : '?scope=current');
-    setNotice(null);
     setScope(next);
   }, []);
   const goElsewhere = useCallback(
@@ -239,20 +226,22 @@ export function HistoryPage() {
     [choose],
   );
   const arrived = useCallback(() => setGoTo(null), []);
-  const relist = useCallback((next: Notice | null, branch?: string, kept?: Keep) => {
-    setNotice(next);
-    // A new branch (a workspace's): its tip once listed.
-    if (branch) setGoTo(branch);
-    setKeep(kept ?? null);
-    setGeneration((g) => g + 1);
-  }, []);
+  const relist = useCallback(
+    (next: Notice | null, branch?: string, kept?: Keep) => {
+      if (next) shell?.notify(next);
+      // A new branch (a workspace's): its tip once listed.
+      if (branch) setGoTo(branch);
+      setKeep(kept ?? null);
+      setGeneration((g) => g + 1);
+    },
+    [shell],
+  );
   // A new scope or generation starts afresh: its own rows, lanes and picks.
   return (
     <History
       key={`${scope}:${generation}`}
       scope={scope}
       onScope={choose}
-      notice={notice}
       onRelist={relist}
       comparing={comparing}
       onComparing={setComparing}
@@ -268,7 +257,6 @@ export function HistoryPage() {
 function History({
   scope,
   onScope,
-  notice,
   onRelist,
   comparing,
   onComparing,
@@ -280,8 +268,7 @@ function History({
 }: {
   scope: HistoryScope;
   onScope: (scope: HistoryScope) => void;
-  notice: Notice | null;
-  /** Lists anew, saying `notice`; with `branch`, the cursor goes to its tip. */
+  /** Lists anew, saying `notice` in the status bar; with `branch`, the cursor goes to its tip. */
   onRelist: (notice: Notice | null, branch?: string, keep?: Keep) => void;
   comparing: boolean;
   onComparing: (comparing: boolean) => void;
@@ -341,7 +328,6 @@ function History({
   );
   const [checkingOut, setCheckingOut] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
-  const [copied, setCopied] = useState<boolean | null>(null);
 
   // Branch reviews (V15): marks on badges, dots on commits added since; read again when the
   // page is back, since a review is made on another page.
@@ -566,13 +552,10 @@ function History({
   );
   const closeMenu = useCallback(() => setMenu(null), []);
 
-  // Starting a workspace (V18): the dialog, then the page listed anew on its branch.
-  const started = useCallback(
-    (start: WorkspaceStart) => onRelist(startedNotice(start), start.workspace.branch),
-    [onRelist],
-  );
-  const starter = useWorkspaceStarter(started, setError);
-  const openWorkspace = starter.open;
+  // Starting a workspace (V18): the shell's dialog, which opens the new workspace (V29a).
+  const shell = useShell();
+  const openWorkspace = useCallback((sha?: string) => shell?.startWorkspace(sha), [shell]);
+  const startOpen = shell?.starting ?? false;
 
   // Each workspace's mark on its branch's badges, a link to it (V18b); its agent's commits listed
   // as they come, the cursor kept on its commit.
@@ -648,7 +631,10 @@ function History({
         ]),
     ...workspaceOn(sha).map((branch) => ({
       label: 'Open its workspace',
-      onSelect: () => window.location.assign(workspaceHref(branch)),
+      onSelect: () =>
+        shell
+          ? shell.navigate({ page: 'workspace', branch })
+          : window.location.assign(workspaceHref(branch)),
     })),
     {
       label: 'Start a workspace here',
@@ -732,7 +718,7 @@ function History({
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.target instanceof HTMLInputElement) return;
       // The menu and the dialogs take their own keys.
-      if (menu || confirm || starter.isOpen) return;
+      if (menu || confirm || startOpen) return;
       if (event.key === 'j' || event.key === 'k') {
         const next = Math.max(0, Math.min(rows - 1, cursor + (event.key === 'j' ? 1 : -1)));
         setCursor(next);
@@ -748,8 +734,6 @@ function History({
         const box = list.current?.querySelector('.commit.cursor')?.getBoundingClientRect();
         // `r` reviews: straight to the row's branches.
         if (box) openMenu(cursor, box.left + 48, box.bottom, 'review');
-      } else if (event.key === 'n') {
-        openWorkspace();
       } else if (event.key === '/') {
         // Finds a branch: the panel's filter (shown first under 900 px).
         event.preventDefault();
@@ -781,7 +765,7 @@ function History({
     reveal,
     menu,
     confirm,
-    starter.isOpen,
+    startOpen,
     openWorkspace,
     openMenu,
     comparing,
@@ -827,7 +811,6 @@ function History({
         />
         <div className="commits-scroll" ref={scroller} onScroll={measure}>
           <h1 className="commits-title">
-            History
             <button
               type="button"
               className="branches-toggle"
@@ -866,21 +849,21 @@ function History({
               </button>
             )}
             <span className="commits-tail">
-              <span className="commits-help">
-                {comparing
-                  ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
-                  : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch'}
-              </span>
+              {/* Compare mode says what to do beside it; the keys are behind the "?" (V29b). */}
+              {comparing && (
+                <span className="commits-help">
+                  Pick two to compare them, or one against its parent · x picks, Enter compares, Esc
+                  leaves
+                </span>
+              )}
               <span className="commits-actions">
-                <button
-                  type="button"
-                  className="start-workspace"
-                  title="Start a workspace: a branch, its worktree and an agent (n)"
-                  onClick={() => openWorkspace()}
-                >
-                  Start a workspace
-                  <kbd aria-hidden="true">n</kbd>
-                </button>
+                {!comparing && (
+                  <Help label="History's keys">
+                    <span className="commits-help">
+                      j/k move · c checks out · r reviews · x picks to compare · / finds a branch
+                    </span>
+                  </Help>
+                )}
                 <button
                   type="button"
                   className="compare-mode"
@@ -894,29 +877,6 @@ function History({
               </span>
             </span>
           </h1>
-          {notice && (
-            <p className="checkout-notice" role="status">
-              {notice.text}
-              {notice.warning && <span className="warning"> · {notice.warning}</span>}
-              {notice.copy !== undefined && (
-                <>
-                  {' '}
-                  <button
-                    type="button"
-                    className="link"
-                    onClick={() => {
-                      navigator.clipboard
-                        .writeText(notice.copy ?? '')
-                        .then(() => setCopied(true))
-                        .catch(() => setCopied(false));
-                    }}
-                  >
-                    {copied === null ? 'Copy the prompt' : copied ? 'Copied' : 'Could not copy'}
-                  </button>
-                </>
-              )}
-            </p>
-          )}
           {error && (
             <p className="commits-error error" role="alert">
               {error}
@@ -987,7 +947,6 @@ function History({
           onClose={closeMenu}
         />
       )}
-      {starter.dialog}
       {confirm && (
         <CheckoutDialog
           choice={confirm.choice}
@@ -1223,7 +1182,7 @@ function CommitRow({
           onMenu(box.right - 8, box.bottom);
         }}
       >
-        ⋯
+        <MoreIcon />
       </button>
     </li>
   );

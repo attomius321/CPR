@@ -592,8 +592,8 @@ describe('workspaces', () => {
         env: { PATH: '/usr/bin' },
         hook,
         node: '/usr/bin/node',
-        openFolder: (folder) => {
-          opened.push(folder);
+        openFolder: (folder, at) => {
+          opened.push(at ? `${folder} ${at.file}:${at.line}` : folder);
           return Promise.resolve({ opened: true });
         },
         ...(terminals ? { terminals } : {}),
@@ -1151,6 +1151,147 @@ describe('workspaces', () => {
       },
     });
   };
+
+  /** git in `cwd` as an agent runs it, with its identity. */
+  const gitIn = async (cwd: string, ...args: string[]) => {
+    const { execFileSync } = await import('node:child_process');
+    return execFileSync('git', ['-C', cwd, ...args], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'A',
+        GIT_AUTHOR_EMAIL: 'a@x',
+        GIT_COMMITTER_NAME: 'A',
+        GIT_COMMITTER_EMAIL: 'a@x',
+      },
+    }).trim();
+  };
+
+  it("lists a workspace's changes: its commits and files since the fork point, what its worktree has not committed (V29d)", async () => {
+    const { repo, shas } = fresh();
+    const s = await service(repo, fakeClaude().claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    const path = workspace.worktree.path;
+    expect(await s.changes('feature/one')).toEqual({
+      branch: 'feature/one',
+      base: shas.B,
+      since: 'main',
+      tip: shas.B,
+      commits: { count: 0, listed: [] },
+      files: { count: 0, added: 0, removed: 0, listed: [] },
+      uncommitted: { count: 0, listed: [] },
+    });
+
+    await commitIn(path, 'src/a.ts', 'export const a = 1;\nexport const a2 = 2;\n');
+    await commitIn(path, 'src/c.ts', 'export const c = 1;\n');
+    const tip = await gitIn(path, 'rev-parse', 'HEAD');
+    writeFileSync(join(path, 'src', 'b.ts'), 'export const b = 2;\n');
+    writeFileSync(join(path, 'notes.md'), 'To do\n');
+    const changes = await s.changes('feature/one');
+    expect(changes.tip).toBe(tip);
+    expect(changes.commits.count).toBe(2);
+    expect(changes.commits.listed.map((c) => [c.sha, c.subject, c.author])).toEqual([
+      [tip, 'src/c.ts', 'A'],
+      [await gitIn(path, 'rev-parse', 'HEAD~1'), 'src/a.ts', 'A'],
+    ]);
+    expect(changes.commits.listed[0]?.date).toMatch(/^\d{4}-\d\d-\d\dT/);
+    expect(changes.files).toEqual({
+      count: 2,
+      added: 2,
+      removed: 0,
+      listed: [
+        { status: 'modified', path: 'src/a.ts', added: 1, removed: 0 },
+        { status: 'added', path: 'src/c.ts', added: 1, removed: 0 },
+      ],
+    });
+    expect(changes.uncommitted).toEqual({
+      count: 2,
+      listed: [
+        { status: 'modified', path: 'src/b.ts', added: 1, removed: 1 },
+        { status: 'untracked', path: 'notes.md' },
+      ],
+    });
+
+    // Opened in its worktree at the first change: committed or not; a new file at its first line.
+    opened.length = 0;
+    await s.openWorktree('feature/one', { path: 'src/a.ts' });
+    await s.openWorktree('feature/one', { path: 'src/b.ts' });
+    await s.openWorktree('feature/one', { path: 'notes.md' });
+    expect(opened).toEqual([`${path} src/a.ts:2`, `${path} src/b.ts:1`, `${path} notes.md:1`]);
+    // Nothing outside its worktree; nothing that is not there.
+    for (const outside of ['../app/src/a.ts', '/etc/passwd', 'src/../../x', '']) {
+      await expect(s.openWorktree('feature/one', { path: outside }), outside).rejects.toMatchObject(
+        { status: 400 },
+      );
+    }
+    await expect(s.openWorktree('feature/one', { path: 'src/gone.ts' })).rejects.toMatchObject({
+      status: 409,
+      message: 'src/gone.ts is not in its worktree',
+    });
+    expect(opened).toHaveLength(3);
+    await expect(s.changes('feature/nope')).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("starts a workspace's commits at its fork point after a rebase, at its base once merged; its branch or worktree gone (V29d)", async () => {
+    const { repo, shas } = fresh();
+    const s = await service(repo, fakeClaude().claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    const path = workspace.worktree.path;
+    await commitIn(path, 'src/c.ts', 'export const c = 1;\n');
+    // main moves on and the agent rebases onto it: its own commit only, not main's.
+    await commitIn(repo.root, 'src/m.ts', 'export const m = 1;\n');
+    const M = repo.git('rev-parse', 'main');
+    await gitIn(path, 'rebase', '--quiet', 'main');
+    const rebased = await s.changes('feature/one');
+    expect(rebased).toMatchObject({ base: M, since: 'main', commits: { count: 1 } });
+    expect(rebased.files.listed.map((f) => f.path)).toEqual(['src/c.ts']);
+
+    // Merged: the fork point is its tip; the commits from where it started, with main's.
+    repo.git('merge', '--quiet', '--ff-only', 'feature/one');
+    const merged = await s.changes('feature/one');
+    expect(merged.base).toBe(shas.B);
+    expect(merged.since).toBeUndefined();
+    expect(merged.commits.count).toBe(2);
+
+    // Its branch gone: no commits; its worktree is still read.
+    await gitIn(path, 'checkout', '--quiet', '--detach');
+    repo.git('branch', '--quiet', '-D', 'feature/one');
+    writeFileSync(join(path, 'notes.md'), 'To do\n');
+    expect(await s.changes('feature/one')).toEqual({
+      branch: 'feature/one',
+      base: shas.B,
+      tip: null,
+      commits: { count: 0, listed: [] },
+      files: { count: 0, added: 0, removed: 0, listed: [] },
+      uncommitted: { count: 1, listed: [{ status: 'untracked', path: 'notes.md' }] },
+    });
+    // Its worktree gone: nothing to say of it.
+    rmSync(path, { recursive: true, force: true });
+    expect((await s.changes('feature/one')).uncommitted).toBeNull();
+  });
+
+  it('lists at most 300 files of a branch and of its worktree, its counts over all (V29d)', async () => {
+    const { repo } = fresh();
+    const s = await service(repo, fakeClaude().claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    const path = workspace.worktree.path;
+    mkdirSync(join(path, 'many'));
+    for (let i = 0; i < 301; i++) {
+      writeFileSync(join(path, 'many', `f${String(i).padStart(3, '0')}.ts`), `${i};\n${i};\n`);
+    }
+    await gitIn(path, 'add', 'many');
+    await gitIn(path, 'commit', '--quiet', '-m', 'Many');
+    const { files } = await s.changes('feature/one');
+    expect([files.count, files.added, files.removed, files.listed.length]).toEqual([
+      301, 602, 0, 300,
+    ]);
+    expect(files.listed.at(-1)?.path).toBe('many/f299.ts');
+    // The same for what its worktree has not committed: a build's output nothing ignores.
+    mkdirSync(join(path, 'out'));
+    for (let i = 0; i < 301; i++) writeFileSync(join(path, 'out', `${i}.js`), `${i};\n`);
+    const { uncommitted } = await s.changes('feature/one');
+    expect([uncommitted?.count, uncommitted?.listed.length]).toEqual([301, 300]);
+  });
 
   it("starts the agent with CPR's hooks: one settings file, rewritten when CPR moves or it is gone", async () => {
     const { repo } = fresh();

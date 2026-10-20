@@ -2,12 +2,15 @@ import { execFileSync, execSync, spawn, type ChildProcess } from 'node:child_pro
 import {
   cpSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -78,6 +81,8 @@ async function startCpr(
       ...env,
       CPR_CLAUDE: '/nonexistent/claude',
       CPR_CODEX: '/nonexistent/codex',
+      // Never your subscriptions' usage either: a spec that wants it fakes it (V29c).
+      CPR_USAGE: 'off',
       ...extraEnv,
     },
   });
@@ -584,6 +589,8 @@ export interface RunningWorkspaces extends Running {
   /** Codex's TUI joined to it (V27b): each `resume … --remote` with its folder, and hang-ups. */
   codexResumes(): FakeClaudeCall[];
   codexHangups(): string[];
+  /** With `usage` (V29c): the requests the fake usage endpoint got, their Authorization. */
+  usageRequests(): string[];
 }
 
 /**
@@ -853,6 +860,51 @@ const wait = setInterval(() => {
 }
 
 /**
+ * A fake of Claude's usage endpoint (V29c) answering `claude` with `status`, and Claude Code's
+ * files in a CLAUDE_CONFIG_DIR of the test's: a token good for an hour, a Pro plan. Never the
+ * person's own; each request's Authorization goes in `requests`.
+ */
+async function fakeUsage(
+  dir: string,
+  { claude, status = 200 }: { claude: unknown; status?: number },
+  requests: string[],
+): Promise<{ env: Record<string, string>; server: Server }> {
+  const config = join(dir, 'claude-config');
+  mkdirSync(config);
+  writeFileSync(
+    join(config, '.credentials.json'),
+    JSON.stringify({
+      claudeAiOauth: {
+        accessToken: 'e2e-access-token',
+        refreshToken: 'e2e-refresh-token',
+        expiresAt: Date.now() + 3_600_000,
+      },
+    }),
+  );
+  writeFileSync(
+    join(config, '.claude.json'),
+    JSON.stringify({ oauthAccount: { organizationType: 'claude_pro' } }),
+  );
+  const server = createServer((req, res) => {
+    requests.push(String(req.headers.authorization));
+    res.writeHead(status, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(claude));
+  });
+  await new Promise<void>((ready) => server.listen(0, '127.0.0.1', ready));
+  const { port } = server.address() as AddressInfo;
+  return {
+    env: {
+      CPR_USAGE: 'on',
+      CLAUDE_CONFIG_DIR: config,
+      // Codex's sessions, read when its app server does not answer: the test's, empty.
+      CODEX_HOME: join(dir, 'codex-home'),
+      CPR_CLAUDE_USAGE_URL: `http://127.0.0.1:${port}/api/oauth/usage`,
+    },
+    server,
+  };
+}
+
+/**
  * `main` with the `callers` fixture's base and head, pushed to a bare `origin` (its default
  * branch), and a fake Claude Code as `CPR_CLAUDE` (`agent: false`: one that is not installed;
  * `terminal: false`: no terminals, V21); a fake Codex as `CPR_CODEX` with `codex: true` (V20a),
@@ -865,6 +917,17 @@ export async function serveWorkspaces({
   terminal = true,
   codex = false,
   appServer = false,
+  usage,
+}: {
+  agent?: boolean;
+  terminal?: boolean;
+  codex?: boolean;
+  appServer?: boolean;
+  /**
+   * V29c: usage read, from a fake of Claude's usage endpoint answering `claude` (with `status`),
+   * with fake credentials in a CLAUDE_CONFIG_DIR of the test's; Codex's from its fake app server.
+   */
+  usage?: { claude: unknown; status?: number };
 } = {}): Promise<RunningWorkspaces> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', '-B', 'main');
@@ -883,6 +946,8 @@ export async function serveWorkspaces({
   if (codexServer) {
     writeFileSync(join(fake, 'app-server-socket'), daemonStartOutput(codexServer.path));
   }
+  const usageRequests: string[] = [];
+  const usageEndpoint = usage ? await fakeUsage(fake, usage, usageRequests) : null;
   // A fake VS Code: records what it is asked to open.
   const code = join(fake, 'code');
   writeFileSync(
@@ -897,6 +962,7 @@ export async function serveWorkspaces({
     CPR_CODE: code,
     // V21: terminals turned off, as where node-pty cannot run.
     ...(terminal ? {} : { CPR_TERMINAL: 'off' }),
+    ...(usageEndpoint?.env ?? {}),
   });
   const lines = (file: string) =>
     readFileSync(join(fake, file), { encoding: 'utf8', flag: 'a+' })
@@ -997,9 +1063,11 @@ export async function serveWorkspaces({
     codexResumes: () =>
       lines('codex-resumes.jsonl').map((line) => JSON.parse(line) as FakeClaudeCall),
     codexHangups: () => lines('codex-hangups.txt'),
+    usageRequests: () => [...usageRequests],
     stop() {
       child.kill('SIGINT');
       void codexServer?.close();
+      usageEndpoint?.server.close();
       for (const dir of [repo, `${repo}.worktrees`, origin, fake, cache]) {
         rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
       }

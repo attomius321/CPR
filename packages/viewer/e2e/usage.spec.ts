@@ -1,0 +1,88 @@
+import { expect, test, type Page } from '@playwright/test';
+import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
+
+// Each subscription's windows in the status bar (V29c): Claude Code's from a fake of the endpoint
+// its /usage reads, with fake credentials; Codex's from its fake app server. Never yours.
+let cpr: RunningWorkspaces;
+const errors: string[] = [];
+
+test.beforeEach(({ page }) => {
+  errors.length = 0;
+  page.on('pageerror', (error) => errors.push(error.message));
+});
+
+test.afterEach(() => {
+  cpr.stop();
+  expect(errors).toEqual([]);
+});
+
+const POLL = { timeout: 12_000 };
+const in3h = () => new Date(Date.now() + 3 * 3_600_000 + 60_000).toISOString();
+const usage = (page: Page) =>
+  page.getByRole('contentinfo', { name: 'Status bar' }).getByRole('list', { name: 'Usage' });
+
+test("the status bar shows each subscription's windows, what a hover says, and never the token", async ({
+  page,
+}) => {
+  cpr = await serveWorkspaces({
+    codex: true,
+    appServer: true,
+    usage: {
+      claude: {
+        limits: [
+          { kind: 'session', group: 'session', percent: 59, resets_at: in3h(), scope: null },
+          { kind: 'weekly_all', group: 'weekly', percent: 84, resets_at: in3h(), scope: null },
+        ],
+      },
+    },
+  });
+  const said: string[] = [];
+  page.on('response', (response) => {
+    if (!response.url().includes('/api/')) return;
+    // A page left before its answer was read: nothing to read.
+    response.text().then(
+      (text) => said.push(text),
+      () => undefined,
+    );
+  });
+  await page.goto(`${cpr.url}history`);
+  const items = usage(page).getByRole('listitem');
+  await expect(items).toHaveCount(2, POLL);
+  const [claude, codex] = [items.nth(0), items.nth(1)];
+  await expect(claude).toHaveText('ClaudePro5h59%wk84%');
+  await expect(codex).toHaveText('CodexGo30d0%');
+  // 84 % is amber, 59 % green: the tone of each window.
+  await expect(claude.locator('.usage-window.tone-high')).toHaveText('wk84%');
+  await expect(claude.locator('.usage-window.tone-ok')).toHaveText('5h59%');
+  await expect(claude).toHaveAttribute(
+    'title',
+    /^Claude Pro\n5h: 59 % used, resets in 3 h \d+ min\n/,
+  );
+  await expect(claude).toHaveAttribute('title', /\nRead just now$/);
+
+  // The token went to the usage endpoint only, and never to the page.
+  expect(cpr.usageRequests()).toEqual(['Bearer e2e-access-token']);
+  await page.reload();
+  await expect(items).toHaveCount(2, POLL);
+  // From CPR's copy: read once in the minute.
+  expect(cpr.usageRequests()).toHaveLength(1);
+  expect(said.join('\n')).not.toContain('e2e-access-token');
+  expect(said.join('\n')).not.toContain('e2e-refresh-token');
+
+  // On every page of the shell, a diff's too.
+  await page.goto(`${cpr.url}settings`);
+  await expect(usage(page).getByRole('listitem')).toHaveCount(2, POLL);
+});
+
+test("Claude's endpoint failing: the copy Claude Code kept, or nothing; the rest as it is", async ({
+  page,
+}) => {
+  cpr = await serveWorkspaces({
+    codex: true,
+    appServer: true,
+    usage: { claude: { error: 'overloaded' }, status: 529 },
+  });
+  await page.goto(`${cpr.url}history`);
+  // No copy in the fake's config: Claude is left out, Codex is shown.
+  await expect(usage(page).getByRole('listitem')).toHaveText(['CodexGo30d0%'], POLL);
+});

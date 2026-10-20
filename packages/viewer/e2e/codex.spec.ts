@@ -105,7 +105,8 @@ test('a workspace with Codex: picked in the dialog, its plan in the thread, a re
     POLL,
   );
   await expect(workspaceRow(page)).toContainText('Plan ready: read it and answer', POLL);
-  await here.getByRole('button', { name: 'Talk' }).click();
+  await here.getByRole('button', { name: 'More actions' }).click();
+  await here.getByRole('menuitem', { name: 'Talk' }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     `codex resume thread-0 -C ${folder}`,
   );
@@ -164,7 +165,8 @@ test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean
   );
 
   // Clean up, unmerged: asked first; its threads archived, its worktree removed.
-  await here.getByRole('button', { name: 'Clean up' }).click();
+  await here.getByRole('button', { name: 'More actions' }).click();
+  await here.getByRole('menuitem', { name: 'Clean up…' }).click();
   await here.getByRole('button', { name: 'Clean up anyway' }).click();
   await expect(workspaceRow(page)).toHaveCount(0, POLL);
   expect(cpr.codexArchived().sort()).toEqual(['thread-0', 'thread-1']);

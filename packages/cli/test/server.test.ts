@@ -7,6 +7,7 @@ import {
   type BranchReviewInfo,
   type CheckoutTarget,
   type WorkspaceOptions,
+  type WorkspaceChanges,
   type WorkspaceReply,
   type WorkspaceRequest,
   type WorkspaceSummary,
@@ -14,6 +15,7 @@ import {
   type MergeEntry,
   type PromptChange,
   type PromptSettings,
+  type UsageReport,
 } from '@cpr/core';
 import type { Review } from '@cpr/forge';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -455,6 +457,7 @@ describe('cpr view: commits and diffs', () => {
     server = await startViewServer({
       viewerDir: viewer,
       repository: {
+        name: 'widgets',
         history,
         status: () =>
           Promise.resolve({ version, branch: 'main', head: C, changed: 2, operation: null }),
@@ -659,12 +662,13 @@ describe('cpr view: commits and diffs', () => {
     expect(checkouts.length).toBe(before + 1);
   });
 
-  it('says it lists commits; the root has no graph', async () => {
+  it("says it lists commits, and the repository's name (V29a); the root has no graph", async () => {
     expect(JSON.parse((await get('/api/capabilities')).body)).toEqual({
       sources: false,
       review: null,
       state: false,
       commits: true,
+      repo: 'widgets',
     });
     expect((await get('/api/graph')).status).toBe(404);
     expect((await get('/')).body).toBe('<html>viewer</html>');
@@ -704,6 +708,7 @@ describe('cpr view: commits and diffs', () => {
       state: true,
       open: true,
       commits: true,
+      repo: 'widgets',
     });
 
     // While it runs: its phase; sources and state wait for the graph.
@@ -1152,10 +1157,14 @@ describe('cpr view: workspaces (V18)', () => {
         ? Promise.resolve({ workspace: summary, prompt: 'Build it.' })
         : Promise.reject(new WorkspaceRefused('its agent is not running', 409));
     },
-    openWorktree: (branch) => {
-      openedWorkspaces.push(branch);
+    openWorktree: (branch, file) => {
+      openedWorkspaces.push(file ? `${branch} ${JSON.stringify(file)}` : branch);
       return Promise.resolve();
     },
+    changes: (branch) =>
+      branch === 'feature/csv'
+        ? Promise.resolve(changes)
+        : Promise.reject(new WorkspaceRefused(`no workspace ${branch}`, 404)),
     merge: () => Promise.resolve({ into: 'main', conflicts: ['src/a.ts'] }),
     thread: (branch) =>
       branch === 'feature/csv'
@@ -1178,6 +1187,15 @@ describe('cpr view: workspaces (V18)', () => {
       return Promise.resolve({ finished: C });
     },
     terminal: () => Promise.reject(new WorkspaceRefused('no terminals here', 409)),
+  };
+  const changes: WorkspaceChanges = {
+    branch: 'feature/csv',
+    base: C,
+    since: 'main',
+    tip: C,
+    commits: { count: 0, listed: [] },
+    files: { count: 0, added: 0, removed: 0, listed: [] },
+    uncommitted: { count: 1, listed: [{ status: 'untracked', path: 'notes.md' }] },
   };
   const replies: WorkspaceReply[] = [];
   const cleaned: { branch: string; unmerged?: boolean }[] = [];
@@ -1358,6 +1376,29 @@ describe('cpr view: workspaces (V18)', () => {
     }
     expect(stopped.length).toBe(2);
     expect(openedWorkspaces.length).toBe(1);
+  });
+
+  it("gives a workspace's changes and opens one of its files (V29d)", async () => {
+    const answer = await get('/api/workspaces/changes?branch=feature%2Fcsv');
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual(changes);
+    expect((await get('/api/workspaces/changes?branch=nope')).status).toBe(404);
+    expect((await get('/api/workspaces/changes')).status).toBe(400);
+    expect((await post('/api/workspaces/changes', { branch: 'feature/csv' })).status).toBe(405);
+
+    openedWorkspaces.length = 0;
+    const file = { branch: 'feature/csv', file: 'src/new.ts', previousPath: 'src/old.ts' };
+    expect((await post('/api/workspaces/open', file)).status).toBe(200);
+    expect(openedWorkspaces).toEqual([
+      'feature/csv {"path":"src/new.ts","previousPath":"src/old.ts"}',
+    ]);
+    for (const bad of [
+      { branch: 'feature/csv', file: 3 },
+      { branch: 'feature/csv', file: '' },
+    ]) {
+      expect((await post('/api/workspaces/open', bad)).status, JSON.stringify(bad)).toBe(400);
+    }
+    expect(openedWorkspaces).toHaveLength(1);
   });
 
   it('starts one workspace at a time, and only for the page itself', async () => {
@@ -1651,6 +1692,68 @@ describe('cpr view: settings (V28)', () => {
       { key: 'merger', text: null, version: 'v1' },
       { key: 'merger', text: 'Keep both.', version: 'v0' },
     ]);
+  });
+});
+
+describe('cpr view: usage (V29c)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const report: UsageReport = {
+    subscriptions: [
+      {
+        agent: 'claude',
+        plan: 'Pro',
+        windows: [{ minutes: 300, usedPercent: 59 }],
+        at: '2026-10-20T16:15:00.000Z',
+        source: 'live',
+      },
+    ],
+  };
+  let asked = 0;
+  let server: ViewServer;
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        usage: {
+          report: () => {
+            asked += 1;
+            return Promise.resolve(report);
+          },
+          settled: () => Promise.resolve(),
+        },
+      },
+    });
+  });
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+
+  it('answers GET /api/usage, never kept by the browser, and nothing else', async () => {
+    const response = await fetch(new URL('/api/usage', server.url));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(await response.json()).toEqual(report);
+    const post = await fetch(new URL('/api/usage', server.url), {
+      method: 'POST',
+      headers: { 'x-cpr': '1' },
+    });
+    expect(post.status).toBe(405);
+    expect(asked).toBe(1);
   });
 });
 

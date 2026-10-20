@@ -271,16 +271,24 @@ export function vsCodeOpener(
   };
 }
 
-/** Opens a folder in VS Code (a workspace's worktree, V18b): its window, else a new one. */
+/**
+ * Opens a folder in VS Code (a workspace's worktree, V18b): its window, else a new one; with `at`,
+ * a file in it at a line (V29d).
+ */
 export function vsCodeFolder(
   env: Readonly<Record<string, string | undefined>>,
   host: Host = localHost(env),
-): (folder: string) => Promise<{ opened: true } | { opened: false; message: string }> {
-  return async (folder) => {
+): (
+  folder: string,
+  at?: { file: string; line: number },
+) => Promise<{ opened: true } | { opened: false; message: string }> {
+  return async (folder, at) => {
     const code = await findVsCode(host);
     if (!code) return { opened: false, message: notFound(env) };
     try {
-      await runVsCode(invocation(code, [normalize(folder)], env));
+      const where = normalize(folder);
+      const args = at ? openArgs(where, at.file, at.line, 1) : [where];
+      await runVsCode(invocation(code, args, env));
       return { opened: true };
     } catch (error) {
       return { opened: false, message: (error as Error).message };

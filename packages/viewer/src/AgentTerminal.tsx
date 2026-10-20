@@ -6,6 +6,9 @@ import { keySender, TERMINAL_THEME } from './terminal.js';
 import { holdReads } from './useWorkspaces.js';
 
 const WRITE_HEADERS = { 'content-type': 'application/json', 'x-cpr': '1' };
+/** The bundled mono (V29b), as styles.css names it. */
+const MONO = "'Geist Mono Variable', monospace";
+const FONT_SIZE = 13;
 
 /** A write to a terminal (`…/in`, `…/resize`, `…/close`): no answer but its status. */
 export async function toTerminal(id: string, action: string, body: unknown): Promise<void> {
@@ -67,13 +70,16 @@ export function AgentTerminal({
         import('@xterm/xterm'),
         import('@xterm/addon-fit'),
         import('@xterm/xterm/css/xterm.css'),
+        // xterm measures its cell from the font it is given: loaded first, or the columns the
+        // agent is told would be counted with the fallback's width.
+        document.fonts.load(`${FONT_SIZE}px ${MONO}`),
       ]);
       const element = box.current;
       if (gone || !element) return;
       term = new Terminal({
         theme: TERMINAL_THEME,
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-        fontSize: 13,
+        fontFamily: MONO,
+        fontSize: FONT_SIZE,
         cursorBlink: true,
         scrollback: 5000,
       });
