@@ -54,12 +54,13 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
   await expect(dialog(page).getByLabel('Plan first and wait for my OK')).toBeChecked();
   await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
 
-  // The page lists the new branch, the cursor on it, and says where the agent works.
+  // The new workspace opens (V29a), and the status bar says where the agent works.
   await expect(dialog(page)).toBeHidden();
   await expect(page.getByRole('status')).toHaveText(
     `Started feature/add-a-half-function: Claude Code is working in ${folder}.`,
   );
-  await expect(page.locator('.commit.cursor')).toContainText('feature/add-a-half-function');
+  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-a-half-function`);
+  await expect(panel(page, 'feature/add-a-half-function')).toBeVisible();
 
   // git: the branch at main's tip, checked out in its worktree; the checkout untouched.
   expect(git('rev-parse', 'feature/add-a-half-function')).toBe(main);
@@ -143,7 +144,7 @@ test("Start a workspace here: the row's commit is where it starts", async ({ pag
   await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Started feature/fix-from-the-base');
   expect(git('rev-parse', 'feature/fix-from-the-base')).toBe(base);
-  await expect(page.locator('.commit.cursor')).toContainText('feature/fix-from-the-base');
+  await expect(panel(page, 'feature/fix-from-the-base')).toBeVisible();
 });
 
 test("an agent that does not start: the workspace stays, with Claude Code's words and the prompt", async ({
@@ -200,6 +201,11 @@ const group = (page: Page, name: string) => page.getByRole('region', { name });
 /** The picked workspace's panel, beside the list (V18c). */
 const panel = (page: Page, branch: string) =>
   page.getByRole('region', { name: `Workspace ${branch}` });
+/** One of a workspace's less frequent actions, in its ⋯ menu (V29a). */
+const more = async (page: Page, branch: string, name: string) => {
+  await panel(page, branch).getByRole('button', { name: 'More actions' }).click();
+  await panel(page, branch).getByRole('menuitem', { name, exact: true }).click();
+};
 const startFrom = async (page: Page, what: string) => {
   await page.getByRole('button', { name: 'Start a workspace' }).click();
   await fillWork(page, what);
@@ -215,15 +221,14 @@ test('the workspaces view: what each workspace needs, as its agent goes on', asy
   const branch = 'feature/add-a-half-function';
   const row = workspaceRow(page, branch);
   await expect(group(page, 'Working').locator(row)).toContainText('Working');
-  await expect(page.getByRole('link', { name: 'Workspaces', exact: true })).toBeVisible();
 
-  // The agent asks for a permission: it needs you, and the tab counts it.
+  // The agent asks for a permission: it needs you, and the sidenav counts it.
   cpr.session(branch, { state: 'blocked', waitingFor: 'permission prompt' });
   await expect(group(page, 'Needs you').locator(row)).toContainText(
     'Waiting: permission prompt',
     POLL,
   );
-  await expect(page.locator('.page-tabs .page-count')).toHaveText('1');
+  await expect(page.locator('.sidenav .page-count')).toHaveText('1');
 
   // Esc in its session: no hook fires and Claude Code still says `working`, but it waits.
   cpr.interrupt(branch);
@@ -250,9 +255,9 @@ test('a workspace and its branch lead to each other', async ({ page }) => {
   const branch = 'feature/add-a-half-function';
   cpr.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
   cpr.session(branch, { state: 'done' });
-  await page.reload();
+  await page.goto(`${cpr.url}history`);
 
-  // The branch's mark on the commits page goes to its workspace, shown and flashed.
+  // The branch's mark on the commits page goes to its workspace, its card in view.
   const mark = page.locator('.commit .ref', { hasText: branch }).locator('.workspace-mark');
   // Claude Code's sessions are read at most every 2 s: the page's next look sees it.
   await expect(mark).toHaveText('●', POLL);
@@ -276,8 +281,8 @@ test('a workspace and its branch lead to each other', async ({ page }) => {
   await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
   const link = page.getByRole('link', { name: 'Workspace: Add a half function' });
   await expect(link).toBeVisible();
-  // Opened from Workspaces, its way back is there (V25).
-  await expect(page.getByRole('link', { name: '← Workspaces' })).toHaveAttribute(
+  // Opened from the workspace, its way back is there (V25).
+  await expect(page.getByRole('link', { name: '← Workspace' })).toHaveAttribute(
     'href',
     '/?branch=feature%2Fadd-a-half-function',
   );
@@ -292,6 +297,7 @@ test("an agent's commit shows on the commits page as it comes, the cursor where 
   await page.goto(`${cpr.url}history`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
+  await page.goto(`${cpr.url}history`);
   // The cursor on the older commit, while the agent works.
   await row(page, 'base').click();
   await expect(row(page, 'base')).toHaveClass(/cursor/);
@@ -307,6 +313,7 @@ test("the branches panel: workspaces that need you first, their agent's last act
   await page.goto(`${cpr.url}history`);
   await startFrom(page, 'Add a half function');
   await startFrom(page, 'Export the totals');
+  await page.goto(`${cpr.url}history`);
   const half = 'feature/add-a-half-function';
   const totals = 'feature/export-the-totals';
   const branches = page.locator('.branches');
@@ -360,16 +367,17 @@ test('stop the agent, start it again, copy its prompt, open its worktree', async
   await expect(row).toContainText('Working');
   expect(cpr.calls()).toHaveLength(2);
 
-  await row.getByRole('button', { name: 'Copy the prompt' }).click();
+  await more(page, branch, 'Copy the prompt');
   await expect(row.getByRole('status')).toHaveText('Copied the prompt');
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
     'Add a half function',
   );
 
-  await row.getByRole('button', { name: 'Talk' }).click();
+  await more(page, branch, 'Talk');
+  await expect(row.getByRole('status')).toHaveText(/^Copied claude attach fake1/);
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('claude attach fake1');
 
-  await row.getByRole('button', { name: 'Open in VS Code' }).click();
+  await more(page, branch, 'Open in VS Code');
   await expect(row.getByRole('status')).toHaveText('Opened in VS Code');
   expect(cpr.opened()).toEqual([[cpr.folder(branch)]]);
 });
@@ -381,6 +389,7 @@ test("a workspace's branch: checked out in its worktree, so not here; gone, it s
   await page.goto(`${cpr.url}history`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
+  await page.goto(`${cpr.url}history?branch=${encodeURIComponent(branch)}`);
   await page.locator('.commit.cursor').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Check out', exact: true }).hover();
   await expect(page.getByRole('menuitem', { name: `Check out branch ${branch}` })).toBeDisabled();
@@ -397,7 +406,8 @@ test("a workspace's branch: checked out in its worktree, so not here; gone, it s
   await expect(workspaceRow(page, branch).getByRole('link', { name: branch })).toHaveCount(0);
   await page.goto(`${cpr.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
-  await expect(page.locator('.workspace-mark')).toHaveCount(0);
+  // On History's rows and branches; the sidenav's card keeps its own.
+  await expect(page.locator('.commits .workspace-mark')).toHaveCount(0);
 });
 
 // Talking to the agent (V18c): the workspaces view as a list and a panel, the thread CPR's hooks
@@ -544,23 +554,22 @@ test('a workspace started before its messages were kept: a note, and the box sti
   expect(resumes()).toHaveLength(1);
 });
 
-test('narrow: the panel takes the page, and Workspaces goes back to the list', async ({ page }) => {
+test('at 900 px the sidenav and the workspace share the window; its card picks it (V29a)', async ({
+  page,
+}) => {
   cpr = await serveWorkspaces();
   await page.setViewportSize({ width: 900, height: 800 });
-  await page.goto(`${cpr.url}`);
+  await page.goto(`${cpr.url}history`);
   await startFrom(page, 'Add a half function');
-  const branch = 'feature/add-a-half-function';
-  await expect(panel(page, branch)).toBeVisible();
-  await expect(workspaceRow(page, branch)).toBeHidden();
-  await panel(page, branch).getByRole('button', { name: '← Workspaces' }).click();
-  await expect(workspaceRow(page, branch)).toBeVisible();
-  await expect(panel(page, branch)).toBeHidden();
-  await expect(page).toHaveURL(`${cpr.url}`);
-  // The brief picks it (the branch name is a link to its commits).
-  await workspaceRow(page, branch).getByRole('button', { name: 'Add a half function' }).click();
-  await expect(panel(page, branch)).toBeVisible();
+  await startFrom(page, 'Add clamp');
+  const half = 'feature/add-a-half-function';
+  await expect(panel(page, 'feature/add-clamp')).toBeVisible();
+  await expect(workspaceRow(page, half)).toBeVisible();
+  // The name picks it (the branch name is a link to its commits).
+  await workspaceRow(page, half).getByRole('button', { name: 'Add a half function' }).click();
+  await expect(panel(page, half)).toBeVisible();
   await page.reload();
-  await expect(panel(page, branch)).toBeVisible();
+  await expect(panel(page, half)).toBeVisible();
 });
 
 test('Clean up: once merged, its sessions, worktree and branch go, and so does the workspace', async ({
@@ -575,7 +584,7 @@ test('Clean up: once merged, its sessions, worktree and branch go, and so does t
   git('merge', '--quiet', '--ff-only', branch);
   await page.reload();
   await expect(workspaceRow(page, branch)).toContainText('Merged', POLL);
-  await panel(page, branch).getByRole('button', { name: 'Clean up' }).click();
+  await more(page, branch, 'Clean up');
   await expect(workspaceRow(page, branch)).toHaveCount(0, POLL);
   expect(cpr.removed()).toEqual(['fake0']);
   expect(existsSync(cpr.folder(branch))).toBe(false);
@@ -614,7 +623,10 @@ test("the agent's session in a terminal in its panel: keys, the thread, hang-up,
   );
   await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-a-half-function`);
   await expect(box(page, branch)).toBeHidden();
-  await expect(here).toContainText('← in an empty prompt lists all your agents');
+  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
+    'title',
+    /← in an empty prompt lists all your agents/,
+  );
 
   await page.keyboard.type('hello');
   await page.keyboard.press('Enter');
@@ -688,14 +700,16 @@ test('Send the verdict types one line into the terminal, without Enter', async (
   await expect(screen(page, branch)).toContainText('got: Address this review');
 });
 
-test('without terminals, the panel keeps Talk and no tab', async ({ page }) => {
+test('without terminals, the panel keeps Talk in its menu, and no Terminal tab', async ({
+  page,
+}) => {
   cpr = await serveWorkspaces({ terminal: false });
   await page.goto(`${cpr.url}`);
   await startFrom(page, 'Add a half function');
   const here = panel(page, 'feature/add-a-half-function');
-  await expect(here.getByRole('button', { name: 'Talk' })).toBeVisible();
-  await expect(here.getByRole('tab')).toHaveCount(0);
-  await expect(here.getByRole('button', { name: 'Talk' })).toHaveAttribute(
+  await expect(here.getByRole('tab')).toHaveText(['Thread', 'Brief']);
+  await here.getByRole('button', { name: 'More actions' }).click();
+  await expect(here.getByRole('menuitem', { name: 'Talk' })).toHaveAttribute(
     'title',
     /CPR_TERMINAL=off/,
   );
@@ -729,35 +743,6 @@ test("an agent's report is drawn as Markdown; HTML in it, and your messages, sta
   await box(page, branch).fill('Keep **this** as typed.');
   await box(page, branch).press('Control+Enter');
   await expect(here.locator('.thread-you').last()).toContainText('Keep **this** as typed.', POLL);
-});
-
-test('Workspaces is the first page, History beside it; old addresses, keys and links (V25)', async ({
-  page,
-}) => {
-  cpr = await serveWorkspaces();
-  await page.goto(cpr.url);
-  const tabs = page.getByRole('navigation', { name: 'Pages' }).getByRole('link');
-  // V28b: Settings after them.
-  await expect(tabs).toHaveText(['Workspaces', 'History', 'Settings']);
-  await expect(tabs.first()).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByText('No workspaces yet')).toBeVisible();
-
-  // The old addresses, kept for bookmarks, show as today's with what they carried.
-  for (const old of ['workspaces', 'workspaces']) {
-    await page.goto(`${cpr.url}${old}?branch=feature%2Fx`);
-    await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fx`);
-    await expect(page.getByText('No workspaces yet')).toBeVisible();
-  }
-
-  // h and w go between them; the empty state's link goes to History.
-  await page.keyboard.press('h');
-  await expect(page).toHaveURL(`${cpr.url}history`);
-  await expect(page.locator('.commits-title')).toContainText('History');
-  await expect(tabs.nth(1)).toHaveAttribute('aria-current', 'page');
-  await page.keyboard.press('w');
-  await expect(page).toHaveURL(cpr.url);
-  await page.getByRole('link', { name: 'History', exact: true }).last().click();
-  await expect(page).toHaveURL(`${cpr.url}history`);
 });
 
 test("the records' folder before V25 left beside today's: Workspaces says so (V25)", async ({
@@ -1045,17 +1030,23 @@ test('Merge on an approved workspace: CPR merges it in its own worktree, Land mo
   const main = git('rev-parse', 'main');
   await here.getByRole('button', { name: 'Merge into main' }).click();
 
-  // The Merging section, above the workspaces: no check here, so it waits for Land.
+  // The sidenav's Merging group, above the workspaces: no check here, so it waits for Land.
   const merging = page.getByRole('region', { name: 'Merging' });
-  await expect(page.locator('.workspace-group').first()).toHaveAttribute('aria-label', 'Merging');
-  const entry = merging.getByRole('listitem', { name: `Merge of ${branch}` });
-  await expect(entry.locator('.merge-row-state')).toHaveText(/^Merged, not checked/, POLL);
+  await expect(page.locator('.sidenav .workspace-group').first()).toHaveAttribute(
+    'aria-label',
+    'Merging',
+  );
+  const card = merging.locator(`[data-merge="${branch}"]`);
+  await expect(card).toContainText('Merged, not checked', POLL);
   await expect(here.locator('p.merge-control')).toHaveText(/^Merged, not checked/);
   expect(git('rev-parse', 'main')).toBe(main);
   // The agent's worktree and the main checkout were not used to merge.
   expect(git('status', '--porcelain', '--untracked-files=no')).toBe('');
   expect(git('-C', cpr.folder(branch), 'rev-parse', 'HEAD')).toBe(tip);
 
+  // Its card opens it in the main area.
+  await card.getByRole('link').click();
+  const entry = page.getByRole('region', { name: `Merge of ${branch}` });
   await entry.getByRole('button', { name: 'Land' }).click();
   await expect(entry.locator('.merge-row-state')).toHaveText(/^Landed: main is at/, POLL);
   expect(git('log', '-1', '--format=%P%n%s', 'main')).toBe(
@@ -1063,6 +1054,9 @@ test('Merge on an approved workspace: CPR merges it in its own worktree, Land mo
   );
   expect(existsSync(join(cpr.repo, 'src', 'half.ts'))).toBe(true);
   // Merged: the workspace offers Clean up, and no Merge.
-  await expect(here.getByRole('button', { name: 'Clean up', exact: true })).toBeVisible(POLL);
+  await expect(workspaceRow(page, branch)).toContainText('Merged', POLL);
+  await workspaceRow(page, branch).getByRole('button', { name: 'Add a half function' }).click();
+  await here.getByRole('button', { name: 'More actions' }).click();
+  await expect(here.getByRole('menuitem', { name: 'Clean up', exact: true })).toBeVisible();
   await expect(here.getByRole('button', { name: /^Merge into/ })).toHaveCount(0);
 });

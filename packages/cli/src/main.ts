@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import {
@@ -122,8 +122,8 @@ const HELP = `Usage: cpr <command> [options]
 Commands:
   diff <base> [head]   Compare head (default: HEAD) against base
   view [<base> [head]] Same comparison, reviewed in the browser; without revisions,
-                       Workspaces (agents' branches), and History: every branch, to
-                       compare or review
+                       History: every branch, to compare or review, with workspaces
+                       (agents' branches) beside it
   pr [<number>]        Review a GitHub pull request or GitLab merge request (alias: mr);
                        in a CI job, the job's own
   merge <branch>       Merge a branch's approved commit, check it, and land it
@@ -155,9 +155,9 @@ Options:
 
 const VIEW_HELP = `Usage: cpr view [<base> [head]] [options]
 
-Serves the graph viewer on localhost until Ctrl+C. Its first page is Workspaces: each
-a branch with its own worktree and agent, started from the page. History (h) shows
-every branch, local and remote, as a graph. In Compare mode (x), pick two commits to
+Serves the graph viewer on localhost until Ctrl+C. It opens on History (h): every
+branch, local and remote, as a graph. Its sidenav lists the workspaces: each a branch
+with its own worktree and agent, started from the page. In Compare mode (x), pick two commits to
 compare them (the older is the base), or one against its parent; each pair is analyzed
 when picked. With <base>, analyzes like \`cpr diff\` first and opens that
 comparison.
@@ -547,6 +547,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     port,
     viewerDir: viewerDir(ctx),
     repository: {
+      name: basename(repo.root),
       history: new Histories(
         {
           state: () => historyState(repo),

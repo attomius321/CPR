@@ -309,9 +309,13 @@ test('finishes a review: changes requested for the agent, then approved to merge
   );
   expect(git('rev-parse', 'main')).toBe(main);
 
-  await page.goto(cpr.url);
-  const merging = page.getByRole('region', { name: 'Merging' });
-  const entry = merging.getByRole('listitem', { name: 'Merge of agent' });
+  // In the sidenav's Merging group; open, in the main area (V29a).
+  await page.goto(`${cpr.url}history`);
+  await expect(
+    page.getByRole('region', { name: 'Merging' }).locator('[data-merge="agent"]'),
+  ).toBeVisible();
+  await page.goto(`${cpr.url}?merge=agent`);
+  const entry = page.getByRole('region', { name: 'Merge of agent' });
   await expect(entry.locator('.merge-row-state')).toHaveText(/^Merged, not checked/);
   await entry.getByRole('button', { name: 'Land' }).click();
   await expect(entry.locator('.merge-row-state')).toHaveText(/^Landed: main is at [0-9a-f]{7}$/);
@@ -361,8 +365,8 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   await page.getByRole('button', { name: 'Merge into main' }).click();
   await expect(page.locator('p.merge-control')).toHaveText('Conflicts with main in 1 file');
   expect(git('rev-parse', 'main')).toBe(main);
-  await page.goto(cpr.url);
-  const entry = page.getByRole('listitem', { name: 'Merge of agent' });
+  await page.goto(`${cpr.url}?merge=agent`);
+  const entry = page.getByRole('region', { name: 'Merge of agent' });
   await expect(entry.locator('.merge-files li')).toHaveText(['src/math.ts']);
   await expect(entry).toContainText('merge main into agent, resolve it there, and review it again');
   await entry.getByRole('button', { name: 'Remove' }).click();

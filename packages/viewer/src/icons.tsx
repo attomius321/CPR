@@ -1,0 +1,64 @@
+import type { ReactNode } from 'react';
+
+/**
+ * CPR's icons (V29): 16 px line drawings in the text's colour. Inline SVG, so no icon library is
+ * bundled; each is decorative (`aria-hidden`), named by the control that holds it.
+ */
+function Icon({ children }: { children: ReactNode }) {
+  return (
+    <svg className="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      {children}
+    </svg>
+  );
+}
+
+export const HistoryIcon = () => (
+  <Icon>
+    <circle cx="8" cy="8" r="6" />
+    <path d="M8 4.5V8l2.5 1.5" />
+  </Icon>
+);
+
+export const SettingsIcon = () => (
+  <Icon>
+    <circle cx="8" cy="8" r="2" />
+    <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" />
+  </Icon>
+);
+
+export const PlusIcon = () => (
+  <Icon>
+    <path d="M8 3v10M3 8h10" />
+  </Icon>
+);
+
+/** The sidenav's edge: folds it to a rail, or opens it. */
+export const SidenavIcon = () => (
+  <Icon>
+    <rect x="2" y="3" width="12" height="10" rx="2" />
+    <path d="M6 3v10" />
+  </Icon>
+);
+
+export const MenuIcon = () => (
+  <Icon>
+    <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" />
+  </Icon>
+);
+
+export const MoreIcon = () => (
+  <Icon>
+    <circle cx="3.5" cy="8" r="0.6" />
+    <circle cx="8" cy="8" r="0.6" />
+    <circle cx="12.5" cy="8" r="0.6" />
+  </Icon>
+);
+
+/** CPR's mark: two commits and the line between them. */
+export const CprIcon = () => (
+  <Icon>
+    <circle cx="5" cy="5" r="2" />
+    <circle cx="11" cy="11" r="2" />
+    <path d="M5 7v2a2 2 0 0 0 2 2h2" />
+  </Icon>
+);

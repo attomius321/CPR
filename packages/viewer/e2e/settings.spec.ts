@@ -117,9 +117,11 @@ test('keeps drafts across prompts, asks before leaving with one, and refuses a s
   await expect(text(page, 'Spike')).toHaveValue(/Commit it under spikes\/\.$/);
   await expect(entry(page, 'Spike')).toContainText('not saved');
 
-  // Leaving with it asks first; staying keeps it.
+  // Leaving with it asks first; staying keeps it. In the shell (V29a) the page is not unloaded:
+  // the shell asks.
   page.once('dialog', (dialog) => {
-    expect(dialog.type()).toBe('beforeunload');
+    expect(dialog.type()).toBe('confirm');
+    expect(dialog.message()).toBe('Leave Settings? A prompt is changed and not saved.');
     void dialog.dismiss();
   });
   await page.getByRole('link', { name: 'History' }).click();

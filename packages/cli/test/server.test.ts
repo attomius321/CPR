@@ -455,6 +455,7 @@ describe('cpr view: commits and diffs', () => {
     server = await startViewServer({
       viewerDir: viewer,
       repository: {
+        name: 'widgets',
         history,
         status: () =>
           Promise.resolve({ version, branch: 'main', head: C, changed: 2, operation: null }),
@@ -659,12 +660,13 @@ describe('cpr view: commits and diffs', () => {
     expect(checkouts.length).toBe(before + 1);
   });
 
-  it('says it lists commits; the root has no graph', async () => {
+  it("says it lists commits, and the repository's name (V29a); the root has no graph", async () => {
     expect(JSON.parse((await get('/api/capabilities')).body)).toEqual({
       sources: false,
       review: null,
       state: false,
       commits: true,
+      repo: 'widgets',
     });
     expect((await get('/api/graph')).status).toBe(404);
     expect((await get('/')).body).toBe('<html>viewer</html>');
@@ -704,6 +706,7 @@ describe('cpr view: commits and diffs', () => {
       state: true,
       open: true,
       commits: true,
+      repo: 'widgets',
     });
 
     // While it runs: its phase; sources and state wait for the graph.

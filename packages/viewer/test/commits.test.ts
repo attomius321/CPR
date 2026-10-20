@@ -329,7 +329,7 @@ describe('graphLoaded', () => {
 });
 
 describe('rowBadges', () => {
-  it('puts the most urgent workspace mark of the badges it folds on "+N" (V18b)', () => {
+  it('puts the most urgent workspace mark of the badges it folds on "+N", a link to it (V18b, V29a)', () => {
     const chip = (mark: string, tone: 'working' | 'waiting', branch: string) => ({
       mark,
       tone,
@@ -360,7 +360,7 @@ describe('rowBadges', () => {
         mark: '?',
         tone: 'waiting',
         title: 'Workspaces here: feature/a, feature/b — one needs you',
-        href: '/',
+        href: '/?branch=feature/b',
       },
     });
     // Without workspaces folded, "+N" carries no mark.

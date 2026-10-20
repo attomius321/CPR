@@ -46,7 +46,8 @@ const names = (entries: Locator) =>
 test('offers what each row can check out, in a submenu', async ({ page }) => {
   await page.goto(`${cpr.url}history`);
   // The menu holds "Check out" (and "Review", V15: the row has a branch); targets open on hover.
-  await row(page, 'Try a wobble').click({ button: 'right' });
+  // Near the row's left end, with room on the right for the submenu.
+  await row(page, 'Try a wobble').click({ button: 'right', position: { x: 120, y: 10 } });
   await expect(page.getByRole('menuitem')).toHaveText([
     'Check out',
     'Review',
@@ -146,7 +147,9 @@ test('keeps the submenu in the window: on the left near the right edge, up near 
   await page.keyboard.press('Escape');
   // Near the bottom the menu opens above the pointer; the submenu, level with its entry or moved
   // up when it is the taller (since V18 the menu has a third entry), stays in the window.
-  await page.mouse.click(400, 280, { button: 'right' });
+  // Above the status bar (V29a), on the rows.
+  const rows = (await page.locator('.commit-list').boundingBox())!;
+  await page.mouse.click(rows.x + 120, 300 - 24 - 20, { button: 'right' });
   await checkOut(page).hover();
   const low = (await page.locator('.checkout-menu').first().boundingBox())!;
   expect((await inWindow()).y).toBeLessThanOrEqual(low.y);

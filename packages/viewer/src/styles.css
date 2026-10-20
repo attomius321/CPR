@@ -2843,35 +2843,6 @@ kbd {
 
 /* ---- workspaces (V18b) ------------------------------------------------------------------ */
 
-/* Commits · Workspaces, in the bar. */
-.page-tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.page-tabs a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  /* No taller than the brand beside it: the bar keeps its height. */
-  padding: 0 10px;
-  border-radius: 6px;
-  color: var(--muted);
-  font-size: 14px;
-  text-decoration: none;
-}
-
-.page-tabs a:hover {
-  color: var(--text);
-  background: color-mix(in srgb, var(--moved) 8%, transparent);
-}
-
-.page-tabs a[aria-current='page'] {
-  color: var(--text);
-  background: color-mix(in srgb, var(--moved) 12%, transparent);
-  font-weight: 600;
-}
-
 /* How many workspaces need the person: the waiting colour. */
 .page-count {
   min-width: 16px;
@@ -2959,38 +2930,10 @@ a.workspace-mark:hover {
   text-decoration: underline;
 }
 
-.workspaces {
-  flex: 1;
-  min-width: 0;
-  overflow: auto;
-  padding: 16px 24px;
-}
-
-.workspace-group h2 {
-  margin: 16px 0 6px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .workspace-list {
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-}
-
-.workspace-row {
-  padding: 10px 14px;
-  border-top: 1px solid var(--line);
-}
-
-.workspace-row:first-child {
-  border-top: 0;
 }
 
 .workspace-row.flash {
@@ -3069,8 +3012,7 @@ button.workspace-about {
 }
 
 .workspace-brief {
-  max-height: 40vh;
-  margin: 8px 0 0;
+  margin: 0;
   padding: 8px 10px;
   overflow: auto;
   border-radius: 6px;
@@ -3080,58 +3022,9 @@ button.workspace-about {
   white-space: pre-wrap;
 }
 
-.workspace-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 14px;
-  margin-top: 6px;
-  font-size: 13px;
-}
-
-.workspace-actions .link {
-  font-family: inherit;
-}
-
 .workspace-said {
   color: var(--muted);
-}
-
-/* V18c: the list and, beside it, the picked workspace's panel. */
-.workspaces-body.has-panel {
-  display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.workspaces-body.has-panel .workspace-row {
-  cursor: pointer;
-}
-
-.workspaces-body.has-panel .workspace-row:hover {
-  background: var(--bg);
-}
-
-.workspace-row.picked,
-.workspaces-body.has-panel .workspace-row.picked:hover {
-  box-shadow: inset 3px 0 0 var(--moved);
-  background: color-mix(in srgb, var(--moved) 7%, var(--panel));
-}
-
-.workspace-panel {
-  position: sticky;
-  top: 0;
-  margin-top: 16px;
-  padding: 12px 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-}
-
-.workspace-back {
-  display: none;
-  margin-bottom: 8px;
+  font-size: 13px;
 }
 
 .workspace-confirm {
@@ -3148,8 +3041,7 @@ button.workspace-about {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 55vh;
-  margin: 12px 0 0;
+  margin: 0;
   padding: 0;
   overflow: auto;
   list-style: none;
@@ -3238,29 +3130,11 @@ button.workspace-about {
   cursor: default;
 }
 
-@media (max-width: 1099px) {
-  .workspaces-body.has-panel {
-    display: block;
-  }
-
-  .workspaces-body.has-panel .workspaces-list {
-    display: none;
-  }
-
-  .workspace-panel {
-    position: static;
-  }
-
-  .workspace-back {
-    display: inline;
-  }
-}
-
 /* V21: the workspace's agent session in a terminal, beside its thread. */
 .workspace-views {
   display: flex;
   gap: 4px;
-  margin-top: 12px;
+  margin-top: 10px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -3283,8 +3157,33 @@ button.workspace-about {
   color: var(--text);
 }
 
-.workspace-terminal {
-  margin-top: 12px;
+/* The tab's content takes the rest of the main area's height (V29a). */
+.workspace-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 8px;
+}
+
+.workspace-terminal,
+.workspace-thread,
+.workspace-terminal .agent-terminal {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-thread .thread {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.workspace-body .workspace-brief {
+  flex: 1;
+  min-height: 0;
 }
 
 /* What Codex asks before its terminal goes on (V27b): above the screen, read before answering. */
@@ -3295,16 +3194,11 @@ button.workspace-about {
 
 /* Dark in both themes: Claude Code draws for a dark terminal (V21 spike), and so does Codex. */
 .agent-terminal-screen {
-  height: 60vh;
-  min-height: 240px;
+  flex: 1;
+  min-height: 200px;
   padding: 6px 8px;
   border-radius: 6px;
   background: #111113;
-}
-
-.workspace-terminal .reply-actions {
-  justify-content: space-between;
-  margin-top: 6px;
 }
 
 .thread-readonly {
@@ -3832,4 +3726,589 @@ p.settings-placeholders {
   .settings-back {
     display: inline;
   }
+}
+
+/* ---- the shell (V29a): the sidenav, the main area, the status bar --------------------- */
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidenav-width, 248px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'side main'
+    'status status';
+  height: 100%;
+}
+
+.shell.folded {
+  --sidenav-width: 48px;
+}
+
+/* Under 900 px only: the button that opens the sidenav as a drawer. */
+.shell-top,
+.shell-scrim {
+  display: none;
+}
+
+.icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.icon-button:hover,
+.icon-button[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--moved) 10%, transparent);
+  color: var(--text);
+}
+
+.sidenav {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.sidenav-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 4px 14px;
+}
+
+.sidenav-brand {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sidenav-brand .sidenav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidenav-repo {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.sidenav-pages {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 8px;
+}
+
+.sidenav-pages a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.sidenav-pages a .icon {
+  color: var(--muted);
+}
+
+.sidenav-pages a:hover {
+  background: color-mix(in srgb, var(--moved) 8%, transparent);
+}
+
+.sidenav-pages a[aria-current='page'] {
+  background: color-mix(in srgb, var(--moved) 13%, transparent);
+  font-weight: 600;
+}
+
+.sidenav-pages a[aria-current='page'] .icon {
+  color: var(--text);
+}
+
+.sidenav-pages kbd {
+  margin-left: auto;
+  color: var(--muted);
+  font:
+    11px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+
+.sidenav-workspaces {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.sidenav-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 8px 0 16px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sidenav-heading .sidenav-label {
+  flex: 1;
+}
+
+.sidenav .workspaces-empty,
+.sidenav .workspaces-note,
+.sidenav-hint {
+  margin: 4px 16px;
+  font-size: 13px;
+}
+
+.sidenav .workspaces-empty p {
+  margin: 6px 0;
+}
+
+.sidenav-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 8px 12px;
+}
+
+.sidenav .workspace-group h3 {
+  margin: 12px 8px 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sidenav .workspace-row {
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.sidenav .workspace-row:hover {
+  background: color-mix(in srgb, var(--moved) 6%, transparent);
+}
+
+.sidenav .workspace-row.picked {
+  box-shadow: inset 2px 0 0 var(--moved);
+  background: color-mix(in srgb, var(--moved) 11%, var(--panel));
+}
+
+.sidenav .workspace-about {
+  font-size: 13px;
+}
+
+.sidenav .workspace-head .commit-date {
+  flex: none;
+  width: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.sidenav .workspace-state,
+.sidenav .workspace-branch {
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidenav .workspace-state strong {
+  font-weight: 500;
+}
+
+.sidenav a.workspace-about {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.merge-card .merge-mark {
+  border: 0;
+}
+
+/* Folded (wide windows only): a rail of icons and each workspace's mark. */
+@media (min-width: 900px) {
+  .sidenav.rail .sidenav-label,
+  .sidenav.rail kbd,
+  .sidenav.rail .page-count,
+  .sidenav.rail .branches-count,
+  .sidenav.rail .kind-tag,
+  .sidenav.rail .commit-date,
+  .sidenav.rail .workspace-state,
+  .sidenav.rail .workspace-branch,
+  .sidenav.rail .workspaces-empty,
+  .sidenav.rail .workspaces-note,
+  .sidenav.rail .sidenav-hint {
+    display: none;
+  }
+
+  .sidenav.rail .sidenav-top,
+  .sidenav.rail .sidenav-heading {
+    flex-direction: column;
+    padding: 6px 0;
+  }
+
+  .sidenav.rail .sidenav-brand {
+    flex: none;
+  }
+
+  .sidenav.rail .sidenav-pages {
+    padding: 4px 6px;
+  }
+
+  .sidenav.rail .sidenav-pages a {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .sidenav.rail .sidenav-list {
+    padding: 0 6px 12px;
+  }
+
+  .sidenav.rail .workspace-group h3 {
+    height: 0;
+    margin: 6px 4px;
+    overflow: hidden;
+    border-top: 1px solid var(--line);
+  }
+
+  .sidenav.rail .workspace-row {
+    padding: 6px 0;
+  }
+
+  .sidenav.rail .workspace-head {
+    justify-content: center;
+  }
+
+  /* Its name stays for screen readers and the keyboard; the mark is what shows. */
+  .sidenav.rail .workspace-about {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+
+.shell-main {
+  grid-area: main;
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.main-hint,
+.main-empty {
+  margin: 24px;
+}
+
+.main-empty p:first-child {
+  font-weight: 600;
+}
+
+/* A workspace in the main area: its head, its tabs, and the tab's content to the bottom. */
+.workspace {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 20px;
+}
+
+.workspace-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'title actions'
+    'state actions';
+  column-gap: 16px;
+  align-items: center;
+}
+
+.workspace-title {
+  grid-area: title;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workspace-title h1 {
+  flex: 0 1 auto;
+  margin: 0;
+  font-size: 16px;
+}
+
+.workspace-ref {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.workspace-ref .ref {
+  min-width: 0;
+  overflow: hidden;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-top .workspace-state {
+  grid-area: state;
+  margin: 2px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.workspace-actions .button,
+.merge-row-actions .button {
+  margin-top: 0;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.workspace-actions .button.primary,
+.merge-row-actions .button.primary {
+  border-color: transparent;
+  background: var(--text);
+  color: var(--bg);
+}
+
+.workspace-actions .button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.workspace-actions .merge-control {
+  margin: 0;
+  font-size: 13px;
+}
+
+.more-actions {
+  position: relative;
+}
+
+.more-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+.more-menu button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.more-menu button:hover,
+.more-menu button:focus-visible {
+  background: color-mix(in srgb, var(--moved) 10%, transparent);
+}
+
+.more-menu button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.workspace .reply {
+  flex: none;
+}
+
+/* A merge in the main area (V29a). */
+.merge-view {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px 24px;
+}
+
+.merge-view .merge-row {
+  padding: 0;
+  border: 0;
+}
+
+.merge-title {
+  margin: 4px 0 0;
+}
+
+.statusbar {
+  grid-area: status;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  min-height: 24px;
+  padding: 0 12px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Wrapped, not cut: a notice can say what to do (trust a folder, copy the prompt). */
+.statusbar-notice {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 3px 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.statusbar-notice.error {
+  color: var(--error);
+}
+
+.statusbar .link {
+  font-size: 12px;
+}
+
+/* Narrow: the sidenav is a drawer over the page, opened from a strip at the top. */
+@media (max-width: 899px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'top'
+      'main'
+      'status';
+  }
+
+  .shell-top {
+    grid-area: top;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+  }
+
+  .sidenav,
+  .sidenav-fold {
+    display: none;
+  }
+
+  .shell.drawer-open .sidenav {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 26;
+    display: flex;
+    width: min(300px, 85vw);
+    box-shadow: 0 0 32px rgb(0 0 0 / 25%);
+  }
+
+  .shell.drawer-open .shell-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    display: block;
+    background: rgb(0 0 0 / 30%);
+  }
+
+  .workspace {
+    padding: 8px 12px;
+  }
+
+  .workspace-top {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'title'
+      'state'
+      'actions';
+  }
+
+  .workspace-actions {
+    justify-content: flex-start;
+    margin-top: 6px;
+  }
+}
+
+/* A diff of `cpr view` in the shell (V29a): the diff's own bar, canvas and legend, beside the rail. */
+.shell-main > .app {
+  flex: 1;
+  min-width: 0;
+  height: auto;
 }

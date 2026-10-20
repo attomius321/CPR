@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PromptKey, PromptSetting, PromptSettings } from '@cpr/core';
 import { getJson, postJson } from './http.js';
+import { useShell } from './shell-context.js';
 import {
   draftProblem,
   gitNote,
@@ -70,13 +71,21 @@ export function SettingsPage() {
     () => settings?.prompts.filter((p) => isEdited(p, drafts[p.key])).map((p) => p.key) ?? [],
     [settings, drafts],
   );
-  // Leaving with an unsaved change asks first (the tabs are links too).
+  // Leaving with an unsaved change asks first: closing or reloading the page (the browser asks),
+  // and going elsewhere in the shell (V29a), which does not load another page.
+  const setLeaveGuard = useShell()?.setLeaveGuard;
   useEffect(() => {
     if (edited.length === 0) return;
     const onLeave = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener('beforeunload', onLeave);
-    return () => window.removeEventListener('beforeunload', onLeave);
-  }, [edited.length]);
+    setLeaveGuard?.(
+      `Leave Settings? ${edited.length === 1 ? 'A prompt is' : `${edited.length} prompts are`} changed and not saved.`,
+    );
+    return () => {
+      window.removeEventListener('beforeunload', onLeave);
+      setLeaveGuard?.(null);
+    };
+  }, [edited.length, setLeaveGuard]);
 
   const show = (key: PromptKey) => {
     setOpen(key);

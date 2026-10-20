@@ -56,6 +56,8 @@ export interface ReviewTarget {
 
 /** `cpr view`: the repository's commits, and the diffs between them picked in the viewer. */
 export interface RepositoryOptions {
+  /** The repository's folder name, shown at the top of the viewer's sidenav (V29a). */
+  name?: string;
   /** The commits page's history: rows and their details, its shape (`GET /api/history…`). */
   history: Histories;
   /** HEAD, the history's version, local changes and an operation in progress. */
@@ -371,6 +373,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
             : site?.state !== undefined,
         ...(options.open && (site !== undefined || diff) ? { open: true } : {}),
         ...(repository ? { commits: true } : {}),
+        ...(repository?.name ? { repo: repository.name } : {}),
         ...(branchReview ? { branchReview } : {}),
       };
       return send(res, 200, JSON.stringify(capabilities), TYPES['.json']);
