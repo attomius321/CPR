@@ -3615,3 +3615,41 @@ Merged into main (2026-10-20): V28a and V28b, after `fix/merge-md-shared`. Two c
 from that fix: `prepareCprFolder`'s doc comment (both kept) and the journal's end (both entries
 kept). `main` verified after the merges: frozen install, 925 unit tests, lint, typecheck, build,
 124 of 124 e2e.
+
+## V29 spike — today's workspace layout, and where usage can be read (2026-10-20, branch `milestone/v29-workbench`)
+
+Asked: UI improvements after a reference (Orca's window: workspaces and sessions in a sidebar, the
+agents' terminals filling the middle, the worktree's files on the right, each subscription's
+5-hour and weekly use in a status bar), "Love the fact that i can see the session usage for each
+found subscription at the bottom".
+
+Measured on `main` (`ede9e12`) with e2e's fake Claude Code and three workspaces, Chromium at
+1280×720, 1440×900 and 1920×1080 (a throwaway spec, not committed): the terminal is 808×429,
+965×533 and 1,444×637 px (38, 40 and 44 % of the window; 33, 41 and 49 rows). 268 px sit above it
+at every size and 66 px below. The workspace list is 360 px wide and holds three workspaces in
+298 px.
+
+**Learned**:
+- **Claude Code's copy of the usage on disk is not live.** `~/.claude.json`'s
+  `cachedUsageUtilization` was 16.3 h old while a session ran: it is written when `/usage` is
+  opened. Live numbers reach Claude Code with each answer (the `anthropic-ratelimit-unified-*`
+  headers) and leave it in two places only: the status line's input (`rate_limits.five_hour` and
+  `seven_day`, `used_percentage` and `resets_at`, for subscribers after the first answer) and the
+  SDK's `rate_limit_event`. Hooks do not get them. Transcripts record a window only when it is hit
+  (`apiErrorParams.rate_limit_info`, 2 of this repository's sessions).
+- **A status line of CPR's would replace the person's.** CPR passes its hooks with `--settings`; a
+  `statusLine` there would win over the person's own, which today's terminal shows. And it would
+  only run where a TUI draws the session.
+- **The cached copy has about 20 keys under code names**, one at 100 % here
+  (`iguana_necktie`). Its `limits` list (kind, group, percent, reset) is the part meant to be
+  shown.
+- **Codex's windows are not "5h · wk" on every plan.** On the Go plan here, `account/rateLimits/read`
+  on the daemon CPR already uses answers one window of 43,200 min (30 days) at 0 %, in 789 ms (it
+  asks OpenAI); `account/read` gives the plan in 3 ms. Rollouts carry the same `rate_limits` per
+  turn.
+- **Not measured**: the endpoint Claude Code's `/usage` reads
+  (`api.anthropic.com/api/oauth/usage`), because it needs the OAuth token Claude Code stored. It
+  waits for the person's yes (decision 172). The token on this machine expires about 8 h after
+  Claude Code last refreshed it. CPR must never refresh it: if the refresh token rotates (not
+  checked), a refresh by CPR would sign Claude Code out.
+- **e2e**: 125 tests; 6 selectors in 2 specs name the page tabs the shell would move.
