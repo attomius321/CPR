@@ -156,6 +156,10 @@ describe('reviewPlace', () => {
     });
     repo.commit('config');
     expect((await reviewPlace(open, cache)).place).toBe('repository');
+    // So are the merger's rules (V26c), which a team commits to share them.
+    repo.write({ 'cpr/merge.md': 'Keep both changelog entries.\n' });
+    repo.commit('merge rules');
+    expect((await reviewPlace(open, cache)).place).toBe('repository');
 
     repo.git('config', '--unset', 'user.email');
     expect(await reviewPlace(open, cache)).toMatchObject({
@@ -287,6 +291,20 @@ describe('branchReviews', () => {
     const { info } = await reviews.resolve('agent');
     await reviews.state(info).write('review', {});
     expect(readFileSync(join(repo.root, 'cpr', '.gitignore'), 'utf8')).toBe('# ours\n');
+  });
+
+  it("keeps the merger's rules in git, and updates the cpr/.gitignore an earlier CPR wrote", async () => {
+    const { repo } = fresh();
+    // What CPR wrote from V15 on: it hid cpr/merge.md, which the project means to share.
+    const earlier =
+      '# Written by CPR: reviews stay on this machine. Delete this file to commit and share them.\n' +
+      '*\n!config.json\n';
+    repo.write({ 'cpr/.gitignore': earlier, 'cpr/merge.md': 'Keep both changelog entries.\n' });
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    const { info } = await reviews.resolve('agent');
+    await reviews.state(info).write('review', {});
+    expect(readFileSync(join(repo.root, 'cpr', '.gitignore'), 'utf8')).toBe(GITIGNORE);
+    expect(repo.git('status', '--porcelain', '--untracked-files=all')).toBe('?? cpr/merge.md');
   });
 
   it('says what came after the last review, on the page and on the commits page', async () => {

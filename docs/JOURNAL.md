@@ -3501,3 +3501,19 @@ conflict goes to the merger agent, as V26c built it (decision 164).
   merge changed outside the regions, as V26c found), and 2 stopped rightly with "needs you" (a
   README section rewritten on one side; two milestones both numbered V21). 10.0K–56.3K input
   tokens, 9.9–49.3 s a run. `main` moved only on `--approve`.
+
+## Fix — `cpr/merge.md` can be committed (2026-10-20, branch `fix/merge-md-shared`)
+
+Found while planning V28. `cpr/merge.md` holds a project's merge rules for the merger (V26c), but
+the `cpr/.gitignore` CPR writes (`*`, `!config.json`) hid it, so the rules stayed on one machine.
+Forcing it into git would have been worse: `reviewPlace` treats any tracked file in `cpr/` that is
+not CPR's (`config.json`, `.gitignore`, `AGENTS.md`) as the project's own folder, and moves the
+reviews to CPR's cache.
+
+Now `GITIGNORE` also un-ignores `merge.md`, `merge.md` is one of CPR's files, and a
+`cpr/.gitignore` whose text is exactly what CPR wrote from V15 on is replaced by the new text. A
+`.gitignore` with any other text is still the project's and left alone.
+
+**Verification**: 2 tests red first (a committed `merge.md` sent the reviews to the cache;
+`git status` did not show `merge.md`), green after; 900 unit tests, lint, typecheck, build.
+README not changed: its Merging section does not describe `cpr/merge.md` yet (left for later).
