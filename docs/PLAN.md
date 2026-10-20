@@ -7371,7 +7371,8 @@ changed prompt; Windows.
 ### V29 — A workbench: pages and workspaces in a sidenav, a new look, usage at the bottom
 
 **Status:** V29a, V29b and V29c built (2026-10-20) on branch `milestone/v29-workbench`: their
-"As built" and results below; V29d not started. Decisions 172 (Claude Code's usage from the
+"As built" and results below; V29d planned in detail (decisions 186–189, proposed), in progress.
+Decisions 172 (Claude Code's usage from the
 endpoint `/usage` reads), 178 (History) and 180 (Geist and Geist Mono) confirmed by the person
 (2026-10-20); 185 made while building; the others proposed.
 
@@ -7577,6 +7578,54 @@ What causes it:
   From `GET /api/workspaces/changes?branch=`, read when the workspace is picked and when its
   commit count or state changes. With it open the terminal keeps at least 55 % of the window.
 
+**V29d, planned in detail** (2026-10-20, measured on V29c's build, `a5807da`, Chromium, e2e's
+fake Claude Code):
+
+| What | Today |
+|---|---|
+| A workspace's branch, in its view | Counts only, in the head's state line: "2 commits · 1 file not committed yet · Merges cleanly into main". Which commits and files: a Review (an analysis: **4.6 s** for this branch, 15 commits, 66 files), History's rows (commits, a commit's files only through a diff), or VS Code |
+| The terminal's box at 1280×720 · 1440×900 · 1920×1080 | 1024×612 (68.0 %) · 1184×782 (71.4 %, 148 columns) · 1664×969 (77.8 %) |
+| … beside a 280 px panel | 49.4 % · **54.5 %** · 64.7 %: under the 55 % the plan asks at 1440 |
+| … beside a 256 px panel | 51.0 % · **56.0 %, 116 columns** · 65.8 % |
+| The git reads, this branch against `main` (15 commits, 66 files, +6,665 −2,116), warm | `git log` 1 ms · `diff --numstat -M` 17–18 ms (43 cold) · `diff --name-status -M` 17 ms |
+| `git status --porcelain -z --untracked-files=all` | 5 ms in this checkout; Bitwarden's worktree (9,147 files) 14 ms warm, 572 ms cold |
+
+- **Server**: `GET /api/workspaces/changes?branch=` answers `WorkspaceChanges` (types in core):
+  where the commits start (`base`, and `since`: the default branch's name when that is the fork
+  point), the tip, the commits newest first (short SHA, subject, author, date; at most 100, and
+  the count), the files changed (path, the path before a rename, status, added and removed lines,
+  `null` for a binary; at most 300, and the count and totals over all), and the files not
+  committed in its worktree (status, path, lines for tracked files; `null` without a worktree).
+  The commits and files are kept per branch for their (base, tip); the worktree's status is read
+  each time.
+- **Where the commits start** (decision 187): the fork point with the default branch, as Review
+  computes it (`forkPoint`): the panel is what Review will show. The workspace's recorded base
+  when merged (the fork point is then the tip) or without a default branch.
+- **The panel** (decision 186): 256 px at the right of the tabs and their content, under the
+  head; its own scroll. Sections Commits, Files and Not committed, each with its count; a
+  section's empty state in a word ("No commits yet"). A file row: its status letter, its name, its
+  folder (muted), `+a −r`; a click opens it in VS Code in the worktree at its first change
+  (decision 188, `POST /api/workspaces/open` with `file`); the head's status says how it went. A
+  deleted file is not a button. Commits are read only (their title: subject, author, date).
+- **When it shows**: where the workspace's area is at least 1,200 px wide (1440 with the sidenav,
+  1,248 with the rail), by a container query, so the terminal keeps 56 % at 1440. `]` and a
+  button in the head hide and show it, kept per browser (`localStorage`, read in a `try`). The
+  review mark and the merge check stay in the head, which shows at every width.
+- **Fresh** (decision 189): read with every read of the list, as the thread is (when picked, on
+  focus, every 5 s while an agent works or waits).
+
+Verification (V29d): tests first. Core unit: the numstat parser (renames, binary files, paths
+with spaces and tabs), the worktree's status (changed, staged, new, deleted, renamed, a new
+folder's files). CLI unit: the endpoint's answer for a branch with commits, its fork point after
+`main` moved, a merged one, a gone branch, a gone worktree, the caps; the cache by (base, tip);
+`open` with `file` at the first change, a new file at line 1, a path outside the worktree
+refused. Viewer unit: the rows' words (status, lines, the heading). e2e: the panel lists the
+commits and files the fake agent makes and the file left uncommitted, a click opens VS Code at
+the change, `]` hides it and the choice is kept across a reload, hidden at 1280 with the sidenav
+open, the terminal's share at 1440 with it (≥ 55 %) and without it (≥ 65 %). `pnpm check`,
+build, all e2e; no graph or analysis change (no `regression-check`). Cost: the endpoint on this
+branch and on a Bitwarden worktree, warm and cold.
+
 #### Verification
 
 1. **Tests first** (red before). Viewer unit: the page or workspace an address opens (`/`,
@@ -7653,6 +7702,10 @@ plan's 172–179; 176 supersedes V25's 136):
 | 183 | The right panel | **The branch's changes, not a file tree; last** | CPR reviews changes; a tree of the worktree is the editor's, one click away |
 | 184 | New dependencies | **`@fontsource-variable/geist` and `@fontsource-variable/geist-mono`, build assets only** | Served by CPR, nothing loaded from elsewhere; no icon library (inline SVG) |
 | 185 | What a start shows (made in V29a) | **The new workspace, in the main area** | Its agent plans and asks first: the terminal is what to look at next. One starter for the shell, wherever it opens from |
+| 186 | The right panel's width and when it shows (V29d) | **256 px, where the workspace's area is at least 1,200 px; `]` hides it, kept per browser** | At 1440 a 280 px panel leaves the terminal 54.5 % of the window, under the plan's 55 %; 256 px leaves 56 % and 116 columns. Tied to the area, not the window: the rail makes room at 1280 |
+| 187 | Where the panel's commits start (V29d) | **The fork point with the default branch, as Review computes it; the recorded base once merged** | The panel shows what Review will show. A branch rebased onto a newer `main` would list `main`'s commits from its recorded base |
+| 188 | Where a file opens (V29d) | **In the worktree, at its first change against the fork point (working copy included); a new file at line 1** | One `git diff -U0` at the click; line 1 of a long file is rarely where the change is |
+| 189 | How fresh (V29d) | **With every read of the list, as the thread; commits and files kept per (base, tip)** | The list is read when it can change (focus, every 5 s while an agent works or waits); uncommitted files change without a commit. A read costs ~20 ms of git once cached |
 
 **Not in V29 (later)**: two terminals side by side (the reference splits Claude Code and Codex);
 a plain shell in a workspace's worktree; a file tree; pinned workspaces (the reference pins

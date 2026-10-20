@@ -3816,3 +3816,27 @@ repository: Claude 79 % and 68 %, later 83 % (warning) and 69 %, Codex 0 %, each
 direct read of its source in the same minute; not compared with the `/usage` and `/status`
 screens themselves. `/api/usage` from memory 0.79 ms median, the first ask 689–799 ms. Not
 verified: the macOS Keychain read.
+
+## V29d spike — what the branch's changes cost, and the room beside the terminal (2026-10-20, branch `milestone/v29-workbench`)
+
+Measured on V29c's build (`a5807da`), Chromium, e2e's fake Claude Code (a throwaway spec, not
+committed).
+
+**Learned**:
+- **A workspace says how much, not what.** Its head says "2 commits · 1 file not committed yet ·
+  Merges cleanly into main"; which files takes a Review, an analysis: 4.6 s for this branch
+  against `main` (15 commits, 66 files).
+- **The git reads are cheap.** On this branch: `git log` 1 ms, `diff --numstat -M` 17–18 ms warm
+  (43 cold), `diff --name-status -M` 17 ms. `git status --porcelain -z --untracked-files=all`: 5
+  ms here, 14 ms warm and 572 ms cold in a Bitwarden worktree of 9,147 files. Reading them with
+  every read of the list (every 5 s while an agent works) costs little once commits and files are
+  kept per (base, tip).
+- **The plan's 280 px did not fit its own rule.** The terminal's box is 1024×612, 1184×782 and
+  1664×969 at 1280, 1440 and 1920 (68, 71 and 78 % of the window). Beside 280 px it would keep
+  49, 54.5 and 65 %: under the 55 % the plan asks at 1440. Beside 256 px: 51, 56 and 66 %, 116
+  columns at 1440. The rule is the area's width, not the window's: with the rail, 1280 has room.
+- **`git diff --raw --numstat -z` gives both in one run**, raw records first; kept as two runs
+  (`listChangedFiles` exists and is tested), in parallel.
+- **The recorded base and the fork point agree** on this repository's 3 workspaces with a branch
+  (the other 3 branches are gone): too few to tell how often a branch is rebased. The panel takes
+  the fork point, as Review does (decision 187).
