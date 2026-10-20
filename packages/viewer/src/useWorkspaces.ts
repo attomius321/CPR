@@ -31,6 +31,29 @@ const live = (state: WorkspacesState) =>
 
 const merging = (state: WorkspacesState) => mergeLive(state.merges?.merges ?? []);
 
+/** Terminals open in panels: what is typed in one may start a turn (V27b, decision 161). */
+let terminalsOpen = 0;
+
+/**
+ * How long until the next read: 1.5 s while a merge runs; 5 s while an agent works or waits, or
+ * a terminal is open (`open`); none otherwise.
+ */
+export function readEvery(state: WorkspacesState, open: number): number | null {
+  if (merging(state)) return MERGE_POLL_MS;
+  return live(state) || open > 0 ? POLL_MS : null;
+}
+
+/** Holds the reads on while an agent's terminal is open; the way to let go. */
+export function holdReads(): () => void {
+  terminalsOpen += 1;
+  schedule();
+  let held = true;
+  return () => {
+    if (held) terminalsOpen -= 1;
+    held = false;
+  };
+}
+
 async function read<T>(path: string): Promise<T | null> {
   const response = await fetch(path);
   return response.ok ? ((await response.json()) as T) : null;
@@ -66,13 +89,13 @@ export async function readWorkspacesAgain(): Promise<WorkspacesState> {
 }
 
 /**
- * The next read, while a page reads them and an agent works or waits, or a merge runs; none when
- * hidden.
+ * The next read, while a page reads them and an agent works or waits, a terminal is open, or a
+ * merge runs; none when hidden.
  */
 function schedule(): void {
   clearTimeout(timer);
   if (listeners.size === 0) return;
-  const wait = merging(current) ? MERGE_POLL_MS : live(current) ? POLL_MS : null;
+  const wait = readEvery(current, terminalsOpen);
   if (wait === null) return;
   timer = setTimeout(() => {
     if (document.visibilityState === 'hidden') schedule();

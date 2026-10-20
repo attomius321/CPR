@@ -37,8 +37,10 @@ import {
   type WorkspaceRequest,
   type WorkspaceStart,
   type WorkspaceSummary,
+  type WorkspaceTerminalOpened,
   type WorkspaceTerminalRequest,
   type WorkspaceThread,
+  type ThreadEntry,
   type GitRepo,
   type PermissionMode,
   type RefList,
@@ -46,7 +48,21 @@ import {
   type WorkKindSpec,
 } from '@cpr/core';
 import { guessCheck, treeAt } from './check.js';
-import { codexState, processAlive, type Codex } from './codex.js';
+import {
+  AppServerStartFailed,
+  AppServerUnreachable,
+  type CodexServer,
+  type CodexThread,
+} from './app-server.js';
+import {
+  asksTrust,
+  codexState,
+  processAlive,
+  serverEntries,
+  serverLastAction,
+  serverState,
+  type Codex,
+} from './codex.js';
 import { localHost, onPath } from './editor.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
 import { CONFIG_FILES } from './plugins.js';
@@ -64,6 +80,7 @@ import {
   lastAction,
   readThread,
   readThreadEnd,
+  THREAD_LIMIT,
   threadPath,
   turnEnded,
   workspacesFolder,
@@ -102,6 +119,12 @@ export interface WorkspaceAgentRecord {
   /** Codex: its last run's ID, on the thread entries it wrote, and its runner's process (V20a). */
   run?: string;
   pid?: number;
+  /**
+   * Codex on its app server (V27a): its thread there, read from the server (no runner, no run);
+   * `threads`, those it had before (started again), archived at Clean up.
+   */
+  thread?: string;
+  threads?: string[];
   /** Why the last start failed, in the agent's words. */
   error?: string;
   /** Started with CPR's hooks (V18c): its thread is recorded. */
@@ -308,6 +331,17 @@ function asAgent(value: unknown): WorkspaceAgentRecord | null {
     ...(typeof v.started === 'string' ? { started: v.started } : {}),
     ...(typeof v.run === 'string' && v.run !== '' ? { run: v.run } : {}),
     ...(typeof v.pid === 'number' && Number.isInteger(v.pid) && v.pid > 0 ? { pid: v.pid } : {}),
+    ...(kind === 'codex' && typeof v.thread === 'string' && v.thread !== ''
+      ? { thread: v.thread }
+      : {}),
+    ...(kind === 'codex' && Array.isArray(v.threads)
+      ? (() => {
+          const threads = (v.threads as unknown[]).filter(
+            (t): t is string => typeof t === 'string' && t !== '',
+          );
+          return threads.length > 0 ? { threads } : {};
+        })()
+      : {}),
     ...(typeof v.error === 'string' ? { error: v.error } : {}),
     ...(v.hooks === true ? { hooks: true } : {}),
   };
@@ -846,10 +880,11 @@ export interface Workspaces {
   /** Sends a message to its agent: continues its session with the text (V18c). */
   reply(request: WorkspaceReply): Promise<WorkspaceReplied>;
   /**
-   * Opens its agent's newest session in a terminal (V21): `claude attach <id>` in its worktree;
-   * the terminal's ID. A stopped session continues, with no turn.
+   * Opens its agent's newest session in a terminal (V21): `claude attach <id>` in its worktree,
+   * where a stopped session continues, with no turn; for Codex on its app server, `codex resume
+   * <thread> --remote <address> -C <worktree>` (V27b). The terminal's ID.
    */
-  terminal(request: WorkspaceTerminalRequest): Promise<{ id: string }>;
+  terminal(request: WorkspaceTerminalRequest): Promise<WorkspaceTerminalOpened>;
   /**
    * Cleans it up (V18c): its agent's sessions, its worktree and, once merged, its branch; the
    * record stays, `finished`. Unmerged only when asked (`unmerged`); never with work not
@@ -1017,15 +1052,26 @@ export function workspaces(
     }
     const exists = existsSync(workspace.worktree);
     const changed = exists ? await uncommittedFiles(workspace.worktree).catch(() => null) : null;
-    const thread = workspace.agent ? await readThreadEnd(cprFolder(where), workspace.branch) : [];
-    // Blocked with nothing named: its thread tells a finished turn from a question (V18c).
-    const session = newestSession(workspace, sessions, real);
-    const ended = session && isBlocked(session) && !session.waitingFor ? turnEnded(thread) : false;
-    const acted = workspace.agent ? (lastAction(thread) ?? workspace.agent.started) : undefined;
-    const agent =
-      workspace.agent?.kind === 'codex'
-        ? codexState(workspace, thread, await codexAlive(workspace), ahead)
-        : agentState(workspace, sessions, ahead, real, ended);
+    let agent: WorkspaceAgentState;
+    let acted: string | undefined;
+    if (onServer(workspace)) {
+      // Its last two turns: the one that runs, and the answer before it.
+      const { read, address } = await readServer(workspace, { turns: 2, items: 'summary' });
+      agent = serverState(workspace, read, ahead, address);
+      acted =
+        (read instanceof Error ? undefined : serverLastAction(read)) ?? workspace.agent?.started;
+    } else {
+      const thread = workspace.agent ? await readThreadEnd(cprFolder(where), workspace.branch) : [];
+      // Blocked with nothing named: its thread tells a finished turn from a question (V18c).
+      const session = newestSession(workspace, sessions, real);
+      const ended =
+        session && isBlocked(session) && !session.waitingFor ? turnEnded(thread) : false;
+      acted = workspace.agent ? (lastAction(thread) ?? workspace.agent.started) : undefined;
+      agent =
+        workspace.agent?.kind === 'codex'
+          ? codexState(workspace, thread, await codexAlive(workspace), ahead)
+          : agentState(workspace, sessions, ahead, real, ended);
+    }
     return {
       branch: workspace.branch,
       ...(workspace.kind ? { kind: workspace.kind } : {}),
@@ -1132,8 +1178,9 @@ export function workspaces(
   }
 
   /**
-   * Starts Codex on a workspace (V20a): `codex exec` through CPR's runner, which records its
-   * thread; its sandbox may also write what a commit on the branch writes (decision 130).
+   * Starts Codex on a workspace: a thread on its app server (V27a), else `codex exec` through
+   * CPR's runner, which records its thread (V20a); its sandbox may also write what a commit on
+   * the branch writes (decision 130). Threads it had on the server are kept, for Clean up.
    */
   async function launchCodex(
     where: ReviewPlace,
@@ -1141,26 +1188,87 @@ export function workspaces(
     agent: Codex,
     prompt: string,
   ): Promise<WorkspaceAgentRecord> {
+    const earlier = [
+      ...(workspace.agent?.threads ?? []),
+      ...(workspace.agent?.thread ? [workspace.agent.thread] : []),
+    ];
+    const head = { kind: 'codex' as const, ...(earlier.length > 0 ? { threads: earlier } : {}) };
     // Not logged in, `exec` retries for about 25 s and fails with a 401 (V20a spike).
     if ((await agent.account()) === 'not logged in') {
-      return {
-        kind: 'codex',
-        error: 'Codex is not logged in: run `codex login`, then start the agent.',
-      };
+      return { ...head, error: 'Codex is not logged in: run `codex login`, then start the agent.' };
+    }
+    const started = now().toISOString();
+    const writable = await commitFolders(workspace.worktree, workspace.branch);
+    const server = await agent.server();
+    if (server) {
+      try {
+        const thread = await server.start({
+          cwd: workspace.worktree,
+          writable,
+          name: workspace.branch,
+          prompt,
+        });
+        return { ...head, started, thread };
+      } catch (error) {
+        // A server that cannot be reached: `exec`, as without one. One that answered: its words,
+        // and the thread it made, if it did, kept for Clean up.
+        if (!(error instanceof AppServerUnreachable)) {
+          const made = error instanceof AppServerStartFailed ? [error.thread] : [];
+          const threads = [...earlier, ...made];
+          return {
+            kind: 'codex',
+            ...(threads.length > 0 ? { threads } : {}),
+            error: `Codex's app server: ${(error as Error).message}`,
+          };
+        }
+      }
     }
     const run = randomUUID();
-    const started = now().toISOString();
     const result = await agent.start({
       cwd: workspace.worktree,
       thread: threadPath(cprFolder(where), workspace.branch),
       run,
-      writable: await commitFolders(workspace.worktree, workspace.branch),
+      writable,
       prompt,
     });
     return result.ok
-      ? { kind: 'codex', started, run, pid: result.pid }
-      : { kind: 'codex', error: result.error };
+      ? { ...head, started, run, pid: result.pid }
+      : { ...head, error: result.error };
   }
+
+  /** Whether a Codex workspace runs on the app server (V27a), not through CPR's runner. */
+  const onServer = (workspace: WorkspaceFile) =>
+    workspace.agent?.kind === 'codex' && workspace.agent.thread !== undefined;
+
+  /** Codex's app server, when Codex is installed and has one. */
+  async function serverOf(): Promise<CodexServer | null> {
+    const agent = await codex();
+    return agent ? agent.server() : null;
+  }
+
+  /** A server workspace's thread, or why it cannot be read; and the server's address. */
+  async function readServer(
+    workspace: WorkspaceFile,
+    view: Parameters<CodexServer['read']>[1],
+  ): Promise<{ read: CodexThread | Error; address: string | null }> {
+    const thread = workspace.agent?.thread ?? '';
+    const agent = await codex();
+    const server = agent ? await agent.server() : null;
+    if (!server) {
+      const why = agent
+        ? 'none runs, and `codex app-server daemon start` started none'
+        : 'Codex is not installed';
+      return { read: new Error(why), address: null };
+    }
+    try {
+      return { read: await server.read(thread, view), address: server.address };
+    } catch (error) {
+      return { read: error as Error, address: server.address };
+    }
+  }
+
+  /** Turns a thread panel reads from the server: about 200 entries' worth. */
+  const PANEL_TURNS = 50;
 
   /**
    * Waits for a Codex run's first thread entry, 3 s at most, unless its runner is gone: a start or
@@ -1247,6 +1355,7 @@ export function workspaces(
     if (!existsSync(workspace.worktree)) {
       throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
     }
+    if (onServer(workspace)) return replyServer(where, workspace, text, stop);
     const thread = await readThreadEnd(cprFolder(where), workspace.branch);
     const state = codexState(workspace, thread, await codexAlive(workspace), 0);
     if (!state.id) {
@@ -1275,6 +1384,90 @@ export function workspaces(
     await firstEntry(where, workspace);
     const refs = await listRefs(repo);
     return { workspace: await summary(where, workspace, refs, await trunkOf(refs), []) };
+  }
+
+  /**
+   * A message to Codex on its app server (V27a): a new turn, or joined to the one that runs (no
+   * stop, no lost turn); a turn that waits on the person is interrupted first, only when asked.
+   */
+  async function replyServer(
+    where: ReviewPlace,
+    workspace: WorkspaceFile,
+    text: string,
+    stop: boolean,
+  ): Promise<WorkspaceReplied> {
+    const thread = workspace.agent?.thread ?? '';
+    const server = await serverOf();
+    const { read } = await readServer(workspace, { turns: 1, items: 'summary' });
+    if (!server || read instanceof Error) {
+      throw new WorkspaceRefused(`Codex's app server: ${(read as Error).message}`, 502);
+    }
+    const state = serverState(workspace, read, 0, server.address);
+    if (state.state === 'needs-you' && !stop) {
+      const what = state.waitingFor ?? 'you';
+      throw new WorkspaceRefused(
+        `its agent is waiting on ${/^[aeiou]/.test(what) ? 'an' : 'a'} ${what}: sending stops its turn`,
+        409,
+      );
+    }
+    try {
+      if (state.state === 'needs-you') await server.interrupt(thread);
+      await server.send({ thread, text });
+    } catch (error) {
+      throw new WorkspaceRefused(`Codex's app server: ${(error as Error).message}`, 502);
+    }
+    const refs = await listRefs(repo);
+    return { workspace: await summary(where, workspace, refs, await trunkOf(refs), []) };
+  }
+
+  /**
+   * Codex's own terminal on a workspace's thread (V27b): its TUI joined to the app server, in the
+   * worktree. Codex asks to trust each worktree the first time and saves the answer in the
+   * person's configuration: said when it will ask (decision 160), never answered by CPR.
+   */
+  async function codexTerminal(
+    workspace: WorkspaceFile,
+    terminals: Terminals,
+    cols: number,
+    rows: number,
+  ): Promise<WorkspaceTerminalOpened> {
+    const agent = await codex();
+    const server = agent ? await agent.server() : null;
+    if (!agent || !server) {
+      throw new WorkspaceRefused(
+        agent ? "Codex's app server cannot be started" : 'Codex is not installed',
+        409,
+      );
+    }
+    if (!existsSync(workspace.worktree)) {
+      throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
+    }
+    const asks = await server.trust(workspace.worktree).then(
+      (entries) => asksTrust(entries, [workspace.worktree, real(workspace.worktree)]),
+      // Unknown: nothing said rather than something wrong.
+      () => false,
+    );
+    try {
+      const id = await terminals.open({
+        command: agent.command,
+        args: [
+          'resume',
+          workspace.agent?.thread ?? '',
+          '--remote',
+          server.address,
+          '-C',
+          workspace.worktree,
+        ],
+        cwd: workspace.worktree,
+        cols,
+        rows,
+        env,
+      });
+      return { id, ...(asks ? { trusted: false as const } : {}) };
+    } catch (error) {
+      if (error instanceof TerminalRefused) throw new WorkspaceRefused(error.message, 409);
+      throw error;
+    }
   }
 
   /** Whether a workspace's commits are all in the default branch. */
@@ -1472,6 +1665,20 @@ export function workspaces(
     async stopAgent(branch) {
       const where = await place();
       const workspace = await recorded(where, branch);
+      if (onServer(workspace)) {
+        const server = await serverOf();
+        const { read } = await readServer(workspace, { turns: 1, items: 'summary' });
+        const live = serverState(workspace, read, 0, null).state;
+        if (!server || !['working', 'needs-you'].includes(live)) {
+          throw new WorkspaceRefused('its agent is not running', 409);
+        }
+        try {
+          await server.interrupt(workspace.agent?.thread ?? '');
+        } catch (error) {
+          throw new WorkspaceRefused(`Codex's app server: ${(error as Error).message}`, 502);
+        }
+        return started(where, workspace, await promptOf(where, workspace));
+      }
       if (workspace.agent?.kind === 'codex') {
         const agent = await codex();
         const thread = await readThreadEnd(cprFolder(where), branch);
@@ -1526,14 +1733,23 @@ export function workspaces(
     async thread(branch) {
       const where = await place();
       const workspace = await recorded(where, branch);
-      const entries = await readThread(cprFolder(where), branch);
+      let entries: ThreadEntry[];
+      if (onServer(workspace)) {
+        // From the server (decision 155); none when it cannot be read: the state says why.
+        const { read } = await readServer(workspace, { turns: PANEL_TURNS, items: 'full' });
+        entries =
+          read instanceof Error
+            ? []
+            : serverEntries(read, { first: read.turns.length < PANEL_TURNS }).slice(-THREAD_LIMIT);
+      } else entries = await readThread(cprFolder(where), branch);
       const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
       const verdict = review?.verdicts.at(-1);
       const shown = (path: string) =>
         where.place === 'repository' ? relative(repo.root, path).split(sep).join('/') : path;
       return {
         entries,
-        // Claude Code's hooks record it (V18c), CPR's runner records Codex's (V20a).
+        // Claude Code's hooks record it (V18c); CPR's runner records Codex's (V20a), or Codex's
+        // app server keeps it (V27a).
         recorded: workspace.agent?.hooks === true || workspace.agent?.kind === 'codex',
         ...(review && verdict
           ? {
@@ -1554,15 +1770,16 @@ export function workspaces(
     async terminal({ branch, cols, rows }) {
       const where = await place();
       const workspace = await recorded(where, branch);
-      if (workspace.agent?.kind === 'codex') {
+      if (workspace.agent?.kind === 'codex' && !onServer(workspace)) {
         throw new WorkspaceRefused(
-          'Codex has no terminal in CPR: Talk copies `codex resume`, to run in yours',
+          'Codex has no terminal in CPR without its app server: Talk copies `codex resume`, to run in yours',
           409,
         );
       }
       if (!terminals) throw new WorkspaceRefused('no terminals here', 409);
       const can = await terminals.available();
       if (!can.available) throw new WorkspaceRefused(can.reason, 409);
+      if (onServer(workspace)) return codexTerminal(workspace, terminals, cols, rows);
       const agent = await agentOf(workspace);
       if (!existsSync(workspace.worktree)) {
         throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
@@ -1661,6 +1878,22 @@ export function workspaces(
       const codexAgent = workspace.agent?.kind === 'codex' ? await codex() : null;
       if (codexAgent) {
         if (await codexAlive(workspace)) await stopCodex(where, workspace, codexAgent);
+        const { thread: current, threads: earlier = [] } = workspace.agent ?? {};
+        if (current || earlier.length > 0) {
+          // On the app server (V27a): its turn stopped, its threads archived there, else by
+          // `codex archive` (the server unreachable).
+          const server = await codexAgent.server();
+          if (server && current) await server.interrupt(current).catch(() => false);
+          for (const each of current ? [...earlier, current] : earlier) {
+            const archived = server
+              ? await server.archive(each).then(
+                  () => true,
+                  () => false,
+                )
+              : false;
+            if (!archived) await codexAgent.archive(each).catch(() => undefined);
+          }
+        }
         // Out of Codex's lists, not deleted (decision 134): an archived one fails the same way.
         const entries = await readThread(cprFolder(where), workspace.branch, Infinity);
         const threads = new Set(entries.filter((e) => e.kind === 'start').map((e) => e.session));

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Terminal } from '@xterm/xterm';
+import type { WorkspaceTerminalOpened } from '@cpr/core';
 import { postJson } from './http.js';
 import { keySender, TERMINAL_THEME } from './terminal.js';
+import { holdReads } from './useWorkspaces.js';
 
 const WRITE_HEADERS = { 'content-type': 'application/json', 'x-cpr': '1' };
 
@@ -24,10 +26,12 @@ export interface OpenedTerminal {
 }
 
 /**
- * A workspace's agent session as Claude Code draws it (V21): `claude attach` on the server in a
- * pseudo-terminal, drawn by xterm.js (its own chunk, loaded when a terminal first opens) and
- * fitted to its box. Claude Code keeps hosting the session: closing this hangs up only the
- * client. `onOpened` gives the open terminal (to type into it), `onEnded` says it ended.
+ * A workspace's agent session as its agent draws it: `claude attach` (V21), or Codex's TUI joined
+ * to its app server (V27b), on the server in a pseudo-terminal, drawn by xterm.js (its own chunk,
+ * loaded when a terminal first opens) and fitted to its box. The agent keeps hosting the session:
+ * closing this hangs up only the client. While it is open the list is read every 5 s, since what
+ * is typed here may start a turn. `onOpened` gives the open terminal (to type into it), `onEnded`
+ * says it ended.
  */
 export function AgentTerminal({
   branch,
@@ -40,11 +44,13 @@ export function AgentTerminal({
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [trust, setTrust] = useState(false);
   // The latest callbacks, without opening the terminal again when they change.
   const told = useRef({ onOpened, onEnded });
   told.current = { onOpened, onEnded };
 
   useEffect(() => {
+    const release = holdReads();
     let gone = false;
     let id: string | null = null;
     let events: EventSource | null = null;
@@ -75,11 +81,12 @@ export function AgentTerminal({
       term.loadAddon(fit);
       term.open(element);
       fit.fit();
-      const opened = await postJson<{ id: string }>('/api/workspaces/terminal', {
+      const opened = await postJson<WorkspaceTerminalOpened>('/api/workspaces/terminal', {
         branch,
         cols: term.cols,
         rows: term.rows,
       });
+      setTrust(opened.trusted === false);
       if (gone) {
         void toTerminal(opened.id, 'close', {}).catch(() => {});
         return;
@@ -101,12 +108,15 @@ export function AgentTerminal({
       events.addEventListener('error', () => {
         if (events?.readyState === EventSource.CLOSED) ended('lost');
       });
-      shown.onData(
-        keySender(
-          (data) => toTerminal(terminal, 'in', { data }),
-          (failed) => setError(failed.message),
-        ),
+      const send = keySender(
+        (data) => toTerminal(terminal, 'in', { data }),
+        (failed) => setError(failed.message),
       );
+      shown.onData((data) => {
+        // Codex's trust question is the first thing in its terminal: a key answers it (V27b).
+        setTrust(false);
+        send(data);
+      });
       shown.onResize(({ cols, rows }) => {
         clearTimeout(resizing);
         resizing = setTimeout(() => {
@@ -120,6 +130,7 @@ export function AgentTerminal({
       if (!gone) setError((failed as Error).message);
     });
     return () => {
+      release();
       gone = true;
       clearTimeout(resizing);
       observer?.disconnect();
@@ -135,6 +146,12 @@ export function AgentTerminal({
       {error && (
         <p className="error" role="alert">
           {error}
+        </p>
+      )}
+      {trust && (
+        <p className="hint terminal-trust">
+          Codex asks first whether you trust this worktree. Your answer is saved in your Codex
+          configuration; CPR does not answer for you.
         </p>
       )}
       <div ref={box} className="agent-terminal-screen" />

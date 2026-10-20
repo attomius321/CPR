@@ -168,6 +168,7 @@ export {
   type WorkspaceRequest,
   type WorkspaceStart,
   type WorkspaceSummary,
+  type WorkspaceTerminalOpened,
   type WorkspaceTerminalRequest,
   type WorkspaceThread,
   type PermissionMode,

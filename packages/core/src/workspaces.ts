@@ -34,6 +34,11 @@ export interface WorkspaceAgentState {
   interrupted?: true;
   /** Claude Code's short session ID, for `claude attach`; Codex's thread ID, for `codex resume`. */
   id?: string;
+  /**
+   * Codex on its app server (V27a): the server's address (`unix://…`), for `codex resume
+   * --remote`. Turns typed there are in the thread, and a message while it works joins its turn.
+   */
+  remote?: string;
   /** Why the agent did not start, or why its state is unknown. */
   error?: string;
 }
@@ -137,6 +142,16 @@ export interface WorkspaceTerminalRequest {
   branch: string;
   cols: number;
   rows: number;
+}
+
+/** The terminal opened. */
+export interface WorkspaceTerminalOpened {
+  id: string;
+  /**
+   * Codex (V27b): its configuration has no trust entry for the worktree or a folder above it, so
+   * Codex asks first whether to trust it, and saves the answer in the person's configuration.
+   */
+  trusted?: false;
 }
 
 /** What the start dialog needs. */

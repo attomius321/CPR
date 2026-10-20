@@ -22,6 +22,9 @@ import {
   workspaceHref,
   workspaceName,
   replyMode,
+  asksBeforeOpening,
+  opensTerminal,
+  terminalHint,
   startedNotice,
   talkCommand,
   threadItems,
@@ -682,9 +685,9 @@ function WorkspacePanel({
   const verdict = verdictToSend(thread);
   // V21: the agent's own session in a terminal, where one can run: the panel opens on it, and the
   // thread is its history, read only (one way to answer the agent: the box stops its session).
-  // Claude Code's only: Codex's turns in a terminal would not reach its thread (decision 133).
-  const terminals =
-    terminal?.available === true && agent.id !== undefined && agent.kind === 'claude';
+  // Claude Code's, and Codex's on its app server (V27b): through CPR's runner, Codex's turns in a
+  // terminal would not reach its thread (decision 133).
+  const terminals = opensTerminal(agent, terminal);
   const talk = talkCommand(agent, workspace.worktree.path);
   const [chosen, setChosen] = useState(viewOfUrl);
   const view = chosen ?? (terminals ? 'terminal' : 'thread');
@@ -694,11 +697,11 @@ function WorkspacePanel({
   const [attempt, setAttempt] = useState(0);
   // Attaching to a stopped session continues it (with no turn): asked when a terminal is to
   // open, not once it is open (a stop from the head leaves its last lines in view).
-  const [asking, setAsking] = useState(() => agent.state === 'stopped');
+  const [asking, setAsking] = useState(() => asksBeforeOpening(agent));
   const show = (next: 'thread' | 'terminal') => {
     setChosen(next);
     setEnded(null);
-    setAsking(agent.state === 'stopped');
+    setAsking(asksBeforeOpening(agent));
     const href = workspaceHref(branch);
     window.history.replaceState(null, '', next === 'thread' ? `${href}&thread` : href);
   };
@@ -825,7 +828,7 @@ function WorkspacePanel({
             type="button"
             className="link"
             title={`Talk to the agent in a terminal: ${talk}${
-              agent.kind === 'codex'
+              agent.kind === 'codex' && !agent.remote
                 ? ' (its turns there are not recorded in this thread)'
                 : terminal && !terminal.available
                   ? ` (no terminal here: ${terminal.reason})`
@@ -969,7 +972,7 @@ function WorkspacePanel({
                   // A stop ends the terminal before the list says so: the state is read anew.
                   void readWorkspacesAgain().then(({ list }) => {
                     const now = list?.workspaces.find((f) => f.branch === branch)?.agent.state;
-                    setAsking((now ?? agent.state) === 'stopped');
+                    setAsking(asksBeforeOpening({ ...agent, state: now ?? agent.state }));
                     setAttempt((n) => n + 1);
                   });
                 }}
@@ -979,7 +982,7 @@ function WorkspacePanel({
             </p>
           )}
           <div className="reply-actions">
-            <span className="hint">← in an empty prompt lists all your agents</span>
+            <span className="hint">{terminalHint(agent)}</span>
             {verdict && opened && (
               <button
                 type="button"

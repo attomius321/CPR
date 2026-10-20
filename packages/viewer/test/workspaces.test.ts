@@ -19,6 +19,9 @@ import {
   shortAge,
   startedNotice,
   talkCommand,
+  terminalHint,
+  asksBeforeOpening,
+  opensTerminal,
   threadItems,
   verdictToSend,
 } from '../src/workspaces.js';
@@ -147,6 +150,16 @@ describe('talkCommand (V20a)', () => {
     );
     expect(talkCommand({ state: 'no-agent' }, '/w/x')).toBeNull();
     expect(talkCommand({ state: 'working', kind: 'codex' }, '/w/x')).toBeNull();
+  });
+
+  it("joins Codex's thread on its app server: the TUI there, its turns in the thread (V27a)", () => {
+    const remote = 'unix:///home/someone/.codex/app-server-control/app-server-control.sock';
+    expect(talkCommand({ state: 'ready', kind: 'codex', id: 'T1', remote }, '/w/feature-csv')).toBe(
+      `codex resume T1 --remote ${remote} -C /w/feature-csv`,
+    );
+    expect(
+      talkCommand({ state: 'ready', kind: 'codex', id: 'T1', remote: 'unix:///my socket' }, '/w'),
+    ).toBe("codex resume T1 --remote 'unix:///my socket' -C /w");
   });
 });
 
@@ -475,6 +488,17 @@ describe('replyMode', () => {
       expect(replyMode(agent({ state }))).toBe('none');
     }
   });
+
+  it('sends to Codex on its app server while it works: the message joins its turn (V27a)', () => {
+    const codex = (over: Partial<WorkspaceAgentState>) =>
+      agent({ kind: 'codex', remote: 'unix:///s.sock', ...over });
+    expect(replyMode(codex({ state: 'working' }))).toBe('send');
+    expect(replyMode(codex({ state: 'needs-you', waitingFor: 'approval prompt' }))).toBe(
+      'stop-and-send',
+    );
+    // Through CPR's runner (V20a), a message still stops its run.
+    expect(replyMode(agent({ kind: 'codex', state: 'working' }))).toBe('stop-and-send');
+  });
 });
 
 describe('verdictToSend', () => {
@@ -495,5 +519,36 @@ describe('verdictToSend', () => {
     expect(verdictToSend(thread([prompt('2026-10-15T10:05:00.000Z')]))).toBeNull();
     expect(verdictToSend(thread([], false))).toBeNull();
     expect(verdictToSend(null)).toBeNull();
+  });
+});
+
+describe("the agent's terminal in its panel (V21, V27b)", () => {
+  const remote = 'unix:///home/someone/.codex/app-server-control/app-server-control.sock';
+  const claude: WorkspaceAgentState = { state: 'ready', kind: 'claude', id: 's1' };
+  const codex: WorkspaceAgentState = { state: 'ready', kind: 'codex', id: 'T1', remote };
+  const here = { available: true } as const;
+
+  it("opens on Claude Code's session, and on Codex's thread on its app server", () => {
+    expect(opensTerminal(claude, here)).toBe(true);
+    expect(opensTerminal(codex, here)).toBe(true);
+    // Through CPR's runner (V20a), Codex has no terminal; no session, no terminal.
+    expect(opensTerminal({ ...codex, remote: undefined }, here)).toBe(false);
+    expect(opensTerminal({ state: 'not-started', kind: 'codex' }, here)).toBe(false);
+    expect(opensTerminal(claude, { available: false, reason: 'node-pty is not installed' })).toBe(
+      false,
+    );
+    expect(opensTerminal(claude, undefined)).toBe(false);
+  });
+
+  it("asks first only where opening restarts Claude Code's stopped session", () => {
+    expect(asksBeforeOpening({ ...claude, state: 'stopped' })).toBe(true);
+    expect(asksBeforeOpening(claude)).toBe(false);
+    // Joining a stopped Codex thread starts nothing.
+    expect(asksBeforeOpening({ ...codex, state: 'stopped' })).toBe(false);
+  });
+
+  it("says each agent's own way around its terminal", () => {
+    expect(terminalHint(claude)).toBe('← in an empty prompt lists all your agents');
+    expect(terminalHint(codex)).toBe("? in an empty prompt lists Codex's keys");
   });
 });

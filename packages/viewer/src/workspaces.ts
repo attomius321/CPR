@@ -9,6 +9,7 @@ import type {
   WorkspaceSummary,
   WorkspaceThread,
   PermissionMode,
+  TerminalAvailability,
   ThreadEntry,
 } from '@cpr/core';
 
@@ -17,17 +18,46 @@ export const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', c
 
 /** A path as one word of a POSIX shell's command line, quoted only when it needs it. */
 const shellWord = (path: string) =>
-  /^[\w./-]+$/.test(path) ? path : `'${path.replaceAll("'", "'\\''")}'`;
+  /^[\w./:-]+$/.test(path) ? path : `'${path.replaceAll("'", "'\\''")}'`;
 
 /**
  * The command that continues a workspace's agent session in a terminal (Talk): `claude attach
- * <id>`, or `codex resume <thread> -C <worktree>` (V20a, decision 133); null without a session.
+ * <id>`, or `codex resume <thread> -C <worktree>` (V20a, decision 133) — joined to its app
+ * server with `--remote` (V27a), where its turns reach the thread; null without a session.
  */
 export function talkCommand(agent: WorkspaceAgentState, worktree: string): string | null {
   if (!agent.id || !agent.kind) return null;
+  if (agent.kind === 'claude') return `claude attach ${agent.id}`;
+  const remote = agent.remote ? ` --remote ${shellWord(agent.remote)}` : '';
+  return `codex resume ${agent.id}${remote} -C ${shellWord(worktree)}`;
+}
+
+/**
+ * Whether a workspace's panel opens its agent's terminal, where terminals can run: Claude Code's
+ * session (V21), or Codex's thread on its app server (V27b). Codex through CPR's runner (V20a)
+ * has none: its turns there would not reach the thread.
+ */
+export function opensTerminal(
+  agent: WorkspaceAgentState,
+  terminal: TerminalAvailability | undefined,
+): boolean {
+  if (terminal?.available !== true || agent.id === undefined) return false;
+  return agent.kind === 'claude' || (agent.kind === 'codex' && agent.remote !== undefined);
+}
+
+/**
+ * Whether opening the terminal asks first: `claude attach` restarts a stopped session (V21);
+ * joining a stopped Codex thread starts nothing.
+ */
+export function asksBeforeOpening(agent: WorkspaceAgentState): boolean {
+  return agent.kind === 'claude' && agent.state === 'stopped';
+}
+
+/** The line under an agent's terminal: its way to its other sessions, or to its keys. */
+export function terminalHint(agent: WorkspaceAgentState): string {
   return agent.kind === 'codex'
-    ? `codex resume ${agent.id} -C ${shellWord(worktree)}`
-    : `claude attach ${agent.id}`;
+    ? "? in an empty prompt lists Codex's keys"
+    : '← in an empty prompt lists all your agents';
 }
 
 /** The permission modes the dialog offers, as it names them. */
@@ -368,13 +398,14 @@ export function threadItems(entries: readonly ThreadEntry[], worktree?: string):
 }
 
 /**
- * How a message reaches the agent: sent (its turn ended, or it stopped), sent once its turn is
- * stopped (it works, or waits on a prompt), or not at all (no session to continue).
+ * How a message reaches the agent: sent (its turn ended, or it stopped; Codex on its app server
+ * while it works, the message joining its turn, V27a), sent once its turn is stopped (it works,
+ * or waits on a prompt), or not at all (no session to continue).
  */
 export function replyMode(agent: WorkspaceAgentState): 'send' | 'stop-and-send' | 'none' {
   switch (agent.state) {
     case 'working':
-      return 'stop-and-send';
+      return agent.remote ? 'send' : 'stop-and-send';
     case 'needs-you':
       return agent.waitingFor ? 'stop-and-send' : 'send';
     case 'plan-ready':

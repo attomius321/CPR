@@ -5,10 +5,22 @@ import { fileURLToPath } from 'node:url';
 import type { ThreadEntry } from '@cpr/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
-import { codex, codexArgs, codexState, parseCodexAccount, type DetachedRun } from '../src/codex.js';
+import type { CodexThread } from '../src/app-server.js';
+import {
+  asksTrust,
+  codex,
+  codexArgs,
+  codexState,
+  parseCodexAccount,
+  parseDaemon,
+  serverEntries,
+  serverState,
+  type DetachedRun,
+} from '../src/codex.js';
 import { runCodex } from '../src/codex-run.js';
 import type { WorkspaceFile } from '../src/workspaces.js';
 import type { Run } from '../src/workspaces.js';
+import { daemonStartOutput, fakeAppServer } from './fake-app-server.js';
 
 const RUNNER = fileURLToPath(new URL('../src/codex-run.ts', import.meta.url));
 
@@ -482,5 +494,357 @@ describe('codexState (V20a)', () => {
       kind: 'codex',
       error: 'Codex is not logged in',
     });
+  });
+});
+
+describe('parseDaemon (V27a)', () => {
+  it("reads the daemon's socket from `codex app-server daemon start`, after its log lines", () => {
+    const socket = '/home/someone/.codex/app-server-control/app-server-control.sock';
+    for (const status of ['started', 'alreadyRunning', 'running']) {
+      expect(parseDaemon({ code: 0, stdout: daemonStartOutput(socket, status), stderr: '' })).toBe(
+        socket,
+      );
+    }
+    // Codex's warnings go to stderr; its JSON is the last line of stdout.
+    expect(
+      parseDaemon({ code: 0, stdout: daemonStartOutput(socket), stderr: 'WARNING: proceeding\n' }),
+    ).toBe(socket);
+  });
+
+  it('none when it failed, said something else, or is too old to have a daemon', () => {
+    const socket = '/s.sock';
+    expect(parseDaemon({ code: 1, stdout: daemonStartOutput(socket), stderr: '' })).toBeNull();
+    expect(
+      parseDaemon({ code: 0, stdout: daemonStartOutput(socket, 'stopped'), stderr: '' }),
+    ).toBeNull();
+    expect(parseDaemon({ code: 0, stdout: 'started\n', stderr: '' })).toBeNull();
+    expect(
+      parseDaemon({ code: 2, stdout: '', stderr: "error: unrecognized subcommand 'daemon'" }),
+    ).toBeNull();
+    expect(parseDaemon({ code: null, stdout: '', stderr: 'timed out' })).toBeNull();
+  });
+});
+
+describe('codex server (V27a)', () => {
+  /** A fake `run` answering `daemon start` with `socket`, or failing. */
+  type Ran = Awaited<ReturnType<Run>>;
+  const daemon = (answer: () => Ran | Promise<Ran>) => {
+    const calls: string[][] = [];
+    const run: Run = (_command, args) => {
+      calls.push(args);
+      return Promise.resolve(answer());
+    };
+    return { calls, run };
+  };
+
+  it("finds the person's daemon once, with `daemon start` (it runs, or starts)", async () => {
+    const path = join(dir, 's.sock');
+    const server = await fakeAppServer(path);
+    try {
+      const { calls, run } = daemon(() => ({
+        code: 0,
+        stdout: daemonStartOutput(path),
+        stderr: '',
+      }));
+      const agent = codex('/usr/bin/codex', { runner: '/r.js', run, cwd: '/repo' });
+      const found = await agent.server();
+      expect(found?.address).toBe(`unix://${path}`);
+      expect(await agent.server()).toBe(found);
+      expect(calls).toEqual([['app-server', 'daemon', 'start']]);
+      const thread = await found?.start({ cwd: '/w', writable: [], name: 'b', prompt: 'P' });
+      expect(server.thread(thread ?? '').cwd).toBe('/w');
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('none when Codex starts no daemon, asked again a minute later', async () => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const { calls, run } = daemon(() => ({
+      code: 2,
+      stdout: '',
+      stderr: 'unrecognized subcommand',
+    }));
+    const agent = codex('/usr/bin/codex', { runner: '/r.js', run, cwd: '/repo' });
+    expect(await agent.server()).toBeNull();
+    now = 30_000;
+    expect(await agent.server()).toBeNull();
+    expect(calls).toHaveLength(1);
+    now = 61_000;
+    expect(await agent.server()).toBeNull();
+    expect(calls).toHaveLength(2);
+    vi.restoreAllMocks();
+  });
+
+  it('starts the daemon again when its socket stops answering, and asks once more', async () => {
+    const path = join(dir, 's.sock');
+    let server = await fakeAppServer(path);
+    const { calls, run } = daemon(async () => {
+      // The second `daemon start` answers once a new server listens on the same socket.
+      if (calls.length === 2) server = await fakeAppServer(path);
+      return {
+        code: 0,
+        stdout: daemonStartOutput(path, calls.length === 2 ? 'started' : 'alreadyRunning'),
+        stderr: '',
+      };
+    });
+    const agent = codex('/usr/bin/codex', { runner: '/r.js', run, cwd: '/repo' });
+    const found = await agent.server();
+    await server.close();
+    // The daemon is gone: started again, then the thread is unknown to the new one (an answer).
+    const read = found?.read('thread-1', { turns: 1, items: 'summary' });
+    await expect(read).rejects.toThrow('thread not found: thread-1');
+    expect(calls).toHaveLength(2);
+    await server.close();
+  });
+});
+
+describe('serverEntries (V27a)', () => {
+  const t0 = Date.parse('2026-10-20T10:00:00.000Z') / 1000;
+  const iso = (s: number) => new Date((t0 + s) * 1000).toISOString();
+  const read = (over: Partial<CodexThread> = {}): CodexThread => ({
+    id: T,
+    createdAt: t0,
+    updatedAt: t0 + 100,
+    status: 'idle',
+    turns: [],
+    ...over,
+  });
+
+  it("makes V18c's entries of a thread's turns: a start, each message, each answer, the ends", () => {
+    const entries = serverEntries(
+      read({
+        turns: [
+          {
+            id: 'a',
+            status: 'completed',
+            startedAt: t0,
+            completedAt: t0 + 5,
+            prompts: ['P'],
+            report: '1. Plan',
+            final: true,
+          },
+          {
+            id: 'b',
+            status: 'completed',
+            startedAt: t0 + 60,
+            completedAt: t0 + 70,
+            prompts: ['Go', 'And test it'],
+            report: 'Done',
+            final: true,
+          },
+          {
+            id: 'c',
+            status: 'interrupted',
+            startedAt: t0 + 80,
+            completedAt: t0 + 81,
+            prompts: ['More'],
+          },
+          {
+            id: 'd',
+            status: 'failed',
+            startedAt: t0 + 90,
+            completedAt: t0 + 91,
+            prompts: ['Again'],
+            error: '401',
+          },
+        ],
+      }),
+    );
+    const head = { session: T };
+    expect(entries).toEqual([
+      { ...head, at: iso(0), kind: 'start', source: 'startup' },
+      { ...head, at: iso(0), kind: 'prompt', text: 'P' },
+      { ...head, at: iso(5), kind: 'report', text: '1. Plan' },
+      { ...head, at: iso(60), kind: 'prompt', text: 'Go' },
+      { ...head, at: iso(60), kind: 'prompt', text: 'And test it' },
+      { ...head, at: iso(70), kind: 'report', text: 'Done' },
+      { ...head, at: iso(80), kind: 'prompt', text: 'More' },
+      { ...head, at: iso(81), kind: 'end', reason: 'stopped' },
+      { ...head, at: iso(90), kind: 'prompt', text: 'Again' },
+      { ...head, at: iso(91), kind: 'end', reason: '401' },
+    ]);
+  });
+
+  it("shows what a waiting turn last said, when it waits; a working turn's words are not a report", () => {
+    const turn = {
+      id: 'a',
+      status: 'inProgress',
+      startedAt: t0,
+      prompts: ['P'],
+      report: 'May I run pnpm install?',
+    };
+    expect(
+      serverEntries(read({ status: 'active', waiting: 'approval', turns: [turn] })).at(-1),
+    ).toEqual({
+      session: T,
+      at: iso(100),
+      kind: 'report',
+      text: 'May I run pnpm install?',
+    });
+    expect(serverEntries(read({ status: 'active', turns: [turn] })).map((e) => e.kind)).toEqual([
+      'start',
+      'prompt',
+    ]);
+  });
+
+  it('starts with the thread only when its first turn is there', () => {
+    const later = {
+      id: 'z',
+      status: 'completed',
+      startedAt: t0 + 900,
+      completedAt: t0 + 901,
+      prompts: ['Late'],
+      report: 'OK',
+      final: true as const,
+    };
+    expect(serverEntries(read({ turns: [later] }), { first: false }).map((e) => e.kind)).toEqual([
+      'prompt',
+      'report',
+    ]);
+  });
+});
+
+describe('serverState (V27a)', () => {
+  const STARTED = '2026-10-20T10:00:00.000Z';
+  const ADDRESS = 'unix:///home/someone/.codex/app-server-control/app-server-control.sock';
+  const workspace = (over: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
+    agent: { kind: 'codex', started: STARTED, thread: T },
+    base: 'a'.repeat(40),
+    branch: 'feature/csv',
+    brief: 'Export a review as CSV',
+    created: STARTED,
+    planFirst: true,
+    worktree: '/w/feature-csv',
+    ...over,
+  });
+  const turn = (status: string, over: Record<string, unknown> = {}) => ({
+    id: 't',
+    status,
+    startedAt: 1,
+    prompts: ['P'],
+    ...over,
+  });
+  const read = (
+    status: string,
+    turns: ReturnType<typeof turn>[],
+    waiting?: 'approval' | 'input',
+  ): CodexThread => ({
+    id: T,
+    createdAt: 1,
+    updatedAt: 2,
+    status,
+    ...(waiting ? { waiting } : {}),
+    turns,
+  });
+  const head = { kind: 'codex', id: T, remote: ADDRESS };
+
+  it('reads an active thread as working, or as needing the person when it waits', () => {
+    expect(serverState(workspace(), read('active', [turn('inProgress')]), 0, ADDRESS)).toEqual({
+      state: 'working',
+      ...head,
+    });
+    expect(
+      serverState(workspace(), read('active', [turn('inProgress')], 'approval'), 0, ADDRESS),
+    ).toEqual({
+      state: 'needs-you',
+      ...head,
+      waitingFor: 'approval prompt',
+    });
+    expect(
+      serverState(workspace(), read('active', [turn('inProgress')], 'input'), 0, ADDRESS)
+        .waitingFor,
+    ).toBe('question');
+  });
+
+  it("reads its last turn once idle: finished by the branch's commits, stopped, or failed in Codex's words", () => {
+    const idle = (t: ReturnType<typeof turn>) => read('idle', [turn('completed'), t]);
+    expect(serverState(workspace(), idle(turn('completed')), 0, ADDRESS).state).toBe('plan-ready');
+    expect(serverState(workspace(), idle(turn('completed')), 2, ADDRESS).state).toBe('ready');
+    expect(
+      serverState(workspace({ planFirst: false }), idle(turn('completed')), 0, ADDRESS).state,
+    ).toBe('done');
+    expect(serverState(workspace(), idle(turn('interrupted')), 0, ADDRESS)).toEqual({
+      state: 'stopped',
+      ...head,
+    });
+    expect(
+      serverState(
+        workspace(),
+        idle(turn('failed', { error: 'unexpected status 401' })),
+        0,
+        ADDRESS,
+      ),
+    ).toEqual({
+      state: 'failed',
+      ...head,
+      error: 'unexpected status 401',
+    });
+    // The server restarted: its threads are not loaded, their last turns say what happened.
+    expect(
+      serverState(workspace(), read('notLoaded', [turn('interrupted')]), 0, ADDRESS).state,
+    ).toBe('stopped');
+    expect(serverState(workspace(), read('notLoaded', [turn('completed')]), 0, ADDRESS).state).toBe(
+      'plan-ready',
+    );
+  });
+
+  it('says when its thread has no turn, broke, or cannot be read', () => {
+    expect(serverState(workspace(), read('idle', []), 0, ADDRESS)).toEqual({
+      state: 'failed',
+      ...head,
+      error: 'Codex ended without a word',
+    });
+    expect(serverState(workspace(), read('systemError', [turn('inProgress')]), 0, ADDRESS)).toEqual(
+      {
+        state: 'failed',
+        ...head,
+        error: "Codex's app server reported an error on its thread",
+      },
+    );
+    expect(serverState(workspace(), new Error('thread not found: x'), 0, ADDRESS)).toEqual({
+      state: 'unknown',
+      ...head,
+      error: "Codex's app server: thread not found: x",
+    });
+    expect(serverState(workspace(), new Error('ECONNREFUSED'), 0, null)).toEqual({
+      state: 'unknown',
+      kind: 'codex',
+      id: T,
+      error: "Codex's app server: ECONNREFUSED",
+    });
+    const failed = workspace({ agent: { kind: 'codex', error: 'Codex is not logged in' } });
+    expect(serverState(failed, read('idle', []), 0, ADDRESS)).toEqual({
+      state: 'not-started',
+      kind: 'codex',
+      error: 'Codex is not logged in',
+    });
+  });
+});
+
+describe('asksTrust (V27b)', () => {
+  const W = '/home/someone/app.worktrees/feature-csv';
+  it('asks when Codex has no entry for the worktree or a folder above it', () => {
+    expect(asksTrust({}, [W])).toBe(true);
+    // The repository is trusted by any writable start, but it sits beside its worktrees.
+    expect(asksTrust({ '/home/someone/app': 'trusted' }, [W])).toBe(true);
+    // A folder whose name starts the same is not above it.
+    expect(asksTrust({ '/home/someone/app.work': 'trusted' }, [W])).toBe(true);
+  });
+
+  it('does not when the worktree or a folder above it has an entry, under any of its names', () => {
+    expect(asksTrust({ [W]: 'trusted' }, [W])).toBe(false);
+    expect(asksTrust({ '/home/someone': 'trusted' }, [W])).toBe(false);
+    // Decided already, either way: Codex does not ask again.
+    expect(asksTrust({ [W]: 'untrusted' }, [W])).toBe(false);
+    // Its real path (a symlinked home) is the one Codex saved.
+    expect(
+      asksTrust({ '/data/someone/app.worktrees/feature-csv': 'trusted' }, [
+        W,
+        '/data/someone/app.worktrees/feature-csv',
+      ]),
+    ).toBe(false);
+    expect(asksTrust({ [`${W}/`]: 'trusted' }, [W])).toBe(false);
   });
 });

@@ -3287,7 +3287,13 @@ button.workspace-about {
   margin-top: 12px;
 }
 
-/* Dark in both themes: Claude Code draws for a dark terminal (V21 spike). */
+/* What Codex asks before its terminal goes on (V27b): above the screen, read before answering. */
+.agent-terminal .terminal-trust {
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+/* Dark in both themes: Claude Code draws for a dark terminal (V21 spike), and so does Codex. */
 .agent-terminal-screen {
   height: 60vh;
   min-height: 240px;

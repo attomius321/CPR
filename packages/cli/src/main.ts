@@ -759,7 +759,7 @@ function agentFinder(
   };
 }
 
-/** Codex for workspaces (V20a), found as Claude Code is. */
+/** Codex for workspaces (V20a), found as Claude Code is; on its app server when it has one (V27a). */
 function codexFinder(
   root: string,
   env: Readonly<Record<string, string | undefined>>,
@@ -769,7 +769,7 @@ function codexFinder(
     if (found) return found;
     const command = await findCodex(env);
     if (!command) return null;
-    found = codex(command, { cwd: root });
+    found = codex(command, { cwd: root, version });
     return found;
   };
 }

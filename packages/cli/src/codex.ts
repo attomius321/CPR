@@ -1,9 +1,16 @@
-// Codex as a workspace's agent (V20a): what CPR asks of it, and what its state is. CPR starts it
-// through its runner (`codex-run.ts`), which records the thread; this module never reads
-// Codex's own files.
+// Codex as a workspace's agent: what CPR asks of it, and what its state is. On the person's
+// app-server daemon (V27a), CPR starts and reads its threads there; without one, CPR runs `codex
+// exec` through its runner (`codex-run.ts`, V20a), which records the thread. This module never
+// reads Codex's own files.
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import type { AgentStateName, WorkspaceAgentState, ThreadEntry } from '@cpr/core';
+import {
+  AppServerUnreachable,
+  codexServer,
+  type CodexServer,
+  type CodexThread,
+} from './app-server.js';
 import { localHost, onPath } from './editor.js';
 import { runProgram, type WorkspaceFile, type Run } from './workspaces.js';
 
@@ -53,6 +60,12 @@ export interface Codex {
   archive(sessionId: string): Promise<void>;
   /** Whose account it runs on (`codex login status`). */
   account(): Promise<string | undefined>;
+  /**
+   * Codex's app server (V27a, decision 154): the person's daemon, started when it does not run
+   * (`codex app-server daemon start`); null when Codex starts none (one older than 0.163, or a
+   * daemon that fails), asked again a minute later.
+   */
+  server(): Promise<CodexServer | null>;
 }
 
 /** Whether a process runs (signal 0 asks without signalling). */
@@ -110,6 +123,73 @@ export function codexArgs(
   ];
 }
 
+/** The statuses `codex app-server daemon start` answers with when its daemon runs (Codex 0.163). */
+const RUNNING = ['started', 'alreadyRunning', 'running'];
+
+/**
+ * The daemon's socket from `codex app-server daemon start`: its last line of output is its state
+ * as JSON, after log lines (V27a); null when it failed or did not say.
+ */
+export function parseDaemon(result: {
+  code: number | null;
+  stdout: string;
+  stderr: string;
+}): string | null {
+  if (result.code !== 0) return null;
+  const last = result.stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .findLast((line) => line !== '');
+  try {
+    const v = JSON.parse(last ?? '') as { status?: unknown; socketPath?: unknown } | null;
+    if (v && RUNNING.includes(v.status as string) && typeof v.socketPath === 'string') {
+      return v.socketPath === '' ? null : v.socketPath;
+    }
+  } catch {
+    // Not Codex 0.163's answer.
+  }
+  return null;
+}
+
+/**
+ * Codex's server at `socket`, its daemon started again when the socket stops answering (the person
+ * stopped it, an update restarted it): each call is asked once more after `again` found a socket.
+ * A call the server answered, or a connection cut after it, is not asked twice.
+ */
+function lastingServer(
+  socket: string,
+  again: () => Promise<string | null>,
+  make: (address: string) => CodexServer,
+): CodexServer {
+  let inner = make(`unix://${socket}`);
+  const retried =
+    <A extends unknown[], R>(call: (server: CodexServer, ...args: A) => Promise<R>) =>
+    async (...args: A): Promise<R> => {
+      try {
+        return await call(inner, ...args);
+      } catch (error) {
+        if (!(error instanceof AppServerUnreachable)) throw error;
+        const found = await again();
+        if (!found) throw error;
+        inner = make(`unix://${found}`);
+        return call(inner, ...args);
+      }
+    };
+  return {
+    get address() {
+      return inner.address;
+    },
+    start: retried((server, request: Parameters<CodexServer['start']>[0]) => server.start(request)),
+    send: retried((server, request: Parameters<CodexServer['send']>[0]) => server.send(request)),
+    interrupt: retried((server, thread: string) => server.interrupt(thread)),
+    trust: retried((server, cwd: string) => server.trust(cwd)),
+    read: retried((server, thread: string, view: Parameters<CodexServer['read']>[1]) =>
+      server.read(thread, view),
+    ),
+    archive: retried((server, thread: string) => server.archive(thread)),
+  };
+}
+
 /** Whose account Codex runs on, from `codex login status` (it writes to stderr); undefined when unknown. */
 export function parseCodexAccount(result: {
   code: number | null;
@@ -137,17 +217,25 @@ export function codex(
     detach = detachProgram,
     cwd = process.cwd(),
     platform = process.platform,
+    version,
   }: {
     runner?: string;
     node?: string;
     run?: Run;
     detach?: DetachedRun;
-    /** Where `codex login status` and `codex archive` run. */
+    /** Where `codex login status`, `codex archive` and `codex app-server daemon` run. */
     cwd?: string;
     platform?: NodeJS.Platform;
+    /** CPR's version, as it introduces itself to the app server. */
+    version?: string;
   } = {},
 ): Codex {
   let account: { at: number; text: Promise<string | undefined> } | null = null;
+  let daemon: { at: number; none: boolean; server: Promise<CodexServer | null> } | null = null;
+  // 57 ms when it runs, 1.25 s to start it (Codex 0.163, V27a).
+  const startDaemon = () =>
+    run(command, ['app-server', 'daemon', 'start'], { cwd, timeoutMs: 30_000 }).then(parseDaemon);
+  const make = (address: string) => codexServer(address, version ? { version } : {});
   const alive = processAlive;
   const runner_ = async (
     thread: string,
@@ -201,6 +289,21 @@ export function codex(
       }
       return account.text;
     },
+    server() {
+      // None found: asked again a minute later (the person may update Codex meanwhile).
+      if (!daemon || (daemon.none && Date.now() - daemon.at > 60_000)) {
+        const found: NonNullable<typeof daemon> = {
+          at: Date.now(),
+          none: false,
+          server: startDaemon().then((socket) => {
+            found.none = socket === null;
+            return socket ? lastingServer(socket, startDaemon, make) : null;
+          }),
+        };
+        daemon = found;
+      }
+      return daemon.server;
+    },
   };
 }
 
@@ -250,4 +353,122 @@ export function codexState(
   if (alive) return { state: 'working', ...head };
   if (last.some((e) => e.kind === 'report')) return { state: finished(), ...head };
   return { state: 'failed', ...head, error: 'Codex ended without a word' };
+}
+
+/** Unix seconds as the thread's times are written. */
+const isoOf = (seconds: number) => new Date(seconds * 1000).toISOString();
+
+/**
+ * A thread on Codex's app server as V18c's entries (V27a, decision 155): its start (when `first`:
+ * its first turn is among those read), each turn's messages (CPR's prompt, then the person's —
+ * from the panel or Codex's own terminal, steered ones too), each finished turn's final answer, a
+ * stop or a failure as an end; and, while it waits for the person, what it last said.
+ */
+export function serverEntries(
+  thread: CodexThread,
+  { first = true }: { first?: boolean } = {},
+): ThreadEntry[] {
+  const session = thread.id;
+  const entries: ThreadEntry[] = [];
+  if (first)
+    entries.push({ at: isoOf(thread.createdAt), session, kind: 'start', source: 'startup' });
+  const last = thread.turns.at(-1);
+  for (const turn of thread.turns) {
+    const began = isoOf(turn.startedAt ?? thread.updatedAt);
+    for (const text of turn.prompts) entries.push({ at: began, session, kind: 'prompt', text });
+    const ended = isoOf(turn.completedAt ?? turn.startedAt ?? thread.updatedAt);
+    if (turn.status === 'completed') {
+      if (turn.report) entries.push({ at: ended, session, kind: 'report', text: turn.report });
+    } else if (turn.status === 'interrupted') {
+      entries.push({ at: ended, session, kind: 'end', reason: 'stopped' });
+    } else if (turn.status === 'failed') {
+      entries.push({ at: ended, session, kind: 'end', reason: turn.error ?? 'Codex failed' });
+    } else if (turn === last && thread.status === 'active' && thread.waiting && turn.report) {
+      // Often what it asks: "May I run it outside the sandbox?" (the request itself is not read).
+      entries.push({ at: isoOf(thread.updatedAt), session, kind: 'report', text: turn.report });
+    }
+  }
+  return entries;
+}
+
+/**
+ * When Codex last handed the turn back (V23): since the thread's last change while it waits on
+ * the person, else its newest finished turn's end.
+ */
+export function serverLastAction(read: CodexThread): string | undefined {
+  if (read.status === 'active' && read.waiting) return isoOf(read.updatedAt);
+  const done = read.turns.findLast((turn) => turn.status === 'completed');
+  return done?.completedAt === undefined ? undefined : isoOf(done.completedAt);
+}
+
+/**
+ * Whether Codex's terminal will ask to trust a worktree (decision 160): Codex's configuration has
+ * no entry, trusted or not, for it or a folder above it, under any of its `names` (its path and
+ * its real path). Codex asks per folder (a linked worktree's repository does not count); whether
+ * a folder above counts is not known, so one never makes CPR say Codex will ask.
+ */
+export function asksTrust(
+  entries: Readonly<Record<string, string>>,
+  names: readonly string[],
+): boolean {
+  const folders = Object.keys(entries).map((folder) => folder.replace(/\/+$/, ''));
+  return !names.some((name) =>
+    folders.some((folder) => folder !== '' && (name === folder || name.startsWith(`${folder}/`))),
+  );
+}
+
+/** What an active thread waits on, in the words the page shows after "Waiting:". */
+const WAITING: Record<NonNullable<CodexThread['waiting']>, string> = {
+  approval: 'approval prompt',
+  input: 'question',
+};
+
+/**
+ * What the page says of a Codex workspace on the app server (V27a): an active thread works, or
+ * needs the person while it waits on an approval or a question; otherwise its last turn decides —
+ * finished (by `ahead`, as for Claude Code), stopped, or failed in Codex's words. `read` is the
+ * error when the thread could not be read; `address` the server's, for `codex resume --remote`.
+ */
+export function serverState(
+  workspace: WorkspaceFile,
+  read: CodexThread | Error,
+  ahead: number,
+  address: string | null,
+): WorkspaceAgentState {
+  const { agent } = workspace;
+  if (!agent) return { state: 'no-agent' };
+  if (agent.error) return { state: 'not-started', kind: agent.kind, error: agent.error };
+  const head = {
+    kind: agent.kind,
+    ...(agent.thread ? { id: agent.thread } : {}),
+    ...(address ? { remote: address } : {}),
+  };
+  if (read instanceof Error) {
+    return { state: 'unknown', ...head, error: `Codex's app server: ${read.message}` };
+  }
+  if (read.status === 'active') {
+    return read.waiting
+      ? { state: 'needs-you', ...head, waitingFor: WAITING[read.waiting] }
+      : { state: 'working', ...head };
+  }
+  if (read.status === 'systemError') {
+    return {
+      state: 'failed',
+      ...head,
+      error: "Codex's app server reported an error on its thread",
+    };
+  }
+  const last = read.turns.at(-1);
+  if (!last) return { state: 'failed', ...head, error: 'Codex ended without a word' };
+  switch (last.status) {
+    case 'completed':
+      return { state: ahead > 0 ? 'ready' : workspace.planFirst ? 'plan-ready' : 'done', ...head };
+    case 'interrupted':
+      return { state: 'stopped', ...head };
+    case 'failed':
+      return { state: 'failed', ...head, error: last.error ?? 'Codex failed' };
+    default:
+      // A turn still in progress on a thread that is not active: the moment between the two.
+      return { state: 'working', ...head };
+  }
 }
