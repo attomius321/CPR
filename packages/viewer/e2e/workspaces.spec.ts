@@ -1044,7 +1044,12 @@ test('Merge on an approved workspace: CPR merges it in its own worktree, Land mo
   expect(git('status', '--porcelain', '--untracked-files=no')).toBe('');
   expect(git('-C', cpr.folder(branch), 'rev-parse', 'HEAD')).toBe(tip);
 
-  // Its card opens it in the main area.
+  // Its card opens it in the main area. Its reads are slow here: Land, clicked while the one the
+  // merge opened with is under way, still shows what it did (V29b).
+  await page.route('**/api/merges', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    await route.continue();
+  });
   await card.getByRole('link').click();
   const entry = page.getByRole('region', { name: `Merge of ${branch}` });
   await entry.getByRole('button', { name: 'Land' }).click();

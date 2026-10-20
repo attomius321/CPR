@@ -59,8 +59,8 @@ async function read<T>(path: string): Promise<T | null> {
   return response.ok ? ((await response.json()) as T) : null;
 }
 
-/** Reads the workspaces (V18b) and the reviews again, and tells every reader. */
-export function reloadWorkspaces(): Promise<void> {
+/** Reads the workspaces (V18b), the reviews and the merges, unless a read is under way. */
+function refresh(): Promise<void> {
   loading ??= Promise.all([
     read<WorkspaceList>('/api/workspaces'),
     read<BranchReviewList>('/api/reviews'),
@@ -78,12 +78,24 @@ export function reloadWorkspaces(): Promise<void> {
   return loading;
 }
 
+/** The read after the one under way, which every caller meanwhile shares. */
+let next: Promise<void> | null = null;
+
 /**
- * Reads them anew, after any read under way (it may have started before a change, such as a
- * stop), and gives what was read.
+ * Reads them again after a change, and tells every reader. A read under way may have started
+ * before the change (a Land clicked as its merge opened, V29b): one more read follows it.
  */
+export function reloadWorkspaces(): Promise<void> {
+  if (!loading) return refresh();
+  next ??= loading.then(() => {
+    next = null;
+    return refresh();
+  });
+  return next;
+}
+
+/** Reads them anew, after any read under way, and gives what was read. */
 export async function readWorkspacesAgain(): Promise<WorkspacesState> {
-  await loading;
   await reloadWorkspaces();
   return current;
 }
@@ -99,12 +111,12 @@ function schedule(): void {
   if (wait === null) return;
   timer = setTimeout(() => {
     if (document.visibilityState === 'hidden') schedule();
-    else void reloadWorkspaces();
+    else void refresh();
   }, wait);
 }
 
 const onShown = () => {
-  if (document.visibilityState !== 'hidden') void reloadWorkspaces();
+  if (document.visibilityState !== 'hidden') void refresh();
 };
 
 /**
@@ -119,7 +131,7 @@ export function useWorkspaces(): WorkspacesState {
       window.addEventListener('focus', onShown);
       document.addEventListener('visibilitychange', onShown);
     }
-    void reloadWorkspaces();
+    void refresh();
     return () => {
       listeners.delete(setState);
       if (listeners.size > 0) return;
