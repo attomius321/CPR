@@ -176,7 +176,7 @@ export interface WorkspaceChanges {
   commits: { count: number; listed: WorkspaceCommit[] };
   /** The files they change, at most 300; how many, and their lines, in all. */
   files: { count: number; added: number; removed: number; listed: WorkspaceFileChange[] };
-  /** The files its worktree has not committed (as many listed); null once the worktree is gone. */
+  /** The files its worktree has not committed, at most 300; null once the worktree is gone. */
   uncommitted: { count: number; listed: WorkspaceFileChange[] } | null;
 }
 

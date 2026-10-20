@@ -1208,7 +1208,7 @@ export function workspaces(
     const lines = new Map(counts.map((count) => [count.path, count]));
     return {
       count: files.length,
-      listed: files.map(({ status, path, previousPath }) => ({
+      listed: files.slice(0, MAX_LISTED_FILES).map(({ status, path, previousPath }) => ({
         status,
         path,
         ...(previousPath ? { previousPath } : {}),

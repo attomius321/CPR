@@ -1270,7 +1270,7 @@ describe('workspaces', () => {
     expect((await s.changes('feature/one')).uncommitted).toBeNull();
   });
 
-  it('lists at most 300 files of a branch, its counts over all (V29d)', async () => {
+  it('lists at most 300 files of a branch and of its worktree, its counts over all (V29d)', async () => {
     const { repo } = fresh();
     const s = await service(repo, fakeClaude().claude);
     const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
@@ -1286,6 +1286,11 @@ describe('workspaces', () => {
       301, 602, 0, 300,
     ]);
     expect(files.listed.at(-1)?.path).toBe('many/f299.ts');
+    // The same for what its worktree has not committed: a build's output nothing ignores.
+    mkdirSync(join(path, 'out'));
+    for (let i = 0; i < 301; i++) writeFileSync(join(path, 'out', `${i}.js`), `${i};\n`);
+    const { uncommitted } = await s.changes('feature/one');
+    expect([uncommitted?.count, uncommitted?.listed.length]).toEqual([301, 300]);
   });
 
   it("starts the agent with CPR's hooks: one settings file, rewritten when CPR moves or it is gone", async () => {
