@@ -3911,3 +3911,41 @@ back to back, not alternated.
 
 Merged into main (2026-10-20), after V29, no conflicts. `main` verified after the merge: frozen
 install, 989 unit tests, format, lint, typecheck, build, 140 of 140 e2e.
+
+## N1 spike — a native window: Tauri's engine against Chromium (2026-10-20, branch `feature/tauri-integration`)
+
+Measured before planning, on this machine (WSL2 on Windows 11, WSLg, Ubuntu 24.04), with a
+`cpr view` of its own on a clone of this repository (`CPR_CACHE_DIR` in the session's temp,
+`CPR_USAGE=off`, `CPR_TERMINAL=off`), never the person's servers. The scripts stayed in the
+session's temp folder.
+
+**Learned**:
+- **Tauri draws with the system's engine**: on Linux WebKitGTK, which CPR had never run in. Ubuntu's
+  WebKitGTK 2.52.6 (the runtime is installed; a Tauri build also needs its `-dev` packages, with
+  sudo) draws History and a 445-symbol diff (`26ac1c6~12..26ac1c6`) as Chromium does: no page
+  errors, Geist loaded, the map's 701 nodes and 263 edges.
+- **It is slower where CPR works hardest.** `j` (next change), from the key to the next paint,
+  median of 10: Chromium 33 ms in 3 of 3 rounds (two frames, the measure's floor); WebKitGTK 77 and
+  145 ms (the third round did not report), its first step 360–415 ms, its slowest 160–174 ms.
+  First paint was alike (diff: 52–84 ms against 57–60 ms). Both rendered in software (Xvfb,
+  headless): a desktop with a GPU may narrow the gap; Bitwarden's graphs would widen it.
+- **Driving WebKitGTK without root**: its GObject typelibs and pycairo from `apt-get download` and
+  `dpkg -x`, with `GI_TYPELIB_PATH`. Playwright's own WebKit needs `libgtk-4-1` and three more
+  (sudo): not run.
+- **Traps in measuring it**: under Xvfb `Gdk.pixbuf_get_from_window` gives a blank image (5,829
+  bytes, with every renderer setting tried); WebKit's own `get_snapshot` shows the page.
+  Synthetic wheel events do not pan React Flow: a frame count while "panning" measured nothing
+  (the view had not moved); keys do work. WebKitGTK printed EGL and MESA errors here (ZINK found
+  no device).
+- **Tauri's Chromium**: a CEF runtime exists, incomplete (an open issue of March 2026 asks for
+  back, forward and reload). Electron 44.9.2 is current.
+- **The server starts in 211–232 ms** (3 runs, to its `CPR viewer:` line): a window can show CPR
+  at once, without a terminal. **Agents outlive it** (decision 95), so closing a window is Ctrl+C.
+- **Windows reaches a server in WSL** at `127.0.0.1` in 2.4 ms, `localhost` in 218 ms.
+- **`pgrep -f` with the pattern on its own command line** matched this session's shell once
+  (exit 144, as CLAUDE.md warns); the person's three servers were untouched (the same PIDs
+  after). Match a full path or a unique port.
+
+**Decided with the person**: Electron, not Tauri ("Should we go with Chromium? is it better?",
+then "Yes, plan go with Electron"); CPR's own title bar after Orca's, with the OS's buttons on
+CPR's colour. Plan: PLAN.md, N1.
