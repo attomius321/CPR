@@ -32,6 +32,7 @@ import type { OpenRequest, OpenResult } from './editor.js';
 import { WorkspaceRefused, type Workspaces } from './workspaces.js';
 import { MergeRefused, type Merger } from './merges.js';
 import { parsePromptChange, PromptRefused, type PromptSettingsService } from './prompts.js';
+import type { UsageService } from './usage.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 import type { Terminals } from './terminal.js';
@@ -84,6 +85,8 @@ export interface RepositoryOptions {
   merges?: Merger;
   /** Every agent's prompts (V28): `/api/settings/prompts`. */
   settings?: PromptSettingsService;
+  /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 60-s copy. */
+  usage?: UsageService;
 }
 
 export interface ViewServerOptions {
@@ -288,7 +291,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           );
         }
       }
-      const { settings } = repository;
+      const { settings, usage } = repository;
+      // Each subscription's windows of use (V29c): read only, the tokens stay in this process.
+      if (usage && url.pathname === '/api/usage') {
+        if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+        return answer(res, () => usage.report());
+      }
       // Every agent's prompts (V28b).
       if (settings && url.pathname === '/settings') return serveSite(req, res, url, '/', undefined);
       if (settings && url.pathname === '/api/settings/prompts') {

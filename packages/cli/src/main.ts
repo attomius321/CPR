@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { homedir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
@@ -54,6 +55,7 @@ import { branchReviews } from './reviews.js';
 import { merger, MergeRefused } from './merges.js';
 import { claudeMerger, codexMerger, type MergerAgent } from './merge-agent.js';
 import { promptSettingsService } from './prompts.js';
+import { readClaudeUsage, readCodexUsage, usageService } from './usage.js';
 import { codex, findCodex, type Codex } from './codex.js';
 import {
   claudeCode,
@@ -543,6 +545,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       ? { pty: () => Promise.resolve({ error: 'terminals are turned off (CPR_TERMINAL=off)' }) }
       : {},
   );
+  // One Codex for workspaces and usage: one connection to its app server.
+  const codexOf = codexFinder(repo.root, ctx.env);
   const server = await startViewServer({
     port,
     viewerDir: viewerDir(ctx),
@@ -573,7 +577,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       reviews: branchReviews(repo, cacheDir),
       workspaces: workspaces(repo, cacheDir, {
         claude: agentFinder(repo.root, ctx.env),
-        codex: codexFinder(repo.root, ctx.env),
+        codex: codexOf,
         env: ctx.env,
         openFolder: vsCodeFolder(ctx.env),
         terminals,
@@ -581,6 +585,19 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       terminals,
       merges: merger(repo, cacheDir, { mergerAgent: mergerFinder(repo.root, ctx.env) }),
       settings: promptSettingsService(repo),
+      // Each subscription's windows (V29c): agents CPR can start, signed in to a plan.
+      usage: usageService(
+        {
+          claude: () =>
+            readClaudeUsage({
+              installed: async () => (await findClaude(ctx.env)) !== null,
+              env: ctx.env,
+              home: homedir(),
+            }),
+          codex: () => readCodexUsage({ codex: codexOf, env: ctx.env, home: homedir() }),
+        },
+        { off: ctx.env.CPR_USAGE === 'off' },
+      ),
     },
     open: vsCodeOpener(repo, ctx.env),
   });

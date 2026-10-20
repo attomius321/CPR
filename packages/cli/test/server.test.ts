@@ -14,6 +14,7 @@ import {
   type MergeEntry,
   type PromptChange,
   type PromptSettings,
+  type UsageReport,
 } from '@cpr/core';
 import type { Review } from '@cpr/forge';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -1654,6 +1655,68 @@ describe('cpr view: settings (V28)', () => {
       { key: 'merger', text: null, version: 'v1' },
       { key: 'merger', text: 'Keep both.', version: 'v0' },
     ]);
+  });
+});
+
+describe('cpr view: usage (V29c)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const report: UsageReport = {
+    subscriptions: [
+      {
+        agent: 'claude',
+        plan: 'Pro',
+        windows: [{ minutes: 300, usedPercent: 59 }],
+        at: '2026-10-20T16:15:00.000Z',
+        source: 'live',
+      },
+    ],
+  };
+  let asked = 0;
+  let server: ViewServer;
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        usage: {
+          report: () => {
+            asked += 1;
+            return Promise.resolve(report);
+          },
+          settled: () => Promise.resolve(),
+        },
+      },
+    });
+  });
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+
+  it('answers GET /api/usage, never kept by the browser, and nothing else', async () => {
+    const response = await fetch(new URL('/api/usage', server.url));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(await response.json()).toEqual(report);
+    const post = await fetch(new URL('/api/usage', server.url), {
+      method: 'POST',
+      headers: { 'x-cpr': '1' },
+    });
+    expect(post.status).toBe(405);
+    expect(asked).toBe(1);
   });
 });
 

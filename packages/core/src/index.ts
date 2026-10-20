@@ -201,6 +201,7 @@ export {
   conflictKinds,
   type ConflictKind,
 } from './git/merging.js';
+export type { UsageReport, UsageSubscription, UsageWindow } from './usage.js';
 export {
   MERGE_STATES,
   type MergeCheckRun,
