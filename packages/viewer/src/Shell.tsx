@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { WorkspaceStart } from '@cpr/core';
 import { HistoryPage } from './HistoryPage.js';
+import { keyIsTaken } from './keys.js';
 import { MergeView } from './Merge.js';
 import { HISTORY_PAGE, SETTINGS_PAGE, hrefOf, inShell, routeOf, type Route } from './pages.js';
 import { SettingsPage } from './SettingsPage.js';
@@ -41,20 +42,6 @@ function routeHere(): Route {
 }
 
 const sameRoute = (a: Route, b: Route) => hrefOf(a) === hrefOf(b);
-
-/** Keys the shell leaves alone: typing, a dialog's or a menu's, the agent's terminal's. */
-function keyIsTaken(event: KeyboardEvent): boolean {
-  if (event.metaKey || event.ctrlKey || event.altKey) return true;
-  const target = event.target;
-  if (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement ||
-    (target instanceof HTMLElement && target.isContentEditable)
-  )
-    return true;
-  return document.querySelector('[aria-modal="true"], [role="menu"]') !== null;
-}
 
 /**
  * `cpr view`'s window (V29a): the sidenav (the pages, then the workspaces), the main area with

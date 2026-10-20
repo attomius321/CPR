@@ -45,6 +45,14 @@ export const SidenavIcon = () => (
   </Icon>
 );
 
+/** A workspace's changes panel (V29d), at the right: shows or hides it. */
+export const ChangesIcon = () => (
+  <Icon>
+    <rect x="2" y="3" width="12" height="10" rx="2" />
+    <path d="M10 3v10" />
+  </Icon>
+);
+
 export const MenuIcon = () => (
   <Icon>
     <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" />

@@ -9,7 +9,9 @@ import type {
 } from '@cpr/core';
 import { AgentTerminal, toTerminal, type OpenedTerminal } from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
-import { MoreIcon } from './icons.js';
+import { ChangesPanel } from './ChangesPanel.js';
+import { ChangesIcon, MoreIcon } from './icons.js';
+import { keyIsTaken } from './keys.js';
 import { markdownNodes, useMarkdown } from './markdown.js';
 import { MergeControl } from './MergeControl.js';
 import { postJson } from './http.js';
@@ -53,6 +55,25 @@ const viewOfUrl = (): View | null => {
 };
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+const CHANGES_KEY = 'cpr.viewer.changes';
+
+/** Whether the person hid the changes panel (V29d), kept in this browser; shown by default. */
+function loadChangesShown(): boolean {
+  try {
+    return window.localStorage.getItem(CHANGES_KEY) !== 'hidden';
+  } catch {
+    return true;
+  }
+}
+
+function saveChangesShown(shown: boolean): void {
+  try {
+    window.localStorage.setItem(CHANGES_KEY, shown ? 'shown' : 'hidden');
+  } catch {
+    // Storage blocked: the choice lasts until the page closes.
+  }
+}
 
 /**
  * A workspace in the shell's main area (V29a; the Workspaces page's panel before it): its state
@@ -398,6 +419,25 @@ function WorkspacePanel({
   // Attaching to a stopped session continues it (with no turn): asked when a terminal is to
   // open, not once it is open (a stop from the head leaves its last lines in view).
   const [asking, setAsking] = useState(() => asksBeforeOpening(agent));
+  // The branch's changes at the right (V29d): `]` or the head's button shows or hides them.
+  const [changesShown, setChangesShown] = useState(loadChangesShown);
+  const toggleChanges = useCallback(
+    () =>
+      setChangesShown((shown) => {
+        saveChangesShown(!shown);
+        return !shown;
+      }),
+    [],
+  );
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== ']' || keyIsTaken(event)) return;
+      event.preventDefault();
+      toggleChanges();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleChanges]);
   const show = (next: View) => {
     setChosen(next);
     setEnded(null);
@@ -604,6 +644,16 @@ function WorkspacePanel({
             </button>
           )}
           {workspace.ahead > 0 && !workspace.merged && <MergeControl branch={branch} />}
+          <button
+            type="button"
+            className="icon-button changes-toggle"
+            aria-label="Changes"
+            aria-pressed={changesShown}
+            title={`${changesShown ? 'Hide' : 'Show'} the branch's changes (])`}
+            onClick={toggleChanges}
+          >
+            <ChangesIcon />
+          </button>
           <MoreActions actions={more} />
           {workspace.ahead > 0 && workspace.tip !== null && (
             <button
@@ -636,136 +686,147 @@ function WorkspacePanel({
           </button>
         </p>
       )}
-      <div className="workspace-views" role="tablist" aria-label="Talk to the agent">
-        {views.map((name) => (
-          <button
-            key={name}
-            type="button"
-            role="tab"
-            aria-selected={view === name}
-            className={view === name ? 'selected' : ''}
-            {...(name === 'terminal' ? { title: terminalHint(agent) } : {})}
-            onClick={() => show(name)}
-          >
-            {tabName[name]}
-          </button>
-        ))}
-      </div>
-      <div className="workspace-body">
-        {view === 'brief' && <pre className="workspace-brief">{workspace.brief}</pre>}
-        {showTerminal && (
-          <div className="workspace-terminal">
-            {asking ? (
-              <p className="workspace-confirm">
-                Opening the terminal continues the stopped session.{' '}
-                <button type="button" className="button" onClick={() => setAsking(false)}>
-                  Open the terminal
-                </button>
-              </p>
-            ) : (
-              <AgentTerminal
-                key={attempt}
-                branch={branch}
-                onOpened={setOpened}
-                onEnded={setEnded}
-              />
+      <div className="workspace-split">
+        <div className="workspace-main">
+          <div className="workspace-views" role="tablist" aria-label="Talk to the agent">
+            {views.map((name) => (
+              <button
+                key={name}
+                type="button"
+                role="tab"
+                aria-selected={view === name}
+                className={view === name ? 'selected' : ''}
+                {...(name === 'terminal' ? { title: terminalHint(agent) } : {})}
+                onClick={() => show(name)}
+              >
+                {tabName[name]}
+              </button>
+            ))}
+          </div>
+          <div className="workspace-body">
+            {view === 'brief' && <pre className="workspace-brief">{workspace.brief}</pre>}
+            {showTerminal && (
+              <div className="workspace-terminal">
+                {asking ? (
+                  <p className="workspace-confirm">
+                    Opening the terminal continues the stopped session.{' '}
+                    <button type="button" className="button" onClick={() => setAsking(false)}>
+                      Open the terminal
+                    </button>
+                  </p>
+                ) : (
+                  <AgentTerminal
+                    key={attempt}
+                    branch={branch}
+                    onOpened={setOpened}
+                    onEnded={setEnded}
+                  />
+                )}
+                {ended && (
+                  <p className="workspace-confirm">
+                    The terminal {ended === 'exited' ? 'ended' : 'lost its session'}.{' '}
+                    <button
+                      type="button"
+                      className="button"
+                      onClick={() => {
+                        setEnded(null);
+                        // A stop ends the terminal before the list says so: the state is read anew.
+                        void readWorkspacesAgain().then(({ list }) => {
+                          const now = list?.workspaces.find((f) => f.branch === branch)?.agent
+                            .state;
+                          setAsking(asksBeforeOpening({ ...agent, state: now ?? agent.state }));
+                          setAttempt((n) => n + 1);
+                        });
+                      }}
+                    >
+                      Open again
+                    </button>
+                  </p>
+                )}
+              </div>
             )}
-            {ended && (
-              <p className="workspace-confirm">
-                The terminal {ended === 'exited' ? 'ended' : 'lost its session'}.{' '}
-                <button
-                  type="button"
-                  className="button"
-                  onClick={() => {
-                    setEnded(null);
-                    // A stop ends the terminal before the list says so: the state is read anew.
-                    void readWorkspacesAgain().then(({ list }) => {
-                      const now = list?.workspaces.find((f) => f.branch === branch)?.agent.state;
-                      setAsking(asksBeforeOpening({ ...agent, state: now ?? agent.state }));
-                      setAttempt((n) => n + 1);
-                    });
-                  }}
-                >
-                  Open again
-                </button>
-              </p>
+            {view === 'thread' && (
+              <div className="workspace-thread">
+                <Thread thread={thread} worktree={workspace.worktree.path} />
+                {terminals && (
+                  <p className="hint thread-readonly">
+                    The agent's messages and reports. To answer it,{' '}
+                    <button type="button" className="link" onClick={() => show('terminal')}>
+                      open its terminal
+                    </button>
+                    .
+                  </p>
+                )}
+              </div>
             )}
           </div>
-        )}
-        {view === 'thread' && (
-          <div className="workspace-thread">
-            <Thread thread={thread} worktree={workspace.worktree.path} />
-            {terminals && (
-              <p className="hint thread-readonly">
-                The agent's messages and reports. To answer it,{' '}
-                <button type="button" className="link" onClick={() => show('terminal')}>
-                  open its terminal
-                </button>
-                .
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-      <form
-        hidden={terminals || view !== 'thread'}
-        className="reply"
-        onSubmit={(event) => {
-          event.preventDefault();
-          send(false);
-        }}
-      >
-        <textarea
-          aria-label="Reply to the agent"
-          placeholder="Reply to the agent…"
-          value={text}
-          rows={3}
-          disabled={mode === 'none'}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+          <form
+            hidden={terminals || view !== 'thread'}
+            className="reply"
+            onSubmit={(event) => {
               event.preventDefault();
               send(false);
-            }
-          }}
-        />
-        <div className="reply-actions">
-          {verdict && (
-            <button
-              type="button"
-              className="link"
-              title={`Your ${verdict.event === 'approve' ? 'approval' : 'review'} at ${verdict.head.slice(0, 7)}, in words for the agent`}
-              onClick={() => setText(verdict.text)}
-            >
-              Send the verdict
-            </button>
-          )}
-          {mode === 'none' && (
-            <span className="hint">No session to continue: start the agent again.</span>
-          )}
-          {confirming === 'send' ? (
-            <span className="workspace-confirm">
-              Sending stops the agent's turn
-              {agent.waitingFor ? ` and what it waits on (${agent.waitingFor})` : ''}.{' '}
-              <button type="button" className="button" disabled={busy} onClick={() => send(true)}>
-                Stop it and send
-              </button>{' '}
-              <button type="button" className="link" onClick={() => setConfirming(null)}>
-                Cancel
-              </button>
-            </span>
-          ) : (
-            <button
-              type="submit"
-              className="button"
-              disabled={busy || mode === 'none' || text.trim() === ''}
-              title="Ctrl+Enter"
-            >
-              {mode === 'stop-and-send' ? 'Stop and send' : 'Send'}
-            </button>
-          )}
+            }}
+          >
+            <textarea
+              aria-label="Reply to the agent"
+              placeholder="Reply to the agent…"
+              value={text}
+              rows={3}
+              disabled={mode === 'none'}
+              onChange={(event) => setText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                  event.preventDefault();
+                  send(false);
+                }
+              }}
+            />
+            <div className="reply-actions">
+              {verdict && (
+                <button
+                  type="button"
+                  className="link"
+                  title={`Your ${verdict.event === 'approve' ? 'approval' : 'review'} at ${verdict.head.slice(0, 7)}, in words for the agent`}
+                  onClick={() => setText(verdict.text)}
+                >
+                  Send the verdict
+                </button>
+              )}
+              {mode === 'none' && (
+                <span className="hint">No session to continue: start the agent again.</span>
+              )}
+              {confirming === 'send' ? (
+                <span className="workspace-confirm">
+                  Sending stops the agent's turn
+                  {agent.waitingFor ? ` and what it waits on (${agent.waitingFor})` : ''}.{' '}
+                  <button
+                    type="button"
+                    className="button"
+                    disabled={busy}
+                    onClick={() => send(true)}
+                  >
+                    Stop it and send
+                  </button>{' '}
+                  <button type="button" className="link" onClick={() => setConfirming(null)}>
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="submit"
+                  className="button"
+                  disabled={busy || mode === 'none' || text.trim() === ''}
+                  title="Ctrl+Enter"
+                >
+                  {mode === 'stop-and-send' ? 'Stop and send' : 'Send'}
+                </button>
+              )}
+            </div>
+          </form>
         </div>
-      </form>
+        {changesShown && <ChangesPanel branch={branch} version={version} onSaid={setSaid} />}
+      </div>
     </section>
   );
 }

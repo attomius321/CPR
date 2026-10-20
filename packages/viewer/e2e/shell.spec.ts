@@ -161,13 +161,20 @@ test('the terminal fills the main area, down to the status bar', async ({ page }
   await start(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   const screen = workspace(page, branch).locator('.xterm-rows');
-  // The fake agent prints its terminal's size: [<columns>x<rows>].
+  // The fake agent prints its terminal's size: [<columns>x<rows>], again on each resize.
   await expect(screen).toContainText(/\[\d+x\d+\]/, POLL);
-  const [, columns, rows] = /\[(\d+)x(\d+)\]/.exec((await screen.textContent()) ?? '') ?? [];
+  const size = async () =>
+    [...((await screen.textContent()) ?? '').matchAll(/\[(\d+)x(\d+)\]/g)]
+      .at(-1)
+      ?.slice(1)
+      .map(Number) ?? [0, 0];
+  // Without the branch's changes beside it (V29d; changes.spec measures it with them).
+  await workspace(page, branch).getByRole('button', { name: 'Changes' }).click();
+  await expect.poll(async () => (await size())[0], POLL).toBeGreaterThanOrEqual(140);
+  const [, rows = 0] = await size();
   // At least 65 % of the window. In Geist Mono at 13 px a cell is 8 x 17 px (V29b): 148 x 46 here,
   // where the fallback font's 13 px lines gave 58 rows (V29a) and `main` 41.
-  expect(Number(rows)).toBeGreaterThanOrEqual(45);
-  expect(Number(columns)).toBeGreaterThanOrEqual(140);
+  expect(rows).toBeGreaterThanOrEqual(45);
   const box = await workspace(page, branch).locator('.xterm-screen').boundingBox();
   expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.65);
   const bar = await statusBar(page).boundingBox();

@@ -234,6 +234,7 @@ command on the machine where `cpr` runs, so WSL, Remote SSH and containers work 
 | h, s | History, Settings | |
 | w | The workspaces in the sidenav: ↑ and ↓ move, Enter opens | |
 | [ | Fold the sidenav to a rail, or open it | Open the sidenav, or fold it |
+| ] | | In a workspace: hide or show its branch's changes |
 | f | | Focus: only the selected symbol and its neighbours |
 | p, P | | Next, previous project |
 | o | | Open in VS Code |
@@ -372,6 +373,13 @@ questions, Esc, slash commands), so you answer it without leaving CPR.
   from this one.
 - At most four terminals are open at once (each is a Claude Code process, about 140 MB, or a
   Codex one, about 315 MB).
+
+At the terminal's right, where the window has room (1440 px wide with the sidenav open, about 1,250
+with it folded), the workspace's **Changes**: its branch's commits since it left the default branch
+and the files they change with their lines (what Review will show), then the files its worktree has
+not committed. They are read again with the workspace list (every 5 s while the agent works). A
+file opens in VS Code in the worktree at its first change. `]` or the button beside ⋯ hides them,
+remembered in the browser.
 
 The **Brief** tab is what the agent was asked (`&brief`). The **Thread** tab is the workspace's
 history, read only (`&thread` in the address opens on it):

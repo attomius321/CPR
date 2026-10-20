@@ -4312,12 +4312,31 @@ p.settings-placeholders {
   font-weight: 600;
 }
 
-/* A workspace in the main area: one head strip, its tabs, and the tab's content to the bottom. */
+/* A workspace in the main area: one head strip, its tabs, and the tab's content to the bottom;
+   its branch's changes at the right (V29d), where its area has room for both. */
 .workspace {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  container: workspace / inline-size;
+}
+
+.workspace-split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.workspace-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.icon-button.changes-toggle[aria-pressed='true'] {
+  color: var(--text);
 }
 
 .workspace-top {
@@ -4675,4 +4694,181 @@ p.settings-placeholders {
 
 .usage-age {
   color: var(--muted);
+}
+
+/* ---- a workspace's changes (V29d) ---------------------------------------------------------- */
+
+/* 256 px at the right of the terminal, where the workspace's area is at least 1,200 px wide: at
+   1440 with the sidenav the terminal keeps 56 % of the window (decision 186). */
+.changes {
+  flex: none;
+  width: 256px;
+  min-height: 0;
+  overflow: auto;
+  border-left: 1px solid var(--line);
+  background: var(--side);
+  font-size: 12px;
+}
+
+@container workspace (max-width: 1199px) {
+  .changes,
+  .changes-toggle {
+    display: none;
+  }
+}
+
+.changes-section {
+  padding: 10px 0 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.changes-section:last-child {
+  border-bottom: 0;
+}
+
+.changes-section h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 4px;
+  padding: 0 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.changes-count {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.changes-since {
+  margin-left: auto;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.changes-section h2 .changes-lines {
+  margin-left: auto;
+  letter-spacing: 0;
+}
+
+.changes-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.changes-empty {
+  margin: 2px 0;
+  padding: 0 12px;
+  color: var(--muted);
+}
+
+.changes-commit,
+.changes-file {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 24px;
+  padding: 4px 12px;
+  line-height: 16px;
+}
+
+.changes-commit {
+  color: var(--text);
+}
+
+.changes-sha {
+  flex: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.changes-subject,
+.changes-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.changes-age {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+button.changes-file {
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.changes-file:hover {
+  background: var(--raised);
+}
+
+.changes-name {
+  flex: 0 1 auto;
+}
+
+/* The folder gives way first, from its end: the file's name stays readable. */
+.changes-folder {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.changes-lines {
+  flex: none;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.changes-added {
+  color: var(--added);
+}
+
+.changes-removed {
+  color: var(--removed);
+}
+
+.changes-status {
+  flex: none;
+  width: 10px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.changes-status.status-added,
+.changes-status.status-untracked {
+  color: var(--added);
+}
+
+.changes-status.status-modified,
+.changes-status.status-renamed,
+.changes-status.status-copied,
+.changes-status.status-type-changed {
+  color: var(--modified);
+}
+
+.changes-status.status-deleted,
+.changes-status.status-conflicted {
+  color: var(--removed);
 }
