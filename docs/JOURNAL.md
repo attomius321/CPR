@@ -3881,3 +3881,7 @@ columns), 1184×782 without it; 1920 65.8 %; 1280 with the sidenav open: no pane
 at 1280, 1440, 1920 and 390 px dark, 1440 light. No layout, graph or analysis code changed. Not
 verified: real agents with the panel; VS Code itself (a fake `code` records its arguments);
 browsers other than Chromium.
+
+Merged into main (2026-10-20): V29a, V29b, V29c and V29d, no conflicts (`main` had not moved
+since the branch). `main` verified after the merge: frozen install, 988 unit tests, format, lint,
+typecheck, build, 140 of 140 e2e.
