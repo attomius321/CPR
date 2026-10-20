@@ -65,7 +65,13 @@ async function jsonFile(path: string): Promise<unknown> {
 export function claudeWindows(answer: unknown): UsageWindow[] {
   if (!isObject(answer)) return [];
   const windows: UsageWindow[] = [];
-  const add = (minutes: number, percent: unknown, resets: unknown, scope?: string) => {
+  const add = (
+    minutes: number,
+    percent: unknown,
+    resets: unknown,
+    scope?: string,
+    warning = false,
+  ) => {
     const usedPercent = percentOf(percent);
     if (usedPercent === undefined) return;
     const resetsAt = isoOf(resets);
@@ -74,6 +80,7 @@ export function claudeWindows(answer: unknown): UsageWindow[] {
       usedPercent,
       ...(resetsAt ? { resetsAt } : {}),
       ...(scope ? { scope } : {}),
+      ...(warning ? { warning: true as const } : {}),
     });
   };
   if (Array.isArray(answer.limits)) {
@@ -92,7 +99,8 @@ export function claudeWindows(answer: unknown): UsageWindow[] {
           : limit.kind !== 'session' && limit.kind !== 'weekly_all'
             ? limit.kind.replace(/^weekly_/, '')
             : undefined;
-      add(minutes, limit.percent, limit.resets_at, scope);
+      // Its own word for a window near the limit; other words are not read.
+      add(minutes, limit.percent, limit.resets_at, scope, limit.severity === 'warning');
     }
     return windows;
   }

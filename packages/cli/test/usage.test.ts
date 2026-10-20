@@ -173,6 +173,17 @@ describe('readClaudeUsage', () => {
     ]);
   });
 
+  it('keeps Claude\'s own warning on a window: 79 % read "warning" in real use', async () => {
+    claudeFiles();
+    const answer = {
+      limits: [{ ...CLAUDE_ANSWER.limits[0], percent: 79, severity: 'warning' }],
+    };
+    const read = await claude(fakeFetch(() => json(answer)).fetch);
+    expect(read.subscription?.windows).toEqual([
+      { minutes: 300, usedPercent: 79, resetsAt: '2026-10-20T20:00:00.484Z', warning: true },
+    ]);
+  });
+
   it("keeps a model's own weekly limit apart, and leaves out what it cannot read", async () => {
     claudeFiles();
     const answer = {

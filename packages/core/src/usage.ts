@@ -11,6 +11,8 @@ export interface UsageWindow {
   resetsAt?: string;
   /** What it is limited to when not the whole plan (a model's weekly limit): shown on hover. */
   scope?: string;
+  /** The vendor marks it near its limit (Claude's `severity: "warning"`, at 79 % in real use). */
+  warning?: true;
 }
 
 /** An agent's subscription and its windows. */
