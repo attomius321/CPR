@@ -280,6 +280,22 @@ describe('branchReviews', () => {
     expect(REVIEW_ABOUT).toContain('AGENTS.md');
   });
 
+  it("writes the project's own instructions, again when they change (V28)", async () => {
+    const { repo } = fresh();
+    const config = (reviews: string) =>
+      repo.write({ 'cpr/config.json': JSON.stringify({ prompts: { reviews } }) });
+    config('# Our reviews\n\nAct on the last verdict.');
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    const { info } = await reviews.resolve('agent');
+    const agents = () => readFileSync(join(repo.root, 'cpr', 'AGENTS.md'), 'utf8');
+    await reviews.state(info).write('review', {});
+    expect(agents()).toBe('# Our reviews\n\nAct on the last verdict.\n');
+    // Saved in Settings while `cpr view` runs: the next write uses it.
+    config('# Our reviews, changed');
+    await reviews.state(info).write('review', { 'src/W1.ts#W1': 'x' });
+    expect(agents()).toBe('# Our reviews, changed\n');
+  });
+
   it('never changes an existing cpr/.gitignore', async () => {
     const { repo } = fresh();
     repo.write({ 'cpr/.gitignore': '# ours\n' });
@@ -462,6 +478,24 @@ describe('finishing a branch review (V16, V17)', () => {
       head: shas.W2,
       at: NOW.toISOString(),
     });
+  });
+
+  it("words a verdict for the agent with the project's sentences (V28)", async () => {
+    const { repo, shas } = pushedRepo();
+    repo.write({
+      'cpr/config.json': JSON.stringify({
+        prompts: {
+          verdict: { approve: '{at} of {branch} goes into {into}.', where: 'See {review}.' },
+        },
+      }),
+    });
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    const { info } = await reviews.resolve('agent');
+    const { text } = await reviews.finish(info, APPROVE, reader(repo.root, info));
+    expect(text).toBe(
+      `${shas.W2.slice(0, 7)} of agent goes into main.\n\n` +
+        'See cpr/reviews/agent/ada@example.com.json.\n',
+    );
   });
 
   it('records an approval of the reviewed commit and where it merges; pushes nothing (V17)', async () => {

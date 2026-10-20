@@ -41,11 +41,13 @@ import { readWorkspace, workspacePath, type WorkspaceFile } from './workspaces.j
 import {
   applyAnswer,
   conflictRegions,
+  mergerInstructions,
   mergerPrompt,
   parseAnswer,
   type MergerAgent,
   type MergerInput,
 } from './merge-agent.js';
+import { readPrompts } from './prompts.js';
 
 /**
  * What `cpr/config.json` says of merges: `merge.checks` (one command or several), `merge.push`,
@@ -530,7 +532,12 @@ export function merger(
       ...(rules ? { rules } : {}),
       ...(entry.again ? { again: entry.again } : {}),
     });
-    const run = await agent.run({ cwd: worktree, prompt, ...(model ? { model } : {}) });
+    const run = await agent.run({
+      cwd: worktree,
+      prompt,
+      ...(model ? { model } : {}),
+      instructions: mergerInstructions(readPrompts(root).text.merger),
+    });
     if (!run.ok) return stop(`the merger agent did not answer: ${run.error}`);
     const about = {
       agent: agent.kind,

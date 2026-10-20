@@ -245,6 +245,29 @@ export async function trackedFiles(repo: GitRepo, folder: string): Promise<strin
   return output.split('\0').filter((path) => path !== '');
 }
 
+/**
+ * A file in the working copy against git: `committed` as it is, `changed` since (deleted too),
+ * `new` (not committed yet, staged or not), `ignored`, or `none` (neither on disk nor in git).
+ */
+export type FileGitState = 'committed' | 'changed' | 'new' | 'ignored' | 'none';
+
+/** `path`'s state (repo-relative POSIX), from `git status` (V28). */
+export async function fileGitState(repo: GitRepo, path: string): Promise<FileGitState> {
+  const status = await git(repo.root, [
+    'status',
+    '--porcelain=v1',
+    '--ignored',
+    '-z',
+    '--',
+    `:/${path}`,
+  ]);
+  const xy = status.slice(0, 2);
+  if (xy === '??' || xy.startsWith('A')) return 'new';
+  if (xy === '!!') return 'ignored';
+  if (xy !== '') return 'changed';
+  return (await trackedFiles(repo, path)).length > 0 ? 'committed' : 'none';
+}
+
 /** The best common ancestor of two commits; null without one. */
 export async function mergeBase(repo: GitRepo, a: string, b: string): Promise<string | null> {
   try {

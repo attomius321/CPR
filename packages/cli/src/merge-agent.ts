@@ -3,6 +3,7 @@
 // the markers, commits the merge, and the person reviews each region before it lands.
 import { spawn } from 'node:child_process';
 import type { AgentKind } from '@cpr/core';
+import { DEFAULT_PROMPTS, MERGER_ANSWER } from './prompts.js';
 
 /** A conflict region, its lines 0-based in the file: `<<<<<<<` at `start`, `>>>>>>>` at `end`. */
 export interface ConflictRegion {
@@ -117,25 +118,15 @@ export function parseAnswer(message: string, count: number): MergerAnswer {
 }
 
 /**
- * CPR's instructions to the merger (decision 150), the same for Claude Code (its system prompt)
- * and Codex (before its prompt). At most 1K tokens: they are read on every run.
+ * The merger's system prompt (decision 150), the same for Claude Code (`--system-prompt`) and
+ * Codex (before its prompt): the project's instructions or CPR's (V28), then CPR's answer format,
+ * which a project cannot change (decision 169). CPR's are at most 1K tokens: read on every run.
  */
-export const MERGER_INSTRUCTIONS = `You resolve merge conflicts for CPR. A person reviews every answer before it lands.
+export const mergerInstructions = (instructions: string) =>
+  `${instructions.trimEnd()}\n\n${MERGER_ANSWER}`;
 
-You are given each conflict region in git's diff3 style, with 3 lines around it: the target branch's side (after <<<<<<<), the common ancestor (after |||||||, empty when both sides added), and the merged branch's side (after =======, up to >>>>>>>). Each side's title says what it was for.
-
-For each region, write the text that replaces the whole region, its marker lines included:
-- Keep what both sides meant. Two different additions are usually both kept, the target's first, unless they are the same thing written twice: then keep it once.
-- Two changes to the same lines: combine them when they can be combined, and keep the file's style.
-- Never drop a side's change to make the conflict go away. When both cannot be kept, or you would have to guess what a side meant, do not answer the regions: say what the person must decide.
-- Write no conflict markers. Change nothing outside the regions: CPR writes your text in place of each region and nothing else.
-
-You may read files in this folder when a region is not enough. You cannot edit them, and need not.
-
-Answer with one JSON object and nothing else:
-{"regions": {"1": "<text of region 1>", "2": "<text of region 2>"}, "notes": {"1": "<one line: what you kept, and why>"}}
-or, when any region needs the person:
-{"needsYou": "<the region, and what they must decide>"}`;
+/** CPR's system prompt for the merger, until a project has its own (`prompts.merger`). */
+export const MERGER_INSTRUCTIONS = mergerInstructions(DEFAULT_PROMPTS.merger);
 
 /** What the prompt is made of: the merge, its two sides' titles, the conflicting files. */
 export interface MergerInput {
@@ -218,7 +209,13 @@ export type MergerRun =
 /** A merger agent: one run in `cwd`, waited for. */
 export interface MergerAgent {
   kind: AgentKind;
-  run(request: { cwd: string; prompt: string; model?: string }): Promise<MergerRun>;
+  /** `instructions`: its system prompt, `MERGER_INSTRUCTIONS` unless the project has its own. */
+  run(request: {
+    cwd: string;
+    prompt: string;
+    model?: string;
+    instructions?: string;
+  }): Promise<MergerRun>;
 }
 
 /** Runs a program with `input` on its stdin, without a shell; resolves when it exits. */
@@ -254,7 +251,7 @@ const RUN_TIMEOUT_MS = 15 * 60_000;
 const lastWords = (text: string) => text.trim().split('\n').slice(-3).join('\n');
 
 /**
- * Claude Code as the merger: `claude -p`, its system prompt CPR's instructions, read-only tools,
+ * Claude Code as the merger: `claude -p`, its system prompt the merger's instructions, read-only tools,
  * no MCP servers, nothing kept; the prompt on stdin (a long one would not fit an argument).
  */
 export function claudeMerger(
@@ -263,7 +260,7 @@ export function claudeMerger(
 ): MergerAgent {
   return {
     kind: 'claude',
-    async run({ cwd, prompt, model }) {
+    async run({ cwd, prompt, model, instructions = MERGER_INSTRUCTIONS }) {
       const args = [
         '-p',
         '--output-format',
@@ -274,7 +271,7 @@ export function claudeMerger(
         '--no-session-persistence',
         ...(model ? ['--model', model] : []),
         '--system-prompt',
-        MERGER_INSTRUCTIONS,
+        instructions,
       ];
       const started = Date.now();
       const result = await run(command, args, { cwd, input: prompt, timeoutMs: RUN_TIMEOUT_MS });
@@ -320,7 +317,7 @@ export function claudeMerger(
 }
 
 /**
- * Codex as the merger: `codex exec` in its read-only sandbox, nothing kept, CPR's instructions
+ * Codex as the merger: `codex exec` in its read-only sandbox, nothing kept, the merger's instructions
  * before the prompt (Codex has no system prompt to set), both on stdin; its last message.
  */
 export function codexMerger(
@@ -329,7 +326,7 @@ export function codexMerger(
 ): MergerAgent {
   return {
     kind: 'codex',
-    async run({ cwd, prompt, model }) {
+    async run({ cwd, prompt, model, instructions = MERGER_INSTRUCTIONS }) {
       const args = [
         'exec',
         '--json',
@@ -342,7 +339,7 @@ export function codexMerger(
         '-',
       ];
       const started = Date.now();
-      const input = `${MERGER_INSTRUCTIONS}\n\n---\n\n${prompt}`;
+      const input = `${instructions}\n\n---\n\n${prompt}`;
       const result = await run(command, args, { cwd, input, timeoutMs: RUN_TIMEOUT_MS });
       const ms = Date.now() - started;
       let text: string | null = null;

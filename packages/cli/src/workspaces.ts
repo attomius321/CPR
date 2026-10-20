@@ -43,11 +43,13 @@ import {
   type ThreadEntry,
   type GitRepo,
   type PermissionMode,
+  type PromptKey,
   type RefList,
   type WorkKind,
   type WorkKindSpec,
 } from '@cpr/core';
 import { guessCheck, treeAt } from './check.js';
+import { DEFAULT_PROMPTS, fillPrompt, readPrompts } from './prompts.js';
 import {
   AppServerStartFailed,
   AppServerUnreachable,
@@ -158,12 +160,12 @@ const HEADINGS: Record<BriefPart, string> = {
 const ORDER = Object.keys(HEADINGS) as BriefPart[];
 
 /**
- * The kinds of work (V24, decision 122): the one part each needs, its others, Done when's text
- * until the person changes it, and the one line the agent's prompt adds after the brief.
+ * The kinds of work (V24, decision 122): the one part each needs, its others, and Done when's
+ * text until the person changes it. What each kind's agent is told is its start prompt (V28).
  */
 const KINDS: Record<
   WorkKind,
-  { name: string; required: BriefPart; optional: BriefPart[]; doneWhen?: string; line?: string }
+  { name: string; required: BriefPart; optional: BriefPart[]; doneWhen?: string }
 > = {
   feature: { name: 'Feature', required: 'goal', optional: ['where', 'outOfScope', 'notes'] },
   fix: {
@@ -171,9 +173,6 @@ const KINDS: Record<
     required: 'happens',
     optional: ['reproduce', 'where', 'notes'],
     doneWhen: 'A test that fails today passes, and {checks pass}.',
-    line:
-      'Reproduce it first, with a failing test where the project has tests, then fix the cause, ' +
-      'not the symptom.',
   },
   refactor: {
     name: 'Refactor',
@@ -182,25 +181,18 @@ const KINDS: Record<
     doneWhen:
       'Behaviour is unchanged: existing tests pass without changing what they assert, and ' +
       '{checks pass}.',
-    line:
-      'Change structure, not behaviour: do not change what existing tests assert; if behaviour ' +
-      'must change, stop and say so.',
   },
   chore: {
     name: 'Chore',
     required: 'change',
     optional: ['where', 'outOfScope', 'notes'],
     doneWhen: 'Nothing else changes, and {checks pass}.',
-    line: 'Keep to what is asked; if it needs a change in behaviour, stop and say so.',
   },
   spike: {
     name: 'Spike',
     required: 'question',
     optional: ['known', 'where', 'notes'],
     doneWhen: 'A written answer: what was tried, what was measured, and a recommendation.',
-    line:
-      'The answer is what is asked for, not a change to merge: put it in your final report; ' +
-      "keep experiments out of the project's code unless the brief says otherwise.",
   },
 };
 
@@ -388,44 +380,31 @@ export async function workspaceBase(
 }
 
 /**
- * What the agent is told: the brief, its kind's line (V24), its branch and worktree, where its
- * record and reviews are. A record from before V24 is a workspace.
+ * What the agent is told: its kind's start prompt (V28; CPR's unless the project has its own),
+ * filled with the brief, its branch and worktree, where its record and reviews are. A record
+ * from before V24 is a feature.
  */
 export function workspacePrompt(
   workspace: WorkspaceFile,
   where: { record: string; reviews: string; agents: string; into: string | null },
+  prompts: Readonly<Record<PromptKey, string>> = DEFAULT_PROMPTS,
 ): string {
   const kind = workspace.kind ?? 'feature';
-  const start = workspace.from
-    ? `${workspace.from} at ${workspace.base.slice(0, 7)}`
-    : `the commit ${workspace.base.slice(0, 7)}`;
-  const { line } = KINDS[kind];
-  return [
-    `You are starting a new ${kind} in this repository, on the branch ${workspace.branch}, ` +
-      `started from ${start}. This folder is a git worktree of its own with that branch ` +
-      'checked out: work only here.',
-    '',
-    "The person's brief:",
-    '',
-    workspace.brief.trim(),
-    '',
-    ...(line ? [line, ''] : []),
-    workspace.planFirst
-      ? 'First write a plan: what you will change and how you will check it, then stop and ' +
-        "wait for the person's OK before changing anything."
-      : "Plan it, build it and check it as the project's own instructions say.",
-    '',
-    kind === 'spike'
-      ? 'Commit nothing unless the brief asks for it. When you have the answer, say it: the ' +
-        'person reads your report in CPR.'
-      : `Commit your work on ${workspace.branch} as you go. Push only if the project's instructions ` +
-        'say so. When it is ready, say so: the person reviews the branch in CPR' +
-        (where.into ? `, and an approved commit is merged into ${where.into}.` : '.'),
-    '',
-    `This ${kind}'s record: ${where.record}. Reviews of the branch will be in ${where.reviews}; ` +
-      `${where.agents} says how to act on one. Never edit anything in ${dirname(where.agents)}.`,
-    '',
-  ].join('\n');
+  const text = fillPrompt(prompts[`start.${kind}`], {
+    branch: workspace.branch,
+    start: workspace.from
+      ? `${workspace.from} at ${workspace.base.slice(0, 7)}`
+      : `the commit ${workspace.base.slice(0, 7)}`,
+    brief: workspace.brief.trim(),
+    plan: prompts[workspace.planFirst ? 'plan.first' : 'plan.direct'],
+    // Decision 171: since V26 the person picks the target at Merge into ▾.
+    into: where.into ?? 'the branch the person picks',
+    record: where.record,
+    reviews: where.reviews,
+    agents: where.agents,
+    cpr: dirname(where.agents),
+  });
+  return `${text.trimEnd()}\n`;
 }
 
 /** A Claude Code session, as `claude agents --json --all` lists it. */
@@ -1102,12 +1081,16 @@ export function workspaces(
 
   /** The prompt a workspace's agent is given. */
   async function promptOf(where: ReviewPlace, workspace: WorkspaceFile): Promise<string> {
-    return workspacePrompt(workspace, {
-      record: workspacePath(workspacesDir(where), workspace.branch),
-      reviews: join(where.dir, ...workspace.branch.split('/')),
-      agents: where.agents,
-      into: await defaultBranch(repo, await listRefs(repo)),
-    });
+    return workspacePrompt(
+      workspace,
+      {
+        record: workspacePath(workspacesDir(where), workspace.branch),
+        reviews: join(where.dir, ...workspace.branch.split('/')),
+        agents: where.agents,
+        into: await defaultBranch(repo, await listRefs(repo)),
+      },
+      readPrompts(root).text,
+    );
   }
 
   /** A workspace's record; 404 without one. */
@@ -1599,7 +1582,7 @@ export function workspaces(
         planFirst: request.planFirst,
         worktree: folder,
       };
-      await prepareCprFolder(where);
+      await prepareCprFolder(where, { text: readPrompts(root).text.reviews });
       const prompt = await launch(where, workspace, agent, permissionMode);
       return started(where, workspace, prompt);
     },
@@ -1757,10 +1740,16 @@ export function workspaces(
                 at: verdict.at,
                 event: verdict.event,
                 head: verdict.head,
-                text: verdictText(review, review.reviewer, verdict, {
-                  review: shown(reviewPath(where.dir, branch, where.reviewer)),
-                  agents: shown(where.agents),
-                }),
+                text: verdictText(
+                  review,
+                  review.reviewer,
+                  verdict,
+                  {
+                    review: shown(reviewPath(where.dir, branch, where.reviewer)),
+                    agents: shown(where.agents),
+                  },
+                  readPrompts(root).text,
+                ),
               },
             }
           : {}),

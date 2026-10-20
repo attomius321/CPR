@@ -1,0 +1,999 @@
+{
+  "about": "The prompts of main at eadc0ce (before V28), as recorded from its build: V28 with no prompts set must give these.",
+  "start": [
+    {
+      "workspace": {
+        "kind": "feature",
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "feature",
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "feature",
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "feature",
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "feature",
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "feature",
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "feature",
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "feature",
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "fix",
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new fix in this repository, on the branch fix/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nReproduce it first, with a failing test where the project has tests, then fix the cause, not the symptom.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on fix/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis fix's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "fix",
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new fix in this repository, on the branch fix/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nReproduce it first, with a failing test where the project has tests, then fix the cause, not the symptom.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on fix/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis fix's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "fix",
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new fix in this repository, on the branch fix/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nReproduce it first, with a failing test where the project has tests, then fix the cause, not the symptom.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on fix/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis fix's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "fix",
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new fix in this repository, on the branch fix/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nReproduce it first, with a failing test where the project has tests, then fix the cause, not the symptom.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on fix/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis fix's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "fix",
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new fix in this repository, on the branch fix/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nReproduce it first, with a failing test where the project has tests, then fix the cause, not the symptom.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on fix/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis fix's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "fix",
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new fix in this repository, on the branch fix/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nReproduce it first, with a failing test where the project has tests, then fix the cause, not the symptom.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on fix/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis fix's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "fix",
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new fix in this repository, on the branch fix/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nReproduce it first, with a failing test where the project has tests, then fix the cause, not the symptom.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on fix/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis fix's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "fix",
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new fix in this repository, on the branch fix/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nReproduce it first, with a failing test where the project has tests, then fix the cause, not the symptom.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on fix/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis fix's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "refactor",
+        "branch": "refactor/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new refactor in this repository, on the branch refactor/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nChange structure, not behaviour: do not change what existing tests assert; if behaviour must change, stop and say so.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on refactor/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis refactor's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "refactor",
+        "branch": "refactor/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new refactor in this repository, on the branch refactor/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nChange structure, not behaviour: do not change what existing tests assert; if behaviour must change, stop and say so.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on refactor/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis refactor's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "refactor",
+        "branch": "refactor/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new refactor in this repository, on the branch refactor/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nChange structure, not behaviour: do not change what existing tests assert; if behaviour must change, stop and say so.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on refactor/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis refactor's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "refactor",
+        "branch": "refactor/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new refactor in this repository, on the branch refactor/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nChange structure, not behaviour: do not change what existing tests assert; if behaviour must change, stop and say so.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on refactor/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis refactor's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "refactor",
+        "branch": "refactor/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new refactor in this repository, on the branch refactor/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nChange structure, not behaviour: do not change what existing tests assert; if behaviour must change, stop and say so.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on refactor/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis refactor's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "refactor",
+        "branch": "refactor/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new refactor in this repository, on the branch refactor/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nChange structure, not behaviour: do not change what existing tests assert; if behaviour must change, stop and say so.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on refactor/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis refactor's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "refactor",
+        "branch": "refactor/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new refactor in this repository, on the branch refactor/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nChange structure, not behaviour: do not change what existing tests assert; if behaviour must change, stop and say so.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on refactor/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis refactor's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "refactor",
+        "branch": "refactor/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new refactor in this repository, on the branch refactor/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nChange structure, not behaviour: do not change what existing tests assert; if behaviour must change, stop and say so.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on refactor/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis refactor's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "chore",
+        "branch": "chore/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new chore in this repository, on the branch chore/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nKeep to what is asked; if it needs a change in behaviour, stop and say so.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on chore/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis chore's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "chore",
+        "branch": "chore/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new chore in this repository, on the branch chore/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nKeep to what is asked; if it needs a change in behaviour, stop and say so.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on chore/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis chore's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "chore",
+        "branch": "chore/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new chore in this repository, on the branch chore/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nKeep to what is asked; if it needs a change in behaviour, stop and say so.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on chore/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis chore's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "chore",
+        "branch": "chore/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new chore in this repository, on the branch chore/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nKeep to what is asked; if it needs a change in behaviour, stop and say so.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on chore/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis chore's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "chore",
+        "branch": "chore/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new chore in this repository, on the branch chore/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nKeep to what is asked; if it needs a change in behaviour, stop and say so.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on chore/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis chore's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "chore",
+        "branch": "chore/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new chore in this repository, on the branch chore/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nKeep to what is asked; if it needs a change in behaviour, stop and say so.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on chore/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis chore's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "chore",
+        "branch": "chore/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new chore in this repository, on the branch chore/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nKeep to what is asked; if it needs a change in behaviour, stop and say so.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on chore/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis chore's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "chore",
+        "branch": "chore/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new chore in this repository, on the branch chore/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nKeep to what is asked; if it needs a change in behaviour, stop and say so.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on chore/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis chore's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "spike",
+        "branch": "spike/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new spike in this repository, on the branch spike/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nThe answer is what is asked for, not a change to merge: put it in your final report; keep experiments out of the project's code unless the brief says otherwise.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit nothing unless the brief asks for it. When you have the answer, say it: the person reads your report in CPR.\n\nThis spike's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "spike",
+        "branch": "spike/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new spike in this repository, on the branch spike/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nThe answer is what is asked for, not a change to merge: put it in your final report; keep experiments out of the project's code unless the brief says otherwise.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit nothing unless the brief asks for it. When you have the answer, say it: the person reads your report in CPR.\n\nThis spike's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "spike",
+        "branch": "spike/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new spike in this repository, on the branch spike/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nThe answer is what is asked for, not a change to merge: put it in your final report; keep experiments out of the project's code unless the brief says otherwise.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit nothing unless the brief asks for it. When you have the answer, say it: the person reads your report in CPR.\n\nThis spike's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "spike",
+        "branch": "spike/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new spike in this repository, on the branch spike/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nThe answer is what is asked for, not a change to merge: put it in your final report; keep experiments out of the project's code unless the brief says otherwise.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit nothing unless the brief asks for it. When you have the answer, say it: the person reads your report in CPR.\n\nThis spike's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "spike",
+        "branch": "spike/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new spike in this repository, on the branch spike/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nThe answer is what is asked for, not a change to merge: put it in your final report; keep experiments out of the project's code unless the brief says otherwise.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit nothing unless the brief asks for it. When you have the answer, say it: the person reads your report in CPR.\n\nThis spike's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "spike",
+        "branch": "spike/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new spike in this repository, on the branch spike/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nThe answer is what is asked for, not a change to merge: put it in your final report; keep experiments out of the project's code unless the brief says otherwise.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit nothing unless the brief asks for it. When you have the answer, say it: the person reads your report in CPR.\n\nThis spike's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "spike",
+        "branch": "spike/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new spike in this repository, on the branch spike/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nThe answer is what is asked for, not a change to merge: put it in your final report; keep experiments out of the project's code unless the brief says otherwise.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit nothing unless the brief asks for it. When you have the answer, say it: the person reads your report in CPR.\n\nThis spike's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "kind": "spike",
+        "branch": "spike/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new spike in this repository, on the branch spike/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nThe answer is what is asked for, not a change to merge: put it in your final report; keep experiments out of the project's code unless the brief says otherwise.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit nothing unless the brief asks for it. When you have the answer, say it: the person reads your report in CPR.\n\nThis spike's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": false
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nPlan it, build it and check it as the project's own instructions say.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": "main"
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR, and an approved commit is merged into main.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "from": "main",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from main at 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    },
+    {
+      "workspace": {
+        "branch": "feature/one",
+        "base": "0123456789abcdef0123456789abcdef01234567",
+        "brief": "\n  # A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.  \n\n",
+        "planFirst": true
+      },
+      "where": {
+        "record": "/repo/cpr/workspaces/x/one.json",
+        "reviews": "/repo/cpr/reviews/x/one",
+        "agents": "/repo/cpr/AGENTS.md",
+        "into": null
+      },
+      "prompt": "You are starting a new feature in this repository, on the branch feature/one, started from the commit 0123456. This folder is a git worktree of its own with that branch checked out: work only here.\n\nThe person's brief:\n\n# A brief\n\nWith {plan}, {brief} and {\"json\": 1} in it.\n\nFirst write a plan: what you will change and how you will check it, then stop and wait for the person's OK before changing anything.\n\nCommit your work on feature/one as you go. Push only if the project's instructions say so. When it is ready, say so: the person reviews the branch in CPR.\n\nThis feature's record: /repo/cpr/workspaces/x/one.json. Reviews of the branch will be in /repo/cpr/reviews/x/one; /repo/cpr/AGENTS.md says how to act on one. Never edit anything in /repo/cpr.\n"
+    }
+  ],
+  "merger": "You resolve merge conflicts for CPR. A person reviews every answer before it lands.\n\nYou are given each conflict region in git's diff3 style, with 3 lines around it: the target branch's side (after <<<<<<<), the common ancestor (after |||||||, empty when both sides added), and the merged branch's side (after =======, up to >>>>>>>). Each side's title says what it was for.\n\nFor each region, write the text that replaces the whole region, its marker lines included:\n- Keep what both sides meant. Two different additions are usually both kept, the target's first, unless they are the same thing written twice: then keep it once.\n- Two changes to the same lines: combine them when they can be combined, and keep the file's style.\n- Never drop a side's change to make the conflict go away. When both cannot be kept, or you would have to guess what a side meant, do not answer the regions: say what the person must decide.\n- Write no conflict markers. Change nothing outside the regions: CPR writes your text in place of each region and nothing else.\n\nYou may read files in this folder when a region is not enough. You cannot edit them, and need not.\n\nAnswer with one JSON object and nothing else:\n{\"regions\": {\"1\": \"<text of region 1>\", \"2\": \"<text of region 2>\"}, \"notes\": {\"1\": \"<one line: what you kept, and why>\"}}\nor, when any region needs the person:\n{\"needsYou\": \"<the region, and what they must decide>\"}",
+  "agents": "# CPR reviews\n\nWritten by CPR, which rewrites this file when it changes: put your project's own rules in its\nown CLAUDE.md or AGENTS.md.\n\nA person reviews your branch with CPR and records a verdict in\n`cpr/reviews/<branch>/<reviewer>.json` (the branch's slashes are folders). Act on it when the\nperson asks you to (for example \"check my review\"), not because you came across it.\n\n## Read only the last verdict\n\n- Act on the last entry of `verdicts`. `drafts`, `marks` and the top-level `summary` are a\n  review in progress, not feedback. No verdicts: there is nothing to act on yet; say so.\n- `head` is the commit the person reviewed. Commits after it (`git log <head>..<branch>`) were\n  not part of the review.\n\n## What each verdict asks\n\n- `request-changes`: fix each comment in new commits on the branch. Then say, one line per\n  comment, what you changed (with the commit) or why you did not.\n- `comment`: answer each comment; change code only where a comment asks for it.\n- `approve` with `into`: the approved commit `head` is to be merged into `into`, and CPR\n  merges it (its merger: Merge in CPR, or `cpr merge <branch>`). Do not merge it yourself\n  unless the person asks you to; there is nothing to do.\n- `approve` without `into` (a review of the default branch's unpushed commits): those commits,\n  up to `head`, may be pushed.\n- Push only when and what the project's own instructions say.\n\n## A merge conflict\n\nWhen CPR says the branch conflicts with `into` (before the review, or when it merged):\n\n1. On the branch, merge `into` in (`git merge <into>`), resolve the conflicts there and\n   commit. Never resolve them on `into`: the resolution would be code nobody reviewed.\n2. Tell the person the branch needs another review.\n\n## Workspaces\n\nA workspace started in CPR is a branch with a worktree of its own and a record in\n`cpr/workspaces/<branch>.json`: the person's `brief`, the `base` it started from, and\n`planFirst`. If you were started on one:\n\n- Work only in its worktree, on its branch.\n- With `planFirst`, write the plan (what you will change and how you will check it), then stop\n  and wait for the person's OK before changing anything.\n- Commit on the branch as you go; say when it is ready for review.\n\n## Comments\n\nEach has `body` (what to do) and `symbol` (`<path>#<name>`); on a line, also `path`,\n`line`, `side` and `code` (that line's text). Without `line` it is about the whole symbol.\n\n- `side: \"head\"`: `line` is in the reviewed commit `head`, not your working copy. If the\n  branch moved since, find the place by `code` and `symbol`.\n- `side: \"base\"`: a line the branch removed, at the file's top-level `base` (where the review\n  starts: `git show <base>:<path>`). Usually the question is whether removing it was right.\n\n## Never\n\n- Rewrite commits the person reviewed (amend, rebase, squash): their review is of those commits.\n- Edit, move or commit anything in `cpr/`: the reviews are the person's.\n",
+  "verdicts": [
+    {
+      "info": {
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567"
+      },
+      "reviewer": "ada@example.com",
+      "verdict": {
+        "at": "x",
+        "comments": [],
+        "event": "approve",
+        "head": "0123456789abcdef0123456789abcdef01234567",
+        "into": "main",
+        "summary": ""
+      },
+      "text": "Approved the branch fix/one at 0123456: CPR merges 0123456 into main; do not merge it yourself.\n"
+    },
+    {
+      "info": {
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567"
+      },
+      "reviewer": "ada@example.com",
+      "verdict": {
+        "at": "x",
+        "comments": [],
+        "event": "approve",
+        "head": "0123456789abcdef0123456789abcdef01234567",
+        "into": "main",
+        "summary": ""
+      },
+      "where": {
+        "review": "cpr/reviews/x/ada.json",
+        "agents": "cpr/AGENTS.md"
+      },
+      "text": "Approved the branch fix/one at 0123456: CPR merges 0123456 into main; do not merge it yourself.\n\nThe review: cpr/reviews/x/ada.json; how to act on it: cpr/AGENTS.md.\n"
+    },
+    {
+      "info": {
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567"
+      },
+      "reviewer": "ada@example.com",
+      "verdict": {
+        "at": "x",
+        "comments": [],
+        "event": "approve",
+        "head": "0123456789abcdef0123456789abcdef01234567",
+        "summary": "Fine."
+      },
+      "text": "Approved the unpushed commits of fix/one up to 0123456: they may be pushed.\n\nFine.\n"
+    },
+    {
+      "info": {
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567"
+      },
+      "reviewer": "ada@example.com",
+      "verdict": {
+        "at": "x",
+        "comments": [],
+        "event": "approve",
+        "head": "0123456789abcdef0123456789abcdef01234567",
+        "summary": "Fine."
+      },
+      "where": {
+        "review": "cpr/reviews/x/ada.json",
+        "agents": "cpr/AGENTS.md"
+      },
+      "text": "Approved the unpushed commits of fix/one up to 0123456: they may be pushed.\n\nFine.\n\nThe review: cpr/reviews/x/ada.json; how to act on it: cpr/AGENTS.md.\n"
+    },
+    {
+      "info": {
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567"
+      },
+      "reviewer": "ada@example.com",
+      "verdict": {
+        "at": "x",
+        "comments": [
+          {
+            "id": "c1",
+            "symbol": "src/a.ts#a",
+            "body": "Rename it.",
+            "side": "head",
+            "path": "src/a.ts",
+            "line": 3,
+            "code": "export const a = 1;"
+          },
+          {
+            "id": "c2",
+            "symbol": "src/b.ts#b",
+            "body": "Why removed?",
+            "side": "base",
+            "path": "src/b.ts",
+            "line": 7,
+            "code": "b();"
+          },
+          {
+            "id": "c3",
+            "symbol": "src/c.ts#C.run",
+            "body": "Why a class?"
+          }
+        ],
+        "event": "request-changes",
+        "head": "0123456789abcdef0123456789abcdef01234567",
+        "summary": "Two things."
+      },
+      "text": "Address this review of the branch fix/one (ada@example.com, at 0123456): changes requested.\n\nTwo things.\n\nsrc/a.ts:3 · a\n    export const a = 1;\nRename it.\n\nsrc/b.ts:7 · b (a removed line, at 0123456)\n    b();\nWhy removed?\n\nAbout C.run:\nWhy a class?\n"
+    },
+    {
+      "info": {
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567"
+      },
+      "reviewer": "ada@example.com",
+      "verdict": {
+        "at": "x",
+        "comments": [
+          {
+            "id": "c1",
+            "symbol": "src/a.ts#a",
+            "body": "Rename it.",
+            "side": "head",
+            "path": "src/a.ts",
+            "line": 3,
+            "code": "export const a = 1;"
+          },
+          {
+            "id": "c2",
+            "symbol": "src/b.ts#b",
+            "body": "Why removed?",
+            "side": "base",
+            "path": "src/b.ts",
+            "line": 7,
+            "code": "b();"
+          },
+          {
+            "id": "c3",
+            "symbol": "src/c.ts#C.run",
+            "body": "Why a class?"
+          }
+        ],
+        "event": "request-changes",
+        "head": "0123456789abcdef0123456789abcdef01234567",
+        "summary": "Two things."
+      },
+      "where": {
+        "review": "cpr/reviews/x/ada.json",
+        "agents": "cpr/AGENTS.md"
+      },
+      "text": "Address this review of the branch fix/one (ada@example.com, at 0123456): changes requested.\n\nTwo things.\n\nsrc/a.ts:3 · a\n    export const a = 1;\nRename it.\n\nsrc/b.ts:7 · b (a removed line, at 0123456)\n    b();\nWhy removed?\n\nAbout C.run:\nWhy a class?\n\nThe review: cpr/reviews/x/ada.json; how to act on it: cpr/AGENTS.md.\n"
+    },
+    {
+      "info": {
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567"
+      },
+      "reviewer": "ada@example.com",
+      "verdict": {
+        "at": "x",
+        "comments": [
+          {
+            "id": "c1",
+            "symbol": "src/a.ts#a",
+            "body": "Rename it.",
+            "side": "head",
+            "path": "src/a.ts",
+            "line": 3,
+            "code": "export const a = 1;"
+          }
+        ],
+        "event": "comment",
+        "head": "0123456789abcdef0123456789abcdef01234567",
+        "summary": ""
+      },
+      "text": "Address this review of the branch fix/one (ada@example.com, at 0123456): comments.\n\nsrc/a.ts:3 · a\n    export const a = 1;\nRename it.\n"
+    },
+    {
+      "info": {
+        "branch": "fix/one",
+        "base": "0123456789abcdef0123456789abcdef01234567"
+      },
+      "reviewer": "ada@example.com",
+      "verdict": {
+        "at": "x",
+        "comments": [
+          {
+            "id": "c1",
+            "symbol": "src/a.ts#a",
+            "body": "Rename it.",
+            "side": "head",
+            "path": "src/a.ts",
+            "line": 3,
+            "code": "export const a = 1;"
+          }
+        ],
+        "event": "comment",
+        "head": "0123456789abcdef0123456789abcdef01234567",
+        "summary": ""
+      },
+      "where": {
+        "review": "cpr/reviews/x/ada.json",
+        "agents": "cpr/AGENTS.md"
+      },
+      "text": "Address this review of the branch fix/one (ada@example.com, at 0123456): comments.\n\nsrc/a.ts:3 · a\n    export const a = 1;\nRename it.\n\nThe review: cpr/reviews/x/ada.json; how to act on it: cpr/AGENTS.md.\n"
+    }
+  ]
+}

@@ -3535,3 +3535,35 @@ not its words; `cpr/merge.md` only adds to the merger's prompt.
 - **One case cannot stay byte for byte with placeholders**: with no default branch, today's start
   prompt stops at "the person reviews the branch in CPR." V28 says "the branch the person picks",
   which is what Merge into ▾ asks since V26.
+
+## V28a — Prompts from config.json (2026-10-20, branch `milestone/v28-agent-prompts`)
+
+The 13 texts CPR's agents are told are now defaults with placeholders
+(`packages/cli/src/prompts.ts`), replaced by `prompts.<key>` in `cpr/config.json` when a project
+has its own. Every use reads them: Claude Code's and Codex's start prompt, Copy the prompt, the
+merger's system prompt (Claude Code's `--system-prompt`, Codex's stdin), `cpr/AGENTS.md`, and a
+verdict's text. `GET` and `POST /api/settings/prompts` serve the Settings page to come (V28b).
+
+**Learned**:
+- **Recording `main`'s prompts before changing the code made "nothing changes" checkable.**
+  `test/fixtures/prompts-before-v28.json` holds 48 start prompts, the merger's instructions,
+  `cpr/AGENTS.md` and 8 verdict texts from `main`'s build; the defaults give each byte for byte,
+  except decision 171's 20.
+- **`cpr/AGENTS.md` was written once a run.** A Settings change would have waited for a restart;
+  it is now written again when the text in use differs from what was written.
+- **Moving the texts was needed to avoid an import cycle**: `reviews.ts` reads the prompts, and
+  the prompts' defaults held `reviews.ts`'s `AGENTS`.
+- **A placeholder filled in one pass** keeps a brief's own `{plan}` or `{branch}` as text. The
+  recorded brief holds `{plan}`, `{brief}` and `{"json": 1}` to check it.
+- **`jsonc-parser` works from ESM by named import** through its UMD build (Node 24); the Action's
+  `pnpm install` brings it.
+- The 13 tests of `prompts.test.ts` were red first (no module). The 5 tests of each use (a
+  kind's start, the merger's instructions, `AGENTS.md` after a change, a verdict's sentences, the
+  server's route) were written with the code, not seen red.
+
+**Verification**: 917 unit tests, lint, typecheck, build. The built CLI in a throwaway repository
+with a fake `claude`: the settings listed, a save written as lines, the next Spike's prompt the
+project's, a stale save 409. The real Claude Code (2.1.303, `sonnet`, read-only, Plan first):
+CPR's Spike prompt gave a plan with "no commits"; a Spike prompt that keeps experiments gave
+`spikes/…`, a commit and a push. Not verified: Codex with a changed prompt; the merger with
+changed instructions on a real conflict; Windows' command-line limit.

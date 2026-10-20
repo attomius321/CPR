@@ -574,8 +574,44 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 | `agent.model` | Claude Code's | The model Claude Code starts with (Codex's is its own configuration's). |
 | `merge.checks` | guessed | The check a merge runs before it lands ([Merging](#merging)): a command, or a list run in order through the shell in CPR's merge worktree. Add an install first when the check needs dependencies, e.g. `["pnpm install --frozen-lockfile", "pnpm check"]`. |
 | `merge.push` | `false` | Push the target branch after a merge lands. |
+| `prompts` | CPR's | What CPR tells its agents, each prompt whole ([below](#agents-prompts)). |
 
 Before V25 the `workspaces` section was called `features`; that name is still read when `workspaces` is not there.
+
+### Agents' prompts
+
+Every text CPR gives its agents can be replaced under `prompts`. A missing key is CPR's text,
+so keep only the prompts you change. A prompt is a string or a list of lines, and `{name}` is
+filled in where the prompt allows it (any other brace is text). Commit `cpr/config.json` to share
+them: it is read at each use, so a change applies to the next agent started.
+
+```json
+{
+  "prompts": {
+    "start": {
+      "spike": [
+        "You are starting a new spike on the branch {branch}, started from {start}.",
+        "",
+        "{brief}",
+        "",
+        "Commit what you try under spikes/, and push the branch."
+      ]
+    }
+  }
+}
+```
+
+| Key | What | Placeholders |
+|---|---|---|
+| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace's start prompt for that kind | `{branch}`, `{start}`, `{brief}` (required), `{plan}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{cpr}` |
+| `plan.first`, `plan.direct` | What `{plan}` becomes, with Plan first and without | none |
+| `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The sentences of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`; `{reviewer}`, `{what}`; `{review}`, `{agents}` |
+| `reviews` | `cpr/AGENTS.md`, how an agent acts on a review | none |
+| `merger` | The merger's instructions; CPR adds the answer format it reads | none |
+
+A value CPR cannot use (not text, a start prompt without `{brief}`, or too long: 8,000
+characters for a start prompt, 1,000 for a sentence, 20,000 otherwise) is ignored, and CPR's
+text is used.
 
 ### `.cprignore`
 

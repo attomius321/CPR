@@ -53,6 +53,7 @@ import { fileStateStore, stateDir } from './state.js';
 import { branchReviews } from './reviews.js';
 import { merger, MergeRefused } from './merges.js';
 import { claudeMerger, codexMerger, type MergerAgent } from './merge-agent.js';
+import { promptSettingsService } from './prompts.js';
 import { codex, findCodex, type Codex } from './codex.js';
 import {
   claudeCode,
@@ -578,6 +579,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       }),
       terminals,
       merges: merger(repo, cacheDir, { mergerAgent: mergerFinder(repo.root, ctx.env) }),
+      settings: promptSettingsService(repo),
     },
     open: vsCodeOpener(repo, ctx.env),
   });

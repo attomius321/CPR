@@ -11,7 +11,8 @@ import {
   type ChangedSymbols,
   type RunCheck,
 } from '../src/merges.js';
-import type { MergerAgent } from '../src/merge-agent.js';
+import { MERGER_INSTRUCTIONS, type MergerAgent } from '../src/merge-agent.js';
+import { MERGER_ANSWER } from '../src/prompts.js';
 import { AGENTS, serializeReview } from '../src/reviews.js';
 import { serializeWorkspace, type WorkspaceFile } from '../src/workspaces.js';
 
@@ -106,7 +107,7 @@ async function make(
 
 /** A merger agent that answers `answers` in turn; what it was asked. */
 function fakeAgent(...answers: string[]) {
-  const asked: { cwd: string; prompt: string; model?: string }[] = [];
+  const asked: { cwd: string; prompt: string; model?: string; instructions?: string }[] = [];
   const agent: MergerAgent = {
     kind: 'claude',
     run: (request) => {
@@ -540,12 +541,29 @@ describe('the merger agent (V26c)', () => {
     expect(prompt).toContain('topic (theirs): T2: a is topic');
     expect(prompt).toContain('<<<<<<< main\nexport const a = "main";\n||||||| ancestor');
     expect(prompt).not.toContain('export const m');
+    expect(agent.asked[0]?.instructions).toBe(MERGER_INSTRUCTIONS);
 
     const landed = await m.approve(id);
     expect(landed.state).toBe('landed');
     expect(repo.git('rev-parse', 'main')).toBe(merge);
     expect(readFileSync(join(repo.root, 'src', 'a.ts'), 'utf8')).toBe(
       'export const a = "main" + "topic";\n',
+    );
+  });
+
+  it("gives the merger the project's instructions, then CPR's answer format (V28)", async () => {
+    const { repo } = conflicting();
+    mkdirSync(join(repo.root, 'cpr'), { recursive: true });
+    writeFileSync(
+      join(repo.root, 'cpr', 'config.json'),
+      JSON.stringify({ prompts: { merger: ['Resolve conflicts.', 'Keep both values.'] } }),
+    );
+    const agent = fakeAgent(BOTH);
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find });
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    expect(agent.asked[0]?.instructions).toBe(
+      `Resolve conflicts.\nKeep both values.\n\n${MERGER_ANSWER}`,
     );
   });
 

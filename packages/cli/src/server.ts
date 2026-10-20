@@ -31,6 +31,7 @@ import { pairKey, type Diffs, type Pair } from './diffs.js';
 import type { OpenRequest, OpenResult } from './editor.js';
 import { WorkspaceRefused, type Workspaces } from './workspaces.js';
 import { MergeRefused, type Merger } from './merges.js';
+import { parsePromptChange, PromptRefused, type PromptSettingsService } from './prompts.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 import type { Terminals } from './terminal.js';
@@ -79,6 +80,8 @@ export interface RepositoryOptions {
   terminals?: Terminals;
   /** CPR's merger (V26): approved branches merged, checked and landed: `/api/merges…`. */
   merges?: Merger;
+  /** Every agent's prompts (V28): `/api/settings/prompts`. */
+  settings?: PromptSettingsService;
 }
 
 export interface ViewServerOptions {
@@ -282,6 +285,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
             answer(res, () => workspaces.terminal(request)),
           );
         }
+      }
+      const { settings } = repository;
+      if (settings && url.pathname === '/api/settings/prompts') {
+        if (req.method === 'GET') return answer(res, () => settings.prompts());
+        return written(req, res, parsePromptChange, (change) =>
+          answer(res, () => settings.setPrompt(change)),
+        );
       }
       const { merges } = repository;
       if (merges) {
@@ -776,12 +786,16 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     return answer(res, () => value(branch));
   }
 
-  /** The answer, or a workspace's or a merge's refusal with its status and words. */
+  /** The answer, or a workspace's, a merge's or a setting's refusal with its status and words. */
   async function answer(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
     try {
       return json(res, 200, await task());
     } catch (error) {
-      if (error instanceof WorkspaceRefused || error instanceof MergeRefused)
+      if (
+        error instanceof WorkspaceRefused ||
+        error instanceof MergeRefused ||
+        error instanceof PromptRefused
+      )
         return json(res, error.status, { error: error.message });
       throw error;
     }
