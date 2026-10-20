@@ -56,6 +56,13 @@ describe('readState and writeState', () => {
     expect(readState(file)).toEqual({ choices: { 'cpr.viewer.theme': 'dark' } });
   });
 
+  it('keeps the recent repositories: absolute paths, ten at most (N1b)', () => {
+    const file = join(dir, 'recent.json');
+    const recent = Array.from({ length: 12 }, (_, i) => `/r/${i}`);
+    writeFileSync(file, JSON.stringify({ recent: ['relative', 7, ...recent] }));
+    expect(readState(file)).toEqual({ recent: recent.slice(0, 10), choices: {} });
+  });
+
   it('writes whole files only, never a half one beside the old', () => {
     const file = join(dir, 'whole.json');
     writeState(file, { choices: { 'cpr.viewer.theme': 'dark' } });

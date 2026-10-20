@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
@@ -39,7 +39,14 @@ import {
   type TsPlugin,
 } from '@cpr/core';
 import { detectForge, type ChangeRequest, type Forge } from '@cpr/forge';
-import { findApp, openAppWindow, type AppWindow } from './app.js';
+import {
+  findApp,
+  installApp,
+  openAppWindow,
+  recordAgain,
+  uninstallApp,
+  type AppWindow,
+} from './app.js';
 import { ciChangeRequestNumber } from './ci.js';
 import { codeQualityReport } from './codequality.js';
 import { Diffs, pairKey } from './diffs.js';
@@ -98,7 +105,11 @@ const processContext = (): CliContext => ({
   openUrl,
   openApp: (url, title) => {
     const app = findApp(process.env);
-    return app ? openAppWindow(app, url, title, process.env) : Promise.resolve(null);
+    if (!app) return Promise.resolve(null);
+    // The launcher's app starts cpr view with what this shell has (decision 197).
+    const where = { env: process.env, platform: process.platform };
+    recordAgain({ ...where, node: process.execPath, cli: CLI_SCRIPT });
+    return openAppWindow(app, url, title, process.env);
   },
   env: process.env,
   // Started by `cpr view` with an IPC channel: phases go back to it.
@@ -107,6 +118,11 @@ const processContext = (): CliContext => ({
     new Promise((resolve) => {
       process.once('SIGINT', () => resolve());
       process.once('SIGTERM', () => resolve());
+      // Started by CPR's app from the desktop (N1b): it stops with the app, even one that died.
+      if (process.env.CPR_STDIN_STOPS === '1') {
+        process.stdin.once('end', () => resolve());
+        process.stdin.resume();
+      }
     }),
 });
 
@@ -139,6 +155,7 @@ Commands:
   pr [<number>]        Review a GitHub pull request or GitLab merge request (alias: mr);
                        in a CI job, the job's own
   merge <branch>       Merge a branch's approved commit, check it, and land it
+  app install          Add CPR's window to your desktop's apps (app uninstall: remove it)
 
 Options:
   -h, --help           Show this help
@@ -225,6 +242,18 @@ Options:
   -h, --help           Show this help
 `;
 
+const APP_HELP = `Usage: cpr app install | uninstall
+
+CPR's window, the desktop app (pnpm app:setup in CPR's folder fetches it). install adds
+CPR to your desktop's apps, for this user, so it opens without a terminal: on the last
+repository it showed, or one you choose. It records this node, this CLI and your PATH,
+which an app started from the desktop does not have. uninstall removes it. Linux only
+for now (WSL included, through WSLg).
+
+Options:
+  -h, --help           Show this help
+`;
+
 const MERGE_HELP = `Usage: cpr merge <branch> [options]
 
 Merges the commit your CPR review of <branch> approved into a target branch, as Merge
@@ -266,6 +295,7 @@ export async function run(
     if (command === 'view') return await view(rest, ctx);
     if (command === 'pr' || command === 'mr') return await pr(rest, ctx);
     if (command === 'merge') return await merge(rest, ctx);
+    if (command === 'app') return appCommand(rest, ctx);
   } catch (error) {
     if (error instanceof UsageError) {
       ctx.stderr(`cpr ${command}: ${error.message}\n\n${error.help}`);
@@ -713,6 +743,64 @@ function mergeLine(entry: MergeEntry): string {
       return check?.ok === false
         ? `failed: ${check.failed ?? ''}${time}\n${check.output ?? ''}`
         : `failed: ${entry.message ?? ''}`;
+  }
+}
+
+/** `cpr app install|uninstall` (N1b): CPR's window in the desktop's apps. */
+function appCommand(argv: string[], ctx: CliContext): number {
+  const { values, positionals } = parse(
+    {
+      args: argv,
+      allowPositionals: true,
+      options: { help: { type: 'boolean', short: 'h', default: false } },
+    },
+    APP_HELP,
+  );
+  const [action, ...extra] = positionals;
+  if (values.help || action === undefined) {
+    ctx.stdout(APP_HELP);
+    return values.help ? 0 : 2;
+  }
+  if (extra.length > 0) throw new UsageError(`unexpected argument '${extra[0]}'`, APP_HELP);
+  const where = { env: ctx.env, platform: process.platform };
+  if (action === 'uninstall') {
+    ctx.stdout(uninstallApp(where));
+    return 0;
+  }
+  if (action !== 'install') throw new UsageError(`unknown action '${action}'`, APP_HELP);
+  const app = findApp(ctx.env);
+  if (!app) {
+    throw new CprError(
+      "CPR's window is not set up: run pnpm app:setup and pnpm build in CPR's folder",
+    );
+  }
+  const desktop = dirname(require.resolve('@cpr/desktop/package.json'));
+  ctx.stdout(
+    installApp({
+      ...where,
+      app,
+      icon: join(desktop, 'icons', 'cpr.png'),
+      node: process.execPath,
+      cli: CLI_SCRIPT,
+    }),
+  );
+  if (refusesSandbox()) {
+    ctx.stderr(
+      "warning: AppArmor here refuses Chromium's sandbox to apps outside a package " +
+        "(kernel.apparmor_restrict_unprivileged_userns=1): CPR's window may not open; see CPR's window in the README\n",
+    );
+  }
+  return 0;
+}
+
+/** Whether AppArmor refuses user namespaces to unpackaged programs (Ubuntu 23.10 and later). */
+function refusesSandbox(): boolean {
+  try {
+    return (
+      readFileSync('/proc/sys/kernel/apparmor_restrict_unprivileged_userns', 'utf8').trim() === '1'
+    );
+  } catch {
+    return false;
   }
 }
 

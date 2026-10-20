@@ -50,6 +50,16 @@ describe('cpr', () => {
     );
   });
 
+  it('explains cpr app, and refuses what it does not know (N1b)', async () => {
+    expect((await cpr(['app'])).code).toBe(2);
+    const help = await cpr(['app', '--help']);
+    expect(help.code).toBe(0);
+    expect(help.stdout).toContain('Usage: cpr app install | uninstall');
+    const odd = await cpr(['app', 'nope']);
+    expect(odd.code).toBe(2);
+    expect(odd.stderr).toContain("unknown action 'nope'");
+  });
+
   it('rejects unknown commands with a usage error', async () => {
     const { code, stderr } = await cpr(['nope']);
     expect(code).toBe(2);

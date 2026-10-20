@@ -4,26 +4,34 @@ export interface AppArgs {
   url?: string;
   /** The window's title until the page sets its own. */
   title?: string;
+  /** A repository to open, whose server the app starts (N1b): an absolute path. */
+  repo?: string;
 }
 
 /**
- * Reads the app's arguments: `--url <address>` and `--title <text>`, either form. Anything else
- * (Chromium's own switches) is left alone. Only a CPR server on this machine is shown: an
- * address that is not `http` on 127.0.0.1 or localhost is dropped.
+ * Reads the app's arguments: `--url <address>`, `--title <text>` and `--repo <path>`, either
+ * form. Anything else (Chromium's own switches) is left alone. Only a CPR server on this machine
+ * is shown: an address that is not `http` on 127.0.0.1 or localhost is dropped, and so is a
+ * repository that is not an absolute path.
  */
 export function parseAppArgs(argv: readonly string[]): AppArgs {
   const args: AppArgs = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] as string;
     const [name, inline] = arg.startsWith('--') && arg.includes('=') ? split(arg) : [arg];
-    if (name !== '--url' && name !== '--title') continue;
+    if (name !== '--url' && name !== '--title' && name !== '--repo') continue;
     const value = inline ?? argv[++i];
     if (value === undefined) break;
     if (name === '--title') args.title = value;
-    else if (isLocalServer(value)) args.url = value;
+    else if (name === '--repo') {
+      if (isAbsolute(value)) args.repo = value;
+    } else if (isLocalServer(value)) args.url = value;
   }
   return args;
 }
+
+/** Absolute on this system or Windows (`/home/a`, `C:\\Users\\a`). */
+const isAbsolute = (path: string) => path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path);
 
 function split(arg: string): [string, string] {
   const at = arg.indexOf('=');

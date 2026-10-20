@@ -1,0 +1,230 @@
+/* The app's start page (N1b): the viewer's tokens and type, on one column. */
+
+@font-face {
+  font-family: 'Geist Variable';
+  font-style: normal;
+  font-weight: 100 900;
+  src: url('../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2')
+    format('woff2-variations');
+}
+
+:root,
+:root[data-theme='dark'] {
+  --bg: #0b0b0c;
+  --panel: #161618;
+  --raised: #1f1f23;
+  --line: #26262b;
+  --text: #e6e6e9;
+  --muted: #8b8b94;
+  --red: #f85149;
+  --blue: #58a6ff;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: #f7f7f5;
+  --panel: #ffffff;
+  --raised: #ececea;
+  --line: #dcdcd8;
+  --text: #1c1c1e;
+  --muted: #5f5f66;
+  --red: #c4271f;
+  --blue: #0b63c5;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    13px / 1.5 'Geist Variable',
+    monospace;
+  -webkit-font-smoothing: antialiased;
+}
+
+.start {
+  width: min(480px, 100% - 32px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.mark {
+  width: 40px;
+  height: 40px;
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mark-head {
+  stroke: var(--blue);
+}
+
+h1 {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.lede,
+.muted {
+  margin: 0;
+  color: var(--muted);
+}
+
+.status {
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  overflow-wrap: anywhere;
+}
+
+.status.error {
+  border-color: var(--red);
+  color: var(--text);
+}
+
+.status.error::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  height: 32px;
+  margin-top: 8px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--blue);
+  color: #0b0b0c;
+  font-weight: 600;
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+kbd {
+  font:
+    11px 'Geist Variable',
+    monospace;
+  opacity: 0.7;
+}
+
+.recent {
+  width: 100%;
+  margin-top: 16px;
+}
+
+h2 {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.repo-row {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+
+.repo-row:hover,
+.repo-row:focus-within {
+  background: var(--raised);
+}
+
+.repo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 8px;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.repo-name {
+  font-weight: 600;
+}
+
+.repo-path {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.forget {
+  width: 28px;
+  height: 28px;
+  margin-right: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  visibility: hidden;
+}
+
+.repo-row:hover .forget,
+.forget:focus-visible {
+  visibility: visible;
+}
+
+.forget:hover {
+  color: var(--text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}

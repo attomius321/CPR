@@ -20,4 +20,9 @@ export default defineConfig(
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: { globals: globals.node },
   },
+  // The desktop app's start page: a classic script in its window.
+  {
+    files: ['packages/desktop/start/**/*.js'],
+    languageOptions: { globals: globals.browser, sourceType: 'script' },
+  },
 );

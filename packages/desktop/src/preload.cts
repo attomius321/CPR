@@ -3,7 +3,7 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- CommonJS, as said above
 import electron = require('electron');
 
-const { ipcRenderer } = electron;
+const { contextBridge, ipcRenderer } = electron;
 const mac = process.platform === 'darwin';
 
 // The viewer's choices (theme, folded sidenav…): each run's server is a new origin with empty
@@ -52,3 +52,14 @@ window.addEventListener('mouseup', (event) => {
   if (event.button === 3) window.history.back();
   else if (event.button === 4) window.history.forward();
 });
+
+// The start page (N1b), a file of the app's own: what it may ask the app. Server pages get
+// none of it.
+if (window.location.protocol === 'file:') {
+  contextBridge.exposeInMainWorld('cprStart', {
+    recent: (): unknown => ipcRenderer.sendSync('cpr:start:recent'),
+    forget: (repo: string): unknown => ipcRenderer.sendSync('cpr:start:forget', repo),
+    open: (repo: string) => ipcRenderer.send('cpr:start:open', repo),
+    choose: () => ipcRenderer.send('cpr:start:choose'),
+  });
+}

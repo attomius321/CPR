@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createRequire } from 'node:module';
@@ -239,4 +239,132 @@ test('cpr view opens its window, and ends when the window closes', async () => {
   } finally {
     cli.kill();
   }
+});
+
+// From the desktop's launcher (N1b): the app starts the repository's server itself.
+test.describe('from the launcher', () => {
+  const cli = join(root, 'packages/cli/dist/bin.js');
+
+  /** What `cpr app install` records, and the repositories opened before. */
+  function installed(recent: string[] = [], record = true) {
+    mkdirSync(join(config, 'cpr', 'app'), { recursive: true });
+    if (record) {
+      writeFileSync(
+        join(config, 'cpr', 'app.json'),
+        JSON.stringify({ node: process.execPath, cli, path: process.env.PATH }),
+      );
+    }
+    writeFileSync(
+      join(config, 'cpr', 'app', 'state.json'),
+      JSON.stringify({ choices: {}, recent }),
+    );
+  }
+
+  /** The app as a launcher starts it: no address; never a real agent or your usage. */
+  const launcherEnv = () => ({
+    ...appEnv(config),
+    CPR_CLAUDE: '/nonexistent/claude',
+    CPR_CODEX: '/nonexistent/codex',
+    CPR_USAGE: 'off',
+  });
+
+  async function fromLauncher(): Promise<{ app: ElectronApplication; page: Page }> {
+    const app = await _electron.launch({
+      executablePath: electron as string,
+      args: [desktop],
+      env: launcherEnv(),
+    });
+    running.push(app);
+    const page = await app.firstWindow();
+    page.on('pageerror', (error) => errors.push(error.message));
+    return { app, page };
+  }
+
+  /** The `cpr view` the app started: its process ID. */
+  const server = (app: ElectronApplication) => {
+    try {
+      const pid = String(app.process().pid);
+      return execFileSync('pgrep', ['-P', pid, '-f', 'bin.js view --no-open'], {
+        encoding: 'utf8',
+      }).trim();
+    } catch {
+      return '';
+    }
+  };
+
+  const alive = (pid: number) => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  test('opens the last repository on a server of its own, stopped with the window', async () => {
+    installed([cpr.repo]);
+    const { app, page } = await fromLauncher();
+    await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
+    expect(page.url()).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/history$/);
+    await expect.poll(() => server(app)).toMatch(/^\d+$/);
+    const pid = Number(server(app));
+
+    const ended = new Promise((resolve) => app.process().once('exit', resolve));
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.close());
+    await ended;
+    await expect.poll(() => alive(pid)).toBe(false);
+  });
+
+  test('its server ends with the app, even a killed one', async () => {
+    installed([cpr.repo]);
+    const { app, page } = await fromLauncher();
+    await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
+    await expect.poll(() => server(app)).toMatch(/^\d+$/);
+    const pid = Number(server(app));
+    app.process().kill('SIGKILL');
+    await expect.poll(() => alive(pid), { timeout: 10_000 }).toBe(false);
+  });
+
+  test('the start page: a folder that is no repository, then one; the recent list', async () => {
+    installed();
+    const { app, page } = await fromLauncher();
+    await expect(page.getByRole('heading', { name: 'CPR', exact: true })).toBeVisible();
+    await expect(page.getByText('The repositories you open show here.')).toBeVisible();
+
+    const notes = mkdtempSync(join(tmpdir(), 'cpr-notes-'));
+    try {
+      await app.evaluate(
+        ({ dialog }, chosen) => {
+          dialog.showOpenDialog = () =>
+            Promise.resolve({ canceled: false, filePaths: [chosen.shift() ?? ''] });
+        },
+        [notes, cpr.repo],
+      );
+      await page.getByRole('button', { name: /Open a repository/ }).click();
+      await expect(page.getByRole('status')).toContainText('not inside a git working tree');
+      await page.getByRole('button', { name: /Open a repository/ }).click();
+      await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
+      const state = JSON.parse(readFileSync(join(config, 'cpr', 'app', 'state.json'), 'utf8')) as {
+        recent: string[];
+      };
+      expect(state.recent).toEqual([cpr.repo]);
+    } finally {
+      rmSync(notes, { recursive: true, force: true });
+    }
+  });
+
+  test('launched again, the running app takes it: one window', async () => {
+    installed([cpr.repo]);
+    const { app, page } = await fromLauncher();
+    await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
+    const again = spawn(electron as string, [desktop], { env: launcherEnv() });
+    expect(await new Promise((resolve) => again.once('exit', resolve))).toBe(0);
+    expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+  });
+
+  test('says what to run when cpr app install never ran', async () => {
+    installed([cpr.repo], false);
+    const { page } = await fromLauncher();
+    await expect(page.getByRole('status')).toContainText('run cpr app install in a terminal');
+  });
 });

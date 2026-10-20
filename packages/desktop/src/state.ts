@@ -10,6 +10,9 @@ export const CHOICES = [
   'cpr.viewer.widths',
 ] as const;
 
+/** How many recent repositories are kept. */
+export const RECENT = 10;
+
 /** Where the window was. */
 export interface WindowState {
   x?: number;
@@ -24,6 +27,8 @@ export interface AppState {
   window?: WindowState;
   /** Chromium's zoom level: 0 is 100 %, each step 20 %. */
   zoom?: number;
+  /** Repositories opened from the app (N1b), the latest first. */
+  recent?: string[];
   /**
    * The viewer's choices. Each run's server has a port of its own, so a new origin with empty
    * storage: the app puts them back before the page's scripts run.
@@ -55,11 +60,17 @@ export function readState(file: string): AppState {
   if (!isRecord(value)) return { choices: {} };
   const window = readWindow(value.window);
   const zoom = value.zoom;
+  const recent = Array.isArray(value.recent)
+    ? value.recent
+        .filter((repo): repo is string => typeof repo === 'string' && repo.startsWith('/'))
+        .slice(0, RECENT)
+    : [];
   return {
     ...(window ? { window } : {}),
     ...(typeof zoom === 'number' && Number.isFinite(zoom) && zoom >= -8 && zoom <= 9
       ? { zoom }
       : {}),
+    ...(recent.length > 0 ? { recent } : {}),
     choices: readChoices(value.choices),
   };
 }

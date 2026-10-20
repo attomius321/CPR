@@ -70,6 +70,7 @@ cpr diff main     # the same, in the terminal
 | `cpr diff <base> [head]` | Compares `head` (default `HEAD`) with where it left `base`, as a pull request does, and prints the changed symbols and the findings. |
 | `cpr view [<base> [head]]` | Opens the viewer: in [CPR's window](#cprs-window) once the desktop app is set up, else in the browser. Without revisions it opens on the repository's History, with your workspaces in the sidenav; with them, on that comparison. Runs until Ctrl+C, or until its window is closed. |
 | `cpr pr [<number>]` | Reviews a GitHub pull request or a GitLab merge request (`cpr mr` is the same command). In a CI job for one, the number comes from the job. |
+| `cpr app install` | Adds [CPR's window](#cprs-window) to your desktop's apps, so it opens without a terminal; `cpr app uninstall` removes it. Linux, WSL included. |
 | `cpr merge <branch>` | Merges the commit your review of `branch` approved, as Merge does in the viewer ([Merging](#merging)): `--into <branch>` picks the target, `--land` lands a merge that waits for you. |
 
 `cpr diff` in a repository where one function was added, one removed and one changed:
@@ -139,6 +140,14 @@ as `--browser` does.
 
 - **Closing the window stops `cpr view`**, as Ctrl+C does; Ctrl+C closes the window. Agents in
   workspaces keep running either way.
+- **From your desktop's apps**: `cpr app install`, once, in a terminal where `cpr` works, adds CPR
+  to them for this user (`~/.local/share/applications/cpr.desktop` and its icon). Opened from
+  there, CPR shows the last repository it showed, else a start page: open a repository, or one
+  of the recent ones. Each repository gets its own window and its own `cpr view`, which stops
+  with the window, and with the app even if it crashes. Opened again, the running CPR comes to
+  the front. A desktop's apps do not read your shell's profile, so `cpr app install` records the
+  node, the CLI and the `PATH` (`~/.config/cpr/app.json`) that `cpr view` will need to find git
+  and your agents; each `cpr view` that opens CPR's window records them again.
 - **Links that leave CPR** (a pull request, a link in a thread) open in your default browser.
 - **Keys**: Ctrl+= and Ctrl+− zoom, Ctrl+0 back to 100 %; Alt+← and Alt+→ (and the mouse's side
   buttons) go back and forward; Ctrl+R or F5 reloads; Ctrl+Shift+I opens the inspector. On macOS,

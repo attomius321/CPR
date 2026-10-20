@@ -27,6 +27,12 @@ describe('parseAppArgs', () => {
     expect(parseAppArgs([])).toEqual({});
   });
 
+  it('reads a repository to open: an absolute path (N1b)', () => {
+    expect(parseAppArgs(['--repo', '/home/a/ky'])).toEqual({ repo: '/home/a/ky' });
+    expect(parseAppArgs(['--repo=/home/a/my repo'])).toEqual({ repo: '/home/a/my repo' });
+    expect(parseAppArgs(['--repo', 'ky'])).toEqual({});
+  });
+
   it('shows only a CPR server on this machine: http on 127.0.0.1 or localhost', () => {
     for (const url of [
       'https://127.0.0.1:4100/',
