@@ -45,10 +45,20 @@ export interface BranchReviewFile {
   verdicts: Verdict[];
 }
 
-/** Written once into `cpr/`: reviews stay out of git until it is deleted. */
+/**
+ * Written once into `cpr/`: reviews stay out of git until it is deleted; the project's settings
+ * (`config.json`) and the merger's rules (`merge.md`, V26c) are the project's to commit.
+ */
 export const GITIGNORE =
   '# Written by CPR: reviews stay on this machine. Delete this file to commit and share them.\n' +
-  '*\n!config.json\n';
+  '*\n!config.json\n!merge.md\n';
+
+/** What earlier CPRs wrote as `cpr/.gitignore`: replaced by `GITIGNORE`, being CPR's own. */
+const EARLIER_GITIGNORES = new Set([
+  // V15 to V26c: it hid cpr/merge.md.
+  '# Written by CPR: reviews stay on this machine. Delete this file to commit and share them.\n' +
+    '*\n!config.json\n',
+]);
 
 /** Every review file's first key (V17): where an agent that opens it learns what to do. */
 export const REVIEW_ABOUT =
@@ -205,7 +215,7 @@ export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<Revi
 }
 
 /** What CPR itself keeps in `cpr/`, beside the reviews: a project may commit them. */
-const CPR_FILES = new Set(['cpr/config.json', 'cpr/.gitignore', 'cpr/AGENTS.md']);
+const CPR_FILES = new Set(['cpr/config.json', 'cpr/.gitignore', 'cpr/AGENTS.md', 'cpr/merge.md']);
 
 /** A review's file: the branch's slashes as folders, the reviewer as its name. */
 export function reviewPath(dir: string, branch: string, reviewer: string): string {
@@ -270,8 +280,9 @@ function asMarks(value: unknown): Record<string, string> {
 }
 
 /**
- * Before CPR writes into `cpr/`: its `.gitignore`, unless one exists (then it is the project's),
- * and, when `agents`, the agents' instructions beside it (V17), rewritten when CPR's text differs.
+ * Before CPR writes into `cpr/`: its `.gitignore`, unless one exists (then it is the project's,
+ * unless an earlier CPR wrote it), and, when `agents`, the agents' instructions beside it (V17),
+ * rewritten when CPR's text differs.
  */
 export async function prepareCprFolder(
   where: ReviewPlace,
@@ -279,11 +290,16 @@ export async function prepareCprFolder(
 ): Promise<void> {
   if (where.gitignore) {
     await mkdir(dirname(where.gitignore), { recursive: true });
-    await writeFile(where.gitignore, GITIGNORE, { flag: 'wx' }).catch(
-      (error: NodeJS.ErrnoException) => {
-        if (error.code !== 'EEXIST') throw error;
-      },
-    );
+    const existing = await readFile(where.gitignore, 'utf8').catch(() => null);
+    if (existing === null) {
+      await writeFile(where.gitignore, GITIGNORE, { flag: 'wx' }).catch(
+        (error: NodeJS.ErrnoException) => {
+          if (error.code !== 'EEXIST') throw error;
+        },
+      );
+    } else if (EARLIER_GITIGNORES.has(existing)) {
+      await writeFile(where.gitignore, GITIGNORE);
+    }
   }
   if (!agents) return;
   const current = await readFile(where.agents, 'utf8').catch(() => null);
