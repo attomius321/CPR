@@ -3391,6 +3391,8 @@ listed, 3 archived), with the probe's thread on the private server. Not verified
 Codex's own terminal on the real daemon, an approval answered there (both V27b), the daemon
 restarting during a turn (the fake only), macOS and Windows.
 
+Merged into main (2026-10-20), with V27b (entry below).
+
 ## V27b spike — Codex's own terminal on a CPR thread (2026-10-20, branch `milestone/v27-codex-terminal`)
 
 Asked: "Start v27b". Codex 0.163.0, the person's daemon: a thread started as V27a starts one, in a
@@ -3471,3 +3473,7 @@ from the sandbox in 15 s; a turn typed in 128 ms to the thread; an approval answ
 the panel's terminal (22 ms to clear "needs you"); Stop 45 ms with the command ended; no page
 errors; screenshots light and dark at 1440 and 390 px. Cleaned up: 5 threads archived, the
 throwaway repositories deleted, the person's Codex configuration as it was before the runs.
+
+Merged into main (2026-10-20): V27a and V27b, no conflicts (`main` had not moved since the branch
+started; the merge's tree is the branch's). `main` verified after the merge: frozen install, 899
+unit tests, lint, typecheck, build, 120 of 120 e2e.
