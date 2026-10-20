@@ -1,6 +1,7 @@
 // Workspaces started from the commits page (V18): what `cpr view`'s server answers and the viewer
 // reads. Types only; the CLI keeps the records and starts the agents.
 import type { VerdictEvent } from './git/branches.js';
+import type { FileChangeStatus } from './git/changed-files.js';
 
 /** How a workspace's agent is doing, as the commits page shows it. */
 export type AgentStateName =
@@ -132,6 +133,51 @@ export interface WorkspaceList {
   note?: string;
   /** Whether an agent's session can be shown in a terminal (V21); only with workspaces. */
   terminal?: TerminalAvailability;
+}
+
+/** A commit on a workspace's branch, as its changes panel lists it (V29d). */
+export interface WorkspaceCommit {
+  sha: string;
+  subject: string;
+  author: string;
+  /** Author date, ISO 8601 with the author's offset. */
+  date: string;
+}
+
+/** A file changed on a workspace's branch, or not committed in its worktree (V29d). */
+export interface WorkspaceFileChange {
+  status: FileChangeStatus | 'untracked' | 'conflicted';
+  /** Repo-relative POSIX path: where it is now, or where it was for a deleted file. */
+  path: string;
+  /** Before a rename or copy. */
+  previousPath?: string;
+  /** Lines added and removed; absent for a binary file and a file git does not track yet. */
+  added?: number;
+  removed?: number;
+  binary?: true;
+}
+
+/**
+ * `GET /api/workspaces/changes?branch=` (V29d): what a workspace's branch holds — what Review will
+ * show — and what its worktree has not committed.
+ */
+export interface WorkspaceChanges {
+  branch: string;
+  /**
+   * Where its commits start: the fork point with the default branch, as Review computes it; the
+   * commit the workspace started at once merged, or without a default branch.
+   */
+  base: string;
+  /** The default branch, when `base` is the fork point with it. */
+  since?: string;
+  /** The branch's tip; null once the branch is gone. */
+  tip: string | null;
+  /** Its commits since `base`, newest first: at most 100, and how many in all. */
+  commits: { count: number; listed: WorkspaceCommit[] };
+  /** The files they change, at most 300; how many, and their lines, in all. */
+  files: { count: number; added: number; removed: number; listed: WorkspaceFileChange[] };
+  /** The files its worktree has not committed (as many listed); null once the worktree is gone. */
+  uncommitted: { count: number; listed: WorkspaceFileChange[] } | null;
 }
 
 /** Whether `cpr view` can run terminals (node-pty, optional), else why not (V21). */

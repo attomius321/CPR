@@ -7,6 +7,7 @@ import {
   type BranchReviewInfo,
   type CheckoutTarget,
   type WorkspaceOptions,
+  type WorkspaceChanges,
   type WorkspaceReply,
   type WorkspaceRequest,
   type WorkspaceSummary,
@@ -1156,10 +1157,14 @@ describe('cpr view: workspaces (V18)', () => {
         ? Promise.resolve({ workspace: summary, prompt: 'Build it.' })
         : Promise.reject(new WorkspaceRefused('its agent is not running', 409));
     },
-    openWorktree: (branch) => {
-      openedWorkspaces.push(branch);
+    openWorktree: (branch, file) => {
+      openedWorkspaces.push(file ? `${branch} ${JSON.stringify(file)}` : branch);
       return Promise.resolve();
     },
+    changes: (branch) =>
+      branch === 'feature/csv'
+        ? Promise.resolve(changes)
+        : Promise.reject(new WorkspaceRefused(`no workspace ${branch}`, 404)),
     merge: () => Promise.resolve({ into: 'main', conflicts: ['src/a.ts'] }),
     thread: (branch) =>
       branch === 'feature/csv'
@@ -1182,6 +1187,15 @@ describe('cpr view: workspaces (V18)', () => {
       return Promise.resolve({ finished: C });
     },
     terminal: () => Promise.reject(new WorkspaceRefused('no terminals here', 409)),
+  };
+  const changes: WorkspaceChanges = {
+    branch: 'feature/csv',
+    base: C,
+    since: 'main',
+    tip: C,
+    commits: { count: 0, listed: [] },
+    files: { count: 0, added: 0, removed: 0, listed: [] },
+    uncommitted: { count: 1, listed: [{ status: 'untracked', path: 'notes.md' }] },
   };
   const replies: WorkspaceReply[] = [];
   const cleaned: { branch: string; unmerged?: boolean }[] = [];
@@ -1362,6 +1376,29 @@ describe('cpr view: workspaces (V18)', () => {
     }
     expect(stopped.length).toBe(2);
     expect(openedWorkspaces.length).toBe(1);
+  });
+
+  it("gives a workspace's changes and opens one of its files (V29d)", async () => {
+    const answer = await get('/api/workspaces/changes?branch=feature%2Fcsv');
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual(changes);
+    expect((await get('/api/workspaces/changes?branch=nope')).status).toBe(404);
+    expect((await get('/api/workspaces/changes')).status).toBe(400);
+    expect((await post('/api/workspaces/changes', { branch: 'feature/csv' })).status).toBe(405);
+
+    openedWorkspaces.length = 0;
+    const file = { branch: 'feature/csv', file: 'src/new.ts', previousPath: 'src/old.ts' };
+    expect((await post('/api/workspaces/open', file)).status).toBe(200);
+    expect(openedWorkspaces).toEqual([
+      'feature/csv {"path":"src/new.ts","previousPath":"src/old.ts"}',
+    ]);
+    for (const bad of [
+      { branch: 'feature/csv', file: 3 },
+      { branch: 'feature/csv', file: '' },
+    ]) {
+      expect((await post('/api/workspaces/open', bad)).status, JSON.stringify(bad)).toBe(400);
+    }
+    expect(openedWorkspaces).toHaveLength(1);
   });
 
   it('starts one workspace at a time, and only for the page itself', async () => {

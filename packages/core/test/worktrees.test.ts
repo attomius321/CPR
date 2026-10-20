@@ -10,8 +10,10 @@ import {
   listWorktrees,
   mainWorktree,
   openRepo,
+  parseWorktreeStatus,
   removeWorktree,
   uncommittedFiles,
+  worktreeStatus,
   WorktreeRefused,
 } from '../src/index.js';
 import { createRepo, tempDir, type TestRepo } from './helpers/git-repo.js';
@@ -167,6 +169,51 @@ describe('uncommittedFiles', () => {
     expect(await uncommittedFiles(folder)).toBe(4);
     // The checkout it came from is not counted.
     expect(await uncommittedFiles(repo.root)).toBe(0);
+  });
+});
+
+describe('worktreeStatus (V29d)', () => {
+  it("lists a worktree's files not committed: changed, staged, new, deleted, renamed; ignored ones not", async () => {
+    const { repo, shas } = fresh();
+    const folder = join(elsewhere(), 'feature-csv');
+    await addWorktree(await openRepo(repo.root), { folder, branch: 'feature/csv', base: shas.B });
+    expect(await worktreeStatus(folder)).toEqual([]);
+    writeFileSync(join(folder, 'a.ts'), 'export const a = 2;\n');
+    mkdirSync(join(folder, 'src'));
+    writeFileSync(join(folder, 'src', 'new file.ts'), 'export const n = 1;\n');
+    writeFileSync(join(folder, 'staged.ts'), 'export const s = 1;\n');
+    writeFileSync(join(folder, '.gitignore'), 'build/\n');
+    mkdirSync(join(folder, 'build'));
+    writeFileSync(join(folder, 'build', 'out.js'), '1;\n');
+    repo.git('-C', folder, 'add', 'staged.ts');
+    repo.git('-C', folder, 'mv', 'b.ts', 'c.ts');
+    expect(await worktreeStatus(folder)).toEqual([
+      { status: 'modified', path: 'a.ts' },
+      { status: 'renamed', path: 'c.ts', previousPath: 'b.ts' },
+      { status: 'added', path: 'staged.ts' },
+      { status: 'untracked', path: '.gitignore' },
+      { status: 'untracked', path: 'src/new file.ts' },
+    ]);
+    repo.git('-C', folder, 'rm', '--quiet', '--cached', 'c.ts');
+    rmSync(join(folder, 'c.ts'));
+    expect((await worktreeStatus(folder)).find((f) => f.path === 'b.ts')).toEqual({
+      status: 'deleted',
+      path: 'b.ts',
+    });
+  });
+
+  it("reads git's two letters: conflicts, a change staged and changed again, a type change", () => {
+    expect(
+      parseWorktreeStatus(
+        ['UU both.ts', 'AA added twice.ts', 'MM twice.ts', ' T link', ' D gone.ts', ''].join('\0'),
+      ),
+    ).toEqual([
+      { status: 'conflicted', path: 'both.ts' },
+      { status: 'conflicted', path: 'added twice.ts' },
+      { status: 'modified', path: 'twice.ts' },
+      { status: 'type-changed', path: 'link' },
+      { status: 'deleted', path: 'gone.ts' },
+    ]);
   });
 });
 

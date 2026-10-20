@@ -70,3 +70,68 @@ export function parseNameStatus(output: string): ChangedFile[] {
   }
   return files;
 }
+
+/** A file's lines added and removed (V29d); null for a binary file. */
+export interface LineCount {
+  /** Repo-relative POSIX path: in `to`, or in `from` for a deleted file. */
+  path: string;
+  /** Path in `from`, for renamed and copied files. */
+  previousPath?: string;
+  added: number | null;
+  removed: number | null;
+}
+
+/**
+ * Lines added and removed per file between two commits, with rename detection; without `to`,
+ * between `from` and the working copy at `repo.root` (tracked files only).
+ */
+export async function listLineCounts(
+  repo: GitRepo,
+  from: string,
+  to?: string,
+): Promise<LineCount[]> {
+  const output = await git(repo.root, [
+    'diff',
+    '--numstat',
+    '-z',
+    '-M',
+    '--no-color',
+    '--no-ext-diff',
+    '--no-relative',
+    from,
+    ...(to === undefined ? [] : [to]),
+    '--',
+  ]);
+  return parseNumstat(output);
+}
+
+/**
+ * Parses `git diff --numstat -z`: `<added>\t<removed>\t<path>\0`, or for a rename
+ * `<added>\t<removed>\t\0<old>\0<new>\0`; `-` for both counts of a binary file.
+ */
+export function parseNumstat(output: string): LineCount[] {
+  const fields = output.split('\0');
+  const counts: LineCount[] = [];
+  for (let i = 0; i < fields.length; i++) {
+    const record = fields[i] ?? '';
+    if (record === '') continue;
+    const match = /^(\d+|-)\t(\d+|-)\t(.*)$/s.exec(record);
+    if (!match) throw new Error(`unexpected git diff --numstat record '${record}'`);
+    const [, added = '', removed = '', path = ''] = match;
+    const lines = {
+      added: added === '-' ? null : Number(added),
+      removed: removed === '-' ? null : Number(removed),
+    };
+    if (path !== '') {
+      counts.push({ path, ...lines });
+      continue;
+    }
+    const previousPath = fields[++i];
+    const next = fields[++i];
+    if (previousPath === undefined || next === undefined) {
+      throw new Error('truncated git diff --numstat output');
+    }
+    counts.push({ path: next, previousPath, ...lines });
+  }
+  return counts;
+}

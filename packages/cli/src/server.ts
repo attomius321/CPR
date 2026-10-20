@@ -260,9 +260,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           return onBranch(req, res, (branch) => answer(res, () => workspaces.stopAgent(branch)));
         }
         if (url.pathname === '/api/workspaces/open') {
-          return onBranch(req, res, (branch) =>
-            answer(res, () => workspaces.openWorktree(branch).then(() => ({}))),
+          return written(req, res, parseWorkspaceOpen, ({ branch, file }) =>
+            answer(res, () => workspaces.openWorktree(branch, file).then(() => ({}))),
           );
+        }
+        if (url.pathname === '/api/workspaces/changes') {
+          return ofBranch(req, res, url, (branch) => workspaces.changes(branch));
         }
         if (url.pathname === '/api/workspaces/prompt') {
           return ofBranch(req, res, url, (branch) =>
@@ -1107,6 +1110,30 @@ function parseWorkspaceClean(text: string): { branch: string; unmerged?: boolean
     throw new Error('unmerged: true or false');
   }
   return { branch: value.branch, ...(value.unmerged ? { unmerged: true } : {}) };
+}
+
+/**
+ * `{ branch, file?, previousPath? }`: a workspace's worktree to open, or a file in it (V29d) and,
+ * for a renamed file, where it was.
+ */
+function parseWorkspaceOpen(text: string): {
+  branch: string;
+  file?: { path: string; previousPath?: string };
+} {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
+  if (value.file === undefined) return { branch: value.branch };
+  if (typeof value.file !== 'string' || value.file === '') {
+    throw new Error('file: a path in its worktree');
+  }
+  if (value.previousPath !== undefined && typeof value.previousPath !== 'string') {
+    throw new Error('previousPath: where a renamed file was');
+  }
+  const { previousPath } = value;
+  return {
+    branch: value.branch,
+    file: { path: value.file, ...(previousPath ? { previousPath } : {}) },
+  };
 }
 
 /** `{ branch, into }`: a branch to merge, and the branch to merge it into (V26). */

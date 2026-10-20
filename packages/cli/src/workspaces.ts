@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { basename, dirname, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   addWorktree,
@@ -10,16 +10,22 @@ import {
   branchNameProblem,
   checkMerge,
   commitFolders,
+  commitDetails,
   commitsBetween,
   defaultBranch,
   deleteMergedBranch,
+  firstChangedLine,
+  forkPoint,
   isAncestor,
   isCommit,
+  listChangedFiles,
+  listLineCounts,
   listRefs,
   PERMISSION_MODES,
   removeWorktree,
   uncommittedFiles,
   userEmail,
+  worktreeStatus,
   WorktreeRefused,
   WORK_KINDS,
   type AgentKind,
@@ -30,6 +36,8 @@ import {
   type CheckGuess,
   type AgentStateName,
   type WorkspaceAgentState,
+  type WorkspaceChanges,
+  type WorkspaceFileChange,
   type WorkspaceList,
   type WorkspaceOptions,
   type WorkspaceReplied,
@@ -850,8 +858,16 @@ export interface Workspaces {
   saveDraft(value: Record<string, unknown>): Promise<void>;
   /** Stops its agent while it works or waits. */
   stopAgent(branch: string): Promise<WorkspaceStart>;
-  /** Opens its worktree's folder in the editor (V12's VS Code). */
-  openWorktree(branch: string): Promise<void>;
+  /**
+   * Opens its worktree's folder in the editor (V12's VS Code); with `file`, that file in it at its
+   * first change since the fork point (V29d). `previousPath`: where a renamed file was.
+   */
+  openWorktree(branch: string, file?: { path: string; previousPath?: string }): Promise<void>;
+  /**
+   * Its branch's commits and files since the fork point (what Review will show), and its
+   * worktree's files not committed (V29d).
+   */
+  changes(branch: string): Promise<WorkspaceChanges>;
   /** Whether its branch merges cleanly into the default branch (V17's check), once per pair. */
   merge(branch: string): Promise<BranchMerge>;
   /** Its thread (V18c): what its agent was given and reported, and its review's last verdict. */
@@ -913,10 +929,23 @@ export function agentSettings(
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-/** Opens a folder in the editor; why not when it cannot. */
+/** Opens a folder in the editor, or a file in it at a line (V29d); why not when it cannot. */
 export type OpenFolder = (
   folder: string,
+  at?: { file: string; line: number },
 ) => Promise<{ opened: true } | { opened: false; message: string }>;
+
+/** How many commits, and files, a workspace's changes list (V29d). */
+const MAX_LISTED_COMMITS = 100;
+const MAX_LISTED_FILES = 300;
+
+/** A file's lines as the changes list them: none for a binary file. */
+const linesOf = (count: { added: number | null; removed: number | null } | undefined) =>
+  count === undefined
+    ? {}
+    : count.added === null || count.removed === null
+      ? { binary: true as const }
+      : { added: count.added, removed: count.removed };
 
 /** Workspaces of `repo`, kept beside its reviews (`cpr/workspaces/`, else CPR's cache). */
 export function workspaces(
@@ -1106,6 +1135,87 @@ export function workspaces(
   const merges = new Map<string, Promise<BranchMerge>>();
   /** Check commands by commit: a commit's files never change. */
   const checks = new Map<string, Promise<CheckGuess | null>>();
+  /** Each branch's commits and files, for the base and tip they were read at (V29d). */
+  const branchChanges = new Map<
+    string,
+    { key: string; read: Promise<Pick<WorkspaceChanges, 'commits' | 'files'>> }
+  >();
+
+  /**
+   * Where a workspace's commits start (decision 187): the fork point with the default branch, as
+   * Review computes it; the commit it started at once merged (the fork point is then its tip,
+   * which a branch without commits yet also is) or without a default branch. `since` names the
+   * default branch when it is the fork point.
+   */
+  async function changesBase(
+    workspace: WorkspaceFile,
+    refs: RefList,
+    tip: string,
+  ): Promise<{ base: string; since?: string }> {
+    const main = await defaultBranch(repo, refs);
+    const fork = main && main !== workspace.branch ? await forkPoint(repo, tip, main, refs) : null;
+    if (fork && main && (fork !== tip || fork === workspace.base))
+      return { base: fork, since: main };
+    return { base: workspace.base };
+  }
+
+  /** A branch's commits from `base` to `tip`, and the files they change with their lines. */
+  async function readBranchChanges(
+    base: string,
+    tip: string,
+  ): Promise<Pick<WorkspaceChanges, 'commits' | 'files'>> {
+    const [between, changed, counts] = await Promise.all([
+      commitsBetween(repo, base, tip, MAX_LISTED_COMMITS),
+      listChangedFiles(repo, base, tip),
+      listLineCounts(repo, base, tip),
+    ]);
+    const commits = await commitDetails(repo, between.shas);
+    const lines = new Map(counts.map((count) => [count.path, count]));
+    let added = 0;
+    let removed = 0;
+    for (const count of counts) {
+      added += count.added ?? 0;
+      removed += count.removed ?? 0;
+    }
+    return {
+      commits: {
+        count: between.count,
+        listed: commits.map(({ sha, subject, author, date }) => ({ sha, subject, author, date })),
+      },
+      files: {
+        count: changed.length,
+        added,
+        removed,
+        listed: changed
+          .slice(0, MAX_LISTED_FILES)
+          .map(({ status, path, previousPath }): WorkspaceFileChange => ({
+            status,
+            path,
+            ...(previousPath ? { previousPath } : {}),
+            ...linesOf(lines.get(path)),
+          })),
+      },
+    };
+  }
+
+  /** The files a worktree has not committed, with the lines of those git tracks. */
+  async function worktreeChanges(folder: string): Promise<WorkspaceChanges['uncommitted']> {
+    const worktree = { ...repo, root: folder };
+    const [files, counts] = await Promise.all([
+      worktreeStatus(folder),
+      listLineCounts(worktree, 'HEAD').catch(() => []),
+    ]);
+    const lines = new Map(counts.map((count) => [count.path, count]));
+    return {
+      count: files.length,
+      listed: files.map(({ status, path, previousPath }) => ({
+        status,
+        path,
+        ...(previousPath ? { previousPath } : {}),
+        ...(status === 'untracked' ? {} : linesOf(lines.get(path))),
+      })),
+    };
+  }
 
   /** The agent of `kind`, when it is installed. */
   async function found(kind: AgentKind): Promise<FoundAgent | null> {
@@ -1683,14 +1793,59 @@ export function workspaces(
       return started(where, workspace, await promptOf(where, workspace));
     },
 
-    async openWorktree(branch) {
+    async openWorktree(branch, file) {
       const workspace = await recorded(await place(), branch);
+      const paths = file ? [file.path, ...(file.previousPath ? [file.previousPath] : [])] : [];
+      for (const path of paths) {
+        const normal = posix.normalize(path);
+        if (path === '' || isAbsolute(path) || normal.startsWith('../') || normal === '..') {
+          throw new WorkspaceRefused(`not a path in its worktree: ${path}`, 400);
+        }
+      }
       if (!existsSync(workspace.worktree)) {
         throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
       }
+      let at: { file: string; line: number } | undefined;
+      if (file) {
+        if (!existsSync(join(workspace.worktree, ...file.path.split('/')))) {
+          throw new WorkspaceRefused(`${file.path} is not in its worktree`, 409);
+        }
+        // Its first change since where its commits start, the working copy included.
+        const refs = await listRefs(repo);
+        const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha;
+        const { base } = tip ? await changesBase(workspace, refs, tip) : { base: workspace.base };
+        const worktree = { ...repo, root: workspace.worktree };
+        const line = await firstChangedLine(worktree, base, paths).catch(() => null);
+        at = { file: file.path, line: line ?? 1 };
+      }
       if (!openFolder) throw new WorkspaceRefused('no editor to open it in', 409);
-      const result = await openFolder(workspace.worktree);
+      const result = await openFolder(workspace.worktree, at);
       if (!result.opened) throw new WorkspaceRefused(result.message, 502);
+    },
+
+    async changes(branch) {
+      const workspace = await recorded(await place(), branch);
+      const refs = await listRefs(repo);
+      const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha ?? null;
+      const uncommitted = existsSync(workspace.worktree)
+        ? await worktreeChanges(workspace.worktree)
+        : null;
+      const none = {
+        commits: { count: 0, listed: [] },
+        files: { count: 0, added: 0, removed: 0, listed: [] },
+      };
+      if (!tip || !(await isCommit(repo, workspace.base))) {
+        return { branch, base: workspace.base, tip, ...none, uncommitted };
+      }
+      const where = await changesBase(workspace, refs, tip);
+      const key = `${where.base}:${tip}`;
+      let kept = branchChanges.get(branch);
+      if (kept?.key !== key) {
+        kept = { key, read: readBranchChanges(where.base, tip) };
+        branchChanges.set(branch, kept);
+        kept.read.catch(() => branchChanges.delete(branch));
+      }
+      return { branch, ...where, tip, ...(await kept.read), uncommitted };
     },
 
     async merge(branch) {

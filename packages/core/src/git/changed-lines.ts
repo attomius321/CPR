@@ -100,3 +100,32 @@ function unquote(quoted: string): string {
   }
   return Buffer.from(bytes).toString('utf8');
 }
+
+/**
+ * Where a file's first change is in the working copy at `repo.root`, against `from` (V29d): the
+ * first line of its first hunk (`git diff -U0`), the line before them when lines were only
+ * removed; null when it does not differ or git does not track it. `paths` are its path and, for a
+ * rename, its path before it, so that the rename is found.
+ */
+export async function firstChangedLine(
+  repo: GitRepo,
+  from: string,
+  paths: readonly string[],
+): Promise<number | null> {
+  const patch = await git(repo.root, [
+    'diff',
+    '-U0',
+    '-M',
+    '--no-color',
+    '--no-ext-diff',
+    '--no-relative',
+    from,
+    '--',
+    ...paths.map((path) => `:(top,literal)${path}`),
+  ]);
+  for (const line of patch.split('\n')) {
+    const hunk = HUNK.exec(line);
+    if (hunk) return Math.max(1, Number(hunk[3]));
+  }
+  return null;
+}
