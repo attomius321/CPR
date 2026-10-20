@@ -1,49 +1,102 @@
+/* The look (V29b): after the reference — dark by default, dense, flat, hairline lines — in one
+   font pair served by CPR. Only the bundled families and generic ones are named: every name a
+   system lacks is a font-matching miss (V29a: 850–900 ms before History's first rows on Linux). */
 :root {
+  --sans: 'Geist Variable', sans-serif;
+  --mono: 'Geist Mono Variable', monospace;
+}
+
+/* Dark unless the person chose light or the system's (decision 179; index.html sets data-theme
+   before the first paint). Text and muted at least 4.5:1 on the four backgrounds, states, edges
+   and the focus ring 3:1 (test/tokens.test.ts). Lines only separate regions: hairlines. */
+:root,
+:root[data-theme='dark'] {
+  --bg: #0b0b0c;
+  --side: #111113;
+  --panel: #161618;
+  --raised: #1f1f23;
+  --line: #26262b;
+  --edge: #6a6a73;
+  --text: #e6e6e9;
+  --muted: #8b8b94;
+  --faint: #6a6a73;
+  --focus: #58a6ff;
+  --added: #3fb950;
+  --removed: #f85149;
+  --modified: #d29922;
+  --moved: #58a6ff;
+  --context: #6e6e76;
+  --error: #f85149;
+  --warning: #d29922;
+  --info: #58a6ff;
+  /* Commit graph lanes after the current branch's (V10). */
+  --lane-1: #a371f7;
+  --lane-2: #39c5bb;
+  --lane-3: #f0883e;
+  --lane-4: #f778ba;
+  --lane-5: #8ccf3e;
+  --lane-6: #d4a72c;
+  --shadow: rgb(0 0 0 / 50%);
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
   --bg: #f7f7f5;
+  --side: #f0f0ee;
   --panel: #ffffff;
-  --text: #1d1d1f;
-  --muted: #6e6e73;
+  --raised: #e8e8ec;
   --line: #d9d9de;
+  --edge: #808088;
+  --text: #1d1d1f;
+  --muted: #636369;
+  --faint: #808088;
+  --focus: #0969da;
   --added: #1f883d;
   --removed: #cf222e;
   --modified: #b06f00;
   --moved: #0969da;
-  --context: #8c8c93;
+  --context: #7d7d84;
   --error: #cf222e;
-  --warning: #bf8700;
+  --warning: #9a6700;
   --info: #0969da;
-  /* Commit graph lanes after the current branch's (V10). */
   --lane-1: #8250df;
   --lane-2: #0a7f6f;
   --lane-3: #bc4c00;
   --lane-4: #bf3989;
   --lane-5: #4d7a00;
   --lane-6: #9a6700;
+  --shadow: rgb(0 0 0 / 14%);
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #111113;
-    --panel: #1c1c1f;
-    --text: #ececf0;
-    --muted: #9a9aa2;
-    --line: #34343a;
-    --added: #3fb950;
-    --removed: #f85149;
-    --modified: #d29922;
-    --moved: #58a6ff;
-    --context: #6e6e76;
-    --error: #f85149;
-    --warning: #d29922;
-    --info: #58a6ff;
-    --lane-1: #a371f7;
-    --lane-2: #39c5bb;
-    --lane-3: #f0883e;
-    --lane-4: #f778ba;
-    --lane-5: #8ccf3e;
-    --lane-6: #d4a72c;
-    color-scheme: dark;
+@media (prefers-color-scheme: light) {
+  :root[data-theme='system'] {
+    --bg: #f7f7f5;
+    --side: #f0f0ee;
+    --panel: #ffffff;
+    --raised: #e8e8ec;
+    --line: #d9d9de;
+    --edge: #808088;
+    --text: #1d1d1f;
+    --muted: #636369;
+    --faint: #808088;
+    --focus: #0969da;
+    --added: #1f883d;
+    --removed: #cf222e;
+    --modified: #b06f00;
+    --moved: #0969da;
+    --context: #7d7d84;
+    --error: #cf222e;
+    --warning: #9a6700;
+    --info: #0969da;
+    --lane-1: #8250df;
+    --lane-2: #0a7f6f;
+    --lane-3: #bc4c00;
+    --lane-4: #bf3989;
+    --lane-5: #4d7a00;
+    --lane-6: #9a6700;
+    --shadow: rgb(0 0 0 / 14%);
+    color-scheme: light;
   }
 }
 
@@ -61,15 +114,55 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font:
-    14px/1.4 system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
+  font: 13px/1.45 var(--sans);
 }
 
 code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--mono);
+}
+
+/* Controls in the page's font: a browser's own is the system's (a font-matching miss, V29a). */
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* Text fields: an edge one can find at 3:1 (WCAG 1.4.11), on the page's background. */
+.search-input,
+.comment-input,
+.branches-filter,
+.workspace-field textarea,
+.workspace-field input,
+.workspace-agent select,
+.reply textarea,
+.settings-editor textarea {
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.search-input:focus-visible,
+.comment-input:focus-visible,
+.branches-filter:focus-visible,
+.workspace-field textarea:focus-visible,
+.workspace-field input:focus-visible,
+.reply textarea:focus-visible,
+.settings-editor textarea:focus-visible {
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 .app {
@@ -78,18 +171,22 @@ code {
   height: 100%;
 }
 
+/* A diff's toolbar: one strip, as History's and a workspace's heads. */
 .bar {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 16px;
-  background: var(--panel);
+  min-height: 44px;
+  padding: 6px 16px;
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
+  font-size: 12px;
 }
 
 .brand {
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .spacer {
@@ -104,17 +201,18 @@ code {
 }
 
 .revisions {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--mono);
   color: var(--muted);
 }
 
 .chip,
 .badge,
 .tag {
-  border-radius: 999px;
-  padding: 0 8px;
-  font-size: 12px;
-  line-height: 20px;
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -134,29 +232,41 @@ code {
   color: var(--modified);
 }
 
+/* Tinted in its severity's colour, the words in it (V29b): white on amber read at 2.4:1. */
 .badge {
-  color: #fff;
+  background: color-mix(in srgb, var(--badge) 16%, transparent);
+  color: var(--badge);
   font-weight: 600;
 }
 
 .badge-error {
-  background: var(--error);
+  --badge: var(--error);
 }
 
 .badge-warning {
-  background: var(--warning);
+  --badge: var(--warning);
 }
 
 .badge-info {
-  background: var(--info);
+  --badge: var(--info);
 }
 
 .toggle {
   display: flex;
   gap: 6px;
   align-items: center;
+  color: var(--muted);
   cursor: pointer;
   user-select: none;
+}
+
+.toggle:hover {
+  color: var(--text);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--moved);
 }
 
 .canvas {
@@ -240,7 +350,7 @@ code {
 .react-flow__panel.layout-pending {
   padding: 3px 10px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--panel);
   color: var(--muted);
   font-size: 12px;
@@ -250,23 +360,60 @@ code {
   max-width: 560px;
   margin: 12vh auto;
   padding: 32px;
-  border: 2px dashed var(--line);
-  border-radius: 12px;
+  border: 1px dashed var(--edge);
+  border-radius: 8px;
   text-align: center;
 }
 
 .dropzone h1 {
-  font-size: 22px;
+  font-size: 16px;
 }
 
+/* Buttons (V29b): 28 px; the main action filled in the text's colour, the others outlined. */
 .button {
-  display: inline-block;
-  margin-top: 8px;
-  padding: 8px 16px;
-  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   background: var(--text);
   color: var(--bg);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
   cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 85%, var(--bg));
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.button.secondary,
+.workspace-actions .button:not(.primary),
+.merge-row-actions .button:not(.primary),
+.workspace-confirm .button {
+  border-color: var(--line);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.button.secondary:hover:not(:disabled),
+.workspace-actions .button:not(.primary):hover:not(:disabled),
+.merge-row-actions .button:not(.primary):hover:not(:disabled),
+.workspace-confirm .button:hover:not(:disabled) {
+  background: var(--raised);
+}
+
+.dropzone .button {
+  margin-top: 8px;
 }
 
 .error {
@@ -281,9 +428,8 @@ code {
   padding: 6px 10px;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-left: 5px solid var(--tone);
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+  border-left: 3px solid var(--tone);
+  border-radius: 6px;
 }
 
 .symbol.selected {
@@ -338,13 +484,14 @@ code {
 
 .symbol-kind {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .symbol-name {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--mono);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -382,7 +529,7 @@ code {
   padding: 6px 10px;
   background: color-mix(in srgb, var(--panel) 70%, transparent);
   border: 1px dashed var(--context);
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
 }
 
@@ -423,7 +570,7 @@ code {
 .file-box {
   height: 100%;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--panel) 45%, transparent);
 }
 
@@ -436,11 +583,7 @@ code {
   text-align: left;
   padding: 6px 12px;
   color: var(--muted);
-  font:
-    12px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 12px var(--mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -455,8 +598,8 @@ code {
 
 .project-frame {
   height: 100%;
-  border: 1.5px solid color-mix(in srgb, var(--text) 28%, var(--line));
-  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--text) 28%, var(--line));
+  border-radius: 12px;
   background: color-mix(in srgb, var(--text) 3%, transparent);
 }
 
@@ -482,14 +625,14 @@ code {
   flex: none;
   color: var(--text);
   font-size: 16px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .project-kind {
   flex: none;
   padding: 0 6px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 4px;
   color: var(--muted);
   font-size: 11px;
 }
@@ -499,11 +642,7 @@ code {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--muted);
-  font:
-    12px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 12px var(--mono);
 }
 
 .project-changed {
@@ -575,8 +714,32 @@ code {
   fill: var(--bg);
 }
 
+/* React Flow in the page's tokens (V29b): its colour mode follows the theme for the rest. */
+.react-flow {
+  --xy-background-color: var(--bg);
+  --xy-background-pattern-dots-color: var(--line);
+  --xy-minimap-background-color: var(--side);
+  --xy-minimap-mask-background-color: color-mix(in srgb, var(--bg) 60%, transparent);
+  --xy-controls-button-background-color: var(--panel);
+  --xy-controls-button-background-color-hover: var(--raised);
+  --xy-controls-button-color: var(--muted);
+  --xy-controls-button-color-hover: var(--text);
+  --xy-controls-button-border-color: var(--line);
+  --xy-controls-box-shadow: none;
+  --xy-edge-label-background-color: var(--bg);
+}
+
+.react-flow__controls {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
 .react-flow__minimap {
-  background: var(--panel);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--side);
 }
 
 .minimap-added {
@@ -645,11 +808,7 @@ code {
   border-radius: 4px;
   background: color-mix(in srgb, var(--panel) 85%, transparent);
   color: var(--text);
-  font:
-    13px / 1.25 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 13px / 1.25 var(--mono);
   white-space: nowrap;
   transform: scale(calc(1 / var(--cpr-zoom, 1)));
   transform-origin: 0 0;
@@ -781,19 +940,19 @@ code {
 .legend {
   display: flex;
   gap: 14px;
-  padding: 6px 16px;
-  background: var(--panel);
+  padding: 5px 16px;
+  background: var(--bg);
   border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   flex-wrap: wrap;
 }
 
 .legend-item::before {
   content: '';
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   margin-right: 5px;
   border-radius: 2px;
   background: var(--tone);
@@ -825,8 +984,8 @@ code {
 .legend-project::before {
   width: 14px;
   background: transparent;
-  border: 1.5px solid color-mix(in srgb, var(--text) 28%, var(--line));
-  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--text) 28%, var(--line));
+  border-radius: 3px;
 }
 
 /* ---- detail panel ------------------------------------------------------------------- */
@@ -837,7 +996,7 @@ code {
   min-width: min(320px, 45vw);
   overflow: auto;
   padding: 0 16px 24px;
-  background: var(--panel);
+  background: var(--side);
   border-left: 1px solid var(--line);
 }
 
@@ -848,8 +1007,8 @@ code {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  padding: 14px 0 10px;
-  background: var(--panel);
+  padding: 12px 0 10px;
+  background: var(--side);
   border-bottom: 1px solid var(--line);
 }
 
@@ -858,9 +1017,10 @@ code {
   gap: 6px;
   align-items: center;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 10px;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .status {
@@ -870,21 +1030,13 @@ code {
 
 .panel-title {
   margin: 4px 0 2px;
-  font:
-    600 18px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 600 16px var(--mono);
   word-break: break-all;
 }
 
 .panel-file {
   color: var(--muted);
-  font:
-    12px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 12px var(--mono);
   word-break: break-all;
 }
 
@@ -894,21 +1046,28 @@ code {
 }
 
 .panel h3 {
-  margin: 18px 0 8px;
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  margin: 16px 0 8px;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--muted);
 }
 
 .close {
   align-self: flex-start;
+  width: 28px;
+  height: 28px;
   border: 0;
+  border-radius: 6px;
   background: none;
   color: var(--muted);
-  font-size: 22px;
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
+}
+
+.close:hover {
+  background: var(--raised);
+  color: var(--text);
 }
 
 .muted {
@@ -942,11 +1101,7 @@ code {
   tab-size: 2;
   border: 1px solid var(--line);
   border-radius: 6px;
-  font:
-    12px/1.5 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 12px/1.5 var(--mono);
 }
 
 .code-rows {
@@ -984,6 +1139,7 @@ code {
 .finding {
   padding: 8px 10px;
   margin-bottom: 6px;
+  border: 1px solid var(--line);
   border-left: 3px solid var(--info);
   border-radius: 4px;
   background: var(--bg);
@@ -1019,12 +1175,12 @@ code {
   border: 0;
   background: none;
   color: var(--moved);
-  font:
-    13px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 12px var(--mono);
   cursor: pointer;
+}
+
+.link:hover:not(:disabled) {
+  text-decoration: underline;
 }
 
 .link:disabled {
@@ -1040,7 +1196,7 @@ code {
   flex-direction: column;
   width: var(--sidebar-width, 300px);
   min-width: 240px;
-  background: var(--panel);
+  background: var(--side);
   border-right: 1px solid var(--line);
 }
 
@@ -1051,20 +1207,25 @@ code {
 
 .tabs button {
   flex: 1 1 auto;
-  padding: 10px 6px;
+  height: 43px;
+  padding: 0 6px;
   white-space: nowrap;
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;
   color: var(--muted);
-  font: inherit;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
+}
+
+.tabs button:hover {
+  color: var(--text);
 }
 
 .tabs button[aria-selected='true'] {
   color: var(--text);
-  border-bottom-color: var(--moved);
+  border-bottom-color: var(--text);
 }
 
 .count {
@@ -1074,7 +1235,7 @@ code {
 }
 
 .progress {
-  height: 3px;
+  height: 2px;
   background: var(--line);
 }
 
@@ -1094,18 +1255,9 @@ code {
 .search-input {
   flex: 1;
   min-width: 0;
-  padding: 5px 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-}
-
-.search-input:focus {
-  outline: 2px solid color-mix(in srgb, var(--moved) 50%, transparent);
-  border-color: var(--moved);
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
 }
 
 .search .count {
@@ -1138,11 +1290,7 @@ code {
 .list-file-name {
   padding: 8px 12px 2px;
   color: var(--muted);
-  font:
-    12px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 12px var(--mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1170,7 +1318,7 @@ code {
   align-items: center;
   gap: 6px;
   padding: 6px 8px 4px 6px;
-  background: var(--panel);
+  background: var(--side);
 }
 
 .list-project-toggle {
@@ -1200,7 +1348,7 @@ code {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .list-project-progress {
@@ -1212,9 +1360,9 @@ code {
 
 .list-project-only {
   flex: none;
-  padding: 1px 7px;
+  padding: 1px 6px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 4px;
   background: none;
   color: var(--muted);
   font-size: 11px;
@@ -1252,7 +1400,8 @@ code {
 }
 
 .list-item.current {
-  background: color-mix(in srgb, var(--moved) 14%, transparent);
+  background: var(--raised);
+  box-shadow: inset 2px 0 0 var(--moved);
 }
 
 .list-item.done .list-link {
@@ -1268,11 +1417,7 @@ code {
   border: 0;
   background: none;
   color: var(--text);
-  font:
-    13px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 12px var(--mono);
   text-align: left;
   cursor: pointer;
   overflow: hidden;
@@ -1282,8 +1427,8 @@ code {
 
 .dot {
   flex: none;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--tone);
 }
@@ -1311,9 +1456,12 @@ code {
   border-left-color: var(--warning);
 }
 
-.finding-row.current,
 .finding-row:hover {
-  background: color-mix(in srgb, var(--moved) 10%, transparent);
+  background: var(--panel);
+}
+
+.finding-row.current {
+  background: var(--raised);
 }
 
 .finding-row-rule {
@@ -1324,7 +1472,7 @@ code {
   margin-left: 8px;
   padding: 0 6px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 4px;
   color: var(--muted);
   font-size: 11px;
   font-weight: 400;
@@ -1333,7 +1481,7 @@ code {
 .finding-row-message {
   grid-column: 1 / -1;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .keys {
@@ -1341,18 +1489,16 @@ code {
   padding: 8px 12px;
   border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.8;
 }
 
 kbd {
   padding: 0 4px;
   border: 1px solid var(--line);
   border-radius: 4px;
-  font:
-    11px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  background: var(--panel);
+  font: 11px var(--mono);
 }
 
 .pad {
@@ -1366,15 +1512,20 @@ kbd {
 }
 
 .review {
-  padding: 4px 10px;
+  height: 28px;
+  padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--bg);
+  background: var(--panel);
   color: var(--text);
-  font: inherit;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.review:hover:not(:disabled) {
+  background: var(--raised);
 }
 
 .review.done {
@@ -1398,7 +1549,7 @@ kbd {
   border-top: 1px solid var(--line);
   background: var(--bg);
   color: var(--moved);
-  font: inherit;
+  font-size: 12px;
   cursor: pointer;
 }
 
@@ -1438,18 +1589,8 @@ kbd {
   display: block;
   width: 100%;
   padding: 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   resize: vertical;
-}
-
-.comment-input:focus {
-  outline: 2px solid color-mix(in srgb, var(--moved) 50%, transparent);
-  border-color: var(--moved);
 }
 
 .comment-actions {
@@ -1488,7 +1629,7 @@ kbd {
 
 .draft-body {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: 12px;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -1561,7 +1702,7 @@ kbd {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--mono);
   font-size: 12px;
 }
 
@@ -1571,11 +1712,6 @@ kbd {
   color: var(--muted);
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.submit-review .button:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .events {
@@ -1668,48 +1804,59 @@ kbd {
   flex: 1;
   min-width: 0;
   overflow: auto;
-  padding: 16px 24px;
   /* Rows are placed from the list's offset in this box. */
   position: relative;
 }
 
+/* History's toolbar (V29b): a strip at the top of the rows, as a workspace's head. */
 .commits-title {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 16px;
-  margin: 0 0 12px;
-  font-size: 18px;
+  align-items: center;
+  gap: 6px 12px;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 12px 8px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 13px;
+  font-weight: normal;
 }
 
 /* The keys and the actions wrap as one: the keys fill the space before the actions, wrapping
    inside it, and the actions sit on their first line. Wrapped apart, the actions' row moved with
    the keys' line count, which differs between browse and compare mode (wider fonts than macOS'). */
 .commits-tail {
-  flex: 1 1 480px;
+  flex: 1 1 360px;
   display: flex;
-  align-items: baseline;
-  gap: 4px 16px;
+  align-items: flex-start;
+  gap: 4px 12px;
 }
 
+/* Compare mode's words beside the toggle: their first line centred on it, however many wrap. */
 .commits-help {
   flex: 1 1 0;
   min-width: 0;
+  padding-top: 5px;
   color: var(--muted);
-  font-size: 13px;
-  font-weight: normal;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.help-pop .commits-help {
+  padding-top: 0;
 }
 
 .commit-list {
   position: relative;
-  /* Its height is the rows' (set inline); the border goes around them. */
+  /* Its height is the rows' (set inline). */
   box-sizing: content-box;
   margin: 0;
   padding: 0;
   list-style: none;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -1722,16 +1869,17 @@ kbd {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 12px 0 8px;
+  padding: 0 12px 0 10px;
+  font-size: 13px;
   cursor: pointer;
 }
 
 .commit:hover {
-  background: color-mix(in srgb, var(--moved) 6%, transparent);
+  background: var(--panel);
 }
 
 .commit.cursor {
-  box-shadow: inset 3px 0 0 var(--muted);
+  box-shadow: inset 2px 0 0 var(--muted);
 }
 
 .commit.picked {
@@ -1789,7 +1937,7 @@ kbd {
 }
 
 .graph .commit-dot.merge {
-  fill: var(--panel);
+  fill: var(--bg);
   stroke: currentColor;
   stroke-width: 1.6;
 }
@@ -1829,7 +1977,7 @@ kbd {
 .loading-bar {
   height: 8px;
   border-radius: 4px;
-  background: var(--line);
+  background: var(--raised);
 }
 
 .sha-bar {
@@ -1840,30 +1988,34 @@ kbd {
   width: 40%;
 }
 
+/* A segmented control: the one on is raised, the others muted. */
 .scopes {
   display: inline-flex;
+  gap: 2px;
+  padding: 2px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  overflow: hidden;
-  font-size: 13px;
-  font-weight: normal;
+  background: var(--panel);
+  font-size: 12px;
 }
 
 .scope {
-  padding: 2px 10px;
+  height: 22px;
+  padding: 0 10px;
   border: 0;
-  background: var(--panel);
-  color: var(--text);
-  font: inherit;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
   cursor: pointer;
 }
 
-.scope + .scope {
-  border-left: 1px solid var(--line);
+.scope:hover {
+  color: var(--text);
 }
 
 .scope.active {
-  background: color-mix(in srgb, var(--moved) 18%, var(--panel));
+  background: var(--raised);
+  color: var(--text);
 }
 
 .listing {
@@ -1872,48 +2024,44 @@ kbd {
 
 /* ---- compare mode (V13) ------------------------------------------------------------- */
 
-/* Outlined in the accent colour, filled when on: a control meant to be found (V12). */
+/* Outlined, filled in the accent colour when on: a mode, meant to be found (V12). */
 .compare-mode {
   display: inline-flex;
   margin-left: auto;
   align-items: center;
   gap: 6px;
-  padding: 1px 6px 1px 10px;
-  border: 1px solid color-mix(in srgb, var(--moved) 45%, var(--line));
+  height: 28px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--moved) 9%, var(--panel));
-  color: var(--moved);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
 }
 
 .compare-mode:hover {
-  border-color: var(--moved);
-  background: color-mix(in srgb, var(--moved) 16%, var(--panel));
-}
-
-.compare-mode:focus-visible {
-  outline: 2px solid var(--moved);
-  outline-offset: 1px;
+  background: var(--raised);
 }
 
 .compare-mode[aria-pressed='true'] {
   border-color: var(--moved);
   background: var(--moved);
-  color: var(--panel);
+  color: var(--bg);
 }
 
-.compare-mode kbd,
-.start-workspace kbd {
-  padding: 0 5px;
-  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+.compare-mode kbd {
+  padding: 0 4px;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
   border-radius: 4px;
+  background: none;
+  color: inherit;
   font: inherit;
   font-size: 11px;
   font-weight: normal;
+  line-height: 16px;
 }
 
 /* The header's actions, at its right: "Start a workspace" (V18), then Compare mode. */
@@ -1924,41 +2072,14 @@ kbd {
   margin-left: auto;
 }
 
-/* "Start a workspace" (V18), in the colour of something added. */
-.start-workspace {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 1px 6px 1px 10px;
-  border: 1px solid color-mix(in srgb, var(--added) 45%, var(--line));
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--added) 9%, var(--panel));
-  color: var(--added);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.start-workspace:hover {
-  border-color: var(--added);
-  background: color-mix(in srgb, var(--added) 16%, var(--panel));
-}
-
-.start-workspace:focus-visible {
-  outline: 2px solid var(--added);
-  outline-offset: 1px;
-}
-
 /* Out of compare mode a click selects: the cursor row is the selection, and shows it. */
 .commits:not(.comparing) .commit.cursor {
-  background: color-mix(in srgb, var(--moved) 12%, transparent);
-  box-shadow: inset 3px 0 0 var(--moved);
+  background: var(--raised);
+  box-shadow: inset 2px 0 0 var(--moved);
 }
 
 .commits-error {
-  margin: -4px 0 12px;
+  margin: 8px 16px;
 }
 
 /* ---- checkout (V11) ------------------------------------------------------------------ */
@@ -1966,8 +2087,13 @@ kbd {
 .commit-menu {
   visibility: hidden;
   padding: 0 4px;
-  font-size: 16px;
+  color: var(--muted);
+  font-size: 14px;
   line-height: 1;
+}
+
+.commit-menu:hover {
+  color: var(--text);
 }
 
 .commit:hover .commit-menu,
@@ -1976,7 +2102,7 @@ kbd {
 }
 
 .checkout-notice {
-  margin: -4px 0 12px;
+  margin: 8px 16px;
   color: var(--added);
 }
 
@@ -1991,7 +2117,7 @@ kbd {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 6px 24px rgb(0 0 0 / 18%);
+  box-shadow: 0 8px 24px var(--shadow);
   outline: none;
 }
 
@@ -1999,18 +2125,20 @@ kbd {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 6px 10px;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 8px;
   border: 0;
-  border-radius: 5px;
+  border-radius: 4px;
   background: none;
   color: var(--text);
-  font: inherit;
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
 }
 
 .menu-item.active {
-  background: color-mix(in srgb, var(--moved) 14%, transparent);
+  background: var(--raised);
 }
 
 .menu-item:disabled {
@@ -2044,7 +2172,7 @@ kbd {
 }
 
 .menu-item.has-submenu[aria-expanded='true']:not(.active) {
-  background: color-mix(in srgb, var(--moved) 7%, transparent);
+  background: color-mix(in srgb, var(--raised) 50%, transparent);
 }
 
 .submenu {
@@ -2083,9 +2211,10 @@ kbd {
   display: inline-block;
   /* Room for the "?" after it. */
   max-width: calc(100% - 1em);
-  padding: 0 8px;
-  border-radius: 8px;
-  font-size: inherit;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  line-height: 1.5;
   white-space: normal;
 }
 
@@ -2096,21 +2225,23 @@ kbd {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgb(0 0 0 / 30%);
+  background: rgb(0 0 0 / 50%);
 }
 
 .dialog {
   width: min(520px, 100%);
-  padding: 20px 24px;
+  padding: 16px 20px;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: 0 12px 40px rgb(0 0 0 / 25%);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px var(--shadow);
 }
 
 .dialog h2 {
   margin: 0 0 8px;
-  font-size: 17px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
@@ -2130,21 +2261,11 @@ kbd {
   align-items: center;
   gap: 16px;
   margin-top: 16px;
+  font-size: 13px;
 }
 
 .dialog-buttons .link {
   font-family: inherit;
-}
-
-.dialog-buttons .button {
-  margin-top: 0;
-  border: 0;
-  font: inherit;
-}
-
-.dialog-buttons .button:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 /* The start dialog (V18): a brief to write, so wider than a confirmation; with More open or on
@@ -2169,8 +2290,7 @@ kbd {
   border: 0;
   background: none;
   color: var(--muted);
-  font: inherit;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
   cursor: help;
 }
@@ -2187,11 +2307,11 @@ kbd {
   right: 0;
   z-index: 1;
   padding: 8px 12px;
-  background: var(--panel);
+  background: var(--raised);
   border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 6px 20px rgb(0 0 0 / 20%);
-  font-size: 13px;
+  box-shadow: 0 8px 24px var(--shadow);
+  font-size: 12px;
   /* It covers the title for a moment: what is under it keeps the pointer. */
   pointer-events: none;
 }
@@ -2221,44 +2341,48 @@ kbd {
   color: var(--text);
 }
 
-/* The kind of work (V24c), as the commits page's scopes: one segmented control. */
+/* The kind of work (V24c), as History's scopes: one segmented control. */
 .kind-picker {
   display: flex;
   flex-wrap: wrap;
+  gap: 2px;
   width: fit-content;
   max-width: 100%;
+  padding: 2px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  overflow: hidden;
+  background: var(--bg);
 }
 
 .kind {
-  padding: 3px 12px;
+  height: 24px;
+  padding: 0 12px;
   border: 0;
-  background: var(--panel);
-  color: var(--text);
-  font: inherit;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
   cursor: pointer;
 }
 
-.kind + .kind {
-  border-left: 1px solid var(--line);
+.kind:hover {
+  color: var(--text);
 }
 
 .kind.active {
-  background: color-mix(in srgb, var(--moved) 18%, var(--panel));
-  font-weight: 600;
+  background: var(--raised);
+  color: var(--text);
+  font-weight: 500;
 }
 
 /* The five and their info on one line on a phone (390 px: 308 px for them). */
 @media (max-width: 480px) {
   .kind {
-    padding: 3px 6px;
+    padding: 0 6px;
   }
 }
 
 .kind:focus-visible {
-  outline: 2px solid var(--moved);
   outline-offset: -2px;
 }
 
@@ -2291,12 +2415,13 @@ kbd {
 .kind-tag {
   display: inline-block;
   margin-right: 6px;
-  padding: 0 5px;
+  padding: 0 4px;
   border: 1px solid var(--line);
   border-radius: 4px;
   color: var(--muted);
   font-size: 11px;
   font-weight: normal;
+  line-height: 15px;
   vertical-align: 1px;
 }
 
@@ -2312,11 +2437,6 @@ kbd {
   box-sizing: border-box;
   width: 100%;
   padding: 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
   font-weight: normal;
 }
 
@@ -2326,7 +2446,7 @@ kbd {
 
 /* The branch's name, as git shows it. */
 .workspace-field .branch-input {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--mono);
 }
 
 .workspace-field [aria-invalid='true'] {
@@ -2350,11 +2470,13 @@ kbd {
 }
 
 .workspace-agent select {
-  font: inherit;
+  height: 24px;
+  padding: 0 4px;
 }
 
 .commit-sha {
   color: var(--muted);
+  font-size: 12px;
 }
 
 .commit-subject {
@@ -2371,10 +2493,10 @@ kbd {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 6px;
+  padding: 0 5px;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 12px;
+  border-radius: 4px;
+  font: 11px/18px var(--mono);
   white-space: nowrap;
 }
 
@@ -2383,12 +2505,12 @@ kbd {
 .ref-head {
   border-color: var(--added);
   background: var(--added);
-  color: var(--panel);
+  color: var(--bg);
   font-weight: 600;
 }
 
 .commit.head {
-  background: color-mix(in srgb, var(--added) 10%, transparent);
+  background: color-mix(in srgb, var(--added) 7%, transparent);
 }
 
 .commit.head .commit-subject {
@@ -2402,14 +2524,13 @@ kbd {
 }
 
 .head-chip {
-  padding: 1px 10px;
+  height: 22px;
+  padding: 0 8px;
   border: 1px solid var(--added);
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--added);
-  color: var(--panel);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--bg);
+  font: 600 11px var(--mono);
   cursor: pointer;
 }
 
@@ -2428,7 +2549,7 @@ kbd {
 }
 
 .ref-commit {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--mono);
 }
 
 .ref-more {
@@ -2438,6 +2559,8 @@ kbd {
 .commit-author,
 .commit-date {
   color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -2458,8 +2581,8 @@ kbd {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 24px;
-  background: var(--panel);
+  padding: 8px 16px;
+  background: var(--side);
   border-top: 1px solid var(--line);
 }
 
@@ -2468,7 +2591,7 @@ kbd {
 }
 
 .compare-pair {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--mono);
 }
 
 .compare-pair .fork-sha {
@@ -2479,19 +2602,6 @@ kbd {
   color: var(--muted);
 }
 
-.compare-bar .button,
-.diff-progress .button {
-  margin-top: 0;
-  border: 0;
-  font: inherit;
-}
-
-.compare-bar .button:disabled,
-.diff-progress .button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
 .diff-progress {
   max-width: 720px;
   margin: 12vh auto;
@@ -2499,7 +2609,7 @@ kbd {
 }
 
 .diff-progress p {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .diff-progress pre {
@@ -2526,30 +2636,20 @@ kbd {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 6px 3px 9px;
-  border: 1px solid color-mix(in srgb, var(--moved) 45%, var(--line));
+  height: 26px;
+  padding: 0 6px 0 8px;
+  border: 1px solid var(--line);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--moved) 9%, var(--panel));
-  color: var(--moved);
-  font: inherit;
+  background: var(--panel);
+  color: var(--text);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
 }
 
 .open-editor:hover {
-  border-color: var(--moved);
-  background: color-mix(in srgb, var(--moved) 16%, var(--panel));
-}
-
-.open-editor:active {
-  background: color-mix(in srgb, var(--moved) 24%, var(--panel));
-}
-
-.open-editor:focus-visible {
-  outline: 2px solid var(--moved);
-  outline-offset: 1px;
+  background: var(--raised);
 }
 
 .open-icon {
@@ -2558,16 +2658,12 @@ kbd {
 
 /* The key that does the same. */
 .open-editor kbd {
-  padding: 0 5px;
-  border: 1px solid color-mix(in srgb, var(--moved) 35%, var(--line));
+  padding: 0 4px;
+  border: 1px solid var(--line);
   border-radius: 4px;
-  background: var(--panel);
+  background: none;
   color: var(--muted);
-  font:
-    11px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 11px var(--mono);
 }
 
 /* A row's line number, as a button that opens that line. */
@@ -2670,42 +2766,39 @@ kbd {
   width: 260px;
   min-height: 0;
   border-right: 1px solid var(--line);
-  background: var(--panel);
+  background: var(--bg);
 }
 
+/* As tall as History's toolbar beside it (44 px with the list's line). */
 .branches-filter {
-  margin: 12px 8px 4px;
-  padding: 4px 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
+  flex: none;
+  height: 28px;
+  margin: 8px 8px 7px;
+  padding: 0 8px;
+  font-size: 12px;
 }
 
 .branches .hint {
   padding: 12px;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .branches-list {
   flex: 1;
   margin: 0;
-  padding: 4px 0 12px;
+  padding: 0 8px 12px;
+  border-top: 1px solid var(--line);
   overflow: auto;
   list-style: none;
   font-size: 13px;
 }
 
 .branches-section {
-  margin: 10px 0 2px;
-  padding: 0 12px;
+  margin: 12px 0 4px;
+  padding: 0 8px;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 500;
 }
 
 .branches-folder,
@@ -2714,18 +2807,20 @@ kbd {
   align-items: center;
   gap: 6px;
   width: 100%;
-  padding: 2px 12px 2px 8px;
+  height: 26px;
+  padding: 0 8px 0 6px;
   border: 0;
+  border-radius: 4px;
   background: none;
   color: var(--text);
-  font: inherit;
+  font-size: 12px;
   text-align: left;
   cursor: pointer;
 }
 
 .branches-folder:hover,
 .branches-branch:hover {
-  background: color-mix(in srgb, var(--moved) 10%, transparent);
+  background: var(--panel);
 }
 
 .branches-folder {
@@ -2749,8 +2844,9 @@ kbd {
 .branches-track {
   margin-left: auto;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: normal;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -2766,7 +2862,7 @@ kbd {
 .branches-age {
   margin-left: auto;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -2777,6 +2873,10 @@ kbd {
 
 .branches-branch.current .branches-name {
   font-weight: 600;
+}
+
+.branches-name {
+  font-family: var(--mono);
 }
 
 .branches-current {
@@ -2796,19 +2896,18 @@ kbd {
 
 .branches-toggle {
   display: none;
-  padding: 2px 10px;
+  height: 28px;
+  padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--panel);
   color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  font-weight: normal;
+  font-size: 12px;
   cursor: pointer;
 }
 
 .branches-toggle[aria-expanded='true'] {
-  background: color-mix(in srgb, var(--moved) 18%, var(--panel));
+  background: var(--raised);
 }
 
 @media (max-width: 899px) {
@@ -2822,7 +2921,7 @@ kbd {
     inset: 0 auto 0 0;
     z-index: 5;
     max-width: calc(100% - 32px);
-    box-shadow: 4px 0 16px rgb(0 0 0 / 20%);
+    box-shadow: 4px 0 16px var(--shadow);
   }
 
   .branches-toggle {
@@ -2847,9 +2946,9 @@ kbd {
 .page-count {
   min-width: 16px;
   padding: 0 5px;
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--warning);
-  color: var(--panel);
+  color: var(--bg);
   font-size: 11px;
   font-weight: 700;
   line-height: 16px;
@@ -2876,7 +2975,7 @@ kbd {
 
 a.workspace-mark:hover {
   background: var(--workspace-tone);
-  color: var(--panel);
+  color: var(--bg);
 }
 
 .workspace-mark-working {
@@ -2901,8 +3000,8 @@ a.workspace-mark:hover {
 
 /* HEAD's badge is solid green: the mark is light on it. */
 .ref-head .workspace-mark {
-  border-color: var(--panel);
-  color: var(--panel);
+  border-color: var(--bg);
+  color: var(--bg);
 }
 
 /* In the branches panel the mark is a link beside the entry (no link inside a button). */
@@ -3031,12 +3130,6 @@ button.workspace-about {
   font-size: 13px;
 }
 
-.workspace-confirm .button {
-  margin-top: 0;
-  padding: 4px 10px;
-  font-size: 13px;
-}
-
 .thread {
   display: flex;
   flex-direction: column;
@@ -3102,11 +3195,6 @@ button.workspace-about {
   width: 100%;
   min-height: 64px;
   padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
   font-size: 13px;
   resize: vertical;
 }
@@ -3120,41 +3208,39 @@ button.workspace-about {
   font-size: 13px;
 }
 
-.reply-actions .button {
-  margin-top: 4px;
-  padding: 6px 14px;
-}
-
-.reply-actions .button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
 /* V21: the workspace's agent session in a terminal, beside its thread. */
 .workspace-views {
   display: flex;
-  gap: 4px;
-  margin-top: 10px;
+  gap: 2px;
+  padding: 6px 12px 0;
   border-bottom: 1px solid var(--line);
 }
 
 .workspace-views button {
   margin-bottom: -1px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border: 1px solid transparent;
   border-radius: 6px 6px 0 0;
   background: none;
   color: var(--muted);
-  font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
 }
 
+.workspace-views button:hover {
+  color: var(--text);
+}
+
+/* The tab picked joins what it shows: the terminal's black, the page's background otherwise. */
 .workspace-views button.selected {
   border-color: var(--line);
-  border-bottom-color: var(--panel);
-  background: var(--panel);
+  border-bottom-color: var(--tab-under, var(--bg));
+  background: var(--tab-under, var(--bg));
   color: var(--text);
+}
+
+.workspace-views:has(+ .workspace-body > .workspace-terminal) {
+  --tab-under: #000;
 }
 
 /* The tab's content takes the rest of the main area's height (V29a). */
@@ -3163,7 +3249,11 @@ button.workspace-about {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding-top: 8px;
+}
+
+.workspace-body > .workspace-brief,
+.workspace-body > .workspace-thread {
+  margin: 12px 16px;
 }
 
 .workspace-terminal,
@@ -3188,17 +3278,27 @@ button.workspace-about {
 
 /* What Codex asks before its terminal goes on (V27b): above the screen, read before answering. */
 .agent-terminal .terminal-trust {
-  margin: 0 0 8px;
-  padding: 0;
+  color: var(--muted);
 }
 
-/* Dark in both themes: Claude Code draws for a dark terminal (V21 spike), and so does Codex. */
+/* Black in both themes, as the reference's: Claude Code draws for a dark terminal (V21 spike), and
+   so does Codex. Edge to edge, down to the status bar. */
 .agent-terminal-screen {
   flex: 1;
   min-height: 200px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: #111113;
+  padding: 8px 0 0 12px;
+  background: #000;
+}
+
+.workspace-terminal {
+  background: #000;
+}
+
+.workspace-terminal > .workspace-confirm,
+.agent-terminal > .error,
+.agent-terminal > .terminal-trust {
+  margin: 0;
+  padding: 8px 16px;
 }
 
 .thread-readonly {
@@ -3258,7 +3358,7 @@ button.workspace-about {
   padding: 1px 4px;
   border-radius: 4px;
   background: color-mix(in srgb, var(--text) 8%, transparent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--mono);
   font-size: 12px;
 }
 
@@ -3454,18 +3554,45 @@ p.merge-control {
   flex: 1;
   min-width: 0;
   overflow: auto;
-  padding: 16px 24px;
 }
 
 .settings .link {
   font-family: inherit;
 }
 
+.settings-bar h1 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* The theme (V29b): at the toolbar's right, for this browser. */
+.appearance {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.appearance .field-optional {
+  font-size: 12px;
+}
+
+.settings > .settings-git,
+.settings > .settings-warning,
+.settings > .commits-error,
+.settings > .hint {
+  margin: 12px 16px 0;
+  padding: 0;
+}
+
 .settings-git,
 .settings-warning {
-  margin: -4px 0 12px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .settings-warning {
@@ -3475,17 +3602,17 @@ p.merge-control {
 .settings-body {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
-  gap: 16px;
+  gap: 24px;
   align-items: start;
+  margin: 16px;
 }
 
 .settings-list section h2 {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
+  padding: 0 8px;
   color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .settings-list section + section h2 {
@@ -3496,38 +3623,35 @@ p.merge-control {
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  overflow: hidden;
 }
 
 .settings-list li + li {
-  border-top: 1px solid var(--line);
+  margin-top: 1px;
 }
 
 .settings-list button {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: 8px 12px;
+  min-height: 28px;
+  padding: 0 8px;
   border: 0;
+  border-radius: 6px;
   background: none;
   color: inherit;
-  font: inherit;
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
 }
 
 .settings-list button:hover {
-  background: var(--bg);
+  background: var(--panel);
 }
 
 .settings-list button[aria-current='true'] {
-  box-shadow: inset 3px 0 0 var(--moved);
-  background: color-mix(in srgb, var(--moved) 7%, var(--panel));
+  background: var(--raised);
 }
 
 .settings-name {
@@ -3539,7 +3663,7 @@ p.merge-control {
 
 .settings-mark {
   flex: none;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .settings-mark.changed {
@@ -3556,10 +3680,6 @@ p.merge-control {
 
 .settings-editor {
   min-width: 0;
-  padding: 12px 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
 }
 
 .settings-editor h2 {
@@ -3568,15 +3688,16 @@ p.merge-control {
   align-items: baseline;
   gap: 4px 8px;
   margin: 0 0 4px;
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .settings-state {
-  padding: 0 6px;
+  padding: 0 5px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: normal;
 }
 
@@ -3588,7 +3709,7 @@ p.merge-control {
 .settings-about {
   margin: 0 0 8px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .settings-editor .settings-warning {
@@ -3599,15 +3720,7 @@ p.merge-control {
   display: block;
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font:
-    13px/1.45 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font: 13px/1.45 var(--mono);
   max-height: 70vh;
   overflow-y: auto;
   resize: vertical;
@@ -3628,7 +3741,7 @@ p.merge-control {
 p.settings-placeholders {
   margin: 12px 0 4px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .settings-fixed pre,
@@ -3639,11 +3752,8 @@ p.settings-placeholders {
   overflow: auto;
   border-radius: 6px;
   background: var(--bg);
-  font:
-    12px/1.45 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  border: 1px solid var(--line);
+  font: 12px/1.45 var(--mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -3660,7 +3770,7 @@ p.settings-placeholders {
 }
 
 .settings-placeholders .link {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--mono);
 }
 
 .settings-actions {
@@ -3671,18 +3781,6 @@ p.settings-placeholders {
   gap: 6px 14px;
   margin-top: 14px;
   font-size: 13px;
-}
-
-.settings-actions .button {
-  margin-top: 0;
-  padding: 6px 14px;
-  border: 0;
-  font: inherit;
-}
-
-.settings-actions .button:disabled {
-  opacity: 0.45;
-  cursor: default;
 }
 
 .settings-notice {
@@ -3710,12 +3808,9 @@ p.settings-placeholders {
 }
 
 @media (max-width: 899px) {
-  .settings {
-    padding: 12px 16px;
-  }
-
   .settings-body {
     display: block;
+    margin: 12px;
   }
 
   .settings-body.picked .settings-list,
@@ -3732,7 +3827,7 @@ p.settings-placeholders {
 
 .shell {
   display: grid;
-  grid-template-columns: var(--sidenav-width, 248px) minmax(0, 1fr);
+  grid-template-columns: var(--sidenav-width, 240px) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas:
     'side main'
@@ -3778,8 +3873,50 @@ p.settings-placeholders {
 
 .icon-button:hover,
 .icon-button[aria-expanded='true'] {
-  background: color-mix(in srgb, var(--moved) 10%, transparent);
+  background: var(--raised);
   color: var(--text);
+}
+
+/* A page's help behind its "?" (V29b). */
+.help {
+  position: relative;
+  display: inline-flex;
+}
+
+.help-button {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.help-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: min(420px, 80vw);
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--raised);
+  box-shadow: 0 8px 24px var(--shadow);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: normal;
+  line-height: 1.5;
+}
+
+.help-pop[hidden] {
+  display: none;
+}
+
+.commits-actions .help-pop {
+  right: 0;
+  left: auto;
 }
 
 .sidenav {
@@ -3790,14 +3927,14 @@ p.settings-placeholders {
   min-height: 0;
   overflow: hidden;
   border-right: 1px solid var(--line);
-  background: var(--panel);
+  background: var(--side);
 }
 
 .sidenav-top {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 8px 8px 4px 14px;
+  padding: 8px 8px 4px 16px;
 }
 
 .sidenav-brand {
@@ -3808,7 +3945,8 @@ p.settings-placeholders {
   gap: 8px;
   overflow: hidden;
   color: var(--text);
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -3820,13 +3958,13 @@ p.settings-placeholders {
 
 .sidenav-repo {
   color: var(--muted);
-  font-weight: 500;
+  font-weight: 450;
 }
 
 .sidenav-pages {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   padding: 4px 8px;
 }
 
@@ -3834,11 +3972,10 @@ p.settings-placeholders {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 30px;
+  height: 28px;
   padding: 0 8px;
   border-radius: 6px;
   color: var(--text);
-  font-size: 14px;
   text-decoration: none;
 }
 
@@ -3847,12 +3984,12 @@ p.settings-placeholders {
 }
 
 .sidenav-pages a:hover {
-  background: color-mix(in srgb, var(--moved) 8%, transparent);
+  background: var(--panel);
 }
 
 .sidenav-pages a[aria-current='page'] {
-  background: color-mix(in srgb, var(--moved) 13%, transparent);
-  font-weight: 600;
+  background: var(--raised);
+  font-weight: 500;
 }
 
 .sidenav-pages a[aria-current='page'] .icon {
@@ -3863,6 +4000,9 @@ p.settings-placeholders {
    on Linux before anything showed, V29a). */
 .sidenav-pages kbd {
   margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--muted);
   font-family: inherit;
   font-size: 11px;
@@ -3873,9 +4013,7 @@ p.settings-placeholders {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
+  margin-top: 12px;
 }
 
 .sidenav-heading {
@@ -3886,9 +4024,7 @@ p.settings-placeholders {
   padding: 0 8px 0 16px;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 500;
 }
 
 .sidenav-heading .sidenav-label {
@@ -3899,7 +4035,7 @@ p.settings-placeholders {
 .sidenav .workspaces-note,
 .sidenav-hint {
   margin: 4px 16px;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .sidenav .workspaces-empty p {
@@ -3913,44 +4049,93 @@ p.settings-placeholders {
   padding: 0 8px 12px;
 }
 
+/* A group: its state's dot, its name and how many. */
 .sidenav .workspace-group h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 12px 8px 4px;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 500;
 }
 
+.sidenav .workspace-group h3::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--group-tone, var(--faint));
+}
+
+.sidenav .group-needsYou {
+  --group-tone: var(--warning);
+}
+
+.sidenav .group-working,
+.sidenav .merging {
+  --group-tone: var(--moved);
+}
+
+.sidenav .group-done {
+  --group-tone: var(--added);
+}
+
+.sidenav .workspace-group .branches-count {
+  margin: 0;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--raised);
+  font-size: 11px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A card, at most 64 px: the dot and the title; the state and its age; the kind and the branch. */
 .sidenav .workspace-row {
   padding: 6px 8px;
   border-radius: 6px;
   cursor: pointer;
 }
 
+.sidenav .workspace-row + .workspace-row {
+  margin-top: 1px;
+}
+
 .sidenav .workspace-row:hover {
-  background: color-mix(in srgb, var(--moved) 6%, transparent);
+  background: var(--panel);
 }
 
 .sidenav .workspace-row.picked {
-  box-shadow: inset 2px 0 0 var(--moved);
-  background: color-mix(in srgb, var(--moved) 11%, var(--panel));
+  background: var(--raised);
+}
+
+.sidenav .workspace-head {
+  gap: 7px;
+  line-height: 18px;
 }
 
 .sidenav .workspace-about {
   font-size: 13px;
+  font-weight: 500;
 }
 
-.sidenav .workspace-head .commit-date {
-  flex: none;
-  width: auto;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.sidenav .workspace-state,
+.sidenav .workspace-line,
 .sidenav .workspace-branch {
-  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 1px 0 0 14px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.sidenav .workspace-state {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   overflow: hidden;
   font-size: 12px;
   text-overflow: ellipsis;
@@ -3958,17 +4143,70 @@ p.settings-placeholders {
 }
 
 .sidenav .workspace-state strong {
-  font-weight: 500;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.sidenav .workspace-line .commit-date {
+  flex: none;
+  width: auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sidenav .workspace-branch .kind-tag {
+  margin: 0;
+  line-height: 14px;
+}
+
+/* The branch as git names it: plain mono, not History's badge. */
+.sidenav .workspace-branch .ref-branch {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font: 11px/16px var(--mono);
+}
+
+.sidenav .workspace-branch a.ref-branch:hover {
+  color: var(--text);
 }
 
 .sidenav a.workspace-about {
   color: inherit;
-  font-weight: 600;
   text-decoration: none;
 }
 
-.merge-card .merge-mark {
-  border: 0;
+/* A workspace's state (V29b): the colour of its group and its mark. */
+.state-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dot, var(--faint));
+}
+
+.state-dot.tone-working {
+  --dot: var(--moved);
+}
+
+.state-dot.tone-waiting {
+  --dot: var(--warning);
+}
+
+.state-dot.tone-ready,
+.state-dot.tone-done {
+  --dot: var(--added);
+}
+
+.state-dot.tone-failed {
+  --dot: var(--removed);
+}
+
+.merge-card .state-dot {
+  --dot: var(--merge-tone);
 }
 
 /* Folded (wide windows only): a rail of icons and each workspace's mark. */
@@ -3977,9 +4215,7 @@ p.settings-placeholders {
   .sidenav.rail kbd,
   .sidenav.rail .page-count,
   .sidenav.rail .branches-count,
-  .sidenav.rail .kind-tag,
-  .sidenav.rail .commit-date,
-  .sidenav.rail .workspace-state,
+  .sidenav.rail .workspace-line,
   .sidenav.rail .workspace-branch,
   .sidenav.rail .workspaces-empty,
   .sidenav.rail .workspaces-note,
@@ -4017,8 +4253,12 @@ p.settings-placeholders {
     border-top: 1px solid var(--line);
   }
 
+  .sidenav.rail .workspace-group h3::before {
+    display: none;
+  }
+
   .sidenav.rail .workspace-row {
-    padding: 6px 0;
+    padding: 8px 0;
   }
 
   .sidenav.rail .workspace-head {
@@ -4053,23 +4293,23 @@ p.settings-placeholders {
   font-weight: 600;
 }
 
-/* A workspace in the main area: its head, its tabs, and the tab's content to the bottom. */
+/* A workspace in the main area: one head strip, its tabs, and the tab's content to the bottom. */
 .workspace {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 12px 20px;
 }
 
 .workspace-top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    'title actions'
-    'state actions';
-  column-gap: 16px;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr) auto;
+  grid-template-areas: 'title state actions';
+  column-gap: 12px;
   align-items: center;
+  min-height: 44px;
+  padding: 7px 12px 7px 16px;
+  border-bottom: 1px solid var(--line);
 }
 
 .workspace-title {
@@ -4083,7 +4323,13 @@ p.settings-placeholders {
 .workspace-title h1 {
   flex: 0 1 auto;
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.workspace-title h1 .kind-tag {
+  vertical-align: 1px;
 }
 
 .workspace-ref {
@@ -4094,20 +4340,54 @@ p.settings-placeholders {
   overflow: hidden;
 }
 
-.workspace-ref .ref {
+/* The branch as git names it, beside the title. */
+.workspace-ref .ref-branch {
   min-width: 0;
   overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font: 12px var(--mono);
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.workspace-ref a.ref-branch:hover {
+  color: var(--text);
+}
+
 .workspace-top .workspace-state {
   grid-area: state;
-  margin: 2px 0 0;
+  margin: 0;
   overflow: hidden;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.workspace-top .workspace-state strong {
+  color: var(--state-tone, var(--text));
+  font-weight: 500;
+}
+
+.workspace-top.tone-working {
+  --state-tone: var(--moved);
+}
+
+.workspace-top.tone-waiting {
+  --state-tone: var(--warning);
+}
+
+.workspace-top.tone-ready,
+.workspace-top.tone-done {
+  --state-tone: var(--added);
+}
+
+.workspace-top.tone-failed {
+  --state-tone: var(--removed);
 }
 
 .workspace-actions {
@@ -4116,36 +4396,17 @@ p.settings-placeholders {
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
 }
 
-.workspace-actions .button,
-.merge-row-actions .button {
-  margin-top: 0;
-  padding: 4px 12px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--panel);
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-}
-
-.workspace-actions .button.primary,
-.merge-row-actions .button.primary {
-  border-color: transparent;
-  background: var(--text);
-  color: var(--bg);
-}
-
-.workspace-actions .button:disabled {
-  opacity: 0.5;
-  cursor: default;
+.workspace-said {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .workspace-actions .merge-control {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .more-actions {
@@ -4164,16 +4425,16 @@ p.settings-placeholders {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  box-shadow: 0 8px 24px var(--shadow);
 }
 
 .more-menu button {
-  padding: 6px 10px;
+  height: 28px;
+  padding: 0 8px;
   border: 0;
   border-radius: 4px;
   background: none;
   color: var(--text);
-  font: inherit;
   font-size: 13px;
   text-align: left;
   cursor: pointer;
@@ -4181,7 +4442,8 @@ p.settings-placeholders {
 
 .more-menu button:hover,
 .more-menu button:focus-visible {
-  background: color-mix(in srgb, var(--moved) 10%, transparent);
+  outline: none;
+  background: var(--raised);
 }
 
 .more-menu button:disabled {
@@ -4189,8 +4451,15 @@ p.settings-placeholders {
   cursor: default;
 }
 
+.workspace > .workspace-confirm {
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
 .workspace .reply {
   flex: none;
+  padding: 0 16px 12px;
 }
 
 /* A merge in the main area (V29a). */
@@ -4219,9 +4488,10 @@ p.settings-placeholders {
   min-height: 24px;
   padding: 0 12px;
   border-top: 1px solid var(--line);
-  background: var(--panel);
+  background: var(--side);
   color: var(--muted);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Wrapped, not cut: a notice can say what to do (trust a folder, copy the prompt). */
@@ -4230,7 +4500,7 @@ p.settings-placeholders {
   min-width: 0;
   margin: 0;
   padding: 3px 0;
-  color: var(--text);
+  color: var(--muted);
   overflow-wrap: anywhere;
 }
 
@@ -4260,7 +4530,7 @@ p.settings-placeholders {
     gap: 8px;
     padding: 4px 8px;
     border-bottom: 1px solid var(--line);
-    background: var(--panel);
+    background: var(--side);
   }
 
   .sidenav,
@@ -4276,7 +4546,7 @@ p.settings-placeholders {
     z-index: 26;
     display: flex;
     width: min(300px, 85vw);
-    box-shadow: 0 0 32px rgb(0 0 0 / 25%);
+    box-shadow: 0 0 32px var(--shadow);
   }
 
   .shell.drawer-open .shell-scrim {
@@ -4287,21 +4557,18 @@ p.settings-placeholders {
     background: rgb(0 0 0 / 30%);
   }
 
-  .workspace {
-    padding: 8px 12px;
-  }
-
   .workspace-top {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       'title'
       'state'
       'actions';
+    row-gap: 4px;
+    padding: 8px 12px;
   }
 
   .workspace-actions {
     justify-content: flex-start;
-    margin-top: 6px;
   }
 }
 

@@ -62,6 +62,7 @@ import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from '.
 import { SummaryNode } from './SummaryNode.js';
 import { SymbolNode } from './SymbolNode.js';
 import { useLayout } from './useLayout.js';
+import { useTheme } from './theme.js';
 
 const nodeTypes = {
   symbol: SymbolNode,
@@ -748,6 +749,7 @@ function Canvas({
     return () => cancelAnimationFrame(frame);
   }, [selected, focus, scope, layoutNodes, size, reveal, resizing, pending, fitView]);
 
+  const theme = useTheme();
   return (
     <ReactFlow<Node, Edge>
       nodes={nodes}
@@ -759,7 +761,7 @@ function Canvas({
       fitView
       onlyRenderVisibleElements
       {...(map ? { className: 'map' } : {})}
-      colorMode="system"
+      colorMode={theme}
       minZoom={0.05}
       nodesConnectable={false}
       // The layout is computed: a drag that starts on a box pans the canvas instead of moving it.

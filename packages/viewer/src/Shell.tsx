@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { WorkspaceStart } from '@cpr/core';
 import { HistoryPage } from './HistoryPage.js';
-import { MenuIcon } from './icons.js';
 import { MergeView } from './Merge.js';
 import { HISTORY_PAGE, SETTINGS_PAGE, hrefOf, inShell, routeOf, type Route } from './pages.js';
 import { SettingsPage } from './SettingsPage.js';
 import { ShellContext, type Notice, type Shell as ShellApi } from './shell-context.js';
-import { Sidenav } from './Sidenav.js';
+import { DrawerStrip, Sidenav } from './Sidenav.js';
 import { StatusBar } from './StatusBar.js';
 import { WorkspaceView } from './Workspace.js';
 import { startedNotice } from './workspaces.js';
@@ -197,22 +196,8 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   return (
     <ShellContext.Provider value={shell}>
       <div className={`shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}`}>
-        <header className="shell-top">
-          <button
-            type="button"
-            className="icon-button"
-            aria-label={drawer ? 'Close the sidenav' : 'Open the sidenav'}
-            aria-expanded={drawer}
-            onClick={() => setDrawer((open) => !open)}
-          >
-            <MenuIcon />
-          </button>
-          <strong className="brand">CPR</strong>
-        </header>
+        <DrawerStrip open={drawer} onToggle={() => setDrawer((open) => !open)} />
         <Sidenav repo={repo} folded={folded} onFold={fold} flashed={flashed} />
-        {drawer && (
-          <div className="shell-scrim" aria-hidden="true" onClick={() => setDrawer(false)} />
-        )}
         <main className="shell-main">
           {route.page === 'history' && <HistoryPage key={visit} />}
           {route.page === 'settings' && <SettingsPage />}

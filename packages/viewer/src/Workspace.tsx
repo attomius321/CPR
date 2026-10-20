@@ -152,13 +152,9 @@ export function KindTag({ workspace }: { workspace: WorkspaceSummary }) {
   return <span className="kind-tag">{workspace.kind}</span>;
 }
 
-/** A workspace's mark: what it needs, as its branch's badges show it. */
-export function WorkspaceChip({ row: { next } }: { row: WorkspaceRow }) {
-  return (
-    <span className={`workspace-mark workspace-mark-${next.chip.tone}`} aria-hidden="true">
-      {next.chip.mark}
-    </span>
-  );
+/** A workspace's state as a dot (V29b): the colour of its mark on its branch's badges. */
+export function StateDot({ row: { next } }: { row: WorkspaceRow }) {
+  return <span className={`state-dot tone-${next.chip.tone}`} aria-hidden="true" />;
 }
 
 /** A workspace's branch (a link to its commits) and its review's mark. */
@@ -551,9 +547,9 @@ function WorkspacePanel({
 
   return (
     <section className="workspace" aria-label={`Workspace ${branch}`}>
-      <header className="workspace-top">
+      <header className={`workspace-top tone-${row.next.chip.tone}`}>
         <div className="workspace-title">
-          <WorkspaceChip row={row} />
+          <StateDot row={row} />
           <h1 className="workspace-about" title={workspace.brief}>
             <KindTag workspace={workspace} />
             {workspaceName(workspace)}

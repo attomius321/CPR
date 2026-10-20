@@ -43,6 +43,7 @@ import {
   type Picked,
 } from './commits.js';
 import { GraphCell, ROW_HEIGHT } from './GraphCell.js';
+import { Help } from './Help.js';
 import { laneSpacing, layoutLanes } from './lanes.js';
 import { backLink, HISTORY_PAGE } from './pages.js';
 import { useShell, type Notice } from './shell-context.js';
@@ -847,12 +848,21 @@ function History({
               </button>
             )}
             <span className="commits-tail">
-              <span className="commits-help">
-                {comparing
-                  ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
-                  : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch'}
-              </span>
+              {/* Compare mode says what to do beside it; the keys are behind the "?" (V29b). */}
+              {comparing && (
+                <span className="commits-help">
+                  Pick two to compare them, or one against its parent · x picks, Enter compares, Esc
+                  leaves
+                </span>
+              )}
               <span className="commits-actions">
+                {!comparing && (
+                  <Help label="History's keys">
+                    <span className="commits-help">
+                      j/k move · c checks out · r reviews · x picks to compare · / finds a branch
+                    </span>
+                  </Help>
+                )}
                 <button
                   type="button"
                   className="compare-mode"

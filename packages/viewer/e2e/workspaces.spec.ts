@@ -804,11 +804,11 @@ test('each kind starts a workspace: its brief, its line, its branch, its tag (V2
     "## Done when\nA test that fails today passes, and the project's checks pass.\n",
   );
 
-  // The list names each by its title, its kind before it.
+  // The list names each by its title, its kind before its branch (V29b).
   await page.goto(`${cpr.url}`);
   const fix = workspaceRow(page, 'fix/fix-the-totals');
-  await expect(fix.locator('.workspace-about')).toHaveText('fixFix the totals');
-  await expect(fix.locator('.kind-tag')).toHaveText('fix');
+  await expect(fix.locator('.workspace-about')).toHaveText('Fix the totals');
+  await expect(fix.locator('.workspace-branch .kind-tag')).toHaveText('fix');
 });
 
 test('Done when names the check guessed at the start commit; switching kinds keeps every text (V24c)', async ({

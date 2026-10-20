@@ -2,12 +2,12 @@ import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from '
 import type { MergeEntry } from '@cpr/core';
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
-import { CprIcon, HistoryIcon, PlusIcon, SettingsIcon, SidenavIcon } from './icons.js';
+import { CprIcon, HistoryIcon, MenuIcon, PlusIcon, SettingsIcon, SidenavIcon } from './icons.js';
 import { mergeState } from './merges.js';
 import { HISTORY_PAGE, hrefOf, SETTINGS_PAGE } from './pages.js';
 import { useShell } from './shell-context.js';
 import { useWorkspaces } from './useWorkspaces.js';
-import { KindTag, WorkspaceBranch, WorkspaceChip, WorkspaceState } from './Workspace.js';
+import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from './Workspace.js';
 import { workspaceGroups, workspaceName, type WorkspaceRow } from './workspaces.js';
 
 const GROUPS = [
@@ -148,7 +148,7 @@ export function Sidenav({
           )}
           {GROUPS.map(([key, title]) =>
             groups[key].length === 0 ? null : (
-              <section key={key} className="workspace-group" aria-label={title}>
+              <section key={key} className={`workspace-group group-${key}`} aria-label={title}>
                 <h3>
                   <span className="sidenav-label">{title}</span>{' '}
                   <span className="branches-count">{groups[key].length}</span>
@@ -173,6 +173,30 @@ export function Sidenav({
         </div>
       </section>
     </aside>
+  );
+}
+
+/**
+ * Under 900 px (V29a): the strip at the top whose button opens the sidenav as a drawer over the
+ * page, and the scrim that closes it.
+ */
+export function DrawerStrip({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  return (
+    <>
+      <header className="shell-top">
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={open ? 'Close the sidenav' : 'Open the sidenav'}
+          aria-expanded={open}
+          onClick={onToggle}
+        >
+          <MenuIcon />
+        </button>
+        <strong className="brand">CPR</strong>
+      </header>
+      {open && <div className="shell-scrim" aria-hidden="true" onClick={onToggle} />}
+    </>
   );
 }
 
@@ -216,7 +240,7 @@ function WorkspaceCard({
       onClick={onPick}
     >
       <div className="workspace-head">
-        <WorkspaceChip row={row} />
+        <StateDot row={row} />
         <button
           type="button"
           className="workspace-about"
@@ -226,15 +250,17 @@ function WorkspaceCard({
             onPick();
           }}
         >
-          <KindTag workspace={workspace} />
           {name}
         </button>
+      </div>
+      <div className="workspace-line">
+        <WorkspaceState row={row} />
         <time className="commit-date" dateTime={workspace.created}>
           {relativeDate(workspace.created, Date.now())}
         </time>
       </div>
-      <WorkspaceState row={row} />
       <div className="workspace-branch">
+        <KindTag workspace={workspace} />
         <WorkspaceBranch row={row} mark={mark} />
       </div>
     </li>
@@ -260,9 +286,7 @@ function MergeCard({
       onClick={onPick}
     >
       <div className="workspace-head">
-        <span className="workspace-mark merge-mark" aria-hidden="true">
-          ⇢
-        </span>
+        <span className={`state-dot merge-tone-${tone}`} aria-hidden="true" />
         <a
           className="workspace-about"
           href={hrefOf({ page: 'merge', branch: entry.branch })}

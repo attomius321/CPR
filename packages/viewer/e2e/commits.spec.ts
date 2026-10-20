@@ -94,9 +94,17 @@ test('opens in browse mode: a click selects a row and picks nothing', async ({ p
     'aria-pressed',
     'false',
   );
+  // The keys behind the toolbar's "?" (V29b): shown on a click, gone with Escape.
+  const keys = page.getByRole('button', { name: "History's keys" });
+  await expect(page.locator('.commits-help')).toBeHidden();
+  await keys.click();
+  await expect(page.locator('.commits-help')).toBeVisible();
   await expect(page.locator('.commits-help')).toHaveText(
     'j/k move · c checks out · r reviews · x picks to compare · / finds a branch',
   );
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.commits-help')).toBeHidden();
+  await expect(keys).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('.commit-pick')).toHaveCount(0);
   await expect(page.locator('.compare-bar')).toHaveCount(0);
   // Clicking rows to look at them moves the selection (the cursor) only.
@@ -168,10 +176,15 @@ test("compare mode's toggle sits at the header's right, in line with the list, a
     const place = async () => {
       const button = (await toggle.boundingBox())!;
       const list = (await page.locator('.commit-list').boundingBox())!;
+      // The rows run edge to edge (V29b): in line with what they show, inside their padding.
+      const inset = await page
+        .locator('.commit')
+        .first()
+        .evaluate((row) => parseFloat(getComputedStyle(row).paddingRight));
       return {
         right: Math.round(button.x + button.width),
         y: button.y,
-        listRight: list.x + list.width,
+        listRight: list.x + list.width - inset,
       };
     };
     const off = await place();

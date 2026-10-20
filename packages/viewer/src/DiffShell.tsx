@@ -2,7 +2,7 @@ import { useCallback, useLayoutEffect, useMemo, useState, type ReactNode } from 
 import type { WorkspaceStart } from '@cpr/core';
 import { hrefOf, type Route } from './pages.js';
 import { ShellContext, type Notice, type Shell } from './shell-context.js';
-import { Sidenav } from './Sidenav.js';
+import { DrawerStrip, Sidenav } from './Sidenav.js';
 import { StatusBar } from './StatusBar.js';
 import { useWorkspaceStarter } from './WorkspaceStarter.js';
 
@@ -32,6 +32,8 @@ function saveFolded(folded: boolean): void {
  */
 export function DiffShell({ repo, children }: { repo?: string | undefined; children: ReactNode }) {
   const [folded, setFolded] = useState(loadFolded);
+  // Under 900 px the sidenav is a drawer, opened from the strip at the top (V29b).
+  const [drawer, setDrawer] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const fold = useCallback(
     () =>
@@ -81,7 +83,8 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
   );
   return (
     <ShellContext.Provider value={shell}>
-      <div className={`shell diff-shell${folded ? ' folded' : ''}`}>
+      <div className={`shell diff-shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}`}>
+        <DrawerStrip open={drawer} onToggle={() => setDrawer((open) => !open)} />
         <Sidenav repo={repo} folded={folded} onFold={fold} flashed={null} />
         <div className="shell-main">{children}</div>
         <StatusBar notice={notice} />

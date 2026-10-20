@@ -4,7 +4,7 @@ import { serveLongHistory, type Running } from './cpr.js';
 // The commits page on a longer history (V10): rows drawn only near the view, their details
 // asked for as they come near, and a line too long to draw cut into arrows.
 const ROWS = 450;
-const ROW_HEIGHT = 32;
+const ROW_HEIGHT = 28;
 let cpr: Running;
 const errors: string[] = [];
 

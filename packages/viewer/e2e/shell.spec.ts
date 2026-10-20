@@ -164,9 +164,12 @@ test('the terminal fills the main area, down to the status bar', async ({ page }
   // The fake agent prints its terminal's size: [<columns>x<rows>].
   await expect(screen).toContainText(/\[\d+x\d+\]/, POLL);
   const [, columns, rows] = /\[(\d+)x(\d+)\]/.exec((await screen.textContent()) ?? '') ?? [];
-  expect(Number(rows)).toBeGreaterThanOrEqual(55);
-  expect(Number(columns)).toBeGreaterThanOrEqual(150);
+  // At least 65 % of the window. In Geist Mono at 13 px a cell is 8 x 17 px (V29b): 148 x 46 here,
+  // where the fallback font's 13 px lines gave 58 rows (V29a) and `main` 41.
+  expect(Number(rows)).toBeGreaterThanOrEqual(45);
+  expect(Number(columns)).toBeGreaterThanOrEqual(140);
   const box = await workspace(page, branch).locator('.xterm-screen').boundingBox();
+  expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.65);
   const bar = await statusBar(page).boundingBox();
   expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan((bar?.y ?? 0) - 40);
 });
@@ -185,6 +188,21 @@ test('narrow: the sidenav is a drawer, closed once a workspace is picked', async
   await page.getByRole('button', { name: 'Open the sidenav' }).click();
   await pages(page).getByRole('link', { name: 'History' }).click();
   await expect(page).toHaveURL(`${cpr.url}history`);
+  await expect(sidenav(page)).toBeHidden();
+});
+
+test('narrow: a diff opens its sidenav from the strip at the top (V29b)', async ({ page }) => {
+  const diff = await serveFixture('callers');
+  running.push(diff);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(diff.url);
+  await expect(page.locator('.react-flow__node').first()).toBeVisible({ timeout: 20_000 });
+  await expect(sidenav(page)).toBeHidden();
+  await page.getByRole('button', { name: 'Open the sidenav' }).click();
+  await expect(sidenav(page)).toBeVisible();
+  await expect(pages(page).getByRole('link', { name: 'History' })).toBeVisible();
+  // A click beside the drawer closes it.
+  await page.locator('.shell-scrim').click({ position: { x: 370, y: 400 } });
   await expect(sidenav(page)).toBeHidden();
 });
 
