@@ -3477,3 +3477,27 @@ throwaway repositories deleted, the person's Codex configuration as it was befor
 Merged into main (2026-10-20): V27a and V27b, no conflicts (`main` had not moved since the branch
 started; the merge's tree is the branch's). `main` verified after the merge: frozen install, 899
 unit tests, lint, typecheck, build, 120 of 120 e2e.
+
+## V26b — keep both by rule, built and dropped (2026-10-20, branch `milestone/v26b-keep-both`, deleted)
+
+Asked: "he should just merge the 2", on the merger's e2e screenshots (the fake agent's first
+answer there drops a side on purpose). V26b was built (a rule before the agent: every region an
+addition on both sides, no line in common, in code whole top-level blocks, JSON still parsing),
+then tried on real merges, then dropped: "any conflict should be resolved by the agent". Every
+conflict goes to the merger agent, as V26c built it (decision 164).
+
+**Learned**:
+- **Where the rule applies, it is mostly docs.** The last 200 merges of CPR, Bitwarden, Qwik, zod,
+  vite and CPython (952 merges, 171 conflicting, replayed with `git merge-tree --write-tree` in
+  diff3 style): it wrote 8 (CPR's journal 6 of 11, CPython's `Misc/NEWS` 2), 6 equal to the
+  committed merge.
+- **A rule cannot see meaning.** File by file it would have kept two `PLAN.md` rows that both
+  claim V21 (CPR `01161fa2f`; the committed merge renumbered one), a changelog's entries twice
+  under two headings (vite `67a8f8022`), and statements added inside a method in the wrong order
+  (Bitwarden `0da4f7df7`). Each needed its own guard.
+- **The real merger agent on this repository's 11 conflicting merges**, through `cpr merge` with
+  Claude Code 2.1.303 (`sonnet`) and a conflict-marker check: of the 5 the rule left to it, 3
+  landed (2 equal to the committed merge, blank lines aside in one; 1 missing a line the committed
+  merge changed outside the regions, as V26c found), and 2 stopped rightly with "needs you" (a
+  README section rewritten on one side; two milestones both numbered V21). 10.0K–56.3K input
+  tokens, 9.9–49.3 s a run. `main` moved only on `--approve`.

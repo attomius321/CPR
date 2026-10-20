@@ -438,7 +438,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V23 ✅ | Branches that need you, first | Planned as V22, which `main` took meanwhile. The branches panel lists Local by name after the checked-out branch: a feature's branch sits where its name falls (on this repository a `milestone/…` feature would be the 23rd of 23 local branches), and nothing says which agent acted last. Claude Code lists a session's start only; CPR's thread has a time for every report and question. Planned: in Local, the features that need you first, the one whose agent acted last on top, then those whose agent works, then the rest as today; each feature with how long ago its agent acted. Merged (2026-10-18): on a clone of this repository with three open features, they are the first three entries instead of the 4th, 10th and 12th; `/api/features` unchanged (34 ms), each thread read from its last 256 KB (0.6 ms at any length). See below. |
 | V24 ✅ | A structured brief | The "Start a workspace" dialog is one text area that is also the branch name and the workspace's name; every branch is `feature/`, while 11 of this repository's 35 merges were fixes or chores; nothing prompts for how done is checked, which every agent vendor's guidance asks for. Planned: a kind (Feature, Fix, Refactor, Chore, Spike), a title, one required part per kind, an optional Done when filled in with a check command guessed from the repository's root files (on 16 repositories: 13 the documented command, 2 heavy, 1 close, 0 wrong), optional parts under More, assembled by the server into a brief with Markdown headings; the kind's branch prefix; old workspaces unchanged. Merged (2026-10-19): the guess on 16 repositories gives the 16 planned commands in 13–17 ms; the dialog fits at 1440 × 900 and 390 × 844; a real Claude Code's plans follow each kind's line. See below. |
 | V25 ✅ | Workspaces first, History beneath | `cpr view` opens on the commits page (`/`) and Workspaces is the second tab. A diff's way back is "← Commits". The code says "feature" for a workspace 1,949 times (12 files, `/api/features`, `cpr/features/`), and since V24 "feature" is also a kind of work. Planned: `/` Workspaces, `/history` History (today's commits page), tabs "Workspaces · History", old addresses rewritten, a back link to where a diff came from; "workspace" in code, API and on disk (`cpr/workspaces/`, moved once from `cpr/features/`); the kind "feature" kept. Merged (2026-10-19): 801 unit tests, 114 e2e; first paint of `/` as `main`'s `/workspaces` (109 ms); a repository's old records moved by the first reader. See below. |
-| V26 ✅ | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. V26a built: Merge into ▾ after Approve, CPR merges in its own worktree, runs the check, lands by fast-forward; `cpr merge`. Next: keep-both by rule (V26b); a fresh agent for the rest, from the conflict alone, every resolution reviewed (V26c). See below. |
+| V26 ✅ | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. Merged (2026-10-20): V26a, Merge into ▾ after Approve, CPR merges in its own worktree, runs the check, lands by fast-forward, `cpr merge`; V26c, a fresh agent for every conflict, from the conflict alone, every resolution reviewed. V26b (keep both by rule) dropped (decision 164): every conflict goes to the agent. See below. |
 | V27 ✅ | Codex in the panel's terminal | A Codex workspace has no terminal (decision 133): `exec` turns are recorded by CPR's runner, and a terminal's would not be. Spike: Codex 0.163's app-server daemon is the binding — CPR as a client starts the thread, a TUI joined with `codex resume --remote` reaches CPR (every item, 3.0 s) and shows CPR's turns (0.9 s), turns outlive the client and come back with `thread/read`, and approvals give "needs you". Merged (2026-10-20). V27a: Codex workspaces on the person's daemon — with the real Codex, started in 1.8 s, committed from its sandbox, a message joined its running turn (in the thread 0.8 s after Send), a turn outlived a `cpr view` restart, an approval read "Waiting: approval prompt"; `exec` without a daemon. V27b, Codex's terminal tab: the panel opens on Codex's own TUI on the thread (trust asked there, said by the panel first), a turn typed there in the thread 128 ms after Enter, an approval answered there cleared "needs you" in 22 ms, Stop ends the turn and its commands (45 ms; V27a's left them running), the list read while a terminal is open; any writable start makes Codex trust the repository (since V20a), now said. See below. |
 
 ### R1 — Receiver-aware references ✅
@@ -6580,7 +6580,7 @@ screenshot (`features.png`, three real agents) is not retaken and still shows th
 
 ### V26 — A merger: approved branches merged by CPR, an agent only for conflicts
 
-**Status:** V26a and V26c merged into main (2026-10-20, from branch `milestone/v26-merger`); V26b not built: the replays argue against it.
+**Status:** V26a and V26c merged into main (2026-10-20, from branch `milestone/v26-merger`). V26b dropped (2026-10-20, decision 164): every conflict goes to the merger agent.
 
 **Problem** (asked: "I want a merger agent, who specializes in merging branches"; "I don't like the
 idea of the workspace's own agent doing it … it already has polluted context … we need to optimise
@@ -6609,9 +6609,9 @@ What causes it:
 
 **Goal**: Approve, then **Merge**. CPR merges the approved commit in a worktree of its own, runs
 the project's check, and moves the default branch. No agent and no tokens when the merge is clean.
-A conflict whose sides only added, without overlap, is resolved by a rule. Anything else goes to
-a fresh agent that starts from the conflict alone, never the workspace's agent. Every resolution is
-reviewed by the person in CPR before the branch moves. Unchanged: the workspace's agent, reviews,
+A conflict whose sides only added, without overlap, is resolved by a rule (dropped: V26b, decision
+164). Anything else goes to a fresh agent that starts from the conflict alone, never the
+workspace's agent. Every resolution is reviewed by the person in CPR before the branch moves. Unchanged: the workspace's agent, reviews,
 and `cpr diff`/`cpr pr`.
 
 #### The merge (cli: `merges.ts`, beside `workspaces.ts`)
@@ -6653,7 +6653,9 @@ and `cpr diff`/`cpr pr`.
 
 #### Conflicts: a rule, then an agent
 
-- **Keep both** (no tokens): every conflicting file is text, and each region's ancestor side is
+The rule was dropped (V26b, decision 164): every conflict goes to the merger agent.
+
+- ~~**Keep both**~~ (no tokens): every conflicting file is text, and each region's ancestor side is
   empty. Two additions that share no lines (blank lines and lone brackets aside) are kept in
   parent order. Two equal additions are kept once. A `.json` file must still parse. Anything else
   is not resolved by the rule. The result goes to the check and then to the person (below).
@@ -6751,14 +6753,14 @@ and `cpr diff`/`cpr pr`.
 and fixes the main gap on its own. Then V26c (the merger agent, for every conflict), then V26b
 only if the replays show the agent slow or wrong where both sides only added: keep-both applied
 to 6 of 11 conflicts here but 1 of 21 on Bitwarden and 0 of 7 on Qwik, and every resolution is
-reviewed either way.
+reviewed either way. V26b was built after V26c, then dropped (decision 164).
 
 #### Milestones
 
 | # | Milestone | Output |
 |---|---|---|
 | V26a | Merge, check, land | Merge into ▾ (any branch; preselected from the workspace's `from`, the verdict, the default branch), the queue, CPR's merge worktree, `--no-ff` merge of the approved commit, `merge.checks`, landing by fast-forward or `update-ref`, `merge.push`; Merge on an approved workspace or branch review; the Merging rows; `cpr merge`; `AGENTS.md` without merging |
-| V26b | Keep both | The rule (empty ancestor, no shared lines, JSON parses), its result checked and reviewed; this section's replays as fixtures |
+| ~~V26b~~ | ~~Keep both~~ | Dropped (decision 164): every conflict goes to the merger agent. Was: the rule (empty ancestor, no shared lines, JSON parses), its result checked and reviewed |
 | V26c | The merger agent | A fresh session from the conflict alone (regions, both sides' symbols, titles, check output; CPR's short instructions and `cpr/merge.md`), `merge.model`, `merge.agent`, confined to the worktree; its resolution reviewed; tokens per run measured |
 
 **Proposed decisions**:
@@ -6770,7 +6772,7 @@ reviewed either way.
 | 144 | How `main` moves | **Fast-forward only: in the checkout that has it, else `update-ref` with the old value** | Never stale, never forced; git refuses rather than overwrite |
 | 145 | Push | **Off by default (`merge.push`)** | Other projects may not want CPR to push. This repository turns it on |
 | 146 | Clean merges | **No agent, no review: Approve was the yes** | Most merges are clean. A plain merge plus the check can be explained line by line |
-| 147 | Conflicts | **Rule, then agent; every resolution reviewed before landing** | Measured: the rule was right on 7 of 7 and refused 5. A wrong merge costs more trust than a slow one |
+| 147 | Conflicts | **Rule, then agent; every resolution reviewed before landing** (the rule dropped: decision 164) | Measured: the rule was right on 7 of 7 and refused 5. A wrong merge costs more trust than a slow one |
 | 148 | The agent's model | **`merge.model`, default `sonnet`** | Resolving a few regions with their symbols needs less than building a feature; the person can raise it |
 | 149 | Into which branch | **Any, picked at Merge; preselected: the workspace's `from`, the verdict's `into`, the default branch** | Old projects use `master`, others `develop` or release branches. Work goes back where it started from |
 | 150 | The merger's skill | **Light: ~1K tokens of CPR's own instructions in its prompt, plus an optional `cpr/merge.md`** | What a conflict needs is assembled per conflict. A heavy skill would be read on every run, which is the cost V26 removes. A skill file in the repository would reach the workspaces' agents too, and Codex does not read it |
@@ -6839,6 +6841,7 @@ that is ~100K tokens, the cost V26 is to remove.
 | 151 | How the agent changes files | **It does not: it answers each region's text, CPR writes it** | Edit would read whole files (~100K tokens for this repository's journal); the answer is confined by construction; the review is region by region |
 | 152 | Which run | **One `claude -p` / `codex exec` run, waited for, read-only tools** | Bounded, its usage in its answer; nothing to attach to or clean up |
 | 153 | A failed check after a clean merge | **`failed`, not the agent's** | No region to answer: what fails is the branch's code, fixed on the branch and reviewed again |
+| 164 | V26b, keep both by rule | **Dropped: every conflict goes to the merger agent** | Asked ("Remove this feature from the plan … any conflict should be resolved by the agent", 2026-10-20), after V26b was built and tried on real merges. In the replays the rule was right where it applied, but a rule cannot see meaning: run file by file, it would have kept two `PLAN.md` rows that both claim V21 (CPR `01161fa2f`; the agent stopped and asked) and a changelog's entries twice under two headings (vite `67a8f8022`); each guard added for such a case is another rule to explain. The agent sees what both sides were for. Branch `milestone/v26b-keep-both` deleted |
 
 **V26c results**: 852 unit tests, 117 e2e. This repository's 11 conflicting merges replayed with
 the real Claude Code (`sonnet`): 5 equal to what was committed, 1 equal but for indentation, 1
