@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import type { WorkspaceStart } from '@cpr/core';
 import { hrefOf, type Route } from './pages.js';
 import { ShellContext, type Notice, type Shell } from './shell-context.js';
@@ -50,7 +50,7 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
   const starter = useWorkspaceStarter(started, failed);
 
   // [ folds and opens the sidenav; the diff's own keys are the rest.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== '[' || event.metaKey || event.ctrlKey || event.altKey) return;
       const target = event.target;

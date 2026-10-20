@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { WorkspaceStart } from '@cpr/core';
 import { HistoryPage } from './HistoryPage.js';
 import { MenuIcon } from './icons.js';
@@ -161,8 +161,9 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   }, [go]);
 
   // h and s go to the pages, w to the workspaces (the arrows between them), n starts one, [ folds
-  // the sidenav.
-  useEffect(() => {
+  // the sidenav. Attached before the first paint, as History's keys are: a key pressed as soon as
+  // the page shows is not lost.
+  useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (keyIsTaken(event) || starter.isOpen) return;
       if (event.key === 'h') go(HISTORY_PAGE);
