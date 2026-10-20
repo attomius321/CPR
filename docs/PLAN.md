@@ -441,7 +441,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V26 ✅ | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. Merged (2026-10-20): V26a, Merge into ▾ after Approve, CPR merges in its own worktree, runs the check, lands by fast-forward, `cpr merge`; V26c, a fresh agent for every conflict, from the conflict alone, every resolution reviewed. V26b (keep both by rule) dropped (decision 164): every conflict goes to the agent. See below. |
 | V27 ✅ | Codex in the panel's terminal | A Codex workspace has no terminal (decision 133): `exec` turns are recorded by CPR's runner, and a terminal's would not be. Spike: Codex 0.163's app-server daemon is the binding — CPR as a client starts the thread, a TUI joined with `codex resume --remote` reaches CPR (every item, 3.0 s) and shows CPR's turns (0.9 s), turns outlive the client and come back with `thread/read`, and approvals give "needs you". Merged (2026-10-20). V27a: Codex workspaces on the person's daemon — with the real Codex, started in 1.8 s, committed from its sandbox, a message joined its running turn (in the thread 0.8 s after Send), a turn outlived a `cpr view` restart, an approval read "Waiting: approval prompt"; `exec` without a daemon. V27b, Codex's terminal tab: the panel opens on Codex's own TUI on the thread (trust asked there, said by the panel first), a turn typed there in the thread 128 ms after Enter, an approval answered there cleared "needs you" in 22 ms, Stop ends the turn and its commands (45 ms; V27a's left them running), the list read while a terminal is open; any writable start makes Codex trust the repository (since V20a), now said. See below. |
 | V28 ✅ | Every agent's prompts in the project's settings | CPR writes all 13 texts its agents are told (a start prompt per kind, the two plan sentences, the verdict's 4 sentences, `cpr/AGENTS.md`, the merger's instructions), and a project can change none of them; `cpr/merge.md` only adds to the merger's. This repository's own rules disagree with the Spike prompt. Planned: each prompt whole, with placeholders and CPR's text as its default, changed on a Settings page and saved under `prompts` in `cpr/config.json` (shared once committed); written with `jsonc-parser` so the rest of the file stays byte for byte (a `JSON.stringify` rewrite failed this repository's `pnpm check`); with no `prompts`, today's prompts byte for byte. Merged (2026-10-20): Settings (s) lists the 13 prompts by agent, saves only `prompts`; with none, `main`'s 48 start prompts, the merger's, `AGENTS.md` and 8 verdict texts byte for byte (decision 171's 20 aside); a saved Fix prompt reached the next Fix agent; the real Claude Code followed a changed Spike prompt and the merger a changed rule. See below. |
-| V29 | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only: 59 % and 53 % live when its copy on disk said 20 % and 22 %). Confirmed: Claude's live source, History, Geist and Geist Mono. Steps: V29a the shell, V29b the look (both built), V29c usage, V29d the branch's changes. See below. |
+| V29 | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only: 59 % and 53 % live when its copy on disk said 20 % and 22 %). Confirmed: Claude's live source, History, Geist and Geist Mono. Steps: V29a the shell, V29b the look, V29c usage (built), V29d the branch's changes. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -7370,10 +7370,10 @@ changed prompt; Windows.
 
 ### V29 — A workbench: pages and workspaces in a sidenav, a new look, usage at the bottom
 
-**Status:** V29a and V29b built (2026-10-20) on branch `milestone/v29-workbench`: "As built
-(V29a)", "As built (V29b)" and their results below; V29c–d not started. Decisions 172 (Claude
-Code's usage from the endpoint `/usage` reads), 178 (History) and 180 (Geist and Geist Mono)
-confirmed by the person (2026-10-20); 185 made while building; the others proposed.
+**Status:** V29a, V29b and V29c built (2026-10-20) on branch `milestone/v29-workbench`: their
+"As built" and results below; V29d not started. Decisions 172 (Claude Code's usage from the
+endpoint `/usage` reads), 178 (History) and 180 (Geist and Geist Mono) confirmed by the person
+(2026-10-20); 185 made while building; the others proposed.
 
 **Problem** (asked: "I want to focus now on UI improvements. Found this one as a reference. I like
 this layout more … Love the fact that i can see the session usage for each found subscription at
@@ -7789,6 +7789,54 @@ layouts untouched); `cpr diff` and `cpr pr` output are untouched (no CLI or core
 verified: a real Claude Code or Codex in the new terminal (the fake agent only); browsers on
 Windows and macOS, where the font costs above may not exist; the README's screenshots
 (`features.png` needs a real agent session).
+
+#### As built (V29c)
+
+- **Types in core** (`UsageReport`, `UsageSubscription`, `UsageWindow`): the server sends each
+  window's length in minutes, and the viewer names it (`5h`, `wk`, `30d`, `<n>d`, `<n>h`) and
+  picks its tone (`src/usage.ts`, pure).
+- **Claude's own warning**: its `limits` entries carry `severity`; in real use the 5-hour window
+  read `"warning"` at 79 %. A window so marked is amber below 80 % too (`warning` on the window;
+  other words are not read).
+- **No transcripts read** for "the limit was hit": the live endpoint reports the window at
+  100 %, and Codex says so itself (`rateLimitReachedType` → `limited`, red).
+- **Codex**: `account/read` and `account/rateLimits/read` need no experimental opt-in. Only the
+  account's main `rateLimits` is read (its `rateLimitsByLimitId` held the same one here).
+  Reading usage starts Codex's app-server daemon when it does not run, as a Codex workspace does
+  (decision 154); one Codex (and one daemon connection) serves workspaces and usage.
+- **Claude Code's files** are where Claude Code keeps them: `CLAUDE_CONFIG_DIR` when set (its
+  `.claude.json` inside it), else `~/.claude` and `~/.claude.json`. `CPR_CLAUDE_USAGE_URL` (for
+  tests) is honoured for this machine only (`http://127.0.0.1`, `localhost`): the token cannot be
+  sent to a third party by an environment variable.
+- **The first ask waits** for the vendors (689–799 ms here, both in parallel); every later ask
+  answers from memory and reads again in the background past 60 s.
+- **A copy with no current window** (all reset since) shows the plan, no window, and says why
+  on hover, rather than an old number.
+- **e2e never reads a person's usage**: every spec runs `cpr view` with `CPR_USAGE=off`; the
+  usage spec fakes Claude's endpoint and credentials (`CLAUDE_CONFIG_DIR`) and gives Codex an
+  empty `CODEX_HOME`. Found by its first run, which fell back to this machine's real Codex
+  sessions.
+- **Not verified**: the macOS Keychain read (`security find-generic-password`), on Linux here.
+  An unexplained failure: in 2 of the first ~10 runs of the usage spec, Codex's live read failed
+  once (the first answer lacked Codex, or fell back to its sessions); not seen in 36 runs since,
+  instrumented ones and a full suite included.
+
+**Results (V29c).** Tests first, red before: 16 unit tests of the readers and the copy (Claude's
+live answer and its headers, the older `five_hour`/`seven_day` answer, a model's week, Claude's
+warning, an expired token — no request, the file unchanged, the reset window dropped —, a failed
+request and a 429, not installed or not signed in, `CLAUDE_CONFIG_DIR`, the URL kept to this
+machine, no token in what is returned; Codex's Go and two-window answers, an API key, no
+Codex, the sessions' copy; the 60-s copy, one read at a time, the 5-min back-off, errors
+keeping the numbers, `CPR_USAGE=off`), a server test (`GET` only, `no-store`), 6 viewer tests
+(labels, tones, reset words, the hover's text), and 2 e2e (the bar's windows and tones, the
+token sent to the fake endpoint only and in no answer to the page, one vendor read per minute
+across a reload; a failing endpoint leaving Claude out and Codex shown). `pnpm check` 970 unit
+tests, e2e 137 of 137. Real use, `cpr view` on
+this repository: Claude Pro 79 % (5 h) and 68 % (week) live, later 83 % (marked warning) and 69 %;
+Codex Go 0 % (30 days) live; a direct read of each source in the same minute gave the same
+numbers. `/api/usage` from memory: median 0.79 ms, at most 1.95 ms over 20 asks. Not verified
+against Claude Code's `/usage` screen or Codex's `/status` themselves (interactive TUIs): the
+comparison is with the sources they read.
 
 ### Phase 1 milestones
 

@@ -172,6 +172,22 @@ The pages are dark. **Appearance** in Settings makes them light, or follows your
 browser. They are set in Geist and Geist Mono, which `cpr view` serves itself: nothing is fetched
 from elsewhere.
 
+**Usage.** The status bar's right side shows the subscription of each agent CPR can start and
+how much of each window is used, as its vendor counts it: `Claude Pro · 5h 59% · wk 66%`,
+`Codex Go · 30d 0%`. Amber from 80 % (or when Claude warns), red at the limit; a hover says
+when each window resets and how old the numbers are. `cpr view` reads them at most once a
+minute, while a page asks:
+
+- **Claude Code**: from the endpoint Claude Code's own `/usage` reads, with the token Claude
+  Code stored (`~/.claude/.credentials.json`, or the Keychain on macOS). CPR only reads it: it
+  never renews it, never gives it to the page, and sends it to `api.anthropic.com` only. When the
+  token has expired or the request fails, the bar shows the copy Claude Code kept the last time
+  `/usage` was opened, with its age.
+- **Codex**: from its app server (`account/rateLimits/read`); without one, from your newest
+  Codex session. An API-key login has no windows and is not shown.
+
+`CPR_USAGE=off` reads none of it.
+
 ![History: the branches panel with its milestone folder open, and the history drawn as a graph with branch badges](docs/images/history.png)
 
 - **Branches panel.** Local branches, with `↑2 ↓1` against their upstream, and remote ones by
@@ -663,6 +679,7 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 | `CPR_CLAUDE` | The Claude Code program workspaces start (default: `claude` on `PATH`). |
 | `CPR_CODEX` | The Codex program workspaces start (default: `codex` on `PATH`). |
 | `CPR_TERMINAL` | `off`: no agent's terminal in a workspace's panel; the panel keeps Talk and the reply box. |
+| `CPR_USAGE` | `off`: no subscription usage is read, and the status bar shows none. |
 | `CPR_CACHE_DIR` | Where CPR keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/cpr`, else `~/Library/Caches/cpr` on macOS and `~/.cache/cpr` elsewhere. |
 
 ## Limits

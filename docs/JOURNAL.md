@@ -3781,3 +3781,38 @@ mark reviewed 33 → 33 ms, pan 63 fps both; labels cut short as j walks 40 chan
 dialog and a diff at 1280, 1440 and 1920 px (all but the dialog at 390 too) and a merge at
 1440; light at 1440. Not verified: real agents in the new terminal; other browsers and
 systems; the README's screenshots.
+
+## V29c — usage in the status bar (2026-10-20, branch `milestone/v29-workbench`)
+
+Each subscription CPR's agents run on, at the status bar's right: `Claude Pro · 5h 59% · wk 66%`,
+`Codex Go · 30d 0%`. Claude Code's from the endpoint its `/usage` reads, with the token it stored,
+read only (decision 172); Codex's from its app server. `cpr view` keeps a 60-s copy
+(`GET /api/usage`).
+
+**Learned**:
+- **Claude grades its own windows**: `limits[].severity` read `"warning"` at 79 % of the
+  5-hour window. A fixed 80 % threshold would have shown it green; the window carries the
+  warning now. Other words are not read until seen.
+- **The shapes** (Claude Code 2.1.303 on Pro, Codex 0.163 on Go, read today): Claude's `limits`
+  list has `kind` (`session`, `weekly_all`), `percent`, `resets_at` (ISO with microseconds),
+  `scope`; its plan is `oauthAccount.organizationType` (`claude_pro`); its token file has
+  `expiresAt` in ms. Codex's `account/read` gives `type: "chatgpt"` and `planType`;
+  `account/rateLimits/read` (0.8 s, it asks OpenAI) `primary`/`secondary` with `usedPercent`,
+  `windowDurationMins`, `resetsAt` in seconds, and `rateLimitReachedType`; no experimental
+  opt-in needed. Codex's sessions carry the same in snake case.
+- **A fallback can reach the person's files from a test.** The first run of the usage spec fell
+  back to Codex's sessions in this machine's `~/.codex`. Every spec now runs `cpr view` with
+  `CPR_USAGE=off`, and the usage spec gives Claude Code a `CLAUDE_CONFIG_DIR` and Codex a
+  `CODEX_HOME` of its own.
+- **"One read at a time" needs the decision taken before the read**: a refresh with nothing due
+  still left a promise "under way" for a tick, and the next ask, past 60 s, reused it and read
+  nothing (a unit test found it).
+- **Unexplained**: in 2 of the first ~10 runs of the usage spec Codex's live read failed once;
+  not seen in 36 runs since, instrumented ones and a full suite included.
+
+**Verification**: 16 unit tests of the readers and the copy, 1 server test, 6 viewer tests, 2
+e2e (red before: no module, a 404), `pnpm check` 970 tests, e2e 137 of 137. Real use on this
+repository: Claude 79 % and 68 %, later 83 % (warning) and 69 %, Codex 0 %, each equal to a
+direct read of its source in the same minute; not compared with the `/usage` and `/status`
+screens themselves. `/api/usage` from memory 0.79 ms median, the first ask 689–799 ms. Not
+verified: the macOS Keychain read.
