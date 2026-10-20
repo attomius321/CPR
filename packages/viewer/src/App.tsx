@@ -30,6 +30,7 @@ import { BackLink, HistoryPage, DiffProgress, fetchGraph, startDiff } from './Hi
 import { workspaceHref, workspaceName } from './workspaces.js';
 import { WorkspacesPage } from './WorkspacesPage.js';
 import { PageTabs } from './PageTabs.js';
+import { SettingsPage } from './SettingsPage.js';
 import { useWorkspaces } from './useWorkspaces.js';
 import { DetailPanel } from './DetailPanel.js';
 import { FileNode } from './FileNode.js';
@@ -78,6 +79,8 @@ type State =
   | { status: 'history' }
   /** `cpr view`'s first page, Workspaces (V25: at `/`; `/workspaces` and `/workspaces` before). */
   | { status: 'workspaces' }
+  /** `cpr view`'s Settings, at `/settings`: every agent's prompts (V28b). */
+  | { status: 'settings' }
   /** A diff's page while it is analyzed, or once it failed or was stopped. */
   | { status: 'analyzing'; loaded: Exclude<Loaded, { kind: 'graph' }> }
   /**
@@ -446,9 +449,9 @@ export function App() {
     <div className="app" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
       <header className="bar">
         <strong className="brand">CPR</strong>
-        {(state.status === 'history' || state.status === 'workspaces') && (
-          <PageTabs active={state.status} />
-        )}
+        {(state.status === 'history' ||
+          state.status === 'workspaces' ||
+          state.status === 'settings') && <PageTabs active={state.status} />}
         {state.status === 'ready' && state.commits && <BackLink />}
         {state.status === 'ready' && state.branchReview && <ReviewOf review={state.branchReview} />}
         {state.status === 'ready' && <Summary graph={state.graph} />}
@@ -506,6 +509,7 @@ export function App() {
         )}
         {state.status === 'history' && <HistoryPage />}
         {state.status === 'workspaces' && <WorkspacesPage />}
+        {state.status === 'settings' && <SettingsPage />}
         {state.status === 'analyzing' && <DiffProgress loaded={state.loaded} onRetry={retry} />}
         {state.status === 'ready' && (
           <ReactFlowProvider>

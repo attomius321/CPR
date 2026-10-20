@@ -3567,3 +3567,28 @@ project's, a stale save 409. The real Claude Code (2.1.303, `sonnet`, read-only,
 CPR's Spike prompt gave a plan with "no commits"; a Spike prompt that keeps experiments gave
 `spikes/…`, a commit and a push. Not verified: Codex with a changed prompt; the merger with
 changed instructions on a real conflict; Windows' command-line limit.
+
+## V28b — The Settings page (2026-10-20, branch `milestone/v28-agent-prompts`)
+
+A third tab in `cpr view`, Settings (`s`, `/settings`): the 13 prompts by agent, each in a text
+area with its placeholders, Save and Reset to CPR's, and what saving means in git. Written
+through V28a's `POST /api/settings/prompts`.
+
+**Learned**:
+- **A line count is not a height.** The merger's instructions are 16 lines but wrap to about 30
+  at 1440 px: sized by lines, the text area scrolled inside itself in the first screenshot. It
+  now grows with its content (`scrollHeight`), up to 70 % of the window.
+- **`s` pressed before the tabs are drawn is lost**: the page's keys listen once `cpr view`
+  answered what the page is. The spec waits for the tab first, as a person would see it.
+- **The Workspaces page's title is squeezed at 390 px** (its help text in a one-word column
+  beside "Start a workspace"). It is so on `main`: V28b adds only CSS rules and does not touch
+  that page. Not fixed here.
+- The 7 unit tests of `settings.ts` were red first (no module); the 4 e2e tests were written
+  with the page.
+
+**Verification**: 924 unit tests, lint, typecheck, build; 124 of 124 e2e. Screenshots at 1440 and
+390 px, light and dark, no page errors (sent to the user). The real merger (Claude Code,
+`sonnet`) on one conflict, a version constant changed on both sides: with CPR's instructions it
+kept `2.1.0`; with "a version constant changed on both sides is never yours to answer" it said
+"needs you", naming both values; 4.2K input tokens a run. Not verified: Codex with a changed
+prompt; Windows.

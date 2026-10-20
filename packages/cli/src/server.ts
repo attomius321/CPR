@@ -287,6 +287,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         }
       }
       const { settings } = repository;
+      // Every agent's prompts (V28b).
+      if (settings && url.pathname === '/settings') return serveSite(req, res, url, '/', undefined);
       if (settings && url.pathname === '/api/settings/prompts') {
         if (req.method === 'GET') return answer(res, () => settings.prompts());
         return written(req, res, parsePromptChange, (change) =>

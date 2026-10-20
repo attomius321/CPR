@@ -3553,3 +3553,283 @@ p.merge-control {
   flex: 1;
   min-width: 0;
 }
+
+/* ---- settings: every agent's prompts (V28b) ----------------------------------------- */
+
+.settings {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px 24px;
+}
+
+.settings .link {
+  font-family: inherit;
+}
+
+.settings-git,
+.settings-warning {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings-warning {
+  color: var(--warning);
+}
+
+.settings-body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.settings-list section h2 {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.settings-list section + section h2 {
+  margin-top: 16px;
+}
+
+.settings-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.settings-list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.settings-list button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-list button:hover {
+  background: var(--bg);
+}
+
+.settings-list button[aria-current='true'] {
+  box-shadow: inset 3px 0 0 var(--moved);
+  background: color-mix(in srgb, var(--moved) 7%, var(--panel));
+}
+
+.settings-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-mark {
+  flex: none;
+  font-size: 12px;
+}
+
+.settings-mark.changed {
+  color: var(--moved);
+}
+
+.settings-mark.unsaved {
+  color: var(--modified);
+}
+
+.settings-mark.warning {
+  color: var(--warning);
+}
+
+.settings-editor {
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.settings-editor h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.settings-state {
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.settings-state.changed {
+  border-color: var(--moved);
+  color: var(--moved);
+}
+
+.settings-about {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings-editor .settings-warning {
+  margin: 0 0 8px;
+}
+
+.settings-editor textarea {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    13px/1.45 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  max-height: 70vh;
+  overflow-y: auto;
+  resize: vertical;
+}
+
+.settings-size {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.settings-size.error {
+  color: var(--error);
+}
+
+.settings-fixed p,
+.settings-placeholders p,
+p.settings-placeholders {
+  margin: 12px 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings-fixed pre,
+.settings-default pre {
+  max-height: 40vh;
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--bg);
+  font:
+    12px/1.45 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.settings-placeholders ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.settings-placeholders li {
+  margin: 2px 0;
+}
+
+.settings-placeholders .link {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 14px;
+  margin-top: 14px;
+  font-size: 13px;
+}
+
+.settings-actions .button {
+  margin-top: 0;
+  padding: 6px 14px;
+  border: 0;
+  font: inherit;
+}
+
+.settings-actions .button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.settings-notice {
+  flex: 1 1 240px;
+  color: var(--muted);
+}
+
+.settings-notice.error {
+  color: var(--error);
+}
+
+.settings-default {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.settings-default summary {
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.settings-back {
+  display: none;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 899px) {
+  .settings {
+    padding: 12px 16px;
+  }
+
+  .settings-body {
+    display: block;
+  }
+
+  .settings-body.picked .settings-list,
+  .settings-body:not(.picked) .settings-editor {
+    display: none;
+  }
+
+  .settings-back {
+    display: inline;
+  }
+}
