@@ -3840,3 +3840,44 @@ committed).
 - **The recorded base and the fork point agree** on this repository's 3 workspaces with a branch
   (the other 3 branches are gone): too few to tell how often a branch is rebased. The panel takes
   the fork point, as Review does (decision 187).
+
+## V29d — the branch's changes beside the terminal (2026-10-20, branch `milestone/v29-workbench`)
+
+A workspace shows its branch at the terminal's right: the commits since the fork point and the
+files they change with their lines (what Review will show), then the files its worktree has not
+committed. A file opens in VS Code in the worktree at its first change. 256 px, where the
+workspace's area is at least 1,200 px wide; `]` hides it, kept per browser.
+
+**Learned**:
+- **The plan's width broke its own rule.** 280 px would have left the terminal 54.5 % of a
+  1440×900 window, under the 55 % asked; 256 px leaves 56 % and 116 columns (measured with the
+  panel built: 928×782 px). A container query on the workspace's area, not a media query on the
+  window: the rail gives room at 1280.
+- **Two counts of a branch's commits.** The head's `ahead` counts from the workspace's recorded
+  base, the panel (and Review) from the fork point: after a rebase onto a newer `main` the head
+  says 2 where the panel lists 1. Not changed here: `ahead` also decides a finished agent's state.
+- **An empty branch is "merged" by the fork point** (the fork point is its tip), as a merged one
+  is: told apart by the recorded base, so a new workspace says "since main" and a merged one
+  "since it started".
+- **Untracked files need a cap too**: a build's output that nothing ignores lists every file
+  (`--untracked-files=all`), every 5 s.
+- **`git diff -U0 <base> -- <path>` in the worktree** finds a file's first change in the working
+  copy, committed or not, in one run; a rename is found only with both of its paths in the
+  pathspec (with the new one alone the whole file is new, line 1).
+- **A light theme's text on the terminal's black**: V29b's tab joined to the terminal kept the
+  theme's text colour, near-black in light (1.25:1). Seen only in a light screenshot of a
+  workspace; fixed on its own commit with an e2e contrast check.
+
+**Verification**: tests first, red before — 7 core (numstat with renames, binary files, tabs;
+the worktree's status; the first changed line, a rename through both paths), 3 workspaces (the
+changes, a rebase, merged, gone branch and worktree; the caps; opening at the change, paths
+outside refused), 1 server, the editor's file at a line, 6 viewer unit, 3 e2e. `pnpm check`
+988 unit tests, e2e 140 of 140 in two runs in a row. One full run before them failed and its
+output was cut to its last lines: which test failed is not known (no failure in the 3 runs
+around it). The terminal at 1440×900 beside the panel 928×782 px (56.0 %, 116
+columns), 1184×782 without it; 1920 65.8 %; 1280 with the sidenav open: no panel, 68 %.
+`changes()` on the V29 branch of a clone of this repository (17 commits, 76 files): 57 ms first,
+26–28 ms after; a Bitwarden worktree's status and lines 291 ms first, 14–16 ms after. Screenshots
+at 1280, 1440, 1920 and 390 px dark, 1440 light. No layout, graph or analysis code changed. Not
+verified: real agents with the panel; VS Code itself (a fake `code` records its arguments);
+browsers other than Chromium.

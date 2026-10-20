@@ -441,7 +441,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V26 ✅ | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. Merged (2026-10-20): V26a, Merge into ▾ after Approve, CPR merges in its own worktree, runs the check, lands by fast-forward, `cpr merge`; V26c, a fresh agent for every conflict, from the conflict alone, every resolution reviewed. V26b (keep both by rule) dropped (decision 164): every conflict goes to the agent. See below. |
 | V27 ✅ | Codex in the panel's terminal | A Codex workspace has no terminal (decision 133): `exec` turns are recorded by CPR's runner, and a terminal's would not be. Spike: Codex 0.163's app-server daemon is the binding — CPR as a client starts the thread, a TUI joined with `codex resume --remote` reaches CPR (every item, 3.0 s) and shows CPR's turns (0.9 s), turns outlive the client and come back with `thread/read`, and approvals give "needs you". Merged (2026-10-20). V27a: Codex workspaces on the person's daemon — with the real Codex, started in 1.8 s, committed from its sandbox, a message joined its running turn (in the thread 0.8 s after Send), a turn outlived a `cpr view` restart, an approval read "Waiting: approval prompt"; `exec` without a daemon. V27b, Codex's terminal tab: the panel opens on Codex's own TUI on the thread (trust asked there, said by the panel first), a turn typed there in the thread 128 ms after Enter, an approval answered there cleared "needs you" in 22 ms, Stop ends the turn and its commands (45 ms; V27a's left them running), the list read while a terminal is open; any writable start makes Codex trust the repository (since V20a), now said. See below. |
 | V28 ✅ | Every agent's prompts in the project's settings | CPR writes all 13 texts its agents are told (a start prompt per kind, the two plan sentences, the verdict's 4 sentences, `cpr/AGENTS.md`, the merger's instructions), and a project can change none of them; `cpr/merge.md` only adds to the merger's. This repository's own rules disagree with the Spike prompt. Planned: each prompt whole, with placeholders and CPR's text as its default, changed on a Settings page and saved under `prompts` in `cpr/config.json` (shared once committed); written with `jsonc-parser` so the rest of the file stays byte for byte (a `JSON.stringify` rewrite failed this repository's `pnpm check`); with no `prompts`, today's prompts byte for byte. Merged (2026-10-20): Settings (s) lists the 13 prompts by agent, saves only `prompts`; with none, `main`'s 48 start prompts, the merger's, `AGENTS.md` and 8 verdict texts byte for byte (decision 171's 20 aside); a saved Fix prompt reached the next Fix agent; the real Claude Code followed a changed Spike prompt and the merger a changed rule. See below. |
-| V29 | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only: 59 % and 53 % live when its copy on disk said 20 % and 22 %). Confirmed: Claude's live source, History, Geist and Geist Mono. Steps: V29a the shell, V29b the look, V29c usage (built), V29d the branch's changes. See below. |
+| V29 | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only: 59 % and 53 % live when its copy on disk said 20 % and 22 %). Confirmed: Claude's live source, History, Geist and Geist Mono. Steps: V29a the shell, V29b the look, V29c usage, V29d the branch's changes (all built). See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -7371,8 +7371,8 @@ changed prompt; Windows.
 ### V29 — A workbench: pages and workspaces in a sidenav, a new look, usage at the bottom
 
 **Status:** V29a, V29b and V29c built (2026-10-20) on branch `milestone/v29-workbench`: their
-"As built" and results below; V29d planned in detail (decisions 186–189, proposed), in progress.
-Decisions 172 (Claude Code's usage from the
+"As built" and results below; V29d built too (2026-10-20, decisions 186–189 proposed): all four
+steps done, not merged. Decisions 172 (Claude Code's usage from the
 endpoint `/usage` reads), 178 (History) and 180 (Geist and Geist Mono) confirmed by the person
 (2026-10-20); 185 made while building; the others proposed.
 
@@ -7890,6 +7890,49 @@ Codex Go 0 % (30 days) live; a direct read of each source in the same minute gav
 numbers. `/api/usage` from memory: median 0.79 ms, at most 1.95 ms over 20 asks. Not verified
 against Claude Code's `/usage` screen or Codex's `/status` themselves (interactive TUIs): the
 comparison is with the sources they read.
+
+#### As built (V29d)
+
+- **The panel** is three sections, no title strip: Commits (its count and "since main"), Files
+  (its count and the lines over all), Not committed. A count of no lines is muted (`+1 −0`: the
+  `−0` grey, not red). Commits show their short SHA, subject and age; their hover the author and
+  date.
+- **The worktree's files are capped too**, at 300 like the branch's: a build's output that nothing
+  ignores would have sent thousands of rows with every read of the list (found reviewing the
+  first build).
+- **Where there is no room** the head's button hides with the panel (one container query), and
+  `]` then shows nothing. The panel stays mounted there and reads with the list (~27 ms of git a
+  read); not worth a second rule.
+- **`keyIsTaken`** moved from the shell to `src/keys.ts`, for the shell's keys and `]`.
+- **Found, not changed**: the head's "N commits" (`ahead`) counts from the recorded base, the
+  panel from the fork point. After a rebase onto a newer `main` the head counts `main`'s commits
+  too (2 where the panel and Review show 1, in the rebase unit test's setup). `ahead` also decides
+  a finished agent's state and the merged check: proposed as its own fix.
+- **Found on the way**: in light, the Terminal tab's label was near-black on the black it joins
+  (1.25:1, V29b's). On the black it takes the dark theme's text in both themes; its own commit,
+  an e2e test asking 4.5:1.
+
+**Results (V29d).** Tests first, red before: 7 core (the numstat parser, the worktree's status,
+the first changed line), 5 CLI (the changes of a branch with commits, after a rebase, merged, its
+branch or worktree gone, the caps; a file opened at its change, paths outside refused; the
+server's routes; VS Code at a line), 6 viewer unit (the rows' words), 3 e2e (the lists and the
+open, the terminal's share; `]`, the reload, no room at 1280 until the rail; the light tab).
+`pnpm check` 988 unit tests (and the refusal's words, `serverWords`); e2e 140 of 140 in two runs
+in a row, after one full run that failed on a test not known (its output was not kept). Measured:
+
+| What | V29c | V29d |
+|---|---|---|
+| The terminal at 1280×720 (sidenav open: no panel) | 1024×612, 68.0 % | the same |
+| … at 1440×900 | 1184×782, 71.4 %, 148 columns | 928×782, **56.0 %, 116 columns** beside the panel (148 with it hidden) |
+| … at 1920×1080 | 1664×969, 77.8 % | 1408×969, 65.8 %, 176 columns |
+| `changes()` on a clone of this repository, the V29 branch (17 commits, 76 files, +7,473 −2,133) | — | 57 ms the first read, 26–28 ms after (commits and files kept) |
+| The worktree's part in a Bitwarden worktree (9,147 files) | — | 291 ms the first read, 14–16 ms after |
+
+Graph layouts and `cpr diff`/`cpr pr` are untouched: core only gained git readers and types
+(`flow.ts`, the goldens and the analysis unchanged). Not verified: a real Claude Code or Codex
+workspace with the panel (the fake agent only); VS Code itself opening at the line (a fake
+`code` records its arguments); browsers other than Chromium (container queries need Chrome 105,
+Firefox 110, Safari 16).
 
 ### Phase 1 milestones
 
