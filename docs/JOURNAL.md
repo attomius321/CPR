@@ -3518,6 +3518,8 @@ Now `GITIGNORE` also un-ignores `merge.md`, `merge.md` is one of CPR's files, an
 `git status` did not show `merge.md`), green after; 900 unit tests, lint, typecheck, build.
 README not changed: its Merging section does not describe `cpr/merge.md` yet (left for later).
 
+Merged into main (2026-10-20), before V28.
+
 ## V28 spike — what CPR tells its agents, and how a project would change it (2026-10-20, branch `milestone/v28-agent-prompts`)
 
 Asked: a settings page to extend the predefined agents; then "every meta prompt of every agent
@@ -3608,3 +3610,8 @@ through V28a's `POST /api/settings/prompts`.
 kept `2.1.0`; with "a version constant changed on both sides is never yours to answer" it said
 "needs you", naming both values; 4.2K input tokens a run. Not verified: Codex with a changed
 prompt; Windows.
+
+Merged into main (2026-10-20): V28a and V28b, after `fix/merge-md-shared`. Two conflicts, both
+from that fix: `prepareCprFolder`'s doc comment (both kept) and the journal's end (both entries
+kept). `main` verified after the merges: frozen install, 925 unit tests, lint, typecheck, build,
+124 of 124 e2e.

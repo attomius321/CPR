@@ -440,7 +440,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V25 ✅ | Workspaces first, History beneath | `cpr view` opens on the commits page (`/`) and Workspaces is the second tab. A diff's way back is "← Commits". The code says "feature" for a workspace 1,949 times (12 files, `/api/features`, `cpr/features/`), and since V24 "feature" is also a kind of work. Planned: `/` Workspaces, `/history` History (today's commits page), tabs "Workspaces · History", old addresses rewritten, a back link to where a diff came from; "workspace" in code, API and on disk (`cpr/workspaces/`, moved once from `cpr/features/`); the kind "feature" kept. Merged (2026-10-19): 801 unit tests, 114 e2e; first paint of `/` as `main`'s `/workspaces` (109 ms); a repository's old records moved by the first reader. See below. |
 | V26 ✅ | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. Merged (2026-10-20): V26a, Merge into ▾ after Approve, CPR merges in its own worktree, runs the check, lands by fast-forward, `cpr merge`; V26c, a fresh agent for every conflict, from the conflict alone, every resolution reviewed. V26b (keep both by rule) dropped (decision 164): every conflict goes to the agent. See below. |
 | V27 ✅ | Codex in the panel's terminal | A Codex workspace has no terminal (decision 133): `exec` turns are recorded by CPR's runner, and a terminal's would not be. Spike: Codex 0.163's app-server daemon is the binding — CPR as a client starts the thread, a TUI joined with `codex resume --remote` reaches CPR (every item, 3.0 s) and shows CPR's turns (0.9 s), turns outlive the client and come back with `thread/read`, and approvals give "needs you". Merged (2026-10-20). V27a: Codex workspaces on the person's daemon — with the real Codex, started in 1.8 s, committed from its sandbox, a message joined its running turn (in the thread 0.8 s after Send), a turn outlived a `cpr view` restart, an approval read "Waiting: approval prompt"; `exec` without a daemon. V27b, Codex's terminal tab: the panel opens on Codex's own TUI on the thread (trust asked there, said by the panel first), a turn typed there in the thread 128 ms after Enter, an approval answered there cleared "needs you" in 22 ms, Stop ends the turn and its commands (45 ms; V27a's left them running), the list read while a terminal is open; any writable start makes Codex trust the repository (since V20a), now said. See below. |
-| V28 (built, not merged) | Every agent's prompts in the project's settings | CPR writes all 13 texts its agents are told (a start prompt per kind, the two plan sentences, the verdict's 4 sentences, `cpr/AGENTS.md`, the merger's instructions), and a project can change none of them; `cpr/merge.md` only adds to the merger's. This repository's own rules disagree with the Spike prompt. Planned: each prompt whole, with placeholders and CPR's text as its default, changed on a Settings page and saved under `prompts` in `cpr/config.json` (shared once committed); written with `jsonc-parser` so the rest of the file stays byte for byte (a `JSON.stringify` rewrite failed this repository's `pnpm check`); with no `prompts`, today's prompts byte for byte. See below. |
+| V28 ✅ | Every agent's prompts in the project's settings | CPR writes all 13 texts its agents are told (a start prompt per kind, the two plan sentences, the verdict's 4 sentences, `cpr/AGENTS.md`, the merger's instructions), and a project can change none of them; `cpr/merge.md` only adds to the merger's. This repository's own rules disagree with the Spike prompt. Planned: each prompt whole, with placeholders and CPR's text as its default, changed on a Settings page and saved under `prompts` in `cpr/config.json` (shared once committed); written with `jsonc-parser` so the rest of the file stays byte for byte (a `JSON.stringify` rewrite failed this repository's `pnpm check`); with no `prompts`, today's prompts byte for byte. Merged (2026-10-20): Settings (s) lists the 13 prompts by agent, saves only `prompts`; with none, `main`'s 48 start prompts, the merger's, `AGENTS.md` and 8 verdict texts byte for byte (decision 171's 20 aside); a saved Fix prompt reached the next Fix agent; the real Claude Code followed a changed Spike prompt and the merger a changed rule. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -7123,8 +7123,9 @@ terminal, two people's TUIs on one thread, macOS and Windows.
 
 ### V28 — Every agent's prompts in the project's settings
 
-**Status:** V28a and V28b built (2026-10-20), on branch `milestone/v28-agent-prompts`; not
-merged. As built and results: "As built (V28a)" and "As built (V28b)" below.
+**Status:** V28a and V28b merged into main (2026-10-20, from branch
+`milestone/v28-agent-prompts`). As built and results: "As built (V28a)" and "As built (V28b)"
+below.
 
 **Problem** (asked: "We need a settings page where you can extend the predefined agents with more
 specific things for it"; then "Every meta prompt of every agent should be configurable, with the
@@ -7287,7 +7288,7 @@ and formatting; the start dialog; and the data in a prompt (the brief, conflict 
 | V28a ✅ | Prompts from config.json | The 13 prompts as defaults with placeholders; `promptsOf`; every use reads it; writing with `jsonc-parser`; `GET`/`PUT /api/settings/prompts`; README's config table |
 | V28b ✅ | The Settings page | `/settings`, the tab, the list, the editor, Save, Reset, the git state, e2e and screenshots |
 
-**Proposed decisions**:
+**Decisions** (165–171, as built):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
