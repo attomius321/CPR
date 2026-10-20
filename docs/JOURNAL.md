@@ -3696,3 +3696,40 @@ same 2,289 bytes, no rate-limit headers. It said 59 % (5-hour) and 53 % (weekly)
 reset has passed. The answer has 29 keys; 3 have a value (`five_hour`, `seven_day` and
 `iguana_necktie`, a code name), and `limits` lists the two meant to be shown, with kind and
 reset. The token was read in the script's process only and not printed.
+
+## V29a — the shell: the pages and the workspaces in a sidenav (2026-10-20, branch `milestone/v29-workbench`)
+
+No Workspaces page: a sidenav lists History and Settings, then the workspaces by group and the
+merges in CPR's queue; the main area shows what is picked; a status bar says what the last
+action did. `/` alone is History; a workspace keeps `/?branch=`; a merge is `/?merge=`.
+
+**Learned**:
+- **One window means navigation in place.** With full page loads between the sidenav's entries
+  the sidenav would reload and the terminal reattach each time. Links to the shell's addresses
+  are caught at the document in the capture phase, before a row's own handler (the cards' and
+  badges' links only stop the click reaching their row), and pushed. History mounts anew on each
+  visit, since it reads `?branch=` once.
+- **In place, nothing unloads.** Settings' `beforeunload` question about unsaved prompts never
+  came; the shell now asks for the page (`confirm`), on Back too.
+- **History's first rows wait on font matching here.** A trace of the first load: one layout of
+  859 ms wall time and 2.3 ms thread time, for 50 layout objects. With one installed font for
+  every element the wait is gone and the first rows show at 85–107 ms instead of ~950 ms; the
+  sans stack alone (`system-ui, -apple-system, 'Segoe UI'`) costs ~570 ms, the monospace stack
+  (`ui-monospace, SFMono-Regular, Menlo`) ~300 ms. `main` has it too, after its first paint. The
+  sidenav's key hints in the monospace stack brought it before the first paint (blank ~920 ms in
+  3 of 14 loads); in the text's font they no longer do. Not chased in V29a: V29b bundles its
+  fonts and names only them and generic families. Measured in headless Chromium on Linux (WSL);
+  a browser on Windows or macOS may never wait.
+- **A long notice cut to one line hid its button**: the status bar wraps instead.
+- **A key pressed as soon as the page shows** was lost when the shell attached its keys after the
+  paint (1 of 130 e2e tests); a layout effect attaches them before, as History's are.
+- **A diff of `cpr view` reads the same capabilities as the shell's pages** (`commits`): the diff
+  shell flashed on History until it was kept to a diff's states.
+
+**Verification**: unit (8 route tests, the server's repository name), 7 shell e2e tests (6 red on
+`main`'s build), `pnpm check` 929 tests, e2e 130 of 130 with 31 tests in 7 specs moved from the
+Workspaces page to the sidenav. The agent's terminal (fake Claude Code): 1440×900 965×533 px, 41
+rows → 1136×754 px, 58 rows (66 % of the window); 1280 and 1920 in PLAN.md. `/history` on a
+clone of this repository, `main` and V29a alternated 7 rounds, both orders: first paint 48/48 →
+48/56 ms, first rows 962/970 → 963/981 ms. Not verified: real agents in the new layout; other
+browsers and systems.

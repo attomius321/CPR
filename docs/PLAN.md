@@ -7370,9 +7370,10 @@ changed prompt; Windows.
 
 ### V29 — A workbench: pages and workspaces in a sidenav, a new look, usage at the bottom
 
-**Status:** planned (2026-10-20), replanned the same day; on branch `milestone/v29-workbench`; not
-started. Decisions 172 (Claude Code's usage from the endpoint `/usage` reads), 178 (History) and
-180 (Geist and Geist Mono) confirmed by the person (2026-10-20); the others proposed.
+**Status:** V29a built (2026-10-20) on branch `milestone/v29-workbench`: "As built (V29a)" and
+its results below; V29b–d not started. Decisions 172 (Claude Code's usage from the endpoint
+`/usage` reads), 178 (History) and 180 (Geist and Geist Mono) confirmed by the person
+(2026-10-20); 185 made while building; the others proposed.
 
 **Problem** (asked: "I want to focus now on UI improvements. Found this one as a reference. I like
 this layout more … Love the fact that i can see the session usage for each found subscription at
@@ -7511,8 +7512,11 @@ What causes it:
   the terminal, bundled from `@fontsource-variable/geist` and `@fontsource-variable/geist-mono`
   (5.3.0, OFL 1.1) and served by CPR, no request outside it. Variable weight, Latin 29 + 23 KB and
   Latin Extended 17 + 15 KB; a browser fetches Latin Extended only for a page that uses it.
-  System fonts as the fallback. One
-  scale: 11, 12, 13 (body), 14 and 16 px; tabular figures for numbers, times and percentages.
+  Stacks name the bundled font and a generic family only (`'Geist', sans-serif`, `'Geist Mono',
+  monospace`), in the viewer and in xterm: every name the system lacks is a font-matching miss,
+  and on Linux those held History's first rows for 850–900 ms (found in V29a: with one installed
+  font, 85–107 ms). One scale: 11, 12, 13 (body), 14 and 16 px; tabular figures for numbers,
+  times and percentages.
 - **Density and shape**: 28 px rows and buttons, 26 px small buttons, 4/8/12/16 px spacing, 6 px
   radius (4 for chips), 1 px lines, no shadow but on menus and dialogs, a 2 px blue focus ring.
 - **Icons**: about 20 inline SVG icons in `src/icons.tsx` (16 px, 1.6 stroke): pages, +, ⋯, rail,
@@ -7596,7 +7600,9 @@ What causes it:
    Bitwarden's 1,288-symbol graph with the new font (nodes whose text overflows: 0).
 5. **Real use**: a real Claude Code and a real Codex workspace in the new terminal; the bar's
    numbers equal `/usage` and `/status` within the same minute.
-6. **Cost**: first paint of `/history` within 10 % of `main`'s (60 ms) with the fonts; Bitwarden's
+6. **Cost**: first paint of `/history` within 10 % of `main`'s (48 ms here) with the fonts, and
+   its first rows on a clone of this repository from ~965 ms to under 200 ms (the font wait V29a
+   found); Bitwarden's
    graph: first paint, select and pan as `main` (`scripts/viewer/measure.mjs`, back to back);
    `/api/usage` from memory under 5 ms; a page fetches at most 55 KB of fonts for Latin text.
 
@@ -7646,10 +7652,64 @@ plan's 172–179; 176 supersedes V25's 136):
 | 182 | A diff page | **In the shell with the sidenav as a 48 px rail by default** | The person keeps the sidenav everywhere; open, it would take the canvas from 1,140 to 900 px at 1440 |
 | 183 | The right panel | **The branch's changes, not a file tree; last** | CPR reviews changes; a tree of the worktree is the editor's, one click away |
 | 184 | New dependencies | **`@fontsource-variable/geist` and `@fontsource-variable/geist-mono`, build assets only** | Served by CPR, nothing loaded from elsewhere; no icon library (inline SVG) |
+| 185 | What a start shows (made in V29a) | **The new workspace, in the main area** | Its agent plans and asks first: the terminal is what to look at next. One starter for the shell, wherever it opens from |
 
 **Not in V29 (later)**: two terminals side by side (the reference splits Claude Code and Codex);
 a plain shell in a workspace's worktree; a file tree; pinned workspaces (the reference pins
 `main`); the status bar under `cpr pr`; `cpr usage` in the terminal.
+
+#### As built (V29a)
+
+- **Going between pages in place.** Not in the plan: links to the shell's addresses (`/history`,
+  `/settings`, `/?branch=`, `/?merge=` and the old ones) are caught at the document, in the
+  capture phase (before a row's own handler, which only stops the click reaching the row), and
+  pushed to the history; Back and Forward follow. History mounts anew on each visit, so it reads
+  `?branch=` again. An e2e test checks that no navigation loads the page again.
+- **A leave guard.** Settings asked through `beforeunload` before leaving with unsaved prompts,
+  and a navigation in place unloads nothing: the shell asks instead (`confirm`), on Back too.
+  `settings.spec` found it.
+- **Starting a workspace opens it** (decision 185): from the sidenav's +, `n`, or History's "Start
+  a workspace here", the new workspace opens in the main area and the status bar says "Started
+  …". History listed the new branch with the cursor on it before. One starter for the shell:
+  History's own Start button is gone.
+- **The workspace's head**: Stop or Start, Merge into, and Review as buttons; Open in VS Code, Copy
+  the prompt, Talk and Clean up under ⋯. The terminal's hint ("← in an empty prompt lists all
+  your agents") is the Terminal tab's tooltip, and the brief its third tab (`&brief`).
+- **"+N" on a History row** that folds several workspaces linked to the Workspaces page; it links
+  to the most urgent of them now. A diff's way back says "← Workspace" when opened from one.
+- **Notices wrap** in the status bar: cut to one line, the notice for an agent that did not start
+  hid its "Copy the prompt" (e2e found it).
+- **Headings**: History's "History" and its Start button are gone; its toolbar and help line stay
+  for V29b. Settings keeps its heading for now.
+- **The repository's name** comes from the server (`capabilities.repo`, the folder's name).
+- **Keys attach before the first paint**, as History's do: `s` pressed as soon as the page showed
+  was lost in 1 of 130 e2e tests.
+- **Font matching** (found measuring first paint): History's first rows wait 850–900 ms here for
+  a layout whose thread time is 2 ms, Chromium matching font names this system lacks; `main`
+  too, after its first paint. The sidenav's key hints, in the monospace stack, brought the wait
+  before the first paint (blank ~920 ms in 3 of 14 loads); in the text's font they no longer do.
+  V29b's bundled fonts are to remove the wait (its Type and Cost above).
+- **Left for V29b**: cards are 70 px high (85 on `main`; the plan said at most 64), and a diff
+  under 900 px has no way to open its sidenav (no top strip there).
+
+**Results (V29a).** Tests first, red before: 8 route unit tests (`pages.test.ts`), the repository's
+name (server), 6 shell e2e tests red on `main`'s build; a 7th, a diff's rail, written with it.
+`pnpm check` 929 unit tests. e2e 130 of 130; 31 tests in 7 specs written for the Workspaces page
+start from the sidenav (the start, the ⋯ menu, merges opened from their card). The agent's
+terminal with e2e's fake Claude Code, `main` → V29a:
+
+| Window | `main` | V29a |
+|---|---|---|
+| 1280×720 | 808×429 px, 38 %, 33 rows | 972×572 px, 60 %, 136×44 |
+| 1440×900 | 965×533 px, 40 %, 41 rows (135 columns) | 1136×754 px, 66 %, 159×58 |
+| 1920×1080 | 1444×637 px, 44 %, 49 rows | 1615×936 px, 73 %, 226×72 |
+
+The plan's 1440 target (at least 65 % and 55 rows) is met. A diff's canvas keeps 1,092 of its
+1,140 px at 1440 beside the rail. `/history` on a clone of this repository, `main` and V29a
+alternated, 7 rounds each, both orders: first paint 48 and 48 ms against 48 and 56 ms, first rows
+962 and 970 ms against 963 and 981 ms. Not verified: a real Claude Code or Codex session in the
+new layout (the fake agent only); browsers on Windows and macOS, where the font wait may not
+exist; the README's Workspaces screenshot (`features.png`), to be retaken with V29b's look.
 
 ### Phase 1 milestones
 
