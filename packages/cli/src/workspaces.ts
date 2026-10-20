@@ -506,7 +506,7 @@ const isBlocked = (session: AgentSession) =>
 
 /**
  * What the page says of a workspace's agent: the newest session working in its worktree (matched
- * by real path), else why there is none. `ahead` (commits since the base) tells a finished plan
+ * by real path), else why there is none. `ahead` (commits since the fork point) tells a finished plan
  * from finished work. `ended`: the thread says its last turn ended (V18c) — Claude Code reads a
  * finished plan as `blocked` with nothing named it waits for, so that is a finished turn. A
  * turn interrupted with Esc fires no hook and reads `idle` with `working` until the next one ends.
@@ -1053,7 +1053,10 @@ export function workspaces(
     let ahead = 0;
     let merged = false;
     if (tip && (await isCommit(repo, workspace.base))) {
-      ahead = (await commitsBetween(repo, workspace.base, tip, 1)).count;
+      // From where its changes and Review start: main's commits taken in by a rebase or a merge
+      // are not the workspace's.
+      const { base } = await changesBase(workspace, refs, tip);
+      ahead = (await commitsBetween(repo, base, tip, 1)).count;
       for (const end of trunk) {
         if (ahead > 0 && !merged) merged = await isAncestor(repo, tip, end);
       }
@@ -1098,9 +1101,23 @@ export function workspaces(
     };
   }
 
+  /**
+   * The default branch for one read of the refs: looked up once (a git run per remote) for all
+   * the workspaces of a list.
+   */
+  const mains = new WeakMap<RefList, Promise<string | null>>();
+  function mainOf(refs: RefList): Promise<string | null> {
+    let main = mains.get(refs);
+    if (!main) {
+      main = defaultBranch(repo, refs);
+      mains.set(refs, main);
+    }
+    return main;
+  }
+
   /** The default branch's tips, local and remotes'. */
   async function trunkOf(refs: RefList): Promise<string[]> {
-    const name = await defaultBranch(repo, refs);
+    const name = await mainOf(refs);
     if (!name) return [];
     return [
       ...refs.branches.filter((b) => b.name === name).map((b) => b.sha),
@@ -1152,7 +1169,7 @@ export function workspaces(
     refs: RefList,
     tip: string,
   ): Promise<{ base: string; since?: string }> {
-    const main = await defaultBranch(repo, refs);
+    const main = await mainOf(refs);
     const fork = main && main !== workspace.branch ? await forkPoint(repo, tip, main, refs) : null;
     if (fork && main && (fork !== tip || fork === workspace.base))
       return { base: fork, since: main };

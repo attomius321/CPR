@@ -7906,7 +7906,8 @@ comparison is with the sources they read.
 - **Found, not changed**: the head's "N commits" (`ahead`) counts from the recorded base, the
   panel from the fork point. After a rebase onto a newer `main` the head counts `main`'s commits
   too (2 where the panel and Review show 1, in the rebase unit test's setup). `ahead` also decides
-  a finished agent's state and the merged check: proposed as its own fix.
+  a finished agent's state and the merged check: fixed after the merge on its own branch
+  (`fix/commits-from-fork-point`, see JOURNAL).
 - **Found on the way**: in light, the Terminal tab's label was near-black on the black it joins
   (1.25:1, V29b's). On the black it takes the dark theme's text in both themes; its own commit,
   an e2e test asking 4.5:1.

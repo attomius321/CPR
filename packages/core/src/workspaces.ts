@@ -114,7 +114,10 @@ export interface WorkspaceSummary {
   worktree: { path: string; exists: boolean; changed?: number };
   /** The branch's tip; null once the branch is gone. */
   tip: string | null;
-  /** The branch's commits since its base. */
+  /**
+   * The branch's commits since it left the default branch (its fork point, as Review computes
+   * it); since its base once merged.
+   */
   ahead: number;
   /** Its commits are all in the default branch. */
   merged: boolean;
