@@ -10,7 +10,7 @@ import {
   splitPath,
   statusLetter,
 } from './changes.js';
-import { postJson } from './http.js';
+import { postJson, serverWords } from './http.js';
 import { shortAge } from './workspaces.js';
 
 /**
@@ -25,7 +25,7 @@ function useChanges(branch: string, version: unknown): WorkspaceChanges | string
       .then(async (response) =>
         response.ok
           ? ((await response.json()) as WorkspaceChanges)
-          : `Could not read its changes: ${await response.text()}`,
+          : `Could not read its changes: ${serverWords(await response.text())}`,
       )
       .then((read) => {
         // An error keeps what was read before.

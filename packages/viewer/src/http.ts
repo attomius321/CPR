@@ -11,13 +11,16 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
   });
   const text = await response.text();
   if (response.ok) return JSON.parse(text) as T;
-  let message = text;
+  throw new Error(serverWords(text));
+}
+
+/** What a refusal says: its `{ error }`, or its text. */
+export function serverWords(text: string): string {
   try {
-    message = (JSON.parse(text) as { error?: string }).error ?? text;
+    return (JSON.parse(text) as { error?: string } | null)?.error ?? text;
   } catch {
-    // a plain-text refusal
+    return text; // a plain-text refusal
   }
-  throw new Error(message);
 }
 
 /** A read's answer, or the server's words as an error. */
