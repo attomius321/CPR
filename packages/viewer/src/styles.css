@@ -3242,16 +3242,18 @@ button.workspace-about {
   color: var(--text);
 }
 
-/* The tab picked joins what it shows: the terminal's black, the page's background otherwise. */
+/* The tab picked joins what it shows: the terminal's black, the page's background otherwise. On
+   the black, the dark theme's text in both themes (light's on black read 1.25:1). */
 .workspace-views button.selected {
   border-color: var(--line);
   border-bottom-color: var(--tab-under, var(--bg));
   background: var(--tab-under, var(--bg));
-  color: var(--text);
+  color: var(--tab-text, var(--text));
 }
 
 .workspace-views:has(+ .workspace-body > .workspace-terminal) {
   --tab-under: #000;
+  --tab-text: #e6e6e9;
 }
 
 /* The tab's content takes the rest of the main area's height (V29a). */
