@@ -3909,3 +3909,5 @@ of 51. `list()` with 5 workspaces on a clone of this repository: `main` 96 and 9
 15), the fix 112 and 123 ms with a lookup per workspace, 102, 106 and 110 ms with it shared;
 back to back, not alternated.
 
+Merged into main (2026-10-20), after V29, no conflicts. `main` verified after the merge: frozen
+install, 989 unit tests, format, lint, typecheck, build, 140 of 140 e2e.
