@@ -1,0 +1,325 @@
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { openRepo, PROMPT_KEYS, type Verdict, type WorkKind } from '@cpr/core';
+import { afterEach, describe, expect, it } from 'vitest';
+import { createRepo, tempDir } from '../../core/test/helpers/git-repo.js';
+import { MERGER_INSTRUCTIONS, mergerInstructions } from '../src/merge-agent.js';
+import {
+  DEFAULT_PROMPTS,
+  fillPrompt,
+  MERGER_ANSWER,
+  promptSettingsService,
+  PromptRefused,
+  readPrompts,
+  writePrompt,
+} from '../src/prompts.js';
+import { agentsFile, AGENTS, verdictText } from '../src/reviews.js';
+import { workspacePrompt, type WorkspaceFile } from '../src/workspaces.js';
+
+/** What `main` at eadc0ce gave, recorded from its build before V28 (`fixtures/`). */
+const BEFORE = JSON.parse(
+  readFileSync(new URL('./fixtures/prompts-before-v28.json', import.meta.url), 'utf8'),
+) as {
+  start: {
+    workspace: WorkspaceFile;
+    where: { record: string; reviews: string; agents: string; into: string | null };
+    prompt: string;
+  }[];
+  merger: string;
+  agents: string;
+  verdicts: {
+    info: { branch: string; base: string };
+    reviewer: string;
+    verdict: Verdict;
+    where?: { review: string; agents: string };
+    text: string;
+  }[];
+};
+
+/** This repository's `cpr/config.json` as committed (`eadc0ce`): Prettier formats it. */
+const CONFIG =
+  '{\n  "merge": {\n' +
+  '    "checks": ["pnpm install --frozen-lockfile", "pnpm check", "pnpm build", "pnpm test:e2e"],\n' +
+  '    "push": true\n  }\n}\n';
+
+const dirs: string[] = [];
+afterEach(() => {
+  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
+/** A folder with `files` in it. */
+function folder(files: Record<string, string> = {}): string {
+  const dir = tempDir();
+  dirs.push(dir);
+  for (const [path, text] of Object.entries(files)) {
+    mkdirSync(dirname(join(dir, path)), { recursive: true });
+    writeFileSync(join(dir, path), text);
+  }
+  return dir;
+}
+/** A folder whose `cpr/config.json` (or `path`) is `config`. */
+const withConfig = (config: unknown, path = 'cpr/config.json') =>
+  folder({ [path]: JSON.stringify(config) });
+const read = (dir: string, path = 'cpr/config.json') => readFileSync(join(dir, path), 'utf8');
+
+describe('with no prompts set (V28)', () => {
+  it('gives every start prompt main gave, but names a target when there is no default branch', () => {
+    const text = readPrompts(folder()).text;
+    expect(BEFORE.start).toHaveLength(48);
+    for (const { workspace, where, prompt } of BEFORE.start) {
+      // Decision 171: today's sentence stopped at "in CPR." when no default branch was known.
+      const expected =
+        where.into === null
+          ? prompt.replace(
+              'the person reviews the branch in CPR.\n',
+              'the person reviews the branch in CPR, and an approved commit is merged into the ' +
+                'branch the person picks.\n',
+            )
+          : prompt;
+      expect(workspacePrompt(workspace, where, text)).toBe(expected);
+      expect(workspacePrompt(workspace, where)).toBe(expected);
+    }
+  });
+
+  it("gives the merger's instructions, cpr/AGENTS.md and every verdict's text main gave", () => {
+    const text = readPrompts(folder()).text;
+    expect(MERGER_INSTRUCTIONS).toBe(BEFORE.merger);
+    expect(mergerInstructions(text.merger)).toBe(BEFORE.merger);
+    expect(AGENTS).toBe(BEFORE.agents);
+    expect(agentsFile(text.reviews)).toBe(BEFORE.agents);
+    expect(BEFORE.verdicts).toHaveLength(8);
+    for (const { info, reviewer, verdict, where, text: before } of BEFORE.verdicts) {
+      expect(verdictText(info, reviewer, verdict, where, text)).toBe(before);
+      expect(verdictText(info, reviewer, verdict, where)).toBe(before);
+    }
+  });
+
+  it("keeps the merger's answer format CPR's, after its instructions (decision 169)", () => {
+    expect(MERGER_ANSWER).toMatch(/^Answer with one JSON object and nothing else:\n/);
+    expect(DEFAULT_PROMPTS.merger).not.toContain('Answer with one JSON object');
+    expect(mergerInstructions('Keep both.')).toBe(`Keep both.\n\n${MERGER_ANSWER}`);
+  });
+
+  it('has a default for every key, and one start prompt per kind with its line', () => {
+    expect(Object.keys(DEFAULT_PROMPTS).sort()).toEqual([...PROMPT_KEYS].sort());
+    expect(DEFAULT_PROMPTS['start.fix']).toContain(
+      'Reproduce it first, with a failing test where the project has tests',
+    );
+    expect(DEFAULT_PROMPTS['start.feature']).not.toContain('Reproduce it first');
+    expect(DEFAULT_PROMPTS['start.spike']).toContain(
+      'Commit nothing unless the brief asks for it.',
+    );
+  });
+});
+
+describe('fillPrompt', () => {
+  it('replaces the names it is given, once, and leaves any other brace as text', () => {
+    expect(fillPrompt('{a} and {b}, not {c} nor {"json": 1}', { a: '{b}', b: 'two' })).toBe(
+      '{b} and two, not {c} nor {"json": 1}',
+    );
+  });
+});
+
+describe('readPrompts', () => {
+  it("uses the project's prompts: a string, or lines", () => {
+    const dir = withConfig({
+      prompts: {
+        start: { spike: ['Spike on {branch}.', '', '{brief}', '', 'Commit it under spikes/.'] },
+        plan: { direct: 'Just do it.' },
+        verdict: { approve: 'Merged {at} into {into}.' },
+      },
+    });
+    const { text, changed, warnings } = readPrompts(dir);
+    expect(text['start.spike']).toBe('Spike on {branch}.\n\n{brief}\n\nCommit it under spikes/.');
+    expect(text['plan.direct']).toBe('Just do it.');
+    expect(text['start.fix']).toBe(DEFAULT_PROMPTS['start.fix']);
+    expect([...changed].sort()).toEqual(['plan.direct', 'start.spike', 'verdict.approve']);
+    expect(warnings).toEqual({});
+
+    const workspace: WorkspaceFile = {
+      branch: 'spike/one',
+      base: '0123456789abcdef0123456789abcdef01234567',
+      brief: 'Why is it slow?',
+      kind: 'spike',
+      planFirst: false,
+    } as WorkspaceFile;
+    const where = { record: 'r', reviews: 'v', agents: '/repo/cpr/AGENTS.md', into: 'main' };
+    expect(workspacePrompt(workspace, where, text)).toBe(
+      'Spike on spike/one.\n\nWhy is it slow?\n\nCommit it under spikes/.\n',
+    );
+  });
+
+  it("uses CPR's text, saying why, for a value it cannot use (decision 170)", () => {
+    const dir = withConfig({
+      prompts: {
+        start: { fix: 'Fix {branch}; no brief.', chore: 42, refactor: 'x'.repeat(8_001) },
+        verdict: { where: ['one', 2] },
+        merger: 'Keep both sides.',
+        unknown: 'ignored',
+      },
+    });
+    const { text, changed, warnings } = readPrompts(dir);
+    expect(text['start.fix']).toBe(DEFAULT_PROMPTS['start.fix']);
+    expect(text['start.chore']).toBe(DEFAULT_PROMPTS['start.chore']);
+    expect(text['start.refactor']).toBe(DEFAULT_PROMPTS['start.refactor']);
+    expect(text['verdict.where']).toBe(DEFAULT_PROMPTS['verdict.where']);
+    expect(text.merger).toBe('Keep both sides.');
+    expect([...changed]).toEqual(['merger']);
+    expect(warnings).toEqual({
+      'start.fix': expect.stringContaining('{brief}') as string,
+      'start.chore': expect.stringContaining('not text') as string,
+      'start.refactor': expect.stringContaining('8,000') as string,
+      'verdict.where': expect.stringContaining('not text') as string,
+    });
+  });
+
+  it("reads cpr/config.json before cpr.config.json, and CPR's texts from a file that is not JSON", () => {
+    const dir = withConfig({ prompts: { reviews: 'Old place.' } }, 'cpr.config.json');
+    expect(readPrompts(dir)).toMatchObject({ file: 'cpr.config.json' });
+    expect(readPrompts(dir).text.reviews).toBe('Old place.');
+    mkdirSync(join(dir, 'cpr'));
+    writeFileSync(join(dir, 'cpr', 'config.json'), '{ "prompts": { "reviews": "New place." } }');
+    expect(readPrompts(dir)).toMatchObject({ file: 'cpr/config.json' });
+    expect(readPrompts(dir).text.reviews).toBe('New place.');
+
+    const broken = folder({ 'cpr/config.json': '{ "prompts": ' });
+    const prompts = readPrompts(broken);
+    expect(prompts.text).toEqual(DEFAULT_PROMPTS);
+    expect(prompts.warning).toContain('not JSON');
+
+    expect(readPrompts(folder())).toMatchObject({ file: 'cpr/config.json', source: null });
+  });
+});
+
+describe('writePrompt', () => {
+  const inRepo = () => {
+    const repo = createRepo();
+    dirs.push(repo.root);
+    repo.write({ 'cpr/config.json': CONFIG });
+    return repo.root;
+  };
+  const version = (root: string) => readPrompts(root).version;
+
+  it('changes only prompts in the file, and gives it back byte for byte on Reset (decision 167)', async () => {
+    const root = inRepo();
+    await writePrompt(root, {
+      key: 'start.spike',
+      text: 'Spike on {branch}.\r\n\r\n{brief}\r\n\r\nCommit it under spikes/.\n\n',
+      version: version(root),
+    });
+    expect(read(root)).toBe(
+      CONFIG.replace(
+        '    "push": true\n  }\n}\n',
+        '    "push": true\n  },\n  "prompts": {\n    "start": {\n      "spike": [\n' +
+          '        "Spike on {branch}.",\n        "",\n        "{brief}",\n        "",\n' +
+          '        "Commit it under spikes/."\n      ]\n    }\n  }\n}\n',
+      ),
+    );
+    // A one-line prompt is a string (decision 168).
+    await writePrompt(root, { key: 'plan.direct', text: 'Just do it.', version: version(root) });
+    expect(JSON.parse(read(root))).toMatchObject({
+      prompts: { plan: { direct: 'Just do it.' }, start: { spike: expect.any(Array) as unknown } },
+    });
+
+    await writePrompt(root, { key: 'start.spike', text: null, version: version(root) });
+    // CPR's own text is no key either.
+    await writePrompt(root, {
+      key: 'plan.direct',
+      text: `${DEFAULT_PROMPTS['plan.direct']}\n`,
+      version: version(root),
+    });
+    expect(read(root)).toBe(CONFIG);
+  });
+
+  it('creates cpr/config.json when the project has no config', async () => {
+    const root = folder();
+    await writePrompt(root, { key: 'merger', text: 'Keep both.', version: version(root) });
+    expect(JSON.parse(read(root))).toEqual({ prompts: { merger: 'Keep both.' } });
+  });
+
+  it('refuses a stale version, an unknown key, a start prompt without its brief, a long text', async () => {
+    const root = inRepo();
+    const stale = version(root);
+    await writePrompt(root, { key: 'merger', text: 'Keep both.', version: stale });
+    const refused = (change: Parameters<typeof writePrompt>[1]) =>
+      writePrompt(root, change).then(
+        () => null,
+        (error: unknown) => {
+          if (!(error instanceof PromptRefused)) throw error;
+          return { status: error.status, message: error.message };
+        },
+      );
+    expect(await refused({ key: 'merger', text: 'Again.', version: stale })).toEqual({
+      status: 409,
+      message: expect.stringContaining('changed since') as string,
+    });
+    const now = version(root);
+    expect(await refused({ key: 'start.bug' as never, text: 'x', version: now })).toMatchObject({
+      status: 400,
+    });
+    expect(await refused({ key: 'start.fix', text: 'Fix it.', version: now })).toEqual({
+      status: 400,
+      message: expect.stringContaining('{brief}') as string,
+    });
+    expect(
+      await refused({ key: 'verdict.where', text: 'x'.repeat(1_001), version: now }),
+    ).toMatchObject({ status: 400 });
+    expect(JSON.parse(read(root))).toMatchObject({ prompts: { merger: 'Keep both.' } });
+  });
+
+  it('refuses to write into a file that is not JSON', async () => {
+    const root = folder({ 'cpr.config.json': '{ "prompts": ' });
+    await expect(
+      writePrompt(root, { key: 'merger', text: 'Keep both.', version: version(root) }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(read(root, 'cpr.config.json')).toBe('{ "prompts": ');
+  });
+});
+
+describe('promptSettingsService', () => {
+  it("lists every prompt with CPR's text and the project's, and the file's state in git", async () => {
+    const repo = createRepo();
+    dirs.push(repo.root);
+    repo.write({ 'src/a.ts': 'export const a = 1;\n' });
+    repo.commit('A');
+    const settings = promptSettingsService(await openRepo(repo.root));
+
+    const first = await settings.prompts();
+    expect(first).toMatchObject({ file: 'cpr/config.json', git: 'none' });
+    expect(first.prompts.map((p) => p.key)).toEqual(PROMPT_KEYS);
+    const fix = first.prompts.find((p) => p.key === 'start.fix');
+    expect(fix).toMatchObject({
+      group: 'Workspaces',
+      title: 'Fix',
+      text: DEFAULT_PROMPTS['start.fix'],
+      default: DEFAULT_PROMPTS['start.fix'],
+      changed: false,
+      max: 8_000,
+    });
+    expect(fix?.placeholders.find((p) => p.name === 'brief')).toMatchObject({ required: true });
+    expect(first.prompts.find((p) => p.key === 'merger')?.fixed).toBe(MERGER_ANSWER);
+
+    const kinds: WorkKind[] = ['feature', 'fix', 'refactor', 'chore', 'spike'];
+    expect(first.prompts.filter((p) => p.group === 'Workspaces').map((p) => p.title)).toEqual([
+      ...kinds.map((k) => k[0]!.toUpperCase() + k.slice(1)),
+      'Plan first',
+      'Plan without',
+    ]);
+
+    const saved = await settings.setPrompt({
+      key: 'start.fix',
+      text: `${DEFAULT_PROMPTS['start.fix']}\n\nRun pnpm check before you say it is ready.`,
+      version: first.version,
+    });
+    expect(saved.git).toBe('new');
+    expect(saved.version).not.toBe(first.version);
+    expect(saved.prompts.find((p) => p.key === 'start.fix')).toMatchObject({
+      changed: true,
+      text: expect.stringMatching(/Run pnpm check before you say it is ready\.$/) as string,
+    });
+
+    repo.commit('prompts');
+    expect((await settings.prompts()).git).toBe('committed');
+    await settings.setPrompt({ key: 'start.fix', text: null, version: saved.version });
+    expect((await settings.prompts()).git).toBe('changed');
+  });
+});

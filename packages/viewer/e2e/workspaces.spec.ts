@@ -737,7 +737,8 @@ test('Workspaces is the first page, History beside it; old addresses, keys and l
   cpr = await serveWorkspaces();
   await page.goto(cpr.url);
   const tabs = page.getByRole('navigation', { name: 'Pages' }).getByRole('link');
-  await expect(tabs).toHaveText(['Workspaces', 'History']);
+  // V28b: Settings after them.
+  await expect(tabs).toHaveText(['Workspaces', 'History', 'Settings']);
   await expect(tabs.first()).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText('No workspaces yet')).toBeVisible();
 
@@ -752,7 +753,7 @@ test('Workspaces is the first page, History beside it; old addresses, keys and l
   await page.keyboard.press('h');
   await expect(page).toHaveURL(`${cpr.url}history`);
   await expect(page.locator('.commits-title')).toContainText('History');
-  await expect(tabs.last()).toHaveAttribute('aria-current', 'page');
+  await expect(tabs.nth(1)).toHaveAttribute('aria-current', 'page');
   await page.keyboard.press('w');
   await expect(page).toHaveURL(cpr.url);
   await page.getByRole('link', { name: 'History', exact: true }).last().click();

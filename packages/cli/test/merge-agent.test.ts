@@ -265,6 +265,9 @@ describe('running the merger agent (V26c)', () => {
       },
     ]);
     expect(agent.kind).toBe('claude');
+    // The project's instructions (V28), as merges.ts makes them.
+    await agent.run({ cwd: '/wt', prompt: 'P', instructions: 'Keep both.' });
+    expect(calls[1]?.args.at(-1)).toBe('Keep both.');
   });
 
   it('says why when Claude Code fails', async () => {
@@ -307,5 +310,11 @@ describe('running the merger agent (V26c)', () => {
       '-',
     ]);
     expect(calls[0]?.input).toBe(`${MERGER_INSTRUCTIONS}\n\n---\n\nP`);
+    await codexMerger('/bin/codex', { run }).run({
+      cwd: '/wt',
+      prompt: 'P',
+      instructions: 'Keep both.',
+    });
+    expect(calls[1]?.input).toBe('Keep both.\n\n---\n\nP');
   });
 });

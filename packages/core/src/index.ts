@@ -132,6 +132,7 @@ export {
   commitsBetween,
   defaultBranch,
   defaultBranchTips,
+  fileGitState,
   forkPoint,
   isAncestor,
   mergeBase,
@@ -143,6 +144,7 @@ export {
   type BranchReviewList,
   type BranchReviewRef,
   type BranchReviewSummary,
+  type FileGitState,
   type FinishResult,
   type LocalReview,
   type MergeCheck,
@@ -150,6 +152,14 @@ export {
   type VerdictComment,
   type VerdictEvent,
 } from './git/branches.js';
+export {
+  PROMPT_KEYS,
+  type PromptChange,
+  type PromptKey,
+  type PromptPlaceholder,
+  type PromptSetting,
+  type PromptSettings,
+} from './prompts.js';
 export {
   AGENT_KINDS,
   PERMISSION_MODES,

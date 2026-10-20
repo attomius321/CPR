@@ -761,6 +761,47 @@ describe('workspaces', () => {
     expect(old.workspace.brief).toBe('Export a review as CSV');
   });
 
+  it("starts a kind's agent with the project's prompts, read at each start (V28)", async () => {
+    const { repo } = fresh();
+    const { claude, start } = fakeClaude();
+    const s = await service(repo, claude);
+    const config = (prompts: unknown) =>
+      writeFileSync(join(repo.root, 'cpr', 'config.json'), JSON.stringify({ prompts }));
+    mkdirSync(join(repo.root, 'cpr'), { recursive: true });
+    config({
+      start: { fix: ['Fix on {branch}, from {start}.', '', '{brief}', '', '{plan}'] },
+      plan: { direct: 'Run pnpm check, then say it is ready.' },
+      reviews: '# Our review rules',
+    });
+    const { prompt } = await s.start({
+      kind: 'fix',
+      title: 'Dates sort as text',
+      parts: { happens: 'Dates sort 1, 10, 2.' },
+      branch: 'fix/dates',
+      planFirst: false,
+    });
+    const brief = briefOf('fix', 'Dates sort as text', { happens: 'Dates sort 1, 10, 2.' });
+    expect(prompt).toBe(
+      `Fix on fix/dates, from main at ${repo.git('rev-parse', '--short=7', 'main')}.\n\n` +
+        `${brief.trim()}\n\nRun pnpm check, then say it is ready.\n`,
+    );
+    expect(start.mock.calls[0]?.[0].prompt).toBe(prompt);
+    expect(await s.prompt('fix/dates')).toBe(prompt);
+    expect(readFileSync(join(repo.root, 'cpr', 'AGENTS.md'), 'utf8')).toBe('# Our review rules\n');
+
+    // Another kind keeps CPR's; a change applies to the next start, and to Copy the prompt.
+    const chore = await s.start({
+      kind: 'chore',
+      title: 'Bump vitest',
+      parts: { change: 'Bump vitest.' },
+      branch: 'chore/vitest',
+      planFirst: false,
+    });
+    expect(chore.prompt).toMatch(/^You are starting a new chore in this repository/);
+    config({});
+    expect(await s.prompt('fix/dates')).toMatch(/^You are starting a new fix in this repository/);
+  });
+
   it('guesses the check command at the commit a workspace starts from (V24b)', async () => {
     const { repo, shas } = fresh();
     const s = await service(repo, null);

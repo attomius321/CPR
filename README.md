@@ -207,14 +207,14 @@ command on the machine where `cpr` runs, so WSL, Remote SSH and containers work 
 | r | Review the branch | Mark the selected symbol reviewed |
 | x | Compare mode | |
 | n | Start a workspace | |
-| w, h | Workspaces, History | |
+| w, h, s | Workspaces, History, Settings | |
 | f | | Focus: only the selected symbol and its neighbours |
 | p, P | | Next, previous project |
 | o | | Open in VS Code |
 | Esc | Leave compare mode | Close the detail panel |
 
-n starts a workspace on Workspaces too, and w and h go between the two pages. In a comment box, the start dialog or a workspace's
-reply box, Ctrl+Enter (Cmd+Enter on macOS) saves, starts or sends.
+n starts a workspace on Workspaces too, and w, h and s go between the three pages. In a comment box, the start dialog, a workspace's
+reply box or a prompt in Settings, Ctrl+Enter (Cmd+Enter on macOS) saves, starts or sends.
 
 ## Reviewing a branch
 
@@ -297,7 +297,8 @@ starts; Clear empties it. CPR then:
 1. makes the agent's brief from the parts, under fixed headings (`# Fix: <title>`, `## What
    happens`, …, `## Done when` last), and adds one line for the kind: a fix is reproduced with a
    failing test first, a refactor and a chore change no behaviour, a spike answers in its report
-   and commits nothing unless asked;
+   and commits nothing unless asked (the kind's start prompt: a project can change it in
+   [Settings](#agents-prompts));
 2. names a branch after the title (edit it if you like) and creates it at the default branch's
    tip, or at the commit you picked;
 3. gives the branch its own worktree beside your checkout, `../<repo>.worktrees/<branch>` (the
@@ -574,8 +575,47 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 | `agent.model` | Claude Code's | The model Claude Code starts with (Codex's is its own configuration's). |
 | `merge.checks` | guessed | The check a merge runs before it lands ([Merging](#merging)): a command, or a list run in order through the shell in CPR's merge worktree. Add an install first when the check needs dependencies, e.g. `["pnpm install --frozen-lockfile", "pnpm check"]`. |
 | `merge.push` | `false` | Push the target branch after a merge lands. |
+| `prompts` | CPR's | What CPR tells its agents, each prompt whole ([below](#agents-prompts)). |
 
 Before V25 the `workspaces` section was called `features`; that name is still read when `workspaces` is not there.
+
+### Agents' prompts
+
+Every text CPR gives its agents can be replaced under `prompts`. **Settings** in `cpr view` (s)
+lists them by agent, each with CPR's text until you change it, its placeholders (click one to
+insert it), Save and Reset to CPR's; it writes only `prompts` and leaves the rest of the file as
+it is. A missing key is CPR's text, so the file keeps only the prompts you change. A prompt is a
+string or a list of lines, and `{name}` is filled in where the prompt allows it (any other brace
+is text). Commit `cpr/config.json` to share them: the page says whether it is committed. It is
+read at each use, so a change applies to the next agent started.
+
+```json
+{
+  "prompts": {
+    "start": {
+      "spike": [
+        "You are starting a new spike on the branch {branch}, started from {start}.",
+        "",
+        "{brief}",
+        "",
+        "Commit what you try under spikes/, and push the branch."
+      ]
+    }
+  }
+}
+```
+
+| Key | What | Placeholders |
+|---|---|---|
+| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace's start prompt for that kind | `{branch}`, `{start}`, `{brief}` (required), `{plan}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{cpr}` |
+| `plan.first`, `plan.direct` | What `{plan}` becomes, with Plan first and without | none |
+| `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The sentences of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`; `{reviewer}`, `{what}`; `{review}`, `{agents}` |
+| `reviews` | `cpr/AGENTS.md`, how an agent acts on a review | none |
+| `merger` | The merger's instructions; CPR adds the answer format it reads | none |
+
+A value CPR cannot use (not text, a start prompt without `{brief}`, or too long: 8,000
+characters for a start prompt, 1,000 for a sentence, 20,000 otherwise) is ignored, and CPR's
+text is used.
 
 ### `.cprignore`
 

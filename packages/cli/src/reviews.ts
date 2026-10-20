@@ -21,11 +21,13 @@ import {
   type FinishResult,
   type GitRepo,
   type LocalReview,
+  type PromptKey,
   type RefList,
   type Verdict,
   type VerdictComment,
 } from '@cpr/core';
 import type { Pair } from './diffs.js';
+import { DEFAULT_PROMPTS, fillPrompt, readPrompts } from './prompts.js';
 import type { StateName, StateStore } from './server.js';
 
 /** A branch review on disk: `cpr/reviews/<branch>/<reviewer>.json` (V15). */
@@ -65,72 +67,14 @@ export const REVIEW_ABOUT =
   'A CPR review. Agents: read AGENTS.md beside the reviews folder (cpr/AGENTS.md) before acting on it.';
 
 /**
- * What an agent does with a review (V17), written beside the reviews in any repository and
- * rewritten when CPR's text changes. Claude Code loads a folder's AGENTS.md when it reads a file
- * there, `cpr/` git-ignored or not (checked with 2.1.296); other agents follow `about`.
+ * What an agent does with a review (V17): the text in use for `cpr/AGENTS.md` (V28), as the file
+ * holds it. Claude Code loads a folder's AGENTS.md when it reads a file there, `cpr/` git-ignored
+ * or not (checked with 2.1.296); other agents follow `about`.
  */
-export const AGENTS = `# CPR reviews
+export const agentsFile = (text: string) => `${text.trimEnd()}\n`;
 
-Written by CPR, which rewrites this file when it changes: put your project's own rules in its
-own CLAUDE.md or AGENTS.md.
-
-A person reviews your branch with CPR and records a verdict in
-\`cpr/reviews/<branch>/<reviewer>.json\` (the branch's slashes are folders). Act on it when the
-person asks you to (for example "check my review"), not because you came across it.
-
-## Read only the last verdict
-
-- Act on the last entry of \`verdicts\`. \`drafts\`, \`marks\` and the top-level \`summary\` are a
-  review in progress, not feedback. No verdicts: there is nothing to act on yet; say so.
-- \`head\` is the commit the person reviewed. Commits after it (\`git log <head>..<branch>\`) were
-  not part of the review.
-
-## What each verdict asks
-
-- \`request-changes\`: fix each comment in new commits on the branch. Then say, one line per
-  comment, what you changed (with the commit) or why you did not.
-- \`comment\`: answer each comment; change code only where a comment asks for it.
-- \`approve\` with \`into\`: the approved commit \`head\` is to be merged into \`into\`, and CPR
-  merges it (its merger: Merge in CPR, or \`cpr merge <branch>\`). Do not merge it yourself
-  unless the person asks you to; there is nothing to do.
-- \`approve\` without \`into\` (a review of the default branch's unpushed commits): those commits,
-  up to \`head\`, may be pushed.
-- Push only when and what the project's own instructions say.
-
-## A merge conflict
-
-When CPR says the branch conflicts with \`into\` (before the review, or when it merged):
-
-1. On the branch, merge \`into\` in (\`git merge <into>\`), resolve the conflicts there and
-   commit. Never resolve them on \`into\`: the resolution would be code nobody reviewed.
-2. Tell the person the branch needs another review.
-
-## Workspaces
-
-A workspace started in CPR is a branch with a worktree of its own and a record in
-\`cpr/workspaces/<branch>.json\`: the person's \`brief\`, the \`base\` it started from, and
-\`planFirst\`. If you were started on one:
-
-- Work only in its worktree, on its branch.
-- With \`planFirst\`, write the plan (what you will change and how you will check it), then stop
-  and wait for the person's OK before changing anything.
-- Commit on the branch as you go; say when it is ready for review.
-
-## Comments
-
-Each has \`body\` (what to do) and \`symbol\` (\`<path>#<name>\`); on a line, also \`path\`,
-\`line\`, \`side\` and \`code\` (that line's text). Without \`line\` it is about the whole symbol.
-
-- \`side: "head"\`: \`line\` is in the reviewed commit \`head\`, not your working copy. If the
-  branch moved since, find the place by \`code\` and \`symbol\`.
-- \`side: "base"\`: a line the branch removed, at the file's top-level \`base\` (where the review
-  starts: \`git show <base>:<path>\`). Usually the question is whether removing it was right.
-
-## Never
-
-- Rewrite commits the person reviewed (amend, rebase, squash): their review is of those commits.
-- Edit, move or commit anything in \`cpr/\`: the reviews are the person's.
-`;
+/** CPR's `cpr/AGENTS.md`, until a project has its own (`prompts.reviews`). */
+export const AGENTS = agentsFile(DEFAULT_PROMPTS.reviews);
 
 /** Where reviews are kept, and as whom. */
 export interface ReviewPlace {
@@ -282,11 +226,11 @@ function asMarks(value: unknown): Record<string, string> {
 /**
  * Before CPR writes into `cpr/`: its `.gitignore`, unless one exists (then it is the project's,
  * unless an earlier CPR wrote it), and, when `agents`, the agents' instructions beside it (V17),
- * rewritten when CPR's text differs.
+ * rewritten when they differ from `text` (CPR's unless the project has its own, V28).
  */
 export async function prepareCprFolder(
   where: ReviewPlace,
-  { agents = true }: { agents?: boolean } = {},
+  { agents = true, text = DEFAULT_PROMPTS.reviews }: { agents?: boolean; text?: string } = {},
 ): Promise<void> {
   if (where.gitignore) {
     await mkdir(dirname(where.gitignore), { recursive: true });
@@ -302,10 +246,11 @@ export async function prepareCprFolder(
     }
   }
   if (!agents) return;
+  const file = agentsFile(text);
   const current = await readFile(where.agents, 'utf8').catch(() => null);
-  if (current === AGENTS) return;
+  if (current === file) return;
   await mkdir(dirname(where.agents), { recursive: true });
-  await writeFile(where.agents, AGENTS);
+  await writeFile(where.agents, file);
 }
 
 /** One write at a time per file: marks and drafts are read, changed and written back. */
@@ -326,8 +271,8 @@ export function branchReviews(
   { now = () => new Date() }: { now?: () => Date } = {},
 ): BranchReviews {
   const place = () => reviewPlace(repo, cacheDir);
-  /** The agents' instructions checked this run, by path: rewritten at most once. */
-  const instructed = new Set<string>();
+  /** The agents' instructions checked this run, by path, and the text: checked again when it changes. */
+  const instructed = new Map<string, string>();
   /** Merge checks by default branch and tip: they take seconds on long-lived branches. */
   const merges = new Map<string, Promise<BranchMerge>>();
 
@@ -367,9 +312,11 @@ export function branchReviews(
         verdicts: current?.verdicts ?? [],
       };
       change(next, current);
-      // Out of git before anything is in the folder; the agents' instructions once a run.
-      await prepareCprFolder(where, { agents: !instructed.has(where.agents) });
-      instructed.add(where.agents);
+      // Out of git before anything is in the folder; the agents' instructions once a run, and
+      // again after the project's change (V28).
+      const text = readPrompts(repo.root).text.reviews;
+      await prepareCprFolder(where, { agents: instructed.get(where.agents) !== text, text });
+      instructed.set(where.agents, text);
       await mkdir(dirname(path), { recursive: true });
       const temp = `${path}.${process.pid}.tmp`;
       await writeFile(temp, serializeReview(next));
@@ -554,10 +501,16 @@ export function branchReviews(
         where.place === 'repository' ? relative(repo.root, path).split(sep).join('/') : path;
       return {
         verdict,
-        text: verdictText(info, file.reviewer, verdict, {
-          review: shown(reviewPath(where.dir, info.branch, where.reviewer)),
-          agents: shown(where.agents),
-        }),
+        text: verdictText(
+          info,
+          file.reviewer,
+          verdict,
+          {
+            review: shown(reviewPath(where.dir, info.branch, where.reviewer)),
+            agents: shown(where.agents),
+          },
+          readPrompts(repo.root).text,
+        ),
       };
     },
 
@@ -593,28 +546,29 @@ export function branchReviews(
 /**
  * A verdict as text for an agent's chat (V16): what was decided at which commit — for an
  * approval, the merge CPR makes (V26) —, the summary, each comment with its file and line,
- * symbol and code, then where the review and the agents' instructions are.
+ * symbol and code, then where the review and the agents' instructions are. Its own sentences
+ * are `prompts`' (V28).
  */
 export function verdictText(
   info: Pick<BranchReviewInfo, 'branch' | 'base'>,
   reviewer: string,
   verdict: Verdict,
   where?: { review: string; agents: string },
+  prompts: Readonly<Record<PromptKey, string>> = DEFAULT_PROMPTS,
 ): string {
   const at = verdict.head.slice(0, 7);
+  const { branch } = info;
   const name = (symbol: string) => symbol.slice(symbol.indexOf('#') + 1);
   const lines: string[] = [];
   if (verdict.event === 'approve') {
     lines.push(
       verdict.into
-        ? `Approved the branch ${info.branch} at ${at}: CPR merges ${at} into ${verdict.into}; do not merge it yourself.`
-        : `Approved the unpushed commits of ${info.branch} up to ${at}: they may be pushed.`,
+        ? fillPrompt(prompts['verdict.approve'], { branch, at, into: verdict.into })
+        : fillPrompt(prompts['verdict.push'], { branch, at }),
     );
   } else {
     const what = verdict.event === 'request-changes' ? 'changes requested' : 'comments';
-    lines.push(
-      `Address this review of the branch ${info.branch} (${reviewer}, at ${at}): ${what}.`,
-    );
+    lines.push(fillPrompt(prompts['verdict.address'], { branch, reviewer, at, what }));
   }
   if (verdict.summary) lines.push('', verdict.summary);
   for (const c of verdict.comments) {
@@ -626,9 +580,7 @@ export function verdictText(
     } else lines.push(`About ${name(c.symbol)}:`);
     lines.push(c.body);
   }
-  if (where) {
-    lines.push('', `The review: ${where.review}; how to act on it: ${where.agents}.`);
-  }
+  if (where) lines.push('', fillPrompt(prompts['verdict.where'], where));
   return `${lines.join('\n')}\n`;
 }
 

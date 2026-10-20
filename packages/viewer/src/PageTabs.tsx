@@ -1,11 +1,11 @@
 import { useEffect, useMemo } from 'react';
 import { workspaceGroups } from './workspaces.js';
-import { HISTORY_PAGE, WORKSPACES_PAGE, type Page } from './pages.js';
+import { HISTORY_PAGE, SETTINGS_PAGE, WORKSPACES_PAGE, type Page } from './pages.js';
 import { useWorkspaces } from './useWorkspaces.js';
 
 /**
- * Workspaces · History (V25: Workspaces first), in the bar of both pages; the Workspaces tab
- * counts the workspaces that need the person. `w` and `h` go to each.
+ * Workspaces · History · Settings (V25: Workspaces first; V28b: Settings), in the bar of each
+ * page; the Workspaces tab counts the workspaces that need the person. `w`, `h` and `s` go to each.
  */
 export function PageTabs({ active }: { active: Page }) {
   const { list, reviews } = useWorkspaces();
@@ -27,6 +27,7 @@ export function PageTabs({ active }: { active: Page }) {
       if (document.querySelector('[aria-modal="true"], [role="menu"]')) return;
       if (event.key === 'w' && active !== 'workspaces') window.location.assign(WORKSPACES_PAGE);
       else if (event.key === 'h' && active !== 'history') window.location.assign(HISTORY_PAGE);
+      else if (event.key === 's' && active !== 'settings') window.location.assign(SETTINGS_PAGE);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -51,6 +52,13 @@ export function PageTabs({ active }: { active: Page }) {
         aria-current={active === 'history' ? 'page' : undefined}
       >
         History
+      </a>
+      <a
+        href={SETTINGS_PAGE}
+        title="Every agent's prompts (s)"
+        aria-current={active === 'settings' ? 'page' : undefined}
+      >
+        Settings
       </a>
     </nav>
   );

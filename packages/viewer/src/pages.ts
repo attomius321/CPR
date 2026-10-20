@@ -1,8 +1,12 @@
-/** `cpr view`'s two pages (V25): Workspaces first, at `/`, and the repository's History. */
-export type Page = 'workspaces' | 'history';
+/**
+ * `cpr view`'s pages: Workspaces first, at `/`, the repository's History (V25), and Settings,
+ * every agent's prompts (V28b).
+ */
+export type Page = 'workspaces' | 'history' | 'settings';
 
 export const WORKSPACES_PAGE = '/';
 export const HISTORY_PAGE = '/history';
+export const SETTINGS_PAGE = '/settings';
 
 /** The old addresses of Workspaces (V18b's `/workspaces`, before it `/features`). */
 const OLD_WORKSPACES = new Set(['/workspaces', '/features']);
@@ -13,6 +17,7 @@ const OLD_WORKSPACES = new Set(['/workspaces', '/features']);
  */
 export function pageOfPath(pathname: string): { page: Page; moved?: string } {
   if (pathname === HISTORY_PAGE) return { page: 'history' };
+  if (pathname === SETTINGS_PAGE) return { page: 'settings' };
   if (OLD_WORKSPACES.has(pathname)) return { page: 'workspaces', moved: WORKSPACES_PAGE };
   return { page: 'workspaces' };
 }
