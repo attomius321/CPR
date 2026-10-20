@@ -3390,3 +3390,49 @@ page errors. Everything made was removed and all 3 threads archived (`thread/lis
 listed, 3 archived), with the probe's thread on the private server. Not verified: a turn typed in
 Codex's own terminal on the real daemon, an approval answered there (both V27b), the daemon
 restarting during a turn (the fake only), macOS and Windows.
+
+## V27b spike — Codex's own terminal on a CPR thread (2026-10-20, branch `milestone/v27-codex-terminal`)
+
+Asked: "Start v27b". Codex 0.163.0, the person's daemon: a thread started as V27a starts one, in a
+throwaway repository's linked worktree, then `codex resume <thread> --remote unix://… -C
+<worktree>` in node-pty (120 × 40), driven by a script reading the screen with escape codes
+stripped; the trust questions measured in throwaway `CODEX_HOME`s with a private app server.
+
+**Learned**:
+- **CPR has been making Codex trust each repository it starts Codex in, since V20a, without
+  saying so.** `thread/start` with `sandbox: "workspace-write"`, the same sandbox in `config`, and
+  `codex exec -s workspace-write` each wrote `[projects."<repository>"] trust_level = "trusted"`
+  into Codex's `config.toml` (4 of 4); `thread/start` with neither wrote nothing and got a
+  read-only sandbox. Found because the person's config held entries for V27a's throwaway
+  repositories, written at the second their threads started. There is no writable sandbox without
+  it; CPR will say so (decision 162).
+- **The TUI still asks for the worktree**: "Trust this folder? Codex can read, edit, and run files
+  here, subject to your permission settings. Folder settings can run code automatically … Your
+  trust decision will be saved", then "1. Trust and continue · 2. Back to Agent Command Center".
+  No way on without trusting. The repository's entry did not count for its linked worktree.
+- **Joined, it is the thread**: first output in 49 ms; CPR's turns drawn with their answers; a
+  turn typed there in CPR's read 111 ms after Enter; the approval CPR's turn asked drawn as
+  Codex's prompt ("Would you like to run the following command? … 1. Yes, proceed (y) · 2. Yes,
+  and don't ask again … (p) · 3. No … (esc)"), and `y` there cleared "approval" from CPR's read in
+  65 ms, the turn done 0.85 s later. Codex said why before asking this time (V27a's run: no word).
+- **An Enter written with the text is not a submit**: Codex reads a fast run of characters as a
+  paste. Text, then Enter on its own, submitted. A 208-character line written at once (Send the
+  verdict) stayed in the input as plain text.
+- **Esc interrupts the turn; Ctrl+C clears the input, and on an empty one quits the client** ("Any
+  running work continues", exit 0); a hang-up exits 0 and leaves the thread as it was.
+- **An interrupted turn's command runs on.** After Esc, and after CPR's own Stop (`turn/interrupt`,
+  V27a), the turn's `sleep` went on as a Codex "background terminal" (alive 18 s after Stop).
+  `thread/backgroundTerminals/clean`, an experimental method a client opts into at `initialize`
+  (`experimentalApi`), ended it in 7 ms; `…/list` named it first. V27a's Stop is not V20a's.
+- **Memory**: the TUI is 266 MB for Codex and 49 MB for its Node wrapper, against 140 MB for
+  Claude Code's `attach`.
+- **The list is not read after a turn typed in the panel's terminal**, unless an agent works or
+  waits: V21's terminal has had this gap for Claude Code too; its e2e passes because its fake
+  agent stays "working". The V27a "As built" said V21 had a rule: it had none.
+- Whether Codex counts a trusted folder above a worktree stayed open: in a throwaway `CODEX_HOME`
+  the TUI asked to sign in before anything else.
+
+**Not tested**: the TUI on a thread the daemon no longer holds (a restart); two TUIs on one thread;
+Codex's colors in CPR's terminal theme. Cleaned up: the thread archived, the repository removed,
+and the 4 trust entries this session's runs wrote taken out of the person's config (two older ones,
+for folders of an earlier spike that no longer exist, left as they are).

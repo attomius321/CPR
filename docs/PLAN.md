@@ -439,7 +439,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V24 ✅ | A structured brief | The "Start a workspace" dialog is one text area that is also the branch name and the workspace's name; every branch is `feature/`, while 11 of this repository's 35 merges were fixes or chores; nothing prompts for how done is checked, which every agent vendor's guidance asks for. Planned: a kind (Feature, Fix, Refactor, Chore, Spike), a title, one required part per kind, an optional Done when filled in with a check command guessed from the repository's root files (on 16 repositories: 13 the documented command, 2 heavy, 1 close, 0 wrong), optional parts under More, assembled by the server into a brief with Markdown headings; the kind's branch prefix; old workspaces unchanged. Merged (2026-10-19): the guess on 16 repositories gives the 16 planned commands in 13–17 ms; the dialog fits at 1440 × 900 and 390 × 844; a real Claude Code's plans follow each kind's line. See below. |
 | V25 ✅ | Workspaces first, History beneath | `cpr view` opens on the commits page (`/`) and Workspaces is the second tab. A diff's way back is "← Commits". The code says "feature" for a workspace 1,949 times (12 files, `/api/features`, `cpr/features/`), and since V24 "feature" is also a kind of work. Planned: `/` Workspaces, `/history` History (today's commits page), tabs "Workspaces · History", old addresses rewritten, a back link to where a diff came from; "workspace" in code, API and on disk (`cpr/workspaces/`, moved once from `cpr/features/`); the kind "feature" kept. Merged (2026-10-19): 801 unit tests, 114 e2e; first paint of `/` as `main`'s `/workspaces` (109 ms); a repository's old records moved by the first reader. See below. |
 | V26 ✅ | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. V26a built: Merge into ▾ after Approve, CPR merges in its own worktree, runs the check, lands by fast-forward; `cpr merge`. Next: keep-both by rule (V26b); a fresh agent for the rest, from the conflict alone, every resolution reviewed (V26c). See below. |
-| V27 | Codex in the panel's terminal | A Codex workspace has no terminal (decision 133): `exec` turns are recorded by CPR's runner, and a terminal's would not be. Spike: Codex 0.163's app-server daemon is the binding — CPR as a client starts the thread, a TUI joined with `codex resume --remote` reaches CPR (every item, 3.0 s) and shows CPR's turns (0.9 s), turns outlive the client and come back with `thread/read`, and approvals give "needs you". V27a implemented (not merged): Codex workspaces on the person's daemon — with the real Codex, started in 1.8 s, committed from its sandbox, a message joined its running turn (in the thread 0.8 s after Send), a turn outlived a `cpr view` restart, an approval read "Waiting: approval prompt"; `exec` without a daemon. V27b: Codex's terminal tab. See below. |
+| V27 | Codex in the panel's terminal | A Codex workspace has no terminal (decision 133): `exec` turns are recorded by CPR's runner, and a terminal's would not be. Spike: Codex 0.163's app-server daemon is the binding — CPR as a client starts the thread, a TUI joined with `codex resume --remote` reaches CPR (every item, 3.0 s) and shows CPR's turns (0.9 s), turns outlive the client and come back with `thread/read`, and approvals give "needs you". V27a implemented (not merged): Codex workspaces on the person's daemon — with the real Codex, started in 1.8 s, committed from its sandbox, a message joined its running turn (in the thread 0.8 s after Send), a turn outlived a `cpr view` restart, an approval read "Waiting: approval prompt"; `exec` without a daemon. V27b planned, Codex's terminal tab: its spike drew CPR's thread in the TUI (49 ms), a typed turn reached CPR (111 ms), an approval answered there resolved for all (65 ms); Codex asks to trust each worktree and already trusts the repository on any writable start (since V20a, unsaid); V27a's Stop left the turn's commands running (cleaned in 7 ms by an experimental call). See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -6857,7 +6857,8 @@ conflicted in the merges measured).
 ### V27 — Codex in the panel's terminal, through its app server
 
 **Status:** V27a implemented (2026-10-20) on branch `milestone/v27-codex-terminal`, not merged;
-V27b not started. As built and results: "As built (V27a)" below.
+V27b planned (2026-10-20, its spike below), on the same branch. As built and results: "As built
+(V27a)" below.
 
 **Problem** (asked: "Why codex can't run in terminal?" … "Think of a way to make it work … try
 codex agents, run a spike"). V20a runs Codex as `codex exec` through CPR's runner, which records
@@ -6975,8 +6976,9 @@ no app server can be reached (V20a's `exec`, as today).
   was already running, and the old code lost that thread. The fake server now refuses a name
   until the thread has an item.
 - **A turn typed outside the page shows when the page is focused again**, as with `claude attach`:
-  the list is read every 5 s only while an agent works or waits. V27b's terminal in the panel
-  will need a rule for this, as V21's already does for Claude Code.
+  the list is read every 5 s only while an agent works or waits. V21's terminal in the panel has
+  the same gap for Claude Code (its e2e passes only because its fake agent stays "working"); V27b
+  closes it for both (decision 161).
 - **Talk** copies `codex resume <thread> --remote unix://<socket> -C <worktree>`, without V20a's
   note that its turns are not recorded. `codex resume` takes `--remote` with `-C`; checked in its
   help, not run (it asks to trust each new worktree, which writes the person's config: V27b).
@@ -7003,7 +7005,77 @@ threads on the daemon (one by hand: the thread the failed start lost, before the
 light and dark at 1440, 900 and 390 px, no page errors; at 390 px the header's help wraps into a
 narrow column, as on `main`. Not verified: a turn typed in Codex's own terminal against the real
 daemon (the fake's, and the V27 spike's, only), an approval answered there, a daemon restarted
-during a turn (the fake's restart only), macOS and Windows.
+during a turn (the fake's restart only), macOS and Windows. (The V27b spike since verified the
+first two, and found that this Stop leaves the turn's commands running: decision 159.)
+
+#### V27b — Codex's terminal
+
+**Problem** (measured in the V27b spike, below; Codex 0.163.0, the person's daemon, `codex resume
+<thread> --remote unix://… -C <worktree>` in node-pty):
+
+| What | Measured |
+|---|---|
+| The TUI joined to a thread CPR started | first output 49 ms; CPR's turns drawn; 266 MB for Codex + 49 MB for its Node wrapper (Claude Code's `attach`: 140 MB) |
+| Trust | asked for the worktree although `thread/start` had just made Codex trust the repository: "Trust this folder? … Your trust decision will be saved", **1. Trust and continue · 2. Back to Agent Command Center**; no way on without trusting |
+| A writable sandbox and trust | `thread/start` with `workspace-write` (as `sandbox` or in `config`) and `codex exec -s workspace-write` (V20a) each write `trust_level = "trusted"` for the repository's root into the person's `~/.codex/config.toml`, unasked (4 of 4; without it, none and a read-only sandbox) |
+| A turn typed in the TUI | in CPR's read 111 ms after Enter; an Enter in the same write as the text is not a submit (Codex's paste-burst rule); a line written alone stays in its input as plain text |
+| An approval CPR's turn asked | drawn as Codex's prompt (y · p · esc); `y` there: CPR's read lost "approval" 65 ms later, the turn finished in 0.85 s |
+| Esc, Ctrl+C, a hang-up | Esc interrupts the turn; Ctrl+C clears the input, on an empty one quits the client ("Any running work continues"), exit 0; SIGHUP: exit 0, the thread unchanged |
+| **CPR's Stop (V27a)** | **the interrupted turn's command runs on** as a Codex background terminal (`sleep 45` still running 18 s after Stop); `thread/backgroundTerminals/clean` (experimental) ended it in 7 ms |
+| The list after a turn typed in the panel's terminal | not read until the page is focused again, for Claude Code too (V21) |
+
+**Goal**: a Codex workspace on the app server gets V21's Terminal tab, Codex's own TUI on its
+thread, and the panel opens on it. Its approvals are answered there; what is typed there is in the
+thread; the state follows while the terminal is open. Stop ends the turn and its commands. The
+trust Codex asks for, and the one it records on its own, are said, not decided. Unchanged: V20a's
+`exec` workspaces (Talk, no terminal); Claude Code's terminal, except that the list is read while
+it is open.
+
+**Design**:
+- **The terminal**: `POST /api/workspaces/terminal` for a Codex workspace on the server opens
+  `codex resume <thread> --remote <address> -C <worktree>` under CPR's terminals (V21), Codex as
+  found (`CPR_CODEX`, else `codex` on PATH). A V20a workspace is still refused (Talk). Joining a
+  stopped thread starts nothing, so V21's "continues the stopped session" is not asked for Codex.
+- **Trust**: the answer says `trusted: false` when Codex's configuration, read from the server
+  (`config/read`, its `projects`), has no entry for the worktree or a folder above it; the panel
+  then says, above the terminal, that Codex asks whether to trust the worktree and saves the
+  answer in the person's Codex configuration. CPR never answers it (decision 156).
+- **Stop** interrupts the turn, then cleans the thread's background terminals (a connection that
+  declares `experimentalApi`); if Codex refuses that method, the turn is still interrupted. Clean
+  up does the same before it archives.
+- **The list is read every 5 s while a terminal is open** in the panel, for both agents.
+- **The panel**: the Terminal and Thread tabs as for Claude Code; the reply box hidden while a
+  terminal can run; the hint "? in an empty prompt lists Codex's keys". Terminals stay four at
+  most (each Codex one about 315 MB, said in the README).
+- **Saying what Codex records**: README, and the start dialog's sandbox tooltip: starting Codex
+  makes Codex mark the repository trusted in the person's Codex configuration (its rule for a
+  writable sandbox), since V20a.
+
+**Verification**: tests first — the terminal's command and refusals (V20a workspaces, no
+terminals), `trusted` from `config/read` (exact entry, a folder above, none), Stop cleaning
+background terminals and surviving a refusal of that method, the list read while a terminal is
+open; e2e: the Codex Terminal tab on a fake TUI (keys reach it, the trust note, Thread read only,
+reopen after it ends), the state following a turn typed there. Real use: the person's daemon
+through `cpr view` in Chromium — the trust prompt answered in the panel, a turn typed, an approval
+answered, Stop ending a running command; screenshots; everything removed, trust entries too.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| `thread/backgroundTerminals/clean` is experimental | Asked on its own connection; a refusal leaves V27a's Stop (the turn interrupted) |
+| Codex's trust rule is per worktree folder, and each new workspace asks again | Said in the panel each time Codex will ask; the person decides (decision 156) |
+| 315 MB per Codex terminal | Four terminals at most, the oldest unread one hung up first (V21) |
+| Codex's TUI draws its own colors | CPR's dark terminal theme, as Claude Code's |
+
+**Decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 159 | What Stop ends for Codex on the app server | **The turn (`turn/interrupt`), then its commands (`thread/backgroundTerminals/clean`)** | An interrupted turn's command ran on (18 s after Stop, measured); V20a's Stop ended the process group, and a Stop that leaves a test run or a server going is not a stop |
+| 160 | When the panel speaks of trust | **When Codex's configuration has no entry for the worktree or a folder above it** | Codex asks per worktree and has no untrusted way on; the note never says Codex will ask when it will not |
+| 161 | The list while a terminal is open | **Read every 5 s, for both agents** | A turn typed in the panel's terminal after "Plan ready" showed only on focus (V21 too) |
+| 162 | The trust Codex records on its own | **Said in the README and the start dialog; not avoided** | Any writable sandbox makes Codex trust the repository (4 of 4 calls); there is no writable sandbox without it |
 
 ### Phase 1 milestones
 
