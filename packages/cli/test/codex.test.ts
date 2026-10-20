@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import type { CodexThread } from '../src/app-server.js';
 import {
+  asksTrust,
   codex,
   codexArgs,
   codexState,
@@ -819,5 +820,31 @@ describe('serverState (V27a)', () => {
       kind: 'codex',
       error: 'Codex is not logged in',
     });
+  });
+});
+
+describe('asksTrust (V27b)', () => {
+  const W = '/home/someone/app.worktrees/feature-csv';
+  it('asks when Codex has no entry for the worktree or a folder above it', () => {
+    expect(asksTrust({}, [W])).toBe(true);
+    // The repository is trusted by any writable start, but it sits beside its worktrees.
+    expect(asksTrust({ '/home/someone/app': 'trusted' }, [W])).toBe(true);
+    // A folder whose name starts the same is not above it.
+    expect(asksTrust({ '/home/someone/app.work': 'trusted' }, [W])).toBe(true);
+  });
+
+  it('does not when the worktree or a folder above it has an entry, under any of its names', () => {
+    expect(asksTrust({ [W]: 'trusted' }, [W])).toBe(false);
+    expect(asksTrust({ '/home/someone': 'trusted' }, [W])).toBe(false);
+    // Decided already, either way: Codex does not ask again.
+    expect(asksTrust({ [W]: 'untrusted' }, [W])).toBe(false);
+    // Its real path (a symlinked home) is the one Codex saved.
+    expect(
+      asksTrust({ '/data/someone/app.worktrees/feature-csv': 'trusted' }, [
+        W,
+        '/data/someone/app.worktrees/feature-csv',
+      ]),
+    ).toBe(false);
+    expect(asksTrust({ [`${W}/`]: 'trusted' }, [W])).toBe(false);
   });
 });

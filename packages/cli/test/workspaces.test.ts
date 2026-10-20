@@ -1904,6 +1904,58 @@ describe('workspaces', () => {
     expect(server.threads.map((t) => t.archived)).toEqual([true]);
   });
 
+  it("opens Codex's own terminal on its thread, and says when Codex will ask to trust the worktree (V27b)", async () => {
+    const { repo } = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(undefined, server);
+    const { terminals, opening } = fakeTerminals();
+    const s = await service(repo, null, HOOK, terminals, codex);
+    await s.start({ brief: 'Do it', branch: 'feature/csv', planFirst: true });
+    const folder = worktreeFolder(repo.root, 'feature/csv');
+    const id = server.threads[0]?.id ?? '';
+    // Starting made Codex trust the repository, not its worktree: Codex asks there.
+    server.trusted[repo.root] = 'trusted';
+    expect(await s.terminal({ branch: 'feature/csv', cols: 100, rows: 30 })).toEqual({
+      id: 't1',
+      trusted: false,
+    });
+    expect(opening[0]).toEqual({
+      command: '/usr/bin/codex',
+      args: ['resume', id, '--remote', server.address, '-C', folder],
+      cwd: folder,
+      cols: 100,
+      rows: 30,
+      env: { PATH: '/usr/bin' },
+    });
+    // Trusted there (the person answered Codex), under its real path: nothing to say.
+    server.trusted[realpathSync(folder)] = 'trusted';
+    expect(await s.terminal({ branch: 'feature/csv', cols: 100, rows: 30 })).toEqual({ id: 't2' });
+    // A stopped thread is joined as it is: nothing to ask first, as Claude Code's restart needs.
+    await s.stopAgent('feature/csv');
+    expect(await s.terminal({ branch: 'feature/csv', cols: 100, rows: 30 })).toEqual({ id: 't3' });
+  });
+
+  it("refuses Codex's terminal through CPR's runner, or with no terminals here (V27b)", async () => {
+    const { repo } = fresh();
+    const plain = fakeCodex();
+    const { terminals } = fakeTerminals();
+    const s = await service(repo, null, HOOK, terminals, plain.codex);
+    await s.start({ brief: 'Do it', branch: 'feature/one', planFirst: true });
+    await expect(s.terminal({ branch: 'feature/one', cols: 80, rows: 24 })).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(/Talk copies `codex resume`/) as string,
+    });
+    const server = await appServer();
+    const { codex } = fakeCodex(undefined, server);
+    const none = fakeTerminals('node-pty is not installed');
+    const t = await service(repo, null, HOOK, none.terminals, codex);
+    await t.start({ brief: 'Do it', branch: 'feature/two', planFirst: true });
+    await expect(t.terminal({ branch: 'feature/two', cols: 80, rows: 24 })).rejects.toMatchObject({
+      status: 409,
+      message: 'node-pty is not installed',
+    });
+  });
+
   it('starts nothing on the server when Codex is not logged in (V27a)', async () => {
     const { repo } = fresh();
     const server = await appServer();

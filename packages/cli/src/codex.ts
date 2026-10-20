@@ -182,6 +182,7 @@ function lastingServer(
     start: retried((server, request: Parameters<CodexServer['start']>[0]) => server.start(request)),
     send: retried((server, request: Parameters<CodexServer['send']>[0]) => server.send(request)),
     interrupt: retried((server, thread: string) => server.interrupt(thread)),
+    trust: retried((server, cwd: string) => server.trust(cwd)),
     read: retried((server, thread: string, view: Parameters<CodexServer['read']>[1]) =>
       server.read(thread, view),
     ),
@@ -398,6 +399,22 @@ export function serverLastAction(read: CodexThread): string | undefined {
   if (read.status === 'active' && read.waiting) return isoOf(read.updatedAt);
   const done = read.turns.findLast((turn) => turn.status === 'completed');
   return done?.completedAt === undefined ? undefined : isoOf(done.completedAt);
+}
+
+/**
+ * Whether Codex's terminal will ask to trust a worktree (decision 160): Codex's configuration has
+ * no entry, trusted or not, for it or a folder above it, under any of its `names` (its path and
+ * its real path). Codex asks per folder (a linked worktree's repository does not count); whether
+ * a folder above counts is not known, so one never makes CPR say Codex will ask.
+ */
+export function asksTrust(
+  entries: Readonly<Record<string, string>>,
+  names: readonly string[],
+): boolean {
+  const folders = Object.keys(entries).map((folder) => folder.replace(/\/+$/, ''));
+  return !names.some((name) =>
+    folders.some((folder) => folder !== '' && (name === folder || name.startsWith(`${folder}/`))),
+  );
 }
 
 /** What an active thread waits on, in the words the page shows after "Waiting:". */

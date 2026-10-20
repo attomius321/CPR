@@ -191,12 +191,16 @@ export interface FakeThread {
   /** The flags of an active thread: `waitingOnApproval` while it asks. */
   flags: string[];
   turns: FakeTurn[];
+  /** Commands its turns left running (Codex's background terminals): they outlive an interrupt. */
+  terminals: string[];
 }
 
 /** What the fake was asked: each request's method and parameters, in order. */
 export interface FakeCall {
   method: string;
   params: Record<string, unknown>;
+  /** Whether its connection opted into experimental methods at `initialize`. */
+  experimental: boolean;
 }
 
 export interface FakeAppServer {
@@ -214,6 +218,10 @@ export interface FakeAppServer {
   ask(thread: string, commentary: string, command: string): void;
   /** A turn another client started (the TUI): the person's message, the turn running. */
   typed(thread: string, text: string): void;
+  /** The running turn starts a command that runs on (a test run, a server): until it is cleaned. */
+  command(thread: string, command: string): void;
+  /** Codex's trust entries (`projects` in its config), by folder: what `config/read` answers. */
+  trusted: Record<string, string>;
   /** The server restarts: running turns interrupted, every thread not loaded, clients cut. */
   restart(): void;
   close(): Promise<void>;
@@ -239,6 +247,16 @@ export async function fakeAppServer(
   const id = (kind: string) => `${kind}-${++ids}`;
   /** Connections, each with the threads it is subscribed to. */
   const clients = new Map<FakeSocket, Set<string>>();
+  /** The connections that opted into experimental methods. */
+  const experimental = new Set<FakeSocket>();
+  const trusted: Record<string, string> = {};
+  const needsExperimental = (method: string, socket: FakeSocket) => {
+    if (!experimental.has(socket)) {
+      throw Object.assign(new Error(`${method} requires experimentalApi capability`), {
+        code: -32600,
+      });
+    }
+  };
   const notify = (thread: string, method: string, params: object, all = false) => {
     for (const [socket, subscribed] of clients) {
       if (all || subscribed.has(thread)) {
@@ -365,12 +383,16 @@ export async function fakeAppServer(
 
   const methods: Record<string, (params: Record<string, unknown>, socket: FakeSocket) => unknown> =
     {
-      initialize: () => ({
-        userAgent: 'cpr/0.163.0',
-        codexHome: '/home/someone/.codex',
-        platformFamily: 'unix',
-        platformOs: 'linux',
-      }),
+      initialize: (params, socket) => {
+        const capabilities = params.capabilities as { experimentalApi?: unknown } | null;
+        if (capabilities?.experimentalApi === true) experimental.add(socket);
+        return {
+          userAgent: 'cpr/0.163.0',
+          codexHome: '/home/someone/.codex',
+          platformFamily: 'unix',
+          platformOs: 'linux',
+        };
+      },
       'thread/start': (params, socket) => {
         const config = params.config as
           { sandbox_workspace_write?: { writable_roots?: string[] } } | undefined;
@@ -388,6 +410,7 @@ export async function fakeAppServer(
           archived: false,
           flags: [],
           turns: [],
+          terminals: [],
         };
         threads.push(thread);
         clients.get(socket)?.add(thread.id);
@@ -460,6 +483,33 @@ export async function fakeAppServer(
         const limit = typeof params.limit === 'number' ? params.limit : turns.length;
         return { data: turns.slice(0, limit), nextCursor: null, backwardsCursor: null };
       },
+      'config/read': () => ({
+        config: {
+          projects: Object.fromEntries(
+            Object.entries(trusted).map(([folder, level]) => [folder, { trust_level: level }]),
+          ),
+        },
+        origins: {},
+        layers: null,
+      }),
+      'thread/backgroundTerminals/list': (params, socket) => {
+        needsExperimental('thread/backgroundTerminals/list', socket);
+        const thread = find(params.threadId);
+        return {
+          data: thread.terminals.map((command, i) => ({ processId: String(i), command })),
+          nextCursor: null,
+        };
+      },
+      'thread/backgroundTerminals/clean': (params, socket) => {
+        needsExperimental('thread/backgroundTerminals/clean', socket);
+        find(params.threadId).terminals = [];
+        return {};
+      },
+      // The e2e's fake TUI trusts a folder as Codex's does when the person says so.
+      'fake/trust': (params) => {
+        trusted[String(params.folder)] = 'trusted';
+        return {};
+      },
       'thread/archive': (params) => {
         const thread = find(params.threadId);
         thread.archived = true;
@@ -469,7 +519,10 @@ export async function fakeAppServer(
 
   const ws = await webSocketServer(path, (socket) => {
     clients.set(socket, new Set());
-    socket.onEnd(() => clients.delete(socket));
+    socket.onEnd(() => {
+      clients.delete(socket);
+      experimental.delete(socket);
+    });
     socket.onText((line) => {
       const request = JSON.parse(line) as {
         id?: number;
@@ -479,7 +532,7 @@ export async function fakeAppServer(
       if (!request.method) return; // a client's answer to a server request
       if (request.id === undefined) return; // a notification (`initialized`)
       const params = request.params ?? {};
-      calls.push({ method: request.method, params });
+      calls.push({ method: request.method, params, experimental: experimental.has(socket) });
       const handler = methods[request.method];
       try {
         if (!handler)
@@ -541,6 +594,18 @@ export async function fakeAppServer(
         );
       }
     },
+    command(thread, value) {
+      const t = find(thread);
+      const turn = running(t);
+      turn.items.push({
+        type: 'commandExecution',
+        id: id('exec'),
+        command: value,
+        status: 'inProgress',
+      });
+      t.terminals.push(value);
+    },
+    trusted,
     typed(thread, value) {
       const t = loaded(thread);
       if (t.turns.at(-1)?.status === 'inProgress') throw new Error(`a turn runs on ${thread}`);

@@ -44,11 +44,16 @@ function socketOf(address: string): string {
 
 /**
  * Connects to the app server at `address` (`unix://<path>`) and introduces CPR (`initialize`,
- * then `initialized`). Each request is answered within `timeoutMs` or fails.
+ * then `initialized`); `experimental` opts this connection into Codex's experimental methods.
+ * Each request is answered within `timeoutMs` or fails.
  */
 export async function connectAppServer(
   address: string,
-  { version = '0.0.0', timeoutMs = 20_000 }: { version?: string; timeoutMs?: number } = {},
+  {
+    version = '0.0.0',
+    timeoutMs = 20_000,
+    experimental = false,
+  }: { version?: string; timeoutMs?: number; experimental?: boolean } = {},
 ): Promise<AppServerConnection> {
   let ws: WebSocketClient;
   try {
@@ -134,7 +139,7 @@ export async function connectAppServer(
   try {
     await connection.request('initialize', {
       clientInfo: { name: 'cpr', title: 'CPR', version },
-      capabilities: null,
+      capabilities: experimental ? { experimentalApi: true, requestAttestation: false } : null,
     });
   } catch (error) {
     ws.close();
@@ -194,8 +199,14 @@ export interface CodexServer {
    * A thread the server does not hold (it restarted) is resumed first, with its own options.
    */
   send(request: { thread: string; text: string }): Promise<'started' | 'steered'>;
-  /** Interrupts the turn that runs; whether there was one. Answers once it ended (2 s at most). */
+  /**
+   * Interrupts the turn that runs, once it ended (2 s at most), then the commands the thread's
+   * turns left running (Codex's background terminals, decision 159); whether a turn ran. Where
+   * Codex refuses the second (it is experimental), the turn is still interrupted.
+   */
   interrupt(thread: string): Promise<boolean>;
+  /** Codex's trust entries (`projects` in its configuration), by folder: `trusted`, `untrusted`. */
+  trust(cwd: string): Promise<Record<string, string>>;
   /** A thread and its newest `turns`, their items in `summary` or in `full`. */
   read(thread: string, view: { turns: number; items: 'summary' | 'full' }): Promise<CodexThread>;
   /** Out of Codex's lists (`thread/archive`), not deleted: `codex unarchive` brings it back. */
@@ -272,10 +283,14 @@ export function codexServer(
     waitMs = 3_000,
   }: { version?: string; timeoutMs?: number; waitMs?: number } = {},
 ): CodexServer {
-  const open = () => connectAppServer(address, { ...(version ? { version } : {}), timeoutMs });
+  const open = (experimental = false) =>
+    connectAppServer(address, { ...(version ? { version } : {}), timeoutMs, experimental });
   /** Runs `work` on a connection of its own, closed after. */
-  const using = async <T>(work: (connection: AppServerConnection) => Promise<T>): Promise<T> => {
-    const connection = await open();
+  const using = async <T>(
+    work: (connection: AppServerConnection) => Promise<T>,
+    experimental = false,
+  ): Promise<T> => {
+    const connection = await open(experimental);
     try {
       return await work(connection);
     } finally {
@@ -371,8 +386,8 @@ export function codexServer(
         await sent;
         return how;
       }),
-    interrupt: (thread) =>
-      using(async (connection) => {
+    async interrupt(thread) {
+      const interrupted = await using(async (connection) => {
         if ((await statusNow(connection, thread)) !== 'active') return false;
         const running = await lastTurn(connection, thread);
         if (running?.status !== 'inProgress') return false;
@@ -382,6 +397,29 @@ export function codexServer(
           await new Promise((resolve) => setTimeout(resolve, 50));
         }
         return true;
+      });
+      // An interrupted turn's command runs on (Codex 0.163, V27b spike): ended here.
+      await using(
+        (connection) =>
+          connection.request('thread/backgroundTerminals/clean', { threadId: thread }),
+        true,
+      ).catch(() => undefined);
+      return interrupted;
+    },
+    trust: (cwd) =>
+      using(async (connection) => {
+        const read = await connection.request<{ config?: { projects?: unknown } }>('config/read', {
+          cwd,
+        });
+        const projects = read.config?.projects;
+        const entries: Record<string, string> = {};
+        if (projects && typeof projects === 'object') {
+          for (const [folder, value] of Object.entries(projects as Record<string, unknown>)) {
+            const level = text((value as { trust_level?: unknown } | null)?.trust_level);
+            if (level) entries[folder] = level;
+          }
+        }
+        return entries;
       }),
     read: (thread, { turns, items }) =>
       using(async (connection) => {

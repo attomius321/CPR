@@ -144,6 +144,16 @@ export interface WorkspaceTerminalRequest {
   rows: number;
 }
 
+/** The terminal opened. */
+export interface WorkspaceTerminalOpened {
+  id: string;
+  /**
+   * Codex (V27b): its configuration has no trust entry for the worktree or a folder above it, so
+   * Codex asks first whether to trust it, and saves the answer in the person's configuration.
+   */
+  trusted?: false;
+}
+
 /** What the start dialog needs. */
 export interface WorkspaceOptions {
   /** The default branch's tip, where a workspace starts unless a row is picked. */

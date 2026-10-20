@@ -37,6 +37,7 @@ import {
   type WorkspaceRequest,
   type WorkspaceStart,
   type WorkspaceSummary,
+  type WorkspaceTerminalOpened,
   type WorkspaceTerminalRequest,
   type WorkspaceThread,
   type ThreadEntry,
@@ -54,6 +55,7 @@ import {
   type CodexThread,
 } from './app-server.js';
 import {
+  asksTrust,
   codexState,
   processAlive,
   serverEntries,
@@ -878,10 +880,11 @@ export interface Workspaces {
   /** Sends a message to its agent: continues its session with the text (V18c). */
   reply(request: WorkspaceReply): Promise<WorkspaceReplied>;
   /**
-   * Opens its agent's newest session in a terminal (V21): `claude attach <id>` in its worktree;
-   * the terminal's ID. A stopped session continues, with no turn.
+   * Opens its agent's newest session in a terminal (V21): `claude attach <id>` in its worktree,
+   * where a stopped session continues, with no turn; for Codex on its app server, `codex resume
+   * <thread> --remote <address> -C <worktree>` (V27b). The terminal's ID.
    */
-  terminal(request: WorkspaceTerminalRequest): Promise<{ id: string }>;
+  terminal(request: WorkspaceTerminalRequest): Promise<WorkspaceTerminalOpened>;
   /**
    * Cleans it up (V18c): its agent's sessions, its worktree and, once merged, its branch; the
    * record stays, `finished`. Unmerged only when asked (`unmerged`); never with work not
@@ -1417,6 +1420,56 @@ export function workspaces(
     return { workspace: await summary(where, workspace, refs, await trunkOf(refs), []) };
   }
 
+  /**
+   * Codex's own terminal on a workspace's thread (V27b): its TUI joined to the app server, in the
+   * worktree. Codex asks to trust each worktree the first time and saves the answer in the
+   * person's configuration: said when it will ask (decision 160), never answered by CPR.
+   */
+  async function codexTerminal(
+    workspace: WorkspaceFile,
+    terminals: Terminals,
+    cols: number,
+    rows: number,
+  ): Promise<WorkspaceTerminalOpened> {
+    const agent = await codex();
+    const server = agent ? await agent.server() : null;
+    if (!agent || !server) {
+      throw new WorkspaceRefused(
+        agent ? "Codex's app server cannot be started" : 'Codex is not installed',
+        409,
+      );
+    }
+    if (!existsSync(workspace.worktree)) {
+      throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
+    }
+    const asks = await server.trust(workspace.worktree).then(
+      (entries) => asksTrust(entries, [workspace.worktree, real(workspace.worktree)]),
+      // Unknown: nothing said rather than something wrong.
+      () => false,
+    );
+    try {
+      const id = await terminals.open({
+        command: agent.command,
+        args: [
+          'resume',
+          workspace.agent?.thread ?? '',
+          '--remote',
+          server.address,
+          '-C',
+          workspace.worktree,
+        ],
+        cwd: workspace.worktree,
+        cols,
+        rows,
+        env,
+      });
+      return { id, ...(asks ? { trusted: false as const } : {}) };
+    } catch (error) {
+      if (error instanceof TerminalRefused) throw new WorkspaceRefused(error.message, 409);
+      throw error;
+    }
+  }
+
   /** Whether a workspace's commits are all in the default branch. */
   async function isMerged(workspace: WorkspaceFile, refs: RefList): Promise<boolean> {
     const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha;
@@ -1717,15 +1770,16 @@ export function workspaces(
     async terminal({ branch, cols, rows }) {
       const where = await place();
       const workspace = await recorded(where, branch);
-      if (workspace.agent?.kind === 'codex') {
+      if (workspace.agent?.kind === 'codex' && !onServer(workspace)) {
         throw new WorkspaceRefused(
-          'Codex has no terminal in CPR: Talk copies `codex resume`, to run in yours',
+          'Codex has no terminal in CPR without its app server: Talk copies `codex resume`, to run in yours',
           409,
         );
       }
       if (!terminals) throw new WorkspaceRefused('no terminals here', 409);
       const can = await terminals.available();
       if (!can.available) throw new WorkspaceRefused(can.reason, 409);
+      if (onServer(workspace)) return codexTerminal(workspace, terminals, cols, rows);
       const agent = await agentOf(workspace);
       if (!existsSync(workspace.worktree)) {
         throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);

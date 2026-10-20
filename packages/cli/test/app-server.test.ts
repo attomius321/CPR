@@ -237,6 +237,66 @@ describe('codexServer', () => {
     expect(await codex.interrupt(thread)).toBe(false);
   });
 
+  it('stops a turn and the commands it left running; where Codex refuses that, the turn still stops (V27b)', async () => {
+    const server = await serve();
+    const codex = codexServer(server.address);
+    const thread = await codex.start({ cwd: WORKTREE, writable: ROOTS, name: 'b', prompt: 'P' });
+    server.command(thread, 'sleep 45');
+    expect(await codex.interrupt(thread)).toBe(true);
+    expect(server.thread(thread)).toMatchObject({
+      terminals: [],
+      turns: [{ status: 'interrupted' }],
+    });
+    // Only the connection that cleans opts into Codex's experimental methods.
+    expect(server.calls.filter((c) => c.experimental).map((c) => c.method)).toEqual([
+      'thread/backgroundTerminals/clean',
+    ]);
+    const optedIn = server.calls.filter(
+      (c) =>
+        c.method === 'initialize' &&
+        (c.params.capabilities as { experimentalApi?: boolean } | null)?.experimentalApi === true,
+    );
+    expect(optedIn).toHaveLength(1);
+    // A turn interrupted elsewhere (Esc in Codex's terminal): nothing to interrupt, its command
+    // still ended.
+    server.typed(thread, 'Run the dev server');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    server.command(thread, 'pnpm dev');
+    const tui = await connectAppServer(server.address);
+    await tui.request('turn/interrupt', {
+      threadId: thread,
+      turnId: server.thread(thread).turns.at(-1)?.id,
+    });
+    tui.close();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(await codex.interrupt(thread)).toBe(false);
+    expect(server.thread(thread).terminals).toEqual([]);
+
+    const refusing = await fakeAppServer(socketPath(), {
+      refuse: ['thread/backgroundTerminals/clean'],
+    });
+    closers.push(() => refusing.close());
+    const older = codexServer(refusing.address);
+    const other = await older.start({ cwd: WORKTREE, writable: ROOTS, name: 'b', prompt: 'P' });
+    refusing.command(other, 'sleep 45');
+    expect(await older.interrupt(other)).toBe(true);
+    expect(refusing.thread(other)).toMatchObject({
+      terminals: ['sleep 45'],
+      turns: [{ status: 'interrupted' }],
+    });
+  });
+
+  it("reads Codex's trust entries, by folder (V27b)", async () => {
+    const server = await serve();
+    server.trusted['/repo'] = 'trusted';
+    server.trusted['/elsewhere'] = 'untrusted';
+    expect(await codexServer(server.address).trust(WORKTREE)).toEqual({
+      '/repo': 'trusted',
+      '/elsewhere': 'untrusted',
+    });
+    expect(server.calls.at(-1)).toMatchObject({ method: 'config/read', params: { cwd: WORKTREE } });
+  });
+
   it('archives a thread; an unknown one is an error in its words', async () => {
     const server = await serve();
     const codex = codexServer(server.address);
