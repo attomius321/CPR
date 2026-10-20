@@ -39,6 +39,7 @@ import {
   type TsPlugin,
 } from '@cpr/core';
 import { detectForge, type ChangeRequest, type Forge } from '@cpr/forge';
+import { findApp, openAppWindow, type AppWindow } from './app.js';
 import { ciChangeRequestNumber } from './ci.js';
 import { codeQualityReport } from './codequality.js';
 import { Diffs, pairKey } from './diffs.js';
@@ -74,6 +75,11 @@ export interface CliContext {
   stderr: (text: string) => void;
   /** Opens a URL in the user's browser (best effort). */
   openUrl: (url: string) => void;
+  /**
+   * Opens the viewer in CPR's own window (N1): the window once it shows the page, why it did not
+   * open, or null when the desktop app is not set up.
+   */
+  openApp?: (url: string, title: string) => Promise<AppWindow | { error: string } | null>;
   /** Resolves when a long-running command (`view`) should stop: Ctrl+C. */
   waitForExit: () => Promise<void>;
   /** Environment: tokens, API URLs, `CPR_*` settings. */
@@ -90,6 +96,10 @@ const processContext = (): CliContext => ({
   stdout: (text) => process.stdout.write(text),
   stderr: (text) => process.stderr.write(text),
   openUrl,
+  openApp: (url, title) => {
+    const app = findApp(process.env);
+    return app ? openAppWindow(app, url, title, process.env) : Promise.resolve(null);
+  },
   env: process.env,
   // Started by `cpr view` with an IPC channel: phases go back to it.
   ...(process.send ? { onPhase: (phase) => process.send?.({ phase } satisfies PhaseMessage) } : {}),
@@ -157,7 +167,8 @@ Options:
 
 const VIEW_HELP = `Usage: cpr view [<base> [head]] [options]
 
-Serves the graph viewer on localhost until Ctrl+C. It opens on History (h): every
+Serves the graph viewer on localhost until Ctrl+C, in CPR's own window once the
+desktop app is set up (pnpm app:setup), else in the browser. It opens on History (h): every
 branch, local and remote, as a graph. Its sidenav lists the workspaces: each a branch
 with its own worktree and agent, started from the page. In Compare mode (x), pick two commits to
 compare them (the older is the base), or one against its parent; each pair is analyzed
@@ -166,7 +177,8 @@ comparison.
 
 Options:
   --port <n>           Port to listen on (default: any free port)
-  --no-open            Don't open the browser
+  --browser            Open the browser, not CPR's window
+  --no-open            Open neither
   --no-merge-base      Compare against base directly
   --since <rev>        Mark each changed symbol new, updated or the same as in an earlier
                        head of this change (before a push or rebase)
@@ -180,8 +192,9 @@ Options:
 const PR_HELP = `Usage: cpr pr [<number>] [options]      (alias: cpr mr)
 
 Reviews a GitHub pull request or GitLab merge request of the \`origin\` remote: reads it
-through the forge's API, fetches its head and target branch, and opens the viewer, where
-comments on symbols are submitted as one review (comment, approve, or request changes).
+through the forge's API, fetches its head and target branch, and opens the viewer (CPR's
+window, or the browser), where comments on symbols are submitted as one review (comment,
+approve, or request changes).
 
 In a GitHub Actions or GitLab CI job for a pull/merge request, <number> defaults to it.
 
@@ -201,7 +214,8 @@ Options:
   --forge <name>       github or gitlab, for hosts whose name doesn't say
   --remote <name>      Remote to read and fetch from (default: origin)
   --port <n>           Viewer port (default: any free port)
-  --no-open            Don't open the browser
+  --browser            Open the browser, not CPR's window
+  --no-open            Open neither
   --since <sha>        Mark each changed symbol new, updated or the same as in an earlier
                        head of this pull/merge request (fetched if needed)
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
@@ -369,6 +383,7 @@ const REPORT_OPTIONS = {
 const SERVE_OPTIONS = {
   port: { type: 'string', default: '0' },
   'no-open': { type: 'boolean', default: false },
+  browser: { type: 'boolean', default: false },
 } as const;
 
 interface ReportArgs {
@@ -381,6 +396,30 @@ interface ReportArgs {
 interface ServeArgs {
   port: string;
   'no-open': boolean;
+  browser: boolean;
+}
+
+/**
+ * Shows the viewer at `url`: in CPR's window when the app is set up (N1), else, or with
+ * `--browser`, in the browser; nowhere with `--no-open`. Then waits for Ctrl+C or, in the
+ * window, for it to close.
+ */
+async function showUntilExit(
+  url: string,
+  title: string,
+  args: ServeArgs,
+  ctx: CliContext,
+): Promise<void> {
+  if (args['no-open']) return ctx.waitForExit();
+  const shown = args.browser ? null : await ctx.openApp?.(url, title);
+  if (shown && 'closed' in shown) {
+    await Promise.race([ctx.waitForExit(), shown.closed]);
+    shown.close();
+    return;
+  }
+  if (shown) ctx.stderr(`cpr: CPR's window did not open (${shown.error}); opening the browser\n`);
+  ctx.openUrl(url);
+  return ctx.waitForExit();
 }
 
 function checkFailOn(failOn: string | undefined, help: string): void {
@@ -474,9 +513,8 @@ async function serve(
   });
   ctx.stdout(`${statsLine(graph)}\nCPR viewer: ${server.url}  (Ctrl+C to stop)\n`);
   for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
-  if (!args['no-open']) ctx.openUrl(server.url);
 
-  await ctx.waitForExit();
+  await showUntilExit(server.url, basename(repo.root), args, ctx);
   await server.close();
   return 0;
 }
@@ -620,9 +658,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   }
   ctx.stdout(`CPR viewer: ${url}  (Ctrl+C to stop)\n`);
   for (const warning of first?.analysis.warnings ?? []) ctx.stderr(`warning: ${warning}\n`);
-  if (!values['no-open']) ctx.openUrl(url);
 
-  await ctx.waitForExit();
+  await showUntilExit(url, basename(repo.root), values, ctx);
   diffs.close();
   await server.close();
   return 0;

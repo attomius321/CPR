@@ -27,6 +27,7 @@ import type { BranchReviewInfo, Graph } from '@cpr/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import type { Loaded, Pair } from './commits.js';
 import { BackLink, DiffProgress, fetchGraph, startDiff } from './HistoryPage.js';
+import { diffTitle, revisionsLabel } from './pages.js';
 import { workspaceHref, workspaceName } from './workspaces.js';
 import { DiffShell } from './DiffShell.js';
 import { Shell } from './Shell.js';
@@ -214,6 +215,11 @@ export function App() {
         : { reviewed: new Set<string>(), stale: new Set<string>() },
     [graph, marks],
   );
+  const reviewOf = state.status === 'ready' ? state.branchReview?.branch : undefined;
+  // The window's title (N1a): the request, the branch reviewed, or the pair.
+  useEffect(() => {
+    if (graph) document.title = diffTitle(graph, reviewOf);
+  }, [graph, reviewOf]);
   // A new graph starts with every big neighbourhood collapsed, and every project shown.
   useEffect(() => {
     setExpanded(new Set());
@@ -822,10 +828,6 @@ function ReviewOf({ review }: { review: BranchReviewInfo }) {
 }
 
 function Summary({ graph }: { graph: Graph }) {
-  const { base, head } = graph.revisions;
-  // A pair picked from the commits page is named by its SHAs: once, short.
-  const side = (ref: string, sha: string | null) =>
-    !sha ? ref : ref === sha ? sha.slice(0, 7) : `${ref} (${sha.slice(0, 7)})`;
   const { added, removed, modified } = graph.stats.symbols;
   const severity = (s: string) => graph.findings.filter((f) => f.severity === s).length;
   const request = graph.changeRequest;
@@ -839,9 +841,7 @@ function Summary({ graph }: { graph: Graph }) {
           {request.state !== 'open' && <span className="chip">{request.state}</span>}
         </a>
       )}
-      <span className="revisions">
-        {side(base.ref, base.sha)} → {side(head.ref, head.sha)}
-      </span>
+      <span className="revisions">{revisionsLabel(graph)}</span>
       <span className="chip">{graph.stats.filesChanged} files</span>
       <span className="chip chip-added">+{added}</span>
       <span className="chip chip-removed">−{removed}</span>

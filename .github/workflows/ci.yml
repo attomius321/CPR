@@ -45,4 +45,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.node == 24
         run: |
           pnpm exec playwright install --with-deps chromium
-          pnpm run test:e2e
+          # The desktop app's specs (N1): Electron's binary, and Chromium's sandbox, which
+          # Ubuntu 24.04's AppArmor refuses to an Electron outside a package.
+          pnpm run app:setup
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          xvfb-run -a pnpm run test:e2e

@@ -3,13 +3,22 @@ import type { WorkspaceStart } from '@cpr/core';
 import { HistoryPage } from './HistoryPage.js';
 import { keyIsTaken } from './keys.js';
 import { MergeView } from './Merge.js';
-import { HISTORY_PAGE, SETTINGS_PAGE, hrefOf, inShell, routeOf, type Route } from './pages.js';
+import {
+  HISTORY_PAGE,
+  SETTINGS_PAGE,
+  hrefOf,
+  inShell,
+  routeOf,
+  routeTitle,
+  type Route,
+} from './pages.js';
 import { SettingsPage } from './SettingsPage.js';
 import { ShellContext, type Notice, type Shell as ShellApi } from './shell-context.js';
 import { DrawerStrip, Sidenav } from './Sidenav.js';
 import { StatusBar } from './StatusBar.js';
 import { WorkspaceView } from './Workspace.js';
-import { startedNotice } from './workspaces.js';
+import { useWorkspaces } from './useWorkspaces.js';
+import { startedNotice, workspaceName } from './workspaces.js';
 import { useWorkspaceStarter } from './WorkspaceStarter.js';
 
 const FOLD_KEY = 'cpr.viewer.sidenav';
@@ -103,6 +112,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     [navigate],
   );
   const failed = useCallback((message: string) => setNotice({ text: message, error: true }), []);
+
   const starter = useWorkspaceStarter(started, failed);
   const startWorkspace = starter.open;
 
@@ -192,8 +202,26 @@ export function Shell({ repo }: { repo?: string | undefined }) {
           {route.page === 'merge' && <MergeView key={route.branch} branch={route.branch} />}
         </main>
         <StatusBar notice={notice} />
+        <WindowTitle route={route} repo={repo} />
         {starter.dialog}
       </div>
     </ShellContext.Provider>
   );
+}
+
+/**
+ * The window's title (N1a): the page, a workspace by its title, then the repository. Its own
+ * component: a new read of the workspaces renders it alone, not the shell.
+ */
+function WindowTitle({ route, repo }: { route: Route; repo: string | undefined }) {
+  const { list } = useWorkspaces();
+  const picked =
+    route.page === 'workspace'
+      ? list?.workspaces.find((workspace) => workspace.branch === route.branch)
+      : undefined;
+  const name = picked ? workspaceName(picked) : undefined;
+  useEffect(() => {
+    document.title = routeTitle(route, repo, name);
+  }, [route, repo, name]);
+  return null;
 }

@@ -1,0 +1,23 @@
+{
+  "name": "@cpr/desktop",
+  "version": "0.0.0",
+  "description": "CPR's desktop app: a window of its own on cpr view's server.",
+  "private": true,
+  "type": "module",
+  "productName": "CPR",
+  "desktopName": "cpr.desktop",
+  "main": "dist/main.js",
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "icons"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "electron": "44.9.0"
+  }
+}
