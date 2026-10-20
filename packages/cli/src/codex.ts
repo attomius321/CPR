@@ -326,7 +326,7 @@ export async function findCodex(
  * entries marked with the record's `run` — and whether its runner still runs. An `end` decides (completed,
  * stopped, or failed with Codex's words); without one it works while the runner lives, else it
  * finished if it reported, and failed if not. `exec` never stops to ask: never "needs you".
- * `ahead` (commits since the base) tells a finished plan from finished work, as for Claude Code.
+ * `ahead` (commits since the fork point) tells a finished plan from finished work, as for Claude Code.
  */
 export function codexState(
   workspace: WorkspaceFile,

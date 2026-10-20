@@ -1270,6 +1270,42 @@ describe('workspaces', () => {
     expect((await s.changes('feature/one')).uncommitted).toBeNull();
   });
 
+  it('counts the commits a workspace lists from its fork point, as its changes and Review do', async () => {
+    const { repo, shas } = fresh();
+    const s = await service(repo, fakeClaude().claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    const path = workspace.worktree.path;
+    /** The list's count, and the changes' (the panel's), now. */
+    const counts = async () => {
+      const listed = (await s.list()).workspaces.find((w) => w.branch === 'feature/one');
+      return {
+        ahead: listed?.ahead,
+        merged: listed?.merged,
+        changes: (await s.changes('feature/one')).commits.count,
+      };
+    };
+    expect(await counts()).toEqual({ ahead: 0, merged: false, changes: 0 });
+    await commitIn(path, 'src/c.ts', 'export const c = 1;\n');
+    expect(await counts()).toEqual({ ahead: 1, merged: false, changes: 1 });
+
+    // main moves on and the agent rebases onto it: main's commit is not the workspace's.
+    await commitIn(repo.root, 'src/m.ts', 'export const m = 1;\n');
+    await gitIn(path, 'rebase', '--quiet', 'main');
+    expect(await counts()).toEqual({ ahead: 1, merged: false, changes: 1 });
+
+    // main moves on again and the agent merges it in: its commit and the merge, not main's.
+    await commitIn(repo.root, 'src/n.ts', 'export const n = 1;\n');
+    await gitIn(path, 'merge', '--quiet', '--no-ff', '--no-edit', 'main');
+    expect(await counts()).toEqual({ ahead: 2, merged: false, changes: 2 });
+
+    // Merged into main: all its commits, from where it started, main's among them.
+    repo.git('merge', '--quiet', '--ff-only', 'feature/one');
+    expect(Number(repo.git('rev-list', '--count', `${shas.B}..feature/one`))).toBeGreaterThan(2);
+    const merged = await counts();
+    expect(merged.merged).toBe(true);
+    expect(merged.ahead).toBe(merged.changes);
+  });
+
   it('lists at most 300 files of a branch and of its worktree, its counts over all (V29d)', async () => {
     const { repo } = fresh();
     const s = await service(repo, fakeClaude().claude);
