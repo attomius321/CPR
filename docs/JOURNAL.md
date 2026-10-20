@@ -3501,3 +3501,37 @@ conflict goes to the merger agent, as V26c built it (decision 164).
   merge changed outside the regions, as V26c found), and 2 stopped rightly with "needs you" (a
   README section rewritten on one side; two milestones both numbered V21). 10.0K–56.3K input
   tokens, 9.9–49.3 s a run. `main` moved only on `--approve`.
+
+## V28 spike — what CPR tells its agents, and how a project would change it (2026-10-20, branch `milestone/v28-agent-prompts`)
+
+Asked: a settings page to extend the predefined agents; then "every meta prompt of every agent
+should be configurable, with the defaults set as current", saved in `config.json` and shared
+with everyone, only the agents' prompts at first.
+
+Measured on `main` (`eadc0ce`): CPR writes 13 texts its agents are told: a start prompt per kind
+(654–840 characters besides the brief), the two plan sentences (132 and 69), the 4 sentences of a
+verdict for a branch's agent (`verdictText`), `cpr/AGENTS.md` (2,935 characters, 62 lines) and
+the merger's instructions (1,410). A project can change none of them. `agent.*` chooses the agent,
+not its words; `cpr/merge.md` only adds to the merger's prompt.
+
+**Learned**:
+- **`cpr/merge.md` could not be shared.** CPR's `cpr/.gitignore` hid it, and forcing it into git
+  would have moved the reviews to CPR's cache (any tracked file in `cpr/` that is not CPR's makes
+  the folder the project's). Fixed on its own branch, `fix/merge-md-shared`.
+- **Additions would not be enough.** This repository's CLAUDE.md keeps experiments in `spikes/`
+  and ends every session pushed; the Spike prompt says "Commit nothing unless the brief asks for
+  it". Only a changed prompt can drop CPR's sentence, so V28 makes each prompt whole and
+  changeable, with today's text as the default.
+- **What people change is not measured.** The 5 workspace sessions on this machine hold 16
+  messages from the person: one corrected how the agent worked ("ask for my permission to do
+  something, but don't do it"), before Plan first existed; the rest were answers, "continue", and
+  merges V26 now makes.
+- **Rewriting `config.json` breaks the project's own check.** Prettier checks `cpr/config.json`
+  here; `JSON.stringify(…, null, 2)` turns its one-line `merge.checks` into 6 lines, and
+  `pnpm check` would fail. `jsonc-parser` 3.3.1's `modify` changed only the member it set (an
+  array of long lines, as Prettier writes them), and removing it gave back the file byte for byte.
+- **The merger's last paragraph is a contract, not a prompt**: CPR parses the JSON it asks for.
+  It stays CPR's and is appended after the project's instructions.
+- **One case cannot stay byte for byte with placeholders**: with no default branch, today's start
+  prompt stops at "the person reviews the branch in CPR." V28 says "the branch the person picks",
+  which is what Merge into ▾ asks since V26.
