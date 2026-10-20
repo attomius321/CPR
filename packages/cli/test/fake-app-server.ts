@@ -222,14 +222,16 @@ export interface FakeAppServer {
 /**
  * Codex's app server on `path`, its threads in memory. `now` gives Unix seconds. A turn's
  * message reaches its items `delayMs` after `turn/start` (Codex 0.163: 0.9 s), and a connection
- * gets item events only for the threads it started or resumed (status changes reach all).
+ * gets item events only for the threads it started or resumed (status changes reach all). A
+ * thread is named only once it has an item. The methods in `refuse` fail, in the server's words.
  */
 export async function fakeAppServer(
   path: string,
   {
     now = () => Math.floor(Date.now() / 1000),
     delayMs = 10,
-  }: { now?: () => number; delayMs?: number } = {},
+    refuse = [],
+  }: { now?: () => number; delayMs?: number; refuse?: string[] } = {},
 ): Promise<FakeAppServer> {
   const calls: FakeCall[] = [];
   const threads: FakeThread[] = [];
@@ -420,7 +422,13 @@ export async function fakeAppServer(
       },
       'thread/name/set': (params) => {
         const thread = find(params.threadId);
-        thread.name = String(params.name);
+        // Codex 0.163 names a thread only once its rollout has an item (V27a's real run).
+        if (!thread.turns.some((turn) => turn.items.length > 0)) {
+          throw new Error(
+            `failed to set thread name: Fatal error: failed to update thread metadata ${thread.id}: rollout is empty`,
+          );
+        }
+        thread.name = typeof params.name === 'string' ? params.name : null;
         notify(thread.id, 'thread/name/updated', { threadId: thread.id, threadName: thread.name });
         return {};
       },
@@ -476,6 +484,7 @@ export async function fakeAppServer(
       try {
         if (!handler)
           throw Object.assign(new Error(`unknown method ${request.method}`), { code: -32601 });
+        if (refuse.includes(request.method)) throw new Error(`refused: ${request.method}`);
         socket.send(JSON.stringify({ id: request.id, result: handler(params, socket) }));
       } catch (error) {
         const { message, code = -32603 } = error as Error & { code?: number };

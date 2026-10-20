@@ -322,9 +322,9 @@ marked so), its commits, files not committed yet, your review, and whether it me
 these actions:
 
 - **Review** its branch;
-- **Talk**, which copies `claude attach <id>` (Codex: `codex resume <thread> -C <worktree>`) for
-  a terminal of your own (only when CPR cannot open the agent's terminal in the panel; its tooltip
-  says why);
+- **Talk**, which copies `claude attach <id>` (Codex: `codex resume <thread> --remote <its app
+  server> -C <worktree>`) for a terminal of your own (only when CPR cannot open the agent's
+  terminal in the panel; its tooltip says why);
 - **Open in VS Code**, its worktree;
 - **Stop** or **Start** the agent;
 - **Copy the prompt**.
@@ -372,23 +372,33 @@ It runs on your own Codex login (`codex login`: your ChatGPT account or an API k
 logged in, the workspace is kept and says so. Its model and reasoning effort are your Codex
 configuration's (`~/.codex/config.toml`).
 
-- CPR runs `codex exec --json` in the worktree, in the background, through a small runner of its
-  own that writes what Codex does into the workspace's thread (`cpr/threads/`): CPR's prompt,
-  your messages, Codex's last message of each turn as its report, and how the run ended. The run
-  goes on when `cpr view` closes.
+- **On your Codex app server** (Codex 0.163 and later): CPR starts the workspace's thread on your
+  app-server daemon, the one `codex agents` browses, and starts the daemon when it does not run
+  (`codex app-server daemon start`). The daemon is yours: the thread goes on when `cpr view`
+  closes, and is named after the branch. CPR reads the thread from there: its prompt, your
+  messages (from the panel or from Codex's own terminal), Codex's final answer of each turn, and
+  how a turn ended. Nothing is written in `cpr/threads/`.
 - **Sandbox:** Codex's `workspace-write`, so it writes only in its worktree. A worktree's git data
   lives in your checkout's `.git`, which that sandbox keeps read-only, so CPR also lets it write
   what a commit on its own branch needs: the worktree's git folder, git's objects, and the folders
   of the branch's ref and its log. Other branches, git's config and hooks stay read-only. Network
   access is whatever your Codex configuration allows. CPR never passes Codex's bypass flags.
-- The panel shows the thread with the reply box: Send continues Codex's thread (`codex exec
-  resume`); while it works, "Stop and send" asks first. Codex never stops to ask for a
-  permission, so a workspace is working, then has a plan or work ready, or failed in Codex's
-  words.
-- There is no Terminal tab for Codex: Talk copies `codex resume <thread> -C <worktree>`, which
-  continues the thread in your terminal (what you do there is not in CPR's thread).
-- Stop ends the run (Codex and the commands it runs). Clean up also archives the workspace's Codex
+- **Approvals:** Codex asks before it runs what its sandbox refuses (`on-request`). The workspace
+  then says "Waiting: approval prompt", and its thread shows what Codex said before asking, if
+  it said anything. You answer in
+  Codex's own terminal: **Talk** copies `codex resume <thread> --remote unix://<socket> -C
+  <worktree>`, which joins the same thread. The first time in a worktree, Codex asks whether you
+  trust the folder; that answer goes into your Codex configuration, so CPR leaves it to you.
+- **The reply box:** a message while Codex works joins its turn (Send, nothing stopped); once the
+  turn ended, it starts the next. To a turn waiting on an approval, "Stop and send" asks first.
+- Stop interrupts its turn. Start starts a new thread. Clean up also archives the workspace's
   threads (`codex unarchive` brings one back).
+- **Without an app server** (an older Codex, or a daemon that does not start), CPR runs `codex
+  exec --json` in the worktree through a small runner of its own, which writes what Codex does
+  into `cpr/threads/`. Send then continues the thread with `codex exec resume`, "Stop and send"
+  asks first while it works, and Codex never stops to ask for a permission. Talk copies `codex
+  resume <thread> -C <worktree>`; what you do there is not in CPR's thread. A workspace started
+  this way keeps it until you start its agent again.
 
 ## Pull and merge requests
 
@@ -601,8 +611,8 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 - TypeScript and JavaScript only (`.ts .tsx .js .jsx .mts .cts .mjs .cjs`). Other languages need
   an adapter of their own.
 - Static analysis: no runtime or data-flow analysis.
-- Claude Code is the only agent workspaces start for now. Codex and any configured agent command
-  are planned (V20 in the [plan](docs/PLAN.md)).
+- Workspaces start Claude Code or Codex. Any configured agent command is planned (V20c in the
+  [plan](docs/PLAN.md)). There is no Terminal tab for Codex yet (V27b): Talk copies its command.
 
 ## Development
 

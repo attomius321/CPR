@@ -1884,6 +1884,26 @@ describe('workspaces', () => {
     expect(server.threads[0]?.archived).toBe(true);
   });
 
+  it('keeps a thread the server made when the rest of the start failed: archived at Clean up (V27a)', async () => {
+    const { repo } = fresh();
+    const dir = tempDir();
+    folders.push(dir);
+    const server = await fakeAppServer(join(dir, 's.sock'), { refuse: ['turn/start'] });
+    closing.push(() => server.close());
+    const { codex, start } = fakeCodex(undefined, server);
+    const s = await service(repo, null, HOOK, undefined, codex);
+    const { workspace } = await s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true });
+    expect(workspace.agent).toEqual({
+      state: 'not-started',
+      kind: 'codex',
+      error: "Codex's app server: refused: turn/start",
+    });
+    // An answer, not an unreachable server: no `exec` beside it.
+    expect(start).not.toHaveBeenCalled();
+    await s.clean({ branch: 'feature/x', unmerged: true });
+    expect(server.threads.map((t) => t.archived)).toEqual([true]);
+  });
+
   it('starts nothing on the server when Codex is not logged in (V27a)', async () => {
     const { repo } = fresh();
     const server = await appServer();

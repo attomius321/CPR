@@ -147,6 +147,19 @@ describe('codexServer', () => {
     });
   });
 
+  it('names the thread once its prompt is in it; a name refused does not fail the start', async () => {
+    const path = socketPath();
+    const server = await fakeAppServer(path, { refuse: ['thread/name/set'] });
+    closers.push(() => server.close());
+    const thread = await codexServer(server.address).start({
+      cwd: WORKTREE,
+      writable: ROOTS,
+      name: 'feature/csv',
+      prompt: 'Do it',
+    });
+    expect(server.thread(thread)).toMatchObject({ name: null, turns: [{ status: 'inProgress' }] });
+  });
+
   it('reads the newest turns oldest first: prompts with steered ones, the final answer, a failure', async () => {
     const server = await serve();
     const codex = codexServer(server.address);

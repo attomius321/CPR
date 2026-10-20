@@ -3331,3 +3331,62 @@ private app server (`codex app-server --listen unix://…`), the person's own da
 `codex exec` made (V20a's), resumed on the app server; the daemon restarting during a turn
 (`daemon update` "may interrupt running work"); a TUI's memory; macOS, Windows. The 4 threads
 were archived (`codex unarchive` brings them back).
+
+## V27a — CPR on Codex's app server (2026-10-20, branch `milestone/v27-codex-terminal`)
+
+Asked: "Start V27a". A Codex workspace now starts on the person's app-server daemon (found, or
+started, with `codex app-server daemon start`): a thread in the worktree, its branch's git folders
+writable, approvals asked, named after the branch. CPR reads its state and thread from the server;
+a message joins a running turn; Stop interrupts it; Clean up archives its threads. Talk copies
+`codex resume <thread> --remote unix://<socket> -C <worktree>`. Without a daemon, V20a's `exec`
+as before. Claude Code workspaces unchanged.
+
+**Learned**:
+- **Probed first on a private app server** (Codex 0.163, the person's daemon left alone): writable
+  roots go in `config.sandbox_workspace_write.writable_roots` (`sandbox` takes only a mode). The
+  server keeps a thread's sandbox, roots, approval policy and folder: after a restart, a bare
+  `thread/resume` gave all four back, so CPR passes none when it continues a thread (decision
+  157). `turn/start` on a thread the server does not hold fails "thread not found" (-32600), a
+  turn cut by the restart reads `interrupted`, and the thread `notLoaded`.
+- **A connection that did not start or resume a thread hears only its status changes.** CPR keeps
+  none subscribed (a subscriber gets every delta) and reads with `thread/read` (1.9 ms) and
+  `thread/turns/list` (`summary`: each turn's first message and final answer, 3.3 ms for 6 turns;
+  `full`: every message and Codex's commentary, 7.2 ms). Items have no times, turns do (seconds).
+  Agent messages carry `phase`: `commentary` or `final_answer`.
+- **While Codex waits on an approval, the request is no item**: the last turn shows the person's
+  message and, sometimes, Codex's commentary ("May I run it outside the sandbox?"); in the real run
+  only reasoning. "Needs you" comes from the status flag `waitingOnApproval`. Server requests are
+  numbered from 0, so a response is told from a request by its `method`, not its ID.
+- **Messages can come with the upgrade's answer**, in the same chunk: the first test of the
+  WebSocket client lost one, since the caller could not listen before the promise resolved. The
+  client now holds messages until its first listener.
+- **`codex app-server daemon start` is idempotent**: 57 ms when it runs, 1.25 s to start one (in a
+  throwaway `CODEX_HOME`); `daemon version` exits 1 with "failed to connect" when none runs. A
+  socket path past ~100 bytes is made a symlink into `/tmp/codex-daemon-<uid>/`.
+- **The real run found what the fake did not: Codex refuses to name a thread whose rollout is
+  empty.** Start again called `thread/name/set` right after `turn/start` and got "failed to update
+  thread metadata … rollout … is empty"; CPR called the start failed while the turn ran, and lost
+  the thread (it redid the brief, found it done, committed nothing; archived by hand). The first
+  start had named its thread by timing alone. Now the name is set once the prompt is in and never
+  fails a start, a start that fails after `thread/start` keeps the thread for Clean up (decision
+  158), and the fake refuses a name until a thread has an item.
+- **A turn typed outside the page shows only when the page is focused again**: the list is read
+  every 5 s only while an agent works or waits, so after "Plan ready" nothing reads it. The same
+  holds for `claude attach` in the person's terminal; the e2e dispatches `focus` to model coming
+  back. V27b's terminal in the panel needs a rule.
+
+**Verification**: tests first (WebSocket client 6, app-server client and operations 9, discovery,
+entries and state 11, service 8, viewer 2, e2e 2; red before, for the reasons above). 888 unit
+tests (852 on `main`), 119 of 119 e2e; V20a's Codex specs pass unchanged (their fake `codex`
+starts no daemon). Real Codex 0.163 on the person's daemon through `cpr view` in Chromium, in a
+throwaway repository outside `/tmp`: started 1.82 s after Start; a message while it worked joined
+the turn and was in the thread 0.79 s after Send; it committed in the linked worktree from its
+sandbox (`338aa87`), ready 12.7 s later; `cpr view` stopped mid-turn and started again read
+"working", and the turn ended without CPR (13.3 s); an approval read "Waiting: approval prompt"
+2.2 s after the message, "Stop it and send" ran the next turn (1.9 s); Stop 0.36 s; Start again a
+new named thread (1.6 s); the list 19–26 ms, a summary read 4–5 ms, the panel's 50-turn read
+10 ms; Clean up archived both threads. Screenshots light and dark at 1440, 900 and 390 px, no
+page errors. Everything made was removed and all 3 threads archived (`thread/list` by folder: 0
+listed, 3 archived), with the probe's thread on the private server. Not verified: a turn typed in
+Codex's own terminal on the real daemon, an approval answered there (both V27b), the daemon
+restarting during a turn (the fake only), macOS and Windows.

@@ -18,6 +18,16 @@ export class AppServerError extends Error {
 /** No app server there: its socket is gone, refused the connection, or did not speak WebSocket. */
 export class AppServerUnreachable extends Error {}
 
+/** A start that failed once the server had made its thread: the thread is Codex's still. */
+export class AppServerStartFailed extends AppServerError {
+  constructor(
+    message: string,
+    readonly thread: string,
+  ) {
+    super(message);
+  }
+}
+
 export interface AppServerConnection {
   request<T = unknown>(method: string, params?: object): Promise<T>;
   /** Notifications: what happens on the threads this connection started or resumed. */
@@ -320,10 +330,17 @@ export function codexServer(
         const thread = text(started.thread?.id);
         if (!thread) throw new AppServerError('Codex started no thread');
         const prompted = messageIn(connection, thread);
-        await connection.request('turn/start', { threadId: thread, input: input(prompt) });
-        // Its name in `codex agents` and `codex resume`'s list; the turn need not wait for it.
-        await connection.request('thread/name/set', { threadId: thread, name });
+        try {
+          await connection.request('turn/start', { threadId: thread, input: input(prompt) });
+        } catch (error) {
+          throw new AppServerStartFailed((error as Error).message, thread);
+        }
         await prompted;
+        // Its name in `codex agents` and `codex resume`'s list: only once the prompt is in (Codex
+        // 0.163 refuses to name a thread whose rollout is empty), and never why a start fails.
+        await connection
+          .request('thread/name/set', { threadId: thread, name })
+          .catch(() => undefined);
         return thread;
       }),
     send: ({ thread, text: words }) =>

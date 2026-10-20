@@ -439,7 +439,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V24 ✅ | A structured brief | The "Start a workspace" dialog is one text area that is also the branch name and the workspace's name; every branch is `feature/`, while 11 of this repository's 35 merges were fixes or chores; nothing prompts for how done is checked, which every agent vendor's guidance asks for. Planned: a kind (Feature, Fix, Refactor, Chore, Spike), a title, one required part per kind, an optional Done when filled in with a check command guessed from the repository's root files (on 16 repositories: 13 the documented command, 2 heavy, 1 close, 0 wrong), optional parts under More, assembled by the server into a brief with Markdown headings; the kind's branch prefix; old workspaces unchanged. Merged (2026-10-19): the guess on 16 repositories gives the 16 planned commands in 13–17 ms; the dialog fits at 1440 × 900 and 390 × 844; a real Claude Code's plans follow each kind's line. See below. |
 | V25 ✅ | Workspaces first, History beneath | `cpr view` opens on the commits page (`/`) and Workspaces is the second tab. A diff's way back is "← Commits". The code says "feature" for a workspace 1,949 times (12 files, `/api/features`, `cpr/features/`), and since V24 "feature" is also a kind of work. Planned: `/` Workspaces, `/history` History (today's commits page), tabs "Workspaces · History", old addresses rewritten, a back link to where a diff came from; "workspace" in code, API and on disk (`cpr/workspaces/`, moved once from `cpr/features/`); the kind "feature" kept. Merged (2026-10-19): 801 unit tests, 114 e2e; first paint of `/` as `main`'s `/workspaces` (109 ms); a repository's old records moved by the first reader. See below. |
 | V26 ✅ | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. V26a built: Merge into ▾ after Approve, CPR merges in its own worktree, runs the check, lands by fast-forward; `cpr merge`. Next: keep-both by rule (V26b); a fresh agent for the rest, from the conflict alone, every resolution reviewed (V26c). See below. |
-| V27 | Codex in the panel's terminal | A Codex workspace has no terminal (decision 133): `exec` turns are recorded by CPR's runner, and a terminal's would not be. Spike: Codex 0.163's app-server daemon is the binding — CPR as a client starts the thread, a TUI joined with `codex resume --remote` reaches CPR (every item, 3.0 s) and shows CPR's turns (0.9 s), turns outlive the client and come back with `thread/read`, and approvals give "needs you". Planned: CPR on the daemon (V27a), Codex's terminal tab (V27b). See below. |
+| V27 | Codex in the panel's terminal | A Codex workspace has no terminal (decision 133): `exec` turns are recorded by CPR's runner, and a terminal's would not be. Spike: Codex 0.163's app-server daemon is the binding — CPR as a client starts the thread, a TUI joined with `codex resume --remote` reaches CPR (every item, 3.0 s) and shows CPR's turns (0.9 s), turns outlive the client and come back with `thread/read`, and approvals give "needs you". V27a implemented (not merged): Codex workspaces on the person's daemon — with the real Codex, started in 1.8 s, committed from its sandbox, a message joined its running turn (in the thread 0.8 s after Send), a turn outlived a `cpr view` restart, an approval read "Waiting: approval prompt"; `exec` without a daemon. V27b: Codex's terminal tab. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -6856,7 +6856,8 @@ conflicted in the merges measured).
 
 ### V27 — Codex in the panel's terminal, through its app server
 
-**Status:** planned (2026-10-20), on branch `milestone/v27-codex-terminal`; not started.
+**Status:** V27a implemented (2026-10-20) on branch `milestone/v27-codex-terminal`, not merged;
+V27b not started. As built and results: "As built (V27a)" below.
 
 **Problem** (asked: "Why codex can't run in terminal?" … "Think of a way to make it work … try
 codex agents, run a spike"). V20a runs Codex as `codex exec` through CPR's runner, which records
@@ -6929,13 +6930,80 @@ no app server can be reached (V20a's `exec`, as today).
 | V27a | CPR on Codex's app server | The client, start, reply, stop and the thread through the daemon; "needs you"; `exec` when no daemon |
 | V27b | Codex's terminal | The terminal tab for Codex workspaces (`codex resume --remote`), the trust note |
 
-**Proposed decisions**:
+**Decisions** (154 and 155 as built in V27a, 156 for V27b; 157 and 158 made while building V27a):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 154 | Which app server | **The person's daemon, started when it is not running** | Threads outlive `cpr view`; `codex agents` shows them; no second 270 MB process |
 | 155 | Where a Codex thread comes from | **`thread/read` and the server's events; no runner, no thread file** | The server keeps every turn, from any client (4 of 4 read back after a reconnect) |
 | 156 | Trust | **The person answers Codex's prompt in the terminal** | It writes their config; `-c` cannot set it, and CPR should not decide it |
+| 157 | A thread's options when CPR continues it | **None: a bare `thread/resume`; the sandbox, writable roots, approvals and folder are the server's** | The server keeps them with the thread: a bare resume after a restart gave all four back (measured). Passing them again would undo what the person set in Codex's terminal. V20a passed them on every run because `exec resume` kept none |
+| 158 | A start the server does not finish | **Unreachable: `exec`, as without a daemon. An answer: the start failed in its words, and a thread it made is kept for Clean up. The thread's name never fails a start** | A second thread beside one already running would be two agents on one branch. In the real run Codex refused the name while the thread's rollout was empty, after its turn had started |
+
+#### As built (V27a)
+
+- **A connection per call, no thread kept subscribed.** The plan read the thread "and the
+  notifications while connected". A connection that started or resumed a thread gets every delta
+  of its turns, and one that did not gets only status changes (probed). So each call opens the
+  socket, introduces CPR (`initialize`), asks, and closes. A start or a message waits on its own
+  connection for the message's `item/completed` (3 s at most) so the page shows it at once: V20a's
+  lesson, 5.3 s to the next read without it.
+- **The daemon is found with `codex app-server daemon start`** alone, not `daemon version` then
+  `start`: it is idempotent (`alreadyRunning`), 57 ms when it runs and 1.25 s from cold (measured
+  in a throwaway `CODEX_HOME`), and its last line is JSON with `socketPath`. A call whose socket
+  does not answer starts the daemon again once and asks once more. No daemon: asked again a minute
+  later, and `exec` meanwhile.
+- **Writable roots go in `config.sandbox_workspace_write.writable_roots`** on `thread/start`
+  (`sandbox` takes only a mode). Continuing a thread passes no options (decision 157).
+- **Two reads.** The list reads the last two turns with `itemsView: "summary"`, each turn's first
+  message and final answer: 4–5 ms per Codex workspace on the person's daemon. The panel reads 50
+  turns in full, with every message (steered ones too) and Codex's commentary: 10 ms. Not
+  `thread/read` with `includeTurns`, which Codex 0.163 calls deprecated for paginated threads.
+- **"Needs you" comes from the thread's status only.** The pending approval is not an item (it
+  appears once accepted) and goes only to subscribed clients. The panel shows what Codex said
+  before asking, when it said something: in the real run it asked with no message, only
+  reasoning. The words are "approval prompt" and "question", read after "Waiting:" as Claude
+  Code's "permission prompt" is.
+- **A message while Codex works joins its turn** (`turn/steer`): the box says Send, not "Stop and
+  send". To a turn waiting on an approval, a message stops it first, after asking, as for Claude
+  Code. The server answers 409 without `stop`.
+- **Start again makes a new thread**, as V20a made a new run. The record keeps the current
+  `thread` and the earlier ones in `threads`. Clean up interrupts a running turn and archives
+  them all with `thread/archive`, else `codex archive`. The panel shows the current thread only.
+- **The thread's name is set after the prompt is in** and never fails the start (decision 158).
+  In the real run, Start again failed on `thread/name/set` ("rollout … is empty") while its turn
+  was already running, and the old code lost that thread. The fake server now refuses a name
+  until the thread has an item.
+- **A turn typed outside the page shows when the page is focused again**, as with `claude attach`:
+  the list is read every 5 s only while an agent works or waits. V27b's terminal in the panel
+  will need a rule for this, as V21's already does for Claude Code.
+- **Talk** copies `codex resume <thread> --remote unix://<socket> -C <worktree>`, without V20a's
+  note that its turns are not recorded. `codex resume` takes `--remote` with `-C`; checked in its
+  help, not run (it asks to trust each new worktree, which writes the person's config: V27b).
+- **The e2e fake app server runs in Playwright's process**: the unit tests' fake
+  (`packages/cli/test/fake-app-server.ts`), imported as `forge/test/mock-api.ts` already is. The
+  fake `codex` names its socket on `app-server daemon start` only then, so V20a's specs keep
+  testing `exec`.
+
+**Results (V27a).** Tests first, red before: the WebSocket client 6 (against a fake server: frames
+of every length, fragments with pings between, bytes cut mid-header, close both ways, a refused
+upgrade, no answer), the app-server client and operations 9, discovery, entries and state 11, the
+service 8, viewer 2, e2e 2. 888 unit tests (852 on `main`), 119 of 119 e2e, V20a's three Codex
+specs unchanged. With the real Codex 0.163 on the person's daemon, through `cpr view` in Chromium,
+in a throwaway repository outside `/tmp` (where `workspace-write` writes freely): started in 1.82 s
+(the worktree, `daemon start`, `thread/start`, the prompt in); a message sent while it worked
+joined its turn and showed in the thread 0.79 s after Send; Codex committed on its branch in the
+linked worktree from its sandbox (`338aa87`, the steered comment in it), ready for review 12.7 s
+later. `cpr view` stopped 3 s into a 15 s turn and started again: the workspace read "working"
+at once, and the turn finished without CPR ("slept", 13.3 s). An approval: "Waiting: approval
+prompt" 2.2 s after the message, then "Stop it and send" interrupted it and the next turn answered
+in 1.9 s. Stop 0.36 s. Start again: a new thread, named after the branch, 1.6 s. `GET
+/api/workspaces` 19–26 ms with that workspace; its thread 9–10 ms. Clean up archived all three
+threads on the daemon (one by hand: the thread the failed start lost, before the fix). Screenshots
+light and dark at 1440, 900 and 390 px, no page errors; at 390 px the header's help wraps into a
+narrow column, as on `main`. Not verified: a turn typed in Codex's own terminal against the real
+daemon (the fake's, and the V27 spike's, only), an approval answered there, a daemon restarted
+during a turn (the fake's restart only), macOS and Windows.
 
 ### Phase 1 milestones
 

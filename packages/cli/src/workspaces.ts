@@ -47,7 +47,12 @@ import {
   type WorkKindSpec,
 } from '@cpr/core';
 import { guessCheck, treeAt } from './check.js';
-import { AppServerUnreachable, type CodexServer, type CodexThread } from './app-server.js';
+import {
+  AppServerStartFailed,
+  AppServerUnreachable,
+  type CodexServer,
+  type CodexThread,
+} from './app-server.js';
 import {
   codexState,
   processAlive,
@@ -1202,9 +1207,16 @@ export function workspaces(
         });
         return { ...head, started, thread };
       } catch (error) {
-        // A server that cannot be reached: `exec`, as without one. One that answered: its words.
+        // A server that cannot be reached: `exec`, as without one. One that answered: its words,
+        // and the thread it made, if it did, kept for Clean up.
         if (!(error instanceof AppServerUnreachable)) {
-          return { ...head, error: `Codex's app server: ${(error as Error).message}` };
+          const made = error instanceof AppServerStartFailed ? [error.thread] : [];
+          const threads = [...earlier, ...made];
+          return {
+            kind: 'codex',
+            ...(threads.length > 0 ? { threads } : {}),
+            error: `Codex's app server: ${(error as Error).message}`,
+          };
         }
       }
     }
@@ -1813,12 +1825,12 @@ export function workspaces(
       if (codexAgent) {
         if (await codexAlive(workspace)) await stopCodex(where, workspace, codexAgent);
         const { thread: current, threads: earlier = [] } = workspace.agent ?? {};
-        if (current) {
+        if (current || earlier.length > 0) {
           // On the app server (V27a): its turn stopped, its threads archived there, else by
           // `codex archive` (the server unreachable).
           const server = await codexAgent.server();
-          if (server) await server.interrupt(current).catch(() => false);
-          for (const each of [...earlier, current]) {
+          if (server && current) await server.interrupt(current).catch(() => false);
+          for (const each of current ? [...earlier, current] : earlier) {
             const archived = server
               ? await server.archive(each).then(
                   () => true,
