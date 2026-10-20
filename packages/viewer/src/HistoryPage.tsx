@@ -45,6 +45,7 @@ import {
 import { GraphCell, ROW_HEIGHT } from './GraphCell.js';
 import { Help } from './Help.js';
 import { MoreIcon } from './icons.js';
+import { InTitleBar } from './TitleBar.js';
 import { laneSpacing, layoutLanes } from './lanes.js';
 import { backLink, HISTORY_PAGE } from './pages.js';
 import { useShell, type Notice } from './shell-context.js';
@@ -820,24 +821,26 @@ function History({
             >
               Branches
             </button>
-            <span className="scopes" role="group" aria-label="Branches">
-              <button
-                type="button"
-                className={scope === 'all' ? 'scope active' : 'scope'}
-                aria-pressed={scope === 'all'}
-                onClick={() => onScope('all')}
-              >
-                All branches
-              </button>
-              <button
-                type="button"
-                className={scope === 'current' ? 'scope active' : 'scope'}
-                aria-pressed={scope === 'current'}
-                onClick={() => onScope('current')}
-              >
-                This branch{first.branch ? ` (${first.branch})` : ''}
-              </button>
-            </span>
+            <InTitleBar>
+              <span className="scopes" role="group" aria-label="Branches">
+                <button
+                  type="button"
+                  className={scope === 'all' ? 'scope active' : 'scope'}
+                  aria-pressed={scope === 'all'}
+                  onClick={() => onScope('all')}
+                >
+                  All branches
+                </button>
+                <button
+                  type="button"
+                  className={scope === 'current' ? 'scope active' : 'scope'}
+                  aria-pressed={scope === 'current'}
+                  onClick={() => onScope('current')}
+                >
+                  This branch{first.branch ? ` (${first.branch})` : ''}
+                </button>
+              </span>
+            </InTitleBar>
             {first.head && headRow !== null && (
               <button
                 type="button"

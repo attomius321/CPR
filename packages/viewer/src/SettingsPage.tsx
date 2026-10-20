@@ -80,9 +80,10 @@ export function SettingsPage() {
     if (edited.length === 0) return;
     const onLeave = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener('beforeunload', onLeave);
-    setLeaveGuard?.(
-      `Leave Settings? ${edited.length === 1 ? 'A prompt is' : `${edited.length} prompts are`} changed and not saved.`,
-    );
+    setLeaveGuard?.({
+      question: 'Leave Settings?',
+      detail: `${edited.length === 1 ? 'A prompt is' : `${edited.length} prompts are`} changed and not saved.`,
+    });
     return () => {
       window.removeEventListener('beforeunload', onLeave);
       setLeaveGuard?.(null);

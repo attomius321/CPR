@@ -451,7 +451,11 @@ export function App() {
 
   if (state.status === 'shell') return <Shell repo={state.repo} />;
   const page = (
-    <div className="app" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
+    <div
+      className={inView ? 'app' : 'app alone'}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={onDrop}
+    >
       <header className="bar">
         <strong className="brand">CPR</strong>
         {state.status === 'ready' && state.commits && <BackLink />}

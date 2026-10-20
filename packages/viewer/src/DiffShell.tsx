@@ -3,10 +3,15 @@ import type { WorkspaceStart } from '@cpr/core';
 import { hrefOf, type Route } from './pages.js';
 import { ShellContext, type Notice, type Shell } from './shell-context.js';
 import { DrawerStrip, Sidenav } from './Sidenav.js';
+import { desktop } from './desktop.js';
 import { StatusBar } from './StatusBar.js';
+import { TitleBar } from './TitleBar.js';
 import { useWorkspaceStarter } from './WorkspaceStarter.js';
 
 const FOLD_KEY = 'cpr.viewer.sidenav.diff';
+
+/** A diff's page puts nothing in the title bar: its own bar, under it, has its parts. */
+const noSlots = () => {};
 
 /** On a diff the sidenav starts as a rail (decision 182): the canvas keeps its width. */
 function loadFolded(): boolean {
@@ -84,6 +89,16 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
   return (
     <ShellContext.Provider value={shell}>
       <div className={`shell diff-shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}`}>
+        {desktop && (
+          <TitleBar
+            repo={repo}
+            folded={folded}
+            onFold={() =>
+              window.matchMedia('(max-width: 899px)').matches ? setDrawer((open) => !open) : fold()
+            }
+            onSlots={noSlots}
+          />
+        )}
         <DrawerStrip open={drawer} onToggle={() => setDrawer((open) => !open)} />
         <Sidenav repo={repo} folded={folded} onFold={fold} flashed={null} />
         <div className="shell-main">{children}</div>

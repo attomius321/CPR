@@ -51,6 +51,17 @@ const primary = !fromLauncher || app.requestSingleInstanceLock();
 
 /** The window's background before the page paints: the viewer's `--bg`, in its theme. */
 const BACKGROUND = { dark: '#0b0b0c', light: '#f7f7f5' };
+/**
+ * The title bar (N1c): CPR draws it, 38 px, in the viewer's `--side`; the system's buttons
+ * stay, over it (Windows and Linux) with its colour and `--text` for their symbols (Windows), or
+ * as macOS's own at the left.
+ */
+const TITLE_BAR = {
+  height: 38,
+  dark: { color: '#111113', symbolColor: '#e6e6e9' },
+  light: { color: '#f0f0ee', symbolColor: '#1d1d1f' },
+};
+const HEX = /^#[0-9a-f]{6}$/i;
 
 /** What each window shows: its home (a server, or the start page), its repository and server. */
 interface Shown {
@@ -184,6 +195,7 @@ function createWindow(title: string): BrowserWindow {
     screen.getAllDisplays().map((display) => display.workArea),
     screen.getPrimaryDisplay().workArea,
   );
+  const light = state.choices['cpr.viewer.theme'] === 'light';
   const window = new BrowserWindow({
     x: place.x,
     y: place.y,
@@ -193,8 +205,16 @@ function createWindow(title: string): BrowserWindow {
     minHeight: 480,
     show: false,
     title,
-    backgroundColor:
-      state.choices['cpr.viewer.theme'] === 'light' ? BACKGROUND.light : BACKGROUND.dark,
+    backgroundColor: light ? BACKGROUND.light : BACKGROUND.dark,
+    titleBarStyle: 'hidden',
+    ...(process.platform === 'darwin'
+      ? { trafficLightPosition: { x: 14, y: 12 } }
+      : {
+          titleBarOverlay: {
+            ...(light ? TITLE_BAR.light : TITLE_BAR.dark),
+            height: TITLE_BAR.height,
+          },
+        }),
     icon: join(here, '..', 'icons', 'cpr.png'),
     autoHideMenuBar: true,
     webPreferences: {
@@ -254,6 +274,20 @@ function createWindow(title: string): BrowserWindow {
     writeState(stateFile, { ...readState(stateFile), zoom });
   });
 
+  // A page that asks before it is left (Settings with a prompt not saved): Electron would keep
+  // the window open and say nothing, so the app asks, as a browser does.
+  contents.on('will-prevent-unload', (event) => {
+    const leave = dialog.showMessageBoxSync(window, {
+      type: 'question',
+      buttons: ['Leave', 'Stay'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'CPR',
+      message: 'Leave this page? What you changed is not saved.',
+    });
+    if (leave === 0) event.preventDefault();
+  });
+
   contents.on('context-menu', (_event, params) => {
     const roles = contextMenuRoles(params);
     if (roles.length === 0) return;
@@ -286,6 +320,17 @@ function listen(): void {
       writeState(stateFile, { ...state, choices: { ...state.choices, ...readChoices(choices) } });
     }
     event.returnValue = true;
+  });
+
+  // The title bar's colours, as the page's theme has them (N1c).
+  ipcMain.on('cpr:title-bar', (event, colors: unknown) => {
+    const window = shownFor(event)?.window;
+    if (!window || !fromServer(event) || process.platform === 'darwin') return;
+    const { color, symbol } = (colors ?? {}) as { color?: unknown; symbol?: unknown };
+    if (typeof color !== 'string' || typeof symbol !== 'string') return;
+    if (HEX.test(color) && HEX.test(symbol)) {
+      window.setTitleBarOverlay({ color, symbolColor: symbol });
+    }
   });
 
   // The start page's: the recent repositories, choosing one, opening one, forgetting one.

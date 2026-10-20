@@ -53,6 +53,16 @@ window.addEventListener('mouseup', (event) => {
   else if (event.button === 4) window.history.forward();
 });
 
+// CPR's pages (N1c): that they are in the app, on which system (its window's buttons are at the
+// left on macOS), and the title bar's colours for those buttons, which follow the page's theme.
+if (window.location.protocol === 'http:') {
+  contextBridge.exposeInMainWorld('cprApp', {
+    platform: process.platform,
+    titleBar: (colors: { color: string; symbol: string }) =>
+      ipcRenderer.send('cpr:title-bar', colors),
+  });
+}
+
 // The start page (N1b), a file of the app's own: what it may ask the app. Server pages get
 // none of it.
 if (window.location.protocol === 'file:') {

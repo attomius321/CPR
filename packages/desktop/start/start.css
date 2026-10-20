@@ -11,6 +11,7 @@
 :root,
 :root[data-theme='dark'] {
   --bg: #0b0b0c;
+  --side: #111113;
   --panel: #161618;
   --raised: #1f1f23;
   --line: #26262b;
@@ -23,11 +24,12 @@
 
 :root[data-theme='light'] {
   --bg: #f7f7f5;
+  --side: #f0f0ee;
   --panel: #ffffff;
-  --raised: #ececea;
-  --line: #dcdcd8;
-  --text: #1c1c1e;
-  --muted: #5f5f66;
+  --raised: #e8e8ec;
+  --line: #d9d9de;
+  --text: #1d1d1f;
+  --muted: #636369;
   --red: #c4271f;
   --blue: #0b63c5;
   color-scheme: light;
@@ -52,6 +54,17 @@ body {
     13px / 1.5 'Geist Variable',
     monospace;
   -webkit-font-smoothing: antialiased;
+}
+
+.start-bar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 38px;
+  border-bottom: 1px solid var(--line);
+  background: var(--side);
+  -webkit-app-region: drag;
 }
 
 .start {

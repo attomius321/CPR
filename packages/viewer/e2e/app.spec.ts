@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { _electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { serveCommits, type RunningCommits } from './cpr.js';
+import { serveCommits, serveWorkspaces, type RunningCommits } from './cpr.js';
 
 // CPR's desktop app (N1): the window `cpr view` opens on its server. It needs Electron's binary
 // (`pnpm app:setup`) and a display: CI runs it under xvfb-run.
@@ -239,6 +239,117 @@ test('cpr view opens its window, and ends when the window closes', async () => {
   } finally {
     cli.kill();
   }
+});
+
+// CPR's own title bar, after Orca's (N1c): no system frame, the OS's buttons over CPR's colour.
+test.describe('the title bar', () => {
+  test('CPR and the repository, fold, back and forward, the page’s tabs, the OS’s buttons', async () => {
+    const { page } = await launch();
+    const bar = page.locator('.titlebar');
+    await expect(bar).toBeVisible();
+    await expect(bar.locator('.titlebar-brand')).toHaveText(/^CPR · .+/);
+    expect(
+      await bar.evaluate((el) => getComputedStyle(el).getPropertyValue('-webkit-app-region')),
+    ).toBe('drag');
+    // The system's buttons over the page (Windows and Linux).
+    expect(
+      await page.evaluate(
+        () =>
+          (navigator as Navigator & { windowControlsOverlay: { visible: boolean } })
+            .windowControlsOverlay.visible,
+      ),
+    ).toBe(true);
+    await expect(bar.getByRole('button', { name: 'All branches' })).toBeVisible();
+
+    const back = bar.getByRole('button', { name: 'Back' });
+    const forward = bar.getByRole('button', { name: 'Forward' });
+    await expect(back).toBeDisabled();
+    await page.keyboard.press('s');
+    await expect(page).toHaveURL(/\/settings$/);
+    await expect(bar.locator('.titlebar-label')).toHaveText('Settings');
+    await back.click();
+    await expect(page).toHaveURL(/\/history$/);
+    await forward.click();
+    await expect(page).toHaveURL(/\/settings$/);
+
+    await bar.getByRole('button', { name: 'Fold the sidenav' }).click();
+    await expect(page.locator('.shell')).toHaveClass(/folded/);
+  });
+
+  test('the window’s buttons take the theme’s colour', async () => {
+    const { app, page } = await launch();
+    await app.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      if (!window) return;
+      const calls: Electron.TitleBarOverlayOptions[] = [];
+      Object.assign(globalThis, { overlay: calls });
+      const set = window.setTitleBarOverlay.bind(window);
+      window.setTitleBarOverlay = (options) => {
+        calls.push(options);
+        set(options);
+      };
+    });
+    const colour = () =>
+      app.evaluate(() => (globalThis as { overlay?: { color?: string }[] }).overlay?.at(-1)?.color);
+    await page.keyboard.press('s');
+    await page.getByRole('button', { name: 'Light', exact: true }).click();
+    await expect.poll(colour).toBe('#f0f0ee');
+    await page.getByRole('button', { name: 'Dark', exact: true }).click();
+    await expect.poll(colour).toBe('#111113');
+  });
+
+  test('a workspace: its tabs and its changes’ toggle in the bar', async () => {
+    const served = await serveWorkspaces();
+    try {
+      const { page } = await launch(served.url);
+      // A workspace started opens in the main area.
+      await page.getByRole('button', { name: 'Start a workspace' }).click();
+      const starting = page.getByRole('dialog', { name: 'Start a workspace' });
+      await starting.getByRole('textbox', { name: 'Title' }).fill('Add clamp');
+      await starting.getByRole('textbox', { name: 'Goal' }).fill('Add clamp');
+      await starting.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
+      await expect(starting).toBeHidden();
+      const bar = page.locator('.titlebar');
+      await expect(bar.getByRole('tab', { name: 'Thread' })).toBeVisible();
+      await expect(bar.getByRole('button', { name: 'Changes' })).toBeVisible();
+      await bar.getByRole('tab', { name: 'Brief' }).click();
+      await expect(page.locator('.workspace-brief')).toBeVisible();
+    } finally {
+      served.stop();
+    }
+  });
+
+  test('closing with a prompt not saved asks first, in a dialog of the system', async () => {
+    const { app, page } = await launch();
+    await page.goto(`${cpr.url}settings?prompt=start.spike`);
+    await page
+      .locator('.settings-editor')
+      .getByRole('textbox', { name: 'Spike prompt' })
+      .fill('Spike {branch}.\n\n{brief}\n');
+    await app.evaluate(({ dialog }) => {
+      const asked: string[] = [];
+      Object.assign(globalThis, { asked });
+      dialog.showMessageBoxSync = ((_window: unknown, options: { message: string }) => {
+        asked.push(options.message);
+        return 1;
+      }) as typeof dialog.showMessageBoxSync;
+    });
+    // Playwright hears the page's beforeunload too. With a listener it leaves it to the app;
+    // without one it dismisses a dialog Electron never shows, and fails.
+    page.on('dialog', () => undefined);
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.close());
+    await expect
+      .poll(() => app.evaluate(() => (globalThis as { asked?: string[] }).asked))
+      .toEqual(['Leave this page? What you changed is not saved.']);
+    expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
+
+    await app.evaluate(({ dialog }) => {
+      dialog.showMessageBoxSync = () => 0;
+    });
+    const ended = new Promise((resolve) => app.process().once('exit', resolve));
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.close());
+    await ended;
+  });
 });
 
 // From the desktop's launcher (N1b): the app starts the repository's server itself.

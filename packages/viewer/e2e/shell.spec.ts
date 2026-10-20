@@ -50,6 +50,8 @@ test('cpr view opens History in the shell: the pages, then the workspaces, and a
   await page.goto(cpr.url);
   // The root alone is History, shown at its own address.
   await expect(page).toHaveURL(`${cpr.url}history`);
+  // A title bar is CPR's window's only (N1c): none in a browser.
+  await expect(page.locator('.titlebar')).toHaveCount(0);
   const links = pages(page).getByRole('link');
   await expect(links).toHaveCount(2);
   await expect(links.nth(0)).toHaveAccessibleName('History');
