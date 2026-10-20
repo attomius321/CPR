@@ -441,7 +441,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V26 ✅ | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. Merged (2026-10-20): V26a, Merge into ▾ after Approve, CPR merges in its own worktree, runs the check, lands by fast-forward, `cpr merge`; V26c, a fresh agent for every conflict, from the conflict alone, every resolution reviewed. V26b (keep both by rule) dropped (decision 164): every conflict goes to the agent. See below. |
 | V27 ✅ | Codex in the panel's terminal | A Codex workspace has no terminal (decision 133): `exec` turns are recorded by CPR's runner, and a terminal's would not be. Spike: Codex 0.163's app-server daemon is the binding — CPR as a client starts the thread, a TUI joined with `codex resume --remote` reaches CPR (every item, 3.0 s) and shows CPR's turns (0.9 s), turns outlive the client and come back with `thread/read`, and approvals give "needs you". Merged (2026-10-20). V27a: Codex workspaces on the person's daemon — with the real Codex, started in 1.8 s, committed from its sandbox, a message joined its running turn (in the thread 0.8 s after Send), a turn outlived a `cpr view` restart, an approval read "Waiting: approval prompt"; `exec` without a daemon. V27b, Codex's terminal tab: the panel opens on Codex's own TUI on the thread (trust asked there, said by the panel first), a turn typed there in the thread 128 ms after Enter, an approval answered there cleared "needs you" in 22 ms, Stop ends the turn and its commands (45 ms; V27a's left them running), the list read while a terminal is open; any writable start makes Codex trust the repository (since V20a), now said. See below. |
 | V28 ✅ | Every agent's prompts in the project's settings | CPR writes all 13 texts its agents are told (a start prompt per kind, the two plan sentences, the verdict's 4 sentences, `cpr/AGENTS.md`, the merger's instructions), and a project can change none of them; `cpr/merge.md` only adds to the merger's. This repository's own rules disagree with the Spike prompt. Planned: each prompt whole, with placeholders and CPR's text as its default, changed on a Settings page and saved under `prompts` in `cpr/config.json` (shared once committed); written with `jsonc-parser` so the rest of the file stays byte for byte (a `JSON.stringify` rewrite failed this repository's `pnpm check`); with no `prompts`, today's prompts byte for byte. Merged (2026-10-20): Settings (s) lists the 13 prompts by agent, saves only `prompts`; with none, `main`'s 48 start prompts, the merger's, `AGENTS.md` and 8 verdict texts byte for byte (decision 171's 20 aside); a saved Fix prompt reached the next Fix agent; the real Claude Code followed a changed Spike prompt and the merger a changed rule. See below. |
-| V29 | A workbench | The agent's terminal gets 38–44 % of the window (965×533 px at 1440×900, under 268 px of headings, links and tabs); workspaces are listed on one page only; subscription usage shows nowhere in CPR. Measured: Codex's app server gives its windows live (789 ms; the Go plan here has one 30-day window); Claude Code's copy on disk was 16.3 h old with a session running. Planned: a sidebar of pages and workspace cards on Workspaces, History and Settings; the picked workspace filling the middle (Terminal · Thread · Brief) with its branch's changes on the right; a status bar with each subscription's windows. Claude Code's numbers from the endpoint its `/usage` reads, with its stored token, read only (decision 172, needs the person's yes). See below. |
+| V29 | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only, decision 172). Steps: V29a the shell, V29b the look, V29c usage, V29d the branch's changes. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -7368,30 +7368,42 @@ instructions answered `2.1.0`; a rule that versions are the person's gave "needs
 two values and the decision (4.2K input tokens, 3–5 s a run). Not verified: Codex started with a
 changed prompt; Windows.
 
-### V29 — A workbench: workspaces on the left, the agent in the middle, usage at the bottom
+### V29 — A workbench: pages and workspaces in a sidenav, a new look, usage at the bottom
 
-**Status:** planned (2026-10-20), on branch `milestone/v29-workbench`; not started. Decision 172
-(where Claude Code's usage comes from) needs the person's yes before V29a: it reads a secret.
+**Status:** planned (2026-10-20), replanned the same day; on branch `milestone/v29-workbench`; not
+started. Before V29a the person picks: decision 172 (where Claude Code's usage comes from: it
+reads a secret), 178 (the page's name) and 180 (the font pair).
 
 **Problem** (asked: "I want to focus now on UI improvements. Found this one as a reference. I like
 this layout more … Love the fact that i can see the session usage for each found subscription at
-the bottom"; the reference is Orca's window: a sidebar of workspaces and sessions, the agents'
-terminals filling the middle, the worktree's files on the right, and a status bar with each
-subscription's 5-hour and weekly use). Measured on `main` (`ede9e12`) with e2e's fake Claude Code
-and three workspaces (`serveWorkspaces`), Chromium:
+the bottom"; then, on the first plan: "There is no need for workspaces page anymore. The layout is
+completely changed. On sidenav, will see the available pages, and under pages, will be the
+workspaces. On the right of page, will see the current selected page, which is Commits and
+Settings. I want the change in styling also, to match the screenshot i gave you"; and "i don't
+like the font family. Make it more modern"). The reference is Orca's window: a dark, dense
+sidebar of pages and workspaces, the agents' terminals filling the middle, and a status bar with
+each subscription's 5-hour and weekly use.
+
+Measured on `main` (`ede9e12`) in Chromium at 1440×900 unless said otherwise, with e2e's fake
+Claude Code and three workspaces (`serveWorkspaces`), `serveCommits` for History and the
+`callers` fixture for a diff:
 
 | What | Today |
 |---|---|
-| The agent's terminal at 1280×720 · 1440×900 · 1920×1080 | 808×429 · 965×533 · 1,444×637 px: 38 · 40 · 44 % of the window; 33 · 41 · 49 rows (135 columns at 1440) |
-| Above the terminal | 268 px at every size: page tabs, the page heading and its help, the start notice, the group label, the workspace's head and state, a row of 4–7 links, the Thread · Terminal tabs |
-| Below it | 66 px: "← in an empty prompt lists all your agents" |
-| The workspace list | 360 px wide; 3 workspaces in 298 px (≈ 85 px each). On Workspaces only, and hidden under 1,100 px while a workspace is open |
-| On History and Settings | No workspace. Only the needs-you count on the Workspaces tab |
-| What a workspace's branch changed | Not in the panel: its state line says "1 commit · 1 file not committed yet". The files are in History or the review |
+| Navigation | Tabs at the top of each page: Workspaces · History · Settings (V25, V28b) |
+| Workspaces | A page of their own (`/`): a heading and help line, a 360 px list (3 workspaces in 298 px, ≈ 85 px each), the picked one's panel beside it. Not shown on History or Settings, only the needs-you count on their tab |
+| The agent's terminal at 1280×720 · 1440×900 · 1920×1080 | 808×429 · 965×533 · 1,444×637 px: 38 · 40 · 44 % of the window; 33 · 41 · 49 rows. 268 px of headings, notice, links and tabs above it at every size, 66 px of hint below |
+| History | A 37 px tab bar, then the 260 px branches panel and a 1,180 px commit list |
+| A diff | A 39 px bar, the 300 px change list, a 1,140 px canvas, a 30 px legend |
+| The font | `system-ui`: **DejaVu Sans** here (Chromium on Linux, read with `CSS.getPlatformFontsForNode`), Segoe UI on Windows, SF Pro on macOS; code DejaVu Sans Mono here. CPR looks different on every machine. Body 14 px; 12 sizes from 10 to 26 px in the stylesheet |
+| The theme | Light, or dark when the system asks (one `prefers-color-scheme` block). The reference is dark |
+| The stylesheet | 3,835 lines, 601 rules, colours almost all from 19 tokens on `:root` (2 hex colours and 6 `rgb()` outside it). Radii 4, 6, 8, 10, 12 and 999 px |
+| The terminal | xterm with `ui-monospace … monospace` at 13 px on `#111113` |
 | Subscription usage | Nowhere. Claude Code shows it in `/usage`, Codex in `/status`, each in its own terminal |
+| e2e | 125 tests. 40 of them, in 4 specs, start from the Workspaces page (24 open `/` and expect it) |
 
-Where the numbers can come from, measured on this machine (Claude Code 2.1.303 on a Pro plan,
-Codex 0.163 on a Go plan):
+Where usage can come from, measured on this machine (Claude Code 2.1.303 on a Pro plan, Codex
+0.163 on a Go plan):
 
 | Source | What it gives | How fresh | Cost |
 |---|---|---|---|
@@ -7404,44 +7416,115 @@ Codex 0.163 on a Go plan):
 | `GET api.anthropic.com/api/oauth/usage` with the OAuth token Claude Code stored | What `/usage` shows, for the whole account | Live | One request; reads a secret (`~/.claude/.credentials.json` on Linux, the Keychain on macOS). Not measured: needs the person's yes |
 
 What causes it:
-- The Workspaces page is a document: a heading, a list, a panel, and the page scrolls (V18b). The
-  terminal came last (V21) as one block inside the panel, and every line added since (the notice,
-  the actions, the tabs) went above it.
-- Navigation is a tab bar at the top of each page (V25, V28b). Workspaces live on one page.
-- CPR reads no accounts. Each agent shows its usage only in its own terminal, and Claude Code's
-  copy on disk is as old as the last time someone opened `/usage`.
+- CPR grew page by page: History first (V10a), Workspaces as a second tab (V18b), made the first
+  page (V25), Settings a third tab (V28b). Each page has its own heading and help line, and
+  workspaces live on one page.
+- The Workspaces page is a document that scrolls. The terminal came last (V21) as one block in
+  the panel, and every line added since went above it.
+- The look is the browser's default font and a light theme with a dark variant; nothing was
+  designed after a reference.
+- CPR reads no accounts.
 
-**Goal**: the reference's layout, with CPR's content.
+**Goal**: one window, after the reference:
 
 ```
-┌────────────┬──────────────────────────────────────────────┬─────────────────┐
-│ Workspaces │ ◉ Add clamp  feature/add-clamp  Working      │ Changes         │
-│ History    │ Review · Stop · ⋯                            │ 2 commits       │
-│ Settings   ├──────────────────────────────────────────────┤  a1b2c3 Add …   │
-│            │ Terminal │ Thread │ Brief                    │ 3 files +40 −2  │
-│ NEEDS YOU 1│                                              │  src/clamp.ts   │
-│ ▣ Add half │   the agent's terminal,                      │  test/clamp…    │
-│ WORKING 2  │   down to the status bar                     │ 1 not committed │
-│ ▣ Add clamp│                                              │ Review: none    │
-│ ▣ Docs …   │                                              │ Merges cleanly  │
-├────────────┴──────────────────────────────────────────────┴─────────────────┤
-│ Started feature/add-clamp    Claude Pro  5h 20% · wk 22%   Codex Go  30d 0% │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────┬─────────────────────────────────────────────────────────┐
+│ CPR · repo       │ ● Add clamp  feature/add-clamp  Working   Stop ⋯ Review │
+│ ◷ History      h ├─────────────────────────────────────────────────────────┤
+│ ⚙ Settings     s │ Terminal │ Thread │ Brief                               │
+│                  │                                                         │
+│ Workspaces     + │   the agent's terminal,                                 │
+│ ● Needs you 1    │   down to the status bar                                │
+│   Add a half …   │                                                         │
+│ ● Working 2      │   (or History, Settings, a merge:                       │
+│ ▌ Add clamp      │    whatever is picked on the left)                      │
+│   Document …     │                                                         │
+│ ● Ready 1        │                                                         │
+├──────────────────┴─────────────────────────────────────────────────────────┤
+│ Started feature/add-clamp     Claude Pro 5h 20% · wk 22%   Codex Go 30d 0% │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **A sidebar** on Workspaces, History and Settings: the three pages, then the workspaces by
-  group as compact cards, and Start (+). A card opens its workspace from any of the three pages.
-- **The picked workspace fills the middle**: one head strip, the tabs Terminal · Thread · Brief,
-  and the terminal down to the status bar. At 1440×900: at least 55 % of the window with the right
-  panel open (40 % today) and at least 55 rows (41).
-- **A right panel with the branch's changes**: commits since its fork point, files with their
-  added and removed lines, files not committed, the review and the merge state. It collapses.
-- **A status bar**: on the left, the last notice ("Started …", "Cleaned up …"); on the right, each
-  subscription found, its plan, and each window its vendor reports, with how much is used, a thin
-  bar, and on hover when it resets and how old the number is.
-- **Unchanged**: the diff page and `cpr pr`, every address and key (`w`, `h`, `s`, `n`, j/k in the
-  list), graph JSON, `cpr diff`. The API only gains `/api/usage`, `/api/workspaces/changes`, and an
-  optional field in `/api/workspaces`.
+- **No Workspaces page.** A sidenav on the left lists the pages (History, Settings), then the
+  workspaces by group (Needs you, Working, Ready for review, Merging, …) as compact cards, and
+  Start (+).
+- **The main area shows what is picked**: History, Settings, a workspace, or a merge. A workspace
+  is one head strip, the tabs Terminal · Thread · Brief, and the terminal down to the status bar:
+  at 1440×900 at least 65 % of the window and 55 rows (40 % and 41 today).
+- **A status bar**: the last notice on the left; on the right, each subscription found, its plan,
+  and each window its vendor reports, with a thin bar; on hover, when it resets and how old the
+  number is.
+- **The look of the reference**: dark by default, dense (13 px text, 28 px rows), flat, hairline
+  borders, a bundled modern font pair, the same on every machine. Light stays as a choice.
+- **Unchanged**: what each page does (History's graph, branches panel, compare, checkout, review
+  marks; Settings' prompts; a workspace's terminal, thread, verdict, merge, clean-up), keys `h`,
+  `s`, `n`, `j`/`k` and the rows' keys, graph JSON, `cpr diff`, `cpr pr`'s behaviour, graph layouts
+  (node sizes are estimated from character counts, `flow.ts`: kept as they are).
+
+#### The shell and addresses (viewer)
+
+- `src/Shell.tsx`: a grid of sidenav, main area and status bar, 100 vh high; the main area scrolls
+  itself. `HistoryPage`, `SettingsPage`, the workspace and the merge render in the main area.
+  `WorkspacesPage.tsx` goes; its list becomes `Sidenav.tsx`'s lower part, its panel
+  `Workspace.tsx`, its Merging section `Merge.tsx`.
+- **Sidenav** (240 px): the brand and the repository's folder name; the pages with their key;
+  then "Workspaces" with its + (Start, `n`) and the groups of `workspaceGroups`, as today. A card:
+  the state dot, the title on one line, the state line and its age, the kind and the branch; at
+  most 64 px (85 today). The picked card is raised. Merges in progress are a group of their own.
+  With no workspace: "No workspaces yet" and Start.
+- **Addresses**: `/history` and `/settings` as today. A workspace keeps `/?branch=<branch>`
+  (`&thread` too), the address CPR has already put in links (a diff's way back to its workspace,
+  the thread). A merge: `/?merge=<branch>`. `/` alone opens History (`replaceState` to
+  `/history`); `/workspaces` and `/features` go to `/` as since V25, and on from there.
+- **Keys**: `h`, `s`, `n` as today. `w` (the Workspaces page's key) now moves the focus to the
+  sidenav's workspaces, where ↑/↓ move and Enter opens. `[` collapses the sidenav to a 48 px rail
+  (page icons, a state dot per workspace), remembered per browser (`localStorage`, read in a
+  `try`). Below 900 px the sidenav is a drawer.
+- **A diff under `cpr view`** is in the shell too, with the sidenav as the rail unless the person
+  opens it there (decision 182): the canvas keeps 1,092 of its 1,140 px at 1440. Under `cpr pr` and
+  `?graph=` there are no workspaces: no sidenav, the new look only.
+- **Headings and help lines go.** Each page's help moves into a "?" in its toolbar. Notices
+  ("Started …", checkout notices) go to the status bar's left side.
+
+#### The workspace in the main area (viewer)
+
+- One head strip: state dot, title, branch, state; then Stop or Start, a ⋯ menu (Open in VS Code,
+  Copy the prompt, Clean up…), Merge into ▾ when approved, and Review as the main button.
+- The tabs Terminal · Thread · Brief; the brief moves from a toggle to the third tab. The tab's
+  content takes the rest of the height; the terminal fits its box as it does when the panel
+  changes size today (V21). The hint under it moves to the terminal tab's tooltip.
+- The verdict box, the confirmations and Talk (where no terminal runs) keep their behaviour, in
+  the new look.
+
+#### The look (viewer)
+
+- **Tokens** on `:root`, after the reference: app `#0b0b0c`, sidenav and status bar `#111113`,
+  panels `#161618`, raised and picked `#1f1f23`, lines `#26262b`, text `#e6e6e9`, muted `#8b8b94`,
+  faint `#5d5d66`; green, amber, red and blue for state (`#3fb950`, `#d29922`, `#f85149`,
+  `#58a6ff`), the lanes' six colours as today's dark ones. Light keeps today's light values,
+  revised for the same density.
+- **Theme** (decision 179): dark by default; Settings gains "Appearance (this browser): Dark ·
+  Light · System", kept in `localStorage`, set as `data-theme` on `<html>` before the first paint
+  (an inline script in `index.html`, so the page does not flash). React Flow's `colorMode` follows
+  it (`"system"` today).
+- **Type** (decision 180): a sans and a mono, bundled from `@fontsource-variable` packages (OFL
+  1.1) and served by CPR, no request outside it. Latin and Latin Extended, variable weight: Inter
+  48 + 85 KB and JetBrains Mono 40 + 15 KB, or Geist 29 + 17 KB and Geist Mono 23 + 15 KB; a
+  browser fetches Latin Extended only for a page that uses it. System fonts as the fallback. One
+  scale: 11, 12, 13 (body), 14 and 16 px; tabular figures for numbers, times and percentages.
+- **Density and shape**: 28 px rows and buttons, 26 px small buttons, 4/8/12/16 px spacing, 6 px
+  radius (4 for chips), 1 px lines, no shadow but on menus and dialogs, a 2 px blue focus ring.
+- **Icons**: about 20 inline SVG icons in `src/icons.tsx` (16 px, 1.6 stroke): pages, +, ⋯, rail,
+  chevrons, the kinds, states, close. No icon library. Vendors by name, not by logo (decision 181).
+- **Every page** in the new look: History (rows, badges, the graph's lanes and dots, the branches
+  panel, menus, dialogs), Settings (the prompt editor), the start dialog, the workspace, the merge
+  view, and the diff page (bar, change list, findings, detail panel, diff rows, comments, nodes,
+  frames, edges, minimap, legend).
+- **The terminal**: the bundled mono, 13 px, on black (`#000`), the reference's terminal. xterm
+  measures its cell from the font: it opens after `document.fonts.load` of the mono, or its
+  columns would be counted with the fallback's width.
+- Contrast: text tokens at least 4.5:1 on their backgrounds, state colours and lines at least 3:1,
+  in both themes; a unit test computes it from the tokens.
 
 #### Usage (cli, viewer)
 
@@ -7460,16 +7543,17 @@ What causes it:
   find-generic-password -s "Claude Code-credentials" -w`). The windows come from its `limits` list
   (`session` → 5h, `weekly_all` → wk; model-scoped weekly windows in the tooltip), else from
   `five_hour`/`seven_day`. The plan from `~/.claude.json`'s `oauthAccount` (`organizationType`
-  `claude_pro` → Pro). **Read only**: CPR never refreshes the token. If the refresh token rotates, as
-  OAuth servers commonly do (not checked), a refresh by CPR would sign Claude Code out. An expired or unreadable
-  token, or a failed request, gives `cachedUsageUtilization` with its age. The token stays in the
-  server process: never sent to the page, never logged, sent only to `api.anthropic.com`.
+  `claude_pro` → Pro). **Read only**: CPR never refreshes the token. If the refresh token rotates,
+  as OAuth servers commonly do (not checked), a refresh by CPR would sign Claude Code out. An
+  expired or unreadable token, or a failed request, gives `cachedUsageUtilization` with its age.
+  The token stays in the server process: never sent to the page, never logged, sent only to
+  `api.anthropic.com`.
 - The cached copy holds about 20 more keys under code names, one at 100 % here
   (`iguana_necktie`). CPR shows none of them: it cannot say what they limit.
 - **Labels from the window's length**: 300 min → 5h, 10,080 → wk, 43,200 → 30d, others `<n>h` or
   `<n>d`. A fixed "5h · wk" would be wrong for the Go plan measured here.
-- **Tones**: as the workspace chips: plain under 80 %, amber from 80 %, red at 100 % or when a
-  transcript says the limit was hit.
+- **Tones**: green under 80 %, amber from 80 %, red at 100 % or when a transcript says the limit
+  was hit.
 - **Server**: `GET /api/usage` (absolute, like the pages' other endpoints). It answers from a copy
   in memory and refreshes it in the background when it is older than 60 s, one refresh at a time; a
   429 backs off to 5 min; an error keeps the last copy and its age. `CPR_USAGE=off` reads nothing,
@@ -7477,102 +7561,91 @@ What causes it:
 - **Viewer**: `useUsage` asks every 60 s while the page is visible (`visibilitychange`), and at
   once on focus. `StatusBar.tsx` draws it.
 
-#### The shell (viewer)
+#### The branch's changes (server, viewer; last)
 
-- `src/Shell.tsx`: a grid of sidebar, main area (and the workspace's right panel), and the status
-  bar, 100 vh high. The main area scrolls, not the page. WorkspacesPage, HistoryPage and
-  SettingsPage render inside it; the diff page does not (decision 179).
-- `PageTabs` becomes the sidebar's nav: the same links, keys (`w`, `h`, `s`) and needs-you count.
-  The page headings and their help lines go; each help moves into its section's title tooltip.
-- **Workspace cards**: `useWorkspaces` as today (5 s), grouped by `workspaceGroups`. A card: the
-  state chip, the title on one line, the branch, the state line, the age, and the agent's last
-  report's first line when the list carries it (`last`, optional in `/api/workspaces`, from the
-  thread's tail that V23 already reads in 0.6 ms). On Workspaces a click picks it (`?branch=`, as
-  today); on History and Settings it goes to `/?branch=`.
-- **Start** is a + in the Workspaces heading of the sidebar (`n` unchanged).
-- **The sidebar collapses** with `[` or its button, remembered per browser (`localStorage`, read
-  in a `try`). Below 900 px it is a drawer over the page, opened from a top strip.
-- **Notices** ("Started …", the checkout notices) go to the status bar's left side and stay until
-  the next one, instead of a line that pushes the page down.
-
-#### The workspace (viewer, server)
-
-- The panel's head is one strip: chip, title, branch, state; then Review, Merge into ▾ when
-  approved, Stop or Start, and a ⋯ menu (Open in VS Code, Copy the prompt, Clean up…). The brief
-  moves from a toggle to the third tab.
-- The tab's content takes the rest of the height (`flex: 1`). The terminal fits its box as it does
-  today when the panel changes size (V21). The hint under it moves to the terminal tab's tooltip.
-- **The right panel**: `GET /api/workspaces/changes?branch=` gives the commits from the fork point
-  to the tip (sha, subject, time), the files changed between them (`git diff --numstat`), and the
-  worktree's uncommitted files (`git status --porcelain`). The review mark and the merge check are
-  the ones the panel already reads. A file opens in VS Code in the workspace's worktree (V12's
-  open). The panel is 280 px, collapses with `]`, and is hidden under 1,280 px.
-- Nothing on the page polls faster than today: the changes are read when the workspace is picked
-  and when its commit count or state changes in `/api/workspaces`.
+- A right panel in the workspace (280 px, `]` collapses it, hidden under 1,280 px): commits from
+  the fork point to the tip, files changed with their added and removed lines (`git diff
+  --numstat`), files not committed (`git status --porcelain` in its worktree), the review mark and
+  the merge check the panel already reads. A file opens in VS Code in the worktree (V12's open).
+  From `GET /api/workspaces/changes?branch=`, read when the workspace is picked and when its
+  commit count or state changes. With it open the terminal keeps at least 55 % of the window.
 
 #### Verification
 
-1. **Tests first** (red before). CLI unit: Claude's answer (the measured shape, other values),
-   the cached copy and its age, an expired token (no request, no refresh, the cached copy), a
-   failed request, unknown keys left out; Codex's answers (Go: one 30-day window; a plan with 5h and
-   weekly), an API-key login (not listed), no daemon (the rollout); labels; the server's 60-s copy,
-   one refresh at a time, the 429 back-off; `CPR_USAGE=off`. Viewer unit: labels, tones, the age
-   text; card grouping unchanged.
-2. **e2e**: a fake usage server (`CPR_CLAUDE_USAGE_URL`) and fake credentials in a temporary
-   `HOME`; e2e's fake app server answering `account/read` and `account/rateLimits/read`. The bar's
-   text and tooltip on the three pages; the sidebar on the three pages; a card from History opens
-   its workspace; `[` and `]` collapse, and the choice outlives a reload; the terminal's rows at
-   1440×900; the drawer at 390 px; the right panel's commits and files after the fake agent
-   commits. All of today's 125 e2e tests pass (6 selectors in 2 specs name the tabs).
-3. **Nothing else changes**: the diff page's specs untouched; `cpr diff` and `cpr pr` output
-   identical on this repository's last five merges (no analysis change, so no `regression-check`).
-4. **Real use**: on this machine, the bar's numbers equal Claude Code's `/usage` and Codex's
-   `/status` within the same minute; a real Claude Code and a real Codex workspace in the new
-   terminal. `viewer-check`: screenshots at 1280, 1440, 1920 and 390 px, light and dark.
-5. **Cost**: first paint of `/` within 10 % of `main`'s; `/api/workspaces` as today (34 ms);
-   `/api/usage` from memory (under 5 ms), its refresh off the request path;
-   `/api/workspaces/changes` under 300 ms on a Bitwarden branch.
+1. **Tests first** (red before). Viewer unit: the page or workspace an address opens (`/`,
+   `/?branch=`, `/?merge=`, old addresses); card fields and grouping; the theme read before the
+   first paint; token contrast in both themes; usage labels, tones, the age text. CLI unit: usage
+   as in the first plan (Claude's answer, the cached copy, an expired token with no request and
+   no refresh, unknown keys left out; Codex's Go and two-window answers, an API-key login, no
+   daemon; the server's 60-s copy, one refresh at a time, the 429 back-off; `CPR_USAGE=off`).
+2. **e2e**: the 40 tests that start from the Workspaces page start from the sidenav; new ones for
+   the sidenav on History, Settings and a diff (the rail), a card opening its workspace from each,
+   `w` and the arrows, `[` and the choice kept across a reload, the drawer at 390 px, the theme
+   choice, the terminal's rows at 1440×900, the status bar's usage with a fake usage server
+   (`CPR_CLAUDE_USAGE_URL`, fake credentials in a temporary `HOME`) and e2e's fake app server
+   answering `account/read` and `account/rateLimits/read`. Every request the page makes goes to
+   CPR's server (the fonts included). All 125 of today's tests pass.
+3. **Nothing else changes**: graph layouts identical (`flow.test.ts` and the golden layouts
+   untouched); `cpr diff` and `cpr pr` output identical on this repository's last five merges (no
+   analysis change, so no `regression-check`).
+4. **The look** (`viewer-check`): screenshots of History, Settings, a workspace, a merge and a
+   diff at 1280, 1440, 1920 and 390 px, dark and light, beside the reference; no label clipped on
+   Bitwarden's 1,288-symbol graph with the new font (nodes whose text overflows: 0).
+5. **Real use**: a real Claude Code and a real Codex workspace in the new terminal; the bar's
+   numbers equal `/usage` and `/status` within the same minute.
+6. **Cost**: first paint of `/history` within 10 % of `main`'s (60 ms) with the fonts; Bitwarden's
+   graph: first paint, select and pan as `main` (`scripts/viewer/measure.mjs`, back to back);
+   `/api/usage` from memory under 5 ms; a page fetches at most 90 KB of fonts for Latin text.
 
 **Risks**
 
 | Risk | Mitigation |
 |---|---|
-| Claude's usage endpoint changes or disappears (it is not documented) | Read field by field; nothing shown rather than a wrong number; the cached copy with its age as the fallback |
+| Removing a page breaks the 40 e2e tests built on it, and links people kept | The address of a workspace stays `/?branch=`; old addresses keep their rewrites; the specs move to the sidenav in V29a, before any restyle |
+| A restyle of 3,835 lines of CSS hides a behaviour change | V29a changes layout only, V29b the look only; e2e asserts behaviour, screenshots the look, each step on its own commits |
+| The graph slows or its labels clip with a new font or theme | Layout constants kept (identical layouts, tested); Bitwarden measured before and after; map labels keep V8a's rule (no font size with zoom) |
+| xterm counts columns with the fallback font before the bundled one loads | Open the terminal after `document.fonts.load`; an e2e checks the columns the agent is told match the box |
+| Claude's usage endpoint changes or disappears (it is not documented) | Read field by field; nothing shown rather than a wrong number; the cached copy with its age |
 | CPR holds the person's Claude token | Read only, in the server process; never sent to the page or logged; sent only to `api.anthropic.com`; never refreshed (a test); `CPR_USAGE=off` |
 | macOS asks before CPR reads the Keychain | The cached copy until it is allowed. Not verifiable here (Linux): said in the results |
-| Asking too often (both read the vendor's servers) | One copy per server, 60 s at least, 5 min after a 429 |
-| History gets narrower with the sidebar (its list ~1,130 px at 1440 today, ~880 with the sidebar) | It collapses, remembered; screenshots of History at 1280 and 1440 |
-| The shell breaks pages that scrolled as documents (History's lazy rows, Settings' long prompts) | Their e2e specs (lazy loading, the branches panel's jump, the keyboard) unchanged and green |
-| A layout change of this size is hard to review | Three steps, each its own commits and screenshots: usage, then the shell, then the workspace |
+| Dark by default surprises a person whose system is light | Appearance in Settings, remembered; light is kept |
+| History gets narrower with the sidenav (1,180 → 940 px for its list at 1440) | The rail (`[`), remembered; screenshots at 1280 and 1440 |
 
-**Order**: V29a first: it is what the person named, it does not depend on the layout (a bar under
-today's pages), and it holds the one open question. Then V29b (the shell), then V29c (the
-workspace and its changes).
+**Order**: V29a (the shell) first, since the person's main ask is the layout and every later step
+draws inside it. V29b (the look) next, on a layout that no longer changes. V29c (usage) needs only
+the status bar and decision 172: it can move before V29b once that is answered. V29d (the
+branch's changes) last.
 
 #### Milestones
 
 | # | Milestone | Output |
 |---|---|---|
-| V29a | Usage in a status bar | `usage.ts` (Claude Code, Codex), `/api/usage` with its 60-s copy, `StatusBar` under the three pages, notices in it |
-| V29b | The shell | Sidebar (pages, workspace cards, Start, collapse, drawer); headings and help lines out; History and Settings inside it |
-| V29c | The workspace | Head strip with its actions, tabs Terminal · Thread · Brief, the terminal to the bottom, the right panel with the branch's changes (`/api/workspaces/changes`) |
+| V29a | The shell | Sidenav (pages, workspace cards by group, merges, Start), the main area for History, Settings, a workspace or a merge; the Workspaces page and headings gone; addresses and keys; the status bar with notices; the rail and the drawer; a diff in the shell |
+| V29b | The look | Tokens after the reference, dark by default, Appearance in Settings; the bundled fonts; density, radii, icons; every page and the graph, the terminal in the mono; contrast tested |
+| V29c | Usage | `usage.ts` (Claude Code, Codex), `/api/usage` with its 60-s copy, the status bar's right side |
+| V29d | The branch's changes | `/api/workspaces/changes`, the workspace's right panel |
 
-**Proposed decisions**:
+**Proposed decisions** (they replace the first plan's 172–179; 176 supersedes V25's 136):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 172 | Where Claude Code's usage comes from | **The usage endpoint `/usage` reads, with the token Claude Code stored; read only, never refreshed; `~/.claude.json`'s copy with its age otherwise.** Needs the person's yes | The only live source for the whole account. The copy on disk was 16.3 h old with a session running. The status line reaches only sessions CPR started and that a TUI draws, and CPR's would replace the person's own |
+| 172 | Where Claude Code's usage comes from | **The usage endpoint `/usage` reads, with the token Claude Code stored; read only, never refreshed; `~/.claude.json`'s copy with its age otherwise.** Needs the person's yes | The only live source for the whole account. The copy on disk was 16.3 h old with a session running. The status line reaches only sessions CPR started and a TUI draws, and CPR's would replace the person's own |
 | 173 | Which windows | **What each vendor reports, labelled by length** | The Codex Go plan here has one 30-day window: "5h · wk" would be wrong for it |
 | 174 | Which subscriptions are "found" | **A logged-in agent CPR can start whose vendor reports windows** | An API-key login has no windows to show |
 | 175 | How fresh | **A server copy, refreshed when older than 60 s while a page asks; 5 min after a 429** | Codex's read takes 789 ms and both reach the vendor; a number with its age is honest |
-| 176 | The right panel | **The branch's changes, not a file tree** | CPR reviews decisions, not files; a tree of the worktree is the editor's, one click away (Open in VS Code) |
-| 177 | The sidebar on History and Settings | **Yes, collapsible (`[`), remembered per browser** | The reference keeps it on every view, and a workspace that needs you should be one click away from anywhere |
-| 178 | The page tabs | **Into the sidebar, keys unchanged** | One place for navigation; `w`, `h`, `s` keep working |
-| 179 | The diff page | **Unchanged in V29** | Its sidebar is the change list; a second one would take the canvas's width |
+| 176 | The Workspaces page | **Gone: workspaces in the sidenav, one opens in the main area; `/` opens History** (supersedes 136) | The person's ask. History is the page with the most to do when no workspace is picked |
+| 177 | A workspace's address | **`/?branch=` kept** | CPR has put it in links already (a diff's way back, threads); a new path would need one more rewrite |
+| 178 | The page's name | **History (decision 135), unless the person wants "Commits" back** | The person called it Commits in this ask, and asked to rename it away from that in V25 |
+| 179 | Theme | **Dark by default; light and system kept, chosen per browser in Settings** | The reference is dark; a light-system person can still have light |
+| 180 | The font pair | **Inter + JetBrains Mono**, bundled (or Geist + Geist Mono: smaller, more geometric) | Inter is the closest to the reference's SF Pro; both are OFL; a page fetches 88 KB of them for Latin text (Geist's pair: 52 KB); system fonts differ per machine (DejaVu Sans here) |
+| 181 | Vendors in the status bar | **Names, not logos** | Their marks are theirs; a name reads as well at 11 px |
+| 182 | A diff page | **In the shell with the sidenav as a 48 px rail by default** | The person keeps the sidenav everywhere; open, it would take the canvas from 1,140 to 900 px at 1440 |
+| 183 | The right panel | **The branch's changes, not a file tree; last** | CPR reviews changes; a tree of the worktree is the editor's, one click away |
+| 184 | New dependencies | **`@fontsource-variable/<sans>` and `<mono>`, build assets only** | Served by CPR, nothing loaded from elsewhere; no icon library (inline SVG) |
 
-**Not in V29 (later)**: two terminals side by side (the reference splits Claude Code and Codex); a
-plain shell in a workspace's worktree; a file tree; the status bar on diff pages and under
-`cpr pr`; pinned workspaces (the reference pins `main`); `cpr usage` in the terminal.
+**Not in V29 (later)**: two terminals side by side (the reference splits Claude Code and Codex);
+a plain shell in a workspace's worktree; a file tree; pinned workspaces (the reference pins
+`main`); the status bar under `cpr pr`; `cpr usage` in the terminal.
 
 ### Phase 1 milestones
 

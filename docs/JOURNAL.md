@@ -3653,3 +3653,31 @@ at every size and 66 px below. The workspace list is 360 px wide and holds three
   Claude Code last refreshed it. CPR must never refresh it: if the refresh token rotates (not
   checked), a refresh by CPR would sign Claude Code out.
 - **e2e**: 125 tests; 6 selectors in 2 specs name the page tabs the shell would move.
+
+## V29 replanned — no Workspaces page, the reference's look, a modern font (2026-10-20, branch `milestone/v29-workbench`)
+
+Asked, on the first plan: "There is no need for workspaces page anymore … On sidenav, will see the
+available pages, and under pages, will be the workspaces. On the right of page, will see the
+current selected page … I want the change in styling also, to match the screenshot"; and "i don't
+like the font family. Make it more modern".
+
+Measured on `main` (`ede9e12`), Chromium at 1440×900:
+- **The font is not CPR's choice.** `system-ui` gives DejaVu Sans here (`CSS.getPlatformFontsForNode`
+  on History's rows and heading), DejaVu Sans Mono for SHAs; Segoe UI on Windows, SF Pro on macOS.
+  Bundled variable fonts for Latin text: Inter 48 KB, JetBrains Mono 40 KB, Geist 29 KB, Geist
+  Mono 23 KB (Latin Extended 15–85 KB more, fetched only when used); all OFL 1.1, from
+  `@fontsource-variable` 5.3.0. A dark mock of the planned sidenav, workspace and status bar was
+  drawn in each pair and today's font, for the person to pick.
+- **A new look is mostly new tokens.** The stylesheet (3,835 lines, 601 rules) takes its colours
+  from 19 tokens on `:root`, with 2 hex colours and 6 `rgb()` outside it; dark mode is one
+  `prefers-color-scheme` block, and React Flow's `colorMode` is `"system"`.
+- **Graph layouts do not read the font.** Node widths are estimated from character counts
+  (`nodeWidth`, 9.4 px a character, measured on wide DejaVu Sans): a narrower font leaves slack,
+  not clipped labels. Keeping the constants keeps every layout identical.
+- **xterm measures its cell from the font it is given**: with a bundled mono, the terminal must
+  open after the font has loaded, or its columns are counted with the fallback's width.
+- **What the sidenav would take**: a diff's canvas is 1,140 px (300 px change list beside it);
+  History's commit list 1,180 px (260 px branches panel). A 240 px sidenav takes 21 % of either; a
+  48 px rail takes 4 %.
+- **e2e**: 40 of the 125 tests, in 4 specs, start from the Workspaces page; 24 open `/` and expect
+  it.
