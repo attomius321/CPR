@@ -441,7 +441,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V26 ✅ | A merger | An Approve is a note for the branch's agent (V17), whose context is 66K–474K tokens and whose linked worktree cannot merge: the merge comes back to the person. Measured: of the last merges, 11 here, 21 on Bitwarden and 7 on Qwik conflicted; "keep both" for additions that do not overlap was right on 7 of 7 and refused 5; the other conflicts are 0.6K–5.8K tokens of regions. Merged (2026-10-20): V26a, Merge into ▾ after Approve, CPR merges in its own worktree, runs the check, lands by fast-forward, `cpr merge`; V26c, a fresh agent for every conflict, from the conflict alone, every resolution reviewed. V26b (keep both by rule) dropped (decision 164): every conflict goes to the agent. See below. |
 | V27 ✅ | Codex in the panel's terminal | A Codex workspace has no terminal (decision 133): `exec` turns are recorded by CPR's runner, and a terminal's would not be. Spike: Codex 0.163's app-server daemon is the binding — CPR as a client starts the thread, a TUI joined with `codex resume --remote` reaches CPR (every item, 3.0 s) and shows CPR's turns (0.9 s), turns outlive the client and come back with `thread/read`, and approvals give "needs you". Merged (2026-10-20). V27a: Codex workspaces on the person's daemon — with the real Codex, started in 1.8 s, committed from its sandbox, a message joined its running turn (in the thread 0.8 s after Send), a turn outlived a `cpr view` restart, an approval read "Waiting: approval prompt"; `exec` without a daemon. V27b, Codex's terminal tab: the panel opens on Codex's own TUI on the thread (trust asked there, said by the panel first), a turn typed there in the thread 128 ms after Enter, an approval answered there cleared "needs you" in 22 ms, Stop ends the turn and its commands (45 ms; V27a's left them running), the list read while a terminal is open; any writable start makes Codex trust the repository (since V20a), now said. See below. |
 | V28 ✅ | Every agent's prompts in the project's settings | CPR writes all 13 texts its agents are told (a start prompt per kind, the two plan sentences, the verdict's 4 sentences, `cpr/AGENTS.md`, the merger's instructions), and a project can change none of them; `cpr/merge.md` only adds to the merger's. This repository's own rules disagree with the Spike prompt. Planned: each prompt whole, with placeholders and CPR's text as its default, changed on a Settings page and saved under `prompts` in `cpr/config.json` (shared once committed); written with `jsonc-parser` so the rest of the file stays byte for byte (a `JSON.stringify` rewrite failed this repository's `pnpm check`); with no `prompts`, today's prompts byte for byte. Merged (2026-10-20): Settings (s) lists the 13 prompts by agent, saves only `prompts`; with none, `main`'s 48 start prompts, the merger's, `AGENTS.md` and 8 verdict texts byte for byte (decision 171's 20 aside); a saved Fix prompt reached the next Fix agent; the real Claude Code followed a changed Spike prompt and the merger a changed rule. See below. |
-| V29 | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only: 59 % and 53 % live when its copy on disk said 20 % and 22 %). Confirmed: Claude's live source, History, Geist and Geist Mono. Steps: V29a the shell, V29b the look, V29c usage, V29d the branch's changes. See below. |
+| V29 | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only: 59 % and 53 % live when its copy on disk said 20 % and 22 %). Confirmed: Claude's live source, History, Geist and Geist Mono. Steps: V29a the shell, V29b the look (both built), V29c usage, V29d the branch's changes. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -7370,10 +7370,10 @@ changed prompt; Windows.
 
 ### V29 — A workbench: pages and workspaces in a sidenav, a new look, usage at the bottom
 
-**Status:** V29a built (2026-10-20) on branch `milestone/v29-workbench`: "As built (V29a)" and
-its results below; V29b–d not started. Decisions 172 (Claude Code's usage from the endpoint
-`/usage` reads), 178 (History) and 180 (Geist and Geist Mono) confirmed by the person
-(2026-10-20); 185 made while building; the others proposed.
+**Status:** V29a and V29b built (2026-10-20) on branch `milestone/v29-workbench`: "As built
+(V29a)", "As built (V29b)" and their results below; V29c–d not started. Decisions 172 (Claude
+Code's usage from the endpoint `/usage` reads), 178 (History) and 180 (Geist and Geist Mono)
+confirmed by the person (2026-10-20); 185 made while building; the others proposed.
 
 **Problem** (asked: "I want to focus now on UI improvements. Found this one as a reference. I like
 this layout more … Love the fact that i can see the session usage for each found subscription at
@@ -7710,6 +7710,85 @@ alternated, 7 rounds each, both orders: first paint 48 and 48 ms against 48 and 
 962 and 970 ms against 963 and 981 ms. Not verified: a real Claude Code or Codex session in the
 new layout (the fake agent only); browsers on Windows and macOS, where the font wait may not
 exist; the README's Workspaces screenshot (`features.png`), to be retaken with V29b's look.
+
+#### As built (V29b)
+
+- **Tokens** as planned on `:root` (dark) and `:root[data-theme='light']`, the same block again
+  for System under `prefers-color-scheme: light` (a test keeps them equal), plus `--side`,
+  `--raised`, `--faint`, `--edge` (a text field's border), `--focus` and `--shadow`. Light keeps
+  today's values but where they failed the test: muted `#6e6e73` → `#636369` (4.15:1 on the
+  raised grey), warning `#bf8700` → `#9a6700` (2.57:1), context `#8c8c93` → `#7d7d84`.
+- **"Lines at least 3:1"** is read as a control's edge: text fields get `--edge` (3.38:1 on the
+  panel). Lines between regions stay the reference's hairlines (`#26262b`, 1.31:1 on the page);
+  a test asks 1.2:1 of them.
+- **Font stacks differ from the plan.** Text is `'Geist Variable', monospace`, not
+  `'Geist', sans-serif`: after a web font, Chromium on Linux matched `sans-serif` as a family
+  name through fontconfig, 283 ms a time, four times in the first layout (a trace), and
+  History's first paint went from 48 to 250–650 ms, fonts loaded or not. With no generic it was
+  44–68 ms, but a glyph found in no family of the stack (✓, ⚙, ↻) is a search of every font
+  (~100 ms): marking a symbol reviewed took 250 ms instead of 33. `monospace` matches in about a
+  millisecond and its font here (DejaVu Sans Mono) has them. The family names are fontsource's
+  (`Geist Variable`, `Geist Mono Variable`). Tests: no system family named anywhere, no
+  `sans-serif` after Geist.
+- **The fonts arrive first.** `index.html` preloads the two Latin faces (Vite rewrites the links
+  to the hashed files the stylesheet uses): they are in at 7–11 ms, and the page renders once
+  they are (at most 1 s), so its first frame is not in the browser's default font.
+- **The terminal**: Geist Mono at 13 px is a cell of 8 × 17 px (the fallback's was 7.1 × 13). The
+  terminal's box grew and its rows fell: at 1280, 1440 and 1920 it is 68, 71 and 78 % of the
+  window and 128×36, 148×46 and 208×57 (V29a: 136×44, 159×58, 226×72; `main`: 33, 41 and 49
+  rows). The plan's 55 rows at 1440 were set with the fallback font; the shell test asks 65 % of
+  the window and 45 rows.
+- **History**: its toolbar is a 44 px strip, sticky over the rows; rows are 28 px
+  (`ROW_HEIGHT` 32 → 28); the rows run edge to edge on the page, the branches panel beside them
+  on the same background. The keys are behind a "?" ("History's keys"); compare mode keeps its
+  instruction beside the toggle and has no "?".
+- **Settings**: a toolbar with its title, a "?" for what the page is and where it saves, and
+  Appearance at the right (Dark · Light · System, `aria-pressed`), not a section among the
+  prompts.
+- **Cards**: the state dot and the title; the state and its age; the kind and the branch (the
+  kind moved from before the title to before the branch, as the mock had it): 64 px, the
+  plan's most (85 on `main`, 70 in V29a). The workspace's head shows the dot too, and its
+  state in its tone.
+- **Icons**: chevrons (branches panel, a project in the change list, the start dialog's More),
+  close and ⋯ are inline SVG; Geist lacks those glyphs. The glyphs the page reads as words stay
+  text: "← History", "✓ Reviewed", ↻, and the workspace marks ? ⚙ ● on badges.
+- **Badges** are tinted in their severity's colour with the word in it: white on amber read at
+  2.4:1. Buttons: one `.button`, filled for the main action, outlined (`.secondary`, and in a
+  workspace's head and a merge) for the rest.
+- **A diff under 900 px** opens its sidenav from a strip at the top, as the shell's pages do
+  (left over from V29a).
+- **The diff page's key hints** stay in its sidebar's footer, not behind a "?": they are the
+  keys for the list above them, in view while it is used.
+- **Found on the way**: a reload asked during a read was given that read, which could have
+  started before the change: Land, clicked as its merge opened, kept "Merged, not checked"
+  (V29a's in-place navigation opened the window). Fixed on its own commit: one more read after the
+  one under way. And `reviews.spec` read the review file as soon as it existed, while the
+  second mark's write was on its way: it waits for both now.
+
+**Results (V29b).** Tests first, red before: the theme set before the first paint (index.html's
+script run with each stored value and blocked storage), the tokens' contrast in both themes and
+the fonts named (`tokens.test.ts`), the reload race (unit, and the V26a e2e with `/api/merges`
+delayed by 1 s). New e2e (`look.spec.ts`): dark by default on a light system, Appearance's
+Light kept across a reload and on a diff (React Flow's `light`), System following the scheme,
+every request to CPR's origin with only the two Geist families loaded and 52.5 KB of fonts for
+History, a card at most 64 px; and a diff's drawer at 390 px. `pnpm check` 947 unit tests; e2e
+135 of 135. Measured, `main` (`ede9e12`) and V29b alternated:
+
+| What | `main` | V29b |
+|---|---|---|
+| `/history` on a clone of this repository, first paint · first rows (7 rounds, medians, both orders) | 48 and 48 · 969 and 973 ms | 48 and 52 · 131 and 131 ms |
+| Bitwarden `737ee3f` (1,288 symbols): first paint · select · mark reviewed · pan (3 rounds) | 1,950–1,983 · 79–82 · 33–34 ms · 63 fps | 264–289 · 73–75 · 33 ms · 63 fps |
+| Bitwarden, labels cut short as j walks 40 changes | 62 of 180 | 52 of 180, none that `main` did not cut |
+
+`main`'s first rows on History varied between runs today (400 ms in one, 969 and 973 in the
+last two, as V29a measured): its system font stack's matching; V29b's were 129–131 ms in every
+run. The plan's targets (first paint within 10 %, first rows under 200 ms) are met.
+
+Graph layouts are unchanged (no layout code or constant changed; `flow.test.ts` and the golden
+layouts untouched); `cpr diff` and `cpr pr` output are untouched (no CLI or core change). Not
+verified: a real Claude Code or Codex in the new terminal (the fake agent only); browsers on
+Windows and macOS, where the font costs above may not exist; the README's screenshots
+(`features.png` needs a real agent session).
 
 ### Phase 1 milestones
 

@@ -3733,3 +3733,51 @@ rows → 1136×754 px, 58 rows (66 % of the window); 1280 and 1920 in PLAN.md. `
 clone of this repository, `main` and V29a alternated 7 rounds, both orders: first paint 48/48 →
 48/56 ms, first rows 962/970 → 963/981 ms. Not verified: real agents in the new layout; other
 browsers and systems.
+
+## V29b — the look: the reference's tokens, Geist, one density (2026-10-20, branch `milestone/v29-workbench`)
+
+Dark by default with light and System in Settings (Appearance, this browser), the reference's
+tokens, Geist and Geist Mono served by CPR, 44 px toolbars, 28 px rows and buttons, 6 px radii,
+tinted badges, cards of 64 px, the keys behind a "?", the terminal black and edge to edge.
+
+**Learned**:
+- **A web font can cost more than the system font it replaces, through its fallback.** With
+  `'Geist', sans-serif`, History's first paint went from 48 ms to 250–650 ms, and the same with
+  the fonts blocked. A trace: one 1,136 ms layout, four `MatchFamilyName("sans-serif")` calls to
+  the font service at ~283 ms each — after a web font, Chromium on Linux asked fontconfig for
+  `sans-serif` as a family name, and did not keep the answer. As the only family, `sans-serif`
+  was resolved through the browser's settings in a few ms. `monospace` was matched in about 1 ms.
+- **A glyph in no family of the stack is a search of every font**: ~100 ms here
+  (`FallbackFontForCharacter`). With Geist alone, marking a symbol reviewed (its ✓) took 250 ms
+  instead of 33. `'Geist Variable', monospace` keeps both fast: DejaVu Sans Mono has ✓ ⚙ ↻.
+  These costs are this machine's (WSL); Windows and macOS were not measured.
+- **Preloading the fonts and drawing once they are in costs nothing locally**: they arrive at
+  7–11 ms from CPR's server, before the bundle has run, and the first frame is in Geist.
+- **Geist Mono's lines are tall**: a cell of 8 × 17 px at 13 px, where the fallback's was
+  7.1 × 13. The terminal's box grew to 71 % of a 1440×900 window and its rows fell from 58 to 46
+  (`main` 41). Row targets depend on the font; the box is what the layout controls.
+- **WCAG's contrast for "lines"** applies to a control's edge, not to a hairline between
+  regions: text fields got their own `--edge` token at 3:1; the reference's region lines are
+  1.31:1 and stay.
+- **A reload asked during a read was answered by that read** (`loading ??=`), which could have
+  started before the change: Land, clicked as its merge opened in the shell, kept "Merged, not
+  checked", and nothing read again. V29a's in-place navigation opened the window (the view's
+  reader starts as it mounts); the fonts' timing made it fail twice in a row. `reloadWorkspaces()`
+  now reads once more after a read under way; mount, focus and timer reads still share it.
+- **A test read a file written as it goes**: `reviews.spec` read the review file as soon as it
+  existed, while the second mark's write was on its way. It waits for both marks now.
+
+**Verification**: unit tests red before (the theme script run with each stored value and with
+storage blocked, token contrast in both themes, the fonts named, the reload race with a fake
+fetch); e2e red before for the race (`/api/merges` delayed 1 s) and new in `look.spec.ts` (dark
+by default on a light system, Light kept across a reload and on a diff, System following the
+scheme, every request to CPR's origin with only the two Geist families and 52.5 KB of fonts on
+History, a card at most 64 px) and `shell.spec.ts` (a diff's drawer at 390 px). `pnpm check` 947
+tests, e2e 135 of 135. Against `main` (`ede9e12`), alternated: `/history` on a clone of this
+repository, first paint 48 → 48/52 ms, first rows 969/973 → 131/131 ms (7 rounds, both orders);
+Bitwarden `737ee3f`'s graph: first paint 1.95–1.98 s → 0.26–0.29 s, select 79–82 → 73–75 ms,
+mark reviewed 33 → 33 ms, pan 63 fps both; labels cut short as j walks 40 changes 62 → 52 of
+180, none new. Screenshots, dark, of History, Settings, a workspace, its thread, the start
+dialog and a diff at 1280, 1440 and 1920 px (all but the dialog at 390 too) and a merge at
+1440; light at 1440. Not verified: real agents in the new terminal; other browsers and
+systems; the README's screenshots.

@@ -165,7 +165,12 @@ every branch, local and remote, drawn as a graph beside the commits, the current
 straight line on the left. The sidenav on the left lists the pages (History, Settings) and, under
 them, your [workspaces](#workspaces-and-agents); a click opens one beside it, without loading the
 page again. The status bar along the bottom says what the last action did. The whole
-history scrolls, and commits load as they come into view.
+history scrolls, and commits load as they come into view; its keys are behind the "?" in its
+toolbar.
+
+The pages are dark. **Appearance** in Settings makes them light, or follows your system, in this
+browser. They are set in Geist and Geist Mono, which `cpr view` serves itself: nothing is fetched
+from elsewhere.
 
 ![History: the branches panel with its milestone folder open, and the history drawn as a graph with branch badges](docs/images/history.png)
 
