@@ -3859,14 +3859,13 @@ p.settings-placeholders {
   color: var(--text);
 }
 
+/* In the text's font: a monospace stack here made the first paint wait for font matching (850 ms
+   on Linux before anything showed, V29a). */
 .sidenav-pages kbd {
   margin-left: auto;
   color: var(--muted);
-  font:
-    11px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+  font-family: inherit;
+  font-size: 11px;
 }
 
 .sidenav-workspaces {

@@ -613,7 +613,9 @@ export function App() {
       {layout && <Legend frames={layout.nodes[0]?.type === 'project'} />}
     </div>
   );
-  return inView ? <DiffShell repo={inView.repo}>{page}</DiffShell> : page;
+  // Only a diff: the shell's own pages are drawn by Shell, and while loading it is not known yet.
+  const diff = state.status === 'ready' || state.status === 'analyzing';
+  return inView && diff ? <DiffShell repo={inView.repo}>{page}</DiffShell> : page;
 }
 
 interface CanvasProps {
