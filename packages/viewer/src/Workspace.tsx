@@ -287,9 +287,7 @@ function Thread({ thread, worktree }: { thread: WorkspaceThread | null; worktree
                   <time dateTime={item.at}>{timeOf(item.at)}</time>
                 </div>
                 {item.who === 'agent' && lexer ? (
-                  <div className="thread-text thread-markdown">
-                    {markdownNodes(lexer(item.text))}
-                  </div>
+                  <div className="thread-text markdown">{markdownNodes(lexer(item.text))}</div>
                 ) : (
                   <div className="thread-text">{item.text}</div>
                 )}
@@ -310,6 +308,16 @@ interface MenuAction {
 }
 
 /** "⋯": the workspace's less frequent actions, in a menu under the button. */
+/**
+ * What the agent was told — since V24 the kind and title as `#`, each part under `##` — drawn as
+ * Markdown, as its reports are; as written until the lexer is loaded.
+ */
+function Brief({ text }: { text: string }) {
+  const lexer = useMarkdown();
+  if (!lexer) return <pre className="workspace-brief">{text}</pre>;
+  return <div className="workspace-brief markdown">{markdownNodes(lexer(text))}</div>;
+}
+
 function MoreActions({ actions }: { actions: MenuAction[] }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -709,7 +717,7 @@ function WorkspacePanel({
             </div>
           </InTitleBar>
           <div className="workspace-body">
-            {view === 'brief' && <pre className="workspace-brief">{workspace.brief}</pre>}
+            {view === 'brief' && <Brief text={workspace.brief} />}
             {showTerminal && (
               <div className="workspace-terminal">
                 {asking ? (
