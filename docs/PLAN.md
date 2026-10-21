@@ -8771,6 +8771,7 @@ and Windows (their own corners and buttons, the overlay on Windows), every page 
 | 219 | The radius | **10 px**, square when maximized or full screen | The style's dialog radius; a maximized window meets the screen's edges |
 | 220 | Windows and macOS | **Unchanged** | Their frameless windows are rounded already, with their own buttons |
 | 221 | Wayland | **Not forced** | Square there too without transparency, and only a close button |
+| 222 | Maximize on WSLg (found in the person's try) | **CPR holds it: the work area WSLg chose, as a normal window** | WSLg's maximize of a frameless X11 window is 32 px off (microsoft/wslg#1015); Wayland maximizes right but ignores where the app places a window |
 
 **Not in N1d (later)**: a shadow drawn by CPR (it would need a transparent margin inside the
 window); the Windows build (N2).
@@ -8794,6 +8795,18 @@ window); the Windows build (N2).
 - **The window's state comes from its events** (`maximize`, `unmaximize`, the full screen's), and
   the page asks for `restore` or `maximize` by name: a window manager may answer `isMaximized`
   late, and the e2e display has none.
+- **Maximize on WSLg is CPR's** (decision 222, the person's try: "the full screen is not working
+  properly"). WSLg pads a frameless X11 window with an invisible 32 px margin and forgets it when
+  it maximizes one: on this machine's 2560×1440 screens the window landed at (2592, 32), the
+  desktop showing in the strip above and left, its right end (the buttons) and its bottom 32 px
+  off the work area. Opaque or transparent alike (N1c's window too); full screen, and a window
+  with the system's frame, are right. On WSLg's X11 (`maximize.ts`) the first maximize on a
+  screen goes through the window manager, which knows the taskbar (Electron's work area there is
+  the whole screen): its bounds read, unmaximized, the window set to them as a normal window. The
+  area is kept for the run; the next Maximize on that screen sets it at once. Win+Up and a start
+  maximized are held the same way; Restore puts back the place it was asked from (WSLg's own,
+  for a window it maps maximized, is the screen's corner). Moved or resized, the window is no
+  longer maximized; a passing move (WSLg parks a window it shows at −32736 for 14 ms) is not.
 
 **Results.** Tests first: `frame.test.ts` (red: no module), and 4 app e2e red on the build before
 (the overlay gone on Linux, the buttons in the theme's colours, the corners round until maximized
@@ -8804,6 +8817,16 @@ this machine (WSLg), the real window opened by `cpr view`, captured from Windows
 the hairline edge, CPR's buttons. Not verified: resizing from an edge and maximizing with the
 window manager (the person's try), a `cpr pr` window in the app, macOS and Windows (unchanged
 code paths, no machine).
+
+Maximize on WSLg (decision 222): `maximize.test.ts` red first (no module; then a start maximized
+restored to the screen's corner, as the real window did), against a fake window manager with
+WSLg's measured timings. Before, a test window with CPR's options, captured from Windows: its
+red edge at x 2592 and y 32, the right and bottom ones off the work area. After, CPR's real
+window driven by Playwright on this machine, sampled at the right screen's work-area corners:
+CPR's `#171717` at all four and the taskbar below, for the first Maximize, the second (no round
+trip), and a start maximized; Restore back to (2700, 150) each time. Not
+verified: a double-click on the title bar and Windows' snap (held as any maximize; not tried),
+dragging a held window (it moves at full size, where a native maximized window restores).
 
 ### Phase 1 milestones
 

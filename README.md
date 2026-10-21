@@ -150,9 +150,9 @@ as `--browser` does.
   and your agents; each `cpr view` that opens CPR's window records them again.
 - **Its own title bar**: CPR and the repository, the sidenav's fold and back and
   forward over the sidenav; the page's tabs beside them (a workspace's Terminal, Thread and Brief,
-  History's All branches and This branch); the panel's toggle and your system's window buttons
-  at the end, in CPR's colours, light or dark as the theme is. Drag its free space to move the
-  window.
+  History's All branches and This branch); the panel's toggle and the window's buttons at the
+  end, in CPR's colours, light or dark as the theme is (on Linux CPR draws them, and the
+  window's rounded corners). Drag its free space to move the window.
 - **Links that leave CPR** (a pull request, a link in a thread) open in your default browser.
 - **Leaving with something not saved** (a prompt in Settings) asks first, in CPR's own dialog
   inside the page and in your system's when the window closes.

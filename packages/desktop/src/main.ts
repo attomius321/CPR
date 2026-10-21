@@ -17,6 +17,7 @@ import {
 } from 'electron';
 import { frameOf, frameOptions } from './frame.js';
 import { readRecorded, startServer, withRecent } from './launcher.js';
+import { holdMaximize, holdsMaximize, type Hold } from './maximize.js';
 import {
   contextMenuRoles,
   keyAction,
@@ -24,7 +25,7 @@ import {
   parseAppArgs,
   staysInWindow,
 } from './policy.js';
-import { configDir, placeWindow, readChoices, readState, writeState } from './state.js';
+import { configDir, placeWindow, readChoices, readState, writeState, type Area } from './state.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = parseAppArgs(process.argv.slice(app.isPackaged ? 1 : 2));
@@ -52,14 +53,21 @@ const primary = !fromLauncher || app.requestSingleInstanceLock();
 
 /** Who draws the window's frame and buttons here (N1d): CPR's pages on Linux. */
 const frame = frameOf(process.platform);
+/** Where CPR holds a maximized window itself (N1d): WSLg's X11; the work areas it has learned. */
+const holding = frame === 'own' && holdsMaximize(process.platform, process.env);
+const workAreas: Area[] = [];
 const HEX = /^#[0-9a-f]{6}$/i;
 
-/** What each window shows: its home (a server, or the start page), its repository and server. */
+/**
+ * What each window shows: its home (a server, or the start page), its repository and server; and
+ * its maximize, where CPR holds it.
+ */
 interface Shown {
   window: BrowserWindow;
   home: string;
   repo?: string;
   server?: ChildProcess;
+  hold?: Hold;
 }
 const windows = new Map<WebContents, Shown>();
 
@@ -173,6 +181,12 @@ function show(window: BrowserWindow, home: string): void {
   void window.loadURL(home);
 }
 
+/** Maximizes `window`: through its hold, where CPR holds it. */
+function maximize(window: BrowserWindow, hold: Hold | undefined): void {
+  if (hold) hold.maximize();
+  else window.maximize();
+}
+
 function focus(window: BrowserWindow): void {
   if (window.isMinimized()) window.restore();
   window.focus();
@@ -209,35 +223,45 @@ function createWindow(title: string): BrowserWindow {
     },
   });
   const contents = window.webContents;
-  windows.set(contents, { window, home: startUrl });
+  // Where CPR draws the frame (N1d), its pages square their corners while the window fills the
+  // screen. Told by the window's events: a window manager may answer `isMaximized` late.
+  const tell = (maximized: boolean) => {
+    if (!contents.isDestroyed()) contents.send('cpr:window-state', { maximized });
+  };
+  const hold = holding ? holdMaximize(window, tell, workAreas) : undefined;
+  windows.set(contents, { window, home: startUrl, ...(hold ? { hold } : {}) });
   const home = () => windows.get(contents)?.home ?? startUrl;
 
   window.once('ready-to-show', () => {
-    if (place.maximized) window.maximize();
+    if (place.maximized) maximize(window, hold);
     window.show();
   });
   window.on('close', () => {
-    const { x, y, width, height } = window.getNormalBounds();
-    writeState(stateFile, {
-      ...readState(stateFile),
-      window: { x, y, width, height, maximized: window.isMaximized() },
-    });
+    const { x, y, width, height } = hold?.normal ?? window.getNormalBounds();
+    const maximized = !!hold?.maximized || window.isMaximized();
+    writeState(stateFile, { ...readState(stateFile), window: { x, y, width, height, maximized } });
   });
   window.on('closed', () => {
+    hold?.stop();
     windows.get(contents)?.server?.kill('SIGTERM');
     windows.delete(contents);
   });
 
-  // Where CPR draws the frame (N1d), its pages square their corners while the window fills the
-  // screen. Told by the window's events: a window manager may answer `isMaximized` late.
   if (frame === 'own') {
-    const tell = (maximized: boolean) => {
-      if (!contents.isDestroyed()) contents.send('cpr:window-state', { maximized });
-    };
-    window.on('maximize', () => tell(true));
-    window.on('unmaximize', () => tell(false));
+    window.on('maximize', () => {
+      if (hold) hold.onMaximize();
+      else tell(true);
+    });
+    window.on('unmaximize', () => {
+      if (hold) hold.onUnmaximize();
+      else tell(false);
+    });
     window.on('enter-full-screen', () => tell(true));
-    window.on('leave-full-screen', () => tell(window.isMaximized()));
+    window.on('leave-full-screen', () => tell(window.isMaximized() || !!hold?.maximized));
+  }
+  if (hold) {
+    window.on('move', () => hold.onBoundsChange());
+    window.on('resize', () => hold.onBoundsChange());
   }
 
   contents.on('will-navigate', (event) => {
@@ -319,23 +343,26 @@ function listen(): void {
   // Who draws the frame, and whether the window fills the screen (N1d): asked before the page's
   // scripts run, so its first paint has the right corners.
   ipcMain.on('cpr:frame', (event) => {
-    const window = shownFor(event)?.window;
+    const entry = shownFor(event);
+    const window = entry?.window;
     const own = !!window && frame === 'own' && (fromServer(event) || fromStart(event));
     event.returnValue = {
       frame: own ? 'own' : 'system',
-      maximized: !!window && (window.isMaximized() || window.isFullScreen()),
+      maximized:
+        !!window && (window.isMaximized() || window.isFullScreen() || !!entry.hold?.maximized),
     };
   });
 
   // The window's own buttons, where CPR draws them (N1d): only its own pages may ask.
   ipcMain.on('cpr:window', (event, action: unknown) => {
-    const window = shownFor(event)?.window;
+    const entry = shownFor(event);
+    const window = entry?.window;
     if (!window || frame !== 'own' || !(fromServer(event) || fromStart(event))) return;
     if (action === 'minimize') window.minimize();
-    else if (action === 'maximize') window.maximize();
+    else if (action === 'maximize') maximize(window, entry.hold);
     else if (action === 'restore') {
       if (window.isFullScreen()) window.setFullScreen(false);
-      else window.unmaximize();
+      else if (!entry.hold?.restore()) window.unmaximize();
     } else if (action === 'close') window.close();
   });
 
