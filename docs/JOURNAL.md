@@ -4213,3 +4213,6 @@ A real Claude Code workspace started through CPR's endpoint at `low`: its transc
 (Codex's two calls). Not verified: a real Codex workspace through CPR (a trust entry would be
 left in the person's Codex configuration), Codex `exec` with a level beyond unit tests. Numbers in
 PLAN.md's V30b results.
+
+Merged into main (2026-10-21) with V30a, no conflicts (`main` had not moved). `main` verified
+after the merge: frozen install, 1,070 unit tests, format, lint, typecheck, build, 167 of 167 e2e.
