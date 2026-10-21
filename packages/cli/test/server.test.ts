@@ -1103,6 +1103,7 @@ describe('symbiote view: workspaces (V18)', () => {
   };
   const options: WorkspaceOptions = {
     base: { from: 'main', sha: C },
+    branches: [{ name: 'main', sha: C }],
     branchPrefixes: {
       feature: 'feature/',
       fix: 'fix/',
@@ -1264,6 +1265,9 @@ describe('symbiote view: workspaces (V18)', () => {
     // Its effort level (V30b), the workspaces' to check against the agent's.
     expect((await post('/api/workspaces', { ...request, effort: 'high' })).status).toBe(200);
     expect(started.at(-1)).toEqual({ ...request, effort: 'high' });
+    // A branch to start from (V33), the workspaces' to find.
+    expect((await post('/api/workspaces', { ...request, from: 'topic' })).status).toBe(200);
+    expect(started.at(-1)).toEqual({ ...request, from: 'topic' });
 
     const taken = await post('/api/workspaces', { ...request, branch: 'main' });
     expect(taken.status).toBe(409);
@@ -1277,6 +1281,7 @@ describe('symbiote view: workspaces (V18)', () => {
       { ...request, branch: undefined },
       { ...request, planFirst: 'yes' },
       { ...request, base: 7 },
+      { ...request, from: 7 },
       { ...request, permissionMode: 7 },
       { ...request, agent: 7 },
       { ...request, effort: 7 },

@@ -55,6 +55,7 @@ import {
   type PermissionMode,
   type PromptKey,
   type RefList,
+  type StartBranch,
   type WorkKind,
   type WorkKindSpec,
 } from '@symbiote/core';
@@ -377,6 +378,43 @@ export async function workspaceBase(
 ): Promise<{ from: string; sha: string } | null> {
   const name = await defaultBranch(repo, refs);
   if (!name) return null;
+  const sha = await newestTip(repo, refs, name);
+  return sha ? { from: name, sha } : null;
+}
+
+/**
+ * The branches a workspace can start from (V33, decision 230): every name of a local branch or a
+ * remote's, the default first, then the local ones, then those only on a remote, each at its
+ * newest tip.
+ */
+export async function startBranches(repo: GitRepo, refs: RefList): Promise<StartBranch[]> {
+  const first = await defaultBranch(repo, refs);
+  const local = new Set(refs.branches.map((b) => b.name));
+  const byName = (a: string, b: string) =>
+    Number(b === first) - Number(a === first) || compare(a, b);
+  const names = [
+    ...[...local].sort(byName),
+    ...[...new Set(refs.remotes.map((r) => r.branch))].filter((n) => !local.has(n)).sort(byName),
+  ];
+  const branches: StartBranch[] = [];
+  for (const name of names) {
+    const sha = await newestTip(repo, refs, name);
+    if (sha) branches.push({ name, sha, ...(local.has(name) ? {} : { remote: true as const }) });
+  }
+  return branches;
+}
+
+/** Code-point order, as git lists refs. */
+function compare(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * A branch name's newest tip (decision 231): of the local branch and the remotes' (origin's
+ * first), the one that holds the others; the local one when they diverged. Git is asked only
+ * where the tips differ.
+ */
+async function newestTip(repo: GitRepo, refs: RefList, name: string): Promise<string | null> {
   const local = refs.branches.find((b) => b.name === name)?.sha;
   const remotes = refs.remotes
     .filter((r) => r.branch === name)
@@ -388,10 +426,9 @@ export async function workspaceBase(
     for (const other of tips) {
       if (other !== tip && !(await isAncestor(repo, other, tip))) holdsAll = false;
     }
-    if (holdsAll) return { from: name, sha: tip };
+    if (holdsAll) return tip;
   }
-  const sha = local ?? tips[0];
-  return sha ? { from: name, sha } : null;
+  return local ?? tips[0] ?? null;
 }
 
 /**
@@ -1737,6 +1774,7 @@ export function workspaces(
       agents.sort((a, b) => Number(b.kind === first) - Number(a.kind === first));
       return {
         base: await workspaceBase(repo, refs),
+        branches: await startBranches(repo, refs),
         branchPrefixes,
         kinds: workKinds(),
         worktrees: join(dirname(worktreeFolder(mainRoot(where), 'x', worktrees)), '<branch>'),
@@ -1793,7 +1831,15 @@ export function workspaces(
         throw new WorkspaceRefused(problem, taken ? 409 : 400);
       }
       let base: { from?: string; sha: string };
-      if (request.base !== undefined) {
+      if (request.base !== undefined && request.from !== undefined) {
+        throw new WorkspaceRefused('start from a branch or a commit, not both', 400);
+      }
+      if (request.from !== undefined) {
+        const sha =
+          typeof request.from === 'string' ? await newestTip(repo, refs, request.from) : null;
+        if (!sha) throw new WorkspaceRefused(`no branch ${String(request.from)}`, 400);
+        base = { from: request.from, sha };
+      } else if (request.base !== undefined) {
         if (!FULL_SHA.test(request.base)) {
           throw new WorkspaceRefused(`the base must be a full SHA: ${request.base}`, 400);
         }

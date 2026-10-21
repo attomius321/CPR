@@ -186,6 +186,7 @@ export {
   type WorkspaceFileChange,
   type WorkspaceList,
   type WorkspaceOptions,
+  type StartBranch,
   type WorkspaceReplied,
   type WorkspaceReply,
   type WorkspaceRequest,
