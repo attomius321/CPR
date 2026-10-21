@@ -2,7 +2,7 @@ import type { Graph } from '@cpr/core';
 
 /**
  * `cpr view`'s pages and what its sidenav opens (V29a): History, Settings, a workspace or a merge,
- * each shown in the shell's main area. There is no Workspaces page since V29a: the workspaces are
+ * and Start a workspace (V30a), each shown in the shell's main area. There is no Workspaces page since V29a: the workspaces are
  * in the sidenav, and `/` alone opens History.
  */
 export type Route =
@@ -11,10 +11,13 @@ export type Route =
   /** A workspace, at `/?branch=<branch>`: the address CPR has given out since V25. */
   | { page: 'workspace'; branch: string }
   /** A merge in CPR's queue (V26), at `/?merge=<branch>`. */
-  | { page: 'merge'; branch: string };
+  | { page: 'merge'; branch: string }
+  /** Start a workspace (V30a), at `/start`: at the default branch's tip, or at the commit `at`. */
+  | { page: 'start'; at?: string };
 
 export const HISTORY_PAGE = '/history';
 export const SETTINGS_PAGE = '/settings';
+export const START_PAGE = '/start';
 
 /**
  * A window's title (N1a): what it shows, then where, then CPR — the name the taskbar, Alt+Tab
@@ -36,6 +39,8 @@ export function routeTitle(route: Route, repo: string | undefined, name?: string
       return pageTitle(name ?? route.branch, repo);
     case 'merge':
       return pageTitle(`Merge ${route.branch}`, repo);
+    case 'start':
+      return pageTitle('Start a workspace', repo);
   }
 }
 
@@ -70,6 +75,8 @@ export function hrefOf(route: Route): string {
       return `/?branch=${encodeURIComponent(route.branch)}`;
     case 'merge':
       return `/?merge=${encodeURIComponent(route.branch)}`;
+    case 'start':
+      return route.at ? `${START_PAGE}?at=${encodeURIComponent(route.at)}` : START_PAGE;
   }
 }
 
@@ -81,6 +88,10 @@ export function routeOf(pathname: string, search: string): { route: Route; moved
   if (pathname === HISTORY_PAGE) return { route: { page: 'history' } };
   if (pathname === SETTINGS_PAGE) return { route: { page: 'settings' } };
   const params = new URLSearchParams(search);
+  if (pathname === START_PAGE) {
+    const at = params.get('at');
+    return { route: at ? { page: 'start', at } : { page: 'start' } };
+  }
   const branch = params.get('branch');
   const merge = params.get('merge');
   const old = OLD_WORKSPACES.has(pathname);
@@ -97,6 +108,7 @@ export function inShell(url: URL): boolean {
   return (
     url.pathname === HISTORY_PAGE ||
     url.pathname === SETTINGS_PAGE ||
+    url.pathname === START_PAGE ||
     url.pathname === '/' ||
     OLD_WORKSPACES.has(url.pathname)
   );

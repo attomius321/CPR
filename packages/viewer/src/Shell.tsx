@@ -13,6 +13,7 @@ import {
   type Route,
 } from './pages.js';
 import { SettingsPage } from './SettingsPage.js';
+import { StartPage } from './StartPage.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { desktop } from './desktop.js';
 import {
@@ -27,7 +28,6 @@ import { TitleBar, TitleBarSlotsProvider, type TitleBarSlots } from './TitleBar.
 import { WorkspaceView } from './Workspace.js';
 import { useWorkspaces } from './useWorkspaces.js';
 import { startedNotice, workspaceName } from './workspaces.js';
-import { useWorkspaceStarter } from './WorkspaceStarter.js';
 
 const FOLD_KEY = 'cpr.viewer.sidenav';
 /** Under this width the sidenav is a drawer over the page (styles.css says the same). */
@@ -62,7 +62,8 @@ const sameRoute = (a: Route, b: Route) => hrefOf(a) === hrefOf(b);
 
 /**
  * `cpr view`'s window (V29a): the sidenav (the pages, then the workspaces), the main area with
- * what is picked — History, Settings, a workspace or a merge —, and the status bar. Going from
+ * what is picked — History, Settings, a workspace, a merge or Start a workspace —, and the status
+ * bar. Going from
  * one to another happens in place: the address changes, the page does not load again.
  */
 export function Shell({ repo }: { repo?: string | undefined }) {
@@ -123,18 +124,26 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     else fold();
   }, [fold]);
 
+  // A start takes the start page's place in the history: Back goes to the page before it (V30a).
   const started = useCallback(
     (start: WorkspaceStart) => {
       setNotice(startedNotice(start));
       setFlashed(start.workspace.branch);
-      navigate({ page: 'workspace', branch: start.workspace.branch });
+      navigate({ page: 'workspace', branch: start.workspace.branch }, { replace: true });
     },
     [navigate],
   );
-  const failed = useCallback((message: string) => setNotice({ text: message, error: true }), []);
-
-  const starter = useWorkspaceStarter(started, failed);
-  const startWorkspace = starter.open;
+  const startWorkspace = useCallback(
+    (sha?: string) => navigate({ page: 'start', ...(sha ? { at: sha } : {}) }),
+    [navigate],
+  );
+  // Leaving the start page: back to the page of CPR's it was opened from, else History.
+  const leaveStart = useCallback(() => {
+    const here = window.navigation?.currentEntry;
+    const before = here ? window.navigation?.entries()[here.index - 1] : undefined;
+    if (before?.url && new URL(before.url).origin === window.location.origin) window.history.back();
+    else navigate({ page: 'history' }, { replace: true });
+  }, [navigate]);
 
   // Back and Forward: the route at the address.
   useEffect(() => {
@@ -178,16 +187,19 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     return () => document.removeEventListener('click', onClick, true);
   }, [go]);
 
-  // h and s go to the pages, w to the workspaces (the arrows between them), n starts one, [ folds
-  // the sidenav. Attached before the first paint, as History's keys are: a key pressed as soon as
-  // the page shows is not lost.
+  // h and s go to the pages, w to the workspaces (the arrows between them), n starts one (on its
+  // page, back to its title), [ folds the sidenav. Attached before the first paint, as History's
+  // keys are: a key pressed as soon as the page shows is not lost.
   useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (keyIsTaken(event) || starter.isOpen) return;
+      if (keyIsTaken(event)) return;
       if (event.key === 'h') go(HISTORY_PAGE);
       else if (event.key === 's') go(SETTINGS_PAGE);
-      else if (event.key === 'n') startWorkspace();
-      else if (event.key === '[') fold();
+      else if (event.key === 'n') {
+        const title = document.querySelector<HTMLElement>('.start-page input[name="title"]');
+        if (title) title.focus();
+        else startWorkspace();
+      } else if (event.key === '[') fold();
       else if (event.key === 'w') {
         const card = document.querySelector<HTMLElement>('.sidenav .workspace-about');
         if (!card) return;
@@ -198,18 +210,11 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, fold, startWorkspace, starter.isOpen]);
+  }, [go, fold, startWorkspace]);
 
   const shell = useMemo<ShellApi>(
-    () => ({
-      route,
-      navigate,
-      notify,
-      startWorkspace,
-      starting: starter.isOpen,
-      setLeaveGuard,
-    }),
-    [route, navigate, notify, startWorkspace, starter.isOpen, setLeaveGuard],
+    () => ({ route, navigate, notify, startWorkspace, setLeaveGuard }),
+    [route, navigate, notify, startWorkspace, setLeaveGuard],
   );
 
   return (
@@ -225,7 +230,9 @@ export function Shell({ repo }: { repo?: string | undefined }) {
                 ? 'Settings'
                 : route.page === 'merge'
                   ? `Merge ${route.branch}`
-                  : undefined
+                  : route.page === 'start'
+                    ? 'Start a workspace'
+                    : undefined
             }
             onSlots={setSlots}
           />
@@ -240,11 +247,13 @@ export function Shell({ repo }: { repo?: string | undefined }) {
               <WorkspaceView key={route.branch} branch={route.branch} />
             )}
             {route.page === 'merge' && <MergeView key={route.branch} branch={route.branch} />}
+            {route.page === 'start' && (
+              <StartPage at={route.at} onStarted={started} onLeave={leaveStart} />
+            )}
           </main>
         </TitleBarSlotsProvider>
         <StatusBar notice={notice} />
         <WindowTitle route={route} repo={repo} />
-        {starter.dialog}
         {asking && (
           <ConfirmDialog
             question={asking.guard.question}

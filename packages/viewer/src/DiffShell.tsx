@@ -1,12 +1,10 @@
 import { useCallback, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
-import type { WorkspaceStart } from '@cpr/core';
 import { hrefOf, type Route } from './pages.js';
 import { ShellContext, type Notice, type Shell } from './shell-context.js';
 import { DrawerStrip, Sidenav } from './Sidenav.js';
 import { desktop } from './desktop.js';
 import { StatusBar } from './StatusBar.js';
 import { TitleBar } from './TitleBar.js';
-import { useWorkspaceStarter } from './WorkspaceStarter.js';
 
 const FOLD_KEY = 'cpr.viewer.sidenav.diff';
 
@@ -49,17 +47,22 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
     [],
   );
   const navigate = useCallback((route: Route) => window.location.assign(hrefOf(route)), []);
-  const started = useCallback(
-    (start: WorkspaceStart) => navigate({ page: 'workspace', branch: start.workspace.branch }),
+  // Start a workspace is the shell's page (V30a): a diff is its own document, so it loads it.
+  const startWorkspace = useCallback(
+    (sha?: string) => navigate({ page: 'start', ...(sha ? { at: sha } : {}) }),
     [navigate],
   );
-  const failed = useCallback((message: string) => setNotice({ text: message, error: true }), []);
-  const starter = useWorkspaceStarter(started, failed);
 
-  // [ folds and opens the sidenav; the diff's own keys are the rest.
+  // [ folds and opens the sidenav, n starts a workspace; the diff's own keys are the rest.
   useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== '[' || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (
+        (event.key !== '[' && event.key !== 'n') ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey
+      )
+        return;
       const target = event.target;
       if (
         target instanceof HTMLInputElement ||
@@ -68,23 +71,23 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
       )
         return;
       event.preventDefault();
-      fold();
+      if (event.key === 'n') startWorkspace();
+      else fold();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [fold]);
+  }, [fold, startWorkspace]);
 
   const shell = useMemo<Shell>(
     () => ({
       route: null,
       navigate,
       notify: setNotice,
-      startWorkspace: starter.open,
-      starting: starter.isOpen,
+      startWorkspace,
       // Nothing on a diff's page is left unsaved: its review state saves as it goes.
       setLeaveGuard: () => {},
     }),
-    [navigate, starter.open, starter.isOpen],
+    [navigate, startWorkspace],
   );
   return (
     <ShellContext.Provider value={shell}>
@@ -103,7 +106,6 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
         <Sidenav repo={repo} folded={folded} onFold={fold} flashed={null} />
         <div className="shell-main">{children}</div>
         <StatusBar notice={notice} />
-        {starter.dialog}
       </div>
     </ShellContext.Provider>
   );

@@ -181,7 +181,7 @@ interface PromptSpec {
 const START_PLACEHOLDERS: PromptPlaceholder[] = [
   { name: 'branch', about: "the workspace's branch" },
   { name: 'start', about: 'where it starts: "main at abc1234", or "the commit abc1234"' },
-  { name: 'brief', about: "the person's brief, as the start dialog made it", required: true },
+  { name: 'brief', about: "the person's brief, as the start page made it", required: true },
   { name: 'plan', about: 'Plan first or Plan without, as the person chose' },
   {
     name: 'into',

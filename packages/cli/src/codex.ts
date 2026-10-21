@@ -4,7 +4,7 @@
 // reads Codex's own files.
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import type { AgentStateName, WorkspaceAgentState, ThreadEntry } from '@cpr/core';
+import type { AgentEfforts, AgentStateName, WorkspaceAgentState, ThreadEntry } from '@cpr/core';
 import {
   AppServerUnreachable,
   codexServer,
@@ -42,8 +42,13 @@ export interface Codex {
     /** The folders its sandbox may also write: the branch's git folders. */
     writable: string[];
     prompt: string;
+    /** Its effort level (V30b); Codex's configured one when absent. */
+    effort?: string;
   }): Promise<{ ok: true; pid: number } | { ok: false; error: string }>;
-  /** Continues the thread `sessionId` with `text` (`codex exec resume`), the same way. */
+  /**
+   * Continues the thread `sessionId` with `text` (`codex exec resume`), the same way, at `effort`
+   * again: a resume keeps none of the start's options (V30 spike).
+   */
   resume(request: {
     cwd: string;
     thread: string;
@@ -51,6 +56,7 @@ export interface Codex {
     writable: string[];
     sessionId: string;
     text: string;
+    effort?: string;
   }): Promise<{ ok: true; pid: number } | { ok: false; error: string }>;
   /** Whether the runner started as `pid` still runs. */
   alive(pid: number): boolean;
@@ -66,6 +72,8 @@ export interface Codex {
    * daemon that fails), asked again a minute later.
    */
   server(): Promise<CodexServer | null>;
+  /** The effort levels it takes (V30b), from its app server; null without one. */
+  efforts(): Promise<AgentEfforts | null>;
 }
 
 /** Whether a process runs (signal 0 asks without signalling). */
@@ -85,16 +93,20 @@ const tomlList = (values: readonly string[]) =>
 
 /**
  * Codex's arguments (decision 130): `exec` in the worktree, or `exec resume` of a thread, in the
- * `workspace-write` sandbox with the branch's git folders writable — on every run, since a
- * resume keeps none of the first run's options (V20a spike). Never a bypass, never `--add-dir`.
- * What it is given comes after `--`: a message may start with `-`.
+ * `workspace-write` sandbox with the branch's git folders writable, at the effort level given
+ * (V30b) — on every run, since a resume keeps none of the first run's options (V20a and V30
+ * spikes). Never a bypass, never `--add-dir`. What it is given comes after `--`: a message may
+ * start with `-`.
  */
 export function codexArgs(
-  request: { writable: readonly string[]; prompt: string } & (
+  request: { writable: readonly string[]; prompt: string; effort?: string | undefined } & (
     { cwd: string; sessionId?: undefined } | { sessionId: string; cwd?: undefined }
   ),
 ): string[] {
   const roots = `sandbox_workspace_write.writable_roots=${tomlList(request.writable)}`;
+  const effort = request.effort
+    ? ['-c', `model_reasoning_effort=${JSON.stringify(request.effort)}`]
+    : [];
   if (request.sessionId !== undefined) {
     return [
       'exec',
@@ -104,6 +116,7 @@ export function codexArgs(
       'sandbox_mode="workspace-write"',
       '-c',
       roots,
+      ...effort,
       '--',
       request.sessionId,
       request.prompt,
@@ -118,6 +131,7 @@ export function codexArgs(
     'workspace-write',
     '-c',
     roots,
+    ...effort,
     '--',
     request.prompt,
   ];
@@ -188,6 +202,7 @@ function lastingServer(
     ),
     archive: retried((server, thread: string) => server.archive(thread)),
     limits: retried((server) => server.limits()),
+    efforts: retried((server, cwd: string) => server.efforts(cwd)),
   };
 }
 
@@ -252,12 +267,33 @@ export function codex(
       return { ok: false, error: (error as Error).message };
     }
   };
+  const server = (): Promise<CodexServer | null> => {
+    // None found: asked again a minute later (the person may update Codex meanwhile).
+    if (!daemon || (daemon.none && Date.now() - daemon.at > 60_000)) {
+      const found: NonNullable<typeof daemon> = {
+        at: Date.now(),
+        none: false,
+        server: startDaemon().then((socket) => {
+          found.none = socket === null;
+          return socket ? lastingServer(socket, startDaemon, make) : null;
+        }),
+      };
+      daemon = found;
+    }
+    return daemon.server;
+  };
   return {
     command,
-    start: ({ cwd: folder, thread, run: id, writable, prompt }) =>
-      runner_(thread, 'startup', id, codexArgs({ cwd: folder, writable, prompt }), folder),
-    resume: ({ cwd: folder, thread, run: id, writable, sessionId, text }) =>
-      runner_(thread, 'resume', id, codexArgs({ sessionId, writable, prompt: text }), folder),
+    start: ({ cwd: folder, thread, run: id, writable, prompt, effort }) =>
+      runner_(thread, 'startup', id, codexArgs({ cwd: folder, writable, prompt, effort }), folder),
+    resume: ({ cwd: folder, thread, run: id, writable, sessionId, text, effort }) =>
+      runner_(
+        thread,
+        'resume',
+        id,
+        codexArgs({ sessionId, writable, prompt: text, effort }),
+        folder,
+      ),
     alive,
     async stop(pid) {
       if (!alive(pid)) return;
@@ -290,20 +326,10 @@ export function codex(
       }
       return account.text;
     },
-    server() {
-      // None found: asked again a minute later (the person may update Codex meanwhile).
-      if (!daemon || (daemon.none && Date.now() - daemon.at > 60_000)) {
-        const found: NonNullable<typeof daemon> = {
-          at: Date.now(),
-          none: false,
-          server: startDaemon().then((socket) => {
-            found.none = socket === null;
-            return socket ? lastingServer(socket, startDaemon, make) : null;
-          }),
-        };
-        daemon = found;
-      }
-      return daemon.server;
+    server,
+    async efforts() {
+      const found = await server();
+      return found ? found.efforts(cwd).catch(() => null) : null;
     },
   };
 }

@@ -310,6 +310,22 @@ describe('codexArgs (V20a)', () => {
       'Go ahead',
     ]);
   });
+
+  it('gives an effort level on the start and on every resume, which keeps none (V30b)', () => {
+    const start = codexArgs({ cwd: '/w', writable: ['/g'], prompt: 'P', effort: 'low' });
+    expect(start.slice(start.indexOf('-c', 6), -2)).toEqual([
+      '-c',
+      'sandbox_workspace_write.writable_roots=["/g"]',
+      '-c',
+      'model_reasoning_effort="low"',
+    ]);
+    const resume = codexArgs({ writable: ['/g'], sessionId: T, prompt: 'Go', effort: 'xhigh' });
+    expect(resume.slice(-5)).toEqual(['-c', 'model_reasoning_effort="xhigh"', '--', T, 'Go']);
+    // None given: Codex's own, as before.
+    expect(codexArgs({ cwd: '/w', writable: ['/g'], prompt: 'P' }).join(' ')).not.toContain(
+      'model_reasoning_effort',
+    );
+  });
 });
 
 describe('codex (V20a)', () => {

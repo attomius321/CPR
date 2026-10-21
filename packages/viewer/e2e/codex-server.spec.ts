@@ -21,7 +21,7 @@ test.afterEach(() => {
 
 const POLL = { timeout: 12_000 };
 const BRANCH = 'feature/add-a-half-function';
-const dialog = (page: Page) => page.getByRole('dialog', { name: 'Start a workspace' });
+const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
 const panel = (page: Page) => page.getByRole('region', { name: `Workspace ${BRANCH}` });
 const workspaceRow = (page: Page) => page.locator(`.workspace-row[data-branch="${BRANCH}"]`);
 const box = (page: Page) => panel(page).getByRole('textbox', { name: 'Reply to the agent' });
@@ -29,11 +29,11 @@ const screen = (page: Page) => panel(page).locator('.agent-terminal .xterm-rows'
 
 /** Starts a workspace with Codex (the only agent installed), from the page open. */
 const start = async (page: Page) => {
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
-  await dialog(page).getByRole('textbox', { name: 'Title' }).fill('Add a half function');
-  await dialog(page).getByRole('textbox', { name: 'Goal' }).fill('Return a / 2, and test it.');
-  await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
-  await expect(dialog(page)).toBeHidden();
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
+  await startPage(page).getByRole('textbox', { name: 'Title' }).fill('Add a half function');
+  await startPage(page).getByRole('textbox', { name: 'Goal' }).fill('Return a / 2, and test it.');
+  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(startPage(page)).toBeHidden();
 };
 
 test('Codex on its app server, without terminals: its thread from there, a turn typed in your terminal, an approval it waits on, a message that joins its turn', async ({

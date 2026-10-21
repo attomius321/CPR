@@ -1257,6 +1257,9 @@ describe('cpr view: workspaces (V18)', () => {
     // The agent picked in the dialog (V20a).
     expect((await post('/api/workspaces', { ...request, agent: 'codex' })).status).toBe(200);
     expect(started.at(-1)).toEqual({ ...request, agent: 'codex' });
+    // Its effort level (V30b), the workspaces' to check against the agent's.
+    expect((await post('/api/workspaces', { ...request, effort: 'high' })).status).toBe(200);
+    expect(started.at(-1)).toEqual({ ...request, effort: 'high' });
 
     const taken = await post('/api/workspaces', { ...request, branch: 'main' });
     expect(taken.status).toBe(409);
@@ -1272,6 +1275,7 @@ describe('cpr view: workspaces (V18)', () => {
       { ...request, base: 7 },
       { ...request, permissionMode: 7 },
       { ...request, agent: 7 },
+      { ...request, effort: 7 },
     ]) {
       expect((await post('/api/workspaces', body)).status, JSON.stringify(body)).toBe(400);
     }
@@ -1351,6 +1355,9 @@ describe('cpr view: workspaces (V18)', () => {
     // The view's old address, kept for bookmarks.
     expect((await get('/features')).status).toBe(200);
     expect((await get('/features', bare)).status).toBe(404);
+    // Start a workspace, a page of its own since V30a: a reload there is the viewer too.
+    expect(await (await get('/start')).text()).toBe('<html>viewer</html>');
+    expect((await get('/start', bare)).status).toBe(404);
 
     expect(await (await get('/api/workspaces/prompt?branch=feature%2Fcsv')).json()).toEqual({
       prompt: 'Build it.',

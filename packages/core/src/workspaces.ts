@@ -42,6 +42,11 @@ export interface WorkspaceAgentState {
   remote?: string;
   /** Why the agent did not start, or why its state is unknown. */
   error?: string;
+  /**
+   * The effort level it was started at (V30b); absent for its own default. Its session may have
+   * changed it since (Claude Code's `/effort`): CPR does not read it back.
+   */
+  effort?: string;
 }
 
 /** The agents CPR starts: Claude Code (V18) and Codex (V20a). */
@@ -80,7 +85,7 @@ export interface BriefParts {
 }
 export type BriefPart = keyof BriefParts;
 
-/** A kind of work as the start dialog offers it (V24). */
+/** A kind of work as the start page offers it (V24). */
 export interface WorkKindSpec {
   kind: WorkKind;
   /** Its name, as the brief's first line says it: "Fix". */
@@ -203,7 +208,7 @@ export interface WorkspaceTerminalOpened {
   trusted?: false;
 }
 
-/** What the start dialog needs. */
+/** What the start page needs. */
 export interface WorkspaceOptions {
   /** The default branch's tip, where a workspace starts unless a row is picked. */
   base: { from: string; sha: string } | null;
@@ -219,7 +224,7 @@ export interface WorkspaceOptions {
   maxBrief: number;
 }
 
-/** An agent the start dialog offers (V20a). */
+/** An agent the start page offers (V20a). */
 export interface AgentOption {
   kind: AgentKind;
   /** The program run, as found. */
@@ -233,6 +238,21 @@ export interface AgentOption {
   apiKey?: boolean;
   /** Claude Code: the permission mode it starts in unless the person picks another. */
   permissionMode?: PermissionMode;
+  /** The effort levels it takes (V30b); absent when CPR cannot read them: no choice is offered. */
+  efforts?: AgentEfforts;
+}
+
+/**
+ * An effort level as CPR passes it to an agent (V30b): a lowercase word (`xhigh`), never an option
+ * or a sentence. Both agents' levels are such words.
+ */
+export const EFFORT_LEVEL = /^[a-z][a-z-]{0,23}$/;
+
+/** An agent's effort levels as it lists them (V30b): Claude Code's `--help`, Codex's models. */
+export interface AgentEfforts {
+  levels: string[];
+  /** Its own level when none is given, when the agent says (Codex's configuration). */
+  default?: string;
 }
 
 /**
@@ -252,6 +272,8 @@ export interface WorkspaceRequest {
   agent?: AgentKind;
   /** Claude Code's permission mode. */
   permissionMode?: PermissionMode;
+  /** The agent's effort level for its session (V30b), one of its `efforts`; its own when absent. */
+  effort?: string;
 }
 
 /** A workspace just made or restarted, with the prompt its agent was given (to copy). */

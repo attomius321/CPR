@@ -21,6 +21,7 @@ import {
   listChangedFiles,
   listLineCounts,
   listRefs,
+  EFFORT_LEVEL,
   PERMISSION_MODES,
   removeWorktree,
   uncommittedFiles,
@@ -28,6 +29,7 @@ import {
   worktreeStatus,
   WorktreeRefused,
   WORK_KINDS,
+  type AgentEfforts,
   type AgentKind,
   type AgentOption,
   type BranchMerge,
@@ -124,6 +126,8 @@ export interface WorkspaceAgentRecord {
   kind: AgentKind;
   /** Claude Code's permission mode. */
   permissionMode?: PermissionMode;
+  /** The effort level it was started at (V30b), given again when it starts again; its own if absent. */
+  effort?: string;
   /** When it last started: for Codex, its last run (V20a). */
   started?: string;
   /** Codex: its last run's ID, on the thread entries it wrote, and its runner's process (V20a). */
@@ -212,7 +216,7 @@ const partsOf = (kind: WorkKind): BriefPart[] => {
   );
 };
 
-/** The kinds as the start dialog offers them. */
+/** The kinds as the start page offers them. */
 export function workKinds(): WorkKindSpec[] {
   return WORK_KINDS.map((kind) => {
     const { name, required, doneWhen } = KINDS[kind];
@@ -328,6 +332,7 @@ function asAgent(value: unknown): WorkspaceAgentRecord | null {
   return {
     kind,
     ...(kind === 'claude' ? { permissionMode: mode } : {}),
+    ...(typeof v.effort === 'string' && EFFORT_LEVEL.test(v.effort) ? { effort: v.effort } : {}),
     ...(typeof v.started === 'string' ? { started: v.started } : {}),
     ...(typeof v.run === 'string' && v.run !== '' ? { run: v.run } : {}),
     ...(typeof v.pid === 'number' && Number.isInteger(v.pid) && v.pid > 0 ? { pid: v.pid } : {}),
@@ -463,6 +468,25 @@ export function parseSessions(text: string): AgentSession[] {
     });
   }
   return sessions;
+}
+
+/**
+ * The levels `claude --help` lists for `--effort` (V30b), in its order: the parenthesis in that
+ * option's description, which runs until the next option. Null when there is no such option, or
+ * its list holds anything but lowercase words: no level then rather than a wrong one, since Claude
+ * Code ignores one it does not know without failing (V30 spike).
+ */
+export function parseEffortLevels(help: string): string[] | null {
+  const lines = help.split('\n');
+  const at = lines.findIndex((line) => /^\s*--effort\b/.test(line));
+  if (at < 0) return null;
+  const rest = lines.slice(at + 1);
+  const next = rest.findIndex((line) => /^\s*-/.test(line));
+  const description = [lines[at], ...(next < 0 ? rest : rest.slice(0, next))].join(' ');
+  const list = /\(([^)]*)\)/.exec(description)?.[1];
+  if (!list) return null;
+  const levels = list.split(',').map((level) => level.trim());
+  return levels.every((level) => EFFORT_LEVEL.test(level)) ? levels : null;
 }
 
 /** Whose account Claude Code runs on, from `claude auth status`; undefined when unknown. */
@@ -613,6 +637,8 @@ export interface ClaudeCode {
     addDir: string;
     /** CPR's settings file (V18c): the hooks that record the thread. */
     settings?: string;
+    /** Its effort level (V30b, `--effort`): the session keeps it, through a resume too. */
+    effort?: string;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Its sessions, finished ones included; null when it cannot list them. */
   sessions(): Promise<AgentSession[] | null>;
@@ -632,11 +658,13 @@ export interface ClaudeCode {
   remove(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Whose account it runs on. */
   account(): Promise<string | undefined>;
+  /** The effort levels its `--help` lists (V30b); null when it lists none CPR can read. */
+  efforts(): Promise<string[] | null>;
 }
 
 /**
  * Claude Code at `command`. Sessions are asked for at most every 2 s (`claude agents --json`
- * takes 150 ms), the account every minute.
+ * takes 150 ms), the account every minute, its effort levels once (`--help`, 70–90 ms).
  */
 export function claudeCode(
   command: string,
@@ -644,8 +672,15 @@ export function claudeCode(
 ): ClaudeCode {
   let sessions: { at: number; list: Promise<AgentSession[] | null> } | null = null;
   let account: { at: number; text: Promise<string | undefined> } | null = null;
+  let efforts: Promise<string[] | null> | null = null;
   return {
     command,
+    efforts() {
+      efforts ??= run(command, ['--help'], { cwd, timeoutMs: 20_000 })
+        .then((result) => (result.code === 0 ? parseEffortLevels(result.stdout) : null))
+        .catch(() => null);
+      return efforts;
+    },
     async start(request) {
       const args = [
         '--bg',
@@ -658,6 +693,7 @@ export function claudeCode(
           ? []
           : ['--permission-mode', request.permissionMode]),
         ...(model ? ['--model', model] : []),
+        ...(request.effort ? ['--effort', request.effort] : []),
         request.prompt,
       ];
       const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
@@ -860,11 +896,11 @@ export interface Workspaces {
   prompt(branch: string): Promise<string>;
   /**
    * The check command guessed from the root files of the commit a workspace would start from
-   * (V24b), for the start dialog's Done when; null when none is found.
+   * (V24b), for the start page's Done when; null when none is found.
    */
   check(at: string): Promise<CheckGuess | null>;
   /**
-   * The start dialog's draft (V24c, decision 128): kept in CPR's cache for the repository, so a
+   * The start page's draft (V24c, decision 128): kept in CPR's cache for the repository, so a
    * new `cpr view` (another port, other browser storage) has it; `{}` when none.
    */
   draft(): Promise<Record<string, unknown>>;
@@ -1096,6 +1132,7 @@ export function workspaces(
           ? codexState(workspace, thread, await codexAlive(workspace), ahead)
           : agentState(workspace, sessions, ahead, real, ended);
     }
+    if (workspace.agent?.effort) agent = { ...agent, effort: workspace.agent.effort };
     return {
       branch: workspace.branch,
       ...(workspace.kind ? { kind: workspace.kind } : {}),
@@ -1267,18 +1304,56 @@ export function workspaces(
     return null;
   }
 
+  /** The levels `agent` takes (V30b); null when CPR cannot read them. */
+  async function effortsOf(agent: FoundAgent): Promise<AgentEfforts | null> {
+    if (agent.kind === 'codex') return agent.codex.efforts();
+    const levels = await agent.claude.efforts();
+    return levels ? { levels } : null;
+  }
+
+  /** A level asked for a start (V30b), checked against what `agent` lists; undefined for none. */
+  async function effortFor(agent: FoundAgent | null, effort: unknown): Promise<string | undefined> {
+    if (effort === undefined) return undefined;
+    if (typeof effort !== 'string' || !EFFORT_LEVEL.test(effort)) {
+      throw new WorkspaceRefused(
+        `an effort level is a word, such as high: ${JSON.stringify(effort)}`,
+        400,
+      );
+    }
+    if (!agent) throw new WorkspaceRefused('an effort level needs an agent to start', 400);
+    const name = AGENT_NAMES[agent.kind];
+    const { levels } = (await effortsOf(agent)) ?? {};
+    if (!levels) {
+      throw new WorkspaceRefused(
+        `CPR cannot read ${name}'s effort levels: start it at its default`,
+        400,
+      );
+    }
+    if (!levels.includes(effort)) {
+      const listed =
+        levels.length > 1 ? `${levels.slice(0, -1).join(', ')} or ${levels.at(-1)}` : levels[0];
+      throw new WorkspaceRefused(`${name} takes ${listed}: ${effort}`, 400);
+    }
+    return effort;
+  }
+
   /** Starts the workspace's agent and records how that went; the prompt it was given. */
   async function launch(
     where: ReviewPlace,
     workspace: WorkspaceFile,
     agent: FoundAgent | null,
     permissionMode: PermissionMode,
+    effort: string | undefined,
   ): Promise<string> {
     const prompt = await promptOf(where, workspace);
+    const level = effort ? { effort } : {};
     if (!agent) {
       workspace.agent = null;
     } else if (agent.kind === 'codex') {
-      workspace.agent = await launchCodex(where, workspace, agent.codex, prompt);
+      workspace.agent = {
+        ...(await launchCodex(where, workspace, agent.codex, prompt, effort)),
+        ...level,
+      };
       await save(where, workspace);
       await firstEntry(where, workspace);
     } else {
@@ -1291,10 +1366,11 @@ export function workspaces(
         permissionMode,
         addDir: cprFolder(where),
         settings: await settingsFile(where),
+        ...level,
       });
       workspace.agent = result.ok
-        ? { kind: 'claude', permissionMode, started: now().toISOString(), hooks: true }
-        : { kind: 'claude', permissionMode, error: result.error };
+        ? { kind: 'claude', permissionMode, ...level, started: now().toISOString(), hooks: true }
+        : { kind: 'claude', permissionMode, ...level, error: result.error };
     }
     await save(where, workspace);
     return prompt;
@@ -1310,7 +1386,9 @@ export function workspaces(
     workspace: WorkspaceFile,
     agent: Codex,
     prompt: string,
+    effort: string | undefined,
   ): Promise<WorkspaceAgentRecord> {
+    const level = effort ? { effort } : {};
     const earlier = [
       ...(workspace.agent?.threads ?? []),
       ...(workspace.agent?.thread ? [workspace.agent.thread] : []),
@@ -1330,6 +1408,7 @@ export function workspaces(
           writable,
           name: workspace.branch,
           prompt,
+          ...level,
         });
         return { ...head, started, thread };
       } catch (error) {
@@ -1353,6 +1432,7 @@ export function workspaces(
       run,
       writable,
       prompt,
+      ...level,
     });
     return result.ok
       ? { ...head, started, run, pid: result.pid }
@@ -1493,6 +1573,8 @@ export function workspaces(
     }
     const run = randomUUID();
     const startedAt = now().toISOString();
+    const effort = workspace.agent?.effort;
+    const level = effort ? { effort } : {};
     const resumed = await agent.resume({
       cwd: workspace.worktree,
       thread: threadPath(cprFolder(where), workspace.branch),
@@ -1500,9 +1582,11 @@ export function workspaces(
       writable: await commitFolders(workspace.worktree, workspace.branch),
       sessionId: state.id,
       text,
+      // Given again: `exec resume` keeps none of the start's options (V30 spike).
+      ...level,
     });
     if (!resumed.ok) throw new WorkspaceRefused(resumed.error, 502);
-    workspace.agent = { kind: 'codex', started: startedAt, run, pid: resumed.pid };
+    workspace.agent = { kind: 'codex', ...level, started: startedAt, run, pid: resumed.pid };
     await save(where, workspace);
     await firstEntry(where, workspace);
     const refs = await listRefs(repo);
@@ -1610,21 +1694,29 @@ export function workspaces(
       const apiKey = Boolean(env.ANTHROPIC_API_KEY);
       const agents: AgentOption[] = [];
       if (claudeCode) {
-        const account = await claudeCode.account();
+        const [account, efforts] = await Promise.all([
+          claudeCode.account(),
+          effortsOf({ kind: 'claude', claude: claudeCode }),
+        ]);
         agents.push({
           kind: 'claude',
           command: claudeCode.command,
           ...(account ? { account } : {}),
           ...(apiKey ? { apiKey } : {}),
           permissionMode,
+          ...(efforts ? { efforts } : {}),
         });
       }
       if (codexAgent) {
-        const account = await codexAgent.account();
+        const [account, efforts] = await Promise.all([
+          codexAgent.account(),
+          effortsOf({ kind: 'codex', codex: codexAgent }),
+        ]);
         agents.push({
           kind: 'codex',
           command: codexAgent.command,
           ...(account ? { account } : {}),
+          ...(efforts ? { efforts } : {}),
         });
       }
       // The default first: `agent.kind`, else Claude Code, else Codex (decision 132).
@@ -1677,6 +1769,7 @@ export function workspaces(
           400,
         );
       }
+      const effort = await effortFor(agent, request.effort);
       const refs = await listRefs(repo);
       const problem = await branchNameProblem(repo, request.branch, refs);
       if (problem) {
@@ -1723,7 +1816,7 @@ export function workspaces(
         worktree: folder,
       };
       await prepareCprFolder(where, { text: readPrompts(root).text.reviews });
-      const prompt = await launch(where, workspace, agent, permissionMode);
+      const prompt = await launch(where, workspace, agent, permissionMode, effort);
       return started(where, workspace, prompt);
     },
 
@@ -1745,7 +1838,8 @@ export function workspaces(
         throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
       }
       const mode = workspace.agent?.permissionMode ?? config().permissionMode;
-      const prompt = await launch(where, workspace, agent, mode);
+      // The level it was started at: the person chose it for this work (V30b).
+      const prompt = await launch(where, workspace, agent, mode, workspace.agent?.effort);
       return started(where, workspace, prompt);
     },
 

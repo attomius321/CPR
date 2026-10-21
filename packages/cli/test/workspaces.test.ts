@@ -29,6 +29,7 @@ import {
   workspaces,
   WorkspaceRefused,
   parseAccount,
+  parseEffortLevels,
   parseSessions,
   readWorkspace,
   readWorkspaceConfig,
@@ -87,6 +88,8 @@ const fresh = () => {
   return made;
 };
 const NOW = new Date('2026-10-15T09:00:00Z');
+/** Claude Code 2.1.306's levels, as its `--help` lists them (V30 spike). */
+const CLAUDE_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 /** Where CPR's hook would be installed. */
 const HOOK = '/opt/cpr/dist/agent-hook.js';
 
@@ -557,6 +560,7 @@ describe('workspaces', () => {
       resume,
       remove,
       account: () => Promise.resolve('your Pro subscription'),
+      efforts: () => Promise.resolve([...CLAUDE_LEVELS]),
     };
     return { claude, listed, start, sessions, stop, resume, remove };
   }
@@ -622,6 +626,8 @@ describe('workspaces', () => {
           command: '/usr/bin/claude',
           account: 'your Pro subscription',
           permissionMode: 'default',
+          // The levels it lists; its own default is not named (decision 210).
+          efforts: { levels: [...CLAUDE_LEVELS] },
         },
       ],
       maxBrief: 20000,
@@ -891,6 +897,50 @@ describe('workspaces', () => {
     await refused({ permissionMode: 'bypassPermissions' }, 400, /permission mode/);
     mkdirSync(worktreeFolder(repo.root, 'feature/x'), { recursive: true });
     await refused({}, 409, /exists/);
+    expect(repo.git('branch', '--list', 'feature/*')).toBe('');
+    expect(launched).not.toHaveBeenCalled();
+  });
+
+  it('starts Claude Code at the level picked, recorded; started again at it; none without one (V30b)', async () => {
+    const { repo } = fresh();
+    const { claude, start } = fakeClaude();
+    const s = await service(repo, claude);
+    const { workspace } = await s.start({
+      brief: 'Do it',
+      branch: 'feature/x',
+      planFirst: true,
+      effort: 'high',
+    });
+    expect(start).toHaveBeenLastCalledWith(expect.objectContaining({ effort: 'high' }));
+    expect(workspace.agent).toEqual({ state: 'working', kind: 'claude', id: 's1', effort: 'high' });
+    const saved = JSON.parse(
+      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'x.json'), 'utf8'),
+    ) as WorkspaceFile;
+    expect(saved.agent).toMatchObject({ kind: 'claude', effort: 'high' });
+    await s.startAgent('feature/x');
+    expect(start).toHaveBeenLastCalledWith(expect.objectContaining({ effort: 'high' }));
+    // No level: none given, none recorded; a record from before V30 reads without one.
+    const other = await s.start({ brief: 'Do it', branch: 'feature/y', planFirst: true });
+    expect(start.mock.lastCall?.[0]).not.toHaveProperty('effort');
+    expect(other.workspace.agent).not.toHaveProperty('effort');
+  });
+
+  it('refuses a level the agent does not list, or any for an agent whose levels CPR cannot read (V30b)', async () => {
+    const { repo } = fresh();
+    const { claude, start: launched } = fakeClaude();
+    const s = await service(repo, claude);
+    const refused = async (effort: unknown, words: RegExp) => {
+      const error = (await s
+        .start({ brief: 'Do it', branch: 'feature/x', planFirst: true, effort } as WorkspaceRequest)
+        .catch((e: unknown) => e)) as WorkspaceRefused;
+      expect(error).toBeInstanceOf(WorkspaceRefused);
+      expect(error.status).toBe(400);
+      expect(error.message).toMatch(words);
+    };
+    await refused('ultra', /Claude Code takes low, medium, high, xhigh or max: ultra/);
+    await refused(3, /an effort level is a word/);
+    claude.efforts = () => Promise.resolve(null);
+    await refused('high', /CPR cannot read Claude Code's effort levels: start it at its default/);
     expect(repo.git('branch', '--list', 'feature/*')).toBe('');
     expect(launched).not.toHaveBeenCalled();
   });
@@ -1681,6 +1731,8 @@ describe('workspaces', () => {
       archive,
       account: () => Promise.resolve(account),
       server: () => Promise.resolve(server ? codexServer(server.address, { waitMs: 500 }) : null),
+      efforts: () =>
+        server ? codexServer(server.address).efforts('/repo') : Promise.resolve(null),
     };
     /** The run ends, as the runner records it. */
     const end = (pid: number) => live.delete(pid);
@@ -2104,6 +2156,56 @@ describe('workspaces', () => {
     expect(server.threads[0]?.archived).toBe(true);
   });
 
+  it("starts Codex on its app server at the level picked, from its model's levels (V30b)", async () => {
+    const { repo } = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(undefined, server);
+    const s = await service(repo, null, HOOK, undefined, codex);
+    expect((await s.options()).agents).toEqual([
+      expect.objectContaining({
+        kind: 'codex',
+        efforts: { levels: ['low', 'medium', 'high', 'xhigh', 'max'], default: 'medium' },
+      }),
+    ]);
+    const { workspace } = await s.start({
+      brief: 'Do it',
+      branch: 'feature/csv',
+      planFirst: true,
+      effort: 'xhigh',
+    });
+    expect(server.calls.find((c) => c.method === 'turn/start')?.params).toMatchObject({
+      effort: 'xhigh',
+    });
+    expect(workspace.agent).toMatchObject({ kind: 'codex', effort: 'xhigh' });
+    // Without its daemon, no levels: a level is refused.
+    const plain = fakeCodex();
+    const t = await service(repo, null, HOOK, undefined, plain.codex);
+    expect((await t.options()).agents[0]).not.toHaveProperty('efforts');
+    await expect(
+      t.start({ brief: 'Do it', branch: 'feature/two', planFirst: true, effort: 'low' }),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('keeps a Codex level through exec: started again without its daemon, and at every reply (V30b)', async () => {
+    const { repo } = fresh();
+    const server = await appServer();
+    const { codex, start, resume } = fakeCodex(undefined, server);
+    const s = await service(repo, null, HOOK, undefined, codex);
+    await s.start({ brief: 'Do it', branch: 'feature/one', planFirst: true, effort: 'low' });
+    await s.stopAgent('feature/one');
+    // The daemon is gone: started again by exec, at the level it was started at.
+    codex.server = () => Promise.resolve(null);
+    await s.startAgent('feature/one');
+    expect(start).toHaveBeenLastCalledWith(expect.objectContaining({ effort: 'low' }));
+    recordRun(repo, 'feature/one', [
+      { kind: 'report', text: 'Plan' },
+      { kind: 'end', reason: 'completed' },
+    ]);
+    const replied = await s.reply({ branch: 'feature/one', text: 'Go' });
+    expect(resume).toHaveBeenLastCalledWith(expect.objectContaining({ effort: 'low' }));
+    expect(replied.workspace.agent).toMatchObject({ effort: 'low' });
+  });
+
   it('keeps a thread the server made when the rest of the start failed: archived at Clean up (V27a)', async () => {
     const { repo } = fresh();
     const dir = tempDir();
@@ -2205,6 +2307,15 @@ describe('claudeCode', () => {
     });
     await claude.resume({ sessionId: 'session-1', cwd: '/w', text: 'OK' });
     await claude.remove('s1');
+    // A level (V30b): `--effort`, before the prompt; a resume keeps it without a flag.
+    await claude.start({
+      cwd: '/w',
+      name: 'feature/y',
+      prompt: 'Do it',
+      permissionMode: 'auto',
+      addDir: '/repo/cpr',
+      effort: 'high',
+    });
     expect(calls).toEqual([
       {
         args: [
@@ -2221,7 +2332,74 @@ describe('claudeCode', () => {
       },
       { args: ['--bg', '--resume', 'session-1', 'OK'], cwd: '/w' },
       { args: ['rm', 's1'], cwd: '/repo' },
+      {
+        args: [
+          '--bg',
+          '--name',
+          'feature/y',
+          '--add-dir',
+          '/repo/cpr',
+          '--permission-mode',
+          'auto',
+          '--effort',
+          'high',
+          'Do it',
+        ],
+        cwd: '/w',
+      },
     ]);
+  });
+
+  it('reads its effort levels from its --help once (V30b)', async () => {
+    const asked: string[][] = [];
+    const run: Run = (_command, args) => {
+      asked.push(args);
+      return Promise.resolve({
+        code: 0,
+        stdout:
+          '  --effort <level>   Effort level for the current session\n      (low, medium, high)\n',
+        stderr: '',
+      });
+    };
+    const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
+    expect(await claude.efforts()).toEqual(['low', 'medium', 'high']);
+    expect(await claude.efforts()).toEqual(['low', 'medium', 'high']);
+    expect(asked).toEqual([['--help']]);
+  });
+});
+
+describe('parseEffortLevels (V30b)', () => {
+  // Claude Code 2.1.306's `--help`, around `--effort`.
+  const help = (levels: string) => `  --disallowedTools, --disallowed-tools <tools...>
+      Comma or space-separated list of tool names to deny (e.g. "Bash(git *)
+      Edit")
+  --effort <level>                      Effort level for the current session
+                                        (${levels})
+  --environment <environment_id>        Create a new cloud session that runs on
+                                        the given self-hosted environment (low)
+`;
+
+  it('reads the levels Claude Code lists for --effort, in its order', () => {
+    expect(parseEffortLevels(help('low, medium, high, xhigh, max'))).toEqual([
+      'low',
+      'medium',
+      'high',
+      'xhigh',
+      'max',
+    ]);
+    expect(parseEffortLevels(help('low, high, ultra'))).toEqual(['low', 'high', 'ultra']);
+  });
+
+  it('reads none from a help without --effort, or a list it cannot read', () => {
+    expect(parseEffortLevels('  --model <model>  Model for the current session\n')).toBeNull();
+    expect(parseEffortLevels(help('Low, MEDIUM'))).toBeNull();
+    expect(parseEffortLevels(help(''))).toBeNull();
+    // Another option's parenthesis is not the effort's.
+    expect(
+      parseEffortLevels(
+        '  --effort <level>  Effort level\n  --environment <id>  Runs there (low, high)\n',
+      ),
+    ).toBeNull();
   });
 });
 

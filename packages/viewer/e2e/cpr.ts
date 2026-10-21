@@ -679,6 +679,9 @@ if (args[0] === '--bg' && args[1] === '--resume') {
   appendFileSync(join(dir, 'removed.txt'), args[1] + '\\n');
   save(list().filter((s) => s.id !== args[1]));
   process.stdout.write('removed ' + args[1] + '\\n');
+} else if (args[0] === '--help') {
+  // Its effort levels (V30b), worded and wrapped as Claude Code 2.1.306's help.
+  process.stdout.write('  --effort <level>                      Effort level for the current session\\n                                        (low, medium, high, xhigh, max)\\n');
 } else if (args[0] === 'auth') {
   process.stdout.write(JSON.stringify({ loggedIn: true, authMethod: 'claude.ai', subscriptionType: 'pro' }));
 } else if (args[0] === 'attach') {

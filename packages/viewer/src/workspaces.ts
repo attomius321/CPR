@@ -1,7 +1,8 @@
-// Workspaces started from the commits page (V18): pure helpers for the start dialog and the
+// Workspaces started from the commits page (V18): pure helpers for the start page and the
 // line the page shows after Start.
 import type {
   AgentKind,
+  AgentOption,
   BranchReviewList,
   BranchReviewSummary,
   WorkspaceAgentState,
@@ -60,12 +61,71 @@ export function terminalHint(agent: WorkspaceAgentState): string {
     : '← in an empty prompt lists all your agents';
 }
 
-/** The permission modes the dialog offers, as it names them. */
+/** The permission modes the start page offers, as it names them. */
 export const PERMISSION_LABELS: Record<PermissionMode, string> = {
   default: "Claude Code's default",
   acceptEdits: 'Accept edits',
   auto: 'Auto',
 };
+
+/**
+ * The start page's Effort choices for an agent (V30b): its own default first — named with its
+ * level when the agent says it (Codex), not otherwise (Claude Code, decision 210) — then the
+ * levels it lists, in its words. None when CPR could not read its levels.
+ */
+export function effortChoices(agent: AgentOption): { value: string; label: string }[] {
+  if (!agent.efforts) return [];
+  const own = agent.efforts.default ? ` (${agent.efforts.default})` : '';
+  return [
+    { value: '', label: `${AGENT_NAMES[agent.kind]}'s default${own}` },
+    ...agent.efforts.levels.map((level) => ({ value: level, label: level })),
+  ];
+}
+
+/** The level picked, kept when the agent picked now takes it too; else its default. */
+export function keptEffort(effort: string | undefined, agent: AgentOption): string | undefined {
+  return effort && agent.efforts?.levels.includes(effort) ? effort : undefined;
+}
+
+/** The run's choices on the start page (V30b): kept with the draft, so leaving loses none. */
+export interface RunChoices {
+  agent?: AgentKind;
+  effort?: string;
+  permissionMode?: PermissionMode;
+  planFirst?: boolean;
+}
+
+/**
+ * The run's choices a draft kept, those that still hold: an agent still installed, a level it
+ * lists, a permission mode CPR offers. A level is kept only with its agent: it is that agent's.
+ */
+export function readRun(value: unknown, agents: readonly AgentOption[]): RunChoices {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const v = value as Record<string, unknown>;
+  const named = agents.find((a) => a.kind === v.agent);
+  // None picked: the page's default agent, the first, is the level's.
+  const agent = named ?? (v.agent === undefined ? agents[0] : undefined);
+  const effort = agent && typeof v.effort === 'string' ? keptEffort(v.effort, agent) : undefined;
+  const mode = (Object.keys(PERMISSION_LABELS) as PermissionMode[]).find(
+    (m) => m === v.permissionMode,
+  );
+  return {
+    ...(named ? { agent: named.kind } : {}),
+    ...(effort ? { effort } : {}),
+    ...(mode ? { permissionMode: mode } : {}),
+    ...(typeof v.planFirst === 'boolean' ? { planFirst: v.planFirst } : {}),
+  };
+}
+
+/**
+ * How a workspace's agent was started (V30b), for its Brief tab: the agent and its level. Said as
+ * a start, since its session may have changed the level since (decision 211).
+ */
+export function startedWith(agent: WorkspaceAgentState): string | null {
+  if (!agent.kind) return null;
+  const level = agent.effort ? `${agent.effort} effort` : 'its default effort';
+  return `Started with ${AGENT_NAMES[agent.kind]} at ${level}.`;
+}
 
 /** Longest name proposed after the prefix. */
 const MAX_NAME = 40;

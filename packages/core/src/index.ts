@@ -170,9 +170,11 @@ export {
 } from './prompts.js';
 export {
   AGENT_KINDS,
+  EFFORT_LEVEL,
   PERMISSION_MODES,
   WORK_KINDS,
   type AgentKind,
+  type AgentEfforts,
   type AgentOption,
   type BriefPart,
   type BriefParts,

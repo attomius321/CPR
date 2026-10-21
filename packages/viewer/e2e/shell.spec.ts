@@ -31,13 +31,13 @@ const group = (page: Page, name: string) => sidenav(page).getByRole('region', { 
 const workspace = (page: Page, branch: string) =>
   page.getByRole('region', { name: `Workspace ${branch}` });
 const statusBar = (page: Page) => page.getByRole('contentinfo', { name: 'Status bar' });
-const dialog = (page: Page) => page.getByRole('dialog', { name: 'Start a workspace' });
+const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
 const start = async (page: Page, what: string) => {
-  await sidenav(page).getByRole('button', { name: 'Start a workspace' }).click();
-  await dialog(page).getByRole('textbox', { name: 'Title' }).fill(what);
-  await dialog(page).getByRole('textbox', { name: 'Goal' }).fill(what);
-  await dialog(page).getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
-  await expect(dialog(page)).toBeHidden();
+  await sidenav(page).getByRole('link', { name: 'Start a workspace' }).click();
+  await startPage(page).getByRole('textbox', { name: 'Title' }).fill(what);
+  await startPage(page).getByRole('textbox', { name: 'Goal' }).fill(what);
+  await startPage(page).getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
+  await expect(startPage(page)).toBeHidden();
 };
 /** Marks the document: a navigation that keeps the mark did not load the page again. */
 const mark = (page: Page) => page.evaluate(() => ((window as { cprMark?: number }).cprMark = 1));

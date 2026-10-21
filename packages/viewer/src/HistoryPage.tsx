@@ -553,10 +553,9 @@ function History({
   );
   const closeMenu = useCallback(() => setMenu(null), []);
 
-  // Starting a workspace (V18): the shell's dialog, which opens the new workspace (V29a).
+  // Starting a workspace (V18) at a row's commit: the shell's page (V30a).
   const shell = useShell();
   const openWorkspace = useCallback((sha?: string) => shell?.startWorkspace(sha), [shell]);
-  const startOpen = shell?.starting ?? false;
 
   // Each workspace's mark on its branch's badges, a link to it (V18b); its agent's commits listed
   // as they come, the cursor kept on its commit.
@@ -719,7 +718,7 @@ function History({
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.target instanceof HTMLInputElement) return;
       // The menu and the dialogs take their own keys.
-      if (menu || confirm || startOpen) return;
+      if (menu || confirm) return;
       if (event.key === 'j' || event.key === 'k') {
         const next = Math.max(0, Math.min(rows - 1, cursor + (event.key === 'j' ? 1 : -1)));
         setCursor(next);
@@ -766,7 +765,6 @@ function History({
     reveal,
     menu,
     confirm,
-    startOpen,
     openWorkspace,
     openMenu,
     comparing,

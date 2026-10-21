@@ -22,15 +22,16 @@ test.afterEach(() => {
 const git = (...args: string[]) =>
   execFileSync('git', args, { cwd: cpr.repo, encoding: 'utf8' }).trim();
 const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
-const dialog = (page: Page) => page.getByRole('dialog', { name: 'Start a workspace' });
-const title = (page: Page) => dialog(page).getByRole('textbox', { name: 'Title' });
-const goal = (page: Page) => dialog(page).getByRole('textbox', { name: 'Goal' });
+const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
+const title = (page: Page) => startPage(page).getByRole('textbox', { name: 'Title' });
+const goal = (page: Page) => startPage(page).getByRole('textbox', { name: 'Goal' });
 /** A Feature's title, and its goal (V24c). */
 const fillWork = async (page: Page, what: string, why = what) => {
   await title(page).fill(what);
   await goal(page).fill(why);
 };
-const branch = (page: Page) => dialog(page).getByRole('textbox', { name: 'Branch', exact: true });
+const branch = (page: Page) =>
+  startPage(page).getByRole('textbox', { name: 'Branch', exact: true });
 const row = (page: Page, subject: string) =>
   page.locator('.commit', {
     has: page.locator('.commit-subject').getByText(subject, { exact: true }),
@@ -42,20 +43,23 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
   cpr = await serveWorkspaces();
   const main = cpr.shas.at(-1);
   await page.goto(`${cpr.url}history`);
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
-  await expect(dialog(page)).toBeVisible();
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
+  await expect(startPage(page)).toBeVisible();
   await expect(title(page)).toBeFocused();
   await fillWork(page, 'Add a half function', 'Return a / 2, and test it.');
   // Named after the title; where it starts and where its worktree goes.
   await expect(branch(page)).toHaveValue('feature/add-a-half-function');
   const folder = `${cpr.repo}.worktrees/feature-add-a-half-function`;
-  await expect(dialog(page)).toContainText(`From main at ${short(main)}, in ${folder}`);
-  await expect(dialog(page)).toContainText('Claude Code · your Pro subscription');
-  await expect(dialog(page).getByLabel('Plan first and wait for my OK')).toBeChecked();
-  await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(startPage(page)).toContainText(`From main at ${short(main)}`);
+  await expect(startPage(page)).toContainText(`in ${folder}`);
+  // The agent, the only one installed, and whose account it runs on.
+  await expect(startPage(page).locator('.start-value')).toHaveText('Claude Code');
+  await expect(startPage(page)).toContainText('your Pro subscription');
+  await expect(startPage(page).getByLabel('Plan first and wait for my OK')).toBeChecked();
+  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
 
   // The new workspace opens (V29a), and the status bar says where the agent works.
-  await expect(dialog(page)).toBeHidden();
+  await expect(startPage(page)).toBeHidden();
   await expect(page.getByRole('status')).toHaveText(
     `Started feature/add-a-half-function: Claude Code is working in ${folder}.`,
   );
@@ -106,28 +110,28 @@ test('n starts one too; a name in use is refused before Start; Escape cancels', 
   await page.goto(`${cpr.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.keyboard.press('n');
-  await expect(dialog(page)).toBeVisible();
+  await expect(startPage(page)).toBeVisible();
   await fillWork(page, 'Something');
   await branch(page).fill('main');
-  await expect(dialog(page)).toContainText('a branch main exists');
-  await expect(dialog(page).getByRole('button', { name: 'Start', exact: true })).toBeDisabled();
+  await expect(startPage(page)).toContainText('a branch main exists');
+  await expect(startPage(page).getByRole('button', { name: 'Start', exact: true })).toBeDisabled();
   await branch(page).fill('feature/a..b');
-  await expect(dialog(page)).toContainText('not a valid branch name: feature/a..b');
+  await expect(startPage(page)).toContainText('not a valid branch name: feature/a..b');
   // A permission mode other than Claude Code's default goes to the agent.
   await branch(page).fill('feature/something');
-  await dialog(page).getByLabel('permission').selectOption({ label: 'Auto' });
+  await startPage(page).getByLabel('permission').selectOption({ label: 'Auto' });
   await title(page).press('Escape');
-  await expect(dialog(page)).toBeHidden();
+  await expect(startPage(page)).toBeHidden();
   expect(cpr.calls()).toEqual([]);
 
   // Escape keeps the draft (V24c), the branch typed included; Clear empties it.
   await page.keyboard.press('n');
   await expect(title(page)).toHaveValue('Something');
   await expect(branch(page)).toHaveValue('feature/something');
-  await dialog(page).getByRole('button', { name: 'Clear' }).click();
+  await startPage(page).getByRole('button', { name: 'Clear' }).click();
   await expect(title(page)).toHaveValue('');
   await fillWork(page, 'Something else');
-  await dialog(page).getByLabel('permission').selectOption({ label: 'Auto' });
+  await startPage(page).getByLabel('permission').selectOption({ label: 'Auto' });
   await title(page).press('Control+Enter');
   await expect(page.getByRole('status')).toContainText('Started feature/something-else');
   expect(cpr.calls()[0]?.args).toEqual(expect.arrayContaining(['--permission-mode', 'auto']));
@@ -139,9 +143,9 @@ test("Start a workspace here: the row's commit is where it starts", async ({ pag
   await page.goto(`${cpr.url}history`);
   await row(page, 'base').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Start a workspace here' }).click();
-  await expect(dialog(page)).toContainText(`From the commit ${short(base)}`);
+  await expect(startPage(page)).toContainText(`From the commit ${short(base)}`);
   await fillWork(page, 'Fix from the base');
-  await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Started feature/fix-from-the-base');
   expect(git('rev-parse', 'feature/fix-from-the-base')).toBe(base);
   await expect(panel(page, 'feature/fix-from-the-base')).toBeVisible();
@@ -154,9 +158,9 @@ test("an agent that does not start: the workspace stays, with Claude Code's word
   cpr.distrust();
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto(`${cpr.url}history`);
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
   await fillWork(page, 'Add a half function');
-  await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
   const folder = `${cpr.repo}.worktrees/feature-add-a-half-function`;
   const status = page.getByRole('status');
   await expect(status).toContainText(
@@ -178,10 +182,10 @@ test('without an agent: the branch and worktree are made, and the prompt is give
 }) => {
   cpr = await serveWorkspaces({ agent: false });
   await page.goto(`${cpr.url}history`);
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
-  await expect(dialog(page)).toContainText('No agent found');
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
+  await expect(startPage(page)).toContainText('No agent found');
   await fillWork(page, 'Add a half function');
-  await dialog(page).getByRole('button', { name: 'Make the branch' }).click();
+  await startPage(page).getByRole('button', { name: 'Make the branch' }).click();
   await expect(page.getByRole('status')).toContainText(
     'Made feature/add-a-half-function in ' +
       `${cpr.repo}.worktrees/feature-add-a-half-function. No agent was found to start`,
@@ -207,10 +211,10 @@ const more = async (page: Page, branch: string, name: string) => {
   await panel(page, branch).getByRole('menuitem', { name, exact: true }).click();
 };
 const startFrom = async (page: Page, what: string) => {
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
   await fillWork(page, what);
   await goal(page).press('Control+Enter');
-  await expect(dialog(page)).toBeHidden();
+  await expect(startPage(page)).toBeHidden();
 };
 
 test('the workspaces view: what each workspace needs, as its agent goes on', async ({ page }) => {
@@ -763,12 +767,13 @@ test("the records' folder before V25 left beside today's: Workspaces says so (V2
 
 // The structured brief (V24c): a kind of work, its title and parts, which the server makes the
 // agent's brief of; Done when with the check command guessed at the start commit; a draft.
-const kind = (page: Page, name: string) => dialog(page).getByRole('radio', { name });
-const part = (page: Page, name: string) => dialog(page).getByRole('textbox', { name });
+const kind = (page: Page, name: string) => startPage(page).getByRole('radio', { name });
+const part = (page: Page, name: string) => startPage(page).getByRole('textbox', { name });
 const doneWhen = (page: Page) => part(page, 'Done when optional');
 const startButton = (page: Page) =>
-  dialog(page).getByRole('button', { name: 'Start', exact: true });
-const info = (page: Page) => dialog(page).getByRole('button', { name: 'About the kinds of work' });
+  startPage(page).getByRole('button', { name: 'Start', exact: true });
+const info = (page: Page) =>
+  startPage(page).getByRole('button', { name: 'About the kinds of work' });
 
 test('each kind starts a workspace: its brief, its line, its branch, its tag (V24c)', async ({
   page,
@@ -783,7 +788,7 @@ test('each kind starts a workspace: its brief, its line, its branch, its tag (V2
   ] as const;
   let last = 'Feature';
   for (const [name, heading, prefix, line] of kinds) {
-    await page.getByRole('button', { name: 'Start a workspace' }).click();
+    await page.getByRole('link', { name: 'Start a workspace' }).click();
     // The kind picked last is picked again.
     await expect(kind(page, last)).toHaveAttribute('aria-checked', 'true');
     await kind(page, name).click();
@@ -822,11 +827,11 @@ test('Done when names the check guessed at the start commit; switching kinds kee
   git('add', 'package.json');
   git('commit', '-q', '-m', 'Add a check');
   await page.goto(`${cpr.url}history`);
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
   // A Feature has no Done when of its own; the check is offered as an example.
   await expect(doneWhen(page)).toHaveValue('');
   await expect(doneWhen(page)).toHaveAttribute('placeholder', /e\.g\. `npm run check` passes/);
-  await expect(dialog(page)).toContainText(
+  await expect(startPage(page)).toContainText(
     'Check: npm run check, from package.json (scripts.check)',
   );
 
@@ -841,7 +846,7 @@ test('Done when names the check guessed at the start commit; switching kinds kee
   await expect(startButton(page)).toBeEnabled();
 
   // More: closed until asked for, or until a field in it has text.
-  const more = dialog(page).getByRole('button', { name: /^More: How to reproduce/ });
+  const more = startPage(page).getByRole('button', { name: /^More: How to reproduce/ });
   await expect(more).toHaveAttribute('aria-expanded', 'false');
   await more.click();
   await part(page, 'Where to look optional').fill('src/table.ts');
@@ -885,26 +890,26 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
       title?: string;
     };
   await page.goto(`${cpr.url}history`);
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
   await kind(page, 'Fix').click();
   await title(page).fill('Dates sort as text');
   await part(page, 'What happens').fill('They sort 1, 10, 2.');
   await expect.poll(async () => (await draft()).title).toBe('Dates sort as text');
   await page.reload();
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
   await expect(kind(page, 'Fix')).toHaveAttribute('aria-checked', 'true');
   await expect(title(page)).toHaveValue('Dates sort as text');
   await expect(part(page, 'What happens')).toHaveValue('They sort 1, 10, 2.');
   await title(page).press('Control+Enter');
   await expect(page.getByRole('status')).toContainText('Started fix/dates-sort-as-text');
   await expect.poll(draft).toEqual({ kind: 'fix' });
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
   await expect(kind(page, 'Fix')).toHaveAttribute('aria-checked', 'true');
   await expect(title(page)).toHaveValue('');
   await expect(part(page, 'What happens')).toHaveValue('');
 });
 
-test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, branch (V24c)', async ({
+test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, branch, effort, permission (V24c, V30)', async ({
   page,
 }) => {
   cpr = await serveWorkspaces();
@@ -928,9 +933,11 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
     title(page),
     part(page, 'Question'),
     doneWhen(page),
-    dialog(page).getByRole('button', { name: /More:/ }),
+    startPage(page).getByRole('button', { name: /More:/ }),
     branch(page),
-    dialog(page).getByLabel('Plan first and wait for my OK'),
+    startPage(page).getByLabel('Effort'),
+    startPage(page).getByLabel('Permission'),
+    startPage(page).getByLabel('Plan first and wait for my OK'),
   ]) {
     await page.keyboard.press('Tab');
     await expect(next).toBeFocused();
@@ -966,7 +973,7 @@ test('a workspace started before V24 is named by its brief, with no kind', async
   await row.locator('.workspace-about').click();
   await panel(page, 'feature/old').getByRole('tab', { name: 'Brief' }).click();
   const brief = panel(page, 'feature/old').locator('.workspace-brief');
-  await expect(brief.locator('p')).toHaveText(['Export the totals', 'As CSV.']);
+  await expect(brief.locator('.markdown p')).toHaveText(['Export the totals', 'As CSV.']);
   await expect(brief.getByRole('heading')).toHaveCount(0);
 });
 
@@ -975,14 +982,14 @@ test('the Brief tab draws the brief as Markdown: its headings, lists and code', 
 }) => {
   cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
   await title(page).fill('Add clamp');
   await goal(page).fill(
     'Clamp a value:\n\n- below `min` to `min`\n- above `max` to `max`\n\n<b>no</b>',
   );
   await doneWhen(page).fill('`npm test` passes');
   await goal(page).press('Control+Enter');
-  await expect(dialog(page)).toBeHidden();
+  await expect(startPage(page)).toBeHidden();
 
   const here = panel(page, 'feature/add-clamp');
   await here.getByRole('tab', { name: 'Brief' }).click();
@@ -1002,9 +1009,9 @@ test('the kinds explained: a tooltip after the picker, on hover, focus or a tap 
 }) => {
   cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
   await kind(page, 'Fix').click();
-  const about = dialog(page).getByRole('tooltip');
+  const about = startPage(page).getByRole('tooltip');
   await expect(about).toBeHidden();
   await info(page).hover();
   await expect(about).toBeVisible();
@@ -1017,14 +1024,14 @@ test('the kinds explained: a tooltip after the picker, on hover, focus or a tap 
   await title(page).hover();
   await expect(about).toBeHidden();
 
-  // From the keyboard: shown while the button has the focus; Escape hides it, not the dialog.
+  // From the keyboard: shown while the button has the focus; Escape hides it, and the page stays.
   await kind(page, 'Fix').focus();
   await page.keyboard.press('Tab');
   await expect(info(page)).toBeFocused();
   await expect(about).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(about).toBeHidden();
-  await expect(dialog(page)).toBeVisible();
+  await expect(startPage(page)).toBeVisible();
   await page.keyboard.press('Tab');
   await expect(about).toBeHidden();
 

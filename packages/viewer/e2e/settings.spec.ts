@@ -69,7 +69,7 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   // Without the brief it cannot be saved.
   await text(page, 'Fix').fill('Fix it on {branch}.');
   await expect(editor(page).locator('.settings-size')).toHaveText(
-    "{brief} is missing: the agent would not be given the person's brief, as the start dialog made it.",
+    "{brief} is missing: the agent would not be given the person's brief, as the start page made it.",
   );
   await expect(save(page)).toBeDisabled();
   await text(page, 'Fix').fill(FIX);
@@ -89,12 +89,12 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
 
   // The next Fix workspace's agent is told the project's prompt.
   await page.goto(cpr.url);
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Start a workspace' });
-  await dialog.getByRole('radio', { name: 'Fix' }).click();
-  await dialog.getByRole('textbox', { name: 'Title' }).fill('Dates sort as text');
-  await dialog.getByRole('textbox', { name: 'What happens' }).fill('They sort 1, 10, 2.');
-  await dialog.getByRole('button', { name: 'Start', exact: true }).click();
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
+  const form = page.getByRole('region', { name: 'Start a workspace' });
+  await form.getByRole('radio', { name: 'Fix' }).click();
+  await form.getByRole('textbox', { name: 'Title' }).fill('Dates sort as text');
+  await form.getByRole('textbox', { name: 'What happens' }).fill('They sort 1, 10, 2.');
+  await form.getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Started fix/dates-sort-as-text');
   const told = cpr.calls().at(-1)?.args.at(-1) ?? '';
   expect(told).toMatch(/^Fix it on fix\/dates-sort-as-text\.\n\n# Fix: Dates sort as text\n/);

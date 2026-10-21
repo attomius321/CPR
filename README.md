@@ -281,7 +281,7 @@ command on the machine where `cpr` runs, so WSL, Remote SSH and containers work 
 | o | | Open in VS Code |
 | Esc | Leave compare mode | Close the detail panel |
 
-n, h, s, w and [ work on Settings and in a workspace too. In a comment box, the start dialog, a workspace's
+n, h, s, w and [ work on Settings and in a workspace too. In a comment box, Start a workspace, a workspace's
 reply box or a prompt in Settings, Ctrl+Enter (Cmd+Enter on macOS) saves, starts or sends.
 
 ## Reviewing a branch
@@ -342,8 +342,9 @@ each step.
 
 ## Workspaces and agents
 
-"Start a workspace" (n, or "Start a workspace here" in a commit's menu) asks what the work is, in
-a few parts:
+"Start a workspace" (n, the sidenav's +, or "Start a workspace here" in a commit's menu) is a page
+beside the sidenav, at `/start` (`/start?at=<commit>` from a commit): what the work is on the left,
+the branch, the agent and its options on the right. It asks what the work is in a few parts:
 
 | Kind | It asks for | Done when, filled in | Branch |
 |---|---|---|---|
@@ -360,7 +361,8 @@ with its package manager, a Makefile's `check` or `test` target, `scripts/test.s
 `go test ./...`, `pytest`), and says where it found it. The ⓘ after the kinds says what each is
 for. The kind is picked with `1`–`5` too, and
 the form is kept as a draft (in CPR's cache, so it outlives a new `cpr view`) until the workspace
-starts; Clear empties it. CPR then:
+starts, so leaving the page loses nothing; Clear empties it. Cancel or Esc goes back to the page
+you came from; Start (Ctrl+Enter) opens the new workspace in the page's place. CPR then:
 
 1. makes the agent's brief from the parts, under fixed headings (`# Fix: <title>`, `## What
    happens`, …, `## Done when` last), and adds one line for the kind: a fix is reproduced with a
@@ -377,10 +379,15 @@ starts; Clear empties it. CPR then:
    --bg`) or [Codex](#codex). With "Plan first and wait for my OK" (on by default), the agent
    stops after its plan.
 
-The dialog offers the agents installed, Claude Code first unless `agent.kind` in
+The page offers the agents installed, Claude Code first unless `agent.kind` in
 [`cpr/config.json`](#configuration) says `codex`. Claude Code runs on your own Claude Code login
-(the dialog says which: your subscription or an API key), in the permission mode you pick: Claude
-Code's default, Accept edits, or Auto. CPR never grants it more. If Claude Code does not start, the branch and worktree are kept and the page
+(the page says which: your subscription or an API key), in the permission mode you pick: Claude
+Code's default, Accept edits, or Auto. CPR never grants it more. **Effort** is the level the agent's
+session starts at: its own default, or one it lists (Claude Code's `--help`; for Codex, its
+configured model's levels, read from its app server). The session keeps it, Start again uses it
+again, and the Brief tab says it ("Started with Claude Code at high effort."); change it later
+in the agent's own terminal (Claude Code: `/effort`). The next workspace starts at the default
+again. If Claude Code does not start, the branch and worktree are kept and the page
 offers the prompt to copy. Claude Code has to trust the folder, so run `claude` there once and
 accept. It is found as `claude` on your `PATH`, or set `CPR_CLAUDE`.
 
@@ -445,7 +452,7 @@ the worktree has files not committed.
 
 ### Codex
 
-Pick **Codex** in the start dialog (it is found as `codex` on your `PATH`, or set `CPR_CODEX`).
+Pick **Codex** when you start a workspace (it is found as `codex` on your `PATH`, or set `CPR_CODEX`).
 It runs on your own Codex login (`codex login`: your ChatGPT account or an API key); if it is not
 logged in, the workspace is kept and says so. Its model and reasoning effort are your Codex
 configuration's (`~/.codex/config.toml`).
@@ -646,8 +653,8 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 | `workspaces.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, per kind of work; an object with some kinds changes only those. |
 | `workspaces.branchPrefix` | `feature/` | The Feature prefix, as before kinds of work; `branchPrefixes.feature` wins over it. |
 | `workspaces.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout (`{repo}` is its folder name). |
-| `agent.kind` | `claude` | The agent the start dialog offers first, when installed: `claude` or `codex`. |
-| `agent.permissionMode` | `default` | The permission mode the start dialog suggests for Claude Code: `default`, `acceptEdits` or `auto`. |
+| `agent.kind` | `claude` | The agent Start a workspace offers first, when installed: `claude` or `codex`. |
+| `agent.permissionMode` | `default` | The permission mode Start a workspace suggests for Claude Code: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's | The model Claude Code starts with (Codex's is its own configuration's). |
 | `merge.checks` | guessed | The check a merge runs before it lands ([Merging](#merging)): a command, or a list run in order through the shell in CPR's merge worktree. Add an install first when the check needs dependencies, e.g. `["pnpm install --frozen-lockfile", "pnpm check"]`. |
 | `merge.push` | `false` | Push the target branch after a merge lands. |

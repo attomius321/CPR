@@ -25,10 +25,8 @@ export interface Shell {
   navigate(route: Route, options?: { replace?: boolean }): void;
   /** Says something in the status bar; null clears it. */
   notify(notice: Notice | null): void;
-  /** Opens "Start a workspace": at a commit, or at the default branch's tip. */
+  /** Opens "Start a workspace" (`/start`, V30a): at a commit, or at the default branch's tip. */
   startWorkspace(sha?: string): void;
-  /** Whether a dialog of the shell's is open (the pages leave it its keys). */
-  starting: boolean;
   /**
    * What to ask before the main area shows something else (unsaved changes), or null: the page
    * is left in place, so the browser's own question on leaving does not come.
