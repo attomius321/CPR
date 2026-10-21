@@ -376,7 +376,8 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   const entry = page.getByRole('region', { name: 'Merge of agent' });
   await expect(entry.locator('.merge-files li')).toHaveText(['src/math.ts']);
   await expect(entry).toContainText('merge main into agent, resolve it there, and review it again');
-  await entry.getByRole('button', { name: 'Remove' }).click();
+  await entry.getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Remove' }).click();
   await expect(page.getByRole('region', { name: 'Merging' })).toHaveCount(0);
   await page.goto(`${symbiote.url}history`);
 

@@ -82,10 +82,32 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
   await expect(entry.locator('.merge-row-state')).toHaveText(
     /^Resolved 1 region \(sonnet, [\d.K]+ tokens\): review it$/,
   );
+  await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
   const region = entry.getByRole('list', { name: 'Its resolution' }).getByRole('listitem');
   await expect(region.locator('.merge-region-where')).toContainText('src/math.ts:');
   await expect(region.locator('.merge-region-where')).toContainText("kept main's");
-  await expect(region.locator('.merge-written pre')).toHaveText(DOUBLE);
+  // The resolution first, each line marked by its side; what it lost said in words, then shown.
+  await expect(region.locator('.merge-resolved .merge-line-text')).toHaveText([DOUBLE]);
+  await expect(region.locator('.merge-resolved .merge-line-from')).toHaveText(['main']);
+  await expect(region.locator('.merge-flag')).toHaveText(['Drops all 6 lines from agent']);
+  await expect(region.locator('.merge-dropped .merge-line-text')).toHaveText([
+    ...SQUARE.split('\n'),
+    ...CUBE.split('\n'),
+  ]);
+  // The raw conflict is folded: both sides added here, nothing before.
+  await expect(region.locator('.merge-region-sides')).toHaveCount(0);
+  await region.getByRole('button', { name: /Show the conflict/ }).click();
+  await expect(region.locator('.merge-conflict')).toContainText(
+    'both sides added here, nothing before',
+  );
+  await expect(region.locator('.merge-side figcaption')).toHaveText(['main', 'agent']);
+  await region.getByRole('button', { name: /Hide the conflict/ }).click();
+  // Retry and Remove wait in the ⋯ menu.
+  await expect(entry.getByRole('button', { name: 'Remove' })).toHaveCount(0);
+  await entry.getByRole('button', { name: 'More actions' }).click();
+  await expect(page.getByRole('menuitem')).toHaveText(['Retry', 'Remove']);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menuitem')).toHaveCount(0);
   expect(git('rev-parse', 'main')).toBe(main);
   // Its prompt: the region, numbered, and the sides' titles; not the other files.
   const [first] = symbiote.mergerPrompts();
@@ -98,9 +120,13 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
   await entry.getByRole('button', { name: 'Request changes' }).click();
   await entry.getByLabel('What to change in the resolution').fill("Keep the agent's functions.");
   await entry.getByRole('button', { name: 'Ask again' }).click();
-  await expect(region.locator('.merge-written pre')).toHaveText(
-    `${DOUBLE}\n\n${SQUARE}\n\n${CUBE}`,
+  await expect(region.locator('.merge-resolved .merge-line-text')).toHaveText(
+    `${DOUBLE}\n\n${SQUARE}\n\n${CUBE}`.split('\n'),
   );
+  await expect(region.locator('.merge-flag')).toHaveText([
+    'Keeps every line of both sides, nothing new',
+  ]);
+  await expect(region.locator('.merge-dropped')).toHaveCount(0);
   expect(symbiote.mergerPrompts()[1]).toContain(
     "Your earlier answer was reviewed: Keep the agent's functions.",
   );

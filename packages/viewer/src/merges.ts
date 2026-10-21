@@ -1,5 +1,5 @@
 // Symbiote's merger on the page (V26a): what a queued merge's row says and offers. Pure.
-import type { MergeEntry } from '@symbiote/core';
+import type { MergeEntry, MergeRegion } from '@symbiote/core';
 
 /** How a row is marked: waiting, the person's turn, done, or something went wrong. */
 export type MergeTone = 'wait' | 'you' | 'done' | 'bad';
@@ -93,6 +93,28 @@ export function mergeState(entry: MergeEntry): { text: string; tone: MergeTone }
   }
 }
 
+/** Where a merge is, in a word or two: the label beside its branches. */
+export function mergeLabel(entry: MergeEntry): string {
+  switch (entry.state) {
+    case 'queued':
+      return 'Queued';
+    case 'merging':
+      return 'Merging';
+    case 'resolving':
+      return 'Resolving';
+    case 'checking':
+      return 'Checking';
+    case 'needs-you':
+      return toReview(entry) ? 'Review resolution' : 'Needs you';
+    case 'ready':
+      return 'Ready to land';
+    case 'landed':
+      return 'Landed';
+    case 'failed':
+      return 'Failed';
+  }
+}
+
 export type MergeAction = 'land' | 'approve' | 'change' | 'retry' | 'remove';
 
 /** Whether a merge waits for the person's review of the merger agent's resolution (V26c). */
@@ -119,4 +141,148 @@ export function mergeActions(entry: MergeEntry): MergeAction[] {
 /** Whether the queue is to be read again soon: something in it runs or waits its turn. */
 export function mergeLive(merges: readonly MergeEntry[]): boolean {
   return merges.some((e) => ['queued', 'merging', 'resolving', 'checking'].includes(e.state));
+}
+
+/**
+ * Where a line of a resolution came from: the target's side (`ours`), the branch's (`theirs`),
+ * both alike, the ancestor only, or neither (`new`: the merger agent wrote it).
+ */
+export type LineFrom = 'ours' | 'theirs' | 'both' | 'base' | 'new' | 'blank';
+
+export interface ReviewLine {
+  text: string;
+  from: LineFrom;
+  /** The resolution has this line more times than any side does. */
+  twice?: true;
+}
+
+/** A side's own lines (those the ancestor lacks), and how many the resolution kept. */
+export interface SideKept {
+  kept: number;
+  of: number;
+}
+
+/** A region's resolution read against its sides, for the reviewer's question: what was lost? */
+export interface RegionReview {
+  lines: ReviewLine[];
+  kept: { ours: SideKept; theirs: SideKept };
+  /** Each side's own lines the resolution does not have. */
+  dropped: { ours: string[]; theirs: string[] };
+  /** Lines kept more times than a side has them. */
+  twice: number;
+  /** Lines in no side and not in the ancestor. */
+  written: number;
+}
+
+/** Lines compare without their indentation; blank ones are not counted. */
+const norm = (line: string) => line.trim();
+
+function counts(lines: readonly string[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const line of lines) {
+    const key = norm(line);
+    if (key !== '') map.set(key, (map.get(key) ?? 0) + 1);
+  }
+  return map;
+}
+
+/** A side's lines the ancestor does not have, each ancestor line taken away once. */
+function own(side: readonly string[], base: readonly string[]): string[] {
+  const left = counts(base);
+  return side.filter((line) => {
+    const key = norm(line);
+    if (key === '') return false;
+    const n = left.get(key) ?? 0;
+    if (n === 0) return true;
+    left.set(key, n - 1);
+    return false;
+  });
+}
+
+/** A side's own lines the resolution has, each resolution line used once per side. */
+function keptOf(lines: readonly string[], resolved: Map<string, number>) {
+  const left = new Map(resolved);
+  const dropped: string[] = [];
+  for (const line of lines) {
+    const key = norm(line);
+    const n = left.get(key) ?? 0;
+    if (n > 0) left.set(key, n - 1);
+    else dropped.push(line);
+  }
+  return { kept: { kept: lines.length - dropped.length, of: lines.length }, dropped };
+}
+
+/**
+ * Reads a region's resolution against its sides: each line marked by where it came from, each
+ * side's own lines kept or dropped, lines kept twice and lines the agent wrote. Pure.
+ */
+export function reviewRegion(region: MergeRegion): RegionReview {
+  const text = region.text.split('\n');
+  const base = region.base ?? [];
+  const ours = counts(region.ours);
+  const theirs = counts(region.theirs);
+  const before = counts(base);
+  const resolved = counts(text);
+  const allowed = (key: string) =>
+    Math.max(ours.get(key) ?? 0, theirs.get(key) ?? 0) || (before.get(key) ?? 0);
+  const lines: ReviewLine[] = text.map((line) => {
+    const key = norm(line);
+    if (key === '') return { text: line, from: 'blank' };
+    const o = ours.get(key) ?? 0;
+    const t = theirs.get(key) ?? 0;
+    const b = before.get(key) ?? 0;
+    const from: LineFrom =
+      o > 0 && t > 0 ? 'both' : o > 0 ? 'ours' : t > 0 ? 'theirs' : b > 0 ? 'base' : 'new';
+    return allowed(key) > 0 && (resolved.get(key) ?? 0) > allowed(key)
+      ? { text: line, from, twice: true }
+      : { text: line, from };
+  });
+  let twice = 0;
+  for (const [key, n] of resolved) {
+    if (allowed(key) > 0 && n > allowed(key)) twice += n - allowed(key);
+  }
+  const o = keptOf(own(region.ours, base), resolved);
+  const t = keptOf(own(region.theirs, base), resolved);
+  return {
+    lines,
+    kept: { ours: o.kept, theirs: t.kept },
+    dropped: { ours: o.dropped, theirs: t.dropped },
+    twice,
+    written: lines.filter((line) => line.from === 'new').length,
+  };
+}
+
+export interface RegionFlag {
+  tone: 'ok' | 'bad' | 'new';
+  text: string;
+}
+
+/** What a region's review says in words: what was dropped or kept twice, what was written. */
+export function regionFlags(review: RegionReview, into: string, branch: string): RegionFlag[] {
+  const drops = (side: SideKept, name: string): RegionFlag[] => {
+    const n = side.of - side.kept;
+    if (n === 0) return [];
+    return [
+      {
+        tone: 'bad',
+        text:
+          n === side.of
+            ? `Drops ${n === 1 ? 'the line' : `all ${n} lines`} from ${name}`
+            : `Drops ${n} of ${side.of} lines from ${name}`,
+      },
+    ];
+  };
+  const flags: RegionFlag[] = [
+    ...drops(review.kept.ours, into),
+    ...drops(review.kept.theirs, branch),
+    ...(review.twice > 0
+      ? [{ tone: 'bad' as const, text: `${plural(review.twice, 'line')} kept twice` }]
+      : []),
+    ...(review.written > 0
+      ? [{ tone: 'new' as const, text: `${plural(review.written, 'line')} written by the agent` }]
+      : []),
+  ];
+  return flags.length > 0
+    ? flags
+    : [{ tone: 'ok', text: 'Keeps every line of both sides, nothing new' }];
 }

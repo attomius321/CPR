@@ -3807,19 +3807,10 @@ button.workspace-about {
   list-style: square;
 }
 
-/* The merge queue (V26a): one row per merge, its tone as the dot before it (V31). */
+/* The merge queue (V26a): one row per merge, its tone on the label beside its branches. */
 .merge-row {
   padding: 8px 14px;
   border-top: 1px solid var(--line);
-}
-
-.merge-row-head::before {
-  content: '';
-  flex: none;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--merge-tone, var(--faint));
 }
 
 .merge-row:first-child {
@@ -3856,7 +3847,56 @@ button.workspace-about {
 
 .merge-row-state {
   min-width: 0;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
   overflow-wrap: anywhere;
+}
+
+/* Where a merge is, in a tinted label with its tone's dot. */
+.merge-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--merge-tone, var(--faint)) 12%, transparent);
+  color: var(--merge-tone, var(--muted));
+  font-size: var(--size-caption);
+  font-weight: 500;
+}
+
+.merge-label::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+/* A merge's sides keep a colour on its page: the target blue, the branch purple. */
+.merge-ref-ours,
+.merge-row .from-ours {
+  --merge-side: var(--info);
+}
+
+.merge-ref-theirs,
+.merge-row .from-theirs {
+  --merge-side: var(--lane-1);
+}
+
+.merge-row .from-both,
+.merge-row .from-base {
+  --merge-side: var(--muted);
+}
+
+.merge-row .from-new {
+  --merge-side: var(--modified);
+}
+
+.merge-ref-ours,
+.merge-ref-theirs {
+  color: var(--merge-side);
 }
 
 .merge-row-actions {
@@ -3891,51 +3931,215 @@ p.merge-control {
   background: color-mix(in srgb, var(--merge-tone, var(--muted)) 10%, transparent);
 }
 
-/* A resolution to review (V26c): each region's sides, then what was written in its place. */
+/*
+ * A resolution to review (V26c; remade from the Oct 20 mockup): what it lost or added in words,
+ * the resolution with each line's side in its gutter, the dropped lines, the raw conflict folded.
+ */
 .merge-regions {
-  margin: 8px 0 0;
+  margin: 12px 0 0;
   padding: 0;
   list-style: none;
 }
 
-.merge-region + .merge-region {
-  margin-top: 10px;
+.merge-region {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
 }
 
 .merge-region-where {
-  margin: 0 0 4px;
+  margin: 0 0 8px;
+}
+
+.merge-file {
+  font-family: var(--mono);
+  font-size: var(--size-small);
+  font-weight: 600;
+}
+
+.merge-note {
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-style: italic;
+}
+
+.merge-verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.merge-flag {
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--merge-flag) 30%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--merge-flag) 12%, transparent);
+  color: var(--merge-flag);
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.merge-flag-ok {
+  --merge-flag: var(--added);
+}
+
+.merge-flag-bad {
+  --merge-flag: var(--removed);
+}
+
+.merge-flag-new {
+  --merge-flag: var(--modified);
+}
+
+.merge-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.merge-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.merge-count::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--merge-side);
+}
+
+.merge-count b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.merge-code {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: var(--size-small);
+}
+
+.merge-line {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
+  min-height: 20px;
+  background: color-mix(in srgb, var(--merge-side, transparent) 10%, transparent);
+}
+
+.merge-line.from-blank {
+  background: none;
+}
+
+.merge-line-from {
+  overflow: hidden;
+  padding: 1px 8px;
+  color: var(--merge-side, var(--muted));
+  font-size: var(--size-caption);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.merge-line-text {
+  padding: 1px 8px;
+  font-family: var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.merge-twice {
+  outline: 1px solid var(--removed);
+  outline-offset: -1px;
+}
+
+.merge-line-tag {
+  padding: 1px 8px;
+  color: var(--removed);
+  font-size: var(--size-caption);
+  font-weight: 600;
+}
+
+.merge-dropped .merge-line {
+  --merge-side: var(--removed);
+}
+
+.merge-dropped .merge-line-text {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--removed) 60%, transparent);
+}
+
+.merge-sub {
+  margin: 10px 0 4px;
+  color: var(--removed);
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.merge-more {
+  margin: 0;
+  padding: 2px 8px 2px 96px;
+  color: var(--muted);
+}
+
+.merge-conflict {
+  margin: 8px 0 0;
 }
 
 .merge-region-sides {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .merge-side {
   min-width: 0;
   margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.merge-side figcaption {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--merge-side) 10%, transparent);
+  color: var(--merge-side);
+  font-weight: 600;
 }
 
 .merge-side pre {
   max-height: 200px;
-  margin: 2px 0 0;
-  padding: 4px 6px;
+  margin: 0;
+  padding: 6px 8px;
   overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 4px;
   background: var(--bg);
   font-size: var(--size-small);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.merge-written {
-  margin-top: 6px;
-}
+@media (max-width: 640px) {
+  .merge-line {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+  }
 
-.merge-written pre {
-  border-color: var(--warning);
+  .merge-more {
+    padding-left: 72px;
+  }
+
+  .merge-counts {
+    margin-left: 0;
+  }
 }
 
 .merge-change {
