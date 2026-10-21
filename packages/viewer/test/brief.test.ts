@@ -1,4 +1,4 @@
-import type { CheckGuess, WorkKind, WorkKindSpec } from '@cpr/core';
+import type { CheckGuess, WorkKind, WorkKindSpec } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   checkWords,
@@ -14,7 +14,7 @@ import {
   type BriefForm,
 } from '../src/brief.js';
 
-/** The kinds as `cpr view` gives them (`/api/workspaces/options`). */
+/** The kinds as `symbiote view` gives them (`/api/workspaces/options`). */
 const KINDS: WorkKindSpec[] = [
   {
     kind: 'feature',

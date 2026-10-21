@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { MergeEntry, MergeList } from '@cpr/core';
+import type { MergeEntry, MergeList } from '@symbiote/core';
 import { postJson } from './http.js';
 import { mergeActions, mergeState, toReview, type MergeAction } from './merges.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
@@ -19,9 +19,9 @@ export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | 
 }
 
 /**
- * A merge in CPR's queue (V26a), in the shell's main area (V29a; a row of the Workspaces page's
- * Merging section before): its branch, target and state, the merger agent's resolution to review
- * region by region, the end of a failed check's output, and Land, Approve, Retry or Remove.
+ * A merge in Symbiote's queue (V26a), in the shell's main area (V29a; a row of the Workspaces
+ * page's Merging section before): its branch, target and state, the merger agent's resolution to
+ * review region by region, the end of a failed check's output, and Land, Approve, Retry or Remove.
  */
 export function MergeView({ branch }: { branch: string }) {
   const { merges } = useWorkspaces();
@@ -30,7 +30,7 @@ export function MergeView({ branch }: { branch: string }) {
   if (!entry) {
     return (
       <div className="main-empty">
-        <p>No merge of {branch} in CPR&apos;s queue.</p>
+        <p>No merge of {branch} in Symbiote&apos;s queue.</p>
       </div>
     );
   }
@@ -38,7 +38,7 @@ export function MergeView({ branch }: { branch: string }) {
     <div className="merge-view">
       {merges.elsewhere && (
         <p className="hint">
-          Another CPR in this repository merges these: it shows them as it goes.
+          Another Symbiote in this repository merges these: it shows them as it goes.
         </p>
       )}
       <MergeEntryView key={entry.id} entry={entry} />

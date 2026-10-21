@@ -1,4 +1,4 @@
-import { CprError } from '@cpr/core';
+import { SymbioteError } from '@symbiote/core';
 
 export interface RemoteLocation {
   host: string;
@@ -22,14 +22,14 @@ export function parseRemote(url: string): RemoteLocation {
     host = scp[1];
     path = scp[2];
   } else {
-    throw new CprError(`cannot tell the forge project from remote URL '${url}'`);
+    throw new SymbioteError(`cannot tell the forge project from remote URL '${url}'`);
   }
   path = path
     .replace(/^\/+/, '')
     .replace(/\/+$/, '')
     .replace(/\.git$/, '');
   if (!host || !path.includes('/')) {
-    throw new CprError(`cannot tell the forge project from remote URL '${url}'`);
+    throw new SymbioteError(`cannot tell the forge project from remote URL '${url}'`);
   }
   return { host: host.toLowerCase(), path };
 }

@@ -1,6 +1,6 @@
 // Subscription usage in the status bar (V29c), kept pure: a window's label from its length, its
-// tone, and what a hover says. The numbers come from `cpr view` (`GET /api/usage`).
-import type { UsageSubscription, UsageWindow } from '@cpr/core';
+// tone, and what a hover says. The numbers come from `symbiote view` (`GET /api/usage`).
+import type { UsageSubscription, UsageWindow } from '@symbiote/core';
 import { relativeDate } from './commits.js';
 
 /** Vendors by name, not by logo (decision 181). */

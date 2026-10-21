@@ -1,9 +1,10 @@
-// Screenshots of a running `cpr view`'s pages, dark and light, for a restyle's before and after.
-// Usage:
+// Screenshots of a running `symbiote view`'s pages, dark and light, for a restyle's before and
+// after. Usage:
 //   node packages/cli/dist/bin.js view [<base> [head]] --no-open --port 47311 &
-//   node .claude/skills/cpr-style/shots.mjs http://127.0.0.1:47311 <out dir> /history /settings …
+//   node .claude/skills/symbiote-style/shots.mjs http://127.0.0.1:47311 <out dir> /history /settings …
 // Options: --width 1440 (repeatable) --height 900 --theme dark|light (repeatable; default both).
-// Writes <out>/<page>-<width>-<theme>.png; the theme is the one Settings keeps (cpr.viewer.theme).
+// Writes <out>/<page>-<width>-<theme>.png; the theme is the one Settings keeps
+// (symbiote.viewer.theme).
 import { existsSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
@@ -36,7 +37,7 @@ for (const theme of themes.length ? themes : ['dark', 'light']) {
     // These functions run in the page: its globals are reached through globalThis.
     await context.addInitScript((value) => {
       try {
-        globalThis.localStorage.setItem('cpr.viewer.theme', value);
+        globalThis.localStorage.setItem('symbiote.viewer.theme', value);
       } catch {
         // Storage blocked: the page stays dark.
       }

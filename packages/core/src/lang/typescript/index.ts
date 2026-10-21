@@ -27,7 +27,7 @@ export function createTypescriptAdapter({
     const apiVersion: number = plugin.apiVersion;
     if (apiVersion !== PLUGIN_API_VERSION) {
       throw new Error(
-        `plugin ${plugin.name} targets plugin API ${apiVersion}; this CPR implements ${PLUGIN_API_VERSION}`,
+        `plugin ${plugin.name} targets plugin API ${apiVersion}; this Symbiote implements ${PLUGIN_API_VERSION}`,
       );
     }
   }
@@ -130,7 +130,8 @@ export function createTypescriptAdapter({
 
 export const typescriptAdapter: LanguageAdapter<TsRevision> = createTypescriptAdapter();
 
-/** A plugin's repo-relative folder, normalized (`./src/` → `src`, `.` → `''`); undefined outside. */
+/** A plugin's repo-relative folder, normalized (`./src/` → `src`, `.` → `''`); undefined outside.
+ * */
 function inRepo(folder: string): string | undefined {
   const normalized = posix.normalize(folder.replace(/\\/g, '/')).replace(/\/$/, '');
   if (normalized === '..' || normalized.startsWith('../') || posix.isAbsolute(normalized)) {

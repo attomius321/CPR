@@ -7,7 +7,7 @@ import type {
   Graph,
   Severity,
   SymbolChange,
-} from '@cpr/core';
+} from '@symbiote/core';
 
 const LETTER: Record<FileChangeStatus, string> = {
   added: 'A',

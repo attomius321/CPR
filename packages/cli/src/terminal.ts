@@ -81,7 +81,7 @@ export interface Terminals {
   resize(id: string, cols: number, rows: number): boolean;
   /** Hangs it up: the program it runs ends; Claude Code's session goes on. */
   close(id: string): boolean;
-  /** Hangs every terminal up and ends its readers (`cpr view` stops). */
+  /** Hangs every terminal up and ends its readers (`symbiote view` stops). */
   closeAll(): void;
 }
 

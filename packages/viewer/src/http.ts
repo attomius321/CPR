@@ -1,6 +1,6 @@
-// The pages' calls to `cpr view` (V18): reads, and writes with the header the server asks for.
+// The pages' calls to `symbiote view` (V18): reads, and writes with the header the server asks for.
 
-const WRITE_HEADERS = { 'content-type': 'application/json', 'x-cpr': '1' };
+const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
 
 /** A write's answer, or the server's words (`{ error }` or text) as an error. */
 export async function postJson<T>(path: string, body: unknown): Promise<T> {

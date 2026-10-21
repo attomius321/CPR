@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { BranchReviewList, MergeList, WorkspaceList } from '@cpr/core';
+import type { BranchReviewList, MergeList, WorkspaceList } from '@symbiote/core';
 import { mergeLive } from './merges.js';
 
 /**
@@ -9,7 +9,7 @@ import { mergeLive } from './merges.js';
 export interface WorkspacesState {
   list: WorkspaceList | null;
   reviews: BranchReviewList | null;
-  /** Null where CPR does not merge (no repository). */
+  /** Null where Symbiote does not merge (no repository). */
   merges: MergeList | null;
 }
 

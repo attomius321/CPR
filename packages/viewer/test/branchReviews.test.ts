@@ -1,4 +1,4 @@
-import type { BranchReviewList, Commit, CommitRef, RefList } from '@cpr/core';
+import type { BranchReviewList, Commit, CommitRef, RefList } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { reviewChoices, reviewMarks } from '../src/branchReviews.js';
 import { rowBadges } from '../src/commits.js';

@@ -12,7 +12,7 @@ import { desktop, paintTitleBar } from './desktop.js';
 import {
   BackIcon,
   CloseIcon,
-  CprIcon,
+  SymbioteIcon,
   ForwardIcon,
   MaximizeIcon,
   MinimizeIcon,
@@ -32,7 +32,7 @@ const SlotsContext = createContext<TitleBarSlots | null>(null);
 export const TitleBarSlotsProvider = SlotsContext.Provider;
 
 /**
- * Shows `children` in the title bar of CPR's window (N1c), where the page's tabs are; in a
+ * Shows `children` in the title bar of Symbiote's window (N1c), where the page's tabs are; in a
  * browser, where they are.
  */
 export function InTitleBar({
@@ -86,7 +86,8 @@ function useMaximized(): boolean {
   );
 }
 
-/** The window's buttons where CPR draws its frame (N1d, Linux): elsewhere they are the system's. */
+/** The window's buttons where Symbiote draws its frame (N1d, Linux): elsewhere they are the
+ * system's. */
 export function WindowButtons() {
   const maximized = useMaximized();
   const ask = desktop?.window;
@@ -125,7 +126,7 @@ export function WindowButtons() {
 }
 
 /**
- * CPR's window's title bar (N1c): over the sidenav, CPR and the repository, the
+ * Symbiote's window's title bar (N1c): over the sidenav, Symbiote and the repository, the
  * sidenav's fold and back and forward; then the page's tabs (or its name); its panel's toggle at
  * the end, before the system's buttons. Its free space moves the window.
  */
@@ -151,10 +152,14 @@ export function TitleBar({
   return (
     <header className="titlebar">
       <div className="titlebar-side">
-        <a className="titlebar-brand" href={HISTORY_PAGE} title={repo ? `CPR · ${repo}` : 'CPR'}>
-          <CprIcon />
+        <a
+          className="titlebar-brand"
+          href={HISTORY_PAGE}
+          title={repo ? `Symbiote · ${repo}` : 'Symbiote'}
+        >
+          <SymbioteIcon />
           <span className="titlebar-name">
-            CPR{repo && <span className="titlebar-repo"> · {repo}</span>}
+            Symbiote{repo && <span className="titlebar-repo"> · {repo}</span>}
           </span>
         </a>
         <button

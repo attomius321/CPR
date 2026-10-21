@@ -1,4 +1,4 @@
-// Runs CPR on recent commits of a repository and prints one line per commit.
+// Runs Symbiote on recent commits of a repository and prints one line per commit.
 // Usage: node scripts/dogfood.mjs <repo> [count=10] [--json]
 // Build first: pnpm build.
 import { execFileSync } from 'node:child_process';

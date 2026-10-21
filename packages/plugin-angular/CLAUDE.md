@@ -1,4 +1,4 @@
-# @cpr/plugin-angular
+# @symbiote/plugin-angular
 
 `--plugin angular`: templates become symbols that use their component's members; decorator
 configuration is not contract; lifecycle hooks and host listeners are not orphans; templates see

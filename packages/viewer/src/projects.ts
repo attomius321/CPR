@@ -1,4 +1,4 @@
-import type { Project } from '@cpr/core';
+import type { Project } from '@symbiote/core';
 
 /**
  * The project holding a repo-relative path: the one with the longest folder that holds it, as the

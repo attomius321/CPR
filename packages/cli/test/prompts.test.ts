@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { openRepo, PROMPT_KEYS, type Verdict, type WorkKind } from '@cpr/core';
+import { openRepo, PROMPT_KEYS, type Verdict, type WorkKind } from '@symbiote/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createRepo, tempDir } from '../../core/test/helpers/git-repo.js';
 import { MERGER_INSTRUCTIONS, mergerInstructions } from '../src/merge-agent.js';
@@ -36,7 +36,7 @@ const BEFORE = JSON.parse(
   }[];
 };
 
-/** This repository's `cpr/config.json` as committed (`eadc0ce`): Prettier formats it. */
+/** This repository's `symbiote/config.json` as committed (`eadc0ce`): Prettier formats it. */
 const CONFIG =
   '{\n  "merge": {\n' +
   '    "checks": ["pnpm install --frozen-lockfile", "pnpm check", "pnpm build", "pnpm test:e2e"],\n' +
@@ -56,22 +56,22 @@ function folder(files: Record<string, string> = {}): string {
   }
   return dir;
 }
-/** A folder whose `cpr/config.json` (or `path`) is `config`. */
-const withConfig = (config: unknown, path = 'cpr/config.json') =>
+/** A folder whose `symbiote/config.json` (or `path`) is `config`. */
+const withConfig = (config: unknown, path = 'symbiote/config.json') =>
   folder({ [path]: JSON.stringify(config) });
-const read = (dir: string, path = 'cpr/config.json') => readFileSync(join(dir, path), 'utf8');
+const read = (dir: string, path = 'symbiote/config.json') => readFileSync(join(dir, path), 'utf8');
 
 describe('with no prompts set (V28)', () => {
   it('gives every start prompt main gave, but names a target when there is no default branch', () => {
     const text = readPrompts(folder()).text;
     expect(BEFORE.start).toHaveLength(48);
     for (const { workspace, where, prompt } of BEFORE.start) {
-      // Decision 171: today's sentence stopped at "in CPR." when no default branch was known.
+      // Decision 171: today's sentence stopped at "in Symbiote." when no default branch was known.
       const expected =
         where.into === null
           ? prompt.replace(
-              'the person reviews the branch in CPR.\n',
-              'the person reviews the branch in CPR, and an approved commit is merged into the ' +
+              'the person reviews the branch in Symbiote.\n',
+              'the person reviews the branch in Symbiote, and an approved commit is merged into the ' +
                 'branch the person picks.\n',
             )
           : prompt;
@@ -80,7 +80,7 @@ describe('with no prompts set (V28)', () => {
     }
   });
 
-  it("gives the merger's instructions, cpr/AGENTS.md and every verdict's text main gave", () => {
+  it("gives the merger's instructions, symbiote/AGENTS.md and every verdict's text main gave", () => {
     const text = readPrompts(folder()).text;
     expect(MERGER_INSTRUCTIONS).toBe(BEFORE.merger);
     expect(mergerInstructions(text.merger)).toBe(BEFORE.merger);
@@ -93,7 +93,7 @@ describe('with no prompts set (V28)', () => {
     }
   });
 
-  it("keeps the merger's answer format CPR's, after its instructions (decision 169)", () => {
+  it("keeps the merger's answer format Symbiote's, after its instructions (decision 169)", () => {
     expect(MERGER_ANSWER).toMatch(/^Answer with one JSON object and nothing else:\n/);
     expect(DEFAULT_PROMPTS.merger).not.toContain('Answer with one JSON object');
     expect(mergerInstructions('Keep both.')).toBe(`Keep both.\n\n${MERGER_ANSWER}`);
@@ -142,13 +142,13 @@ describe('readPrompts', () => {
       kind: 'spike',
       planFirst: false,
     } as WorkspaceFile;
-    const where = { record: 'r', reviews: 'v', agents: '/repo/cpr/AGENTS.md', into: 'main' };
+    const where = { record: 'r', reviews: 'v', agents: '/repo/symbiote/AGENTS.md', into: 'main' };
     expect(workspacePrompt(workspace, where, text)).toBe(
       'Spike on spike/one.\n\nWhy is it slow?\n\nCommit it under spikes/.\n',
     );
   });
 
-  it("uses CPR's text, saying why, for a value it cannot use (decision 170)", () => {
+  it("uses Symbiote's text, saying why, for a value it cannot use (decision 170)", () => {
     const dir = withConfig({
       prompts: {
         start: { fix: 'Fix {branch}; no brief.', chore: 42, refactor: 'x'.repeat(8_001) },
@@ -172,21 +172,24 @@ describe('readPrompts', () => {
     });
   });
 
-  it("reads cpr/config.json before cpr.config.json, and CPR's texts from a file that is not JSON", () => {
-    const dir = withConfig({ prompts: { reviews: 'Old place.' } }, 'cpr.config.json');
-    expect(readPrompts(dir)).toMatchObject({ file: 'cpr.config.json' });
+  it("reads symbiote/config.json before symbiote.config.json, and Symbiote's texts from a file that is not JSON", () => {
+    const dir = withConfig({ prompts: { reviews: 'Old place.' } }, 'symbiote.config.json');
+    expect(readPrompts(dir)).toMatchObject({ file: 'symbiote.config.json' });
     expect(readPrompts(dir).text.reviews).toBe('Old place.');
-    mkdirSync(join(dir, 'cpr'));
-    writeFileSync(join(dir, 'cpr', 'config.json'), '{ "prompts": { "reviews": "New place." } }');
-    expect(readPrompts(dir)).toMatchObject({ file: 'cpr/config.json' });
+    mkdirSync(join(dir, 'symbiote'));
+    writeFileSync(
+      join(dir, 'symbiote', 'config.json'),
+      '{ "prompts": { "reviews": "New place." } }',
+    );
+    expect(readPrompts(dir)).toMatchObject({ file: 'symbiote/config.json' });
     expect(readPrompts(dir).text.reviews).toBe('New place.');
 
-    const broken = folder({ 'cpr/config.json': '{ "prompts": ' });
+    const broken = folder({ 'symbiote/config.json': '{ "prompts": ' });
     const prompts = readPrompts(broken);
     expect(prompts.text).toEqual(DEFAULT_PROMPTS);
     expect(prompts.warning).toContain('not JSON');
 
-    expect(readPrompts(folder())).toMatchObject({ file: 'cpr/config.json', source: null });
+    expect(readPrompts(folder())).toMatchObject({ file: 'symbiote/config.json', source: null });
   });
 });
 
@@ -194,7 +197,7 @@ describe('writePrompt', () => {
   const inRepo = () => {
     const repo = createRepo();
     dirs.push(repo.root);
-    repo.write({ 'cpr/config.json': CONFIG });
+    repo.write({ 'symbiote/config.json': CONFIG });
     return repo.root;
   };
   const version = (root: string) => readPrompts(root).version;
@@ -221,7 +224,7 @@ describe('writePrompt', () => {
     });
 
     await writePrompt(root, { key: 'start.spike', text: null, version: version(root) });
-    // CPR's own text is no key either.
+    // Symbiote's own text is no key either.
     await writePrompt(root, {
       key: 'plan.direct',
       text: `${DEFAULT_PROMPTS['plan.direct']}\n`,
@@ -230,7 +233,7 @@ describe('writePrompt', () => {
     expect(read(root)).toBe(CONFIG);
   });
 
-  it('creates cpr/config.json when the project has no config', async () => {
+  it('creates symbiote/config.json when the project has no config', async () => {
     const root = folder();
     await writePrompt(root, { key: 'merger', text: 'Keep both.', version: version(root) });
     expect(JSON.parse(read(root))).toEqual({ prompts: { merger: 'Keep both.' } });
@@ -267,16 +270,16 @@ describe('writePrompt', () => {
   });
 
   it('refuses to write into a file that is not JSON', async () => {
-    const root = folder({ 'cpr.config.json': '{ "prompts": ' });
+    const root = folder({ 'symbiote.config.json': '{ "prompts": ' });
     await expect(
       writePrompt(root, { key: 'merger', text: 'Keep both.', version: version(root) }),
     ).rejects.toMatchObject({ status: 409 });
-    expect(read(root, 'cpr.config.json')).toBe('{ "prompts": ');
+    expect(read(root, 'symbiote.config.json')).toBe('{ "prompts": ');
   });
 });
 
 describe('promptSettingsService', () => {
-  it("lists every prompt with CPR's text and the project's, and the file's state in git", async () => {
+  it("lists every prompt with Symbiote's text and the project's, and the file's state in git", async () => {
     const repo = createRepo();
     dirs.push(repo.root);
     repo.write({ 'src/a.ts': 'export const a = 1;\n' });
@@ -284,7 +287,7 @@ describe('promptSettingsService', () => {
     const settings = promptSettingsService(await openRepo(repo.root));
 
     const first = await settings.prompts();
-    expect(first).toMatchObject({ file: 'cpr/config.json', git: 'none' });
+    expect(first).toMatchObject({ file: 'symbiote/config.json', git: 'none' });
     expect(first.prompts.map((p) => p.key)).toEqual(PROMPT_KEYS);
     const fix = first.prompts.find((p) => p.key === 'start.fix');
     expect(fix).toMatchObject({

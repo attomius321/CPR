@@ -11,8 +11,8 @@ export interface Notice {
   error?: boolean;
 }
 
-/** What the shell (V29a) gives the pages it shows, and a diff's page under `cpr view`. */
-/** What a page asks before it is left with something not saved (CPR's own dialog, N1c). */
+/** What the shell (V29a) gives the pages it shows, and a diff's page under `symbiote view`. */
+/** What a page asks before it is left with something not saved (Symbiote's own dialog, N1c). */
 export interface LeaveGuard {
   question: string;
   detail: string;
@@ -36,7 +36,7 @@ export interface Shell {
 
 export const ShellContext = createContext<Shell | null>(null);
 
-/** The shell the page is shown in; null outside it (a diff's page, `cpr pr`). */
+/** The shell the page is shown in; null outside it (a diff's page, `symbiote pr`). */
 export function useShell(): Shell | null {
   return useContext(ShellContext);
 }

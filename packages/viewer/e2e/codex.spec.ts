@@ -2,11 +2,11 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
+import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
-// Codex as a workspace's agent (V20a): picked in Start a workspace, run by CPR's runner (the
+// Codex as a workspace's agent (V20a): picked in Start a workspace, run by Symbiote's runner (the
 // real one) on a fake Codex, its thread recorded from its events, replies by `exec resume`.
-let cpr: RunningWorkspaces;
+let symbiote: RunningWorkspaces;
 const errors: string[] = [];
 
 test.beforeEach(({ page }) => {
@@ -15,7 +15,7 @@ test.beforeEach(({ page }) => {
 });
 
 test.afterEach(() => {
-  cpr.stop();
+  symbiote.stop();
   expect(errors).toEqual([]);
 });
 
@@ -40,9 +40,9 @@ const startWithCodex = async (page: Page) => {
   await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
   await expect(startPage(page)).toBeHidden();
 };
-/** What a commit on the branch writes, as CPR names it to Codex's sandbox. */
+/** What a commit on the branch writes, as Symbiote names it to Codex's sandbox. */
 const roots = () => {
-  const common = realpathSync(join(cpr.repo, '.git'));
+  const common = realpathSync(join(symbiote.repo, '.git'));
   return `sandbox_workspace_write.writable_roots=${JSON.stringify([
     join(common, 'worktrees', 'feature-add-a-half-function'),
     join(common, 'objects'),
@@ -54,9 +54,9 @@ const roots = () => {
 test('a workspace with Codex: picked when it starts, its plan in the thread, a reply that resumes it', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces({ codex: true });
+  symbiote = await serveWorkspaces({ codex: true });
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await openStart(page);
   // Both installed: Claude Code first (no `agent.kind`), with its permission mode.
   const agent = startPage(page).getByLabel('agent');
@@ -69,14 +69,14 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
   );
   await expect(startPage(page).getByLabel('permission')).toHaveCount(0);
   await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
-  const folder = cpr.folder(BRANCH);
+  const folder = symbiote.folder(BRANCH);
   await expect(page.getByRole('status')).toHaveText(
     `Started ${BRANCH}: Codex is working in ${folder}.`,
   );
 
   // Codex, not Claude Code: in its worktree, sandboxed, its branch's git folders writable.
-  expect(cpr.calls()).toEqual([]);
-  const [call, ...more] = cpr.codexCalls();
+  expect(symbiote.calls()).toEqual([]);
+  const [call, ...more] = symbiote.codexCalls();
   expect(more).toEqual([]);
   expect(call?.cwd).toBe(folder);
   expect(call?.args.slice(0, 9)).toEqual([
@@ -92,15 +92,15 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
   ]);
   expect(call?.args.at(-1)).toContain('## Goal\nReturn a / 2, and test it.\n');
 
-  // Its panel: CPR's prompt in the thread, recorded by the runner; no terminal, Talk instead.
-  await page.goto(`${cpr.url}?branch=${encodeURIComponent(BRANCH)}`);
+  // Its panel: Symbiote's prompt in the thread, recorded by the runner; no terminal, Talk instead.
+  await page.goto(`${symbiote.url}?branch=${encodeURIComponent(BRANCH)}`);
   const here = panel(page);
-  await expect(here.getByText("CPR's prompt")).toBeVisible(POLL);
+  await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
   await expect(workspaceRow(page)).toContainText('Working', POLL);
   await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveCount(0);
 
   // The turn ends with a plan: drawn in the thread, "plan ready".
-  cpr.codexTurn(BRANCH, { text: 'Plan\n1. Add half(a) to src/half.ts\n2. Test it' });
+  symbiote.codexTurn(BRANCH, { text: 'Plan\n1. Add half(a) to src/half.ts\n2. Test it' });
   await expect(here.locator('.thread-agent ol li').first()).toHaveText(
     'Add half(a) to src/half.ts',
     POLL,
@@ -116,7 +116,7 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
   await box(page).fill('OK, go ahead.');
   await box(page).press('Control+Enter');
   await expect(here.locator('.thread-you')).toContainText('OK, go ahead.', POLL);
-  expect(cpr.codexCalls().at(-1)).toEqual({
+  expect(symbiote.codexCalls().at(-1)).toEqual({
     args: [
       'exec',
       'resume',
@@ -135,8 +135,8 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
   await expect(workspaceRow(page)).toContainText('Working', POLL);
 
   // It commits and reports: ready for review.
-  cpr.commit(BRANCH, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
-  cpr.codexTurn(BRANCH, { text: 'Added half, committed.' });
+  symbiote.commit(BRANCH, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  symbiote.codexTurn(BRANCH, { text: 'Added half, committed.' });
   await expect(here.locator('.thread-agent').last()).toContainText('Added half, committed.', POLL);
   await expect(workspaceRow(page)).toContainText('Ready for review', POLL);
 });
@@ -144,12 +144,12 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
 test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean up archives its thread", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces({ codex: true });
-  await page.goto(`${cpr.url}`);
+  symbiote = await serveWorkspaces({ codex: true });
+  await page.goto(`${symbiote.url}`);
   await startWithCodex(page);
   const here = panel(page);
   await expect(workspaceRow(page)).toContainText('Working', POLL);
-  await expect(here.getByText("CPR's prompt")).toBeVisible(POLL);
+  await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
 
   // Stop: the run ends (its process group), the thread says so.
   await here.getByRole('button', { name: 'Stop the agent' }).click();
@@ -158,8 +158,8 @@ test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean
   // Started again: a new run, which fails in Codex's words.
   await here.getByRole('button', { name: 'Start the agent' }).click();
   await expect(workspaceRow(page)).toContainText('Working', POLL);
-  expect(cpr.codexCalls()).toHaveLength(2);
-  cpr.codexTurn(BRANCH, { fail: 'unexpected status 401 Unauthorized' });
+  expect(symbiote.codexCalls()).toHaveLength(2);
+  symbiote.codexTurn(BRANCH, { fail: 'unexpected status 401 Unauthorized' });
   await expect(workspaceRow(page)).toContainText(
     'Its agent failed: unexpected status 401 Unauthorized',
     POLL,
@@ -170,18 +170,18 @@ test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean
   await here.getByRole('menuitem', { name: 'Clean up…' }).click();
   await here.getByRole('button', { name: 'Clean up anyway' }).click();
   await expect(workspaceRow(page)).toHaveCount(0, POLL);
-  expect(cpr.codexArchived().sort()).toEqual(['thread-0', 'thread-1']);
-  expect(existsSync(cpr.folder(BRANCH))).toBe(false);
+  expect(symbiote.codexArchived().sort()).toEqual(['thread-0', 'thread-1']);
+  expect(existsSync(symbiote.folder(BRANCH))).toBe(false);
   expect(
-    execFileSync('git', ['branch', '--list', BRANCH], { cwd: cpr.repo, encoding: 'utf8' }),
+    execFileSync('git', ['branch', '--list', BRANCH], { cwd: symbiote.repo, encoding: 'utf8' }),
   ).toContain(BRANCH);
 });
 
 test('Start a workspace offers the agents installed: Codex alone, or Claude Code alone, with no picker', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces({ agent: false, codex: true });
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces({ agent: false, codex: true });
+  await page.goto(`${symbiote.url}history`);
   await openStart(page);
   await expect(startPage(page).locator('.start-value').first()).toHaveText('Codex');
   await expect(startPage(page)).toContainText('your ChatGPT account');
@@ -191,10 +191,10 @@ test('Start a workspace offers the agents installed: Codex alone, or Claude Code
   // The page leaves first: the workspace it opened may still be loading a chunk of the viewer
   // (Markdown's), which a server stopped under it fails as a page error (1 run in 36).
   await page.goto('about:blank');
-  cpr.stop();
+  symbiote.stop();
 
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   await openStart(page);
   await expect(startPage(page).locator('.start-value')).toHaveText('Claude Code');
   await expect(startPage(page)).toContainText('your Pro subscription');

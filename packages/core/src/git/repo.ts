@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { realpath } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { CprError } from '../errors.js';
+import { SymbioteError } from '../errors.js';
 import { git, GitError } from './exec.js';
 
 export interface GitRepo {
@@ -24,7 +24,7 @@ export async function openRepo(cwd: string): Promise<GitRepo> {
     ]);
   } catch (error) {
     if (error instanceof GitError)
-      throw new CprError(`not inside a git working tree: ${cwd}`, { cause: error });
+      throw new SymbioteError(`not inside a git working tree: ${cwd}`, { cause: error });
     throw error;
   }
 

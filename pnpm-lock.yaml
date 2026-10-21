@@ -166,10 +166,10 @@ importers:
 
   .:
     devDependencies:
-      '@cpr/plugin-angular':
+      '@symbiote/plugin-angular':
         specifier: workspace:*
         version: link:packages/plugin-angular
-      '@cpr/plugin-qwik':
+      '@symbiote/plugin-qwik':
         specifier: workspace:*
         version: link:packages/plugin-qwik
       '@eslint/js':
@@ -202,16 +202,16 @@ importers:
 
   packages/cli:
     dependencies:
-      '@cpr/core':
+      '@symbiote/core':
         specifier: workspace:*
         version: link:../core
-      '@cpr/desktop':
+      '@symbiote/desktop':
         specifier: workspace:*
         version: link:../desktop
-      '@cpr/forge':
+      '@symbiote/forge':
         specifier: workspace:*
         version: link:../forge
-      '@cpr/viewer':
+      '@symbiote/viewer':
         specifier: workspace:*
         version: link:../viewer
       jsonc-parser:
@@ -243,7 +243,7 @@ importers:
 
   packages/forge:
     dependencies:
-      '@cpr/core':
+      '@symbiote/core':
         specifier: workspace:*
         version: link:../core
 
@@ -253,13 +253,13 @@ importers:
         specifier: 21.2.25
         version: 21.2.25
     devDependencies:
-      '@cpr/core':
+      '@symbiote/core':
         specifier: workspace:*
         version: link:../core
 
   packages/plugin-qwik:
     devDependencies:
-      '@cpr/core':
+      '@symbiote/core':
         specifier: workspace:*
         version: link:../core
 
@@ -296,7 +296,7 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
-      '@cpr/core':
+      '@symbiote/core':
         specifier: workspace:*
         version: link:../core
       '@types/react':

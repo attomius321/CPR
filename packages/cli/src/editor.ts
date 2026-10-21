@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { readFile, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, normalize, posix, win32 } from 'node:path';
-import { workingLine, type GitRepo } from '@cpr/core';
+import { workingLine, type GitRepo } from '@symbiote/core';
 
 /** What finding VS Code reads from the machine; tests pass another one. */
 export interface Host {
@@ -53,15 +53,15 @@ export class VsCodeError extends Error {
 
 const NOT_FOUND =
   "VS Code's code command was not found: install it on PATH (in VS Code: Shell Command: " +
-  "Install 'code' command in PATH), or set CPR_CODE to it";
+  "Install 'code' command in PATH), or set SYMBIOTE_CODE to it";
 
 /**
- * Finds VS Code's command line: `CPR_CODE` (a path, or a command on PATH), else `code` on
+ * Finds VS Code's command line: `SYMBIOTE_CODE` (a path, or a command on PATH), else `code` on
  * PATH, else the usual install places. On Windows, `code.cmd` is read and what it runs is
  * returned (`Code.exe` and its `cli.js`), since Node starts a `.cmd` only through a shell.
  */
 export async function findVsCode(host: Host): Promise<VsCode | null> {
-  const custom = host.env.CPR_CODE?.trim();
+  const custom = host.env.SYMBIOTE_CODE?.trim();
   if (custom) {
     const path = /[\\/]/.test(custom) ? custom : await onPath(host, custom);
     return path && (await host.isFile(path)) ? fromPath(host, path) : null;
@@ -178,7 +178,7 @@ export function runVsCode(
       stdio: ['ignore', 'ignore', 'pipe'],
       windowsHide: true,
       windowsVerbatimArguments: run.verbatim,
-      // Off Windows, Ctrl+C on cpr must not reach a VS Code it started.
+      // Off Windows, Ctrl+C on symbiote must not reach a VS Code it started.
       detached: process.platform !== 'win32',
     });
     let stderr = '';
@@ -211,7 +211,7 @@ export function runVsCode(
   });
 }
 
-/** The machine `cpr` runs on. */
+/** The machine `symbiote` runs on. */
 export function localHost(env: Readonly<Record<string, string | undefined>>): Host {
   return {
     platform: process.platform,
@@ -226,10 +226,10 @@ export function localHost(env: Readonly<Record<string, string | undefined>>): Ho
   };
 }
 
-/** Why VS Code was not found: `CPR_CODE`'s value, or where it was looked for. */
+/** Why VS Code was not found: `SYMBIOTE_CODE`'s value, or where it was looked for. */
 const notFound = (env: Readonly<Record<string, string | undefined>>) => {
-  const custom = env.CPR_CODE?.trim();
-  return custom ? `CPR_CODE (${custom}) was not found` : NOT_FOUND;
+  const custom = env.SYMBIOTE_CODE?.trim();
+  return custom ? `SYMBIOTE_CODE (${custom}) was not found` : NOT_FOUND;
 };
 
 /**

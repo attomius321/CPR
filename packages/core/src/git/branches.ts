@@ -10,7 +10,7 @@ export interface BranchReviewRef {
   since: number;
 }
 
-/** A verdict's event: the same three as `cpr pr`'s. */
+/** A verdict's event: the same three as `symbiote pr`'s. */
 export type VerdictEvent = 'comment' | 'approve' | 'request-changes';
 
 /** A comment of a finished review (V16): on a line of one side, or about a symbol. */
@@ -27,7 +27,7 @@ export interface VerdictComment {
 
 /**
  * A finished branch review: the verdict at a tip, with its summary and comments. An approval is
- * metadata (V17): `into` names the branch the agent merges `head` into; CPR pushes nothing.
+ * metadata (V17): `into` names the branch the agent merges `head` into; Symbiote pushes nothing.
  */
 export interface Verdict {
   at: string;
@@ -35,7 +35,8 @@ export interface Verdict {
   event: VerdictEvent;
   /** The tip reviewed. */
   head: string;
-  /** Approve: the default branch to merge `head` into; absent on the default branch's own review. */
+  /** Approve: the default branch to merge `head` into; absent on the default branch's own review.
+   * */
   into?: string;
   summary: string;
 }
@@ -88,7 +89,7 @@ export interface BranchReviewList {
   /** The branch others branch from: no review of its own. */
   defaultBranch: string | null;
   reviewer: string;
-  /** `repository`: `cpr/reviews/`; `cache`: CPR's cache, `note` says why. */
+  /** `repository`: `symbiote/reviews/`; `cache`: Symbiote's cache, `note` says why. */
   place: 'repository' | 'cache';
   note?: string;
   reviews: BranchReviewSummary[];
@@ -106,7 +107,7 @@ export interface BranchReviewInfo {
   reviewed: string | null;
   /** Commits since the last review; null for a first review. */
   since: number | null;
-  /** Why the review is kept in CPR's cache, not in `cpr/reviews/`. */
+  /** Why the review is kept in Symbiote's cache, not in `symbiote/reviews/`. */
   note?: string;
   /** The default branch an approval merges into (V17); absent on the default branch itself. */
   into?: string;

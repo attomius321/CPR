@@ -1,5 +1,5 @@
 import { posix } from 'node:path';
-import type { PluginContext, ts } from '@cpr/core';
+import type { PluginContext, ts } from '@symbiote/core';
 
 type TS = PluginContext['ts'];
 

@@ -1,6 +1,6 @@
 import { chmodSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { openRepo } from '@cpr/core';
+import { openRepo } from '@symbiote/core';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import {
@@ -98,17 +98,17 @@ describe('findVsCode', () => {
     });
   });
 
-  it('takes CPR_CODE first: a path, or a command on PATH (Insiders, VSCodium, Cursor)', async () => {
+  it('takes SYMBIOTE_CODE first: a path, or a command on PATH (Insiders, VSCodium, Cursor)', async () => {
     const files = { '/usr/bin/code': '', '/usr/bin/cursor': '', '/opt/code-oss': '' };
     expect(
-      await findVsCode(host('linux', { PATH: '/usr/bin', CPR_CODE: '/opt/code-oss' }, files)),
+      await findVsCode(host('linux', { PATH: '/usr/bin', SYMBIOTE_CODE: '/opt/code-oss' }, files)),
     ).toMatchObject({ command: '/opt/code-oss' });
     expect(
-      await findVsCode(host('linux', { PATH: '/usr/bin', CPR_CODE: 'cursor' }, files)),
+      await findVsCode(host('linux', { PATH: '/usr/bin', SYMBIOTE_CODE: 'cursor' }, files)),
     ).toMatchObject({ command: '/usr/bin/cursor' });
-    expect(await findVsCode(host('linux', { PATH: '/usr/bin', CPR_CODE: 'codium' }, files))).toBe(
-      null,
-    );
+    expect(
+      await findVsCode(host('linux', { PATH: '/usr/bin', SYMBIOTE_CODE: 'codium' }, files)),
+    ).toBe(null);
   });
 
   it('finds nothing when VS Code is not installed', async () => {
@@ -234,7 +234,7 @@ describe('vsCodeOpener', () => {
     const sha = repo.commit('ten lines');
     repo.write({ 'src/a.ts': `// one\n// two\n${ten}` });
     process.env.FAKE_LOG = log;
-    const open = vsCodeOpener(await openRepo(repo.root), { CPR_CODE: fake, PATH: '' });
+    const open = vsCodeOpener(await openRepo(repo.root), { SYMBIOTE_CODE: fake, PATH: '' });
 
     expect(await open({ sha, file: 'src/a.ts', line: 4, column: 2 })).toEqual({
       opened: true,
@@ -257,7 +257,12 @@ describe('vsCodeOpener', () => {
     const git = await openRepo(repo.root);
 
     expect(
-      await vsCodeOpener(git, { CPR_CODE: fake })({ sha, file: 'src/a.ts', line: 1, column: 1 }),
+      await vsCodeOpener(git, { SYMBIOTE_CODE: fake })({
+        sha,
+        file: 'src/a.ts',
+        line: 1,
+        column: 1,
+      }),
     ).toEqual({
       opened: false,
       reason: 'missing',
@@ -267,7 +272,7 @@ describe('vsCodeOpener', () => {
     const nowhere = vsCodeOpener(git, { PATH: '' }, host('linux', { PATH: '' }));
     const result = await nowhere({ sha, file: 'src/a.ts', line: 1, column: 1 });
     expect(result).toMatchObject({ opened: false, reason: 'editor' });
-    expect(!result.opened && result.message).toMatch(/not found.*CPR_CODE/);
+    expect(!result.opened && result.message).toMatch(/not found.*SYMBIOTE_CODE/);
   });
 
   it("opens a branch checked out in a workspace's worktree there, at its line there (V18b)", async () => {
@@ -279,7 +284,7 @@ describe('vsCodeOpener', () => {
     // Two lines added above in the worktree only; the checkout's copy is as committed.
     writeFileSync(join(worktree, 'src/a.ts'), `// one\n// two\n${ten}`);
     process.env.FAKE_LOG = log;
-    const open = vsCodeOpener(await openRepo(repo.root), { CPR_CODE: fake, PATH: '' });
+    const open = vsCodeOpener(await openRepo(repo.root), { SYMBIOTE_CODE: fake, PATH: '' });
     expect(await open({ sha, file: 'src/a.ts', line: 4, column: 1 }, worktree)).toMatchObject({
       opened: true,
       line: 6,
@@ -308,13 +313,13 @@ describe('vsCodeFolder', () => {
 
   it("opens a workspace's worktree folder in VS Code; says why it cannot", async () => {
     process.env.FAKE_LOG = log;
-    expect(await vsCodeFolder({ CPR_CODE: fake, PATH: '' })('/work/app.worktrees/x')).toEqual({
+    expect(await vsCodeFolder({ SYMBIOTE_CODE: fake, PATH: '' })('/work/app.worktrees/x')).toEqual({
       opened: true,
     });
     expect(JSON.parse(readFileSync(log, 'utf8'))).toEqual(['/work/app.worktrees/x']);
     // A file in it, at a line (V29d): the folder's window, at the line.
     const at = { file: 'src/a b.ts', line: 12 };
-    await vsCodeFolder({ CPR_CODE: fake, PATH: '' })('/work/app.worktrees/x', at);
+    await vsCodeFolder({ SYMBIOTE_CODE: fake, PATH: '' })('/work/app.worktrees/x', at);
     expect(JSON.parse(readFileSync(log, 'utf8'))).toEqual([
       '/work/app.worktrees/x',
       '--goto',
@@ -322,6 +327,6 @@ describe('vsCodeFolder', () => {
     ]);
     const nowhere = await vsCodeFolder({ PATH: '' }, host('linux', { PATH: '' }))('/w');
     expect(nowhere).toMatchObject({ opened: false });
-    expect(!nowhere.opened && nowhere.message).toMatch(/not found.*CPR_CODE/);
+    expect(!nowhere.opened && nowhere.message).toMatch(/not found.*SYMBIOTE_CODE/);
   });
 });

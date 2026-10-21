@@ -1,6 +1,6 @@
 ---
 name: milestone
-description: Plans and delivers a CPR milestone the way this repository does it — measure the problem on real data, write the docs/PLAN.md section, branch, failing tests first, implement, verify against main, record in docs/JOURNAL.md, then ask before merging. Use when the user asks to plan, implement, continue or finish a milestone (IDs like V7, Q2, W1), to deep-plan a feature, or to merge one.
+description: Plans and delivers a Symbiote milestone the way this repository does it — measure the problem on real data, write the docs/PLAN.md section, branch, failing tests first, implement, verify against main, record in docs/JOURNAL.md, then ask before merging. Use when the user asks to plan, implement, continue or finish a milestone (IDs like V7, Q2, W1), to deep-plan a feature, or to merge one.
 ---
 
 # Milestone workflow

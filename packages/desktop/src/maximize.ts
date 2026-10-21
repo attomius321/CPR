@@ -1,8 +1,8 @@
 import { FIRST, type Area } from './state.js';
 
 /**
- * Whether CPR holds its maximized window itself (N1d): on WSLg's X11, whose window manager pads
- * a frameless window with an invisible 32 px margin and forgets it when it maximizes one. The
+ * Whether Symbiote holds its maximized window itself (N1d): on WSLg's X11, whose window manager
+ * pads a frameless window with an invisible 32 px margin and forgets it when it maximizes one. The
  * window lands 32 px right and down, its right end and bottom off the screen
  * (microsoft/wslg#1015); placed as a normal window it is where it is asked to be. WSLg is WSL with
  * its compositor (`WAYLAND_DISPLAY`); Electron takes its X11 unless the session says Wayland.
@@ -27,7 +27,7 @@ export interface HeldWindow {
   unmaximize(): void;
 }
 
-/** A window's maximize, held by CPR; the window's events are given to it as they come. */
+/** A window's maximize, held by Symbiote; the window's events are given to it as they come. */
 export interface Hold {
   /** Maximized, as the page is told. */
   readonly maximized: boolean;
@@ -78,7 +78,7 @@ export function holdMaximize(
   let keep: Area | undefined;
   /**
    * Where the window was when the page asked to maximize it: WSLg's own place to restore a window
-   * it maps maximized (CPR opening as it was left) is the screen's corner.
+   * it maps maximized (Symbiote opening as it was left) is the screen's corner.
    */
   let asked: Area | undefined;
   let stopped = false;
@@ -206,7 +206,7 @@ function remember(areas: Area[], area: Area): void {
   areas.push(area);
 }
 
-/** CPR's first size, centred on `area`, never larger than it. */
+/** Symbiote's first size, centred on `area`, never larger than it. */
 function centred(area: Area): Area {
   const width = Math.min(FIRST.width, area.width);
   const height = Math.min(FIRST.height, area.height);

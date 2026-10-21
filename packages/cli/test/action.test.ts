@@ -7,7 +7,7 @@ import { createRepo, tempDir } from '../../core/test/helpers/git-repo.js';
 
 const script = fileURLToPath(new URL('../../../action/run.sh', import.meta.url));
 
-/** action/run.sh, with a stub in place of cpr that prints its arguments. */
+/** action/run.sh, with a stub in place of symbiote that prints its arguments. */
 describe('action/run.sh', () => {
   const repo = createRepo();
   repo.write({ 'a.ts': 'export const a = 1;\n' });
@@ -37,7 +37,7 @@ describe('action/run.sh', () => {
         RUNNER_TEMP: dir,
         GITHUB_STEP_SUMMARY: summary,
         GITHUB_OUTPUT: output,
-        CPR_CLI: `${process.execPath} ${stub}`,
+        SYMBIOTE_CLI: `${process.execPath} ${stub}`,
         ...env,
       },
     });
@@ -50,19 +50,19 @@ describe('action/run.sh', () => {
     };
   }
 
-  it('runs cpr pr with the inputs that are set', () => {
+  it('runs symbiote pr with the inputs that are set', () => {
     const { status, args, summary, output } = run({
-      CPR_POST_FINDINGS: 'warning',
-      CPR_FAIL_ON: 'error',
-      CPR_DEPTH: '2',
-      CPR_PROJECT: '',
+      SYMBIOTE_POST_FINDINGS: 'warning',
+      SYMBIOTE_FAIL_ON: 'error',
+      SYMBIOTE_DEPTH: '2',
+      SYMBIOTE_PROJECT: '',
     });
     expect(status).toBe(0);
     expect(args).toEqual([
       'pr',
       '--summary',
       '--out',
-      join(dir, 'cpr', 'graph.json'),
+      join(dir, 'symbiote', 'graph.json'),
       '--post-findings',
       'warning',
       '--fail-on',
@@ -70,13 +70,13 @@ describe('action/run.sh', () => {
       '--depth',
       '2',
     ]);
-    expect(summary).toContain('### CPR\n\n```\nsummary for ["pr"');
-    expect(output).toBe(`graph=${join(dir, 'cpr', 'graph.json')}\n`);
+    expect(summary).toContain('### Symbiote\n\n```\nsummary for ["pr"');
+    expect(output).toBe(`graph=${join(dir, 'symbiote', 'graph.json')}\n`);
   });
 
   it('writes where GitLab wants its Code Quality report', () => {
     const report = join(dir, 'gl-code-quality-report.json');
-    const { args } = run({ CPR_OUT: join(dir, 'out'), CPR_CODEQUALITY: report });
+    const { args } = run({ SYMBIOTE_OUT: join(dir, 'out'), SYMBIOTE_CODEQUALITY: report });
     expect(args).toEqual([
       'pr',
       '--summary',
@@ -88,12 +88,12 @@ describe('action/run.sh', () => {
   });
 
   it('passes one --plugin per listed plugin', () => {
-    const { args } = run({ CPR_PLUGINS: 'angular, ./tools/plugin.mjs' });
+    const { args } = run({ SYMBIOTE_PLUGINS: 'angular, ./tools/plugin.mjs' });
     expect(args.slice(-4)).toEqual(['--plugin', 'angular', '--plugin', './tools/plugin.mjs']);
   });
 
-  it('passes a number and keeps the exit status of cpr', () => {
-    const { status, args } = run({ CPR_PULL_REQUEST: '7', STUB_EXIT: '1' });
+  it('passes a number and keeps the exit status of symbiote', () => {
+    const { status, args } = run({ SYMBIOTE_PULL_REQUEST: '7', STUB_EXIT: '1' });
     expect(status).toBe(1);
     expect(args.slice(0, 2)).toEqual(['pr', '7']);
   });

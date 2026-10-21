@@ -1,7 +1,7 @@
 {
-  "name": "@cpr/plugin-angular",
+  "name": "@symbiote/plugin-angular",
   "version": "0.1.0",
-  "description": "CPR plugin: Angular templates, decorators and lifecycle hooks.",
+  "description": "Symbiote plugin: Angular templates, decorators and lifecycle hooks.",
   "private": true,
   "type": "module",
   "exports": {
@@ -20,6 +20,6 @@
     "@angular/compiler": "21.2.25"
   },
   "devDependencies": {
-    "@cpr/core": "workspace:*"
+    "@symbiote/core": "workspace:*"
   }
 }

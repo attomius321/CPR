@@ -1,6 +1,6 @@
 ---
 name: framework-plugin
-description: Adds or changes a CPR framework plugin (@cpr/plugin-*, a TsPlugin loaded with --plugin <name>) — framework knowledge such as templates, routing conventions or component props that plain TypeScript analysis cannot see. Use when supporting a new framework (React, Vue, Svelte…), extending the Angular or Qwik plugins, or adding a plugin hook to core.
+description: Adds or changes a Symbiote framework plugin (@symbiote/plugin-*, a TsPlugin loaded with --plugin <name>) — framework knowledge such as templates, routing conventions or component props that plain TypeScript analysis cannot see. Use when supporting a new framework (React, Vue, Svelte…), extending the Angular or Qwik plugins, or adding a plugin hook to core.
 ---
 
 # Framework plugins
@@ -30,13 +30,13 @@ throwing plugin is disabled with a warning instead of failing the run.
 ## Checklist for a new plugin
 
 ```
-- [ ] Measure first: run CPR on real commits of a project using the framework; list the false
+- [ ] Measure first: run Symbiote on real commits of a project using the framework; list the false
       findings and misses it causes (milestone skill, Problem table)
 - [ ] Read the framework's own rules from its source (e.g. Qwik's getSourceFile, Angular's
       compiler) for each supported major version; copy them, cite them in the plan
 - [ ] packages/plugin-<name>: package.json (private, ESM, exports ./dist, devDependency
-      "@cpr/core": "workspace:*"), tsconfig.json + tsconfig.build.json copied from plugin-qwik
-- [ ] Root package.json devDependency "@cpr/plugin-<name>": "workspace:*"; reference in
+      "@symbiote/core": "workspace:*"), tsconfig.json + tsconfig.build.json copied from plugin-qwik
+- [ ] Root package.json devDependency "@symbiote/plugin-<name>": "workspace:*"; reference in
       tsconfig.build.json; `pnpm install` (updates the lockfile — commit it)
 - [ ] .gitignore exception for the fixtures' node_modules (fake typings)
 - [ ] Fixtures base/head with every case of the plan, minimal fake typings shaped like the real
@@ -60,5 +60,5 @@ throwing plugin is disabled with a warning instead of failing the run.
 - Prefer syntax and declared type nodes over the checker: cheap, works without `node_modules`,
   and stable between the base and head programs.
 - Never assume a node has a parent (JSDoc references), or a dependency is installed.
-- Plugins import only types from `@cpr/core`; the framework's own packages are not dependencies
+- Plugins import only types from `@symbiote/core`; the framework's own packages are not dependencies
   unless the plugin cannot work without them (Angular's compiler is the one exception).

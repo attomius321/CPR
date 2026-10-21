@@ -1,21 +1,24 @@
 import { expect, test } from '@playwright/test';
-import { servePullRequest, type RunningPullRequest } from './cpr.js';
+import { servePullRequest, type RunningPullRequest } from './symbiote.js';
 
-// `cpr pr 7 --plugin qwik` on the plugin's MDX fixture: an `.mdx` route is a template with its
+// `symbiote pr 7 --plugin qwik` on the plugin's MDX fixture: an `.mdx` route is a template with its
 // own diff and the components it renders, and a comment on one of its lines goes to the file.
-let cpr: RunningPullRequest;
+let symbiote: RunningPullRequest;
 const errors: string[] = [];
 
 test.beforeAll(async () => {
-  cpr = await servePullRequest('packages/plugin-qwik/test/fixtures/qwik-mdx', ['--plugin', 'qwik']);
+  symbiote = await servePullRequest('packages/plugin-qwik/test/fixtures/qwik-mdx', [
+    '--plugin',
+    'qwik',
+  ]);
 });
 
-test.afterAll(() => cpr.stop());
+test.afterAll(() => symbiote.stop());
 
 test.beforeEach(async ({ page }) => {
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(cpr.url);
+  await page.goto(symbiote.url);
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
 });
 
@@ -50,7 +53,7 @@ test('reviews an MDX route like code, and comments on its lines', async ({ page 
   await page.getByRole('tab', { name: /Review/ }).click();
   await page.getByRole('button', { name: 'Submit review to GitHub' }).click();
   await expect(page.locator('.posted')).toContainText('Review posted.');
-  const posted = cpr.requests.filter((r) => r.method === 'POST');
+  const posted = symbiote.requests.filter((r) => r.method === 'POST');
   expect(posted[0]?.body).toMatchObject({
     comments: [
       { path: 'src/routes/blog/index.mdx', line: 7, side: 'RIGHT', body: 'Cite the source too?' },

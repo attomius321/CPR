@@ -1,5 +1,5 @@
 import { diffLines } from 'diff';
-import type { Finding, Graph, GraphEdge, GraphNode, Range } from '@cpr/core';
+import type { Finding, Graph, GraphEdge, GraphNode, Range } from '@symbiote/core';
 
 export interface Neighbour {
   id: string;

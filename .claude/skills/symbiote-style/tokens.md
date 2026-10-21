@@ -1,6 +1,6 @@
 # Tokens
 
-CPR's tokens (`packages/viewer/src/styles.css`), their roles and values in both themes. Ratios:
+Symbiote's tokens (`packages/viewer/src/styles.css`), their roles and values in both themes. Ratios:
 the lowest over the backgrounds `test/tokens.test.ts` checks (WCAG 2), from `palette-check.mjs`.
 
 ## Surfaces, text, lines (tested; `#rrggbb`)
@@ -119,6 +119,6 @@ transparent)` for a fill, `25%` for its edge.
 | Sidenav | 240 px |
 | Motion | colours 150 ms; menus fade in 150 ms, dialogs 200 ms, by opacity only |
 
-Letter-spacing widens text: CPR's node widths are estimated from characters (`nodeWidth`, 9.4 px a
+Letter-spacing widens text: Symbiote's node widths are estimated from characters (`nodeWidth`, 9.4 px a
 character, with slack). `0.01em` is on the chrome (`body`) and `letter-spacing: 0` on
 `.react-flow`; measure labels cut short (viewer-check) before changing either.

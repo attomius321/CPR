@@ -8,12 +8,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { _electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
-import { serveCommits, serveWorkspaces, type RunningCommits } from './cpr.js';
+import { serveCommits, serveWorkspaces, type RunningCommits } from './symbiote.js';
 
-// CPR's desktop app (N1): the window `cpr view` opens on its server. It needs Electron's binary
-// (`pnpm app:setup`) and Xvfb: the app's windows open on a display of the specs' own, never on
-// the screen of whoever runs them (CPR's merge check, on the person's desktop), where a window
-// manager would also move them.
+// Symbiote's desktop app (N1): the window `symbiote view` opens on its server. It needs Electron's
+// binary (`pnpm app:setup`) and Xvfb: the app's windows open on a display of the specs' own, never
+// on the screen of whoever runs them (Symbiote's merge check, on the person's desktop), where a
+// window manager would also move them.
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const desktop = join(root, 'packages/desktop');
 const electron = ((): string | null => {
@@ -72,22 +72,22 @@ function appEnv(config: string): Record<string, string> {
   return { ...env, DISPLAY: display.name, XDG_CONFIG_HOME: config };
 }
 
-let cpr: RunningCommits;
+let symbiote: RunningCommits;
 let config: string;
 const errors: string[] = [];
 const running: ElectronApplication[] = [];
 
 test.beforeAll(async () => {
-  [cpr, display] = await Promise.all([serveCommits(), startXvfb()]);
+  [symbiote, display] = await Promise.all([serveCommits(), startXvfb()]);
 });
 
 test.afterAll(() => {
-  cpr.stop();
+  symbiote.stop();
   display.stop();
 });
 
 test.beforeEach(() => {
-  config = mkdtempSync(join(tmpdir(), 'cpr-app-'));
+  config = mkdtempSync(join(tmpdir(), 'symbiote-app-'));
   errors.length = 0;
 });
 
@@ -98,7 +98,7 @@ test.afterEach(async () => {
 });
 
 /** The app on `url`: its first window. */
-async function launch(url = cpr.url): Promise<{ app: ElectronApplication; page: Page }> {
+async function launch(url = symbiote.url): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await _electron.launch({
     executablePath: electron as string,
     args: [desktop, '--url', url, '--title', 'repo'],
@@ -156,7 +156,7 @@ const style = (page: Page, selector: string, property: string) =>
 
 test('opens the server in a window of its own: no menu bar, the page’s title', async () => {
   const { app, page } = await launch();
-  expect(page.url()).toBe(`${cpr.url}history`);
+  expect(page.url()).toBe(`${symbiote.url}history`);
   const window = await app.evaluate(({ BrowserWindow, Menu }) => {
     const windows = BrowserWindow.getAllWindows();
     return {
@@ -167,10 +167,10 @@ test('opens the server in a window of its own: no menu bar, the page’s title',
     };
   });
   expect(window).toEqual({ count: 1, title: await page.title(), visible: true, menu: null });
-  expect(window.title).toMatch(/^History · .+ — CPR$/);
+  expect(window.title).toMatch(/^History · .+ — Symbiote$/);
 });
 
-test("keeps CPR's pages in the window and hands other links to the browser", async () => {
+test("keeps Symbiote's pages in the window and hands other links to the browser", async () => {
   const { app, page } = await launch();
   await app.evaluate(({ shell }) => {
     const opened: string[] = [];
@@ -216,21 +216,21 @@ test('back and forward with Alt+arrows, zoom with Ctrl+= and Ctrl+0', async () =
 
 test('remembers the window, the zoom and the page’s choices for the next run', async () => {
   const first = await launch();
-  await first.page.evaluate(() => window.localStorage.setItem('cpr.viewer.theme', 'light'));
+  await first.page.evaluate(() => window.localStorage.setItem('symbiote.viewer.theme', 'light'));
   await press(first.app, '=', ['control']);
   await expect.poll(() => zoomLevel(first.app)).toBe(1);
   await first.app.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0]?.setBounds({ x: 40, y: 30, width: 1000, height: 700 }),
   );
   await first.app.close();
-  const state = JSON.parse(readFileSync(join(config, 'cpr', 'app', 'state.json'), 'utf8')) as {
+  const state = JSON.parse(readFileSync(join(config, 'symbiote', 'app', 'state.json'), 'utf8')) as {
     window: unknown;
     choices: unknown;
   };
   expect(state).toMatchObject({
     window: { x: 40, y: 30, width: 1000, height: 700, maximized: false },
     zoom: 1,
-    choices: { 'cpr.viewer.theme': 'light' },
+    choices: { 'symbiote.viewer.theme': 'light' },
   });
 
   // Another server is another origin, with empty storage: the choices come back before the
@@ -271,18 +271,18 @@ test('says so and ends when the server is not there', async () => {
   const code = await new Promise((resolve) => child.once('exit', resolve));
   expect(code).toBe(1);
   expect(stderr).toMatch(
-    new RegExp(`^cpr app: could not load http://127\\.0\\.0\\.1:${port}/: `, 'm'),
+    new RegExp(`^symbiote app: could not load http://127\\.0\\.0\\.1:${port}/: `, 'm'),
   );
 });
 
-test('cpr view opens its window, and ends when the window closes', async () => {
+test('symbiote view opens its window, and ends when the window closes', async () => {
   const cli = spawn(process.execPath, [join(root, 'packages/cli/dist/bin.js'), 'view'], {
-    cwd: cpr.repo,
+    cwd: symbiote.repo,
     env: {
       ...appEnv(config),
-      CPR_CLAUDE: '/nonexistent/claude',
-      CPR_CODEX: '/nonexistent/codex',
-      CPR_USAGE: 'off',
+      SYMBIOTE_CLAUDE: '/nonexistent/claude',
+      SYMBIOTE_CODEX: '/nonexistent/codex',
+      SYMBIOTE_USAGE: 'off',
     },
   });
   let output = '';
@@ -290,8 +290,8 @@ test('cpr view opens its window, and ends when the window closes', async () => {
   cli.stderr.on('data', (data: Buffer) => (output += data.toString()));
   const ended = new Promise((resolve) => cli.once('exit', resolve));
   try {
-    await expect.poll(() => output).toMatch(/CPR viewer: http:\/\/127\.0\.0\.1:\d+\//);
-    await expect.poll(() => output, { timeout: 30_000 }).toContain("CPR's window is open");
+    await expect.poll(() => output).toMatch(/Symbiote viewer: http:\/\/127\.0\.0\.1:\d+\//);
+    await expect.poll(() => output, { timeout: 30_000 }).toContain("Symbiote's window is open");
     // The app is the command's child, found by its command line: the command's other children
     // (git) come and go.
     const app = execFileSync('pgrep', ['-P', String(cli.pid), '-f', 'packages/desktop'], {
@@ -306,17 +306,17 @@ test('cpr view opens its window, and ends when the window closes', async () => {
   }
 });
 
-// CPR's own title bar (N1c): no system frame, the OS's buttons over CPR's colour.
+// Symbiote's own title bar (N1c): no system frame, the OS's buttons over Symbiote's colour.
 test.describe('the title bar', () => {
-  test('CPR and the repository, fold, back and forward, the page’s tabs, the OS’s buttons', async () => {
+  test('Symbiote and the repository, fold, back and forward, the page’s tabs, the OS’s buttons', async () => {
     const { page } = await launch();
     const bar = page.locator('.titlebar');
     await expect(bar).toBeVisible();
-    await expect(bar.locator('.titlebar-brand')).toHaveText(/^CPR · .+/);
+    await expect(bar.locator('.titlebar-brand')).toHaveText(/^Symbiote · .+/);
     expect(
       await bar.evaluate((el) => getComputedStyle(el).getPropertyValue('-webkit-app-region')),
     ).toBe('drag');
-    // On Linux the window's buttons are CPR's (N1d): no overlay of the system's over the page.
+    // On Linux the window's buttons are Symbiote's (N1d): no overlay of the system's over the page.
     expect(
       await page.evaluate(
         () =>
@@ -344,7 +344,7 @@ test.describe('the title bar', () => {
     await expect(page.locator('.shell')).toHaveClass(/folded/);
   });
 
-  test('the window’s buttons take the theme’s colour: drawn by CPR on Linux, no overlay', async () => {
+  test('the window’s buttons take the theme’s colour: drawn by Symbiote on Linux, no overlay', async () => {
     const { app, page } = await launch();
     await app.evaluate(({ BrowserWindow }) => {
       const window = BrowserWindow.getAllWindows()[0];
@@ -361,7 +361,7 @@ test.describe('the title bar', () => {
     const colour = () => close.evaluate((el) => getComputedStyle(el).color);
     await page.keyboard.press('s');
     await page.getByRole('button', { name: 'Light', exact: true }).click();
-    // The text's colour, CPR's style since V31.
+    // The text's colour, Symbiote's style since V31.
     await expect.poll(colour).toBe('rgb(10, 10, 10)');
     await page.getByRole('button', { name: 'Dark', exact: true }).click();
     await expect.poll(colour).toBe('rgb(250, 250, 250)');
@@ -371,7 +371,7 @@ test.describe('the title bar', () => {
     );
   });
 
-  test('on Linux the corners are CPR’s: round until maximized; its buttons ask the window (N1d)', async () => {
+  test('on Linux the corners are Symbiote’s: round until maximized; its buttons ask the window (N1d)', async () => {
     const { app, page } = await launch();
     await recordWindow(app);
     const html = page.locator('html');
@@ -432,7 +432,7 @@ test.describe('the title bar', () => {
 
   test('closing with a prompt not saved asks first, in a dialog of the system', async () => {
     const { app, page } = await launch();
-    await page.goto(`${cpr.url}settings?prompt=start.spike`);
+    await page.goto(`${symbiote.url}settings?prompt=start.spike`);
     await page
       .locator('.settings-editor')
       .getByRole('textbox', { name: 'Spike prompt' })
@@ -467,17 +467,17 @@ test.describe('the title bar', () => {
 test.describe('from the launcher', () => {
   const cli = join(root, 'packages/cli/dist/bin.js');
 
-  /** What `cpr app install` records, and the repositories opened before. */
+  /** What `symbiote app install` records, and the repositories opened before. */
   function installed(recent: string[] = [], record = true) {
-    mkdirSync(join(config, 'cpr', 'app'), { recursive: true });
+    mkdirSync(join(config, 'symbiote', 'app'), { recursive: true });
     if (record) {
       writeFileSync(
-        join(config, 'cpr', 'app.json'),
+        join(config, 'symbiote', 'app.json'),
         JSON.stringify({ node: process.execPath, cli, path: process.env.PATH }),
       );
     }
     writeFileSync(
-      join(config, 'cpr', 'app', 'state.json'),
+      join(config, 'symbiote', 'app', 'state.json'),
       JSON.stringify({ choices: {}, recent }),
     );
   }
@@ -485,9 +485,9 @@ test.describe('from the launcher', () => {
   /** The app as a launcher starts it: no address; never a real agent or your usage. */
   const launcherEnv = () => ({
     ...appEnv(config),
-    CPR_CLAUDE: '/nonexistent/claude',
-    CPR_CODEX: '/nonexistent/codex',
-    CPR_USAGE: 'off',
+    SYMBIOTE_CLAUDE: '/nonexistent/claude',
+    SYMBIOTE_CODEX: '/nonexistent/codex',
+    SYMBIOTE_USAGE: 'off',
   });
 
   async function fromLauncher(): Promise<{ app: ElectronApplication; page: Page }> {
@@ -502,7 +502,7 @@ test.describe('from the launcher', () => {
     return { app, page };
   }
 
-  /** The `cpr view` the app started: its process ID. */
+  /** The `symbiote view` the app started: its process ID. */
   const server = (app: ElectronApplication) => {
     try {
       const pid = String(app.process().pid);
@@ -524,7 +524,7 @@ test.describe('from the launcher', () => {
   };
 
   test('opens the last repository on a server of its own, stopped with the window', async () => {
-    installed([cpr.repo]);
+    installed([symbiote.repo]);
     const { app, page } = await fromLauncher();
     await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
     expect(page.url()).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/history$/);
@@ -538,7 +538,7 @@ test.describe('from the launcher', () => {
   });
 
   test('its server ends with the app, even a killed one', async () => {
-    installed([cpr.repo]);
+    installed([symbiote.repo]);
     const { app, page } = await fromLauncher();
     await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
     await expect.poll(() => server(app)).toMatch(/^\d+$/);
@@ -550,26 +550,28 @@ test.describe('from the launcher', () => {
   test('the start page: a folder that is no repository, then one; the recent list', async () => {
     installed();
     const { app, page } = await fromLauncher();
-    await expect(page.getByRole('heading', { name: 'CPR', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Symbiote', exact: true })).toBeVisible();
     await expect(page.getByText('The repositories you open show here.')).toBeVisible();
 
-    const notes = mkdtempSync(join(tmpdir(), 'cpr-notes-'));
+    const notes = mkdtempSync(join(tmpdir(), 'symbiote-notes-'));
     try {
       await app.evaluate(
         ({ dialog }, chosen) => {
           dialog.showOpenDialog = () =>
             Promise.resolve({ canceled: false, filePaths: [chosen.shift() ?? ''] });
         },
-        [notes, cpr.repo],
+        [notes, symbiote.repo],
       );
       await page.getByRole('button', { name: /Open a repository/ }).click();
       await expect(page.getByRole('status')).toContainText('not inside a git working tree');
       await page.getByRole('button', { name: /Open a repository/ }).click();
       await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
-      const state = JSON.parse(readFileSync(join(config, 'cpr', 'app', 'state.json'), 'utf8')) as {
+      const state = JSON.parse(
+        readFileSync(join(config, 'symbiote', 'app', 'state.json'), 'utf8'),
+      ) as {
         recent: string[];
       };
-      expect(state.recent).toEqual([cpr.repo]);
+      expect(state.recent).toEqual([symbiote.repo]);
     } finally {
       rmSync(notes, { recursive: true, force: true });
     }
@@ -578,7 +580,7 @@ test.describe('from the launcher', () => {
   test('the start page draws the frame and the window’s buttons too, on Linux (N1d)', async () => {
     installed();
     const { app, page } = await fromLauncher();
-    await expect(page.getByRole('heading', { name: 'CPR', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Symbiote', exact: true })).toBeVisible();
     await recordWindow(app);
     await expect(page.locator('html')).toHaveAttribute('data-frame', 'own');
     expect(await style(page, '#root', 'border-radius')).toBe('10px');
@@ -589,7 +591,7 @@ test.describe('from the launcher', () => {
   });
 
   test('launched again, the running app takes it: one window', async () => {
-    installed([cpr.repo]);
+    installed([symbiote.repo]);
     const { app, page } = await fromLauncher();
     await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
     const again = spawn(electron as string, [desktop], { env: launcherEnv() });
@@ -597,9 +599,9 @@ test.describe('from the launcher', () => {
     expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);
   });
 
-  test('says what to run when cpr app install never ran', async () => {
-    installed([cpr.repo], false);
+  test('says what to run when symbiote app install never ran', async () => {
+    installed([symbiote.repo], false);
     const { page } = await fromLauncher();
-    await expect(page.getByRole('status')).toContainText('run cpr app install in a terminal');
+    await expect(page.getByRole('status')).toContainText('run symbiote app install in a terminal');
   });
 });

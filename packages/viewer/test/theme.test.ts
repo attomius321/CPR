@@ -12,7 +12,7 @@ const inline = (() => {
 })();
 
 /**
- * Runs the inline script with `stored` in the browser's storage, in CPR's window when `app` is
+ * Runs the inline script with `stored` in the browser's storage, in Symbiote's window when `app` is
  * the preload's (N1c): what it sets on <html>.
  */
 function beforePaint(stored: string | null | Error, app?: { platform: string }) {
@@ -30,7 +30,7 @@ function beforePaint(stored: string | null | Error, app?: { platform: string }) 
     localStorage: unknown,
     window: unknown,
   ) => void;
-  run({ documentElement: root }, storage, app ? { cprApp: app } : {});
+  run({ documentElement: root }, storage, app ? { symbioteApp: app } : {});
   return root.dataset;
 }
 
@@ -57,7 +57,7 @@ describe('the theme (V29b, decision 179)', () => {
     expect(themeBeforePaint(new Error('SecurityError'))).toBe('dark');
   });
 
-  it("marks the page as CPR's window's before the first paint, and only there (N1c)", () => {
+  it("marks the page as Symbiote's window's before the first paint, and only there (N1c)", () => {
     expect(beforePaint(null, { platform: 'linux' }).app).toBe('linux');
     expect(beforePaint(null).app).toBeUndefined();
   });

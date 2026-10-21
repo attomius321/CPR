@@ -80,12 +80,12 @@ describe('checkoutRevision', () => {
 });
 
 describe('defaultCacheDir', () => {
-  it('prefers CPR_CACHE_DIR, then XDG_CACHE_HOME, then the platform default', () => {
-    expect(defaultCacheDir({ CPR_CACHE_DIR: '/c', XDG_CACHE_HOME: '/x' }, 'linux', '/h')).toBe(
+  it('prefers SYMBIOTE_CACHE_DIR, then XDG_CACHE_HOME, then the platform default', () => {
+    expect(defaultCacheDir({ SYMBIOTE_CACHE_DIR: '/c', XDG_CACHE_HOME: '/x' }, 'linux', '/h')).toBe(
       '/c',
     );
-    expect(defaultCacheDir({ XDG_CACHE_HOME: '/x' }, 'darwin', '/h')).toBe('/x/cpr');
-    expect(defaultCacheDir({}, 'darwin', '/h')).toBe('/h/Library/Caches/cpr');
-    expect(defaultCacheDir({}, 'linux', '/h')).toBe('/h/.cache/cpr');
+    expect(defaultCacheDir({ XDG_CACHE_HOME: '/x' }, 'darwin', '/h')).toBe('/x/symbiote');
+    expect(defaultCacheDir({}, 'darwin', '/h')).toBe('/h/Library/Caches/symbiote');
+    expect(defaultCacheDir({}, 'linux', '/h')).toBe('/h/.cache/symbiote');
   });
 });

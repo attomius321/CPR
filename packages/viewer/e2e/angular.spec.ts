@@ -1,24 +1,24 @@
 import { expect, test } from '@playwright/test';
-import { servePullRequest, type RunningPullRequest } from './cpr.js';
+import { servePullRequest, type RunningPullRequest } from './symbiote.js';
 
-// `cpr pr 7 --plugin angular` on the plugin's fixture: a template is a symbol with its own diff,
-// and a comment on one of its lines goes to the template file.
-let cpr: RunningPullRequest;
+// `symbiote pr 7 --plugin angular` on the plugin's fixture: a template is a symbol with its own
+// diff, and a comment on one of its lines goes to the template file.
+let symbiote: RunningPullRequest;
 const errors: string[] = [];
 
 test.beforeAll(async () => {
-  cpr = await servePullRequest('packages/plugin-angular/test/fixtures/templates', [
+  symbiote = await servePullRequest('packages/plugin-angular/test/fixtures/templates', [
     '--plugin',
     'angular',
   ]);
 });
 
-test.afterAll(() => cpr.stop());
+test.afterAll(() => symbiote.stop());
 
 test.beforeEach(async ({ page }) => {
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(cpr.url);
+  await page.goto(symbiote.url);
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
 });
 
@@ -52,7 +52,7 @@ test('reviews a template like code, and comments on its lines', async ({ page })
   await page.getByRole('tab', { name: /Review/ }).click();
   await page.getByRole('button', { name: 'Submit review to GitHub' }).click();
   await expect(page.locator('.posted')).toContainText('Review posted.');
-  const posted = cpr.requests.filter((r) => r.method === 'POST');
+  const posted = symbiote.requests.filter((r) => r.method === 'POST');
   expect(posted[0]?.body).toMatchObject({
     comments: [
       {

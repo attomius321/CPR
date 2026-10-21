@@ -1,5 +1,5 @@
 /**
- * The code parts of an MDX file, found without an MDX compiler: what CPR needs is imports,
+ * The code parts of an MDX file, found without an MDX compiler: what Symbiote needs is imports,
  * exports, component elements and expressions, with their offsets — not the markdown.
  *
  * MDX's rules (2.x/3.x) that matter here: `import ` or `export ` at the start of a line that does

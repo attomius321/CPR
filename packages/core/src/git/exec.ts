@@ -1,7 +1,7 @@
 import { execFile, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { promisify } from 'node:util';
-import { CprError } from '../errors.js';
+import { SymbioteError } from '../errors.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -43,7 +43,7 @@ export async function git(cwd: string, args: readonly string[]): Promise<string>
     if (code === 'ENOENT') {
       // Spawn reports a missing cwd and a missing git binary the same way.
       if (!existsSync(cwd)) throw new Error(`directory does not exist: ${cwd}`, { cause: error });
-      throw new CprError('git is not installed or not on PATH', { cause: error });
+      throw new SymbioteError('git is not installed or not on PATH', { cause: error });
     }
     const failure = new GitError(
       args,
@@ -79,7 +79,7 @@ export function gitStream(
     child.on('error', (error: NodeJS.ErrnoException) => {
       if (error.code !== 'ENOENT') return reject(error);
       if (!existsSync(cwd)) reject(new Error(`directory does not exist: ${cwd}`, { cause: error }));
-      else reject(new CprError('git is not installed or not on PATH', { cause: error }));
+      else reject(new SymbioteError('git is not installed or not on PATH', { cause: error }));
     });
     child.on('close', (code) =>
       code === 0 ? resolve() : reject(new GitError(args, code, stderr || 'git failed')),

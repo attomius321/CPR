@@ -36,7 +36,7 @@ describe('one word for a workspace (V25)', () => {
       .sort();
     expect(found).toEqual(
       [
-        // `cpr/config.json`'s section by its name before V25, still read.
+        // `symbiote/config.json`'s section by its name before V25, still read.
         'packages/cli/src/workspaces.ts:features',
         'packages/cli/src/workspaces.ts:features',
         // The kind of work: its prefix, its brief's parts; its line in the dialog.

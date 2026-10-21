@@ -1,4 +1,4 @@
-import type { UsageSubscription } from '@cpr/core';
+import type { UsageSubscription } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   resetText,

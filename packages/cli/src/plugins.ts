@@ -2,10 +2,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { isAbsolute, join, posix, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { CprError, PLUGIN_API_VERSION, type TsPlugin } from '@cpr/core';
+import { SymbioteError, PLUGIN_API_VERSION, type TsPlugin } from '@symbiote/core';
 
-/** The project's CPR settings: in `cpr/` (V15), else the older file at the repository root. */
-export const CONFIG_FILES = ['cpr/config.json', 'cpr.config.json'] as const;
+/** The project's Symbiote settings: in `symbiote/` (V15), else the older file at the repository
+ * root. */
+export const CONFIG_FILES = ['symbiote/config.json', 'symbiote.config.json'] as const;
 
 /** A plugin to load and the folder its path is relative to. */
 interface PluginRequest {
@@ -16,10 +17,10 @@ interface PluginRequest {
 }
 
 /**
- * Loads the plugins asked for in `cpr/config.json` or `cpr.config.json` (paths relative to the
- * repo root) and by
+ * Loads the plugins asked for in `symbiote/config.json` or `symbiote.config.json` (paths relative
+ * to the repo root) and by
  * `--plugin` (relative to the working folder). A short name like `angular` is the package
- * `@cpr/plugin-angular`, looked up in the project first and then next to the CLI.
+ * `@symbiote/plugin-angular`, looked up in the project first and then next to the CLI.
  */
 export async function loadPlugins(
   flags: readonly string[],
@@ -38,7 +39,7 @@ export async function loadPlugins(
     files.add(file);
     const plugin = await importPlugin(file, request);
     if (plugins.some((p) => p.name === plugin.name)) {
-      throw new CprError(`two plugins are named '${plugin.name}' (${request.spec})`);
+      throw new SymbioteError(`two plugins are named '${plugin.name}' (${request.spec})`);
     }
     plugins.push(plugin);
   }
@@ -53,22 +54,22 @@ function readConfig(repoRoot: string): { file: string; plugins: string[] } {
   try {
     config = JSON.parse(readFileSync(join(repoRoot, file), 'utf8'));
   } catch (error) {
-    throw new CprError(`${file}: ${(error as Error).message}`, { cause: error });
+    throw new SymbioteError(`${file}: ${(error as Error).message}`, { cause: error });
   }
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
-    throw new CprError(`${file}: expected an object like { "plugins": ["angular"] }`);
+    throw new SymbioteError(`${file}: expected an object like { "plugins": ["angular"] }`);
   }
   const plugins = (config as { plugins?: unknown }).plugins;
   if (plugins === undefined) return { file, plugins: [] };
   if (!Array.isArray(plugins) || !plugins.every((p) => typeof p === 'string' && p !== '')) {
-    throw new CprError(`${file}: "plugins" must be a list of plugin names or paths`);
+    throw new SymbioteError(`${file}: "plugins" must be a list of plugin names or paths`);
   }
   return { file, plugins: plugins as string[] };
 }
 
-/** `angular` → `@cpr/plugin-angular`; scoped or qualified names stay as they are. */
+/** `angular` → `@symbiote/plugin-angular`; scoped or qualified names stay as they are. */
 export function pluginPackage(spec: string): string {
-  return spec.startsWith('@') || spec.includes('/') ? spec : `@cpr/plugin-${spec}`;
+  return spec.startsWith('@') || spec.includes('/') ? spec : `@symbiote/plugin-${spec}`;
 }
 
 function isPath(spec: string): boolean {
@@ -79,7 +80,7 @@ function isPath(spec: string): boolean {
 function locate({ spec, from, origin }: PluginRequest, repoRoot: string): string {
   if (isPath(spec)) {
     const file = resolve(from, spec);
-    if (!existsSync(file)) throw new CprError(`plugin ${spec} (${origin}): ${file} not found`);
+    if (!existsSync(file)) throw new SymbioteError(`plugin ${spec} (${origin}): ${file} not found`);
     return file;
   }
   const name = pluginPackage(spec);
@@ -91,9 +92,9 @@ function locate({ spec, from, origin }: PluginRequest, repoRoot: string): string
       // try the next place
     }
   }
-  throw new CprError(
+  throw new SymbioteError(
     `plugin ${spec} (${origin}): cannot find the package ${name}; install it in the project ` +
-      `(npm install --save-dev ${name}) or next to cpr`,
+      `(npm install --save-dev ${name}) or next to symbiote`,
   );
 }
 
@@ -102,22 +103,22 @@ async function importPlugin(file: string, { spec, origin }: PluginRequest): Prom
   try {
     module = (await import(pathToFileURL(file).href)) as typeof module;
   } catch (error) {
-    throw new CprError(`plugin ${spec} (${origin}): cannot load ${file}: ${String(error)}`, {
+    throw new SymbioteError(`plugin ${spec} (${origin}): cannot load ${file}: ${String(error)}`, {
       cause: error,
     });
   }
   const plugin = module.default ?? module.plugin;
   if (!isPlugin(plugin)) {
-    throw new CprError(
-      `plugin ${spec} (${origin}): ${file} is not a CPR plugin ` +
+    throw new SymbioteError(
+      `plugin ${spec} (${origin}): ${file} is not a Symbiote plugin ` +
         `(expected a default export with name, apiVersion and applies)`,
     );
   }
   const apiVersion: number = plugin.apiVersion;
   if (apiVersion !== PLUGIN_API_VERSION) {
-    throw new CprError(
+    throw new SymbioteError(
       `plugin ${plugin.name} targets plugin API ${apiVersion}, ` +
-        `this cpr implements ${PLUGIN_API_VERSION}: use a version of the plugin made for it`,
+        `this symbiote implements ${PLUGIN_API_VERSION}: use a version of the plugin made for it`,
     );
   }
   return plugin;

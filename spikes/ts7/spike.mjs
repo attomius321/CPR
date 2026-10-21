@@ -1,4 +1,4 @@
-// Spike S1: TS 7 (Go) compiler API vs ts-morph (TS 6) for CPR's reference search.
+// Spike S1: TS 7 (Go) compiler API vs ts-morph (TS 6) for Symbiote's reference search.
 // Usage: node spike.mjs <tsconfig.json> [<tsconfig.json> …]
 import { createRequire } from 'node:module';
 import { relative } from 'node:path';
@@ -30,7 +30,7 @@ for (const config of configs) {
   const files = morph.program
     .getSourceFiles()
     .filter((sf) => !sf.isDeclarationFile && !sf.fileName.includes('/node_modules/') && !sf.fileName.includes('/fixtures/'));
-  // Every top-level named function/class/interface/variable: the symbols CPR searches from.
+  // Every top-level named function/class/interface/variable: the symbols Symbiote searches from.
   const targets = files.flatMap((sf) =>
     sf.statements.flatMap((statement) => {
       if ((ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isInterfaceDeclaration(statement)) && statement.name) {
@@ -77,7 +77,7 @@ for (const config of configs) {
   );
   go.close();
 
-  // --- compare use sites only (CPR ignores definitions and import/export sites) ------------
+  // --- compare use sites only (Symbiote ignores definitions and import/export sites) ------------
   const isUse = (site) => {
     const [file, at] = [site.slice(0, site.lastIndexOf(':')), Number(site.slice(site.lastIndexOf(':') + 1))];
     const sf = morph.program.getSourceFile(`${root}/${file}`);

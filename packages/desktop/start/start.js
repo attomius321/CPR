@@ -1,7 +1,7 @@
-// The app's start page (N1b): what to open. `cprStart` is the preload's, for this page only.
+// The app's start page (N1b): what to open. `symbioteStart` is the preload's, for this page only.
 'use strict';
 
-const api = window.cprStart;
+const api = window.symbioteStart;
 const params = new URLSearchParams(window.location.search);
 const opening = params.get('opening');
 const error = params.get('error');

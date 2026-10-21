@@ -1,4 +1,4 @@
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 import { layoutFlow, type FlowLayout, type LayoutOptions } from './flow.js';
 
 /** What the main thread sends the layout worker: the graph once, then views to lay out. */

@@ -1,12 +1,12 @@
-// CPR's merger (V26): approved branches merged in a worktree of CPR's own, checked, and landed by
-// fast-forward. What `cpr view`'s server answers and the viewer reads. Types only.
+// Symbiote's merger (V26): approved branches merged in a worktree of Symbiote's own, checked, and
+// landed by fast-forward. What `symbiote view`'s server answers and the viewer reads. Types only.
 import type { AgentKind } from './workspaces.js';
 
 /** Where a queued merge is. */
 export const MERGE_STATES = [
   /** Waiting for its turn: one merge at a time per repository. */
   'queued',
-  /** `git merge --no-ff` in CPR's merge worktree. */
+  /** `git merge --no-ff` in Symbiote's merge worktree. */
   'merging',
   /** It conflicted: the merger agent answers each region (V26c). */
   'resolving',
@@ -29,7 +29,7 @@ export type MergeState = (typeof MERGE_STATES)[number];
 /** The check of a merge: its commands, where they came from, and how they ended. */
 export interface MergeCheckRun {
   commands: string[];
-  /** `cpr/config.json (merge.checks)`, or the guess's source (V24b). */
+  /** `symbiote/config.json (merge.checks)`, or the guess's source (V24b). */
   source: string;
   /** Absent while it runs. */
   ok?: boolean;
@@ -104,7 +104,7 @@ export interface MergeEntry {
 /** `GET /api/merges`. */
 export interface MergeList {
   merges: MergeEntry[];
-  /** Another CPR process is merging in this repository: the queue is shown, it merges. */
+  /** Another Symbiote process is merging in this repository: the queue is shown, it merges. */
   elsewhere?: true;
 }
 

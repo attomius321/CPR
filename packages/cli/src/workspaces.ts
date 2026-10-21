@@ -57,7 +57,7 @@ import {
   type RefList,
   type WorkKind,
   type WorkKindSpec,
-} from '@cpr/core';
+} from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
 import { DEFAULT_PROMPTS, fillPrompt, readPrompts } from './prompts.js';
 import {
@@ -79,7 +79,7 @@ import { localHost, onPath } from './editor.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
 import { CONFIG_FILES } from './plugins.js';
 import {
-  prepareCprFolder,
+  prepareSymbioteFolder,
   readReview,
   reviewPath,
   reviewPlace,
@@ -98,7 +98,8 @@ import {
   workspacesFolder,
 } from './thread.js';
 
-/** A workspace on disk: `cpr/workspaces/<branch>.json` (V18; `cpr/features/` before V25), one per branch. */
+/** A workspace on disk: `symbiote/workspaces/<branch>.json` (V18; `symbiote/features/` before V25),
+ * one per branch. */
 export interface WorkspaceFile {
   /** The agent started for it; null when none was found. */
   agent: WorkspaceAgentRecord | null;
@@ -126,7 +127,8 @@ export interface WorkspaceAgentRecord {
   kind: AgentKind;
   /** Claude Code's permission mode. */
   permissionMode?: PermissionMode;
-  /** The effort level it was started at (V30b), given again when it starts again; its own if absent. */
+  /** The effort level it was started at (V30b), given again when it starts again; its own if
+   * absent. */
   effort?: string;
   /** When it last started: for Codex, its last run (V20a). */
   started?: string;
@@ -141,13 +143,13 @@ export interface WorkspaceAgentRecord {
   threads?: string[];
   /** Why the last start failed, in the agent's words. */
   error?: string;
-  /** Started with CPR's hooks (V18c): its thread is recorded. */
+  /** Started with Symbiote's hooks (V18c): its thread is recorded. */
   hooks?: boolean;
 }
 
 /** Every workspace file's first key: where an agent that opens it finds its instructions. */
 export const WORKSPACE_ABOUT =
-  'A workspace started in CPR. Agents: read cpr/AGENTS.md before acting on it.';
+  'A workspace started in Symbiote. Agents: read symbiote/AGENTS.md before acting on it.';
 
 /** Longest brief: it goes on the agent's command line (Windows takes 32,767 characters). */
 export const MAX_BRIEF = 20_000;
@@ -237,7 +239,7 @@ export function workKinds(): WorkKindSpec[] {
 const written = (text: string | undefined) => (text ?? '').replace(/^\s*\n/, '').trimEnd();
 
 /**
- * The brief CPR gives the agent (V24, decisions 123–124): `# <Kind>: <title>`, then each part
+ * The brief Symbiote gives the agent (V24, decisions 123–124): `# <Kind>: <title>`, then each part
  * with text under its heading in the brief's order, Done when last; the person's text as written.
  */
 export function briefOf(kind: WorkKind, title: string, parts: BriefParts): string {
@@ -311,7 +313,7 @@ function kindOf(value: unknown): { kind?: WorkKind } {
   return kind ? { kind } : {};
 }
 
-/** The parts CPR knows, each with text. */
+/** The parts Symbiote knows, each with text. */
 function partsRead(value: unknown): { parts?: BriefParts } {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   const v = value as Record<string, unknown>;
@@ -354,8 +356,8 @@ function asAgent(value: unknown): WorkspaceAgentRecord | null {
 
 /**
  * Where a workspace's worktree goes: beside the checkout, `../<checkout>.worktrees/<branch>`, the
- * branch's slashes as dashes; `pattern` (`workspaces.worktrees` in `cpr/config.json`, relative to
- * the checkout, `{repo}` for its folder name) moves the folder that holds them.
+ * branch's slashes as dashes; `pattern` (`workspaces.worktrees` in `symbiote/config.json`, relative
+ * to the checkout, `{repo}` for its folder name) moves the folder that holds them.
  */
 export function worktreeFolder(main: string, branch: string, pattern?: string): string {
   const name = basename(main);
@@ -393,7 +395,7 @@ export async function workspaceBase(
 }
 
 /**
- * What the agent is told: its kind's start prompt (V28; CPR's unless the project has its own),
+ * What the agent is told: its kind's start prompt (V28; Symbiote's unless the project has its own),
  * filled with the brief, its branch and worktree, where its record and reviews are. A record
  * from before V24 is a feature.
  */
@@ -415,7 +417,7 @@ export function workspacePrompt(
     record: where.record,
     reviews: where.reviews,
     agents: where.agents,
-    cpr: dirname(where.agents),
+    symbiote: dirname(where.agents),
   });
   return `${text.trimEnd()}\n`;
 }
@@ -530,9 +532,9 @@ const isBlocked = (session: AgentSession) =>
 
 /**
  * What the page says of a workspace's agent: the newest session working in its worktree (matched
- * by real path), else why there is none. `ahead` (commits since the fork point) tells a finished plan
- * from finished work. `ended`: the thread says its last turn ended (V18c) — Claude Code reads a
- * finished plan as `blocked` with nothing named it waits for, so that is a finished turn. A
+ * by real path), else why there is none. `ahead` (commits since the fork point) tells a finished
+ * plan from finished work. `ended`: the thread says its last turn ended (V18c) — Claude Code reads
+ * a finished plan as `blocked` with nothing named it waits for, so that is a finished turn. A
  * turn interrupted with Esc fires no hook and reads `idle` with `working` until the next one ends.
  */
 export function agentState(
@@ -584,7 +586,8 @@ export type Run = (
   options: { cwd: string; timeoutMs: number },
 ) => Promise<{ code: number | null; stdout: string; stderr: string }>;
 
-/** How long a program's output may close after it exits, at most: a service it starts may hold it. */
+/** How long a program's output may close after it exits, at most: a service it starts may hold it.
+ * */
 const OUTPUT_AFTER_EXIT_MS = 1_000;
 
 /**
@@ -624,7 +627,7 @@ export const runProgram: Run = (command, args, { cwd, timeoutMs }) =>
     });
   });
 
-/** What CPR asks of Claude Code (V18); tests pass a fake. */
+/** What Symbiote asks of Claude Code (V18); tests pass a fake. */
 export interface ClaudeCode {
   /** The program, as found. */
   command: string;
@@ -635,7 +638,7 @@ export interface ClaudeCode {
     prompt: string;
     permissionMode: PermissionMode;
     addDir: string;
-    /** CPR's settings file (V18c): the hooks that record the thread. */
+    /** Symbiote's settings file (V18c): the hooks that record the thread. */
     settings?: string;
     /** Its effort level (V30b, `--effort`): the session keeps it, through a resume too. */
     effort?: string;
@@ -654,11 +657,11 @@ export interface ClaudeCode {
     cwd: string;
     text: string;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
-  /** Removes a background session (`claude rm <id>`); a worktree CPR made stays. */
+  /** Removes a background session (`claude rm <id>`); a worktree Symbiote made stays. */
   remove(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Whose account it runs on. */
   account(): Promise<string | undefined>;
-  /** The effort levels its `--help` lists (V30b); null when it lists none CPR can read. */
+  /** The effort levels its `--help` lists (V30b); null when it lists none Symbiote can read. */
   efforts(): Promise<string[] | null>;
 }
 
@@ -749,12 +752,13 @@ function wordsOf(result: { stdout: string; stderr: string }): string {
   return (result.stderr.trim() || result.stdout.trim()).split('\n').slice(-3).join('\n');
 }
 
-/** Claude Code's program: `CPR_CLAUDE` (a path or a command on PATH), else `claude` on PATH. */
+/** Claude Code's program: `SYMBIOTE_CLAUDE` (a path or a command on PATH), else `claude` on PATH.
+ * */
 export async function findClaude(
   env: Readonly<Record<string, string | undefined>>,
 ): Promise<string | null> {
   const host = localHost(env);
-  const custom = env.CPR_CLAUDE?.trim();
+  const custom = env.SYMBIOTE_CLAUDE?.trim();
   if (custom) {
     if (/[\\/]/.test(custom)) return (await host.isFile(custom)) ? custom : null;
     return onPath(host, custom);
@@ -762,7 +766,7 @@ export async function findClaude(
   return onPath(host, 'claude');
 }
 
-/** What `cpr/config.json` says of workspaces and their agent; anything unknown is ignored. */
+/** What `symbiote/config.json` says of workspaces and their agent; anything unknown is ignored. */
 export interface WorkspaceConfig {
   branchPrefixes: Record<WorkKind, string>;
   worktrees?: string;
@@ -888,7 +892,8 @@ const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: '
 export interface Workspaces {
   options(): Promise<WorkspaceOptions>;
   list(): Promise<WorkspaceList>;
-  /** Makes the branch, its worktree and record, then starts the agent. Rejects with `FeatureRefused`. */
+  /** Makes the branch, its worktree and record, then starts the agent. Rejects with
+   * `FeatureRefused`. */
   start(request: WorkspaceRequest): Promise<WorkspaceStart>;
   /** Starts a workspace's agent again (after a failed start, or once it ended). */
   startAgent(branch: string): Promise<WorkspaceStart>;
@@ -900,8 +905,8 @@ export interface Workspaces {
    */
   check(at: string): Promise<CheckGuess | null>;
   /**
-   * The start page's draft (V24c, decision 128): kept in CPR's cache for the repository, so a
-   * new `cpr view` (another port, other browser storage) has it; `{}` when none.
+   * The start page's draft (V24c, decision 128): kept in Symbiote's cache for the repository, so a
+   * new `symbiote view` (another port, other browser storage) has it; `{}` when none.
    */
   draft(): Promise<Record<string, unknown>>;
   saveDraft(value: Record<string, unknown>): Promise<void>;
@@ -937,7 +942,8 @@ export interface Workspaces {
   clean(request: { branch: string; unmerged?: boolean }): Promise<{ finished: string }>;
 }
 
-/** The hooks CPR passes to every workspace's agent (V18c): each event, recorded by `agent-hook.js`. */
+/** The hooks Symbiote passes to every workspace's agent (V18c): each event, recorded by
+ * `agent-hook.js`. */
 const HOOKED_EVENTS = [
   'SessionStart',
   'UserPromptSubmit',
@@ -954,14 +960,17 @@ function shellWord(path: string, platform: NodeJS.Platform): string {
 }
 
 /**
- * CPR's settings file for its agents (V18c), `<cpr>/claude-settings.json`: every event runs
- * `agent-hook.js` with the `cpr/` folder; `PreToolUse` only for questions. It decides nothing.
+ * Symbiote's settings file for its agents (V18c), `<symbiote>/claude-settings.json`: every event
+ * runs
+ * `agent-hook.js` with the `symbiote/` folder; `PreToolUse` only for questions. It decides nothing.
  */
 export function agentSettings(
-  where: { node: string; hook: string; cpr: string },
+  where: { node: string; hook: string; symbiote: string },
   platform: NodeJS.Platform = process.platform,
 ): string {
-  const command = [where.node, where.hook, where.cpr].map((p) => shellWord(p, platform)).join(' ');
+  const command = [where.node, where.hook, where.symbiote]
+    .map((p) => shellWord(p, platform))
+    .join(' ');
   const hooks = Object.fromEntries(
     HOOKED_EVENTS.map((event) => [
       event,
@@ -996,7 +1005,8 @@ const linesOf = (count: { added: number | null; removed: number | null } | undef
       ? { binary: true as const }
       : { added: count.added, removed: count.removed };
 
-/** Workspaces of `repo`, kept beside its reviews (`cpr/workspaces/`, else CPR's cache). */
+/** Workspaces of `repo`, kept beside its reviews (`symbiote/workspaces/`, else Symbiote's cache).
+ * */
 export function workspaces(
   repo: GitRepo,
   cacheDir: string,
@@ -1017,22 +1027,23 @@ export function workspaces(
     codex?: () => Promise<Codex | null>;
     now?: () => Date;
     env?: Readonly<Record<string, string | undefined>>;
-    /** Where `cpr/config.json` is read. */
+    /** Where `symbiote/config.json` is read. */
     root?: string;
     openFolder?: OpenFolder;
-    /** CPR's hook (`dist/agent-hook.js`) and the Node that runs it. */
+    /** Symbiote's hook (`dist/agent-hook.js`) and the Node that runs it. */
     hook?: string;
     node?: string;
     /** Terminals on agents' sessions (V21); without them, none. */
     terminals?: Terminals;
   },
 ): Workspaces {
-  /** Where reviews and workspaces are kept; `cpr/features/` moved first (V25), or noted when left. */
+  /** Where reviews and workspaces are kept; `symbiote/features/` moved first (V25), or noted when
+   * left. */
   const place = async (): Promise<ReviewPlace> => {
     const where = await reviewPlace(repo, cacheDir);
     if (!(await workspacesFolder(dirname(where.dir))).left) return where;
     const left =
-      'cpr/features/, where workspaces were kept before, is still here: CPR reads cpr/workspaces/.';
+      'symbiote/features/, where workspaces were kept before, is still here: Symbiote reads symbiote/workspaces/.';
     return { ...where, note: where.note ? `${where.note} ${left}` : left };
   };
   const config = () => readWorkspaceConfig(root);
@@ -1043,20 +1054,20 @@ export function workspaces(
       return path;
     }
   };
-  /** The folder holding `cpr/` (or its stand-in in the cache): the agent may read it. */
-  const cprFolder = (where: ReviewPlace) => dirname(where.dir);
-  const workspacesDir = (where: ReviewPlace) => join(cprFolder(where), 'workspaces');
-  /** `workspaces.worktrees` is relative to the checkout that holds `cpr/`. */
+  /** The folder holding `symbiote/` (or its stand-in in the cache): the agent may read it. */
+  const symbioteFolder = (where: ReviewPlace) => dirname(where.dir);
+  const workspacesDir = (where: ReviewPlace) => join(symbioteFolder(where), 'workspaces');
+  /** `workspaces.worktrees` is relative to the checkout that holds `symbiote/`. */
   const mainRoot = (where: ReviewPlace) =>
-    where.place === 'repository' ? dirname(cprFolder(where)) : repo.root;
+    where.place === 'repository' ? dirname(symbioteFolder(where)) : repo.root;
 
   /**
-   * CPR's settings file, written when its text differs (CPR moved) or it is gone: a session that
-   * wakes reads it again, and does not start without it (V18c spike). Its path.
+   * Symbiote's settings file, written when its text differs (Symbiote moved) or it is gone: a
+   * session that wakes reads it again, and does not start without it (V18c spike). Its path.
    */
   async function settingsFile(where: ReviewPlace): Promise<string> {
-    const path = join(cprFolder(where), 'claude-settings.json');
-    const text = agentSettings({ node, hook, cpr: cprFolder(where) });
+    const path = join(symbioteFolder(where), 'claude-settings.json');
+    const text = agentSettings({ node, hook, symbiote: symbioteFolder(where) });
     if ((await readFile(path, 'utf8').catch(() => null)) !== text) {
       await mkdir(dirname(path), { recursive: true });
       const temp = `${path}.${process.pid}.tmp`;
@@ -1121,7 +1132,9 @@ export function workspaces(
       acted =
         (read instanceof Error ? undefined : serverLastAction(read)) ?? workspace.agent?.started;
     } else {
-      const thread = workspace.agent ? await readThreadEnd(cprFolder(where), workspace.branch) : [];
+      const thread = workspace.agent
+        ? await readThreadEnd(symbioteFolder(where), workspace.branch)
+        : [];
       // Blocked with nothing named: its thread tells a finished turn from a question (V18c).
       const session = newestSession(workspace, sessions, real);
       const ended =
@@ -1294,7 +1307,8 @@ export function workspaces(
     return agent ? { kind, codex: agent } : null;
   }
 
-  /** The agent a workspace gets unless one is picked: `agent.kind`, else Claude Code, else Codex. */
+  /** The agent a workspace gets unless one is picked: `agent.kind`, else Claude Code, else Codex.
+   * */
   async function defaultAgent(): Promise<FoundAgent | null> {
     const first = config().agent;
     for (const kind of first ? [first, ...AGENT_KINDS.filter((k) => k !== first)] : AGENT_KINDS) {
@@ -1304,7 +1318,7 @@ export function workspaces(
     return null;
   }
 
-  /** The levels `agent` takes (V30b); null when CPR cannot read them. */
+  /** The levels `agent` takes (V30b); null when Symbiote cannot read them. */
   async function effortsOf(agent: FoundAgent): Promise<AgentEfforts | null> {
     if (agent.kind === 'codex') return agent.codex.efforts();
     const levels = await agent.claude.efforts();
@@ -1325,7 +1339,7 @@ export function workspaces(
     const { levels } = (await effortsOf(agent)) ?? {};
     if (!levels) {
       throw new WorkspaceRefused(
-        `CPR cannot read ${name}'s effort levels: start it at its default`,
+        `Symbiote cannot read ${name}'s effort levels: start it at its default`,
         400,
       );
     }
@@ -1364,7 +1378,7 @@ export function workspaces(
         name: workspace.branch,
         prompt,
         permissionMode,
-        addDir: cprFolder(where),
+        addDir: symbioteFolder(where),
         settings: await settingsFile(where),
         ...level,
       });
@@ -1378,7 +1392,7 @@ export function workspaces(
 
   /**
    * Starts Codex on a workspace: a thread on its app server (V27a), else `codex exec` through
-   * CPR's runner, which records its thread (V20a); its sandbox may also write what a commit on
+   * Symbiote's runner, which records its thread (V20a); its sandbox may also write what a commit on
    * the branch writes (decision 130). Threads it had on the server are kept, for Clean up.
    */
   async function launchCodex(
@@ -1428,7 +1442,7 @@ export function workspaces(
     const run = randomUUID();
     const result = await agent.start({
       cwd: workspace.worktree,
-      thread: threadPath(cprFolder(where), workspace.branch),
+      thread: threadPath(symbioteFolder(where), workspace.branch),
       run,
       writable,
       prompt,
@@ -1439,7 +1453,7 @@ export function workspaces(
       : { ...head, error: result.error };
   }
 
-  /** Whether a Codex workspace runs on the app server (V27a), not through CPR's runner. */
+  /** Whether a Codex workspace runs on the app server (V27a), not through Symbiote's runner. */
   const onServer = (workspace: WorkspaceFile) =>
     workspace.agent?.kind === 'codex' && workspace.agent.thread !== undefined;
 
@@ -1483,7 +1497,7 @@ export function workspaces(
     const run = workspace.agent?.run;
     if (!run) return;
     for (let waited = 0; waited < 3_000; waited += 50) {
-      const entries = await readThreadEnd(cprFolder(where), workspace.branch);
+      const entries = await readThreadEnd(symbioteFolder(where), workspace.branch);
       if (entries.some((e) => e.run === run) || !(await codexAlive(workspace))) return;
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
@@ -1504,10 +1518,10 @@ export function workspaces(
   ): Promise<void> {
     if (workspace.agent?.pid) await agent.stop(workspace.agent.pid);
     const run = workspace.agent?.run;
-    const entries = await readThreadEnd(cprFolder(where), workspace.branch);
+    const entries = await readThreadEnd(symbioteFolder(where), workspace.branch);
     if (entries.some((e) => e.run === run && e.kind === 'end')) return;
     const session = entries.findLast((e) => e.kind === 'start')?.session ?? '';
-    await appendThread(cprFolder(where), workspace.branch, {
+    await appendThread(symbioteFolder(where), workspace.branch, {
       at: now().toISOString(),
       session,
       ...(run ? { run } : {}),
@@ -1531,7 +1545,7 @@ export function workspaces(
     const agent = workspace.agent ? await claude() : null;
     if (!agent) {
       throw new WorkspaceRefused(
-        'No agent to talk to: install Claude Code (claude on PATH), or set CPR_CLAUDE',
+        'No agent to talk to: install Claude Code (claude on PATH), or set SYMBIOTE_CLAUDE',
         409,
       );
     }
@@ -1551,7 +1565,7 @@ export function workspaces(
     const agent = await codex();
     if (!agent) {
       throw new WorkspaceRefused(
-        'No agent to talk to: install Codex (codex on PATH), or set CPR_CODEX',
+        'No agent to talk to: install Codex (codex on PATH), or set SYMBIOTE_CODEX',
         409,
       );
     }
@@ -1559,7 +1573,7 @@ export function workspaces(
       throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
     }
     if (onServer(workspace)) return replyServer(where, workspace, text, stop);
-    const thread = await readThreadEnd(cprFolder(where), workspace.branch);
+    const thread = await readThreadEnd(symbioteFolder(where), workspace.branch);
     const state = codexState(workspace, thread, await codexAlive(workspace), 0);
     if (!state.id) {
       throw new WorkspaceRefused(
@@ -1577,7 +1591,7 @@ export function workspaces(
     const level = effort ? { effort } : {};
     const resumed = await agent.resume({
       cwd: workspace.worktree,
-      thread: threadPath(cprFolder(where), workspace.branch),
+      thread: threadPath(symbioteFolder(where), workspace.branch),
       run,
       writable: await commitFolders(workspace.worktree, workspace.branch),
       sessionId: state.id,
@@ -1630,7 +1644,7 @@ export function workspaces(
   /**
    * Codex's own terminal on a workspace's thread (V27b): its TUI joined to the app server, in the
    * worktree. Codex asks to trust each worktree the first time and saves the answer in the
-   * person's configuration: said when it will ask (decision 160), never answered by CPR.
+   * person's configuration: said when it will ask (decision 160), never answered by Symbiote.
    */
   async function codexTerminal(
     workspace: WorkspaceFile,
@@ -1815,7 +1829,7 @@ export function workspaces(
         planFirst: request.planFirst,
         worktree: folder,
       };
-      await prepareCprFolder(where, { text: readPrompts(root).text.reviews });
+      await prepareSymbioteFolder(where, { text: readPrompts(root).text.reviews });
       const prompt = await launch(where, workspace, agent, permissionMode, effort);
       return started(where, workspace, prompt);
     },
@@ -1830,7 +1844,7 @@ export function workspaces(
         throw new WorkspaceRefused(
           kind
             ? `No agent to start: ${AGENT_NAMES[kind]} is not installed`
-            : 'No agent to start: install Claude Code (claude on PATH, or CPR_CLAUDE) or Codex (codex on PATH, or CPR_CODEX)',
+            : 'No agent to start: install Claude Code (claude on PATH, or SYMBIOTE_CLAUDE) or Codex (codex on PATH, or SYMBIOTE_CODEX)',
           409,
         );
       }
@@ -1898,7 +1912,7 @@ export function workspaces(
       }
       if (workspace.agent?.kind === 'codex') {
         const agent = await codex();
-        const thread = await readThreadEnd(cprFolder(where), branch);
+        const thread = await readThreadEnd(symbioteFolder(where), branch);
         const live = codexState(workspace, thread, await codexAlive(workspace), 0);
         if (!agent || live.state !== 'working') {
           throw new WorkspaceRefused('its agent is not running', 409);
@@ -2003,15 +2017,15 @@ export function workspaces(
           read instanceof Error
             ? []
             : serverEntries(read, { first: read.turns.length < PANEL_TURNS }).slice(-THREAD_LIMIT);
-      } else entries = await readThread(cprFolder(where), branch);
+      } else entries = await readThread(symbioteFolder(where), branch);
       const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
       const verdict = review?.verdicts.at(-1);
       const shown = (path: string) =>
         where.place === 'repository' ? relative(repo.root, path).split(sep).join('/') : path;
       return {
         entries,
-        // Claude Code's hooks record it (V18c); CPR's runner records Codex's (V20a), or Codex's
-        // app server keeps it (V27a).
+        // Claude Code's hooks record it (V18c); Symbiote's runner records Codex's (V20a), or
+        // Codex's app server keeps it (V27a).
         recorded: workspace.agent?.hooks === true || workspace.agent?.kind === 'codex',
         ...(review && verdict
           ? {
@@ -2040,7 +2054,7 @@ export function workspaces(
       const workspace = await recorded(where, branch);
       if (workspace.agent?.kind === 'codex' && !onServer(workspace)) {
         throw new WorkspaceRefused(
-          'Codex has no terminal in CPR without its app server: Talk copies `codex resume`, to run in yours',
+          'Codex has no terminal in Symbiote without its app server: Talk copies `codex resume`, to run in yours',
           409,
         );
       }
@@ -2163,7 +2177,7 @@ export function workspaces(
           }
         }
         // Out of Codex's lists, not deleted (decision 134): an archived one fails the same way.
-        const entries = await readThread(cprFolder(where), workspace.branch, Infinity);
+        const entries = await readThread(symbioteFolder(where), workspace.branch, Infinity);
         const threads = new Set(entries.filter((e) => e.kind === 'start').map((e) => e.session));
         for (const thread of threads) {
           if (thread !== '') await codexAgent.archive(thread).catch(() => undefined);

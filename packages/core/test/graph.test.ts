@@ -14,7 +14,7 @@ const fixture = (name: string, side: 'base' | 'head') =>
 
 async function graphOf(name: string): Promise<Graph> {
   const analysis = await analyzeDirectories(fixture(name, 'base'), fixture(name, 'head'));
-  const graph = buildGraph(analysis, { generator: { name: 'cpr', version: 'test' } });
+  const graph = buildGraph(analysis, { generator: { name: 'symbiote', version: 'test' } });
   // Folder refs are absolute paths; make the snapshot machine-independent.
   graph.revisions.base.ref = 'base';
   graph.revisions.head.ref = 'head';

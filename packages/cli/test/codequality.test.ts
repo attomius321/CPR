@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { ChangedLines, Graph } from '@cpr/core';
+import type { ChangedLines, Graph } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { codeQualityReport } from '../src/codequality.js';
 

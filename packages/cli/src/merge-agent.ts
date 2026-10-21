@@ -1,8 +1,8 @@
 // The merger agent (V26c, decisions 150–152): a fresh Claude Code or Codex run, given only the
-// conflict, that answers each region's text. It writes no file: CPR writes its answer between
+// conflict, that answers each region's text. It writes no file: Symbiote writes its answer between
 // the markers, commits the merge, and the person reviews each region before it lands.
 import { spawn } from 'node:child_process';
-import type { AgentKind } from '@cpr/core';
+import type { AgentKind } from '@symbiote/core';
 import { DEFAULT_PROMPTS, MERGER_ANSWER } from './prompts.js';
 
 /** A conflict region, its lines 0-based in the file: `<<<<<<<` at `start`, `>>>>>>>` at `end`. */
@@ -119,13 +119,14 @@ export function parseAnswer(message: string, count: number): MergerAnswer {
 
 /**
  * The merger's system prompt (decision 150), the same for Claude Code (`--system-prompt`) and
- * Codex (before its prompt): the project's instructions or CPR's (V28), then CPR's answer format,
- * which a project cannot change (decision 169). CPR's are at most 1K tokens: read on every run.
+ * Codex (before its prompt): the project's instructions or Symbiote's (V28), then Symbiote's answer
+ * format, which a project cannot change (decision 169). Symbiote's are at most 1K tokens: read on
+ * every run.
  */
 export const mergerInstructions = (instructions: string) =>
   `${instructions.trimEnd()}\n\n${MERGER_ANSWER}`;
 
-/** CPR's system prompt for the merger, until a project has its own (`prompts.merger`). */
+/** Symbiote's system prompt for the merger, until a project has its own (`prompts.merger`). */
 export const MERGER_INSTRUCTIONS = mergerInstructions(DEFAULT_PROMPTS.merger);
 
 /** What the prompt is made of: the merge, its two sides' titles, the conflicting files. */
@@ -139,9 +140,9 @@ export interface MergerInput {
   sides: { into: string; branch: string };
   /** Each conflicting file's text, with git's markers. */
   files: { path: string; text: string }[];
-  /** Symbols both sides changed in those files (CPR's analysis), when known. */
+  /** Symbols both sides changed in those files (Symbiote's analysis), when known. */
   symbols?: { path: string; name: string; kind: string; into: string; branch: string }[];
-  /** `cpr/merge.md`, the project's own rules. */
+  /** `symbiote/merge.md`, the project's own rules. */
   rules?: string;
   /** The person's words on an earlier answer, and that answer. */
   again?: { comments: string; previous: string[] };
@@ -161,7 +162,7 @@ export function mergerPrompt(input: MergerInput): string {
     '',
   ];
   if (input.rules?.trim()) {
-    out.push("The project's merge rules (cpr/merge.md):", '', input.rules.trimEnd(), '');
+    out.push("The project's merge rules (symbiote/merge.md):", '', input.rules.trimEnd(), '');
   }
   if (input.symbols && input.symbols.length > 0) {
     out.push('Changed on both sides in the conflicting files:');
@@ -251,8 +252,8 @@ const RUN_TIMEOUT_MS = 15 * 60_000;
 const lastWords = (text: string) => text.trim().split('\n').slice(-3).join('\n');
 
 /**
- * Claude Code as the merger: `claude -p`, its system prompt the merger's instructions, read-only tools,
- * no MCP servers, nothing kept; the prompt on stdin (a long one would not fit an argument).
+ * Claude Code as the merger: `claude -p`, its system prompt the merger's instructions, read-only
+ * tools, no MCP servers, nothing kept; the prompt on stdin (a long one would not fit an argument).
  */
 export function claudeMerger(
   command: string,
@@ -317,8 +318,9 @@ export function claudeMerger(
 }
 
 /**
- * Codex as the merger: `codex exec` in its read-only sandbox, nothing kept, the merger's instructions
- * before the prompt (Codex has no system prompt to set), both on stdin; its last message.
+ * Codex as the merger: `codex exec` in its read-only sandbox, nothing kept, the merger's
+ * instructions before the prompt (Codex has no system prompt to set), both on stdin; its last
+ * message.
  */
 export function codexMerger(
   command: string,

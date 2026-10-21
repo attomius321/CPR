@@ -1,7 +1,7 @@
 // Checks a palette against the contrast rules of packages/viewer/test/tokens.test.ts before
 // styles.css is edited: text and muted 4.5:1 on the four backgrounds, states, faint and focus
 // 3:1, a control's edge 3:1, History's lanes 3:1 on rows, region lines 1.2:1.
-// Usage: node .claude/skills/cpr-style/palette-check.mjs   (edit PALETTE below to try values)
+// Usage: node .claude/skills/symbiote-style/palette-check.mjs   (edit PALETTE below to try values)
 
 const PALETTE = {
   dark: {

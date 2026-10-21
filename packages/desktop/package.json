@@ -1,11 +1,11 @@
 {
-  "name": "@cpr/desktop",
+  "name": "@symbiote/desktop",
   "version": "0.0.0",
-  "description": "CPR's desktop app: a window of its own on cpr view's server.",
+  "description": "Symbiote's desktop app: a window of its own on symbiote view's server.",
   "private": true,
   "type": "module",
-  "productName": "CPR",
-  "desktopName": "cpr.desktop",
+  "productName": "Symbiote",
+  "desktopName": "symbiote.desktop",
   "main": "dist/main.js",
   "exports": {
     "./package.json": "./package.json"

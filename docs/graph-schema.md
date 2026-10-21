@@ -1,6 +1,6 @@
-# CPR Graph Schema (draft v0.6.0)
+# Symbiote Graph Schema (draft v0.6.0)
 
-The graph JSON is the contract between the engine (`@cpr/core`) and every consumer
+The graph JSON is the contract between the engine (`@symbiote/core`) and every consumer
 (viewer, CLI summary, GitHub Action). It is **language-neutral**: nothing in it is
 TypeScript-specific except the `language` value. Plugins (framework knowledge such as templates)
 add symbols and edges of the same shapes; the graph names the plugins it was made with.
@@ -29,7 +29,7 @@ before any release.
 
 A consumer accepts any version with the same major. The JSON Schema at
 [`packages/core/schema/graph.schema.json`](../packages/core/schema/graph.schema.json) (draft
-2020-12, exported as `@cpr/core/schema/graph.schema.json`) is the source of truth; tests validate
+2020-12, exported as `@symbiote/core/schema/graph.schema.json`) is the source of truth; tests validate
 every golden graph against it.
 
 ## Top level
@@ -37,9 +37,9 @@ every golden graph against it.
 ```jsonc
 {
   "schemaVersion": "0.6.0",
-  "generator": { "name": "cpr", "version": "0.1.0" },
+  "generator": { "name": "symbiote", "version": "0.1.0" },
   "plugins": [{ "name": "angular", "version": "0.1.0" }],   // only when plugins ran
-  "changeRequest": {             // only from `cpr pr`
+  "changeRequest": {             // only from `symbiote pr`
     "forge": "gitlab", "number": 7, "title": "Add widgets",
     "url": "https://gitlab.example.com/acme/widgets/-/merge_requests/7",
     "author": "ada", "state": "open", "draft": false
@@ -100,7 +100,7 @@ ID; `external` and `unknown` nodes belong to none. The list is sorted by folder.
 | `source` | enum | Why it is a project, below. |
 | `plugin` | string \| absent | With `source: "plugin"`: the plugin that declared it. |
 
-How CPR finds a file's project (the first rule that finds one wins; each takes the nearest folder
+How Symbiote finds a file's project (the first rule that finds one wins; each takes the nearest folder
 at or above the file):
 
 | `source` | Rule |
@@ -121,7 +121,7 @@ both sides give a project for one folder, head's is listed.
 ```
 
 `status`: `added` `deleted` `modified` `renamed` `copied` `type-changed`. `ignored: true` marks
-files left out of symbol analysis (default ignores and `.cprignore`).
+files left out of symbol analysis (default ignores and `.symbioteignore`).
 
 ## Node
 

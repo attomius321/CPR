@@ -10,7 +10,7 @@ export interface LoadOptions {
   files?: readonly string[];
   /**
    * Repo-relative paths left out of analysis and of the program. Default: the default ignores
-   * plus the `.cprignore` at the revision's root.
+   * plus the `.symbioteignore` at the revision's root.
    */
   ignore?: IgnoreMatcher;
 }

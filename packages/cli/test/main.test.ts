@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION } from '@cpr/core';
+import { SCHEMA_VERSION } from '@symbiote/core';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
@@ -6,7 +6,7 @@ import { createBranchedRepo, tempDir } from '../../core/test/helpers/git-repo.js
 import type { AppWindow } from '../src/app.js';
 import { run } from '../src/main.js';
 
-async function cpr(
+async function symbiote(
   argv: string[],
   cwd = process.cwd(),
   whileRunning: (stdout: () => string) => Promise<void> = () => Promise.resolve(),
@@ -25,16 +25,16 @@ async function cpr(
   return { code, stdout, stderr, opened };
 }
 
-describe('cpr', () => {
+describe('symbiote', () => {
   it('prints help with no arguments', async () => {
-    const { code, stdout } = await cpr([]);
+    const { code, stdout } = await symbiote([]);
     expect(code).toBe(0);
-    expect(stdout).toContain('Usage: cpr');
+    expect(stdout).toContain('Usage: symbiote');
   });
 
-  it('describes cpr view as History, every branch, with the workspaces beside it (V25, V29a)', async () => {
+  it('describes symbiote view as History, every branch, with the workspaces beside it (V25, V29a)', async () => {
     for (const argv of [[], ['view', '--help']]) {
-      const { stdout } = await cpr(argv);
+      const { stdout } = await symbiote(argv);
       expect(stdout).not.toMatch(/current\s+branch/);
       expect(stdout).not.toMatch(/commits\s+page/);
       expect(stdout).not.toMatch(/first\s+page\s+is\s+Workspaces/);
@@ -43,45 +43,45 @@ describe('cpr', () => {
   });
 
   it('prints the version and schema version', async () => {
-    const { code, stdout } = await cpr(['--version']);
+    const { code, stdout } = await symbiote(['--version']);
     expect(code).toBe(0);
     expect(stdout).toMatch(
-      new RegExp(`^cpr \\d+\\.\\d+\\.\\d+ \\(graph schema ${SCHEMA_VERSION}\\)\\n$`),
+      new RegExp(`^symbiote \\d+\\.\\d+\\.\\d+ \\(graph schema ${SCHEMA_VERSION}\\)\\n$`),
     );
   });
 
-  it('explains cpr app, and refuses what it does not know (N1b)', async () => {
-    expect((await cpr(['app'])).code).toBe(2);
-    const help = await cpr(['app', '--help']);
+  it('explains symbiote app, and refuses what it does not know (N1b)', async () => {
+    expect((await symbiote(['app'])).code).toBe(2);
+    const help = await symbiote(['app', '--help']);
     expect(help.code).toBe(0);
-    expect(help.stdout).toContain('Usage: cpr app install | uninstall');
-    const odd = await cpr(['app', 'nope']);
+    expect(help.stdout).toContain('Usage: symbiote app install | uninstall');
+    const odd = await symbiote(['app', 'nope']);
     expect(odd.code).toBe(2);
     expect(odd.stderr).toContain("unknown action 'nope'");
   });
 
   it('rejects unknown commands with a usage error', async () => {
-    const { code, stderr } = await cpr(['nope']);
+    const { code, stderr } = await symbiote(['nope']);
     expect(code).toBe(2);
     expect(stderr).toContain("unknown command 'nope'");
   });
 });
 
-describe('cpr diff', () => {
+describe('symbiote diff', () => {
   const { repo, shas } = createBranchedRepo();
   // Keep worktree slots out of the real cache.
   const cacheDir = tempDir();
-  const previousCacheDir = process.env.CPR_CACHE_DIR;
-  process.env.CPR_CACHE_DIR = cacheDir;
+  const previousCacheDir = process.env.SYMBIOTE_CACHE_DIR;
+  process.env.SYMBIOTE_CACHE_DIR = cacheDir;
   afterAll(() => {
     repo.cleanup();
     rmSync(cacheDir, { recursive: true, force: true });
-    if (previousCacheDir === undefined) delete process.env.CPR_CACHE_DIR;
-    else process.env.CPR_CACHE_DIR = previousCacheDir;
+    if (previousCacheDir === undefined) delete process.env.SYMBIOTE_CACHE_DIR;
+    else process.env.SYMBIOTE_CACHE_DIR = previousCacheDir;
   });
 
   it('lists symbols changed since the merge-base, by file', async () => {
-    const { code, stdout } = await cpr(['diff', 'main', 'feature'], repo.root);
+    const { code, stdout } = await symbiote(['diff', 'main', 'feature'], repo.root);
     expect(code).toBe(0);
     expect(stdout).toBe(
       [
@@ -105,20 +105,20 @@ describe('cpr diff', () => {
   });
 
   it('defaults head to HEAD', async () => {
-    const { code, stdout } = await cpr(['diff', 'feature'], repo.root);
+    const { code, stdout } = await symbiote(['diff', 'feature'], repo.root);
     expect(code).toBe(0);
     expect(stdout).toContain('feature (');
     expect(stdout).toContain('→ HEAD (');
   });
 
   it('can skip the merge-base', async () => {
-    const { stdout } = await cpr(['diff', 'main', 'feature', '--no-merge-base'], repo.root);
+    const { stdout } = await symbiote(['diff', 'main', 'feature', '--no-merge-base'], repo.root);
     expect(stdout).not.toContain('merge-base');
     expect(stdout).toContain('\nD  src/main-only.ts\n');
   });
 
   it('prints the graph JSON with --json and writes it with --out', async () => {
-    const { code, stdout } = await cpr(
+    const { code, stdout } = await symbiote(
       ['diff', 'main', 'feature', '--json', '--out', 'graph.json'],
       repo.root,
     );
@@ -132,21 +132,25 @@ describe('cpr diff', () => {
 
   it('fails with --fail-on when a finding is severe enough', async () => {
     // The branch adds an unused export: one orphan-added warning.
-    expect((await cpr(['diff', 'main', 'feature', '--fail-on', 'error'], repo.root)).code).toBe(0);
-    const warning = await cpr(['diff', 'main', 'feature', '--fail-on', 'warning'], repo.root);
+    expect(
+      (await symbiote(['diff', 'main', 'feature', '--fail-on', 'error'], repo.root)).code,
+    ).toBe(0);
+    const warning = await symbiote(['diff', 'main', 'feature', '--fail-on', 'warning'], repo.root);
     expect(warning.code).toBe(1);
     expect(warning.stderr).toContain("1 finding at or above 'warning'");
-    expect((await cpr(['diff', 'main', 'feature', '--fail-on', 'loud'], repo.root)).code).toBe(2);
+    expect((await symbiote(['diff', 'main', 'feature', '--fail-on', 'loud'], repo.root)).code).toBe(
+      2,
+    );
   });
 
-  it('serves the graph and sources with cpr view', async () => {
+  it('serves the graph and sources with symbiote view', async () => {
     const viewer = tempDir();
     writeFileSync(join(viewer, 'index.html'), '<!doctype html><title>viewer</title>');
-    process.env.CPR_VIEWER_DIR = viewer;
+    process.env.SYMBIOTE_VIEWER_DIR = viewer;
     try {
       const seen: Record<string, string> = {};
-      const result = await cpr(['view', 'main', 'feature'], repo.root, async (stdout) => {
-        const url = /CPR viewer: (\S+)/.exec(stdout())?.[1] ?? '';
+      const result = await symbiote(['view', 'main', 'feature'], repo.root, async (stdout) => {
+        const url = /Symbiote viewer: (\S+)/.exec(stdout())?.[1] ?? '';
         for (const path of [
           '',
           'api/graph',
@@ -170,25 +174,25 @@ describe('cpr diff', () => {
       expect(seen['api/source?side=head&file=src/a.ts']).toBe('200 export const a = 2;\n');
       expect(seen['api/source?side=base&file=src/a.ts']).toBe('200 export const a = 1;\n');
     } finally {
-      delete process.env.CPR_VIEWER_DIR;
+      delete process.env.SYMBIOTE_VIEWER_DIR;
       rmSync(viewer, { recursive: true, force: true });
     }
   });
 
-  it('lists the history with cpr view and no revisions, analyzing nothing first', async () => {
+  it('lists the history with symbiote view and no revisions, analyzing nothing first', async () => {
     const viewer = tempDir();
     writeFileSync(join(viewer, 'index.html'), '');
-    process.env.CPR_VIEWER_DIR = viewer;
+    process.env.SYMBIOTE_VIEWER_DIR = viewer;
     try {
       let url = '';
       let page: { branch: string; done: boolean; commits: { subject: string }[] } | undefined;
-      const result = await cpr(['view'], repo.root, async (stdout) => {
-        url = /CPR viewer: (\S+)/.exec(stdout())?.[1] ?? '';
+      const result = await symbiote(['view'], repo.root, async (stdout) => {
+        url = /Symbiote viewer: (\S+)/.exec(stdout())?.[1] ?? '';
         page = (await (await fetch(new URL('api/history', url))).json()) as typeof page;
       });
       expect(result.code).toBe(0);
       expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/$/);
-      expect(result.stdout).toBe(`CPR viewer: ${url}  (Ctrl+C to stop)\n`);
+      expect(result.stdout).toBe(`Symbiote viewer: ${url}  (Ctrl+C to stop)\n`);
       expect(result.opened).toEqual([url]);
       // Every branch: main and feature, each above the root they forked from.
       expect(page).toMatchObject({ branch: 'main', done: true });
@@ -199,13 +203,13 @@ describe('cpr diff', () => {
       ]);
       expect(page?.commits.at(-1)?.subject).toBe('root');
     } finally {
-      delete process.env.CPR_VIEWER_DIR;
+      delete process.env.SYMBIOTE_VIEWER_DIR;
       rmSync(viewer, { recursive: true, force: true });
     }
   });
 
-  it('needs <base> for --since in cpr view', async () => {
-    const { code, stderr } = await cpr(['view', '--since', 'main'], repo.root);
+  it('needs <base> for --since in symbiote view', async () => {
+    const { code, stderr } = await symbiote(['view', '--since', 'main'], repo.root);
     expect(code).toBe(2);
     expect(stderr).toContain('--since needs <base>');
   });
@@ -213,27 +217,27 @@ describe('cpr diff', () => {
   it('does not open the browser with --no-open', async () => {
     const viewer = tempDir();
     writeFileSync(join(viewer, 'index.html'), '');
-    process.env.CPR_VIEWER_DIR = viewer;
+    process.env.SYMBIOTE_VIEWER_DIR = viewer;
     try {
-      const result = await cpr(['view', 'main', 'feature', '--no-open'], repo.root);
+      const result = await symbiote(['view', 'main', 'feature', '--no-open'], repo.root);
       expect(result.opened).toEqual([]);
     } finally {
-      delete process.env.CPR_VIEWER_DIR;
+      delete process.env.SYMBIOTE_VIEWER_DIR;
       rmSync(viewer, { recursive: true, force: true });
     }
   });
 
-  describe("in CPR's window (N1a)", () => {
+  describe("in Symbiote's window (N1a)", () => {
     type Answer = AppWindow | { error: string } | null;
 
     /**
-     * `cpr view` where CPR's window answers `answer`; Ctrl+C comes at once when `ctrlC`, else
-     * never (only the window can end it).
+     * `symbiote view` where Symbiote's window answers `answer`; Ctrl+C comes at once when `ctrlC`,
+     * else never (only the window can end it).
      */
     async function inApp(argv: string[], answer: Answer, ctrlC = false) {
       const viewer = tempDir();
       writeFileSync(join(viewer, 'index.html'), '');
-      process.env.CPR_VIEWER_DIR = viewer;
+      process.env.SYMBIOTE_VIEWER_DIR = viewer;
       let stdout = '';
       let stderr = '';
       const opened: string[] = [];
@@ -253,7 +257,7 @@ describe('cpr diff', () => {
         });
         return { code, stdout, stderr, opened, asked };
       } finally {
-        delete process.env.CPR_VIEWER_DIR;
+        delete process.env.SYMBIOTE_VIEWER_DIR;
         rmSync(viewer, { recursive: true, force: true });
       }
     }
@@ -268,7 +272,9 @@ describe('cpr diff', () => {
       expect(result.code).toBe(0);
       expect(result.opened).toEqual([]);
       // Said once the window shows: what stops the command now.
-      expect(result.stdout).toMatch(/\nCPR's window is open: close it, or Ctrl\+C, to stop\n$/);
+      expect(result.stdout).toMatch(
+        /\nSymbiote's window is open: close it, or Ctrl\+C, to stop\n$/,
+      );
       expect(result.asked).toEqual([
         [expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/$/), basename(repo.root)],
       ]);
@@ -285,7 +291,7 @@ describe('cpr diff', () => {
     it('opens the browser with --browser, or when the app is not set up', async () => {
       const browser = await inApp(['view', '--browser'], window(Promise.resolve()), true);
       expect(browser.asked).toEqual([]);
-      expect(browser.stdout).not.toContain("CPR's window");
+      expect(browser.stdout).not.toContain("Symbiote's window");
       expect(browser.opened).toEqual([expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/$/)]);
       const none = await inApp(['view'], null, true);
       expect(none.opened).toHaveLength(1);
@@ -293,10 +299,10 @@ describe('cpr diff', () => {
     });
 
     it('opens the browser when the window fails, and says why', async () => {
-      const result = await inApp(['view'], { error: 'cpr app: no display' }, true);
+      const result = await inApp(['view'], { error: 'symbiote app: no display' }, true);
       expect(result.opened).toHaveLength(1);
       expect(result.stderr).toBe(
-        "cpr: CPR's window did not open (cpr app: no display); opening the browser\n",
+        "symbiote: Symbiote's window did not open (symbiote app: no display); opening the browser\n",
       );
     });
 
@@ -308,15 +314,15 @@ describe('cpr diff', () => {
   });
 
   it('fails on unknown revisions', async () => {
-    const { code, stderr } = await cpr(['diff', 'main', 'nope'], repo.root);
+    const { code, stderr } = await symbiote(['diff', 'main', 'nope'], repo.root);
     expect(code).toBe(1);
-    expect(stderr).toBe("cpr: unknown revision 'nope'\n");
+    expect(stderr).toBe("symbiote: unknown revision 'nope'\n");
   });
 
   it('reports usage errors', async () => {
-    expect((await cpr(['diff'], repo.root)).code).toBe(2);
-    expect((await cpr(['diff', '--bogus', 'main'], repo.root)).code).toBe(2);
-    expect((await cpr(['diff', 'a', 'b', 'c'], repo.root)).stderr).toContain(
+    expect((await symbiote(['diff'], repo.root)).code).toBe(2);
+    expect((await symbiote(['diff', '--bogus', 'main'], repo.root)).code).toBe(2);
+    expect((await symbiote(['diff', 'a', 'b', 'c'], repo.root)).stderr).toContain(
       "unexpected argument 'c'",
     );
   });

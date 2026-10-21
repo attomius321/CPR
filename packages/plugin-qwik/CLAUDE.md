@@ -1,8 +1,8 @@
-# @cpr/plugin-qwik
+# @symbiote/plugin-qwik
 
 `--plugin qwik`: what Qwik's router calls by name is not an orphan; a `component$`'s props are its
 contract (core's `contract` hook), compared from the callers' side; `.mdx` routes are templates.
-No runtime dependency besides `@cpr/core` types. Design, measurements and "as built":
+No runtime dependency besides `@symbiote/core` types. Design, measurements and "as built":
 `docs/PLAN.md` section Q1–Q2.
 
 ## Where things are

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { CprError, mapLine, openRepo, workingLine } from '../src/index.js';
+import { SymbioteError, mapLine, openRepo, workingLine } from '../src/index.js';
 import { createRepo, type TestRepo } from './helpers/git-repo.js';
 
 const lines = (n: number, prefix = 'line') =>
@@ -129,6 +129,6 @@ describe('workingLine', () => {
     repo.write({ 'src/a.ts': TEN });
     repo.commit('ten lines');
     const git = await openRepo(repo.root);
-    await expect(workingLine(git, '--output=x', 'src/a.ts', 1)).rejects.toThrow(CprError);
+    await expect(workingLine(git, '--output=x', 'src/a.ts', 1)).rejects.toThrow(SymbioteError);
   });
 });

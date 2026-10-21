@@ -1,7 +1,7 @@
 {
-  "name": "@cpr/core",
+  "name": "@symbiote/core",
   "version": "0.0.0",
-  "description": "CPR analysis engine: symbols, diff, references, detectors, graph JSON.",
+  "description": "Symbiote analysis engine: symbols, diff, references, detectors, graph JSON.",
   "private": true,
   "type": "module",
   "exports": {

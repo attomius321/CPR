@@ -1,4 +1,4 @@
-import type { BranchMerge, FinishResult, Graph, GraphNode, LocalReview } from '@cpr/core';
+import type { BranchMerge, FinishResult, Graph, GraphNode, LocalReview } from '@symbiote/core';
 import type { DiffRow } from './detail.js';
 import { label } from './flow.js';
 import { fingerprint } from './review.js';
@@ -188,7 +188,7 @@ export async function checkMerge(): Promise<BranchMerge | null> {
 async function send<T>(url: string, payload: unknown): Promise<T> {
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+    headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
     body: JSON.stringify(payload),
   });
   if (response.ok) return (await response.json()) as T;
@@ -205,7 +205,7 @@ async function send<T>(url: string, payload: unknown): Promise<T> {
 export async function postReview(payload: ReviewPayload): Promise<{ url: string }> {
   const response = await fetch('./api/review', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+    headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
     body: JSON.stringify(payload),
   });
   if (response.ok) return (await response.json()) as { url: string };

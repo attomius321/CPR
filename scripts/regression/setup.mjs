@@ -1,6 +1,7 @@
 // Clones the repositories the regression sets use, and recreates their experiment branches.
 // Usage: node scripts/regression/setup.mjs [set…]   (default: r1; `all` for every set)
-// Where: $CPR_REGRESSION_DIR, else ~/.cache/cpr-regression. Blobless clones; nothing is installed.
+// Where: $SYMBIOTE_REGRESSION_DIR, else ~/.cache/symbiote-regression. Blobless clones; nothing is
+// installed.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
@@ -10,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const config = JSON.parse(readFileSync(join(here, 'sets.json'), 'utf8'));
 export const regressionDir =
-  process.env.CPR_REGRESSION_DIR ?? join(homedir(), '.cache', 'cpr-regression');
+  process.env.SYMBIOTE_REGRESSION_DIR ?? join(homedir(), '.cache', 'symbiote-regression');
 
 const git = (cwd, ...args) =>
   execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -47,16 +48,16 @@ for (const [name, revs] of repos) {
   // Experiment branches exist only as patches: recreate them on their base commit.
   for (const [branch, { from, patch }] of Object.entries(branches)) {
     if (has(path, branch)) continue;
-    const work = mkdtempSync(join(tmpdir(), 'cpr-regression-'));
+    const work = mkdtempSync(join(tmpdir(), 'symbiote-regression-'));
     rmSync(work, { recursive: true });
     git(path, 'worktree', 'add', '--quiet', '--detach', work, from);
     try {
       git(
         work,
         '-c',
-        'user.name=CPR',
+        'user.name=Symbiote',
         '-c',
-        'user.email=cpr@example.com',
+        'user.email=symbiote@example.com',
         'am',
         '--quiet',
         join(here, patch),

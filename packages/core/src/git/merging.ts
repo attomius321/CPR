@@ -1,5 +1,5 @@
-// The git steps of CPR's merger (V26a): a merge made in a worktree of CPR's own, then landed by
-// fast-forward. Never forced: what git refuses is a `MergeStepRefused` in git's words.
+// The git steps of Symbiote's merger (V26a): a merge made in a worktree of Symbiote's own, then
+// landed by fast-forward. Never forced: what git refuses is a `MergeStepRefused` in git's words.
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, realpath, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -42,7 +42,7 @@ async function isWorktreeOf(repo: GitRepo, folder: string): Promise<boolean> {
 }
 
 /**
- * CPR's merge worktree at `folder`, detached at `sha` with nothing else in it: a merge left
+ * Symbiote's merge worktree at `folder`, detached at `sha` with nothing else in it: a merge left
  * half-done aborted, changes and untracked files removed. Ignored files (installed dependencies,
  * build output) are kept, so the next check does not start from nothing.
  */
@@ -133,7 +133,7 @@ export async function fastForwardBranch(
       await git(repo.root, [
         'update-ref',
         '-m',
-        `cpr merge: fast-forward to ${to.slice(0, 7)}`,
+        `symbiote merge: fast-forward to ${to.slice(0, 7)}`,
         `refs/heads/${branch}`,
         to,
         from ?? '',

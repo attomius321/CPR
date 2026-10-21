@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { Project, ts } from 'ts-morph';
 import type { LoadOptions } from '../../adapter.js';
-import { CprError } from '../../errors.js';
+import { SymbioteError } from '../../errors.js';
 import { loadIgnores } from '../../ignore.js';
 import type { SymbolId } from '../../model.js';
 import type { RevisionSource } from '../../revision.js';
@@ -75,7 +75,8 @@ export function loadTsProject(
   const root = resolve(source.root);
   const warnings: string[] = [];
   const configPath = project ? join(root, project) : join(root, 'tsconfig.json');
-  if (project && !existsSync(configPath)) throw new CprError(`project file not found: ${project}`);
+  if (project && !existsSync(configPath))
+    throw new SymbioteError(`project file not found: ${project}`);
   const workspace = workspacePaths(root);
   const ignored = ignore ?? loadIgnores(root);
   // Folders are passed with a trailing `/`, so `**/playground/**` prunes the whole folder.

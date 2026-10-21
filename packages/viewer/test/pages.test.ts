@@ -1,4 +1,4 @@
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   backLink,
@@ -18,7 +18,7 @@ describe('routeOf (V29a: no Workspaces page)', () => {
     expect(routeOf('/settings', '')).toEqual({ route: { page: 'settings' } });
   });
 
-  it('opens a workspace at /?branch=, the address CPR has given out since V25', () => {
+  it('opens a workspace at /?branch=, the address Symbiote has given out since V25', () => {
     expect(routeOf('/', '?branch=feature%2Fx')).toEqual({
       route: { page: 'workspace', branch: 'feature/x' },
     });
@@ -35,7 +35,7 @@ describe('routeOf (V29a: no Workspaces page)', () => {
     expect(routeOf('/start', '')).toEqual({ route: { page: 'start' } });
     expect(routeOf('/start', `?at=${sha}`)).toEqual({ route: { page: 'start', at: sha } });
     expect(routeOf('/start', '?at=')).toEqual({ route: { page: 'start' } });
-    expect(inShell(new URL('http://cpr/start?at=x'))).toBe(true);
+    expect(inShell(new URL('http://symbiote/start?at=x'))).toBe(true);
   });
 
   it('opens a merge at /?merge=', () => {
@@ -71,7 +71,7 @@ describe('hrefOf', () => {
       { page: 'workspace', branch: 'a b/c' },
       { page: 'merge', branch: 'chore/z' },
     ] as const) {
-      const url = new URL(hrefOf(route), 'http://cpr');
+      const url = new URL(hrefOf(route), 'http://symbiote');
       expect(routeOf(url.pathname, url.search)).toEqual({ route });
     }
   });
@@ -106,23 +106,25 @@ describe('backLink (V25)', () => {
 });
 
 describe('pageTitle and routeTitle (N1a: the window names its page)', () => {
-  it('names the page, then the repository, then CPR', () => {
-    expect(routeTitle({ page: 'history' }, 'ky')).toBe('History · ky — CPR');
-    expect(routeTitle({ page: 'settings' }, 'ky')).toBe('Settings · ky — CPR');
+  it('names the page, then the repository, then Symbiote', () => {
+    expect(routeTitle({ page: 'history' }, 'ky')).toBe('History · ky — Symbiote');
+    expect(routeTitle({ page: 'settings' }, 'ky')).toBe('Settings · ky — Symbiote');
     expect(routeTitle({ page: 'workspace', branch: 'feature/add-clamp' }, 'ky', 'Add clamp')).toBe(
-      'Add clamp · ky — CPR',
+      'Add clamp · ky — Symbiote',
     );
     expect(routeTitle({ page: 'workspace', branch: 'feature/add-clamp' }, 'ky')).toBe(
-      'feature/add-clamp · ky — CPR',
+      'feature/add-clamp · ky — Symbiote',
     );
-    expect(routeTitle({ page: 'merge', branch: 'fix/x' }, undefined)).toBe('Merge fix/x — CPR');
-    expect(routeTitle({ page: 'start' }, 'ky')).toBe('Start a workspace · ky — CPR');
+    expect(routeTitle({ page: 'merge', branch: 'fix/x' }, undefined)).toBe(
+      'Merge fix/x — Symbiote',
+    );
+    expect(routeTitle({ page: 'start' }, 'ky')).toBe('Start a workspace · ky — Symbiote');
   });
 
   it('leaves out what is not known', () => {
-    expect(pageTitle()).toBe('CPR');
-    expect(pageTitle(undefined, '')).toBe('CPR');
-    expect(pageTitle('main → feature')).toBe('main → feature — CPR');
+    expect(pageTitle()).toBe('Symbiote');
+    expect(pageTitle(undefined, '')).toBe('Symbiote');
+    expect(pageTitle('main → feature')).toBe('main → feature — Symbiote');
   });
 });
 
@@ -138,12 +140,12 @@ describe('diffTitle (N1a)', () => {
 
   it('names a pair by its refs, each SHA once and short', () => {
     expect(revisionsLabel(graph())).toBe('main (1234567) → abcdef0');
-    expect(diffTitle(graph())).toBe('main (1234567) → abcdef0 — CPR');
+    expect(diffTitle(graph())).toBe('main (1234567) → abcdef0 — Symbiote');
   });
 
   it('names a branch review, then a pull or merge request, before the pair', () => {
-    expect(diffTitle(graph(), 'feature/add-clamp')).toBe('Review of feature/add-clamp — CPR');
+    expect(diffTitle(graph(), 'feature/add-clamp')).toBe('Review of feature/add-clamp — Symbiote');
     const request = { forge: 'gitlab', number: 12, title: 'Add widgets' };
-    expect(diffTitle(graph({ changeRequest: request }), 'x')).toBe('!12 Add widgets — CPR');
+    expect(diffTitle(graph({ changeRequest: request }), 'x')).toBe('!12 Add widgets — Symbiote');
   });
 });

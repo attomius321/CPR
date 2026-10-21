@@ -9,7 +9,7 @@ import {
   createTypescriptAdapter,
   type Analysis,
   type TsPlugin,
-} from '@cpr/core';
+} from '@symbiote/core';
 import angular from '../src/index.js';
 
 const fixture = (name: string, side: 'base' | 'head') =>
@@ -147,7 +147,7 @@ describe('the angular plugin', () => {
 
   it('labels templates in the graph', async () => {
     const graph = buildGraph(await analyze('templates'), {
-      generator: { name: 'cpr', version: 'test' },
+      generator: { name: 'symbiote', version: 'test' },
       plugins: [angular],
     });
     expect(graph.plugins).toEqual([{ name: 'angular', version: '0.1.0' }]);
@@ -252,12 +252,12 @@ describe('the angular plugin, with libraries', () => {
     // Organization.plan is new and read only in `@if (org$ | await; as org)`: not an orphan.
     expect(changed(analysis)).toContain(`added ${ORGANIZATION}.plan`);
     expect(analysis.warnings).toEqual([
-      'plugin angular: 1 Angular library class has metadata in a form CPR cannot read, so templates do not match it: UiFuture (@acme/ui)',
+      'plugin angular: 1 Angular library class has metadata in a form Symbiote cannot read, so templates do not match it: UiFuture (@acme/ui)',
     ]);
   });
 
   it('stays as without libraries when dependencies are not installed', async () => {
-    const copy = mkdtempSync(join(tmpdir(), 'cpr-ng-'));
+    const copy = mkdtempSync(join(tmpdir(), 'symbiote-ng-'));
     try {
       for (const side of ['base', 'head'] as const) {
         cpSync(fixture('libraries', side), join(copy, side), {

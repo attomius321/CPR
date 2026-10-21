@@ -15,6 +15,7 @@ import {
   type MenuItemConstructorOptions,
   type WebContents,
 } from 'electron';
+import { moveFormerConfig } from './former-name.js';
 import { frameOf, frameOptions } from './frame.js';
 import { readRecorded, startServer, withRecent } from './launcher.js';
 import { holdMaximize, holdsMaximize, type Hold } from './maximize.js';
@@ -29,14 +30,15 @@ import { configDir, placeWindow, readChoices, readState, writeState, type Area }
 
 const here = dirname(fileURLToPath(import.meta.url));
 const args = parseAppArgs(process.argv.slice(app.isPackaged ? 1 : 2));
-const cprConfig = configDir(process.env, process.platform, homedir());
-const config = join(cprConfig, 'app');
+const symbioteConfig = configDir(process.env, process.platform, homedir());
+moveFormerConfig(symbioteConfig);
+const config = join(symbioteConfig, 'app');
 const stateFile = join(config, 'state.json');
 const startPage = join(here, '..', 'start', 'index.html');
 const startUrl = pathToFileURL(startPage).href;
 
 /**
- * Two ways in. From `cpr view` (`--url`): one window on that command's server, and a profile
+ * Two ways in. From `symbiote view` (`--url`): one window on that command's server, and a profile
  * of this run's own, so two of them never share Chromium's storage (what lasts is in
  * state.json; profiles of runs that ended are removed at the next start). From the desktop
  * (N1b): one app, its windows each on a repository whose server it starts; launched again, the
@@ -51,16 +53,17 @@ if (fromLauncher) {
 }
 const primary = !fromLauncher || app.requestSingleInstanceLock();
 
-/** Who draws the window's frame and buttons here (N1d): CPR's pages on Linux. */
+/** Who draws the window's frame and buttons here (N1d): Symbiote's pages on Linux. */
 const frame = frameOf(process.platform);
-/** Where CPR holds a maximized window itself (N1d): WSLg's X11; the work areas it has learned. */
+/** Where Symbiote holds a maximized window itself (N1d): WSLg's X11; the work areas it has learned.
+ * */
 const holding = frame === 'own' && holdsMaximize(process.platform, process.env);
 const workAreas: Area[] = [];
 const HEX = /^#[0-9a-f]{6}$/i;
 
 /**
  * What each window shows: its home (a server, or the start page), its repository and server; and
- * its maximize, where CPR holds it.
+ * its maximize, where Symbiote holds it.
  */
 interface Shown {
   window: BrowserWindow;
@@ -77,18 +80,18 @@ else {
     setMenu();
     listen();
     if (args.url) {
-      openServer(args.url, args.title ?? 'CPR');
+      openServer(args.url, args.title ?? 'Symbiote');
       return;
     }
     const last = readState(stateFile).recent?.find((repo) => existsSync(repo));
     const repo = args.repo ?? last;
     if (repo) openRepo(repo);
-    else showStart(createWindow('CPR'), {});
+    else showStart(createWindow('Symbiote'), {});
   });
   app.on('second-instance', (_event, argv) => {
     const again = parseAppArgs(argv);
     if (again.repo) openRepo(again.repo);
-    else focus([...windows.values()].at(-1)?.window ?? createWindow('CPR'));
+    else focus([...windows.values()].at(-1)?.window ?? createWindow('Symbiote'));
   });
 }
 
@@ -96,10 +99,10 @@ app.on('window-all-closed', () => app.quit());
 app.on('will-quit', () => {
   for (const { server } of windows.values()) server?.kill('SIGTERM');
 });
-// Ctrl+C on the `cpr view` that started it reaches the app too: close as the window would.
+// Ctrl+C on the `symbiote view` that started it reaches the app too: close as the window would.
 for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => app.quit());
 
-/** `cpr view`'s window: says when it shows the server (what the command waits for). */
+/** `symbiote view`'s window: says when it shows the server (what the command waits for). */
 function openServer(url: string, title: string): void {
   const window = createWindow(title);
   const contents = window.webContents;
@@ -107,11 +110,11 @@ function openServer(url: string, title: string): void {
   contents.on('did-finish-load', () => {
     if (shown) return;
     shown = true;
-    process.stdout.write(`CPR window: ${url}\n`);
+    process.stdout.write(`Symbiote window: ${url}\n`);
   });
   contents.on('did-fail-load', (_event, code, description, failed, isMainFrame) => {
     if (shown || !isMainFrame) return;
-    process.stderr.write(`cpr app: could not load ${failed}: ${description} (${code})\n`);
+    process.stderr.write(`symbiote app: could not load ${failed}: ${description} (${code})\n`);
     app.exit(1);
   });
   show(window, url);
@@ -128,16 +131,16 @@ function openRepo(repo: string, into?: BrowserWindow): void {
     focus(open.window);
     return;
   }
-  const window = into ?? createWindow('CPR');
+  const window = into ?? createWindow('Symbiote');
   const entry = windows.get(window.webContents);
   if (!entry) return;
   entry.repo = repo;
   showStart(window, { opening: repo });
-  const recorded = readRecorded(join(cprConfig, 'app.json'));
+  const recorded = readRecorded(join(symbioteConfig, 'app.json'));
   if (!recorded) {
     delete entry.repo;
     showStart(window, {
-      error: 'CPR does not know where cpr is: run cpr app install in a terminal',
+      error: 'Symbiote does not know where symbiote is: run symbiote app install in a terminal',
     });
     return;
   }
@@ -156,7 +159,7 @@ function openRepo(repo: string, into?: BrowserWindow): void {
       if (window.isDestroyed() || entry.server !== started.child) return;
       delete entry.server;
       delete entry.repo;
-      showStart(window, { error: `cpr view stopped (${code ?? 'a signal'})`, repo });
+      showStart(window, { error: `symbiote view stopped (${code ?? 'a signal'})`, repo });
     });
     const state = readState(stateFile);
     writeState(stateFile, { ...state, recent: withRecent(state.recent ?? [], repo) });
@@ -171,7 +174,7 @@ function showStart(
 ) {
   const entry = windows.get(window.webContents);
   if (entry) entry.home = startUrl;
-  const theme = readState(stateFile).choices['cpr.viewer.theme'] ?? 'dark';
+  const theme = readState(stateFile).choices['symbiote.viewer.theme'] ?? 'dark';
   void window.loadFile(startPage, { query: { ...query, theme } });
 }
 
@@ -181,7 +184,7 @@ function show(window: BrowserWindow, home: string): void {
   void window.loadURL(home);
 }
 
-/** Maximizes `window`: through its hold, where CPR holds it. */
+/** Maximizes `window`: through its hold, where Symbiote holds it. */
 function maximize(window: BrowserWindow, hold: Hold | undefined): void {
   if (hold) hold.maximize();
   else window.maximize();
@@ -200,7 +203,7 @@ function createWindow(title: string): BrowserWindow {
     screen.getAllDisplays().map((display) => display.workArea),
     screen.getPrimaryDisplay().workArea,
   );
-  const light = state.choices['cpr.viewer.theme'] === 'light';
+  const light = state.choices['symbiote.viewer.theme'] === 'light';
   const window = new BrowserWindow({
     x: place.x,
     y: place.y,
@@ -211,7 +214,7 @@ function createWindow(title: string): BrowserWindow {
     show: false,
     title,
     ...frameOptions(process.platform, light),
-    icon: join(here, '..', 'icons', 'cpr.png'),
+    icon: join(here, '..', 'icons', 'symbiote.png'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(here, 'preload.cjs'),
@@ -223,10 +226,10 @@ function createWindow(title: string): BrowserWindow {
     },
   });
   const contents = window.webContents;
-  // Where CPR draws the frame (N1d), its pages square their corners while the window fills the
+  // Where Symbiote draws the frame (N1d), its pages square their corners while the window fills the
   // screen. Told by the window's events: a window manager may answer `isMaximized` late.
   const tell = (maximized: boolean) => {
-    if (!contents.isDestroyed()) contents.send('cpr:window-state', { maximized });
+    if (!contents.isDestroyed()) contents.send('symbiote:window-state', { maximized });
   };
   const hold = holding ? holdMaximize(window, tell, workAreas) : undefined;
   windows.set(contents, { window, home: startUrl, ...(hold ? { hold } : {}) });
@@ -306,7 +309,7 @@ function createWindow(title: string): BrowserWindow {
       buttons: ['Leave', 'Stay'],
       defaultId: 1,
       cancelId: 1,
-      title: 'CPR',
+      title: 'Symbiote',
       message: 'Leave this page? What you changed is not saved.',
     });
     if (leave === 0) event.preventDefault();
@@ -335,10 +338,10 @@ function listen(): void {
     !!shownFor(event) && (event.senderFrame?.url ?? '').startsWith(startUrl);
 
   // The viewer's choices: given before its scripts run, kept when it is left (the preload's).
-  ipcMain.on('cpr:choices', (event) => {
+  ipcMain.on('symbiote:choices', (event) => {
     event.returnValue = fromServer(event) ? readState(stateFile).choices : {};
   });
-  ipcMain.on('cpr:keep-choices', (event, choices: unknown) => {
+  ipcMain.on('symbiote:keep-choices', (event, choices: unknown) => {
     if (fromServer(event)) {
       const state = readState(stateFile);
       writeState(stateFile, { ...state, choices: { ...state.choices, ...readChoices(choices) } });
@@ -348,7 +351,7 @@ function listen(): void {
 
   // Who draws the frame, and whether the window fills the screen (N1d): asked before the page's
   // scripts run, so its first paint has the right corners.
-  ipcMain.on('cpr:frame', (event) => {
+  ipcMain.on('symbiote:frame', (event) => {
     const entry = shownFor(event);
     const window = entry?.window;
     const own = !!window && frame === 'own' && (fromServer(event) || fromStart(event));
@@ -359,8 +362,8 @@ function listen(): void {
     };
   });
 
-  // The window's own buttons, where CPR draws them (N1d): only its own pages may ask.
-  ipcMain.on('cpr:window', (event, action: unknown) => {
+  // The window's own buttons, where Symbiote draws them (N1d): only its own pages may ask.
+  ipcMain.on('symbiote:window', (event, action: unknown) => {
     const entry = shownFor(event);
     const window = entry?.window;
     if (!window || frame !== 'own' || !(fromServer(event) || fromStart(event))) return;
@@ -373,9 +376,9 @@ function listen(): void {
   });
 
   // The title bar's colours, as the page's theme has them (N1c).
-  ipcMain.on('cpr:title-bar', (event, colors: unknown) => {
+  ipcMain.on('symbiote:title-bar', (event, colors: unknown) => {
     const window = shownFor(event)?.window;
-    // No overlay where CPR draws the frame (N1d): Electron throws if asked to paint one.
+    // No overlay where Symbiote draws the frame (N1d): Electron throws if asked to paint one.
     if (!window || !fromServer(event) || process.platform === 'darwin' || frame === 'own') return;
     const { color, symbol } = (colors ?? {}) as { color?: unknown; symbol?: unknown };
     if (typeof color !== 'string' || typeof symbol !== 'string') return;
@@ -385,10 +388,10 @@ function listen(): void {
   });
 
   // The start page's: the recent repositories, choosing one, opening one, forgetting one.
-  ipcMain.on('cpr:start:recent', (event) => {
+  ipcMain.on('symbiote:start:recent', (event) => {
     event.returnValue = fromStart(event) ? recentRepos() : [];
   });
-  ipcMain.on('cpr:start:forget', (event, repo: unknown) => {
+  ipcMain.on('symbiote:start:forget', (event, repo: unknown) => {
     if (fromStart(event)) {
       const state = readState(stateFile);
       writeState(stateFile, {
@@ -398,13 +401,13 @@ function listen(): void {
     }
     event.returnValue = recentRepos();
   });
-  ipcMain.on('cpr:start:open', (event, repo: unknown) => {
+  ipcMain.on('symbiote:start:open', (event, repo: unknown) => {
     const window = shownFor(event)?.window;
     if (window && fromStart(event) && typeof repo === 'string' && repo.startsWith('/')) {
       openRepo(repo, window);
     }
   });
-  ipcMain.on('cpr:start:choose', (event) => {
+  ipcMain.on('symbiote:start:choose', (event) => {
     const window = shownFor(event)?.window;
     if (!window || !fromStart(event)) return;
     void dialog

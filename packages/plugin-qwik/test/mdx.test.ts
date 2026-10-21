@@ -1,6 +1,6 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import type { PluginContext } from '@cpr/core';
+import type { PluginContext } from '@symbiote/core';
 import { scanMdx } from '../src/mdx.js';
 import { mdxShim } from '../src/mdx-shim.js';
 
@@ -118,12 +118,12 @@ describe('the MDX shim', () => {
         "import { Note } from './note';",
         'import { Term } from "../../components/term";',
         'import Icon from "@acme/icons";',
-        'declare function __cpr_use(...values: unknown[]): void;',
-        'export function __cpr_mdx(): void {',
-        '  __cpr_use(<Term id="a" />);',
-        '  __cpr_use(<Icon />);',
-        '  __cpr_use(<Note kind="tip"/>);',
-        '  __cpr_use((1 + 1));',
+        'declare function __symbiote_use(...values: unknown[]): void;',
+        'export function __symbiote_mdx(): void {',
+        '  __symbiote_use(<Term id="a" />);',
+        '  __symbiote_use(<Icon />);',
+        '  __symbiote_use(<Note kind="tip"/>);',
+        '  __symbiote_use((1 + 1));',
         '}',
         '',
       ].join('\n'),
@@ -140,7 +140,7 @@ describe('the MDX shim', () => {
 
   it('keeps a component whose element TSX cannot parse, by its tag', () => {
     const file = shim("import { Note } from './note';\n\n<Note size={010} />\n");
-    expect(file.text).toContain('  __cpr_use(Note);\n');
+    expect(file.text).toContain('  __symbiote_use(Note);\n');
     expect(file.map(file.text.indexOf('Note);'))?.site).toEqual({
       file: 'src/routes/docs/index.mdx',
       line: 3,

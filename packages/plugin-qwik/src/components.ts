@@ -1,4 +1,4 @@
-import type { Contract, PluginRevision, ts } from '@cpr/core';
+import type { Contract, PluginRevision, ts } from '@symbiote/core';
 import { calls, unwrap } from './imports.js';
 import { QWIK_PACKAGES } from './projects.js';
 

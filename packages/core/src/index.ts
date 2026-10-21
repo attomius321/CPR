@@ -1,4 +1,4 @@
-export { CprError } from './errors.js';
+export { SymbioteError } from './errors.js';
 export { directorySource, type RevisionSource } from './revision.js';
 export { openRepo, type GitRepo } from './git/repo.js';
 export {

@@ -201,7 +201,7 @@ describe('mergerPrompt (V26c)', () => {
       again: { comments: 'Keep V2 before V3.', previous: ['## V3\nthree\n## V2\ntwo', 'x = 2'] },
     });
     expect(prompt).toContain(
-      "The project's merge rules (cpr/merge.md):\n\nKeep JOURNAL entries in date order.\n",
+      "The project's merge rules (symbiote/merge.md):\n\nKeep JOURNAL entries in date order.\n",
     );
     expect(prompt).toContain(
       'Your earlier answer was reviewed: Keep V2 before V3.\nIt was:\n```json\n{"regions":{"1":"## V3\\nthree\\n## V2\\ntwo","2":"x = 2"}}\n```',
@@ -225,7 +225,7 @@ describe('running the merger agent (V26c)', () => {
     return { calls, run };
   }
 
-  it('runs claude -p once: read-only tools, no MCP, CPR’s system prompt, the prompt on stdin', async () => {
+  it('runs claude -p once: read-only tools, no MCP, Symbiote’s system prompt, the prompt on stdin', async () => {
     const answer = {
       result: '{"regions":{"1":"a"}}',
       is_error: false,

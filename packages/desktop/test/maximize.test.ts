@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { holdMaximize, holdsMaximize, type Hold, type HeldWindow } from '../src/maximize.js';
 import type { Area } from '../src/state.js';
 
-describe('where CPR holds a maximized window itself (N1d)', () => {
+describe('where Symbiote holds a maximized window itself (N1d)', () => {
   const wslg = { WSL_DISTRO_NAME: 'Ubuntu', DISPLAY: ':0', WAYLAND_DISPLAY: 'wayland-0' };
 
   it("on WSLg's X11, which Electron picks there", () => {
@@ -97,7 +97,7 @@ class WslgWindow implements HeldWindow {
   }
 }
 
-describe('a maximized window held by CPR on WSLg (N1d)', () => {
+describe('a maximized window held by Symbiote on WSLg (N1d)', () => {
   let window: WslgWindow;
   let told: boolean[];
   let hold: Hold;

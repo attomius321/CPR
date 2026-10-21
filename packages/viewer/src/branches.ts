@@ -1,4 +1,4 @@
-import type { HistoryRefs } from '@cpr/core';
+import type { HistoryRefs } from '@symbiote/core';
 
 /** One line of the branches panel (V10b), in the order drawn. */
 export type PanelEntry =

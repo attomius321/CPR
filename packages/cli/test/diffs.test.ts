@@ -1,4 +1,4 @@
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { Diffs, type Pair, type RunDiff } from '../src/diffs.js';
 
@@ -55,9 +55,12 @@ describe('Diffs', () => {
     const { run, runs } = fakeRunner();
     const diffs = new Diffs(run);
     diffs.start(pair(1));
-    runs[0]?.reject(new Error("cpr: unknown revision 'x'"));
+    runs[0]?.reject(new Error("symbiote: unknown revision 'x'"));
     await settle();
-    expect(diffs.status(pair(1))).toEqual({ status: 'failed', error: "cpr: unknown revision 'x'" });
+    expect(diffs.status(pair(1))).toEqual({
+      status: 'failed',
+      error: "symbiote: unknown revision 'x'",
+    });
     diffs.start(pair(1));
     expect(runs).toHaveLength(2);
     expect(diffs.status(pair(1))).toMatchObject({ status: 'running' });

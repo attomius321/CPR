@@ -1,4 +1,4 @@
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -6,7 +6,7 @@ import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-
 import { run } from '../src/main.js';
 import { pluginPackage } from '../src/plugins.js';
 
-async function cpr(argv: string[], cwd: string) {
+async function symbiote(argv: string[], cwd: string) {
   let stdout = '';
   let stderr = '';
   const code = await run(argv, {
@@ -30,14 +30,14 @@ const START_PLUGIN = `export default {
 };
 `;
 
-describe('cpr --plugin', () => {
+describe('symbiote --plugin', () => {
   let repo: TestRepo;
   let base: string;
   const cacheDir = tempDir();
-  const previousCacheDir = process.env.CPR_CACHE_DIR;
+  const previousCacheDir = process.env.SYMBIOTE_CACHE_DIR;
 
   beforeAll(() => {
-    process.env.CPR_CACHE_DIR = cacheDir;
+    process.env.SYMBIOTE_CACHE_DIR = cacheDir;
     repo = createRepo();
     repo.write({
       '.gitignore': 'node_modules/\n',
@@ -47,10 +47,10 @@ describe('cpr --plugin', () => {
       'tools/start.mjs': START_PLUGIN,
       'tools/future.mjs': START_PLUGIN.replace('apiVersion: 1', 'apiVersion: 2'),
       'tools/nothing.mjs': 'export default 42;\n',
-      // A plugin installed as a package, like @cpr/plugin-angular would be.
-      'node_modules/@cpr/plugin-start/package.json':
-        '{ "name": "@cpr/plugin-start", "type": "module", "main": "index.js" }\n',
-      'node_modules/@cpr/plugin-start/index.js': START_PLUGIN,
+      // A plugin installed as a package, like @symbiote/plugin-angular would be.
+      'node_modules/@symbiote/plugin-start/package.json':
+        '{ "name": "@symbiote/plugin-start", "type": "module", "main": "index.js" }\n',
+      'node_modules/@symbiote/plugin-start/index.js': START_PLUGIN,
     });
     base = repo.commit('base');
     repo.write({
@@ -61,12 +61,12 @@ describe('cpr --plugin', () => {
   afterAll(() => {
     repo.cleanup();
     rmSync(cacheDir, { recursive: true, force: true });
-    if (previousCacheDir === undefined) delete process.env.CPR_CACHE_DIR;
-    else process.env.CPR_CACHE_DIR = previousCacheDir;
+    if (previousCacheDir === undefined) delete process.env.SYMBIOTE_CACHE_DIR;
+    else process.env.SYMBIOTE_CACHE_DIR = previousCacheDir;
   });
 
   const graph = async (args: string[], cwd = repo.root) => {
-    const result = await cpr(['diff', base, 'HEAD', '--json', ...args], cwd);
+    const result = await symbiote(['diff', base, 'HEAD', '--json', ...args], cwd);
     expect(result.stderr).toBe('');
     expect(result.code).toBe(0);
     return JSON.parse(result.stdout) as Graph;
@@ -86,83 +86,83 @@ describe('cpr --plugin', () => {
   });
 
   it('loads a plugin by name from the project', async () => {
-    expect(pluginPackage('start')).toBe('@cpr/plugin-start');
-    expect(pluginPackage('@acme/cpr-vue')).toBe('@acme/cpr-vue');
+    expect(pluginPackage('start')).toBe('@symbiote/plugin-start');
+    expect(pluginPackage('@acme/symbiote-vue')).toBe('@acme/symbiote-vue');
     const g = await graph(['--plugin', 'start']);
     expect(orphans(g)).toEqual([]);
   });
 
-  it('reads cpr.config.json at the repo root, paths relative to it', async () => {
-    repo.write({ 'cpr.config.json': '{ "plugins": ["./tools/start.mjs"] }\n' });
+  it('reads symbiote.config.json at the repo root, paths relative to it', async () => {
+    repo.write({ 'symbiote.config.json': '{ "plugins": ["./tools/start.mjs"] }\n' });
     try {
       const g = await graph([], join(repo.root, 'src'));
       expect(g.plugins).toEqual([{ name: 'start', version: '1.0.0' }]);
       // The same plugin from the flag too: loaded once.
       expect((await graph(['--plugin', './tools/../tools/start.mjs'])).plugins).toHaveLength(1);
     } finally {
-      rmSync(join(repo.root, 'cpr.config.json'));
+      rmSync(join(repo.root, 'symbiote.config.json'));
     }
   });
 
-  it('reads cpr/config.json first (V15), paths still relative to the repo root', async () => {
+  it('reads symbiote/config.json first (V15), paths still relative to the repo root', async () => {
     repo.write({
-      'cpr/config.json': '{ "plugins": ["./tools/start.mjs"] }\n',
-      'cpr.config.json': '{ "plugins": ["./tools/missing.mjs"] }\n',
+      'symbiote/config.json': '{ "plugins": ["./tools/start.mjs"] }\n',
+      'symbiote.config.json': '{ "plugins": ["./tools/missing.mjs"] }\n',
     });
     try {
       expect((await graph([], join(repo.root, 'src'))).plugins).toEqual([
         { name: 'start', version: '1.0.0' },
       ]);
-      repo.write({ 'cpr/config.json': '{ "plugins": ' });
-      const { code, stderr } = await cpr(['diff', base, 'HEAD'], repo.root);
+      repo.write({ 'symbiote/config.json': '{ "plugins": ' });
+      const { code, stderr } = await symbiote(['diff', base, 'HEAD'], repo.root);
       expect(code).toBe(1);
-      expect(stderr).toContain('cpr/config.json: ');
+      expect(stderr).toContain('symbiote/config.json: ');
     } finally {
-      rmSync(join(repo.root, 'cpr'), { recursive: true });
-      rmSync(join(repo.root, 'cpr.config.json'));
+      rmSync(join(repo.root, 'symbiote'), { recursive: true });
+      rmSync(join(repo.root, 'symbiote.config.json'));
     }
   });
 
   it.each([
-    [['--plugin', 'nope'], 'cannot find the package @cpr/plugin-nope'],
+    [['--plugin', 'nope'], 'cannot find the package @symbiote/plugin-nope'],
     [['--plugin', './tools/missing.mjs'], 'tools/missing.mjs not found'],
     [
       ['--plugin', './tools/future.mjs'],
-      'plugin start targets plugin API 2, this cpr implements 1',
+      'plugin start targets plugin API 2, this symbiote implements 1',
     ],
-    [['--plugin', './tools/nothing.mjs'], 'is not a CPR plugin'],
+    [['--plugin', './tools/nothing.mjs'], 'is not a Symbiote plugin'],
   ])('explains a plugin it cannot use: %j', async (args, message) => {
-    const { code, stderr } = await cpr(['diff', base, 'HEAD', ...args], repo.root);
+    const { code, stderr } = await symbiote(['diff', base, 'HEAD', ...args], repo.root);
     expect(code).toBe(1);
     expect(stderr).toContain(message);
   });
 
-  it('explains a broken cpr.config.json', async () => {
+  it('explains a broken symbiote.config.json', async () => {
     for (const [content, message] of [
-      ['{ "plugins": ', 'cpr.config.json: '],
+      ['{ "plugins": ', 'symbiote.config.json: '],
       ['{ "plugins": "start" }', '"plugins" must be a list'],
     ] as const) {
-      repo.write({ 'cpr.config.json': content });
-      const { code, stderr } = await cpr(['diff', base, 'HEAD'], repo.root);
+      repo.write({ 'symbiote.config.json': content });
+      const { code, stderr } = await symbiote(['diff', base, 'HEAD'], repo.root);
       expect(code).toBe(1);
       expect(stderr).toContain(message);
     }
-    rmSync(join(repo.root, 'cpr.config.json'));
+    rmSync(join(repo.root, 'symbiote.config.json'));
   });
 });
 
 describe('framework hints', () => {
   const cacheDir = tempDir();
-  const previousCacheDir = process.env.CPR_CACHE_DIR;
+  const previousCacheDir = process.env.SYMBIOTE_CACHE_DIR;
   const repo = createRepo();
   beforeAll(() => {
-    process.env.CPR_CACHE_DIR = cacheDir;
+    process.env.SYMBIOTE_CACHE_DIR = cacheDir;
   });
   afterAll(() => {
     repo.cleanup();
     rmSync(cacheDir, { recursive: true, force: true });
-    if (previousCacheDir === undefined) delete process.env.CPR_CACHE_DIR;
-    else process.env.CPR_CACHE_DIR = previousCacheDir;
+    if (previousCacheDir === undefined) delete process.env.SYMBIOTE_CACHE_DIR;
+    else process.env.SYMBIOTE_CACHE_DIR = previousCacheDir;
   });
 
   it('suggests the plugin when an Angular project changes a template', async () => {
@@ -175,7 +175,7 @@ describe('framework hints', () => {
     repo.write({ 'src/app.component.html': '<h1>{{ title }}!</h1>\n' });
     repo.commit('template');
 
-    const { code, stderr } = await cpr(['diff', base, 'HEAD'], repo.root);
+    const { code, stderr } = await symbiote(['diff', base, 'HEAD'], repo.root);
     expect(code).toBe(0);
     expect(stderr).toBe('hint: Angular project: add --plugin angular to analyze templates\n');
   });
@@ -192,7 +192,7 @@ describe('framework hints', () => {
     repo.write({ 'apps/web/src/menu.component.html': '<nav *ngIf="open">menu</nav>\n' });
     repo.commit('nested template');
 
-    const { code, stderr } = await cpr(['diff', base, 'HEAD'], repo.root);
+    const { code, stderr } = await symbiote(['diff', base, 'HEAD'], repo.root);
     expect(code).toBe(0);
     expect(stderr).toBe('hint: Angular project: add --plugin angular to analyze templates\n');
   });
@@ -206,7 +206,7 @@ describe('framework hints', () => {
     repo.write({ 'apps/site/src/routes/index.tsx': 'export const onGet = () => 2;\n' });
     repo.commit('qwik route');
 
-    const { code, stderr } = await cpr(['diff', base, 'HEAD'], repo.root);
+    const { code, stderr } = await symbiote(['diff', base, 'HEAD'], repo.root);
     expect(code).toBe(0);
     expect(stderr).toBe('hint: Qwik project: add --plugin qwik to analyze routes and components\n');
   });
@@ -220,7 +220,7 @@ describe('framework hints', () => {
     repo.write({ 'apps/react/src/app.tsx': 'export const App = () => 2;\n' });
     repo.commit('react change');
 
-    const { code, stderr } = await cpr(['diff', base, 'HEAD'], repo.root);
+    const { code, stderr } = await symbiote(['diff', base, 'HEAD'], repo.root);
     expect(code).toBe(0);
     expect(stderr).toBe('');
   });

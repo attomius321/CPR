@@ -1,16 +1,16 @@
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 
 /**
- * `cpr view`'s pages and what its sidenav opens (V29a): History, Settings, a workspace or a merge,
- * and Start a workspace (V30a), each shown in the shell's main area. There is no Workspaces page since V29a: the workspaces are
- * in the sidenav, and `/` alone opens History.
+ * `symbiote view`'s pages and what its sidenav opens (V29a): History, Settings, a workspace or a
+ * merge, and Start a workspace (V30a), each shown in the shell's main area. There is no Workspaces
+ * page since V29a: the workspaces are in the sidenav, and `/` alone opens History.
  */
 export type Route =
   | { page: 'history' }
   | { page: 'settings' }
-  /** A workspace, at `/?branch=<branch>`: the address CPR has given out since V25. */
+  /** A workspace, at `/?branch=<branch>`: the address Symbiote has given out since V25. */
   | { page: 'workspace'; branch: string }
-  /** A merge in CPR's queue (V26), at `/?merge=<branch>`. */
+  /** A merge in Symbiote's queue (V26), at `/?merge=<branch>`. */
   | { page: 'merge'; branch: string }
   /** Start a workspace (V30a), at `/start`: at the default branch's tip, or at the commit `at`. */
   | { page: 'start'; at?: string };
@@ -20,12 +20,12 @@ export const SETTINGS_PAGE = '/settings';
 export const START_PAGE = '/start';
 
 /**
- * A window's title (N1a): what it shows, then where, then CPR — the name the taskbar, Alt+Tab
+ * A window's title (N1a): what it shows, then where, then Symbiote — the name the taskbar, Alt+Tab
  * and the browser's tab show. Parts not known are left out.
  */
 export function pageTitle(...parts: (string | undefined)[]): string {
   const known = parts.filter((part): part is string => !!part);
-  return known.length > 0 ? `${known.join(' · ')} — CPR` : 'CPR';
+  return known.length > 0 ? `${known.join(' · ')} — Symbiote` : 'Symbiote';
 }
 
 /** A shell page's title: a workspace by its title (`name`) when known, else its branch. */

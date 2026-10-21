@@ -67,7 +67,8 @@ describe('the tokens (V29b)', () => {
     expect(systemLight).toEqual(light);
   });
 
-  // V31: CPR's style (the cpr-style skill's tokens.md): the content darkest, the chrome lifted.
+  // V31: Symbiote's style (the symbiote-style skill's tokens.md): the content darkest, the chrome
+  // lifted.
   it('are the style’s in the dark theme', () => {
     expect(Object.fromEntries(BACKGROUNDS.map((t) => [t, dark.get(t)]))).toEqual({
       '--bg': '#0a0a0a',

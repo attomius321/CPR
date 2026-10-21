@@ -16,7 +16,7 @@ import {
   type WorkspaceRequest,
   type ThreadEntry,
   type WorkKind,
-} from '@cpr/core';
+} from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import {
@@ -90,8 +90,8 @@ const fresh = () => {
 const NOW = new Date('2026-10-15T09:00:00Z');
 /** Claude Code 2.1.306's levels, as its `--help` lists them (V30 spike). */
 const CLAUDE_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
-/** Where CPR's hook would be installed. */
-const HOOK = '/opt/cpr/dist/agent-hook.js';
+/** Where Symbiote's hook would be installed. */
+const HOOK = '/opt/symbiote/dist/agent-hook.js';
 
 const record = (over: Partial<WorkspaceFile> = {}): WorkspaceFile => ({
   agent: { kind: 'claude', permissionMode: 'default', started: '2026-10-15T09:00:00.000Z' },
@@ -113,7 +113,7 @@ describe('workspacePath and serializeWorkspace', () => {
     const text = serializeWorkspace(record());
     expect(text.split('\n').slice(0, 3)).toEqual([
       '{',
-      '  "about": "A workspace started in CPR. Agents: read cpr/AGENTS.md before acting on it.",',
+      '  "about": "A workspace started in Symbiote. Agents: read symbiote/AGENTS.md before acting on it.",',
       '  "agent": {',
     ]);
     const keys = Object.keys(JSON.parse(text) as object);
@@ -173,8 +173,8 @@ describe('readWorkspaceConfig (V24)', () => {
   const configured = (config: unknown) => {
     const root = tempDir();
     folders.push(root);
-    mkdirSync(join(root, 'cpr'));
-    writeFileSync(join(root, 'cpr', 'config.json'), JSON.stringify(config));
+    mkdirSync(join(root, 'symbiote'));
+    writeFileSync(join(root, 'symbiote', 'config.json'), JSON.stringify(config));
     return readWorkspaceConfig(root).branchPrefixes;
   };
   it("gives each kind its branch prefix; a config's prefixes override only their kinds", () => {
@@ -246,9 +246,9 @@ describe('workspaceBase', () => {
 
 describe('workspacePrompt', () => {
   const where = {
-    record: '/work/app/cpr/workspaces/feature/csv.json',
-    reviews: '/work/app/cpr/reviews/feature/csv',
-    agents: '/work/app/cpr/AGENTS.md',
+    record: '/work/app/symbiote/workspaces/feature/csv.json',
+    reviews: '/work/app/symbiote/reviews/feature/csv',
+    agents: '/work/app/symbiote/AGENTS.md',
     into: 'main',
   };
   it('gives the brief, the branch, where things are, and plan first when asked', () => {
@@ -503,7 +503,7 @@ describe('agentState', () => {
 });
 
 describe('reviewPlace in a linked worktree', () => {
-  it("keeps reviews in the main checkout's cpr/, not the worktree's", async () => {
+  it("keeps reviews in the main checkout's symbiote/, not the worktree's", async () => {
     const { repo, shas } = fresh();
     const folder = join(tempDir(), 'linked');
     folders.push(dirname(folder));
@@ -697,12 +697,12 @@ describe('workspaces', () => {
       name: 'feature/csv',
       prompt,
       permissionMode: 'auto',
-      addDir: join(repo.root, 'cpr'),
-      settings: join(repo.root, 'cpr', 'claude-settings.json'),
+      addDir: join(repo.root, 'symbiote'),
+      settings: join(repo.root, 'symbiote', 'claude-settings.json'),
     });
     expect(prompt).toContain('One row per comment.');
     const saved = JSON.parse(
-      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'csv.json'), 'utf8'),
+      readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'csv.json'), 'utf8'),
     ) as WorkspaceFile;
     expect(saved).toMatchObject({
       branch: 'feature/csv',
@@ -713,8 +713,8 @@ describe('workspaces', () => {
       agent: { kind: 'claude', permissionMode: 'auto', started: NOW.toISOString(), hooks: true },
     });
     // The agents' instructions and the folder's .gitignore, as for reviews.
-    expect(existsSync(join(repo.root, 'cpr', 'AGENTS.md'))).toBe(true);
-    expect(existsSync(join(repo.root, 'cpr', '.gitignore'))).toBe(true);
+    expect(existsSync(join(repo.root, 'symbiote', 'AGENTS.md'))).toBe(true);
+    expect(existsSync(join(repo.root, 'symbiote', '.gitignore'))).toBe(true);
   });
 
   it('starts at a picked commit, without `from`', async () => {
@@ -749,7 +749,9 @@ describe('workspaces', () => {
     expect(prompt).toContain(brief);
     expect(prompt).toMatch(/Reproduce it first/);
     expect(start.mock.calls[0]?.[0].prompt).toBe(prompt);
-    const saved = await readWorkspace(join(repo.root, 'cpr', 'workspaces', 'fix', 'dates.json'));
+    const saved = await readWorkspace(
+      join(repo.root, 'symbiote', 'workspaces', 'fix', 'dates.json'),
+    );
     // Empty parts are not kept.
     expect(saved).toMatchObject({
       kind: 'fix',
@@ -774,8 +776,8 @@ describe('workspaces', () => {
     const { claude, start } = fakeClaude();
     const s = await service(repo, claude);
     const config = (prompts: unknown) =>
-      writeFileSync(join(repo.root, 'cpr', 'config.json'), JSON.stringify({ prompts }));
-    mkdirSync(join(repo.root, 'cpr'), { recursive: true });
+      writeFileSync(join(repo.root, 'symbiote', 'config.json'), JSON.stringify({ prompts }));
+    mkdirSync(join(repo.root, 'symbiote'), { recursive: true });
     config({
       start: { fix: ['Fix on {branch}, from {start}.', '', '{brief}', '', '{plan}'] },
       plan: { direct: 'Run pnpm check, then say it is ready.' },
@@ -795,9 +797,11 @@ describe('workspaces', () => {
     );
     expect(start.mock.calls[0]?.[0].prompt).toBe(prompt);
     expect(await s.prompt('fix/dates')).toBe(prompt);
-    expect(readFileSync(join(repo.root, 'cpr', 'AGENTS.md'), 'utf8')).toBe('# Our review rules\n');
+    expect(readFileSync(join(repo.root, 'symbiote', 'AGENTS.md'), 'utf8')).toBe(
+      '# Our review rules\n',
+    );
 
-    // Another kind keeps CPR's; a change applies to the next start, and to Copy the prompt.
+    // Another kind keeps Symbiote's; a change applies to the next start, and to Copy the prompt.
     const chore = await s.start({
       kind: 'chore',
       title: 'Bump vitest',
@@ -826,14 +830,14 @@ describe('workspaces', () => {
     expect(await refused('0'.repeat(40))).toMatchObject({ status: 400, message: /not a commit/ });
   });
 
-  it("keeps the start dialog's draft in CPR's cache, not in the repository (V24c)", async () => {
+  it("keeps the start dialog's draft in Symbiote's cache, not in the repository (V24c)", async () => {
     const { repo } = fresh();
     const s = await service(repo, null);
     expect(await s.draft()).toEqual({});
     const draft = { kind: 'fix', title: 'Dates', main: 'They sort as text.', more: {} };
     await s.saveDraft(draft);
     expect(await s.draft()).toEqual(draft);
-    // Another service on the same repository (a new `cpr view`, another port) reads it.
+    // Another service on the same repository (a new `symbiote view`, another port) reads it.
     expect(await (await service(repo, null)).draft()).toEqual(draft);
     expect(repo.git('status', '--porcelain')).toBe('');
     const file = join(cache, 'state', (await openRepo(repo.root)).id, 'start-draft.json');
@@ -914,7 +918,7 @@ describe('workspaces', () => {
     expect(start).toHaveBeenLastCalledWith(expect.objectContaining({ effort: 'high' }));
     expect(workspace.agent).toEqual({ state: 'working', kind: 'claude', id: 's1', effort: 'high' });
     const saved = JSON.parse(
-      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'x.json'), 'utf8'),
+      readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'x.json'), 'utf8'),
     ) as WorkspaceFile;
     expect(saved.agent).toMatchObject({ kind: 'claude', effort: 'high' });
     await s.startAgent('feature/x');
@@ -925,7 +929,7 @@ describe('workspaces', () => {
     expect(other.workspace.agent).not.toHaveProperty('effort');
   });
 
-  it('refuses a level the agent does not list, or any for an agent whose levels CPR cannot read (V30b)', async () => {
+  it('refuses a level the agent does not list, or any for an agent whose levels Symbiote cannot read (V30b)', async () => {
     const { repo } = fresh();
     const { claude, start: launched } = fakeClaude();
     const s = await service(repo, claude);
@@ -940,7 +944,10 @@ describe('workspaces', () => {
     await refused('ultra', /Claude Code takes low, medium, high, xhigh or max: ultra/);
     await refused(3, /an effort level is a word/);
     claude.efforts = () => Promise.resolve(null);
-    await refused('high', /CPR cannot read Claude Code's effort levels: start it at its default/);
+    await refused(
+      'high',
+      /Symbiote cannot read Claude Code's effort levels: start it at its default/,
+    );
     expect(repo.git('branch', '--list', 'feature/*')).toBe('');
     expect(launched).not.toHaveBeenCalled();
   });
@@ -1011,24 +1018,24 @@ describe('workspaces', () => {
     ]);
   });
 
-  it('lists a workspace recorded before V25, its cpr/features/ moved; with both, says so', async () => {
+  it('lists a workspace recorded before V25, its symbiote/features/ moved; with both, says so', async () => {
     const { repo } = fresh();
     const { claude } = fakeClaude();
     const s = await service(repo, claude);
     await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
-    const cpr = join(repo.root, 'cpr');
-    renameSync(join(cpr, 'workspaces'), join(cpr, 'features'));
+    const symbiote = join(repo.root, 'symbiote');
+    renameSync(join(symbiote, 'workspaces'), join(symbiote, 'features'));
     const list = await s.list();
     expect(list.workspaces.map((w) => w.branch)).toEqual(['feature/one']);
     expect(list.note).toBeUndefined();
-    expect(existsSync(join(cpr, 'features'))).toBe(false);
-    expect(readFileSync(join(cpr, 'workspaces', 'feature', 'one.json'), 'utf8')).toContain(
-      '"about": "A workspace started in CPR.',
+    expect(existsSync(join(symbiote, 'features'))).toBe(false);
+    expect(readFileSync(join(symbiote, 'workspaces', 'feature', 'one.json'), 'utf8')).toContain(
+      '"about": "A workspace started in Symbiote.',
     );
 
-    mkdirSync(join(cpr, 'features'));
+    mkdirSync(join(symbiote, 'features'));
     expect((await s.list()).note).toBe(
-      'cpr/features/, where workspaces were kept before, is still here: CPR reads cpr/workspaces/.',
+      'symbiote/features/, where workspaces were kept before, is still here: Symbiote reads symbiote/workspaces/.',
     );
   });
 
@@ -1050,7 +1057,7 @@ describe('workspaces', () => {
     const s = await service(repo, claude, HOOK, terminals);
     const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
     // A session that wakes needs its settings file: written back before it is attached to.
-    const settings = join(repo.root, 'cpr', 'claude-settings.json');
+    const settings = join(repo.root, 'symbiote', 'claude-settings.json');
     rmSync(settings);
     expect(await s.terminal({ branch: 'feature/one', cols: 100, rows: 30 })).toEqual({ id: 't1' });
     expect(opening).toEqual([
@@ -1381,9 +1388,9 @@ describe('workspaces', () => {
     expect([uncommitted?.count, uncommitted?.listed.length]).toEqual([301, 300]);
   });
 
-  it("starts the agent with CPR's hooks: one settings file, rewritten when CPR moves or it is gone", async () => {
+  it("starts the agent with Symbiote's hooks: one settings file, rewritten when Symbiote moves or it is gone", async () => {
     const { repo } = fresh();
-    const settings = join(repo.root, 'cpr', 'claude-settings.json');
+    const settings = join(repo.root, 'symbiote', 'claude-settings.json');
     const s = await service(repo, fakeClaude().claude);
     await s.list();
     // No workspace: nothing written.
@@ -1401,7 +1408,7 @@ describe('workspaces', () => {
       'Stop',
       'UserPromptSubmit',
     ]);
-    const command = `'/usr/bin/node' '${HOOK}' '${join(repo.root, 'cpr')}'`;
+    const command = `'/usr/bin/node' '${HOOK}' '${join(repo.root, 'symbiote')}'`;
     for (const [event, entries] of Object.entries(written.hooks)) {
       expect(entries).toEqual([
         {
@@ -1410,9 +1417,9 @@ describe('workspaces', () => {
         },
       ]);
     }
-    // CPR installed elsewhere: the next look rewrites it, so older sessions find the hook.
-    await (await service(repo, fakeClaude().claude, '/new/cpr/agent-hook.js')).list();
-    expect(readFileSync(settings, 'utf8')).toContain('/new/cpr/agent-hook.js');
+    // Symbiote installed elsewhere: the next look rewrites it, so older sessions find the hook.
+    await (await service(repo, fakeClaude().claude, '/new/symbiote/agent-hook.js')).list();
+    expect(readFileSync(settings, 'utf8')).toContain('/new/symbiote/agent-hook.js');
     // Gone (a session would not wake without it): written again.
     rmSync(settings);
     await s.list();
@@ -1422,7 +1429,7 @@ describe('workspaces', () => {
   it("saves the record before the agent starts: its first hooks find the workspace's worktree", async () => {
     const { repo } = fresh();
     const { claude, start } = fakeClaude();
-    const record = join(repo.root, 'cpr', 'workspaces', 'feature', 'one.json');
+    const record = join(repo.root, 'symbiote', 'workspaces', 'feature', 'one.json');
     let seen: WorkspaceFile | null = null;
     claude.start = (request) => {
       seen = JSON.parse(readFileSync(record, 'utf8')) as WorkspaceFile;
@@ -1514,15 +1521,15 @@ describe('workspaces', () => {
     const s = await service(repo, claude);
     const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
     const { recordEvent } = await import('../src/thread.js');
-    const cpr = join(repo.root, 'cpr');
+    const symbiote = join(repo.root, 'symbiote');
     const cwd = workspace.worktree.path;
     await recordEvent(
-      cpr,
+      symbiote,
       { hook_event_name: 'UserPromptSubmit', session_id: 'session-1', cwd, prompt: 'Start' },
       '2026-10-15T09:00:01.000Z',
     );
     await recordEvent(
-      cpr,
+      symbiote,
       { hook_event_name: 'Stop', session_id: 'session-1', cwd, last_assistant_message: 'The plan' },
       '2026-10-15T09:00:02.000Z',
     );
@@ -1536,7 +1543,7 @@ describe('workspaces', () => {
     });
 
     // A verdict on the branch: its text for the agent, as "Copy for the agent" has it.
-    const review = join(cpr, 'reviews', 'feature', 'one', 'ada@example.com.json');
+    const review = join(symbiote, 'reviews', 'feature', 'one', 'ada@example.com.json');
     mkdirSync(dirname(review), { recursive: true });
     writeFileSync(
       review,
@@ -1577,17 +1584,17 @@ describe('workspaces', () => {
     const s = await service(repo, claude);
     const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
     const { recordEvent } = await import('../src/thread.js');
-    const cpr = join(repo.root, 'cpr');
+    const symbiote = join(repo.root, 'symbiote');
     const cwd = workspace.worktree.path;
     Object.assign(listed[0] as AgentSession, { state: 'blocked', status: 'idle' });
     await recordEvent(
-      cpr,
+      symbiote,
       { hook_event_name: 'UserPromptSubmit', session_id: 'session-1', cwd, prompt: 'Start' },
       '2026-10-15T09:00:01.000Z',
     );
     expect((await s.list()).workspaces[0]?.agent.state).toBe('needs-you');
     await recordEvent(
-      cpr,
+      symbiote,
       { hook_event_name: 'Stop', session_id: 'session-1', cwd, last_assistant_message: 'The plan' },
       '2026-10-15T09:00:02.000Z',
     );
@@ -1614,10 +1621,10 @@ describe('workspaces', () => {
       'feature/two': NOW.toISOString(),
     });
     const { recordEvent } = await import('../src/thread.js');
-    const cpr = join(repo.root, 'cpr');
+    const symbiote = join(repo.root, 'symbiote');
     const cwd = workspace.worktree.path;
     const event = (input: Record<string, unknown>, at: string) =>
-      recordEvent(cpr, { session_id: 'session-1', cwd, ...input }, at);
+      recordEvent(symbiote, { session_id: 'session-1', cwd, ...input }, at);
     await event(
       { hook_event_name: 'Stop', last_assistant_message: 'The plan' },
       '2026-10-15T09:05:00.000Z',
@@ -1655,7 +1662,7 @@ describe('workspaces', () => {
     expect(existsSync(workspace.worktree.path)).toBe(false);
     expect(repo.git('branch', '--list', 'feature/one')).toBe('');
     const saved = JSON.parse(
-      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'one.json'), 'utf8'),
+      readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'one.json'), 'utf8'),
     ) as WorkspaceFile;
     expect(saved.finished).toBe(NOW.toISOString());
     expect((await s.list()).workspaces).toEqual([]);
@@ -1687,7 +1694,7 @@ describe('workspaces', () => {
   });
 
   /**
-   * A fake Codex (V20a): records its runs; a run lives until stopped or `end`ed and, as CPR's
+   * A fake Codex (V20a): records its runs; a run lives until stopped or `end`ed and, as Symbiote's
    * runner does, writes its thread's first entries a moment after it starts — unless `silent`,
    * when it dies before its thread starts.
    */
@@ -1739,10 +1746,10 @@ describe('workspaces', () => {
     return { codex, fake, start, resume, stop, archive, end, live };
   }
   const THREAD_ID = '01a1552c-bfcb-76b1-8112-774913d628c1';
-  /** Writes thread entries as CPR's runner would, marked with the workspace's last run. */
+  /** Writes thread entries as Symbiote's runner would, marked with the workspace's last run. */
   const recordRun = (repo: TestRepo, branch: string, entries: Record<string, unknown>[]) => {
-    const file = join(repo.root, 'cpr', 'threads', ...`${branch}.jsonl`.split('/'));
-    const record = join(repo.root, 'cpr', 'workspaces', ...`${branch}.json`.split('/'));
+    const file = join(repo.root, 'symbiote', 'threads', ...`${branch}.jsonl`.split('/'));
+    const record = join(repo.root, 'symbiote', 'workspaces', ...`${branch}.json`.split('/'));
     const { run } = (JSON.parse(readFileSync(record, 'utf8')) as WorkspaceFile).agent ?? {};
     mkdirSync(dirname(file), { recursive: true });
     for (const entry of entries) {
@@ -1776,8 +1783,8 @@ describe('workspaces', () => {
     ]);
     const alone = await (await service(repo, null, HOOK, undefined, codex)).options();
     expect(alone.agents.map((a) => a.kind)).toEqual(['codex']);
-    mkdirSync(join(repo.root, 'cpr'), { recursive: true });
-    writeFileSync(join(repo.root, 'cpr', 'config.json'), '{ "agent": { "kind": "codex" } }\n');
+    mkdirSync(join(repo.root, 'symbiote'), { recursive: true });
+    writeFileSync(join(repo.root, 'symbiote', 'config.json'), '{ "agent": { "kind": "codex" } }\n');
     const configured = await (await service(repo, claude, HOOK, undefined, codex)).options();
     expect(configured.agents.map((a) => a.kind)).toEqual(['codex', 'claude']);
     expect(readWorkspaceConfig(repo.root).agent).toBe('codex');
@@ -1800,18 +1807,18 @@ describe('workspaces', () => {
     expect(claudeStart).not.toHaveBeenCalled();
     expect(start).toHaveBeenCalledWith({
       cwd: folder,
-      thread: join(repo.root, 'cpr', 'threads', 'feature', 'csv.jsonl'),
+      thread: join(repo.root, 'symbiote', 'threads', 'feature', 'csv.jsonl'),
       run: expect.stringMatching(/^[0-9a-f-]{36}$/) as string,
       writable: await commitFolders(folder, 'feature/csv'),
       prompt,
     });
     expect(prompt).toContain('One row per comment.');
-    expect(prompt).toContain(join(repo.root, 'cpr', 'AGENTS.md'));
-    // Answered once its thread started: its ID is known, CPR's prompt in the thread.
+    expect(prompt).toContain(join(repo.root, 'symbiote', 'AGENTS.md'));
+    // Answered once its thread started: its ID is known, Symbiote's prompt in the thread.
     expect(workspace.agent).toEqual({ state: 'working', kind: 'codex', id: THREAD_ID });
     expect(workspace.base).toBe(shas.B);
     const saved = JSON.parse(
-      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'csv.json'), 'utf8'),
+      readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'csv.json'), 'utf8'),
     ) as WorkspaceFile;
     expect(saved.agent).toEqual({
       kind: 'codex',
@@ -1904,7 +1911,7 @@ describe('workspaces', () => {
     expect(stop).not.toHaveBeenCalled();
     expect(resume).toHaveBeenCalledWith({
       cwd: workspace.worktree.path,
-      thread: join(repo.root, 'cpr', 'threads', 'feature', 'one.jsonl'),
+      thread: join(repo.root, 'symbiote', 'threads', 'feature', 'one.jsonl'),
       run: expect.stringMatching(/^[0-9a-f-]{36}$/) as string,
       writable: await commitFolders(workspace.worktree.path, 'feature/one'),
       sessionId: THREAD_ID,
@@ -1935,7 +1942,7 @@ describe('workspaces', () => {
     expect(stop).toHaveBeenCalledWith(4242);
     expect(workspace.agent).toEqual({ state: 'stopped', kind: 'codex', id: THREAD_ID });
     await expect(s.stopAgent('feature/one')).rejects.toMatchObject({ status: 409 });
-    // Started again: a new run, with CPR's prompt.
+    // Started again: a new run, with Symbiote's prompt.
     const again = await s.startAgent('feature/one');
     expect(again.workspace.agent.state).toBe('working');
   });
@@ -1995,17 +2002,17 @@ describe('workspaces', () => {
       remote: server.address,
     });
     const saved = JSON.parse(
-      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'csv.json'), 'utf8'),
+      readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'csv.json'), 'utf8'),
     ) as WorkspaceFile;
     expect(saved.agent).toEqual({ kind: 'codex', started: NOW.toISOString(), thread: thread?.id });
-    // Its thread, from the server: CPR's prompt is there once the start answered.
+    // Its thread, from the server: Symbiote's prompt is there once the start answered.
     const read = await s.thread('feature/csv');
     expect(read.recorded).toBe(true);
     expect(read.entries).toEqual([
       { at: NOW.toISOString(), session: thread?.id, kind: 'start', source: 'startup' },
       { at: NOW.toISOString(), session: thread?.id, kind: 'prompt', text: prompt },
     ]);
-    expect(existsSync(join(repo.root, 'cpr', 'threads', 'feature', 'csv.jsonl'))).toBe(false);
+    expect(existsSync(join(repo.root, 'symbiote', 'threads', 'feature', 'csv.jsonl'))).toBe(false);
   });
 
   it('reads its state from the server: needs you on an approval, its plan ready, a turn typed in its terminal (V27a)', async () => {
@@ -2026,7 +2033,7 @@ describe('workspaces', () => {
     });
     server.reply(id, '1. Plan');
     expect((await s.list()).workspaces[0]?.agent).toEqual({ state: 'plan-ready', ...head });
-    // The person types in Codex's own terminal (`codex resume --remote`): CPR sees it.
+    // The person types in Codex's own terminal (`codex resume --remote`): Symbiote sees it.
     server.typed(id, 'Go ahead, from the terminal');
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect((await s.list()).workspaces[0]?.agent.state).toBe('working');
@@ -2093,11 +2100,12 @@ describe('workspaces', () => {
     const second = server.threads[1]?.id ?? '';
     expect(again.workspace.agent).toMatchObject({ state: 'working', id: second });
     const saved = JSON.parse(
-      readFileSync(join(repo.root, 'cpr', 'workspaces', 'feature', 'csv.json'), 'utf8'),
+      readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'csv.json'), 'utf8'),
     ) as WorkspaceFile;
     expect(saved.agent).toMatchObject({ thread: second, threads: [first] });
     await s.clean({ branch: 'feature/csv', unmerged: true });
-    // The running turn interrupted first; both threads archived on the server, not by `codex archive`.
+    // The running turn interrupted first; both threads archived on the server, not by `codex
+    // archive`.
     expect(server.thread(second).turns.at(-1)?.status).toBe('interrupted');
     expect(server.threads.map((t) => t.archived)).toEqual([true, true]);
     expect(archive).not.toHaveBeenCalled();
@@ -2147,7 +2155,8 @@ describe('workspaces', () => {
     await t.reply({ branch: 'feature/one', text: 'Go' });
     expect(both.resume).toHaveBeenCalledTimes(1);
     expect(server.threads).toEqual([]);
-    // ...until it is started again: then on the server, its exec threads still archived at Clean up.
+    // ...until it is started again: then on the server, its exec threads still archived at Clean
+    // up.
     await t.stopAgent('feature/one');
     const again = await t.startAgent('feature/one');
     expect(again.workspace.agent).toMatchObject({ state: 'working', remote: server.address });
@@ -2257,7 +2266,7 @@ describe('workspaces', () => {
     expect(await s.terminal({ branch: 'feature/csv', cols: 100, rows: 30 })).toEqual({ id: 't3' });
   });
 
-  it("refuses Codex's terminal through CPR's runner, or with no terminals here (V27b)", async () => {
+  it("refuses Codex's terminal through Symbiote's runner, or with no terminals here (V27b)", async () => {
     const { repo } = fresh();
     const plain = fakeCodex();
     const { terminals } = fakeTerminals();
@@ -2302,8 +2311,8 @@ describe('claudeCode', () => {
       name: 'feature/x',
       prompt: 'Do it',
       permissionMode: 'default',
-      addDir: '/repo/cpr',
-      settings: '/repo/cpr/claude-settings.json',
+      addDir: '/repo/symbiote',
+      settings: '/repo/symbiote/claude-settings.json',
     });
     await claude.resume({ sessionId: 'session-1', cwd: '/w', text: 'OK' });
     await claude.remove('s1');
@@ -2313,7 +2322,7 @@ describe('claudeCode', () => {
       name: 'feature/y',
       prompt: 'Do it',
       permissionMode: 'auto',
-      addDir: '/repo/cpr',
+      addDir: '/repo/symbiote',
       effort: 'high',
     });
     expect(calls).toEqual([
@@ -2323,9 +2332,9 @@ describe('claudeCode', () => {
           '--name',
           'feature/x',
           '--add-dir',
-          '/repo/cpr',
+          '/repo/symbiote',
           '--settings',
-          '/repo/cpr/claude-settings.json',
+          '/repo/symbiote/claude-settings.json',
           'Do it',
         ],
         cwd: '/w',
@@ -2338,7 +2347,7 @@ describe('claudeCode', () => {
           '--name',
           'feature/y',
           '--add-dir',
-          '/repo/cpr',
+          '/repo/symbiote',
           '--permission-mode',
           'auto',
           '--effort',
@@ -2413,7 +2422,7 @@ describe('runProgram', () => {
 
   it('waits for all of the output, some of which can come after the program exits', async () => {
     // Under load, Codex's `app-server daemon start` answered 0 of its 252 bytes in 2 reads of
-    // 160: its exit was taken before its output, and CPR took its daemon for absent.
+    // 160: its exit was taken before its output, and Symbiote took its daemon for absent.
     const late = "setTimeout(() => process.stdout.write(' late'), 200)";
     const result = await runProgram(process.execPath, program('early', late), {
       cwd: tmpdir(),

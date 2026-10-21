@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { openRepo, type Verdict } from '@cpr/core';
+import { openRepo, type Verdict } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { run } from '../src/main.js';
@@ -55,11 +55,11 @@ function setup({ trunk = 'main' }: { trunk?: string } = {}) {
   return { repo, shas: { A, T, M } };
 }
 
-/** The reviewer's last verdict on `branch`, as CPR records it (V16, V17). */
+/** The reviewer's last verdict on `branch`, as Symbiote records it (V16, V17). */
 function review(repo: TestRepo, branch: string, verdict: Partial<Verdict> & { head: string }) {
-  const path = join(repo.root, 'cpr', 'reviews', ...branch.split('/'), `${EMAIL}.json`);
+  const path = join(repo.root, 'symbiote', 'reviews', ...branch.split('/'), `${EMAIL}.json`);
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(join(repo.root, 'cpr', '.gitignore'), '*\n!config.json\n');
+  writeFileSync(join(repo.root, 'symbiote', '.gitignore'), '*\n!config.json\n');
   writeFileSync(
     path,
     serializeReview({
@@ -79,8 +79,8 @@ function review(repo: TestRepo, branch: string, verdict: Partial<Verdict> & { he
 }
 
 function config(repo: TestRepo, merge: Record<string, unknown>) {
-  mkdirSync(join(repo.root, 'cpr'), { recursive: true });
-  writeFileSync(join(repo.root, 'cpr', 'config.json'), JSON.stringify({ merge }));
+  mkdirSync(join(repo.root, 'symbiote'), { recursive: true });
+  writeFileSync(join(repo.root, 'symbiote', 'config.json'), JSON.stringify({ merge }));
 }
 
 /** A check that passes unless its command says `fail`; what it was asked, in order. */
@@ -213,8 +213,11 @@ describe('queueing a merge (V26a)', () => {
       title: 'Add t',
       worktree: join(repo.root, '..', 'wt'),
     };
-    mkdirSync(join(repo.root, 'cpr', 'workspaces'), { recursive: true });
-    writeFileSync(join(repo.root, 'cpr', 'workspaces', 'topic.json'), serializeWorkspace(record));
+    mkdirSync(join(repo.root, 'symbiote', 'workspaces'), { recursive: true });
+    writeFileSync(
+      join(repo.root, 'symbiote', 'workspaces', 'topic.json'),
+      serializeWorkspace(record),
+    );
     const m = await make(repo);
     const entry = await m.enqueue({ branch: 'topic', into: 'main' }, { start: false });
     expect(entry.title).toBe('Merge topic: Add t');
@@ -235,7 +238,7 @@ describe('merging, checking and landing (V26a)', () => {
     expect(entry).toMatchObject({ state: 'landed', base: shas.M, landed: NOW.toISOString() });
     expect(entry?.check).toMatchObject({
       commands: ['pnpm install', 'pnpm check'],
-      source: 'cpr/config.json (merge.checks)',
+      source: 'symbiote/config.json (merge.checks)',
       ok: true,
     });
     const merge = entry?.merge ?? '';
@@ -245,7 +248,7 @@ describe('merging, checking and landing (V26a)', () => {
     // The main checkout moved with its branch: its files are the merge's.
     expect(repo.git('status', '--porcelain', '--untracked-files=no')).toBe('');
     expect(existsSync(join(repo.root, 'src', 't.ts'))).toBe(true);
-    // The check ran in CPR's merge worktree, not in the person's checkout.
+    // The check ran in Symbiote's merge worktree, not in the person's checkout.
     expect(checks.asked.map((a) => a.command)).toEqual(['pnpm install', 'pnpm check']);
     expect(checks.asked[0]?.cwd).not.toBe(repo.root);
     expect(checks.asked[0]?.cwd.startsWith(cache)).toBe(true);
@@ -297,7 +300,7 @@ describe('merging, checking and landing (V26a)', () => {
     });
   });
 
-  it("installs first when the check is guessed from package.json: CPR's worktree has no dependencies", async () => {
+  it("installs first when the check is guessed from package.json: Symbiote's worktree has no dependencies", async () => {
     const { repo, shas } = setup();
     repo.write({
       'package.json': JSON.stringify({ scripts: { check: 'tsc' }, packageManager: 'pnpm@12.1.0' }),
@@ -412,7 +415,7 @@ describe('merging, checking and landing (V26a)', () => {
     expect(entry?.merge).toBeUndefined();
     expect(checks.asked).toEqual([]);
     expect(repo.git('rev-parse', 'main')).toBe(M2);
-    // No merge left half-done in CPR's worktree.
+    // No merge left half-done in Symbiote's worktree.
     const worktree = join(cache, 'worktrees', (await openRepo(repo.root)).id, 'merge');
     expect(repo.git('-C', worktree, 'status', '--porcelain')).toBe('');
     expect(repo.git('-C', worktree, 'rev-parse', 'HEAD')).toBe(M2);
@@ -498,7 +501,7 @@ describe('merging, checking and landing (V26a)', () => {
 });
 
 describe('the merger agent (V26c)', () => {
-  it('answers each region; CPR writes it, commits the merge, checks it, and waits for review', async () => {
+  it('answers each region; Symbiote writes it, commits the merge, checks it, and waits for review', async () => {
     const { repo, shas } = conflicting();
     config(repo, { checks: 'ok' });
     const agent = fakeAgent(BOTH);
@@ -532,7 +535,7 @@ describe('the merger agent (V26c)', () => {
     // Not landed before the person reviews it.
     expect(repo.git('rev-parse', 'main')).toBe(shas.M2);
 
-    // Asked in CPR's merge worktree, with the region and the sides: not the other files.
+    // Asked in Symbiote's merge worktree, with the region and the sides: not the other files.
     expect(agent.asked).toHaveLength(1);
     expect(agent.asked[0]?.cwd.startsWith(cache)).toBe(true);
     expect(agent.asked[0]?.model).toBe('sonnet');
@@ -551,11 +554,11 @@ describe('the merger agent (V26c)', () => {
     );
   });
 
-  it("gives the merger the project's instructions, then CPR's answer format (V28)", async () => {
+  it("gives the merger the project's instructions, then Symbiote's answer format (V28)", async () => {
     const { repo } = conflicting();
-    mkdirSync(join(repo.root, 'cpr'), { recursive: true });
+    mkdirSync(join(repo.root, 'symbiote'), { recursive: true });
     writeFileSync(
-      join(repo.root, 'cpr', 'config.json'),
+      join(repo.root, 'symbiote', 'config.json'),
       JSON.stringify({ prompts: { merger: ['Resolve conflicts.', 'Keep both values.'] } }),
     );
     const agent = fakeAgent(BOTH);
@@ -622,10 +625,10 @@ describe('the merger agent (V26c)', () => {
     expect(entry?.again).toBeUndefined();
   });
 
-  it('gives the agent cpr/merge.md, the symbols both sides changed, and merge.model', async () => {
+  it('gives the agent symbiote/merge.md, the symbols both sides changed, and merge.model', async () => {
     const { repo } = conflicting();
     config(repo, { model: 'opus' });
-    writeFileSync(join(repo.root, 'cpr', 'merge.md'), 'Prefer main for constants.\n');
+    writeFileSync(join(repo.root, 'symbiote', 'merge.md'), 'Prefer main for constants.\n');
     const agent = fakeAgent(BOTH);
     const asked: string[] = [];
     const changedSymbols: ChangedSymbols = (from, to, files) => {
@@ -643,7 +646,7 @@ describe('the merger agent (V26c)', () => {
     const prompt = agent.asked[0]?.prompt ?? '';
     expect(agent.asked[0]?.model).toBe('opus');
     expect(prompt).toContain(
-      "The project's merge rules (cpr/merge.md):\n\nPrefer main for constants.",
+      "The project's merge rules (symbiote/merge.md):\n\nPrefer main for constants.",
     );
     expect(prompt).toContain('- src/a.ts: a (variable): main modified, topic modified');
     expect(prompt).not.toContain('onlyMain');
@@ -693,7 +696,7 @@ describe('the config a landing reads (V26a)', () => {
     repo.git('push', '--quiet', '-u', 'origin', 'main');
     // The branch commits a config that pushes; the checkout has none.
     repo.git('switch', '--quiet', 'topic');
-    repo.write({ 'cpr/config.json': JSON.stringify({ merge: { checks: 'ok', push: true } }) });
+    repo.write({ 'symbiote/config.json': JSON.stringify({ merge: { checks: 'ok', push: true } }) });
     const T2 = repo.commit('T2: push merges');
     repo.git('switch', '--quiet', 'main');
     review(repo, 'topic', { head: T2, into: 'main' });
@@ -702,7 +705,7 @@ describe('the config a landing reads (V26a)', () => {
     await m.idle();
     const landed = await m.land(id);
     expect(landed.state).toBe('landed');
-    expect(existsSync(join(repo.root, 'cpr', 'config.json'))).toBe(true);
+    expect(existsSync(join(repo.root, 'symbiote', 'config.json'))).toBe(true);
     expect(landed.pushed).toBeUndefined();
     expect(repo.git('--git-dir', remote, 'rev-parse', 'main')).toBe(shas.M);
   });
@@ -723,9 +726,9 @@ describe('into which branch (V26a)', () => {
     expect(targets).toMatchObject({ into: 'develop', head: shas.T });
     expect(targets.blocked).toBeUndefined();
 
-    mkdirSync(join(repo.root, 'cpr', 'workspaces'), { recursive: true });
+    mkdirSync(join(repo.root, 'symbiote', 'workspaces'), { recursive: true });
     writeFileSync(
-      join(repo.root, 'cpr', 'workspaces', 'topic.json'),
+      join(repo.root, 'symbiote', 'workspaces', 'topic.json'),
       serializeWorkspace({
         agent: null,
         base: shas.A,
@@ -784,8 +787,8 @@ describe('into which branch (V26a)', () => {
   });
 });
 
-describe('cpr merge (V26a)', () => {
-  async function cprMerge(repo: TestRepo, ...args: string[]) {
+describe('symbiote merge (V26a)', () => {
+  async function symbioteMerge(repo: TestRepo, ...args: string[]) {
     let stdout = '';
     let stderr = '';
     const code = await run(['merge', ...args], {
@@ -794,7 +797,7 @@ describe('cpr merge (V26a)', () => {
       stderr: (text) => (stderr += text),
       openUrl: () => undefined,
       waitForExit: () => Promise.resolve(),
-      env: { ...process.env, CPR_CACHE_DIR: cache },
+      env: { ...process.env, SYMBIOTE_CACHE_DIR: cache },
     });
     return { code, stdout, stderr };
   }
@@ -803,13 +806,13 @@ describe('cpr merge (V26a)', () => {
     const { repo, shas } = setup();
     review(repo, 'topic', { head: shas.T, into: 'main' });
     config(repo, { checks: 'test -f src/t.ts' });
-    const { code, stdout } = await cprMerge(repo, 'topic');
+    const { code, stdout } = await symbioteMerge(repo, 'topic');
     expect(code).toBe(0);
     const merge = repo.git('rev-parse', 'main');
     expect(stdout.split('\n').map((line) => line.replace(/ \(\d+\.\d s\)/, ''))).toEqual([
       `queued: ${shas.T.slice(0, 7)} into main`,
       `merging into main at ${shas.M.slice(0, 7)}`,
-      'checking: test -f src/t.ts (cpr/config.json (merge.checks))',
+      'checking: test -f src/t.ts (symbiote/config.json (merge.checks))',
       'ready to land',
       `landed: main is at ${merge.slice(0, 7)}`,
       '',
@@ -818,19 +821,19 @@ describe('cpr merge (V26a)', () => {
 
   it('says why it does not merge, and waits for --land without a check', async () => {
     const { repo, shas } = setup();
-    let result = await cprMerge(repo, 'topic');
+    let result = await symbioteMerge(repo, 'topic');
     expect(result).toMatchObject({
       code: 1,
       stderr: expect.stringMatching(/not approved/) as unknown,
     });
 
     review(repo, 'topic', { head: shas.T, into: 'main' });
-    result = await cprMerge(repo, 'topic', '--into', 'main');
+    result = await symbioteMerge(repo, 'topic', '--into', 'main');
     expect(result.code).toBe(1);
     expect(result.stdout).toMatch(/ready to land: no check/);
     expect(repo.git('rev-parse', 'main')).toBe(shas.M);
 
-    result = await cprMerge(repo, 'topic', '--land');
+    result = await symbioteMerge(repo, 'topic', '--land');
     expect(result.code).toBe(0);
     expect(result.stdout).toMatch(/^landed: main is at/m);
     expect(repo.git('rev-parse', 'main')).not.toBe(shas.M);
@@ -838,8 +841,8 @@ describe('cpr merge (V26a)', () => {
 });
 
 describe("the agents' instructions (V26a)", () => {
-  it('no longer tell an agent to merge an approval: CPR merges it', () => {
+  it('no longer tell an agent to merge an approval: Symbiote merges it', () => {
     expect(AGENTS).not.toMatch(/git merge --no-ff/);
-    expect(AGENTS).toMatch(/CPR\n {2}merges it/);
+    expect(AGENTS).toMatch(/Symbiote\n {2}merges it/);
   });
 });

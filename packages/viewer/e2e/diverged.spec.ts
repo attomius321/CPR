@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { serveDiverged, type RunningDiverged } from './cpr.js';
+import { serveDiverged, type RunningDiverged } from './symbiote.js';
 
 // V10c: two picks on lines that diverged are compared from their fork point, as a pull request
 // shows a branch: what head's side adds, never the other side's work as reverted.
@@ -28,17 +28,17 @@ async function pickBoth(page: Page, url: string) {
 }
 
 test.describe('with main checked out', () => {
-  let cpr: RunningDiverged;
+  let symbiote: RunningDiverged;
   test.beforeAll(async () => {
-    cpr = await serveDiverged();
+    symbiote = await serveDiverged();
   });
-  test.afterAll(() => cpr.stop());
+  test.afterAll(() => symbiote.stop());
 
   test("compares the branch from where it forked: its own changes, none of main's", async ({
     page,
   }) => {
-    const { fork, main, topic } = cpr;
-    await pickBoth(page, `${cpr.url}history`);
+    const { fork, main, topic } = symbiote;
+    await pickBoth(page, `${symbiote.url}history`);
     await expect(page.locator('.compare-label')).toHaveText(
       `${short(fork)} → ${short(topic)} · 2 commits · diverged from ${short(main)}: its 2 commits since the fork are not in this diff`,
     );
@@ -49,7 +49,7 @@ test.describe('with main checked out', () => {
     await expect(page.locator('.commit.cursor .commit-subject')).toHaveText('Add square');
 
     await page.getByRole('button', { name: 'Compare', exact: true }).click();
-    await expect(page).toHaveURL(`${cpr.url}diff/${fork}..${topic}/`);
+    await expect(page).toHaveURL(`${symbiote.url}diff/${fork}..${topic}/`);
     await expect(symbol(page, 'twice').locator('.symbol')).toHaveClass(/tone-added/);
     await expect(symbol(page, 'square').locator('.symbol')).toHaveClass(/tone-modified/);
     // main's work since the fork is not shown, as removed or otherwise.
@@ -58,26 +58,26 @@ test.describe('with main checked out', () => {
   });
 
   test("swaps the sides: main's changes since the fork", async ({ page }) => {
-    const { fork, main, topic } = cpr;
-    await pickBoth(page, `${cpr.url}history`);
+    const { fork, main, topic } = symbiote;
+    await pickBoth(page, `${symbiote.url}history`);
     await page.getByRole('button', { name: 'Swap' }).click();
     await expect(page.locator('.compare-label')).toHaveText(
       `${short(fork)} → ${short(main)} · 2 commits · diverged from ${short(topic)}: its 2 commits since the fork are not in this diff`,
     );
     await page.getByRole('button', { name: 'Compare', exact: true }).click();
-    await expect(page).toHaveURL(`${cpr.url}diff/${fork}..${main}/`);
+    await expect(page).toHaveURL(`${symbiote.url}diff/${fork}..${main}/`);
     await expect(symbol(page, 'cube').locator('.symbol')).toHaveClass(/tone-added/);
     await expect(symbol(page, 'half').locator('.symbol')).toHaveClass(/tone-added/);
     await expect(symbol(page, 'twice')).toHaveCount(0);
   });
 
   test('compares a commit and its ancestor as before: no fork point, no Swap', async ({ page }) => {
-    await page.goto(`${cpr.url}history`);
+    await page.goto(`${symbiote.url}history`);
     await page.getByRole('button', { name: 'Compare mode' }).click();
     await row(page, 'Add twice').click();
     await row(page, 'Add square').click();
     await expect(page.locator('.compare-label')).toHaveText(
-      `${short(cpr.fork)} → ${short((await row(page, 'Add twice').locator('.commit-sha').textContent()) ?? '')} · 1 commit`,
+      `${short(symbiote.fork)} → ${short((await row(page, 'Add twice').locator('.commit-sha').textContent()) ?? '')} · 1 commit`,
     );
     await expect(page.locator('.fork-ring')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Swap' })).toHaveCount(0);
@@ -85,15 +85,15 @@ test.describe('with main checked out', () => {
 });
 
 test.describe('with the branch checked out', () => {
-  let cpr: RunningDiverged;
+  let symbiote: RunningDiverged;
   test.beforeAll(async () => {
-    cpr = await serveDiverged('topic');
+    symbiote = await serveDiverged('topic');
   });
-  test.afterAll(() => cpr.stop());
+  test.afterAll(() => symbiote.stop());
 
   test("still takes main's side as the base: the default branch", async ({ page }) => {
-    const { fork, main, topic } = cpr;
-    await pickBoth(page, `${cpr.url}history`);
+    const { fork, main, topic } = symbiote;
+    await pickBoth(page, `${symbiote.url}history`);
     await expect(page.locator('.compare-label')).toHaveText(
       `${short(fork)} → ${short(topic)} · 2 commits · diverged from ${short(main)}: its 2 commits since the fork are not in this diff`,
     );

@@ -1,4 +1,4 @@
-import { CprError } from '../errors.js';
+import { SymbioteError } from '../errors.js';
 import { git, GitError } from './exec.js';
 import type { GitRepo } from './repo.js';
 
@@ -14,7 +14,7 @@ export interface ResolveOptions {
   mergeBase?: boolean;
 }
 
-export class NoMergeBaseError extends CprError {
+export class NoMergeBaseError extends SymbioteError {
   override name = 'NoMergeBaseError';
 }
 
@@ -63,7 +63,7 @@ export async function resolveCommit(repo: GitRepo, ref: string): Promise<string>
     return output.trim();
   } catch (error) {
     if (error instanceof GitError)
-      throw new CprError(`unknown revision '${ref}'`, { cause: error });
+      throw new SymbioteError(`unknown revision '${ref}'`, { cause: error });
     throw error;
   }
 }

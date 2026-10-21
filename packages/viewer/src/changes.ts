@@ -1,5 +1,5 @@
 // A workspace's changes panel (V29d): the words of its rows, pure.
-import type { WorkspaceCommit, WorkspaceFileChange } from '@cpr/core';
+import type { WorkspaceCommit, WorkspaceFileChange } from '@symbiote/core';
 
 type Status = WorkspaceFileChange['status'];
 

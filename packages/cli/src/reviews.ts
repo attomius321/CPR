@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import {
@@ -25,12 +26,13 @@ import {
   type RefList,
   type Verdict,
   type VerdictComment,
-} from '@cpr/core';
+} from '@symbiote/core';
 import type { Pair } from './diffs.js';
+import { FORMER_NAME, moveInto } from './former-name.js';
 import { DEFAULT_PROMPTS, fillPrompt, readPrompts } from './prompts.js';
 import type { StateName, StateStore } from './server.js';
 
-/** A branch review on disk: `cpr/reviews/<branch>/<reviewer>.json` (V15). */
+/** A branch review on disk: `symbiote/reviews/<branch>/<reviewer>.json` (V15). */
 export interface BranchReviewFile {
   /** The fork point and the tip last reviewed. */
   base: string;
@@ -48,32 +50,33 @@ export interface BranchReviewFile {
 }
 
 /**
- * Written once into `cpr/`: reviews stay out of git until it is deleted; the project's settings
- * (`config.json`) and the merger's rules (`merge.md`, V26c) are the project's to commit.
+ * Written once into `symbiote/`: reviews stay out of git until it is deleted; the project's
+ * settings (`config.json`) and the merger's rules (`merge.md`, V26c) are the project's to commit.
  */
 export const GITIGNORE =
-  '# Written by CPR: reviews stay on this machine. Delete this file to commit and share them.\n' +
+  '# Written by Symbiote: reviews stay on this machine. Delete this file to commit and share them.\n' +
   '*\n!config.json\n!merge.md\n';
 
-/** What earlier CPRs wrote as `cpr/.gitignore`: replaced by `GITIGNORE`, being CPR's own. */
+/** What earlier Symbiotes wrote as `symbiote/.gitignore`: replaced by `GITIGNORE`, being Symbiote's
+ * own. */
 const EARLIER_GITIGNORES = new Set([
-  // V15 to V26c: it hid cpr/merge.md.
-  '# Written by CPR: reviews stay on this machine. Delete this file to commit and share them.\n' +
+  // V15 to V26c: it hid symbiote/merge.md.
+  '# Written by Symbiote: reviews stay on this machine. Delete this file to commit and share them.\n' +
     '*\n!config.json\n',
 ]);
 
 /** Every review file's first key (V17): where an agent that opens it learns what to do. */
 export const REVIEW_ABOUT =
-  'A CPR review. Agents: read AGENTS.md beside the reviews folder (cpr/AGENTS.md) before acting on it.';
+  'A Symbiote review. Agents: read AGENTS.md beside the reviews folder (symbiote/AGENTS.md) before acting on it.';
 
 /**
- * What an agent does with a review (V17): the text in use for `cpr/AGENTS.md` (V28), as the file
- * holds it. Claude Code loads a folder's AGENTS.md when it reads a file there, `cpr/` git-ignored
- * or not (checked with 2.1.296); other agents follow `about`.
+ * What an agent does with a review (V17): the text in use for `symbiote/AGENTS.md` (V28), as the
+ * file holds it. Claude Code loads a folder's AGENTS.md when it reads a file there, `symbiote/`
+ * git-ignored or not (checked with 2.1.296); other agents follow `about`.
  */
 export const agentsFile = (text: string) => `${text.trimEnd()}\n`;
 
-/** CPR's `cpr/AGENTS.md`, until a project has its own (`prompts.reviews`). */
+/** Symbiote's `symbiote/AGENTS.md`, until a project has its own (`prompts.reviews`). */
 export const AGENTS = agentsFile(DEFAULT_PROMPTS.reviews);
 
 /** Where reviews are kept, and as whom. */
@@ -82,9 +85,9 @@ export interface ReviewPlace {
   dir: string;
   reviewer: string;
   place: 'repository' | 'cache';
-  /** Why the cache, not `cpr/reviews/`. */
+  /** Why the cache, not `symbiote/reviews/`. */
   note?: string;
-  /** `cpr/.gitignore`, written before the first review when absent. */
+  /** `symbiote/.gitignore`, written before the first review when absent. */
   gitignore?: string;
   /** The agents' instructions (V17), beside the reviews folder. */
   agents: string;
@@ -116,14 +119,15 @@ export interface BranchReviews {
     review: LocalReview,
     read: (side: 'base' | 'head', path: string) => Promise<string>,
   ): Promise<FinishResult>;
-  /** Whether the branch merges cleanly into the default branch (V17); null on the default branch. */
+  /** Whether the branch merges cleanly into the default branch (V17); null on the default branch.
+   * */
   merge(info: BranchReviewInfo): Promise<BranchMerge | null>;
 }
 
 /**
- * `cpr/reviews/` at the repository's root as the git user (`user.email`): the main checkout's,
+ * `symbiote/reviews/` at the repository's root as the git user (`user.email`): the main checkout's,
  * which its linked worktrees share (V18), so a workspace's worktree sees the same reviews. The
- * cache instead, saying why, without a git user, or when `cpr/` holds files of the project
+ * cache instead, saying why, without a git user, or when `symbiote/` holds files of the project
  * itself (a `*` in its `.gitignore` would hide that project's new files).
  */
 export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<ReviewPlace> {
@@ -136,19 +140,24 @@ export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<Revi
     agents: join(cacheDir, 'state', repo.id, 'AGENTS.md'),
   });
   if (!email) {
-    return cache("Kept in CPR's cache: set git config user.email to keep reviews in cpr/reviews/.");
+    return cache(
+      "Kept in Symbiote's cache: set git config user.email to keep reviews in symbiote/reviews/.",
+    );
   }
   const main = mainWorktree(repo);
-  const folder = join(main, 'cpr');
+  const folder = join(main, 'symbiote');
+  // The folder under Symbiote's former name moves here, unless it is the project's own. Asked
+  // only when it is there: this runs on each refresh of the workspaces.
+  const former = join(main, FORMER_NAME);
+  if (existsSync(former) && !(await holdsProjectFiles(repo, main, FORMER_NAME))) {
+    moveInto(former, folder, { drop: REWRITTEN });
+  }
   const foreign =
     (await stat(folder).then(
       (s) => !s.isDirectory(),
       () => false,
-    )) ||
-    (await trackedFiles({ ...repo, root: main }, 'cpr')).some(
-      (path) => !CPR_FILES.has(path) && !path.startsWith('cpr/reviews/'),
-    );
-  if (foreign) return cache("Kept in CPR's cache: cpr/ holds files of this project.");
+    )) || (await holdsProjectFiles(repo, main, 'symbiote'));
+  if (foreign) return cache("Kept in Symbiote's cache: symbiote/ holds files of this project.");
   return {
     dir: join(folder, 'reviews'),
     reviewer: email,
@@ -158,8 +167,19 @@ export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<Revi
   };
 }
 
-/** What CPR itself keeps in `cpr/`, beside the reviews: a project may commit them. */
-const CPR_FILES = new Set(['cpr/config.json', 'cpr/.gitignore', 'cpr/AGENTS.md', 'cpr/merge.md']);
+/** What Symbiote itself keeps in `symbiote/`, beside the reviews: a project may commit them. */
+const SYMBIOTE_FILES = new Set(['config.json', '.gitignore', 'AGENTS.md', 'merge.md']);
+
+/** What Symbiote writes again itself: copies under the former name are dropped, not moved. */
+const REWRITTEN = ['.gitignore', 'AGENTS.md', 'claude-settings.json'];
+
+/** Whether git tracks files in `<main>/<name>/` that are not Symbiote's. */
+async function holdsProjectFiles(repo: GitRepo, main: string, name: string): Promise<boolean> {
+  return (await trackedFiles({ ...repo, root: main }, name)).some((path) => {
+    const inside = path.slice(name.length + 1);
+    return !SYMBIOTE_FILES.has(inside) && !inside.startsWith('reviews/');
+  });
+}
 
 /** A review's file: the branch's slashes as folders, the reviewer as its name. */
 export function reviewPath(dir: string, branch: string, reviewer: string): string {
@@ -224,11 +244,12 @@ function asMarks(value: unknown): Record<string, string> {
 }
 
 /**
- * Before CPR writes into `cpr/`: its `.gitignore`, unless one exists (then it is the project's,
- * unless an earlier CPR wrote it), and, when `agents`, the agents' instructions beside it (V17),
- * rewritten when they differ from `text` (CPR's unless the project has its own, V28).
+ * Before Symbiote writes into `symbiote/`: its `.gitignore`, unless one exists (then it is the
+ * project's, unless an earlier Symbiote wrote it), and, when `agents`, the agents' instructions
+ * beside it (V17), rewritten when they differ from `text` (Symbiote's unless the project has its
+ * own, V28).
  */
-export async function prepareCprFolder(
+export async function prepareSymbioteFolder(
   where: ReviewPlace,
   { agents = true, text = DEFAULT_PROMPTS.reviews }: { agents?: boolean; text?: string } = {},
 ): Promise<void> {
@@ -271,7 +292,8 @@ export function branchReviews(
   { now = () => new Date() }: { now?: () => Date } = {},
 ): BranchReviews {
   const place = () => reviewPlace(repo, cacheDir);
-  /** The agents' instructions checked this run, by path, and the text: checked again when it changes. */
+  /** The agents' instructions checked this run, by path, and the text: checked again when it
+   * changes. */
   const instructed = new Map<string, string>();
   /** Merge checks by default branch and tip: they take seconds on long-lived branches. */
   const merges = new Map<string, Promise<BranchMerge>>();
@@ -315,7 +337,7 @@ export function branchReviews(
       // Out of git before anything is in the folder; the agents' instructions once a run, and
       // again after the project's change (V28).
       const text = readPrompts(repo.root).text.reviews;
-      await prepareCprFolder(where, { agents: instructed.get(where.agents) !== text, text });
+      await prepareSymbioteFolder(where, { agents: instructed.get(where.agents) !== text, text });
       instructed.set(where.agents, text);
       await mkdir(dirname(path), { recursive: true });
       const temp = `${path}.${process.pid}.tmp`;
@@ -545,7 +567,7 @@ export function branchReviews(
 
 /**
  * A verdict as text for an agent's chat (V16): what was decided at which commit — for an
- * approval, the merge CPR makes (V26) —, the summary, each comment with its file and line,
+ * approval, the merge Symbiote makes (V26) —, the summary, each comment with its file and line,
  * symbol and code, then where the review and the agents' instructions are. Its own sentences
  * are `prompts`' (V28).
  */

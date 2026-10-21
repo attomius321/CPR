@@ -1,8 +1,8 @@
-// Runs a CPR build over a regression set and writes what it found, for compare.mjs.
+// Runs a Symbiote build over a regression set and writes what it found, for compare.mjs.
 // Usage: node scripts/regression/run.mjs --set <name> --out <file.json>
-//          [--cpr <checkout>]      CPR to run (default: this checkout); it must be built
+//          [--symbiote <checkout>]      Symbiote to run (default: this checkout); it must be built
 //          [--plugins a,b]         instead of the set's plugins; --no-plugins for none
-// Repos come from setup.mjs ($CPR_REGRESSION_DIR, else ~/.cache/cpr-regression).
+// Repos come from setup.mjs ($SYMBIOTE_REGRESSION_DIR, else ~/.cache/symbiote-regression).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -11,13 +11,14 @@ import { parseArgs } from 'node:util';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const config = JSON.parse(readFileSync(join(here, 'sets.json'), 'utf8'));
-const regressionDir = process.env.CPR_REGRESSION_DIR ?? join(homedir(), '.cache', 'cpr-regression');
+const regressionDir =
+  process.env.SYMBIOTE_REGRESSION_DIR ?? join(homedir(), '.cache', 'symbiote-regression');
 
 const { values } = parseArgs({
   options: {
     set: { type: 'string' },
     out: { type: 'string' },
-    cpr: { type: 'string', default: join(here, '../..') },
+    symbiote: { type: 'string', default: join(here, '../..') },
     plugins: { type: 'string' },
     'no-plugins': { type: 'boolean', default: false },
   },
@@ -25,11 +26,11 @@ const { values } = parseArgs({
 const set = config.sets[values.set ?? ''];
 if (!set || !values.out) {
   throw new Error(
-    `usage: run.mjs --set <${Object.keys(config.sets).join('|')}> --out <file.json> [--cpr <checkout>] [--plugins a,b | --no-plugins]`,
+    `usage: run.mjs --set <${Object.keys(config.sets).join('|')}> --out <file.json> [--symbiote <checkout>] [--plugins a,b | --no-plugins]`,
   );
 }
-const cpr = resolve(values.cpr);
-const load = (path) => import(pathToFileURL(join(cpr, path)).href);
+const symbiote = resolve(values.symbiote);
+const load = (path) => import(pathToFileURL(join(symbiote, path)).href);
 const { analyzeGit, createTypescriptAdapter } = await load('packages/core/dist/index.js');
 const pluginNames = values['no-plugins']
   ? []
@@ -80,5 +81,8 @@ for (const [repo, ...revs] of set.comparisons) {
     : `${run.edges.length} edges, ${run.findings.length} findings`;
   console.error(`${repo} ${base}..${head}: ${what} (${run.ms} ms)`);
 }
-writeFileSync(values.out, JSON.stringify({ set: values.set, cpr, plugins: pluginNames, runs }));
+writeFileSync(
+  values.out,
+  JSON.stringify({ set: values.set, symbiote, plugins: pluginNames, runs }),
+);
 console.error(`wrote ${values.out}`);

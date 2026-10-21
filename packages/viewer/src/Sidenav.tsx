@@ -6,10 +6,17 @@ import {
   type FocusEvent,
   type KeyboardEvent,
 } from 'react';
-import type { MergeEntry } from '@cpr/core';
+import type { MergeEntry } from '@symbiote/core';
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
-import { CprIcon, HistoryIcon, MenuIcon, PlusIcon, SettingsIcon, SidenavIcon } from './icons.js';
+import {
+  SymbioteIcon,
+  HistoryIcon,
+  MenuIcon,
+  PlusIcon,
+  SettingsIcon,
+  SidenavIcon,
+} from './icons.js';
 import { mergeState } from './merges.js';
 import { HISTORY_PAGE, hrefOf, SETTINGS_PAGE, START_PAGE } from './pages.js';
 import { useShell } from './shell-context.js';
@@ -27,9 +34,9 @@ const GROUPS = [
 const CARD = '.workspace-about';
 
 /**
- * The shell's sidenav (V29a): CPR and the repository, the pages, then the workspaces by what each
- * needs from the person and the merges in CPR's queue. A card opens its workspace (or merge) in
- * the main area. Folded, it is a rail of icons and marks.
+ * The shell's sidenav (V29a): Symbiote and the repository, the pages, then the workspaces by what
+ * each needs from the person and the merges in Symbiote's queue. A card opens its workspace (or
+ * merge) in the main area. Folded, it is a rail of icons and marks.
  */
 export function Sidenav({
   repo,
@@ -91,10 +98,14 @@ export function Sidenav({
   return (
     <aside className={`sidenav${folded ? ' rail' : ''}`} aria-label="Pages and workspaces">
       <div className="sidenav-top">
-        <a className="sidenav-brand" href={HISTORY_PAGE} title={repo ? `CPR · ${repo}` : 'CPR'}>
-          <CprIcon />
+        <a
+          className="sidenav-brand"
+          href={HISTORY_PAGE}
+          title={repo ? `Symbiote · ${repo}` : 'Symbiote'}
+        >
+          <SymbioteIcon />
           <span className="sidenav-label">
-            CPR{repo && <span className="sidenav-repo"> · {repo}</span>}
+            Symbiote{repo && <span className="sidenav-repo"> · {repo}</span>}
           </span>
         </a>
         <button
@@ -147,15 +158,15 @@ export function Sidenav({
             <PlusIcon />
           </a>
         </h2>
-        {/* Why they are kept where they are (CPR's cache), or a folder left from before (V25). */}
+        {/* Why they are kept where they are (Symbiote's cache), or a folder left from before (V25). */}
         {list?.note && <p className="hint workspaces-note">{list.note}</p>}
         {!list && <p className="hint sidenav-hint">Listing workspaces…</p>}
         {empty && (
           <div className="hint workspaces-empty">
             <p>No workspaces yet.</p>
             <p>
-              Start one (n): describe the work, and CPR makes its branch and worktree and starts an
-              agent there. Or start one from a commit in History.
+              Start one (n): describe the work, and Symbiote makes its branch and worktree and
+              starts an agent there. Or start one from a commit in History.
             </p>
           </div>
         )}
@@ -231,7 +242,7 @@ export function DrawerStrip({ open, onToggle }: { open: boolean; onToggle: () =>
         >
           <MenuIcon />
         </button>
-        <strong className="brand">CPR</strong>
+        <strong className="brand">Symbiote</strong>
       </header>
       {open && <div className="shell-scrim" aria-hidden="true" onClick={onToggle} />}
     </>
@@ -305,7 +316,7 @@ function WorkspaceCard({
   );
 }
 
-/** A merge in CPR's queue: the branch, where it goes, its state; a click opens it. */
+/** A merge in Symbiote's queue: the branch, where it goes, its state; a click opens it. */
 function MergeCard({
   entry,
   picked,

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 /**
  * Paths that are code but not product decisions: examples, playgrounds, fixtures, generated
  * code. Changes in them are listed but not analyzed, and they are left out of the program
- * (faster loads). Extend or override (`!pattern`) with a `.cprignore` file.
+ * (faster loads). Extend or override (`!pattern`) with a `.symbioteignore` file.
  */
 export const DEFAULT_IGNORES = [
   '**/examples/**',
@@ -56,13 +56,13 @@ export function ignoreMatcher(patterns: readonly string[]): IgnoreMatcher {
   };
 }
 
-/** Default ignores plus the lines of `<root>/.cprignore`, if present. */
+/** Default ignores plus the lines of `<root>/.symbioteignore`, if present. */
 export function loadIgnores(root: string): IgnoreMatcher {
   let custom: string[] = [];
   try {
-    custom = readFileSync(join(root, '.cprignore'), 'utf8').split('\n');
+    custom = readFileSync(join(root, '.symbioteignore'), 'utf8').split('\n');
   } catch {
-    // no .cprignore
+    // no .symbioteignore
   }
   return ignoreMatcher([...DEFAULT_IGNORES, ...custom]);
 }

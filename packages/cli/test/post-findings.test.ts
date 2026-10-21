@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { ChangedLines, Graph } from '@cpr/core';
+import type { ChangedLines, Graph } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   findingMarker,
@@ -60,7 +60,7 @@ describe('findingsReview', () => {
   it('comments inline with a marker, and sums up', () => {
     const review = findingsReview(plan);
     expect(review.event).toBe('comment');
-    expect(review.body).toBe('**CPR** · 3 new findings (1 error, 2 warnings)');
+    expect(review.body).toBe('**Symbiote** · 3 new findings (1 error, 2 warnings)');
     expect(review.comments[0]).toEqual({
       side: 'base',
       path: 'src/shapes.ts',
@@ -69,7 +69,7 @@ describe('findingsReview', () => {
       body:
         '**✖ error · removed-still-referenced**\n\n' +
         'Canvas.clear was removed but is still used by 1 symbol: render\n\n' +
-        '<!-- cpr:finding removed%2Dstill%2Dreferenced%3Asrc%2Fshapes.ts%23Canvas.clear -->',
+        '<!-- symbiote:finding removed%2Dstill%2Dreferenced%3Asrc%2Fshapes.ts%23Canvas.clear -->',
     });
     expect(postedMarkers(review.comments.map((c) => c.body)).size).toBe(3);
   });

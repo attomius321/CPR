@@ -1,6 +1,6 @@
-name: CPR review
+name: Symbiote review
 
-# CPR reviews its own pull requests with the action in this repository (`uses: ./`).
+# Symbiote reviews its own pull requests with the action in this repository (`uses: ./`).
 on:
   pull_request:
 
@@ -9,7 +9,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: cpr-${{ github.event.pull_request.number }}
+  group: symbiote-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:

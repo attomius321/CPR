@@ -1,13 +1,13 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { serveFixture, type Running } from './cpr.js';
+import { serveFixture, type Running } from './symbiote.js';
 
-// `cpr view --plugin angular` on an Angular 11 app (NgModule, `templateUrl`, `*ngFor`, `*ngIf`):
-// HeroService.getHeroes takes a limit, HeroesComponent.onSelect became select() but the
+// `symbiote view --plugin angular` on an Angular 11 app (NgModule, `templateUrl`, `*ngFor`,
+// `*ngIf`): HeroService.getHeroes takes a limit, HeroesComponent.onSelect became select() but the
 // template still calls onSelect, and a new button calls add(). What the analysis found is what
 // the viewer draws: the header's counts, each symbol in its file's box in its status colour with
 // its kind, signature and findings, and the template's own diff, `@` in its text included (plain
 // text before Angular 17's blocks).
-let cpr: Running;
+let symbiote: Running;
 const errors: string[] = [];
 
 const SERVICE = 'src/app/hero.service.ts';
@@ -128,15 +128,18 @@ async function rect(locator: Locator) {
 }
 
 test.beforeAll(async () => {
-  cpr = await serveFixture('packages/plugin-angular/test/fixtures/ng11', ['--plugin', 'angular']);
+  symbiote = await serveFixture('packages/plugin-angular/test/fixtures/ng11', [
+    '--plugin',
+    'angular',
+  ]);
 });
 
-test.afterAll(() => cpr.stop());
+test.afterAll(() => symbiote.stop());
 
 test.beforeEach(async ({ page }) => {
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(cpr.url);
+  await page.goto(symbiote.url);
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
 });
 

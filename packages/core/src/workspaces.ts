@@ -1,5 +1,5 @@
-// Workspaces started from the commits page (V18): what `cpr view`'s server answers and the viewer
-// reads. Types only; the CLI keeps the records and starts the agents.
+// Workspaces started from the commits page (V18): what `symbiote view`'s server answers and the
+// viewer reads. Types only; the CLI keeps the records and starts the agents.
 import type { VerdictEvent } from './git/branches.js';
 import type { FileChangeStatus } from './git/changed-files.js';
 
@@ -44,22 +44,22 @@ export interface WorkspaceAgentState {
   error?: string;
   /**
    * The effort level it was started at (V30b); absent for its own default. Its session may have
-   * changed it since (Claude Code's `/effort`): CPR does not read it back.
+   * changed it since (Claude Code's `/effort`): Symbiote does not read it back.
    */
   effort?: string;
 }
 
-/** The agents CPR starts: Claude Code (V18) and Codex (V20a). */
+/** The agents Symbiote starts: Claude Code (V18) and Codex (V20a). */
 export type AgentKind = 'claude' | 'codex';
 export const AGENT_KINDS: readonly AgentKind[] = ['claude', 'codex'];
 
-/** Claude Code's permission modes CPR may start an agent in; `default` passes none. */
+/** Claude Code's permission modes Symbiote may start an agent in; `default` passes none. */
 export type PermissionMode = 'default' | 'acceptEdits' | 'auto';
 export const PERMISSION_MODES: readonly PermissionMode[] = ['default', 'acceptEdits', 'auto'];
 
 /**
  * What a workspace is for (V24): it picks the brief's parts, the branch's prefix and the one line
- * CPR adds to the agent's prompt.
+ * Symbiote adds to the agent's prompt.
  */
 export type WorkKind = 'feature' | 'fix' | 'refactor' | 'chore' | 'spike';
 export const WORK_KINDS: readonly WorkKind[] = ['feature', 'fix', 'refactor', 'chore', 'spike'];
@@ -136,7 +136,7 @@ export interface WorkspaceSummary {
 
 export interface WorkspaceList {
   workspaces: WorkspaceSummary[];
-  /** Where workspaces are kept: `cpr/workspaces/`, else CPR's cache (`note` says why). */
+  /** Where workspaces are kept: `symbiote/workspaces/`, else Symbiote's cache (`note` says why). */
   place: 'repository' | 'cache';
   note?: string;
   /** Whether an agent's session can be shown in a terminal (V21); only with workspaces. */
@@ -188,7 +188,7 @@ export interface WorkspaceChanges {
   uncommitted: { count: number; listed: WorkspaceFileChange[] } | null;
 }
 
-/** Whether `cpr view` can run terminals (node-pty, optional), else why not (V21). */
+/** Whether `symbiote view` can run terminals (node-pty, optional), else why not (V21). */
 export type TerminalAvailability = { available: true } | { available: false; reason: string };
 
 /** `POST /api/workspaces/terminal`: a terminal on the workspace's agent's session, at that size. */
@@ -234,17 +234,18 @@ export interface AgentOption {
    * subscription", "your ChatGPT account".
    */
   account?: string;
-  /** Claude Code: an API key in `cpr view`'s environment, which it may use instead. */
+  /** Claude Code: an API key in `symbiote view`'s environment, which it may use instead. */
   apiKey?: boolean;
   /** Claude Code: the permission mode it starts in unless the person picks another. */
   permissionMode?: PermissionMode;
-  /** The effort levels it takes (V30b); absent when CPR cannot read them: no choice is offered. */
+  /** The effort levels it takes (V30b); absent when Symbiote cannot read them: no choice is
+   * offered. */
   efforts?: AgentEfforts;
 }
 
 /**
- * An effort level as CPR passes it to an agent (V30b): a lowercase word (`xhigh`), never an option
- * or a sentence. Both agents' levels are such words.
+ * An effort level as Symbiote passes it to an agent (V30b): a lowercase word (`xhigh`), never an
+ * option or a sentence. Both agents' levels are such words.
  */
 export const EFFORT_LEVEL = /^[a-z][a-z-]{0,23}$/;
 
@@ -256,8 +257,8 @@ export interface AgentEfforts {
 }
 
 /**
- * `POST /api/workspaces`: a kind of work with its title and parts, which CPR makes the brief of
- * (V24); or, as before V24, the brief as one text.
+ * `POST /api/workspaces`: a kind of work with its title and parts, which Symbiote makes the brief
+ * of (V24); or, as before V24, the brief as one text.
  */
 export interface WorkspaceRequest {
   kind?: WorkKind;
@@ -289,14 +290,14 @@ export interface ThreadQuestion {
 }
 
 /**
- * One entry of a workspace's thread (V18c), as CPR's hooks recorded it from its agent's sessions:
- * a session's start and end, what it was given (CPR's prompt, then the person's messages), what
- * it reported at the end of a turn, what it waited on, and Claude Code's notices.
+ * One entry of a workspace's thread (V18c), as Symbiote's hooks recorded it from its agent's
+ * sessions: a session's start and end, what it was given (Symbiote's prompt, then the person's
+ * messages), what it reported at the end of a turn, what it waited on, and Claude Code's notices.
  */
 export type ThreadEntry = {
   at: string;
   session: string;
-  /** The CPR run of Codex it belongs to (V20a): which entries are its last run's. */
+  /** The Symbiote run of Codex it belongs to (V20a): which entries are its last run's. */
   run?: string;
 } & (
   | { kind: 'start'; source: string }
@@ -312,7 +313,8 @@ export type ThreadEntry = {
 export interface WorkspaceThread {
   /** The last entries, oldest first. */
   entries: ThreadEntry[];
-  /** The agent was started with CPR's hooks: its messages are recorded (workspaces since V18c). */
+  /** The agent was started with Symbiote's hooks: its messages are recorded (workspaces since
+   * V18c). */
   recorded: boolean;
   /** The branch review's last verdict and its text for the agent (V16's "Copy for the agent"). */
   verdict?: { at: string; event: VerdictEvent; head: string; text: string };

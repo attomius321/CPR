@@ -23,7 +23,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { flushSync } from 'react-dom';
-import type { BranchReviewInfo, Graph } from '@cpr/core';
+import type { BranchReviewInfo, Graph } from '@symbiote/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
 import type { Loaded, Pair } from './commits.js';
 import { BackLink, DiffProgress, fetchGraph, startDiff } from './HistoryPage.js';
@@ -77,15 +77,16 @@ type State =
   | { status: 'loading' }
   | { status: 'empty'; error?: string }
   /**
-   * `cpr view` with no diff here: the shell (V29a) — the sidenav with the pages and the
+   * `symbiote view` with no diff here: the shell (V29a) — the sidenav with the pages and the
    * workspaces, and History, Settings, a workspace or a merge beside it.
    */
   | { status: 'shell'; repo?: string }
   /** A diff's page while it is analyzed, or once it failed or was stopped. */
   | { status: 'analyzing'; loaded: Exclude<Loaded, { kind: 'graph' }> }
   /**
-   * `sources`: opened through `cpr view`, so `/api/source` exists. `forge`: opened through
-   * `cpr pr`, which posts reviews there. `commits`: a diff of `cpr view`, which lists commits.
+   * `sources`: opened through `symbiote view`, so `/api/source` exists. `forge`: opened through
+   * `symbiote pr`, which posts reviews there. `commits`: a diff of `symbiote view`, which lists
+   * commits.
    * `open`: the server opens files in VS Code (`/api/open`).
    */
   | {
@@ -100,7 +101,8 @@ type State =
       branchReview?: BranchReviewInfo;
     };
 
-/** Where a review goes: a forge (`cpr pr`), or the repository itself (a branch review, V16). */
+/** Where a review goes: a forge (`symbiote pr`), or the repository itself (a branch review, V16).
+ * */
 type Forge = 'github' | 'gitlab' | 'local';
 
 interface Capabilities {
@@ -108,20 +110,20 @@ interface Capabilities {
   review: { forge: Forge } | null;
   /** `/api/state` keeps reviewed marks and drafts in the CLI's cache. */
   state?: boolean;
-  /** `cpr view`: History, and diffs analyzed when picked. */
+  /** `symbiote view`: History, and diffs analyzed when picked. */
   commits?: boolean;
-  /** `cpr view`, `cpr pr`: `/api/open` opens a file of the change in VS Code. */
+  /** `symbiote view`, `symbiote pr`: `/api/open` opens a file of the change in VS Code. */
   open?: boolean;
-  /** `cpr view`: this page is a branch's review (V15). */
+  /** `symbiote view`: this page is a branch's review (V15). */
   branchReview?: BranchReviewInfo;
-  /** `cpr view`: the repository's folder name (V29a). */
+  /** `symbiote view`: the repository's folder name (V29a). */
   repo?: string;
 }
 
 /** How often a diff's page asks how its analysis is going. */
 const POLL_MS = 500;
 
-/** Where the graph comes from: `?graph=<url>`, else `cpr view`'s API. */
+/** Where the graph comes from: `?graph=<url>`, else `symbiote view`'s API. */
 function graphUrl(): string {
   return new URLSearchParams(window.location.search).get('graph') ?? './api/graph';
 }
@@ -132,7 +134,7 @@ interface Widths {
   panel?: number;
 }
 
-const WIDTHS_KEY = 'cpr.viewer.widths';
+const WIDTHS_KEY = 'symbiote.viewer.widths';
 
 /** Kept in this browser for every graph: how wide panels read best is the reviewer's. */
 function loadWidths(): Widths {
@@ -161,7 +163,8 @@ function saveWidths(widths: Widths): void {
 
 export function App() {
   const [state, setState] = useState<State>({ status: 'loading' });
-  /** A diff of `cpr view`: in the shell's sidenav and status bar (V29a), with the repository's name. */
+  /** A diff of `symbiote view`: in the shell's sidenav and status bar (V29a), with the repository's
+   * name. */
   const [inView, setInView] = useState<{ repo?: string } | null>(null);
   const [typeReferences, setTypeReferences] = useState(false);
   const [context, setContext] = useState(true);
@@ -243,7 +246,7 @@ export function App() {
     void Promise.all([store.load('review'), store.load('drafts')]).then(([marks, drafts]) => {
       if (!live) return;
       setMarks(asMarks(marks));
-      // Under `cpr pr`, drafts may come from an earlier push of the change.
+      // Under `symbiote pr`, drafts may come from an earlier push of the change.
       const saved = asReviewDraft(drafts);
       setDraft({ ...saved, drafts: refreshDrafts(graph, saved.drafts) });
     });
@@ -381,7 +384,7 @@ export function App() {
       setSelected(null);
       setSearch('');
     } catch (error) {
-      setState({ status: 'empty', error: `Not a CPR graph: ${(error as Error).message}` });
+      setState({ status: 'empty', error: `Not a Symbiote graph: ${(error as Error).message}` });
     }
   }, []);
 
@@ -458,7 +461,7 @@ export function App() {
       onDrop={onDrop}
     >
       <header className="bar">
-        <strong className="brand">CPR</strong>
+        <strong className="brand">Symbiote</strong>
         {state.status === 'ready' && state.commits && <BackLink />}
         {state.status === 'ready' && state.branchReview && <ReviewOf review={state.branchReview} />}
         {state.status === 'ready' && <Summary graph={state.graph} />}
@@ -500,7 +503,7 @@ export function App() {
             </label>
           </>
         )}
-        {/* A page with no shell (cpr pr) is the window's title bar: its buttons, on Linux (N1d). */}
+        {/* A page with no shell (symbiote pr) is the window's title bar: its buttons, on Linux (N1d). */}
         {!inView && <WindowButtons />}
       </header>
       <main
@@ -643,7 +646,8 @@ interface CanvasProps {
   /** A layout for a newer view is being made: this one stays until it arrives. */
   pending: boolean;
   selected: string | null;
-  /** In focus mode the whole (small) neighbourhood is fitted; otherwise the selection is centered. */
+  /** In focus mode the whole (small) neighbourhood is fitted; otherwise the selection is centered.
+   * */
   focus: boolean;
   /** The one project shown (by folder), or null: a new one is fitted as a whole, once. */
   scope: string | null;
@@ -684,7 +688,7 @@ function Canvas({
   reveal,
 }: CanvasProps) {
   const { fitView, screenToFlowPosition } = useReactFlow();
-  // Zoomed out, the canvas is a map; labels scale with `--cpr-zoom`, set without re-rendering
+  // Zoomed out, the canvas is a map; labels scale with `--symbiote-zoom`, set without re-rendering
   // and only where they read it.
   const map = useStore((state) => state.transform[2] < MAP_ZOOM);
   // The canvas narrows when the detail panel opens or a panel is resized: centre the selection
@@ -795,7 +799,7 @@ function Canvas({
   );
 }
 
-/** What the server offers; `cpr view` builds before this endpoint existed answer nothing. */
+/** What the server offers; `symbiote view` builds before this endpoint existed answer nothing. */
 async function fetchCapabilities(): Promise<Capabilities | null> {
   try {
     const response = await fetch('./api/capabilities');
@@ -894,8 +898,8 @@ function DropZone({ error, onFile }: { error?: string | undefined; onFile: (file
     <div className="dropzone">
       <h1>Review a change as a graph</h1>
       <p>
-        Run <code>cpr view main</code>, or drop a graph JSON from{' '}
-        <code>cpr diff main --out graph.json</code> here.
+        Run <code>symbiote view main</code>, or drop a graph JSON from{' '}
+        <code>symbiote diff main --out graph.json</code> here.
       </p>
       <label className="button">
         Choose a file

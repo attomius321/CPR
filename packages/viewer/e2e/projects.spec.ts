@@ -1,21 +1,21 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { serveFixture, type Running } from './cpr.js';
+import { serveFixture, type Running } from './symbiote.js';
 
-// `cpr view` on a monorepo (npm workspaces): two apps call a shared library, and a library is
+// `symbiote view` on a monorepo (npm workspaces): two apps call a shared library, and a library is
 // removed. Each project is a frame; on the map their names read first.
-let cpr: Running;
+let symbiote: Running;
 const errors: string[] = [];
 
 test.beforeAll(async () => {
-  cpr = await serveFixture('projects');
+  symbiote = await serveFixture('projects');
 });
 
-test.afterAll(() => cpr.stop());
+test.afterAll(() => symbiote.stop());
 
 test.beforeEach(async ({ page }) => {
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(cpr.url);
+  await page.goto(symbiote.url);
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
 });
 

@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import type { Graph, GraphEdge, GraphNode } from '@cpr/core';
-import { serveFixture, type Running } from './cpr.js';
+import type { Graph, GraphEdge, GraphNode } from '@symbiote/core';
+import { serveFixture, type Running } from './symbiote.js';
 
 // A large change, generated: a changed `hub` used by 40 symbols in 12 files, and 30 changed
 // symbols in files of their own. It opens as a map; the hub's users are one summary node.
-let cpr: Running;
+let symbiote: Running;
 const errors: string[] = [];
 
 const HUB = 'src/hub.ts#hub';
@@ -55,17 +55,17 @@ function largeGraph(): Graph {
 }
 
 test.beforeAll(async () => {
-  cpr = await serveFixture('callers');
+  symbiote = await serveFixture('callers');
 });
 
-test.afterAll(() => cpr.stop());
+test.afterAll(() => symbiote.stop());
 
 test.beforeEach(async ({ page }) => {
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
   const graph = largeGraph();
   await page.route('**/large-graph.json', (route) => route.fulfill({ json: graph }));
-  const url = new URL(cpr.url);
+  const url = new URL(symbiote.url);
   url.searchParams.set('graph', './large-graph.json');
   await page.goto(url.toString());
   await expect(page.locator('.react-flow__node-symbol').first()).toBeAttached();
@@ -128,7 +128,7 @@ test('zoomed out, the canvas is a map of files, and a click zooms into one', asy
   expect(await height()).toBeLessThan(before * 1.1);
   // Zooming restyles the map's labels, not the whole page (V8a): nothing is set on the root.
   expect(
-    await page.evaluate(() => document.documentElement.style.getPropertyValue('--cpr-zoom')),
+    await page.evaluate(() => document.documentElement.style.getPropertyValue('--symbiote-zoom')),
   ).toBe('');
 
   await node(page, 'group:file:src/hub.ts').click({ position: { x: 2, y: 2 } });

@@ -36,7 +36,7 @@ describe('detectForge', () => {
       '--forge github|gitlab',
     );
     expect(detectForge('https://code.example.com/g/p.git', {}, 'gitlab').kind).toBe('gitlab');
-    expect(detectForge('https://code.example.com/g/p.git', { CPR_FORGE: 'github' }).kind).toBe(
+    expect(detectForge('https://code.example.com/g/p.git', { SYMBIOTE_FORGE: 'github' }).kind).toBe(
       'github',
     );
   });

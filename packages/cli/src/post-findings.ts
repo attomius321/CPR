@@ -1,5 +1,5 @@
-import type { ChangedLines, Finding, Graph, Severity } from '@cpr/core';
-import type { Review, ReviewComment } from '@cpr/forge';
+import type { ChangedLines, Finding, Graph, Severity } from '@symbiote/core';
+import type { Review, ReviewComment } from '@symbiote/forge';
 
 const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
 const ICONS: Record<Severity, string> = { error: '✖', warning: '⚠', info: 'ℹ' };
@@ -21,14 +21,14 @@ export interface FindingsPlan {
  */
 export function findingMarker(finding: Finding): string {
   const key = encodeURIComponent(`${finding.rule}:${finding.symbol}`).replace(/-/g, '%2D');
-  return `<!-- cpr:finding ${key} -->`;
+  return `<!-- symbiote:finding ${key} -->`;
 }
 
 /** Markers found in existing comments. */
 export function postedMarkers(bodies: readonly string[]): Set<string> {
   const markers = new Set<string>();
   for (const body of bodies) {
-    for (const match of body.matchAll(/<!-- cpr:finding \S+ -->/g)) markers.add(match[0]);
+    for (const match of body.matchAll(/<!-- symbiote:finding \S+ -->/g)) markers.add(match[0]);
   }
   return markers;
 }
@@ -92,7 +92,7 @@ export function findingsReview(plan: FindingsPlan, { inline = true } = {}): Revi
   const counts = SEVERITIES.map((s) => [s, all.filter((f) => f.severity === s).length] as const)
     .filter(([, n]) => n > 0)
     .map(([s, n]) => `${n} ${s}${n === 1 ? '' : 's'}`);
-  const header = `**CPR** · ${all.length} new finding${all.length === 1 ? '' : 's'} (${counts.join(', ')})`;
+  const header = `**Symbiote** · ${all.length} new finding${all.length === 1 ? '' : 's'} (${counts.join(', ')})`;
   const items = listed.map(
     (f) => `- ${ICONS[f.severity]} **${f.rule}** \`${f.symbol}\`: ${f.message} ${findingMarker(f)}`,
   );

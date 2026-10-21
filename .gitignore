@@ -6,6 +6,6 @@ dist/
 coverage/
 *.tsbuildinfo
 .DS_Store
-cpr-graph.json
+symbiote-graph.json
 test-results/
 playwright-report/

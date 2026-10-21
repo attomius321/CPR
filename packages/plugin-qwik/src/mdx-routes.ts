@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
-import type { PluginContext, SymbolDecl, ts, VirtualFile } from '@cpr/core';
+import type { PluginContext, SymbolDecl, ts, VirtualFile } from '@symbiote/core';
 import { scanMdx, type MdxCode } from './mdx.js';
 import { mdxShim, Positions, RENDER, templateId } from './mdx-shim.js';
 import type { Projects } from './projects.js';

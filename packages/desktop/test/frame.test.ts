@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { frameOf, frameOptions } from '../src/frame.js';
 
 describe('the window frame (N1d)', () => {
-  it("is CPR's own on Linux, the system's on macOS and Windows", () => {
+  it("is Symbiote's own on Linux, the system's on macOS and Windows", () => {
     expect(frameOf('linux')).toBe('own');
     expect(frameOf('darwin')).toBe('system');
     expect(frameOf('win32')).toBe('system');

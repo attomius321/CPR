@@ -1,4 +1,4 @@
-import type { Commit, CommitRef, Graph } from '@cpr/core';
+import type { Commit, CommitRef, Graph } from '@symbiote/core';
 import type { ReviewMark } from './branchReviews.js';
 import type { AgentChip } from './workspaces.js';
 
@@ -351,7 +351,7 @@ export type Loaded =
   /** No graph here: the commits page, a diff not analyzed (yet, or any more), or no server. */
   | { kind: 'missing'; pair?: Pair };
 
-/** Reads `api/graph`'s answer (`cpr view`: 202 while analyzing, 502 when it failed). */
+/** Reads `api/graph`'s answer (`symbiote view`: 202 while analyzing, 502 when it failed). */
 export function graphLoaded(status: number, body: unknown): Loaded {
   if (status === 200 && body && typeof body === 'object')
     return { kind: 'graph', graph: body as Graph };

@@ -1,13 +1,13 @@
 import { posix } from 'node:path';
-import type { MappedPosition, ts, VirtualFile } from '@cpr/core';
+import type { MappedPosition, ts, VirtualFile } from '@symbiote/core';
 import type { MdxCode, MdxElement, MdxPart } from './mdx.js';
 import type { Provided } from './provider.js';
 
 /** The function rendering an MDX file's elements and expressions in its shim. */
-export const RENDER = '__cpr_mdx';
+export const RENDER = '__symbiote_mdx';
 
-/** `src/routes/docs/index.mdx` → `src/routes/docs/index.mdx.cpr.tsx`, next to it. */
-export const shimPath = (file: string) => `${file}.cpr.tsx`;
+/** `src/routes/docs/index.mdx` → `src/routes/docs/index.mdx.symbiote.tsx`, next to it. */
+export const shimPath = (file: string) => `${file}.symbiote.tsx`;
 
 /** The template symbol of an MDX file. */
 export const templateId = (file: string) => `${file}#(template)`;
@@ -44,7 +44,7 @@ export function mdxShim(
     out.write(`${importLine(tag, from, file)}\n`);
     local.add(tag);
   }
-  out.write('declare function __cpr_use(...values: unknown[]): void;\n');
+  out.write('declare function __symbiote_use(...values: unknown[]): void;\n');
   out.write(`export function ${RENDER}(): void {\n`);
 
   const parts = [
@@ -83,13 +83,13 @@ function importLine(tag: string, from: Provided, file: string): string {
 function writeElement(tsApi: typeof ts, out: Writer, element: MdxElement): void {
   // `<Note kind="tip">` → `<Note kind="tip" />`: children are content, not props.
   const body = element.selfClosing ? element.text : `${element.text.slice(0, -1)}/>`;
-  if (parses(tsApi, `__cpr_use(${body});`)) {
-    out.write('  __cpr_use(');
+  if (parses(tsApi, `__symbiote_use(${body});`)) {
+    out.write('  __symbiote_use(');
     out.mapped({ ...element, text: body });
     out.write(');\n');
   } else {
     // Unreadable props: the component is still used.
-    out.write('  __cpr_use(');
+    out.write('  __symbiote_use(');
     out.mapped({
       start: element.start + 1,
       end: element.start + 1 + element.tag.length,
@@ -100,8 +100,8 @@ function writeElement(tsApi: typeof ts, out: Writer, element: MdxElement): void 
 }
 
 function writeExpression(tsApi: typeof ts, out: Writer, expression: MdxPart): void {
-  if (!parses(tsApi, `__cpr_use((${expression.text}));`)) return;
-  out.write('  __cpr_use((');
+  if (!parses(tsApi, `__symbiote_use((${expression.text}));`)) return;
+  out.write('  __symbiote_use((');
   out.mapped(expression);
   out.write('));\n');
 }

@@ -1,4 +1,4 @@
-import type { Commit, CommitRef, RefList } from '@cpr/core';
+import type { Commit, CommitRef, RefList } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { checkedOut, checkoutChoices, changesNote, type Head } from '../src/checkout.js';
 

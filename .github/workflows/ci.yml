@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # One parent commit, so CPR can review the change it is being tested on.
+          # One parent commit, so Symbiote can review the change it is being tested on.
           fetch-depth: 2
       # Installs pnpm (from packageManager), Node, and runs a frozen `pnpm install`.
       - uses: pnpm/setup@v3
@@ -39,8 +39,8 @@ jobs:
       - run: pnpm run build
       - name: CLI smoke test
         run: node packages/cli/dist/bin.js --version
-      - name: Dogfood (cpr reviews this commit)
-        run: node packages/cli/dist/bin.js diff HEAD~1 --out cpr-graph.json
+      - name: Dogfood (symbiote reviews this commit)
+        run: node packages/cli/dist/bin.js diff HEAD~1 --out symbiote-graph.json
       - name: Viewer end-to-end tests
         if: matrix.os == 'ubuntu-latest' && matrix.node == 24
         run: |

@@ -1,5 +1,5 @@
 /**
- * A question before something is lost, in CPR's own dialog (N1c): the browser's `confirm` is
+ * A question before something is lost, in Symbiote's own dialog (N1c): the browser's `confirm` is
  * headed by the page's address ("127.0.0.1:<port> says"). Staying is the default; Escape stays.
  */
 export function ConfirmDialog({

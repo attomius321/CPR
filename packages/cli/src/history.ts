@@ -5,7 +5,7 @@ import type {
   HistoryScope,
   HistoryShape,
   HistoryState,
-} from '@cpr/core';
+} from '@symbiote/core';
 
 /** Where histories come from: git (`streamHistory` and the rest), or a fake in tests. */
 export interface HistorySource {
@@ -22,7 +22,7 @@ export interface HistoriesOptions {
 }
 
 /**
- * The commits page's histories (`cpr view`): per scope, the order of every row, listed once by
+ * The commits page's histories (`symbiote view`): per scope, the order of every row, listed once by
  * git and kept until HEAD or a branch moves. Rows' details are read by SHA when asked for, so
  * the viewer never loads what it does not show (V10: CPython's 150,182 rows are 30.5 MB with
  * their details, 1.3 MB as a shape).
@@ -196,9 +196,9 @@ class Listing {
 const SLOW_LISTING_MS = 500;
 
 /**
- * The hint `cpr view` prints when git took long to list a history because the repository has
+ * The hint `symbiote view` prints when git took long to list a history because the repository has
  * no commit-graph file (then git orders every commit before the first row: CPython 0.77 s, 6 ms
- * with the file). CPR does not write the file itself: that would change the user's repository.
+ * with the file). Symbiote does not write the file itself: that would change the user's repository.
  */
 export function slowListingHint(rows: number, ms: number, commitGraph: boolean): string | null {
   if (ms < SLOW_LISTING_MS || commitGraph) return null;

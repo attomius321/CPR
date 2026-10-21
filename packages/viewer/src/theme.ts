@@ -6,7 +6,7 @@ import { useSyncExternalStore } from 'react';
 export type Theme = 'dark' | 'light' | 'system';
 
 /** Where the choice is kept (index.html's script reads the same key). */
-export const THEME_KEY = 'cpr.viewer.theme';
+export const THEME_KEY = 'symbiote.viewer.theme';
 
 /** The theme for what storage holds: dark unless light or system was chosen. */
 export function themeOf(stored: string | null): Theme {

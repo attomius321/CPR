@@ -8,7 +8,7 @@ import {
   createTypescriptAdapter,
   type Analysis,
   type TsPlugin,
-} from '@cpr/core';
+} from '@symbiote/core';
 import angular from '../../plugin-angular/src/index.js';
 import qwik from '../src/index.js';
 
@@ -28,7 +28,7 @@ const signature = (analysis: Analysis, id: string) =>
 
 /** The fixture without its `node_modules`: Qwik's typings not installed. */
 function withoutTypings<T>(name: string, run: (base: string, head: string) => Promise<T>) {
-  const dir = mkdtempSync(join(tmpdir(), 'cpr-qwik-'));
+  const dir = mkdtempSync(join(tmpdir(), 'symbiote-qwik-'));
   for (const side of ['base', 'head'] as const) {
     cpSync(fixture(name, side), join(dir, side), {
       recursive: true,

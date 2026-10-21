@@ -1,18 +1,18 @@
 ---
-name: cpr-style
-description: CPR's style — monochrome, quiet chrome lifted above the darkest content, colour only for state, Geist, 8 px controls, lucide-style icons. Gives the tokens (dark and light, contrast checked), plain-CSS recipes for every control, the patterns that make a screen look dated, the traps met applying it, and how to verify a restyle. Use when restyling the viewer, adding or changing any UI in packages/viewer (styles.css, a page, a control, the graph's nodes), when a screen "looks old", or when the user mentions the style, the theme, the look or styling.
+name: symbiote-style
+description: Symbiote's style — monochrome, quiet chrome lifted above the darkest content, colour only for state, Geist, 8 px controls, lucide-style icons. Gives the tokens (dark and light, contrast checked), plain-CSS recipes for every control, the patterns that make a screen look dated, the traps met applying it, and how to verify a restyle. Use when restyling the viewer, adding or changing any UI in packages/viewer (styles.css, a page, a control, the graph's nodes), when a screen "looks old", or when the user mentions the style, the theme, the look or styling.
 ---
 
-# CPR's style
+# Symbiote's style
 
 The viewer's look since V31: one stylesheet (`packages/viewer/src/styles.css`), its tokens on
-`:root`, every control drawn the same way on every page. V29b gave CPR its colours, font and
+`:root`, every control drawn the same way on every page. V29b gave Symbiote its colours, font and
 density; V31 the rest: lifted chrome, neutral selection, drawn controls, one radius scale.
 
 - Tokens, dark and light, with their contrast: [tokens.md](tokens.md)
 - Plain-CSS recipes for each control: [components.md](components.md)
-- Try a palette against CPR's contrast rules before editing: `node .claude/skills/cpr-style/palette-check.mjs`
-- Screenshot a running `cpr view`'s pages, dark and light: `node .claude/skills/cpr-style/shots.mjs
+- Try a palette against Symbiote's contrast rules before editing: `node .claude/skills/symbiote-style/palette-check.mjs`
+- Screenshot a running `symbiote view`'s pages, dark and light: `node .claude/skills/symbiote-style/shots.mjs
   http://127.0.0.1:<port> <out dir> /history /settings …` (`--width`, `--theme`)
 
 ## The style in six rules
@@ -30,7 +30,7 @@ density; V31 the rest: lifted chrome, neutral selection, drawn controls, one rad
 5. **Soft geometry.** Controls and rows 8 px radius, dialogs 10 px, menus 11 px, cards 14 px,
    badges round. Lines are hairlines. Three elevations only: hairline, a slight lift
    (`0 1px 2px`), floating.
-6. **Recede and frame.** CPR hosts a graph, diffs and a terminal: its own UI frames them. Show the
+6. **Recede and frame.** Symbiote hosts a graph, diffs and a terminal: its own UI frames them. Show the
    frequent actions; put the rare ones in a menu, a "?" or a hover.
 
 ## Constraints the style keeps
@@ -50,7 +50,7 @@ Decisions recorded in `docs/PLAN.md`/`JOURNAL.md`; a new look must keep them.
   hovered node may change colour, background, outline or box-shadow; never border width, padding
   or font size. Node widths are estimated from characters (`nodeWidth`); a font-size change in a
   node is a layout change: measure it and update the layout tests knowingly.
-- **The map** (below 45 % zoom): labels keep fixed sizes, scaled by `--cpr-zoom`. No transitions,
+- **The map** (below 45 % zoom): labels keep fixed sizes, scaled by `--symbiote-zoom`. No transitions,
   shadows or `backdrop-filter` on graph nodes or edges: they are drawn by the thousand and repaint
   on every pan frame. Blur and floating shadows are for a handful of elements (menus, dialogs).
 - **Theme blocks**: dark (`:root, :root[data-theme='dark']`), light, and the system-light media
@@ -105,7 +105,7 @@ JOURNAL). Use this checklist inside it.
 ```
 - [ ] 1. Read JOURNAL's V29b and V31 entries and the viewer CLAUDE.md
 - [ ] 2. Screenshot before: the pages you touch, 1440×900, dark and light: shots.mjs on
-         `cpr view [<base> <head>] --no-open --port <n>` (a diff is served at the
+         `symbiote view [<base> <head>] --no-open --port <n>` (a diff is served at the
          `/diff/<base>..<head>/` its log prints); measure.mjs --shot for real graphs
 - [ ] 3. Tokens first: palette-check.mjs with the new values, then the expected values in
          test/tokens.test.ts (red), then styles.css (green)
@@ -118,5 +118,5 @@ JOURNAL). Use this checklist inside it.
 - [ ] 8. JOURNAL: what changed, numbers, what was not verified; README screenshots if retaken
 ```
 
-When this skill is silent: match CPR's adjacent control and the six rules; if that does not
+When this skill is silent: match Symbiote's adjacent control and the six rules; if that does not
 answer, ask the user before inventing a value.

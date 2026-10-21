@@ -1,21 +1,21 @@
 import { expect, test } from '@playwright/test';
-import { servePullRequest, type RunningPullRequest } from './cpr.js';
+import { servePullRequest, type RunningPullRequest } from './symbiote.js';
 
-// `cpr pr 7` on the detectors fixture, against a mock GitHub API: comments written in the
+// `symbiote pr 7` on the detectors fixture, against a mock GitHub API: comments written in the
 // viewer reach GitHub as one review.
-let cpr: RunningPullRequest;
+let symbiote: RunningPullRequest;
 const errors: string[] = [];
 
 test.beforeAll(async () => {
-  cpr = await servePullRequest('detectors');
+  symbiote = await servePullRequest('detectors');
 });
 
-test.afterAll(() => cpr.stop());
+test.afterAll(() => symbiote.stop());
 
 test.beforeEach(async ({ page }) => {
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(cpr.url);
+  await page.goto(symbiote.url);
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
 });
 
@@ -59,7 +59,7 @@ test('comments on symbols and submits the review to GitHub', async ({ page }) =>
   );
   await expect(tab).toContainText('0');
 
-  const posted = cpr.requests.filter((r) => r.method === 'POST');
+  const posted = symbiote.requests.filter((r) => r.method === 'POST');
   expect(posted).toHaveLength(1);
   expect(posted[0]?.body).toMatchObject({
     event: 'REQUEST_CHANGES',

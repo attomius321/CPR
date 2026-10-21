@@ -1,4 +1,4 @@
-import type { Commit } from '@cpr/core';
+import type { Commit } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   blocksAround,
@@ -308,10 +308,10 @@ describe('graphLoaded', () => {
       queued: 2,
       elapsedMs: 0,
     });
-    expect(graphLoaded(502, { ...pair, error: 'cpr: boom' })).toEqual({
+    expect(graphLoaded(502, { ...pair, error: 'symbiote: boom' })).toEqual({
       kind: 'failed',
       pair,
-      error: 'cpr: boom',
+      error: 'symbiote: boom',
     });
     expect(graphLoaded(404, { ...pair, error: 'not analyzed' })).toEqual({
       kind: 'missing',

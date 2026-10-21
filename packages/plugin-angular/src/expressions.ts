@@ -15,7 +15,7 @@ export interface Scope {
   params: ReadonlySet<string>;
   /** Inside an event handler, where `$event` is defined. */
   event: boolean;
-  /** The shim's name for a known pipe's class (`markdown` → `__cpr_D1`), if it is one. */
+  /** The shim's name for a known pipe's class (`markdown` → `__symbiote_D1`), if it is one. */
   pipe?: (name: string) => string | undefined;
 }
 
@@ -25,7 +25,7 @@ const ASSIGNMENT = /^(?:[-+*/%&|^]|\*\*|<<|>>>?|&&|\|\||\?\?)?=$/;
 
 /**
  * Writes an Angular expression as TypeScript that reads the same names: names on the component
- * become `this.name`, template locals stay as they are, unknown pipes become `__cpr_pipe(…)`
+ * become `this.name`, template locals stay as they are, unknown pipes become `__symbiote_pipe(…)`
  * and whatever has no TypeScript equivalent becomes `any`. Without a binder (`CANONICAL`) it
  * writes a whitespace-free canonical form, for hashing.
  */
@@ -155,7 +155,7 @@ export function writeExpression(ast: ng.AST, out: Out, scope: Scope): void {
       out.write('))');
     } else {
       // An unknown pipe: the value and the arguments are still read.
-      out.write('__cpr_pipe(');
+      out.write('__symbiote_pipe(');
       list([ast.exp, ...ast.args]);
       out.write(')');
     }

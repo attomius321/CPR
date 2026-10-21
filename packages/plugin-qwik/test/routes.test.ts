@@ -1,6 +1,6 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import type { PluginContext } from '@cpr/core';
+import type { PluginContext } from '@symbiote/core';
 import { qwikProjects, type QwikProject } from '../src/projects.js';
 import { moduleKind } from '../src/routes.js';
 

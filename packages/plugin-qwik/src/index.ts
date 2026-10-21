@@ -1,4 +1,4 @@
-import type { PluginContext, PluginRevision, PluginSymbol, TsPlugin } from '@cpr/core';
+import type { PluginContext, PluginRevision, PluginSymbol, TsPlugin } from '@symbiote/core';
 import { componentContract } from './components.js';
 import { isLoaderOrAction, routerFiles, routerUses, type RouterUses } from './exposures.js';
 import { mdxNodes, mdxRoutes, mdxSymbol, type MdxRoutes } from './mdx-routes.js';
@@ -18,7 +18,7 @@ const routerFilesByProgram = new WeakMap<
 >();
 
 /**
- * Qwik for CPR: what Qwik's router calls by name (request handlers, `head`, loaders, actions,
+ * Qwik for Symbiote: what Qwik's router calls by name (request handlers, `head`, loaders, actions,
  * entries) is not an orphan, a `component$`'s props are its contract, compared from the side of
  * the JSX that passes them, and `.mdx` routes are templates whose components and expressions are
  * uses.

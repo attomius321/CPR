@@ -1,4 +1,4 @@
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 import { useEffect, useMemo, useState } from 'react';
 import type { FlowLayout, LayoutOptions } from './flow.js';
 import { LayoutCache, layoutKey, workerLayouts, type LayoutRunner } from './layouts.js';

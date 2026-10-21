@@ -1,9 +1,9 @@
-# @cpr/viewer
+# @symbiote/viewer
 
-React 19 + `@xyflow/react` 12 + dagre, bundled by Vite into `dist/`. `cpr view`/`cpr pr` serve it
+React 19 + `@xyflow/react` 12 + dagre, bundled by Vite into `dist/`. `symbiote view`/`symbiote pr` serve it
 with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packages/cli/src/server.ts`);
 `?graph=<url>` loads any graph JSON instead (used by `scripts/viewer/measure.mjs`). Under
-`cpr view` the pages live in a shell (V29a, `src/Shell.tsx`): a sidenav with History
+`symbiote view` the pages live in a shell (V29a, `src/Shell.tsx`): a sidenav with History
 (`/history`, `/api/history…`, `POST /api/diffs`), Settings and the workspaces
 (`/api/workspaces…`), each opened in place; `/` alone is History. Each diff is
 served under `/diff/<base>..<head>/`: the viewer must keep calling its own API with **relative**
@@ -56,7 +56,7 @@ symbol glyph. Measure first paint (`/history`) and Bitwarden's graph after any f
 - Big graphs: neighbourhoods over `NEIGHBOUR_LIMIT` (8) become summary nodes; below zoom 0.45
   (`MAP_ZOOM`, `src/mapzoom.ts`) the canvas is a map (CSS class `map`), React Flow draws only
   on-screen nodes (`onlyRenderVisibleElements`).
-- Map labels keep fixed sizes and are scaled by `transform: scale(1 / var(--cpr-zoom))`; the
+- Map labels keep fixed sizes and are scaled by `transform: scale(1 / var(--symbiote-zoom))`; the
   variable is written by `mapZoomStyle` into a one-rule stylesheet for the labels only, and only
   on the map (V8a). Never set it on the page root or change a font size with the zoom: either
   restyles or re-lays out thousands of elements on every zoom frame.
@@ -77,15 +77,15 @@ symbol glyph. Measure first paint (`/history`) and Bitwarden's graph after any f
   `onMoveStart` (which comes with every click).
 - Anything `<ReactFlow>` hands to every node (`onNodeClick`, the minimap's `nodeClassName`) keeps
   its identity across renders (`useCallback`, module-level): a new function re-renders every node.
-- Import only **types** from `@cpr/core`; anything else must work in a browser.
-- Graphs from older CPR versions must still open: treat new graph fields as optional.
+- Import only **types** from `@symbiote/core`; anything else must work in a browser.
+- Graphs from older Symbiote versions must still open: treat new graph fields as optional.
 
 ## Tests
 
 - Unit: `test/flow.test.ts`, `layouts.test.ts`, `review.test.ts`, `detail.test.ts`,
   `comments.test.ts`, `commits.test.ts` (vitest from the repo root).
-- E2E: `e2e/*.spec.ts` (Playwright, after `pnpm build`). `e2e/cpr.ts` turns a fixture's base/head
-  into a repo and serves `cpr view` (`serveFixture`, which opens `/diff/<pair>/`), a fake forge
+- E2E: `e2e/*.spec.ts` (Playwright, after `pnpm build`). `e2e/symbiote.ts` turns a fixture's base/head
+  into a repo and serves `symbiote view` (`serveFixture`, which opens `/diff/<pair>/`), a fake forge
   pull request (`servePullRequest`), five commits for History (`serveCommits`), or workspaces with a fake agent (`serveWorkspaces`). Every
   spec checks there were no page errors.
 - Count minimap nodes, not DOM nodes: off-screen nodes are not in the DOM.

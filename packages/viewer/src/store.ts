@@ -1,4 +1,4 @@
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 import type { ReviewDraft } from './comments.js';
 import { reviewKey, type Marks } from './review.js';
 
@@ -12,8 +12,8 @@ export interface Store {
 }
 
 /**
- * State kept by `cpr view` / `cpr pr` in the CLI's cache folder: it survives restarts on another
- * port, where browser storage (per origin) would start empty.
+ * State kept by `symbiote view` / `symbiote pr` in the CLI's cache folder: it survives restarts on
+ * another port, where browser storage (per origin) would start empty.
  */
 export function serverStore(): Store {
   const pending = new Map<StateName, unknown>();
@@ -28,7 +28,7 @@ export function serverStore(): Store {
     const put = () =>
       fetch(`./api/state/${name}`, {
         method: 'PUT',
-        headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+        headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
         body,
         keepalive,
       }).catch(() => undefined);

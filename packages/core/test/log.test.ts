@@ -61,7 +61,7 @@ describe('parseLog', () => {
       'refs/remotes/origin/HEAD',
       'tag: refs/tags/v1.0',
       'refs/heads/feature/x',
-      'refs/cpr/github/7/head',
+      'refs/symbiote/github/7/head',
       'refs/stash',
     ].join(', ');
     const [commit] = parseLog(record([sha('a'), '', 'Ada', '2026-01-01T00:00:00Z', refs, 's']));
@@ -91,7 +91,7 @@ describe('parseLog', () => {
 //    │    \── W             wip, not merged
 //    ├── T                  origin/topic: a remote branch only
 //    ├── X                  tag old only (its branch deleted)
-//    └── Y                  refs/cpr/github/7/head only
+//    └── Y                  refs/symbiote/github/7/head only
 function historyRepo() {
   const repo = createRepo();
   const commit = (name: string) => {
@@ -120,7 +120,7 @@ function historyRepo() {
   const X = aside('X');
   repo.git('tag', 'old', X);
   const Y = aside('Y');
-  repo.git('update-ref', 'refs/cpr/github/7/head', Y);
+  repo.git('update-ref', 'refs/symbiote/github/7/head', Y);
   repo.write({ 'C.ts': 'export const C = 2;\n' });
   repo.git('stash', '--quiet');
   return { repo, shas: { A, B, F, W, M, C, T, X, Y } };
@@ -143,7 +143,7 @@ describe('streamHistory', () => {
   const { A, B, F, W, M, C, T } = shas;
   afterAll(() => repo.cleanup());
 
-  it('lists every branch, local and remote, in graph order; no tag, stash or cpr ref', async () => {
+  it('lists every branch, local and remote, in graph order; no tag, stash or symbiote ref', async () => {
     const rows = await listAll(await openRepo(repo.root), 'all');
     expect(new Set(rows.map((r) => r.sha))).toEqual(new Set([A, B, F, W, M, C, T]));
     expect(rows).toHaveLength(7);
@@ -207,7 +207,7 @@ describe('commitDetails', () => {
     expect(commits[0]).toMatchObject({
       sha: shas.C,
       parents: [shas.M],
-      author: 'CPR Test',
+      author: 'Symbiote Test',
       refs: [
         { kind: 'head', name: 'HEAD' },
         { kind: 'branch', name: 'main' },

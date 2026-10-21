@@ -329,12 +329,13 @@ describe('analyzeGit', () => {
     expect({ ...reported, timings: {} }).toEqual({ ...plain, timings: {} });
   });
 
-  it('reads .cprignore from the working folder, not from the analyzed commits', async () => {
+  it('reads .symbioteignore from the working folder, not from the analyzed commits', async () => {
     const other = createRepo();
     try {
-      // The commit's own .cprignore says something else; the working folder's is not committed.
+      // The commit's own .symbioteignore says something else; the working folder's is not
+      // committed.
       other.write({
-        '.cprignore': 'service.ts\n',
+        '.symbioteignore': 'service.ts\n',
         'apps/admin/src/service.ts': 'export const a = 1;\n',
         'apps/admin/src/interfaces/user.ts': 'export interface User { id: number }\n',
       });
@@ -344,7 +345,7 @@ describe('analyzeGit', () => {
         'apps/admin/src/interfaces/user.ts': 'export interface User { id: string }\n',
       });
       other.commit('head');
-      other.write({ '.cprignore': '# local\ninterfaces/\n' });
+      other.write({ '.symbioteignore': '# local\ninterfaces/\n' });
 
       const analysis = await analyzeGit({ cwd: other.root, base, head: 'HEAD', cacheDir });
       expect(analysis.ignored).toEqual(['apps/admin/src/interfaces/user.ts']);
@@ -405,7 +406,7 @@ describe('analyzeGit with since', () => {
       symbols: { 'src/a.ts#f': 'same', 'src/a.ts#g': 'new', 'src/a.ts#k': 'updated' },
       dropped: ['src/a.ts#h'],
     });
-    const graph = buildGraph(analysis, { generator: { name: 'cpr', version: 'test' } });
+    const graph = buildGraph(analysis, { generator: { name: 'symbiote', version: 'test' } });
     expect(graph.since).toEqual({ ref: 'v1', sha: analysis.since?.sha, dropped: ['src/a.ts#h'] });
     expect(graph.nodes.find((n) => n.id === 'src/a.ts#g')?.since).toBe('new');
   });

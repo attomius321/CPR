@@ -1,4 +1,4 @@
-import type { WorkingState } from '@cpr/core';
+import type { WorkingState } from '@symbiote/core';
 import { changesNote, type CheckoutChoice } from './checkout.js';
 import { RefBadge } from './RowMenu.js';
 

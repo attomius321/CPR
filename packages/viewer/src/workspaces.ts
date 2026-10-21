@@ -12,7 +12,7 @@ import type {
   PermissionMode,
   TerminalAvailability,
   ThreadEntry,
-} from '@cpr/core';
+} from '@symbiote/core';
 
 /** Each agent's name (V20a). */
 export const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
@@ -35,7 +35,7 @@ export function talkCommand(agent: WorkspaceAgentState, worktree: string): strin
 
 /**
  * Whether a workspace's panel opens its agent's terminal, where terminals can run: Claude Code's
- * session (V21), or Codex's thread on its app server (V27b). Codex through CPR's runner (V20a)
+ * session (V21), or Codex's thread on its app server (V27b). Codex through Symbiote's runner (V20a)
  * has none: its turns there would not reach the thread.
  */
 export function opensTerminal(
@@ -71,7 +71,7 @@ export const PERMISSION_LABELS: Record<PermissionMode, string> = {
 /**
  * The start page's Effort choices for an agent (V30b): its own default first — named with its
  * level when the agent says it (Codex), not otherwise (Claude Code, decision 210) — then the
- * levels it lists, in its words. None when CPR could not read its levels.
+ * levels it lists, in its words. None when Symbiote could not read its levels.
  */
 export function effortChoices(agent: AgentOption): { value: string; label: string }[] {
   if (!agent.efforts) return [];
@@ -97,7 +97,8 @@ export interface RunChoices {
 
 /**
  * The run's choices a draft kept, those that still hold: an agent still installed, a level it
- * lists, a permission mode CPR offers. A level is kept only with its agent: it is that agent's.
+ * lists, a permission mode Symbiote offers. A level is kept only with its agent: it is that
+ * agent's.
  */
 export function readRun(value: unknown, agents: readonly AgentOption[]): RunChoices {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -382,8 +383,8 @@ export function shortAge(iso: string, now: number): string {
 
 /** One line of a workspace's thread as its panel shows it (V18c). */
 export interface ThreadItem {
-  /** CPR's prompt, the agent's report, the person's message, what it waits on, or a note. */
-  who: 'cpr' | 'agent' | 'you' | 'waits' | 'line';
+  /** Symbiote's prompt, the agent's report, the person's message, what it waits on, or a note. */
+  who: 'symbiote' | 'agent' | 'you' | 'waits' | 'line';
   at: string;
   text: string;
 }
@@ -417,9 +418,9 @@ function waitsFor(entry: Extract<ThreadEntry, { kind: 'asks' }>, worktree?: stri
 }
 
 /**
- * A thread's entries as the panel shows them: the first prompt is CPR's, later ones the person's
- * messages; reports are the agent's; what it waited on in words; a session started after the
- * first as a line. Ends and Claude Code's notices are left out (the state says as much).
+ * A thread's entries as the panel shows them: the first prompt is Symbiote's, later ones the
+ * person's messages; reports are the agent's; what it waited on in words; a session started after
+ * the first as a line. Ends and Claude Code's notices are left out (the state says as much).
  */
 export function threadItems(entries: readonly ThreadEntry[], worktree?: string): ThreadItem[] {
   const items: ThreadItem[] = [];
@@ -441,7 +442,7 @@ export function threadItems(entries: readonly ThreadEntry[], worktree?: string):
         started = true;
         break;
       case 'prompt':
-        items.push({ who: prompted ? 'you' : 'cpr', at, text: entry.text });
+        items.push({ who: prompted ? 'you' : 'symbiote', at, text: entry.text });
         prompted = true;
         break;
       case 'report':

@@ -12,12 +12,12 @@ describe('verdictLine', () => {
       '    return a / 2;',
       'Round it.',
       '',
-      'The review: cpr/reviews/feature/x/ada.json; how to act on it: cpr/AGENTS.md.',
+      'The review: symbiote/reviews/feature/x/ada.json; how to act on it: symbiote/AGENTS.md.',
       '',
     ].join('\n');
     expect(verdictLine(text)).toBe(
       'Address this review of the branch feature/x (ada, at 1a2b3c4): changes requested. ' +
-        'The review: cpr/reviews/feature/x/ada.json; how to act on it: cpr/AGENTS.md.',
+        'The review: symbiote/reviews/feature/x/ada.json; how to act on it: symbiote/AGENTS.md.',
     );
   });
 

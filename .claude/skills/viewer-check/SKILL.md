@@ -1,6 +1,6 @@
 ---
 name: viewer-check
-description: Verifies CPR viewer changes in a real browser — Playwright end-to-end tests, screenshots, and first paint, select, mark-reviewed and pan timings on real graph JSON (e.g. Bitwarden's 1,288-symbol change). Use after changing packages/viewer (layout, nodes, sidebar, styles, performance), when a graph looks wrong, or when the user asks to see the viewer.
+description: Verifies Symbiote viewer changes in a real browser — Playwright end-to-end tests, screenshots, and first paint, select, mark-reviewed and pan timings on real graph JSON (e.g. Bitwarden's 1,288-symbol change). Use after changing packages/viewer (layout, nodes, sidebar, styles, performance), when a graph looks wrong, or when the user asks to see the viewer.
 ---
 
 # Viewer check
@@ -14,7 +14,7 @@ catching clicks, a group opened off screen) were found there, not in unit tests.
 ```
 - [ ] 1. pnpm check && pnpm build
 - [ ] 2. pnpm test:e2e (all specs; one spec: cd packages/viewer && npx playwright test e2e/<spec>.ts)
-- [ ] 3. New behavior → a spec in packages/viewer/e2e (fixture served by e2e/cpr.ts), asserting
+- [ ] 3. New behavior → a spec in packages/viewer/e2e (fixture served by e2e/symbiote.ts), asserting
          no page errors
 - [ ] 4. Real graphs: measure before (baseline build) and after; screenshot; look at them
 - [ ] 5. Record numbers in JOURNAL "Verification"; send screenshots to the user when they show the change
@@ -25,8 +25,8 @@ catching clicks, a group opened off screen) were found there, not in unit tests.
 Make graph JSON with the CLI (`--out`) on a real repo, e.g. the regression clones:
 
 ```sh
-cd ~/.cache/cpr-regression/bitwarden
-node /path/to/CPR/packages/cli/dist/bin.js diff 737ee3f~1 737ee3f --no-merge-base --plugin angular --out /tmp/g/737ee3f.json
+cd ~/.cache/symbiote-regression/bitwarden
+node /path/to/Symbiote/packages/cli/dist/bin.js diff 737ee3f~1 737ee3f --no-merge-base --plugin angular --out /tmp/g/737ee3f.json
 ```
 
 Then measure and screenshot (serves `packages/viewer/dist` with the graph via `?graph=`):

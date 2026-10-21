@@ -129,7 +129,7 @@ function viewOptions(
   return options && tsApi.isObjectLiteralExpression(options) ? options : undefined;
 }
 
-const shimPath = (template: string) => `${template}.cpr.ts`;
+const shimPath = (template: string) => `${template}.symbiote.ts`;
 const templateId = (template: string) => `${template}#(template)`;
 
 /** `{{ expression }}` occurrences of a template, with their 1-based positions. */

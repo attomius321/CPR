@@ -12,7 +12,7 @@ import type {
   ts,
   TsPlugin,
   VirtualFile,
-} from '@cpr/core';
+} from '@symbiote/core';
 import {
   angularClasses,
   angularDecorator,
@@ -80,7 +80,7 @@ const revisions = new WeakMap<PluginContext['syntax'], Revision>();
 const warningsByRoot = new Map<string, string[]>();
 
 /**
- * Angular for CPR: templates become symbols that use their component's members, a change to
+ * Angular for Symbiote: templates become symbols that use their component's members, a change to
  * an Angular decorator's configuration is not a change of the class's contract, and members
  * Angular calls by itself (lifecycle hooks, host listeners) are not orphans.
  */
@@ -143,7 +143,7 @@ const angular: TsPlugin = {
       if (!parsed) continue;
       const shim = revision.virtual(shimPath(cls));
       const render = shim?.statements.find(
-        (s) => revision.ts.isFunctionDeclaration(s) && s.name?.text === '__cpr_template',
+        (s) => revision.ts.isFunctionDeclaration(s) && s.name?.text === '__symbiote_template',
       );
       const id = templateId(cls);
       const existing = found.get(id);
@@ -367,9 +367,10 @@ function warn(state: Revision, message: string): void {
   if (!state.warnings.includes(message)) state.warnings.push(message);
 }
 
-/** `src/app/foo.component.ts` + `FooComponent` → `src/app/foo.component.FooComponent.cpr.ts`. */
+/** `src/app/foo.component.ts` + `FooComponent` → `src/app/foo.component.FooComponent.symbiote.ts`.
+ * */
 function shimPath(cls: NgClass): string {
-  return `${cls.file.replace(/\.[cm]?tsx?$/, '')}.${cls.name}.cpr.ts`;
+  return `${cls.file.replace(/\.[cm]?tsx?$/, '')}.${cls.name}.symbiote.ts`;
 }
 
 function templateId(cls: NgClass): string {
@@ -393,14 +394,15 @@ function buildShim(
     if (!TEST_OR_STORY.test(cls.file)) state.unexported.push(`${cls.name} (${cls.file})`);
     return undefined;
   }
-  const self = typeOf('__cpr_C', cls);
+  const self = typeOf('__symbiote_C', cls);
   const builder = new ShimBuilder();
-  // Repo and library classes the template uses, imported under names of their own (`__cpr_D0`…).
+  // Repo and library classes the template uses, imported under names of their own
+  // (`__symbiote_D0`…).
   const imports = new Map<NgClass, string>();
   const use = (target: NgClass): string | undefined => {
     if (!target.exported) return undefined;
     let alias = imports.get(target);
-    if (!alias) imports.set(target, (alias = `__cpr_D${imports.size}`));
+    if (!alias) imports.set(target, (alias = `__symbiote_D${imports.size}`));
     return alias;
   };
 
@@ -414,7 +416,7 @@ function buildShim(
       );
     }
     builder.source(templateId(cls), file);
-    builder.write(`export function __cpr_template(this: ${self}): void {\n`);
+    builder.write(`export function __symbiote_template(this: ${self}): void {\n`);
     const own = state.registryOf(cls.file);
     const bound = bindTemplate(parsed, own.matcher);
     writeTemplate(parsed, builder, { bound, use, pipes: own.pipes });
@@ -422,16 +424,16 @@ function buildShim(
   }
   if (cls.host.length > 0) {
     builder.source(cls.id, cls.file);
-    builder.write(`export function __cpr_host(this: ${self}): void {\n`);
+    builder.write(`export function __symbiote_host(this: ${self}): void {\n`);
     for (const error of writeHost(cls.host, builder, cls.file))
       warn(state, `${cls.file}: ${error}`);
     builder.write('}\n');
   }
 
   const header = [
-    importLine(cls, '__cpr_C', cls.file, true),
+    importLine(cls, '__symbiote_C', cls.file, true),
     ...[...imports].map(([target, alias]) => importLine(target, alias, cls.file, false)),
-    'declare function __cpr_pipe(...args: any[]): any;\n',
+    'declare function __symbiote_pipe(...args: any[]): any;\n',
   ];
   builder.prepend(header.join(''));
 

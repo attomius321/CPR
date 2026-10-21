@@ -1,4 +1,4 @@
-# @cpr/core
+# @symbiote/core
 
 The engine. Language-neutral pipeline; everything TypeScript-specific sits behind
 `LanguageAdapter` (`src/adapter.ts`) in `src/lang/typescript/`.
@@ -7,7 +7,7 @@ The engine. Language-neutral pipeline; everything TypeScript-specific sits behin
 
 1. Revisions: `analyzeGit` resolves base/head (merge-base by default), lists changed files, and
    checks both out as cached worktrees (`src/git/`), linking `node_modules` (`src/deps.ts`).
-   `.cprignore` comes from the working folder (`src/ignore.ts`).
+   `.symbioteignore` comes from the working folder (`src/ignore.ts`).
 2. `adapter.load` per side (`lang/typescript/project.ts`): one ts-morph project from the repo's
    tsconfigs; workspace packages mapped to their sources; per-file module resolution for repos with
    several projects (`configs.ts`, W1); plugins' virtual files added before the program exists.

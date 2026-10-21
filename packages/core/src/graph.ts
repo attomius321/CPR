@@ -42,7 +42,7 @@ export interface GraphEdge {
   sites: { base?: Site[]; head?: Site[] };
 }
 
-/** The pull/merge request being reviewed, when the graph comes from `cpr pr`. */
+/** The pull/merge request being reviewed, when the graph comes from `symbiote pr`. */
 export interface GraphChangeRequest {
   forge: 'github' | 'gitlab';
   number: number;

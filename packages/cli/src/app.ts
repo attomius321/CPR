@@ -3,11 +3,12 @@ import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { CprError } from '@cpr/core';
+import { SymbioteError } from '@symbiote/core';
+import { FORMER_NAME } from './former-name.js';
 
 type Env = Readonly<Record<string, string | undefined>>;
 
-/** How to start CPR's desktop app (N1). */
+/** How to start Symbiote's desktop app (N1). */
 export interface AppCommand {
   command: string;
   args: string[];
@@ -21,16 +22,17 @@ export interface AppWindow {
 }
 
 /**
- * CPR's desktop app, when it is set up: Electron's binary (`pnpm app:setup` fetches it) and the
- * built app. `CPR_APP=off` never opens it; `CPR_APP=<command>` runs that command instead.
+ * Symbiote's desktop app, when it is set up: Electron's binary (`pnpm app:setup` fetches it) and
+ * the built app. `SYMBIOTE_APP=off` never opens it; `SYMBIOTE_APP=<command>` runs that command
+ * instead.
  */
 export function findApp(env: Env): AppCommand | null {
-  const chosen = env.CPR_APP;
+  const chosen = env.SYMBIOTE_APP;
   if (chosen === 'off') return null;
   if (chosen) return existsSync(chosen) ? { command: chosen, args: [] } : null;
   try {
     const require = createRequire(import.meta.url);
-    const desktop = dirname(require.resolve('@cpr/desktop/package.json'));
+    const desktop = dirname(require.resolve('@symbiote/desktop/package.json'));
     // Electron's package answers its binary's path, and throws while it is not downloaded.
     const electron: unknown = createRequire(join(desktop, 'package.json'))('electron');
     if (typeof electron !== 'string' || !existsSync(electron)) return null;
@@ -43,11 +45,13 @@ export function findApp(env: Env): AppCommand | null {
 
 /** Chromium's words when the system refuses its sandbox (Ubuntu 23.10 and later: AppArmor). */
 const SANDBOX_REFUSED = /No usable sandbox|SUID sandbox helper binary/;
-const SANDBOX = "Chromium's sandbox is not allowed here (AppArmor): see CPR's window in the README";
+const SANDBOX =
+  "Chromium's sandbox is not allowed here (AppArmor): see Symbiote's window in the README";
 
 /**
  * Opens the app's window on `url`. Resolves once the app says it shows the page (its
- * `CPR window:` line), or with why it ended first: its own `cpr app:` words, else its exit.
+ * `Symbiote window:` line), or with why it ended first: its own `symbiote app:` words, else its
+ * exit.
  */
 export function openAppWindow(
   app: AppCommand,
@@ -71,14 +75,14 @@ export function openAppWindow(
     let said = '';
     child.stdout.on('data', (data: Buffer) => {
       out = (out + data.toString()).slice(-4096);
-      if (/^CPR window: /m.test(out)) resolve({ closed, close: () => child.kill('SIGTERM') });
+      if (/^Symbiote window: /m.test(out)) resolve({ closed, close: () => child.kill('SIGTERM') });
     });
     // Chromium writes much to stderr; only the app's own line says what went wrong.
     let err = '';
     child.stderr.on('data', (data: Buffer) => {
       err += data.toString();
       for (const line of err.split('\n').slice(0, -1)) {
-        if (line.startsWith('cpr app: ')) said = line.slice('cpr app: '.length);
+        if (line.startsWith('symbiote app: ')) said = line.slice('symbiote app: '.length);
         else if (SANDBOX_REFUSED.test(line)) said = SANDBOX;
       }
       err = err.slice(err.lastIndexOf('\n') + 1);
@@ -100,7 +104,7 @@ export function desktopEntry(app: AppCommand, icon: string): string {
   return [
     '[Desktop Entry]',
     'Type=Application',
-    'Name=CPR',
+    'Name=Symbiote',
     'GenericName=Code review',
     'Comment=Review changes as a graph of symbols, with your agents’ workspaces',
     `Exec=${escapeValue(exec)}`,
@@ -108,7 +112,7 @@ export function desktopEntry(app: AppCommand, icon: string): string {
     'Terminal=false',
     'Categories=Development;',
     // Electron names its windows' class after the app: the desktop matches them to this entry.
-    'StartupWMClass=CPR',
+    'StartupWMClass=Symbiote',
     '',
   ].join('\n');
 }
@@ -122,14 +126,19 @@ interface Where {
   platform: NodeJS.Platform;
 }
 
-/** Where `cpr app install` writes, by the XDG base directories. */
+/** Where `symbiote app install` writes, by the XDG base directories. */
 function places({ env }: Where) {
   const home = env.HOME ?? homedir();
   const data = env.XDG_DATA_HOME ?? join(home, '.local', 'share');
-  const config = join(env.XDG_CONFIG_HOME ?? join(home, '.config'), 'cpr');
+  const config = join(env.XDG_CONFIG_HOME ?? join(home, '.config'), 'symbiote');
   return {
-    entry: join(data, 'applications', 'cpr.desktop'),
-    icon: join(data, 'icons', 'hicolor', '512x512', 'apps', 'cpr.png'),
+    entry: join(data, 'applications', 'symbiote.desktop'),
+    icon: join(data, 'icons', 'hicolor', '512x512', 'apps', 'symbiote.png'),
+    // What `install` added under Symbiote's former name: the new ones replace them.
+    former: [
+      join(data, 'applications', `${FORMER_NAME}.desktop`),
+      join(data, 'icons', 'hicolor', '512x512', 'apps', `${FORMER_NAME}.png`),
+    ],
     // Read by the app (packages/desktop, `readRecorded`).
     recorded: join(config, 'app.json'),
   };
@@ -142,25 +151,27 @@ function record(file: string, node: string, cli: string, env: Env): void {
 }
 
 /**
- * Adds CPR to the desktop's apps, for this user (N1b): the launcher entry, its icon, and what
- * the app needs to start `cpr view` without a shell — this node, this CLI and `PATH`. Linux only.
+ * Adds Symbiote to the desktop's apps, for this user (N1b): the launcher entry, its icon, and what
+ * the app needs to start `symbiote view` without a shell — this node, this CLI and `PATH`. Linux
+ * only.
  */
 export function installApp(
   where: Where & { app: AppCommand; icon: string; node: string; cli: string },
 ): string {
   if (where.platform !== 'linux') {
-    throw new CprError(`cpr app install is not supported on ${where.platform} yet`);
+    throw new SymbioteError(`symbiote app install is not supported on ${where.platform} yet`);
   }
-  const { entry, icon, recorded } = places(where);
+  const { entry, icon, recorded, former } = places(where);
+  for (const file of former) rmSync(file, { force: true });
   mkdirSync(dirname(icon), { recursive: true });
   copyFileSync(where.icon, icon);
   mkdirSync(dirname(entry), { recursive: true });
   writeFileSync(entry, desktopEntry(where.app, icon));
   record(recorded, where.node, where.cli, where.env);
   return [
-    `CPR is in your desktop's apps: ${entry}`,
-    `It starts cpr view with ${where.node} and ${where.cli}, on the PATH of this shell`,
-    `(recorded in ${recorded}, and again by each cpr view that opens CPR's window).`,
+    `Symbiote is in your desktop's apps: ${entry}`,
+    `It starts symbiote view with ${where.node} and ${where.cli}, on the PATH of this shell`,
+    `(recorded in ${recorded}, and again by each symbiote view that opens Symbiote's window).`,
     '',
   ].join('\n');
 }
@@ -169,7 +180,7 @@ export function installApp(
 export function uninstallApp(where: Where): string {
   const { entry, icon, recorded } = places(where);
   for (const file of [entry, icon, recorded]) rmSync(file, { force: true });
-  return `CPR is no longer in your desktop's apps (${entry} removed).\n`;
+  return `Symbiote is no longer in your desktop's apps (${entry} removed).\n`;
 }
 
 /** Once installed, records this node, CLI and `PATH` again: the latest shell's are kept. */

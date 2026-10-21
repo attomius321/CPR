@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { BranchMerge, FinishResult, Graph } from '@cpr/core';
+import type { BranchMerge, FinishResult, Graph } from '@symbiote/core';
 import {
   canFinish,
   canSubmit,
@@ -152,7 +152,7 @@ export function ReviewTab({
           <p className="muted small">
             The verdict and its comments stay in this repository, for the agent to read.{' '}
             {into
-              ? `Approve, then Merge: CPR merges ${head} into ${into} (or a branch you pick), checks it and lands it.`
+              ? `Approve, then Merge: Symbiote merges ${head} into ${into} (or a branch you pick), checks it and lands it.`
               : 'Approve tells it these commits may be pushed.'}
           </p>
         )}
@@ -274,10 +274,10 @@ function MergeCheck({ branch, canOpen }: { branch: string; canOpen: boolean }) {
 }
 
 /**
- * What finishing a branch review recorded (V16), and what is next: CPR's merge (V26), or what
- * the agent does with it when asked — the push of the default branch's commits, or the comments; "Copy for the
- * agent" puts it in words for a chat; on a workspace's branch, "Send to the agent" opens its panel
- * with the words in its box (V18c).
+ * What finishing a branch review recorded (V16), and what is next: Symbiote's merge (V26), or what
+ * the agent does with it when asked — the push of the default branch's commits, or the comments;
+ * "Copy for the agent" puts it in words for a chat; on a workspace's branch, "Send to the agent"
+ * opens its panel with the words in its box (V18c).
  */
 function Finished({ branch, result }: { branch: string; result: FinishResult }) {
   const [copied, setCopied] = useState<string | null>(null);
@@ -290,10 +290,10 @@ function Finished({ branch, result }: { branch: string; result: FinishResult }) 
         {verdict.event !== 'approve' ? (
           <>
             {verdict.event === 'request-changes' ? 'Changes requested' : 'Comments recorded'}: the
-            agent finds them in {`cpr/reviews/${branch}/`} (the last of <code>verdicts</code>).
+            agent finds them in {`symbiote/reviews/${branch}/`} (the last of <code>verdicts</code>).
           </>
         ) : verdict.into ? (
-          `Approved ${at}: Merge it into ${verdict.into} or another branch below; CPR merges, checks and lands it.`
+          `Approved ${at}: Merge it into ${verdict.into} or another branch below; Symbiote merges, checks and lands it.`
         ) : (
           `Approved ${at}: the agent may push these commits when you ask it to act on this review.`
         )}

@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
-import type { ThreadEntry } from '@cpr/core';
+import type { ThreadEntry } from '@symbiote/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import {
@@ -109,13 +109,13 @@ describe('recordEvent and readThread', () => {
     for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
   });
   /**
-   * A `cpr/` folder with the record of `feature/x`, whose worktree is `<tmp>/app.worktrees/feature-x`,
-   * in `records` (`features` before V25).
+   * A `symbiote/` folder with the record of `feature/x`, whose worktree is
+   * `<tmp>/app.worktrees/feature-x`, in `records` (`features` before V25).
    */
-  function cpr(records = 'workspaces') {
+  function symbiote(records = 'workspaces') {
     const root = tempDir();
     folders.push(root);
-    const folder = join(root, 'cpr');
+    const folder = join(root, 'symbiote');
     const worktree = join(root, 'app.worktrees', 'feature-x');
     mkdirSync(join(worktree, 'src'), { recursive: true });
     const record = join(folder, records, 'feature', 'x.json');
@@ -126,7 +126,7 @@ describe('recordEvent and readThread', () => {
   const at = (n: number) => `2026-10-15T09:00:0${n}.000Z`;
 
   it("appends each event to its workspace's thread, found by the worktree holding its folder", async () => {
-    const { folder, worktree } = cpr();
+    const { folder, worktree } = symbiote();
     const placed = (event: Record<string, unknown>, cwd: string, n: number) =>
       recordEvent(folder, { ...event, cwd }, at(n));
     expect(await placed(input('SessionStart', 'startup'), worktree, 1)).toBe(
@@ -143,8 +143,8 @@ describe('recordEvent and readThread', () => {
     expect(turnEnded(thread)).toBe(true);
   });
 
-  it('finds a workspace recorded before V25, in cpr/features/, moved first to cpr/workspaces/', async () => {
-    const { folder, worktree } = cpr('features');
+  it('finds a workspace recorded before V25, in symbiote/features/, moved first to symbiote/workspaces/', async () => {
+    const { folder, worktree } = symbiote('features');
     expect(await recordEvent(folder, { ...input('Stop'), cwd: worktree }, at(1))).toBe(
       threadPath(folder, 'feature/x'),
     );
@@ -153,7 +153,7 @@ describe('recordEvent and readThread', () => {
   });
 
   it('matches real paths: a worktree reached through a symbolic link', async () => {
-    const { folder, worktree, root } = cpr();
+    const { folder, worktree, root } = symbiote();
     const link = join(root, 'link');
     symlinkSync(join(root, 'app.worktrees'), link);
     expect(
@@ -163,7 +163,7 @@ describe('recordEvent and readThread', () => {
   });
 
   it('reads the last entries, skips broken lines, and keeps one entry for a question asked twice', async () => {
-    const { folder, worktree } = cpr();
+    const { folder, worktree } = symbiote();
     for (const [n, event] of [
       input('PreToolUse', 'AskUserQuestion'),
       input('Notification', 'permission_prompt'),
@@ -188,7 +188,7 @@ describe('recordEvent and readThread', () => {
   });
 
   it("reads a thread's end only: its last entries whole, the line cut there dropped (V23)", async () => {
-    const { folder, worktree } = cpr();
+    const { folder, worktree } = symbiote();
     for (let n = 0; n < 40; n++) {
       await recordEvent(folder, { ...input('Stop'), cwd: worktree }, at(n));
     }
@@ -247,7 +247,7 @@ describe('hookMain', () => {
   it('records an event from its input and never throws, whatever it is given', async () => {
     const root = tempDir();
     try {
-      const folder = join(root, 'cpr');
+      const folder = join(root, 'symbiote');
       const worktree = join(root, 'w');
       mkdirSync(join(folder, 'features'), { recursive: true });
       mkdirSync(worktree);
@@ -274,8 +274,8 @@ describe('workspacesFolder (V25)', () => {
   afterEach(() => {
     for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
   });
-  const cprWith = (...records: string[]) => {
-    const folder = join(tempDir(), 'cpr');
+  const symbioteWith = (...records: string[]) => {
+    const folder = join(tempDir(), 'symbiote');
     folders.push(dirname(folder));
     for (const path of records) {
       mkdirSync(dirname(join(folder, path)), { recursive: true });
@@ -284,8 +284,8 @@ describe('workspacesFolder (V25)', () => {
     return folder;
   };
 
-  it('moves cpr/features/ to cpr/workspaces/ once, when only the old one is there', async () => {
-    const folder = cprWith('features/feature/x.json', 'features/fix/y.json');
+  it('moves symbiote/features/ to symbiote/workspaces/ once, when only the old one is there', async () => {
+    const folder = symbioteWith('features/feature/x.json', 'features/fix/y.json');
     // Two readers at once (the list and a hook): one moves, both find the records.
     const [a, b] = await Promise.all([workspacesFolder(folder), workspacesFolder(folder)]);
     expect(a).toEqual({ dir: join(folder, 'workspaces') });
@@ -296,11 +296,11 @@ describe('workspacesFolder (V25)', () => {
     expect(existsSync(join(folder, 'features'))).toBe(false);
   });
 
-  it('keeps cpr/workspaces/ when there; with both, says the old one is left', async () => {
-    expect(await workspacesFolder(cprWith('workspaces/feature/x.json'))).toEqual({
+  it('keeps symbiote/workspaces/ when there; with both, says the old one is left', async () => {
+    expect(await workspacesFolder(symbioteWith('workspaces/feature/x.json'))).toEqual({
       dir: expect.stringMatching(/workspaces$/) as unknown,
     });
-    const both = cprWith('workspaces/feature/x.json', 'features/fix/y.json');
+    const both = symbioteWith('workspaces/feature/x.json', 'features/fix/y.json');
     expect(await workspacesFolder(both)).toEqual({ dir: join(both, 'workspaces'), left: true });
     expect(readFileSync(join(both, 'features', 'fix', 'y.json'), 'utf8')).toBe(
       'features/fix/y.json',
@@ -308,7 +308,7 @@ describe('workspacesFolder (V25)', () => {
   });
 
   it('makes nothing when neither is there', async () => {
-    const folder = cprWith();
+    const folder = symbioteWith();
     expect(await workspacesFolder(folder)).toEqual({ dir: join(folder, 'workspaces') });
     expect(existsSync(folder)).toBe(false);
   });

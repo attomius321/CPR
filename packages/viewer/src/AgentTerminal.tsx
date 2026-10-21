@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Terminal } from '@xterm/xterm';
-import type { WorkspaceTerminalOpened } from '@cpr/core';
+import type { WorkspaceTerminalOpened } from '@symbiote/core';
 import { postJson } from './http.js';
 import { keySender, TERMINAL_THEME } from './terminal.js';
 import { holdReads } from './useWorkspaces.js';
 
-const WRITE_HEADERS = { 'content-type': 'application/json', 'x-cpr': '1' };
+const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
 /** The bundled mono (V29b), as styles.css names it. */
 const MONO = "'Geist Mono Variable', monospace";
 const FONT_SIZE = 13;
@@ -157,7 +157,7 @@ export function AgentTerminal({
       {trust && (
         <p className="hint terminal-trust">
           Codex asks first whether you trust this worktree. Your answer is saved in your Codex
-          configuration; CPR does not answer for you.
+          configuration; Symbiote does not answer for you.
         </p>
       )}
       <div ref={box} className="agent-terminal-screen" />

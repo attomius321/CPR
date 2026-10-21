@@ -2,11 +2,11 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
+import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // Starting a workspace from the commits page (V18a): a branch, its worktree beside the repository,
 // the record, and the agent started there — a fake Claude Code, never a real one.
-let cpr: RunningWorkspaces;
+let symbiote: RunningWorkspaces;
 const errors: string[] = [];
 
 test.beforeEach(({ page }) => {
@@ -15,12 +15,12 @@ test.beforeEach(({ page }) => {
 });
 
 test.afterEach(() => {
-  cpr.stop();
+  symbiote.stop();
   expect(errors).toEqual([]);
 });
 
 const git = (...args: string[]) =>
-  execFileSync('git', args, { cwd: cpr.repo, encoding: 'utf8' }).trim();
+  execFileSync('git', args, { cwd: symbiote.repo, encoding: 'utf8' }).trim();
 const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
 const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
 const title = (page: Page) => startPage(page).getByRole('textbox', { name: 'Title' });
@@ -40,16 +40,16 @@ const row = (page: Page, subject: string) =>
 test('starts a workspace from the header: its branch, its worktree, the agent there', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  const main = cpr.shas.at(-1);
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  const main = symbiote.shas.at(-1);
+  await page.goto(`${symbiote.url}history`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await expect(startPage(page)).toBeVisible();
   await expect(title(page)).toBeFocused();
   await fillWork(page, 'Add a half function', 'Return a / 2, and test it.');
   // Named after the title; where it starts and where its worktree goes.
   await expect(branch(page)).toHaveValue('feature/add-a-half-function');
-  const folder = `${cpr.repo}.worktrees/feature-add-a-half-function`;
+  const folder = `${symbiote.repo}.worktrees/feature-add-a-half-function`;
   await expect(startPage(page)).toContainText(`From main at ${short(main)}`);
   await expect(startPage(page)).toContainText(`in ${folder}`);
   // The agent, the only one installed, and whose account it runs on.
@@ -63,7 +63,7 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
   await expect(page.getByRole('status')).toHaveText(
     `Started feature/add-a-half-function: Claude Code is working in ${folder}.`,
   );
-  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-a-half-function`);
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);
   await expect(panel(page, 'feature/add-a-half-function')).toBeVisible();
 
   // git: the branch at main's tip, checked out in its worktree; the checkout untouched.
@@ -74,7 +74,7 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
     execFileSync('git', ['branch', '--show-current'], { cwd: folder, encoding: 'utf8' }).trim(),
   ).toBe('feature/add-a-half-function');
   // The agent: started in the background, in the worktree, with the brief and plan first.
-  const [call, ...more] = cpr.calls();
+  const [call, ...more] = symbiote.calls();
   expect(more).toEqual([]);
   expect(call?.cwd).toBe(folder);
   expect(call?.args.slice(0, 5)).toEqual([
@@ -82,7 +82,7 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
     '--name',
     'feature/add-a-half-function',
     '--add-dir',
-    join(cpr.repo, 'cpr'),
+    join(symbiote.repo, 'symbiote'),
   ]);
   expect(call?.args.at(-1)).toContain(
     '# Feature: Add a half function\n\n## Goal\nReturn a / 2, and test it.\n',
@@ -90,7 +90,10 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
   expect(call?.args.at(-1)).toContain("then stop and wait for the person's OK");
   // The record, beside the reviews.
   const record = JSON.parse(
-    readFileSync(join(cpr.repo, 'cpr/workspaces/feature/add-a-half-function.json'), 'utf8'),
+    readFileSync(
+      join(symbiote.repo, 'symbiote/workspaces/feature/add-a-half-function.json'),
+      'utf8',
+    ),
   ) as { base: string; planFirst: boolean; worktree: string; by: string };
   expect(record).toMatchObject({
     kind: 'feature',
@@ -106,8 +109,8 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
 test('n starts one too; a name in use is refused before Start; Escape cancels', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.keyboard.press('n');
   await expect(startPage(page)).toBeVisible();
@@ -122,7 +125,7 @@ test('n starts one too; a name in use is refused before Start; Escape cancels', 
   await startPage(page).getByLabel('permission').selectOption({ label: 'Auto' });
   await title(page).press('Escape');
   await expect(startPage(page)).toBeHidden();
-  expect(cpr.calls()).toEqual([]);
+  expect(symbiote.calls()).toEqual([]);
 
   // Escape keeps the draft (V24c), the branch typed included; Clear empties it.
   await page.keyboard.press('n');
@@ -134,13 +137,13 @@ test('n starts one too; a name in use is refused before Start; Escape cancels', 
   await startPage(page).getByLabel('permission').selectOption({ label: 'Auto' });
   await title(page).press('Control+Enter');
   await expect(page.getByRole('status')).toContainText('Started feature/something-else');
-  expect(cpr.calls()[0]?.args).toEqual(expect.arrayContaining(['--permission-mode', 'auto']));
+  expect(symbiote.calls()[0]?.args).toEqual(expect.arrayContaining(['--permission-mode', 'auto']));
 });
 
 test("Start a workspace here: the row's commit is where it starts", async ({ page }) => {
-  cpr = await serveWorkspaces();
-  const [base] = cpr.shas;
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  const [base] = symbiote.shas;
+  await page.goto(`${symbiote.url}history`);
   await row(page, 'base').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Start a workspace here' }).click();
   await expect(startPage(page)).toContainText(`From the commit ${short(base)}`);
@@ -154,14 +157,14 @@ test("Start a workspace here: the row's commit is where it starts", async ({ pag
 test("an agent that does not start: the workspace stays, with Claude Code's words and the prompt", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  cpr.distrust();
+  symbiote = await serveWorkspaces();
+  symbiote.distrust();
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await fillWork(page, 'Add a half function');
   await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
-  const folder = `${cpr.repo}.worktrees/feature-add-a-half-function`;
+  const folder = `${symbiote.repo}.worktrees/feature-add-a-half-function`;
   const status = page.getByRole('status');
   await expect(status).toContainText(
     `Made feature/add-a-half-function in ${folder}, but Claude Code did not start.`,
@@ -180,24 +183,24 @@ test("an agent that does not start: the workspace stays, with Claude Code's word
 test('without an agent: the branch and worktree are made, and the prompt is given', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces({ agent: false });
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces({ agent: false });
+  await page.goto(`${symbiote.url}history`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await expect(startPage(page)).toContainText('No agent found');
   await fillWork(page, 'Add a half function');
   await startPage(page).getByRole('button', { name: 'Make the branch' }).click();
   await expect(page.getByRole('status')).toContainText(
     'Made feature/add-a-half-function in ' +
-      `${cpr.repo}.worktrees/feature-add-a-half-function. No agent was found to start`,
+      `${symbiote.repo}.worktrees/feature-add-a-half-function. No agent was found to start`,
   );
   await expect(
     page.getByRole('status').getByRole('button', { name: 'Copy the prompt' }),
   ).toBeVisible();
-  expect(git('rev-parse', 'feature/add-a-half-function')).toBe(cpr.shas.at(-1));
+  expect(git('rev-parse', 'feature/add-a-half-function')).toBe(symbiote.shas.at(-1));
 });
 
-// The workspaces view (V18b): what each workspace needs, and each workspace and its branch leading to
-// the other.
+// The workspaces view (V18b): what each workspace needs, and each workspace and its branch leading
+// to the other.
 const POLL = { timeout: 12_000 };
 const workspaceRow = (page: Page, branch: string) =>
   page.locator(`.workspace-row[data-branch="${branch}"]`);
@@ -218,8 +221,8 @@ const startFrom = async (page: Page, what: string) => {
 };
 
 test('the workspaces view: what each workspace needs, as its agent goes on', async ({ page }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
   await expect(page.getByText('No workspaces yet')).toBeVisible();
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
@@ -227,7 +230,7 @@ test('the workspaces view: what each workspace needs, as its agent goes on', asy
   await expect(group(page, 'Working').locator(row)).toContainText('Working');
 
   // The agent asks for a permission: it needs you, and the sidenav counts it.
-  cpr.session(branch, { state: 'blocked', waitingFor: 'permission prompt' });
+  symbiote.session(branch, { state: 'blocked', waitingFor: 'permission prompt' });
   await expect(group(page, 'Needs you').locator(row)).toContainText(
     'Waiting: permission prompt',
     POLL,
@@ -235,17 +238,17 @@ test('the workspaces view: what each workspace needs, as its agent goes on', asy
   await expect(page.locator('.sidenav .page-count')).toHaveText('1');
 
   // Esc in its session: no hook fires and Claude Code still says `working`, but it waits.
-  cpr.interrupt(branch);
+  symbiote.interrupt(branch);
   await expect(group(page, 'Needs you').locator(row)).toContainText(
     'Interrupted: waiting for you',
     POLL,
   );
 
   // It commits, leaves a file uncommitted and finishes: ready for review.
-  cpr.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
-  writeFileSync(join(cpr.folder(branch), 'notes.md'), 'todo\n');
+  symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  writeFileSync(join(symbiote.folder(branch), 'notes.md'), 'todo\n');
   // Claude Code's sessions are read at most every 2 s: the page's next look sees it.
-  cpr.session(branch, { state: 'done' });
+  symbiote.session(branch, { state: 'done' });
   await expect(row).toContainText('Ready for review', POLL);
   await expect(row).toContainText('1 commit');
   await expect(row).toContainText('1 file not committed yet');
@@ -253,13 +256,13 @@ test('the workspaces view: what each workspace needs, as its agent goes on', asy
 });
 
 test('a workspace and its branch lead to each other', async ({ page }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  cpr.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
-  cpr.session(branch, { state: 'done' });
-  await page.goto(`${cpr.url}history`);
+  symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  symbiote.session(branch, { state: 'done' });
+  await page.goto(`${symbiote.url}history`);
 
   // The branch's mark on the commits page goes to its workspace, its card in view.
   const mark = page.locator('.commit .ref', { hasText: branch }).locator('.workspace-mark');
@@ -267,12 +270,12 @@ test('a workspace and its branch lead to each other', async ({ page }) => {
   await expect(mark).toHaveText('●', POLL);
   await expect(mark).toHaveAttribute('title', /Workspace: Add a half function — Ready for review/);
   await mark.click();
-  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-a-half-function`);
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);
   await expect(workspaceRow(page, branch)).toBeInViewport();
 
   // The branch on the workspace goes to its tip on the commits page.
   await workspaceRow(page, branch).getByRole('link', { name: branch }).click();
-  await expect(page).toHaveURL(`${cpr.url}history?branch=feature%2Fadd-a-half-function`);
+  await expect(page).toHaveURL(`${symbiote.url}history?branch=feature%2Fadd-a-half-function`);
   await expect(page.locator('.commit.cursor')).toContainText('Add half');
 
   // The tip's menu: "Open its workspace"; the branches panel shows the mark too.
@@ -297,15 +300,15 @@ test('a workspace and its branch lead to each other', async ({ page }) => {
 test("an agent's commit shows on the commits page as it comes, the cursor where it was", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   // The cursor on the older commit, while the agent works.
   await row(page, 'base').click();
   await expect(row(page, 'base')).toHaveClass(/cursor/);
-  cpr.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
   await expect(row(page, 'Add half')).toBeVisible(POLL);
   await expect(row(page, 'base')).toHaveClass(/cursor/);
 });
@@ -313,11 +316,11 @@ test("an agent's commit shows on the commits page as it comes, the cursor where 
 test("the branches panel: workspaces that need you first, their agent's last action on top (V23)", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   await startFrom(page, 'Add a half function');
   await startFrom(page, 'Export the totals');
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   const half = 'feature/add-a-half-function';
   const totals = 'feature/export-the-totals';
   const branches = page.locator('.branches');
@@ -335,12 +338,12 @@ test("the branches panel: workspaces that need you first, their agent's last act
   );
 
   // The first one's plan is ready: it needs you, so it goes above the one at work.
-  cpr.report(half, 'The plan');
+  symbiote.report(half, 'The plan');
   await expect(names).toHaveText([half, totals, 'main', 'main'], POLL);
 
   // The other asks for a permission: the newer action on top.
-  cpr.session(totals, { state: 'blocked', waitingFor: 'permission prompt' });
-  cpr.hook(totals, {
+  symbiote.session(totals, { state: 'blocked', waitingFor: 'permission prompt' });
+  symbiote.hook(totals, {
     hook_event_name: 'PermissionRequest',
     tool_name: 'Bash',
     tool_input: { command: 'npm test' },
@@ -348,7 +351,7 @@ test("the branches panel: workspaces that need you first, their agent's last act
   await expect(names).toHaveText([totals, half, 'main', 'main'], POLL);
 
   // Answered, it works again: below the one that needs you, newer as its action is.
-  cpr.session(totals, { state: 'working' });
+  symbiote.session(totals, { state: 'working' });
   await expect(names).toHaveText([half, totals, 'main', 'main'], POLL);
   await expect(branches.locator('li.has-workspace .workspace-mark')).toHaveText(['?', '⚙']);
   // Only the workspaces have an age: not `main`, not the remote branch.
@@ -357,19 +360,19 @@ test("the branches panel: workspaces that need you first, their agent's last act
 
 test('stop the agent, start it again, copy its prompt, open its worktree', async ({ page }) => {
   // Without terminals (V21), Talk copies the command for one.
-  cpr = await serveWorkspaces({ terminal: false });
+  symbiote = await serveWorkspaces({ terminal: false });
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto(`${cpr.url}`);
+  await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   const row = panel(page, branch);
 
   await row.getByRole('button', { name: 'Stop the agent' }).click();
   await expect(row).toContainText('Stopped');
-  expect(cpr.stops()).toEqual(['fake0']);
+  expect(symbiote.stops()).toEqual(['fake0']);
   await row.getByRole('button', { name: 'Start the agent' }).click();
   await expect(row).toContainText('Working');
-  expect(cpr.calls()).toHaveLength(2);
+  expect(symbiote.calls()).toHaveLength(2);
 
   await more(page, branch, 'Copy the prompt');
   await expect(row.getByRole('status')).toHaveText('Copied the prompt');
@@ -383,62 +386,62 @@ test('stop the agent, start it again, copy its prompt, open its worktree', async
 
   await more(page, branch, 'Open in VS Code');
   await expect(row.getByRole('status')).toHaveText('Opened in VS Code');
-  expect(cpr.opened()).toEqual([[cpr.folder(branch)]]);
+  expect(symbiote.opened()).toEqual([[symbiote.folder(branch)]]);
 });
 
 test("a workspace's branch: checked out in its worktree, so not here; gone, it says so", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  await page.goto(`${cpr.url}history?branch=${encodeURIComponent(branch)}`);
+  await page.goto(`${symbiote.url}history?branch=${encodeURIComponent(branch)}`);
   await page.locator('.commit.cursor').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Check out', exact: true }).hover();
   await expect(page.getByRole('menuitem', { name: `Check out branch ${branch}` })).toBeDisabled();
   await expect(page.getByRole('menu', { name: 'Check out' })).toContainText(
-    `checked out in ${cpr.folder(branch)}`,
+    `checked out in ${symbiote.folder(branch)}`,
   );
   await page.keyboard.press('Escape');
 
   // Deleted in a terminal: the workspace says so; no mark anywhere.
-  git('worktree', 'remove', '--force', cpr.folder(branch));
+  git('worktree', 'remove', '--force', symbiote.folder(branch));
   git('branch', '-D', branch);
-  await page.goto(`${cpr.url}`);
+  await page.goto(`${symbiote.url}`);
   await expect(workspaceRow(page, branch)).toContainText('Its branch is gone');
   await expect(workspaceRow(page, branch).getByRole('link', { name: branch })).toHaveCount(0);
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
   // On History's rows and branches; the sidenav's card keeps its own.
   await expect(page.locator('.commits .workspace-mark')).toHaveCount(0);
 });
 
-// Talking to the agent (V18c): the workspaces view as a list and a panel, the thread CPR's hooks
-// record, one box whose message continues the agent's session.
+// Talking to the agent (V18c): the workspaces view as a list and a panel, the thread Symbiote's
+// hooks record, one box whose message continues the agent's session.
 const box = (page: Page, branch: string) =>
   panel(page, branch).getByRole('textbox', { name: 'Reply to the agent' });
-const resumes = () => cpr.calls().filter((call) => call.args[1] === '--resume');
+const resumes = () => symbiote.calls().filter((call) => call.args[1] === '--resume');
 
 test("the panel: the agent's plan, a reply that continues its session, its next report", async ({
   page,
 }) => {
   // The box is where no terminal runs (V21).
-  cpr = await serveWorkspaces({ terminal: false });
-  await page.goto(`${cpr.url}`);
+  symbiote = await serveWorkspaces({ terminal: false });
+  await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   const here = panel(page, branch);
-  // Started with CPR's hooks: the prompt it got is the thread's first entry.
-  expect(cpr.calls()[0]?.args).toEqual(
-    expect.arrayContaining(['--settings', join(cpr.repo, 'cpr/claude-settings.json')]),
+  // Started with Symbiote's hooks: the prompt it got is the thread's first entry.
+  expect(symbiote.calls()[0]?.args).toEqual(
+    expect.arrayContaining(['--settings', join(symbiote.repo, 'symbiote/claude-settings.json')]),
   );
-  await expect(here.getByText("CPR's prompt")).toBeVisible(POLL);
+  await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
 
   // It plans and stops: Claude Code says blocked; the thread has its report.
   // A plan longer than the thread's box (as real plans are).
   const steps = Array.from({ length: 40 }, (_, i) => `${i + 2}. Another step`).join('\n');
-  cpr.report(branch, `Plan\n1. Add half(a) to src/half.ts\n${steps}\nCheck: a unit test`);
+  symbiote.report(branch, `Plan\n1. Add half(a) to src/half.ts\n${steps}\nCheck: a unit test`);
   // Drawn as Markdown: the plan's steps are a numbered list.
   await expect(here.locator('.thread-agent ol li').first()).toHaveText(
     'Add half(a) to src/half.ts',
@@ -450,9 +453,9 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
   await box(page, branch).fill('OK, name it half.');
   await box(page, branch).press('Control+Enter');
   await expect(here.locator('.thread-you')).toContainText('OK, name it half.', POLL);
-  expect(cpr.stops()).toEqual(['fake0']);
+  expect(symbiote.stops()).toEqual(['fake0']);
   expect(resumes()).toEqual([
-    { args: ['--bg', '--resume', 'session-0', 'OK, name it half.'], cwd: cpr.folder(branch) },
+    { args: ['--bg', '--resume', 'session-0', 'OK, name it half.'], cwd: symbiote.folder(branch) },
   ]);
   await expect(here.locator('.thread-line')).toHaveText('Continued');
   // The newest is in view: the thread opens at its end, and follows it.
@@ -461,12 +464,12 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
   await expect(workspaceRow(page, branch)).toContainText('Working', POLL);
 
   // What it waits on shows in the thread; Talk answers it.
-  cpr.hook(branch, {
+  symbiote.hook(branch, {
     hook_event_name: 'PermissionRequest',
     tool_name: 'Bash',
     tool_input: { command: 'npm test' },
   });
-  cpr.session(branch, { state: 'blocked', waitingFor: 'permission prompt' });
+  symbiote.session(branch, { state: 'blocked', waitingFor: 'permission prompt' });
   await expect(here.locator('.thread-waits')).toHaveText(
     'Waiting: permission to run npm test',
     POLL,
@@ -475,18 +478,18 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
 
 test('a working agent: Stop and send asks first, then ends its turn to send', async ({ page }) => {
   // The box is where no terminal runs (V21).
-  cpr = await serveWorkspaces({ terminal: false });
-  await page.goto(`${cpr.url}`);
+  symbiote = await serveWorkspaces({ terminal: false });
+  await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   const here = panel(page, branch);
   await box(page, branch).fill('Use a / 2, not a * 0.5.');
   await here.getByRole('button', { name: 'Stop and send' }).click();
   await expect(here).toContainText("Sending stops the agent's turn");
-  expect(cpr.stops()).toEqual([]);
+  expect(symbiote.stops()).toEqual([]);
   await here.getByRole('button', { name: 'Stop it and send' }).click();
   await expect(here.locator('.thread-you')).toContainText('Use a / 2, not a * 0.5.', POLL);
-  expect(cpr.stops()).toEqual(['fake0']);
+  expect(symbiote.stops()).toEqual(['fake0']);
   expect(resumes()).toHaveLength(1);
 });
 
@@ -494,12 +497,12 @@ test('Send the verdict: a review fills the box, from the panel and from the Revi
   page,
 }) => {
   // The box is where no terminal runs (V21).
-  cpr = await serveWorkspaces({ terminal: false });
-  await page.goto(`${cpr.url}`);
+  symbiote = await serveWorkspaces({ terminal: false });
+  await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  cpr.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
-  cpr.report(branch, 'Done: half() in src/half.ts.');
+  symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  symbiote.report(branch, 'Done: half() in src/half.ts.');
   await expect(workspaceRow(page, branch)).toContainText('Ready for review', POLL);
 
   // Changes requested in its review; the Review tab sends them to the agent's box.
@@ -522,8 +525,8 @@ test('Send the verdict: a review fills the box, from the panel and from the Revi
 
   // A newer verdict, read again: the panel offers it.
   const review = join(
-    cpr.repo,
-    'cpr/reviews/feature/add-a-half-function/reviewer@example.com.json',
+    symbiote.repo,
+    'symbiote/reviews/feature/add-a-half-function/reviewer@example.com.json',
   );
   const file = JSON.parse(readFileSync(review, 'utf8')) as { verdicts: { at: string }[] };
   file.verdicts.push({ ...file.verdicts[0], at: new Date(Date.now() + 60_000).toISOString() });
@@ -537,18 +540,18 @@ test('a workspace started before its messages were kept: a note, and the box sti
   page,
 }) => {
   // The box is where no terminal runs (V21).
-  cpr = await serveWorkspaces({ terminal: false });
-  await page.goto(`${cpr.url}`);
+  symbiote = await serveWorkspaces({ terminal: false });
+  await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  const record = join(cpr.repo, 'cpr/workspaces/feature/add-a-half-function.json');
+  const record = join(symbiote.repo, 'symbiote/workspaces/feature/add-a-half-function.json');
   const saved = JSON.parse(readFileSync(record, 'utf8')) as { agent: { hooks?: boolean } };
   delete saved.agent.hooks;
   writeFileSync(record, JSON.stringify(saved));
-  cpr.session(branch, { state: 'done' });
+  symbiote.session(branch, { state: 'done' });
   await page.reload();
   await expect(panel(page, branch)).toContainText(
-    "CPR keeps an agent's messages from V18c on: Talk shows this one's.",
+    "Symbiote keeps an agent's messages from V18c on: Talk shows this one's.",
   );
   // Claude Code's sessions are read at most every 2 s: wait for the page's next look.
   await expect(workspaceRow(page, branch)).toContainText('Plan ready', POLL);
@@ -561,9 +564,9 @@ test('a workspace started before its messages were kept: a note, and the box sti
 test('at 900 px the sidenav and the workspace share the window; its card picks it (V29a)', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
+  symbiote = await serveWorkspaces();
   await page.setViewportSize({ width: 900, height: 800 });
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await startFrom(page, 'Add a half function');
   await startFrom(page, 'Add clamp');
   const half = 'feature/add-a-half-function';
@@ -579,19 +582,19 @@ test('at 900 px the sidenav and the workspace share the window; its card picks i
 test('Clean up: once merged, its sessions, worktree and branch go, and so does the workspace', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  cpr.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
-  cpr.session(branch, { state: 'done' });
+  symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  symbiote.session(branch, { state: 'done' });
   git('merge', '--quiet', '--ff-only', branch);
   await page.reload();
   await expect(workspaceRow(page, branch)).toContainText('Merged', POLL);
   await more(page, branch, 'Clean up');
   await expect(workspaceRow(page, branch)).toHaveCount(0, POLL);
-  expect(cpr.removed()).toEqual(['fake0']);
-  expect(existsSync(cpr.folder(branch))).toBe(false);
+  expect(symbiote.removed()).toEqual(['fake0']);
+  expect(existsSync(symbiote.folder(branch))).toBe(false);
   expect(git('branch', '--list', branch)).toBe('');
   await expect(page.getByText('No workspaces yet')).toBeVisible();
 });
@@ -613,8 +616,8 @@ const requestChanges = async (page: Page, branch: string) => {
 test("the agent's session in a terminal in its panel: keys, the thread, hang-up, reopen", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   const here = panel(page, branch);
@@ -625,7 +628,7 @@ test("the agent's session in a terminal in its panel: keys, the thread, hang-up,
     'aria-selected',
     'true',
   );
-  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-a-half-function`);
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);
   await expect(box(page, branch)).toBeHidden();
   await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
     'title',
@@ -639,18 +642,18 @@ test("the agent's session in a terminal in its panel: keys, the thread, hang-up,
   // What was typed reached the agent as the person's message: the thread, its history, has it.
   await here.getByRole('tab', { name: 'Thread' }).click();
   await expect(here.locator('.thread-you').last()).toContainText('hello', POLL);
-  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-a-half-function&thread`);
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function&thread`);
   // Read only: answering is the terminal's.
   await expect(box(page, branch)).toBeHidden();
   // Leaving the terminal hangs it up; the session goes on.
-  await expect.poll(() => cpr.hangups()).toEqual(['fake0']);
+  await expect.poll(() => symbiote.hangups()).toEqual(['fake0']);
   // The address keeps the thread; the thread leads back to the terminal.
   await page.reload();
   await expect(here.locator('.thread-you').last()).toContainText('hello', POLL);
   await here.getByRole('button', { name: 'open its terminal' }).click();
   await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
-  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-a-half-function`);
-  expect(cpr.attaches()).toEqual(['fake0', 'fake0']);
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);
+  expect(symbiote.attaches()).toEqual(['fake0', 'fake0']);
 
   // It follows the panel's size.
   const sizes = async () =>
@@ -672,14 +675,14 @@ test("the agent's session in a terminal in its panel: keys, the thread, hang-up,
 });
 
 test('Send the verdict types one line into the terminal, without Enter', async ({ page }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  cpr.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
-  cpr.session(branch, { state: 'done' });
+  symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  symbiote.session(branch, { state: 'done' });
   // A review with a verdict: request changes.
-  await page.goto(`${cpr.url}?branch=feature%2Fadd-a-half-function`);
+  await page.goto(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);
   await expect(workspaceRow(page, branch)).toContainText('Ready for review', POLL);
   await requestChanges(page, branch);
   // From the Review tab: the panel's terminal, the line typed into it.
@@ -690,7 +693,7 @@ test('Send the verdict types one line into the terminal, without Enter', async (
   );
   await expect(screen(page, branch)).not.toContainText('got:');
   // From the panel, in a terminal opened anew.
-  await page.goto(`${cpr.url}?branch=feature%2Fadd-a-half-function`);
+  await page.goto(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);
   const here = panel(page, branch);
   await expect(screen(page, branch)).toContainText('Fake Claude Code', POLL);
   await expect(screen(page, branch)).not.toContainText('Address this review');
@@ -707,15 +710,15 @@ test('Send the verdict types one line into the terminal, without Enter', async (
 test('without terminals, the panel keeps Talk in its menu, and no Terminal tab', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces({ terminal: false });
-  await page.goto(`${cpr.url}`);
+  symbiote = await serveWorkspaces({ terminal: false });
+  await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const here = panel(page, 'feature/add-a-half-function');
   await expect(here.getByRole('tab')).toHaveText(['Thread', 'Brief']);
   await here.getByRole('button', { name: 'More actions' }).click();
   await expect(here.getByRole('menuitem', { name: 'Talk' })).toHaveAttribute(
     'title',
-    /CPR_TERMINAL=off/,
+    /SYMBIOTE_TERMINAL=off/,
   );
 });
 
@@ -723,12 +726,12 @@ test("an agent's report is drawn as Markdown; HTML in it, and your messages, sta
   page,
 }) => {
   // Your message goes through the box: where no terminal runs (V21).
-  cpr = await serveWorkspaces({ terminal: false });
-  await page.goto(`${cpr.url}`);
+  symbiote = await serveWorkspaces({ terminal: false });
+  await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   const here = panel(page, branch);
-  cpr.report(
+  symbiote.report(
     branch,
     '## Done\n\n**What changed**\n- **half** (`src/half.ts`): added.\n  - tested\n\n<b>raw</b> [docs](https://example.com)',
   );
@@ -752,16 +755,16 @@ test("an agent's report is drawn as Markdown; HTML in it, and your messages, sta
 test("the records' folder before V25 left beside today's: Workspaces says so (V25)", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  // Both hold something (an empty cpr/workspaces/ is replaced by the move).
+  symbiote = await serveWorkspaces();
+  // Both hold something (an empty symbiote/workspaces/ is replaced by the move).
   for (const folder of ['workspaces', 'features']) {
-    mkdirSync(join(cpr.repo, 'cpr', folder), { recursive: true });
-    writeFileSync(join(cpr.repo, 'cpr', folder, 'notes.txt'), folder);
+    mkdirSync(join(symbiote.repo, 'symbiote', folder), { recursive: true });
+    writeFileSync(join(symbiote.repo, 'symbiote', folder, 'notes.txt'), folder);
   }
-  await page.goto(cpr.url);
+  await page.goto(symbiote.url);
   await expect(page.getByText('No workspaces yet')).toBeVisible();
   await expect(page.locator('.workspaces-note')).toHaveText(
-    'cpr/features/, where workspaces were kept before, is still here: CPR reads cpr/workspaces/.',
+    'symbiote/features/, where workspaces were kept before, is still here: Symbiote reads symbiote/workspaces/.',
   );
 });
 
@@ -778,8 +781,8 @@ const info = (page: Page) =>
 test('each kind starts a workspace: its brief, its line, its branch, its tag (V24c)', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   const kinds = [
     ['Fix', 'What happens', 'fix/', 'Reproduce it first, with a failing test'],
     ['Refactor', 'What to restructure', 'refactor/', 'Change structure, not behaviour'],
@@ -798,19 +801,19 @@ test('each kind starts a workspace: its brief, its line, its branch, its tag (V2
     await expect(branch(page)).toHaveValue(slug);
     await startButton(page).click();
     await expect(page.getByRole('status')).toContainText(`Started ${slug}`);
-    const prompt = cpr.calls().at(-1)?.args.at(-1) ?? '';
+    const prompt = symbiote.calls().at(-1)?.args.at(-1) ?? '';
     expect(prompt).toContain(`# ${name}: ${name} the totals\n\n## ${heading}\nWhy ${name}.\n`);
     expect(prompt).toContain(line);
     expect(prompt).toContain(`You are starting a new ${name.toLowerCase()} in this repository`);
     last = name;
   }
   // No check command here (no package.json): Done when says it in words.
-  expect(cpr.calls()[0]?.args.at(-1)).toContain(
+  expect(symbiote.calls()[0]?.args.at(-1)).toContain(
     "## Done when\nA test that fails today passes, and the project's checks pass.\n",
   );
 
   // The list names each by its title, its kind before its branch (V29b).
-  await page.goto(`${cpr.url}`);
+  await page.goto(`${symbiote.url}`);
   const fix = workspaceRow(page, 'fix/fix-the-totals');
   await expect(fix.locator('.workspace-about')).toHaveText('Fix the totals');
   await expect(fix.locator('.workspace-branch .kind-tag')).toHaveText('fix');
@@ -819,14 +822,14 @@ test('each kind starts a workspace: its brief, its line, its branch, its tag (V2
 test('Done when names the check guessed at the start commit; switching kinds keeps every text (V24c)', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
+  symbiote = await serveWorkspaces();
   writeFileSync(
-    join(cpr.repo, 'package.json'),
+    join(symbiote.repo, 'package.json'),
     JSON.stringify({ scripts: { check: 'eslint . && vitest run' } }),
   );
   git('add', 'package.json');
   git('commit', '-q', '-m', 'Add a check');
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   // A Feature has no Done when of its own; the check is offered as an example.
   await expect(doneWhen(page)).toHaveValue('');
@@ -865,7 +868,7 @@ test('Done when names the check guessed at the start commit; switching kinds kee
 
   await startButton(page).click();
   await expect(page.getByRole('status')).toContainText('Started fix/dates-sort-as-text');
-  expect(cpr.calls().at(-1)?.args.at(-1)).toContain(
+  expect(symbiote.calls().at(-1)?.args.at(-1)).toContain(
     [
       '# Fix: Dates sort as text',
       '',
@@ -884,12 +887,12 @@ test('Done when names the check guessed at the start commit; switching kinds kee
 test('the draft outlives Escape and a reload; after a start only the kind is kept (V24c)', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
+  symbiote = await serveWorkspaces();
   const draft = async () =>
-    (await (await page.request.get(`${cpr.url}api/workspaces/draft`)).json()) as {
+    (await (await page.request.get(`${symbiote.url}api/workspaces/draft`)).json()) as {
       title?: string;
     };
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await kind(page, 'Fix').click();
   await title(page).fill('Dates sort as text');
@@ -912,8 +915,8 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
 test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, branch, effort, permission (V24c, V30)', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.keyboard.press('n');
   await expect(title(page)).toBeFocused();
@@ -945,13 +948,13 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
 });
 
 test('a workspace started before V24 is named by its brief, with no kind', async ({ page }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   // What a page from before V24 posts: one brief.
   const status = await page.evaluate(async () => {
     const response = await fetch('/api/workspaces', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
       body: JSON.stringify({
         brief: 'Export the totals\n\nAs CSV.',
         branch: 'feature/old',
@@ -961,15 +964,15 @@ test('a workspace started before V24 is named by its brief, with no kind', async
     return response.status;
   });
   expect(status).toBe(200);
-  expect(cpr.calls()[0]?.args.at(-1)).toContain(
+  expect(symbiote.calls()[0]?.args.at(-1)).toContain(
     "The person's brief:\n\nExport the totals\n\nAs CSV.",
   );
-  await page.goto(`${cpr.url}`);
+  await page.goto(`${symbiote.url}`);
   const row = workspaceRow(page, 'feature/old');
   await expect(row.locator('.workspace-about')).toHaveText('Export the totals');
   await expect(row.locator('.kind-tag')).toHaveCount(0);
 
-  // Its Brief tab: the text as paragraphs, no heading of CPR's.
+  // Its Brief tab: the text as paragraphs, no heading of Symbiote's.
   await row.locator('.workspace-about').click();
   await panel(page, 'feature/old').getByRole('tab', { name: 'Brief' }).click();
   const brief = panel(page, 'feature/old').locator('.workspace-brief');
@@ -980,8 +983,8 @@ test('a workspace started before V24 is named by its brief, with no kind', async
 test('the Brief tab draws the brief as Markdown: its headings, lists and code', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await title(page).fill('Add clamp');
   await goal(page).fill(
@@ -1007,8 +1010,8 @@ test('the Brief tab draws the brief as Markdown: its headings, lists and code', 
 test('the kinds explained: a tooltip after the picker, on hover, focus or a tap (V24c)', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await kind(page, 'Fix').click();
   const about = startPage(page).getByRole('tooltip');
@@ -1040,20 +1043,20 @@ test('the kinds explained: a tooltip after the picker, on hover, focus or a tap 
   await expect(about).toBeVisible();
 });
 
-test('Merge on an approved workspace: CPR merges it in its own worktree, Land moves main (V26a)', async ({
+test('Merge on an approved workspace: Symbiote merges it in its own worktree, Land moves main (V26a)', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces({ terminal: false });
-  await page.goto(`${cpr.url}`);
+  symbiote = await serveWorkspaces({ terminal: false });
+  await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  const tip = cpr.commit(
+  const tip = symbiote.commit(
     branch,
     'src/half.ts',
     'export const half = (a: number) => a / 2;\n',
     'Add half',
   );
-  cpr.report(branch, 'Done: half() in src/half.ts.');
+  symbiote.report(branch, 'Done: half() in src/half.ts.');
   await expect(workspaceRow(page, branch)).toContainText('Ready for review', POLL);
   // Not approved: no Merge.
   await expect(panel(page, branch).getByRole('button', { name: /^Merge into/ })).toHaveCount(0);
@@ -1063,7 +1066,7 @@ test('Merge on an approved workspace: CPR merges it in its own worktree, Land mo
   await page.getByLabel('Approve').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText(`Approved ${short(tip)}`);
-  await page.goto(`${cpr.url}?branch=${encodeURIComponent(branch)}`);
+  await page.goto(`${symbiote.url}?branch=${encodeURIComponent(branch)}`);
 
   // Preselected: main, where the workspace started from.
   const here = panel(page, branch);
@@ -1083,7 +1086,7 @@ test('Merge on an approved workspace: CPR merges it in its own worktree, Land mo
   expect(git('rev-parse', 'main')).toBe(main);
   // The agent's worktree and the main checkout were not used to merge.
   expect(git('status', '--porcelain', '--untracked-files=no')).toBe('');
-  expect(git('-C', cpr.folder(branch), 'rev-parse', 'HEAD')).toBe(tip);
+  expect(git('-C', symbiote.folder(branch), 'rev-parse', 'HEAD')).toBe(tip);
 
   // Its card opens it in the main area. Its reads are slow here: Land, clicked while the one the
   // merge opened with is under way, still shows what it did (V29b).
@@ -1098,7 +1101,7 @@ test('Merge on an approved workspace: CPR merges it in its own worktree, Land mo
   expect(git('log', '-1', '--format=%P%n%s', 'main')).toBe(
     `${main} ${tip}\nMerge ${branch}: Add a half function`,
   );
-  expect(existsSync(join(cpr.repo, 'src', 'half.ts'))).toBe(true);
+  expect(existsSync(join(symbiote.repo, 'src', 'half.ts'))).toBe(true);
   // Merged: the workspace offers Clean up, and no Merge.
   await expect(workspaceRow(page, branch)).toContainText('Merged', POLL);
   await workspaceRow(page, branch).getByRole('button', { name: 'Add a half function' }).click();

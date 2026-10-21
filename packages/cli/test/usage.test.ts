@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { UsageSubscription } from '@cpr/core';
+import type { UsageSubscription } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import { codexServer } from '../src/app-server.js';
@@ -15,7 +15,7 @@ import {
 import { fakeAppServer, type FakeAppServer } from './fake-app-server.js';
 
 // Subscription usage (V29c): Claude Code's from the endpoint its /usage reads, with the token it
-// stored, read only (decision 172); Codex's from its app server; a 5-min copy in `cpr view`.
+// stored, read only (decision 172); Codex's from its app server; a 5-min copy in `symbiote view`.
 const NOW = Date.parse('2026-10-20T16:15:00Z');
 const MIN = 60_000;
 const HOUR = 3_600_000;
@@ -34,7 +34,7 @@ afterEach(async () => {
 const CLAUDE_ANSWER = {
   five_hour: { utilization: 59, resets_at: '2026-10-20T20:00:00.484682+00:00' },
   seven_day: { utilization: 66, resets_at: '2026-10-25T22:00:00.484701+00:00' },
-  // A code name: CPR cannot say what it limits, and shows nothing of it.
+  // A code name: Symbiote cannot say what it limits, and shows nothing of it.
   iguana_necktie: { utilization: 100, resets_at: '2026-11-05T07:59:00+00:00' },
   limits: [
     {
@@ -123,8 +123,8 @@ function fakeFetch(answer: () => Response | Promise<Response>) {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
-/** Where CPR keeps its last read of Claude's usage: the test's cache. */
-const lastFile = () => join(home, 'cpr-cache', 'usage', 'claude.json');
+/** Where Symbiote keeps its last read of Claude's usage: the test's cache. */
+const lastFile = () => join(home, 'symbiote-cache', 'usage', 'claude.json');
 
 const claude = (fetch: typeof globalThis.fetch, env: Record<string, string> = {}, now = NOW) =>
   readClaudeUsage({
@@ -137,7 +137,7 @@ const claude = (fetch: typeof globalThis.fetch, env: Record<string, string> = {}
     now: () => now,
   });
 
-/** Claude Code's copy from the last time its /usage was opened: CPR never shows it. */
+/** Claude Code's copy from the last time its /usage was opened: Symbiote never shows it. */
 const CLAUDE_CODE_COPY = {
   fetchedAtMs: NOW - HOUR,
   utilization: { five_hour: { utilization: 40, resets_at: '2026-10-20T18:00:00Z' } },
@@ -171,7 +171,7 @@ describe('readClaudeUsage', () => {
       },
     ]);
     expect(CLAUDE_USAGE_URL).toBe('https://api.anthropic.com/api/oauth/usage');
-    // The token stays in CPR's server: nothing of it in what the page is given.
+    // The token stays in Symbiote's server: nothing of it in what the page is given.
     expect(JSON.stringify(read)).not.toMatch(/stored-(access|refresh)-token|person@example/);
   });
 
@@ -221,7 +221,7 @@ describe('readClaudeUsage', () => {
     ]);
   });
 
-  it("never refreshes an expired token: no request, CPR's last read, its age, why", async () => {
+  it("never refreshes an expired token: no request, Symbiote's last read, its age, why", async () => {
     claudeFiles({ cached: CLAUDE_CODE_COPY });
     const live = await claude(fakeFetch(() => json(CLAUDE_ANSWER)).fetch);
     const { credentials } = claudeFiles({ expiresIn: -HOUR, cached: CLAUDE_CODE_COPY });
@@ -231,16 +231,16 @@ describe('readClaudeUsage', () => {
     const read = await claude(server.fetch, {}, NOW + 4 * HOUR);
     expect(server.asked).toEqual([]);
     expect(readFileSync(credentials, 'utf8')).toBe(before);
-    const note = "Claude Code's token has expired (CPR never renews it)";
+    const note = "Claude Code's token has expired (Symbiote never renews it)";
     expect(read).toEqual({
       subscription: { ...live.subscription, windows: [live.subscription?.windows[1]], note },
       failed: note,
     });
   });
 
-  it("gives CPR's last read when a request fails, never Claude Code's copy; a 429 backs off", async () => {
+  it("gives Symbiote's last read when a request fails, never Claude Code's copy; a 429 backs off", async () => {
     claudeFiles({ cached: CLAUDE_CODE_COPY });
-    // Before any read of CPR's: nothing to show, and why.
+    // Before any read of Symbiote's: nothing to show, and why.
     const first = await claude(fakeFetch(() => json({}, 429)).fetch);
     expect(first).toEqual({
       subscription: null,
@@ -266,7 +266,7 @@ describe('readClaudeUsage', () => {
   it('keeps its last read in its cache, for the account it was read for', async () => {
     claudeFiles();
     const live = await claude(fakeFetch(() => json(CLAUDE_ANSWER)).fetch);
-    // Another cpr view, or the next run: the file is what they share.
+    // Another symbiote view, or the next run: the file is what they share.
     expect(JSON.parse(readFileSync(lastFile(), 'utf8'))).toEqual({
       account: 'account-a',
       subscription: live.subscription,
@@ -279,7 +279,7 @@ describe('readClaudeUsage', () => {
 
   it('lists nothing when Claude Code is not installed or not signed in to a subscription', async () => {
     const server = fakeFetch(() => json(CLAUDE_ANSWER));
-    // No token, no read of CPR's: an API key, or never signed in.
+    // No token, no read of Symbiote's: an API key, or never signed in.
     expect((await claude(server.fetch)).subscription).toBeNull();
     claudeFiles();
     const missing = await readClaudeUsage({
@@ -306,8 +306,10 @@ describe('readClaudeUsage', () => {
   it('sends the token to api.anthropic.com only: another URL is taken for this machine alone', async () => {
     claudeFiles();
     const server = fakeFetch(() => json(CLAUDE_ANSWER));
-    await claude(server.fetch, { CPR_CLAUDE_USAGE_URL: 'https://example.com/usage' });
-    await claude(server.fetch, { CPR_CLAUDE_USAGE_URL: 'http://127.0.0.1:4100/api/oauth/usage' });
+    await claude(server.fetch, { SYMBIOTE_CLAUDE_USAGE_URL: 'https://example.com/usage' });
+    await claude(server.fetch, {
+      SYMBIOTE_CLAUDE_USAGE_URL: 'http://127.0.0.1:4100/api/oauth/usage',
+    });
     expect(server.asked.map((a) => a.url)).toEqual([
       CLAUDE_USAGE_URL,
       'http://127.0.0.1:4100/api/oauth/usage',
@@ -442,7 +444,7 @@ describe('usageService', () => {
     expect((await usage.report()).subscriptions.map((s) => s.windows[0]?.usedPercent)).toEqual([
       10, 1,
     ]);
-    // Read every minute, two cpr views were refused by Claude's endpoint for 5 of 6 minutes.
+    // Read every minute, two symbiote views were refused by Claude's endpoint for 5 of 6 minutes.
     now += 4 * MIN;
     await usage.report();
     expect(claude.reads()).toBe(1);
@@ -583,7 +585,7 @@ describe('usageService', () => {
     ]);
   });
 
-  it('reads nothing with CPR_USAGE=off', async () => {
+  it('reads nothing with SYMBIOTE_USAGE=off', async () => {
     const claude = reader({ subscription: sub('claude', 10) });
     const usage = usageService({ claude: claude.read, codex: claude.read }, { off: true });
     expect(await usage.report()).toEqual({ subscriptions: [], off: true });

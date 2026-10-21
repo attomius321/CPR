@@ -1,4 +1,4 @@
-import { CprError } from '../errors.js';
+import { SymbioteError } from '../errors.js';
 import { git, GitError } from './exec.js';
 import type { GitRepo } from './repo.js';
 
@@ -8,12 +8,12 @@ export async function readFileAtRevision(
   sha: string,
   path: string,
 ): Promise<string> {
-  if (!/^[0-9a-f]{7,64}$/i.test(sha)) throw new CprError(`not a commit SHA: ${sha}`);
+  if (!/^[0-9a-f]{7,64}$/i.test(sha)) throw new SymbioteError(`not a commit SHA: ${sha}`);
   try {
     return await git(repo.root, ['show', `${sha}:${path}`]);
   } catch (error) {
     if (error instanceof GitError)
-      throw new CprError(`${path} does not exist at ${sha.slice(0, 7)}`, { cause: error });
+      throw new SymbioteError(`${path} does not exist at ${sha.slice(0, 7)}`, { cause: error });
     throw error;
   }
 }
@@ -27,7 +27,7 @@ export async function listTreeAt(
   sha: string,
   paths: readonly string[] = [],
 ): Promise<string[]> {
-  if (!/^[0-9a-f]{7,64}$/i.test(sha)) throw new CprError(`not a commit SHA: ${sha}`);
+  if (!/^[0-9a-f]{7,64}$/i.test(sha)) throw new SymbioteError(`not a commit SHA: ${sha}`);
   const out = await git(repo.root, ['ls-tree', '--name-only', sha, '--', ...paths]);
   return out.split('\n').filter((name) => name !== '');
 }

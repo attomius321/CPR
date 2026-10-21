@@ -1,21 +1,21 @@
 import { expect, test, type Page } from '@playwright/test';
-import { serveFixture, type Running } from './cpr.js';
+import { serveFixture, type Running } from './symbiote.js';
 
 // The detectors fixture: a removed method still called (error), two orphans (warnings), a
 // compatible interface change and public API (info).
-let cpr: Running;
+let symbiote: Running;
 const errors: string[] = [];
 
 test.beforeAll(async () => {
-  cpr = await serveFixture('detectors');
+  symbiote = await serveFixture('detectors');
 });
 
-test.afterAll(() => cpr.stop());
+test.afterAll(() => symbiote.stop());
 
 test.beforeEach(async ({ page }) => {
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(cpr.url);
+  await page.goto(symbiote.url);
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
 });
 

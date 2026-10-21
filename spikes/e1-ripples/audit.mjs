@@ -11,7 +11,7 @@ const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: { sample: { type: 'string', default: '40' }, seed: { type: 'string', default: '1' } },
 });
-const regressionDir = process.env.CPR_REGRESSION_DIR ?? join(homedir(), '.cache', 'cpr-regression');
+const regressionDir = process.env.SYMBIOTE_REGRESSION_DIR ?? join(homedir(), '.cache', 'symbiote-regression');
 const runs = positionals.flatMap((p) => JSON.parse(readFileSync(p, 'utf8')).runs).filter((r) => !r.error);
 const verified = runs.flatMap((r) =>
   r.symbols.filter((s) => s.class !== 'decision' && s.class !== 'moved' && s.at?.head).map((s) => ({ r, s })),

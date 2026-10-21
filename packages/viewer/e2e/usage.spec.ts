@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
+import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // Each subscription's windows in the status bar (V29c): Claude Code's from a fake of the endpoint
 // its /usage reads, with fake credentials; Codex's from its fake app server. Never yours.
-let cpr: RunningWorkspaces;
+let symbiote: RunningWorkspaces;
 const errors: string[] = [];
 
 test.beforeEach(({ page }) => {
@@ -12,7 +12,7 @@ test.beforeEach(({ page }) => {
 });
 
 test.afterEach(() => {
-  cpr.stop();
+  symbiote.stop();
   expect(errors).toEqual([]);
 });
 
@@ -24,7 +24,7 @@ const usage = (page: Page) =>
 test("the status bar shows each subscription's windows, what a hover says, and never the token", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces({
+  symbiote = await serveWorkspaces({
     codex: true,
     appServer: true,
     usage: {
@@ -45,7 +45,7 @@ test("the status bar shows each subscription's windows, what a hover says, and n
       () => undefined,
     );
   });
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   const items = usage(page).getByRole('listitem');
   await expect(items).toHaveCount(2, POLL);
   const [claude, codex] = [items.nth(0), items.nth(1)];
@@ -61,37 +61,37 @@ test("the status bar shows each subscription's windows, what a hover says, and n
   await expect(claude).toHaveAttribute('title', /\nRead just now$/);
 
   // The token went to the usage endpoint only, and never to the page.
-  expect(cpr.usageRequests()).toEqual(['Bearer e2e-access-token']);
+  expect(symbiote.usageRequests()).toEqual(['Bearer e2e-access-token']);
   await page.reload();
   await expect(items).toHaveCount(2, POLL);
-  // From CPR's copy: read once in the minute.
-  expect(cpr.usageRequests()).toHaveLength(1);
+  // From Symbiote's copy: read once in the minute.
+  expect(symbiote.usageRequests()).toHaveLength(1);
   expect(said.join('\n')).not.toContain('e2e-access-token');
   expect(said.join('\n')).not.toContain('e2e-refresh-token');
 
   // On every page of the shell, a diff's too.
-  await page.goto(`${cpr.url}settings`);
+  await page.goto(`${symbiote.url}settings`);
   await expect(usage(page).getByRole('listitem')).toHaveCount(2, POLL);
 });
 
-test("Claude's endpoint failing before CPR read it: Claude left out, the rest as it is", async ({
+test("Claude's endpoint failing before Symbiote read it: Claude left out, the rest as it is", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces({
+  symbiote = await serveWorkspaces({
     codex: true,
     appServer: true,
     usage: { claude: { error: 'overloaded' }, status: 529 },
   });
-  await page.goto(`${cpr.url}history`);
-  // No read of CPR's yet: Claude is left out, Codex is shown.
+  await page.goto(`${symbiote.url}history`);
+  // No read of Symbiote's yet: Claude is left out, Codex is shown.
   await expect(usage(page).getByRole('listitem')).toHaveText(['CodexGo30d0%'], POLL);
 });
 
-test("started while Claude's endpoint refuses: the last read CPR kept, its age, and why", async ({
+test("started while Claude's endpoint refuses: the last read Symbiote kept, its age, and why", async ({
   page,
 }) => {
   const at = new Date(Date.now() - 12 * 60_000).toISOString();
-  cpr = await serveWorkspaces({
+  symbiote = await serveWorkspaces({
     codex: true,
     appServer: true,
     usage: {
@@ -113,7 +113,7 @@ test("started while Claude's endpoint refuses: the last read CPR kept, its age, 
       },
     },
   });
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   const claude = usage(page).getByRole('listitem').first();
   await expect(claude).toHaveText('ClaudePro5h40%wk19%12 minutes ago', POLL);
   await expect(claude).toHaveClass(/\bcached\b/);
@@ -121,5 +121,5 @@ test("started while Claude's endpoint refuses: the last read CPR kept, its age, 
     'title',
     /\nRead 12 minutes ago, not since: Claude's usage asked to wait \(429\)$/,
   );
-  expect(cpr.usageRequests()).toHaveLength(1);
+  expect(symbiote.usageRequests()).toHaveLength(1);
 });

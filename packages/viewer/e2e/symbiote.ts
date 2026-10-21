@@ -29,9 +29,9 @@ const env = {
   ...process.env,
   GIT_CONFIG_GLOBAL: '/dev/null',
   GIT_CONFIG_NOSYSTEM: '1',
-  GIT_AUTHOR_NAME: 'CPR Test',
+  GIT_AUTHOR_NAME: 'Symbiote Test',
   GIT_AUTHOR_EMAIL: 'test@example.com',
-  GIT_COMMITTER_NAME: 'CPR Test',
+  GIT_COMMITTER_NAME: 'Symbiote Test',
   GIT_COMMITTER_EMAIL: 'test@example.com',
 };
 
@@ -54,7 +54,7 @@ const git = (cwd: string, ...args: string[]) =>
  */
 function fixtureRepo(name: string): { repo: string; base: string; head: string } {
   const dir = name.includes('/') ? join(root, name) : join(fixtures, name);
-  const repo = mkdtempSync(join(tmpdir(), 'cpr-e2e-'));
+  const repo = mkdtempSync(join(tmpdir(), 'symbiote-e2e-'));
   git(repo, 'init', '-q', '-b', 'main');
   cpSync(join(dir, 'base'), repo, { recursive: true });
   git(repo, 'add', '-A');
@@ -69,7 +69,7 @@ function fixtureRepo(name: string): { repo: string; base: string; head: string }
 }
 
 /** Runs the built CLI until it prints the viewer's URL. */
-async function startCpr(
+async function startSymbiote(
   args: string[],
   cwd: string,
   extraEnv: Record<string, string>,
@@ -79,10 +79,10 @@ async function startCpr(
     // Never a real agent: a spec that wants one passes a fake (V26c's merger would find yours).
     env: {
       ...env,
-      CPR_CLAUDE: '/nonexistent/claude',
-      CPR_CODEX: '/nonexistent/codex',
+      SYMBIOTE_CLAUDE: '/nonexistent/claude',
+      SYMBIOTE_CODEX: '/nonexistent/codex',
       // Never your subscriptions' usage either: a spec that wants it fakes it (V29c).
-      CPR_USAGE: 'off',
+      SYMBIOTE_USAGE: 'off',
       ...extraEnv,
     },
   });
@@ -90,11 +90,11 @@ async function startCpr(
     let output = '';
     child.stdout?.on('data', (data: Buffer) => {
       output += data.toString();
-      const match = /CPR viewer: (\S+)/.exec(output);
+      const match = /Symbiote viewer: (\S+)/.exec(output);
       if (match?.[1]) resolve(match[1]);
     });
     child.stderr?.on('data', (data: Buffer) => (output += data.toString()));
-    child.on('exit', (code) => reject(new Error(`cpr exited with ${code}:\n${output}`)));
+    child.on('exit', (code) => reject(new Error(`symbiote exited with ${code}:\n${output}`)));
   });
   return { url, child };
 }
@@ -105,8 +105,8 @@ export interface RunningFixture extends Running {
 }
 
 /**
- * Turns a fixture into two commits of a fresh repo and serves `cpr view HEAD~1 HEAD` from the
- * built CLI, with `args` (e.g. `--plugin angular`) and `extraEnv` (e.g. `CPR_CODE`). Build
+ * Turns a fixture into two commits of a fresh repo and serves `symbiote view HEAD~1 HEAD` from the
+ * built CLI, with `args` (e.g. `--plugin angular`) and `extraEnv` (e.g. `SYMBIOTE_CODE`). Build
  * first: `pnpm build`.
  */
 export async function serveFixture(
@@ -115,9 +115,9 @@ export async function serveFixture(
   extraEnv: Record<string, string> = {},
 ): Promise<RunningFixture> {
   const { repo } = fixtureRepo(name);
-  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
-  const { url, child } = await startCpr(['view', 'HEAD~1', 'HEAD', ...args], repo, {
-    CPR_CACHE_DIR: cache,
+  const cache = mkdtempSync(join(tmpdir(), 'symbiote-e2e-cache-'));
+  const { url, child } = await startSymbiote(['view', 'HEAD~1', 'HEAD', ...args], repo, {
+    SYMBIOTE_CACHE_DIR: cache,
     ...extraEnv,
   });
   return {
@@ -151,7 +151,7 @@ function commitAt(repo: string, minutes: number, ...args: string[]): void {
 export interface RunningAgent extends Running {
   repo: string;
   /**
-   * With `merger`, a fake Claude Code for CPR's merger agent (V26c): each `-p` run answers the
+   * With `merger`, a fake Claude Code for Symbiote's merger agent (V26c): each `-p` run answers the
    * next of `answers` (the last again when none is left); what it was asked, newest last.
    */
   mergerPrompts(): string[];
@@ -159,14 +159,14 @@ export interface RunningAgent extends Running {
   origin: string;
   /** main's commit (the fork point), then the agent's commits, oldest first. */
   shas: string[];
-  /** Stops `cpr view` and starts it again on the same repository (a new port): its URL. */
+  /** Stops `symbiote view` and starts it again on the same repository (a new port): its URL. */
   restart(): Promise<string>;
 }
 
 /**
  * `main` with the `callers` fixture's base, pushed to a bare `origin` and tracking it, and
  * `agent`, a branch an agent wrote from it (not pushed): "Agent: add square", then "Agent: add
- * cube" (two functions in `src/math.ts`). The reviewer is reviewer@example.com. Served by `cpr
+ * cube" (two functions in `src/math.ts`). The reviewer is reviewer@example.com. Served by `symbiote
  * view` without revisions: the commits page.
  */
 export async function serveAgentBranch(
@@ -177,7 +177,7 @@ export async function serveAgentBranch(
   git(repo, 'checkout', '-q', 'main');
   git(repo, 'branch', '-q', '-D', 'feature');
   git(repo, 'config', 'user.email', 'reviewer@example.com');
-  const origin = mkdtempSync(join(tmpdir(), 'cpr-e2e-origin-'));
+  const origin = mkdtempSync(join(tmpdir(), 'symbiote-e2e-origin-'));
   git(origin, 'init', '-q', '--bare');
   git(repo, 'remote', 'add', 'origin', origin);
   git(repo, 'push', '-q', '-u', 'origin', 'main');
@@ -197,7 +197,7 @@ export async function serveAgentBranch(
     git(repo, 'rev-parse', 'main'),
     ...git(repo, 'rev-list', '--reverse', 'main..agent').split('\n'),
   ];
-  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  const cache = mkdtempSync(join(tmpdir(), 'symbiote-e2e-cache-'));
   const prompts = join(cache, 'merger-prompts.jsonl');
   if (merger) {
     const fake = join(cache, 'fake-claude');
@@ -215,9 +215,9 @@ process.stdout.write(JSON.stringify({ result, is_error: false, usage: { input_to
 `,
       { mode: 0o755 },
     );
-    extraEnv = { CPR_CLAUDE: fake, ...extraEnv };
+    extraEnv = { SYMBIOTE_CLAUDE: fake, ...extraEnv };
   }
-  let running = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache, ...extraEnv });
+  let running = await startSymbiote(['view'], repo, { SYMBIOTE_CACHE_DIR: cache, ...extraEnv });
   return {
     get url() {
       return running.url;
@@ -234,7 +234,7 @@ process.stdout.write(JSON.stringify({ result, is_error: false, usage: { input_to
     shas,
     async restart() {
       running.child.kill('SIGINT');
-      running = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache, ...extraEnv });
+      running = await startSymbiote(['view'], repo, { SYMBIOTE_CACHE_DIR: cache, ...extraEnv });
       return running.url;
     },
     stop() {
@@ -252,7 +252,8 @@ process.stdout.write(JSON.stringify({ result, is_error: false, usage: { input_to
  * one by one to `src/math.ts` ("Add half, and a subject …" the last) — and other branches, each
  * newer: `wip` ("Try a wobble") from "Add square", the remote-only `origin/topic` ("Sketch a
  * topic") from head. `feature` points at head; tag `v1` at "Add cube", `r1` to `r4` at base; tag
- * `v0` at a commit no branch reaches ("Old release"). Served by `cpr view` without revisions: the commits page.
+ * `v0` at a commit no branch reaches ("Old release"). Served by `symbiote view` without revisions:
+ * the commits page.
  */
 export async function serveCommits(): Promise<RunningCommits> {
   const { repo } = fixtureRepo('callers');
@@ -285,8 +286,8 @@ export async function serveCommits(): Promise<RunningCommits> {
   git(repo, 'update-ref', 'refs/remotes/origin/topic', aside(head, 5, 'Sketch a topic'));
   git(repo, 'tag', 'v0', aside(base, 6, 'Old release'));
   git(repo, 'checkout', '-q', 'main');
-  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
-  const { url, child } = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
+  const cache = mkdtempSync(join(tmpdir(), 'symbiote-e2e-cache-'));
+  const { url, child } = await startSymbiote(['view'], repo, { SYMBIOTE_CACHE_DIR: cache });
   return {
     url,
     shas,
@@ -302,14 +303,14 @@ export async function serveCommits(): Promise<RunningCommits> {
 /**
  * `rows` commits on `main` ("commit 1" the oldest) and `old`, one newer commit forked from
  * "commit 10": its line spans the whole history. Written with `git fast-import` (fast), served
- * by `cpr view` without revisions.
+ * by `symbiote view` without revisions.
  */
 export async function serveLongHistory(rows: number): Promise<Running> {
-  const repo = mkdtempSync(join(tmpdir(), 'cpr-e2e-'));
+  const repo = mkdtempSync(join(tmpdir(), 'symbiote-e2e-'));
   git(repo, 'init', '-q', '-b', 'main');
   const start = Math.floor(Date.now() / 1000) - rows * 60;
   const commit = (ref: string, mark: number, time: number, subject: string, from?: number) =>
-    `commit ${ref}\nmark :${mark}\ncommitter CPR Test <test@example.com> ${time} +0000\n` +
+    `commit ${ref}\nmark :${mark}\ncommitter Symbiote Test <test@example.com> ${time} +0000\n` +
     `data ${Buffer.byteLength(subject)}\n${subject}\n${from ? `from :${from}\n` : ''}\n`;
   let stream = '';
   for (let i = 1; i <= rows; i++) {
@@ -324,8 +325,8 @@ export async function serveLongHistory(rows: number): Promise<Running> {
   stream += commit('refs/heads/old', rows + 1, start + (rows + 1) * 60, 'Old idea', 10);
   execFileSync('git', ['fast-import', '--quiet'], { cwd: repo, env, input: stream });
   git(repo, 'checkout', '-q', '-f', 'main');
-  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
-  const { url, child } = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
+  const cache = mkdtempSync(join(tmpdir(), 'symbiote-e2e-cache-'));
+  const { url, child } = await startSymbiote(['view'], repo, { SYMBIOTE_CACHE_DIR: cache });
   return {
     url,
     stop() {
@@ -340,18 +341,19 @@ export interface RunningPullRequest extends Running {
   /** What the mock GitHub API received. */
   requests: Recorded[];
   /**
-   * Pushes a new version of the pull request (files to write) and restarts `cpr pr` on it,
+   * Pushes a new version of the pull request (files to write) and restarts `symbiote pr` on it,
    * with `--since <previous head>` when `since` is set.
    */
   push(files: Record<string, string>, options?: { since?: boolean }): Promise<void>;
-  /** The clone `cpr pr` runs in (as `git rev-parse` names it). */
+  /** The clone `symbiote pr` runs in (as `git rev-parse` names it). */
   clone: string;
 }
 
 /**
- * Serves `cpr pr 7` for a fixture as a GitHub pull request: the clone's `origin` says
+ * Serves `symbiote pr 7` for a fixture as a GitHub pull request: the clone's `origin` says
  * github.com but git fetches from a local bare repo, and a mock API answers for GitHub.
- * `args` go to every `cpr pr` run (e.g. `--plugin angular`), `extraEnv` too (e.g. `CPR_CODE`).
+ * `args` go to every `symbiote pr` run (e.g. `--plugin angular`), `extraEnv` too (e.g.
+ * `SYMBIOTE_CODE`).
  */
 export async function servePullRequest(
   name: string,
@@ -359,9 +361,9 @@ export async function servePullRequest(
   extraEnv: Record<string, string> = {},
 ): Promise<RunningPullRequest> {
   const { repo, base, head } = fixtureRepo(name);
-  const bare = mkdtempSync(join(tmpdir(), 'cpr-e2e-bare-'));
-  const clone = mkdtempSync(join(tmpdir(), 'cpr-e2e-clone-'));
-  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  const bare = mkdtempSync(join(tmpdir(), 'symbiote-e2e-bare-'));
+  const clone = mkdtempSync(join(tmpdir(), 'symbiote-e2e-clone-'));
+  const cache = mkdtempSync(join(tmpdir(), 'symbiote-e2e-cache-'));
   const remote = 'https://github.com/acme/widgets.git';
   git(bare, 'clone', '-q', '--bare', repo, '.');
   git(bare, 'update-ref', 'refs/pull/7/head', head);
@@ -389,8 +391,8 @@ export async function servePullRequest(
     },
   });
   const start = (more: string[] = []) =>
-    startCpr(['pr', '7', ...args, ...more], clone, {
-      CPR_CACHE_DIR: cache,
+    startSymbiote(['pr', '7', ...args, ...more], clone, {
+      SYMBIOTE_CACHE_DIR: cache,
       GITHUB_API_URL: api.url,
       GITHUB_TOKEN: 'ghp_e2e',
       ...extraEnv,
@@ -424,7 +426,8 @@ export async function servePullRequest(
 }
 
 export interface RunningDiverged extends Running {
-  /** "Add square" on `main`, where `topic` forked; main's tip ("Add half"); topic's ("Change square"). */
+  /** "Add square" on `main`, where `topic` forked; main's tip ("Add half"); topic's ("Change
+   * square"). */
   fork: string;
   main: string;
   topic: string;
@@ -434,7 +437,7 @@ export interface RunningDiverged extends Running {
  * Two lines that diverged (V10c): `main` — the `callers` fixture's base, "Add square", then
  * "Add cube" and "Add half" — and `topic`, forked at "Add square": "Add twice", then "Change
  * square" (its body). All in `src/math.ts`. `checkout` is the branch checked out. Served by
- * `cpr view` without revisions: the commits page.
+ * `symbiote view` without revisions: the commits page.
  */
 export async function serveDiverged(checkout: 'main' | 'topic' = 'main'): Promise<RunningDiverged> {
   const { repo } = fixtureRepo('callers');
@@ -462,8 +465,8 @@ export async function serveDiverged(checkout: 'main' | 'topic' = 'main'): Promis
   commitAt(repo, 5, '-am', 'Change square');
   const topic = git(repo, 'rev-parse', 'HEAD');
   git(repo, 'checkout', '-q', checkout);
-  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
-  const { url, child } = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
+  const cache = mkdtempSync(join(tmpdir(), 'symbiote-e2e-cache-'));
+  const { url, child } = await startSymbiote(['view'], repo, { SYMBIOTE_CACHE_DIR: cache });
   return {
     url,
     fork,
@@ -483,11 +486,11 @@ export async function serveDiverged(checkout: 'main' | 'topic' = 'main'): Promis
  * "commit 20": its row is near the bottom), `fix/one` and `fix/two`, `topic` ("Topic work") and
  * `wip` ("Remote wip"); local `wip` ("Local wip 1", "Local wip 2" from "commit 250": ahead 2 and
  * behind 1 of `origin/wip`) and `old` (at "commit 100", its upstream `origin/old` gone); a branch
- * with a long name, local and remote, at "commit 298". `main` is checked out. Served by `cpr
+ * with a long name, local and remote, at "commit 298". `main` is checked out. Served by `symbiote
  * view` without revisions.
  */
 export async function serveBranches(): Promise<Running> {
-  const repo = mkdtempSync(join(tmpdir(), 'cpr-e2e-'));
+  const repo = mkdtempSync(join(tmpdir(), 'symbiote-e2e-'));
   git(repo, 'init', '-q', '-b', 'main');
   const start = Math.floor(Date.now() / 1000) - 400 * 60;
   let mark = 0;
@@ -496,7 +499,7 @@ export async function serveBranches(): Promise<Running> {
   const commit = (ref: string, minutes: number, subject: string, from?: number): number => {
     mark++;
     stream +=
-      `commit ${ref}\nmark :${mark}\ncommitter CPR Test <test@example.com> ${start + minutes * 60} +0000\n` +
+      `commit ${ref}\nmark :${mark}\ncommitter Symbiote Test <test@example.com> ${start + minutes * 60} +0000\n` +
       `data ${Buffer.byteLength(subject)}\n${subject}\n${from ? `from :${from}\n` : ''}\n`;
     return mark;
   };
@@ -522,8 +525,8 @@ export async function serveBranches(): Promise<Running> {
     git(repo, 'config', `branch.${branch}.merge`, `refs/heads/${branch}`);
   }
   git(repo, 'checkout', '-q', '-f', 'main');
-  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
-  const { url, child } = await startCpr(['view'], repo, { CPR_CACHE_DIR: cache });
+  const cache = mkdtempSync(join(tmpdir(), 'symbiote-e2e-cache-'));
+  const { url, child } = await startSymbiote(['view'], repo, { SYMBIOTE_CACHE_DIR: cache });
   return {
     url,
     stop() {
@@ -615,7 +618,8 @@ const sessions = join(dir, 'sessions.json');
 const list = () => (existsSync(sessions) ? JSON.parse(readFileSync(sessions, 'utf8')) : []);
 const save = (all) => writeFileSync(sessions, JSON.stringify(all));
 const args = process.argv.slice(2);
-// A session's hooks for one event, as Claude Code runs them: each command in a shell, the event on stdin.
+// A session's hooks for one event, as Claude Code runs them: each command in a shell, the event on
+// stdin.
 const hooks = (session, input) => {
   if (!session.settings) return;
   const event = { session_id: session.sessionId, cwd: session.cwd, ...input };
@@ -738,7 +742,7 @@ if (args[0] === '--bg' && args[1] === '--resume') {
 }
 
 /**
- * A fake Codex (V20a), as CPR's runner runs it: `login status` says ChatGPT; `exec` and `exec
+ * A fake Codex (V20a), as Symbiote's runner runs it: `login status` says ChatGPT; `exec` and `exec
  * resume` record their arguments and folder, print Codex 0.163's first events (a new thread is
  * `thread-<n>`), then wait until the test ends the turn (`codex-turn-<worktree folder>.json`):
  * the turn's message and `turn.completed`, or `turn.failed`; it exits once the test's folders
@@ -746,8 +750,8 @@ if (args[0] === '--bg' && args[1] === '--resume') {
  * `app-server-socket` as Codex 0.163 does (V27a), and fails without one, as a Codex with no daemon.
  * `resume <thread> --remote <address> -C <folder>` is its TUI joined to that server (V27b): it
  * asks to trust a folder Codex's configuration does not name, as Codex does, and gives each line
- * typed to the thread through CPR's own client (built); a hang-up or Ctrl+C on an empty line ends
- * it, the thread going on.
+ * typed to the thread through Symbiote's own client (built); a hang-up or Ctrl+C on an empty line
+ * ends it, the thread going on.
  */
 function fakeCodex(dir: string): string {
   const script = join(dir, 'codex');
@@ -897,11 +901,11 @@ async function fakeUsage(
   const { port } = server.address() as AddressInfo;
   return {
     env: {
-      CPR_USAGE: 'on',
+      SYMBIOTE_USAGE: 'on',
       CLAUDE_CONFIG_DIR: config,
       // Codex's sessions, read when its app server does not answer: the test's, empty.
       CODEX_HOME: join(dir, 'codex-home'),
-      CPR_CLAUDE_USAGE_URL: `http://127.0.0.1:${port}/api/oauth/usage`,
+      SYMBIOTE_CLAUDE_USAGE_URL: `http://127.0.0.1:${port}/api/oauth/usage`,
     },
     server,
   };
@@ -909,11 +913,11 @@ async function fakeUsage(
 
 /**
  * `main` with the `callers` fixture's base and head, pushed to a bare `origin` (its default
- * branch), and a fake Claude Code as `CPR_CLAUDE` (`agent: false`: one that is not installed;
- * `terminal: false`: no terminals, V21); a fake Codex as `CPR_CODEX` with `codex: true` (V20a),
- * else none, whatever is installed; with `appServer: true`, its app server too (V27a).
- * Served by `cpr view` without revisions; workspaces' worktrees land beside the repository and go
- * with it.
+ * branch), and a fake Claude Code as `SYMBIOTE_CLAUDE` (`agent: false`: one that is not installed;
+ * `terminal: false`: no terminals, V21); a fake Codex as `SYMBIOTE_CODEX` with `codex: true`
+ * (V20a), else none, whatever is installed; with `appServer: true`, its app server too (V27a).
+ * Served by `symbiote view` without revisions; workspaces' worktrees land beside the repository and
+ * go with it.
  */
 export async function serveWorkspaces({
   agent = true,
@@ -929,7 +933,7 @@ export async function serveWorkspaces({
   /**
    * V29c: usage read, from a fake of Claude's usage endpoint answering `claude` (with `status`),
    * with fake credentials in a CLAUDE_CONFIG_DIR of the test's; Codex's from its fake app server.
-   * `last`: CPR's last read of Claude's usage, as an earlier run kept it in the test's cache.
+   * `last`: Symbiote's last read of Claude's usage, as an earlier run kept it in the test's cache.
    */
   usage?: { claude: unknown; status?: number; last?: unknown };
 } = {}): Promise<RunningWorkspaces> {
@@ -937,15 +941,15 @@ export async function serveWorkspaces({
   git(repo, 'checkout', '-q', '-B', 'main');
   git(repo, 'branch', '-q', '-D', 'feature');
   git(repo, 'config', 'user.email', 'reviewer@example.com');
-  const origin = mkdtempSync(join(tmpdir(), 'cpr-e2e-origin-'));
+  const origin = mkdtempSync(join(tmpdir(), 'symbiote-e2e-origin-'));
   git(origin, 'init', '-q', '--bare');
   git(repo, 'remote', 'add', 'origin', origin);
   git(repo, 'push', '-q', '-u', 'origin', 'main');
   git(repo, 'remote', 'set-head', 'origin', 'main');
   const shas = git(repo, 'rev-list', '--reverse', 'main').split('\n');
-  const fake = mkdtempSync(join(tmpdir(), 'cpr-e2e-claude-'));
+  const fake = mkdtempSync(join(tmpdir(), 'symbiote-e2e-claude-'));
   const claude = agent ? fakeClaude(fake) : join(fake, 'not-installed');
-  const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  const cache = mkdtempSync(join(tmpdir(), 'symbiote-e2e-cache-'));
   if (usage?.last) {
     mkdirSync(join(cache, 'usage'));
     writeFileSync(join(cache, 'usage', 'claude.json'), JSON.stringify(usage.last));
@@ -963,13 +967,13 @@ export async function serveWorkspaces({
     `#!/usr/bin/env node\nrequire('node:fs').appendFileSync(${JSON.stringify(join(fake, 'code.jsonl'))}, JSON.stringify(process.argv.slice(2)) + '\\n');\n`,
     { mode: 0o755 },
   );
-  const { url, child } = await startCpr(['view'], repo, {
-    CPR_CACHE_DIR: cache,
-    CPR_CLAUDE: claude,
-    CPR_CODEX: codex ? fakeCodex(fake) : join(fake, 'no-codex'),
-    CPR_CODE: code,
+  const { url, child } = await startSymbiote(['view'], repo, {
+    SYMBIOTE_CACHE_DIR: cache,
+    SYMBIOTE_CLAUDE: claude,
+    SYMBIOTE_CODEX: codex ? fakeCodex(fake) : join(fake, 'no-codex'),
+    SYMBIOTE_CODE: code,
     // V21: terminals turned off, as where node-pty cannot run.
-    ...(terminal ? {} : { CPR_TERMINAL: 'off' }),
+    ...(terminal ? {} : { SYMBIOTE_TERMINAL: 'off' }),
     ...(usageEndpoint?.env ?? {}),
   });
   const lines = (file: string) =>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { MergeEntry, MergeTargets } from '@cpr/core';
+import type { MergeEntry, MergeTargets } from '@symbiote/core';
 import { getJson, postJson } from './http.js';
 import { mergeState } from './merges.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
@@ -54,7 +54,7 @@ export function MergeControl({ branch }: { branch: string }) {
         type="button"
         className="button"
         disabled={busy}
-        title={`Merge the approved commit ${targets.head.slice(0, 7)} into ${target} in CPR's own worktree, check it, and land it`}
+        title={`Merge the approved commit ${targets.head.slice(0, 7)} into ${target} in Symbiote's own worktree, check it, and land it`}
         onClick={merge}
       >
         Merge into {target}

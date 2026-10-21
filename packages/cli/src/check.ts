@@ -1,6 +1,6 @@
 // The check command a workspace's Done when names (V24b, decision 125): guessed from the root
 // files of the commit it starts from, shown with its source and editable before the start.
-import { listTreeAt, readFileAtRevision, type CheckGuess, type GitRepo } from '@cpr/core';
+import { listTreeAt, readFileAtRevision, type CheckGuess, type GitRepo } from '@symbiote/core';
 
 /** A commit's root files: their names (folders too), and the text of one, null when none. */
 export interface Tree {

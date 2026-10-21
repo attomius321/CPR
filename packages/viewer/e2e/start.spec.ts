@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { serveFixture, serveWorkspaces, type RunningWorkspaces } from './cpr.js';
+import { serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // Start a workspace as a page (V30a): /start in the main area, right of the sidenav; the brief and
 // the run side by side; back to where it was opened from; a start takes its place in the history.
@@ -33,18 +33,18 @@ const effort = (page: Page) => start(page).getByLabel('Effort');
 const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
 
 test('Start a workspace is a page right of the sidenav, at /start', async ({ page }) => {
-  const cpr = await serve();
+  const symbiote = await serve();
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await startLink(page).click();
-  await expect(page).toHaveURL(`${cpr.url}start`);
+  await expect(page).toHaveURL(`${symbiote.url}start`);
   await expect(start(page)).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(title(page)).toBeFocused();
   await expect(startLink(page)).toHaveAttribute('aria-current', 'page');
   await expect(page).toHaveTitle(/^Start a workspace · /);
-  await expect(start(page)).toContainText(`From main at ${short(cpr.shas.at(-1))}`);
+  await expect(start(page)).toContainText(`From main at ${short(symbiote.shas.at(-1))}`);
   // The whole main area: from the sidenav's edge to the window's.
   const nav = await sidenav(page).boundingBox();
   const box = await start(page).boundingBox();
@@ -56,16 +56,16 @@ test('Start a workspace is a page right of the sidenav, at /start', async ({ pag
   await expect(title(page)).toBeVisible();
   // The sidenav stays usable: History opens in place.
   await sidenav(page).getByRole('link', { name: 'History' }).click();
-  await expect(page).toHaveURL(`${cpr.url}history`);
+  await expect(page).toHaveURL(`${symbiote.url}history`);
   await expect(start(page)).toHaveCount(0);
 });
 
 test('n opens it from any page; on it, n goes back to the title', async ({ page }) => {
-  const cpr = await serve();
-  await page.goto(`${cpr.url}settings`);
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}settings`);
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await page.keyboard.press('n');
-  await expect(page).toHaveURL(`${cpr.url}start`);
+  await expect(page).toHaveURL(`${symbiote.url}start`);
   await expect(title(page)).toBeFocused();
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await page.keyboard.press('n');
@@ -76,49 +76,49 @@ test('n opens it from any page; on it, n goes back to the title', async ({ page 
 test('Escape and Cancel go back to the page it was opened from; the draft stays', async ({
   page,
 }) => {
-  const cpr = await serve();
-  await page.goto(`${cpr.url}settings`);
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}settings`);
   await startLink(page).click();
   await title(page).fill('Keep me');
   await title(page).press('Escape');
-  await expect(page).toHaveURL(`${cpr.url}settings`);
+  await expect(page).toHaveURL(`${symbiote.url}settings`);
   await startLink(page).click();
   await expect(title(page)).toHaveValue('Keep me');
 
   await sidenav(page).getByRole('link', { name: 'History' }).click();
   await startLink(page).click();
   await start(page).getByRole('button', { name: 'Cancel' }).click();
-  await expect(page).toHaveURL(`${cpr.url}history`);
+  await expect(page).toHaveURL(`${symbiote.url}history`);
 
-  // Opened by its address, with no page of CPR's before it: Cancel goes to History.
+  // Opened by its address, with no page of Symbiote's before it: Cancel goes to History.
   const fresh = await page.context().newPage();
-  await fresh.goto(`${cpr.url}start`);
+  await fresh.goto(`${symbiote.url}start`);
   await start(fresh).getByRole('button', { name: 'Cancel' }).click();
-  await expect(fresh).toHaveURL(`${cpr.url}history`);
+  await expect(fresh).toHaveURL(`${symbiote.url}history`);
   await expect(title(fresh)).toHaveCount(0);
 });
 
 test('a start takes its place in the history: Back goes to the page before it', async ({
   page,
 }) => {
-  const cpr = await serve();
-  await page.goto(`${cpr.url}history`);
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}history`);
   await startLink(page).click();
   await title(page).fill('Add clamp');
   await goal(page).fill('Clamp a value.');
   await goal(page).press('Control+Enter');
-  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-clamp`);
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-clamp`);
   await expect(page.getByRole('region', { name: 'Workspace feature/add-clamp' })).toBeVisible();
   await page.goBack();
-  await expect(page).toHaveURL(`${cpr.url}history`);
+  await expect(page).toHaveURL(`${symbiote.url}history`);
 });
 
 test('the brief and the run side by side; More open without a scroll at 1440 × 900; one column on a phone', async ({
   page,
 }) => {
-  const cpr = await serve();
+  const symbiote = await serve();
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`${cpr.url}start`);
+  await page.goto(`${symbiote.url}start`);
   const brief = page.locator('.start-brief');
   const run = page.locator('.start-run');
   await start(page).getByRole('button', { name: /^More/ }).click();
@@ -166,8 +166,8 @@ test("from a diff, the sidenav's Start and n load /start", async ({ page }) => {
 test("Effort: the agent's default or a level it lists; a level reaches Claude Code, and the Brief tab says it", async ({
   page,
 }) => {
-  const cpr = await serve();
-  await page.goto(`${cpr.url}start`);
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}start`);
   await expect(effort(page).locator('option')).toHaveText([
     "Claude Code's default",
     'low',
@@ -185,8 +185,8 @@ test("Effort: the agent's default or a level it lists; a level reaches Claude Co
   await startLink(page).click();
   await expect(effort(page)).toHaveValue('high');
   await goal(page).press('Control+Enter');
-  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-clamp`);
-  const args = cpr.calls().at(-1)?.args ?? [];
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-clamp`);
+  const args = symbiote.calls().at(-1)?.args ?? [];
   expect(args.slice(args.indexOf('--effort'), args.indexOf('--effort') + 2)).toEqual([
     '--effort',
     'high',
@@ -203,15 +203,15 @@ test("Effort: the agent's default or a level it lists; a level reaches Claude Co
   await title(page).fill('Add round');
   await goal(page).fill('Round a value.');
   await goal(page).press('Control+Enter');
-  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-round`);
-  expect(cpr.calls().at(-1)?.args).not.toContain('--effort');
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-round`);
+  expect(symbiote.calls().at(-1)?.args).not.toContain('--effort');
 });
 
 test("Effort for Codex on its app server: its model's levels and its default; the level on its first turn", async ({
   page,
 }) => {
-  const cpr = await serve({ codex: true, appServer: true });
-  await page.goto(`${cpr.url}start`);
+  const symbiote = await serve({ codex: true, appServer: true });
+  await page.goto(`${symbiote.url}start`);
   await effort(page).selectOption('high');
   // Codex takes high too: kept when the agent changes; its default named with its level.
   await start(page).getByLabel('Agent').selectOption({ label: 'Codex' });
@@ -228,7 +228,7 @@ test("Effort for Codex on its app server: its model's levels and its default; th
   await title(page).fill('Add clamp');
   await goal(page).fill('Clamp a value.');
   await goal(page).press('Control+Enter');
-  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-clamp`);
-  const turn = cpr.codexServer?.calls.find((call) => call.method === 'turn/start');
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-clamp`);
+  const turn = symbiote.codexServer?.calls.find((call) => call.method === 'turn/start');
   expect(turn?.params).toMatchObject({ effort: 'low' });
 });

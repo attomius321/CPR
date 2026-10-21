@@ -1,12 +1,12 @@
 // The start page's brief (V24c): a kind of work, its title and parts, kept across kinds. Pure
-// helpers; the kinds and their parts come from `cpr view` (`FeatureOptions.kinds`).
-import type { BriefPart, BriefParts, CheckGuess, WorkKind, WorkKindSpec } from '@cpr/core';
+// helpers; the kinds and their parts come from `symbiote view` (`FeatureOptions.kinds`).
+import type { BriefPart, BriefParts, CheckGuess, WorkKind, WorkKindSpec } from '@symbiote/core';
 
 /** The parts the start page puts under "More": every kind's optional ones but Done when. */
 export type MorePart = 'reproduce' | 'known' | 'where' | 'outOfScope' | 'notes';
 const MORE: readonly MorePart[] = ['reproduce', 'known', 'where', 'outOfScope', 'notes'];
 
-/** What the start page holds; the draft `cpr view` keeps while it is not started. */
+/** What the start page holds; the draft `symbiote view` keeps while it is not started. */
 export interface BriefForm {
   kind: WorkKind;
   title: string;
@@ -119,7 +119,8 @@ export function formParts(form: BriefForm, spec: WorkKindSpec): BriefParts {
 const written = (text: string) => text.replace(/^\s*\n/, '').trimEnd();
 
 /**
- * How long the brief `cpr view` makes of the form will be (`briefOf`: `# <Kind>: <title>`, then
+ * How long the brief `symbiote view` makes of the form will be (`briefOf`: `# <Kind>: <title>`,
+ * then
  * `## <heading>` and each part's text, a blank line between), to count against its limit.
  */
 export function briefLength(form: BriefForm, spec: WorkKindSpec): number {

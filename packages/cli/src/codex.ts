@@ -1,10 +1,15 @@
-// Codex as a workspace's agent: what CPR asks of it, and what its state is. On the person's
-// app-server daemon (V27a), CPR starts and reads its threads there; without one, CPR runs `codex
-// exec` through its runner (`codex-run.ts`, V20a), which records the thread. This module never
-// reads Codex's own files.
+// Codex as a workspace's agent: what Symbiote asks of it, and what its state is. On the person's
+// app-server daemon (V27a), Symbiote starts and reads its threads there; without one, Symbiote runs
+// `codex exec` through its runner (`codex-run.ts`, V20a), which records the thread. This module
+// never reads Codex's own files.
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import type { AgentEfforts, AgentStateName, WorkspaceAgentState, ThreadEntry } from '@cpr/core';
+import type {
+  AgentEfforts,
+  AgentStateName,
+  WorkspaceAgentState,
+  ThreadEntry,
+} from '@symbiote/core';
 import {
   AppServerUnreachable,
   codexServer,
@@ -14,7 +19,8 @@ import {
 import { localHost, onPath } from './editor.js';
 import { runProgram, type WorkspaceFile, type Run } from './workspaces.js';
 
-/** Starts a program detached from `cpr view` (its own process group), in `cwd`; its process ID. */
+/** Starts a program detached from `symbiote view` (its own process group), in `cwd`; its process
+ * ID. */
 export type DetachedRun = (command: string, args: string[], cwd: string) => Promise<number>;
 
 const detachProgram: DetachedRun = (command, args, cwd) =>
@@ -27,13 +33,13 @@ const detachProgram: DetachedRun = (command, args, cwd) =>
     });
   });
 
-/** What CPR asks of Codex (V20a); tests pass a fake. */
+/** What Symbiote asks of Codex (V20a); tests pass a fake. */
 export interface Codex {
   /** The program, as found. */
   command: string;
   /**
-   * Starts `codex exec` in `cwd` through CPR's runner, which writes `thread`, each entry marked
-   * with `run`; its process ID.
+   * Starts `codex exec` in `cwd` through Symbiote's runner, which writes `thread`, each entry
+   * marked with `run`; its process ID.
    */
   start(request: {
     cwd: string;
@@ -206,7 +212,8 @@ function lastingServer(
   };
 }
 
-/** Whose account Codex runs on, from `codex login status` (it writes to stderr); undefined when unknown. */
+/** Whose account Codex runs on, from `codex login status` (it writes to stderr); undefined when
+ * unknown. */
 export function parseCodexAccount(result: {
   code: number | null;
   stdout: string;
@@ -221,8 +228,8 @@ export function parseCodexAccount(result: {
 }
 
 /**
- * Codex at `command`, run through CPR's runner (`dist/codex-run.js`) with this Node. The account
- * is asked for at most every minute.
+ * Codex at `command`, run through Symbiote's runner (`dist/codex-run.js`) with this Node. The
+ * account is asked for at most every minute.
  */
 export function codex(
   command: string,
@@ -242,7 +249,7 @@ export function codex(
     /** Where `codex login status`, `codex archive` and `codex app-server daemon` run. */
     cwd?: string;
     platform?: NodeJS.Platform;
-    /** CPR's version, as it introduces itself to the app server. */
+    /** Symbiote's version, as it introduces itself to the app server. */
     version?: string;
   } = {},
 ): Codex {
@@ -334,12 +341,12 @@ export function codex(
   };
 }
 
-/** Codex's program: `CPR_CODEX` (a path or a command on PATH), else `codex` on PATH. */
+/** Codex's program: `SYMBIOTE_CODEX` (a path or a command on PATH), else `codex` on PATH. */
 export async function findCodex(
   env: Readonly<Record<string, string | undefined>>,
 ): Promise<string | null> {
   const host = localHost(env);
-  const custom = env.CPR_CODEX?.trim();
+  const custom = env.SYMBIOTE_CODEX?.trim();
   if (custom) {
     if (/[\\/]/.test(custom)) return (await host.isFile(custom)) ? custom : null;
     return onPath(host, custom);
@@ -349,10 +356,11 @@ export async function findCodex(
 
 /**
  * What the page says of a Codex workspace's agent (decision 131): its last run — the thread's
- * entries marked with the record's `run` — and whether its runner still runs. An `end` decides (completed,
- * stopped, or failed with Codex's words); without one it works while the runner lives, else it
- * finished if it reported, and failed if not. `exec` never stops to ask: never "needs you".
- * `ahead` (commits since the fork point) tells a finished plan from finished work, as for Claude Code.
+ * entries marked with the record's `run` — and whether its runner still runs. An `end` decides
+ * (completed, stopped, or failed with Codex's words); without one it works while the runner lives,
+ * else it finished if it reported, and failed if not. `exec` never stops to ask: never "needs you".
+ * `ahead` (commits since the fork point) tells a finished plan from finished work, as for Claude
+ * Code.
  */
 export function codexState(
   workspace: WorkspaceFile,
@@ -387,7 +395,7 @@ const isoOf = (seconds: number) => new Date(seconds * 1000).toISOString();
 
 /**
  * A thread on Codex's app server as V18c's entries (V27a, decision 155): its start (when `first`:
- * its first turn is among those read), each turn's messages (CPR's prompt, then the person's —
+ * its first turn is among those read), each turn's messages (Symbiote's prompt, then the person's —
  * from the panel or Codex's own terminal, steered ones too), each finished turn's final answer, a
  * stop or a failure as an end; and, while it waits for the person, what it last said.
  */
@@ -432,7 +440,7 @@ export function serverLastAction(read: CodexThread): string | undefined {
  * Whether Codex's terminal will ask to trust a worktree (decision 160): Codex's configuration has
  * no entry, trusted or not, for it or a folder above it, under any of its `names` (its path and
  * its real path). Codex asks per folder (a linked worktree's repository does not count); whether
- * a folder above counts is not known, so one never makes CPR say Codex will ask.
+ * a folder above counts is not known, so one never makes Symbiote say Codex will ask.
  */
 export function asksTrust(
   entries: Readonly<Record<string, string>>,

@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 function socketPath(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'cpr-as-'));
+  const dir = mkdtempSync(join(tmpdir(), 'symbiote-as-'));
   dirs.push(dir);
   return join(dir, 's.sock');
 }
@@ -34,14 +34,14 @@ const WORKTREE = '/repo.worktrees/feature-csv';
 const ROOTS = ['/repo/.git/worktrees/feature-csv', '/repo/.git/objects'];
 
 describe('connectAppServer', () => {
-  it('introduces CPR, then asks and answers by ID; an error keeps its code', async () => {
+  it('introduces Symbiote, then asks and answers by ID; an error keeps its code', async () => {
     const path = socketPath();
     const server = await webSocketServer(path, (socket) => {
       socket.onText((text) => {
         const message = JSON.parse(text) as { id?: number; method: string };
         if (message.id === undefined) return;
         if (message.method === 'initialize') {
-          // A server request first, numbered as Codex numbers them: not an answer to CPR's 1.
+          // A server request first, numbered as Codex numbers them: not an answer to Symbiote's 1.
           socket.send(JSON.stringify({ method: 'item/tool/call', id: 1, params: {} }));
           socket.send(JSON.stringify({ id: 1, result: { userAgent: 'x/0.163.0' } }));
         } else if (message.method === 'thread/read') {
@@ -68,13 +68,16 @@ describe('connectAppServer', () => {
       {
         id: 1,
         method: 'initialize',
-        params: { clientInfo: { name: 'cpr', title: 'CPR', version: '1.2.3' }, capabilities: null },
+        params: {
+          clientInfo: { name: 'symbiote', title: 'Symbiote', version: '1.2.3' },
+          capabilities: null,
+        },
       },
       { method: 'initialized' },
       { id: 2, method: 'thread/list', params: { limit: 1 } },
       { id: 3, method: 'thread/read', params: { threadId: 't' } },
     ]);
-    // CPR answers no server request: an approval is the person's (decision 156's terminal).
+    // Symbiote answers no server request: an approval is the person's (decision 156's terminal).
     expect(socket?.received.some((text) => text.includes('"result"'))).toBe(false);
   });
 
@@ -106,7 +109,7 @@ describe('connectAppServer', () => {
 });
 
 describe('codexServer', () => {
-  it("starts a thread in the worktree, its branch's git folders writable, named, with CPR's prompt", async () => {
+  it("starts a thread in the worktree, its branch's git folders writable, named, with Symbiote's prompt", async () => {
     const server = await serve();
     const codex = codexServer(server.address);
     const thread = await codex.start({
