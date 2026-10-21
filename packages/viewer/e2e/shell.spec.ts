@@ -157,6 +157,35 @@ test('keys: h and s go to the pages, w to the workspaces and the arrows between 
   expect((await sidenav(page).boundingBox())?.width ?? 0).toBeGreaterThan(200);
 });
 
+test('a card keeps the focus when its workspace moves to another group', async ({ page }) => {
+  const cpr = await serve();
+  await page.goto(`${cpr.url}history`);
+  await start(page, 'Add a half function');
+  await start(page, 'Add clamp');
+  await page.locator('body').click({ position: { x: 1, y: 1 } });
+  await page.keyboard.press('h');
+  await expect(page).toHaveURL(`${cpr.url}history`);
+
+  // The second card, by the arrows; then its agent reports, and it needs you.
+  await page.keyboard.press('w');
+  const buttons = sidenav(page).locator('.workspace-row .workspace-about');
+  await expect(buttons.first()).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(buttons.nth(1)).toBeFocused();
+  const branch = await page.evaluate(
+    () => document.activeElement?.closest<HTMLElement>('.workspace-row')?.dataset.branch,
+  );
+  expect(branch).toMatch(/^feature\//);
+  cpr.report(branch as string, 'The plan');
+  await expect(group(page, 'Needs you').locator(`[data-branch="${branch}"]`)).toBeVisible(POLL);
+
+  // Drawn anew in its new group, it still has the focus: the arrows go on from it.
+  await expect(card(page, branch as string).locator('.workspace-about')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(card(page, branch as string).locator('.workspace-about')).not.toBeFocused();
+  await expect(buttons.nth(1)).toBeFocused();
+});
+
 test('the terminal fills the main area, down to the status bar', async ({ page }) => {
   const cpr = await serve();
   await page.goto(`${cpr.url}history`);

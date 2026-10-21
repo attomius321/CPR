@@ -1,4 +1,11 @@
-import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+} from 'react';
 import type { MergeEntry } from '@cpr/core';
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
@@ -44,6 +51,30 @@ export function Sidenav({
   const queued = merges?.merges ?? [];
   const needs = groups.needsYou.length;
   const empty = list !== null && list.workspaces.length === 0 && queued.length === 0;
+
+  // A card whose workspace moves to another group (its agent moved on) is drawn anew there, and
+  // the focus would fall to the page: it follows the card. Only the card the focus was on, and
+  // only when nothing else took the focus (a blur, the person's own move, forgets it).
+  const cardList = useRef<HTMLDivElement>(null);
+  const focused = useRef<HTMLElement | null>(null);
+  const onFocus = (event: FocusEvent<HTMLDivElement>) => {
+    focused.current = event.target.matches(CARD) ? event.target : null;
+  };
+  const onBlur = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.target === focused.current) focused.current = null;
+  };
+  useLayoutEffect(() => {
+    const card = focused.current;
+    if (!card || card.isConnected || document.activeElement !== document.body) return;
+    const branch = card.closest<HTMLElement>('[data-branch]')?.dataset.branch;
+    const again = branch
+      ? cardList.current?.querySelector<HTMLElement>(
+          `.workspace-row[data-branch="${CSS.escape(branch)}"] ${CARD}`,
+        )
+      : null;
+    focused.current = again ?? null;
+    again?.focus();
+  });
 
   /** The arrows move between the cards; Enter opens one (it is a button). */
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -127,7 +158,13 @@ export function Sidenav({
             </p>
           </div>
         )}
-        <div className="sidenav-list" onKeyDown={onKeyDown}>
+        <div
+          className="sidenav-list"
+          ref={cardList}
+          onKeyDown={onKeyDown}
+          onFocus={onFocus}
+          onBlur={onBlur}
+        >
           {queued.length > 0 && (
             <section className="workspace-group merging" aria-label="Merging">
               <h3>
