@@ -444,6 +444,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V29 ✅ | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only: 59 % and 53 % live when its copy on disk said 20 % and 22 %). Confirmed: Claude's live source, History, Geist and Geist Mono. Steps: V29a the shell, V29b the look, V29c usage, V29d the branch's changes (all built). See below. |
 | N1 ✅ | A native window | CPR is a page served by a command: a browser tab, no window of its own, nothing to open without a terminal. Asked: "feel more like a native application … Check tauri", on native Linux too. Measured: Tauri draws with WebKitGTK on Linux, where CPR's `j` takes 77–145 ms (first 360–415 ms) against Chromium's 33 ms on a 445-symbol diff; CPR is Node and tuned on Chromium. Planned with Electron (confirmed). Merged (2026-10-21): a window on `cpr view`'s server, opened by `cpr view` or the desktop's launcher (`cpr app install`), closing it stops the server; CPR's own title bar after Orca's. From the launcher to History's first paint 383–493 ms; `j` as in Chromium (32–33 ms). See below. |
 | V30 ✅ | Start a workspace on a page, with the agent's effort | Starting a workspace is the one thing still drawn over the shell: V18's dialog, 640×626 px at every window size, scrolling with More open at 1280×720 and 1440×900 (883 px of content); no effort is passed (here Claude Code runs at the person's `xhigh`, Codex at `medium`). Measured with the real agents: Claude Code's `--effort` and the effort on Codex's first `turn/start` hold for the session (after CPR's stop-and-resume reply, across app-server connections); `codex exec resume` drops it. Merged into main (2026-10-21): V30a, `/start` in the main area, the brief and the run in two columns, More open fitting at 1440×900; V30b, an Effort choice from the installed agent's own levels (Claude Code's `--help`, Codex's `model/list`), recorded with the workspace; a real Claude Code at `low` stayed at `low` through CPR's reply. See below. |
+| V31 | Orca's look, beyond its colours | V29b took the reference's tokens and font; the rest is older than its colours: one black for every surface (1.04:1 between page and sidenav, Orca 1.10:1), blue as the accent on 35 rules, 6 native checkboxes, 8 coloured side bars, bordered mono chips, a solid green HEAD. Planned after Orca (`stablyai/orca`) through the `orca-theme` skill: V31a the tokens and the shell, V31b the diff page, V31c History, Settings, a workspace, menus and dialogs. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -8492,6 +8493,128 @@ Not verified: a real Codex workspace through CPR (it would leave a trust entry f
 folder in the person's Codex configuration; the V30 spike showed the app server keeping a first
 turn's level, and the e2e that CPR sends it); Codex `exec` with a level (unit tests only); the
 level after `/effort` in a session's terminal (CPR does not read it back, decision 211).
+
+### V31 — Orca's look, beyond its colours
+
+**Status:** planned (2026-10-21), on branch `milestone/v31-orca-look`; V31a and V31b confirmed by
+the person ("Yes"), V31c to be shown first.
+
+**Problem** (asked: "The interface still not feel well...feel oldish with a new look. Please look
+at Orca"). V29b took the reference's tokens and Geist; the rest of the look is older than its
+colours. Measured on `main` (`e659928`) at 1440×900, against Orca (`stablyai/orca` at `5dd5294`:
+`docs/STYLEGUIDE.md`, `main.css`, its shadcn primitives):
+
+| What | CPR today | Orca |
+|---|---|---|
+| Surfaces | Page `#0b0b0c`, sidenav `#111113`, panels `#161618`: 1.04 and 1.09:1 from the page; toolbars on the page's colour | Canvas `#0a0a0a`, sidebar, title bar and cards `#171717` (1.10:1): chrome lifted, content darkest |
+| Accent | Blue (`--moved`) on 49 lines: 2 the moved kind, 12 states (working, "since", the current lane), 35 accent: links, selection, picks, cursors, pressed toggles, Settings' changed marks | None: selection a 10 % wash of the text and a brighter border; focus ring grey; colour for state only |
+| Checkboxes | Native, `accent-color` blue: 6 (the diff's Focus, Context, Type references, Only since; the change list; the start page) | Drawn: 16 px, 4 px radius, filled in the primary colour when checked |
+| Side bars | A 3 px coloured left border on 8 rules (findings, notices, drafts, merges, the commit cursor's inset) | None: a dot, an icon or a tinted badge |
+| Chips and badges | 4 px boxes with a border; History's branch refs blue mono; HEAD solid green; findings' severities 16 % tint, weight 600 | Chips `secondary` without a border; badges round, 10 % tint, 25 % border, weight 500 |
+| Radii | 4 px ×29, 6 px ×28, 8 px ×6, 2/3/12/999 px | 8 px controls and rows, 10 px dialogs and popovers, 11 px menus, 14 px cards, round badges |
+| Mono | 29 rules, branch names in the sidenav and History | Literal text only |
+| Glyphs as controls | `←` `▸` `▾` `⋯` `?` and letters beside nav entries | lucide icons; keycaps on hover or in tooltips |
+
+What causes it:
+- V29b changed tokens and density, by design "the look only"; controls, states and selection kept
+  V6–V28's patterns, which came from GitHub's.
+- `--moved` doubled as the accent from V6 on: every new selected or pressed state reached for it.
+- The light theme kept V6's warm `#f7f7f5`; Orca's is white with grey chrome.
+
+**Goal**: CPR looks like Orca, rule by rule (the `orca-theme` skill): lifted neutral chrome around
+the darkest content, colour for state only, drawn controls, soft geometry. What must not change:
+behaviour, roles and names (every e2e selector but the look spec's colours), layouts (node sizes,
+`layoutFlow`'s output), the fonts and their cost, contrast floors, the map's timings.
+
+#### Tokens
+
+- The skill's `tokens.md`: dark `--bg #0a0a0a`, `--side`/`--panel #171717`, `--raised #262626`,
+  `--line #2a2a2a`, `--text #fafafa`, `--muted #a1a1a1`; light white with `#fafafa` chrome;
+  Orca's git decorations for the diff kinds, its status colours for severities. Every tested token
+  passes `tokens.test.ts`'s floors (`palette-check.mjs`); 11 values differ from Orca's where
+  Orca's would not.
+- New tokens, translucent where they need to be: `--hover`, `--selected`, `--selected-line`,
+  `--primary`, `--primary-text`, `--input-bg`, `--shadow-lift`, `--shadow-floating`, menus',
+  dialogs' and the overlay's.
+- `--moved` is a state: kept for the moved kind and the states named above; every accent use moves
+  to the neutral tokens. A unit test lists the rules allowed to use it.
+
+#### V31a — the tokens and the shell
+
+- Sidenav: pages as 32 px rows (13 px, 500; idle `--muted`, icon `--faint`; current `--selected`),
+  group headers with round counts, cards with a 10 px radius, hover and current per the skill;
+  branch names in sans.
+- Page heads (History's, a workspace's, Settings', the start page's) and the diff's bar on `--side`;
+  their height stays 44 px (decision 213).
+- Status bar segments; usage bars neutral until the warning threshold (green said "fine" in a
+  state colour).
+- Base controls everywhere: `.button` primary in `--primary`, secondary, ghost; 8 px radius; text
+  fields with `--input-bg`; checkboxes drawn (`appearance: none`, the `<input>` kept: roles, labels
+  and selectors unchanged); segmented controls (History's scope, Appearance, the kind) as Orca's;
+  the "?" a ghost icon button; thin neutral scrollbars; letter-spacing 0.01em and antialiasing on
+  the chrome, 0 on the graph (node widths are estimated from characters).
+
+#### V31b — the diff page
+
+- Bar: diff counts as coloured numbers, "23 files" a chip, findings a round badge; "← History" a
+  ghost link with an icon.
+- Sidebar: tabs as Orca's line tabs in the text colour; findings without side bars (a round
+  severity badge leads); rows' selection and the j/k cursor neutral; the key strip's keycaps.
+- Canvas: project frames and file boxes on the skill's radii; a selected symbol's ring in the text
+  colour (box-shadow, no size change); summary nodes' hover neutral; zoom controls and minimap as
+  one floating card; no shadows, blur or transitions on nodes.
+- Detail panel: diff lines on Orca's grounds (16/30 % added, 18/32 % removed), findings as the
+  sidebar's, buttons and keycaps as the shell's.
+- The legend stays where it is (decision 216).
+
+#### Verification
+
+1. **Tests first** (red on `main`): `tokens.test.ts` with Orca's values; a guard that `--moved` is
+   used only by the listed state rules (35 accent uses fail today), none of the 8 coloured side
+   bars, no `accent-color`; `look.spec.ts`'s page colours (`rgb(10, 10, 10)`, white) and the
+   sidenav lifted above the main area.
+2. **Nothing else changes**: `pnpm check` (layout tests untouched), e2e 167 of 167 with no
+   selector changed outside `look.spec.ts`.
+3. **Real graphs**: Bitwarden `737ee3f` (`measure.mjs`), first paint, select, mark reviewed and
+   pan fps against `main`'s build, three runs each; labels cut short as j walks 40 changes.
+4. **Screenshots**: the shell with three workspaces, History, Settings, Start, and the V30b diff
+   (map, a selection, findings), dark and light at 1440×900, before and after, to the person.
+5. **Cost**: first paint and pan within ±10 % of `main`; `/history` first rows unchanged.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| A restyle of 5,165 lines hides a behaviour change | CSS and class names only; e2e unchanged but for the look spec's colours; V31a and V31b on their own commits |
+| Neutral selection is harder to see than blue | `--selected` 10 % wash plus `--selected-line`; the j/k cursor an inset ring; screenshots in both themes; the person judges |
+| New diff-kind colours confuse a reviewer used to GitHub's | Same hues (green, red, amber, blue), Orca's tones; the legend shows them |
+| Letter-spacing widens labels | 0 on the graph; labels cut counted as V29b did |
+| Drawn checkboxes lose a native affordance | The `<input>` stays: keyboard, label clicks, screen readers as before |
+
+**Order**: tokens and their tests, then V31a (shell and controls, which every page uses), then
+V31b; screenshots after each.
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V31a | The tokens and the shell | Orca's tokens in both themes, `--moved` a state only; sidenav, page heads, status bar; buttons, fields, checkboxes, segmented controls, scrollbars |
+| V31b | The diff page | Bar, sidebar, findings, canvas chrome, detail panel |
+| V31c | History, Settings, a workspace, menus and dialogs | History's refs and HEAD, row menus as Orca's glass menus, confirmations as its dialogs, the thread and changes column; after the person has seen V31a–b |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 212 | Native checkboxes: toggle buttons or drawn? | **Drawn** (`appearance: none` on the `<input>`) | Orca's checkbox; roles, labels and the 6 controls' selectors stay; toggle buttons would change roles in 4 specs |
+| 213 | Page heads 36 px as Orca's title bar, or V29b's 44? | **44 px** | Orca's 36 px strip is its title bar, which CPR's window already has (N1c); heads align with the branches panel's |
+| 214 | What `--moved` may colour | **The moved kind and states** (working, "since", the current lane) | Orca keeps colour for state; 35 of 49 uses were accent |
+| 215 | Light theme's page | **White, chrome `#fafafa`** (Orca's) | V6's warm `#f7f7f5` is the one light value not from the reference |
+| 216 | The legend and key strip into a "?" | **Not in V31** | Moves information; the look only |
+| 217 | Diff kinds' colours | **Orca's git decorations** (VS Code's) | Its tones on its surfaces; same hues as today |
+
+**Not in V31 (later)**: Tailwind or shadcn (a new dependency for a look plain CSS gives); a
+tooltip component (titles stay); Orca's command palette; moving the legend (216).
 
 ### Phase 1 milestones
 

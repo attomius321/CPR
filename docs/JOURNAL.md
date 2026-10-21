@@ -4216,3 +4216,31 @@ PLAN.md's V30b results.
 
 Merged into main (2026-10-21) with V30a, no conflicts (`main` had not moved). `main` verified
 after the merge: frozen install, 1,070 unit tests, format, lint, typecheck, build, 167 of 167 e2e.
+
+## V31 spike — what Orca's look is, beyond its colours (2026-10-21, branch `milestone/v31-orca-look`)
+
+Asked: "The interface still not feel well...feel oldish with a new look. Please look at Orca."
+Read Orca (`stablyai/orca` at `5dd5294`, MIT): its style guide, `main.css` and the shadcn
+new-york-v4 primitives it builds on, and its README's screenshot; recorded as the `orca-theme`
+skill (merged into main 2026-10-21).
+
+**Learned**:
+- **V29b took Orca's colours, not its rules.** Orca is "monochrome and quiet": neutral chrome
+  lifted above the darkest content (`#171717` over `#0a0a0a`, 1.10:1; CPR's sidenav over its page
+  1.04:1), colour for state only, selection a 10 % wash of the text. CPR's blue (`--moved`) is on
+  49 lines: 2 the moved kind, 12 states, 35 an accent (links, picks, cursors, pressed toggles).
+- **The dated parts are controls and states**: 6 native checkboxes, 8 coloured side bars,
+  bordered mono chips, a solid HEAD badge, radii of 2–12 px in seven sizes where Orca has four
+  steps.
+- **Orca's values do not all pass CPR's contrast floors**: its region lines (7 % white) are 1.15:1
+  on the canvas (CPR's floor 1.2), its input edge (15 % white) about 1.5:1 (CPR's 3:1), its light
+  muted text 4.16:1 on a chip (CPR's 4.5). The skill's tokens move 11 values to the nearest
+  neutral that passes, checked by `palette-check.mjs` with `tokens.test.ts`'s rules.
+- **Font and layout constraints carry over**: Orca uses Geist too, but a system mono stack CPR
+  must not name (V29a); node widths are estimated from characters, so Orca's 0.01em
+  letter-spacing stays off the graph.
+
+**Measured** on `main` (`e659928`), Bitwarden `737ee3f` with the Angular plugin, three runs: first
+paint 267–322 ms, select 73–90 ms, mark reviewed 33–34 ms, pan 63 fps. Screenshots of the shell
+with three workspaces, History, Settings, Start and the V30b diff, dark and light, kept for the
+comparison.
