@@ -108,11 +108,11 @@ test("the fonts are CPR's: every request goes to its server, and History fetches
 test('a card in the sidenav is at most 64 px high', async ({ page }) => {
   cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Start a workspace' });
-  await dialog.getByRole('textbox', { name: 'Title' }).fill('Add a half function, with a test');
-  await dialog.getByRole('textbox', { name: 'Goal' }).fill('Half of a number.');
-  await dialog.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
+  const form = page.getByRole('region', { name: 'Start a workspace' });
+  await form.getByRole('textbox', { name: 'Title' }).fill('Add a half function, with a test');
+  await form.getByRole('textbox', { name: 'Goal' }).fill('Half of a number.');
+  await form.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
   const card = page.locator('.sidenav .workspace-row').first();
   await expect(card).toContainText('feature/add-a-half-function', POLL);
   expect((await card.boundingBox())?.height ?? 0).toBeLessThanOrEqual(64);
@@ -125,11 +125,11 @@ test("the Terminal tab joins the terminal's black and stays readable in light", 
   await page.goto(`${cpr.url}history`);
   await page.evaluate(() => localStorage.setItem('cpr.viewer.theme', 'light'));
   await page.reload();
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Start a workspace' });
-  await dialog.getByRole('textbox', { name: 'Title' }).fill('Add a half function');
-  await dialog.getByRole('textbox', { name: 'Goal' }).fill('Half of a number.');
-  await dialog.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
+  const form = page.getByRole('region', { name: 'Start a workspace' });
+  await form.getByRole('textbox', { name: 'Title' }).fill('Add a half function');
+  await form.getByRole('textbox', { name: 'Goal' }).fill('Half of a number.');
+  await form.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
   const tab = page.getByRole('tab', { name: 'Terminal' });
   await expect(tab).toHaveAttribute('aria-selected', 'true', POLL);
   await expect(page.locator('.xterm-screen')).toBeVisible(POLL);

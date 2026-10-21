@@ -342,8 +342,8 @@ test.describe('the title bar', () => {
     try {
       const { page } = await launch(served.url);
       // A workspace started opens in the main area.
-      await page.getByRole('button', { name: 'Start a workspace' }).click();
-      const starting = page.getByRole('dialog', { name: 'Start a workspace' });
+      await page.getByRole('link', { name: 'Start a workspace' }).click();
+      const starting = page.getByRole('region', { name: 'Start a workspace' });
       await starting.getByRole('textbox', { name: 'Title' }).fill('Add clamp');
       await starting.getByRole('textbox', { name: 'Goal' }).fill('Add clamp');
       await starting.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
 
-// Codex as a workspace's agent (V20a): picked in the start dialog, run by CPR's runner (the
+// Codex as a workspace's agent (V20a): picked in Start a workspace, run by CPR's runner (the
 // real one) on a fake Codex, its thread recorded from its events, replies by `exec resume`.
 let cpr: RunningWorkspaces;
 const errors: string[] = [];
@@ -21,24 +21,24 @@ test.afterEach(() => {
 
 const POLL = { timeout: 12_000 };
 const BRANCH = 'feature/add-a-half-function';
-const dialog = (page: Page) => page.getByRole('dialog', { name: 'Start a workspace' });
+const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
 const panel = (page: Page, branch = BRANCH) =>
   page.getByRole('region', { name: `Workspace ${branch}` });
 const workspaceRow = (page: Page, branch = BRANCH) =>
   page.locator(`.workspace-row[data-branch="${branch}"]`);
 const box = (page: Page) => panel(page).getByRole('textbox', { name: 'Reply to the agent' });
-/** Opens the start dialog and fills a Feature's title and goal. */
-const openDialog = async (page: Page) => {
-  await page.getByRole('button', { name: 'Start a workspace' }).click();
-  await dialog(page).getByRole('textbox', { name: 'Title' }).fill('Add a half function');
-  await dialog(page).getByRole('textbox', { name: 'Goal' }).fill('Return a / 2, and test it.');
+/** Opens Start a workspace and fills a Feature's title and goal. */
+const openStart = async (page: Page) => {
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
+  await startPage(page).getByRole('textbox', { name: 'Title' }).fill('Add a half function');
+  await startPage(page).getByRole('textbox', { name: 'Goal' }).fill('Return a / 2, and test it.');
 };
 /** Starts a workspace with Codex picked, from the page open. */
 const startWithCodex = async (page: Page) => {
-  await openDialog(page);
-  await dialog(page).getByLabel('agent').selectOption({ label: 'Codex' });
-  await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
-  await expect(dialog(page)).toBeHidden();
+  await openStart(page);
+  await startPage(page).getByLabel('agent').selectOption({ label: 'Codex' });
+  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(startPage(page)).toBeHidden();
 };
 /** What a commit on the branch writes, as CPR names it to Codex's sandbox. */
 const roots = () => {
@@ -51,23 +51,22 @@ const roots = () => {
   ])}`;
 };
 
-test('a workspace with Codex: picked in the dialog, its plan in the thread, a reply that resumes it', async ({
+test('a workspace with Codex: picked when it starts, its plan in the thread, a reply that resumes it', async ({
   page,
 }) => {
   cpr = await serveWorkspaces({ codex: true });
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto(`${cpr.url}history`);
-  await openDialog(page);
+  await openStart(page);
   // Both installed: Claude Code first (no `agent.kind`), with its permission mode.
-  const agent = dialog(page).getByLabel('agent');
+  const agent = startPage(page).getByLabel('agent');
   await expect(agent).toHaveValue('claude');
-  await expect(dialog(page).getByLabel('permission')).toBeVisible();
+  await expect(startPage(page).getByLabel('permission')).toBeVisible();
   await agent.selectOption({ label: 'Codex' });
-  await expect(dialog(page)).toContainText(
-    'Codex · your ChatGPT account · sandbox: its worktree and branch',
-  );
-  await expect(dialog(page).getByLabel('permission')).toHaveCount(0);
-  await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(startPage(page)).toContainText('your ChatGPT account');
+  await expect(startPage(page)).toContainText('Sandbox: its worktree and branch');
+  await expect(startPage(page).getByLabel('permission')).toHaveCount(0);
+  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
   const folder = cpr.folder(BRANCH);
   await expect(page.getByRole('status')).toHaveText(
     `Started ${BRANCH}: Codex is working in ${folder}.`,
@@ -176,15 +175,16 @@ test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean
   ).toContain(BRANCH);
 });
 
-test('the dialog offers the agents installed: Codex alone, or Claude Code alone, with no picker', async ({
+test('Start a workspace offers the agents installed: Codex alone, or Claude Code alone, with no picker', async ({
   page,
 }) => {
   cpr = await serveWorkspaces({ agent: false, codex: true });
   await page.goto(`${cpr.url}history`);
-  await openDialog(page);
-  await expect(dialog(page)).toContainText('Codex · your ChatGPT account');
-  await expect(dialog(page).getByLabel('agent')).toHaveCount(0);
-  await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await openStart(page);
+  await expect(startPage(page).locator('.start-value')).toHaveText('Codex');
+  await expect(startPage(page)).toContainText('your ChatGPT account');
+  await expect(startPage(page).getByLabel('agent')).toHaveCount(0);
+  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Codex is working');
   // The page leaves first: the workspace it opened may still be loading a chunk of the viewer
   // (Markdown's), which a server stopped under it fails as a page error (1 run in 36).
@@ -193,7 +193,8 @@ test('the dialog offers the agents installed: Codex alone, or Claude Code alone,
 
   cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
-  await openDialog(page);
-  await expect(dialog(page)).toContainText('Claude Code · your Pro subscription');
-  await expect(dialog(page).getByLabel('agent')).toHaveCount(0);
+  await openStart(page);
+  await expect(startPage(page).locator('.start-value')).toHaveText('Claude Code');
+  await expect(startPage(page)).toContainText('your Pro subscription');
+  await expect(startPage(page).getByLabel('agent')).toHaveCount(0);
 });

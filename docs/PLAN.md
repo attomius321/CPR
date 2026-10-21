@@ -8195,10 +8195,11 @@ throughout).
 
 ### V30 — Start a workspace on a page, with the agent's effort
 
-**Status:** planned (2026-10-21), on branch `milestone/v30-start-page`; not started. Decisions
-207 and 211 and what is left out confirmed by the person (2026-10-21); 210 left to CPR ("Idk"),
-kept as proposed; 205, 206, 208 and 209 proposed. The Brief tab, where 211's line goes, drew the
-brief's Markdown as source: fixed on its own branch first (`fix/brief-markdown`).
+**Status:** V30a built (2026-10-21) on branch `milestone/v30-start-page`: its "As built" and
+results below; V30b not started. Decisions 207 and 211 and what is left out confirmed by the
+person (2026-10-21); 210 left to CPR ("Idk"), kept as proposed; 205, 206, 208 and 209 proposed.
+The Brief tab, where 211's line goes, drew the brief's Markdown as source: fixed on its own
+branch first (`fix/brief-markdown`, merged into main 2026-10-21).
 
 **Problem** (asked: "the create a workspace should not be in dialog. it should be itself a page,
 rendered fully on the right of sidenav, and with an option for initial effort, for that
@@ -8411,6 +8412,48 @@ What causes it:
 **Not in V30 (later)**, confirmed: a project default for the level (`agent.effort` in `cpr/config.json`); a
 model per workspace; changing the level of a running session from CPR; the session's current
 level read back; the merger agent's level (V26c, `merge.model`).
+
+#### As built (V30a)
+
+- **The sidenav's ⊕ is a link to `/start`**, not a button: it opens a page, `aria-current` marks it
+  there, and on a diff (its own document) the link loads the page with no code of the diff's.
+  The ≈ 52 tests' helpers click a link now.
+- **`n` on a diff** loads `/start` too: it did nothing there before.
+- **Leaving** asks the Navigation API for the entry before `/start`: `history.back()` when it is
+  CPR's (same origin: History, Settings, a workspace, or a diff), else History in `/start`'s place
+  (a tab opened at `/start`). Browsers without the API (Firefox, Safari) always get History.
+- **The draft is read after the page's last save**: leaving and coming back at once posted the
+  draft and read it in the same moment; the page now waits on its own last save (a promise kept
+  by the module) before it reads.
+- **The head** is a grid: title, where it starts, the buttons; under 600 px of page the "From …"
+  line goes under the other two (squeezed between them at 390 px in the first build).
+- **The run's order**: Branch and its folder, Agent and its account, Permission (or Codex's
+  sandbox), Plan first. Tab now reaches the permission before Plan first (the dialog's agent line
+  came after it): the keyboard test says so.
+- **Words**: "the start dialog" in the `{brief}` placeholder's description in Settings is "the
+  start page"; the agent's account has its own line ("Claude Code · your Pro subscription" was
+  one line).
+- `StartWorkspaceDialog.tsx`, `WorkspaceStarter.tsx`, the dialog's styles and the shell's
+  `starting` (History waited on the dialog for its keys) are gone; the form's logic (`brief.ts`)
+  is unchanged.
+
+**Results (V30a).** Unit: 1,055 (route and title tests for `/start` and `?at=`, the server serving
+`/start` only with workspaces: red first). e2e: 6 new in `start.spec.ts` (red on V30 plan's build:
+no link, no `/start`), 52 moved from the dialog to the page in 8 specs (4 needed more than the
+locator: text now on two lines, and the tab order), 165 of 165. The page, measured as the dialog
+was (Chromium, `serveWorkspaces` with both agents):
+
+| Window | The page | Required part | More open |
+|---|---|---|---|
+| 1280×720 | 1040×696, two columns (660 + 300 px) | 660×146 px (dialog 598×108) | the body scrolls under the head (771 of 652 px); Start stays in view |
+| 1440×900 | 1200×876, two columns (760 + 300) | 760×146 | fits (832 of 832) |
+| 1920×1080 | 1680×1056, two columns (760 + 300) | 760×146 | fits |
+| 390×844 | 390×783, one column | 358×146 | the body scrolls (1,034 of 720 px) under the head |
+
+From `n` on History to the Title focused and painted, 10 times each, two rounds: the dialog
+(`main`) 36–51 ms, median 41; the page 35–51 ms, median 37. Screenshots at 1280, 1440 and 390 px,
+dark and light. Not verified: Firefox and Safari (no Navigation API: Cancel goes to History),
+the Electron window (its title bar names the page; the e2e for it moved to the link and passed).
 
 ### Phase 1 milestones
 

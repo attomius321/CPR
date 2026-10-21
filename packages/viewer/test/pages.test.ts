@@ -4,6 +4,7 @@ import {
   backLink,
   diffTitle,
   hrefOf,
+  inShell,
   pageTitle,
   revisionsLabel,
   routeOf,
@@ -27,6 +28,14 @@ describe('routeOf (V29a: no Workspaces page)', () => {
     expect(routeOf('/', '?branch=feature%2Fx&send=verdict')).toEqual({
       route: { page: 'workspace', branch: 'feature/x' },
     });
+  });
+
+  it('opens Start a workspace at /start, at a commit with ?at= (V30a)', () => {
+    const sha = 'a'.repeat(40);
+    expect(routeOf('/start', '')).toEqual({ route: { page: 'start' } });
+    expect(routeOf('/start', `?at=${sha}`)).toEqual({ route: { page: 'start', at: sha } });
+    expect(routeOf('/start', '?at=')).toEqual({ route: { page: 'start' } });
+    expect(inShell(new URL('http://cpr/start?at=x'))).toBe(true);
   });
 
   it('opens a merge at /?merge=', () => {
@@ -55,7 +64,10 @@ describe('hrefOf', () => {
     expect(hrefOf({ page: 'settings' })).toBe('/settings');
     expect(hrefOf({ page: 'workspace', branch: 'feature/x' })).toBe('/?branch=feature%2Fx');
     expect(hrefOf({ page: 'merge', branch: 'fix/y' })).toBe('/?merge=fix%2Fy');
+    expect(hrefOf({ page: 'start' })).toBe('/start');
+    expect(hrefOf({ page: 'start', at: 'b'.repeat(40) })).toBe(`/start?at=${'b'.repeat(40)}`);
     for (const route of [
+      { page: 'start', at: 'c'.repeat(40) },
       { page: 'workspace', branch: 'a b/c' },
       { page: 'merge', branch: 'chore/z' },
     ] as const) {
@@ -104,6 +116,7 @@ describe('pageTitle and routeTitle (N1a: the window names its page)', () => {
       'feature/add-clamp · ky — CPR',
     );
     expect(routeTitle({ page: 'merge', branch: 'fix/x' }, undefined)).toBe('Merge fix/x — CPR');
+    expect(routeTitle({ page: 'start' }, 'ky')).toBe('Start a workspace · ky — CPR');
   });
 
   it('leaves out what is not known', () => {

@@ -80,7 +80,7 @@ export interface BriefParts {
 }
 export type BriefPart = keyof BriefParts;
 
-/** A kind of work as the start dialog offers it (V24). */
+/** A kind of work as the start page offers it (V24). */
 export interface WorkKindSpec {
   kind: WorkKind;
   /** Its name, as the brief's first line says it: "Fix". */
@@ -203,7 +203,7 @@ export interface WorkspaceTerminalOpened {
   trusted?: false;
 }
 
-/** What the start dialog needs. */
+/** What the start page needs. */
 export interface WorkspaceOptions {
   /** The default branch's tip, where a workspace starts unless a row is picked. */
   base: { from: string; sha: string } | null;
@@ -219,7 +219,7 @@ export interface WorkspaceOptions {
   maxBrief: number;
 }
 
-/** An agent the start dialog offers (V20a). */
+/** An agent the start page offers (V20a). */
 export interface AgentOption {
   kind: AgentKind;
   /** The program run, as found. */

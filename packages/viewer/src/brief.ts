@@ -1,12 +1,12 @@
-// The start dialog's brief (V24c): a kind of work, its title and parts, kept across kinds. Pure
+// The start page's brief (V24c): a kind of work, its title and parts, kept across kinds. Pure
 // helpers; the kinds and their parts come from `cpr view` (`FeatureOptions.kinds`).
 import type { BriefPart, BriefParts, CheckGuess, WorkKind, WorkKindSpec } from '@cpr/core';
 
-/** The parts the dialog puts under "More": every kind's optional ones but Done when. */
+/** The parts the start page puts under "More": every kind's optional ones but Done when. */
 export type MorePart = 'reproduce' | 'known' | 'where' | 'outOfScope' | 'notes';
 const MORE: readonly MorePart[] = ['reproduce', 'known', 'where', 'outOfScope', 'notes'];
 
-/** What the dialog holds; the draft `cpr view` keeps while it is not started. */
+/** What the start page holds; the draft `cpr view` keeps while it is not started. */
 export interface BriefForm {
   kind: WorkKind;
   title: string;
@@ -34,7 +34,7 @@ export const HINTS: Record<BriefPart, string> = {
   doneWhen: 'How will you know it works? A check the agent can run.',
 };
 
-/** What each kind is for, in a line: the start dialog's info beside the kinds. */
+/** What each kind is for, in a line: the start page's info beside the kinds. */
 export const KIND_ABOUT: Record<WorkKind, string> = {
   feature: 'Something new the code should do.',
   fix: 'Something that goes wrong. The agent reproduces it with a failing test first.',

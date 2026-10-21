@@ -144,7 +144,6 @@ select {
 .branches-filter,
 .workspace-field textarea,
 .workspace-field input,
-.workspace-agent select,
 .reply textarea,
 .settings-editor textarea {
   border: 1px solid var(--edge);
@@ -2276,16 +2275,131 @@ kbd {
   font-size: 13px;
 }
 
-/* The start dialog (V18): a brief to write, so wider than a confirmation; with More open or on
-   a phone it scrolls inside the window (V24c). */
-.workspace-dialog {
-  width: min(640px, 100%);
-  max-height: calc(100dvh - 32px);
-  box-sizing: border-box;
-  overflow: auto;
+/* Start a workspace, a page of the shell's (V30a): a head strip, as a workspace's, then the brief
+   and the run side by side where the main area has the room, the run under the brief where not.
+   The body scrolls under the head, which keeps Start in view. */
+.start-page {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  container: start / inline-size;
 }
 
-/* The kinds and their info button; the info spans the dialog below them (V24c). */
+.start-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'title from actions';
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 7px 12px 7px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.start-top h1 {
+  grid-area: title;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.start-from {
+  grid-area: from;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.start-from .ref {
+  display: inline;
+}
+
+.start-actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+}
+
+/* Narrow, where it starts goes under the title and the buttons. */
+@container start (max-width: 599px) {
+  .start-top {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'title actions' 'from from';
+  }
+}
+
+.start-error {
+  margin: 12px 24px 0;
+  white-space: pre-wrap;
+}
+
+.start-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 24px 24px;
+}
+
+.start-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 760px);
+  column-gap: 32px;
+}
+
+/* One column: the run after the brief, a little apart. */
+.start-run {
+  margin-top: 8px;
+}
+
+@container start (min-width: 1000px) {
+  .start-columns {
+    grid-template-columns: minmax(0, 760px) 300px;
+  }
+
+  /* Side by side, both columns start at the same height: the kinds, and the branch. */
+  .start-run,
+  .start-run > :first-child {
+    margin-top: 0;
+  }
+}
+
+/* The run's choices, each a field as the brief's are. */
+.start-run select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-weight: normal;
+}
+
+.start-run .dialog-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.start-value {
+  font-weight: normal;
+}
+
+@media (max-width: 480px) {
+  .start-body {
+    padding: 12px 16px 16px;
+  }
+}
+
+/* The kinds and their info button; the info spans the brief's column below them (V24c). */
 .kind-row {
   position: relative;
   display: flex;
@@ -2416,11 +2530,6 @@ kbd {
   text-align: left;
 }
 
-/* Clear stands apart from Cancel and Start, at the left. */
-.dialog-buttons .workspace-clear {
-  margin-right: auto;
-}
-
 /* A workspace's kind before its name in the list and its panel (V24c). */
 .kind-tag {
   display: inline-block;
@@ -2463,25 +2572,11 @@ kbd {
   border-color: var(--error);
 }
 
-.workspace-from {
-  margin: 4px 0 0;
-  overflow-wrap: anywhere;
-}
-
-.workspace-from .ref {
-  display: inline;
-}
-
 .workspace-check {
   display: flex;
   align-items: center;
   gap: 6px;
   margin: 12px 0 0;
-}
-
-.workspace-agent select {
-  height: 24px;
-  padding: 0 4px;
 }
 
 .commit-sha {
@@ -3892,7 +3987,8 @@ p.settings-placeholders {
 }
 
 .icon-button:hover,
-.icon-button[aria-expanded='true'] {
+.icon-button[aria-expanded='true'],
+.icon-button[aria-current='page'] {
   background: var(--raised);
   color: var(--text);
 }

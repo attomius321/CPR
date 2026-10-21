@@ -11,7 +11,7 @@ import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
 import { CprIcon, HistoryIcon, MenuIcon, PlusIcon, SettingsIcon, SidenavIcon } from './icons.js';
 import { mergeState } from './merges.js';
-import { HISTORY_PAGE, hrefOf, SETTINGS_PAGE } from './pages.js';
+import { HISTORY_PAGE, hrefOf, SETTINGS_PAGE, START_PAGE } from './pages.js';
 import { useShell } from './shell-context.js';
 import { useWorkspaces } from './useWorkspaces.js';
 import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from './Workspace.js';
@@ -136,15 +136,16 @@ export function Sidenav({
               {needs}
             </span>
           )}
-          <button
-            type="button"
+          {/* A page since V30a: on a diff, its own document, the link loads it. */}
+          <a
             className="icon-button"
+            href={START_PAGE}
             aria-label="Start a workspace"
             title="Start a workspace: a branch, its worktree and an agent (n)"
-            onClick={() => shell?.startWorkspace()}
+            aria-current={route?.page === 'start' ? 'page' : undefined}
           >
             <PlusIcon />
-          </button>
+          </a>
         </h2>
         {/* Why they are kept where they are (CPR's cache), or a folder left from before (V25). */}
         {list?.note && <p className="hint workspaces-note">{list.note}</p>}

@@ -1,4 +1,4 @@
-// Workspaces started from the commits page (V18): pure helpers for the start dialog and the
+// Workspaces started from the commits page (V18): pure helpers for the start page and the
 // line the page shows after Start.
 import type {
   AgentKind,
@@ -60,7 +60,7 @@ export function terminalHint(agent: WorkspaceAgentState): string {
     : '← in an empty prompt lists all your agents';
 }
 
-/** The permission modes the dialog offers, as it names them. */
+/** The permission modes the start page offers, as it names them. */
 export const PERMISSION_LABELS: Record<PermissionMode, string> = {
   default: "Claude Code's default",
   acceptEdits: 'Accept edits',

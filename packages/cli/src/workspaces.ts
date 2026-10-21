@@ -212,7 +212,7 @@ const partsOf = (kind: WorkKind): BriefPart[] => {
   );
 };
 
-/** The kinds as the start dialog offers them. */
+/** The kinds as the start page offers them. */
 export function workKinds(): WorkKindSpec[] {
   return WORK_KINDS.map((kind) => {
     const { name, required, doneWhen } = KINDS[kind];
@@ -860,11 +860,11 @@ export interface Workspaces {
   prompt(branch: string): Promise<string>;
   /**
    * The check command guessed from the root files of the commit a workspace would start from
-   * (V24b), for the start dialog's Done when; null when none is found.
+   * (V24b), for the start page's Done when; null when none is found.
    */
   check(at: string): Promise<CheckGuess | null>;
   /**
-   * The start dialog's draft (V24c, decision 128): kept in CPR's cache for the repository, so a
+   * The start page's draft (V24c, decision 128): kept in CPR's cache for the repository, so a
    * new `cpr view` (another port, other browser storage) has it; `{}` when none.
    */
   draft(): Promise<Record<string, unknown>>;

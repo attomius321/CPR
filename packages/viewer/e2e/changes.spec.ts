@@ -31,8 +31,8 @@ const workspace = (page: Page) => page.getByRole('region', { name: `Workspace ${
 const panel = (page: Page) => workspace(page).getByRole('complementary', { name: 'Changes' });
 const toggle = (page: Page) => workspace(page).getByRole('button', { name: 'Changes' });
 const start = async (page: Page) => {
-  await sidenav(page).getByRole('button', { name: 'Start a workspace' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Start a workspace' });
+  await sidenav(page).getByRole('link', { name: 'Start a workspace' }).click();
+  const dialog = page.getByRole('region', { name: 'Start a workspace' });
   await dialog.getByRole('textbox', { name: 'Title' }).fill('Add a half function');
   await dialog.getByRole('textbox', { name: 'Goal' }).fill('Add a half function');
   await dialog.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');

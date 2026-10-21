@@ -1351,6 +1351,9 @@ describe('cpr view: workspaces (V18)', () => {
     // The view's old address, kept for bookmarks.
     expect((await get('/features')).status).toBe(200);
     expect((await get('/features', bare)).status).toBe(404);
+    // Start a workspace, a page of its own since V30a: a reload there is the viewer too.
+    expect(await (await get('/start')).text()).toBe('<html>viewer</html>');
+    expect((await get('/start', bare)).status).toBe(404);
 
     expect(await (await get('/api/workspaces/prompt?branch=feature%2Fcsv')).json()).toEqual({
       prompt: 'Build it.',

@@ -4157,3 +4157,30 @@ pre-V24 brief's two paragraphs. Then 1,054 unit tests, format, lint, typecheck, 
 
 Merged into main (2026-10-21), no conflicts (`main` had not moved). `main` verified after the
 merge: frozen install, 1,054 unit tests, format, lint, typecheck, build, 159 of 159 e2e.
+
+## V30a — Start a workspace on a page (2026-10-21, branch `milestone/v30-start-page`)
+
+"Start a workspace" is `/start` in the main area, right of the sidenav: a head strip with where it
+starts and Cancel, Clear and Start; the brief in a column up to 760 px, the branch and the agent
+in a 300 px column beside it, under it below 1,000 px of page. The dialog is gone.
+
+**Learned**:
+- **A page that saves on leaving races its own next visit**: Escape posted the draft as the page
+  unmounted, and `n` right after read it in the same moment. The page keeps its last save as a
+  promise and reads the draft after it.
+- **"Back to where it came from" needs to know there is a CPR page behind it.** `history.back()`
+  from a tab opened at `/start` would leave CPR (or do nothing); the Navigation API's entry before
+  this one, same origin or not, decides. A diff before `/start` is CPR's too: Back loads it.
+- **A link was the simpler ⊕**: the shell already opens its own addresses in place from any link,
+  and on a diff a link loads the page; a button needed both paths written out.
+- **A flex head squeezed "From main at …" into a 60 px column at 390 px**; a grid with its own
+  narrow areas puts it on a row of its own.
+- **Margins that line the two columns up separate nothing in one column**: the Branch field sat
+  against "More" at 390 px until its zero margin was kept to the two-column layout.
+
+**Verification**: unit tests first (route, title, the server's `/start`: red), then 1,055 unit
+tests, format, lint, typecheck, build. e2e: `start.spec.ts`'s 6 tests red on the plan's build,
+then green; 52 tests in 8 specs moved from the dialog to the page; 165 of 165. The page's
+measurements and `n`'s time against `main`'s dialog (median 37 against 41 ms) are in PLAN.md's
+V30a results. Screenshots at 1280 × 720, 1440 × 900 and 390 × 844, dark and light. Not verified:
+Firefox and Safari; the Electron window by eye.

@@ -236,6 +236,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves them to `/`.
         if (url.pathname === '/workspaces' || url.pathname === '/features')
           return serveSite(req, res, url, '/', undefined);
+        // Start a workspace, a page of the shell's (V30a).
+        if (url.pathname === '/start') return serveSite(req, res, url, '/', undefined);
         if (url.pathname === '/api/workspaces') return workspacesApi(req, res, workspaces);
         if (url.pathname === '/api/workspaces/options')
           return read(req, res, () => workspaces.options());
@@ -1064,7 +1066,7 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
   };
 }
 
-/** The start dialog's draft (V24c): any object; what it holds is the dialog's to read. */
+/** The start page's draft (V24c): any object; what it holds is the page's to read. */
 function parseDraft(text: string): Record<string, unknown> {
   const value = JSON.parse(text) as unknown;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
