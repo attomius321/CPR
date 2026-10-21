@@ -234,13 +234,14 @@ describe('cpr diff', () => {
       const viewer = tempDir();
       writeFileSync(join(viewer, 'index.html'), '');
       process.env.CPR_VIEWER_DIR = viewer;
+      let stdout = '';
       let stderr = '';
       const opened: string[] = [];
       const asked: [string, string][] = [];
       try {
         const code = await run(argv, {
           cwd: repo.root,
-          stdout: () => undefined,
+          stdout: (text) => (stdout += text),
           stderr: (text) => (stderr += text),
           openUrl: (url) => opened.push(url),
           openApp: (url, title) => {
@@ -250,7 +251,7 @@ describe('cpr diff', () => {
           waitForExit: () => (ctrlC ? Promise.resolve() : new Promise(() => undefined)),
           env: process.env,
         });
-        return { code, stderr, opened, asked };
+        return { code, stdout, stderr, opened, asked };
       } finally {
         delete process.env.CPR_VIEWER_DIR;
         rmSync(viewer, { recursive: true, force: true });
@@ -266,6 +267,8 @@ describe('cpr diff', () => {
       const result = await inApp(['view'], window(Promise.resolve()));
       expect(result.code).toBe(0);
       expect(result.opened).toEqual([]);
+      // Said once the window shows: what stops the command now.
+      expect(result.stdout).toMatch(/\nCPR's window is open: close it, or Ctrl\+C, to stop\n$/);
       expect(result.asked).toEqual([
         [expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/$/), basename(repo.root)],
       ]);
@@ -282,6 +285,7 @@ describe('cpr diff', () => {
     it('opens the browser with --browser, or when the app is not set up', async () => {
       const browser = await inApp(['view', '--browser'], window(Promise.resolve()), true);
       expect(browser.asked).toEqual([]);
+      expect(browser.stdout).not.toContain("CPR's window");
       expect(browser.opened).toEqual([expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/$/)]);
       const none = await inApp(['view'], null, true);
       expect(none.opened).toHaveLength(1);

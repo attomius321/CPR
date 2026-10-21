@@ -265,17 +265,14 @@ test('cpr view opens its window, and ends when the window closes', async () => {
   const ended = new Promise((resolve) => cli.once('exit', resolve));
   try {
     await expect.poll(() => output).toMatch(/CPR viewer: http:\/\/127\.0\.0\.1:\d+\//);
-    // The app is the command's child; nothing went to a browser.
-    const app = () => {
-      try {
-        return execFileSync('pgrep', ['-P', String(cli.pid)], { encoding: 'utf8' }).trim();
-      } catch {
-        return '';
-      }
-    };
-    await expect.poll(app, { timeout: 20_000 }).toMatch(/^\d+$/);
-    await expect.poll(() => output, { timeout: 20_000 }).not.toContain('did not open');
-    process.kill(Number(app()), 'SIGTERM');
+    await expect.poll(() => output, { timeout: 30_000 }).toContain("CPR's window is open");
+    // The app is the command's child, found by its command line: the command's other children
+    // (git) come and go.
+    const app = execFileSync('pgrep', ['-P', String(cli.pid), '-f', 'packages/desktop'], {
+      encoding: 'utf8',
+    }).trim();
+    expect(app).toMatch(/^\d+$/);
+    process.kill(Number(app), 'SIGTERM');
     expect(await ended).toBe(0);
     expect(output).not.toContain('opening the browser');
   } finally {

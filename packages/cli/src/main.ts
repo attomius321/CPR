@@ -443,6 +443,7 @@ async function showUntilExit(
   if (args['no-open']) return ctx.waitForExit();
   const shown = args.browser ? null : await ctx.openApp?.(url, title);
   if (shown && 'closed' in shown) {
+    ctx.stdout("CPR's window is open: close it, or Ctrl+C, to stop\n");
     await Promise.race([ctx.waitForExit(), shown.closed]);
     shown.close();
     return;
