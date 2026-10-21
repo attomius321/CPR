@@ -444,7 +444,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V29 ✅ | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only: 59 % and 53 % live when its copy on disk said 20 % and 22 %). Confirmed: Claude's live source, History, Geist and Geist Mono. Steps: V29a the shell, V29b the look, V29c usage, V29d the branch's changes (all built). See below. |
 | N1 ✅ | A native window | CPR is a page served by a command: a browser tab, no window of its own, nothing to open without a terminal. Asked: "feel more like a native application … Check tauri", on native Linux too. Measured: Tauri draws with WebKitGTK on Linux, where CPR's `j` takes 77–145 ms (first 360–415 ms) against Chromium's 33 ms on a 445-symbol diff; CPR is Node and tuned on Chromium. Planned with Electron (confirmed). Merged (2026-10-21): a window on `cpr view`'s server, opened by `cpr view` or the desktop's launcher (`cpr app install`), closing it stops the server; CPR's own title bar. From the launcher to History's first paint 383–493 ms; `j` as in Chromium (32–33 ms). See below. |
 | V30 ✅ | Start a workspace on a page, with the agent's effort | Starting a workspace is the one thing still drawn over the shell: V18's dialog, 640×626 px at every window size, scrolling with More open at 1280×720 and 1440×900 (883 px of content); no effort is passed (here Claude Code runs at the person's `xhigh`, Codex at `medium`). Measured with the real agents: Claude Code's `--effort` and the effort on Codex's first `turn/start` hold for the session (after CPR's stop-and-resume reply, across app-server connections); `codex exec resume` drops it. Merged into main (2026-10-21): V30a, `/start` in the main area, the brief and the run in two columns, More open fitting at 1440×900; V30b, an Effort choice from the installed agent's own levels (Claude Code's `--help`, Codex's `model/list`), recorded with the workspace; a real Claude Code at `low` stayed at `low` through CPR's reply. See below. |
-| V31 | CPR's style, beyond its colours | V29b took the reference's tokens and font; the rest was older than its colours: one black for every surface (1.04:1 between page and sidenav), blue as the accent on 35 rules, 6 native checkboxes, 8 coloured side bars, bordered mono chips, a solid green HEAD. CPR's own style, written down as the `cpr-style` skill. Built (2026-10-21), not merged: V31a the tokens and the shell, V31b the diff page, V31c History, menus, dialogs and selects — blue a state only, no side bars, drawn controls, one radius scale; Bitwarden's timings and History's first rows as `main`'s, e2e 169 of 169. See below. |
+| V31 ✅ | CPR's style, beyond its colours | V29b took the reference's tokens and font; the rest was older than its colours: one black for every surface (1.04:1 between page and sidenav), blue as the accent on 35 rules, 6 native checkboxes, 8 coloured side bars, bordered mono chips, a solid green HEAD. CPR's own style, written down as the `cpr-style` skill. Merged into main (2026-10-21): V31a the tokens and the shell, V31b the diff page, V31c History, menus, dialogs and selects — blue a state only, no side bars, drawn controls, one radius scale; Bitwarden's timings and History's first rows as `main`'s, e2e 169 of 169. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -8496,9 +8496,9 @@ level after `/effort` in a session's terminal (CPR does not read it back, decisi
 
 ### V31 — CPR's style, beyond its colours
 
-**Status:** V31a, V31b and V31c built (2026-10-21) on branch `milestone/v31-cpr-style`, their
-"As built" and results below; not merged. Confirmed by the person ("Yes"; V31c: "Continue with
-v31c"). Decisions 212–217 proposed.
+**Status:** V31a, V31b and V31c merged into main (2026-10-21, from branch
+`milestone/v31-cpr-style`): their "As built" and results below. Confirmed by the person ("Yes";
+V31c: "Continue with v31c"; the merge and decisions 212–217: "yes").
 
 **Problem** (asked: "The interface still not feel well...feel oldish with a new look"). V29b took
 the reference's tokens and Geist; the rest of the look is older than its colours. Measured on
@@ -8602,16 +8602,16 @@ V31b; screenshots after each.
 | V31b | The diff page | Bar, sidebar, findings, canvas chrome, detail panel |
 | V31c | History, Settings, a workspace, menus and dialogs | History's refs and HEAD, row menus as glass menus, confirmations as floating dialogs, the thread and changes column; after the person has seen V31a–b |
 
-**Proposed decisions**:
+**Decisions** (212–217 confirmed by the person, 2026-10-21):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 212 | Native checkboxes: toggle buttons or drawn? | **Drawn** (`appearance: none` on the `<input>`) | The style's checkbox; roles, labels and the 6 controls' selectors stay; toggle buttons would change roles in 4 specs |
-| 213 | Page heads 36 px as the reference's title bar, or V29b's 44? | **44 px** | The reference's 36 px strip is its title bar, which CPR's window already has (N1c); heads align with the branches panel's |
-| 214 | What `--moved` may colour | **The moved kind and states** (working, "since", the current lane) | Colour is for state; 35 of 49 uses were accent |
-| 215 | Light theme's page | **White, chrome `#fafafa`** | V6's warm `#f7f7f5` is the one light value not from the reference |
-| 216 | The legend and key strip into a "?" | **Not in V31** | Moves information; the look only |
-| 217 | Diff kinds' colours | **Git-decoration colours** (VS Code's) | Their tones on the new surfaces; same hues as today |
+| 212 | Native checkboxes: toggle buttons or drawn? | **Drawn** (`appearance: none` on the `<input>`) (confirmed) | The style's checkbox; roles, labels and the 6 controls' selectors stay; toggle buttons would change roles in 4 specs |
+| 213 | Page heads 36 px as the reference's title bar, or V29b's 44? | **44 px** (confirmed) | The reference's 36 px strip is its title bar, which CPR's window already has (N1c); heads align with the branches panel's |
+| 214 | What `--moved` may colour | **The moved kind and states** (working, "since", the current lane) (confirmed) | Colour is for state; 35 of 49 uses were accent |
+| 215 | Light theme's page | **White, chrome `#fafafa`** (confirmed) | V6's warm `#f7f7f5` is the one light value not from the reference |
+| 216 | The legend and key strip into a "?" | **Not in V31** (confirmed) | Moves information; the look only |
+| 217 | Diff kinds' colours | **Git-decoration colours** (VS Code's) (confirmed) | Their tones on the new surfaces; same hues as today |
 
 **Not in V31 (later)**: Tailwind or shadcn (a new dependency for a look plain CSS gives); a
 tooltip component (titles stay); a command palette; moving the legend (216).

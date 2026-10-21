@@ -4298,3 +4298,6 @@ rounds alternated: first paint 265–289 (`main`) → 261–295 ms, select 74 �
 33 → 33–34 ms; `/history` first rows 92–121 → 93–96 ms. Screenshots before and after, dark and
 light. Not verified: Windows and macOS rendering; the blur's cost on a slow GPU (two layers, only
 while a menu or dialog is open).
+
+Merged into main (2026-10-21), with V31a–b, from branch `milestone/v31-cpr-style`: `pnpm check`
+1,076 tests, build, e2e 169 of 169 on `main`. Decisions 212–217 confirmed by the person.
