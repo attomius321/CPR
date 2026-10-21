@@ -15,6 +15,7 @@ import {
   type MenuItemConstructorOptions,
   type WebContents,
 } from 'electron';
+import { moveFormerConfig } from './former-name.js';
 import { frameOf, frameOptions } from './frame.js';
 import { readRecorded, startServer, withRecent } from './launcher.js';
 import { holdMaximize, holdsMaximize, type Hold } from './maximize.js';
@@ -30,6 +31,7 @@ import { configDir, placeWindow, readChoices, readState, writeState, type Area }
 const here = dirname(fileURLToPath(import.meta.url));
 const args = parseAppArgs(process.argv.slice(app.isPackaged ? 1 : 2));
 const symbioteConfig = configDir(process.env, process.platform, homedir());
+moveFormerConfig(symbioteConfig);
 const config = join(symbioteConfig, 'app');
 const stateFile = join(config, 'state.json');
 const startPage = join(here, '..', 'start', 'index.html');
@@ -53,7 +55,8 @@ const primary = !fromLauncher || app.requestSingleInstanceLock();
 
 /** Who draws the window's frame and buttons here (N1d): Symbiote's pages on Linux. */
 const frame = frameOf(process.platform);
-/** Where Symbiote holds a maximized window itself (N1d): WSLg's X11; the work areas it has learned. */
+/** Where Symbiote holds a maximized window itself (N1d): WSLg's X11; the work areas it has learned.
+ * */
 const holding = frame === 'own' && holdsMaximize(process.platform, process.env);
 const workAreas: Area[] = [];
 const HEX = /^#[0-9a-f]{6}$/i;

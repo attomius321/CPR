@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { SymbioteError } from '@symbiote/core';
+import { FORMER_NAME } from './former-name.js';
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -21,8 +22,9 @@ export interface AppWindow {
 }
 
 /**
- * Symbiote's desktop app, when it is set up: Electron's binary (`pnpm app:setup` fetches it) and the
- * built app. `SYMBIOTE_APP=off` never opens it; `SYMBIOTE_APP=<command>` runs that command instead.
+ * Symbiote's desktop app, when it is set up: Electron's binary (`pnpm app:setup` fetches it) and
+ * the built app. `SYMBIOTE_APP=off` never opens it; `SYMBIOTE_APP=<command>` runs that command
+ * instead.
  */
 export function findApp(env: Env): AppCommand | null {
   const chosen = env.SYMBIOTE_APP;
@@ -48,7 +50,8 @@ const SANDBOX =
 
 /**
  * Opens the app's window on `url`. Resolves once the app says it shows the page (its
- * `Symbiote window:` line), or with why it ended first: its own `symbiote app:` words, else its exit.
+ * `Symbiote window:` line), or with why it ended first: its own `symbiote app:` words, else its
+ * exit.
  */
 export function openAppWindow(
   app: AppCommand,
@@ -131,6 +134,11 @@ function places({ env }: Where) {
   return {
     entry: join(data, 'applications', 'symbiote.desktop'),
     icon: join(data, 'icons', 'hicolor', '512x512', 'apps', 'symbiote.png'),
+    // What `install` added under Symbiote's former name: the new ones replace them.
+    former: [
+      join(data, 'applications', `${FORMER_NAME}.desktop`),
+      join(data, 'icons', 'hicolor', '512x512', 'apps', `${FORMER_NAME}.png`),
+    ],
     // Read by the app (packages/desktop, `readRecorded`).
     recorded: join(config, 'app.json'),
   };
@@ -144,7 +152,8 @@ function record(file: string, node: string, cli: string, env: Env): void {
 
 /**
  * Adds Symbiote to the desktop's apps, for this user (N1b): the launcher entry, its icon, and what
- * the app needs to start `symbiote view` without a shell — this node, this CLI and `PATH`. Linux only.
+ * the app needs to start `symbiote view` without a shell — this node, this CLI and `PATH`. Linux
+ * only.
  */
 export function installApp(
   where: Where & { app: AppCommand; icon: string; node: string; cli: string },
@@ -152,7 +161,8 @@ export function installApp(
   if (where.platform !== 'linux') {
     throw new SymbioteError(`symbiote app install is not supported on ${where.platform} yet`);
   }
-  const { entry, icon, recorded } = places(where);
+  const { entry, icon, recorded, former } = places(where);
+  for (const file of former) rmSync(file, { force: true });
   mkdirSync(dirname(icon), { recursive: true });
   copyFileSync(where.icon, icon);
   mkdirSync(dirname(entry), { recursive: true });

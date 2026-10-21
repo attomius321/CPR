@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import {
@@ -27,6 +28,7 @@ import {
   type VerdictComment,
 } from '@symbiote/core';
 import type { Pair } from './diffs.js';
+import { FORMER_NAME, moveInto } from './former-name.js';
 import { DEFAULT_PROMPTS, fillPrompt, readPrompts } from './prompts.js';
 import type { StateName, StateStore } from './server.js';
 
@@ -48,14 +50,15 @@ export interface BranchReviewFile {
 }
 
 /**
- * Written once into `symbiote/`: reviews stay out of git until it is deleted; the project's settings
- * (`config.json`) and the merger's rules (`merge.md`, V26c) are the project's to commit.
+ * Written once into `symbiote/`: reviews stay out of git until it is deleted; the project's
+ * settings (`config.json`) and the merger's rules (`merge.md`, V26c) are the project's to commit.
  */
 export const GITIGNORE =
   '# Written by Symbiote: reviews stay on this machine. Delete this file to commit and share them.\n' +
   '*\n!config.json\n!merge.md\n';
 
-/** What earlier Symbiotes wrote as `symbiote/.gitignore`: replaced by `GITIGNORE`, being Symbiote's own. */
+/** What earlier Symbiotes wrote as `symbiote/.gitignore`: replaced by `GITIGNORE`, being Symbiote's
+ * own. */
 const EARLIER_GITIGNORES = new Set([
   // V15 to V26c: it hid symbiote/merge.md.
   '# Written by Symbiote: reviews stay on this machine. Delete this file to commit and share them.\n' +
@@ -67,9 +70,9 @@ export const REVIEW_ABOUT =
   'A Symbiote review. Agents: read AGENTS.md beside the reviews folder (symbiote/AGENTS.md) before acting on it.';
 
 /**
- * What an agent does with a review (V17): the text in use for `symbiote/AGENTS.md` (V28), as the file
- * holds it. Claude Code loads a folder's AGENTS.md when it reads a file there, `symbiote/` git-ignored
- * or not (checked with 2.1.296); other agents follow `about`.
+ * What an agent does with a review (V17): the text in use for `symbiote/AGENTS.md` (V28), as the
+ * file holds it. Claude Code loads a folder's AGENTS.md when it reads a file there, `symbiote/`
+ * git-ignored or not (checked with 2.1.296); other agents follow `about`.
  */
 export const agentsFile = (text: string) => `${text.trimEnd()}\n`;
 
@@ -116,7 +119,8 @@ export interface BranchReviews {
     review: LocalReview,
     read: (side: 'base' | 'head', path: string) => Promise<string>,
   ): Promise<FinishResult>;
-  /** Whether the branch merges cleanly into the default branch (V17); null on the default branch. */
+  /** Whether the branch merges cleanly into the default branch (V17); null on the default branch.
+   * */
   merge(info: BranchReviewInfo): Promise<BranchMerge | null>;
 }
 
@@ -142,14 +146,17 @@ export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<Revi
   }
   const main = mainWorktree(repo);
   const folder = join(main, 'symbiote');
+  // The folder under Symbiote's former name moves here, unless it is the project's own. Asked
+  // only when it is there: this runs on each refresh of the workspaces.
+  const former = join(main, FORMER_NAME);
+  if (existsSync(former) && !(await holdsProjectFiles(repo, main, FORMER_NAME))) {
+    moveInto(former, folder, { drop: REWRITTEN });
+  }
   const foreign =
     (await stat(folder).then(
       (s) => !s.isDirectory(),
       () => false,
-    )) ||
-    (await trackedFiles({ ...repo, root: main }, 'symbiote')).some(
-      (path) => !SYMBIOTE_FILES.has(path) && !path.startsWith('symbiote/reviews/'),
-    );
+    )) || (await holdsProjectFiles(repo, main, 'symbiote'));
   if (foreign) return cache("Kept in Symbiote's cache: symbiote/ holds files of this project.");
   return {
     dir: join(folder, 'reviews'),
@@ -161,12 +168,18 @@ export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<Revi
 }
 
 /** What Symbiote itself keeps in `symbiote/`, beside the reviews: a project may commit them. */
-const SYMBIOTE_FILES = new Set([
-  'symbiote/config.json',
-  'symbiote/.gitignore',
-  'symbiote/AGENTS.md',
-  'symbiote/merge.md',
-]);
+const SYMBIOTE_FILES = new Set(['config.json', '.gitignore', 'AGENTS.md', 'merge.md']);
+
+/** What Symbiote writes again itself: copies under the former name are dropped, not moved. */
+const REWRITTEN = ['.gitignore', 'AGENTS.md', 'claude-settings.json'];
+
+/** Whether git tracks files in `<main>/<name>/` that are not Symbiote's. */
+async function holdsProjectFiles(repo: GitRepo, main: string, name: string): Promise<boolean> {
+  return (await trackedFiles({ ...repo, root: main }, name)).some((path) => {
+    const inside = path.slice(name.length + 1);
+    return !SYMBIOTE_FILES.has(inside) && !inside.startsWith('reviews/');
+  });
+}
 
 /** A review's file: the branch's slashes as folders, the reviewer as its name. */
 export function reviewPath(dir: string, branch: string, reviewer: string): string {
@@ -231,9 +244,10 @@ function asMarks(value: unknown): Record<string, string> {
 }
 
 /**
- * Before Symbiote writes into `symbiote/`: its `.gitignore`, unless one exists (then it is the project's,
- * unless an earlier Symbiote wrote it), and, when `agents`, the agents' instructions beside it (V17),
- * rewritten when they differ from `text` (Symbiote's unless the project has its own, V28).
+ * Before Symbiote writes into `symbiote/`: its `.gitignore`, unless one exists (then it is the
+ * project's, unless an earlier Symbiote wrote it), and, when `agents`, the agents' instructions
+ * beside it (V17), rewritten when they differ from `text` (Symbiote's unless the project has its
+ * own, V28).
  */
 export async function prepareSymbioteFolder(
   where: ReviewPlace,
@@ -278,7 +292,8 @@ export function branchReviews(
   { now = () => new Date() }: { now?: () => Date } = {},
 ): BranchReviews {
   const place = () => reviewPlace(repo, cacheDir);
-  /** The agents' instructions checked this run, by path, and the text: checked again when it changes. */
+  /** The agents' instructions checked this run, by path, and the text: checked again when it
+   * changes. */
   const instructed = new Map<string, string>();
   /** Merge checks by default branch and tip: they take seconds on long-lived branches. */
   const merges = new Map<string, Promise<BranchMerge>>();
