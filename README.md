@@ -1,7 +1,7 @@
 # Symbiote
 
-**Coordinated Programming Runtime.** Start a workspace with a coding agent, review what it changed
-as a graph of the symbols it touched, and send back a verdict. Everything runs on your machine.
+Start a workspace with a coding agent, review what it changed as a graph of the symbols it
+touched, and send back a verdict. Everything runs on your machine.
 
 Symbiote turns a change into a graph of the functions, classes, methods and types it added, removed
 or modified, and the calls between them. Findings point at the risky parts: a symbol removed
@@ -738,6 +738,16 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 | `SYMBIOTE_USAGE` | `off`: no subscription usage is read, and the status bar shows none. |
 | `SYMBIOTE_APP` | `off`: `symbiote view` and `symbiote pr` open the browser, never [Symbiote's window](#symbiotes-window). A path: the program to run as the app instead. |
 | `SYMBIOTE_CACHE_DIR` | Where Symbiote keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/symbiote`, else `~/Library/Caches/symbiote` on macOS and `~/.cache/symbiote` elsewhere. |
+
+### Moving from the former name
+
+Symbiote had another name until 2026-10-21. It moves what it kept under that name once, on
+first use: the repository's folder into `symbiote/` (reviews, workspaces, threads, `config.json`;
+it writes its own `.gitignore` and `AGENTS.md` again), its cache's state but not its worktrees,
+and the app's settings and choices. `symbiote app install` replaces the old desktop entry. A
+folder of that name that holds the project's own tracked files is left alone, and a config or
+ignore file at the root under the former name is not read: rename it to `symbiote.config.json`
+or `.symbioteignore`.
 
 ## Limits
 
