@@ -149,3 +149,12 @@ describe('diffTitle (N1a)', () => {
     expect(diffTitle(graph({ changeRequest: request }), 'x')).toBe('!12 Add widgets — Symbiote');
   });
 });
+
+describe('Scout (V35)', () => {
+  it('opens at /scout, a page of the shell, titled Scout', () => {
+    expect(routeOf('/scout', '')).toEqual({ route: { page: 'scout' } });
+    expect(hrefOf({ page: 'scout' })).toBe('/scout');
+    expect(inShell(new URL('http://symbiote/scout'))).toBe(true);
+    expect(routeTitle({ page: 'scout' }, 'symbiote')).toBe('Scout · symbiote — Symbiote');
+  });
+});

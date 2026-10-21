@@ -63,6 +63,7 @@ import { branchReviews } from './reviews.js';
 import { merger, MergeRefused } from './merges.js';
 import { claudeMerger, codexMerger, type MergerAgent } from './merge-agent.js';
 import { promptSettingsService } from './prompts.js';
+import { scout } from './scout.js';
 import { readClaudeUsage, readCodexUsage, usageService } from './usage.js';
 import { codex, findCodex, type Codex } from './codex.js';
 import {
@@ -624,6 +625,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   );
   // One Codex for workspaces and usage: one connection to its app server.
   const codexOf = codexFinder(repo.root, ctx.env);
+  // One Claude Code for workspaces and Scout (V35): one read of its sessions every 2 s.
+  const claudeOf = agentFinder(repo.root, ctx.env);
   const server = await startViewServer({
     port,
     viewerDir: viewerDir(ctx),
@@ -653,7 +656,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       state: (graph) => fileStateStore(stateDir(cacheDir, repo.id, graph)),
       reviews: branchReviews(repo, cacheDir),
       workspaces: workspaces(repo, cacheDir, {
-        claude: agentFinder(repo.root, ctx.env),
+        claude: claudeOf,
         codex: codexOf,
         env: ctx.env,
         openFolder: vsCodeFolder(ctx.env),
@@ -662,6 +665,12 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       terminals,
       merges: merger(repo, cacheDir, { mergerAgent: mergerFinder(repo.root, ctx.env) }),
       settings: promptSettingsService(repo),
+      scout: scout(repo, cacheDir, {
+        claude: claudeOf,
+        codex: codexOf,
+        env: ctx.env,
+        terminals,
+      }),
       // Each subscription's windows (V29c): agents Symbiote can start, signed in to a plan.
       usage: usageService(
         {

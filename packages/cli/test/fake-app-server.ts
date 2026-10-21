@@ -356,13 +356,17 @@ export async function fakeAppServer(
     name: thread.name,
     turns: [],
   });
-  const sandboxOf = (thread: FakeThread) => ({
-    type: 'workspaceWrite',
-    writableRoots: thread.writableRoots,
-    networkAccess: false,
-    excludeTmpdirEnvVar: false,
-    excludeSlashTmp: false,
-  });
+  // As Codex 0.163 answers: `readOnly` for a read-only thread (V35 spike).
+  const sandboxOf = (thread: FakeThread) =>
+    thread.sandbox === 'read-only'
+      ? { type: 'readOnly', networkAccess: false }
+      : {
+          type: 'workspaceWrite',
+          writableRoots: thread.writableRoots,
+          networkAccess: false,
+          excludeTmpdirEnvVar: false,
+          excludeSlashTmp: false,
+        };
   const find = (threadId: unknown): FakeThread => {
     const thread = threads.find((t) => t.id === threadId);
     if (!thread)

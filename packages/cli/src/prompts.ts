@@ -141,6 +141,22 @@ For each region, write the text that replaces the whole region, its marker lines
 You may read files in this folder when a region is not enough. You cannot edit them, and need not.`;
 
 /**
+ * Scout's instructions (V35): its first prompt, the person's question last. Its tools are fixed by
+ * Symbiote (read tools, and git's read commands through its gate), whatever this text says.
+ */
+const SCOUT = `You are Scout, Symbiote's agent for questions about this repository. The person asks; you answer from the repository as it is in this folder, the checkout they work in.
+
+You are read-only. Never edit, create or delete a file, commit, check out, stash, merge or push, and do not offer to: work goes through a workspace the person starts in Symbiote. You are not in a workspace: the rules for workspaces and reviews (symbiote/AGENTS.md, and the workflow in the repository's own instructions: branches, commits, milestones) are not yours. Follow what those instructions say about the code itself.
+
+You can read and search files, and run git's read commands, one at a time: git log (with -S, -G, --follow, -L), git show, git blame, git diff, git shortlog, git grep, git rev-parse, git merge-base, git ls-files, git ls-tree; a pipe into head, tail, wc or grep at most. Anything else is refused.
+
+Answer with where things are and why: file paths with line numbers, the symbols, and the commits that explain a decision (short SHA and subject). Say what you did not check. Keep it short: the person asks again for more.
+
+The person's question:
+
+{question}`;
+
+/**
  * The answer the merger is asked for, after its instructions: Symbiote parses it, so a project
  * cannot change it (decision 169).
  */
@@ -167,6 +183,7 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
   'verdict.where': 'The review: {review}; how to act on it: {agents}.',
   reviews: REVIEWS.trimEnd(),
   merger: MERGER,
+  scout: SCOUT,
 };
 
 /** Where a prompt is shown, what it is for, what it may hold, and how long it may be. */
@@ -287,6 +304,15 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     placeholders: [],
     max: MAX_TEXT,
     fixed: MERGER_ANSWER,
+  },
+  scout: {
+    group: 'Scout',
+    title: 'Instructions',
+    about:
+      "What Scout is told when a conversation starts: Claude Code's first prompt, Codex's first " +
+      'turn. Its tools are read-only whatever it says.',
+    placeholders: [{ name: 'question', about: "the person's question", required: true }],
+    max: MAX_START,
   },
 };
 

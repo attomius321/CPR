@@ -1,4 +1,4 @@
-import type { WorkspaceSummary } from '@symbiote/core';
+import type { ScoutStateName, WorkspaceSummary } from '@symbiote/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readEvery, reloadWorkspaces, type WorkspacesState } from '../src/useWorkspaces.js';
 
@@ -9,6 +9,7 @@ const state = (...agents: WorkspaceSummary['agent'][]): WorkspacesState => ({
   },
   reviews: null,
   merges: null,
+  scout: null,
 });
 
 describe('readEvery', () => {
@@ -20,7 +21,21 @@ describe('readEvery', () => {
 
   it('also while a terminal is open: what is typed there starts a turn (V27b)', () => {
     expect(readEvery(state({ state: 'plan-ready' }), 1)).toBe(5_000);
-    expect(readEvery({ list: null, reviews: null, merges: null }, 1)).toBe(5_000);
+    expect(readEvery({ list: null, reviews: null, merges: null, scout: null }, 1)).toBe(5_000);
+  });
+
+  it('also while Scout answers (V35)', () => {
+    const done = state({ state: 'ready' });
+    const scout = (state: ScoutStateName): WorkspacesState => ({
+      ...done,
+      scout: {
+        checkout: '/repo',
+        agents: [],
+        conversation: { kind: 'claude', started: '2026-10-22T09:00:00.000Z', state },
+      },
+    });
+    expect(readEvery(scout('working'), 0)).toBe(5_000);
+    expect(readEvery(scout('answered'), 0)).toBeNull();
   });
 });
 
@@ -46,13 +61,14 @@ describe('reloadWorkspaces (V29b)', () => {
   it('asked during a read, reads again after it: a change made meanwhile is not answered by the older read', async () => {
     const server = fakeServer();
     const opened = reloadWorkspaces();
-    expect(server.asked).toHaveLength(3);
+    // The workspaces, the reviews, the merges and Scout (V35).
+    expect(server.asked).toHaveLength(4);
     // Land is clicked while the page's first read is under way; what follows it reads again.
     let landed = false;
     const after = reloadWorkspaces().then(() => (landed = true));
     server.answer();
     await opened;
-    await vi.waitFor(() => expect(server.asked).toHaveLength(6));
+    await vi.waitFor(() => expect(server.asked).toHaveLength(8));
     expect(landed).toBe(false);
     server.answer();
     await after;
@@ -66,9 +82,9 @@ describe('reloadWorkspaces (V29b)', () => {
     const third = reloadWorkspaces();
     server.answer();
     await first;
-    await vi.waitFor(() => expect(server.asked).toHaveLength(6));
+    await vi.waitFor(() => expect(server.asked).toHaveLength(8));
     server.answer();
     await Promise.all([second, third]);
-    expect(server.asked).toHaveLength(6);
+    expect(server.asked).toHaveLength(8);
   });
 });

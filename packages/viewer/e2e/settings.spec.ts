@@ -45,10 +45,15 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   await expect(page.locator('.settings-git')).toHaveText(
     "No prompt changed: every agent is told Symbiote's text.",
   );
-  await expect(list(page).getByRole('button')).toHaveCount(13);
-  // The first is open; each group in its order.
+  await expect(list(page).getByRole('button')).toHaveCount(14);
+  // The first is open; each group in its order (Scout's since V35).
   await expect(entry(page, 'Feature')).toHaveAttribute('aria-current', 'true');
-  await expect(list(page).getByRole('heading')).toHaveText(['Workspaces', 'Reviews', 'Merger']);
+  await expect(list(page).getByRole('heading')).toHaveText([
+    'Workspaces',
+    'Reviews',
+    'Merger',
+    'Scout',
+  ]);
 
   await entry(page, 'Fix').click();
   await expect(page).toHaveURL(`${symbiote.url}settings?prompt=start.fix`);

@@ -35,14 +35,16 @@ export interface OpenedTerminal {
  * loaded when a terminal first opens) and fitted to its box. The agent keeps hosting the session:
  * closing this hangs up only the client. While it is open the list is read every 5 s, since what
  * is typed here may start a turn. `onOpened` gives the open terminal (to type into it), `onEnded`
- * says it ended.
+ * says it ended. `url`: where it is opened — a workspace's (`branch`), or Scout's (V35).
  */
 export function AgentTerminal({
   branch,
+  url = '/api/workspaces/terminal',
   onOpened,
   onEnded,
 }: {
-  branch: string;
+  branch?: string;
+  url?: string;
   onOpened: (opened: OpenedTerminal | null) => void;
   onEnded: (why: string) => void;
 }) {
@@ -88,8 +90,8 @@ export function AgentTerminal({
       term.loadAddon(fit);
       term.open(element);
       fit.fit();
-      const opened = await postJson<WorkspaceTerminalOpened>('/api/workspaces/terminal', {
-        branch,
+      const opened = await postJson<WorkspaceTerminalOpened>(url, {
+        ...(branch === undefined ? {} : { branch }),
         cols: term.cols,
         rows: term.rows,
       });
@@ -146,7 +148,7 @@ export function AgentTerminal({
       if (id) void toTerminal(id, 'close', {}).catch(() => {});
       told.current.onOpened(null);
     };
-  }, [branch]);
+  }, [branch, url]);
 
   return (
     <div className="agent-terminal">
@@ -157,8 +159,8 @@ export function AgentTerminal({
       )}
       {trust && (
         <p className="hint terminal-trust">
-          Codex asks first whether you trust this worktree. Your answer is saved in your Codex
-          configuration; Symbiote does not answer for you.
+          Codex asks first whether you trust this {branch === undefined ? 'folder' : 'worktree'}.
+          Your answer is saved in your Codex configuration; Symbiote does not answer for you.
         </p>
       )}
       <div ref={box} className="agent-terminal-screen" />

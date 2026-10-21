@@ -14,7 +14,9 @@ export type PromptKey =
   | 'verdict.address'
   | 'verdict.where'
   | 'reviews'
-  | 'merger';
+  | 'merger'
+  /** Scout's instructions, its first prompt with the question (V35). */
+  | 'scout';
 
 /** Every prompt, in the Settings page's order. */
 export const PROMPT_KEYS: readonly PromptKey[] = [
@@ -31,6 +33,7 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'verdict.where',
   'reviews',
   'merger',
+  'scout',
 ];
 
 /** A name a prompt may hold as `{name}`, replaced by what it stands for when it is used. */
@@ -45,7 +48,7 @@ export interface PromptPlaceholder {
 /** A prompt as the Settings page shows it. */
 export interface PromptSetting {
   key: PromptKey;
-  /** Whose prompt: `Workspaces`, `Reviews` or `Merger`. */
+  /** Whose prompt: `Workspaces`, `Reviews`, `Merger` or `Scout`. */
   group: string;
   /** Its name in the group: "Fix", "Plan first", "symbiote/AGENTS.md". */
   title: string;

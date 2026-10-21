@@ -24,6 +24,8 @@ import {
   type HistoryScope,
   type RefList,
   type RepoStatus,
+  type ScoutAsk,
+  type ScoutTerminalRequest,
   type WorkKind,
 } from '@symbiote/core';
 import type { Review, ReviewComment, ReviewEvent } from '@symbiote/forge';
@@ -36,6 +38,7 @@ import type { UsageService } from './usage.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 import type { Terminals } from './terminal.js';
+import { ScoutRefused, type Scout } from './scout.js';
 
 export type Side = 'base' | 'head';
 
@@ -85,6 +88,8 @@ export interface RepositoryOptions {
   merges?: Merger;
   /** Every agent's prompts (V28): `/api/settings/prompts`. */
   settings?: PromptSettingsService;
+  /** Scout, a read-only agent in the checkout (V35): `/scout`, `/api/scout…`. */
+  scout?: Scout;
   /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 5-min copy. */
   usage?: UsageService;
 }
@@ -294,6 +299,31 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         if (url.pathname === '/api/workspaces/terminal') {
           return written(req, res, parseWorkspaceTerminal, (request) =>
             answer(res, () => workspaces.terminal(request)),
+          );
+        }
+      }
+      const { scout } = repository;
+      if (scout) {
+        // Scout's page, a page of the shell's (V35).
+        if (url.pathname === '/scout') return serveSite(req, res, url, '/', undefined);
+        if (url.pathname === '/api/scout') return read(req, res, () => scout.state());
+        // One question or new conversation at a time: each starts or stops an agent.
+        if (url.pathname === '/api/scout/ask') {
+          return written(req, res, parseScoutAsk, (request) =>
+            oneAtATime(res, 'Scout is being asked', () => scout.ask(request)),
+          );
+        }
+        if (url.pathname === '/api/scout/new') {
+          return written(
+            req,
+            res,
+            () => ({}),
+            () => oneAtATime(res, 'Scout is being asked', () => scout.renew()),
+          );
+        }
+        if (url.pathname === '/api/scout/terminal') {
+          return written(req, res, parseScoutTerminal, (request) =>
+            answer(res, () => scout.terminal(request)),
           );
         }
       }
@@ -813,7 +843,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (
         error instanceof WorkspaceRefused ||
         error instanceof MergeRefused ||
-        error instanceof PromptRefused
+        error instanceof PromptRefused ||
+        error instanceof ScoutRefused
       )
         return json(res, error.status, { error: error.message });
       throw error;
@@ -1121,6 +1152,23 @@ function parseWorkspaceTerminal(text: string): WorkspaceTerminalRequest {
   const size = terminalSize(value);
   if (!size) throw new Error('cols, rows: whole numbers, 2 to 1000');
   return { branch: value.branch, ...size };
+}
+
+/** `{ text, agent? }`: a question for Scout (V35). */
+function parseScoutAsk(text: string): ScoutAsk {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.text !== 'string') throw new Error('text: the question');
+  if (value.agent !== undefined && value.agent !== 'claude' && value.agent !== 'codex') {
+    throw new Error('agent: claude or codex');
+  }
+  return { text: value.text, ...(value.agent ? { agent: value.agent } : {}) };
+}
+
+/** `{ cols, rows }`: a terminal on Scout's session (V35). */
+function parseScoutTerminal(text: string): ScoutTerminalRequest {
+  const size = terminalSize(JSON.parse(text) as Record<string, unknown> | null);
+  if (!size) throw new Error('cols, rows: whole numbers, 2 to 1000');
+  return size;
 }
 
 /** `{ branch, unmerged? }`: a workspace to clean up (V18c). */

@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import type { BranchReviewList, MergeList, WorkspaceList } from '@symbiote/core';
+import type { BranchReviewList, MergeList, ScoutState, WorkspaceList } from '@symbiote/core';
 import { mergeLive } from './merges.js';
 
 /**
  * The workspaces, the reviews and the merge queue (V26), read together: a review changes what a
- * workspace needs next, and an approval is merged.
+ * workspace needs next, and an approval is merged. Scout's state too (V35): the sidenav shows it.
  */
 export interface WorkspacesState {
   list: WorkspaceList | null;
   reviews: BranchReviewList | null;
   /** Null where Symbiote does not merge (no repository). */
   merges: MergeList | null;
+  /** Null where there is no Scout (no repository). */
+  scout: ScoutState | null;
 }
 
 /** While an agent works or waits, how often its state is read again. */
@@ -19,15 +21,17 @@ const POLL_MS = 5_000;
 const MERGE_POLL_MS = 1_500;
 
 // One reader for every component on the page (the tab bar, the page, the review header).
-let current: WorkspacesState = { list: null, reviews: null, merges: null };
+let current: WorkspacesState = { list: null, reviews: null, merges: null, scout: null };
 const listeners = new Set<(state: WorkspacesState) => void>();
 let loading: Promise<void> | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
 
 const live = (state: WorkspacesState) =>
-  state.list?.workspaces.some(
+  (state.list?.workspaces.some(
     (f) => f.agent.state === 'working' || f.agent.state === 'needs-you',
-  ) ?? false;
+  ) ??
+    false) ||
+  state.scout?.conversation?.state === 'working';
 
 const merging = (state: WorkspacesState) => mergeLive(state.merges?.merges ?? []);
 
@@ -35,8 +39,8 @@ const merging = (state: WorkspacesState) => mergeLive(state.merges?.merges ?? []
 let terminalsOpen = 0;
 
 /**
- * How long until the next read: 1.5 s while a merge runs; 5 s while an agent works or waits, or
- * a terminal is open (`open`); none otherwise.
+ * How long until the next read: 1.5 s while a merge runs; 5 s while an agent works or waits, Scout
+ * answers, or a terminal is open (`open`); none otherwise.
  */
 export function readEvery(state: WorkspacesState, open: number): number | null {
   if (merging(state)) return MERGE_POLL_MS;
@@ -59,15 +63,16 @@ async function read<T>(path: string): Promise<T | null> {
   return response.ok ? ((await response.json()) as T) : null;
 }
 
-/** Reads the workspaces (V18b), the reviews and the merges, unless a read is under way. */
+/** Reads the workspaces (V18b), the reviews, the merges and Scout, unless a read is under way. */
 function refresh(): Promise<void> {
   loading ??= Promise.all([
     read<WorkspaceList>('/api/workspaces'),
     read<BranchReviewList>('/api/reviews'),
     read<MergeList>('/api/merges'),
+    read<ScoutState>('/api/scout'),
   ])
-    .then(([list, reviews, merges]) => {
-      current = { list, reviews, merges };
+    .then(([list, reviews, merges, scout]) => {
+      current = { list, reviews, merges, scout };
       for (const listener of listeners) listener(current);
     })
     .catch(() => {})

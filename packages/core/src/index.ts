@@ -169,6 +169,14 @@ export {
   type PromptSettings,
 } from './prompts.js';
 export {
+  type ScoutAgent,
+  type ScoutAsk,
+  type ScoutConversation,
+  type ScoutState,
+  type ScoutStateName,
+  type ScoutTerminalRequest,
+} from './scout.js';
+export {
   AGENT_KINDS,
   EFFORT_LEVEL,
   PERMISSION_MODES,

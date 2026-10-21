@@ -188,7 +188,9 @@ export interface CodexServer {
    * Starts a thread in `cwd` in the `workspace-write` sandbox, `writable` also writable (the
    * branch's git folders, decision 130), approvals asked (`on-request`), named `name`, with
    * `prompt` as its first turn — at `effort` when given (V30b), which the server keeps for the
-   * thread's next turns —; its ID once the prompt is in the thread.
+   * thread's next turns —; its ID once the prompt is in the thread. `readOnly` (Scout, V35): the
+   * `read-only` sandbox instead, nothing writable, approvals `never`: a command the sandbox refuses
+   * fails, nobody is asked.
    */
   start(request: {
     cwd: string;
@@ -196,6 +198,7 @@ export interface CodexServer {
     name: string;
     prompt: string;
     effort?: string;
+    readOnly?: true;
   }): Promise<string>;
   /**
    * The effort levels of the model a thread in `cwd` would use (V30b): the configured model's
@@ -375,14 +378,19 @@ export function codexServer(
 
   return {
     address,
-    start: ({ cwd, writable, name, prompt, effort }) =>
+    start: ({ cwd, writable, name, prompt, effort, readOnly }) =>
       using(async (connection) => {
-        const started = await connection.request<{ thread?: { id?: unknown } }>('thread/start', {
-          cwd,
-          sandbox: 'workspace-write',
-          approvalPolicy: 'on-request',
-          config: { sandbox_workspace_write: { writable_roots: writable } },
-        });
+        const started = await connection.request<{ thread?: { id?: unknown } }>(
+          'thread/start',
+          readOnly
+            ? { cwd, sandbox: 'read-only', approvalPolicy: 'never' }
+            : {
+                cwd,
+                sandbox: 'workspace-write',
+                approvalPolicy: 'on-request',
+                config: { sandbox_workspace_write: { writable_roots: writable } },
+              },
+        );
         const thread = text(started.thread?.id);
         if (!thread) throw new AppServerError('Codex started no thread');
         const prompted = messageIn(connection, thread);

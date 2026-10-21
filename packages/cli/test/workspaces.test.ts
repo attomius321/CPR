@@ -576,6 +576,7 @@ describe('workspaces', () => {
     const claude: ClaudeCode = {
       command: '/usr/bin/claude',
       start,
+      startReadOnly: () => Promise.reject(new Error('a workspace never starts Scout')),
       sessions,
       stop,
       resume,

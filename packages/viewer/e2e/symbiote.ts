@@ -569,6 +569,13 @@ export interface RunningWorkspaces extends Running {
   report(branch: string, text: string): void;
   /** Runs the newest session's hooks for one event (`hook_event_name` and its fields). */
   hook(branch: string, input: Record<string, unknown>): void;
+  /** Adds a session to the fake's list, as Claude Code lists one (V35: the person's own). */
+  addSession(session: Record<string, unknown>): void;
+  /**
+   * Changes a session by its ID (V35); `answer` is printed once in its open terminals, as the
+   * agent's.
+   */
+  setSession(id: string, patch: Record<string, unknown>): void;
   /** The sessions the fake removed (`claude rm`), by ID. */
   removed(): string[];
   /** The sessions attached to (`claude attach`, V21), and those whose client was hung up. */
@@ -726,8 +733,14 @@ if (args[0] === '--bg' && args[1] === '--resume') {
       }
     }
   });
+  // V35: an answer set by the test is printed once, as the agent's.
+  let answered = '';
   setInterval(() => {
     const now = list().find((s) => s.id === id);
+    if (now && now.answer && now.answer !== answered) {
+      answered = now.answer;
+      process.stdout.write('\\r\\n● ' + now.answer + '\\r\\n> ');
+    }
     if (now && now.status) return;
     process.stdout.write('\\r\\nSession ' + id + ' has exited\\r\\n');
     process.exit(0);
@@ -1043,6 +1056,22 @@ export async function serveWorkspaces({
         newest(branch, () => {}),
         input,
       );
+    },
+    addSession(session) {
+      const file = join(fake, 'sessions.json');
+      const sessions = existsSync(file)
+        ? (JSON.parse(readFileSync(file, 'utf8')) as unknown[])
+        : [];
+      writeFileSync(file, JSON.stringify([...sessions, { startedAt: Date.now(), ...session }]));
+    },
+    setSession(id, patch) {
+      const file = join(fake, 'sessions.json');
+      const sessions = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>[];
+      const session = sessions.find((s) => s.id === id);
+      if (!session) throw new Error(`no session ${id}`);
+      for (const key of ['state', 'status', 'waitingFor']) delete session[key];
+      Object.assign(session, patch);
+      writeFileSync(file, JSON.stringify(sessions));
     },
     removed: () => lines('removed.txt'),
     attaches: () => lines('attaches.txt'),
