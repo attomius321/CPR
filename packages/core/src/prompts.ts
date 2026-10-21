@@ -1,5 +1,6 @@
-// The texts Symbiote's agents are told (V28): what `symbiote view`'s Settings page reads and changes. Types
-// and the keys only; the CLI keeps Symbiote's texts and reads and writes `prompts` in config.json.
+// The texts Symbiote's agents are told (V28): what `symbiote view`'s Settings page reads and
+// changes. Types and the keys only; the CLI keeps Symbiote's texts and reads and writes `prompts`
+// in config.json.
 import type { FileGitState } from './git/branches.js';
 import type { WorkKind } from './workspaces.js';
 

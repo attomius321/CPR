@@ -34,9 +34,9 @@ const GROUPS = [
 const CARD = '.workspace-about';
 
 /**
- * The shell's sidenav (V29a): Symbiote and the repository, the pages, then the workspaces by what each
- * needs from the person and the merges in Symbiote's queue. A card opens its workspace (or merge) in
- * the main area. Folded, it is a rail of icons and marks.
+ * The shell's sidenav (V29a): Symbiote and the repository, the pages, then the workspaces by what
+ * each needs from the person and the merges in Symbiote's queue. A card opens its workspace (or
+ * merge) in the main area. Folded, it is a rail of icons and marks.
  */
 export function Sidenav({
   repo,

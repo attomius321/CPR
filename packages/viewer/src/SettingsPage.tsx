@@ -31,8 +31,8 @@ interface Notice {
 
 /**
  * Settings (V28b): every agent's prompts, Symbiote's until the project changes them. A change is
- * saved in `symbiote/config.json` (`prompts`); unsaved drafts are kept while another prompt is open,
- * and leaving the page with one asks first.
+ * saved in `symbiote/config.json` (`prompts`); unsaved drafts are kept while another prompt is
+ * open, and leaving the page with one asks first.
  */
 export function SettingsPage() {
   const [settings, setSettings] = useState<PromptSettings | null>(null);

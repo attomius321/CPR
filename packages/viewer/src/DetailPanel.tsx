@@ -96,7 +96,8 @@ export interface Comments {
   onRemove: (id: string) => void;
 }
 
-/** The panel is keyed by symbol, so its state (picked line, comment text) starts fresh per symbol. */
+/** The panel is keyed by symbol, so its state (picked line, comment text) starts fresh per symbol.
+ * */
 export function DetailPanel({
   graph,
   id,

@@ -119,8 +119,9 @@ export function parseAnswer(message: string, count: number): MergerAnswer {
 
 /**
  * The merger's system prompt (decision 150), the same for Claude Code (`--system-prompt`) and
- * Codex (before its prompt): the project's instructions or Symbiote's (V28), then Symbiote's answer format,
- * which a project cannot change (decision 169). Symbiote's are at most 1K tokens: read on every run.
+ * Codex (before its prompt): the project's instructions or Symbiote's (V28), then Symbiote's answer
+ * format, which a project cannot change (decision 169). Symbiote's are at most 1K tokens: read on
+ * every run.
  */
 export const mergerInstructions = (instructions: string) =>
   `${instructions.trimEnd()}\n\n${MERGER_ANSWER}`;
@@ -251,8 +252,8 @@ const RUN_TIMEOUT_MS = 15 * 60_000;
 const lastWords = (text: string) => text.trim().split('\n').slice(-3).join('\n');
 
 /**
- * Claude Code as the merger: `claude -p`, its system prompt the merger's instructions, read-only tools,
- * no MCP servers, nothing kept; the prompt on stdin (a long one would not fit an argument).
+ * Claude Code as the merger: `claude -p`, its system prompt the merger's instructions, read-only
+ * tools, no MCP servers, nothing kept; the prompt on stdin (a long one would not fit an argument).
  */
 export function claudeMerger(
   command: string,
@@ -317,8 +318,9 @@ export function claudeMerger(
 }
 
 /**
- * Codex as the merger: `codex exec` in its read-only sandbox, nothing kept, the merger's instructions
- * before the prompt (Codex has no system prompt to set), both on stdin; its last message.
+ * Codex as the merger: `codex exec` in its read-only sandbox, nothing kept, the merger's
+ * instructions before the prompt (Codex has no system prompt to set), both on stdin; its last
+ * message.
  */
 export function codexMerger(
   command: string,

@@ -109,8 +109,8 @@ describe('recordEvent and readThread', () => {
     for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
   });
   /**
-   * A `symbiote/` folder with the record of `feature/x`, whose worktree is `<tmp>/app.worktrees/feature-x`,
-   * in `records` (`features` before V25).
+   * A `symbiote/` folder with the record of `feature/x`, whose worktree is
+   * `<tmp>/app.worktrees/feature-x`, in `records` (`features` before V25).
    */
   function symbiote(records = 'workspaces') {
     const root = tempDir();

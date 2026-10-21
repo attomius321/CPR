@@ -23,7 +23,8 @@ export interface ChangeRequest {
 
 export type ReviewEvent = 'comment' | 'approve' | 'request-changes';
 
-/** A comment on one line of the change: a line of the head file, or of the base file for removed code. */
+/** A comment on one line of the change: a line of the head file, or of the base file for removed
+ * code. */
 export interface ReviewComment {
   side: 'head' | 'base';
   /** Repo-relative path on that side. */

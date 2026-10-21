@@ -1,9 +1,9 @@
 import type { Graph } from '@symbiote/core';
 
 /**
- * `symbiote view`'s pages and what its sidenav opens (V29a): History, Settings, a workspace or a merge,
- * and Start a workspace (V30a), each shown in the shell's main area. There is no Workspaces page since V29a: the workspaces are
- * in the sidenav, and `/` alone opens History.
+ * `symbiote view`'s pages and what its sidenav opens (V29a): History, Settings, a workspace or a
+ * merge, and Start a workspace (V30a), each shown in the shell's main area. There is no Workspaces
+ * page since V29a: the workspaces are in the sidenav, and `/` alone opens History.
  */
 export type Route =
   | { page: 'history' }

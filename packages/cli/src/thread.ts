@@ -1,7 +1,7 @@
-// A workspace's thread (V18c): what Symbiote's hooks record of its agent's sessions, one JSON line per
-// entry in `symbiote/threads/<branch>.jsonl`. The hook runs once per event in the agent's process
-// tree (`agent-hook.ts`), so this module uses Node's own modules only: loading `@symbiote/core` would
-// make each event cost ~290 ms instead of ~25 ms.
+// A workspace's thread (V18c): what Symbiote's hooks record of its agent's sessions, one JSON line
+// per entry in `symbiote/threads/<branch>.jsonl`. The hook runs once per event in the agent's
+// process tree (`agent-hook.ts`), so this module uses Node's own modules only: loading
+// `@symbiote/core` would make each event cost ~290 ms instead of ~25 ms.
 import { realpathSync } from 'node:fs';
 import {
   access,
@@ -31,9 +31,9 @@ function branchFile(dir: string, branch: string, extension: string): string | nu
 }
 
 /**
- * Where workspaces are kept: `<symbiote>/workspaces/` (V25). Their folder before, `<symbiote>/features/`, is
- * moved there by one `rename` when only it is there (an empty `workspaces/` is replaced); with both,
- * the old one is `left` as it is.
+ * Where workspaces are kept: `<symbiote>/workspaces/` (V25). Their folder before,
+ * `<symbiote>/features/`, is moved there by one `rename` when only it is there (an empty
+ * `workspaces/` is replaced); with both, the old one is `left` as it is.
  */
 export async function workspacesFolder(symbiote: string): Promise<{ dir: string; left?: true }> {
   const dir = join(symbiote, 'workspaces');
@@ -141,7 +141,8 @@ const real = (path: string) => {
   }
 };
 
-/** The branch of the workspace whose worktree holds `cwd`, from the records in `<symbiote>/workspaces/`. */
+/** The branch of the workspace whose worktree holds `cwd`, from the records in
+ * `<symbiote>/workspaces/`. */
 async function workspaceAt(symbiote: string, cwd: string): Promise<string | null> {
   const { dir } = await workspacesFolder(symbiote);
   const files = await readdir(dir, { recursive: true }).catch(() => [] as string[]);
@@ -186,7 +187,8 @@ export async function recordEvent(
   return path;
 }
 
-/** Appends an entry Symbiote writes itself to a workspace's thread: a Codex run it stopped (V20a). */
+/** Appends an entry Symbiote writes itself to a workspace's thread: a Codex run it stopped (V20a).
+ * */
 export async function appendThread(
   symbiote: string,
   branch: string,
@@ -303,7 +305,8 @@ export function turnEnded(entries: readonly ThreadEntry[]): boolean {
 
 /**
  * When the agent last handed the turn back (V23): its newest report or question. Prompts are the
- * person's or Symbiote's; notices and sessions' starts and ends (a `/clear`) are not the agent's acts.
+ * person's or Symbiote's; notices and sessions' starts and ends (a `/clear`) are not the agent's
+ * acts.
  */
 export function lastAction(entries: readonly ThreadEntry[]): string | undefined {
   return entries.findLast((e) => e.kind === 'report' || e.kind === 'asks')?.at;

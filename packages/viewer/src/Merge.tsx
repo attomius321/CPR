@@ -19,9 +19,9 @@ export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | 
 }
 
 /**
- * A merge in Symbiote's queue (V26a), in the shell's main area (V29a; a row of the Workspaces page's
- * Merging section before): its branch, target and state, the merger agent's resolution to review
- * region by region, the end of a failed check's output, and Land, Approve, Retry or Remove.
+ * A merge in Symbiote's queue (V26a), in the shell's main area (V29a; a row of the Workspaces
+ * page's Merging section before): its branch, target and state, the merger agent's resolution to
+ * review region by region, the end of a failed check's output, and Land, Approve, Retry or Remove.
  */
 export function MergeView({ branch }: { branch: string }) {
   const { merges } = useWorkspaces();

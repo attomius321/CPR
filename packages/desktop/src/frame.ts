@@ -1,8 +1,8 @@
 import type { BrowserWindowConstructorOptions } from 'electron';
 
 /**
- * Who draws the window's frame and buttons (N1d): Symbiote's pages on Linux, where Electron rounds a
- * frameless window only with client-side decorations and draws no buttons over a transparent
+ * Who draws the window's frame and buttons (N1d): Symbiote's pages on Linux, where Electron rounds
+ * a frameless window only with client-side decorations and draws no buttons over a transparent
  * one; the system on macOS and Windows, whose frameless windows are rounded already.
  */
 export type Frame = 'own' | 'system';

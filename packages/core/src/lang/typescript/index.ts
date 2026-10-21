@@ -130,7 +130,8 @@ export function createTypescriptAdapter({
 
 export const typescriptAdapter: LanguageAdapter<TsRevision> = createTypescriptAdapter();
 
-/** A plugin's repo-relative folder, normalized (`./src/` → `src`, `.` → `''`); undefined outside. */
+/** A plugin's repo-relative folder, normalized (`./src/` → `src`, `.` → `''`); undefined outside.
+ * */
 function inRepo(folder: string): string | undefined {
   const normalized = posix.normalize(folder.replace(/\\/g, '/')).replace(/\/$/, '');
   if (normalized === '..' || normalized.startsWith('../') || posix.isAbsolute(normalized)) {

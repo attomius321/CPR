@@ -367,7 +367,8 @@ function warn(state: Revision, message: string): void {
   if (!state.warnings.includes(message)) state.warnings.push(message);
 }
 
-/** `src/app/foo.component.ts` + `FooComponent` → `src/app/foo.component.FooComponent.symbiote.ts`. */
+/** `src/app/foo.component.ts` + `FooComponent` → `src/app/foo.component.FooComponent.symbiote.ts`.
+ * */
 function shimPath(cls: NgClass): string {
   return `${cls.file.replace(/\.[cm]?tsx?$/, '')}.${cls.name}.symbiote.ts`;
 }
@@ -395,7 +396,8 @@ function buildShim(
   }
   const self = typeOf('__symbiote_C', cls);
   const builder = new ShimBuilder();
-  // Repo and library classes the template uses, imported under names of their own (`__symbiote_D0`…).
+  // Repo and library classes the template uses, imported under names of their own
+  // (`__symbiote_D0`…).
   const imports = new Map<NgClass, string>();
   const use = (target: NgClass): string | undefined => {
     if (!target.exported) return undefined;

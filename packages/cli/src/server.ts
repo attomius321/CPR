@@ -159,8 +159,8 @@ const MAX_TERMINAL_INPUT = 64 * 1024;
 
 /**
  * Serves the viewer, `/api/graph` and `/api/source` on localhost only: one graph at `/`
- * (`symbiote pr`), or (`symbiote view`) the commits page at `/` and each diff under its own path, where
- * the viewer's relative URLs reach that diff's API. Sources are limited to files a graph
+ * (`symbiote pr`), or (`symbiote view`) the commits page at `/` and each diff under its own path,
+ * where the viewer's relative URLs reach that diff's API. Sources are limited to files a graph
  * mentions, so the server never exposes anything else from the machine. Requests must name the
  * server itself as host, which defeats DNS rebinding; writes (a review, saved state, starting
  * or stopping an analysis) also need a same-origin JSON request with a custom header, which
@@ -233,7 +233,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
       const { workspaces } = repository;
       if (workspaces) {
-        // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves them to `/`.
+        // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves
+        // them to `/`.
         if (url.pathname === '/workspaces' || url.pathname === '/features')
           return serveSite(req, res, url, '/', undefined);
         // Start a workspace, a page of the shell's (V30a).

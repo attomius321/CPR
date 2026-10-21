@@ -98,7 +98,8 @@ import {
   workspacesFolder,
 } from './thread.js';
 
-/** A workspace on disk: `symbiote/workspaces/<branch>.json` (V18; `symbiote/features/` before V25), one per branch. */
+/** A workspace on disk: `symbiote/workspaces/<branch>.json` (V18; `symbiote/features/` before V25),
+ * one per branch. */
 export interface WorkspaceFile {
   /** The agent started for it; null when none was found. */
   agent: WorkspaceAgentRecord | null;
@@ -126,7 +127,8 @@ export interface WorkspaceAgentRecord {
   kind: AgentKind;
   /** Claude Code's permission mode. */
   permissionMode?: PermissionMode;
-  /** The effort level it was started at (V30b), given again when it starts again; its own if absent. */
+  /** The effort level it was started at (V30b), given again when it starts again; its own if
+   * absent. */
   effort?: string;
   /** When it last started: for Codex, its last run (V20a). */
   started?: string;
@@ -354,8 +356,8 @@ function asAgent(value: unknown): WorkspaceAgentRecord | null {
 
 /**
  * Where a workspace's worktree goes: beside the checkout, `../<checkout>.worktrees/<branch>`, the
- * branch's slashes as dashes; `pattern` (`workspaces.worktrees` in `symbiote/config.json`, relative to
- * the checkout, `{repo}` for its folder name) moves the folder that holds them.
+ * branch's slashes as dashes; `pattern` (`workspaces.worktrees` in `symbiote/config.json`, relative
+ * to the checkout, `{repo}` for its folder name) moves the folder that holds them.
  */
 export function worktreeFolder(main: string, branch: string, pattern?: string): string {
   const name = basename(main);
@@ -530,9 +532,9 @@ const isBlocked = (session: AgentSession) =>
 
 /**
  * What the page says of a workspace's agent: the newest session working in its worktree (matched
- * by real path), else why there is none. `ahead` (commits since the fork point) tells a finished plan
- * from finished work. `ended`: the thread says its last turn ended (V18c) — Claude Code reads a
- * finished plan as `blocked` with nothing named it waits for, so that is a finished turn. A
+ * by real path), else why there is none. `ahead` (commits since the fork point) tells a finished
+ * plan from finished work. `ended`: the thread says its last turn ended (V18c) — Claude Code reads
+ * a finished plan as `blocked` with nothing named it waits for, so that is a finished turn. A
  * turn interrupted with Esc fires no hook and reads `idle` with `working` until the next one ends.
  */
 export function agentState(
@@ -584,7 +586,8 @@ export type Run = (
   options: { cwd: string; timeoutMs: number },
 ) => Promise<{ code: number | null; stdout: string; stderr: string }>;
 
-/** How long a program's output may close after it exits, at most: a service it starts may hold it. */
+/** How long a program's output may close after it exits, at most: a service it starts may hold it.
+ * */
 const OUTPUT_AFTER_EXIT_MS = 1_000;
 
 /**
@@ -749,7 +752,8 @@ function wordsOf(result: { stdout: string; stderr: string }): string {
   return (result.stderr.trim() || result.stdout.trim()).split('\n').slice(-3).join('\n');
 }
 
-/** Claude Code's program: `SYMBIOTE_CLAUDE` (a path or a command on PATH), else `claude` on PATH. */
+/** Claude Code's program: `SYMBIOTE_CLAUDE` (a path or a command on PATH), else `claude` on PATH.
+ * */
 export async function findClaude(
   env: Readonly<Record<string, string | undefined>>,
 ): Promise<string | null> {
@@ -888,7 +892,8 @@ const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: '
 export interface Workspaces {
   options(): Promise<WorkspaceOptions>;
   list(): Promise<WorkspaceList>;
-  /** Makes the branch, its worktree and record, then starts the agent. Rejects with `FeatureRefused`. */
+  /** Makes the branch, its worktree and record, then starts the agent. Rejects with
+   * `FeatureRefused`. */
   start(request: WorkspaceRequest): Promise<WorkspaceStart>;
   /** Starts a workspace's agent again (after a failed start, or once it ended). */
   startAgent(branch: string): Promise<WorkspaceStart>;
@@ -937,7 +942,8 @@ export interface Workspaces {
   clean(request: { branch: string; unmerged?: boolean }): Promise<{ finished: string }>;
 }
 
-/** The hooks Symbiote passes to every workspace's agent (V18c): each event, recorded by `agent-hook.js`. */
+/** The hooks Symbiote passes to every workspace's agent (V18c): each event, recorded by
+ * `agent-hook.js`. */
 const HOOKED_EVENTS = [
   'SessionStart',
   'UserPromptSubmit',
@@ -954,7 +960,8 @@ function shellWord(path: string, platform: NodeJS.Platform): string {
 }
 
 /**
- * Symbiote's settings file for its agents (V18c), `<symbiote>/claude-settings.json`: every event runs
+ * Symbiote's settings file for its agents (V18c), `<symbiote>/claude-settings.json`: every event
+ * runs
  * `agent-hook.js` with the `symbiote/` folder; `PreToolUse` only for questions. It decides nothing.
  */
 export function agentSettings(
@@ -998,7 +1005,8 @@ const linesOf = (count: { added: number | null; removed: number | null } | undef
       ? { binary: true as const }
       : { added: count.added, removed: count.removed };
 
-/** Workspaces of `repo`, kept beside its reviews (`symbiote/workspaces/`, else Symbiote's cache). */
+/** Workspaces of `repo`, kept beside its reviews (`symbiote/workspaces/`, else Symbiote's cache).
+ * */
 export function workspaces(
   repo: GitRepo,
   cacheDir: string,
@@ -1029,7 +1037,8 @@ export function workspaces(
     terminals?: Terminals;
   },
 ): Workspaces {
-  /** Where reviews and workspaces are kept; `symbiote/features/` moved first (V25), or noted when left. */
+  /** Where reviews and workspaces are kept; `symbiote/features/` moved first (V25), or noted when
+   * left. */
   const place = async (): Promise<ReviewPlace> => {
     const where = await reviewPlace(repo, cacheDir);
     if (!(await workspacesFolder(dirname(where.dir))).left) return where;
@@ -1053,8 +1062,8 @@ export function workspaces(
     where.place === 'repository' ? dirname(symbioteFolder(where)) : repo.root;
 
   /**
-   * Symbiote's settings file, written when its text differs (Symbiote moved) or it is gone: a session that
-   * wakes reads it again, and does not start without it (V18c spike). Its path.
+   * Symbiote's settings file, written when its text differs (Symbiote moved) or it is gone: a
+   * session that wakes reads it again, and does not start without it (V18c spike). Its path.
    */
   async function settingsFile(where: ReviewPlace): Promise<string> {
     const path = join(symbioteFolder(where), 'claude-settings.json');
@@ -1298,7 +1307,8 @@ export function workspaces(
     return agent ? { kind, codex: agent } : null;
   }
 
-  /** The agent a workspace gets unless one is picked: `agent.kind`, else Claude Code, else Codex. */
+  /** The agent a workspace gets unless one is picked: `agent.kind`, else Claude Code, else Codex.
+   * */
   async function defaultAgent(): Promise<FoundAgent | null> {
     const first = config().agent;
     for (const kind of first ? [first, ...AGENT_KINDS.filter((k) => k !== first)] : AGENT_KINDS) {
@@ -2014,8 +2024,8 @@ export function workspaces(
         where.place === 'repository' ? relative(repo.root, path).split(sep).join('/') : path;
       return {
         entries,
-        // Claude Code's hooks record it (V18c); Symbiote's runner records Codex's (V20a), or Codex's
-        // app server keeps it (V27a).
+        // Claude Code's hooks record it (V18c); Symbiote's runner records Codex's (V20a), or
+        // Codex's app server keeps it (V27a).
         recorded: workspace.agent?.hooks === true || workspace.agent?.kind === 'codex',
         ...(review && verdict
           ? {

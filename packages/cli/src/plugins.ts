@@ -4,7 +4,8 @@ import { isAbsolute, join, posix, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { SymbioteError, PLUGIN_API_VERSION, type TsPlugin } from '@symbiote/core';
 
-/** The project's Symbiote settings: in `symbiote/` (V15), else the older file at the repository root. */
+/** The project's Symbiote settings: in `symbiote/` (V15), else the older file at the repository
+ * root. */
 export const CONFIG_FILES = ['symbiote/config.json', 'symbiote.config.json'] as const;
 
 /** A plugin to load and the folder its path is relative to. */
@@ -16,8 +17,8 @@ interface PluginRequest {
 }
 
 /**
- * Loads the plugins asked for in `symbiote/config.json` or `symbiote.config.json` (paths relative to the
- * repo root) and by
+ * Loads the plugins asked for in `symbiote/config.json` or `symbiote.config.json` (paths relative
+ * to the repo root) and by
  * `--plugin` (relative to the working folder). A short name like `angular` is the package
  * `@symbiote/plugin-angular`, looked up in the project first and then next to the CLI.
  */

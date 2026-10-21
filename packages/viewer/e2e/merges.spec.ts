@@ -4,8 +4,9 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveAgentBranch, type RunningAgent } from './symbiote.js';
 
-// Symbiote's merger agent (V26c): a conflict answered region by region by a fake Claude Code, written
-// by Symbiote, reviewed in the merge the sidenav opens, asked again, then approved and landed.
+// Symbiote's merger agent (V26c): a conflict answered region by region by a fake Claude Code,
+// written by Symbiote, reviewed in the merge the sidenav opens, asked again, then approved and
+// landed.
 let symbiote: RunningAgent;
 const errors: string[] = [];
 

@@ -83,8 +83,8 @@ export interface CliContext {
   /** Opens a URL in the user's browser (best effort). */
   openUrl: (url: string) => void;
   /**
-   * Opens the viewer in Symbiote's own window (N1): the window once it shows the page, why it did not
-   * open, or null when the desktop app is not set up.
+   * Opens the viewer in Symbiote's own window (N1): the window once it shows the page, why it did
+   * not open, or null when the desktop app is not set up.
    */
   openApp?: (url: string, title: string) => Promise<AppWindow | { error: string } | null>;
   /** Resolves when a long-running command (`view`) should stop: Ctrl+C. */
@@ -118,7 +118,8 @@ const processContext = (): CliContext => ({
     new Promise((resolve) => {
       process.once('SIGINT', () => resolve());
       process.once('SIGTERM', () => resolve());
-      // Started by Symbiote's app from the desktop (N1b): it stops with the app, even one that died.
+      // Started by Symbiote's app from the desktop (N1b): it stops with the app, even one that
+      // died.
       if (process.env.SYMBIOTE_STDIN_STOPS === '1') {
         process.stdin.once('end', () => resolve());
         process.stdin.resume();
@@ -879,7 +880,8 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
     const queued = await merges.enqueue({ branch, into });
     print(queued);
     await merges.idle();
-    // Another Symbiote process (\`symbiote view\`) merges in this repository: its progress, from the queue.
+    // Another Symbiote process (\`symbiote view\`) merges in this repository: its progress, from
+    // the queue.
     for (;;) {
       const entry = (await merges.list()).merges.find((e) => e.id === queued.id);
       if (!entry || !['queued', 'merging', 'resolving', 'checking'].includes(entry.state)) {
@@ -914,7 +916,8 @@ function agentFinder(
   };
 }
 
-/** Codex for workspaces (V20a), found as Claude Code is; on its app server when it has one (V27a). */
+/** Codex for workspaces (V20a), found as Claude Code is; on its app server when it has one (V27a).
+ * */
 function codexFinder(
   root: string,
   env: Readonly<Record<string, string | undefined>>,

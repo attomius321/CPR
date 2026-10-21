@@ -57,12 +57,13 @@ function NoticeLine({ notice }: { notice: Notice }) {
 }
 
 /**
- * How often the page asks `symbiote view`, which answers from its copy and reads the vendors at most
- * every 5 minutes (decision 175): a new read shows within a minute.
+ * How often the page asks `symbiote view`, which answers from its copy and reads the vendors at
+ * most every 5 minutes (decision 175): a new read shows within a minute.
  */
 const USAGE_EVERY_MS = 60_000;
 
-/** `symbiote view`'s usage (`GET /api/usage`): asked every minute while the page shows, and on focus. */
+/** `symbiote view`'s usage (`GET /api/usage`): asked every minute while the page shows, and on
+ * focus. */
 function useUsage(): UsageReport | null {
   const [report, setReport] = useState<UsageReport | null>(null);
   useEffect(() => {

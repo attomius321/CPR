@@ -97,7 +97,8 @@ export interface RunChoices {
 
 /**
  * The run's choices a draft kept, those that still hold: an agent still installed, a level it
- * lists, a permission mode Symbiote offers. A level is kept only with its agent: it is that agent's.
+ * lists, a permission mode Symbiote offers. A level is kept only with its agent: it is that
+ * agent's.
  */
 export function readRun(value: unknown, agents: readonly AgentOption[]): RunChoices {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -417,9 +418,9 @@ function waitsFor(entry: Extract<ThreadEntry, { kind: 'asks' }>, worktree?: stri
 }
 
 /**
- * A thread's entries as the panel shows them: the first prompt is Symbiote's, later ones the person's
- * messages; reports are the agent's; what it waited on in words; a session started after the
- * first as a line. Ends and Claude Code's notices are left out (the state says as much).
+ * A thread's entries as the panel shows them: the first prompt is Symbiote's, later ones the
+ * person's messages; reports are the agent's; what it waited on in words; a session started after
+ * the first as a line. Ends and Claude Code's notices are left out (the state says as much).
  */
 export function threadItems(entries: readonly ThreadEntry[], worktree?: string): ThreadItem[] {
   const items: ThreadItem[] = [];

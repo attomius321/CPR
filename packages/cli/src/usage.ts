@@ -2,8 +2,8 @@
 // Claude Code's from the endpoint its `/usage` reads, with the token Claude Code stored, read
 // only (decision 172), else Symbiote's own last read; Codex's from its app server, else its newest
 // session. Both sources are undocumented or `[experimental]`: every field is checked as it is
-// read, and what Symbiote cannot read is left out, never guessed. `symbiote view` keeps a copy for 5 min
-// (`usageService`).
+// read, and what Symbiote cannot read is left out, never guessed. `symbiote view` keeps a copy for
+// 5 min (`usageService`).
 import { mkdir, open, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { UsageReport, UsageSubscription, UsageWindow } from '@symbiote/core';
@@ -65,7 +65,8 @@ async function jsonFile(path: string): Promise<unknown> {
 }
 
 /**
- * The windows of an answer of Claude's usage endpoint: its `limits` list — the session (5 hours) and the weeks, a model's own week with its `scope` — else
+ * The windows of an answer of Claude's usage endpoint: its `limits` list — the session (5 hours)
+ * and the weeks, a model's own week with its `scope` — else
  * `five_hour` and `seven_day`. Code-named keys (one at 100 % in the spike) are not read.
  */
 export function claudeWindows(answer: unknown): UsageWindow[] {
@@ -174,7 +175,8 @@ async function lastRead(file: string, account: string | null): Promise<UsageSubs
     : null;
 }
 
-/** Keeps a live read in `file` for the next run and other `symbiote view`s; a failure loses nothing. */
+/** Keeps a live read in `file` for the next run and other `symbiote view`s; a failure loses
+ * nothing. */
 async function keepRead(file: string, account: string | null, subscription: UsageSubscription) {
   const next = `${file}.${process.pid}.tmp`;
   try {
@@ -189,10 +191,10 @@ async function keepRead(file: string, account: string | null, subscription: Usag
 
 /**
  * Claude Code's subscription (decision 172): `GET` Claude's usage endpoint with the access token
- * Claude Code stored, which Symbiote never refreshes and never sends elsewhere. Each live read is kept
- * in `lastFile` (Symbiote's cache) for its account; an expired or missing token, or a failed request,
- * gives that last read, without the windows that have reset since, and why — never the copy
- * Claude Code keeps of its /usage (the person's choice: it was a day old). Nothing when Claude
+ * Claude Code stored, which Symbiote never refreshes and never sends elsewhere. Each live read is
+ * kept in `lastFile` (Symbiote's cache) for its account; an expired or missing token, or a failed
+ * request, gives that last read, without the windows that have reset since, and why — never the
+ * copy Claude Code keeps of its /usage (the person's choice: it was a day old). Nothing when Claude
  * Code is not installed, or before Symbiote's first read.
  */
 export async function readClaudeUsage({
@@ -424,9 +426,9 @@ function shown(last: UsageSubscription | null, read: UsageRead, now: number) {
 /**
  * The subscriptions `readers` give, kept in memory (decision 175): the first ask waits for them;
  * after that each ask answers from the copy and reads again in the background once it is older
- * than `maxAgeMs` (5 min: at 60 s, two `symbiote view`s were refused by Claude's endpoint), one read at
- * a time. A 429 waits `backoffMs`; an error, a failed read, or a copy older than the last numbers
- * keeps the last numbers, with their time. `off` (`SYMBIOTE_USAGE=off`) reads nothing.
+ * than `maxAgeMs` (5 min: at 60 s, two `symbiote view`s were refused by Claude's endpoint), one
+ * read at a time. A 429 waits `backoffMs`; an error, a failed read, or a copy older than the last
+ * numbers keeps the last numbers, with their time. `off` (`SYMBIOTE_USAGE=off`) reads nothing.
  */
 export function usageService(
   readers: Record<(typeof AGENTS)[number], () => Promise<UsageRead>>,

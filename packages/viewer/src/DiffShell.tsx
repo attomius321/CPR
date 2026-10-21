@@ -29,9 +29,9 @@ function saveFolded(folded: boolean): void {
 }
 
 /**
- * A diff's page under `symbiote view` (V29a): the shell's sidenav, as a rail unless the person opens
- * it, and its status bar around the diff. A diff is its own document (`/diff/<pair>/`), so a page
- * or a workspace picked here loads the shell.
+ * A diff's page under `symbiote view` (V29a): the shell's sidenav, as a rail unless the person
+ * opens it, and its status bar around the diff. A diff is its own document (`/diff/<pair>/`), so a
+ * page or a workspace picked here loads the shell.
  */
 export function DiffShell({ repo, children }: { repo?: string | undefined; children: ReactNode }) {
   const [folded, setFolded] = useState(loadFolded);

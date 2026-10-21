@@ -7,8 +7,8 @@ export interface Pair {
 }
 
 /**
- * Analyzes a pair (`symbiote view`: in a child process). Reports each phase as it starts; rejects with
- * the CLI's message when the analysis fails, and when `signal` stops it.
+ * Analyzes a pair (`symbiote view`: in a child process). Reports each phase as it starts; rejects
+ * with the CLI's message when the analysis fails, and when `signal` stops it.
  */
 export type RunDiff = (
   pair: Pair,

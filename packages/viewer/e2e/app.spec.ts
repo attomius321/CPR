@@ -10,10 +10,10 @@ import { fileURLToPath } from 'node:url';
 import { _electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { serveCommits, serveWorkspaces, type RunningCommits } from './symbiote.js';
 
-// Symbiote's desktop app (N1): the window `symbiote view` opens on its server. It needs Electron's binary
-// (`pnpm app:setup`) and Xvfb: the app's windows open on a display of the specs' own, never on
-// the screen of whoever runs them (Symbiote's merge check, on the person's desktop), where a window
-// manager would also move them.
+// Symbiote's desktop app (N1): the window `symbiote view` opens on its server. It needs Electron's
+// binary (`pnpm app:setup`) and Xvfb: the app's windows open on a display of the specs' own, never
+// on the screen of whoever runs them (Symbiote's merge check, on the person's desktop), where a
+// window manager would also move them.
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const desktop = join(root, 'packages/desktop');
 const electron = ((): string | null => {

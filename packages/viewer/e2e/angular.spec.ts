@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { servePullRequest, type RunningPullRequest } from './symbiote.js';
 
-// `symbiote pr 7 --plugin angular` on the plugin's fixture: a template is a symbol with its own diff,
-// and a comment on one of its lines goes to the template file.
+// `symbiote pr 7 --plugin angular` on the plugin's fixture: a template is a symbol with its own
+// diff, and a comment on one of its lines goes to the template file.
 let symbiote: RunningPullRequest;
 const errors: string[] = [];
 

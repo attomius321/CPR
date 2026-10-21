@@ -19,8 +19,8 @@ export interface PhaseMessage {
 }
 
 /**
- * Analyzes each pair with `symbiote diff <base> <head> --no-merge-base --json` in a child process: the
- * analysis is synchronous, so in the server's process it would stop the server answering; a
+ * Analyzes each pair with `symbiote diff <base> <head> --no-merge-base --json` in a child process:
+ * the analysis is synchronous, so in the server's process it would stop the server answering; a
  * process also frees its memory when it ends and can be stopped. Phases come over IPC.
  */
 export function childRunner(options: ChildRunnerOptions): RunDiff {

@@ -199,7 +199,8 @@ const WORDS = /[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+|[^A-Za-z\d]+/g;
 const words = (s) => s.match(WORDS) ?? [];
 const isWord = (w) => /^[A-Za-z]/.test(w);
 
-/** `OutOfOrderSuspenseRoot` → `OutOfOrderPendingRoot`: `suspense` → `Pending` (words, lower-cased keys). */
+/** `OutOfOrderSuspenseRoot` → `OutOfOrderPendingRoot`: `suspense` → `Pending` (words, lower-cased
+ * keys). */
 function substitution(before, after) {
   const a = words(before);
   const b = words(after);

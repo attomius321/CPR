@@ -1,6 +1,6 @@
-// Checks what the commits page analyzes for diverged picks (V10c), end to end through `symbiote view`'s
-// server: the default branch's tip and an unmerged remote branch's tip picked, `comparison` run
-// on the shape the server sends (as the page does), the pair posted to `/api/diffs`. The graph
+// Checks what the commits page analyzes for diverged picks (V10c), end to end through `symbiote
+// view`'s server: the default branch's tip and an unmerged remote branch's tip picked, `comparison`
+// run on the shape the server sends (as the page does), the pair posted to `/api/diffs`. The graph
 // must hold exactly the branch's own changes — its files equal `git diff --name-only A...B`
 // (from the merge-base) — and equal `symbiote diff A B`'s (merge-base by default). The pair `main`
 // sent (the lower row as the base, compared directly) is analyzed too, for the numbers.

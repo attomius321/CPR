@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 
 /**
- * Symbiote's icons (V29): 16 px line drawings in the text's colour. Inline SVG, so no icon library is
- * bundled; each is decorative (`aria-hidden`), named by the control that holds it.
+ * Symbiote's icons (V29): 16 px line drawings in the text's colour. Inline SVG, so no icon library
+ * is bundled; each is decorative (`aria-hidden`), named by the control that holds it.
  */
 function Icon({ children, className }: { children: ReactNode; className?: string }) {
   return (

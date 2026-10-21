@@ -1,5 +1,5 @@
-// The git steps of Symbiote's merger (V26a): a merge made in a worktree of Symbiote's own, then landed by
-// fast-forward. Never forced: what git refuses is a `MergeStepRefused` in git's words.
+// The git steps of Symbiote's merger (V26a): a merge made in a worktree of Symbiote's own, then
+// landed by fast-forward. Never forced: what git refuses is a `MergeStepRefused` in git's words.
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, realpath, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';

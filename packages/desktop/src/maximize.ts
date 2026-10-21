@@ -1,8 +1,8 @@
 import { FIRST, type Area } from './state.js';
 
 /**
- * Whether Symbiote holds its maximized window itself (N1d): on WSLg's X11, whose window manager pads
- * a frameless window with an invisible 32 px margin and forgets it when it maximizes one. The
+ * Whether Symbiote holds its maximized window itself (N1d): on WSLg's X11, whose window manager
+ * pads a frameless window with an invisible 32 px margin and forgets it when it maximizes one. The
  * window lands 32 px right and down, its right end and bottom off the screen
  * (microsoft/wslg#1015); placed as a normal window it is where it is asked to be. WSLg is WSL with
  * its compositor (`WAYLAND_DISPLAY`); Electron takes its X11 unless the session says Wayland.

@@ -252,7 +252,8 @@ process.stdout.write(JSON.stringify({ result, is_error: false, usage: { input_to
  * one by one to `src/math.ts` ("Add half, and a subject …" the last) — and other branches, each
  * newer: `wip` ("Try a wobble") from "Add square", the remote-only `origin/topic` ("Sketch a
  * topic") from head. `feature` points at head; tag `v1` at "Add cube", `r1` to `r4` at base; tag
- * `v0` at a commit no branch reaches ("Old release"). Served by `symbiote view` without revisions: the commits page.
+ * `v0` at a commit no branch reaches ("Old release"). Served by `symbiote view` without revisions:
+ * the commits page.
  */
 export async function serveCommits(): Promise<RunningCommits> {
   const { repo } = fixtureRepo('callers');
@@ -351,7 +352,8 @@ export interface RunningPullRequest extends Running {
 /**
  * Serves `symbiote pr 7` for a fixture as a GitHub pull request: the clone's `origin` says
  * github.com but git fetches from a local bare repo, and a mock API answers for GitHub.
- * `args` go to every `symbiote pr` run (e.g. `--plugin angular`), `extraEnv` too (e.g. `SYMBIOTE_CODE`).
+ * `args` go to every `symbiote pr` run (e.g. `--plugin angular`), `extraEnv` too (e.g.
+ * `SYMBIOTE_CODE`).
  */
 export async function servePullRequest(
   name: string,
@@ -424,7 +426,8 @@ export async function servePullRequest(
 }
 
 export interface RunningDiverged extends Running {
-  /** "Add square" on `main`, where `topic` forked; main's tip ("Add half"); topic's ("Change square"). */
+  /** "Add square" on `main`, where `topic` forked; main's tip ("Add half"); topic's ("Change
+   * square"). */
   fork: string;
   main: string;
   topic: string;
@@ -615,7 +618,8 @@ const sessions = join(dir, 'sessions.json');
 const list = () => (existsSync(sessions) ? JSON.parse(readFileSync(sessions, 'utf8')) : []);
 const save = (all) => writeFileSync(sessions, JSON.stringify(all));
 const args = process.argv.slice(2);
-// A session's hooks for one event, as Claude Code runs them: each command in a shell, the event on stdin.
+// A session's hooks for one event, as Claude Code runs them: each command in a shell, the event on
+// stdin.
 const hooks = (session, input) => {
   if (!session.settings) return;
   const event = { session_id: session.sessionId, cwd: session.cwd, ...input };
@@ -746,8 +750,8 @@ if (args[0] === '--bg' && args[1] === '--resume') {
  * `app-server-socket` as Codex 0.163 does (V27a), and fails without one, as a Codex with no daemon.
  * `resume <thread> --remote <address> -C <folder>` is its TUI joined to that server (V27b): it
  * asks to trust a folder Codex's configuration does not name, as Codex does, and gives each line
- * typed to the thread through Symbiote's own client (built); a hang-up or Ctrl+C on an empty line ends
- * it, the thread going on.
+ * typed to the thread through Symbiote's own client (built); a hang-up or Ctrl+C on an empty line
+ * ends it, the thread going on.
  */
 function fakeCodex(dir: string): string {
   const script = join(dir, 'codex');
@@ -910,10 +914,10 @@ async function fakeUsage(
 /**
  * `main` with the `callers` fixture's base and head, pushed to a bare `origin` (its default
  * branch), and a fake Claude Code as `SYMBIOTE_CLAUDE` (`agent: false`: one that is not installed;
- * `terminal: false`: no terminals, V21); a fake Codex as `SYMBIOTE_CODEX` with `codex: true` (V20a),
- * else none, whatever is installed; with `appServer: true`, its app server too (V27a).
- * Served by `symbiote view` without revisions; workspaces' worktrees land beside the repository and go
- * with it.
+ * `terminal: false`: no terminals, V21); a fake Codex as `SYMBIOTE_CODEX` with `codex: true`
+ * (V20a), else none, whatever is installed; with `appServer: true`, its app server too (V27a).
+ * Served by `symbiote view` without revisions; workspaces' worktrees land beside the repository and
+ * go with it.
  */
 export async function serveWorkspaces({
   agent = true,

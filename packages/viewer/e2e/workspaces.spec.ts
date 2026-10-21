@@ -199,8 +199,8 @@ test('without an agent: the branch and worktree are made, and the prompt is give
   expect(git('rev-parse', 'feature/add-a-half-function')).toBe(symbiote.shas.at(-1));
 });
 
-// The workspaces view (V18b): what each workspace needs, and each workspace and its branch leading to
-// the other.
+// The workspaces view (V18b): what each workspace needs, and each workspace and its branch leading
+// to the other.
 const POLL = { timeout: 12_000 };
 const workspaceRow = (page: Page, branch: string) =>
   page.locator(`.workspace-row[data-branch="${branch}"]`);
@@ -417,8 +417,8 @@ test("a workspace's branch: checked out in its worktree, so not here; gone, it s
   await expect(page.locator('.commits .workspace-mark')).toHaveCount(0);
 });
 
-// Talking to the agent (V18c): the workspaces view as a list and a panel, the thread Symbiote's hooks
-// record, one box whose message continues the agent's session.
+// Talking to the agent (V18c): the workspaces view as a list and a panel, the thread Symbiote's
+// hooks record, one box whose message continues the agent's session.
 const box = (page: Page, branch: string) =>
   panel(page, branch).getByRole('textbox', { name: 'Reply to the agent' });
 const resumes = () => symbiote.calls().filter((call) => call.args[1] === '--resume');

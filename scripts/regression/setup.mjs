@@ -1,6 +1,7 @@
 // Clones the repositories the regression sets use, and recreates their experiment branches.
 // Usage: node scripts/regression/setup.mjs [set…]   (default: r1; `all` for every set)
-// Where: $SYMBIOTE_REGRESSION_DIR, else ~/.cache/symbiote-regression. Blobless clones; nothing is installed.
+// Where: $SYMBIOTE_REGRESSION_DIR, else ~/.cache/symbiote-regression. Blobless clones; nothing is
+// installed.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';

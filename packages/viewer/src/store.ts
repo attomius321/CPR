@@ -12,8 +12,8 @@ export interface Store {
 }
 
 /**
- * State kept by `symbiote view` / `symbiote pr` in the CLI's cache folder: it survives restarts on another
- * port, where browser storage (per origin) would start empty.
+ * State kept by `symbiote view` / `symbiote pr` in the CLI's cache folder: it survives restarts on
+ * another port, where browser storage (per origin) would start empty.
  */
 export function serverStore(): Store {
   const pending = new Map<StateName, unknown>();

@@ -14,8 +14,8 @@ export function withRecent(recent: readonly string[], repo: string): string[] {
 }
 
 /**
- * What `symbiote app install` recorded (`<config>/app.json`), to start `symbiote view` from a launcher,
- * which reads no shell profile: node, the CLI, and the shell's `PATH`.
+ * What `symbiote app install` recorded (`<config>/app.json`), to start `symbiote view` from a
+ * launcher, which reads no shell profile: node, the CLI, and the shell's `PATH`.
  */
 export interface Recorded {
   node: string;
@@ -48,9 +48,9 @@ export function serverError(stderr: string, code: number | null): string {
 }
 
 /**
- * Starts `symbiote view` in `repo` with what `symbiote app install` recorded: its address once it serves,
- * or why it did not. It reads its stdin: when the app ends, even killed, the pipe closes and the
- * server stops (`SYMBIOTE_STDIN_STOPS`).
+ * Starts `symbiote view` in `repo` with what `symbiote app install` recorded: its address once it
+ * serves, or why it did not. It reads its stdin: when the app ends, even killed, the pipe closes
+ * and the server stops (`SYMBIOTE_STDIN_STOPS`).
  */
 export function startServer(
   repo: string,

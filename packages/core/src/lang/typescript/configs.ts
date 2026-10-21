@@ -1,7 +1,8 @@
 import { dirname, resolve } from 'node:path';
 import { ts, type ResolutionHostFactory } from 'ts-morph';
 
-/** A folder's configs in the order its build picks them; anything else named `tsconfig.*.json` after. */
+/** A folder's configs in the order its build picks them; anything else named `tsconfig.*.json`
+ * after. */
 const PREFERRED = ['tsconfig.app.json', 'tsconfig.lib.json', 'tsconfig.json'];
 /** What tests are built with. */
 const TEST_CONFIGS = ['tsconfig.spec.json', 'tsconfig.test.json', 'tsconfig.e2e.json'];

@@ -1,6 +1,6 @@
 // Every text Symbiote's agents are told (V28, decisions 165–171): Symbiote's own as defaults with
-// placeholders, a project's under `prompts` in `symbiote/config.json`, and the Settings page's view of
-// both. A project's prompts are read at each use: a save applies to the next agent started.
+// placeholders, a project's under `prompts` in `symbiote/config.json`, and the Settings page's view
+// of both. A project's prompts are read at each use: a save applies to the next agent started.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -32,7 +32,8 @@ const KIND_LINES: Partial<Record<WorkKind, string>> = {
     "keep experiments out of the project's code unless the brief says otherwise.",
 };
 
-/** A kind's start prompt as Symbiote writes it: what V18 to V27 gave, today's values as placeholders. */
+/** A kind's start prompt as Symbiote writes it: what V18 to V27 gave, today's values as
+ * placeholders. */
 function startPrompt(kind: WorkKind): string {
   const line = KIND_LINES[kind];
   return [
@@ -140,8 +141,8 @@ For each region, write the text that replaces the whole region, its marker lines
 You may read files in this folder when a region is not enough. You cannot edit them, and need not.`;
 
 /**
- * The answer the merger is asked for, after its instructions: Symbiote parses it, so a project cannot
- * change it (decision 169).
+ * The answer the merger is asked for, after its instructions: Symbiote parses it, so a project
+ * cannot change it (decision 169).
  */
 export const MERGER_ANSWER = `Answer with one JSON object and nothing else:
 {"regions": {"1": "<text of region 1>", "2": "<text of region 2>"}, "notes": {"1": "<one line: what you kept, and why>"}}
@@ -335,7 +336,8 @@ function valueAt(prompts: unknown, key: PromptKey): unknown {
   return value;
 }
 
-/** `prompts` from `symbiote/config.json` (else `symbiote.config.json`) at `root`, each checked (V28). */
+/** `prompts` from `symbiote/config.json` (else `symbiote.config.json`) at `root`, each checked
+ * (V28). */
 export function readPrompts(root: string): ProjectPrompts {
   const found = CONFIG_FILES.find((name) => existsSync(join(root, name)));
   let source: string | null = null;

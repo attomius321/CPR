@@ -4,8 +4,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // Codex on its app server (V27a): a workspace's thread started on the person's daemon (faked in
-// this process, as Codex 0.163 answers), read from there — Symbiote's prompt, a turn typed in Codex's
-// own terminal, an approval it waits on — and a message that joins the turn that runs.
+// this process, as Codex 0.163 answers), read from there — Symbiote's prompt, a turn typed in
+// Codex's own terminal, an approval it waits on — and a message that joins the turn that runs.
 let symbiote: RunningWorkspaces;
 const errors: string[] = [];
 

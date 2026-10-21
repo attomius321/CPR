@@ -10,8 +10,8 @@ export interface AppArgs {
 
 /**
  * Reads the app's arguments: `--url <address>`, `--title <text>` and `--repo <path>`, either
- * form. Anything else (Chromium's own switches) is left alone. Only a Symbiote server on this machine
- * is shown: an address that is not `http` on 127.0.0.1 or localhost is dropped, and so is a
+ * form. Anything else (Chromium's own switches) is left alone. Only a Symbiote server on this
+ * machine is shown: an address that is not `http` on 127.0.0.1 or localhost is dropped, and so is a
  * repository that is not an absolute path.
  */
 export function parseAppArgs(argv: readonly string[]): AppArgs {
@@ -59,7 +59,8 @@ export function staysInWindow(target: string, home: string): boolean {
   return url !== null && url.origin !== 'null' && url.origin === parse(home)?.origin;
 }
 
-/** The address handed to the default browser for a link that leaves Symbiote: web addresses only. */
+/** The address handed to the default browser for a link that leaves Symbiote: web addresses only.
+ * */
 export function outsideAddress(target: string): string | null {
   const url = parse(target);
   return url && (url.protocol === 'https:' || url.protocol === 'http:') ? url.href : null;

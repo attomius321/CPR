@@ -1,7 +1,7 @@
 // Codex's app server (V27a, decisions 154–155): Symbiote as one of its clients, on the WebSocket of
 // the person's daemon's unix socket — JSON-RPC without the `jsonrpc` field (Codex 0.163). One
-// connection per call: Symbiote keeps no thread subscribed (a thread's clients get every delta of its
-// turns) and reads what it shows with `thread/read` and `thread/turns/list`. What it reads is
+// connection per call: Symbiote keeps no thread subscribed (a thread's clients get every delta of
+// its turns) and reads what it shows with `thread/read` and `thread/turns/list`. What it reads is
 // checked field by field: the protocol is `[experimental]`.
 import { EFFORT_LEVEL, type AgentEfforts } from '@symbiote/core';
 import { openWebSocket, type WebSocketClient } from './websocket.js';

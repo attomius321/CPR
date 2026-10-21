@@ -836,7 +836,8 @@ interface Size {
   height: number;
 }
 
-/** Wide enough for a frame's name band: the name and kind, the start of the folder, "12 changed". */
+/** Wide enough for a frame's name band: the name and kind, the start of the folder, "12 changed".
+ * */
 function bandWidth(project: Project, light: boolean): number {
   return Math.round(project.name.length * (light ? 8 : 10) + (project.kind ? 44 : 0) + 190);
 }
@@ -846,7 +847,8 @@ function placement(graph: DagreGraph, id: string): Placement {
   return graph.node(id) as Placement;
 }
 
-/** The box a node is drawn in: its file (whose path it gives), its package, or the dynamic calls. */
+/** The box a node is drawn in: its file (whose path it gives), its package, or the dynamic calls.
+ * */
 export function groupOf(node: GraphNode): { id: string; label: string; file?: string } {
   if (node.kind === 'unknown') return { id: 'group:unknown', label: 'dynamic calls' };
   const file = node.id.slice(0, node.id.indexOf('#'));

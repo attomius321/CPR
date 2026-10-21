@@ -35,7 +35,8 @@ export interface Verdict {
   event: VerdictEvent;
   /** The tip reviewed. */
   head: string;
-  /** Approve: the default branch to merge `head` into; absent on the default branch's own review. */
+  /** Approve: the default branch to merge `head` into; absent on the default branch's own review.
+   * */
   into?: string;
   summary: string;
 }

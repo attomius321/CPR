@@ -164,7 +164,8 @@ export async function uncommittedFiles(folder: string): Promise<number> {
   return count;
 }
 
-/** How a file in a working tree differs from its last commit (V29d), `git status`'s two letters in a word. */
+/** How a file in a working tree differs from its last commit (V29d), `git status`'s two letters in
+ * a word. */
 export type WorktreeFileStatus = FileChangeStatus | 'untracked' | 'conflicted';
 
 /** A file not committed in a working tree. */

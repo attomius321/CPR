@@ -98,7 +98,8 @@ async function fetchJson<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-/** Checks out a target; resolves with where HEAD is, or rejects with git's (or Symbiote's) words. */
+/** Checks out a target; resolves with where HEAD is, or rejects with git's (or Symbiote's) words.
+ * */
 async function postCheckout(target: CheckoutTarget): Promise<CheckoutResult> {
   const response = await fetch(`${API_ROOT}api/checkout`, {
     method: 'POST',

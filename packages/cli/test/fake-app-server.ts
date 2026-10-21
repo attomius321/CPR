@@ -1,8 +1,8 @@
 // A fake of Codex's app server (V27a), for unit and e2e tests: a WebSocket server on a unix socket
-// (`webSocketServer`: the server side of RFC 6455 that Symbiote's client meets), and on it a small model
-// of Codex's threads (`fakeAppServer`) answering as Codex 0.163 did in the V27 spike and probes:
-// JSON-RPC without `jsonrpc`, server requests numbered from 0, items without times, turns with
-// their times in seconds, `notLoaded` threads after a restart.
+// (`webSocketServer`: the server side of RFC 6455 that Symbiote's client meets), and on it a small
+// model of Codex's threads (`fakeAppServer`) answering as Codex 0.163 did in the V27 spike and
+// probes: JSON-RPC without `jsonrpc`, server requests numbered from 0, items without times, turns
+// with their times in seconds, `notLoaded` threads after a restart.
 import { createHash } from 'node:crypto';
 import { rmSync } from 'node:fs';
 import { createServer, type Socket } from 'node:net';

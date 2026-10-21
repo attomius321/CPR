@@ -50,8 +50,8 @@ import {
 import { readPrompts } from './prompts.js';
 
 /**
- * What `symbiote/config.json` says of merges: `merge.checks` (one command or several), `merge.push`,
- * and the merger agent's `merge.agent` and `merge.model` (V26c).
+ * What `symbiote/config.json` says of merges: `merge.checks` (one command or several),
+ * `merge.push`, and the merger agent's `merge.agent` and `merge.model` (V26c).
  */
 export interface MergeConfig {
   checks?: string[];
@@ -155,7 +155,8 @@ export interface ChangedSymbol {
   status: string;
 }
 
-/** The symbols `to` changed against `from` in `files` (V26c): Symbiote's analysis of those files. */
+/** The symbols `to` changed against `from` in `files` (V26c): Symbiote's analysis of those files.
+ * */
 export type ChangedSymbols = (
   from: string,
   to: string,
@@ -214,7 +215,8 @@ export interface Merger {
   idle(): Promise<void>;
 }
 
-/** Merges of `repo`, queued in Symbiote's cache; reviews and workspaces read where Symbiote keeps them. */
+/** Merges of `repo`, queued in Symbiote's cache; reviews and workspaces read where Symbiote keeps
+ * them. */
 export function merger(
   repo: GitRepo,
   cacheDir: string,
@@ -711,7 +713,8 @@ export function merger(
         await drain();
       } while (again);
     })()
-      // What failed is in its entry; a lock or queue file that cannot be written waits for the next kick.
+      // What failed is in its entry; a lock or queue file that cannot be written waits for the next
+      // kick.
       .catch(() => undefined)
       .finally(() => (running = null));
   }

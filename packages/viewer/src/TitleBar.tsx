@@ -86,7 +86,8 @@ function useMaximized(): boolean {
   );
 }
 
-/** The window's buttons where Symbiote draws its frame (N1d, Linux): elsewhere they are the system's. */
+/** The window's buttons where Symbiote draws its frame (N1d, Linux): elsewhere they are the
+ * system's. */
 export function WindowButtons() {
   const maximized = useMaximized();
   const ask = desktop?.window;

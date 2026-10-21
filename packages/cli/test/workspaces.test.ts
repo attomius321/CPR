@@ -2104,7 +2104,8 @@ describe('workspaces', () => {
     ) as WorkspaceFile;
     expect(saved.agent).toMatchObject({ thread: second, threads: [first] });
     await s.clean({ branch: 'feature/csv', unmerged: true });
-    // The running turn interrupted first; both threads archived on the server, not by `codex archive`.
+    // The running turn interrupted first; both threads archived on the server, not by `codex
+    // archive`.
     expect(server.thread(second).turns.at(-1)?.status).toBe('interrupted');
     expect(server.threads.map((t) => t.archived)).toEqual([true, true]);
     expect(archive).not.toHaveBeenCalled();
@@ -2154,7 +2155,8 @@ describe('workspaces', () => {
     await t.reply({ branch: 'feature/one', text: 'Go' });
     expect(both.resume).toHaveBeenCalledTimes(1);
     expect(server.threads).toEqual([]);
-    // ...until it is started again: then on the server, its exec threads still archived at Clean up.
+    // ...until it is started again: then on the server, its exec threads still archived at Clean
+    // up.
     await t.stopAgent('feature/one');
     const again = await t.startAgent('feature/one');
     expect(again.workspace.agent).toMatchObject({ state: 'working', remote: server.address });

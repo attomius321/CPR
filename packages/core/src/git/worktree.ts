@@ -9,7 +9,8 @@ import type { GitRepo } from './repo.js';
 /** Upper bound on concurrent runs per repo and role. */
 const MAX_SLOTS = 8;
 
-/** Cache root: `$SYMBIOTE_CACHE_DIR`, else `$XDG_CACHE_HOME/symbiote`, else the platform cache folder. */
+/** Cache root: `$SYMBIOTE_CACHE_DIR`, else `$XDG_CACHE_HOME/symbiote`, else the platform cache
+ * folder. */
 export function defaultCacheDir(
   env: Readonly<Record<string, string | undefined>> = process.env,
   platform: NodeJS.Platform = process.platform,
@@ -99,7 +100,8 @@ async function isWorktreeOf(repo: GitRepo, root: string): Promise<boolean> {
   }
 }
 
-/** Takes a pid lock file. Returns its release function, or undefined if another live process holds it. */
+/** Takes a pid lock file. Returns its release function, or undefined if another live process holds
+ * it. */
 async function tryLock(file: string): Promise<(() => Promise<void>) | undefined> {
   try {
     await writeFile(file, `${process.pid}\n`, { flag: 'wx' });

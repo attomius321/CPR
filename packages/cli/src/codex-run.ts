@@ -1,8 +1,9 @@
-// Symbiote's runner for Codex (V20a, decision 129): started detached by `symbiote view` in a workspace's
-// worktree, it runs `codex exec --json …` and writes what Codex does into the workspace's thread
-// (`symbiote/threads/<branch>.jsonl`, V18c's entries) as it happens — Codex's events carry no times,
-// and it has no hooks Symbiote can register without the person's trust. It outlives `symbiote view`, as
-// Claude Code's background sessions do. Node's own modules only: it starts with every run.
+// Symbiote's runner for Codex (V20a, decision 129): started detached by `symbiote view` in a
+// workspace's worktree, it runs `codex exec --json …` and writes what Codex does into the
+// workspace's thread (`symbiote/threads/<branch>.jsonl`, V18c's entries) as it happens — Codex's
+// events carry no times, and it has no hooks Symbiote can register without the person's trust. It
+// outlives `symbiote view`, as Claude Code's background sessions do. Node's own modules only: it
+// starts with every run.
 //
 //   node codex-run.js <thread file> <startup|resume> <run> <codex> <args…, the prompt last>
 import { spawn } from 'node:child_process';
@@ -20,7 +21,8 @@ export interface CodexRun {
   source: 'startup' | 'resume';
   run: string;
   command: string;
-  /** Codex's arguments; the last is what it was given (Symbiote's prompt, or the person's message). */
+  /** Codex's arguments; the last is what it was given (Symbiote's prompt, or the person's message).
+   * */
   args: string[];
 }
 

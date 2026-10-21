@@ -231,8 +231,8 @@ describe('symbiote diff', () => {
     type Answer = AppWindow | { error: string } | null;
 
     /**
-     * `symbiote view` where Symbiote's window answers `answer`; Ctrl+C comes at once when `ctrlC`, else
-     * never (only the window can end it).
+     * `symbiote view` where Symbiote's window answers `answer`; Ctrl+C comes at once when `ctrlC`,
+     * else never (only the window can end it).
      */
     async function inApp(argv: string[], answer: Answer, ctrlC = false) {
       const viewer = tempDir();

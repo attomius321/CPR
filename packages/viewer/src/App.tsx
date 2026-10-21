@@ -85,7 +85,8 @@ type State =
   | { status: 'analyzing'; loaded: Exclude<Loaded, { kind: 'graph' }> }
   /**
    * `sources`: opened through `symbiote view`, so `/api/source` exists. `forge`: opened through
-   * `symbiote pr`, which posts reviews there. `commits`: a diff of `symbiote view`, which lists commits.
+   * `symbiote pr`, which posts reviews there. `commits`: a diff of `symbiote view`, which lists
+   * commits.
    * `open`: the server opens files in VS Code (`/api/open`).
    */
   | {
@@ -100,7 +101,8 @@ type State =
       branchReview?: BranchReviewInfo;
     };
 
-/** Where a review goes: a forge (`symbiote pr`), or the repository itself (a branch review, V16). */
+/** Where a review goes: a forge (`symbiote pr`), or the repository itself (a branch review, V16).
+ * */
 type Forge = 'github' | 'gitlab' | 'local';
 
 interface Capabilities {
@@ -161,7 +163,8 @@ function saveWidths(widths: Widths): void {
 
 export function App() {
   const [state, setState] = useState<State>({ status: 'loading' });
-  /** A diff of `symbiote view`: in the shell's sidenav and status bar (V29a), with the repository's name. */
+  /** A diff of `symbiote view`: in the shell's sidenav and status bar (V29a), with the repository's
+   * name. */
   const [inView, setInView] = useState<{ repo?: string } | null>(null);
   const [typeReferences, setTypeReferences] = useState(false);
   const [context, setContext] = useState(true);
@@ -643,7 +646,8 @@ interface CanvasProps {
   /** A layout for a newer view is being made: this one stays until it arrives. */
   pending: boolean;
   selected: string | null;
-  /** In focus mode the whole (small) neighbourhood is fitted; otherwise the selection is centered. */
+  /** In focus mode the whole (small) neighbourhood is fitted; otherwise the selection is centered.
+   * */
   focus: boolean;
   /** The one project shown (by folder), or null: a new one is fitted as a whole, once. */
   scope: string | null;

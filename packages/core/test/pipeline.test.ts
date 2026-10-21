@@ -332,7 +332,8 @@ describe('analyzeGit', () => {
   it('reads .symbioteignore from the working folder, not from the analyzed commits', async () => {
     const other = createRepo();
     try {
-      // The commit's own .symbioteignore says something else; the working folder's is not committed.
+      // The commit's own .symbioteignore says something else; the working folder's is not
+      // committed.
       other.write({
         '.symbioteignore': 'service.ts\n',
         'apps/admin/src/service.ts': 'export const a = 1;\n',

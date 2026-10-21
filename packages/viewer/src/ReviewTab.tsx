@@ -275,9 +275,9 @@ function MergeCheck({ branch, canOpen }: { branch: string; canOpen: boolean }) {
 
 /**
  * What finishing a branch review recorded (V16), and what is next: Symbiote's merge (V26), or what
- * the agent does with it when asked — the push of the default branch's commits, or the comments; "Copy for the
- * agent" puts it in words for a chat; on a workspace's branch, "Send to the agent" opens its panel
- * with the words in its box (V18c).
+ * the agent does with it when asked — the push of the default branch's commits, or the comments;
+ * "Copy for the agent" puts it in words for a chat; on a workspace's branch, "Send to the agent"
+ * opens its panel with the words in its box (V18c).
  */
 function Finished({ branch, result }: { branch: string; result: FinishResult }) {
   const [copied, setCopied] = useState<string | null>(null);

@@ -58,8 +58,8 @@ interface WindowState {
   maximized: boolean;
 }
 
-// Who draws the window's frame (N1d): Symbiote's pages on Linux, with their own corners and buttons.
-// The page's first script marks <html> with it; the window's state is kept on <html> here.
+// Who draws the window's frame (N1d): Symbiote's pages on Linux, with their own corners and
+// buttons. The page's first script marks <html> with it; the window's state is kept on <html> here.
 const framed = (() => {
   try {
     return ipcRenderer.sendSync('symbiote:frame') as { frame: string; maximized: boolean };
@@ -84,8 +84,8 @@ const ownFrame = {
   },
 };
 
-// Symbiote's pages (N1c): that they are in the app, on which system (its window's buttons are at the
-// left on macOS), and the title bar's colours for those buttons, which follow the page's theme.
+// Symbiote's pages (N1c): that they are in the app, on which system (its window's buttons are at
+// the left on macOS), and the title bar's colours for those buttons, which follow the page's theme.
 if (window.location.protocol === 'http:') {
   contextBridge.exposeInMainWorld('symbioteApp', {
     platform: process.platform,

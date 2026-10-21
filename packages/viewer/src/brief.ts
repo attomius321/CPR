@@ -119,7 +119,8 @@ export function formParts(form: BriefForm, spec: WorkKindSpec): BriefParts {
 const written = (text: string) => text.replace(/^\s*\n/, '').trimEnd();
 
 /**
- * How long the brief `symbiote view` makes of the form will be (`briefOf`: `# <Kind>: <title>`, then
+ * How long the brief `symbiote view` makes of the form will be (`briefOf`: `# <Kind>: <title>`,
+ * then
  * `## <heading>` and each part's text, a blank line between), to count against its limit.
  */
 export function briefLength(form: BriefForm, spec: WorkKindSpec): number {

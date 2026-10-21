@@ -148,8 +148,8 @@ describe('reviewPlace', () => {
       gitignore: join(repo.root, 'symbiote', '.gitignore'),
       agents: join(repo.root, 'symbiote', 'AGENTS.md'),
     });
-    // The project's own symbiote/config.json is Symbiote's: still the repository; so are the agents'
-    // instructions Symbiote writes, once a team commits its reviews with them (V17).
+    // The project's own symbiote/config.json is Symbiote's: still the repository; so are the
+    // agents' instructions Symbiote writes, once a team commits its reviews with them (V17).
     repo.write({
       'symbiote/config.json': '{ "plugins": [] }\n',
       'symbiote/AGENTS.md': AGENTS,

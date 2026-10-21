@@ -82,8 +82,8 @@ export interface AnalyzeOptions extends Omit<LoadOptions, 'files'> {
   /** Hops of unchanged context around changed symbols. Default: 1. */
   depth?: number;
   /**
-   * Called as each phase starts, for progress (`symbiote view` runs an analysis in a child process).
-   * Phases with nothing to do are not reported: no checkout when no source file changed.
+   * Called as each phase starts, for progress (`symbiote view` runs an analysis in a child
+   * process). Phases with nothing to do are not reported: no checkout when no source file changed.
    */
   onPhase?: (phase: AnalysisPhase) => void;
 }
@@ -107,9 +107,9 @@ export interface AnalyzeGitOptions extends AnalyzeOptions {
 }
 
 /**
- * Compares two git revisions of the repository containing `cwd`. `.symbioteignore` is read from that
- * working folder, not from the analyzed commits: an edit applies at once, and older commits are
- * read with today's rules.
+ * Compares two git revisions of the repository containing `cwd`. `.symbioteignore` is read from
+ * that working folder, not from the analyzed commits: an edit applies at once, and older commits
+ * are read with today's rules.
  */
 export async function analyzeGit(gitOptions: AnalyzeGitOptions): Promise<Analysis> {
   const repo = await openRepo(gitOptions.cwd);

@@ -1,7 +1,7 @@
 // Codex as a workspace's agent: what Symbiote asks of it, and what its state is. On the person's
-// app-server daemon (V27a), Symbiote starts and reads its threads there; without one, Symbiote runs `codex
-// exec` through its runner (`codex-run.ts`, V20a), which records the thread. This module never
-// reads Codex's own files.
+// app-server daemon (V27a), Symbiote starts and reads its threads there; without one, Symbiote runs
+// `codex exec` through its runner (`codex-run.ts`, V20a), which records the thread. This module
+// never reads Codex's own files.
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import type {
@@ -19,7 +19,8 @@ import {
 import { localHost, onPath } from './editor.js';
 import { runProgram, type WorkspaceFile, type Run } from './workspaces.js';
 
-/** Starts a program detached from `symbiote view` (its own process group), in `cwd`; its process ID. */
+/** Starts a program detached from `symbiote view` (its own process group), in `cwd`; its process
+ * ID. */
 export type DetachedRun = (command: string, args: string[], cwd: string) => Promise<number>;
 
 const detachProgram: DetachedRun = (command, args, cwd) =>
@@ -37,8 +38,8 @@ export interface Codex {
   /** The program, as found. */
   command: string;
   /**
-   * Starts `codex exec` in `cwd` through Symbiote's runner, which writes `thread`, each entry marked
-   * with `run`; its process ID.
+   * Starts `codex exec` in `cwd` through Symbiote's runner, which writes `thread`, each entry
+   * marked with `run`; its process ID.
    */
   start(request: {
     cwd: string;
@@ -211,7 +212,8 @@ function lastingServer(
   };
 }
 
-/** Whose account Codex runs on, from `codex login status` (it writes to stderr); undefined when unknown. */
+/** Whose account Codex runs on, from `codex login status` (it writes to stderr); undefined when
+ * unknown. */
 export function parseCodexAccount(result: {
   code: number | null;
   stdout: string;
@@ -226,8 +228,8 @@ export function parseCodexAccount(result: {
 }
 
 /**
- * Codex at `command`, run through Symbiote's runner (`dist/codex-run.js`) with this Node. The account
- * is asked for at most every minute.
+ * Codex at `command`, run through Symbiote's runner (`dist/codex-run.js`) with this Node. The
+ * account is asked for at most every minute.
  */
 export function codex(
   command: string,
@@ -354,10 +356,11 @@ export async function findCodex(
 
 /**
  * What the page says of a Codex workspace's agent (decision 131): its last run — the thread's
- * entries marked with the record's `run` — and whether its runner still runs. An `end` decides (completed,
- * stopped, or failed with Codex's words); without one it works while the runner lives, else it
- * finished if it reported, and failed if not. `exec` never stops to ask: never "needs you".
- * `ahead` (commits since the fork point) tells a finished plan from finished work, as for Claude Code.
+ * entries marked with the record's `run` — and whether its runner still runs. An `end` decides
+ * (completed, stopped, or failed with Codex's words); without one it works while the runner lives,
+ * else it finished if it reported, and failed if not. `exec` never stops to ask: never "needs you".
+ * `ahead` (commits since the fork point) tells a finished plan from finished work, as for Claude
+ * Code.
  */
 export function codexState(
   workspace: WorkspaceFile,

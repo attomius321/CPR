@@ -424,8 +424,8 @@ function WorkspacePanel({
   const verdict = verdictToSend(thread);
   // V21: the agent's own session in a terminal, where one can run: the panel opens on it, and the
   // thread is its history, read only (one way to answer the agent: the box stops its session).
-  // Claude Code's, and Codex's on its app server (V27b): through Symbiote's runner, Codex's turns in a
-  // terminal would not reach its thread (decision 133).
+  // Claude Code's, and Codex's on its app server (V27b): through Symbiote's runner, Codex's turns
+  // in a terminal would not reach its thread (decision 133).
   const terminals = opensTerminal(agent, terminal);
   const talk = talkCommand(agent, workspace.worktree.path);
   const [chosen, setChosen] = useState(viewOfUrl);
