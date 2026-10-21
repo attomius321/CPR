@@ -1,4 +1,4 @@
-import type { Area } from './state.js';
+import { FIRST, type Area } from './state.js';
 
 /**
  * Whether CPR holds its maximized window itself (N1d): on WSLg's X11, whose window manager pads
@@ -35,6 +35,13 @@ export interface Hold {
   readonly normal: Area | undefined;
   /** The page's Maximize. */
   maximize(): void;
+  /**
+   * Maximize for a window that opens maximized, once WSLg has mapped it (it parks a window off
+   * the screen and back as it maps it): one maximized before it is mapped restores to the left
+   * screen's corner and stays there, while X11 takes it for where it was asked to be, so clicks
+   * on it land nowhere.
+   */
+  maximizeOnceShown(): void;
   /** The page's Restore; false when the window is not held, and the caller restores it. */
   restore(): boolean;
   onMaximize(): void;
@@ -66,7 +73,7 @@ export function holdMaximize(
   /** The area the window is held to. */
   let area: Area | undefined;
   /** The round trip through the window manager, and what it found and keeps. */
-  let phase: 'idle' | 'maximized' | 'unmaximizing' | 'restored' = 'idle';
+  let phase: 'opening' | 'idle' | 'maximized' | 'unmaximizing' | 'restored' = 'idle';
   let found: Area | undefined;
   let keep: Area | undefined;
   /**
@@ -103,9 +110,23 @@ export function holdMaximize(
     quiet = longest = undefined;
   }
 
+  function maximize(): void {
+    if (stopped || phase !== 'idle' || area) return;
+    const here = window.getBounds();
+    const known = areas.find((other) => contains(other, here));
+    if (known) hold(known, here);
+    else {
+      asked = here;
+      window.maximize();
+    }
+  }
+
   function settled(): void {
     stopTimers();
-    if (phase === 'maximized') {
+    if (phase === 'opening') {
+      phase = 'idle';
+      maximize();
+    } else if (phase === 'maximized') {
       found = window.getBounds();
       phase = 'unmaximizing';
       // A size asked of a maximized window is ignored: wait for it to be unmaximized.
@@ -138,20 +159,18 @@ export function holdMaximize(
     get normal() {
       return normal;
     },
-    maximize() {
-      if (stopped || phase !== 'idle' || area) return;
-      const here = window.getBounds();
-      const known = areas.find((other) => contains(other, here));
-      if (known) hold(known, here);
-      else {
-        asked = here;
-        window.maximize();
-      }
+    maximize,
+    maximizeOnceShown() {
+      if (stopped || phase !== 'idle') return;
+      phase = 'opening';
+      longest = setTimeout(settled, LONGEST);
     },
     restore() {
       if (phase !== 'idle') return true;
       if (!area || !normal) return false;
-      const to = normal;
+      // A place as large as the area is WSLg's own maximize, saved as the place before N1d.
+      const to =
+        normal.width >= area.width && normal.height >= area.height ? centred(area) : normal;
       area = normal = undefined;
       say(false);
       window.setBounds(to);
@@ -185,6 +204,18 @@ function remember(areas: Area[], area: Area): void {
   const before = areas.findIndex((other) => contains(other, area));
   if (before >= 0) areas.splice(before, 1);
   areas.push(area);
+}
+
+/** CPR's first size, centred on `area`, never larger than it. */
+function centred(area: Area): Area {
+  const width = Math.min(FIRST.width, area.width);
+  const height = Math.min(FIRST.height, area.height);
+  return {
+    x: area.x + Math.round((area.width - width) / 2),
+    y: area.y + Math.round((area.height - height) / 2),
+    width,
+    height,
+  };
 }
 
 /** Whether `window`'s centre is on `area`. */

@@ -8803,10 +8803,17 @@ window); the Windows build (N2).
   with the system's frame, are right. On WSLg's X11 (`maximize.ts`) the first maximize on a
   screen goes through the window manager, which knows the taskbar (Electron's work area there is
   the whole screen): its bounds read, unmaximized, the window set to them as a normal window. The
-  area is kept for the run; the next Maximize on that screen sets it at once. Win+Up and a start
-  maximized are held the same way; Restore puts back the place it was asked from (WSLg's own,
-  for a window it maps maximized, is the screen's corner). Moved or resized, the window is no
-  longer maximized; a passing move (WSLg parks a window it shows at −32736 for 14 ms) is not.
+  area is kept for the run; the next Maximize on that screen sets it at once. Win+Up is held the
+  same way; a window that opens maximized is shown first and maximized once WSLg has mapped it
+  (fix, below). Restore puts back the place it was asked from; a place as large as the screen
+  (WSLg's own maximize saved it) restores to 1440×900, centred. Moved or resized, the window is
+  no longer maximized; a passing move (WSLg parks a window it shows at −32736 for 14 ms) is not.
+- **Fix: opening maximized** (the person: "I can't click on anything"). A window maximized
+  before WSLg maps it, and unmaximized by the hold, restored to the left screen's corner and
+  stayed there: Windows showed it at (−32, −32) on the left screen while X11 took it for (2560,
+  0) on the right, so every click landed outside it. A move asked there was refused, with or
+  without a 1 px size change. Shown first and maximized once mapped (the park and back, then
+  50 ms still), it is held on its own screen.
 
 **Results.** Tests first: `frame.test.ts` (red: no module), and 4 app e2e red on the build before
 (the overlay gone on Linux, the buttons in the theme's colours, the corners round until maximized
