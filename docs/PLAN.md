@@ -8116,7 +8116,8 @@ packages (`.deb`, `.AppImage`, `.dmg`); a tray icon; a command search in the tit
 #### As built (N1)
 
 - **Processes** (decision 201): `cpr view` starts the app with `--url` and waits for its
-  `CPR window: <url>` line; the window's end ends the command, Ctrl+C reaches both. Each such app
+  `CPR window: <url>` line, then says "CPR's window is open: close it, or Ctrl+C, to stop"; the
+  window's end ends the command, Ctrl+C reaches both. Each such app
   has a Chromium profile of its own (`~/.config/cpr/app/run/<pid>`, removed at a later start).
   The launcher's app is one process with one profile (`app/launcher`) and a single-instance lock.
 - **What lasts** is `~/.config/cpr/app/state.json`: the window's place, the zoom, the viewer's five
@@ -8150,9 +8151,13 @@ packages (`.deb`, `.AppImage`, `.dmg`); a tray icon; a command search in the tit
 - **Titles**: `History · ky — CPR`, a workspace by its title, a diff by its request, the branch it
   reviews or its pair. The title moved from the shell's render to a component of its own: a new
   read of the workspaces rendered the whole shell.
-- **CI**: the e2e job runs `pnpm app:setup`, lifts Ubuntu 24.04's AppArmor restriction for the run
-  and runs the suite under `xvfb-run`. Its runs on the pushed branch were not read from here (a
-  private repository, no `gh`).
+- **The app's specs on a display of their own** (after the first merge's check failed): they start
+  Xvfb on the first free number from :99, ready when it writes that number back (`-displayfd`),
+  and skip without it. Run as CPR's merge check runs `pnpm test:e2e`, on the person's desktop,
+  their windows had opened there through WSLg, where a window manager moved them.
+- **CI**: the e2e job runs `pnpm app:setup` and lifts Ubuntu 24.04's AppArmor restriction for the
+  run; the specs bring their own display. Its runs on the pushed branch were not read from here
+  (a private repository, no `gh`).
 - **Not as planned**: none of the plan's parts was dropped. `cpr app install` warns, as planned,
   where AppArmor refuses the sandbox; the plan's "launched again, the window comes to the front"
   holds for the launcher only (decision 201).

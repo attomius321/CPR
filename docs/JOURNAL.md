@@ -3993,3 +3993,44 @@ the app's processes. Screenshots of History, a workspace, Settings in light and 
 system's buttons, taken with `desktopCapturer`. Not verified: macOS, Windows, native Linux window
 managers, Ubuntu 24.04's AppArmor on a real install, WSLg's Start menu, a real agent in the app's
 terminal, a GPU.
+
+## N1 — the first merge's check, and two races on `main` (2026-10-21, branch `feature/tauri-integration`)
+
+The person approved `5709575`; CPR's merger ran the project's check on the merge (`pnpm test:e2e`
+among it) and stopped on two specs.
+
+**Learned**:
+- **A merge check runs where the person is.** `pnpm test:e2e` ran on the person's desktop, not
+  under Xvfb: the app's specs opened their windows there through WSLg, and its window manager moved
+  them ("remembers the window" asserted exact bounds). Specs that start windows now start their own
+  Xvfb. On WSL, Xvfb finds no display number by itself (`-displayfd` alone: /tmp/.X11-unix is not
+  world-writable) and listens on an abstract socket only, so there is no socket file to wait for;
+  a fixed number from :99 with `-displayfd`, which it answers when ready, works. A spec that died
+  before stopping its Xvfb left it running with its lock file: found the next day, stopped.
+- **The Codex spec's failure was a race on `main`**: it stops its first server while the page is
+  on it, right after a start opened the new workspace, whose thread loads Markdown's chunk lazily.
+  1 run in 36 on `main` and on the branch alike; made certain by holding that chunk back 2 s, it
+  gave the merge check's exact error. The page now leaves first.
+- **A command's only child is not always the one you started.** Run twice as the merge check
+  runs, "cpr view opens its window" timed out: it took `cpr view`'s only child for the app, and
+  under load that child was a short-lived `git`, caught before Electron started; it was stopped,
+  the window stayed. The spec now waits for `cpr view`'s new line, "CPR's window is open: close
+  it, or Ctrl+C, to stop", and finds the app by its command line.
+- **The shell's keys spec failed under load because of a real bug**: a workspace whose agent moves
+  on is drawn anew in another group of the sidenav, and the focus fell to the page; arrows then did
+  nothing. The sidenav now follows the card the focus was on, when nothing else took it.
+
+- **The Settings spec raced a frame**: the `{plan}` button places the cursor on the next frame;
+  filled before it, the new text went in after `{plan}` instead of replacing the text (4 runs in
+  48 at 8 workers on `main`, 3 on the branch). The spec waits for the cursor: 48 of 48.
+- **Left as it was**: the usage spec's Codex live read, unexplained since V29c, failed once in four
+  full rounds and 1 run in 32 of the spec at 8 workers.
+
+**Verification**: the app's 16 specs with the desktop's `DISPLAY` and `WAYLAND_DISPLAY` set, no
+window on the desktop, no Xvfb left; the Codex race forced (an error) and fixed (none), 72 runs at
+6 workers before and after; a new spec moving the focused card's workspace to Needs you, red then
+green; both shell specs 24 of 24 at 6 workers (the keys spec failed 3 and 4 runs in 12 before, on
+the branch and on `main`). The merge check's commands, as CPR runs them (install, check, build,
+e2e) on this machine: before these fixes 155 and 156 of 157 (the app's own spec timing out in
+both, the usage spec once); after the spec found the app by name, 157 of 157, then 156 (the
+Settings race, then fixed); with every fix, 157 of 157.
