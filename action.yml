@@ -1,4 +1,4 @@
-name: CPR code review
+name: Symbiote code review
 description: >-
   Reviews a pull request as a graph of changed symbols and posts the findings (a removed symbol
   still in use, new code nothing calls, breaking signature changes) as review comments.
@@ -29,7 +29,7 @@ inputs:
   plugins:
     description: >-
       Plugins to analyze with, separated by commas (e.g. angular), besides those in
-      cpr/config.json.
+      symbiote/config.json.
     default: ''
   working-directory:
     description: Where the repository is checked out.
@@ -51,9 +51,9 @@ runs:
       with:
         node-version: 22
         # v5 caches the project's package manager when package.json names one (`packageManager`),
-        # and fails when that manager is not installed yet: CPR installs its own.
+        # and fails when that manager is not installed yet: Symbiote installs its own.
         package-manager-cache: false
-    - name: Install CPR
+    - name: Install Symbiote
       shell: bash
       working-directory: ${{ github.action_path }}
       run: bash action/install.sh
@@ -63,11 +63,11 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
-        CPR_PULL_REQUEST: ${{ inputs.pull-request }}
-        CPR_POST_FINDINGS: ${{ inputs.post-findings }}
-        CPR_FAIL_ON: ${{ inputs.fail-on }}
-        CPR_PROJECT: ${{ inputs.project }}
-        CPR_DEPTH: ${{ inputs.depth }}
-        CPR_PLUGINS: ${{ inputs.plugins }}
-        CPR_CLI: node ${{ github.action_path }}/packages/cli/dist/bin.js
+        SYMBIOTE_PULL_REQUEST: ${{ inputs.pull-request }}
+        SYMBIOTE_POST_FINDINGS: ${{ inputs.post-findings }}
+        SYMBIOTE_FAIL_ON: ${{ inputs.fail-on }}
+        SYMBIOTE_PROJECT: ${{ inputs.project }}
+        SYMBIOTE_DEPTH: ${{ inputs.depth }}
+        SYMBIOTE_PLUGINS: ${{ inputs.plugins }}
+        SYMBIOTE_CLI: node ${{ github.action_path }}/packages/cli/dist/bin.js
       run: bash "$GITHUB_ACTION_PATH/action/run.sh"

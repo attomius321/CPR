@@ -1,5 +1,5 @@
-// CPR's merger on the page (V26a): what a queued merge's row says and offers. Pure.
-import type { MergeEntry } from '@cpr/core';
+// Symbiote's merger on the page (V26a): what a queued merge's row says and offers. Pure.
+import type { MergeEntry } from '@symbiote/core';
 
 /** How a row is marked: waiting, the person's turn, done, or something went wrong. */
 export type MergeTone = 'wait' | 'you' | 'done' | 'bad';

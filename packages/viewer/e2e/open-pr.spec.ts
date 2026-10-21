@@ -2,12 +2,12 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
-import { servePullRequest, type RunningPullRequest } from './cpr.js';
+import { servePullRequest, type RunningPullRequest } from './symbiote.js';
 
-// `cpr pr 7` on the detectors fixture: a click on a row picks the comment line, Ctrl/⌘+click
+// `symbiote pr 7` on the detectors fixture: a click on a row picks the comment line, Ctrl/⌘+click
 // opens it in VS Code, and `o` opens the picked line. `perimeter` is head's lines 11–13.
-let cpr: RunningPullRequest;
-const dir = mkdtempSync(join(tmpdir(), 'cpr-e2e-code-'));
+let symbiote: RunningPullRequest;
+const dir = mkdtempSync(join(tmpdir(), 'symbiote-e2e-code-'));
 const log = join(dir, 'opened.jsonl');
 const fake = join(dir, 'code');
 const errors: string[] = [];
@@ -20,18 +20,18 @@ test.beforeAll(async () => {
       "JSON.stringify(process.argv.slice(2)) + '\\n');\n",
   );
   chmodSync(fake, 0o755);
-  cpr = await servePullRequest('detectors', [], { CPR_CODE: fake });
+  symbiote = await servePullRequest('detectors', [], { SYMBIOTE_CODE: fake });
 });
 
 test.afterAll(() => {
-  cpr.stop();
+  symbiote.stop();
   rmSync(dir, { recursive: true, force: true });
 });
 
 test.beforeEach(async ({ page }) => {
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(cpr.url);
+  await page.goto(symbiote.url);
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
 });
 
@@ -65,10 +65,10 @@ test('a click picks the comment line, Ctrl/⌘+click opens it, o opens the picke
   await page.keyboard.press('o');
   await expect.poll(() => opened().length).toBe(3);
 
-  const file = join(cpr.clone, 'src/shapes.ts');
+  const file = join(symbiote.clone, 'src/shapes.ts');
   expect(opened()).toEqual([
-    [cpr.clone, '--goto', `${file}:12:1`],
-    [cpr.clone, '--goto', `${file}:11:1`],
-    [cpr.clone, '--goto', `${file}:12:1`],
+    [symbiote.clone, '--goto', `${file}:12:1`],
+    [symbiote.clone, '--goto', `${file}:11:1`],
+    [symbiote.clone, '--goto', `${file}:12:1`],
   ]);
 });

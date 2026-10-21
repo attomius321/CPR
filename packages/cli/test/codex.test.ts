@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ThreadEntry } from '@cpr/core';
+import type { ThreadEntry } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import type { CodexThread } from '../src/app-server.js';
@@ -70,7 +70,7 @@ next();
   return fake;
 }
 
-const thread = () => join(dir, 'cpr', 'threads', 'feature', 'csv.jsonl');
+const thread = () => join(dir, 'symbiote', 'threads', 'feature', 'csv.jsonl');
 const entries = (): ThreadEntry[] =>
   existsSync(thread())
     ? readFileSync(thread(), 'utf8')
@@ -332,14 +332,14 @@ describe('codex (V20a)', () => {
   it('starts and resumes through the runner, detached in the worktree; the process ID', async () => {
     const detached = vi.fn<DetachedRun>(() => Promise.resolve(4242));
     const agent = codex('/usr/bin/codex', {
-      runner: '/opt/cpr/dist/codex-run.js',
+      runner: '/opt/symbiote/dist/codex-run.js',
       node: '/usr/bin/node',
       detach: detached,
     });
     expect(
       await agent.start({
         cwd: '/w/x',
-        thread: '/r/cpr/threads/x.jsonl',
+        thread: '/r/symbiote/threads/x.jsonl',
         run: 'r1',
         writable: ['/g'],
         prompt: 'P',
@@ -348,8 +348,8 @@ describe('codex (V20a)', () => {
     expect(detached).toHaveBeenLastCalledWith(
       '/usr/bin/node',
       [
-        '/opt/cpr/dist/codex-run.js',
-        '/r/cpr/threads/x.jsonl',
+        '/opt/symbiote/dist/codex-run.js',
+        '/r/symbiote/threads/x.jsonl',
         'startup',
         'r1',
         '/usr/bin/codex',
@@ -359,14 +359,14 @@ describe('codex (V20a)', () => {
     );
     await agent.resume({
       cwd: '/w/x',
-      thread: '/r/cpr/threads/x.jsonl',
+      thread: '/r/symbiote/threads/x.jsonl',
       run: 'r2',
       writable: ['/g'],
       sessionId: T,
       text: 'Go',
     });
     expect(detached.mock.lastCall?.[1].slice(1, 4)).toEqual([
-      '/r/cpr/threads/x.jsonl',
+      '/r/symbiote/threads/x.jsonl',
       'resume',
       'r2',
     ]);

@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
+import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // A workspace's changes (V29d): its branch's commits and files, and what its worktree has not
 // committed, in a panel at the right of its terminal.
@@ -48,8 +48,8 @@ const lastSize = async (page: Page) => {
 test("lists the branch's commits and files and what is not committed; a file opens at its change", async ({
   page,
 }) => {
-  const cpr = await serve();
-  await page.goto(`${cpr.url}history`);
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}history`);
   await start(page);
   await expect(panel(page)).toBeVisible();
   const commits = panel(page).getByRole('region', { name: 'Commits' });
@@ -58,14 +58,14 @@ test("lists the branch's commits and files and what is not committed; a file ope
   await expect(commits).toContainText('No commits yet');
   await expect(commits).toContainText('since main');
 
-  cpr.commit(BRANCH, 'half.ts', 'export const half = (n: number) => n / 2;\n', 'Add half');
-  cpr.commit(
+  symbiote.commit(BRANCH, 'half.ts', 'export const half = (n: number) => n / 2;\n', 'Add half');
+  symbiote.commit(
     BRANCH,
     'src/half.test.ts',
     'import { half } from "../half";\nhalf(2);\n',
     'Test half',
   );
-  writeFileSync(join(cpr.folder(BRANCH), 'notes.md'), 'To do\n');
+  writeFileSync(join(symbiote.folder(BRANCH), 'notes.md'), 'To do\n');
   // Read again with the list, every 5 s while its agent works.
   await expect(commits.getByRole('listitem')).toHaveCount(2, POLL);
   await expect(commits.getByRole('listitem').nth(0)).toContainText('Test half');
@@ -81,8 +81,8 @@ test("lists the branch's commits and files and what is not committed; a file ope
 
   await half.click();
   await expect(workspace(page).getByRole('status')).toHaveText('Opened half.ts in VS Code');
-  const folder = cpr.folder(BRANCH);
-  expect(cpr.opened()).toEqual([[folder, '--goto', `${join(folder, 'half.ts')}:1:1`]]);
+  const folder = symbiote.folder(BRANCH);
+  expect(symbiote.opened()).toEqual([[folder, '--goto', `${join(folder, 'half.ts')}:1:1`]]);
 
   // Beside it the terminal keeps more than half the window (decision 186).
   await expect.poll(async () => (await lastSize(page)).columns, POLL).toBeGreaterThan(0);
@@ -94,8 +94,8 @@ test("lists the branch's commits and files and what is not committed; a file ope
 test("] and the head's button hide it, kept across a reload; shown only where there is room", async ({
   page,
 }) => {
-  const cpr = await serve();
-  await page.goto(`${cpr.url}history`);
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}history`);
   await start(page);
   await expect(panel(page)).toBeVisible();
   await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true');

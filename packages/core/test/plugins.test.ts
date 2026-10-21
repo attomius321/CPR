@@ -128,14 +128,14 @@ describe('plugins', () => {
     ) as object;
     const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
     const graph = buildGraph(await analyze([tplPlugin]), {
-      generator: { name: 'cpr', version: 'test' },
+      generator: { name: 'symbiote', version: 'test' },
       plugins: [tplPlugin],
     });
     expect(validate(graph), JSON.stringify(validate.errors, null, 2)).toBe(true);
     expect(graph.plugins).toEqual([{ name: 'tpl', version: '1.0.0' }]);
     expect(graph.nodes.find((n) => n.id === 'src/card.tpl#(template)')?.kind).toBe('template');
     expect(
-      buildGraph(await analyze([]), { generator: { name: 'cpr', version: 'test' } }),
+      buildGraph(await analyze([]), { generator: { name: 'symbiote', version: 'test' } }),
     ).not.toHaveProperty('plugins');
   });
 
@@ -224,7 +224,7 @@ describe('plugins', () => {
   it('refuses another plugin API version', () => {
     const future = { ...tplPlugin, apiVersion: 2 } as unknown as TsPlugin;
     expect(() => createTypescriptAdapter({ plugins: [future] })).toThrow(
-      'plugin tpl targets plugin API 2; this CPR implements 1',
+      'plugin tpl targets plugin API 2; this Symbiote implements 1',
     );
   });
 

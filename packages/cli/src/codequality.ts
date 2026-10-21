@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { ChangedLines, Finding, Graph, Site } from '@cpr/core';
+import type { ChangedLines, Finding, Graph, Site } from '@symbiote/core';
 import { findingAnchor } from './post-findings.js';
 
 /** One issue of a GitLab Code Quality report (the Code Climate format). */

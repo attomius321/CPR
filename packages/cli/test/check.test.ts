@@ -1,4 +1,4 @@
-import { openRepo } from '@cpr/core';
+import { openRepo } from '@symbiote/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createRepo, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { guessCheck, treeAt, type Tree } from '../src/check.js';

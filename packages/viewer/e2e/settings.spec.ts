@@ -1,11 +1,11 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
+import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
-// Settings (V28b): every agent's prompts, CPR's until changed, saved in the project's
-// cpr/config.json and told to the next agent — a fake Claude Code, never a real one.
-let cpr: RunningWorkspaces;
+// Settings (V28b): every agent's prompts, Symbiote's until changed, saved in the project's
+// symbiote/config.json and told to the next agent — a fake Claude Code, never a real one.
+let symbiote: RunningWorkspaces;
 const errors: string[] = [];
 
 test.beforeEach(({ page }) => {
@@ -14,7 +14,7 @@ test.beforeEach(({ page }) => {
 });
 
 test.afterEach(() => {
-  cpr.stop();
+  symbiote.stop();
   expect(errors).toEqual([]);
 });
 
@@ -24,26 +24,26 @@ const editor = (page: Page) => page.locator('.settings-editor');
 const text = (page: Page, title: string) =>
   editor(page).getByRole('textbox', { name: `${title} prompt` });
 const save = (page: Page) => editor(page).getByRole('button', { name: 'Save', exact: true });
-const config = () => join(cpr.repo, 'cpr', 'config.json');
+const config = () => join(symbiote.repo, 'symbiote', 'config.json');
 const prompts = () =>
   (JSON.parse(readFileSync(config(), 'utf8')) as { prompts?: Record<string, unknown> }).prompts;
 
 const FIX = 'Fix it on {branch}.\n\n{brief}\n\nRun the tests before you say it is ready.\n\n';
 
-test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset gives CPR's back", async ({
+test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset gives Symbiote's back", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(cpr.url);
+  symbiote = await serveWorkspaces();
+  await page.goto(symbiote.url);
   await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible();
   await page.keyboard.press('s');
-  await expect(page).toHaveURL(`${cpr.url}settings`);
+  await expect(page).toHaveURL(`${symbiote.url}settings`);
   await expect(page.getByRole('link', { name: 'Settings' })).toHaveAttribute(
     'aria-current',
     'page',
   );
   await expect(page.locator('.settings-git')).toHaveText(
-    "No prompt changed: every agent is told CPR's text.",
+    "No prompt changed: every agent is told Symbiote's text.",
   );
   await expect(list(page).getByRole('button')).toHaveCount(13);
   // The first is open; each group in its order.
@@ -51,8 +51,8 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   await expect(list(page).getByRole('heading')).toHaveText(['Workspaces', 'Reviews', 'Merger']);
 
   await entry(page, 'Fix').click();
-  await expect(page).toHaveURL(`${cpr.url}settings?prompt=start.fix`);
-  await expect(editor(page).getByRole('heading')).toHaveText("Workspaces: FixCPR's");
+  await expect(page).toHaveURL(`${symbiote.url}settings?prompt=start.fix`);
+  await expect(editor(page).getByRole('heading')).toHaveText("Workspaces: FixSymbiote's");
   await expect(text(page, 'Fix')).toHaveValue(/Reproduce it first, with a failing test/);
 
   await text(page, 'Fix').fill(FIX);
@@ -75,7 +75,7 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   await text(page, 'Fix').fill(FIX);
   await save(page).click();
   await expect(editor(page).getByRole('status')).toHaveText(
-    'Saved. Saved in cpr/config.json, not committed: commit it to share the prompts with ' +
+    'Saved. Saved in symbiote/config.json, not committed: commit it to share the prompts with ' +
       'everyone who uses this repository.',
   );
   await expect(entry(page, 'Fix')).toContainText('changed');
@@ -88,7 +88,7 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   });
 
   // The next Fix workspace's agent is told the project's prompt.
-  await page.goto(cpr.url);
+  await page.goto(symbiote.url);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   const form = page.getByRole('region', { name: 'Start a workspace' });
   await form.getByRole('radio', { name: 'Fix' }).click();
@@ -96,16 +96,16 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   await form.getByRole('textbox', { name: 'What happens' }).fill('They sort 1, 10, 2.');
   await form.getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Started fix/dates-sort-as-text');
-  const told = cpr.calls().at(-1)?.args.at(-1) ?? '';
+  const told = symbiote.calls().at(-1)?.args.at(-1) ?? '';
   expect(told).toMatch(/^Fix it on fix\/dates-sort-as-text\.\n\n# Fix: Dates sort as text\n/);
   expect(told).toMatch(/\n\nRun the tests before you say it is ready\.\n$/);
   expect(told).not.toContain('Reproduce it first');
 
-  // Reset: CPR's text again, and nothing left in the file.
-  await page.goto(`${cpr.url}settings?prompt=start.fix`);
-  await editor(page).getByRole('button', { name: "Reset to CPR's" }).click();
+  // Reset: Symbiote's text again, and nothing left in the file.
+  await page.goto(`${symbiote.url}settings?prompt=start.fix`);
+  await editor(page).getByRole('button', { name: "Reset to Symbiote's" }).click();
   await editor(page).getByRole('button', { name: 'Reset', exact: true }).click();
-  await expect(editor(page).getByRole('status')).toContainText("CPR's text again.");
+  await expect(editor(page).getByRole('status')).toContainText("Symbiote's text again.");
   await expect(text(page, 'Fix')).toHaveValue(/Reproduce it first/);
   expect(prompts()).toBeUndefined();
 });
@@ -113,8 +113,8 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
 test('keeps drafts across prompts, asks before leaving with one, and refuses a stale save', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}settings?prompt=start.spike`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}settings?prompt=start.spike`);
   await text(page, 'Spike').fill('Spike {branch}.\n\n{brief}\n\nCommit it under spikes/.');
   await entry(page, 'Chore').click();
   await expect(text(page, 'Chore')).toHaveValue(/Keep to what is asked/);
@@ -123,21 +123,21 @@ test('keeps drafts across prompts, asks before leaving with one, and refuses a s
   await expect(entry(page, 'Spike')).toContainText('not saved');
 
   // Leaving with it asks first; staying keeps it. In the shell (V29a) the page is not unloaded:
-  // the shell asks, in a dialog of CPR's own (N1c), not the browser's.
+  // the shell asks, in a dialog of Symbiote's own (N1c), not the browser's.
   await page.getByRole('link', { name: 'History' }).click();
   const asking = page.getByRole('alertdialog', { name: 'Leave Settings?' });
   await expect(asking).toContainText('A prompt is changed and not saved.');
   await asking.getByRole('button', { name: 'Stay' }).click();
   await expect(asking).toBeHidden();
-  await expect(page).toHaveURL(`${cpr.url}settings?prompt=start.spike`);
+  await expect(page).toHaveURL(`${symbiote.url}settings?prompt=start.spike`);
   await expect(text(page, 'Spike')).toHaveValue(/Commit it under spikes\/\.$/);
 
   // Changed elsewhere since the page read it: refused, read again, the draft kept, saved.
-  mkdirSync(join(cpr.repo, 'cpr'), { recursive: true });
+  mkdirSync(join(symbiote.repo, 'symbiote'), { recursive: true });
   writeFileSync(config(), '{\n  "prompts": { "plan": { "direct": "Just do it." } }\n}\n');
   await save(page).click();
   await expect(editor(page).getByRole('status')).toContainText(
-    'cpr/config.json changed since you opened it',
+    'symbiote/config.json changed since you opened it',
   );
   await editor(page).getByRole('button', { name: 'Read it again' }).click();
   await expect(entry(page, 'Plan without')).toContainText('changed');
@@ -159,10 +159,12 @@ test('keeps drafts across prompts, asks before leaving with one, and refuses a s
 test("shows the merger's answer format, which a project cannot change, and no placeholders", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}settings?prompt=merger`);
-  await expect(editor(page).getByRole('heading')).toHaveText("Merger: InstructionsCPR's");
-  await expect(text(page, 'Instructions')).toHaveValue(/^You resolve merge conflicts for CPR\./);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}settings?prompt=merger`);
+  await expect(editor(page).getByRole('heading')).toHaveText("Merger: InstructionsSymbiote's");
+  await expect(text(page, 'Instructions')).toHaveValue(
+    /^You resolve merge conflicts for Symbiote\./,
+  );
   await expect(editor(page).locator('.settings-fixed pre')).toContainText(
     'Answer with one JSON object and nothing else:',
   );
@@ -173,16 +175,16 @@ test('on a phone, the list first; a prompt takes the page, and comes back to the
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}settings`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}settings`);
   await expect(list(page)).toBeVisible();
   await expect(editor(page)).toBeHidden();
-  await entry(page, 'cpr/AGENTS.md').click();
+  await entry(page, 'symbiote/AGENTS.md').click();
   await expect(list(page)).toBeHidden();
-  await expect(text(page, 'cpr/AGENTS.md')).toHaveValue(/^# CPR reviews/);
+  await expect(text(page, 'symbiote/AGENTS.md')).toHaveValue(/^# Symbiote reviews/);
   await editor(page).getByRole('button', { name: '← All prompts' }).click();
   await expect(list(page)).toBeVisible();
-  await expect(page).toHaveURL(`${cpr.url}settings`);
+  await expect(page).toHaveURL(`${symbiote.url}settings`);
   // Nothing wider than the screen.
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

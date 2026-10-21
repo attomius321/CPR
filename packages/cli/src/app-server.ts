@@ -1,9 +1,9 @@
-// Codex's app server (V27a, decisions 154–155): CPR as one of its clients, on the WebSocket of
+// Codex's app server (V27a, decisions 154–155): Symbiote as one of its clients, on the WebSocket of
 // the person's daemon's unix socket — JSON-RPC without the `jsonrpc` field (Codex 0.163). One
-// connection per call: CPR keeps no thread subscribed (a thread's clients get every delta of its
+// connection per call: Symbiote keeps no thread subscribed (a thread's clients get every delta of its
 // turns) and reads what it shows with `thread/read` and `thread/turns/list`. What it reads is
 // checked field by field: the protocol is `[experimental]`.
-import { EFFORT_LEVEL, type AgentEfforts } from '@cpr/core';
+import { EFFORT_LEVEL, type AgentEfforts } from '@symbiote/core';
 import { openWebSocket, type WebSocketClient } from './websocket.js';
 
 /** An error the app server answered, with its JSON-RPC code; or no answer in time. */
@@ -36,7 +36,7 @@ export interface AppServerConnection {
   close(): void;
 }
 
-/** A unix socket's path from `unix://<path>`, the only kind CPR connects to. */
+/** A unix socket's path from `unix://<path>`, the only kind Symbiote connects to. */
 function socketOf(address: string): string {
   const path = /^unix:\/\/(\/.+)$/.exec(address)?.[1];
   if (!path) throw new AppServerUnreachable(`not a unix:// address: ${address}`);
@@ -44,7 +44,7 @@ function socketOf(address: string): string {
 }
 
 /**
- * Connects to the app server at `address` (`unix://<path>`) and introduces CPR (`initialize`,
+ * Connects to the app server at `address` (`unix://<path>`) and introduces Symbiote (`initialize`,
  * then `initialized`); `experimental` opts this connection into Codex's experimental methods.
  * Each request is answered within `timeoutMs` or fails.
  */
@@ -84,7 +84,7 @@ export async function connectAppServer(
       return;
     }
     if (!message || typeof message !== 'object') return;
-    // A server request has a method and its own ID (from 0): never an answer to CPR's.
+    // A server request has a method and its own ID (from 0): never an answer to Symbiote's.
     if (typeof message.method === 'string') {
       if (message.id === undefined)
         for (const listener of listeners) listener(message.method, message.params);
@@ -139,7 +139,7 @@ export async function connectAppServer(
   };
   try {
     await connection.request('initialize', {
-      clientInfo: { name: 'cpr', title: 'CPR', version },
+      clientInfo: { name: 'symbiote', title: 'Symbiote', version },
       capabilities: experimental ? { experimentalApi: true, requestAttestation: false } : null,
     });
   } catch (error) {
@@ -150,7 +150,7 @@ export async function connectAppServer(
   return connection;
 }
 
-/** A Codex thread as CPR reads it. */
+/** A Codex thread as Symbiote reads it. */
 export interface CodexThread {
   id: string;
   /** Unix seconds. */
@@ -180,7 +180,7 @@ export interface CodexTurn {
   final?: true;
 }
 
-/** What CPR asks of Codex's app server (V27a); tests use a fake server. */
+/** What Symbiote asks of Codex's app server (V27a); tests use a fake server. */
 export interface CodexServer {
   /** Where it listens, as `codex resume --remote` takes it: `unix://<socket>`. */
   address: string;
@@ -259,7 +259,7 @@ function effortsOf(config: Record<string, unknown>, models: unknown): AgentEffor
   return { levels, ...(fallback ? { default: fallback } : {}) };
 }
 
-/** A turn's fields CPR uses, from what the server sent. */
+/** A turn's fields Symbiote uses, from what the server sent. */
 function turnOf(value: unknown): CodexTurn | null {
   const v = (value ?? {}) as Record<string, unknown>;
   const id = text(v.id);

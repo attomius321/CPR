@@ -1,4 +1,4 @@
-import type { WorkspaceSummary } from '@cpr/core';
+import type { WorkspaceSummary } from '@symbiote/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readEvery, reloadWorkspaces, type WorkspacesState } from '../src/useWorkspaces.js';
 

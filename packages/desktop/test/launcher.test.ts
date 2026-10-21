@@ -4,20 +4,20 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { readRecorded, readyUrl, serverError, startServer, withRecent } from '../src/launcher.js';
 
-const dir = mkdtempSync(join(tmpdir(), 'cpr-launcher-'));
+const dir = mkdtempSync(join(tmpdir(), 'symbiote-launcher-'));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 describe('readyUrl', () => {
-  it("reads the address from cpr view's line", () => {
-    expect(readyUrl('CPR viewer: http://127.0.0.1:41234/  (Ctrl+C to stop)\n')).toBe(
+  it("reads the address from symbiote view's line", () => {
+    expect(readyUrl('Symbiote viewer: http://127.0.0.1:41234/  (Ctrl+C to stop)\n')).toBe(
       'http://127.0.0.1:41234/',
     );
-    expect(readyUrl('hint: x\nCPR viewer: http://127.0.0.1:1/\n')).toBe('http://127.0.0.1:1/');
+    expect(readyUrl('hint: x\nSymbiote viewer: http://127.0.0.1:1/\n')).toBe('http://127.0.0.1:1/');
   });
 
   it('waits for the whole line, and takes no other server', () => {
-    expect(readyUrl('CPR viewer: http://127.0.0.1:41')).toBeNull();
-    expect(readyUrl('CPR viewer: http://example.com/  (Ctrl+C to stop)\n')).toBeNull();
+    expect(readyUrl('Symbiote viewer: http://127.0.0.1:41')).toBeNull();
+    expect(readyUrl('Symbiote viewer: http://example.com/  (Ctrl+C to stop)\n')).toBeNull();
     expect(readyUrl('')).toBeNull();
   });
 });
@@ -32,7 +32,7 @@ describe('withRecent', () => {
 });
 
 describe('readRecorded', () => {
-  it('reads what cpr app install recorded: node, the CLI and PATH', () => {
+  it('reads what symbiote app install recorded: node, the CLI and PATH', () => {
     const file = join(dir, 'app.json');
     writeFileSync(file, JSON.stringify({ node: '/n/node', cli: '/c/bin.js', path: '/n:/usr/bin' }));
     expect(readRecorded(file)).toEqual({ node: '/n/node', cli: '/c/bin.js', path: '/n:/usr/bin' });
@@ -48,15 +48,15 @@ describe('readRecorded', () => {
 });
 
 describe('serverError', () => {
-  it("says the server's own words: its last cpr: line", () => {
-    expect(serverError('warning: x\ncpr: not inside a git working tree: /home/a/notes\n', 1)).toBe(
-      'not inside a git working tree: /home/a/notes',
-    );
+  it("says the server's own words: its last symbiote: line", () => {
+    expect(
+      serverError('warning: x\nsymbiote: not inside a git working tree: /home/a/notes\n', 1),
+    ).toBe('not inside a git working tree: /home/a/notes');
   });
 
   it('else how it ended', () => {
-    expect(serverError('', 1)).toBe('cpr view exited with 1');
-    expect(serverError('Error: boom\n    at x\n', null)).toBe('cpr view ended: Error: boom');
+    expect(serverError('', 1)).toBe('symbiote view exited with 1');
+    expect(serverError('Error: boom\n    at x\n', null)).toBe('symbiote view ended: Error: boom');
   });
 });
 
@@ -68,7 +68,7 @@ describe('startServer', () => {
       path,
       `require('node:fs').writeFileSync('ran.json', JSON.stringify({
   argv: process.argv.slice(2),
-  stops: process.env.CPR_STDIN_STOPS ?? null,
+  stops: process.env.SYMBIOTE_STDIN_STOPS ?? null,
   path: process.env.PATH ?? null,
 }));
 ${body}`,
@@ -78,10 +78,10 @@ ${body}`,
   const repo = join(dir, 'repo');
   mkdirSync(repo);
 
-  it("starts cpr view in the repository, on the recorded PATH, ending with the app's stdin", async () => {
+  it("starts symbiote view in the repository, on the recorded PATH, ending with the app's stdin", async () => {
     const cli = fakeCli(
       'serves',
-      `process.stdout.write('CPR viewer: http://127.0.0.1:4321/  (Ctrl+C to stop)\\n');
+      `process.stdout.write('Symbiote viewer: http://127.0.0.1:4321/  (Ctrl+C to stop)\\n');
 process.stdin.on('end', () => process.exit(0));
 process.stdin.resume();`,
     );
@@ -98,10 +98,10 @@ process.stdin.resume();`,
     expect(await ended).toBe(0);
   });
 
-  it("gives cpr view's own words when it does not serve", async () => {
+  it("gives symbiote view's own words when it does not serve", async () => {
     const cli = fakeCli(
       'refuses',
-      `process.stderr.write('cpr: not inside a git working tree: ' + process.cwd() + '\\n');
+      `process.stderr.write('symbiote: not inside a git working tree: ' + process.cwd() + '\\n');
 process.exit(1);`,
     );
     expect(await startServer(repo, { node: process.execPath, cli }, {})).toEqual({

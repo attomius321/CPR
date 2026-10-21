@@ -2,7 +2,7 @@ import type { ts } from 'ts-morph';
 import type { Dangling, Exposure, Site, SymbolDecl, SymbolId } from '../../model.js';
 import type { ProjectKind } from '../../projects.js';
 
-/** The plugin contract this version of CPR implements. */
+/** The plugin contract this version of Symbiote implements. */
 export const PLUGIN_API_VERSION = 1;
 
 /**
@@ -62,7 +62,7 @@ export interface TsPlugin {
   exposure?: (revision: PluginRevision, symbol: SymbolDecl) => Exposure | undefined;
   /**
    * The apps and libraries the framework declares (Angular: `angular.json`'s projects). They
-   * count before packages and tsconfig folders when CPR tells which project a file is in.
+   * count before packages and tsconfig folders when Symbiote tells which project a file is in.
    */
   projects?: (revision: PluginContext) => PluginProject[];
   /** Problems worth telling the user about. */
@@ -103,7 +103,7 @@ export interface PluginRevision extends PluginContext {
 
 /** A TypeScript file that exists only in the analyzed program. */
 export interface VirtualFile {
-  /** Repo-relative path; must not exist on disk (e.g. `src/foo.component.html.cpr.ts`). */
+  /** Repo-relative path; must not exist on disk (e.g. `src/foo.component.html.symbiote.ts`). */
   path: string;
   text: string;
   /**

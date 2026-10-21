@@ -16,8 +16,8 @@ import {
   type PromptChange,
   type PromptSettings,
   type UsageReport,
-} from '@cpr/core';
-import type { Review } from '@cpr/forge';
+} from '@symbiote/core';
+import type { Review } from '@symbiote/forge';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import {
@@ -116,7 +116,7 @@ describe('startViewServer', () => {
     expect(status).toBe(421);
   });
 
-  it('says what it can do: sources, but no reviews outside cpr pr', async () => {
+  it('says what it can do: sources, but no reviews outside symbiote pr', async () => {
     expect(JSON.parse((await get('/api/capabilities')).body)).toEqual({
       sources: true,
       review: null,
@@ -124,13 +124,13 @@ describe('startViewServer', () => {
     });
     const response = await fetch(new URL('/api/review', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
       body: '{}',
     });
     expect(response.status).toBe(404);
     const open = await fetch(new URL('/api/open', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
       body: JSON.stringify({ side: 'head', file: 'src/math.ts', line: 1 }),
     });
     expect(open.status).toBe(404);
@@ -185,7 +185,7 @@ describe('POST /api/review', () => {
   const post = (headers: Record<string, string>, body: unknown = review) =>
     fetch(new URL('/api/review', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
       body: JSON.stringify(body),
     });
 
@@ -209,7 +209,7 @@ describe('POST /api/review', () => {
 
   it('refuses requests other sites could send', async () => {
     expect((await post({ origin: 'https://attacker.example' })).status).toBe(403);
-    expect((await post({ 'x-cpr': '' })).status).toBe(403);
+    expect((await post({ 'x-symbiote': '' })).status).toBe(403);
     expect((await post({ 'content-type': 'text/plain' })).status).toBe(403);
     expect((await fetch(new URL('/api/review', server.url))).status).toBe(405);
     expect(submitted).toHaveLength(1);
@@ -255,7 +255,7 @@ describe('/api/state', () => {
   const put = (name: string, value: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL(`/api/state/${name}`, server.url), {
       method: 'PUT',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
       body: JSON.stringify(value),
     });
   const read = async (name: string) =>
@@ -272,7 +272,7 @@ describe('/api/state', () => {
   it('refuses unknown names and writes other sites could send', async () => {
     expect((await put('secrets', {})).status).toBe(404);
     expect((await put('drafts', {}, { origin: 'https://attacker.example' })).status).toBe(403);
-    expect((await put('drafts', {}, { 'x-cpr': '' })).status).toBe(403);
+    expect((await put('drafts', {}, { 'x-symbiote': '' })).status).toBe(403);
     expect(await read('drafts')).toBeNull();
   });
 
@@ -337,7 +337,7 @@ describe('POST /api/open', () => {
   const post = (body: unknown, headers: Record<string, string> = {}, to = server) =>
     fetch(new URL('/api/open', to.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
       body: JSON.stringify(body),
     });
 
@@ -380,7 +380,7 @@ describe('POST /api/open', () => {
       expect((await post({ ...ok, line })).status).toBe(400);
     }
     expect((await post({ ...ok, column: 0 })).status).toBe(400);
-    expect((await post(ok, { 'x-cpr': '' })).status).toBe(403);
+    expect((await post(ok, { 'x-symbiote': '' })).status).toBe(403);
     expect((await post(ok, { origin: 'https://attacker.example' })).status).toBe(403);
     expect((await fetch(new URL('/api/open', server.url))).status).toBe(405);
     expect((await post(ok, {}, folders)).status).toBe(404);
@@ -388,7 +388,7 @@ describe('POST /api/open', () => {
   });
 });
 
-describe('cpr view: commits and diffs', () => {
+describe('symbiote view: commits and diffs', () => {
   const viewer = tempDir();
   const dir = tempDir();
   const A = 'a'.repeat(40);
@@ -513,7 +513,7 @@ describe('cpr view: commits and diffs', () => {
   const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL(path, server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
       body: JSON.stringify(body),
     });
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -657,7 +657,7 @@ describe('cpr view: commits and diffs', () => {
       ).status,
     ).toBe(403);
     expect(
-      (await post('/api/checkout', { kind: 'branch', name: 'wip' }, { 'x-cpr': '' })).status,
+      (await post('/api/checkout', { kind: 'branch', name: 'wip' }, { 'x-symbiote': '' })).status,
     ).toBe(403);
     expect(checkouts.length).toBe(before + 1);
   });
@@ -680,7 +680,7 @@ describe('cpr view: commits and diffs', () => {
     expect((await post('/api/diffs', { base: 'd'.repeat(40), head: B })).status).toBe(400);
     expect((await post('/api/diffs', { base: A, head: A })).status).toBe(400);
     expect((await post('/api/diffs', { base: A })).status).toBe(400);
-    expect((await post('/api/diffs', { base: A, head: B }, { 'x-cpr': '' })).status).toBe(403);
+    expect((await post('/api/diffs', { base: A, head: B }, { 'x-symbiote': '' })).status).toBe(403);
     expect(
       (await post('/api/diffs', { base: A, head: B }, { origin: 'https://attacker.example' }))
         .status,
@@ -752,7 +752,7 @@ describe('cpr view: commits and diffs', () => {
   it('keeps review state per diff', async () => {
     const put = await fetch(new URL(`/diff/${A}..${B}/api/state/review`, server.url), {
       method: 'PUT',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
       body: JSON.stringify({ 'src/math.ts#add': 'x' }),
     });
     expect(put.status).toBe(204);
@@ -765,21 +765,23 @@ describe('cpr view: commits and diffs', () => {
 
   it('reports a failed analysis, runs it again when asked', async () => {
     await post('/api/diffs', { base: B, head: C });
-    runs[1]?.reject(new Error("cpr: unknown revision 'x'"));
+    runs[1]?.reject(new Error("symbiote: unknown revision 'x'"));
     await settle();
     const failed = await get(`/diff/${B}..${C}/api/graph`);
     expect(failed.status).toBe(502);
     expect(JSON.parse(failed.body)).toEqual({
       base: B,
       head: C,
-      error: "cpr: unknown revision 'x'",
+      error: "symbiote: unknown revision 'x'",
     });
     await post('/api/diffs', { base: B, head: C });
     expect(runs).toHaveLength(3);
   });
 
   it('stops an analysis', async () => {
-    expect((await post('/api/diffs/stop', { base: B, head: C }, { 'x-cpr': '' })).status).toBe(403);
+    expect((await post('/api/diffs/stop', { base: B, head: C }, { 'x-symbiote': '' })).status).toBe(
+      403,
+    );
     expect(runs[2]?.signal.aborted).toBe(false);
     expect((await post('/api/diffs/stop', { base: B, head: C })).status).toBe(204);
     expect(runs[2]?.signal.aborted).toBe(true);
@@ -796,7 +798,7 @@ describe('cpr view: commits and diffs', () => {
   });
 });
 
-describe('cpr view: branch reviews', () => {
+describe('symbiote view: branch reviews', () => {
   const viewer = tempDir();
   const A = 'a'.repeat(40);
   const B = 'b'.repeat(40);
@@ -919,7 +921,7 @@ describe('cpr view: branch reviews', () => {
   ) =>
     fetch(new URL(path, server.url), {
       method,
-      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
       body: JSON.stringify(body),
     });
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -934,7 +936,9 @@ describe('cpr view: branch reviews', () => {
   });
 
   it('starts a review and answers where it is; refuses what cannot be reviewed', async () => {
-    expect((await send('POST', '/api/reviews', { ref: 'wip' }, { 'x-cpr': '' })).status).toBe(403);
+    expect((await send('POST', '/api/reviews', { ref: 'wip' }, { 'x-symbiote': '' })).status).toBe(
+      403,
+    );
     expect((await send('POST', '/api/reviews', { ref: 5 })).status).toBe(400);
     const refused = await send('POST', '/api/reviews', { ref: 'main' });
     expect(refused.status).toBe(400);
@@ -1006,9 +1010,9 @@ describe('cpr view: branch reviews', () => {
     // wip's tip moved to C (the test before): its analysis ends.
     runs.find((r) => r.pair.head === C)?.resolve(graphOf({ base: A, head: C }));
     await settle();
-    expect((await send('POST', '/review/wip/api/review', review, { 'x-cpr': '' })).status).toBe(
-      403,
-    );
+    expect(
+      (await send('POST', '/review/wip/api/review', review, { 'x-symbiote': '' })).status,
+    ).toBe(403);
     for (const bad of [
       { ...comment, path: '../etc/passwd' },
       { ...comment, symbol: 'src/nope.ts#x' },
@@ -1081,7 +1085,7 @@ describe('cpr view: branch reviews', () => {
   });
 });
 
-describe('cpr view: workspaces (V18)', () => {
+describe('symbiote view: workspaces (V18)', () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);
   const summary: WorkspaceSummary = {
@@ -1234,7 +1238,7 @@ describe('cpr view: workspaces (V18)', () => {
   const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL(path, server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
       body: JSON.stringify(body),
     });
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -1328,7 +1332,7 @@ describe('cpr view: workspaces (V18)', () => {
     expect((await post('/api/workspaces/draft', draft)).status).toBe(200);
     expect(await (await get('/api/workspaces/draft')).json()).toEqual(draft);
     const before = drafts.length;
-    expect((await post('/api/workspaces/draft', draft, { 'x-cpr': '' })).status).toBe(403);
+    expect((await post('/api/workspaces/draft', draft, { 'x-symbiote': '' })).status).toBe(403);
     for (const body of [null, [], 'text', 3]) {
       expect((await post('/api/workspaces/draft', body)).status, JSON.stringify(body)).toBe(400);
     }
@@ -1378,7 +1382,7 @@ describe('cpr view: workspaces (V18)', () => {
     expect((await post('/api/workspaces/open', { branch: 'feature/csv' })).status).toBe(200);
     expect(openedWorkspaces).toEqual(['feature/csv']);
     for (const path of ['/api/workspaces/stop', '/api/workspaces/open']) {
-      expect((await post(path, { branch: 'x' }, { 'x-cpr': '' })).status, path).toBe(403);
+      expect((await post(path, { branch: 'x' }, { 'x-symbiote': '' })).status, path).toBe(403);
       expect((await get(path)).status, path).toBe(405);
     }
     expect(stopped.length).toBe(2);
@@ -1424,10 +1428,10 @@ describe('cpr view: workspaces (V18)', () => {
     expect(
       (await post('/api/workspaces', request, { origin: 'https://attacker.example' })).status,
     ).toBe(403);
-    expect((await post('/api/workspaces', request, { 'x-cpr': '' })).status).toBe(403);
-    expect((await post('/api/workspaces/start', { branch: 'x' }, { 'x-cpr': '' })).status).toBe(
-      403,
-    );
+    expect((await post('/api/workspaces', request, { 'x-symbiote': '' })).status).toBe(403);
+    expect(
+      (await post('/api/workspaces/start', { branch: 'x' }, { 'x-symbiote': '' })).status,
+    ).toBe(403);
     expect(started.length).toBe(before);
   });
 
@@ -1467,9 +1471,10 @@ describe('cpr view: workspaces (V18)', () => {
     );
 
     for (const path of ['/api/workspaces/reply', '/api/workspaces/clean']) {
-      expect((await post(path, { branch: 'x', text: 'y' }, { 'x-cpr': '' })).status, path).toBe(
-        403,
-      );
+      expect(
+        (await post(path, { branch: 'x', text: 'y' }, { 'x-symbiote': '' })).status,
+        path,
+      ).toBe(403);
       expect((await get(path)).status, path).toBe(405);
     }
     expect(replies).toHaveLength(3);
@@ -1477,7 +1482,7 @@ describe('cpr view: workspaces (V18)', () => {
   });
 });
 
-describe('cpr view: merges (V26a)', () => {
+describe('symbiote view: merges (V26a)', () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);
   const entry: MergeEntry = {
@@ -1560,7 +1565,7 @@ describe('cpr view: merges (V26a)', () => {
   const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL(path, server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
       body: JSON.stringify(body),
     });
 
@@ -1597,7 +1602,7 @@ describe('cpr view: merges (V26a)', () => {
       '/api/merges/remove',
     ]) {
       expect(
-        (await post(path, { id: 'm1', branch: 'a', into: 'b' }, { 'x-cpr': '' })).status,
+        (await post(path, { id: 'm1', branch: 'a', into: 'b' }, { 'x-symbiote': '' })).status,
         path,
       ).toBe(403);
     }
@@ -1621,11 +1626,11 @@ describe('cpr view: merges (V26a)', () => {
   });
 });
 
-describe('cpr view: settings (V28)', () => {
+describe('symbiote view: settings (V28)', () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);
   const answer: PromptSettings = {
-    file: 'cpr/config.json',
+    file: 'symbiote/config.json',
     version: 'v1',
     git: 'none',
     prompts: [],
@@ -1637,7 +1642,9 @@ describe('cpr view: settings (V28)', () => {
       asked.push(change);
       return change.version === 'v1'
         ? Promise.resolve({ ...answer, version: 'v2' })
-        : Promise.reject(new PromptRefused('cpr/config.json changed since you opened it', 409));
+        : Promise.reject(
+            new PromptRefused('symbiote/config.json changed since you opened it', 409),
+          );
     },
   };
   let server: ViewServer;
@@ -1669,7 +1676,7 @@ describe('cpr view: settings (V28)', () => {
   const post = (body: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL('/api/settings/prompts', server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
       body: JSON.stringify(body),
     });
 
@@ -1682,7 +1689,9 @@ describe('cpr view: settings (V28)', () => {
     expect((await post({ key: 'merger', text: null, version: 'v1' })).status).toBe(200);
     const stale = await post({ key: 'merger', text: 'Keep both.', version: 'v0' });
     expect(stale.status).toBe(409);
-    expect(await stale.json()).toEqual({ error: 'cpr/config.json changed since you opened it' });
+    expect(await stale.json()).toEqual({
+      error: 'symbiote/config.json changed since you opened it',
+    });
     for (const body of [
       null,
       { key: 'start.bug', text: 'x', version: 'v1' },
@@ -1691,9 +1700,9 @@ describe('cpr view: settings (V28)', () => {
     ]) {
       expect((await post(body)).status, JSON.stringify(body)).toBe(400);
     }
-    expect((await post({ key: 'merger', text: 'x', version: 'v1' }, { 'x-cpr': '' })).status).toBe(
-      403,
-    );
+    expect(
+      (await post({ key: 'merger', text: 'x', version: 'v1' }, { 'x-symbiote': '' })).status,
+    ).toBe(403);
     expect(asked).toEqual([
       { key: 'start.fix', text: 'Fix it: {brief}', version: 'v1' },
       { key: 'merger', text: null, version: 'v1' },
@@ -1702,7 +1711,7 @@ describe('cpr view: settings (V28)', () => {
   });
 });
 
-describe('cpr view: usage (V29c)', () => {
+describe('symbiote view: usage (V29c)', () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);
   const report: UsageReport = {
@@ -1757,14 +1766,14 @@ describe('cpr view: usage (V29c)', () => {
     expect(await response.json()).toEqual(report);
     const post = await fetch(new URL('/api/usage', server.url), {
       method: 'POST',
-      headers: { 'x-cpr': '1' },
+      headers: { 'x-symbiote': '1' },
     });
     expect(post.status).toBe(405);
     expect(asked).toBe(1);
   });
 });
 
-describe('cpr view: terminals (V21)', () => {
+describe('symbiote view: terminals (V21)', () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);
   /** Fake pseudo-terminals behind the real terminals: what each was asked, and how to print. */
@@ -1845,7 +1854,7 @@ describe('cpr view: terminals (V21)', () => {
   const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
     fetch(new URL(path, server.url), {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1', ...headers },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
       body: JSON.stringify(body),
     });
   const open = async (branch = 'feature/csv') => {
@@ -1899,7 +1908,7 @@ describe('cpr view: terminals (V21)', () => {
     }
     // Only the page itself starts a process.
     const body = { branch: 'feature/csv', cols: 80, rows: 24 };
-    expect((await post('/api/workspaces/terminal', body, { 'x-cpr': '' })).status).toBe(403);
+    expect((await post('/api/workspaces/terminal', body, { 'x-symbiote': '' })).status).toBe(403);
     const attacker = { origin: 'https://attacker.example' };
     expect((await post('/api/workspaces/terminal', body, attacker)).status).toBe(403);
     expect(asked.length).toBe(before);
@@ -1938,9 +1947,9 @@ describe('cpr view: terminals (V21)', () => {
     ] as const) {
       expect((await post(`/api/terminals/${id}/${path}`, body)).status, path).toBe(400);
     }
-    expect((await post(`/api/terminals/${id}/in`, { data: 'x' }, { 'x-cpr': '' })).status).toBe(
-      403,
-    );
+    expect(
+      (await post(`/api/terminals/${id}/in`, { data: 'x' }, { 'x-symbiote': '' })).status,
+    ).toBe(403);
     const attacker = { origin: 'https://attacker.example' };
     expect(
       (await fetch(new URL(`/api/terminals/${id}`, server.url), { headers: attacker })).status,

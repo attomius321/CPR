@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import type { Graph, GraphEdge, GraphNode } from '@cpr/core';
-import { serveFixture, type Running } from './cpr.js';
+import type { Graph, GraphEdge, GraphNode } from '@symbiote/core';
+import { serveFixture, type Running } from './symbiote.js';
 
 // React Flow checks every edge it is given on every frame of a move (V8c). A generated change
 // with more edges than a moving view draws: 21 symbols of `a.ts` call each of 20 in `b.ts`, and
 // `first` also calls `c.ts`. On the map each linked file pair is one edge; while the view moves,
 // only the selected symbol's edges are drawn. The `callers` fixture is small: nothing changes.
-let cpr: Running;
+let symbiote: Running;
 const errors: string[] = [];
 
 function manyEdges(): Graph {
@@ -54,10 +54,10 @@ function manyEdges(): Graph {
 }
 
 test.beforeAll(async () => {
-  cpr = await serveFixture('callers');
+  symbiote = await serveFixture('callers');
 });
 
-test.afterAll(() => cpr.stop());
+test.afterAll(() => symbiote.stop());
 
 test.beforeEach(({ page }) => {
   errors.length = 0;
@@ -67,7 +67,7 @@ test.beforeEach(({ page }) => {
 test.afterEach(() => expect(errors).toEqual([]));
 
 async function open(page: Page, graph?: Graph) {
-  const url = new URL(cpr.url);
+  const url = new URL(symbiote.url);
   if (graph) {
     await page.route('**/many-edges.json', (route) => route.fulfill({ json: graph }));
     url.searchParams.set('graph', './many-edges.json');

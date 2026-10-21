@@ -1,5 +1,5 @@
-// CPR's merger (V26a, decisions 142–146, 149): an approved commit merged with `--no-ff` in a
-// worktree of CPR's own, the project's check run on the merge, and the target branch moved by
+// Symbiote's merger (V26a, decisions 142–146, 149): an approved commit merged with `--no-ff` in a
+// worktree of Symbiote's own, the project's check run on the merge, and the target branch moved by
 // fast-forward. No agent and no tokens; one merge at a time per repository.
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -33,7 +33,7 @@ import {
   type MergeTargets,
   type RefList,
   type Verdict,
-} from '@cpr/core';
+} from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
 import { CONFIG_FILES } from './plugins.js';
 import { readReview, reviewPath, reviewPlace } from './reviews.js';
@@ -50,7 +50,7 @@ import {
 import { readPrompts } from './prompts.js';
 
 /**
- * What `cpr/config.json` says of merges: `merge.checks` (one command or several), `merge.push`,
+ * What `symbiote/config.json` says of merges: `merge.checks` (one command or several), `merge.push`,
  * and the merger agent's `merge.agent` and `merge.model` (V26c).
  */
 export interface MergeConfig {
@@ -147,7 +147,7 @@ export const runShell: RunCheck = (command, cwd) =>
 const lastLines = (text: string) =>
   text.replace(/\n+$/, '').split('\n').slice(-OUTPUT_LINES).join('\n');
 
-/** A symbol a side changed, as CPR's analysis names it. */
+/** A symbol a side changed, as Symbiote's analysis names it. */
 export interface ChangedSymbol {
   path: string;
   name: string;
@@ -155,14 +155,14 @@ export interface ChangedSymbol {
   status: string;
 }
 
-/** The symbols `to` changed against `from` in `files` (V26c): CPR's analysis of those files. */
+/** The symbols `to` changed against `from` in `files` (V26c): Symbiote's analysis of those files. */
 export type ChangedSymbols = (
   from: string,
   to: string,
   files: readonly string[],
 ) => Promise<ChangedSymbol[]>;
 
-/** CPR's own analysis of only `files` (others ignored), without context around them. */
+/** Symbiote's own analysis of only `files` (others ignored), without context around them. */
 function analyzedSymbols(repo: GitRepo, cacheDir: string): ChangedSymbols {
   return async (from, to, files) => {
     const wanted = new Set(files);
@@ -193,7 +193,7 @@ function analyzedSymbols(repo: GitRepo, cacheDir: string): ChangedSymbols {
   };
 }
 
-/** What the server and `cpr merge` need of the merger. */
+/** What the server and `symbiote merge` need of the merger. */
 export interface Merger {
   list(): Promise<MergeList>;
   /** Merge into ▾ for a branch: the branches, the one preselected, and why not, if not. */
@@ -214,7 +214,7 @@ export interface Merger {
   idle(): Promise<void>;
 }
 
-/** Merges of `repo`, queued in CPR's cache; reviews and workspaces read where CPR keeps them. */
+/** Merges of `repo`, queued in Symbiote's cache; reviews and workspaces read where Symbiote keeps them. */
 export function merger(
   repo: GitRepo,
   cacheDir: string,
@@ -228,13 +228,13 @@ export function merger(
   }: {
     now?: () => Date;
     runCheck?: RunCheck;
-    /** Where `cpr/config.json` is read. */
+    /** Where `symbiote/config.json` is read. */
     root?: string;
-    /** Each change of an entry, as it is written (`cpr merge` prints them). */
+    /** Each change of an entry, as it is written (`symbiote merge` prints them). */
     onChange?: (entry: MergeEntry) => void;
     /** The merger agent of `kind` (`merge.agent`, else the default), when installed (V26c). */
     mergerAgent?: (kind?: AgentKind) => Promise<MergerAgent | null>;
-    /** The symbols a side changed in the conflicting files; CPR's analysis by default. */
+    /** The symbols a side changed in the conflicting files; Symbiote's analysis by default. */
     changedSymbols?: ChangedSymbols;
   } = {},
 ): Merger {
@@ -311,7 +311,7 @@ export function merger(
       .sort();
   }
 
-  /** The branch's last verdict and its workspace's record, where CPR keeps them. */
+  /** The branch's last verdict and its workspace's record, where Symbiote keeps them. */
   async function recordsOf(branch: string): Promise<{
     verdict?: Verdict;
     workspace: WorkspaceFile | null;
@@ -337,7 +337,7 @@ export function merger(
     const blocked = !tip
       ? `no branch ${branch}`
       : !approved
-        ? `${branch} is not approved: approve its review in CPR first`
+        ? `${branch} is not approved: approve its review in Symbiote first`
         : tip !== approved
           ? `${branch} has commits after the approved commit ${approved.slice(0, 7)}: they were not reviewed`
           : undefined;
@@ -360,7 +360,7 @@ export function merger(
     if (checks) return { commands: checks, source: `${configFile(root)} (merge.checks)` };
     const guess = await guessCheck(await treeAt(repo, base));
     if (!guess) return null;
-    // A package script needs the dependencies, which CPR's worktree does not have at first.
+    // A package script needs the dependencies, which Symbiote's worktree does not have at first.
     if (guess.source.startsWith('package.json')) {
       const manager = guess.command.split(' ')[0] ?? 'npm';
       return {
@@ -415,7 +415,7 @@ export function merger(
         merge: merged,
         message: resolved
           ? 'no check to run: review the resolution, then Approve lands it'
-          : 'no check to run: set merge.checks in cpr/config.json, or Land once you have checked it',
+          : 'no check to run: set merge.checks in symbiote/config.json, or Land once you have checked it',
       });
       return;
     }
@@ -520,7 +520,7 @@ export function merger(
     const files = await Promise.all(
       conflicts.map(async (path) => ({ path, text: await readFile(join(worktree, path), 'utf8') })),
     );
-    const rules = await readFile(join(root, 'cpr', 'merge.md'), 'utf8').catch(() => undefined);
+    const rules = await readFile(join(root, 'symbiote', 'merge.md'), 'utf8').catch(() => undefined);
     const prompt = mergerPrompt({
       branch: entry.branch,
       into: entry.into,
@@ -641,7 +641,7 @@ export function merger(
   /** States that hold a branch: a later merge into it waits until they are done. */
   const holding = new Set<MergeEntry['state']>(['merging', 'resolving', 'checking', 'ready']);
 
-  /** A pid lock: one CPR process merges in a repository; null when another holds it. */
+  /** A pid lock: one Symbiote process merges in a repository; null when another holds it. */
   async function lock(): Promise<(() => Promise<void>) | null> {
     await mkdir(stateDir, { recursive: true });
     try {

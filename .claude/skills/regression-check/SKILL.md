@@ -1,6 +1,6 @@
 ---
 name: regression-check
-description: Runs CPR on pinned commits of real repositories (ky, zod, vite, the Angular 11 RealWorld app, Bitwarden, Qwik) and compares a branch's edges, findings and run time with main's. Use after any change to analysis code — packages/core extraction, references, detectors, the TypeScript adapter, or a framework plugin — before reporting it done or asking to merge, and to measure what a plugin changes on real commits.
+description: Runs Symbiote on pinned commits of real repositories (ky, zod, vite, the Angular 11 RealWorld app, Bitwarden, Qwik) and compares a branch's edges, findings and run time with main's. Use after any change to analysis code — packages/core extraction, references, detectors, the TypeScript adapter, or a framework plugin — before reporting it done or asking to merge, and to measure what a plugin changes on real commits.
 ---
 
 # Regression check
@@ -34,7 +34,7 @@ Copy and track:
 - [ ] 7. Remove the baseline worktree
 ```
 
-**1. Clone** into `$CPR_REGRESSION_DIR` (default `~/.cache/cpr-regression`). Blobless clones;
+**1. Clone** into `$SYMBIOTE_REGRESSION_DIR` (default `~/.cache/symbiote-regression`). Blobless clones;
 the RealWorld experiment branches are recreated from `scripts/regression/patches/`:
 
 ```sh
@@ -45,8 +45,8 @@ node scripts/regression/setup.mjs r1 bitwarden qwik-docs   # or: all
 
 ```sh
 git fetch origin main
-git worktree add --detach /tmp/cpr-base origin/main
-(cd /tmp/cpr-base && pnpm install --frozen-lockfile --offline && pnpm build)
+git worktree add --detach /tmp/symbiote-base origin/main
+(cd /tmp/symbiote-base && pnpm install --frozen-lockfile --offline && pnpm build)
 ```
 
 Compare against the branch's merge-base instead of `main` when `main` has moved on with
@@ -56,7 +56,7 @@ analysis changes of its own.
 
 ```sh
 pnpm build
-node scripts/regression/run.mjs --set r1 --cpr /tmp/cpr-base --out /tmp/r1-base.json
+node scripts/regression/run.mjs --set r1 --symbiote /tmp/symbiote-base --out /tmp/r1-base.json
 node scripts/regression/run.mjs --set r1 --out /tmp/r1-head.json
 node scripts/regression/compare.mjs /tmp/r1-base.json /tmp/r1-head.json
 ```
@@ -78,7 +78,7 @@ findings `-`/`+`, errors), then totals and the time ratio after/before.
   to remove (a router export, a template use); inspect every new one in the source.
 - An `ERROR` line is a crash: reproduce it with a fixture test first (red), then fix.
 - Time: plugins have a budget of +5 % on their set; core changes should not slow `r1`. The first
-  run on new clones also creates CPR's worktrees (`r1`: 159 s, then 92 s): time only warm runs.
+  run on new clones also creates Symbiote's worktrees (`r1`: 159 s, then 92 s): time only warm runs.
 - The clones have no `node_modules`, so totals differ from JOURNAL figures measured on installed
   clones (`r1`: 927 edges here, 932 in W1's notes). Compare only runs made on the same clones.
   Library-typing features (Angular A3) need `npm ci` in the clone to show their effect.
@@ -86,7 +86,7 @@ findings `-`/`+`, errors), then totals and the time ratio after/before.
 **6. Record** the totals in the JOURNAL entry's "Verification" (e.g. "29 comparisons identical:
 932 edges, no finding changed; Bitwarden 10 identical") and in the commit message.
 
-**7. Clean up**: `git worktree remove --force /tmp/cpr-base`.
+**7. Clean up**: `git worktree remove --force /tmp/symbiote-base`.
 
 ## Adding a comparison
 

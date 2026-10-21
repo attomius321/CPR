@@ -3,14 +3,14 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { serveAgentBranch, type RunningAgent } from './cpr.js';
+import { serveAgentBranch, type RunningAgent } from './symbiote.js';
 
 // Branch reviews (V15): review an agent's branch, then only what it changed since. Each test
 // gets its own repository: reviews write into it.
-let cpr: RunningAgent;
+let symbiote: RunningAgent;
 const errors: string[] = [];
-// `CPR_CODE`: a stand-in for VS Code that writes what it was given.
-const dir = mkdtempSync(join(tmpdir(), 'cpr-e2e-code-'));
+// `SYMBIOTE_CODE`: a stand-in for VS Code that writes what it was given.
+const dir = mkdtempSync(join(tmpdir(), 'symbiote-e2e-code-'));
 const log = join(dir, 'opened.jsonl');
 const fake = join(dir, 'code');
 writeFileSync(
@@ -30,13 +30,13 @@ const opened = (): string[][] =>
 
 test.beforeEach(async ({ page }) => {
   rmSync(log, { force: true });
-  cpr = await serveAgentBranch({ CPR_CODE: fake });
+  symbiote = await serveAgentBranch({ SYMBIOTE_CODE: fake });
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
 });
 
 test.afterEach(() => {
-  cpr.stop();
+  symbiote.stop();
   expect(errors).toEqual([]);
 });
 
@@ -47,7 +47,7 @@ const row = (page: Page, subject: string) =>
   page.locator('.commit', { has: page.locator('.commit-subject', { hasText: subject }) });
 const git = (...args: string[]) =>
   execFileSync('git', args, {
-    cwd: cpr.repo,
+    cwd: symbiote.repo,
     encoding: 'utf8',
     env: {
       ...process.env,
@@ -61,7 +61,7 @@ const git = (...args: string[]) =>
   }).trim();
 const changesTab = (page: Page) => page.getByRole('tab', { name: /Changes/ });
 const reviewTab = (page: Page) => page.getByRole('tab', { name: /Review/ });
-const originGit = (...args: string[]) => git('--git-dir', cpr.origin, ...args);
+const originGit = (...args: string[]) => git('--git-dir', symbiote.origin, ...args);
 /** Opens row `subject`'s Review submenu and reviews its first branch. */
 const review = async (page: Page, subject: string, entry: string) => {
   await row(page, subject).click({ button: 'right' });
@@ -70,11 +70,12 @@ const review = async (page: Page, subject: string, entry: string) => {
   await expect(first).toHaveText(entry);
   await first.click();
 };
-const reviewFile = () => join(cpr.repo, 'cpr', 'reviews', 'agent', 'reviewer@example.com.json');
+const reviewFile = () =>
+  join(symbiote.repo, 'symbiote', 'reviews', 'agent', 'reviewer@example.com.json');
 
 test('reviews a branch, then only what the agent changed since', async ({ page }) => {
-  const [base, , cube] = cpr.shas;
-  await page.goto(`${cpr.url}history`);
+  const [base, , cube] = symbiote.shas;
+  await page.goto(`${symbiote.url}history`);
 
   // The agent's tip offers "Review" beside "Check out"; main, the default branch, cannot be.
   await row(page, 'Agent: add cube').click({ button: 'right' });
@@ -101,7 +102,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   }
   await expect(changesTab(page)).toContainText('2/2');
 
-  // In cpr/reviews/, out of git, written mark by mark: read once both have landed.
+  // In symbiote/reviews/, out of git, written mark by mark: read once both have landed.
   const read = () =>
     existsSync(reviewFile())
       ? (JSON.parse(readFileSync(reviewFile(), 'utf8')) as {
@@ -122,7 +123,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
 
   // The agent changes square and adds half.
   git('checkout', '-q', 'agent');
-  const math = join(cpr.repo, 'src/math.ts');
+  const math = join(symbiote.repo, 'src/math.ts');
   writeFileSync(
     math,
     readFileSync(math, 'utf8').replace('return a * a;', 'return a ** 2;') +
@@ -152,8 +153,8 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   await expect(changesTab(page)).toContainText('1/3');
   await expect(page.locator('.stale-note')).toContainText('1 symbol changed since you reviewed it');
 
-  // A new `cpr view` (another port) finds the review in the repository.
-  const url = await cpr.restart();
+  // A new `symbiote view` (another port) finds the review in the repository.
+  const url = await symbiote.restart();
   await page.goto(`${url}review/agent/`);
   await changesTab(page).click();
   await expect(changesTab(page)).toContainText('1/3');
@@ -162,9 +163,9 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
 test('finishes a review: changes requested for the agent, then approved to merge (V16, V17)', async ({
   page,
 }) => {
-  const [, , cube] = cpr.shas;
+  const [, , cube] = symbiote.shas;
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await review(page, 'Agent: add cube', 'agent not reviewed yet');
   await expect(page).toHaveURL(/\/review\/agent\/$/);
 
@@ -184,7 +185,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await page.getByRole('button', { name: 'Finish review' }).click();
   const finished = page.locator('.finished');
   await expect(finished).toContainText(
-    'Changes requested: the agent finds them in cpr/reviews/agent/',
+    'Changes requested: the agent finds them in symbiote/reviews/agent/',
   );
   await expect(reviewTab(page)).toContainText('0');
 
@@ -232,7 +233,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
 
   // The agent fixes it.
   git('checkout', '-q', 'agent');
-  const math = join(cpr.repo, 'src/math.ts');
+  const math = join(symbiote.repo, 'src/math.ts');
   writeFileSync(
     math,
     readFileSync(math, 'utf8').replace(
@@ -255,27 +256,27 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await expect(page.locator('.merge-check')).toHaveText('Merges cleanly into main.');
   await page.getByLabel('Approve').check();
   await expect(page.locator('.submit-review')).toContainText(
-    `Approve, then Merge: CPR merges ${short(fix)} into main (or a branch you pick), checks it and lands it.`,
+    `Approve, then Merge: Symbiote merges ${short(fix)} into main (or a branch you pick), checks it and lands it.`,
   );
   // Not approved yet: nothing to merge.
   await expect(page.getByRole('button', { name: /^Merge into/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText(
-    `Approved ${short(fix)}: Merge it into main or another branch below; CPR merges, checks and lands it.`,
+    `Approved ${short(fix)}: Merge it into main or another branch below; Symbiote merges, checks and lands it.`,
   );
   await page.getByRole('button', { name: 'Copy for the agent' }).click();
   await expect(page.locator('.finished')).toContainText('Copied.');
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-    `Approved the branch agent at ${short(fix)}: CPR merges ${short(fix)} into main; do not merge it yourself.\n\n` +
-      'The review: cpr/reviews/agent/reviewer@example.com.json; how to act on it: cpr/AGENTS.md.\n',
+    `Approved the branch agent at ${short(fix)}: Symbiote merges ${short(fix)} into main; do not merge it yourself.\n\n` +
+      'The review: symbiote/reviews/agent/reviewer@example.com.json; how to act on it: symbiote/AGENTS.md.\n',
   );
   expect(() => originGit('rev-parse', '--verify', '--quiet', 'agent')).toThrow();
   const verdicts = (JSON.parse(readFileSync(reviewFile(), 'utf8')) as { verdicts: unknown[] })
     .verdicts;
   expect(verdicts.at(-1)).toMatchObject({ event: 'approve', head: fix, into: 'main' });
   // What an agent opening it reads first, and the instructions beside it.
-  expect(readFileSync(reviewFile(), 'utf8').split('\n')[1]).toContain('cpr/AGENTS.md');
-  const agents = readFileSync(join(cpr.repo, 'cpr', 'AGENTS.md'), 'utf8');
+  expect(readFileSync(reviewFile(), 'utf8').split('\n')[1]).toContain('symbiote/AGENTS.md');
+  const agents = readFileSync(join(symbiote.repo, 'symbiote', 'AGENTS.md'), 'utf8');
   expect(agents).not.toContain('git merge --no-ff');
   expect(agents).toContain('Do not merge it yourself');
   expect(git('status', '--porcelain', '--untracked-files=all')).toBe('');
@@ -299,7 +300,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   expect(look.color).not.toBe(look.badgeColor);
   expect(look.height).toBeLessThan(look.badgeHeight);
 
-  // CPR merges the approved commit (V26a): Merge into ▾ on the review, preselected main.
+  // Symbiote merges the approved commit (V26a): Merge into ▾ on the review, preselected main.
   await review(page, 'Agent: square returns early', 'agent approved');
   await reviewTab(page).click();
   const target = page.getByLabel('Branch to merge into');
@@ -307,18 +308,18 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await expect(target.locator('option')).toHaveText(['main']);
   const main = git('rev-parse', 'main');
   await page.getByRole('button', { name: 'Merge into main' }).click();
-  // No check in this repository: merged in CPR's worktree, waiting for Land; main unchanged.
+  // No check in this repository: merged in Symbiote's worktree, waiting for Land; main unchanged.
   await expect(page.locator('p.merge-control')).toHaveText(
-    /^Merged, not checked: no check to run: set merge.checks in cpr\/config.json/,
+    /^Merged, not checked: no check to run: set merge.checks in symbiote\/config.json/,
   );
   expect(git('rev-parse', 'main')).toBe(main);
 
   // In the sidenav's Merging group; open, in the main area (V29a).
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await expect(
     page.getByRole('region', { name: 'Merging' }).locator('[data-merge="agent"]'),
   ).toBeVisible();
-  await page.goto(`${cpr.url}?merge=agent`);
+  await page.goto(`${symbiote.url}?merge=agent`);
   const entry = page.getByRole('region', { name: 'Merge of agent' });
   await expect(entry.locator('.merge-row-state')).toHaveText(/^Merged, not checked/);
   await entry.getByRole('button', { name: 'Land' }).click();
@@ -332,7 +333,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   expect(readFileSync(math, 'utf8')).toContain('if (a === 0) return 0;');
   await expect(entry.getByRole('button', { name: 'Land' })).toHaveCount(0);
 
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await expect(
     row(page, 'Agent: square returns early').locator('.ref-review').first(),
   ).toHaveAttribute('title', 'Approved · merged into main');
@@ -341,15 +342,15 @@ test('finishes a review: changes requested for the agent, then approved to merge
 test('says a branch will conflict with main; resolved on the branch, only its commit is new (V17)', async ({
   page,
 }) => {
-  const [, , cube] = cpr.shas;
-  const math = join(cpr.repo, 'src/math.ts');
+  const [, , cube] = symbiote.shas;
+  const math = join(symbiote.repo, 'src/math.ts');
   // main adds a function where the agent added its own: the merge conflicts.
   writeFileSync(
     math,
     `${readFileSync(math, 'utf8')}\nexport const double = (a: number) => a * 2;\n`,
   );
   git('commit', '-q', '-am', 'Main: add double');
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await review(page, 'Agent: add cube', 'agent not reviewed yet');
   await reviewTab(page).click();
   // Each file on its line, its folder beside it, and a button that opens it in VS Code.
@@ -360,22 +361,24 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   await expect(check.locator('li')).toHaveText(['math.tssrc/']);
   await check.getByRole('button', { name: 'Open src/math.ts in VS Code' }).click();
   await expect(check.getByRole('status')).toHaveText('Opened src/math.ts in VS Code');
-  expect(opened()).toEqual([[cpr.repo, '--goto', `${join(cpr.repo, 'src', 'math.ts')}:1:1`]]);
+  expect(opened()).toEqual([
+    [symbiote.repo, '--goto', `${join(symbiote.repo, 'src', 'math.ts')}:1:1`],
+  ]);
   await page.getByLabel('Approve').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText(`Approved ${short(cube)}`);
-  // CPR's merge stops at the conflict (V26a): nothing changes, the file is named.
+  // Symbiote's merge stops at the conflict (V26a): nothing changes, the file is named.
   const main = git('rev-parse', 'main');
   await page.getByRole('button', { name: 'Merge into main' }).click();
   await expect(page.locator('p.merge-control')).toHaveText('Conflicts with main in 1 file');
   expect(git('rev-parse', 'main')).toBe(main);
-  await page.goto(`${cpr.url}?merge=agent`);
+  await page.goto(`${symbiote.url}?merge=agent`);
   const entry = page.getByRole('region', { name: 'Merge of agent' });
   await expect(entry.locator('.merge-files li')).toHaveText(['src/math.ts']);
   await expect(entry).toContainText('merge main into agent, resolve it there, and review it again');
   await entry.getByRole('button', { name: 'Remove' }).click();
   await expect(page.getByRole('region', { name: 'Merging' })).toHaveCount(0);
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
 
   // The agent merges main into its branch and resolves the conflict there.
   git('checkout', '-q', 'agent');
@@ -403,11 +406,11 @@ test('says a branch will conflict with main; resolved on the branch, only its co
 test("reviews the agent's commits on main itself; an approval says they may be pushed (V16, V17)", async ({
   page,
 }) => {
-  const math = join(cpr.repo, 'src/math.ts');
+  const math = join(symbiote.repo, 'src/math.ts');
   writeFileSync(math, `${readFileSync(math, 'utf8')}\nexport const half = (a: number) => a / 2;\n`);
   git('commit', '-q', '-am', 'Agent: add half on main');
   const tip = git('rev-parse', 'HEAD');
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await review(page, 'Agent: add half on main', 'main 1 unpushed commit');
   await expect(page).toHaveURL(/\/review\/main\/$/);
   await expect(page.locator('.review-of')).toHaveText('Review of main · first review');

@@ -25,8 +25,8 @@ import {
   type RefList,
   type RepoStatus,
   type WorkKind,
-} from '@cpr/core';
-import type { Review, ReviewComment, ReviewEvent } from '@cpr/forge';
+} from '@symbiote/core';
+import type { Review, ReviewComment, ReviewEvent } from '@symbiote/forge';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
 import type { OpenRequest, OpenResult } from './editor.js';
 import { WorkspaceRefused, type Workspaces } from './workspaces.js';
@@ -49,13 +49,13 @@ export interface StateStore {
   write(name: StateName, value: unknown): Promise<void>;
 }
 
-/** Posts reviews to the change request being viewed (`cpr pr` only). */
+/** Posts reviews to the change request being viewed (`symbiote pr` only). */
 export interface ReviewTarget {
   forge: 'github' | 'gitlab';
   submit(review: Review): Promise<{ url: string }>;
 }
 
-/** `cpr view`: the repository's commits, and the diffs between them picked in the viewer. */
+/** `symbiote view`: the repository's commits, and the diffs between them picked in the viewer. */
 export interface RepositoryOptions {
   /** The repository's folder name, shown at the top of the viewer's sidenav (V29a). */
   name?: string;
@@ -81,7 +81,7 @@ export interface RepositoryOptions {
   workspaces?: Workspaces;
   /** Terminals on agents' sessions (V21): `/api/terminals/<id>…`; closed with the server. */
   terminals?: Terminals;
-  /** CPR's merger (V26): approved branches merged, checked and landed: `/api/merges…`. */
+  /** Symbiote's merger (V26): approved branches merged, checked and landed: `/api/merges…`. */
   merges?: Merger;
   /** Every agent's prompts (V28): `/api/settings/prompts`. */
   settings?: PromptSettingsService;
@@ -90,7 +90,7 @@ export interface RepositoryOptions {
 }
 
 export interface ViewServerOptions {
-  /** The graph served at `/` (`cpr pr`). */
+  /** The graph served at `/` (`symbiote pr`). */
   graph?: Graph;
   /** Folder with the built viewer (index.html, assets/). */
   viewerDir: string;
@@ -154,12 +154,12 @@ const DIFF_PATH = new RegExp(`^/diff/(${SHA})\\.\\.(${SHA})(/.*)?$`);
 const REVIEW_PATH = /^\/review\/([^/]+)(\/.*)?$/;
 /** `/api/terminals/<id>`, its output; `…/in`, `…/resize`, `…/close` (V21). */
 const TERMINAL_PATH = /^\/api\/terminals\/([0-9a-z]+)(?:\/(in|resize|close))?$/;
-/** Most a terminal is sent at once: keys typed, or a line CPR types (V21). */
+/** Most a terminal is sent at once: keys typed, or a line Symbiote types (V21). */
 const MAX_TERMINAL_INPUT = 64 * 1024;
 
 /**
  * Serves the viewer, `/api/graph` and `/api/source` on localhost only: one graph at `/`
- * (`cpr pr`), or (`cpr view`) the commits page at `/` and each diff under its own path, where
+ * (`symbiote pr`), or (`symbiote view`) the commits page at `/` and each diff under its own path, where
  * the viewer's relative URLs reach that diff's API. Sources are limited to files a graph
  * mentions, so the server never exposes anything else from the machine. Requests must name the
  * server itself as host, which defeats DNS rebinding; writes (a review, saved state, starting
@@ -453,7 +453,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
   /**
    * A branch review's page: the diff from its fork point to its tip, its state the branch's
-   * review. Opened anew (a reload, a new `cpr view`), the branch is resolved here.
+   * review. Opened anew (a reload, a new `symbiote view`), the branch is resolved here.
    */
   async function serveReview(
     req: IncomingMessage,
@@ -906,7 +906,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     site: Site | undefined,
   ): Promise<void> {
     const target = site?.review;
-    if (!site || !target) return send(res, 404, 'reviews are posted from cpr pr');
+    if (!site || !target) return send(res, 404, 'reviews are posted from symbiote pr');
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
     if (!writable(req)) return send(res, 403, 'forbidden');
 
@@ -931,7 +931,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     site: Site | undefined,
   ): Promise<void> {
     const { open } = options;
-    if (!open || !site) return send(res, 404, 'files open from cpr view and cpr pr');
+    if (!open || !site) return send(res, 404, 'files open from symbiote view and symbiote pr');
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
     if (!writable(req)) return send(res, 403, 'forbidden');
     let target: ReturnType<typeof parseOpen>;
@@ -989,7 +989,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   /** A write from the viewer itself: JSON, the custom header, and (if sent) our own origin. */
   function writable(req: IncomingMessage): boolean {
     return (
-      req.headers['x-cpr'] === '1' &&
+      req.headers['x-symbiote'] === '1' &&
       !!req.headers['content-type']?.startsWith('application/json') &&
       sameSite(req)
     );

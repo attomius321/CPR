@@ -1,6 +1,6 @@
 # Spike S1 — TypeScript 7 (Go) compiler API
 
-**Question:** can `typescript@7`'s compiler API replace ts-morph (TS 6.0) for CPR's reference
+**Question:** can `typescript@7`'s compiler API replace ts-morph (TS 6.0) for Symbiote's reference
 search, and is it worth it?
 
 **Answer (2026-10-01): not yet.** Results match ts-morph almost exactly, loading is ~4–7× faster,
@@ -20,7 +20,7 @@ node spike.mjs <path/to/tsconfig.json> [...more]
 
 The script loads the same tsconfig in both engines, takes every top-level function, class,
 interface and variable as a target, finds its references in both, and compares the **use sites**
-(definitions and import/export sites excluded, as CPR does).
+(definitions and import/export sites excluded, as Symbiote does).
 
 ## API used
 
@@ -42,7 +42,7 @@ Gotcha: passing the `SourceFile` instead of the identifier returns no references
 
 | Project | Program files | Symbols | ts-morph load | TS 7 load | ts-morph search | TS 7 search | Use sites (ts-morph / TS 7) | Identical per symbol |
 |---|---|---|---|---|---|---|---|---|
-| CPR `packages/core` | 226 | 156 | 1075 ms | 156 ms | 496 ms | 141 ms | 588 / 587 | 153 / 156 |
+| Symbiote `packages/core` | 226 | 156 | 1075 ms | 156 ms | 496 ms | 141 ms | 588 / 587 | 153 / 156 |
 | zod `packages/zod` | 380 | 2517 | 1521 ms | 404 ms | 13 858 ms | 8 721 ms | 30 421 / 30 396 | 2461 / 2517 |
 
 Differences seen: positions shifted by leading comments (the spike's own offset math), and

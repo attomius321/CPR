@@ -1,18 +1,18 @@
 import { expect, test } from '@playwright/test';
-import { serveLongHistory, type Running } from './cpr.js';
+import { serveLongHistory, type Running } from './symbiote.js';
 
 // The commits page on a longer history (V10): rows drawn only near the view, their details
 // asked for as they come near, and a line too long to draw cut into arrows.
 const ROWS = 450;
 const ROW_HEIGHT = 28;
-let cpr: Running;
+let symbiote: Running;
 const errors: string[] = [];
 
 test.beforeAll(async () => {
-  cpr = await serveLongHistory(ROWS);
+  symbiote = await serveLongHistory(ROWS);
 });
 
-test.afterAll(() => cpr.stop());
+test.afterAll(() => symbiote.stop());
 
 test.beforeEach(({ page }) => {
   errors.length = 0;
@@ -25,7 +25,7 @@ const subject = (text: string) =>
   `.commit:has(.commit-subject:text-is("${text.replace(/"/g, '\\"')}"))`;
 
 test('spans the whole history, drawing only the rows near the view', async ({ page }) => {
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   // "Old idea" is newest; HEAD (main, "commit 450") right under it, where the cursor starts.
   await expect(page.locator('.commit-subject').first()).toHaveText('Old idea');
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText(`commit ${ROWS}`);
@@ -45,7 +45,7 @@ test('spans the whole history, drawing only the rows near the view', async ({ pa
 test('cuts a line longer than 100 rows into arrows; a click goes to the other end', async ({
   page,
 }) => {
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   const old = page.locator(subject('Old idea'));
   await expect(old.locator('.arrow')).toHaveCount(1);
   await expect(old.locator('.arrow title')).toHaveText(

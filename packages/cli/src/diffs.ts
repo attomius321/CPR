@@ -1,4 +1,4 @@
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 
 /** Two commits compared directly, by full SHA. */
 export interface Pair {
@@ -7,7 +7,7 @@ export interface Pair {
 }
 
 /**
- * Analyzes a pair (`cpr view`: in a child process). Reports each phase as it starts; rejects with
+ * Analyzes a pair (`symbiote view`: in a child process). Reports each phase as it starts; rejects with
  * the CLI's message when the analysis fails, and when `signal` stops it.
  */
 export type RunDiff = (
@@ -38,7 +38,7 @@ export interface DiffsOptions {
 export const pairKey = ({ base, head }: Pair): string => `${base}..${head}`;
 
 /**
- * The diffs `cpr view` serves: analyzed one at a time in the order asked (an analysis takes up
+ * The diffs `symbiote view` serves: analyzed one at a time in the order asked (an analysis takes up
  * to 90 s and most of the machine's memory), kept while the server runs.
  */
 export class Diffs {
@@ -58,7 +58,7 @@ export class Diffs {
     this.now = now;
   }
 
-  /** A diff analyzed elsewhere (`cpr view <base> [head]` before serving). */
+  /** A diff analyzed elsewhere (`symbiote view <base> [head]` before serving). */
   add(pair: Pair, graph: Graph): void {
     this.done(pairKey(pair), graph);
   }

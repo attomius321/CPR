@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { openRepo, readFileAtRevision, type BranchReviewInfo } from '@cpr/core';
+import { openRepo, readFileAtRevision, type BranchReviewInfo } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import {
@@ -66,7 +66,7 @@ const NOW = new Date('2026-10-14T10:12:00Z');
 describe('AGENTS', () => {
   it('tells agents about workspaces and where they are kept (V25)', () => {
     expect(AGENTS).toContain('## Workspaces');
-    expect(AGENTS).toContain('`cpr/workspaces/<branch>.json`');
+    expect(AGENTS).toContain('`symbiote/workspaces/<branch>.json`');
     expect(AGENTS).not.toMatch(/\bfeatures?\b/);
   });
 });
@@ -138,26 +138,26 @@ describe('readReview', () => {
 });
 
 describe('reviewPlace', () => {
-  it('is cpr/reviews/ as the git user, else the cache with why', async () => {
+  it('is symbiote/reviews/ as the git user, else the cache with why', async () => {
     const { repo } = fresh();
     const open = await openRepo(repo.root);
     expect(await reviewPlace(open, cache)).toEqual({
-      dir: join(repo.root, 'cpr', 'reviews'),
+      dir: join(repo.root, 'symbiote', 'reviews'),
       reviewer: 'ada@example.com',
       place: 'repository',
-      gitignore: join(repo.root, 'cpr', '.gitignore'),
-      agents: join(repo.root, 'cpr', 'AGENTS.md'),
+      gitignore: join(repo.root, 'symbiote', '.gitignore'),
+      agents: join(repo.root, 'symbiote', 'AGENTS.md'),
     });
-    // The project's own cpr/config.json is CPR's: still the repository; so are the agents'
-    // instructions CPR writes, once a team commits its reviews with them (V17).
+    // The project's own symbiote/config.json is Symbiote's: still the repository; so are the agents'
+    // instructions Symbiote writes, once a team commits its reviews with them (V17).
     repo.write({
-      'cpr/config.json': '{ "plugins": [] }\n',
-      'cpr/AGENTS.md': AGENTS,
+      'symbiote/config.json': '{ "plugins": [] }\n',
+      'symbiote/AGENTS.md': AGENTS,
     });
     repo.commit('config');
     expect((await reviewPlace(open, cache)).place).toBe('repository');
     // So are the merger's rules (V26c), which a team commits to share them.
-    repo.write({ 'cpr/merge.md': 'Keep both changelog entries.\n' });
+    repo.write({ 'symbiote/merge.md': 'Keep both changelog entries.\n' });
     repo.commit('merge rules');
     expect((await reviewPlace(open, cache)).place).toBe('repository');
 
@@ -171,15 +171,15 @@ describe('reviewPlace', () => {
     });
   });
 
-  it("leaves a project's own cpr/ folder alone", async () => {
+  it("leaves a project's own symbiote/ folder alone", async () => {
     const { repo } = fresh();
-    repo.write({ 'cpr/__init__.py': '' });
-    repo.commit('a package named cpr');
+    repo.write({ 'symbiote/__init__.py': '' });
+    repo.commit('a package named symbiote');
     const open = await openRepo(repo.root);
     expect(await reviewPlace(open, cache)).toMatchObject({
       place: 'cache',
       reviewer: 'ada@example.com',
-      note: expect.stringContaining('cpr/') as string,
+      note: expect.stringContaining('symbiote/') as string,
     });
   });
 });
@@ -221,7 +221,7 @@ describe('branchReviews', () => {
     await expect(reviews.resolve('done')).rejects.toThrow(/merged into main/);
   });
 
-  it('keeps marks and drafts in cpr/reviews/, out of git, and never stages them', async () => {
+  it('keeps marks and drafts in symbiote/reviews/, out of git, and never stages them', async () => {
     const { repo, shas } = fresh();
     const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
     const { info } = await reviews.resolve('agent');
@@ -231,7 +231,7 @@ describe('branchReviews', () => {
 
     await store.write('review', { 'src/W1.ts#W1': 'x|y' });
     await store.write('drafts', { drafts: [{ id: 'd1', body: 'why?' }], body: 'Looks fine' });
-    const file = join(repo.root, 'cpr', 'reviews', 'agent', 'ada@example.com.json');
+    const file = join(repo.root, 'symbiote', 'reviews', 'agent', 'ada@example.com.json');
     expect(await readReview(file)).toEqual({
       base: shas.B,
       branch: 'agent',
@@ -250,34 +250,34 @@ describe('branchReviews', () => {
     });
 
     // Out of git: nothing to commit, nothing staged; the agents' instructions beside them (V17).
-    expect(readFileSync(join(repo.root, 'cpr', '.gitignore'), 'utf8')).toBe(GITIGNORE);
-    expect(readFileSync(join(repo.root, 'cpr', 'AGENTS.md'), 'utf8')).toBe(AGENTS);
+    expect(readFileSync(join(repo.root, 'symbiote', '.gitignore'), 'utf8')).toBe(GITIGNORE);
+    expect(readFileSync(join(repo.root, 'symbiote', 'AGENTS.md'), 'utf8')).toBe(AGENTS);
     expect(repo.git('status', '--porcelain', '--untracked-files=all')).toBe('');
-    // Deleting cpr/.gitignore shares them: the review is an untracked file like any other.
-    rmSync(join(repo.root, 'cpr', '.gitignore'));
+    // Deleting symbiote/.gitignore shares them: the review is an untracked file like any other.
+    rmSync(join(repo.root, 'symbiote', '.gitignore'));
     expect(repo.git('status', '--porcelain', '--untracked-files=all')).toBe(
-      ['?? cpr/AGENTS.md', '?? cpr/reviews/agent/ada@example.com.json'].join('\n'),
+      ['?? symbiote/AGENTS.md', '?? symbiote/reviews/agent/ada@example.com.json'].join('\n'),
     );
   });
 
-  it("tells a workspace's agent about its record and plan first; CPR merges an approval (V18c, V26)", () => {
+  it("tells a workspace's agent about its record and plan first; Symbiote merges an approval (V18c, V26)", () => {
     expect(AGENTS).toContain('## Workspaces');
-    expect(AGENTS).toContain('cpr/workspaces/<branch>.json');
+    expect(AGENTS).toContain('symbiote/workspaces/<branch>.json');
     expect(AGENTS).toMatch(/`planFirst`.*stop/s);
     expect(AGENTS).not.toContain('## Approved in a linked worktree');
     expect(AGENTS).toMatch(/Do not merge it yourself/);
   });
 
-  it("rewrites the agents' instructions when CPR's differ, and points every review at them", async () => {
+  it("rewrites the agents' instructions when Symbiote's differ, and points every review at them", async () => {
     const { repo } = fresh();
-    repo.write({ 'cpr/AGENTS.md': '# an older CPR\n' });
+    repo.write({ 'symbiote/AGENTS.md': '# an older Symbiote\n' });
     const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
     const { info } = await reviews.resolve('agent');
     await reviews.state(info).write('review', {});
-    expect(readFileSync(join(repo.root, 'cpr', 'AGENTS.md'), 'utf8')).toBe(AGENTS);
-    expect(AGENTS).toMatch(/^# CPR reviews\n\nWritten by CPR, which rewrites this file/);
+    expect(readFileSync(join(repo.root, 'symbiote', 'AGENTS.md'), 'utf8')).toBe(AGENTS);
+    expect(AGENTS).toMatch(/^# Symbiote reviews\n\nWritten by Symbiote, which rewrites this file/);
     const text = readFileSync(
-      join(repo.root, 'cpr', 'reviews', 'agent', 'ada@example.com.json'),
+      join(repo.root, 'symbiote', 'reviews', 'agent', 'ada@example.com.json'),
       'utf8',
     );
     expect(text.split('\n')[1]).toBe(`  "about": "${REVIEW_ABOUT}",`);
@@ -287,40 +287,43 @@ describe('branchReviews', () => {
   it("writes the project's own instructions, again when they change (V28)", async () => {
     const { repo } = fresh();
     const config = (reviews: string) =>
-      repo.write({ 'cpr/config.json': JSON.stringify({ prompts: { reviews } }) });
+      repo.write({ 'symbiote/config.json': JSON.stringify({ prompts: { reviews } }) });
     config('# Our reviews\n\nAct on the last verdict.');
     const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
     const { info } = await reviews.resolve('agent');
-    const agents = () => readFileSync(join(repo.root, 'cpr', 'AGENTS.md'), 'utf8');
+    const agents = () => readFileSync(join(repo.root, 'symbiote', 'AGENTS.md'), 'utf8');
     await reviews.state(info).write('review', {});
     expect(agents()).toBe('# Our reviews\n\nAct on the last verdict.\n');
-    // Saved in Settings while `cpr view` runs: the next write uses it.
+    // Saved in Settings while `symbiote view` runs: the next write uses it.
     config('# Our reviews, changed');
     await reviews.state(info).write('review', { 'src/W1.ts#W1': 'x' });
     expect(agents()).toBe('# Our reviews, changed\n');
   });
 
-  it('never changes an existing cpr/.gitignore', async () => {
+  it('never changes an existing symbiote/.gitignore', async () => {
     const { repo } = fresh();
-    repo.write({ 'cpr/.gitignore': '# ours\n' });
+    repo.write({ 'symbiote/.gitignore': '# ours\n' });
     const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
     const { info } = await reviews.resolve('agent');
     await reviews.state(info).write('review', {});
-    expect(readFileSync(join(repo.root, 'cpr', '.gitignore'), 'utf8')).toBe('# ours\n');
+    expect(readFileSync(join(repo.root, 'symbiote', '.gitignore'), 'utf8')).toBe('# ours\n');
   });
 
-  it("keeps the merger's rules in git, and updates the cpr/.gitignore an earlier CPR wrote", async () => {
+  it("keeps the merger's rules in git, and updates the symbiote/.gitignore an earlier Symbiote wrote", async () => {
     const { repo } = fresh();
-    // What CPR wrote from V15 on: it hid cpr/merge.md, which the project means to share.
+    // What Symbiote wrote from V15 on: it hid symbiote/merge.md, which the project means to share.
     const earlier =
-      '# Written by CPR: reviews stay on this machine. Delete this file to commit and share them.\n' +
+      '# Written by Symbiote: reviews stay on this machine. Delete this file to commit and share them.\n' +
       '*\n!config.json\n';
-    repo.write({ 'cpr/.gitignore': earlier, 'cpr/merge.md': 'Keep both changelog entries.\n' });
+    repo.write({
+      'symbiote/.gitignore': earlier,
+      'symbiote/merge.md': 'Keep both changelog entries.\n',
+    });
     const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
     const { info } = await reviews.resolve('agent');
     await reviews.state(info).write('review', {});
-    expect(readFileSync(join(repo.root, 'cpr', '.gitignore'), 'utf8')).toBe(GITIGNORE);
-    expect(repo.git('status', '--porcelain', '--untracked-files=all')).toBe('?? cpr/merge.md');
+    expect(readFileSync(join(repo.root, 'symbiote', '.gitignore'), 'utf8')).toBe(GITIGNORE);
+    expect(repo.git('status', '--porcelain', '--untracked-files=all')).toBe('?? symbiote/merge.md');
   });
 
   it('says what came after the last review, on the page and on the commits page', async () => {
@@ -389,7 +392,7 @@ describe('branchReviews', () => {
     const { info } = await reviews.resolve('agent');
     expect(info.note).toContain('git config user.email');
     await reviews.state(info).write('review', { a: 'b' });
-    expect(existsSync(join(repo.root, 'cpr'))).toBe(false);
+    expect(existsSync(join(repo.root, 'symbiote'))).toBe(false);
     expect(existsSync(join(cache, 'state', open.id, 'reviews', 'agent', 'local.json'))).toBe(true);
     expect(readFileSync(join(cache, 'state', open.id, 'AGENTS.md'), 'utf8')).toBe(AGENTS);
     expect((await reviews.list()).place).toBe('cache');
@@ -430,7 +433,7 @@ const REQUEST = {
   ],
 };
 const reviewFile = (root: string, branch = 'agent') =>
-  readReview(join(root, 'cpr', 'reviews', branch, 'ada@example.com.json'));
+  readReview(join(root, 'symbiote', 'reviews', branch, 'ada@example.com.json'));
 
 describe('finishing a branch review (V16, V17)', () => {
   it('records the verdict with each comment and its code, clears the drafts, pushes nothing', async () => {
@@ -479,7 +482,7 @@ describe('finishing a branch review (V16, V17)', () => {
         'About W1:',
         'Why a constant?',
         '',
-        'The review: cpr/reviews/agent/ada@example.com.json; how to act on it: cpr/AGENTS.md.',
+        'The review: symbiote/reviews/agent/ada@example.com.json; how to act on it: symbiote/AGENTS.md.',
         '',
       ].join('\n'),
     );
@@ -501,7 +504,7 @@ describe('finishing a branch review (V16, V17)', () => {
   it("words a verdict for the agent with the project's sentences (V28)", async () => {
     const { repo, shas } = pushedRepo();
     repo.write({
-      'cpr/config.json': JSON.stringify({
+      'symbiote/config.json': JSON.stringify({
         prompts: {
           verdict: { approve: '{at} of {branch} goes into {into}.', where: 'See {review}.' },
         },
@@ -512,7 +515,7 @@ describe('finishing a branch review (V16, V17)', () => {
     const { text } = await reviews.finish(info, APPROVE, reader(repo.root, info));
     expect(text).toBe(
       `${shas.W2.slice(0, 7)} of agent goes into main.\n\n` +
-        'See cpr/reviews/agent/ada@example.com.json.\n',
+        'See symbiote/reviews/agent/ada@example.com.json.\n',
     );
   });
 
@@ -537,9 +540,9 @@ describe('finishing a branch review (V16, V17)', () => {
         summary: '',
       },
       text: [
-        `Approved the branch agent at ${shas.W2.slice(0, 7)}: CPR merges ${shas.W2.slice(0, 7)} into main; do not merge it yourself.`,
+        `Approved the branch agent at ${shas.W2.slice(0, 7)}: Symbiote merges ${shas.W2.slice(0, 7)} into main; do not merge it yourself.`,
         '',
-        'The review: cpr/reviews/agent/ada@example.com.json; how to act on it: cpr/AGENTS.md.',
+        'The review: symbiote/reviews/agent/ada@example.com.json; how to act on it: symbiote/AGENTS.md.',
         '',
       ].join('\n'),
     });

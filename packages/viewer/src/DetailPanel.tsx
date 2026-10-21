@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import type { Finding, Graph, GraphNode, Project } from '@cpr/core';
+import type { Finding, Graph, GraphNode, Project } from '@symbiote/core';
 import {
   anchorFor,
   defaultAnchor,
@@ -30,7 +30,7 @@ const NOTE_MS = 8000;
 /** The key that opens a row in VS Code with a click. */
 const MOD = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl';
 
-/** Fetches a file once per side; `cpr view` serves them, a dropped file has none. */
+/** Fetches a file once per side; `symbiote view` serves them, a dropped file has none. */
 function fetchSource(side: 'base' | 'head', file: string): Promise<string> {
   const key = `${side}:${file}`;
   let source = sources.get(key);
@@ -74,7 +74,7 @@ interface Props {
   id: string;
   /** The graph's projects, when the change spans two or more: the file line names its project. */
   projects?: readonly Project[];
-  /** Whether `/api/source` exists (opened with `cpr view`). */
+  /** Whether `/api/source` exists (opened with `symbiote view`). */
   sources: boolean;
   /** Whether the server opens files in VS Code (`/api/open`). */
   canOpen: boolean;
@@ -85,7 +85,7 @@ interface Props {
   onToggleReviewed: () => void;
   onSelect: (id: string) => void;
   onClose: () => void;
-  /** Present when the review can be posted to the forge (`cpr pr`). */
+  /** Present when the review can be posted to the forge (`symbiote pr`). */
   comments?: Comments | undefined;
 }
 
@@ -291,7 +291,9 @@ function SymbolDiff({ state, anchor, onPick, onOpen }: SymbolDiffProps) {
   const [all, setAll] = useState(false);
   if (state.status === 'loading') return <p className="muted">Loading source…</p>;
   if (state.status === 'none') {
-    return <p className="muted">Source is available when the graph is opened with cpr view.</p>;
+    return (
+      <p className="muted">Source is available when the graph is opened with symbiote view.</p>
+    );
   }
   const rows = all ? state.rows : state.rows.slice(0, MAX_ROWS);
   return (

@@ -1,4 +1,4 @@
-import type { ts } from '@cpr/core';
+import type { ts } from '@symbiote/core';
 
 /** What a file imports: local name → module and imported name; namespaces → module. */
 export interface Imports {

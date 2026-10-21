@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { Graph, GraphNode } from '@cpr/core';
+import type { Graph, GraphNode } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   anchorFor,

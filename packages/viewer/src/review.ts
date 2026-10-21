@@ -1,4 +1,4 @@
-import type { Graph, GraphNode, GraphSide, Project } from '@cpr/core';
+import type { Graph, GraphNode, GraphSide, Project } from '@symbiote/core';
 import { label } from './flow.js';
 import { projectOf } from './projects.js';
 
@@ -167,13 +167,13 @@ export function fingerprint(node: GraphNode): string {
 export type Marks = Readonly<Record<string, string>>;
 
 /**
- * Where review state is kept: per change request under `cpr pr`, so it outlives new pushes;
+ * Where review state is kept: per change request under `symbiote pr`, so it outlives new pushes;
  * otherwise per pair of revisions.
  */
 export function reviewKey(graph: Graph, kind: 'review' | 'drafts' = 'review'): string {
-  if (graph.changeRequest) return `cpr:${kind}:${graph.changeRequest.url}`;
+  if (graph.changeRequest) return `symbiote:${kind}:${graph.changeRequest.url}`;
   const { base, head } = graph.revisions;
-  return `cpr:${kind}:${base.sha ?? base.ref}..${head.sha ?? head.ref}`;
+  return `symbiote:${kind}:${base.sha ?? base.ref}..${head.sha ?? head.ref}`;
 }
 
 export interface ReviewStatus {

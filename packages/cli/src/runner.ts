@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 import type { RunDiff } from './diffs.js';
 
 export interface ChildRunnerOptions {
@@ -19,7 +19,7 @@ export interface PhaseMessage {
 }
 
 /**
- * Analyzes each pair with `cpr diff <base> <head> --no-merge-base --json` in a child process: the
+ * Analyzes each pair with `symbiote diff <base> <head> --no-merge-base --json` in a child process: the
  * analysis is synchronous, so in the server's process it would stop the server answering; a
  * process also frees its memory when it ends and can be stopped. Phases come over IPC.
  */
@@ -50,22 +50,24 @@ export function childRunner(options: ChildRunnerOptions): RunDiff {
         signal.removeEventListener('abort', stop);
         if (signal.aborted) return reject(new Error('stopped'));
         if (code !== 0) {
-          return reject(new Error(failure(stderr) || `cpr diff ended with ${code ?? killedBy}`));
+          return reject(
+            new Error(failure(stderr) || `symbiote diff ended with ${code ?? killedBy}`),
+          );
         }
         const label = `${pair.base.slice(0, 7)}..${pair.head.slice(0, 7)}`;
         for (const line of stderr.split('\n')) if (line) options.stderr(`${label}: ${line}\n`);
         try {
           resolve(JSON.parse(Buffer.concat(stdout).toString('utf8')) as Graph);
         } catch (error) {
-          reject(new Error(`cpr diff printed no graph: ${(error as Error).message}`));
+          reject(new Error(`symbiote diff printed no graph: ${(error as Error).message}`));
         }
       });
     });
 }
 
-/** The CLI's own error lines (`cpr: …`), else the end of what it printed (a crash). */
+/** The CLI's own error lines (`symbiote: …`), else the end of what it printed (a crash). */
 function failure(stderr: string): string {
   const lines = stderr.trim().split('\n');
-  const own = lines.filter((line) => line.startsWith('cpr'));
+  const own = lines.filter((line) => line.startsWith('symbiote'));
   return (own.length > 0 ? own : lines.slice(-20)).join('\n');
 }

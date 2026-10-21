@@ -1,4 +1,4 @@
-import type { WorkspaceFileChange } from '@cpr/core';
+import type { WorkspaceFileChange } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   commitTitle,

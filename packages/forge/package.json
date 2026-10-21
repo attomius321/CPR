@@ -1,7 +1,7 @@
 {
-  "name": "@cpr/forge",
+  "name": "@symbiote/forge",
   "version": "0.0.0",
-  "description": "CPR forge adapters: GitHub pull requests and GitLab merge requests.",
+  "description": "Symbiote forge adapters: GitHub pull requests and GitLab merge requests.",
   "private": true,
   "type": "module",
   "exports": {
@@ -17,6 +17,6 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@cpr/core": "workspace:*"
+    "@symbiote/core": "workspace:*"
   }
 }

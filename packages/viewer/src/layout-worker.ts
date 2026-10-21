@@ -1,5 +1,5 @@
 // Lays out views of one graph off the main thread (V8e): the canvas stays usable meanwhile.
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 import { layoutFlow } from './flow.js';
 import type { LayoutMessage, LayoutReply } from './layouts.js';
 

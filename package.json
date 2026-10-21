@@ -1,5 +1,5 @@
 {
-  "name": "cpr-monorepo",
+  "name": "symbiote-monorepo",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.8.1",
@@ -7,7 +7,7 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "build": "tsc -b tsconfig.build.json && pnpm --filter @cpr/viewer run build",
+    "build": "tsc -b tsconfig.build.json && pnpm --filter @symbiote/viewer run build",
     "typecheck": "tsc -p tsconfig.json && pnpm -r typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -15,12 +15,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
-    "test:e2e": "pnpm --filter @cpr/viewer run test:e2e",
+    "test:e2e": "pnpm --filter @symbiote/viewer run test:e2e",
     "app:setup": "node packages/desktop/node_modules/electron/install.js"
   },
   "devDependencies": {
-    "@cpr/plugin-angular": "workspace:*",
-    "@cpr/plugin-qwik": "workspace:*",
+    "@symbiote/plugin-angular": "workspace:*",
+    "@symbiote/plugin-qwik": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.4",

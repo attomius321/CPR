@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 type Env = Readonly<Record<string, string | undefined>>;
 
 /**
- * The pull/merge request a CI job runs for, so `cpr pr` needs no number there: GitLab's merge
+ * The pull/merge request a CI job runs for, so `symbiote pr` needs no number there: GitLab's merge
  * request pipelines set `CI_MERGE_REQUEST_IID`; GitHub Actions describes the triggering event in
  * the JSON file at `GITHUB_EVENT_PATH` (`pull_request`, `pull_request_target`, `issue_comment`
  * on a pull request).

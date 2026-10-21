@@ -14,7 +14,7 @@ afterEach(async () => {
 
 /** A socket path short enough for a unix socket (108 bytes on Linux). */
 function socketPath(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'cpr-ws-'));
+  const dir = mkdtempSync(join(tmpdir(), 'symbiote-ws-'));
   dirs.push(dir);
   return join(dir, 's.sock');
 }

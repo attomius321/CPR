@@ -42,7 +42,7 @@ export interface HistoryState {
   version: string;
 }
 
-/** Rows of a history with their details (`cpr view`'s `GET /api/history`). */
+/** Rows of a history with their details (`symbiote view`'s `GET /api/history`). */
 export interface HistoryPage {
   /** The history's version (`HistoryState.version`): rows of one version fit together. */
   version: string;
@@ -80,7 +80,7 @@ export interface HistoryRefs {
 
 // Never tags as tips: they bring release lines no branch reaches (CPython's take its graph from
 // 37 lanes to 2,449); they show on their commits' rows instead. Never `--all`: it brings the
-// stash and the `refs/cpr/*` heads `cpr pr` fetches.
+// stash and the `refs/symbiote/*` heads `symbiote pr` fetches.
 const TIPS: Record<HistoryScope, readonly string[]> = {
   all: ['HEAD', '--branches', '--remotes'],
   current: ['HEAD'],

@@ -10,9 +10,9 @@ import {
 
 describe('parseAppArgs', () => {
   it('reads the server to show and the first title, in either form', () => {
-    expect(parseAppArgs(['--url', 'http://127.0.0.1:4100/', '--title', 'CPR'])).toEqual({
+    expect(parseAppArgs(['--url', 'http://127.0.0.1:4100/', '--title', 'Symbiote'])).toEqual({
       url: 'http://127.0.0.1:4100/',
-      title: 'CPR',
+      title: 'Symbiote',
     });
     expect(parseAppArgs(['--url=http://localhost:4100/diff/a..b/', '--title=ky'])).toEqual({
       url: 'http://localhost:4100/diff/a..b/',
@@ -33,7 +33,7 @@ describe('parseAppArgs', () => {
     expect(parseAppArgs(['--repo', 'ky'])).toEqual({});
   });
 
-  it('shows only a CPR server on this machine: http on 127.0.0.1 or localhost', () => {
+  it('shows only a Symbiote server on this machine: http on 127.0.0.1 or localhost', () => {
     for (const url of [
       'https://127.0.0.1:4100/',
       'http://example.com/',

@@ -1,5 +1,5 @@
 import { posix } from 'node:path';
-import type { PluginRevision, ts } from '@cpr/core';
+import type { PluginRevision, ts } from '@symbiote/core';
 import { calls, unwrap } from './imports.js';
 import { parseJson, ROUTER_PACKAGES, type Projects } from './projects.js';
 import { HANDLERS, moduleKind, routeExports } from './routes.js';
@@ -121,7 +121,7 @@ function declarations(revision: PluginRevision, symbol: ts.Symbol): [string, ts.
   return found;
 }
 
-/** A top-level declaration's name as CPR names symbols (`default` for anonymous defaults). */
+/** A top-level declaration's name as Symbiote names symbols (`default` for anonymous defaults). */
 function topLevelName(tsApi: typeof ts, declaration: ts.Declaration): string | undefined {
   if (tsApi.isVariableDeclaration(declaration)) {
     const statement = declaration.parent.parent;

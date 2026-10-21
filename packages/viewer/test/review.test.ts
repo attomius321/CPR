@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { Graph, GraphNode } from '@cpr/core';
+import type { Graph, GraphNode } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { toFlow } from '../src/flow.js';
 import {
@@ -208,10 +208,10 @@ describe('neighbourhood', () => {
 describe('reviewKey', () => {
   it('is per change request, else per pair of revisions', () => {
     const graph = golden('callers');
-    expect(reviewKey(graph)).toBe('cpr:review:base..head');
+    expect(reviewKey(graph)).toBe('symbiote:review:base..head');
     const request = { ...graph, changeRequest: { url: 'https://github.com/a/b/pull/7' } } as Graph;
-    expect(reviewKey(request)).toBe('cpr:review:https://github.com/a/b/pull/7');
-    expect(reviewKey(request, 'drafts')).toBe('cpr:drafts:https://github.com/a/b/pull/7');
+    expect(reviewKey(request)).toBe('symbiote:review:https://github.com/a/b/pull/7');
+    expect(reviewKey(request, 'drafts')).toBe('symbiote:drafts:https://github.com/a/b/pull/7');
   });
 });
 

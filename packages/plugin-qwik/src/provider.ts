@@ -1,5 +1,5 @@
 import { posix } from 'node:path';
-import type { PluginContext, ts } from '@cpr/core';
+import type { PluginContext, ts } from '@symbiote/core';
 import { importsOf, unwrap } from './imports.js';
 import type { QwikProject } from './projects.js';
 
@@ -31,7 +31,7 @@ export function mdxProvider(
 ): MdxProvider | undefined {
   if (!project.mdxProvider) return undefined;
   const tsApi = revision.ts;
-  const from = posix.join(revision.root, project.routesDir, '__cpr_provider.ts');
+  const from = posix.join(revision.root, project.routesDir, '__symbiote_provider.ts');
   const file = resolve(revision, project, project.mdxProvider, from);
   const text = file && revision.readFile(file);
   if (!file || text === undefined) return undefined;

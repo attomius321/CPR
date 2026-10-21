@@ -8,7 +8,7 @@ import { childRunner } from '../src/runner.js';
 const FAKE_CLI = `
 const [, , command, base, head, ...rest] = process.argv;
 if (base.startsWith('f')) {
-  process.stderr.write("hint: try --plugin angular\\ncpr: unknown revision 'x'\\n");
+  process.stderr.write("hint: try --plugin angular\\nsymbiote: unknown revision 'x'\\n");
   process.exit(1);
 }
 if (base.startsWith('s')) {
@@ -37,7 +37,7 @@ describe('childRunner', () => {
 
   const pair = (letter: string) => ({ base: letter.repeat(40), head: 'b'.repeat(40) });
 
-  it('runs cpr diff on the pair, directly, and reads its graph and phases', async () => {
+  it('runs symbiote diff on the pair, directly, and reads its graph and phases', async () => {
     const phases: string[] = [];
     const graph = (await run(pair('a'), {
       onPhase: (phase) => phases.push(phase),
@@ -56,7 +56,7 @@ describe('childRunner', () => {
   it("fails with the CLI's message", async () => {
     await expect(
       run(pair('f'), { onPhase: () => undefined, signal: new AbortController().signal }),
-    ).rejects.toThrow("cpr: unknown revision 'x'");
+    ).rejects.toThrow("symbiote: unknown revision 'x'");
   });
 
   it('stops the process', async () => {

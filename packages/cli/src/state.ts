@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 import type { StateName, StateStore } from './server.js';
 
 /**
  * Where the viewer's review state (reviewed marks, draft comments) lives on disk: per repo, and
- * per change request — or per pair of revisions outside `cpr pr` — so it survives restarts, a
+ * per change request — or per pair of revisions outside `symbiote pr` — so it survives restarts, a
  * different port (browser storage is per origin) and new pushes to the change.
  */
 export function stateDir(cacheDir: string, repoId: string, graph: Graph): string {

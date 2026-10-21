@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { layoutFlow, type FlowLayout } from '../src/flow.js';
 import {

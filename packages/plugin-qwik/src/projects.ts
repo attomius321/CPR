@@ -1,5 +1,5 @@
 import { posix } from 'node:path';
-import type { PluginContext, ts } from '@cpr/core';
+import type { PluginContext, ts } from '@symbiote/core';
 
 /** Qwik itself: 1.x and 2.x. */
 export const QWIK_PACKAGES = new Set(['@builder.io/qwik', '@qwik.dev/core']);

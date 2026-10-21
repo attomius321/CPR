@@ -1,5 +1,5 @@
-// Subscription usage (V29c): each window of use a vendor reports for the agents CPR starts, as
-// `cpr view` reads them (`GET /api/usage`) and the status bar shows them.
+// Subscription usage (V29c): each window of use a vendor reports for the agents Symbiote starts, as
+// `symbiote view` reads them (`GET /api/usage`) and the status bar shows them.
 
 /** One window of use, as its vendor reports it. */
 export interface UsageWindow {
@@ -37,6 +37,6 @@ export interface UsageSubscription {
 /** `GET /api/usage`. */
 export interface UsageReport {
   subscriptions: UsageSubscription[];
-  /** `CPR_USAGE=off`: nothing is read. */
+  /** `SYMBIOTE_USAGE=off`: nothing is read. */
   off?: true;
 }

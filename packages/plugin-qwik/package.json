@@ -1,7 +1,7 @@
 {
-  "name": "@cpr/plugin-qwik",
+  "name": "@symbiote/plugin-qwik",
   "version": "0.1.0",
-  "description": "CPR plugin: Qwik routes, component$ props and MDX routes.",
+  "description": "Symbiote plugin: Qwik routes, component$ props and MDX routes.",
   "private": true,
   "type": "module",
   "exports": {
@@ -17,6 +17,6 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
-    "@cpr/core": "workspace:*"
+    "@symbiote/core": "workspace:*"
   }
 }

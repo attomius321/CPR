@@ -1,4 +1,4 @@
-import { CprError } from '@cpr/core';
+import { SymbioteError } from '@symbiote/core';
 
 export interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -19,32 +19,32 @@ export async function api<T>(
       method,
       headers: {
         accept: 'application/json',
-        'user-agent': 'cpr',
+        'user-agent': 'symbiote',
         ...(body === undefined ? {} : { 'content-type': 'application/json' }),
         ...headers,
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
   } catch (error) {
-    throw new CprError(`could not reach ${new URL(url).host}: ${(error as Error).message}`, {
+    throw new SymbioteError(`could not reach ${new URL(url).host}: ${(error as Error).message}`, {
       cause: error,
     });
   }
 
   if (response.status === 401) {
-    throw new CprError(
+    throw new SymbioteError(
       `${new URL(url).host} rejected the request: authentication failed (set ${tokenHint})`,
     );
   }
   if (response.status === 403 || response.status === 404) {
     const text = await response.text();
-    throw new CprError(
+    throw new SymbioteError(
       `${new URL(url).host} answered ${response.status} for ${new URL(url).pathname}: ` +
         `not found, or no access with the current token (${tokenHint})${text ? ` — ${text.slice(0, 200)}` : ''}`,
     );
   }
   if (!response.ok) {
-    throw new CprError(
+    throw new SymbioteError(
       `${new URL(url).host} answered ${response.status}: ${(await response.text()).slice(0, 300)}`,
     );
   }

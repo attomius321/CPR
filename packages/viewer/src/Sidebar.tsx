@@ -1,4 +1,4 @@
-import type { Finding, Graph, GraphNode, Project } from '@cpr/core';
+import type { Finding, Graph, GraphNode, Project } from '@symbiote/core';
 import { groupOf, label, tone } from './flow.js';
 import { pathInProject, projectOf } from './projects.js';
 import { byProject, type FileChanges } from './review.js';
@@ -30,7 +30,7 @@ interface Props {
   /** Projects (by folder) folded in the list. */
   collapsed: ReadonlySet<string>;
   onCollapse: (folder: string) => void;
-  /** Present when the review can be posted to the forge (`cpr pr`). */
+  /** Present when the review can be posted to the forge (`symbiote pr`). */
   review?: ReviewProps | undefined;
   /** Whether the server opens files in VS Code (the `o` key). */
   canOpen: boolean;
@@ -38,7 +38,7 @@ interface Props {
 
 /**
  * The review checklist (changed symbols by file, by project when they span several), the
- * findings and, under `cpr pr`, the review to post, in tabs.
+ * findings and, under `symbiote pr`, the review to post, in tabs.
  */
 export function Sidebar({
   graph,

@@ -4,16 +4,20 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { CHOICES, configDir, placeWindow, readState, writeState, type Area } from '../src/state.js';
 
-const dir = mkdtempSync(join(tmpdir(), 'cpr-desktop-'));
+const dir = mkdtempSync(join(tmpdir(), 'symbiote-desktop-'));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 describe('configDir', () => {
   it("follows each system's place for settings", () => {
-    expect(configDir({ XDG_CONFIG_HOME: '/x/config' }, 'linux', '/home/a')).toBe('/x/config/cpr');
-    expect(configDir({}, 'linux', '/home/a')).toBe('/home/a/.config/cpr');
-    expect(configDir({}, 'darwin', '/Users/a')).toBe('/Users/a/Library/Application Support/cpr');
+    expect(configDir({ XDG_CONFIG_HOME: '/x/config' }, 'linux', '/home/a')).toBe(
+      '/x/config/symbiote',
+    );
+    expect(configDir({}, 'linux', '/home/a')).toBe('/home/a/.config/symbiote');
+    expect(configDir({}, 'darwin', '/Users/a')).toBe(
+      '/Users/a/Library/Application Support/symbiote',
+    );
     expect(configDir({ APPDATA: 'C:\\Users\\a\\AppData\\Roaming' }, 'win32', 'C:\\Users\\a')).toBe(
-      'C:\\Users\\a\\AppData\\Roaming\\cpr',
+      'C:\\Users\\a\\AppData\\Roaming\\symbiote',
     );
   });
 });
@@ -24,7 +28,7 @@ describe('readState and writeState', () => {
     const state = {
       window: { x: 10, y: 20, width: 1200, height: 800, maximized: true },
       zoom: 1,
-      choices: { 'cpr.viewer.theme': 'light', 'cpr.viewer.sidenav': 'rail' },
+      choices: { 'symbiote.viewer.theme': 'light', 'symbiote.viewer.sidenav': 'rail' },
     };
     writeState(file, state);
     expect(readState(file)).toEqual(state);
@@ -46,14 +50,14 @@ describe('readState and writeState', () => {
         window: { x: 'a', width: 20, height: 1e9, maximized: 'yes' },
         zoom: 99,
         choices: {
-          'cpr.viewer.theme': 'dark',
-          'cpr.viewer.widths': 7,
-          'cpr.review.abc': '{}',
+          'symbiote.viewer.theme': 'dark',
+          'symbiote.viewer.widths': 7,
+          'symbiote.review.abc': '{}',
           other: 'x',
         },
       }),
     );
-    expect(readState(file)).toEqual({ choices: { 'cpr.viewer.theme': 'dark' } });
+    expect(readState(file)).toEqual({ choices: { 'symbiote.viewer.theme': 'dark' } });
   });
 
   it('keeps the recent repositories: absolute paths, ten at most (N1b)', () => {
@@ -65,20 +69,20 @@ describe('readState and writeState', () => {
 
   it('writes whole files only, never a half one beside the old', () => {
     const file = join(dir, 'whole.json');
-    writeState(file, { choices: { 'cpr.viewer.theme': 'dark' } });
-    writeState(file, { choices: { 'cpr.viewer.theme': 'light' } });
+    writeState(file, { choices: { 'symbiote.viewer.theme': 'dark' } });
+    writeState(file, { choices: { 'symbiote.viewer.theme': 'light' } });
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
-      choices: { 'cpr.viewer.theme': 'light' },
+      choices: { 'symbiote.viewer.theme': 'light' },
     });
   });
 
   it("names the viewer's five choices", () => {
     expect([...CHOICES].sort()).toEqual([
-      'cpr.viewer.changes',
-      'cpr.viewer.sidenav',
-      'cpr.viewer.sidenav.diff',
-      'cpr.viewer.theme',
-      'cpr.viewer.widths',
+      'symbiote.viewer.changes',
+      'symbiote.viewer.sidenav',
+      'symbiote.viewer.sidenav.diff',
+      'symbiote.viewer.theme',
+      'symbiote.viewer.widths',
     ]);
   });
 });

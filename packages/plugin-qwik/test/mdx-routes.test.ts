@@ -5,7 +5,7 @@ import {
   createTypescriptAdapter,
   type Analysis,
   type TsPlugin,
-} from '@cpr/core';
+} from '@symbiote/core';
 import qwik from '../src/index.js';
 
 const fixture = (name: string, side: 'base' | 'head') =>

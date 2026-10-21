@@ -1,6 +1,6 @@
 # Components
 
-CPR's controls as plain CSS on its tokens ([tokens.md](tokens.md)). Class names here are examples: CPR's stylesheet is flat, so check a name
+Symbiote's controls as plain CSS on its tokens ([tokens.md](tokens.md)). Class names here are examples: Symbiote's stylesheet is flat, so check a name
 is not taken before using it (`grep -n '^\.name' packages/viewer/src/styles.css`), and restyle the
 existing class where one already plays the role.
 
@@ -145,7 +145,7 @@ button: `aria-pressed`, 28 px, 8 px radius, `--muted` text; hover `--hover` and 
 `--raised` and `--text`. That changes its role: update the specs' selectors in the same commit.
 
 A switch (an on/off setting): track 36 × 20 px, round, off `color-mix(in srgb, var(--muted) 30%,
-transparent)` with a 1 px `--edge` border (CPR's 3:1 for a control's edge), on `var(--text)`;
+transparent)` with a 1 px `--edge` border (Symbiote's 3:1 for a control's edge), on `var(--text)`;
 thumb 14 px, `var(--bg)`, `--shadow-lift`, moved 16 px when on.
 
 ## Rows and lists
@@ -314,7 +314,7 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   radius, 14 px padding, `--shadow-floating`.
 - Tooltip (names an icon-only control; never teaches or warns): inverted, `background: var(--text);
   color: var(--bg)`, 8 px radius, 6 × 12 px padding, 12 px text, shown after 400 ms, above with a
-  4 px gap; a keycap may trail. Until CPR has one, `title` is acceptable.
+  4 px gap; a keycap may trail. Until Symbiote has one, `title` is acceptable.
 - Dialog: overlay `--overlay` with `backdrop-filter: blur(2px)`; box `min(512px, 100% - 32px)`
   wide, 20 × 24 px padding, 10 px radius, 1 px `--menu-line`, `--dialog-bg`,
   `backdrop-filter: blur(40px)`, `--dialog-shadow`, faded in over 200 ms; title 16 px weight 600, description 13 px
@@ -359,7 +359,7 @@ costly on thousands of nodes). Within them:
 
 lucide's set, drawn in `src/icons.tsx` (no `lucide-react`): copy a path from lucide.dev, keep its
 24-unit viewBox (give `Icon` a `viewBox` prop), `stroke-width: 2` scaled by the 16 px box (1.33 px
-drawn; CPR's own 16-unit icons use 1.6), round caps and joins, colour from the text. Sizes: 16 px,
+drawn; Symbiote's own 16-unit icons use 1.6), round caps and joins, colour from the text. Sizes: 16 px,
 14 px in menus and dense rows, 12 px in chips, 28 px for an empty state. Keep one credit line for
 lucide (ISC) in `icons.tsx`. One icon per meaning, the same everywhere: `Search`, `Settings`,
 `History`, `GitBranch`, `GitCommitHorizontal`, `GitMerge`, `Plus`, `X`, `ChevronRight`,

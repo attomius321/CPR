@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { WorkspaceChanges, WorkspaceFileChange } from '@cpr/core';
+import type { WorkspaceChanges, WorkspaceFileChange } from '@symbiote/core';
 import {
   commitTitle,
   fileTitle,

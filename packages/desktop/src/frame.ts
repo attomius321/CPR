@@ -1,7 +1,7 @@
 import type { BrowserWindowConstructorOptions } from 'electron';
 
 /**
- * Who draws the window's frame and buttons (N1d): CPR's pages on Linux, where Electron rounds a
+ * Who draws the window's frame and buttons (N1d): Symbiote's pages on Linux, where Electron rounds a
  * frameless window only with client-side decorations and draws no buttons over a transparent
  * one; the system on macOS and Windows, whose frameless windows are rounded already.
  */
@@ -15,7 +15,7 @@ export function frameOf(platform: string): Frame {
 const BACKGROUND = { dark: '#0a0a0a', light: '#ffffff' };
 
 /**
- * The title bar (N1c): CPR draws it, 38 px, in the viewer's `--side`; on Windows the system's
+ * The title bar (N1c): Symbiote draws it, 38 px, in the viewer's `--side`; on Windows the system's
  * buttons lie over its right end in that colour, `--text` for their symbols.
  */
 export const TITLE_BAR = {

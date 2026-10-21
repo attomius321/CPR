@@ -1,6 +1,6 @@
 export type ForgeKind = 'github' | 'gitlab';
 
-/** A pull request (GitHub) or merge request (GitLab), as CPR needs it. */
+/** A pull request (GitHub) or merge request (GitLab), as Symbiote needs it. */
 export interface ChangeRequest {
   forge: ForgeKind;
   /** `#12` on GitHub, `!12` on GitLab. */

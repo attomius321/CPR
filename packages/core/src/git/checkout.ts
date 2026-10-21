@@ -36,7 +36,7 @@ export class UnknownCheckoutTarget extends Error {
   override name = 'UnknownCheckoutTarget';
 }
 
-/** Git (or CPR, for an operation in progress) refused the checkout; nothing changed. */
+/** Git (or Symbiote, for an operation in progress) refused the checkout; nothing changed. */
 export class CheckoutRefused extends Error {
   override name = 'CheckoutRefused';
 }

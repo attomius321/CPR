@@ -1,5 +1,5 @@
 /* The look (V29b): after the reference — dark by default, dense, flat, hairline lines — in one
-   font pair served by CPR. Font names cost on Linux, where Chromium asks fontconfig (V29a: 850–
+   font pair served by Symbiote. Font names cost on Linux, where Chromium asks fontconfig (V29a: 850–
    900 ms before History's first rows): no system family is named, and not sans-serif after
    Geist either (matched as a name, 283 ms a time, four times before the first paint). monospace
    matches in a millisecond, and its font here (DejaVu Sans Mono) has what Geist lacks (✓ ⚙ ↻):
@@ -11,7 +11,7 @@
 }
 
 /* Dark unless the person chose light or the system's (decision 179; index.html sets data-theme
-   before the first paint). CPR's style since V31 (the cpr-style skill's tokens.md): the content
+   before the first paint). Symbiote's style since V31 (the symbiote-style skill's tokens.md): the content
    darkest, the chrome lifted, colour for state only. Text and muted at least 4.5:1 on the four
    backgrounds, states, edges and the focus ring 3:1 (test/tokens.test.ts). Lines only separate
    regions: hairlines. */
@@ -1005,8 +1005,8 @@ input[type='radio']:disabled {
 }
 
 /* The file's name, readable at any zoom; it may run past a narrow box. Map labels keep fixed
-   sizes and are scaled by `1 / --cpr-zoom`: a transform needs no text layout, a font size does on
-   every zoom frame. `--cpr-zoom` is set by mapzoom.ts on these labels only (`.file-name`,
+   sizes and are scaled by `1 / --symbiote-zoom`: a transform needs no text layout, a font size does on
+   every zoom frame. `--symbiote-zoom` is set by mapzoom.ts on these labels only (`.file-name`,
    `.project-frame`, `.project-name`): add any other element that reads it there. */
 .react-flow.map .file-name {
   display: inline-block;
@@ -1016,7 +1016,7 @@ input[type='radio']:disabled {
   color: var(--text);
   font: 13px / 1.25 var(--mono);
   white-space: nowrap;
-  transform: scale(calc(1 / var(--cpr-zoom, 1)));
+  transform: scale(calc(1 / var(--symbiote-zoom, 1)));
   transform-origin: 0 0;
 }
 
@@ -1101,11 +1101,13 @@ input[type='radio']:disabled {
 .react-flow.map .project-frame {
   border-color: transparent;
   background: transparent;
-  box-shadow: 0 0 0 calc(2px / var(--cpr-zoom, 1)) color-mix(in srgb, var(--text) 25%, var(--line));
+  box-shadow: 0 0 0 calc(2px / var(--symbiote-zoom, 1))
+    color-mix(in srgb, var(--text) 25%, var(--line));
 }
 
 .react-flow.map .project-frame.context {
-  box-shadow: 0 0 0 calc(1px / var(--cpr-zoom, 1)) color-mix(in srgb, var(--text) 18%, var(--line));
+  box-shadow: 0 0 0 calc(1px / var(--symbiote-zoom, 1))
+    color-mix(in srgb, var(--text) 18%, var(--line));
 }
 
 .react-flow.map .project-band {
@@ -1127,9 +1129,9 @@ input[type='radio']:disabled {
   /* 26 px on screen, smaller only to fit the frame's width, never below a file name's 13 px. */
   transform: scale(
     clamp(
-      calc(0.5 / var(--cpr-zoom, 1)),
+      calc(0.5 / var(--symbiote-zoom, 1)),
       calc(var(--frame-width) / var(--name-length) / 16.12),
-      calc(1 / var(--cpr-zoom, 1))
+      calc(1 / var(--symbiote-zoom, 1))
     )
   );
   transform-origin: 0 0;
@@ -1138,7 +1140,7 @@ input[type='radio']:disabled {
 .react-flow.map .project-frame.context .project-name {
   background: transparent;
   font-size: 13px;
-  transform: scale(calc(1 / var(--cpr-zoom, 1)));
+  transform: scale(calc(1 / var(--symbiote-zoom, 1)));
 }
 
 /* ---- legend ------------------------------------------------------------------------- */
@@ -3526,13 +3528,13 @@ button.workspace-about {
 }
 
 .thread-who,
-.thread-cpr summary {
+.thread-symbiote summary {
   margin-bottom: 4px;
   color: var(--muted);
   font-size: 12px;
 }
 
-.thread-cpr summary {
+.thread-symbiote summary {
   margin-bottom: 0;
   cursor: pointer;
 }
@@ -3543,7 +3545,7 @@ button.workspace-about {
   white-space: pre-wrap;
 }
 
-.thread-cpr .thread-text {
+.thread-symbiote .thread-text {
   margin-top: 6px;
 }
 
@@ -5041,7 +5043,7 @@ p.settings-placeholders {
   }
 }
 
-/* A diff of `cpr view` in the shell (V29a): the diff's own bar, canvas and legend, beside the rail. */
+/* A diff of `symbiote view` in the shell (V29a): the diff's own bar, canvas and legend, beside the rail. */
 .shell-main > .app {
   flex: 1;
   min-width: 0;
@@ -5300,7 +5302,7 @@ button.changes-file:hover {
   color: var(--removed);
 }
 
-/* ---- CPR's window (N1c): its title bar; in the app only ----------------------
+/* ---- Symbiote's window (N1c): its title bar; in the app only ----------------------
    `data-app` on <html> is set before the first paint where the app's preload says so: in a
    browser none of this applies. 38 px, the sidenav's colour, cut along the window's columns.
    The system's buttons lie over its right end (Windows, Linux: `env(titlebar-area-*)` says
@@ -5385,7 +5387,7 @@ button.changes-file:hover {
   border-right: 0;
 }
 
-/* A diff in the shell: CPR's name is the title bar's. */
+/* A diff in the shell: Symbiote's name is the title bar's. */
 :root[data-app] .shell .app > .bar > .brand {
   display: none;
 }
@@ -5451,7 +5453,7 @@ button.changes-file:hover {
   display: none;
 }
 
-/* A page with no shell (cpr pr): its bar is the title bar. */
+/* A page with no shell (symbiote pr): its bar is the title bar. */
 :root[data-app] .app.alone > .bar {
   -webkit-app-region: drag;
   min-height: 38px;
@@ -5481,7 +5483,7 @@ button.changes-file:hover {
   }
 }
 
-/* ---- CPR's frame, on Linux (N1d) ---------------------------------------------------------
+/* ---- Symbiote's frame, on Linux (N1d) ---------------------------------------------------------
    `data-frame="own"` on <html>: the window is transparent and the page draws its corners and
    buttons (Electron rounds a frameless window there only with client-side decorations, and draws
    no buttons over a transparent one). The root carries the background in the radius, and the

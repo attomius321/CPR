@@ -1,4 +1,4 @@
-/* The app's start page (N1b): the viewer's tokens (CPR's style, V31) and type, on one column. */
+/* The app's start page (N1b): the viewer's tokens (Symbiote's style, V31) and type, on one column. */
 
 @font-face {
   font-family: 'Geist Variable';
@@ -80,7 +80,7 @@ body {
   -webkit-app-region: drag;
 }
 
-/* CPR's frame, on Linux (N1d): as the viewer's. The window is clear around the root, which
+/* Symbiote's frame, on Linux (N1d): as the viewer's. The window is clear around the root, which
    carries the background and the corners, square while the window fills the screen. */
 :root[data-frame='own'],
 :root[data-frame='own'] body {

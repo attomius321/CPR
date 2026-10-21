@@ -1,7 +1,7 @@
-// CPR's runner for Codex (V20a, decision 129): started detached by `cpr view` in a workspace's
+// Symbiote's runner for Codex (V20a, decision 129): started detached by `symbiote view` in a workspace's
 // worktree, it runs `codex exec --json …` and writes what Codex does into the workspace's thread
-// (`cpr/threads/<branch>.jsonl`, V18c's entries) as it happens — Codex's events carry no times,
-// and it has no hooks CPR can register without the person's trust. It outlives `cpr view`, as
+// (`symbiote/threads/<branch>.jsonl`, V18c's entries) as it happens — Codex's events carry no times,
+// and it has no hooks Symbiote can register without the person's trust. It outlives `symbiote view`, as
 // Claude Code's background sessions do. Node's own modules only: it starts with every run.
 //
 //   node codex-run.js <thread file> <startup|resume> <run> <codex> <args…, the prompt last>
@@ -9,7 +9,7 @@ import { spawn } from 'node:child_process';
 import { appendFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ThreadEntry } from '@cpr/core';
+import type { ThreadEntry } from '@symbiote/core';
 
 /**
  * What a run is: the thread it writes, how it started, its ID (on each entry it writes), and
@@ -20,7 +20,7 @@ export interface CodexRun {
   source: 'startup' | 'resume';
   run: string;
   command: string;
-  /** Codex's arguments; the last is what it was given (CPR's prompt, or the person's message). */
+  /** Codex's arguments; the last is what it was given (Symbiote's prompt, or the person's message). */
   args: string[];
 }
 

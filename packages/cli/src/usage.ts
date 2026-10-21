@@ -1,12 +1,12 @@
-// Subscription usage (V29c): each window of use the vendors report for the agents CPR starts.
+// Subscription usage (V29c): each window of use the vendors report for the agents Symbiote starts.
 // Claude Code's from the endpoint its `/usage` reads, with the token Claude Code stored, read
-// only (decision 172), else CPR's own last read; Codex's from its app server, else its newest
+// only (decision 172), else Symbiote's own last read; Codex's from its app server, else its newest
 // session. Both sources are undocumented or `[experimental]`: every field is checked as it is
-// read, and what CPR cannot read is left out, never guessed. `cpr view` keeps a copy for 5 min
+// read, and what Symbiote cannot read is left out, never guessed. `symbiote view` keeps a copy for 5 min
 // (`usageService`).
 import { mkdir, open, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { UsageReport, UsageSubscription, UsageWindow } from '@cpr/core';
+import type { UsageReport, UsageSubscription, UsageWindow } from '@symbiote/core';
 import type { Codex } from './codex.js';
 import { runProgram, type Run } from './workspaces.js';
 
@@ -147,9 +147,9 @@ async function claudeToken(
   return { accessToken: oauth.accessToken, expiresAt };
 }
 
-/** The usage URL: Claude's, or one on this machine (`CPR_CLAUDE_USAGE_URL`, for tests). */
+/** The usage URL: Claude's, or one on this machine (`SYMBIOTE_CLAUDE_USAGE_URL`, for tests). */
 function claudeUsageUrl(env: Env): string {
-  const custom = env.CPR_CLAUDE_USAGE_URL?.trim();
+  const custom = env.SYMBIOTE_CLAUDE_USAGE_URL?.trim();
   if (!custom) return CLAUDE_USAGE_URL;
   try {
     const url = new URL(custom);
@@ -162,7 +162,7 @@ function claudeUsageUrl(env: Env): string {
   }
 }
 
-/** CPR's last read of Claude's usage, in `file`, if it was read for `account`; else null. */
+/** Symbiote's last read of Claude's usage, in `file`, if it was read for `account`; else null. */
 async function lastRead(file: string, account: string | null): Promise<UsageSubscription | null> {
   const kept = await jsonFile(file);
   if (!isObject(kept) || kept.account !== account || !isObject(kept.subscription)) return null;
@@ -174,7 +174,7 @@ async function lastRead(file: string, account: string | null): Promise<UsageSubs
     : null;
 }
 
-/** Keeps a live read in `file` for the next run and other `cpr view`s; a failure loses nothing. */
+/** Keeps a live read in `file` for the next run and other `symbiote view`s; a failure loses nothing. */
 async function keepRead(file: string, account: string | null, subscription: UsageSubscription) {
   const next = `${file}.${process.pid}.tmp`;
   try {
@@ -189,11 +189,11 @@ async function keepRead(file: string, account: string | null, subscription: Usag
 
 /**
  * Claude Code's subscription (decision 172): `GET` Claude's usage endpoint with the access token
- * Claude Code stored, which CPR never refreshes and never sends elsewhere. Each live read is kept
- * in `lastFile` (CPR's cache) for its account; an expired or missing token, or a failed request,
+ * Claude Code stored, which Symbiote never refreshes and never sends elsewhere. Each live read is kept
+ * in `lastFile` (Symbiote's cache) for its account; an expired or missing token, or a failed request,
  * gives that last read, without the windows that have reset since, and why — never the copy
  * Claude Code keeps of its /usage (the person's choice: it was a day old). Nothing when Claude
- * Code is not installed, or before CPR's first read.
+ * Code is not installed, or before Symbiote's first read.
  */
 export async function readClaudeUsage({
   installed,
@@ -211,7 +211,7 @@ export async function readClaudeUsage({
   platform?: NodeJS.Platform;
   fetch?: typeof globalThis.fetch;
   run?: Run;
-  /** Where CPR keeps its last read: none, nothing kept. */
+  /** Where Symbiote keeps its last read: none, nothing kept. */
   lastFile?: string;
   now?: () => number;
 }): Promise<UsageRead> {
@@ -224,7 +224,7 @@ export async function readClaudeUsage({
   const accountId = typeof account.accountUuid === 'string' ? account.accountUuid : null;
   const plan = planName(account.organizationType);
 
-  /** A read that failed: CPR's last for this account, without reset windows, and why. */
+  /** A read that failed: Symbiote's last for this account, without reset windows, and why. */
   const failed = async (note: string, backoff = false): Promise<UsageRead> => {
     const last = lastFile ? await lastRead(lastFile, accountId) : null;
     return {
@@ -237,7 +237,7 @@ export async function readClaudeUsage({
   const token = await claudeToken(dir, platform, run);
   if (!token) return failed("Claude Code's token could not be read");
   if (token.expiresAt <= now()) {
-    return failed("Claude Code's token has expired (CPR never renews it)");
+    return failed("Claude Code's token has expired (Symbiote never renews it)");
   }
   let response: Response;
   try {
@@ -254,7 +254,8 @@ export async function readClaudeUsage({
   if (response.status === 429) return failed("Claude's usage asked to wait (429)", true);
   if (!response.ok) return failed(`Claude's usage answered ${response.status}`);
   const windows = claudeWindows(await response.json().catch(() => null));
-  if (windows.length === 0) return failed("Claude's usage answered without a window CPR reads");
+  if (windows.length === 0)
+    return failed("Claude's usage answered without a window Symbiote reads");
   const subscription: UsageSubscription = {
     agent: 'claude',
     ...(plan ? { plan } : {}),
@@ -423,9 +424,9 @@ function shown(last: UsageSubscription | null, read: UsageRead, now: number) {
 /**
  * The subscriptions `readers` give, kept in memory (decision 175): the first ask waits for them;
  * after that each ask answers from the copy and reads again in the background once it is older
- * than `maxAgeMs` (5 min: at 60 s, two `cpr view`s were refused by Claude's endpoint), one read at
+ * than `maxAgeMs` (5 min: at 60 s, two `symbiote view`s were refused by Claude's endpoint), one read at
  * a time. A 429 waits `backoffMs`; an error, a failed read, or a copy older than the last numbers
- * keeps the last numbers, with their time. `off` (`CPR_USAGE=off`) reads nothing.
+ * keeps the last numbers, with their time. `off` (`SYMBIOTE_USAGE=off`) reads nothing.
  */
 export function usageService(
   readers: Record<(typeof AGENTS)[number], () => Promise<UsageRead>>,

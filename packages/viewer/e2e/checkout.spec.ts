@@ -2,21 +2,21 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { serveCommits, type RunningCommits } from './cpr.js';
+import { serveCommits, type RunningCommits } from './symbiote.js';
 
 // Checking out from the commits page (V11). Each test gets its own repository: checkouts change
 // its working tree.
-let cpr: RunningCommits;
+let symbiote: RunningCommits;
 const errors: string[] = [];
 
 test.beforeEach(async ({ page }) => {
-  cpr = await serveCommits();
+  symbiote = await serveCommits();
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
 });
 
 test.afterEach(() => {
-  cpr.stop();
+  symbiote.stop();
   expect(errors).toEqual([]);
 });
 
@@ -26,7 +26,7 @@ const row = (page: Page, subject: string) =>
     has: page.locator('.commit-subject').getByText(new RegExp(`^${subject}(,|$)`)),
   });
 const head = () =>
-  execFileSync('git', ['rev-parse', 'HEAD'], { cwd: cpr.repo, encoding: 'utf8' }).trim();
+  execFileSync('git', ['rev-parse', 'HEAD'], { cwd: symbiote.repo, encoding: 'utf8' }).trim();
 /** The row menu's "Check out" entry, and the submenu it opens (V14). */
 const checkOut = (page: Page) => page.getByRole('menuitem', { name: 'Check out', exact: true });
 const targets = (page: Page) => page.getByRole('menu', { name: 'Check out' }).getByRole('menuitem');
@@ -44,7 +44,7 @@ const names = (entries: Locator) =>
   entries.evaluateAll((items) => items.map((item) => item.getAttribute('aria-label')));
 
 test('offers what each row can check out, in a submenu', async ({ page }) => {
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   // The menu holds "Check out" (and "Review", V15: the row has a branch); targets open on hover.
   // Near the row's left end, with room on the right for the submenu.
   await row(page, 'Try a wobble').click({ button: 'right', position: { x: 120, y: 10 } });
@@ -99,7 +99,7 @@ test('offers what each row can check out, in a submenu', async ({ page }) => {
 test('the submenu from the keyboard: c opens it, ← and → move between the menus', async ({
   page,
 }) => {
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await row(page, 'Try a wobble').click();
   await page.keyboard.press('c');
   // Straight into the targets, the first one active.
@@ -129,7 +129,7 @@ test('keeps the submenu in the window: on the left near the right edge, up near 
   page,
 }) => {
   await page.setViewportSize({ width: 900, height: 300 });
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   const inWindow = async () => {
     const box = (await page.locator('.submenu').boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(8);
@@ -156,8 +156,8 @@ test('keeps the submenu in the window: on the left near the right edge, up near 
 });
 
 test('checks out a branch: HEAD, lane 0 and the cursor follow', async ({ page }) => {
-  const [, , square] = cpr.shas;
-  await page.goto(`${cpr.url}history`);
+  const [, , square] = symbiote.shas;
+  await page.goto(`${symbiote.url}history`);
   await choose(page, 'Try a wobble', 'Check out branch wip');
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading')).toHaveText('Check out branch wip?');
@@ -173,18 +173,18 @@ test('checks out a branch: HEAD, lane 0 and the cursor follow', async ({ page })
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText('Try a wobble');
   await expect(page.getByRole('button', { name: 'This branch (wip)' })).toBeVisible();
   expect(
-    execFileSync('git', ['branch', '--show-current'], { cwd: cpr.repo, encoding: 'utf8' }),
+    execFileSync('git', ['branch', '--show-current'], { cwd: symbiote.repo, encoding: 'utf8' }),
   ).toBe('wip\n');
   expect(
-    execFileSync('git', ['rev-parse', 'HEAD~1'], { cwd: cpr.repo, encoding: 'utf8' }).trim(),
+    execFileSync('git', ['rev-parse', 'HEAD~1'], { cwd: symbiote.repo, encoding: 'utf8' }).trim(),
   ).toBe(square);
 });
 
 test('checks out a remote branch as a local one from the keyboard, and a tag detached', async ({
   page,
 }) => {
-  const [, , , cube] = cpr.shas;
-  await page.goto(`${cpr.url}history`);
+  const [, , , cube] = symbiote.shas;
+  await page.goto(`${symbiote.url}history`);
   // The cursor starts on HEAD, row 2; row 0 is origin/topic's.
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText(/^Add half/);
   await page.keyboard.press('k');
@@ -224,9 +224,9 @@ test('checks out a remote branch as a local one from the keyboard, and a tag det
 });
 
 test("shows git's refusal and changes nothing", async ({ page }) => {
-  const half = cpr.shas[4];
-  appendFileSync(join(cpr.repo, 'src/math.ts'), '// a local change\n');
-  await page.goto(`${cpr.url}history`);
+  const half = symbiote.shas[4];
+  appendFileSync(join(symbiote.repo, 'src/math.ts'), '// a local change\n');
+  await page.goto(`${symbiote.url}history`);
   await choose(page, 'base', 'Check out this commit (detached HEAD)');
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText(
@@ -244,9 +244,9 @@ test("shows git's refusal and changes nothing", async ({ page }) => {
 });
 
 test('shows a checkout made elsewhere when the page is back', async ({ page }) => {
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await expect(row(page, 'Add half').locator('.ref').first()).toHaveText('HEAD → main');
-  execFileSync('git', ['switch', '-q', 'wip'], { cwd: cpr.repo });
+  execFileSync('git', ['switch', '-q', 'wip'], { cwd: symbiote.repo });
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(row(page, 'Try a wobble').locator('.ref')).toHaveText(['HEAD → wip']);
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText('Try a wobble');

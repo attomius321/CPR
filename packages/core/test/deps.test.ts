@@ -9,7 +9,7 @@ describe('linkNodeModules', () => {
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
   it('links node_modules folders, and links to them, into the same place', async () => {
-    dir = mkdtempSync(join(tmpdir(), 'cpr-deps-'));
+    dir = mkdtempSync(join(tmpdir(), 'symbiote-deps-'));
     const origin = join(dir, 'origin');
     const target = join(dir, 'target');
     const shared = join(dir, 'shared-install');

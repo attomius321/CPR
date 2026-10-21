@@ -1,6 +1,6 @@
 // The Settings page's prompts (V28b): pure helpers for the list, the editor and what saving
-// says. The prompts and CPR's texts come from `cpr view` (`/api/settings/prompts`).
-import type { PromptKey, PromptSetting, PromptSettings } from '@cpr/core';
+// says. The prompts and Symbiote's texts come from `symbiote view` (`/api/settings/prompts`).
+import type { PromptKey, PromptSetting, PromptSettings } from '@symbiote/core';
 
 /** The prompts by group (Workspaces, Reviews, Merger), in the server's order. */
 export function promptGroups(
@@ -18,7 +18,7 @@ export function promptGroups(
 /** Line ends as `\n`, no blank end: as the server keeps a prompt. */
 const normalized = (text: string) => text.replace(/\r\n?/g, '\n').trimEnd();
 
-/** Why the server would refuse `text` as the prompt, or null (as `cpr view` checks it). */
+/** Why the server would refuse `text` as the prompt, or null (as `symbiote view` checks it). */
 export function draftProblem(prompt: PromptSetting, text: string): string | null {
   const length = normalized(text).length;
   if (length > prompt.max) {
@@ -44,7 +44,7 @@ export function sizeOf(prompt: PromptSetting, text: string): string {
 export function gitNote({ file, git }: PromptSettings): string {
   switch (git) {
     case 'none':
-      return "No prompt changed: every agent is told CPR's text.";
+      return "No prompt changed: every agent is told Symbiote's text.";
     case 'new':
       return (
         `Saved in ${file}, not committed: commit it to share the prompts with everyone who uses ` +

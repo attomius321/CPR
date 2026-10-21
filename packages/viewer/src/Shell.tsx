@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { WorkspaceStart } from '@cpr/core';
+import type { WorkspaceStart } from '@symbiote/core';
 import { HistoryPage } from './HistoryPage.js';
 import { keyIsTaken } from './keys.js';
 import { MergeView } from './Merge.js';
@@ -29,7 +29,7 @@ import { WorkspaceView } from './Workspace.js';
 import { useWorkspaces } from './useWorkspaces.js';
 import { startedNotice, workspaceName } from './workspaces.js';
 
-const FOLD_KEY = 'cpr.viewer.sidenav';
+const FOLD_KEY = 'symbiote.viewer.sidenav';
 /** Under this width the sidenav is a drawer over the page (styles.css says the same). */
 const NARROW = '(max-width: 899px)';
 
@@ -61,7 +61,7 @@ function routeHere(): Route {
 const sameRoute = (a: Route, b: Route) => hrefOf(a) === hrefOf(b);
 
 /**
- * `cpr view`'s window (V29a): the sidenav (the pages, then the workspaces), the main area with
+ * `symbiote view`'s window (V29a): the sidenav (the pages, then the workspaces), the main area with
  * what is picked — History, Settings, a workspace, a merge or Start a workspace —, and the status
  * bar. Going from
  * one to another happens in place: the address changes, the page does not load again.
@@ -80,7 +80,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   const setLeaveGuard = useCallback((next: LeaveGuard | null) => {
     guard.current = next;
   }, []);
-  // The question asked now, in CPR's own dialog (N1c), and where leaving goes.
+  // The question asked now, in Symbiote's own dialog (N1c), and where leaving goes.
   const [asking, setAsking] = useState<{ guard: LeaveGuard; leave: () => void } | null>(null);
   const [slots, setSlots] = useState<TitleBarSlots | null>(null);
 
@@ -137,7 +137,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     (sha?: string) => navigate({ page: 'start', ...(sha ? { at: sha } : {}) }),
     [navigate],
   );
-  // Leaving the start page: back to the page of CPR's it was opened from, else History.
+  // Leaving the start page: back to the page of Symbiote's it was opened from, else History.
   const leaveStart = useCallback(() => {
     const here = window.navigation?.currentEntry;
     const before = here ? window.navigation?.entries()[here.index - 1] : undefined;

@@ -1,4 +1,4 @@
-import type { BranchReviewList, BranchReviewSummary, Commit, RefList } from '@cpr/core';
+import type { BranchReviewList, BranchReviewSummary, Commit, RefList } from '@symbiote/core';
 import type { MenuChoice } from './checkout.js';
 
 /** One entry of a row's "Review" submenu (V15). */

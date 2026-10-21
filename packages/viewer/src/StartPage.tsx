@@ -8,7 +8,7 @@ import type {
   WorkspaceOptions,
   WorkspaceRequest,
   WorkspaceStart,
-} from '@cpr/core';
+} from '@symbiote/core';
 import {
   briefLength,
   formParts,
@@ -59,7 +59,7 @@ interface Loaded {
   options: WorkspaceOptions;
   /** Branch names in use, locally or on a remote. */
   taken: ReadonlySet<string>;
-  /** The draft as `cpr view` keeps it (V24c); anything not one is a new form. */
+  /** The draft as `symbiote view` keeps it (V24c); anything not one is a new form. */
   draft: unknown;
 }
 
@@ -68,7 +68,7 @@ interface Loaded {
  * parts (what the server makes the agent's brief of) on the left; on the right the branch (named
  * after the title until edited), the agent — picked among those installed (V20a) — with its
  * account and Claude Code's permission mode, and plan first. Where it starts is the commit `at`,
- * else the default branch's tip. The form is kept as a draft by `cpr view` until it starts, so
+ * else the default branch's tip. The form is kept as a draft by `symbiote view` until it starts, so
  * leaving loses nothing. Ctrl+Enter starts; Escape and Cancel `leave`.
  */
 export function StartPage({
@@ -576,9 +576,10 @@ function StartForm({
               </>
             ) : (
               <p className="dialog-note">
-                No agent found (Claude Code: <code>claude</code> on PATH, or <code>CPR_CLAUDE</code>
-                ; Codex: <code>codex</code> on PATH, or <code>CPR_CODEX</code>): the branch and its
-                worktree are made, and you get the prompt to give an agent.
+                No agent found (Claude Code: <code>claude</code> on PATH, or{' '}
+                <code>SYMBIOTE_CLAUDE</code>; Codex: <code>codex</code> on PATH, or{' '}
+                <code>SYMBIOTE_CODEX</code>): the branch and its worktree are made, and you get the
+                prompt to give an agent.
               </p>
             )}
             <label className="workspace-check">
@@ -591,8 +592,8 @@ function StartForm({
             </label>
             {agent?.apiKey && (
               <p className="error">
-                ANTHROPIC_API_KEY is set where cpr view runs: the agent may use that key instead of{' '}
-                {agent.account ?? 'your account'}.
+                ANTHROPIC_API_KEY is set where symbiote view runs: the agent may use that key
+                instead of {agent.account ?? 'your account'}.
               </p>
             )}
           </div>

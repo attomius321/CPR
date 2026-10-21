@@ -23,7 +23,7 @@ export interface ProjectResolutionOptions {
   configs: readonly string[];
   /** The config the program is created from, if any: its files resolve as they always did. */
   rootConfig: string | undefined;
-  /** Options CPR forces on every project. */
+  /** Options Symbiote forces on every project. */
   overrides: ts.CompilerOptions;
   /** Workspace packages mapped to their sources, for every project. */
   workspace: Record<string, string[]>;

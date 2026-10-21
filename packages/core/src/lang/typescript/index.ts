@@ -27,7 +27,7 @@ export function createTypescriptAdapter({
     const apiVersion: number = plugin.apiVersion;
     if (apiVersion !== PLUGIN_API_VERSION) {
       throw new Error(
-        `plugin ${plugin.name} targets plugin API ${apiVersion}; this CPR implements ${PLUGIN_API_VERSION}`,
+        `plugin ${plugin.name} targets plugin API ${apiVersion}; this Symbiote implements ${PLUGIN_API_VERSION}`,
       );
     }
   }

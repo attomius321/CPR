@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useReducer, type RefObject } from 'react';
-import type { HistoryRefs, HistoryScope } from '@cpr/core';
+import type { HistoryRefs, HistoryScope } from '@symbiote/core';
 import { branchTree, type PanelEntry } from './branches.js';
 import type { ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';

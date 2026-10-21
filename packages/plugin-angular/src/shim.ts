@@ -84,7 +84,7 @@ interface Ctx {
   locals: { next: number };
 }
 
-/** `Table<T>` → `__cpr_D0<any>`. */
+/** `Table<T>` → `__symbiote_D0<any>`. */
 export function typeOf(alias: string, cls: NgClass): string {
   return cls.typeParameters > 0
     ? `${alias}<${Array.from({ length: cls.typeParameters }, () => 'any').join(', ')}>`
@@ -183,7 +183,7 @@ function writeBindings(
     const alias = repo.use(meta.ref.cls);
     if (!alias) continue;
     if (instances.size === 0) out.write(`${indent}{\n`);
-    const instance = `__cpr_d${ctx.locals.next++}`;
+    const instance = `__symbiote_d${ctx.locals.next++}`;
     out.write(`${inner}const ${instance} = null! as ${typeOf(alias, meta.ref.cls)};\n${inner}`);
     out.name(alias, directiveSite(node, meta.selector), possible && meta.isComponent);
     out.write('();\n');
@@ -332,7 +332,7 @@ function writeTemplateNode(node: ng.TmplAstTemplate, ctx: Ctx, scope: Scope, ind
   const declared = new Set<string>();
   if (forOf) {
     const item = node.variables.find((v) => v.value === '$implicit');
-    out.write(`${indent}for (const ${item?.name ?? '__cpr_item'} of (`);
+    out.write(`${indent}for (const ${item?.name ?? '__symbiote_item'} of (`);
     writeExpression(forOf.value, out, scope);
     out.write(')!) {\n');
     if (item) declared.add(item.name);

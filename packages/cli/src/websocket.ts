@@ -189,7 +189,7 @@ export function openWebSocket(
             for (const listener of messages) listener(text);
           }
         }
-        // Binary messages and pongs: Codex sends none that CPR reads.
+        // Binary messages and pongs: Codex sends none that Symbiote reads.
       }
     };
 

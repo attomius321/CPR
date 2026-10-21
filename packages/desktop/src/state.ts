@@ -3,11 +3,11 @@ import { dirname, posix, win32 } from 'node:path';
 
 /** The viewer's own choices, kept in the page's storage, that the app keeps across runs. */
 export const CHOICES = [
-  'cpr.viewer.theme',
-  'cpr.viewer.sidenav',
-  'cpr.viewer.sidenav.diff',
-  'cpr.viewer.changes',
-  'cpr.viewer.widths',
+  'symbiote.viewer.theme',
+  'symbiote.viewer.sidenav',
+  'symbiote.viewer.sidenav.diff',
+  'symbiote.viewer.changes',
+  'symbiote.viewer.widths',
 ] as const;
 
 /** How many recent repositories are kept. */
@@ -36,17 +36,17 @@ export interface AppState {
   choices: Record<string, string>;
 }
 
-/** CPR's folder for settings on this system. */
+/** Symbiote's folder for settings on this system. */
 export function configDir(
   env: Readonly<Record<string, string | undefined>>,
   platform: NodeJS.Platform,
   home: string,
 ): string {
   if (platform === 'win32') {
-    return win32.join(env.APPDATA ?? win32.join(home, 'AppData', 'Roaming'), 'cpr');
+    return win32.join(env.APPDATA ?? win32.join(home, 'AppData', 'Roaming'), 'symbiote');
   }
-  if (platform === 'darwin') return posix.join(home, 'Library', 'Application Support', 'cpr');
-  return posix.join(env.XDG_CONFIG_HOME ?? posix.join(home, '.config'), 'cpr');
+  if (platform === 'darwin') return posix.join(home, 'Library', 'Application Support', 'symbiote');
+  return posix.join(env.XDG_CONFIG_HOME ?? posix.join(home, '.config'), 'symbiote');
 }
 
 /** The remembered state; a missing, broken or foreign file reads as nothing remembered. */

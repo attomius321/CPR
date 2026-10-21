@@ -1,12 +1,12 @@
 import { existsSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
+import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // Codex on its app server (V27a): a workspace's thread started on the person's daemon (faked in
-// this process, as Codex 0.163 answers), read from there — CPR's prompt, a turn typed in Codex's
+// this process, as Codex 0.163 answers), read from there — Symbiote's prompt, a turn typed in Codex's
 // own terminal, an approval it waits on — and a message that joins the turn that runs.
-let cpr: RunningWorkspaces;
+let symbiote: RunningWorkspaces;
 const errors: string[] = [];
 
 test.beforeEach(({ page }) => {
@@ -15,7 +15,7 @@ test.beforeEach(({ page }) => {
 });
 
 test.afterEach(() => {
-  cpr.stop();
+  symbiote.stop();
   expect(errors).toEqual([]);
 });
 
@@ -39,22 +39,22 @@ const start = async (page: Page) => {
 test('Codex on its app server, without terminals: its thread from there, a turn typed in your terminal, an approval it waits on, a message that joins its turn', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces({ agent: false, codex: true, appServer: true, terminal: false });
-  const server = cpr.codexServer!;
+  symbiote = await serveWorkspaces({ agent: false, codex: true, appServer: true, terminal: false });
+  const server = symbiote.codexServer!;
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto(cpr.url);
+  await page.goto(symbiote.url);
   await start(page);
-  const folder = cpr.folder(BRANCH);
+  const folder = symbiote.folder(BRANCH);
   await expect(page.getByRole('status')).toHaveText(
     `Started ${BRANCH}: Codex is working in ${folder}.`,
   );
 
-  // On the server, not through CPR's runner: a thread in the worktree, named after the branch,
+  // On the server, not through Symbiote's runner: a thread in the worktree, named after the branch,
   // the branch's git folders writable.
-  expect(cpr.codexCalls()).toEqual([]);
+  expect(symbiote.codexCalls()).toEqual([]);
   const [thread, ...more] = server.threads;
   expect(more).toEqual([]);
-  const common = realpathSync(join(cpr.repo, '.git'));
+  const common = realpathSync(join(symbiote.repo, '.git'));
   expect(thread).toMatchObject({
     cwd: folder,
     name: BRANCH,
@@ -69,10 +69,10 @@ test('Codex on its app server, without terminals: its thread from there, a turn 
   });
   const id = thread!.id;
 
-  // Its panel: CPR's prompt, read from the server; Talk joins the same thread there.
-  await page.goto(`${cpr.url}?branch=${encodeURIComponent(BRANCH)}`);
+  // Its panel: Symbiote's prompt, read from the server; Talk joins the same thread there.
+  await page.goto(`${symbiote.url}?branch=${encodeURIComponent(BRANCH)}`);
   const here = panel(page);
-  await expect(here.getByText("CPR's prompt")).toBeVisible(POLL);
+  await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
   await expect(workspaceRow(page)).toContainText('Working', POLL);
   await here.getByRole('button', { name: 'More actions' }).click();
   const talk = here.getByRole('menuitem', { name: 'Talk' });
@@ -113,7 +113,7 @@ test('Codex on its app server, without terminals: its thread from there, a turn 
   );
 
   // It commits and answers: ready for review.
-  cpr.commit(BRANCH, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  symbiote.commit(BRANCH, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
   server.reply(id, 'Added half, committed.');
   await expect(here.locator('.thread-agent').last()).toContainText('Added half, committed.', POLL);
   await expect(workspaceRow(page)).toContainText('Ready for review', POLL);
@@ -122,9 +122,9 @@ test('Codex on its app server, without terminals: its thread from there, a turn 
 test('Codex on its app server: Stop interrupts its turn, Start again makes a new thread, Clean up archives both there', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces({ agent: false, codex: true, appServer: true });
-  const server = cpr.codexServer!;
-  await page.goto(cpr.url);
+  symbiote = await serveWorkspaces({ agent: false, codex: true, appServer: true });
+  const server = symbiote.codexServer!;
+  await page.goto(symbiote.url);
   await start(page);
   const here = panel(page);
   await expect(workspaceRow(page)).toContainText('Working', POLL);
@@ -147,19 +147,19 @@ test('Codex on its app server: Stop interrupts its turn, Start again makes a new
   await here.getByRole('button', { name: 'Clean up anyway' }).click();
   await expect(workspaceRow(page)).toHaveCount(0, POLL);
   expect(server.threads.map((t) => t.archived)).toEqual([true, true]);
-  expect(cpr.codexArchived()).toEqual([]);
-  expect(existsSync(cpr.folder(BRANCH))).toBe(false);
+  expect(symbiote.codexArchived()).toEqual([]);
+  expect(existsSync(symbiote.folder(BRANCH))).toBe(false);
 });
 
 test("Codex's own terminal in its panel: the trust it asks for, a turn typed there followed, Stop ending its commands (V27b)", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces({ agent: false, codex: true, appServer: true });
-  const server = cpr.codexServer!;
-  await page.goto(cpr.url);
+  symbiote = await serveWorkspaces({ agent: false, codex: true, appServer: true });
+  const server = symbiote.codexServer!;
+  await page.goto(symbiote.url);
   await start(page);
   const here = panel(page);
-  const folder = cpr.folder(BRANCH);
+  const folder = symbiote.folder(BRANCH);
   const id = server.threads[0]!.id;
 
   // The panel opens on Codex's terminal, its thread joined; no box, no Talk.
@@ -178,7 +178,7 @@ test("Codex's own terminal in its panel: the trust it asks for, a turn typed the
   await expect(here.locator('.terminal-trust')).toContainText(
     'Codex asks first whether you trust this worktree',
   );
-  expect(cpr.codexResumes()).toEqual([
+  expect(symbiote.codexResumes()).toEqual([
     { args: ['resume', id, '--remote', server.address, '-C', folder], cwd: realpathSync(folder) },
   ]);
   await page.keyboard.press('Enter');
@@ -200,7 +200,7 @@ test("Codex's own terminal in its panel: the trust it asks for, a turn typed the
   await here.getByRole('tab', { name: 'Thread' }).click();
   await expect(here.locator('.thread-you').last()).toContainText('Go ahead.', POLL);
   await expect(box(page)).toBeHidden();
-  await expect.poll(() => cpr.codexHangups()).toEqual([id]);
+  await expect.poll(() => symbiote.codexHangups()).toEqual([id]);
   expect(server.thread(id).turns.at(-1)?.status).toBe('inProgress');
 
   // Opened again: trusted now, nothing to say first.

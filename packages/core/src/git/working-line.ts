@@ -1,4 +1,4 @@
-import { CprError } from '../errors.js';
+import { SymbioteError } from '../errors.js';
 import { git } from './exec.js';
 import type { GitRepo } from './repo.js';
 
@@ -53,7 +53,7 @@ export async function workingLine(
   path: string,
   line: number,
 ): Promise<WorkingLine> {
-  if (!/^[0-9a-f]{7,64}$/i.test(sha)) throw new CprError(`not a commit SHA: ${sha}`);
+  if (!/^[0-9a-f]{7,64}$/i.test(sha)) throw new SymbioteError(`not a commit SHA: ${sha}`);
   // Literal pathspecs: `src/routes/[id]/index.tsx` is a glob that matches other files.
   const patch = await git(repo.root, [
     '--literal-pathspecs',

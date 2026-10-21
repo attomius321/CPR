@@ -1,11 +1,11 @@
 {
-  "name": "@cpr/cli",
+  "name": "@symbiote/cli",
   "version": "0.0.0",
-  "description": "CPR command line: cpr diff, cpr view, cpr pr.",
+  "description": "Symbiote command line: symbiote diff, symbiote view, symbiote pr.",
   "private": true,
   "type": "module",
   "bin": {
-    "cpr": "./dist/bin.js"
+    "symbiote": "./dist/bin.js"
   },
   "files": [
     "dist"
@@ -14,10 +14,10 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@cpr/core": "workspace:*",
-    "@cpr/desktop": "workspace:*",
-    "@cpr/forge": "workspace:*",
-    "@cpr/viewer": "workspace:*",
+    "@symbiote/core": "workspace:*",
+    "@symbiote/desktop": "workspace:*",
+    "@symbiote/forge": "workspace:*",
+    "@symbiote/viewer": "workspace:*",
     "jsonc-parser": "3.3.1"
   },
   "optionalDependencies": {

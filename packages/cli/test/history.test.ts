@@ -1,4 +1,4 @@
-import type { Commit, HistoryRow, HistoryScope, HistoryState } from '@cpr/core';
+import type { Commit, HistoryRow, HistoryScope, HistoryState } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { Histories, slowListingHint, type HistorySource } from '../src/history.js';
 

@@ -1,4 +1,4 @@
-import type { CheckoutResult, CheckoutTarget, Commit, RefList, WorkingState } from '@cpr/core';
+import type { CheckoutResult, CheckoutTarget, Commit, RefList, WorkingState } from '@symbiote/core';
 import { shortSha } from './commits.js';
 
 /** An entry of a row menu's submenu (V14): a ref drawn as the row's badges draw it. */

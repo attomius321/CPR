@@ -55,7 +55,7 @@ export async function listWorktrees(repo: GitRepo): Promise<Worktree[]> {
 
 /**
  * The main working tree's root, which linked worktrees share their git directory with: what
- * belongs to the repository rather than to one checkout (V18: `cpr/`) lives there. The working
+ * belongs to the repository rather than to one checkout (V18: `symbiote/`) lives there. The working
  * tree itself when the repository is bare or its git directory is not a `.git` folder.
  */
 export function mainWorktree(repo: GitRepo): string {

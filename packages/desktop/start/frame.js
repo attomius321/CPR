@@ -3,7 +3,7 @@
 'use strict';
 
 (() => {
-  const api = window.cprStart;
+  const api = window.symbioteStart;
   if (!api || api.frame !== 'own') return;
   const root = document.documentElement;
   root.dataset.frame = 'own';

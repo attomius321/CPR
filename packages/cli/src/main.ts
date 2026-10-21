@@ -10,7 +10,7 @@ import {
   analyzeGit,
   buildGraph,
   checkout,
-  CprError,
+  SymbioteError,
   createTypescriptAdapter,
   defaultCacheDir,
   fetchRefs,
@@ -37,8 +37,8 @@ import {
   type MergeEntry,
   type Severity,
   type TsPlugin,
-} from '@cpr/core';
-import { detectForge, type ChangeRequest, type Forge } from '@cpr/forge';
+} from '@symbiote/core';
+import { detectForge, type ChangeRequest, type Forge } from '@symbiote/forge';
 import {
   findApp,
   installApp,
@@ -83,19 +83,19 @@ export interface CliContext {
   /** Opens a URL in the user's browser (best effort). */
   openUrl: (url: string) => void;
   /**
-   * Opens the viewer in CPR's own window (N1): the window once it shows the page, why it did not
+   * Opens the viewer in Symbiote's own window (N1): the window once it shows the page, why it did not
    * open, or null when the desktop app is not set up.
    */
   openApp?: (url: string, title: string) => Promise<AppWindow | { error: string } | null>;
   /** Resolves when a long-running command (`view`) should stop: Ctrl+C. */
   waitForExit: () => Promise<void>;
-  /** Environment: tokens, API URLs, `CPR_*` settings. */
+  /** Environment: tokens, API URLs, `SYMBIOTE_*` settings. */
   env: Readonly<Record<string, string | undefined>>;
-  /** Told each phase of an analysis as it starts: set when `cpr view` runs this CLI. */
+  /** Told each phase of an analysis as it starts: set when `symbiote view` runs this CLI. */
   onPhase?: (phase: AnalysisPhase) => void;
 }
 
-/** This CLI's script, which `cpr view` runs to analyze a pair of commits. */
+/** This CLI's script, which `symbiote view` runs to analyze a pair of commits. */
 const CLI_SCRIPT = fileURLToPath(new URL('./bin.js', import.meta.url));
 
 const processContext = (): CliContext => ({
@@ -106,20 +106,20 @@ const processContext = (): CliContext => ({
   openApp: (url, title) => {
     const app = findApp(process.env);
     if (!app) return Promise.resolve(null);
-    // The launcher's app starts cpr view with what this shell has (decision 197).
+    // The launcher's app starts symbiote view with what this shell has (decision 197).
     const where = { env: process.env, platform: process.platform };
     recordAgain({ ...where, node: process.execPath, cli: CLI_SCRIPT });
     return openAppWindow(app, url, title, process.env);
   },
   env: process.env,
-  // Started by `cpr view` with an IPC channel: phases go back to it.
+  // Started by `symbiote view` with an IPC channel: phases go back to it.
   ...(process.send ? { onPhase: (phase) => process.send?.({ phase } satisfies PhaseMessage) } : {}),
   waitForExit: () =>
     new Promise((resolve) => {
       process.once('SIGINT', () => resolve());
       process.once('SIGTERM', () => resolve());
-      // Started by CPR's app from the desktop (N1b): it stops with the app, even one that died.
-      if (process.env.CPR_STDIN_STOPS === '1') {
+      // Started by Symbiote's app from the desktop (N1b): it stops with the app, even one that died.
+      if (process.env.SYMBIOTE_STDIN_STOPS === '1') {
         process.stdin.once('end', () => resolve());
         process.stdin.resume();
       }
@@ -145,7 +145,7 @@ function openUrl(url: string): void {
 /** Most severe first. */
 const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
 
-const HELP = `Usage: cpr <command> [options]
+const HELP = `Usage: symbiote <command> [options]
 
 Commands:
   diff <base> [head]   Compare head (default: HEAD) against base
@@ -155,14 +155,14 @@ Commands:
   pr [<number>]        Review a GitHub pull request or GitLab merge request (alias: mr);
                        in a CI job, the job's own
   merge <branch>       Merge a branch's approved commit, check it, and land it
-  app install          Add CPR's window to your desktop's apps (app uninstall: remove it)
+  app install          Add Symbiote's window to your desktop's apps (app uninstall: remove it)
 
 Options:
   -h, --help           Show this help
   -v, --version        Show version
 `;
 
-const DIFF_HELP = `Usage: cpr diff <base> [head] [options]
+const DIFF_HELP = `Usage: symbiote diff <base> [head] [options]
 
 Compares head (default: HEAD) against the merge-base of base and head,
 like a GitHub pull request, and lists the changed symbols in each file.
@@ -178,23 +178,23 @@ Options:
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
-                       read from "plugins" in cpr/config.json at the repo root)
+                       read from "plugins" in symbiote/config.json at the repo root)
   -h, --help           Show this help
 `;
 
-const VIEW_HELP = `Usage: cpr view [<base> [head]] [options]
+const VIEW_HELP = `Usage: symbiote view [<base> [head]] [options]
 
-Serves the graph viewer on localhost until Ctrl+C, in CPR's own window once the
+Serves the graph viewer on localhost until Ctrl+C, in Symbiote's own window once the
 desktop app is set up (pnpm app:setup), else in the browser. It opens on History (h): every
 branch, local and remote, as a graph. Its sidenav lists the workspaces: each a branch
 with its own worktree and agent, started from the page. In Compare mode (x), pick two commits to
 compare them (the older is the base), or one against its parent; each pair is analyzed
-when picked. With <base>, analyzes like \`cpr diff\` first and opens that
+when picked. With <base>, analyzes like \`symbiote diff\` first and opens that
 comparison.
 
 Options:
   --port <n>           Port to listen on (default: any free port)
-  --browser            Open the browser, not CPR's window
+  --browser            Open the browser, not Symbiote's window
   --no-open            Open neither
   --no-merge-base      Compare against base directly
   --since <rev>        Mark each changed symbol new, updated or the same as in an earlier
@@ -202,14 +202,14 @@ Options:
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
-                       read from "plugins" in cpr/config.json at the repo root)
+                       read from "plugins" in symbiote/config.json at the repo root)
   -h, --help           Show this help
 `;
 
-const PR_HELP = `Usage: cpr pr [<number>] [options]      (alias: cpr mr)
+const PR_HELP = `Usage: symbiote pr [<number>] [options]      (alias: symbiote mr)
 
 Reviews a GitHub pull request or GitLab merge request of the \`origin\` remote: reads it
-through the forge's API, fetches its head and target branch, and opens the viewer (CPR's
+through the forge's API, fetches its head and target branch, and opens the viewer (Symbiote's
 window, or the browser), where comments on symbols are submitted as one review (comment,
 approve, or request changes).
 
@@ -231,21 +231,21 @@ Options:
   --forge <name>       github or gitlab, for hosts whose name doesn't say
   --remote <name>      Remote to read and fetch from (default: origin)
   --port <n>           Viewer port (default: any free port)
-  --browser            Open the browser, not CPR's window
+  --browser            Open the browser, not Symbiote's window
   --no-open            Open neither
   --since <sha>        Mark each changed symbol new, updated or the same as in an earlier
                        head of this pull/merge request (fetched if needed)
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
-                       read from "plugins" in cpr/config.json at the repo root)
+                       read from "plugins" in symbiote/config.json at the repo root)
   -h, --help           Show this help
 `;
 
-const APP_HELP = `Usage: cpr app install | uninstall
+const APP_HELP = `Usage: symbiote app install | uninstall
 
-CPR's window, the desktop app (pnpm app:setup in CPR's folder fetches it). install adds
-CPR to your desktop's apps, for this user, so it opens without a terminal: on the last
+Symbiote's window, the desktop app (pnpm app:setup in Symbiote's folder fetches it). install adds
+Symbiote to your desktop's apps, for this user, so it opens without a terminal: on the last
 repository it showed, or one you choose. It records this node, this CLI and your PATH,
 which an app started from the desktop does not have. uninstall removes it. Linux only
 for now (WSL included, through WSLg).
@@ -254,15 +254,15 @@ Options:
   -h, --help           Show this help
 `;
 
-const MERGE_HELP = `Usage: cpr merge <branch> [options]
+const MERGE_HELP = `Usage: symbiote merge <branch> [options]
 
-Merges the commit your CPR review of <branch> approved into a target branch, as Merge
-in CPR does: with --no-ff, in a worktree in CPR's cache, never in your checkout. Then
-it runs the check (merge.checks in cpr/config.json, else the one guessed from the
+Merges the commit your Symbiote review of <branch> approved into a target branch, as Merge
+in Symbiote does: with --no-ff, in a worktree in Symbiote's cache, never in your checkout. Then
+it runs the check (merge.checks in symbiote/config.json, else the one guessed from the
 target's files) and moves the target by fast-forward: in the worktree that has it
 checked out, else its ref. merge.push: true pushes it after. Without a check, the
 merge waits for --land. A conflict goes to a merger agent (Claude Code or Codex,
-merge.agent, merge.model) that answers each region; CPR writes its answer, and the
+merge.agent, merge.model) that answers each region; Symbiote writes its answer, and the
 merge waits for your --approve.
 
 Options:
@@ -286,7 +286,7 @@ export async function run(
     return 0;
   }
   if (command === '-v' || command === '--version') {
-    ctx.stdout(`cpr ${version} (graph schema ${SCHEMA_VERSION})\n`);
+    ctx.stdout(`symbiote ${version} (graph schema ${SCHEMA_VERSION})\n`);
     return 0;
   }
 
@@ -298,17 +298,17 @@ export async function run(
     if (command === 'app') return appCommand(rest, ctx);
   } catch (error) {
     if (error instanceof UsageError) {
-      ctx.stderr(`cpr ${command}: ${error.message}\n\n${error.help}`);
+      ctx.stderr(`symbiote ${command}: ${error.message}\n\n${error.help}`);
       return 2;
     }
-    if (error instanceof CprError) {
-      ctx.stderr(`cpr: ${error.message}\n`);
+    if (error instanceof SymbioteError) {
+      ctx.stderr(`symbiote: ${error.message}\n`);
       return 1;
     }
     throw error;
   }
 
-  ctx.stderr(`cpr: unknown command '${command}'\n\n${HELP}`);
+  ctx.stderr(`symbiote: unknown command '${command}'\n\n${HELP}`);
   return 2;
 }
 
@@ -395,7 +395,7 @@ async function analyze(
     return { analysis, durationMs: Math.round(performance.now() - started), plugins };
   } catch (error) {
     if (error instanceof NoMergeBaseError) {
-      throw new CprError(`${error.message}; use --no-merge-base to compare them directly`, {
+      throw new SymbioteError(`${error.message}; use --no-merge-base to compare them directly`, {
         cause: error,
       });
     }
@@ -430,7 +430,7 @@ interface ServeArgs {
 }
 
 /**
- * Shows the viewer at `url`: in CPR's window when the app is set up (N1), else, or with
+ * Shows the viewer at `url`: in Symbiote's window when the app is set up (N1), else, or with
  * `--browser`, in the browser; nowhere with `--no-open`. Then waits for Ctrl+C or, in the
  * window, for it to close.
  */
@@ -443,12 +443,13 @@ async function showUntilExit(
   if (args['no-open']) return ctx.waitForExit();
   const shown = args.browser ? null : await ctx.openApp?.(url, title);
   if (shown && 'closed' in shown) {
-    ctx.stdout("CPR's window is open: close it, or Ctrl+C, to stop\n");
+    ctx.stdout("Symbiote's window is open: close it, or Ctrl+C, to stop\n");
     await Promise.race([ctx.waitForExit(), shown.closed]);
     shown.close();
     return;
   }
-  if (shown) ctx.stderr(`cpr: CPR's window did not open (${shown.error}); opening the browser\n`);
+  if (shown)
+    ctx.stderr(`symbiote: Symbiote's window did not open (${shown.error}); opening the browser\n`);
   ctx.openUrl(url);
   return ctx.waitForExit();
 }
@@ -494,7 +495,7 @@ async function report(
     const failing = analysis.findings.filter((f) => SEVERITIES.indexOf(f.severity) <= threshold);
     if (failing.length > 0) {
       ctx.stderr(
-        `cpr: ${failing.length} finding${failing.length === 1 ? '' : 's'} at or above '${failOn}'\n`,
+        `symbiote: ${failing.length} finding${failing.length === 1 ? '' : 's'} at or above '${failOn}'\n`,
       );
       return 1;
     }
@@ -517,7 +518,7 @@ async function writeCodeQuality(
   await writeFile(resolve(ctx.cwd, file), `${JSON.stringify(report, null, 2)}\n`);
 }
 
-/** Serves the viewer for one graph (`cpr pr`) until the user stops it. */
+/** Serves the viewer for one graph (`symbiote pr`) until the user stops it. */
 async function serve(
   analysis: Analysis,
   graph: Graph,
@@ -542,7 +543,7 @@ async function serve(
     ...(review ? { review } : {}),
     open: vsCodeOpener(repo, ctx.env),
   });
-  ctx.stdout(`${statsLine(graph)}\nCPR viewer: ${server.url}  (Ctrl+C to stop)\n`);
+  ctx.stdout(`${statsLine(graph)}\nSymbiote viewer: ${server.url}  (Ctrl+C to stop)\n`);
   for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
 
   await showUntilExit(server.url, basename(repo.root), args, ctx);
@@ -567,7 +568,11 @@ async function diff(argv: string[], ctx: CliContext): Promise<number> {
   }
   checkFailOn(values['fail-on'], DIFF_HELP);
   const { analysis, durationMs, plugins } = await analyze({ positionals, values }, ctx, DIFF_HELP);
-  const graph = buildGraph(analysis, { generator: { name: 'cpr', version }, durationMs, plugins });
+  const graph = buildGraph(analysis, {
+    generator: { name: 'symbiote', version },
+    durationMs,
+    plugins,
+  });
   return report(analysis, graph, values, ctx);
 }
 
@@ -585,7 +590,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   if (positionals.length === 0 && values.since !== undefined) {
     throw new UsageError('--since needs <base>', VIEW_HELP);
   }
-  // With revisions, that pair is analyzed before serving, as `cpr diff` would.
+  // With revisions, that pair is analyzed before serving, as `symbiote diff` would.
   const first =
     positionals.length > 0 ? await analyze({ positionals, values }, ctx, VIEW_HELP) : undefined;
 
@@ -608,10 +613,12 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   );
   let hinted = false;
   // Terminals on workspaces' agents (V21): node-pty is loaded only when one is asked for;
-  // `CPR_TERMINAL=off` turns them off (the panel keeps Talk).
+  // `SYMBIOTE_TERMINAL=off` turns them off (the panel keeps Talk).
   const terminals = agentTerminals(
-    ctx.env.CPR_TERMINAL === 'off'
-      ? { pty: () => Promise.resolve({ error: 'terminals are turned off (CPR_TERMINAL=off)' }) }
+    ctx.env.SYMBIOTE_TERMINAL === 'off'
+      ? {
+          pty: () => Promise.resolve({ error: 'terminals are turned off (SYMBIOTE_TERMINAL=off)' }),
+        }
       : {},
   );
   // One Codex for workspaces and usage: one connection to its app server.
@@ -654,7 +661,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       terminals,
       merges: merger(repo, cacheDir, { mergerAgent: mergerFinder(repo.root, ctx.env) }),
       settings: promptSettingsService(repo),
-      // Each subscription's windows (V29c): agents CPR can start, signed in to a plan.
+      // Each subscription's windows (V29c): agents Symbiote can start, signed in to a plan.
       usage: usageService(
         {
           claude: () =>
@@ -662,12 +669,12 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
               installed: async () => (await findClaude(ctx.env)) !== null,
               env: ctx.env,
               home: homedir(),
-              // Shared by every `cpr view` on this machine, and kept for the next run.
+              // Shared by every `symbiote view` on this machine, and kept for the next run.
               lastFile: join(cacheDir, 'usage', 'claude.json'),
             }),
           codex: () => readCodexUsage({ codex: codexOf, env: ctx.env, home: homedir() }),
         },
-        { off: ctx.env.CPR_USAGE === 'off' },
+        { off: ctx.env.SYMBIOTE_USAGE === 'off' },
       ),
     },
     open: vsCodeOpener(repo, ctx.env),
@@ -677,7 +684,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   if (first) {
     const { analysis, durationMs, plugins } = first;
     const graph = buildGraph(analysis, {
-      generator: { name: 'cpr', version },
+      generator: { name: 'symbiote', version },
       durationMs,
       plugins,
     });
@@ -689,7 +696,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     }
     ctx.stdout(`${statsLine(graph)}\n`);
   }
-  ctx.stdout(`CPR viewer: ${url}  (Ctrl+C to stop)\n`);
+  ctx.stdout(`Symbiote viewer: ${url}  (Ctrl+C to stop)\n`);
   for (const warning of first?.analysis.warnings ?? []) ctx.stderr(`warning: ${warning}\n`);
 
   await showUntilExit(url, basename(repo.root), values, ctx);
@@ -698,7 +705,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   return 0;
 }
 
-/** A merge's state as `cpr merge` prints it, one line each. */
+/** A merge's state as `symbiote merge` prints it, one line each. */
 function mergeLine(entry: MergeEntry): string {
   const check = entry.check;
   const time = check?.ms === undefined ? '' : ` (${(check.ms / 1000).toFixed(1)} s)`;
@@ -749,7 +756,7 @@ function mergeLine(entry: MergeEntry): string {
   }
 }
 
-/** `cpr app install|uninstall` (N1b): CPR's window in the desktop's apps. */
+/** `symbiote app install|uninstall` (N1b): Symbiote's window in the desktop's apps. */
 function appCommand(argv: string[], ctx: CliContext): number {
   const { values, positionals } = parse(
     {
@@ -773,16 +780,16 @@ function appCommand(argv: string[], ctx: CliContext): number {
   if (action !== 'install') throw new UsageError(`unknown action '${action}'`, APP_HELP);
   const app = findApp(ctx.env);
   if (!app) {
-    throw new CprError(
-      "CPR's window is not set up: run pnpm app:setup and pnpm build in CPR's folder",
+    throw new SymbioteError(
+      "Symbiote's window is not set up: run pnpm app:setup and pnpm build in Symbiote's folder",
     );
   }
-  const desktop = dirname(require.resolve('@cpr/desktop/package.json'));
+  const desktop = dirname(require.resolve('@symbiote/desktop/package.json'));
   ctx.stdout(
     installApp({
       ...where,
       app,
-      icon: join(desktop, 'icons', 'cpr.png'),
+      icon: join(desktop, 'icons', 'symbiote.png'),
       node: process.execPath,
       cli: CLI_SCRIPT,
     }),
@@ -790,7 +797,7 @@ function appCommand(argv: string[], ctx: CliContext): number {
   if (refusesSandbox()) {
     ctx.stderr(
       "warning: AppArmor here refuses Chromium's sandbox to apps outside a package " +
-        "(kernel.apparmor_restrict_unprivileged_userns=1): CPR's window may not open; see CPR's window in the README\n",
+        "(kernel.apparmor_restrict_unprivileged_userns=1): Symbiote's window may not open; see Symbiote's window in the README\n",
     );
   }
   return 0;
@@ -845,7 +852,7 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
     if (values.approve || values.again !== undefined) {
       const entry = targets.entry;
       if (entry?.state !== 'needs-you' || !entry.resolution) {
-        ctx.stderr(`cpr merge: ${branch} has no resolution to review\n`);
+        ctx.stderr(`symbiote merge: ${branch} has no resolution to review\n`);
         return 1;
       }
       const after = values.approve
@@ -859,7 +866,7 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
     }
     if (values.land) {
       if (targets.entry?.state !== 'ready') {
-        ctx.stderr(`cpr merge: ${branch} has no merge waiting to land\n`);
+        ctx.stderr(`symbiote merge: ${branch} has no merge waiting to land\n`);
         return 1;
       }
       const entry = await merges.land(targets.entry.id);
@@ -872,7 +879,7 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
     const queued = await merges.enqueue({ branch, into });
     print(queued);
     await merges.idle();
-    // Another CPR process (\`cpr view\`) merges in this repository: its progress, from the queue.
+    // Another Symbiote process (\`symbiote view\`) merges in this repository: its progress, from the queue.
     for (;;) {
       const entry = (await merges.list()).merges.find((e) => e.id === queued.id);
       if (!entry || !['queued', 'merging', 'resolving', 'checking'].includes(entry.state)) {
@@ -884,7 +891,7 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
     }
   } catch (error) {
     if (error instanceof MergeRefused) {
-      ctx.stderr(`cpr merge: ${error.message}\n`);
+      ctx.stderr(`symbiote merge: ${error.message}\n`);
       return 1;
     }
     throw error;
@@ -996,7 +1003,7 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
   );
 
   // Bring both commits in; if the API's commit is gone (force-push), use the fetched ref.
-  const local = `refs/cpr/${forge.kind}/${number}`;
+  const local = `refs/symbiote/${forge.kind}/${number}`;
   await fetchRefs(repo, values.remote, [
     { from: request.refs.head, to: `${local}/head` },
     { from: request.refs.base, to: `${local}/base` },
@@ -1018,7 +1025,7 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
       try {
         await fetchRefs(repo, values.remote, [{ from: values.since, to: `${local}/since` }]);
       } catch (error) {
-        throw new CprError(`cannot find or fetch --since ${values.since}`, { cause: error });
+        throw new SymbioteError(`cannot find or fetch --since ${values.since}`, { cause: error });
       }
     }
   }
@@ -1035,7 +1042,7 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
   analysis.revisions.base.ref = request.base.ref;
   analysis.revisions.head.ref = `${sign}${request.number} ${request.head.ref}`;
   const graph = buildGraph(analysis, {
-    generator: { name: 'cpr', version },
+    generator: { name: 'symbiote', version },
     durationMs,
     plugins,
     changeRequest: {
@@ -1104,12 +1111,13 @@ async function postFindings(
   ctx.stderr(`Posted ${count} finding${count === 1 ? '' : 's'}${already}: ${result.url}\n`);
 }
 
-/** The built viewer that ships with the CLI (`CPR_VIEWER_DIR` overrides, e.g. for tests). */
+/** The built viewer that ships with the CLI (`SYMBIOTE_VIEWER_DIR` overrides, e.g. for tests). */
 function viewerDir(ctx: CliContext): string {
   const dir =
-    ctx.env.CPR_VIEWER_DIR ?? join(dirname(require.resolve('@cpr/viewer/package.json')), 'dist');
+    ctx.env.SYMBIOTE_VIEWER_DIR ??
+    join(dirname(require.resolve('@symbiote/viewer/package.json')), 'dist');
   if (!existsSync(join(dir, 'index.html'))) {
-    throw new CprError(`the viewer is not built (${dir}); run pnpm build`);
+    throw new SymbioteError(`the viewer is not built (${dir}); run pnpm build`);
   }
   return dir;
 }

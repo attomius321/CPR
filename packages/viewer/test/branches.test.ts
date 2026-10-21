@@ -1,4 +1,4 @@
-import type { HistoryRefs } from '@cpr/core';
+import type { HistoryRefs } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { branchTree, type PanelEntry } from '../src/branches.js';
 

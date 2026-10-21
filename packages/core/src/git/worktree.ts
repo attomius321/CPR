@@ -1,7 +1,7 @@
 import { mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { CprError } from '../errors.js';
+import { SymbioteError } from '../errors.js';
 import type { RevisionSource } from '../revision.js';
 import { git } from './exec.js';
 import type { GitRepo } from './repo.js';
@@ -9,16 +9,16 @@ import type { GitRepo } from './repo.js';
 /** Upper bound on concurrent runs per repo and role. */
 const MAX_SLOTS = 8;
 
-/** Cache root: `$CPR_CACHE_DIR`, else `$XDG_CACHE_HOME/cpr`, else the platform cache folder. */
+/** Cache root: `$SYMBIOTE_CACHE_DIR`, else `$XDG_CACHE_HOME/symbiote`, else the platform cache folder. */
 export function defaultCacheDir(
   env: Readonly<Record<string, string | undefined>> = process.env,
   platform: NodeJS.Platform = process.platform,
   home: string = homedir(),
 ): string {
-  if (env.CPR_CACHE_DIR) return env.CPR_CACHE_DIR;
-  if (env.XDG_CACHE_HOME) return join(env.XDG_CACHE_HOME, 'cpr');
-  if (platform === 'darwin') return join(home, 'Library', 'Caches', 'cpr');
-  return join(home, '.cache', 'cpr');
+  if (env.SYMBIOTE_CACHE_DIR) return env.SYMBIOTE_CACHE_DIR;
+  if (env.XDG_CACHE_HOME) return join(env.XDG_CACHE_HOME, 'symbiote');
+  if (platform === 'darwin') return join(home, 'Library', 'Caches', 'symbiote');
+  return join(home, '.cache', 'symbiote');
 }
 
 export interface CheckoutOptions {
@@ -66,7 +66,7 @@ export async function checkoutRevision(
       },
     };
   }
-  throw new CprError(`all ${MAX_SLOTS} '${role}' worktree slots in ${realDir} are in use`);
+  throw new SymbioteError(`all ${MAX_SLOTS} '${role}' worktree slots in ${realDir} are in use`);
 }
 
 async function moveSlot(repo: GitRepo, root: string, sha: string): Promise<void> {

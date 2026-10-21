@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
+import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // The look (V29b): dark by default, light or the system's chosen in Settings for this browser;
-// the bundled fonts, served by CPR; compact cards in the sidenav. CPR's style since V31.
-let cpr: RunningWorkspaces;
+// the bundled fonts, served by Symbiote; compact cards in the sidenav. Symbiote's style since V31.
+let symbiote: RunningWorkspaces;
 const errors: string[] = [];
 
 test.beforeEach(({ page }) => {
@@ -12,7 +12,7 @@ test.beforeEach(({ page }) => {
 });
 
 test.afterEach(() => {
-  cpr.stop();
+  symbiote.stop();
   expect(errors).toEqual([]);
 });
 
@@ -26,9 +26,9 @@ const appearance = (page: Page) => page.getByRole('group', { name: 'Appearance (
 test('dark by default; Appearance in Settings makes it light, kept for this browser and its diffs', async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
+  symbiote = await serveWorkspaces();
   await page.emulateMedia({ colorScheme: 'light' });
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   // Dark even where the system is light: the reference's (decision 179).
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(await background(page)).toBe(DARK);
@@ -45,26 +45,26 @@ test('dark by default; Appearance in Settings makes it light, kept for this brow
   // Set by the page's own script before React runs, as the document is parsed: no dark flash.
   await page.addInitScript(() => {
     const seen = () =>
-      ((window as { cprFirstTheme?: string }).cprFirstTheme ??=
+      ((window as { symbioteFirstTheme?: string }).symbioteFirstTheme ??=
         document.documentElement.dataset.theme);
     document.addEventListener('readystatechange', seen, { once: true });
   });
   await page.reload();
-  expect(await page.evaluate(() => (window as { cprFirstTheme?: string }).cprFirstTheme)).toBe(
-    'light',
-  );
+  expect(
+    await page.evaluate(() => (window as { symbioteFirstTheme?: string }).symbioteFirstTheme),
+  ).toBe('light');
   expect(await background(page)).toBe(LIGHT);
 
   // A diff's page and its graph follow.
-  const [base, head] = cpr.shas;
-  await page.goto(`${cpr.url}diff/${base}..${head}/`);
+  const [base, head] = symbiote.shas;
+  await page.goto(`${symbiote.url}diff/${base}..${head}/`);
   await expect(page.locator('.react-flow')).toHaveClass(/\blight\b/, POLL);
   expect(await background(page)).toBe(LIGHT);
 });
 
 test("System follows the system's scheme", async ({ page }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}settings`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}settings`);
   await appearance(page).getByRole('button', { name: 'System' }).click();
   await page.emulateMedia({ colorScheme: 'light' });
   expect(await background(page)).toBe(LIGHT);
@@ -72,18 +72,18 @@ test("System follows the system's scheme", async ({ page }) => {
   expect(await background(page)).toBe(DARK);
 });
 
-test("the fonts are CPR's: every request goes to its server, and History fetches at most 55 KB of them", async ({
+test("the fonts are Symbiote's: every request goes to its server, and History fetches at most 55 KB of them", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  const origin = new URL(cpr.url).origin;
+  symbiote = await serveWorkspaces();
+  const origin = new URL(symbiote.url).origin;
   const requests: string[] = [];
   const fonts: Promise<number>[] = [];
   page.on('request', (request) => requests.push(request.url()));
   page.on('response', (response) => {
     if (response.url().endsWith('.woff2')) fonts.push(response.body().then((b) => b.length));
   });
-  await page.goto(`${cpr.url}history`);
+  await page.goto(`${symbiote.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   const loaded = await page.evaluate(() =>
@@ -106,8 +106,8 @@ test("the fonts are CPR's: every request goes to its server, and History fetches
 });
 
 test('the chrome is lifted above the content: the sidenav and the status bar', async ({ page }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
   const colour = (selector: string) =>
     page
@@ -124,11 +124,11 @@ test('the chrome is lifted above the content: the sidenav and the status bar', a
   );
 });
 
-test("History in CPR's style: names in the text's font, HEAD a tint, menus and dialogs that float", async ({
+test("History in Symbiote's style: names in the text's font, HEAD a tint, menus and dialogs that float", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   const head = page.locator('.commit.head');
   await expect(head).toBeVisible();
   const style = (selector: string, property: string) =>
@@ -161,8 +161,8 @@ test("History in CPR's style: names in the text's font, HEAD a tint, menus and d
 });
 
 test('a card in the sidenav is at most 64 px high', async ({ page }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   const form = page.getByRole('region', { name: 'Start a workspace' });
   await form.getByRole('textbox', { name: 'Title' }).fill('Add a half function, with a test');
@@ -176,9 +176,9 @@ test('a card in the sidenav is at most 64 px high', async ({ page }) => {
 test("the Terminal tab joins the terminal's black and stays readable in light", async ({
   page,
 }) => {
-  cpr = await serveWorkspaces();
-  await page.goto(`${cpr.url}history`);
-  await page.evaluate(() => localStorage.setItem('cpr.viewer.theme', 'light'));
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
+  await page.evaluate(() => localStorage.setItem('symbiote.viewer.theme', 'light'));
   await page.reload();
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   const form = page.getByRole('region', { name: 'Start a workspace' });

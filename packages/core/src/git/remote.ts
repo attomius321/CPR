@@ -1,4 +1,4 @@
-import { CprError } from '../errors.js';
+import { SymbioteError } from '../errors.js';
 import { git, GitError } from './exec.js';
 import type { GitRepo } from './repo.js';
 
@@ -8,7 +8,7 @@ export async function remoteUrl(repo: GitRepo, remote: string): Promise<string> 
     return (await git(repo.root, ['config', '--get', `remote.${remote}.url`])).trim();
   } catch (error) {
     if (error instanceof GitError)
-      throw new CprError(`no git remote named '${remote}'`, { cause: error });
+      throw new SymbioteError(`no git remote named '${remote}'`, { cause: error });
     throw error;
   }
 }
@@ -33,7 +33,7 @@ export async function fetchRefs(
     ]);
   } catch (error) {
     if (error instanceof GitError) {
-      throw new CprError(`could not fetch from '${remote}': ${error.stderr.trim()}`, {
+      throw new SymbioteError(`could not fetch from '${remote}': ${error.stderr.trim()}`, {
         cause: error,
       });
     }

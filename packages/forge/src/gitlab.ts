@@ -1,4 +1,4 @@
-import { CprError } from '@cpr/core';
+import { SymbioteError } from '@symbiote/core';
 import { api, paged } from './http.js';
 import type { ChangeRequest, Env, Forge, Review } from './types.js';
 
@@ -69,7 +69,7 @@ export class GitLabForge implements Forge {
    */
   async submitReview(request: ChangeRequest, review: Review): Promise<{ url: string }> {
     this.requireToken('Commenting');
-    if (!request.mergeBase) throw new CprError(`!${request.number} has no diff refs yet`);
+    if (!request.mergeBase) throw new SymbioteError(`!${request.number} has no diff refs yet`);
     const path = `/merge_requests/${request.number}`;
     const marker = review.event === 'request-changes' ? '**Changes requested.**' : '';
     const summary = [marker, review.body].filter(Boolean).join('\n\n');
@@ -128,7 +128,7 @@ export class GitLabForge implements Forge {
 
   private requireToken(what: string): void {
     if (this.env.GITLAB_TOKEN) return;
-    throw new CprError(
+    throw new SymbioteError(
       `${what} on GitLab needs ${TOKEN_HINT}` +
         (this.env.CI_JOB_TOKEN ? '; CI_JOB_TOKEN cannot comment on merge requests' : ''),
     );

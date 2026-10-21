@@ -8,9 +8,9 @@ const env = {
   ...process.env,
   GIT_CONFIG_GLOBAL: '/dev/null',
   GIT_CONFIG_NOSYSTEM: '1',
-  GIT_AUTHOR_NAME: 'CPR Test',
+  GIT_AUTHOR_NAME: 'Symbiote Test',
   GIT_AUTHOR_EMAIL: 'test@example.com',
-  GIT_COMMITTER_NAME: 'CPR Test',
+  GIT_COMMITTER_NAME: 'Symbiote Test',
   GIT_COMMITTER_EMAIL: 'test@example.com',
 };
 
@@ -27,7 +27,7 @@ export interface TestRepo {
 
 /** A fresh temp directory, as a real path (macOS links /var to /private/var). */
 export function tempDir(): string {
-  return realpathSync(mkdtempSync(join(tmpdir(), 'cpr-test-')));
+  return realpathSync(mkdtempSync(join(tmpdir(), 'symbiote-test-')));
 }
 
 export function createRepo(): TestRepo {

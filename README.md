@@ -1,14 +1,14 @@
-# CPR
+# Symbiote
 
 **Coordinated Programming Runtime.** Start a workspace with a coding agent, review what it changed
 as a graph of the symbols it touched, and send back a verdict. Everything runs on your machine.
 
-CPR turns a change into a graph of the functions, classes, methods and types it added, removed
+Symbiote turns a change into a graph of the functions, classes, methods and types it added, removed
 or modified, and the calls between them. Findings point at the risky parts: a symbol removed
 while code still uses it, new code that nothing calls, a signature changed under callers that
 were not updated. The aim is to review decisions, not lines.
 
-![A branch review in CPR: changed symbols of one package, coloured by what changed, with signature changes and findings marked](docs/images/viewer.png)
+![A branch review in Symbiote: changed symbols of one package, coloured by what changed, with signature changes and findings marked](docs/images/viewer.png)
 
 [Quick start](#quick-start) ·
 [Commands](#commands) ·
@@ -29,8 +29,8 @@ were not updated. The aim is to review decisions, not lines.
   and who uses it.
 - **Reviews any branch.** Mark symbols reviewed as you go. After new commits, only what is new or
   changed since is left to look at.
-- **Works with agents.** Describe the work, and CPR makes its branch and worktree and starts
-  Claude Code or Codex there. You read its plan, answer it, review its branch, and approve. CPR then
+- **Works with agents.** Describe the work, and Symbiote makes its branch and worktree and starts
+  Claude Code or Codex there. You read its plan, answer it, review its branch, and approve. Symbiote then
   merges the commit you approved, runs your check on the merge, and moves the branch.
 - **Reads pull and merge requests.** Review a GitHub pull request or a GitLab merge request from
   the graph and post your comments as one review.
@@ -44,12 +44,12 @@ were not updated. The aim is to review decisions, not lines.
 You need git, Node 22.12 or newer and pnpm 12, on macOS or Linux (WSL included).
 
 ```sh
-git clone https://github.com/attomius321/CPR.git
-cd CPR
+git clone https://github.com/attomius321/Symbiote.git
+cd Symbiote
 pnpm install
 pnpm build
-pnpm app:setup    # optional: CPR's own window (Electron, ~100 MB); without it, the browser
-alias cpr="node $PWD/packages/cli/dist/bin.js"   # add this line to your shell profile
+pnpm app:setup    # optional: Symbiote's own window (Electron, ~100 MB); without it, the browser
+alias symbiote="node $PWD/packages/cli/dist/bin.js"   # add this line to your shell profile
 ```
 
 On Linux, `pnpm install` also compiles `node-pty` for [the agent's terminal](#workspaces-and-agents)
@@ -58,22 +58,22 @@ when python3, make and a C++ compiler are there. Without them it is skipped, and
 Then, in any git repository with TypeScript or JavaScript:
 
 ```sh
-cpr view          # History and your workspaces: every branch, to check out, review or compare
-cpr view main     # this branch against main, in CPR's window (or the browser)
-cpr diff main     # the same, in the terminal
+symbiote view          # History and your workspaces: every branch, to check out, review or compare
+symbiote view main     # this branch against main, in Symbiote's window (or the browser)
+symbiote diff main     # the same, in the terminal
 ```
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `cpr diff <base> [head]` | Compares `head` (default `HEAD`) with where it left `base`, as a pull request does, and prints the changed symbols and the findings. |
-| `cpr view [<base> [head]]` | Opens the viewer: in [CPR's window](#cprs-window) once the desktop app is set up, else in the browser. Without revisions it opens on the repository's History, with your workspaces in the sidenav; with them, on that comparison. Runs until Ctrl+C, or until its window is closed. |
-| `cpr pr [<number>]` | Reviews a GitHub pull request or a GitLab merge request (`cpr mr` is the same command). In a CI job for one, the number comes from the job. |
-| `cpr app install` | Adds [CPR's window](#cprs-window) to your desktop's apps, so it opens without a terminal; `cpr app uninstall` removes it. Linux, WSL included. |
-| `cpr merge <branch>` | Merges the commit your review of `branch` approved, as Merge does in the viewer ([Merging](#merging)): `--into <branch>` picks the target, `--land` lands a merge that waits for you. |
+| `symbiote diff <base> [head]` | Compares `head` (default `HEAD`) with where it left `base`, as a pull request does, and prints the changed symbols and the findings. |
+| `symbiote view [<base> [head]]` | Opens the viewer: in [Symbiote's window](#symbiotes-window) once the desktop app is set up, else in the browser. Without revisions it opens on the repository's History, with your workspaces in the sidenav; with them, on that comparison. Runs until Ctrl+C, or until its window is closed. |
+| `symbiote pr [<number>]` | Reviews a GitHub pull request or a GitLab merge request (`symbiote mr` is the same command). In a CI job for one, the number comes from the job. |
+| `symbiote app install` | Adds [Symbiote's window](#symbiotes-window) to your desktop's apps, so it opens without a terminal; `symbiote app uninstall` removes it. Linux, WSL included. |
+| `symbiote merge <branch>` | Merges the commit your review of `branch` approved, as Merge does in the viewer ([Merging](#merging)): `--into <branch>` picks the target, `--land` lands a merge that waits for you. |
 
-`cpr diff` in a repository where one function was added, one removed and one changed:
+`symbiote diff` in a repository where one function was added, one removed and one changed:
 
 ```
 main (9b269bf) → HEAD (f3d543d), merge-base 9b269bf
@@ -107,13 +107,13 @@ M  src/math.ts
 | `--plugin <name\|path>` | all | Analyze with a plugin, such as `angular` or `qwik`. Repeatable. |
 | `--no-merge-base` | diff, view | Compare with `base` itself, not with where `head` left it. |
 | `--port <n>` | view, pr | The viewer's port (default: any free one). |
-| `--browser`, `--no-open` | view, pr | Open the browser instead of [CPR's window](#cprs-window); open neither. |
+| `--browser`, `--no-open` | view, pr | Open the browser instead of [Symbiote's window](#symbiotes-window); open neither. |
 | `--summary` | pr | Print the summary instead of opening the viewer. |
 | `--post-findings <level>` | pr | Post new findings at or above the level as comments on their lines, instead of opening the viewer. |
 | `--forge github\|gitlab` | pr | For hosts whose name does not say which forge they are. |
 | `--remote <name>` | pr | The remote to read and fetch from (default `origin`). |
 
-Exit codes: `0` ok, `1` a failure or a `--fail-on` hit, `2` a usage error. `cpr <command> --help`
+Exit codes: `0` ok, `1` a failure or a `--fail-on` hit, `2` a usage error. `symbiote <command> --help`
 lists the options of each command.
 
 ## Findings
@@ -126,45 +126,45 @@ lists the options of each command.
 | `exported-api-changed` | A published package's exported symbol is removed, no longer exported, or its signature breaks. | Warning. |
 
 Tests (`*.test.*`, `*.spec.*`, `test/`, `tests/`, `e2e/`, `__tests__/`, `__mocks__/`) are told
-apart from production code by their path. CPR prefers missing a finding to reporting a wrong
+apart from production code by their path. Symbiote prefers missing a finding to reporting a wrong
 one, and every finding links to its symbol and the symbols involved.
 
 ## The viewer
 
-### CPR's window
+### Symbiote's window
 
-With the desktop app set up (`pnpm app:setup`, once: it fetches Electron, ~100 MB), `cpr view` and
-`cpr pr` open the viewer in a window of their own, not in a browser tab: its own icon and taskbar
+With the desktop app set up (`pnpm app:setup`, once: it fetches Electron, ~100 MB), `symbiote view` and
+`symbiote pr` open the viewer in a window of their own, not in a browser tab: its own icon and taskbar
 entry, no tabs or address bar, the page's name as its title. Without it they open the browser,
 as `--browser` does.
 
-- **Closing the window stops `cpr view`**, as Ctrl+C does; Ctrl+C closes the window. Agents in
+- **Closing the window stops `symbiote view`**, as Ctrl+C does; Ctrl+C closes the window. Agents in
   workspaces keep running either way.
-- **From your desktop's apps**: `cpr app install`, once, in a terminal where `cpr` works, adds CPR
-  to them for this user (`~/.local/share/applications/cpr.desktop` and its icon). Opened from
-  there, CPR shows the last repository it showed, else a start page: open a repository, or one
-  of the recent ones. Each repository gets its own window and its own `cpr view`, which stops
-  with the window, and with the app even if it crashes. Opened again, the running CPR comes to
-  the front. A desktop's apps do not read your shell's profile, so `cpr app install` records the
-  node, the CLI and the `PATH` (`~/.config/cpr/app.json`) that `cpr view` will need to find git
-  and your agents; each `cpr view` that opens CPR's window records them again.
-- **Its own title bar**: CPR and the repository, the sidenav's fold and back and
+- **From your desktop's apps**: `symbiote app install`, once, in a terminal where `symbiote` works, adds Symbiote
+  to them for this user (`~/.local/share/applications/symbiote.desktop` and its icon). Opened from
+  there, Symbiote shows the last repository it showed, else a start page: open a repository, or one
+  of the recent ones. Each repository gets its own window and its own `symbiote view`, which stops
+  with the window, and with the app even if it crashes. Opened again, the running Symbiote comes to
+  the front. A desktop's apps do not read your shell's profile, so `symbiote app install` records the
+  node, the CLI and the `PATH` (`~/.config/symbiote/app.json`) that `symbiote view` will need to find git
+  and your agents; each `symbiote view` that opens Symbiote's window records them again.
+- **Its own title bar**: Symbiote and the repository, the sidenav's fold and back and
   forward over the sidenav; the page's tabs beside them (a workspace's Terminal, Thread and Brief,
   History's All branches and This branch); the panel's toggle and the window's buttons at the
-  end, in CPR's colours, light or dark as the theme is (on Linux CPR draws them, and the
+  end, in Symbiote's colours, light or dark as the theme is (on Linux Symbiote draws them, and the
   window's rounded corners). Drag its free space to move the window.
-- **Links that leave CPR** (a pull request, a link in a thread) open in your default browser.
-- **Leaving with something not saved** (a prompt in Settings) asks first, in CPR's own dialog
+- **Links that leave Symbiote** (a pull request, a link in a thread) open in your default browser.
+- **Leaving with something not saved** (a prompt in Settings) asks first, in Symbiote's own dialog
   inside the page and in your system's when the window closes.
 - **Keys**: Ctrl+= and Ctrl+− zoom, Ctrl+0 back to 100 %; Alt+← and Alt+→ (and the mouse's side
   buttons) go back and forward; Ctrl+R or F5 reloads; Ctrl+Shift+I opens the inspector. On macOS,
   ⌘ instead of Ctrl, and ⌘[ ⌘] for back and forward. Where the agent's terminal has the focus, it
   keeps Ctrl+R and Alt+arrows.
 - **Remembered** for the next window: its size and place, the zoom, and the viewer's own choices
-  (theme, folded sidenav, panel widths), kept in `$XDG_CONFIG_HOME/cpr/app/` (`~/.config/cpr/app/`).
+  (theme, folded sidenav, panel widths), kept in `$XDG_CONFIG_HOME/symbiote/app/` (`~/.config/symbiote/app/`).
 - **Where it runs**: Linux, and Windows through WSL (its window comes through WSLg). macOS runs the
   same code but is not tested yet. On Ubuntu 24.04 and later, AppArmor may refuse Chromium's
-  sandbox to an Electron that no package installed: `cpr view` then says so and opens the browser
+  sandbox to an Electron that no package installed: `symbiote view` then says so and opens the browser
   ([Chromium on this restriction](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md)).
 
 ### Reading a change
@@ -199,7 +199,7 @@ they are linked to elsewhere.
 
 ### History
 
-`cpr view` without revisions opens on **History** (`/history`, or h): the repository's history,
+`symbiote view` without revisions opens on **History** (`/history`, or h): the repository's history,
 every branch, local and remote, drawn as a graph beside the commits, the current branch the
 straight line on the left. The sidenav on the left lists the pages (History, Settings) and, under
 them, your [workspaces](#workspaces-and-agents); a click opens one beside it, without loading the
@@ -208,26 +208,26 @@ history scrolls, and commits load as they come into view; its keys are behind th
 toolbar.
 
 The pages are dark. **Appearance** in Settings makes them light, or follows your system, in this
-browser. They are set in Geist and Geist Mono, which `cpr view` serves itself: nothing is fetched
+browser. They are set in Geist and Geist Mono, which `symbiote view` serves itself: nothing is fetched
 from elsewhere.
 
-**Usage.** The status bar's right side shows the subscription of each agent CPR can start and
+**Usage.** The status bar's right side shows the subscription of each agent Symbiote can start and
 how much of each window is used, as its vendor counts it: `Claude Pro · 5h 59% · wk 66%`,
 `Codex Go · 30d 0%`. Amber from 80 % (or when Claude warns), red at the limit; a hover says
-when each window resets and how old the numbers are. `cpr view` reads them at most every 5
+when each window resets and how old the numbers are. `symbiote view` reads them at most every 5
 minutes, while a page asks:
 
 - **Claude Code**: from the endpoint Claude Code's own `/usage` reads, with the token Claude
-  Code stored (`~/.claude/.credentials.json`, or the Keychain on macOS). CPR only reads it: it
+  Code stored (`~/.claude/.credentials.json`, or the Keychain on macOS). Symbiote only reads it: it
   never renews it, never gives it to the page, and sends it to `api.anthropic.com` only. When the
-  token has expired or a request fails, the bar shows the last numbers CPR read, with their age
-  and why. CPR keeps them in its cache (`~/.cache/cpr/usage/claude.json` on Linux, or
-  `$CPR_CACHE_DIR/usage/claude.json`), for the account they were read for, so the next run and
-  every `cpr view` on the machine have them; before CPR's first read, Claude is not shown.
+  token has expired or a request fails, the bar shows the last numbers Symbiote read, with their age
+  and why. Symbiote keeps them in its cache (`~/.cache/symbiote/usage/claude.json` on Linux, or
+  `$SYMBIOTE_CACHE_DIR/usage/claude.json`), for the account they were read for, so the next run and
+  every `symbiote view` on the machine have them; before Symbiote's first read, Claude is not shown.
 - **Codex**: from its app server (`account/rateLimits/read`); without one, from your newest
   Codex session. An API-key login has no windows and is not shown.
 
-`CPR_USAGE=off` reads none of it.
+`SYMBIOTE_USAGE=off` reads none of it.
 
 ![History: the branches panel with its milestone folder open, and the history drawn as a graph with branch badges](docs/images/history.png)
 
@@ -237,7 +237,7 @@ minutes, while a page asks:
   last reported or asked something on top, then those whose agent is working, each with how
   long ago its agent acted (`4m`, `2h`).
 - **Check out** (right-click a commit, or c): one of its branches, a remote branch as a local
-  one, a tag or the commit itself. CPR asks first and uses `git switch`, never forced: your local
+  one, a tag or the commit itself. Symbiote asks first and uses `git switch`, never forced: your local
   changes come along, or git refuses and nothing changes. A checkout made in a terminal shows
   when the page is back in focus.
 - **Review** (r): the branch from where it left the default branch to its tip. See
@@ -249,18 +249,18 @@ minutes, while a page asks:
 
 Each comparison is analyzed in the background with the same `--plugin`, `--project` and `--depth`,
 and has its own address (`/diff/<base>..<head>/`), so it can be reloaded or bookmarked. The last 8
-stay ready while `cpr view` runs. Its ← link goes back where it was opened: History, or the
+stay ready while `symbiote view` runs. Its ← link goes back where it was opened: History, or the
 workspace for its review. A comparison has the sidenav too, folded to a rail of icons and
 workspace marks so the graph keeps its width; [ opens it.
 
 ### Open in VS Code
 
-Under `cpr view` and `cpr pr`, "Open in VS Code" (or o) opens the selected symbol in the window
+Under `symbiote view` and `symbiote pr`, "Open in VS Code" (or o) opens the selected symbol in the window
 that has the repository open, else in a new one. Ctrl+click a line (Cmd+click on macOS), or click
-its number, to open that line. CPR finds where the line is in your working copy now: after a
+its number, to open that line. Symbiote finds where the line is in your working copy now: after a
 checkout or an edit it opens at the line's new place, and says so. It runs VS Code's `code`
-command on the machine where `cpr` runs, so WSL, Remote SSH and containers work too. Set
-`CPR_CODE` to use another editor command (Insiders, VSCodium, Cursor).
+command on the machine where `symbiote` runs, so WSL, Remote SSH and containers work too. Set
+`SYMBIOTE_CODE` to use another editor command (Insiders, VSCodium, Cursor).
 
 ### Keys
 
@@ -286,7 +286,7 @@ reply box or a prompt in Settings, Ctrl+Enter (Cmd+Enter on macOS) saves, starts
 
 ## Reviewing a branch
 
-Pick "Review" in a commit's menu, or press r, and CPR compares the branch from where it left the
+Pick "Review" in a commit's menu, or press r, and Symbiote compares the branch from where it left the
 default branch to its tip. Mark symbols reviewed as you go (r). After new commits, review it
 again: only what is new or changed since is left, and marks stay on the symbols that did not
 change.
@@ -307,10 +307,10 @@ own commits since your review, `…` while reviewing. Commits added since get a 
 
 Where reviews live:
 
-- `cpr/reviews/<branch>/<your git email>.json`, in the repository.
-- The first review writes `cpr/.gitignore`, which keeps them out of git. Delete it to commit and
+- `symbiote/reviews/<branch>/<your git email>.json`, in the repository.
+- The first review writes `symbiote/.gitignore`, which keeps them out of git. Delete it to commit and
   share them. `git clean -fdx` deletes ignored files, reviews with them.
-- `cpr/AGENTS.md` tells any agent what to do with a review, and every review file's first line
+- `symbiote/AGENTS.md` tells any agent what to do with a review, and every review file's first line
   points there. Claude Code loads it when it reads a review.
 
 ### Merging
@@ -319,10 +319,10 @@ An approved branch gets **Merge into** in its Review tab and in its workspace's 
 is preselected: the branch the workspace started from, else the one the approval names, else the
 default branch (`main`, or `master` in older projects). Pick any other branch in the list.
 
-CPR merges the commit you approved (that one, not newer ones) with `git merge --no-ff`, in a
+Symbiote merges the commit you approved (that one, not newer ones) with `git merge --no-ff`, in a
 worktree of its own in its cache. Your checkout and the agent's worktree are not used. Then:
 
-1. It runs the check on the merge: `merge.checks` in `cpr/config.json`, else the command it guesses
+1. It runs the check on the merge: `merge.checks` in `symbiote/config.json`, else the command it guesses
    from the target's files (a `check` or `test` script after its package manager's install, a
    Makefile target, `cargo test`, …).
 2. When the check passes, it moves the target by fast-forward. If the target is checked out
@@ -337,7 +337,7 @@ failed, with the end of a failed check's output. Without a check, a merge waits 
 the merge with the files named, and nothing changes. Resolve it on the branch, review it again,
 then Retry. A target that moved before landing is merged again on its new tip.
 
-The queue is kept in CPR's cache. `cpr merge <branch>` does the same from a terminal and prints
+The queue is kept in Symbiote's cache. `symbiote merge <branch>` does the same from a terminal and prints
 each step.
 
 ## Workspaces and agents
@@ -356,13 +356,13 @@ the branch, the agent and its options on the right. It asks what the work is in 
 
 Every kind takes a title (the workspace's name and its branch's), and under **More** where to look,
 notes, and what is out of scope or how to reproduce. Done when is optional; it names the check
-command CPR guesses from the start commit's root files (`package.json`'s `check` or `test` script
+command Symbiote guesses from the start commit's root files (`package.json`'s `check` or `test` script
 with its package manager, a Makefile's `check` or `test` target, `scripts/test.sh`, `cargo test`,
 `go test ./...`, `pytest`), and says where it found it. The ⓘ after the kinds says what each is
 for. The kind is picked with `1`–`5` too, and
-the form is kept as a draft (in CPR's cache, so it outlives a new `cpr view`) until the workspace
+the form is kept as a draft (in Symbiote's cache, so it outlives a new `symbiote view`) until the workspace
 starts, so leaving the page loses nothing; Clear empties it. Cancel or Esc goes back to the page
-you came from; Start (Ctrl+Enter) opens the new workspace in the page's place. CPR then:
+you came from; Start (Ctrl+Enter) opens the new workspace in the page's place. Symbiote then:
 
 1. makes the agent's brief from the parts, under fixed headings (`# Fix: <title>`, `## What
    happens`, …, `## Done when` last), and adds one line for the kind: a fix is reproduced with a
@@ -372,24 +372,24 @@ you came from; Start (Ctrl+Enter) opens the new workspace in the page's place. C
 2. names a branch after the title (edit it if you like) and creates it at the default branch's
    tip, or at the commit you picked;
 3. gives the branch its own worktree beside your checkout, `../<repo>.worktrees/<branch>` (the
-   branch's slashes become dashes), so your checkout and `cpr view` are untouched and several
+   branch's slashes become dashes), so your checkout and `symbiote view` are untouched and several
    workspaces can run at once;
-4. records the brief, and the parts it was made of, in `cpr/workspaces/<branch>.json` (`cpr/features/` before V25, moved there the first time);
+4. records the brief, and the parts it was made of, in `symbiote/workspaces/<branch>.json` (`symbiote/features/` before V25, moved there the first time);
 5. starts the agent you picked there in the background with the brief: Claude Code (`claude
    --bg`) or [Codex](#codex). With "Plan first and wait for my OK" (on by default), the agent
    stops after its plan.
 
 The page offers the agents installed, Claude Code first unless `agent.kind` in
-[`cpr/config.json`](#configuration) says `codex`. Claude Code runs on your own Claude Code login
+[`symbiote/config.json`](#configuration) says `codex`. Claude Code runs on your own Claude Code login
 (the page says which: your subscription or an API key), in the permission mode you pick: Claude
-Code's default, Accept edits, or Auto. CPR never grants it more. **Effort** is the level the agent's
+Code's default, Accept edits, or Auto. Symbiote never grants it more. **Effort** is the level the agent's
 session starts at: its own default, or one it lists (Claude Code's `--help`; for Codex, its
 configured model's levels, read from its app server). The session keeps it, Start again uses it
 again, and the Brief tab says it ("Started with Claude Code at high effort."); change it later
 in the agent's own terminal (Claude Code: `/effort`). The next workspace starts at the default
 again. If Claude Code does not start, the branch and worktree are kept and the page
 offers the prompt to copy. Claude Code has to trust the folder, so run `claude` there once and
-accept. It is found as `claude` on your `PATH`, or set `CPR_CLAUDE`.
+accept. It is found as `claude` on your `PATH`, or set `SYMBIOTE_CLAUDE`.
 
 The sidenav lists your workspaces under the pages, by what each needs from you (a plan to read, a
 permission to give, a branch to review, changes to send back), then those working, then those
@@ -402,16 +402,16 @@ beside the sidenav (`/?branch=<branch>`), with these actions:
 - **Stop** or **Start** the agent;
 - under **⋯**: **Open in VS Code** (its worktree), **Copy the prompt**, **Clean up**, and **Talk**,
   which copies `claude attach <id>` (Codex: `codex resume <thread> --remote <its app server> -C
-  <worktree>`) for a terminal of your own (only when CPR cannot open the agent's terminal; its
+  <worktree>`) for a terminal of your own (only when Symbiote cannot open the agent's terminal; its
   tooltip says why).
 
 ![Workspaces: three agents by what they need from you, and the picked one's Claude Code session in the Terminal tab, its plan waiting for your OK](docs/images/features.png)
 
 A workspace opens, where it can, on the agent's **Terminal**, down to the status bar: its session
 as Claude Code draws it (the conversation, tool calls, permission prompts and
-questions, Esc, slash commands), so you answer it without leaving CPR.
+questions, Esc, slash commands), so you answer it without leaving Symbiote.
 
-- It is `claude attach <id>`, run by `cpr view` in the workspace's worktree. Claude Code keeps
+- It is `claude attach <id>`, run by `symbiote view` in the workspace's worktree. Claude Code keeps
   hosting the session: leaving the tab or the page only hangs up that client, and the agent goes
   on.
 - **Send the verdict:** after you finish a review of the workspace's branch, this (or "Send to the
@@ -432,15 +432,15 @@ remembered in the browser.
 The **Brief** tab is what the agent was asked (`&brief`), drawn from its Markdown. The **Thread** tab is the workspace's
 history, read only (`&thread` in the address opens on it):
 the agent's plan and reports (drawn from their Markdown), your messages, and what it waited on
-(a permission to run a command, or a question and its options). The thread comes from hooks CPR
-gives each agent it starts (`cpr/claude-settings.json`, recorded in `cpr/threads/`, out of git).
+(a permission to run a command, or a question and its options). The thread comes from hooks Symbiote
+gives each agent it starts (`symbiote/claude-settings.json`, recorded in `symbiote/threads/`, out of git).
 They only record, so permissions and questions are answered in the session itself.
 
 The terminal needs `node-pty`, an optional dependency: on Linux `pnpm install` compiles it
 (python3, make and a C++ compiler), and macOS and Windows get a prebuilt one. Without it, or with
-`CPR_TERMINAL=off`, the panel shows the thread with a box to answer in:
+`SYMBIOTE_TERMINAL=off`, the panel shows the thread with a box to answer in:
 
-- **The reply box:** Send continues the agent's own session with your words. CPR stops a session
+- **The reply box:** Send continues the agent's own session with your words. Symbiote stops a session
   that is still alive first, then resumes it. While the agent works, "Stop and send" asks before
   ending its turn.
 - **Send the verdict** fills the box with what you decided. Nothing is sent until you press Send.
@@ -452,26 +452,26 @@ the worktree has files not committed.
 
 ### Codex
 
-Pick **Codex** when you start a workspace (it is found as `codex` on your `PATH`, or set `CPR_CODEX`).
+Pick **Codex** when you start a workspace (it is found as `codex` on your `PATH`, or set `SYMBIOTE_CODEX`).
 It runs on your own Codex login (`codex login`: your ChatGPT account or an API key); if it is not
 logged in, the workspace is kept and says so. Its model and reasoning effort are your Codex
 configuration's (`~/.codex/config.toml`).
 
-- **On your Codex app server** (Codex 0.163 and later): CPR starts the workspace's thread on your
+- **On your Codex app server** (Codex 0.163 and later): Symbiote starts the workspace's thread on your
   app-server daemon, the one `codex agents` browses, and starts the daemon when it does not run
-  (`codex app-server daemon start`). The daemon is yours: the thread goes on when `cpr view`
-  closes, and is named after the branch. CPR reads the thread from there: its prompt, your
+  (`codex app-server daemon start`). The daemon is yours: the thread goes on when `symbiote view`
+  closes, and is named after the branch. Symbiote reads the thread from there: its prompt, your
   messages (from the panel or from Codex's own terminal), Codex's final answer of each turn, and
-  how a turn ended. Nothing is written in `cpr/threads/`.
+  how a turn ended. Nothing is written in `symbiote/threads/`.
 - **Sandbox:** Codex's `workspace-write`, so it writes only in its worktree. A worktree's git data
-  lives in your checkout's `.git`, which that sandbox keeps read-only, so CPR also lets it write
+  lives in your checkout's `.git`, which that sandbox keeps read-only, so Symbiote also lets it write
   what a commit on its own branch needs: the worktree's git folder, git's objects, and the folders
   of the branch's ref and its log. Other branches, git's config and hooks stay read-only. Network
-  access is whatever your Codex configuration allows. CPR never passes Codex's bypass flags.
+  access is whatever your Codex configuration allows. Symbiote never passes Codex's bypass flags.
   Codex marks the repository trusted in your Codex configuration (`~/.codex/config.toml`) when a
-  workspace starts, as it does for any writable sandbox; CPR cannot start it otherwise.
+  workspace starts, as it does for any writable sandbox; Symbiote cannot start it otherwise.
 - **Its terminal:** the panel opens on Codex's own terminal, joined to the workspace's thread
-  (`codex resume <thread> --remote unix://<socket> -C <worktree>`, run by `cpr view`), as Claude
+  (`codex resume <thread> --remote unix://<socket> -C <worktree>`, run by `symbiote view`), as Claude
   Code's is: what you type there is in the thread, its approval prompts are answered there, and
   leaving the tab only hangs up that client. The first time in a worktree, Codex asks whether you
   trust it, and the panel says so first: the answer is yours, saved in your Codex configuration.
@@ -479,22 +479,22 @@ configuration's (`~/.codex/config.toml`).
 - **Approvals:** Codex asks before it runs what its sandbox refuses (`on-request`). The workspace
   then says "Waiting: approval prompt", and its thread shows what Codex said before asking, if it
   said anything. You answer in its terminal.
-- **Without terminals** (no `node-pty`, or `CPR_TERMINAL=off`), the panel keeps the reply box: a
+- **Without terminals** (no `node-pty`, or `SYMBIOTE_TERMINAL=off`), the panel keeps the reply box: a
   message while Codex works joins its turn (Send, nothing stopped); once the turn ended, it starts
   the next; to a turn waiting on an approval, "Stop and send" asks first. Talk copies the command
   above, for a terminal of your own.
 - Stop interrupts its turn and ends the commands it left running. Start starts a new thread.
   Clean up also archives the workspace's threads (`codex unarchive` brings one back).
-- **Without an app server** (an older Codex, or a daemon that does not start), CPR runs `codex
+- **Without an app server** (an older Codex, or a daemon that does not start), Symbiote runs `codex
   exec --json` in the worktree through a small runner of its own, which writes what Codex does
-  into `cpr/threads/`. Send then continues the thread with `codex exec resume`, "Stop and send"
+  into `symbiote/threads/`. Send then continues the thread with `codex exec resume`, "Stop and send"
   asks first while it works, and Codex never stops to ask for a permission. Talk copies `codex
-  resume <thread> -C <worktree>`; what you do there is not in CPR's thread. A workspace started
+  resume <thread> -C <worktree>`; what you do there is not in Symbiote's thread. A workspace started
   this way keeps it until you start its agent again.
 
 ## Pull and merge requests
 
-`cpr pr 123` works with GitHub (and GitHub Enterprise) and GitLab (gitlab.com and self-managed).
+`symbiote pr 123` works with GitHub (and GitHub Enterprise) and GitLab (gitlab.com and self-managed).
 It reads the forge from the `origin` remote, fetches the change's head and target branch, and
 analyzes the same diff the forge shows. Tokens come from `GITHUB_TOKEN` or `GH_TOKEN` (or
 `gh auth login`), and `GITLAB_TOKEN`.
@@ -502,23 +502,23 @@ analyzes the same diff the forge shows. Tokens come from `GITHUB_TOKEN` or `GH_T
 - **Review from the graph.** Write comments on symbols (c; click a + or − line to choose where it
   lands), then submit them from the Review tab as one review: comment, approve, or request
   changes. They arrive as inline comments on those lines.
-- **Review again after a push.** Marks and drafts are kept per pull request. Run `cpr pr` again:
+- **Review again after a push.** Marks and drafts are kept per pull request. Run `symbiote pr` again:
   symbols you reviewed that did not change stay reviewed, those that did are flagged `↻`, and
   drafts follow their code to its new lines.
 - **See only what a push changed.** Compare with the head you saw last. A rebase that touched
   nothing shows nothing:
 
 ```sh
-cpr pr 123 --since 3c2b1a0   # each changed symbol: new, updated, or the same as in 3c2b1a0
+symbiote pr 123 --since 3c2b1a0   # each changed symbol: new, updated, or the same as in 3c2b1a0
 ```
 
 ## CI
 
-In CI, CPR posts the findings instead of opening the viewer. Findings an earlier run already
-posted are not repeated. Inside a pull or merge request job, `cpr pr` finds the number itself:
+In CI, Symbiote posts the findings instead of opening the viewer. Findings an earlier run already
+posted are not repeated. Inside a pull or merge request job, `symbiote pr` finds the number itself:
 
 ```sh
-cpr pr --post-findings warning --fail-on error
+symbiote pr --post-findings warning --fail-on error
 ```
 
 ### GitHub Action
@@ -527,12 +527,12 @@ cpr pr --post-findings warning --fail-on error
 on: pull_request
 permissions: { contents: read, pull-requests: write }
 jobs:
-  cpr:
+  symbiote:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
-      - uses: attomius321/CPR@main
+      - uses: attomius321/Symbiote@main
         with:
           post-findings: warning   # empty: don't post
           fail-on: error           # empty: never fail
@@ -542,46 +542,46 @@ jobs:
 |---|---|---|
 | `post-findings` | `warning` | Post new findings at or above this level. Empty: don't post. |
 | `fail-on` | `error` | Fail the job on a finding at least this level. Empty: never. |
-| `plugins` | | Plugins, comma-separated (`angular`), besides those in `cpr/config.json`. |
+| `plugins` | | Plugins, comma-separated (`angular`), besides those in `symbiote/config.json`. |
 | `project`, `depth` | | As `--project` and `--depth`. |
 | `token` | `github.token` | Reads the pull request and posts comments (needs `pull-requests: write`). |
 | `pull-request` | the event's | The pull request number. |
 | `working-directory` | `.` | Where the repository is checked out. |
 | `setup-node` | `true` | Install Node 22 first. |
 
-The action builds CPR, runs it, writes the summary to the run's page, and outputs the graph
+The action builds Symbiote, runs it, writes the summary to the run's page, and outputs the graph
 JSON's path (`steps.<id>.outputs.graph`) for upload. Pull requests from forks get a read-only
 token, so review them without posting (this repository's own
-[workflow](.github/workflows/cpr.yml) does that).
+[workflow](.github/workflows/symbiote.yml) does that).
 
 ### GitLab CI
 
 ```yaml
 include:
-  - remote: https://raw.githubusercontent.com/attomius321/CPR/main/ci/gitlab/cpr.yml
+  - remote: https://raw.githubusercontent.com/attomius321/Symbiote/main/ci/gitlab/symbiote.yml
 ```
 
-Its `cpr` job runs on merge request pipelines. Without a token, findings appear in the merge
+Its `symbiote` job runs on merge request pipelines. Without a token, findings appear in the merge
 request's Code Quality widget. Add a masked `GITLAB_TOKEN` variable (api scope) to also get them
-as comments on their lines. Override `CPR_POST_FINDINGS`, `CPR_FAIL_ON`, `CPR_PLUGINS` or
-`CPR_VERSION` in your own `cpr:` job.
+as comments on their lines. Override `SYMBIOTE_POST_FINDINGS`, `SYMBIOTE_FAIL_ON`, `SYMBIOTE_PLUGINS` or
+`SYMBIOTE_VERSION` in your own `symbiote:` job.
 
 ## Framework plugins
 
 Framework knowledge comes as plugins, so the TypeScript and JavaScript analysis stays the same
-for every project. A plugin lets CPR see what plain TypeScript cannot: a template that calls a
+for every project. A plugin lets Symbiote see what plain TypeScript cannot: a template that calls a
 component's methods, a method the framework calls, decorator settings that are configuration
 rather than contract.
 
 ```sh
-cpr diff main --plugin angular          # Angular templates, decorators, lifecycle hooks
-cpr diff main --plugin qwik             # Qwik routes, component$ props, MDX routes
-cpr diff main --plugin ./tools/my-plugin.mjs
+symbiote diff main --plugin angular          # Angular templates, decorators, lifecycle hooks
+symbiote diff main --plugin qwik             # Qwik routes, component$ props, MDX routes
+symbiote diff main --plugin ./tools/my-plugin.mjs
 ```
 
-Or turn one on for the repository in `cpr/config.json` (`{ "plugins": ["angular"] }`). In CI,
-use the action's `plugins` input or GitLab's `CPR_PLUGINS` variable. A short name means
-`@cpr/plugin-<name>`, found in your project first, then next to CPR; a path starts with `.` or
+Or turn one on for the repository in `symbiote/config.json` (`{ "plugins": ["angular"] }`). In CI,
+use the action's `plugins` input or GitLab's `SYMBIOTE_PLUGINS` variable. A short name means
+`@symbiote/plugin-<name>`, found in your project first, then next to Symbiote; a path starts with `.` or
 `/`. A plugin that fails is skipped with a warning; it never fails the review.
 
 ### Angular
@@ -598,7 +598,7 @@ counts as a use.
 - With dependencies installed, templates also see Angular's and its libraries' components,
   directives and pipes, read from their typings in `node_modules`. So `x$ | async` has a type,
   and `(ngModelChange)="save($event)"` or `#f="ngForm"` are typed. In CI, install dependencies
-  before CPR runs.
+  before Symbiote runs.
 - In the viewer, a template opens with its own diff, and comments on its lines go to the `.html`
   file.
 
@@ -628,15 +628,15 @@ own file rules, in the routes folder its Vite config names.
 
 ### Your own
 
-A plugin implements the `TsPlugin` interface exported by `@cpr/core`. The
+A plugin implements the `TsPlugin` interface exported by `@symbiote/core`. The
 [plan](docs/PLAN.md#x1--plugins) describes the hooks, and
 [`tpl-plugin.ts`](packages/core/test/helpers/tpl-plugin.ts) is a complete example.
 
 ## Configuration
 
-### `cpr/config.json`
+### `symbiote/config.json`
 
-At the repository root (`cpr.config.json`, the older place, still works). Every key is optional.
+At the repository root (`symbiote.config.json`, the older place, still works). Every key is optional.
 
 ```jsonc
 {
@@ -656,20 +656,20 @@ At the repository root (`cpr.config.json`, the older place, still works). Every 
 | `agent.kind` | `claude` | The agent Start a workspace offers first, when installed: `claude` or `codex`. |
 | `agent.permissionMode` | `default` | The permission mode Start a workspace suggests for Claude Code: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's | The model Claude Code starts with (Codex's is its own configuration's). |
-| `merge.checks` | guessed | The check a merge runs before it lands ([Merging](#merging)): a command, or a list run in order through the shell in CPR's merge worktree. Add an install first when the check needs dependencies, e.g. `["pnpm install --frozen-lockfile", "pnpm check"]`. |
+| `merge.checks` | guessed | The check a merge runs before it lands ([Merging](#merging)): a command, or a list run in order through the shell in Symbiote's merge worktree. Add an install first when the check needs dependencies, e.g. `["pnpm install --frozen-lockfile", "pnpm check"]`. |
 | `merge.push` | `false` | Push the target branch after a merge lands. |
-| `prompts` | CPR's | What CPR tells its agents, each prompt whole ([below](#agents-prompts)). |
+| `prompts` | Symbiote's | What Symbiote tells its agents, each prompt whole ([below](#agents-prompts)). |
 
 Before V25 the `workspaces` section was called `features`; that name is still read when `workspaces` is not there.
 
 ### Agents' prompts
 
-Every text CPR gives its agents can be replaced under `prompts`. **Settings** in `cpr view` (s)
-lists them by agent, each with CPR's text until you change it, its placeholders (click one to
-insert it), Save and Reset to CPR's; it writes only `prompts` and leaves the rest of the file as
-it is. A missing key is CPR's text, so the file keeps only the prompts you change. A prompt is a
+Every text Symbiote gives its agents can be replaced under `prompts`. **Settings** in `symbiote view` (s)
+lists them by agent, each with Symbiote's text until you change it, its placeholders (click one to
+insert it), Save and Reset to Symbiote's; it writes only `prompts` and leaves the rest of the file as
+it is. A missing key is Symbiote's text, so the file keeps only the prompts you change. A prompt is a
 string or a list of lines, and `{name}` is filled in where the prompt allows it (any other brace
-is text). Commit `cpr/config.json` to share them: the page says whether it is committed. It is
+is text). Commit `symbiote/config.json` to share them: the page says whether it is committed. It is
 read at each use, so a change applies to the next agent started.
 
 ```json
@@ -690,20 +690,20 @@ read at each use, so a change applies to the next agent started.
 
 | Key | What | Placeholders |
 |---|---|---|
-| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace's start prompt for that kind | `{branch}`, `{start}`, `{brief}` (required), `{plan}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{cpr}` |
+| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace's start prompt for that kind | `{branch}`, `{start}`, `{brief}` (required), `{plan}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{symbiote}` |
 | `plan.first`, `plan.direct` | What `{plan}` becomes, with Plan first and without | none |
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The sentences of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`; `{reviewer}`, `{what}`; `{review}`, `{agents}` |
-| `reviews` | `cpr/AGENTS.md`, how an agent acts on a review | none |
-| `merger` | The merger's instructions; CPR adds the answer format it reads | none |
+| `reviews` | `symbiote/AGENTS.md`, how an agent acts on a review | none |
+| `merger` | The merger's instructions; Symbiote adds the answer format it reads | none |
 
-A value CPR cannot use (not text, a start prompt without `{brief}`, or too long: 8,000
-characters for a start prompt, 1,000 for a sentence, 20,000 otherwise) is ignored, and CPR's
+A value Symbiote cannot use (not text, a start prompt without `{brief}`, or too long: 8,000
+characters for a start prompt, 1,000 for a sentence, 20,000 otherwise) is ignored, and Symbiote's
 text is used.
 
-### `.cprignore`
+### `.symbioteignore`
 
 Symbols in `examples/`, `playground/`, `fixtures/`, `__fixtures__/`, `__snapshots__/` and
-`generated/` folders, and in `*.generated.*` files, are listed but not analyzed. A `.cprignore`
+`generated/` folders, and in `*.generated.*` files, are listed but not analyzed. A `.symbioteignore`
 at the repository root (gitignore syntax) changes that. It is read from your working folder, so
 it applies at once, even uncommitted, and to any commits you compare:
 
@@ -719,7 +719,7 @@ interfaces/
 ### Projects in a monorepo
 
 The graph JSON says which app or library each file belongs to (`projects`, see the
-[graph schema](docs/graph-schema.md#project)). CPR finds them from workspace members (npm, Yarn,
+[graph schema](docs/graph-schema.md#project)). Symbiote finds them from workspace members (npm, Yarn,
 pnpm), Nx projects and, with `--plugin angular`, `angular.json`. When a repository declares none,
 its packages and the folders with their own `tsconfig.json` are the projects.
 
@@ -727,17 +727,17 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 
 | Variable | What it does |
 |---|---|
-| `GITHUB_TOKEN`, `GH_TOKEN` | GitHub token for `cpr pr` (else `gh auth token`). |
-| `GITLAB_TOKEN` | GitLab token for `cpr pr`. |
+| `GITHUB_TOKEN`, `GH_TOKEN` | GitHub token for `symbiote pr` (else `gh auth token`). |
+| `GITLAB_TOKEN` | GitLab token for `symbiote pr`. |
 | `GITHUB_API_URL`, `GITLAB_API_URL` | The forge's API, for self-hosted instances. |
-| `CPR_FORGE` | `github` or `gitlab`, when the host name does not say (as `--forge`). |
-| `CPR_CODE` | The editor command "Open in VS Code" runs (default: VS Code's `code`, from `PATH` or its usual install places). |
-| `CPR_CLAUDE` | The Claude Code program workspaces start (default: `claude` on `PATH`). |
-| `CPR_CODEX` | The Codex program workspaces start (default: `codex` on `PATH`). |
-| `CPR_TERMINAL` | `off`: no agent's terminal in a workspace's panel; the panel keeps Talk and the reply box. |
-| `CPR_USAGE` | `off`: no subscription usage is read, and the status bar shows none. |
-| `CPR_APP` | `off`: `cpr view` and `cpr pr` open the browser, never [CPR's window](#cprs-window). A path: the program to run as the app instead. |
-| `CPR_CACHE_DIR` | Where CPR keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/cpr`, else `~/Library/Caches/cpr` on macOS and `~/.cache/cpr` elsewhere. |
+| `SYMBIOTE_FORGE` | `github` or `gitlab`, when the host name does not say (as `--forge`). |
+| `SYMBIOTE_CODE` | The editor command "Open in VS Code" runs (default: VS Code's `code`, from `PATH` or its usual install places). |
+| `SYMBIOTE_CLAUDE` | The Claude Code program workspaces start (default: `claude` on `PATH`). |
+| `SYMBIOTE_CODEX` | The Codex program workspaces start (default: `codex` on `PATH`). |
+| `SYMBIOTE_TERMINAL` | `off`: no agent's terminal in a workspace's panel; the panel keeps Talk and the reply box. |
+| `SYMBIOTE_USAGE` | `off`: no subscription usage is read, and the status bar shows none. |
+| `SYMBIOTE_APP` | `off`: `symbiote view` and `symbiote pr` open the browser, never [Symbiote's window](#symbiotes-window). A path: the program to run as the app instead. |
+| `SYMBIOTE_CACHE_DIR` | Where Symbiote keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/symbiote`, else `~/Library/Caches/symbiote` on macOS and `~/.cache/symbiote` elsewhere. |
 
 ## Limits
 
@@ -760,12 +760,12 @@ node packages/cli/dist/bin.js diff main
 | Package | Role |
 |---|---|
 | `packages/core` | The engine: git, symbols, diff, references, detectors, graph JSON |
-| `packages/cli` | The `cpr` command line and the viewer's local server |
+| `packages/cli` | The `symbiote` command line and the viewer's local server |
 | `packages/forge` | GitHub and GitLab APIs |
-| `packages/viewer` | The browser app `cpr view` and `cpr pr` serve |
-| `packages/desktop` | CPR's window: an Electron app showing the viewer's server (`pnpm app:setup`) |
+| `packages/viewer` | The browser app `symbiote view` and `symbiote pr` serve |
+| `packages/desktop` | Symbiote's window: an Electron app showing the viewer's server (`pnpm app:setup`) |
 | `packages/plugin-angular`, `packages/plugin-qwik` | Framework plugins |
-| `action.yml`, `ci/gitlab/cpr.yml` | The GitHub Action and the GitLab CI template |
+| `action.yml`, `ci/gitlab/symbiote.yml` | The GitHub Action and the GitLab CI template |
 | `spikes/` | Experiments outside the workspace |
 
 Changes to the analysis are checked on real repositories, not only on fixtures:

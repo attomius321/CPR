@@ -1,6 +1,6 @@
-// A workspace's thread (V18c): what CPR's hooks record of its agent's sessions, one JSON line per
-// entry in `cpr/threads/<branch>.jsonl`. The hook runs once per event in the agent's process
-// tree (`agent-hook.ts`), so this module uses Node's own modules only: loading `@cpr/core` would
+// A workspace's thread (V18c): what Symbiote's hooks record of its agent's sessions, one JSON line per
+// entry in `symbiote/threads/<branch>.jsonl`. The hook runs once per event in the agent's process
+// tree (`agent-hook.ts`), so this module uses Node's own modules only: loading `@symbiote/core` would
 // make each event cost ~290 ms instead of ~25 ms.
 import { realpathSync } from 'node:fs';
 import {
@@ -14,7 +14,7 @@ import {
   type FileHandle,
 } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
-import type { ThreadEntry, ThreadQuestion } from '@cpr/core';
+import type { ThreadEntry, ThreadQuestion } from '@symbiote/core';
 
 /** Longest tool input kept: an `Edit` or a `Write` can carry a whole file. */
 export const MAX_INPUT = 4096;
@@ -31,13 +31,13 @@ function branchFile(dir: string, branch: string, extension: string): string | nu
 }
 
 /**
- * Where workspaces are kept: `<cpr>/workspaces/` (V25). Their folder before, `<cpr>/features/`, is
+ * Where workspaces are kept: `<symbiote>/workspaces/` (V25). Their folder before, `<symbiote>/features/`, is
  * moved there by one `rename` when only it is there (an empty `workspaces/` is replaced); with both,
  * the old one is `left` as it is.
  */
-export async function workspacesFolder(cpr: string): Promise<{ dir: string; left?: true }> {
-  const dir = join(cpr, 'workspaces');
-  const old = join(cpr, 'features');
+export async function workspacesFolder(symbiote: string): Promise<{ dir: string; left?: true }> {
+  const dir = join(symbiote, 'workspaces');
+  const old = join(symbiote, 'features');
   try {
     await rename(old, dir);
     return { dir };
@@ -51,9 +51,9 @@ export async function workspacesFolder(cpr: string): Promise<{ dir: string; left
   }
 }
 
-/** Where a workspace's thread is kept: `<cpr>/threads/<branch>.jsonl`. */
-export function threadPath(cpr: string, branch: string): string {
-  const path = branchFile(join(cpr, 'threads'), branch, '.jsonl');
+/** Where a workspace's thread is kept: `<symbiote>/threads/<branch>.jsonl`. */
+export function threadPath(symbiote: string, branch: string): string {
+  const path = branchFile(join(symbiote, 'threads'), branch, '.jsonl');
   if (!path) throw new Error(`not a branch name: ${branch}`);
   return path;
 }
@@ -141,9 +141,9 @@ const real = (path: string) => {
   }
 };
 
-/** The branch of the workspace whose worktree holds `cwd`, from the records in `<cpr>/workspaces/`. */
-async function workspaceAt(cpr: string, cwd: string): Promise<string | null> {
-  const { dir } = await workspacesFolder(cpr);
+/** The branch of the workspace whose worktree holds `cwd`, from the records in `<symbiote>/workspaces/`. */
+async function workspaceAt(symbiote: string, cwd: string): Promise<string | null> {
+  const { dir } = await workspacesFolder(symbiote);
   const files = await readdir(dir, { recursive: true }).catch(() => [] as string[]);
   const here = real(cwd);
   for (const file of files) {
@@ -170,30 +170,42 @@ async function workspaceAt(cpr: string, cwd: string): Promise<string | null> {
  * Records one hook's input in the thread of the workspace whose worktree holds its `cwd`; the
  * thread's path, or null when there is nothing to record or no workspace there.
  */
-export async function recordEvent(cpr: string, input: unknown, at: string): Promise<string | null> {
+export async function recordEvent(
+  symbiote: string,
+  input: unknown,
+  at: string,
+): Promise<string | null> {
   const entry = threadEntry(input, at);
   const cwd = text((input as { cwd?: unknown } | null)?.cwd);
   if (!entry || !cwd) return null;
-  const branch = await workspaceAt(cpr, cwd);
+  const branch = await workspaceAt(symbiote, cwd);
   if (!branch) return null;
-  const path = threadPath(cpr, branch);
+  const path = threadPath(symbiote, branch);
   await mkdir(dirname(path), { recursive: true });
   await appendFile(path, `${JSON.stringify(entry)}\n`);
   return path;
 }
 
-/** Appends an entry CPR writes itself to a workspace's thread: a Codex run it stopped (V20a). */
-export async function appendThread(cpr: string, branch: string, entry: ThreadEntry): Promise<void> {
-  const path = threadPath(cpr, branch);
+/** Appends an entry Symbiote writes itself to a workspace's thread: a Codex run it stopped (V20a). */
+export async function appendThread(
+  symbiote: string,
+  branch: string,
+  entry: ThreadEntry,
+): Promise<void> {
+  const path = threadPath(symbiote, branch);
   await mkdir(dirname(path), { recursive: true });
   await appendFile(path, `${JSON.stringify(entry)}\n`);
 }
 
 /** The hook's work (`agent-hook.ts`): never throws, whatever it is given; decides nothing. */
-export async function hookMain(stdin: string, cpr: string | undefined, at: string): Promise<void> {
-  if (!cpr) return;
+export async function hookMain(
+  stdin: string,
+  symbiote: string | undefined,
+  at: string,
+): Promise<void> {
+  if (!symbiote) return;
   try {
-    await recordEvent(cpr, JSON.parse(stdin) as unknown, at);
+    await recordEvent(symbiote, JSON.parse(stdin) as unknown, at);
   } catch {
     // Nothing the hook can do about it, and nothing Claude Code should see.
   }
@@ -216,11 +228,11 @@ function isEntry(value: unknown): value is ThreadEntry {
  * is one entry.
  */
 export async function readThread(
-  cpr: string,
+  symbiote: string,
   branch: string,
   limit = THREAD_LIMIT,
 ): Promise<ThreadEntry[]> {
-  const content = await readFile(threadPath(cpr, branch), 'utf8').catch(() => '');
+  const content = await readFile(threadPath(symbiote, branch), 'utf8').catch(() => '');
   return parseThread(content).slice(-limit);
 }
 
@@ -233,13 +245,13 @@ export const THREAD_END = 256 * 1024;
  * the thread (V23: reading 5,000 entries whole took 9.6 ms, for each workspace on every read).
  */
 export async function readThreadEnd(
-  cpr: string,
+  symbiote: string,
   branch: string,
   bytes = THREAD_END,
 ): Promise<ThreadEntry[]> {
   let file: FileHandle;
   try {
-    file = await open(threadPath(cpr, branch), 'r');
+    file = await open(threadPath(symbiote, branch), 'r');
   } catch {
     return [];
   }
@@ -291,7 +303,7 @@ export function turnEnded(entries: readonly ThreadEntry[]): boolean {
 
 /**
  * When the agent last handed the turn back (V23): its newest report or question. Prompts are the
- * person's or CPR's; notices and sessions' starts and ends (a `/clear`) are not the agent's acts.
+ * person's or Symbiote's; notices and sessions' starts and ends (a `/clear`) are not the agent's acts.
  */
 export function lastAction(entries: readonly ThreadEntry[]): string | undefined {
   return entries.findLast((e) => e.kind === 'report' || e.kind === 'asks')?.at;

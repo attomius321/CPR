@@ -6,7 +6,7 @@ import { desktop } from './desktop.js';
 import { StatusBar } from './StatusBar.js';
 import { TitleBar } from './TitleBar.js';
 
-const FOLD_KEY = 'cpr.viewer.sidenav.diff';
+const FOLD_KEY = 'symbiote.viewer.sidenav.diff';
 
 /** A diff's page puts nothing in the title bar: its own bar, under it, has its parts. */
 const noSlots = () => {};
@@ -29,7 +29,7 @@ function saveFolded(folded: boolean): void {
 }
 
 /**
- * A diff's page under `cpr view` (V29a): the shell's sidenav, as a rail unless the person opens
+ * A diff's page under `symbiote view` (V29a): the shell's sidenav, as a rail unless the person opens
  * it, and its status bar around the diff. A diff is its own document (`/diff/<pair>/`), so a page
  * or a workspace picked here loads the shell.
  */

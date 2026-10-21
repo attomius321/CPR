@@ -1,5 +1,5 @@
 import dagre, { type Graph as DagreGraph } from '@dagrejs/dagre';
-import type { Graph, GraphEdge, GraphNode, Project, ProjectKind, Severity } from '@cpr/core';
+import type { Graph, GraphEdge, GraphNode, Project, ProjectKind, Severity } from '@symbiote/core';
 import { pathInProject, projectOf } from './projects.js';
 
 /** How a node is drawn: what changed, or what kind of neighbour it is. */

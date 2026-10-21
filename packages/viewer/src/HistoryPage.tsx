@@ -18,7 +18,7 @@ import type {
   HistoryShape,
   RefList,
   RepoStatus,
-} from '@cpr/core';
+} from '@symbiote/core';
 import { BranchesPanel } from './BranchesPanel.js';
 import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
 import { reviewChoices, reviewMarks, type ReviewChoice, type ReviewMark } from './branchReviews.js';
@@ -50,10 +50,10 @@ import { laneSpacing, layoutLanes } from './lanes.js';
 import { backLink, HISTORY_PAGE } from './pages.js';
 import { useShell, type Notice } from './shell-context.js';
 
-/** History's API and the diffs it starts live at the server's root (`cpr view`). */
+/** History's API and the diffs it starts live at the server's root (`symbiote view`). */
 const API_ROOT = '/';
 
-const WRITE_HEADERS = { 'content-type': 'application/json', 'x-cpr': '1' };
+const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
 
 /** Rows drawn beyond the view, above and below. */
 const OVERSCAN = 10;
@@ -98,7 +98,7 @@ async function fetchJson<T>(path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-/** Checks out a target; resolves with where HEAD is, or rejects with git's (or CPR's) words. */
+/** Checks out a target; resolves with where HEAD is, or rejects with git's (or Symbiote's) words. */
 async function postCheckout(target: CheckoutTarget): Promise<CheckoutResult> {
   const response = await fetch(`${API_ROOT}api/checkout`, {
     method: 'POST',

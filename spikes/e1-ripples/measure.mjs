@@ -1,10 +1,10 @@
 // E1 spike: how much of a real change could be verified instead of read? Mechanical parts are
-// changed symbols whose code, token by token (CPR's normalization: no formatting or comments),
+// changed symbols whose code, token by token (Symbiote's normalization: no formatting or comments),
 // is the old code with the change's own renames applied, or with only an argument list changed
 // at a call to a symbol whose signature changed.
 //
 // Renames are inferred, but only from what the change renamed itself:
-//   - a symbol CPR matched as moved under another name (old name → new name),
+//   - a symbol Symbiote matched as moved under another name (old name → new name),
 //   - a renamed file or folder (path words),
 //   - a removed and an added symbol of the same kind whose code is equal once their name
 //     difference (and renames found so far) is applied — `EbFallback` → `CatchFallback` gives
@@ -12,7 +12,7 @@
 // A rename maps words of names (camelCase, kebab-case, path segments), case kept.
 //
 // Each changed symbol gets one class:
-//   moved        moved or renamed with identical code (CPR's hashes)
+//   moved        moved or renamed with identical code (Symbiote's hashes)
 //   renamed      a removed + added pair, or a moved symbol, equal under the renames
 //   ripple       same symbol, every difference is a rename, an import path or an argument list;
 //                `linked` when it references a renamed, moved or re-signed symbol
@@ -26,7 +26,7 @@
 // whose edit (string and number values masked) is another's, or an added symbol shaped as
 // another (its name and values masked). The first of each group stays a decision.
 //          [--only <sha prefix>,…]
-// Build CPR first; repos come from scripts/regression/setup.mjs.
+// Build Symbiote first; repos come from scripts/regression/setup.mjs.
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -36,7 +36,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
-const regressionDir = process.env.CPR_REGRESSION_DIR ?? join(homedir(), '.cache', 'cpr-regression');
+const regressionDir = process.env.SYMBIOTE_REGRESSION_DIR ?? join(homedir(), '.cache', 'symbiote-regression');
 const { values } = parseArgs({
   options: {
     out: { type: 'string' },
@@ -86,7 +86,7 @@ for (const repo of Number(values.recent) > 0 ? values['recent-repos'].split(',')
 const only = values.only?.split(',').filter(Boolean);
 const selected = only ? work.filter((w) => only.some((sha) => w[3].startsWith(sha))) : work;
 
-// ---- tokens, from the AST as CPR's hashes ------------------------------------------------
+// ---- tokens, from the AST as Symbiote's hashes ------------------------------------------------
 
 const TS_FILE = /\.(m|c)?[jt]sx?$/;
 const files = new Map();
@@ -117,7 +117,7 @@ const DECLARATION = new Set([
   ts.SyntaxKind.ModuleDeclaration,
 ]);
 
-/** Tokens ({t, kind}) of a declaration, normalized like CPR's `tokens()`. */
+/** Tokens ({t, kind}) of a declaration, normalized like Symbiote's `tokens()`. */
 function declTokens(cwd, rev, decl, id) {
   const { sf, lines } = source(cwd, rev, decl.file);
   if (!sf) return wordTokens(slice(lines, decl.range));

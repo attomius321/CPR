@@ -1,5 +1,5 @@
 // A fake of Codex's app server (V27a), for unit and e2e tests: a WebSocket server on a unix socket
-// (`webSocketServer`: the server side of RFC 6455 that CPR's client meets), and on it a small model
+// (`webSocketServer`: the server side of RFC 6455 that Symbiote's client meets), and on it a small model
 // of Codex's threads (`fakeAppServer`) answering as Codex 0.163 did in the V27 spike and probes:
 // JSON-RPC without `jsonrpc`, server requests numbered from 0, items without times, turns with
 // their times in seconds, `notLoaded` threads after a restart.
@@ -162,7 +162,7 @@ export async function webSocketServer(
   };
 }
 
-/** A thread item, as Codex 0.163 sends them (the fields CPR reads, and a few it does not). */
+/** A thread item, as Codex 0.163 sends them (the fields Symbiote reads, and a few it does not). */
 type FakeItem =
   | { type: 'userMessage'; id: string; clientId: null; content: { type: 'text'; text: string }[] }
   | { type: 'agentMessage'; id: string; text: string; phase: 'commentary' | 'final_answer' }
@@ -431,7 +431,7 @@ export async function fakeAppServer(
         const capabilities = params.capabilities as { experimentalApi?: unknown } | null;
         if (capabilities?.experimentalApi === true) experimental.add(socket);
         return {
-          userAgent: 'cpr/0.163.0',
+          userAgent: 'symbiote/0.163.0',
           codexHome: '/home/someone/.codex',
           platformFamily: 'unix',
           platformOs: 'linux',

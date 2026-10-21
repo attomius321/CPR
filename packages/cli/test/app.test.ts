@@ -39,11 +39,11 @@ const ran = (app: string) =>
 const isWindow = (opened: AppWindow | { error: string }): opened is AppWindow => 'closed' in opened;
 
 describe('findApp', () => {
-  it('is off with CPR_APP=off, and runs CPR_APP when it names a command', () => {
-    expect(findApp({ CPR_APP: 'off' })).toBeNull();
+  it('is off with SYMBIOTE_APP=off, and runs SYMBIOTE_APP when it names a command', () => {
+    expect(findApp({ SYMBIOTE_APP: 'off' })).toBeNull();
     const app = fakeApp('named', '');
-    expect(findApp({ CPR_APP: app })).toEqual({ command: app, args: [] });
-    expect(findApp({ CPR_APP: join(dir, 'missing') })).toBeNull();
+    expect(findApp({ SYMBIOTE_APP: app })).toEqual({ command: app, args: [] });
+    expect(findApp({ SYMBIOTE_APP: join(dir, 'missing') })).toBeNull();
   });
 
   it("finds this checkout's app: Electron's binary and the built app, or nothing", () => {
@@ -61,7 +61,7 @@ describe('openAppWindow', () => {
   it('resolves once the app shows the page, and knows when its window closes', async () => {
     const app = fakeApp(
       'shows',
-      `console.log('CPR window: ' + process.argv[process.argv.indexOf('--url') + 1]);
+      `console.log('Symbiote window: ' + process.argv[process.argv.indexOf('--url') + 1]);
 process.on('SIGTERM', () => process.exit(0));
 setInterval(() => undefined, 1000);`,
     );
@@ -88,7 +88,7 @@ setInterval(() => undefined, 1000);`,
     const app = fakeApp(
       'fails',
       `process.stderr.write('[123:ERROR] some chromium noise\\n');
-process.stderr.write('cpr app: could not load ${url}: ERR_CONNECTION_REFUSED (-102)\\n');
+process.stderr.write('symbiote app: could not load ${url}: ERR_CONNECTION_REFUSED (-102)\\n');
 process.stderr.write('more noise\\n');
 process.exit(1);`,
     );
@@ -104,7 +104,8 @@ process.exit(1);`,
 process.exit(133);`,
     );
     expect(await openAppWindow({ command: app, args: [] }, url, 'ky', {})).toEqual({
-      error: "Chromium's sandbox is not allowed here (AppArmor): see CPR's window in the README",
+      error:
+        "Chromium's sandbox is not allowed here (AppArmor): see Symbiote's window in the README",
     });
   });
 
@@ -121,14 +122,16 @@ process.exit(133);`,
 describe('desktopEntry', () => {
   it('runs the app with each argument quoted, as the Desktop Entry spec asks', () => {
     const entry = desktopEntry(
-      { command: '/opt/My Apps/electron', args: ['/home/a/CPR/packages/desktop'] },
-      '/home/a/.local/share/icons/hicolor/512x512/apps/cpr.png',
+      { command: '/opt/My Apps/electron', args: ['/home/a/Symbiote/packages/desktop'] },
+      '/home/a/.local/share/icons/hicolor/512x512/apps/symbiote.png',
     );
-    expect(entry).toContain('\nExec="/opt/My Apps/electron" "/home/a/CPR/packages/desktop"\n');
-    expect(entry).toContain('\nIcon=/home/a/.local/share/icons/hicolor/512x512/apps/cpr.png\n');
-    expect(entry).toMatch(/^\[Desktop Entry\]\nType=Application\nName=CPR\n/);
+    expect(entry).toContain('\nExec="/opt/My Apps/electron" "/home/a/Symbiote/packages/desktop"\n');
+    expect(entry).toContain(
+      '\nIcon=/home/a/.local/share/icons/hicolor/512x512/apps/symbiote.png\n',
+    );
+    expect(entry).toMatch(/^\[Desktop Entry\]\nType=Application\nName=Symbiote\n/);
     expect(entry).toContain('\nTerminal=false\n');
-    expect(entry).toContain('\nStartupWMClass=CPR\n');
+    expect(entry).toContain('\nStartupWMClass=Symbiote\n');
   });
 
   it('escapes what a shell or the spec would read: quotes, $, `, \\ and %', () => {
@@ -158,11 +161,11 @@ describe('installApp and uninstallApp', () => {
       node: '/nvm/bin/node',
       cli: '/c/bin.js',
     });
-    const entry = join(home, 'data', 'applications', 'cpr.desktop');
-    const copied = join(home, 'data', 'icons', 'hicolor', '512x512', 'apps', 'cpr.png');
+    const entry = join(home, 'data', 'applications', 'symbiote.desktop');
+    const copied = join(home, 'data', 'icons', 'hicolor', '512x512', 'apps', 'symbiote.png');
     expect(readFileSync(entry, 'utf8')).toContain(`\nIcon=${copied}\n`);
     expect(readFileSync(copied, 'utf8')).toBe(readFileSync(icon, 'utf8'));
-    expect(JSON.parse(readFileSync(join(home, 'config', 'cpr', 'app.json'), 'utf8'))).toEqual({
+    expect(JSON.parse(readFileSync(join(home, 'config', 'symbiote', 'app.json'), 'utf8'))).toEqual({
       node: '/nvm/bin/node',
       cli: '/c/bin.js',
       path: '/nvm/bin:/usr/bin',
@@ -171,14 +174,14 @@ describe('installApp and uninstallApp', () => {
   });
 
   it('removes them again, and keeps the windows’ state', () => {
-    writeFileSync(join(home, 'config', 'cpr', 'kept'), '');
+    writeFileSync(join(home, 'config', 'symbiote', 'kept'), '');
     uninstallApp({ env, platform: 'linux' });
-    expect(existsSync(join(home, 'data', 'applications', 'cpr.desktop'))).toBe(false);
-    expect(existsSync(join(home, 'data', 'icons', 'hicolor', '512x512', 'apps', 'cpr.png'))).toBe(
-      false,
-    );
-    expect(existsSync(join(home, 'config', 'cpr', 'app.json'))).toBe(false);
-    expect(existsSync(join(home, 'config', 'cpr', 'kept'))).toBe(true);
+    expect(existsSync(join(home, 'data', 'applications', 'symbiote.desktop'))).toBe(false);
+    expect(
+      existsSync(join(home, 'data', 'icons', 'hicolor', '512x512', 'apps', 'symbiote.png')),
+    ).toBe(false);
+    expect(existsSync(join(home, 'config', 'symbiote', 'app.json'))).toBe(false);
+    expect(existsSync(join(home, 'config', 'symbiote', 'kept'))).toBe(true);
   });
 
   it('says it is Linux only for now', () => {
@@ -192,7 +195,7 @@ describe('recordAgain', () => {
   it('records node, the CLI and PATH again once installed, and nothing before', () => {
     const env = { XDG_CONFIG_HOME: join(dir, 'again'), PATH: '/a' };
     recordAgain({ env, platform: 'linux', node: '/n1', cli: '/c1' });
-    expect(existsSync(join(dir, 'again', 'cpr', 'app.json'))).toBe(false);
+    expect(existsSync(join(dir, 'again', 'symbiote', 'app.json'))).toBe(false);
     installApp({
       env: { ...env, XDG_DATA_HOME: join(dir, 'again-data') },
       platform: 'linux',
@@ -202,7 +205,7 @@ describe('recordAgain', () => {
       cli: '/c1',
     });
     recordAgain({ env: { ...env, PATH: '/b' }, platform: 'linux', node: '/n2', cli: '/c2' });
-    expect(JSON.parse(readFileSync(join(dir, 'again', 'cpr', 'app.json'), 'utf8'))).toEqual({
+    expect(JSON.parse(readFileSync(join(dir, 'again', 'symbiote', 'app.json'), 'utf8'))).toEqual({
       node: '/n2',
       cli: '/c2',
       path: '/b',

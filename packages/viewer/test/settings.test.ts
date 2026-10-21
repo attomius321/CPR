@@ -1,4 +1,4 @@
-import type { PromptSetting, PromptSettings } from '@cpr/core';
+import type { PromptSetting, PromptSettings } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   draftProblem,
@@ -31,7 +31,7 @@ describe('promptGroups', () => {
     const prompts = [
       prompt({ key: 'start.feature', title: 'Feature' }),
       prompt({ key: 'start.fix' }),
-      prompt({ key: 'reviews', group: 'Reviews', title: 'cpr/AGENTS.md' }),
+      prompt({ key: 'reviews', group: 'Reviews', title: 'symbiote/AGENTS.md' }),
       prompt({ key: 'plan.first', title: 'Plan first' }),
       prompt({ key: 'merger', group: 'Merger', title: 'Instructions' }),
     ];
@@ -78,18 +78,18 @@ describe('sizeOf', () => {
 describe('gitNote', () => {
   it("says whether the file is shared, for each of git's states", () => {
     const of = (git: PromptSettings['git']) =>
-      gitNote({ file: 'cpr/config.json', version: 'v', git, prompts: [] });
-    expect(of('none')).toBe("No prompt changed: every agent is told CPR's text.");
+      gitNote({ file: 'symbiote/config.json', version: 'v', git, prompts: [] });
+    expect(of('none')).toBe("No prompt changed: every agent is told Symbiote's text.");
     expect(of('new')).toBe(
-      'Saved in cpr/config.json, not committed: commit it to share the prompts with everyone ' +
+      'Saved in symbiote/config.json, not committed: commit it to share the prompts with everyone ' +
         'who uses this repository.',
     );
     expect(of('changed')).toBe(
-      'cpr/config.json has changes not committed: commit them to share them.',
+      'symbiote/config.json has changes not committed: commit them to share them.',
     );
-    expect(of('committed')).toBe('Shared: cpr/config.json is committed as it is.');
+    expect(of('committed')).toBe('Shared: symbiote/config.json is committed as it is.');
     expect(of('ignored')).toBe(
-      'cpr/config.json is ignored by git here: the prompts stay on this machine.',
+      'symbiote/config.json is ignored by git here: the prompts stay on this machine.',
     );
   });
 });

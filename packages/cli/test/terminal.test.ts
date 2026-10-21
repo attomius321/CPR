@@ -69,7 +69,7 @@ afterEach(() => {
 });
 
 describe('terminals', () => {
-  it("runs the program in the worktree, in a colour terminal, with cpr view's environment", async () => {
+  it("runs the program in the worktree, in a colour terminal, with symbiote view's environment", async () => {
     const fake = fakePty();
     const t = terminals({ pty: fake.pty });
     const id = await t.open(request);

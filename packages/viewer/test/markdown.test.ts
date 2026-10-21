@@ -58,8 +58,8 @@ describe('markdownNodes', () => {
     expect(html('a <b>x</b> & `1 < 2`')).toBe(
       '<p>a &lt;b&gt;x&lt;/b&gt; &amp; <code>1 &lt; 2</code></p>',
     );
-    expect(html('[CPR](https://example.com/a?b=1)')).toBe(
-      '<p><a href="https://example.com/a?b=1" target="_blank" rel="noreferrer">CPR</a></p>',
+    expect(html('[Symbiote](https://example.com/a?b=1)')).toBe(
+      '<p><a href="https://example.com/a?b=1" target="_blank" rel="noreferrer">Symbiote</a></p>',
     );
     expect(html('[x](javascript:alert(1)) [y](mailto:a@b.c)')).toBe(
       '<p>x <a href="mailto:a@b.c" target="_blank" rel="noreferrer">y</a></p>',

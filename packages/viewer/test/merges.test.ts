@@ -1,4 +1,4 @@
-import type { MergeEntry } from '@cpr/core';
+import type { MergeEntry } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { mergeActions, mergeLive, mergeState } from '../src/merges.js';
 
@@ -15,7 +15,7 @@ const entry = (fields: Partial<MergeEntry>): MergeEntry => ({
   updated: '2026-10-19T12:00:00.000Z',
   ...fields,
 });
-const check = { commands: ['pnpm check'], source: 'cpr/config.json (merge.checks)' };
+const check = { commands: ['pnpm check'], source: 'symbiote/config.json (merge.checks)' };
 
 describe('mergeState (V26a)', () => {
   it('says where a merge is, in words and a tone', () => {

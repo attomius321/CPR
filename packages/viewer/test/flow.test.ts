@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { Finding, Graph, GraphEdge, GraphNode, Project } from '@cpr/core';
+import type { Finding, Graph, GraphEdge, GraphNode, Project } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   decorate,

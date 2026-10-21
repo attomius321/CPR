@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CPR</title>
+    <title>Symbiote</title>
     <link
       rel="preload"
       href="./node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2"
@@ -23,13 +23,13 @@
       (function () {
         var theme = null;
         try {
-          theme = localStorage.getItem('cpr.viewer.theme');
+          theme = localStorage.getItem('symbiote.viewer.theme');
         } catch (e) {}
         document.documentElement.dataset.theme =
           theme === 'light' || theme === 'system' ? theme : 'dark';
-        // In CPR's window (N1c), its title bar is the page's: marked before the first paint. On
+        // In Symbiote's window (N1c), its title bar is the page's: marked before the first paint. On
         // Linux its frame is too (N1d): rounded corners, square while the window fills the screen.
-        var app = window.cprApp;
+        var app = window.symbioteApp;
         if (app) document.documentElement.dataset.app = app.platform;
         if (app && app.frame === 'own') {
           document.documentElement.dataset.frame = 'own';

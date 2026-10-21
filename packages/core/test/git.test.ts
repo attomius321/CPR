@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  CprError,
+  SymbioteError,
   firstChangedLine,
   listChangedFiles,
   listChangedLines,
@@ -60,7 +60,7 @@ describe('resolveRevisions + listChangedFiles', () => {
   it('rejects unknown refs', async () => {
     const gitRepo = await openRepo(repo.root);
     await expect(resolveRevisions(gitRepo, 'main', 'nope')).rejects.toThrow(
-      new CprError("unknown revision 'nope'"),
+      new SymbioteError("unknown revision 'nope'"),
     );
   });
 
@@ -92,7 +92,7 @@ describe('errors', () => {
   });
 
   it('reports folders outside a git repo', async () => {
-    await expect(openRepo(tempDir())).rejects.toBeInstanceOf(CprError);
+    await expect(openRepo(tempDir())).rejects.toBeInstanceOf(SymbioteError);
   });
 });
 

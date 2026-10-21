@@ -1,8 +1,8 @@
-// Checks what the commits page analyzes for diverged picks (V10c), end to end through `cpr view`'s
+// Checks what the commits page analyzes for diverged picks (V10c), end to end through `symbiote view`'s
 // server: the default branch's tip and an unmerged remote branch's tip picked, `comparison` run
 // on the shape the server sends (as the page does), the pair posted to `/api/diffs`. The graph
 // must hold exactly the branch's own changes — its files equal `git diff --name-only A...B`
-// (from the merge-base) — and equal `cpr diff A B`'s (merge-base by default). The pair `main`
+// (from the merge-base) — and equal `symbiote diff A B`'s (merge-base by default). The pair `main`
 // sent (the lower row as the base, compared directly) is analyzed too, for the numbers.
 // Usage: pnpm build; node --experimental-strip-types scripts/viewer/diverged-diffs.mjs <repo>
 //        [--branches 3] [--no-before]
@@ -26,20 +26,20 @@ const cli = new URL('../../packages/cli/dist/bin.js', import.meta.url).pathname;
 const git = (...args) =>
   execFileSync('git', args, { cwd: repo, encoding: 'utf8', maxBuffer: 1 << 30 }).trim();
 
-const cache = mkdtempSync(join(tmpdir(), 'cpr-diverged-'));
+const cache = mkdtempSync(join(tmpdir(), 'symbiote-diverged-'));
 const server = spawn(process.execPath, [cli, 'view', '--no-open'], {
   cwd: repo,
-  env: { ...process.env, CPR_CACHE_DIR: cache },
+  env: { ...process.env, SYMBIOTE_CACHE_DIR: cache },
 });
 const url = await new Promise((resolve, reject) => {
   let output = '';
   server.stdout.on('data', (data) => {
     output += data;
-    const match = /CPR viewer: (\S+)/.exec(output);
+    const match = /Symbiote viewer: (\S+)/.exec(output);
     if (match) resolve(match[1]);
   });
   server.stderr.on('data', (data) => (output += data));
-  server.on('exit', (code) => reject(new Error(`cpr view exited with ${code}: ${output}`)));
+  server.on('exit', (code) => reject(new Error(`symbiote view exited with ${code}: ${output}`)));
 });
 
 const get = async (path) => {
@@ -82,7 +82,7 @@ async function compare(picks) {
 async function analyze(pair) {
   const response = await fetch(new URL('api/diffs', url), {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+    headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
     body: JSON.stringify(pair),
   });
   if (!response.ok) throw new Error(`POST /api/diffs: ${await response.text()}`);
@@ -152,20 +152,20 @@ try {
       git('diff', '--name-only', '--no-renames', `${mainSha}...${tip}`).split('\n').filter(Boolean),
     );
     const sameFiles = files.size === own.size && [...own].every((f) => files.has(f));
-    const cprDiff = JSON.parse(
+    const symbioteDiff = JSON.parse(
       execFileSync(process.execPath, [cli, 'diff', mainSha, tip, '--json'], {
         cwd: repo,
-        env: { ...process.env, CPR_CACHE_DIR: cache },
+        env: { ...process.env, SYMBIOTE_CACHE_DIR: cache },
         encoding: 'utf8',
         maxBuffer: 1 << 30,
       }),
     );
-    const sameGraph = content(cprDiff) === content(after.graph);
+    const sameGraph = content(symbioteDiff) === content(after.graph);
     if (!sameFiles || !sameGraph) failed = true;
     console.log(
       `${name}: ${result.label} — ${summary(after.graph)} (${(after.ms / 1000).toFixed(1)} s); ` +
         `files = git diff A...B: ${sameFiles ? 'yes' : `NO (${files.size} vs ${own.size})`}; ` +
-        `graph = cpr diff A B: ${sameGraph ? 'yes' : 'NO'}`,
+        `graph = symbiote diff A B: ${sameGraph ? 'yes' : 'NO'}`,
     );
     if (!values['no-before']) {
       // `main`'s page: the lower row as the base, compared directly.

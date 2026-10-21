@@ -1,5 +1,5 @@
-// Every text CPR's agents are told (V28, decisions 165–171): CPR's own as defaults with
-// placeholders, a project's under `prompts` in `cpr/config.json`, and the Settings page's view of
+// Every text Symbiote's agents are told (V28, decisions 165–171): Symbiote's own as defaults with
+// placeholders, a project's under `prompts` in `symbiote/config.json`, and the Settings page's view of
 // both. A project's prompts are read at each use: a save applies to the next agent started.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -14,7 +14,7 @@ import {
   type PromptPlaceholder,
   type PromptSettings,
   type WorkKind,
-} from '@cpr/core';
+} from '@symbiote/core';
 import { applyEdits, modify, type FormattingOptions } from 'jsonc-parser';
 import { CONFIG_FILES } from './plugins.js';
 
@@ -32,7 +32,7 @@ const KIND_LINES: Partial<Record<WorkKind, string>> = {
     "keep experiments out of the project's code unless the brief says otherwise.",
 };
 
-/** A kind's start prompt as CPR writes it: what V18 to V27 gave, today's values as placeholders. */
+/** A kind's start prompt as Symbiote writes it: what V18 to V27 gave, today's values as placeholders. */
 function startPrompt(kind: WorkKind): string {
   const line = KIND_LINES[kind];
   return [
@@ -49,27 +49,27 @@ function startPrompt(kind: WorkKind): string {
     '',
     kind === 'spike'
       ? 'Commit nothing unless the brief asks for it. When you have the answer, say it: the ' +
-        'person reads your report in CPR.'
+        'person reads your report in Symbiote.'
       : "Commit your work on {branch} as you go. Push only if the project's instructions say " +
-        'so. When it is ready, say so: the person reviews the branch in CPR, and an approved ' +
+        'so. When it is ready, say so: the person reviews the branch in Symbiote, and an approved ' +
         'commit is merged into {into}.',
     '',
     `This ${kind}'s record: {record}. Reviews of the branch will be in {reviews}; {agents} ` +
-      'says how to act on one. Never edit anything in {cpr}.',
+      'says how to act on one. Never edit anything in {symbiote}.',
   ].join('\n');
 }
 
 /**
- * What an agent does with a review (V17): `cpr/AGENTS.md`, written beside the reviews in any
+ * What an agent does with a review (V17): `symbiote/AGENTS.md`, written beside the reviews in any
  * repository and rewritten when the text in use differs.
  */
-const REVIEWS = `# CPR reviews
+const REVIEWS = `# Symbiote reviews
 
-Written by CPR, which rewrites this file when it changes: put your project's own rules in its
+Written by Symbiote, which rewrites this file when it changes: put your project's own rules in its
 own CLAUDE.md or AGENTS.md.
 
-A person reviews your branch with CPR and records a verdict in
-\`cpr/reviews/<branch>/<reviewer>.json\` (the branch's slashes are folders). Act on it when the
+A person reviews your branch with Symbiote and records a verdict in
+\`symbiote/reviews/<branch>/<reviewer>.json\` (the branch's slashes are folders). Act on it when the
 person asks you to (for example "check my review"), not because you came across it.
 
 ## Read only the last verdict
@@ -84,8 +84,8 @@ person asks you to (for example "check my review"), not because you came across 
 - \`request-changes\`: fix each comment in new commits on the branch. Then say, one line per
   comment, what you changed (with the commit) or why you did not.
 - \`comment\`: answer each comment; change code only where a comment asks for it.
-- \`approve\` with \`into\`: the approved commit \`head\` is to be merged into \`into\`, and CPR
-  merges it (its merger: Merge in CPR, or \`cpr merge <branch>\`). Do not merge it yourself
+- \`approve\` with \`into\`: the approved commit \`head\` is to be merged into \`into\`, and Symbiote
+  merges it (its merger: Merge in Symbiote, or \`symbiote merge <branch>\`). Do not merge it yourself
   unless the person asks you to; there is nothing to do.
 - \`approve\` without \`into\` (a review of the default branch's unpushed commits): those commits,
   up to \`head\`, may be pushed.
@@ -93,7 +93,7 @@ person asks you to (for example "check my review"), not because you came across 
 
 ## A merge conflict
 
-When CPR says the branch conflicts with \`into\` (before the review, or when it merged):
+When Symbiote says the branch conflicts with \`into\` (before the review, or when it merged):
 
 1. On the branch, merge \`into\` in (\`git merge <into>\`), resolve the conflicts there and
    commit. Never resolve them on \`into\`: the resolution would be code nobody reviewed.
@@ -101,8 +101,8 @@ When CPR says the branch conflicts with \`into\` (before the review, or when it 
 
 ## Workspaces
 
-A workspace started in CPR is a branch with a worktree of its own and a record in
-\`cpr/workspaces/<branch>.json\`: the person's \`brief\`, the \`base\` it started from, and
+A workspace started in Symbiote is a branch with a worktree of its own and a record in
+\`symbiote/workspaces/<branch>.json\`: the person's \`brief\`, the \`base\` it started from, and
 \`planFirst\`. If you were started on one:
 
 - Work only in its worktree, on its branch.
@@ -123,11 +123,11 @@ Each has \`body\` (what to do) and \`symbol\` (\`<path>#<name>\`); on a line, al
 ## Never
 
 - Rewrite commits the person reviewed (amend, rebase, squash): their review is of those commits.
-- Edit, move or commit anything in \`cpr/\`: the reviews are the person's.
+- Edit, move or commit anything in \`symbiote/\`: the reviews are the person's.
 `;
 
 /** The merger's instructions (decision 150): its system prompt, before the answer format. */
-const MERGER = `You resolve merge conflicts for CPR. A person reviews every answer before it lands.
+const MERGER = `You resolve merge conflicts for Symbiote. A person reviews every answer before it lands.
 
 You are given each conflict region in git's diff3 style, with 3 lines around it: the target branch's side (after <<<<<<<), the common ancestor (after |||||||, empty when both sides added), and the merged branch's side (after =======, up to >>>>>>>). Each side's title says what it was for.
 
@@ -135,12 +135,12 @@ For each region, write the text that replaces the whole region, its marker lines
 - Keep what both sides meant. Two different additions are usually both kept, the target's first, unless they are the same thing written twice: then keep it once.
 - Two changes to the same lines: combine them when they can be combined, and keep the file's style.
 - Never drop a side's change to make the conflict go away. When both cannot be kept, or you would have to guess what a side meant, do not answer the regions: say what the person must decide.
-- Write no conflict markers. Change nothing outside the regions: CPR writes your text in place of each region and nothing else.
+- Write no conflict markers. Change nothing outside the regions: Symbiote writes your text in place of each region and nothing else.
 
 You may read files in this folder when a region is not enough. You cannot edit them, and need not.`;
 
 /**
- * The answer the merger is asked for, after its instructions: CPR parses it, so a project cannot
+ * The answer the merger is asked for, after its instructions: Symbiote parses it, so a project cannot
  * change it (decision 169).
  */
 export const MERGER_ANSWER = `Answer with one JSON object and nothing else:
@@ -148,7 +148,7 @@ export const MERGER_ANSWER = `Answer with one JSON object and nothing else:
 or, when any region needs the person:
 {"needsYou": "<the region, and what they must decide>"}`;
 
-/** CPR's text for every prompt: the default until a project changes it. */
+/** Symbiote's text for every prompt: the default until a project changes it. */
 export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
   'start.feature': startPrompt('feature'),
   'start.fix': startPrompt('fix'),
@@ -160,7 +160,7 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
     "for the person's OK before changing anything.",
   'plan.direct': "Plan it, build it and check it as the project's own instructions say.",
   'verdict.approve':
-    'Approved the branch {branch} at {at}: CPR merges {at} into {into}; do not merge it yourself.',
+    'Approved the branch {branch} at {at}: Symbiote merges {at} into {into}; do not merge it yourself.',
   'verdict.push': 'Approved the unpushed commits of {branch} up to {at}: they may be pushed.',
   'verdict.address': 'Address this review of the branch {branch} ({reviewer}, at {at}): {what}.',
   'verdict.where': 'The review: {review}; how to act on it: {agents}.',
@@ -189,10 +189,10 @@ const START_PLACEHOLDERS: PromptPlaceholder[] = [
       'the default branch, which an approved commit is merged into ("the branch the person ' +
       'picks" when there is none)',
   },
-  { name: 'record', about: "the workspace's record, cpr/workspaces/<branch>.json" },
+  { name: 'record', about: "the workspace's record, symbiote/workspaces/<branch>.json" },
   { name: 'reviews', about: "the folder the branch's reviews will be in" },
-  { name: 'agents', about: 'cpr/AGENTS.md, which says how to act on a review' },
-  { name: 'cpr', about: 'the cpr/ folder, which the agent must not edit' },
+  { name: 'agents', about: 'symbiote/AGENTS.md, which says how to act on a review' },
+  { name: 'symbiote', about: 'the symbiote/ folder, which the agent must not edit' },
 ];
 
 /** A start prompt goes on the agent's command line with a brief of up to 20,000 characters. */
@@ -235,7 +235,7 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
   'verdict.approve': {
     group: 'Reviews',
     title: 'Approved',
-    about: "A verdict's first line for the branch's agent: approved, and CPR merges it.",
+    about: "A verdict's first line for the branch's agent: approved, and Symbiote merges it.",
     placeholders: [branch, at, { name: 'into', about: 'the branch it is merged into' }],
     max: MAX_LINE,
   },
@@ -264,15 +264,15 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     about: "A verdict's last line.",
     placeholders: [
       { name: 'review', about: "the review's file" },
-      { name: 'agents', about: 'cpr/AGENTS.md' },
+      { name: 'agents', about: 'symbiote/AGENTS.md' },
     ],
     max: MAX_LINE,
   },
   reviews: {
     group: 'Reviews',
-    title: 'cpr/AGENTS.md',
+    title: 'symbiote/AGENTS.md',
     about:
-      'How any agent acts on a review. CPR writes it into cpr/AGENTS.md beside the reviews, ' +
+      'How any agent acts on a review. Symbiote writes it into symbiote/AGENTS.md beside the reviews, ' +
       'and rewrites the file when it differs.',
     placeholders: [],
     max: MAX_TEXT,
@@ -282,7 +282,7 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     title: 'Instructions',
     about:
       "The merger's system prompt, for every conflict; the conflict, the sides' titles and " +
-      'cpr/merge.md follow in its prompt.',
+      'symbiote/merge.md follow in its prompt.',
     placeholders: [],
     max: MAX_TEXT,
     fixed: MERGER_ANSWER,
@@ -298,7 +298,7 @@ export function fillPrompt(text: string, values: Readonly<Record<string, string>
 
 /** The prompts in use (V28), from the project's config. */
 export interface ProjectPrompts {
-  /** The config file, repo-relative: the one read, or `cpr/config.json` when there is none. */
+  /** The config file, repo-relative: the one read, or `symbiote/config.json` when there is none. */
   file: string;
   /** Its text; null when there is no file. */
   source: string | null;
@@ -335,7 +335,7 @@ function valueAt(prompts: unknown, key: PromptKey): unknown {
   return value;
 }
 
-/** `prompts` from `cpr/config.json` (else `cpr.config.json`) at `root`, each checked (V28). */
+/** `prompts` from `symbiote/config.json` (else `symbiote.config.json`) at `root`, each checked (V28). */
 export function readPrompts(root: string): ProjectPrompts {
   const found = CONFIG_FILES.find((name) => existsSync(join(root, name)));
   let source: string | null = null;
@@ -362,7 +362,7 @@ export function readPrompts(root: string): ProjectPrompts {
   try {
     prompts = (JSON.parse(source) as { prompts?: unknown } | null)?.prompts;
   } catch {
-    return { ...read, warning: `${file} is not JSON: CPR's prompts are used` };
+    return { ...read, warning: `${file} is not JSON: Symbiote's prompts are used` };
   }
   for (const key of PROMPT_KEYS) {
     const value = valueAt(prompts, key);
@@ -378,7 +378,7 @@ export function readPrompts(root: string): ProjectPrompts {
         ? 'is not text (a string, or a list of lines)'
         : problemOf(key, normalized(given));
     if (given === null || problem) {
-      read.warnings[key] = `prompts.${key} ${problem}: CPR's is used`;
+      read.warnings[key] = `prompts.${key} ${problem}: Symbiote's is used`;
       continue;
     }
     text[key] = normalized(given);
@@ -412,7 +412,7 @@ function formatting(source: string): FormattingOptions {
 let writing: Promise<unknown> = Promise.resolve();
 
 /**
- * Sets `key`'s prompt in the project's config, or removes it (`null`, or CPR's own text), with
+ * Sets `key`'s prompt in the project's config, or removes it (`null`, or Symbiote's own text), with
  * the rest of the file as it was (decision 167); an emptied section is removed with it.
  */
 export function writePrompt(root: string, change: PromptChange): Promise<void> {
@@ -507,7 +507,7 @@ export function parsePromptChange(body: string): PromptChange {
     throw new Error(`key: one of ${PROMPT_KEYS.join(', ')}`);
   }
   if (text !== null && typeof text !== 'string') {
-    throw new Error("text: the prompt, or null for CPR's");
+    throw new Error("text: the prompt, or null for Symbiote's");
   }
   if (typeof version !== 'string') throw new Error('version: as the prompts were read');
   return { key: key as PromptKey, text, version };

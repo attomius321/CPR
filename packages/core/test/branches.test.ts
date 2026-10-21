@@ -202,10 +202,14 @@ describe('userEmail', () => {
 describe('trackedFiles', () => {
   it('lists what git tracks in a folder, from anywhere in the repository', async () => {
     const { repo } = fresh();
-    repo.write({ 'cpr/config.json': '{}\n', 'cpr/reviews/x.json': '{}\n', 'src/cpr.ts': '' });
-    repo.git('add', 'cpr/config.json', 'src/cpr.ts');
+    repo.write({
+      'symbiote/config.json': '{}\n',
+      'symbiote/reviews/x.json': '{}\n',
+      'src/symbiote.ts': '',
+    });
+    repo.git('add', 'symbiote/config.json', 'src/symbiote.ts');
     const open = await openRepo(repo.root);
-    expect(await trackedFiles(open, 'cpr')).toEqual(['cpr/config.json']);
+    expect(await trackedFiles(open, 'symbiote')).toEqual(['symbiote/config.json']);
     expect(await trackedFiles(open, 'none')).toEqual([]);
   });
 });

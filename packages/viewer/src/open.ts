@@ -1,4 +1,4 @@
-import type { GraphNode } from '@cpr/core';
+import type { GraphNode } from '@symbiote/core';
 import type { Anchor, Side } from './comments.js';
 import type { DiffRow } from './detail.js';
 
@@ -59,11 +59,11 @@ export async function openInEditor(target: OpenTarget): Promise<OpenAnswer> {
   try {
     response = await fetch('./api/open', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-cpr': '1' },
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
       body: JSON.stringify(target),
     });
   } catch {
-    return { ok: false, error: 'cpr is not running: VS Code could not be asked to open it' };
+    return { ok: false, error: 'symbiote is not running: VS Code could not be asked to open it' };
   }
   const text = await response.text();
   let value: unknown;

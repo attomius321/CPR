@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Graph } from '@cpr/core';
+import type { Graph } from '@symbiote/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createBranchedRepo, tempDir } from '../../core/test/helpers/git-repo.js';
 import { mockApi } from '../../forge/test/mock-api.js';
@@ -29,7 +29,7 @@ function cloneAs(bare: string, url: string, { copyObjects = true } = {}): string
   return local;
 }
 
-describe('cpr pr', () => {
+describe('symbiote pr', () => {
   const { repo, shas } = createBranchedRepo();
   const bare = tempDir();
   const cache = tempDir();
@@ -107,7 +107,7 @@ describe('cpr pr', () => {
   /** More environment for the next runs, e.g. a CI job's. */
   let jobEnv: Record<string, string> = {};
 
-  async function cpr(cwd: string, ...argv: string[]) {
+  async function symbiote(cwd: string, ...argv: string[]) {
     let stdout = '';
     let stderr = '';
     const code = await run(argv, {
@@ -121,7 +121,7 @@ describe('cpr pr', () => {
         GITHUB_TOKEN: 'ghp_test',
         GITLAB_API_URL: api.url,
         GITLAB_TOKEN: 'glpat-test',
-        CPR_CACHE_DIR: cache,
+        SYMBIOTE_CACHE_DIR: cache,
         ...jobEnv,
       },
     });
@@ -131,7 +131,7 @@ describe('cpr pr', () => {
   it('reviews a GitHub pull request', async () => {
     const local = cloneAs(bare, 'https://github.com/acme/widgets.git');
     dirs.push(local);
-    const { code, stdout, stderr } = await cpr(local, 'pr', '7', '--summary');
+    const { code, stdout, stderr } = await symbiote(local, 'pr', '7', '--summary');
     expect(stderr).toContain('#7 Add widgets (open, by ada)');
     expect(code).toBe(0);
     const [title, revisions, counts] = stdout.split('\n');
@@ -141,13 +141,13 @@ describe('cpr pr', () => {
     );
     expect(counts).toBe('4 files changed · 3 symbols changed: 1 added, 2 modified');
     // The pull request's head was fetched into a local ref.
-    expect(git(local, 'rev-parse', 'refs/cpr/github/7/head')).toBe(shas.feature);
+    expect(git(local, 'rev-parse', 'refs/symbiote/github/7/head')).toBe(shas.feature);
   });
 
   it("reviews a GitLab merge request as JSON, diffed against GitLab's base", async () => {
     const local = cloneAs(bare, 'https://gitlab.example.com/acme/tools/widgets.git');
     dirs.push(local);
-    const { code, stdout } = await cpr(local, 'mr', '!7', '--json');
+    const { code, stdout } = await symbiote(local, 'mr', '!7', '--json');
     expect(code).toBe(0);
     const graph = JSON.parse(stdout) as Graph;
     expect(graph.changeRequest).toEqual({
@@ -166,12 +166,12 @@ describe('cpr pr', () => {
 
   const posts = (path: string) =>
     api.requests.filter((r) => r.method === 'POST' && r.path.startsWith(path));
-  const marker = '<!-- cpr:finding orphan%2Dadded%3Asrc%2Fadded.ts%23added -->';
+  const marker = '<!-- symbiote:finding orphan%2Dadded%3Asrc%2Fadded.ts%23added -->';
 
   it('posts new findings to a GitHub pull request, once', async () => {
     const local = cloneAs(bare, 'https://github.com/acme/widgets.git');
     dirs.push(local);
-    const first = await cpr(local, 'pr', '7', '--post-findings', 'warning');
+    const first = await symbiote(local, 'pr', '7', '--post-findings', 'warning');
     expect(first.code).toBe(0);
     expect(first.stdout).toContain('orphan-added  src/added.ts#added'); // the summary, as usual
     expect(first.stderr).toContain(
@@ -181,7 +181,7 @@ describe('cpr pr', () => {
     expect(review?.body).toEqual({
       commit_id: shas.feature,
       event: 'COMMENT',
-      body: '**CPR** · 1 new finding (1 warning)',
+      body: '**Symbiote** · 1 new finding (1 warning)',
       comments: [
         {
           path: 'src/added.ts',
@@ -192,7 +192,7 @@ describe('cpr pr', () => {
       ],
     });
 
-    const second = await cpr(local, 'pr', '7', '--post-findings', 'warning');
+    const second = await symbiote(local, 'pr', '7', '--post-findings', 'warning');
     expect(second.stderr).toContain('No new findings to post (1 already posted)');
     expect(posts('/repos/acme/widgets/pulls/7/reviews')).toHaveLength(1);
   });
@@ -202,12 +202,12 @@ describe('cpr pr', () => {
     refuseInline = true;
     const local = cloneAs(bare, 'https://github.com/acme/widgets.git');
     dirs.push(local);
-    const { stderr } = await cpr(local, 'pr', '7', '--post-findings', 'warning');
+    const { stderr } = await symbiote(local, 'pr', '7', '--post-findings', 'warning');
     refuseInline = false;
     expect(stderr).toContain('warning: inline comments were refused');
     expect(stderr).toContain('Posted 1 finding');
     expect(reviews.github).toEqual([
-      '**CPR** · 1 new finding (1 warning)\n\n' +
+      '**Symbiote** · 1 new finding (1 warning)\n\n' +
         `- ⚠ **orphan-added** \`src/added.ts#added\`: added is new and nothing references it ${marker}`,
     ]);
   });
@@ -216,7 +216,7 @@ describe('cpr pr', () => {
     const local = cloneAs(bare, 'https://gitlab.example.com/acme/tools/widgets.git');
     dirs.push(local);
     const args = ['mr', '7', '--post-findings', 'warning', '--fail-on', 'warning'];
-    const first = await cpr(local, ...args);
+    const first = await symbiote(local, ...args);
     expect(first.code).toBe(1);
     const drafts = posts('/projects/acme%2Ftools%2Fwidgets/merge_requests/7/draft_notes');
     expect(drafts.map((r) => r.path.split('/').pop())).toEqual([
@@ -233,7 +233,7 @@ describe('cpr pr', () => {
       },
     });
 
-    const second = await cpr(local, ...args);
+    const second = await symbiote(local, ...args);
     expect(second).toMatchObject({ code: 1 });
     expect(second.stderr).toContain('No new findings to post (1 already posted)');
     expect(posts('/projects/acme%2Ftools%2Fwidgets/merge_requests/7/draft_notes')).toHaveLength(3);
@@ -250,7 +250,7 @@ describe('cpr pr', () => {
     const local = cloneAs(bare, 'https://github.com/acme/widgets.git', { copyObjects: false });
     dirs.push(local);
     expect(() => git(local, 'cat-file', '-e', previous)).toThrow();
-    const { code, stdout } = await cpr(local, 'pr', '7', '--summary', '--since', previous);
+    const { code, stdout } = await symbiote(local, 'pr', '7', '--summary', '--since', previous);
     expect(code).toBe(0);
     expect(stdout).toContain(`since ${previous} (${previous.slice(0, 7)}): 2 new, 1 updated\n`);
     expect(stdout).toContain('~ variable    a  (body)  [updated]');
@@ -263,7 +263,7 @@ describe('cpr pr', () => {
     const event = join(local, '.git', 'event.json');
     writeFileSync(event, JSON.stringify({ pull_request: { number: 7 } }));
     jobEnv = { GITHUB_EVENT_PATH: event };
-    const { code, stderr } = await cpr(local, 'pr', '--summary');
+    const { code, stderr } = await symbiote(local, 'pr', '--summary');
     jobEnv = {};
     expect(code).toBe(0);
     expect(stderr).toContain('#7 Add widgets');
@@ -289,8 +289,8 @@ describe('cpr pr', () => {
     };
     const before = api.requests.length;
     const report = join(local, 'gl-code-quality-report.json');
-    const run = await cpr(local, 'mr', '--summary', '--codequality', report);
-    const posting = await cpr(local, 'mr', '--post-findings', 'warning');
+    const run = await symbiote(local, 'mr', '--summary', '--codequality', report);
+    const posting = await symbiote(local, 'mr', '--post-findings', 'warning');
     jobEnv = {};
 
     expect(run.code).toBe(0);
@@ -311,17 +311,17 @@ describe('cpr pr', () => {
   });
 
   it('reports usage errors and missing remotes', async () => {
-    const missing = await cpr(repo.root, 'pr');
+    const missing = await symbiote(repo.root, 'pr');
     expect(missing.code).toBe(2);
     expect(missing.stderr).toContain('missing <number> (and not in a pull/merge request CI job)');
-    expect((await cpr(repo.root, 'pr', 'abc')).stderr).toContain(
+    expect((await symbiote(repo.root, 'pr', 'abc')).stderr).toContain(
       "not a pull/merge request number: 'abc'",
     );
-    expect((await cpr(repo.root, 'pr', '7', '--forge', 'bitbucket')).code).toBe(2);
-    expect((await cpr(repo.root, 'pr', '7', '--post-findings', 'all')).stderr).toContain(
+    expect((await symbiote(repo.root, 'pr', '7', '--forge', 'bitbucket')).code).toBe(2);
+    expect((await symbiote(repo.root, 'pr', '7', '--post-findings', 'all')).stderr).toContain(
       "--post-findings must be error, warning or info, got 'all'",
     );
-    const noRemote = await cpr(repo.root, 'pr', '7');
-    expect(noRemote).toMatchObject({ code: 1, stderr: "cpr: no git remote named 'origin'\n" });
+    const noRemote = await symbiote(repo.root, 'pr', '7');
+    expect(noRemote).toMatchObject({ code: 1, stderr: "symbiote: no git remote named 'origin'\n" });
   });
 });

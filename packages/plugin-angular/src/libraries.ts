@@ -1,5 +1,5 @@
 import { dirname, join, posix } from 'node:path';
-import type { PluginContext, ts } from '@cpr/core';
+import type { PluginContext, ts } from '@symbiote/core';
 import type { NgClass, NgKind } from './classes.js';
 
 type TS = PluginContext['ts'];
@@ -110,7 +110,7 @@ export function libraryClasses(context: PluginContext): Libraries {
     const more = names.length > 3 ? ` and ${names.length - 3} more` : '';
     warnings.push(
       `${names.length} Angular library ${names.length === 1 ? 'class has' : 'classes have'} ` +
-        `metadata in a form CPR cannot read, so templates do not match ${names.length === 1 ? 'it' : 'them'}: ` +
+        `metadata in a form Symbiote cannot read, so templates do not match ${names.length === 1 ? 'it' : 'them'}: ` +
         `${names.slice(0, 3).join(', ')}${more}`,
     );
   }

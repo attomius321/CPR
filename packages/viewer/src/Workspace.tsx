@@ -6,7 +6,7 @@ import type {
   WorkspaceSummary,
   WorkspaceThread,
   TerminalAvailability,
-} from '@cpr/core';
+} from '@symbiote/core';
 import { AgentTerminal, toTerminal, type OpenedTerminal } from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { ChangesPanel } from './ChangesPanel.js';
@@ -58,7 +58,7 @@ const viewOfUrl = (): View | null => {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-const CHANGES_KEY = 'cpr.viewer.changes';
+const CHANGES_KEY = 'symbiote.viewer.changes';
 
 /** Whether the person hid the changes panel (V29d), kept in this browser; shown by default. */
 function loadChangesShown(): boolean {
@@ -239,7 +239,7 @@ const timeOf = (at: string) =>
  * What the agent was told and reported, newest last; what it waits on as a line. It opens at its
  * end and follows new entries; a read with nothing new leaves it where the person scrolled. The
  * agent's reports are drawn as Markdown (plain text until the lexer is loaded); the person's
- * messages and CPR's prompt as written.
+ * messages and Symbiote's prompt as written.
  */
 function Thread({ thread, worktree }: { thread: WorkspaceThread | null; worktree: string }) {
   const list = useRef<HTMLOListElement>(null);
@@ -253,7 +253,9 @@ function Thread({ thread, worktree }: { thread: WorkspaceThread | null; worktree
   return (
     <>
       {!thread.recorded && (
-        <p className="hint">CPR keeps an agent's messages from V18c on: Talk shows this one's.</p>
+        <p className="hint">
+          Symbiote keeps an agent's messages from V18c on: Talk shows this one's.
+        </p>
       )}
       {thread.recorded && items.length === 0 && (
         <p className="hint">Nothing yet: the agent's reports and your messages show here.</p>
@@ -269,12 +271,12 @@ function Thread({ thread, worktree }: { thread: WorkspaceThread | null; worktree
                 </li>
               );
             }
-            if (item.who === 'cpr') {
+            if (item.who === 'symbiote') {
               return (
-                <li key={key} className="thread-item thread-cpr">
+                <li key={key} className="thread-item thread-symbiote">
                   <details>
                     <summary>
-                      CPR's prompt · <time dateTime={item.at}>{timeOf(item.at)}</time>
+                      Symbiote's prompt · <time dateTime={item.at}>{timeOf(item.at)}</time>
                     </summary>
                     <div className="thread-text">{item.text}</div>
                   </details>
@@ -422,7 +424,7 @@ function WorkspacePanel({
   const verdict = verdictToSend(thread);
   // V21: the agent's own session in a terminal, where one can run: the panel opens on it, and the
   // thread is its history, read only (one way to answer the agent: the box stops its session).
-  // Claude Code's, and Codex's on its app server (V27b): through CPR's runner, Codex's turns in a
+  // Claude Code's, and Codex's on its app server (V27b): through Symbiote's runner, Codex's turns in a
   // terminal would not reach its thread (decision 133).
   const terminals = opensTerminal(agent, terminal);
   const talk = talkCommand(agent, workspace.worktree.path);

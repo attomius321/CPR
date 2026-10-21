@@ -1,6 +1,6 @@
-# CPR Journal
+# Symbiote Journal
 
-Everything we run into while building CPR: discoveries, decisions made on the way, gotchas,
+Everything we run into while building Symbiote: discoveries, decisions made on the way, gotchas,
 measurements and open issues. Newest milestone last. The plan ([PLAN.md](./PLAN.md)) holds the
 settled design; this file holds the story and the evidence.
 
@@ -27,7 +27,7 @@ merge commit.
   `ignoreDeprecations: "6.0"`); TS 7 removes them.
 
 **Decisions**
-- Dev typecheck uses `paths` to point `@cpr/core` at its sources (no build needed); the build
+- Dev typecheck uses `paths` to point `@symbiote/core` at its sources (no build needed); the build
   config resolves through `node_modules` like at runtime. Vitest uses an alias for the same.
 - Prettier ignores Markdown so the docs keep hand-written tables.
 
@@ -45,7 +45,7 @@ merge commit.
 - Worktrees are a **slot pool** (`<cache>/worktrees/<repo-id>/<role>-<n>`) instead of one
   checkout per SHA: bounded disk, and `git checkout --detach` only rewrites changed files.
   Slots are locked with pid files; dead-pid locks are taken over.
-- `cpr diff` resolves user refs with `rev-parse --verify --end-of-options <ref>^{commit}`, so a
+- `symbiote diff` resolves user refs with `rev-parse --verify --end-of-options <ref>^{commit}`, so a
   ref can never be read as an option; every later git call uses resolved SHAs.
 
 **Gotchas**
@@ -58,7 +58,7 @@ merge commit.
   `diff.external`, `color.ui=always`) cannot change the output we parse.
 
 **Open**
-- Slots appear in `git worktree list` of the user's repo. Consider a `cpr cache clean` command.
+- Slots appear in `git worktree list` of the user's repo. Consider a `symbiote cache clean` command.
 - Stale-lock takeover has a narrow race if two runs recover the same dead lock at once.
 
 ## M2 — Symbol extraction (2026-10-01)
@@ -115,7 +115,7 @@ merge commit.
 - `analyzeGit` / `analyzeDirectories` pipeline: changed files → slots → projects → extract →
   diff. Projects are skipped entirely when no source file changed.
 - `listChangedFilesInDirectories` for fixtures (exact-content rename detection).
-- `cpr diff` now prints changed symbols per file (`+` added, `-` removed, `~` modified,
+- `symbiote diff` now prints changed symbols per file (`+` added, `-` removed, `~` modified,
   `→` moved) and takes `--project`.
 
 **Decisions**
@@ -123,7 +123,7 @@ merge commit.
 - A rename is a signature change (the name is part of the contract); a pure file move is not.
 - `SymbolDecl.bodySize` (normalized body tokens) exists so tiny bodies (`{}`) never prove a move.
 
-**Dogfood (CPR on itself, M1 → M2: 25 files, 106 symbols)**: ~1.0 s end to end.
+**Dogfood (Symbiote on itself, M1 → M2: 25 files, 106 symbols)**: ~1.0 s end to end.
 
 **Bugs found by dogfooding**
 - Crash `Cannot read properties of undefined (reading 'escapedName')` in
@@ -132,13 +132,13 @@ merge commit.
   read source files back from the built program (only the program's copy is bound). Checker
   queries now degrade to `?` instead of crashing. Regression test:
   `fixtures/extract/esm-outside-config`.
-- CLI tests wrote worktree slots into the real `~/.cache/cpr`, leaving orphans for deleted temp
-  repos. Tests now set `CPR_CACHE_DIR`.
+- CLI tests wrote worktree slots into the real `~/.cache/symbiote`, leaving orphans for deleted temp
+  repos. Tests now set `SYMBIOTE_CACHE_DIR`.
 
 **Open**
 - Worktrees have no `node_modules`, so types from dependencies infer as `any` (M4).
 - Files the program drops are skipped silently; surface them as analysis warnings (M6).
-- Orphan slots of deleted repos accumulate in the cache → `cpr cache clean`.
+- Orphan slots of deleted repos accumulate in the cache → `symbiote cache clean`.
 
 ## M4 — References and edges (2026-10-01)
 
@@ -152,7 +152,7 @@ merge commit.
   reference endpoints always match extracted IDs. Top-level code is `file#(module)`.
 - Externals `<package>#<name>`, unresolved calls `unknown:<callee>`, lib globals skipped.
 - Pipeline: both sides' references, base→head ID renaming for moves, context nodes,
-  `--depth`, warnings. `cpr diff` shows `· used by N` per changed symbol.
+  `--depth`, warnings. `symbiote diff` shows `· used by N` per changed symbol.
 - Loader: all tsconfigs in the repo, workspace packages → sources via `paths`, `node_modules`
   symlinked into slots, changed files added before the program is built.
 
@@ -171,7 +171,7 @@ merge commit.
 - `extract()` used to add missing files on demand; that rebuilds the program and invalidates
   every node held so far. Files now go to `load({ files })`.
 
-**Dogfood (CPR on itself, M3 → M4 branch: 38 files, 115 changed symbols, 606 edges)**
+**Dogfood (Symbiote on itself, M3 → M4 branch: 38 files, 115 changed symbols, 606 edges)**
 - 3.7 s end to end. Per side: load 1.4 s (301 program files, mostly lib + ts-morph `.d.ts`),
   extract 0.17 s, incoming 0.6 s (549 refs), outgoing 0.3 s (1334 refs).
 - Cross-package edge `packages/cli/src/main.ts#diff → packages/core/src/pipeline.ts#analyzeGit`
@@ -195,7 +195,7 @@ Full write-up: [spikes/ts7/README.md](../spikes/ts7/README.md).
 
 | Project | Files | Symbols | Load ts-morph → TS 7 | Search ts-morph → TS 7 | Use sites agree |
 |---|---|---|---|---|---|
-| CPR `packages/core` | 226 | 156 | 1075 → 156 ms | 496 → 141 ms | 588 vs 587 |
+| Symbiote `packages/core` | 226 | 156 | 1075 → 156 ms | 496 → 141 ms | 588 vs 587 |
 | zod `packages/zod` | 380 | 2517 | 1521 → 404 ms | 13 858 → 8 721 ms | 30 421 vs 30 396 |
 
 **Discoveries**
@@ -210,7 +210,7 @@ Full write-up: [spikes/ts7/README.md](../spikes/ts7/README.md).
 **Decision:** stay on ts-morph for v1 (PLAN decision #9). Revisit when the API is stable or
 offers batched reference search; load time is where TS 7 wins most.
 
-**Also learned:** CPR's own reference search cost scales with symbols × files; on zod a
+**Also learned:** Symbiote's own reference search cost scales with symbols × files; on zod a
 whole-package sweep (2.5k symbols) takes ~14 s with ts-morph. Real PRs touch far fewer
 symbols, but M7 must measure big PRs.
 
@@ -223,9 +223,9 @@ symbols, but M7 must measure big PRs.
   name, or property missing on a typed receiver → `resolved`; JS files or `any` receivers →
   `unknown`. `exposure(revision, symbol)`: `override` (an inherited member of the same name),
   `default-export`, `entry-export` (exported from the package's source entry).
-- `cpr diff` prints a Findings block.
+- `symbiote diff` prints a Findings block.
 - Default ignores (`fixtures/`, `__fixtures__/`, `__snapshots__/`, `generated/`,
-  `*.generated.*`) and `.cprignore`.
+  `*.generated.*`) and `.symbioteignore`.
 
 **Decisions**
 - A dangling name only counts for a removed symbol when the head symbol using it already used
@@ -234,7 +234,7 @@ symbols, but M7 must measure big PRs.
 - Orphan rule skips overrides (called through the base type) and reports an orphan class once.
 - Signature "updated" = the user changed in this PR (or is top-level code of a changed file).
 
-**Dogfood (CPR on itself, M1 → M5)**
+**Dogfood (Symbiote on itself, M1 → M5)**
 - Before ignores: ~20 `orphan-added` warnings, all from test fixtures (fixture code is never
   called). After default ignores: 0 false orphans.
 - Editing a string constant (`DIFF_HELP`) was reported as a **signature** change because a
@@ -243,7 +243,7 @@ symbols, but M7 must measure big PRs.
 - Remaining finding is real: `parse` gained a `const` type parameter (its one caller updated).
 
 **Open**
-- `analyzeGit` decides whether to check out slots before reading `.cprignore` (fixture-only
+- `analyzeGit` decides whether to check out slots before reading `.symbioteignore` (fixture-only
   changes still cost a checkout).
 - The dangling scan reads every head file containing the name; fine for removed symbols with
   distinctive names, slower for `get`/`run`.
@@ -257,7 +257,7 @@ symbols, but M7 must measure big PRs.
 - JSON Schema (draft 2020-12) at `packages/core/schema/graph.schema.json`, exported from the
   package; golden graphs for three fixture pairs are validated with Ajv and snapshotted.
 - CLI: `--json`, `--out <file>`, `--fail-on <error|warning|info>`; exit codes 0/1/2.
-- CI dogfoods every push: `cpr diff HEAD~1` on CPR itself (`fetch-depth: 2`).
+- CI dogfoods every push: `symbiote diff HEAD~1` on Symbiote itself (`fetch-depth: 2`).
 
 **Decisions**
 - Folder comparisons keep `sha`/`mergeBase`/`from` as `null` rather than inventing values.
@@ -311,15 +311,15 @@ No `removed-still-referenced` or `orphan-added` false positives showed up on the
 **Open / next**
 - Loading both programs is ~70 % of the time → reuse one program across sides (incremental).
 - Union-aware compatibility (adding a union member is additive, removing one breaks producers).
-- zod's `docs/`, `bench/` configs load into the program; per-repo `.cprignore` can trim them.
+- zod's `docs/`, `bench/` configs load into the program; per-repo `.symbioteignore` can trim them.
 - Commits only exercise "merged and green" code; PR heads with real mistakes would exercise
-  `removed-still-referenced` better (phase 3, `cpr pr`).
+  `removed-still-referenced` better (phase 3, `symbiote pr`).
 
 ## V1 — Viewer app (2026-10-01)
 
 **What landed**
 - `packages/viewer`: Vite 8 + React 19 + `@xyflow/react` 12 + `@dagrejs/dagre` 3. Loads a graph
-  from `?graph=<url>`, from `./api/graph` (for `cpr view`), or a dropped/chosen JSON file.
+  from `?graph=<url>`, from `./api/graph` (for `symbiote view`), or a dropped/chosen JSON file.
 - `toFlow(graph, { typeReferences, context })` (pure, unit-tested on the engine's golden graphs):
   symbols colored by tone (added, removed, modified, moved, context, external, unknown), delta
   tags, finding badges, edges styled by side (added green, removed dashed red, kept gray) and
@@ -344,17 +344,17 @@ No `removed-still-referenced` or `orphan-added` false positives showed up on the
 - A real ky commit (25 changed symbols, 58 context) is readable when zoomed, but the overview
   is dense → V4 adds focus (jump to finding, neighbourhood only).
 
-## V2 — `cpr view` (2026-10-01)
+## V2 — `symbiote view` (2026-10-01)
 
 **What landed**
-- `cpr view <base> [head] [--port] [--no-open]`: runs the same analysis as `diff`, serves the
+- `symbiote view <base> [head] [--port] [--no-open]`: runs the same analysis as `diff`, serves the
   built viewer + `/api/graph` + `/api/source` on `127.0.0.1`, opens the browser, stops on
   Ctrl+C. Startup line: `15 files · 25 symbols changed · 3 findings` + URL.
 - `startViewServer` (testable without a CLI process): static files confined to the viewer
   folder (`..` and `%2e%2e` refused), sources only for files the graph mentions, read with
   `git show <sha>:<path>` (`readFileAtRevision` in core).
 - `CliContext` gained `openUrl` and `waitForExit` so tests drive the long-running command;
-  `CPR_VIEWER_DIR` points at another viewer build (tests, development).
+  `SYMBIOTE_VIEWER_DIR` points at another viewer build (tests, development).
 - `diff` and `view` share option parsing and the analysis call.
 
 **Decisions**
@@ -363,7 +363,7 @@ No `removed-still-referenced` or `orphan-added` false positives showed up on the
 - Context nodes carry only their head side, so base sources are served only for files that
   changed (or base-side symbols).
 
-**Verified**: `cpr view` on a ky commit served the viewer, the graph and the head/base sources.
+**Verified**: `symbiote view` on a ky commit served the viewer, the graph and the head/base sources.
 
 **Gotcha**: `pkill -f "bin.js view"` also matches the shell running the command; kill by PID.
 
@@ -377,10 +377,10 @@ No `removed-still-referenced` or `orphan-added` false positives showed up on the
   canvas closes it.
 - Pure helpers with tests: `symbolDetail` (neighbours by edge side, findings, mentions),
   `excerpt` (range → whole lines, dedented), `diffRows` (unified rows via the `diff` package).
-- Sources come from `cpr view`'s `/api/source`, fetched once per side and file; a graph opened
+- Sources come from `symbiote view`'s `/api/source`, fetched once per side and file; a graph opened
   from a file shows a hint instead.
 
-**Verified end to end** (Playwright + Chromium against a real `cpr view` on ky): an added method
+**Verified end to end** (Playwright + Chromium against a real `symbiote view` on ky): an added method
 shows its code as all-added rows; a modified method (`Ky.#retry`) shows the removed type
 parameter in the signature and the exact changed lines.
 
@@ -393,7 +393,7 @@ parameter in the signature and the exact changed lines.
 - Sidebar with two tabs: **Changes** (changed symbols in reading order, grouped by file, each
   with a "reviewed" checkbox and a progress bar `2/25`) and **Findings** (by severity; a click
   selects the symbol). Opens on Findings when there are any.
-- Reviewed marks persist in `localStorage` per revision pair (`cpr:reviewed:<base>..<head>`), so
+- Reviewed marks persist in `localStorage` per revision pair (`symbiote:reviewed:<base>..<head>`), so
   a new push starts fresh; storage failures (private windows) degrade to session-only.
 - **Focus** mode (toggle or `f`): only the selected symbol and its 1-hop neighbourhood.
 - Keyboard: `j`/`k` next/previous change, `r` toggle reviewed, `f` focus, `Esc` close. Ignored
@@ -412,7 +412,7 @@ parameter in the signature and the exact changed lines.
 
 **What landed**
 - Playwright end-to-end suite (`pnpm test:e2e`, `packages/viewer/e2e`): builds a git repo from
-  the detectors fixture (base and head commits), starts the built `cpr view`, and checks the
+  the detectors fixture (base and head commits), starts the built `symbiote view`, and checks the
   summary badges, node tones, finding → panel → code diff → neighbour navigation, `j`/`k`/`r`
   with reviewed marks surviving a reload, and focus mode. Any page error fails a test.
 - CI runs it on the Linux / Node 24 job (`playwright install --with-deps chromium`); locally the
@@ -426,7 +426,7 @@ parameter in the signature and the exact changed lines.
 | zod 413cce9a | 212 | 510 ms | 309 ms | 88 ms |
 | vite 744269e5 | 192 | 432 ms | 214 ms | 111 ms |
 
-The analysis (~7 s) dominates `cpr view` startup; the UI itself is fast at this size.
+The analysis (~7 s) dominates `symbiote view` startup; the UI itself is fast at this size.
 
 **Observed while reviewing**
 - Test files often show up as `… (top level)` users of a changed signature (describe/it blocks
@@ -438,19 +438,19 @@ The analysis (~7 s) dominates `cpr view` startup; the UI itself is fast at this 
 
 Request: "It should also work with GitLab." Phase 3 now targets both forges through a forge
 adapter (PLAN §12, Phase 3 milestones). This session can only reach the GitHub API for
-`attomius321/CPR` (no PRs there), and no GitLab instance, so both adapters are tested against
+`attomius321/Symbiote` (no PRs there), and no GitLab instance, so both adapters are tested against
 local mock servers; `GITHUB_API_URL` / `GITLAB_API_URL` point the CLI at them.
 
-## G1 — `cpr pr` for GitHub and GitLab (2026-10-01)
+## G1 — `symbiote pr` for GitHub and GitLab (2026-10-01)
 
 **What landed**
-- New package `@cpr/forge` (network code stays out of the engine): `parseRemote` (https, ssh,
-  scp-like, credentials in URLs), `detectForge` (host name → `--forge` → `CPR_FORGE`),
+- New package `@symbiote/forge` (network code stays out of the engine): `parseRemote` (https, ssh,
+  scp-like, credentials in URLs), `detectForge` (host name → `--forge` → `SYMBIOTE_FORGE`),
   `GitHubForge` (incl. Enterprise `https://<host>/api/v3`; token from `GITHUB_TOKEN`,
   `GH_TOKEN`, or `gh auth token`) and `GitLabForge` (nested groups, URL-encoded project path,
   `PRIVATE-TOKEN` or CI `JOB-TOKEN`). Errors say which token to set, or that access is missing.
 - Core: `remoteUrl` (reads `remote.<name>.url` from config, before `insteadOf`), `fetchRefs`.
-- `cpr pr <n>` / `cpr mr !<n>`: API → fetch head + target branch into `refs/cpr/<forge>/<n>/…`
+- `symbiote pr <n>` / `symbiote mr !<n>`: API → fetch head + target branch into `refs/symbiote/<forge>/<n>/…`
   → analyze → viewer (or `--summary` / `--json` / `--fail-on`). Graph gains optional
   `changeRequest` (schema + viewer header link).
 - `CliContext.env` carries tokens and settings; the worktree cache also resolves from it.
@@ -463,7 +463,7 @@ local mock servers; `GITHUB_API_URL` / `GITLAB_API_URL` point the CLI at them.
   tests: a bare repo stands in for github.com / gitlab).
 
 **Testing**: local mock APIs for both forges (headers, mapping, 401/404 messages) and full
-`cpr pr`/`cpr mr` runs against a bare "forge" repo whose `refs/pull/7/head` and
+`symbiote pr`/`symbiote mr` runs against a bare "forge" repo whose `refs/pull/7/head` and
 `refs/merge-requests/7/head` point at the feature branch.
 
 **Open**: self-hosted forges on non-standard ports need `GITHUB_API_URL` / `GITLAB_API_URL`
@@ -479,14 +479,14 @@ local mock servers; `GITHUB_API_URL` / `GITLAB_API_URL` point the CLI at them.
   "**Changes requested.**" marker and `unapprove`. If GitLab rejects a draft midway, the drafts
   already created are deleted, so no half review lingers.
 - Server: `GET /api/capabilities` (`{sources, review: {forge} | null}`) and `POST /api/review`
-  (`cpr pr` only), with a JSON body limit and validation (event, sides, files of the change,
+  (`symbiote pr` only), with a JSON body limit and validation (event, sides, files of the change,
   positive lines, non-empty bodies). All endpoints now check `Host` (DNS rebinding).
 - Viewer: a Comments section in the detail panel (drafts, a box, `Ctrl/⌘+Enter`, `c` to focus),
   clickable +/− lines that move the anchor, a Review tab (drafts, summary, verdict, submit, the
   forge's link or error), 💬 counts in the Changes list. Drafts live in localStorage per
   revision pair, like reviewed marks. Esc in a text field now leaves the field instead of
   closing the panel; checkboxes no longer swallow `j`/`k`.
-- E2E: `cpr pr 7` against a mock GitHub API; two comments (an added line, a removed line), a
+- E2E: `symbiote pr 7` against a mock GitHub API; two comments (an added line, a removed line), a
   reload, request changes, and the exact review GitHub receives.
 
 **Decisions**: anchors (PLAN decision 13), GitLab request changes (decision 14). Comments go on
@@ -505,7 +505,7 @@ multi-line comments (`start_line`) and suggestions are not offered yet.
 ## G3 — Findings as comments (2026-10-01)
 
 **What landed**
-- `cpr pr <n> --post-findings <level>` (GitHub and GitLab): reads the existing comments, works
+- `symbiote pr <n> --post-findings <level>` (GitHub and GitLab): reads the existing comments, works
   out which findings at the level are new, posts them as one `comment` review, prints the
   summary, applies `--fail-on`. No viewer, so it is the CI building block for phase 5.
 - Core: `listChangedLines` (`git diff -U0 -M`, explicit `a/`/`b/` prefixes so user config
@@ -515,7 +515,7 @@ multi-line comments (`start_line`) and suggestions are not offered yet.
   GitLab notes; `per_page=100` pages until a short page (50-page cap).
 - A finding goes on the first changed line of its symbol (head first, base for removed
   symbols); without one it is listed in the summary. Each carries
-  `<!-- cpr:finding <rule:symbol, URI-encoded, dashes too> -->`.
+  `<!-- symbiote:finding <rule:symbol, URI-encoded, dashes too> -->`.
 - If the forge refuses the inline comments, the same findings are posted in the summary, with a
   warning, so a CI job still reports them.
 
@@ -547,11 +547,11 @@ posts nothing, the GitHub 422 fallback, and `--fail-on` still failing after post
   atomically. The viewer saves marks at once and the summary text after a 300 ms pause, one
   write at a time per name, and flushes with `keepalive` on `pagehide`. A graph dropped into the
   viewer still uses browser storage.
-- The write header is now `x-cpr: 1` for every write (review and state).
+- The write header is now `x-symbiote: 1` for every write (review and state).
 
-**Found while testing**: every `cpr view`/`cpr pr` run listens on a new free port, and browser
+**Found while testing**: every `symbiote view`/`symbiote pr` run listens on a new free port, and browser
 storage is per origin — so V4's "remembers reviewed symbols" only ever held within one run.
-The e2e test reloaded the same page, which hid it. The new e2e test restarts `cpr pr` after a
+The e2e test reloaded the same page, which hid it. The new e2e test restarts `symbiote pr` after a
 push (new port) and checks the state is still there.
 
 **Decision**: 17 (review state in the CLI's cache, per change request).
@@ -559,7 +559,7 @@ push (new port) and checks the state is still there.
 ## I2 — `--since`: what changed between two versions of a change (2026-10-01)
 
 **What landed**
-- `analyzeGit({ since })` (all of `cpr diff`, `view`, `pr`): after the main analysis, the
+- `analyzeGit({ since })` (all of `symbiote diff`, `view`, `pr`): after the main analysis, the
   earlier version merge-base(base, since)..since is checked out in the same slots and only
   extracted — same two-pass inference, no references or detectors. Each changed symbol gets
   `new` / `updated` / `same` by `changeFingerprint` (both sides' signature and body hashes, the
@@ -568,7 +568,7 @@ push (new port) and checks the state is still there.
 - Graph schema 0.2.0: top-level `since {ref, sha, dropped}`, node `since`. Goldens differ only
   in the version.
 - Summary: `since <ref> (<sha>): 2 new, 1 updated · 1 no longer changed: …` and `[status]` per
-  symbol. `cpr pr --since <sha>` fetches the sha from the remote when it is not local (protocol
+  symbol. `symbiote pr --since <sha>` fetches the sha from the remote when it is not local (protocol
   v2 serves reachable SHAs; forges keep old heads after force-pushes).
 - Viewer: "Only changes since <sha>" (on by default) hides `same` symbols from the Changes list,
   and so from `j`/`k`, and dims them on the canvas; a chip sums it up; `new`/`updated` tags on
@@ -585,45 +585,45 @@ trivia), so "added a file header" pushes show nothing new — checked in the e2e
 ## C1 — GitHub Action (2026-10-01)
 
 **What landed**
-- `cpr pr` with no number in CI: GitHub Actions' event file (`pull_request`,
+- `symbiote pr` with no number in CI: GitHub Actions' event file (`pull_request`,
   `pull_request_target`, `issue_comment` on a PR) or GitLab's `CI_MERGE_REQUEST_IID`.
 - `action.yml` (composite): inputs `token`, `pull-request`, `post-findings` (default
   `warning`, empty = don't post), `fail-on` (default `error`), `project`, `depth`,
   `working-directory`, `setup-node`; output `graph`. Inputs reach the scripts through `env`,
   never interpolated into shell code.
-- `action/install.sh` builds CPR from the action's own checkout with pnpm 12 via `npx` (the
+- `action/install.sh` builds Symbiote from the action's own checkout with pnpm 12 via `npx` (the
   packages are not published): 8 s from a fresh clone here with a warm pnpm store.
 - `action/run.sh` is shared with the coming GitLab template: deepens shallow clones (the
   merge-base needs history), builds the arguments, tees the summary, writes the step summary
-  and the `graph` output, keeps cpr's exit status.
-- `.github/workflows/cpr.yml`: this repo reviews its pull requests with `uses: ./`; fork PRs
+  and the `graph` output, keeps symbiote's exit status.
+- `.github/workflows/symbiote.yml`: this repo reviews its pull requests with `uses: ./`; fork PRs
   (read-only token) are reviewed without posting.
 
 **Testing**: `run.sh` runs against a stub CLI that echoes its arguments (arguments, exit status,
-step summary, output); the CI-number detection has unit tests and a `cpr pr` run with a GitHub
+step summary, output); the CI-number detection has unit tests and a `symbiote pr` run with a GitHub
 event file. The action itself only runs on a real pull request, and none exist in this repo yet:
 the first PR will be its first live run.
 
 ## C2 — GitLab CI template (2026-10-01)
 
 **What landed**
-- `ci/gitlab/cpr.yml`: a hidden `.cpr` job (node:22, `GIT_DEPTH: 0`, clones CPR at
-  `CPR_VERSION`, builds it with `action/install.sh`, runs the shared `action/run.sh`) and a `cpr`
-  job on `merge_request_event`. Code Quality report as an artifact report; `.cpr/` (graph,
+- `ci/gitlab/symbiote.yml`: a hidden `.symbiote` job (node:22, `GIT_DEPTH: 0`, clones Symbiote at
+  `SYMBIOTE_VERSION`, builds it with `action/install.sh`, runs the shared `action/run.sh`) and a `symbiote`
+  job on `merge_request_event`. Code Quality report as an artifact report; `.symbiote/` (graph,
   summary) as a plain artifact.
 - GitLab forge in CI: the API URL from `CI_API_V4_URL` when the remote is the job's own instance
   (custom ports and relative URLs); without `GITLAB_TOKEN`, the MR comes from the pipeline's
   `CI_MERGE_REQUEST_*` variables (merged-results pipelines name the source commit, others build
   it); commenting and reading comments say plainly that they need `GITLAB_TOKEN` and that the
   job token cannot comment.
-- `--codequality <file>` on `cpr diff` and `cpr pr`: findings as Code Climate issues — severity
+- `--codequality <file>` on `symbiote diff` and `symbiote pr`: findings as Code Climate issues — severity
   error → critical, warning → major, info → info; location: where a removed symbol is still
   used, else the first changed line of the symbol; fingerprint from rule + symbol, so GitLab
   recognises the same issue across pipelines.
 
 **Decision**: 18 (GitLab CI works without a token).
 
-**Testing**: a full `cpr mr` run in a simulated pipeline — the job token in the remote URL, no
+**Testing**: a full `symbiote mr` run in a simulated pipeline — the job token in the remote URL, no
 `GITLAB_TOKEN`, an unreachable API — produces the summary and the Code Quality report with no
 API request, and `--post-findings` fails with the token message. The template itself needs a
 GitLab runner; its YAML is checked and its script is `run.sh`, which has its own tests.
@@ -661,11 +661,11 @@ was updated · 3 test users, 1 not updated"), and `$ZodTypes` lists its producti
 instead of `assignability.test.ts (top level)`. Warnings there: 3 → 2.
 
 **Open**: removing only a re-export from the entry (the symbol itself unchanged) is not
-detected; packages without a source entry (only `dist/` in `main`) have no public API for CPR.
+detected; packages without a source entry (only `dist/` in `main`) have no public API for Symbiote.
 
 ## Angular 11 trial (2026-10-02)
 
-Ran CPR on the Angular RealWorld example app at its Angular 11.2 state (TypeScript 4.1.5, 72 TS
+Ran Symbiote on the Angular RealWorld example app at its Angular 11.2 state (TypeScript 4.1.5, 72 TS
 files, dependencies installed with `npm ci --ignore-scripts --legacy-peer-deps` under Node 22):
 it loads cleanly, ~3–4.6 s per commit, and its real Angular-11-era commits come out right
 (e.g. "Fixed: Tag not saving" → `EditorComponent.submitForm (body)`). Found:
@@ -675,7 +675,7 @@ it loads cleanly, ~3–4.6 s per commit, and its real Angular-11-era commits com
   project showed the same for a property overridden from a shared base class. → R1.
 - **Decorator metadata**: changing `@NgModule({...})` arguments warns "AppRoutingModule changed
   its signature; 1 of 1 user not updated: AppModule".
-- `.cprignore` is read from the analyzed head commit, not the working folder, so an uncommitted
+- `.symbioteignore` is read from the analyzed head commit, not the working folder, so an uncommitted
   file (or a diff of older commits) ignores it; `interfaces/` matches only at the root, unlike
   `.gitignore`.
 
@@ -703,7 +703,7 @@ findings changed**. Every dropped edge was inspected: ky's sibling error classes
 declarations (7), and the Angular app's sibling `ngOnInit` declarations (2 × 11). zod and vite
 were unaffected in these ranges.
 
-**Not done**: templates, `.cprignore` location, `interfaces/` matching, decorator-only changes
+**Not done**: templates, `.symbioteignore` location, `interfaces/` matching, decorator-only changes
 (see the Angular trial above).
 
 ## Fix — diff colours across the full line (2026-10-02, branch `fix/diff-row-width`)
@@ -716,7 +716,7 @@ scrollable content (it failed before: 280 px rows, 447 px of code).
 
 ## Angular templates spike (2026-10-02)
 
-Groundwork for A1–A2 (PLAN), on branch `milestone/a1-angular-templates`. Nothing in CPR changed.
+Groundwork for A1–A2 (PLAN), on branch `milestone/a1-angular-templates`. Nothing in Symbiote changed.
 
 **Parser**: `@angular/compiler` 21.2.25 (`parseTemplate` + `R3TargetBinder` with a
 `SelectorMatcher` of repo directives) runs standalone under Node 22. On one template mixing
@@ -729,7 +729,7 @@ expression still yields the rest of the template.
 - Literal `@` in text (`team@example.com`) parses with block syntax on.
 - **Hang**: block syntax on with `@let` off loops forever on `@let x = 1;`. Use both on (Angular
   ≥ 17) or both off.
-- 22.x requires Node ≥ 22.22.3 (CPR: 22.12); 21.x accepts `^22.12`. Import: 77 ms.
+- 22.x requires Node ≥ 22.22.3 (Symbiote: 22.12); 21.x accepts `^22.12`. Import: 77 ms.
 
 **Counts** (all templates of one checkout; "only by templates" = members whose name no TS file
 reads as `.name`, so approximate):
@@ -757,7 +757,7 @@ base class method called as `this.save()`, a service method reached as `this.aut
 and a method called on a `for…of` loop variable; `this.gone()` had no symbol and a `FooComponent`
 receiver, which is what `danglingTs` reports as a certain removal.
 
-**CPR today on RealWorld commits that touch templates** (no dependencies installed):
+**Symbiote today on RealWorld commits that touch templates** (no dependencies installed):
 
 | Commit | Findings | Why they are wrong |
 |---|---|---|
@@ -775,15 +775,15 @@ analysis must keep working on its own, without it. The A1–A2 plan put template
 relevance, the Angular decorator split and lifecycle exposures inside the TypeScript adapter. It
 now starts with **X1 — Plugins**: generic hooks on the TypeScript adapter (`applies`, `matches`,
 `virtualFiles` with position maps, `extract`, `decoratorArguments`, `exposure`), plugins turned on
-with `--plugin` or `cpr.config.json` (read from the working folder), resolved by name or path,
-isolated on failure. A1–A2 become `@cpr/plugin-angular` on those hooks; `@cpr/core` and
-`@cpr/cli` never depend on Angular, and without the plugin every result stays byte-identical,
+with `--plugin` or `symbiote.config.json` (read from the working folder), resolved by name or path,
+isolated on failure. A1–A2 become `@symbiote/plugin-angular` on those hooks; `@symbiote/core` and
+`@symbiote/cli` never depend on Angular, and without the plugin every result stays byte-identical,
 Angular repos included. Decision 24 records it.
 
 ## X1 — Plugins (2026-10-02, branch `milestone/x1-plugins`)
 
 **What landed** (reviewed and merged with PR #1)
-- `@cpr/core` exports the plugin contract (`TsPlugin`, `PLUGIN_API_VERSION` = 1) and
+- `@symbiote/core` exports the plugin contract (`TsPlugin`, `PLUGIN_API_VERSION` = 1) and
   `createTypescriptAdapter({ plugins })`; `typescriptAdapter` is that factory with no plugins.
   Hooks: `applies`, `matches`, `virtualFiles` (with `map` back to owner and real site),
   `extract`, `decoratorArguments`, `exposure`, `warnings`.
@@ -792,11 +792,11 @@ Angular repos included. Decision 24 records it.
   to the template (or whatever the owner is); declarations inside them are never edge targets.
   Claimed decorators hash their arguments by role. Exposure `framework` is skipped by
   `orphan-added`. Schema 0.5.0: kind `template`, top-level `plugins`.
-- CLI: `--plugin` on diff, view and pr; `cpr.config.json` (`{ "plugins": [...] }`) at the repo
-  root of the working folder; `angular` → `@cpr/plugin-angular`, `.`/`/` → a path; the project's
+- CLI: `--plugin` on diff, view and pr; `symbiote.config.json` (`{ "plugins": [...] }`) at the repo
+  root of the working folder; `angular` → `@symbiote/plugin-angular`, `.`/`/` → a path; the project's
   copy first, then the CLI's. Clear errors for a missing package or file, another API version,
   a module without a plugin, a broken config. Hint on Angular repos with changed `.html`.
-- CI: action input `plugins`, GitLab variable `CPR_PLUGINS` → one `--plugin` each.
+- CI: action input `plugins`, GitLab variable `SYMBIOTE_PLUGINS` → one `--plugin` each.
 
 **Test plugin**: a made-up framework (`@View({ template: './card.tpl', tags })` classes and
 `{{ expression }}` templates), ~200 lines, uses every hook. With it on the fixture: the template
@@ -823,11 +823,11 @@ each of ky, zod and vite, 8 Angular app commits and 3 experiments) give byte-ide
 
 **For A1**: an unresolved call inside a shim is labelled with shim text (`unknown:this.reset`);
 the summary and viewer show template names as `(template)` — both want template-aware labels.
-`@cpr/plugin-angular` must be a dependency of the CLI to be found "next to cpr".
+`@symbiote/plugin-angular` must be a dependency of the CLI to be found "next to symbiote".
 
 ## A1 — Angular plugin: templates see their component (2026-10-02, branch `milestone/x1-plugins`)
 
-**What landed** (on the X1 branch, as asked; merged with PR #1): `@cpr/plugin-angular`, loaded with
+**What landed** (on the X1 branch, as asked; merged with PR #1): `@symbiote/plugin-angular`, loaded with
 `--plugin angular`. Templates become TypeScript shims (`this` is the component) in the analyzed
 program, so TypeScript's own reference search, R1's family filter, inherited members, chains
 and dangling detection cover them unchanged. Template symbols (`x.html#(template)`, inline
@@ -884,7 +884,7 @@ Bitwarden, +18.7 % time (budget 20 %), the same findings as A1, and template edg
 components' files (94 in one commit).
 
 **Learned**
-- A rename is a move to CPR (same body, new name), and nothing checked the *old name* of a moved
+- A rename is a move to Symbiote (same body, new name), and nothing checked the *old name* of a moved
   symbol: a caller left on it was silent — in plain TypeScript too. Found by the A2 experiment
   "rename an input a template still binds"; fixed in core for every language: old declarations
   of moved symbols are checked like removed ones.
@@ -905,16 +905,16 @@ Material) from their `.d.ts` metadata; NgModule and standalone scopes; host dire
 ## Merged: X1, A1–A2 (2026-10-02, PR #1)
 
 X1, A1 and A2 went into main as one pull request (`milestone/x1-plugins`, 10 commits), after
-review. It was the repository's first pull request, so the first run of its own CPR review
+review. It was the repository's first pull request, so the first run of its own Symbiote review
 workflow:
 
-- **The action failed before CPR ran**: `actions/setup-node@v5` enables caching for the package
+- **The action failed before Symbiote ran**: `actions/setup-node@v5` enables caching for the package
   manager `package.json` names (`packageManager: pnpm@…`) and fails when that manager is not
   installed yet ("Unable to locate executable file: pnpm"). Any project with a `packageManager`
-  field would have hit it. Fixed in `action.yml` with `package-manager-cache: false` (CPR
+  field would have hit it. Fixed in `action.yml` with `package-manager-cache: false` (Symbiote
   installs its own pnpm). The action's tests run `run.sh` only, so only a real workflow run
   could show it.
-- **Then CPR reviewed itself**: no errors, 3 `signature-changed` warnings posted as review
+- **Then Symbiote reviewed itself**: no errors, 3 `signature-changed` warnings posted as review
   comments, on `LanguageAdapter` (the new `base` parameter of `dangling`), `Exposure`
   (`framework`) and `SymbolKind` (`template`). Each was checked: the code that calls or branches
   on them was updated in the same change; the "users not updated" only hold or carry the type.
@@ -923,14 +923,14 @@ workflow:
   exact members.
 
 
-## Fix — `.cprignore` from the working folder, with gitignore's rules (2026-10-02, branch `fix/cprignore`)
+## Fix — `.symbioteignore` from the working folder, with gitignore's rules (2026-10-02, branch `fix/symbioteignore`)
 
-Both found in the Angular 11 trial, where `interfaces/` in a `.cprignore` did not ignore the
+Both found in the Angular 11 trial, where `interfaces/` in a `.symbioteignore` did not ignore the
 nested `interfaces` folders of a monorepo:
 
-- **Where it is read**: `analyzeGit` read `.cprignore` from the checkout of the analyzed head
+- **Where it is read**: `analyzeGit` read `.symbioteignore` from the checkout of the analyzed head
   commit, so an uncommitted file — or a diff of two older commits — went by another file or none.
-  It is now read from the working folder's repository root (like `cpr.config.json`) and passed
+  It is now read from the working folder's repository root (like `symbiote.config.json`) and passed
   to the analysis as an `ignore` matcher (`LoadOptions.ignore`, used for both the changed-file
   filter and the program's file list). Comparing two folders still reads the head folder's.
 - **How it matches**: a pattern ending in `/` was anchored at the root (`interfaces/` became
@@ -939,10 +939,10 @@ nested `interfaces` folders of a monorepo:
   anchors; `dir/` matches folders only; a pattern matches a path or any folder above it, so
   `secrets` also ignores `secrets/key.ts`.
 
-Tests: 11 gitignore cases, and an `analyzeGit` test where the committed `.cprignore` says one
+Tests: 11 gitignore cases, and an `analyzeGit` test where the committed `.symbioteignore` says one
 thing and the uncommitted one another (4 of them failed on the old code). The CLI on a nested
-monorepo, with an uncommitted `.cprignore` and a diff of older commits, lists both `interfaces`
-files as `(ignored)`. The 29 R1 comparisons (no `.cprignore` in those repos) are unchanged.
+monorepo, with an uncommitted `.symbioteignore` and a diff of older commits, lists both `interfaces`
+files as `(ignored)`. The 29 R1 comparisons (no `.symbioteignore` in those repos) are unchanged.
 
 ## P1 measurement — where load time goes (2026-10-02, branch `milestone/p1-shared-parsing`)
 
@@ -957,7 +957,7 @@ CPU profiles (inclusive time per phase) and file counts of one commit each; time
 | Binding (type checker setup) | 15 % | 10 % | 9 % |
 | Module resolution | 7.5 % warm (28 % cold: `package.json` reads from disk) | 3 % | 13 % (136k `stat` calls) |
 | ts-morph bookkeeping (adding files, normalizing paths) | 12 % | 4 % | ~18 % |
-| CPR's own analysis (extract, references, detectors) | 4 % | 2 % | 4 % |
+| Symbiote's own analysis (extract, references, detectors) | 4 % | 2 % | 4 % |
 
 **What the two programs share** (files of head, compared with base):
 
@@ -968,7 +968,7 @@ CPU profiles (inclusive time per phase) and file counts of one commit each; time
 | Project files (same text, **different path**: separate worktrees) | 183 of 184, 0.34 s | 515 of 516, 0.51 s | 6,159 of 6,160, **4.2 s** |
 
 **Learned**
-- CPR's own work is 2–4 % of a run; loading is two thirds or more. P1 is the right lever.
+- Symbiote's own work is 2–4 % of a run; loading is two thirds or more. P1 is the right lever.
 - A first profile blamed module resolution (5.5 s on vite): that was a cold disk. Warm, it is
   7.5 %. Measure twice.
 - Every file is read and parsed once per revision; nothing is shared. ts-morph keeps a private
@@ -1010,12 +1010,12 @@ at the end, re-exported by the entry point, some only as `ɵName`.
 - Implicit directives are real: `<form>` matches `ɵNgNoValidate` and `NgForm`, an
   `<input formControlName>` `DefaultValueAccessor` and `NgControlStatus`. They show up as edges
   into `@angular/forms`, and, as with A2, matching is global (no NgModule/standalone scopes).
-- An interface's members are part of the interface for CPR, in TS code and templates alike: the
+- An interface's members are part of the interface for Symbiote, in TS code and templates alike: the
   RealWorld experiment (a `User` field read through `currentUser$ | async`) changes nothing
   because `User` is an interface. Bitwarden's `Organization` is a class, and there the stale
   template read is caught.
 - **A core gap**: a `node_modules` that is itself a link was not linked into the analyzed
-  checkouts, so with such an install CPR saw no dependency types at all. Found because the test
+  checkouts, so with such an install Symbiote saw no dependency types at all. Found because the test
   installs were links; fixed in `linkNodeModules`, with a test.
 - Nothing is read when dependencies are not installed (CI without `npm ci`): results are A2's.
 
@@ -1058,7 +1058,7 @@ Merged into main (2026-10-03).
 
 ## W1 — Repositories with several projects (2026-10-03, branch `milestone/w1-multi-project`)
 
-Reported: "CPR does not render any HTML templates in my app" — an Angular 11 app two folders
+Reported: "Symbiote does not render any HTML templates in my app" — an Angular 11 app two folders
 below a repo root with nothing Angular (or TypeScript) in it, next to a second app. Reproduced
 with an Angular 11 fixture moved into a subfolder and an HTML-only change: the `.html` file was
 listed as changed, no template analyzed, no warning.
@@ -1071,10 +1071,10 @@ listed as changed, no template analyzed, no warning.
   cannot work: two apps map `@app/*` to different folders.
 - ts-morph's `resolutionHost` gets the importing file, and its resolver is used by both the
   program and the language service: per-file options fix resolution without splitting the
-  program. It only offers TypeScript's older callback (no ESM/CJS mode), so CPR computes the mode
+  program. It only offers TypeScript's older callback (no ESM/CJS mode), so Symbiote computes the mode
   itself, and the hook is only installed when a project's aliases differ from the root's.
 - Angular keeps its build options in `tsconfig.app.json` (Angular 6–11: `src/tsconfig.app.json`
-  with `baseUrl`), a file CPR never read. Config choice now follows the build, not the editor.
+  with `baseUrl`), a file Symbiote never read. Config choice now follows the build, not the editor.
 - Verification found what the plan missed: on a replica (RealWorld at Angular 11 and 21 as two
   apps), 38 template edges went from one app to the other's components — both apps have
   `app-article-preview`, and A2 matches selectors repo-wide. Templates now see the components of
@@ -1105,9 +1105,9 @@ before assuming the checkout is on `main`.
 
 ## Qwik spike (2026-10-03, branch `milestone/q1-qwik`)
 
-Groundwork for Q1–Q2 (PLAN). Nothing in CPR changed.
+Groundwork for Q1–Q2 (PLAN). Nothing in Symbiote changed.
 
-**What CPR does today** on a scratch app with the real typings (`@builder.io/qwik` and
+**What Symbiote does today** on a scratch app with the real typings (`@builder.io/qwik` and
 `qwik-city` 1.20.1, checked by `tsc`): JSX elements are calls, `component$` bodies and `$`
 handlers fold into the component, a required prop added to an inline props type warns with the
 page that does not pass it. Wrong: router-called exports (`onGet`, `onRequest`, `head`, loaders,
@@ -1135,7 +1135,7 @@ against `@mdx-js/mdx` is part of Q2's verification.
 
 ## Q1 — Qwik routes and components (2026-10-03, branch `milestone/q1-qwik`)
 
-A new package, `@cpr/plugin-qwik` (`--plugin qwik`), and two generic core changes it needs: an
+A new package, `@symbiote/plugin-qwik` (`--plugin qwik`), and two generic core changes it needs: an
 optional `contract` hook (a framework call's value → what its users pass) with `Shape.inputs`
 compared from the callers' side, and a plugin's exposure replacing the adapter's "default export,
 loaded by convention?" guess.
@@ -1216,7 +1216,7 @@ Merged into main (2026-10-03).
 
 Asked whether the viewer shows where one app ends and the next begins: it does not (file boxes
 by path, placed by calls; a flat change list; no project in the graph JSON). Groundwork for V7
-(PLAN); nothing in CPR changed on this branch.
+(PLAN); nothing in Symbiote changed on this branch.
 
 **Measured** with the viewer's own layout on 8 Bitwarden changes chosen for touching several
 projects and on Qwik's monorepo: a Bitwarden view holds 4–16 projects, 16–45 % of its drawn
@@ -1248,7 +1248,7 @@ Asked where the session's learning is kept: only in the repo. The docs held *wha
 but not *how* work is done here, and the real-repo checks lived in a scratch folder that dies with
 the container. Now:
 
-- `CLAUDE.md` at the root (what CPR is, commands, code and test rules, how to verify each kind of
+- `CLAUDE.md` at the root (what Symbiote is, commands, code and test rules, how to verify each kind of
   change, the milestone and merge workflow, environment traps) and one per package
   (`core`, `viewer`, `plugin-angular`, `plugin-qwik`), loaded when working there.
 - Skills in `.claude/skills/`: `milestone` (with the PLAN section template), `regression-check`,
@@ -1261,7 +1261,7 @@ the container. Now:
 
 **Learned**: totals depend on whether the clones have `node_modules` — fresh clones give 927 edges
 on `r1` where W1's installed clones gave 932 (ky and RealWorld differ, vite with its install does
-not). Only runs on the same clones compare. The first run on new clones also creates CPR's
+not). Only runs on the same clones compare. The first run on new clones also creates Symbiote's
 worktrees (159 s, then 92 s): time warm runs only.
 
 **Verification**: `setup.mjs r1` from scratch (clones, patched branches); `r1` on `main` and on
@@ -1329,7 +1329,7 @@ projects their symbols are. One project, or an older graph: the same layout as b
   edges in view to 106, below the 136 without frames, and panning to 30 fps. "Edges in view
   around each changed symbol" is now the measure for placement changes (viewer CLAUDE.md).
 - A 1.5 px border is a tenth of a pixel on the map at 7 % zoom: frames there get a ring sized by
-  `--cpr-zoom`, as file names already were.
+  `--symbiote-zoom`, as file names already were.
 - A frame must not take clicks: as a parent node it lies under its files, and a click between them
   would land on it instead of the canvas. Only its name band takes the pointer.
 
@@ -1379,17 +1379,17 @@ Merged into main (2026-10-04).
 
 ## E1 spike — decisions and their ripples (2026-10-04, branch `milestone/e1-explained-changes`)
 
-Asked what would make CPR disruptive, the leading idea was to verify the mechanical part of a
+Asked what would make Symbiote disruptive, the leading idea was to verify the mechanical part of a
 change (a rename and its call sites, moves, a new argument at every call, the same edit repeated)
 so a reviewer reads only the decisions. Measured before planning; it does not hold for typical
-changes. Nothing in CPR changed; the scripts are in `spikes/e1-ripples`.
+changes. Nothing in Symbiote changed; the scripts are in `spikes/e1-ripples`.
 
 **Learned**
 - Typical changes are decisions. On 165 unique changes (pinned sets, the latest commits of five
   repos, commits titled refactor/rename/move), 20 % of changed symbols but 5.4 % of diff lines are
   verifiable; without one large rename (Qwik `f7ed58cfc`, 72 % of its symbols), 2.8 % of lines.
   "Refactor" commits restructure code: 1.3 % of their lines.
-- CPR's move matching found 29 of the 66 renamed symbols in Qwik `f7ed58cfc`: a renamed symbol
+- Symbiote's move matching found 29 of the 66 renamed symbols in Qwik `f7ed58cfc`: a renamed symbol
   often mentions its own name or others renamed with it (`EbFallback` → `CatchFallback` with
   `"eb-fallback"` ids inside), so its body changes and it shows as removed + added. Renames inferred from the change itself (moved
   names, renamed folders, pairs equal under their name difference) found them; one change may
@@ -1399,7 +1399,7 @@ changes. Nothing in CPR changed; the scripts are in `spikes/e1-ripples`.
 - Verified symbols are many and small: grouping them would shorten the change list by a fifth and
   the reading by a twentieth.
 - Traps: a raw scanner misreads JSX text (an apostrophe starts a string) — tokens must come from
-  the AST, as CPR's hashes do; a commit list grepped by message matches bodies too (`perf:` commits
+  the AST, as Symbiote's hashes do; a commit list grepped by message matches bodies too (`perf:` commits
   "mentioning a refactor"), so filter subjects; one feature reverted and re-applied counted three
   times until changes were deduplicated.
 
@@ -1417,7 +1417,7 @@ graphs (`scripts/viewer/interactions.mjs`), profiled on an unminified build, and
 cost removed at a time. Plan in PLAN.md (V8a–V8e).
 
 **Learned**
-- The biggest single cost of zooming was one line: `--cpr-zoom` set on the page root on every
+- The biggest single cost of zooming was one line: `--symbiote-zoom` set on the page root on every
   zoom frame. An inherited custom property restyles every element below it — 12,788 on Qwik's
   map — though only about 130 labels read it. A stylesheet rule aimed at the labels restyles
   only them, but they still re-laid out their text each frame (`font-size` changes); scaling them
@@ -1558,7 +1558,7 @@ Merged into main (2026-10-13). V8 closed with it: V8a, V8b, V8c and V8e merged, 
 
 ## V9 spike — what picking two commits costs (2026-10-13, branch `milestone/v9-commit-picker`)
 
-Measured on the regression clones before planning a commits page for `cpr view`. Listing 100
+Measured on the regression clones before planning a commits page for `symbiote view`. Listing 100
 commits with `git log` takes 9–66 ms, even on Bitwarden's 23,236 (628 ms once, with a cold disk).
 Analyzing one commit against its parent takes 0.6 s (vite, no TypeScript changed) to 59 s
 (Bitwarden with the Angular plugin; 46 s on a second run, with the worktrees made); 20 commits
@@ -1569,16 +1569,16 @@ owner's pid and stale ones are recovered.
 
 ## V9 — Pick two commits (2026-10-13, branch `milestone/v9-commit-picker`)
 
-`cpr view` without revisions opens at once on the current branch's commits; two picked (or one
+`symbiote view` without revisions opens at once on the current branch's commits; two picked (or one
 against its parent) are compared directly, analyzed then in a child process, and served at
-`/diff/<base>..<head>/`. `cpr view <base> [head]` analyzes first as before and opens that diff;
-`cpr pr` is unchanged.
+`/diff/<base>..<head>/`. `symbiote view <base> [head]` analyzes first as before and opens that diff;
+`symbiote pr` is unchanged.
 
 **Learned**:
 - The viewer already used relative URLs for its API and files (`./api/…`, Vite `base: './'`),
   so serving one viewer per diff under its own path took no change to how it calls the server;
   only the commits page's two endpoints are absolute. Every existing e2e spec passed unchanged
-  once `cpr view HEAD~1 HEAD` opened `/diff/<pair>/`.
+  once `symbiote view HEAD~1 HEAD` opened `/diff/<pair>/`.
 - IPC messages from a child arrive while it runs synchronous code (a 1.5 s busy loop delayed
   nothing), so phases sent just before the synchronous parts (extract, references) are
   accurate. On these repos loading is nearly the whole run: the page says "loading base" and
@@ -1605,23 +1605,23 @@ against its parent) are compared directly, analyzed then in a child process, and
   left half checked out, and the slot's pid lock is recovered as stale. Ctrl+C in a terminal is
   different: it reaches git too, and a checkout interrupted mid-way can leave a slot whose HEAD
   is the old commit and whose files are partly the new one; reusing it for the old commit skips
-  the checkout. Pre-existing (`cpr diff` has it), not fixed here.
+  the checkout. Pre-existing (`symbiote diff` has it), not fixed here.
 
 **Verification**: tests first — `parseLog` (merges, the root commit, refs, a subject holding the
 separators), `listCommits` (pages, a tag, a detached HEAD, a repo without commits), `isCommit`;
 `onPhase` in order with the same analysis; `Diffs` (one at a time in order, failures kept until
 asked again, Stop, close, the last N by use); `childRunner` with a fake CLI (args, phases, the
 CLI's message, Stop); the server (`/api/commits` pages, `POST /api/diffs` refusals, 202 → 200,
-sources and state per diff, 502, Stop, 404); `cpr view` without revisions; `src/commits.ts`
+sources and state per diff, 502, Stop, 404); `symbiote view` without revisions; `src/commits.ts`
 (picks, base by list position, one commit, the count with a merge, `api/graph` answers). E2E: five
-commits served by `cpr view` — the list, two picked → "Analyzing" → the graph, a reload kept,
+commits served by `symbiote view` — the list, two picked → "Analyzing" → the graph, a reload kept,
 ← Commits, This commit, the keyboard, Stop, a diff URL opened anew, no sideways scroll, the
 sidebar bar untouched. 464 unit tests (31 new), 45 e2e (5 new). `r1`: 29 comparisons identical
 (859 edges, no finding changed), time 0.97 of `main`'s. Real repos (warm, 2 rounds): the URL in
 0.58–0.64 s, `/api/commits` 33–166 ms, 100 rows drawn 0.24–0.26 s after opening Qwik; a pair
-through the server Qwik 13.8–14.3 s (`cpr diff` 14.2–15.1 s), Bitwarden 41.6–43.2 s (`cpr diff`
+through the server Qwik 13.8–14.3 s (`symbiote diff` 14.2–15.1 s), Bitwarden 41.6–43.2 s (`symbiote diff`
 39.8–40.2 s, +3.5 to +8.4 %); status requests meanwhile 1.8 ms median, 20 ms at most; a kept pair
-in 1.4–10 ms. `cpr view HEAD~1 HEAD` on Qwik to its URL: `main` 13.1–14.5 s, V9 13.2–14.5 s. Not
+in 1.4–10 ms. `symbiote view HEAD~1 HEAD` on Qwik to its URL: `main` 13.1–14.5 s, V9 13.2–14.5 s. Not
 verified: Windows and macOS.
 
 Merged into main (2026-10-13), after two fixes found at merge time: macOS CI (a component named
@@ -1636,7 +1636,7 @@ Measured before planning lanes for the commits page, with a prototype of the lan
 history-only clone of CPython (172,396 commits). The plan changed four times as the user said
 what they wanted (every branch; "exactly like git extension, or gitty up", with a branches
 panel; lazy loading; tags only as badges); each change was measured first.
-Repositories that merge with merge commits list side-branch commits among the branch's own (CPR
+Repositories that merge with merge commits list side-branch commits among the branch's own (Symbiote
 66 and Qwik 57 of the first 100 rows); squash-merging ones are one line, and their divergence is
 in branches the page does not list (Bitwarden: 1,539 remote branches not merged into HEAD).
 
@@ -1651,7 +1651,7 @@ in branches the page does not list (Bitwarden: 1,539 remote branches not merged 
 - An ordered log walks the history first unless the repository has a commit-graph file, and a
   fresh clone has none (`git gc` writes it): 100 rows on Bitwarden take 111–123 ms (with every
   remote branch 206–237 ms) against 14–16 ms unordered; with the file, 1–25 ms. Within budget
-  either way, so CPR need not write one (it would change the user's repository).
+  either way, so Symbiote need not write one (it would change the user's repository).
 - Every remote branch is mostly other people's work: on Bitwarden 93 of the first 100 rows. The
   first plan listed local branches and their upstreams by default; the user asked for every
   branch, as Git Extensions and Gittyup show it, with a branches panel on the left.
@@ -1688,7 +1688,7 @@ in branches the page does not list (Bitwarden: 1,539 remote branches not merged 
 
 ## V10a — The history as a graph (2026-10-13, branch `milestone/v10-commit-graph`)
 
-`cpr view`'s commits page lists every branch, local and remote (or "This branch"), in graph
+`symbiote view`'s commits page lists every branch, local and remote (or "This branch"), in graph
 order, with lanes drawn left of the rows; lines over 100 rows are two arrows. The server lists
 the order once per scope and serves rows' details by block and the whole shape; the viewer lays
 out lanes over the shape and draws only the rows near the view.
@@ -1719,7 +1719,7 @@ out lanes over the shape and draws only the rows near the view.
   now shows three refs, then "+N".
 
 **Verification**: tests first — core `streamHistory` (every branch, no tag-only commit, stash or
-`refs/cpr/*`; a child dated before its parent listed above it; an empty repository),
+`refs/symbiote/*`; a child dated before its parent listed above it; an empty repository),
 `commitDetails`, `historyState` (moves with HEAD and branches, not tags), `hasCommitGraph`;
 `Histories` (rows before the walk ends, the shape after, rows by SHA from the kept order, a new
 version, one listing per scope, a failed listing, the hint); the server's `/api/history` and
@@ -1757,7 +1757,7 @@ commit, after a confirmation; the page lists anew after it, and on focus when HE
 moved elsewhere. V11a (a checkbox for the current branch) was dropped: V10a's switch does it.
 
 **Learned**:
-- Letting git decide what is safe needs no rules of CPR's own beyond operations in progress:
+- Letting git decide what is safe needs no rules of Symbiote's own beyond operations in progress:
   `git switch` without force carries changes the target leaves alone and refuses the rest,
   naming the files, with HEAD unchanged. The confirmation says that much, and the refusal is
   shown as git wrote it.
@@ -1774,7 +1774,7 @@ moved elsewhere. V11a (a checkbox for the current branch) was dropped: V10a's sw
 - The first checkout from the page outside the tests was the user's own, on this repository:
   it moved the working tree to another branch under uncommitted work of the session (two files,
   the same on both branches, moved back with `git stash` and a switch). That is what a checkout
-  does, and the confirmation says so; but whoever develops CPR with `cpr view` open on it should
+  does, and the confirmation says so; but whoever develops Symbiote with `symbiote view` open on it should
   expect the branch to change under them. Right after, the user found HEAD hard to see: HEAD's
   row, badge, dot and a title chip now show it.
 
@@ -1795,9 +1795,9 @@ Merged into main (2026-10-13), with V11a dropped and HEAD's styling added at the
 ## V12 spike — opening VS Code from the viewer (2026-10-13, branch `milestone/v12-open-in-vscode`)
 
 Measured before planning "open in VS Code" from the diff panel. **Which line**: for the last
-60–68 first-parent commits of CPR, ky and zod, each reviewed as `c^1..c` with the working copy at
+60–68 first-parent commits of Symbiote, ky and zod, each reviewed as `c^1..c` with the working copy at
 the branch tip, 1–62 % of the added lines of code files sat at another line number at the tip
-(CPR 29–46 %, ky 23–62 %, zod 1–26 % by distance), and up to 23 % had been changed since (ky
+(Symbiote 29–46 %, ky 23–62 %, zod 1–26 % by distance), and up to 23 % had been changed since (ky
 6–20 commits back). Head's number is right only for the checked-out commit, so the server maps
 it, with `git diff -U0 <commit> -- <file>` against the working copy (under 10 ms on a
 3,195-line file). **Which window**: `code <folder> -g <file>:<line>` returned in 50 ms here
@@ -1826,10 +1826,10 @@ one with it, at the line's place in the working copy. The server maps the line w
 - A button inside the file line changed the text two existing specs read (the path); beside it,
   nothing else changed. Text assertions on a container break when controls are added to it.
 - `scripts/viewer/measure.mjs` serves graphs with `?graph=`, where no server can open files, so
-  the controls never show there; the cost was measured with a short script against a real `cpr
+  the controls never show there; the cost was measured with a short script against a real `symbiote
   view` of each build instead.
-- Under `cpr view` the code rows had no click action (picking a comment line is `cpr pr`'s), so
-  Ctrl/⌘+click means the same in both, and a plain click keeps its meaning under `cpr pr`.
+- Under `symbiote view` the code rows had no click action (picking a comment line is `symbiote pr`'s), so
+  Ctrl/⌘+click means the same in both, and a plain click keeps its meaning under `symbiote pr`.
 - The first "Open in VS Code" was link-styled 12 px text beside the path, and the user did not
   see it. An action the reviewer is meant to find needs to look like a button (now outlined, in
   the accent colour, with an icon and its key). At the same time the user had "This commit"
@@ -1838,11 +1838,11 @@ one with it, at the line's place in the working copy. The server maps the line w
 **Verification**: tests first — `mapLine` (insertions, removals, replacements, the file's start
 and end), `workingLine` on temp repositories (uncommitted edits, a later commit, deleted and
 renamed files, a `[id]` path, a bad SHA), `findVsCode` with injected platforms (PATH, PATHEXT,
-VS Code 1.141's and the older `code.cmd`, an unknown `code.cmd`, the macOS bundle, `CPR_CODE`),
+VS Code 1.141's and the older `code.cmd`, an unknown `code.cmd`, the macOS bundle, `SYMBIOTE_CODE`),
 the `cmd.exe` quoting and its refusals, `runVsCode` with a stand-in (arguments, failure,
 a command that keeps running, a missing command), `vsCodeOpener` on a temp repository, the
 endpoint (each side's commit, 404 and 502, refusals), the viewer's `src/open.ts`. E2E with a
-stand-in for VS Code (`CPR_CODE`): 5 under `cpr view`, 1 under `cpr pr`. 557 unit tests, 59 e2e.
+stand-in for VS Code (`SYMBIOTE_CODE`): 5 under `symbiote view`, 1 under `symbiote pr`. 557 unit tests, 59 e2e.
 On this machine (WSL, VS Code 1.141 on Windows): a function at line 449 of `24396ab` opened at
 480 in the working copy, 105 ms, in the existing window. Selecting a 300-row symbol: 31–37 ms
 median on `main`, 33–34 ms with V12. Not verified: native Windows and macOS, a repository not
@@ -1854,7 +1854,7 @@ e2e.
 
 ## V13 spike — compare as a mode (2026-10-13, branch `milestone/v13-compare-mode`)
 
-Measured in Chromium on `cpr view` (`main` at `2644214`) before planning a browse mode for the
+Measured in Chromium on `symbiote view` (`main` at `2644214`) before planning a browse mode for the
 commits page, on this repository and the Qwik and Bitwarden clones. The page opens as V9's
 picker: the compare bar takes 52.6 px (1.6 rows of 32 px; Qwik and Bitwarden show 23 rows at
 1440 × 900, 18 at 1280 × 720) and the pick circle 24 px of every row. A click moves the cursor and
@@ -1900,7 +1900,7 @@ Merged into main (2026-10-13). `main` verified after the merge: 557 unit tests, 
 
 ## V14 spike — the checkout menu's names (2026-10-14, branch `milestone/v14-checkout-submenu`)
 
-Measured before planning a checkout submenu, in Chromium on `cpr view` of the Qwik and
+Measured before planning a checkout submenu, in Chromium on `symbiote view` of the Qwik and
 Bitwarden clones (`main` at `c2e3486`, 1440 × 900). Qwik's HEAD row (`main` and 8 release tags)
 gets 10 entries, each starting "Check out" and 8 ending "(detached HEAD)"; the menu stops at its
 480 px max width and is 343 px tall. A remote branch's entry is 117 characters ("Check out
@@ -1947,28 +1947,28 @@ Merged into main (2026-10-14). `main` verified after the merge: 558 unit tests, 
 
 ## V15 spike — what a new commit costs a review (2026-10-14, branch `milestone/v15-branch-reviews`)
 
-Measured before planning branch reviews. Outside `cpr pr`, marks and drafts are kept per pair of
+Measured before planning branch reviews. Outside `symbiote pr`, marks and drafts are kept per pair of
 revisions (`stateDir`: a hash of `base..head` in the cache), so a commit added to a reviewed
 branch starts the review over. On a clone of this repository, whose commits an agent wrote (189
 of 206 carry its co-author line), each commit of four milestone branches (V9, V11, V12, V14) was
-compared with its branch's fork point (`cpr diff`, 1.0–1.4 s each), and the changed symbols of
+compared with its branch's fork point (`symbiote diff`, 1.0–1.4 s each), and the changed symbols of
 the commit before were checked against it by fingerprint, I1's rule. Over the 15 times a commit
 was added to a branch already reviewed, 1,027 of 1,051 marks (97.7 %) would still be valid: 11
 symbols changed again, and 13 moved with a renamed file (`e75c1cf`; IDs hold paths). Looking at
 each new pair from scratch means 1,197 symbols; keeping marks per branch leaves 170 (14 %).
 The graphs' `files` list non-code files too (docs, Markdown), so review files committed in
-`cpr/` would show there, with no symbols. So the plan keys reviews by branch and, as asked, keeps
-them in `cpr/reviews/` at the repository's root, one file per reviewer: out of git by default (a
-`cpr/.gitignore` with `*` and `!config.json`, as pytest and ruff do), shared by deleting it.
+`symbiote/` would show there, with no symbols. So the plan keys reviews by branch and, as asked, keeps
+them in `symbiote/reviews/` at the repository's root, one file per reviewer: out of git by default (a
+`symbiote/.gitignore` with `*` and `!config.json`, as pytest and ruff do), shared by deleting it.
 
 ## V15 — Branch reviews in the repository (2026-10-14, branch `milestone/v15-branch-reviews`)
 
 "Review ▸" in a commit row's menu (or `r`) compares a branch's fork point with its tip; marks and
 drafts are kept per branch, so after an agent's new commits only new and changed symbols are
-left. Reviews are files in `cpr/reviews/<branch>/<user.email>.json`, out of git by default (a
-`cpr/.gitignore` CPR writes once), shared by deleting it. The commits page shows "✓" or "+n" on
-reviewed branches and a dot on commits added since. Plugins are read from `cpr/config.json`,
-else `cpr.config.json`.
+left. Reviews are files in `symbiote/reviews/<branch>/<user.email>.json`, out of git by default (a
+`symbiote/.gitignore` Symbiote writes once), shared by deleting it. The commits page shows "✓" or "+n" on
+reviewed branches and a dot on commits added since. Plugins are read from `symbiote/config.json`,
+else `symbiote.config.json`.
 
 **Learned**:
 - The fork point needs both default-branch refs: with a stale local `main` and an agent branch
@@ -1987,7 +1987,7 @@ else `cpr.config.json`.
   summary's.
 
 **Verification**: tests first (core, CLI, server and the e2e spec all failed before the code).
-587 unit tests, 67 e2e. On a clone of this repository through `cpr view`'s API: `v12` reviewed
+587 unit tests, 67 e2e. On a clone of this repository through `symbiote view`'s API: `v12` reviewed
 at `d175ee5` (83 symbols marked), tip moved to `86dcb60`: "+1", then 83 still reviewed and 2
 left, as the spike measured; 1.6–1.7 s from "Review" to the graph; `git status` clean.
 `/api/reviews` 10–24 ms on Qwik and Bitwarden. No analysis code changed (goldens unchanged), so
@@ -1999,9 +1999,9 @@ Merged into main (2026-10-14). `main` verified after the merge: 587 unit tests, 
 ## V16 spike — how a review ends (2026-10-14, branch `milestone/v16-finish-review`)
 
 Asked after reviewing V15 with the viewer: "how to end review?". The reviewer's state for that
-review (`4061f2b..60d94e1`, compare mode, in CPR's cache): 86 of the 87 changed symbols marked,
-no comments. None were possible: comments, the summary and a verdict exist only under `cpr pr`,
-where the forge receives them, so `cpr view` hides them, branch reviews included. Feedback to
+review (`4061f2b..60d94e1`, compare mode, in Symbiote's cache): 86 of the 87 changed symbols marked,
+no comments. None were possible: comments, the summary and a verdict exist only under `symbiote pr`,
+where the forge receives them, so `symbiote view` hides them, branch reviews included. Feedback to
 the agent went through chat instead, without a place: "bad styling on checkout option in
 dropdown" took two close-up screenshots to locate. Checked for the plan: the server's address
 (`http://127.0.0.1:<port>`) is a secure context in Chromium, so the page may copy to the
@@ -2009,7 +2009,7 @@ clipboard; graph nodes carry line ranges per side, so a comment's line names its
 plan gives branch reviews a local review target behind the same `/api/review`: a verdict
 recorded at the tip with its comments in the review's JSON (the user preferred JSON to a
 Markdown file: one file, structured fields), text only for "Copy for the agent". Asked too:
-Approve pushes to the remote, only then, and `cpr pr` stays as it is. Checked in a temporary
+Approve pushes to the remote, only then, and `symbiote pr` stays as it is. Checked in a temporary
 repository with a bare remote: `git push origin <sha>:refs/heads/<branch>` pushes that commit
 and no later one, updates `origin/<branch>`, creates a missing branch (then the upstream can be
 set), and a push that is not a fast-forward is refused with git's message. So Approve pushes the
@@ -2021,7 +2021,7 @@ A branch review ends with a verdict in the Review tab — Approve, Request chang
 recorded with its comments in the review's JSON (`verdicts`), where the agent reads them; "Copy
 for the agent" puts them on the clipboard as text. Approve pushes the reviewed commit by SHA,
 never forced; newer commits stay local. The default branch is reviewable from where it was last
-pushed. `cpr pr` is unchanged.
+pushed. `symbiote pr` is unchanged.
 
 **Learned**:
 - The user preferred JSON to a Markdown feedback file: one file holds the review and its
@@ -2036,7 +2036,7 @@ pushed. `cpr pr` is unchanged.
 - A test that ends right after a verdict races the viewer's save of the cleared drafts with the
   fixture's cleanup (`ENOTEMPTY`): the cleanup retries.
 - A screenshot script that pressed `c` before the code loaded lost nothing but added nothing:
-  the panel waits for the code to know the line (`cpr pr`'s rule).
+  the panel waits for the code to know the line (`symbiote pr`'s rule).
 
 **Verification**: tests first (core, CLI, server, viewer failed before the code). 599 unit
 tests, 69 e2e. On a clone of this repository with a local bare `origin`: `v12` reviewed with
@@ -2046,7 +2046,7 @@ and dark. No analysis code changed. Not verified: remotes that need credentials,
 `pre-push` hooks, Windows, macOS, Firefox and Safari.
 
 Merged into main (2026-10-14). `main` verified after the merge: 599 unit tests, build, 69 e2e.
-The reviewer approved V16 in CPR itself (one comment, on `ReviewProps`); its push was a no-op,
+The reviewer approved V16 in Symbiote itself (one comment, on `ReviewProps`); its push was a no-op,
 `origin` already at the reviewed commit.
 
 ## Fix — a review's mark you can see on a badge (2026-10-14, branch `fix/review-mark-visible`)
@@ -2084,13 +2084,13 @@ Merged into main (2026-10-14). `main` verified after the merge: 599 unit tests, 
 
 ## V17 spike — what an approval should do (2026-10-14, branch `milestone/v17-approve-means-merge`)
 
-Asked after approving four branches in CPR and asking for each merge in chat: "How can we automate
+Asked after approving four branches in Symbiote and asking for each merge in chat: "How can we automate
 this…", then "Aprove is just a metadata...that will tell the agent to merge into whichever is the
 default branch of that git repository", for any repository, and "not automatically" (the person
 tells the agent to act on the review). Measured on this repository: V16's push on Approve did
 nothing on 0 of 4 approvals — the agent had pushed each commit 2–4 minutes before, and `origin`'s
 reflog holds only the agent's push — while all 4 were followed by asking for the merge in chat.
-Reproduced through `cpr view`'s `/api/reviews` on a temporary repository: a branch approved at its
+Reproduced through `symbiote view`'s `/api/reviews` on a temporary repository: a branch approved at its
 tip, then 5 commits on `main` merged into it, shows "+6" and the "new since your review" dot on
 all 5 of `main`'s commits; the branch's own new commits: 1, the merge. So "since" must leave out
 the default branch's commits, or resolving a conflict the usual way (merging the default branch
@@ -2100,7 +2100,7 @@ against the default branch on 40 recent unmerged branches each: Bitwarden 2 conf
 599 ms, max 5.2 s; this repository's 70 branches are all merged. It touches no checkout, index or
 ref (it writes loose objects), so the Review tab can say "conflicts with main in …" before an
 approval, in the background. The rules an agent follows lived only in this repository's
-`cpr-review` skill; for any repository CPR must write them itself, next to the reviews.
+`symbiote-review` skill; for any repository Symbiote must write them itself, next to the reviews.
 
 ## V17 — Approve means "merge it" (2026-10-14, branch `milestone/v17-approve-means-merge`)
 
@@ -2108,10 +2108,10 @@ approval, in the background. The rules an agent follows lived only in this repos
 
 - Claude Code loads a folder's `AGENTS.md` itself when it reads a file there, a git-ignored
   folder included: with only a review file read (one `Read` in the log) it knew a marker word
-  that only `cpr/AGENTS.md` held, with or without a `cpr/CLAUDE.md`; reading the same JSON from
-  another folder, it did not. The planned `cpr/CLAUDE.md` would only have loaded it twice.
-- An agent told nothing but "Check my CPR review of the branch agent and act on it" found
-  `cpr/` by listing the repository, and followed `AGENTS.md` to the letter in both cases tried:
+  that only `symbiote/AGENTS.md` held, with or without a `symbiote/CLAUDE.md`; reading the same JSON from
+  another folder, it did not. The planned `symbiote/CLAUDE.md` would only have loaded it twice.
+- An agent told nothing but "Check my Symbiote review of the branch agent and act on it" found
+  `symbiote/` by listing the repository, and followed `AGENTS.md` to the letter in both cases tried:
   the approved commit merged with `--no-ff` and the later one left for review; on a conflict, the
   merge aborted, `main` untouched, the conflict resolved on the branch, another review asked for.
   Neither pushed: the rules say to follow the project's, and the repositories had none.
@@ -2126,15 +2126,15 @@ approval, in the background. The rules an agent follows lived only in this repos
 
 **Verification**: tests first (core 3, CLI 11, server 2, viewer 2; e2e 3 of 4 review specs on
 the old viewer). 602 unit tests, 71 e2e. The two agent runs above, checked in git afterwards
-(`main`'s parents, the later commit not in `main`, `origin` unchanged, clean status) and in CPR
+(`main`'s parents, the later commit not in `main`, `origin` unchanged, clean status) and in Symbiote
 ("+1" each; "merged" after the clean one; clean merge after the resolution). Qwik's
 `origin/claude/http-error`: the conflict line 0.5 s after opening the Review tab, the graph in
 6.7–10.3 s; screenshots light and dark, no page errors. Not verified: other agents than Claude
 Code, git before 2.38, Windows and macOS.
 
 Merged into main (2026-10-14). `main` verified after the merge: 602 unit tests, build, 71 e2e.
-The first use of the flow: the reviewer approved `92c5276` in CPR ("Merge into main") and pasted
-"Copy for the agent"; the agent read the verdict and `cpr/AGENTS.md` (CPR had written it with
+The first use of the flow: the reviewer approved `92c5276` in Symbiote ("Merge into main") and pasted
+"Copy for the agent"; the agent read the verdict and `symbiote/AGENTS.md` (Symbiote had written it with
 the verdict) and merged that commit, its parents the old `main` and `92c5276`.
 
 ## V10c spike — what diverged picks show (2026-10-14, branch `milestone/v10c-picks-across-branches`)
@@ -2145,7 +2145,7 @@ are often diverged: among the first 25 rows, 19–74 % of pairs on Qwik, vite, z
 (0.7 % on this repository, whose branches are all merged). Against HEAD, the 20 unmerged remote
 tips nearest the top were diverged in 71 of 80 cases, and a direct diff — what the server runs
 today (`--no-merge-base`) — listed a median 99–208 files where the branch changed 5–15: 67–96 %
-of its files were the default branch's work shown as reverted. Through CPR, a Qwik branch read as
+of its files were the default branch's work shown as reverted. Through Symbiote, a Qwik branch read as
 43 files with 6 removed symbols and 3 findings; from its fork point, 7 files, none removed, 1
 finding. In all 71 pairs the branch's tip was the lower row, today's base: a fork-point diff with
 today's rule would have shown `main`'s work instead of the branch's.
@@ -2178,8 +2178,8 @@ Swap compares the other side. An ancestor pair and one pick against its parent a
   `comparison` takes the loaded SHAs and says "Finding where … forked…" until the page has
   loaded the fork's block (one request).
 - What a reviewer reads is the graph, so "correct" was checked there, not only on the fork
-  point: through `cpr view`'s own server, the pair the page sends gave exactly the branch's
-  files (`git diff A...B`) and the same graph as `cpr diff A B` on 12 of 12 branches. The pair
+  point: through `symbiote view`'s own server, the pair the page sends gave exactly the branch's
+  files (`git diff A...B`) and the same graph as `symbiote diff A B` on 12 of 12 branches. The pair
   `main`'s page sent showed the branch's own work inverted: zod's 100 added symbols as 100
   removed, Qwik's 151 the same.
 - Reading the default branch's tips after git's listing cost the shape 26–35 ms on Bitwarden;
@@ -2199,7 +2199,7 @@ criss-cross) and 998 on this repository's "This branch": the fork point, both si
 the base's side right on every pair; the default branch against every diverged remote branch
 (1,868) gave the branch as head from the fork; at most 3.2 ms per comparison (CPython).
 `diverged-diffs.mjs` on zod, vite, Qwik and Bitwarden (3 branches each): 12 of 12 as above.
-Screenshots on Qwik, light and dark, no page errors. Cold `cpr view` against `main`'s build:
+Screenshots on Qwik, light and dark, no page errors. Cold `symbiote view` against `main`'s build:
 first rows unchanged; the shape +9–12 ms (Bitwarden), within noise on CPython. Not verified:
 Windows, macOS, Firefox, Safari; a repository with no `main`, `master` or remote `HEAD`.
 
@@ -2269,7 +2269,7 @@ Merged into main (2026-10-14). `main` verified after the merge: 619 unit tests, 
 ## V18 spike — what starting a feature with an agent takes (2026-10-15, branch `milestone/v18-start-a-feature`)
 
 Asked: "Start a new feature" from the commits page, continuing the agentic flow. The person chose
-CPR starting the agent, a worktree per feature and "plan first" per feature, and asked for a
+Symbiote starting the agent, a worktree per feature and "plan first" per feature, and asked for a
 design for any repository, not shaped by how this one is worked on. Measured before planning:
 
 - `git worktree add` at the default branch's tip, warm, on the regression clones: ky 12–20 ms
@@ -2278,13 +2278,13 @@ design for any repository, not shaped by how this one is worked on. Measured bef
   their first edit) live in `.claude/worktrees/` inside the checkout, on `worktree-<name>`
   branched from the remote default branch. None of the six clones ignores that folder, zod's root
   tsconfig includes `**/*.ts`, and in this repository a root `prettier --check .` failed on 58
-  files of a nested worktree (removed after). So CPR makes the worktree itself, beside the
+  files of a nested worktree (removed after). So Symbiote makes the worktree itself, beside the
   checkout, at the commit the person picks; Claude Code skips its own isolation in a linked
   worktree.
 - `claude --bg` refused all three folders tried (this repository's checkout, a worktree of it, a
   new repository's worktree): "Workspace not trusted. Run `claude` in … once and accept the trust
   prompt", exit 1 in 0.7 s. Trust is keyed on the main checkout's root and only an interactive
-  `claude` accepts it: a page cannot, and CPR must not write it. The feature must survive a
+  `claude` accepts it: a page cannot, and Symbiote must not write it. The feature must survive a
   failed start and the agent be restartable.
 - `claude -p` (no trust step) in a worktree made with `git worktree add -b`, Haiku, a one-file
   task: the commit landed on the feature branch, the main checkout untouched, `--session-id`
@@ -2294,8 +2294,8 @@ design for any repository, not shaped by how this one is worked on. Measured bef
   `waitingFor`, listed in 153–158 ms. The worktree folder is what ties a session to its branch.
 - From a feature's worktree, Approve's `git switch <default branch>` fails while the main checkout
   has that branch, and Claude Code's isolation refuses git in the main checkout: the approved
-  merge happens from the main checkout. Reviews are kept per working tree today (`cpr/` at
-  `cpr view`'s root), so a `cpr view` opened in a worktree would keep its own.
+  merge happens from the main checkout. Reviews are kept per working tree today (`symbiote/` at
+  `symbiote view`'s root), so a `symbiote view` opened in a worktree would keep its own.
 
 Not yet run: `claude --bg` end to end (states from start to `done`, `--bg --resume`, `--add-dir`
 and `--session-id` with `--bg`), which needs a repository the person has trusted; it is the first
@@ -2306,16 +2306,16 @@ step of the plan.
 "Start a feature" in the commits page's header (or `n`, or "Start a feature here" in a row's
 menu) asks what the agent should build, proposes a branch named after it, creates the branch at
 the default branch's newest tip (or the row's commit) with its own worktree beside the checkout
-(`../<repo>.worktrees/<branch>`), records the brief in `cpr/features/<branch>.json` and starts
-Claude Code there in the background (`claude --bg --name <branch> --add-dir <cpr>`, the
+(`../<repo>.worktrees/<branch>`), records the brief in `symbiote/features/<branch>.json` and starts
+Claude Code there in the background (`claude --bg --name <branch> --add-dir <symbiote>`, the
 person's permission mode, plan first by default). A failed start keeps the feature with Claude
 Code's words; without an agent the prompt is offered to copy. Reviews now live in the main
-checkout's `cpr/`, shared by its worktrees.
+checkout's `symbiote/`, shared by its worktrees.
 
 **Learned**:
-- The real-agent spike was skipped at the person's word; CPR relies on Claude Code's documented
+- The real-agent spike was skipped at the person's word; Symbiote relies on Claude Code's documented
   interfaces only (`agents --json` for scripts, not `--bg`'s printed text) and the tests run a
-  fake through `CPR_CLAUDE`, which every feature spec sets: no test can start a real agent.
+  fake through `SYMBIOTE_CLAUDE`, which every feature spec sets: no test can start a real agent.
 - A start costs what `git worktree add` costs: 0.1 s on ky, 0.85–0.9 s on Bitwarden; listing three
   features with their agents 37–64 ms, one `claude agents` call per list.
 - Adding a header button wrapped the help line to three lines and both buttons to a second row at
@@ -2329,17 +2329,17 @@ checkout's `cpr/`, shared by its worktrees.
 
 **Verification**: tests first (core 5 of 5, server 4, the CLI and viewer modules missing). 653
 unit tests (34 new), 87 e2e (5 new; 3 expectations gained the new menu entry), all passing. On the
-six regression clones through `cpr view`'s API with the fake agent: 18 features started at their
+six regression clones through `symbiote view`'s API with the fake agent: 18 features started at their
 base, each checkout's `git status` unchanged, all removed after. Screenshots light and dark at
 1440 and 900 px, no page errors. No analysis code changed. Not verified: a real Claude Code
-started by CPR, Windows and macOS, Firefox and Safari.
+started by Symbiote, Windows and macOS, Firefox and Safari.
 
 Merged into main (2026-10-15), V18a–c together. `main` verified after the merge: 692 unit
 tests, build, 98 e2e.
 
 ## V18b — The features view (2026-10-15, branch `milestone/v18-start-a-feature`)
 
-`/features` lists the features started from CPR grouped by what each needs from the person —
+`/features` lists the features started from Symbiote grouped by what each needs from the person —
 Needs you, Working, Done — with its agent's state in words, its commits, files not committed, its
 review and whether it merges, and Review, Talk, Open in VS Code, Stop / Start the agent, Copy the
 prompt. "Commits · Features (n)" in the bar counts what needs the person. A feature and its branch
@@ -2369,16 +2369,16 @@ macOS, Firefox, Safari.
 Merged into main (2026-10-15), V18a–c together. `main` verified after the merge: 692 unit
 tests, build, 98 e2e.
 
-## V18c spike — answering a background agent from CPR (2026-10-15, branch `milestone/v18-start-a-feature`)
+## V18c spike — answering a background agent from Symbiote (2026-10-15, branch `milestone/v18-start-a-feature`)
 
 Asked: V18c moves "one abstraction up from Claude Code": not a chat with one input. Question:
-can CPR see and answer what a `claude --bg` session waits on (a question, a permission, a plan)
+can Symbiote see and answer what a `claude --bg` session waits on (a question, a permission, a plan)
 while Claude Code keeps hosting the session? Run with Claude Code 2.1.296 (the background service
 ran its sessions on 2.1.300), Haiku, the person's Pro subscription and no API key. A throwaway
 repository in `~/projects` with a feature worktree beside it, as V18a makes them; `claude` run
-with a clean environment, as a `cpr view` started in a terminal would; a stand-in for CPR passed
+with a clean environment, as a `symbiote view` started in a terminal would; a stand-in for Symbiote passed
 with `--settings`: command hooks that log every event and, for a question or a permission, wait
-for an answer file, as CPR's server would wait for the person.
+for an answer file, as Symbiote's server would wait for the person.
 
 **Learned**:
 - **Trust**: a repository inside a trusted folder (`~/projects`) is not trusted: `--bg` exited 1
@@ -2399,7 +2399,7 @@ for an answer file, as CPR's server would wait for the person.
 - **A permission** reached the `PermissionRequest` hook with `tool_name` and the full
   `tool_input` (an `Edit`'s old and new text; a Bash command) and Claude Code's suggestion
   (`acceptEdits` for the session). `allow`: it went on (edit, check, commit, 10–18 s each).
-  `deny` with a message ("read the diff in CPR first, do not commit"): the agent left the change
+  `deny` with a message ("read the diff in Symbiote first, do not commit"): the agent left the change
   uncommitted and quoted the reason. While that hook waits, `claude agents` says `blocked` ·
   `permission prompt`: the dialog is open beside the hook, the first answer wins.
 - **When a hook times out** (set to 15 s): the question's `PreToolUse` hook gave way to Claude
@@ -2418,14 +2418,14 @@ for an answer file, as CPR's server would wait for the person.
   with no flags (0.73 s) continued the same session with its saved permission mode, settings and
   model: the hooks fired again and the reply arrived as the person's prompt. So the hooks must be
   in the first launch.
-- **Clean up**: `claude rm` on the four sessions that ran in the CPR-made worktree removed the
+- **Clean up**: `claude rm` on the four sessions that ran in the Symbiote-made worktree removed the
   sessions only; the worktree and branch stayed (after a merge into `main`), and `git worktree
   remove` and `git branch -d` removed them.
 - A session renames itself (`spike-plan` became `greet-farewell-punctuation`), and `claude logs`
   prints a terminal screen with escape codes: match sessions by folder, never parse logs.
 
 **Not tested**: a hook waiting longer than 20 s (documented default 600 s, `timeout` per hook); a
-hook that cannot reach CPR (`cpr view` closed); the session's inbox socket; a session whose
+hook that cannot reach Symbiote (`symbiote view` closed); the session's inbox socket; a session whose
 process the supervisor stopped after an hour idle; Windows and macOS. Four sessions, all removed
 with the repository; Claude Code's own records of them (transcripts, the trust entry) remain in
 `~/.claude` and `~/.claude.json` (`claude purge <path>` removes them).
@@ -2433,14 +2433,14 @@ with the repository; Claude Code's own records of them (transcripts, the trust e
 **Second run** (the two checks the V18c plan asked for first; one Haiku session in the same
 throwaway repository, recreated at the path the person had trusted, so no trust step; the
 repository's `.claude/settings.json` committed with a `SessionStart` hook and a
-`Bash(node --version)` allow rule; CPR's stand-in hooks in a settings file labelled `cpr-v1`):
-- **The person's settings still apply beside `--settings`**: the repository's hook, CPR's hooks
+`Bash(node --version)` allow rule; Symbiote's stand-in hooks in a settings file labelled `symbiote-v1`):
+- **The person's settings still apply beside `--settings`**: the repository's hook, Symbiote's hooks
   and the person's own `SessionStart` hook all ran (GSD's update check wrote its cache in the same
   second as the session's start). No permission was asked for `node --version`; that may be
   Claude Code's own list of read-only commands rather than the rule, so the rule is not shown.
-- **A waking session reads its settings file again**: rewritten as `cpr-v2` while the session was
+- **A waking session reads its settings file again**: rewritten as `symbiote-v2` while the session was
   stopped, the resume ("woke session … with its saved options (--name, --permission-mode,
-  --settings, --model)") ran the `cpr-v2` hooks.
+  --settings, --model)") ran the `symbiote-v2` hooks.
 - **The file must be there when it wakes**: moved away, the resume exited 0 but the session
   failed ("exit 1 before init — Error: Settings file not found: …"); with the file back, the next
   resume continued the same session.
@@ -2449,42 +2449,42 @@ repository's `.claude/settings.json` committed with a `SessionStart` hook and a
 
 Asked to move "one abstraction up from Claude Code", starting simple with one box, beside the
 list. The features view is now a list and a panel: picking a feature shows its state and
-actions, its thread — CPR's prompt, the agent's plans and reports, the person's messages, what
+actions, its thread — Symbiote's prompt, the agent's plans and reports, the person's messages, what
 the agent waits on — and one box whose message continues the agent's own session. "Send the
 verdict" (and "Send to the agent" in the Review tab) fills the box with the review's verdict.
 Clean up removes a merged feature's sessions, worktree and branch. The thread is recorded by
-hooks CPR gives every agent it starts (`--settings <cpr>/claude-settings.json`), which decide
-nothing: answering permissions and questions in CPR is V20b (planned as V18e), on the same
+hooks Symbiote gives every agent it starts (`--settings <symbiote>/claude-settings.json`), which decide
+nothing: answering permissions and questions in Symbiote is V20b (planned as V18e), on the same
 hooks.
 
 **Learned**:
 - **A reply is stop, then resume with no flag.** Measured in the spike: a resume of a live
   session, or with any flag, starts a copy without the hooks. With a real agent the same session
   continued twice (1.6 s each), its hooks still firing.
-- **The first hooks fire before `--bg` returns.** CPR saved the feature's record after the start,
+- **The first hooks fire before `--bg` returns.** Symbiote saved the feature's record after the start,
   so the hook found no feature for the session's first events. The e2e fake caught it because it
   runs the hooks of its `--settings` file as Claude Code does; a fake that only records argv would
   not have.
 - **A hook is a process per event**: a script with Node's modules only costs 22–23 ms; going
-  through CPR's CLI, which loads the engine, 286 ms. `thread.ts` stays free of `@cpr/core`.
+  through Symbiote's CLI, which loads the engine, 286 ms. `thread.ts` stays free of `@symbiote/core`.
 - **Two layout bugs only a browser showed**: rows with no brief in the 360 px list (the branch
   took the line), and, with a real agent's long plan, a thread that opened at its oldest entry
   with the fix out of sight. Unit tests and the e2e specs with short messages passed both.
 - **A finished plan is `blocked`, not `done`**: with the thread's last report after its last
-  prompt, CPR reads it as "plan ready" — confirmed with the real agent.
+  prompt, Symbiote reads it as "plan ready" — confirmed with the real agent.
 - **The 2 s session cache again**: an e2e that set the fake's state and reloaded pressed Send
   while the page still said "Working", and the panel rightly asked before stopping the agent.
   Tests wait for the page's next read, as V18b's journal says.
 - A limit, not tried: `git branch -d` checks the merge against the branch's upstream, else
-  `HEAD` (git's documented rule), so with another branch checked out where `cpr view` runs, Clean
+  `HEAD` (git's documented rule), so with another branch checked out where `symbiote view` runs, Clean
   up's branch deletion would be refused in git's words, the worktree already removed.
 
 **Verification**: tests first (core 2, thread 8, features 10, server 1, reviews 1, viewer 4, e2e
 8). 692 unit tests, 98 e2e, all passing. A real Claude Code (Haiku, Pro subscription, `auto`)
-driven through `cpr view`'s API: start 1.0 s, plan 13 s and "plan ready", reply 1.6 s and a commit
+driven through `symbiote view`'s API: start 1.0 s, plan 13 s and "plan ready", reply 1.6 s and a commit
 13 s later, a verdict sent back 1.6 s and a fix 9 s later, Clean up 1.4 s; everything made was
 removed. Screenshots light and dark at 1440 and 900 px, no page errors. Not verified: permissions
-and questions from a real agent in the panel, a session woken outside CPR, `cpr view` closed
+and questions from a real agent in the panel, a session woken outside Symbiote, `symbiote view` closed
 while an agent works, an unmerged Clean up with a real agent, Windows and macOS, Firefox and
 Safari.
 
@@ -2493,15 +2493,15 @@ tests, build, 98 e2e.
 
 ## V21 spike — Claude Code's own terminal in a feature's panel (2026-10-15, branch `milestone/v21-agent-terminal`)
 
-Asked: could the chat the person uses (Claude Code) be in CPR instead of V18c's box; of the
-ways compared (the Agent SDK hosting the session in `cpr view`, `claude attach` in a terminal in
+Asked: could the chat the person uses (Claude Code) be in Symbiote instead of V18c's box; of the
+ways compared (the Agent SDK hosting the session in `symbiote view`, `claude attach` in a terminal in
 the page, V18c with more hooks), "is it easier to do like this?" — the terminal. Question: does
 `claude attach <id>` in a pseudo-terminal, drawn by xterm.js in a page, give the whole session
 while Claude Code keeps hosting it? Run with Claude Code 2.1.300, Haiku, the person's Pro
 subscription: a background session (`--bg`, `manual` permission mode, a hooks file that logs
 every event) in a detached worktree of this repository (trusted), started with a clean
 environment; a spike server (node-pty 1.1.0, output by server-sent events, keys and resizes as
-same-origin JSON POSTs with `x-cpr`, as every write today) and xterm.js 6.0.0 in Chromium
+same-origin JSON POSTs with `x-symbiote`, as every write today) and xterm.js 6.0.0 in Chromium
 (Playwright 1.63).
 
 **Learned**:
@@ -2524,7 +2524,7 @@ same-origin JSON POSTs with `x-cpr`, as every write today) and xterm.js 6.0.0 in
   `UserPromptSubmit`. A message typed while the agent worked was queued ("Press up to edit queued
   messages") and answered after the current turn, each turn with its `Stop`: what V18 left for
   later ("a message kept for the end of the agent's turn") is Claude Code's own behaviour here.
-- **CPR should type one line at most.** A bracketed paste arrived as `<pasted_content id=…>`,
+- **Symbiote should type one line at most.** A bracketed paste arrived as `<pasted_content id=…>`,
   which Claude Code tells the agent to treat as text the person may not have written (the agent
   followed it this time); the thread got the wrapper too. Multi-line text typed with
   backslash-Enter kept its backslashes, and its first Enter did not submit. One line, then
@@ -2553,7 +2553,7 @@ same-origin JSON POSTs with `x-cpr`, as every write today) and xterm.js 6.0.0 in
   started `node server.mjs` killed that shell (CLAUDE.md's `pkill` trap, once more).
 
 **Not tested**: Windows (ConPTY) and macOS; Firefox and Safari; a question (`AskUserQuestion`)
-answered in the page; a session in `failed`; `cpr view` itself (the spike server stood in for
+answered in the page; a session in `failed`; `symbiote view` itself (the spike server stood in for
 it); `pnpm install --no-optional` with a frozen lockfile. Everything made was removed: the
 session (`claude stop`, `claude rm`), the worktree, and Claude Code's records of its folder
 (`claude purge`: the transcript, 8 prompts in the history, the config entry).
@@ -2588,12 +2588,12 @@ Asked: "Yes. Go for it, implement it, starting with the bug". The interrupted-st
 (entry above), then V21a (terminals in the server) and V21b (the Terminal tab), on one branch.
 
 **Learned**:
-- **Esc still reads `working` and `idle` on Claude Code 2.1.302**, for the 40 s watched; CPR said
+- **Esc still reads `working` and `idle` on Claude Code 2.1.302**, for the 40 s watched; Symbiote said
   "Interrupted: waiting for you" 301 ms after it. A session reopened by `attach` after a stop
   reads the same way, so the thread decides between finished and interrupted.
 - **Lines written in one go are typed, not pasted**: a 229-character write, then Enter as its own
   write, reached the agent as a plain prompt; so did a burst typed at once. The spike's
-  `<pasted_content>` came from a bracketed paste, which CPR never sends.
+  `<pasted_content>` came from a bracketed paste, which Symbiote never sends.
 - **pnpm 12 approves builds with `allowBuilds`** in `pnpm-workspace.yaml`. A first "no compiler"
   test passed for the wrong reason: pnpm reused the build from its store (0.17 s, `pty.node` in
   place). With `--config.side-effects-cache=false`, the failed build left the install at exit 0
@@ -2617,12 +2617,12 @@ Asked: "Yes. Go for it, implement it, starting with the bug". The interrupted-st
 **Verification**: tests first, except `terminal.ts` (written before its tests, which then failed
 only for the missing module). 717 unit tests (24 new, one in a real pseudo-terminal), 101 e2e (3
 new). A real Claude Code (2.1.302, Haiku 5.5, the person's Pro subscription), five throwaway
-features through `cpr view`: the session drawn and a question answered in the page; prompts typed
+features through `symbiote view`: the session drawn and a question answered in the page; prompts typed
 and written reaching the thread; Esc read as interrupted; a stop shown in 755 ms and reopened in
 230 ms; leaving the tab hanging up only the client; no page errors; everything removed, Claude
 Code's records of the folder too. One run's message was not submitted (typed before Claude Code
 said `idle`); not explained. Not verified: Windows, macOS, Firefox, Safari; a permission prompt
-in CPR's terminal (`auto` asked none); four real terminals at once.
+in Symbiote's terminal (`auto` asked none); four real terminals at once.
 
 Merged into main (2026-10-18), after the state fix. `main` verified after the merge: 717 unit
 tests, build, 101 e2e.
@@ -2638,7 +2638,7 @@ in `src/markdown.ts`: no HTML string is made, so nothing needs sanitizing. HTML 
 as text; links and images become links only to `http(s):` and `mailto:`; task boxes are drawn
 read only. `marked` is loaded into its own chunk (46 KB, 13.7 KB gzip) when a thread is first
 shown, the report plain text until then; the main bundle grew 3.8 KB. The person's messages and
-CPR's prompt are shown as written (decision 118).
+Symbiote's prompt are shown as written (decision 118).
 
 **Learned**: `marked`'s lexer gives text unescaped (React escapes it once), a task's box as its
 own `checkbox` token, and with `breaks` a `br` token per line break. The thread is itself a list,
@@ -2657,13 +2657,13 @@ terminals. `main` verified after the merge: 723 unit tests, build, 102 e2e.
 
 ## README rewrite (2026-10-15, branch `chore/update-readme`)
 
-Asked: the README was stale; make it readable, without emojis, and CPR now stands for
+Asked: the README was stale; make it readable, without emojis, and Symbiote now stands for
 Coordinated Programming Runtime (decision 119). What it was:
 
 - Each milestone had appended a paragraph: the commits page took 10 lines, starting a feature 25.
 - Its three screenshots were from 2026-10-01 (V1, V3, G2): no map, no project frames, no commits
   page, no features.
-- The sample `cpr diff` output, copied from PLAN §9, predated D1: no `orphan-added`, and
+- The sample `symbiote diff` output, copied from PLAN §9, predated D1: no `orphan-added`, and
   `signature-changed` a warning where a compatible change is now `info`.
 - Feature worktrees were said to be `../<repo>.worktrees/<branch>`; the code turns the branch's
   slashes into dashes.
@@ -2678,10 +2678,10 @@ the repository:
 
 - The V17 branch (`9ffd5ac`'s two parents: 49 symbols in 3 packages, 17 findings), reviewed in a
   clone of this repository whose `main` was reset to before its merge: the graph zoomed in on
-  `@cpr/core`, the detail of `Verdict`, and the Review tab with two comments.
+  `@symbiote/core`, the detail of `Verdict`, and the Review tab with two comments.
 - This repository's history for the commits page, the branches panel open on `milestone/`.
 - The e2e suite's fake Claude Code for the Features tab, so no real session and nothing from
-  `cpr/` is in an image.
+  `symbiote/` is in an image.
 
 **Learned**: the README is where drift collected. Milestones kept it current by appending, which
 kept every fact and lost the order. The sample output came from the plan, which nothing
@@ -2691,13 +2691,13 @@ regenerates. Stale text found outside the README is V22 in the plan, not part of
 there; `--bg` is Claude Code's), every configuration key, permission mode and environment
 variable against the code, the action's inputs against `action.yml`, and every relative link
 and anchor. No emoji outside code: the glyphs left (`✖ ⚠ ℹ` in the sample, `✓ ✗ ↻` as badges)
-are what CPR prints, kept in code formatting. The sample output is a real run on the `callers`
+are what Symbiote prints, kept in code formatting. The sample output is a real run on the `callers`
 fixture. `pnpm check` and `pnpm build` pass.
 
 Merged into main (2026-10-18), after V21 and two fixes, resolved on the branch first: V21 and
 decisions 111–118 had been taken on `main`, so the proposed fixes are V22 and the name is decision
 119; the journal kept whole, `main`'s entries first; the README rewrite kept, with V21's Terminal,
-the thread drawn as Markdown, Talk only without the terminal, `CPR_TERMINAL` and `node-pty`
+the thread drawn as Markdown, Talk only without the terminal, `SYMBIOTE_TERMINAL` and `node-pty`
 carried into it. The images are from before V21: the Features tab shows the thread with its box,
 not the terminal. `main` verified after the merge (same tree as the branch): 723 unit tests,
 build, 102 e2e.
@@ -2705,16 +2705,16 @@ build, 102 e2e.
 **Features screenshot retaken after V21** (2026-10-18, same branch): `features.png` now shows the
 Terminal tab with a real Claude Code (2.1.302, Haiku 5.5, the person's Pro subscription), not
 the e2e fake, whose `attach` only prints its ID. Three throwaway features in a small repository
-(`src/math.ts`, three tests) served by this branch's `cpr view`: one plan first (its plan in 10
+(`src/math.ts`, three tests) served by this branch's `symbiote view`: one plan first (its plan in 10
 s), one in `auto` that stopped at a permission prompt, one that wrote `clamp`, ran the tests and
 committed (30 s); the picked one's plan in the terminal. A feature's worktree takes its trust
 from the main repository's folder (the parent folder `/` being trusted did not count: refused in
 `/tmp`), so the repository was made at the path the person had trusted for the V18c spike.
-Everything removed after: CPR's Clean up (sessions and worktrees), the folders, and Claude Code's
+Everything removed after: Symbiote's Clean up (sessions and worktrees), the folders, and Claude Code's
 records of the three worktrees (`claude purge`); the repository folder's older records and trust
 entry left as they were. The image shows the person's status line (model, folder, context) and
 nothing personal. The README re-checked against the CLI's help and the code: every flag and
-environment variable there (`CPR_VIEWER_DIR`, for tests, left out).
+environment variable there (`SYMBIOTE_VIEWER_DIR`, for tests, left out).
 
 Merged into main (2026-10-18), the screenshot after the rewrite: no conflicts (`main` had not
 moved). `main` verified after the merge (same tree as the branch): 723 unit tests, build, 102
@@ -2722,7 +2722,7 @@ e2e.
 
 ## V23 — Branches that need you, first in the branches panel (2026-10-18, branch `feature/sort-branches-by-last-agent-action`)
 
-Asked, as a feature started in CPR: "sort the commits from Commits page by last agent action...so
+Asked, as a feature started in Symbiote: "sort the commits from Commits page by last agent action...so
 i can see the branches that need my attention at the top", then "we need to sort the Branches from
 the left side of the commits page". Planned as V22; `main` took V22 and decision 119 meanwhile,
 so it is V23 with decisions 120–121. In the panel's Local list the open features that need the
@@ -2731,11 +2731,11 @@ a short age; then the checked-out branch and the rest by name, as before.
 
 **Learned**:
 - **Claude Code keeps no time of a session's last activity**: `claude agents --json --all`
-  (2.1.302) gives `startedAt`, `state` and `status` only. CPR's thread has the times, but not all
+  (2.1.302) gives `startedAt`, `state` and `status` only. Symbiote's thread has the times, but not all
   of it is the agent's: `chore/update-readme`'s last entries were an `idle_prompt` notice a minute
   after its report and a `/clear` (an end and a start) three days later. Only reports and
   questions count.
-- **`cpr view` from a branch's build rewrites `cpr/claude-settings.json`** to that build's hook
+- **`symbiote view` from a branch's build rewrites `symbiote/claude-settings.json`** to that build's hook
   whenever it lists features: never run it in the person's checkout to measure. Measured on a
   clone with copies of the records and threads instead.
 - **Reading every thread on every list costs with long threads**: before, a thread was read only
@@ -2754,24 +2754,24 @@ and dark and the 880 px overlay: the three open features are the first three loc
 (`main`'s build: 4th, 10th, 12th of 22); no page errors. `/api/features` 33.5–34.0 ms against
 `main`'s 33.2–34.1 ms (median of 20, three runs each, back to back). No analysis code changed: no
 regression sets. Not verified: dozens of features; Firefox, Safari, Windows, macOS; a real Claude
-Code session acting while the page is open (the e2e fake runs CPR's real hooks).
+Code session acting while the page is open (the e2e fake runs Symbiote's real hooks).
 
-Merged into main (2026-10-18), approved in CPR at `4321040`: no conflicts (`main` had been merged
+Merged into main (2026-10-18), approved in Symbiote at `4321040`: no conflicts (`main` had been merged
 into the branch before the review). `main` verified after the merge (same tree as the approved
 commit): 730 unit tests, build, 103 e2e.
 
 ## V22 — Stale text outside the README (2026-10-19, branch `fix/v22-stale-text`)
 
 Found while rewriting the README (2026-10-15). Fixed:
-- `cpr --help` and `cpr view --help` said the first page lists the current branch's commits; it
+- `symbiote --help` and `symbiote view --help` said the first page lists the current branch's commits; it
   has listed every branch since V10a, and picks happen in Compare mode since V13. Both now say so.
-- `cpr --help` showed `pr <number>`; the number is optional since C1 (a CI job's own).
-- `@cpr/cli`'s description named `cpr diff` and `cpr view`, not `cpr pr`.
-- The action's `plugins` input pointed to `cpr.config.json`, the older place; now
-  `cpr/config.json`, as the README and the GitLab template say.
+- `symbiote --help` showed `pr <number>`; the number is optional since C1 (a CI job's own).
+- `@symbiote/cli`'s description named `symbiote diff` and `symbiote view`, not `symbiote pr`.
+- The action's `plugins` input pointed to `symbiote.config.json`, the older place; now
+  `symbiote/config.json`, as the README and the GitLab template say.
 - The sidebar's "No findings." ended with an emoji.
 
-**Verification**: a unit test first (`cpr` and `cpr view --help` say "every branch", never
+**Verification**: a unit test first (`symbiote` and `symbiote view --help` say "every branch", never
 "current branch"), red on the old help, green after. 729 of 731 unit tests: the two that load
 node-pty fail here and on `main` alike (node-gyp is not in this container, so node-pty is not
 built). Build. E2e: 99 of 103; the two terminal tests need node-pty (as above), and
@@ -2795,8 +2795,8 @@ brief", "a workspace is being started"). The view's address is `/workspaces`; `/
 still served and the viewer rewrites it to `/workspaces` (same query), for bookmarks.
 
 Unchanged on purpose: code identifiers and file names (`Feature*`, `features.ts`), the HTTP API
-(`/api/features/*`), the records in `cpr/features/<branch>.json`, the `features.*` keys in
-`cpr/config.json`, the `feature/` branch prefix, and the agent's prompt. Renaming the records'
+(`/api/features/*`), the records in `symbiote/features/<branch>.json`, the `features.*` keys in
+`symbiote/config.json`, the `feature/` branch prefix, and the agent's prompt. Renaming the records'
 folder or the config keys would need a migration for no visible gain.
 
 **Verification**: unit tests and e2e updated to the new words; a server test that `/features`
@@ -2883,7 +2883,7 @@ optional. Not fetched: Cursor's and Linear's guidance; form-friction numbers wer
 contradictory, so none are used.
 
 Revised the same day with the user's answers: Spike and Refactor are kinds of their own; Done
-when is optional; CPR guesses the check command; the brief's format left to the plan (Markdown
+when is optional; Symbiote guesses the check command; the brief's format left to the plan (Markdown
 headings). Measured for the guess, on the default branches of 16 repositories (shallow blobless
 clones: this one, ky, zod, vite, the Angular RealWorld app, Bitwarden, Qwik, TypeScript's Go
 port, React, Express, Requests, Flask, FastAPI, ripgrep, axum, cobra): a rule over root files
@@ -2956,13 +2956,13 @@ dialog showing it (V24c).
 "Start a workspace" asks for a kind (Feature, Fix, Refactor, Chore, Spike), a title, the kind's
 one required part, Done when (filled in for four kinds, with the guessed check command) and, under
 More, the kind's optional parts. Switching kind keeps every text. The branch follows the title and
-the kind's prefix. The form is a draft `cpr view` keeps until the workspace starts. The list, the
+the kind's prefix. The form is a draft `symbiote view` keeps until the workspace starts. The list, the
 panel and the review page name a workspace by its title, its kind tagged before it.
 
 **Learned**:
-- **A draft in `localStorage` would not survive the next `cpr view`**: each run takes a free port,
+- **A draft in `localStorage` would not survive the next `symbiote view`**: each run takes a free port,
   and browser storage is per origin — the reason review state moved to the server in decision 17.
-  The draft is kept in CPR's cache instead (decision 128), with the last kind.
+  The draft is kept in Symbiote's cache instead (decision 128), with the last kind.
 - **Saving a draft and clearing it race**: the dialog's unmount (after a start) and the starter's
   "clear" would both post, in an order React decides. The dialog owns it: Start saves the form at
   once, and its unmount after a successful start saves only the kind.
@@ -2986,7 +2986,7 @@ keyboard, a pre-V24 record): 4 red on V24b's build, the fifth guards what stays;
 twice.
 Screenshots at 1440 × 900 and 390 × 844, light and dark, each kind, More closed and open: fits
 without scrolling with More closed (645 and 685 px); with More open it scrolls inside the window.
-With a real Claude Code (Haiku, `claude -p` with CPR's own prompt, read-only, plan first) for each
+With a real Claude Code (Haiku, `claude -p` with Symbiote's own prompt, read-only, plan first) for each
 kind: each plan follows its kind's line (PLAN.md, V24 results). Not verified: `claude --bg` from
 the dialog with a real agent (its trust prompt, V18), Firefox and Safari, a screen reader on the
 radio group.
@@ -3013,9 +3013,9 @@ started; the merge's tree is the branch's). `main` verified after the merge: 761
 typecheck, build, 110 of 110 e2e.
 
 
-## V20a spike — what running Codex in a CPR worktree takes (2026-10-19, branch `feature/codex-agent-integration`)
+## V20a spike — what running Codex in a Symbiote worktree takes (2026-10-19, branch `feature/codex-agent-integration`)
 
-Asked, as a workspace started in CPR: "Integrate codex agent into CPR. It is already planned";
+Asked, as a workspace started in Symbiote: "Integrate codex agent into Symbiote. It is already planned";
 done when Codex is started in a workspace and prompted. V18 planned Codex on 0.162 without
 running it. Run with Codex 0.163 (`codex-cli`, npm), logged in with ChatGPT, the person's
 `gpt-6-luna` at medium effort, in a throwaway repository with a worktree beside it made as V18a
@@ -3026,7 +3026,7 @@ makes them (`git worktree add -b feature/farewell ../app.worktrees/feature-farew
   `git add`/`git commit` failed 3 of 3 times: a linked worktree's git folder is
   `<checkout>/.git/worktrees/<name>`, outside the sandbox ("Git tried to create an index lock
   under the parent repo's `.git/worktrees/` directory, which is read-only"). The change was left
-  uncommitted, and CPR's flow reviews commits. `--add-dir <checkout>/.git` did not help: Codex
+  uncommitted, and Symbiote's flow reviews commits. `--add-dir <checkout>/.git` did not help: Codex
   keeps any `.git` read-only even inside a writable root. Writable roots for the worktree's git
   folder, `objects`, `refs` and `logs`: committed (10.5 s); narrowed to the branch's own ref and
   reflog folders (`refs/heads/feature`, `logs/refs/heads/feature`): committed too (12.0 s).
@@ -3052,7 +3052,7 @@ makes them (`git worktree add -b feature/farewell ../app.worktrees/feature-farew
   group ended all of them in 0.1 s; the thread then resumed with its context ("I was running
   `sleep 25`; the command was stopped before it finished").
 - **Its instructions**: the repository's `AGENTS.md` in the worktree was followed (1 of 1); a file
-  in the main checkout's `cpr/` was read from the sandbox (1 of 1); `exec` asked for no trust in a
+  in the main checkout's `symbiote/` was read from the sandbox (1 of 1); `exec` asked for no trust in a
   folder Codex had never seen.
 - **Archive**: `codex archive <thread>` 70 ms; again on the same thread, or an unknown one, exit 1
   ("failed to archive session").
@@ -3065,10 +3065,10 @@ the throwaway repository, removed with it; their session files stay in `~/.codex
 
 ## V20a — Codex as a workspace's agent (2026-10-19, branch `feature/codex-agent-integration`)
 
-Asked, as a workspace started in CPR: integrate Codex, "already planned"; done when Codex is
+Asked, as a workspace started in Symbiote: integrate Codex, "already planned"; done when Codex is
 started in a workspace and prompted. The start dialog now offers the agents installed (Claude
 Code first unless `agent.kind` says `codex`); a Codex workspace runs `codex exec --json` in its
-worktree through CPR's runner (`dist/codex-run.js`), which writes Codex's events into the
+worktree through Symbiote's runner (`dist/codex-run.js`), which writes Codex's events into the
 workspace's thread; it can commit on its branch from its sandbox; replies resume its thread;
 Stop, Start, Talk (`codex resume`) and Clean up (archive) work for it. Claude Code workspaces
 are unchanged; the terminal stays Claude Code's.
@@ -3079,7 +3079,7 @@ are unchanged; the terminal stays Claude Code's.
   read-only), and `exec resume` keeps none of the start's options. Both only showed by running
   Codex (spike, above): the fix is writable roots for exactly what a commit on the branch writes,
   passed on every run.
-- **Separating runs by time fails in the same millisecond.** CPR writes its own `end: stopped`
+- **Separating runs by time fails in the same millisecond.** Symbiote writes its own `end: stopped`
   and may start the next run within the same millisecond; the tests' fixed clock showed it at
   once. Each run now carries an ID on its entries.
 - **A detached start answers before anything is recorded.** The person's reply took 5.3 s to show
@@ -3098,7 +3098,7 @@ are unchanged; the terminal stays Claude Code's.
 
 **Verification**: tests first (core 1, runner and Codex 17, service 6 + 2, server 1, viewer 3; red
 before), one guard test; 788 unit tests, 113 e2e (3 new with a fake Codex run by the real runner,
-written with the viewer change; 113 of 113, then 112 with the lock flake above). A real Codex (0.163, ChatGPT login) through `cpr view` in
+written with the viewer change; 113 of 113, then 112 with the lock flake above). A real Codex (0.163, ChatGPT login) through `symbiote view` in
 Chromium, two workspaces in a throwaway repository: plans in 9–10.7 s; replies in the thread in
 0.29 s; commits from the sandbox (`bdaba0c`, `e15dcb3`), ready for review 15.7–25.3 s after the
 reply; Stop in 0.21 s with nothing left running; Clean up in 0.9 s, its thread archived. Screenshots
@@ -3112,17 +3112,17 @@ typecheck, build, 113 of 113 e2e.
 
 ## V25 spike — what "workspaces first" touches (2026-10-19, branch `milestone/v25-workspaces-home`)
 
-Asked: the commits page's name, and that CPR still starts from commits when it works one level
+Asked: the commits page's name, and that Symbiote still starts from commits when it works one level
 higher, in worktrees the person calls workspaces. Measured on `main` (`d604c2d`):
 
 - `/` is the commits page (V10a, before workspaces existed). Workspaces is the second tab at
   `/workspaces` (V18b; `/features` redirects there). A diff's way back is always "← Commits".
 - On screen, workspaces are already called workspaces (V24). Underneath they are still
   "features": 1,949 matches in code and tests, 12 file names, `/api/features` (30 uses),
-  `cpr/features/<branch>.json`, and the "Features" section of the `cpr/AGENTS.md` CPR writes.
+  `symbiote/features/<branch>.json`, and the "Features" section of the `symbiote/AGENTS.md` Symbiote writes.
   Since V24 "feature" is also one of the five kinds of work (`WorkKind`, the `feature/` prefix), so
   a text replace would break the kinds. The rename has to go symbol by symbol.
-- `repository.features` is set on every `cpr view` (`main.ts`), so Workspaces can always be the
+- `repository.features` is set on every `symbiote view` (`main.ts`), so Workspaces can always be the
   first page. Its empty state exists already ("No workspaces yet …") but has no action.
 - 54 of the e2e's 90 `goto` calls open `/` and expect the commits page.
 - `h` and `w` are not bound on either page.
@@ -3132,7 +3132,7 @@ records on disk.
 
 ## V25 — Workspaces first, History beneath (2026-10-19, branch `milestone/v25-workspaces-home`)
 
-`cpr view` opens on Workspaces (`/`). The repository's history is History (`/history`), and in
+`symbiote view` opens on Workspaces (`/`). The repository's history is History (`/history`), and in
 code, the API and on disk a workspace is a workspace. "Feature" is left for the kind of work.
 
 Learned:
@@ -3150,7 +3150,7 @@ Learned:
   `location.assign`, so the page that opens one cannot leave state on it. `document.referrer`
   survives a reload and is empty for a bookmark.
 - **The hook can be the first reader.** An agent started before the upgrade fires its hook (its own
-  process, `thread.ts`) before anyone opens `cpr view`, so the hook moves `cpr/features/` too.
+  process, `thread.ts`) before anyone opens `symbiote view`, so the hook moves `symbiote/features/` too.
   `rename` replaces an empty target folder on Linux, so "both folders" means both hold records.
 - **Interleaved timings mislead.** Measured round-robin, History's first paint looked 108 ms
   against `main`'s 59 ms. Measured alone, each order, 9 rounds: 60 ms both. An occasional
@@ -3161,7 +3161,7 @@ config's old name, the move (old, new, both, neither, two readers), the hook, th
 `AGENTS.md`, the guard test and the note; 801 unit tests, 114 of 114 e2e. Chromium on throwaway
 repositories, light and dark, 1440 and 390 px, no page errors. First paint: `/` 109 ms like
 `main`'s `/workspaces`, `/history` 60 ms like `main`'s `/`. The built CLI moved two old records
-from its hook, listed them in 40 ms and showed the note for a leftover `cpr/features/`. Not
+from its hook, listed them in 40 ms and showed the note for a leftover `symbiote/features/`. Not
 verified: a real agent session across the move; Windows; the README's Workspaces screenshot.
 
 Merged into main (2026-10-19): V25a–c, no conflicts (`main` had not moved since the branch
@@ -3200,18 +3200,18 @@ fresh merger agent from the conflict alone, every resolution reviewed (V26c).
 
 ## V26a — Merge, check, land (2026-10-19, branch `milestone/v26-merger`)
 
-Approve, then **Merge into ▾** (the Review tab, a workspace's panel, or `cpr merge <branch>`):
-CPR merges the approved commit with `--no-ff` in a worktree in its cache, runs the check
+Approve, then **Merge into ▾** (the Review tab, a workspace's panel, or `symbiote merge <branch>`):
+Symbiote merges the approved commit with `--no-ff` in a worktree in its cache, runs the check
 (`merge.checks`, else the V24b guess at the target's tip), and moves the target by fast-forward
 in the worktree that has it checked out, else by `update-ref` from the value it was merged on.
-The Merging section heads Workspaces while the queue has entries. `cpr/AGENTS.md` no longer
+The Merging section heads Workspaces while the queue has entries. `symbiote/AGENTS.md` no longer
 tells an agent to merge an approval.
 
 **Learned**:
 - **A function named `process` shadows Node's global** in the module, and TypeScript said so only
   as "Property 'pid' does not exist on type '(entry) => Promise<void>'".
-- **A guessed package script fails in a fresh worktree**: CPR's merge worktree has no
-  `node_modules`. Linking the main checkout's, as `cpr diff`'s worktrees do, would make pnpm's
+- **A guessed package script fails in a fresh worktree**: Symbiote's merge worktree has no
+  `node_modules`. Linking the main checkout's, as `symbiote diff`'s worktrees do, would make pnpm's
   workspace links resolve into the main checkout, so the check would run the wrong code. So a
   `package.json` guess runs its package manager's install first, and the worktree keeps ignored
   files between merges.
@@ -3221,32 +3221,32 @@ tells an agent to merge an approval.
   to the following files would be overwritten by merge", and leaves the branch and the files
   as they were. That is the landing's guard, tested with a change to a file the merge brings.
 - **The config was read after landing**, from the checkout the landing had just changed. In the
-  real run below, the branch brought this repository's `cpr/config.json` (`merge.push: true`)
-  into a clone whose own config said `false`, and CPR pushed the clone's `main` to its `origin`,
+  real run below, the branch brought this repository's `symbiote/config.json` (`merge.push: true`)
+  into a clone whose own config said `false`, and Symbiote pushed the clone's `main` to its `origin`,
   this checkout. Local `main` moved to the test merge; it was put back with `update-ref` from
   that value (GitHub's `main` was never pushed to). Now the push is decided before landing, with
   a test: a landing that brings a pushing config does not push.
 
-**Verification**: tests first — 22 merger tests red (no module), then 4 more (`cpr merge` ×2, the
+**Verification**: tests first — 22 merger tests red (no module), then 4 more (`symbiote merge` ×2, the
 install before a guessed package script, the push decided before landing), each red first; the
 routes with a fake merger; the viewer's row text and actions (3). 831 unit tests, lint,
 typecheck, build; 115 e2e (Merge and Land from a branch review and from a workspace, a conflict
-named and removed; the V17 review texts updated). `cpr diff` on this repository's last 5 merges,
+named and removed; the V17 review texts updated). `symbiote diff` on this repository's last 5 merges,
 `main`'s build and this one: the same graph JSON (45–731 nodes) but for `stats.durationMs`.
 Real use, a clone of this repository merging this branch into its `main` with
 `merge.checks` (install, check, build, e2e): merged on `d17fc40`, checked in 188 s, then the
 landing was refused ("untracked working tree files would be overwritten by merge:
-cpr/config.json") with `main` and the files as they were; with that file removed, `--land`
+symbiote/config.json") with `main` and the files as they were; with that file removed, `--land`
 fast-forwarded the checkout in 278 ms, its unrelated `.nvmrc` change kept. Not verified: the
-merge of a real workspace from a `cpr view` with a real agent; V26b and V26c.
+merge of a real workspace from a `symbiote view` with a real agent; V26b and V26c.
 
 
 ## V26c — The merger agent (2026-10-20, branch `milestone/v26-merger`)
 
-A conflict goes to one `claude -p` (or `codex exec`) run in CPR's merge worktree, read-only:
-CPR's instructions (1,410 characters, ~350 tokens) as its system prompt, then the sides'
-titles, the symbols both changed, `cpr/merge.md`, and each region in diff3 style with 3 lines
-around. It answers each region's text as JSON, or `needsYou`. CPR writes the answers, commits
+A conflict goes to one `claude -p` (or `codex exec`) run in Symbiote's merge worktree, read-only:
+Symbiote's instructions (1,410 characters, ~350 tokens) as its system prompt, then the sides'
+titles, the symbols both changed, `symbiote/merge.md`, and each region in diff3 style with 3 lines
+around. It answers each region's text as JSON, or `needsYou`. Symbiote writes the answers, commits
 the merge, runs the check; the Merging section shows each region (both sides, the ancestor,
 what was written) with Approve and Request changes.
 
@@ -3258,7 +3258,7 @@ what was written) with Approve and Request changes.
 - **A one-line `claude -p` costs 2,349 input tokens** with `--system-prompt` (Claude Code's own
   replaced), `--tools` limited and `--strict-mcp-config`: the floor of every run.
 - **The e2e fixtures would have run the developer's own Claude Code**: the merger finds
-  `claude` on PATH. Every e2e `cpr view` now starts with `CPR_CLAUDE` and `CPR_CODEX` pointing
+  `claude` on PATH. Every e2e `symbiote view` now starts with `SYMBIOTE_CLAUDE` and `SYMBIOTE_CODEX` pointing
   nowhere, and a spec that wants an agent passes a fake.
 - **Some merges change lines outside the conflict** (a test adapted to the other side, an ID
   renumbered). The agent cannot, by design: it said so in its note once, and kept two equal IDs
@@ -3268,7 +3268,7 @@ what was written) with Approve and Request changes.
 
 **Verification**: 852 unit tests, 117 e2e (a resolution asked again, approved and landed; one
 left to the person, nothing merged). **Replays**: this repository's 11 merges whose parents
-conflict (of 79), each through `cpr merge` in a clone with the real Claude Code (`sonnet`), no
+conflict (of 79), each through `symbiote merge` in a clone with the real Claude Code (`sonnet`), no
 check, compared with the merge that was committed:
 
 | Result | Merges |
@@ -3289,8 +3289,8 @@ Merged into main (2026-10-20).
 ## V27 spike — Codex in the panel's terminal, through its app server (2026-10-20, branch `milestone/v27-codex-terminal`)
 
 Asked: make a Codex workspace's terminal work (V20a left it out: its turns in a terminal would
-not reach CPR's thread, decision 133); "try codex agents". Codex 0.163.0, the latest release
-(2026-10-15). Run in a throwaway repository with a linked worktree as CPR makes them, on a
+not reach Symbiote's thread, decision 133); "try codex agents". Codex 0.163.0, the latest release
+(2026-10-15). Run in a throwaway repository with a linked worktree as Symbiote makes them, on a
 private app server (`codex app-server --listen unix://…`), the person's own daemon left alone.
 
 **Learned**:
@@ -3301,20 +3301,20 @@ private app server (`codex app-server --listen unix://…`), the person's own da
   Protocols on an HTTP upgrade). `codex app-server proxy` relays raw bytes, so it answered
   nothing to plain JSON lines (2 of 2). Node has no WebSocket client over a unix socket: the
   spike's client did the upgrade and the frames itself (~70 lines).
-- **CPR as a client starts the thread**: `thread/start` (the worktree, `workspace-write`, the
+- **Symbiote as a client starts the thread**: `thread/start` (the worktree, `workspace-write`, the
   branch's git folders as writable roots, `approvalPolicy`), then `turn/start`. Codex committed
   in the linked worktree, 4.2 s for the turn. The server holds the thread with those options.
-- **A turn typed in the TUI reaches CPR**: `turn/started`, the person's `userMessage`, each
+- **A turn typed in the TUI reaches Symbiote**: `turn/started`, the person's `userMessage`, each
   agent message and command, `turn/completed`, 3.0 s. It committed from the sandbox too (the
   thread's writable roots stayed: V20a's `exec resume` lost them).
-- **A turn CPR starts shows in the open TUI**: its answer was drawn 0.9 s after `turn/start`.
-- **No client needs to stay**: a 15 s turn finished after CPR's client was killed 3 s in, and a
-  new client's `thread/read` (`includeTurns`) gave every turn back (CPR's, the TUI's, the one it
-  missed) with their items and times. CPR need not record the thread itself.
+- **A turn Symbiote starts shows in the open TUI**: its answer was drawn 0.9 s after `turn/start`.
+- **No client needs to stay**: a 15 s turn finished after Symbiote's client was killed 3 s in, and a
+  new client's `thread/read` (`includeTurns`) gave every turn back (Symbiote's, the TUI's, the one it
+  missed) with their items and times. Symbiote need not record the thread itself.
 - **"Needs you" exists for Codex here.** With `approvalPolicy: on-request`, a command the sandbox
   refused became `item/commandExecution/requestApproval` to the clients, and the thread's status
   `active` with `waitingOnApproval`. A TUI that joined later drew Codex's own prompt ("Would you
-  like to run the following command?", its reason, y / esc). Declined from CPR's client:
+  like to run the following command?", its reason, y / esc). Declined from Symbiote's client:
   `serverRequest/resolved` to all, the command `declined`, nothing written, the turn finished.
 - **The TUI asks "Trust this folder?" once per worktree**, and Enter writes `[projects."<path>"]
   trust_level = "trusted"` into the person's `~/.codex/config.toml`. `-c projects."<path>"…` is
@@ -3323,20 +3323,20 @@ private app server (`codex app-server --listen unix://…`), the person's own da
 - **`workspace-write` lets commands write anywhere in `/tmp`** by default (`exclude_slash_tmp`,
   `exclude_tmpdir_env_var` turn it off): a write "outside the folder" there asked nothing.
 - **Memory**: a private app server 269 MB (and 50 MB for its Node wrapper); the person's daemon,
-  already running, 212 MB. On the daemon, CPR adds no process.
+  already running, 212 MB. On the daemon, Symbiote adds no process.
 - The person's daemon answered the same `initialize` over the same transport (1 ms); nothing
   else was asked of it.
 
-**Not tested**: CPR's threads on the person's daemon end to end (only `initialize`); a thread
+**Not tested**: Symbiote's threads on the person's daemon end to end (only `initialize`); a thread
 `codex exec` made (V20a's), resumed on the app server; the daemon restarting during a turn
 (`daemon update` "may interrupt running work"); a TUI's memory; macOS, Windows. The 4 threads
 were archived (`codex unarchive` brings them back).
 
-## V27a — CPR on Codex's app server (2026-10-20, branch `milestone/v27-codex-terminal`)
+## V27a — Symbiote on Codex's app server (2026-10-20, branch `milestone/v27-codex-terminal`)
 
 Asked: "Start V27a". A Codex workspace now starts on the person's app-server daemon (found, or
 started, with `codex app-server daemon start`): a thread in the worktree, its branch's git folders
-writable, approvals asked, named after the branch. CPR reads its state and thread from the server;
+writable, approvals asked, named after the branch. Symbiote reads its state and thread from the server;
 a message joins a running turn; Stop interrupts it; Clean up archives its threads. Talk copies
 `codex resume <thread> --remote unix://<socket> -C <worktree>`. Without a daemon, V20a's `exec`
 as before. Claude Code workspaces unchanged.
@@ -3345,10 +3345,10 @@ as before. Claude Code workspaces unchanged.
 - **Probed first on a private app server** (Codex 0.163, the person's daemon left alone): writable
   roots go in `config.sandbox_workspace_write.writable_roots` (`sandbox` takes only a mode). The
   server keeps a thread's sandbox, roots, approval policy and folder: after a restart, a bare
-  `thread/resume` gave all four back, so CPR passes none when it continues a thread (decision
+  `thread/resume` gave all four back, so Symbiote passes none when it continues a thread (decision
   157). `turn/start` on a thread the server does not hold fails "thread not found" (-32600), a
   turn cut by the restart reads `interrupted`, and the thread `notLoaded`.
-- **A connection that did not start or resume a thread hears only its status changes.** CPR keeps
+- **A connection that did not start or resume a thread hears only its status changes.** Symbiote keeps
   none subscribed (a subscriber gets every delta) and reads with `thread/read` (1.9 ms) and
   `thread/turns/list` (`summary`: each turn's first message and final answer, 3.3 ms for 6 turns;
   `full`: every message and Codex's commentary, 7.2 ms). Items have no times, turns do (seconds).
@@ -3365,7 +3365,7 @@ as before. Claude Code workspaces unchanged.
   socket path past ~100 bytes is made a symlink into `/tmp/codex-daemon-<uid>/`.
 - **The real run found what the fake did not: Codex refuses to name a thread whose rollout is
   empty.** Start again called `thread/name/set` right after `turn/start` and got "failed to update
-  thread metadata … rollout … is empty"; CPR called the start failed while the turn ran, and lost
+  thread metadata … rollout … is empty"; Symbiote called the start failed while the turn ran, and lost
   the thread (it redid the brief, found it done, committed nothing; archived by hand). The first
   start had named its thread by timing alone. Now the name is set once the prompt is in and never
   fails a start, a start that fails after `thread/start` keeps the thread for Clean up (decision
@@ -3378,11 +3378,11 @@ as before. Claude Code workspaces unchanged.
 **Verification**: tests first (WebSocket client 6, app-server client and operations 9, discovery,
 entries and state 11, service 8, viewer 2, e2e 2; red before, for the reasons above). 888 unit
 tests (852 on `main`), 119 of 119 e2e; V20a's Codex specs pass unchanged (their fake `codex`
-starts no daemon). Real Codex 0.163 on the person's daemon through `cpr view` in Chromium, in a
+starts no daemon). Real Codex 0.163 on the person's daemon through `symbiote view` in Chromium, in a
 throwaway repository outside `/tmp`: started 1.82 s after Start; a message while it worked joined
 the turn and was in the thread 0.79 s after Send; it committed in the linked worktree from its
-sandbox (`338aa87`), ready 12.7 s later; `cpr view` stopped mid-turn and started again read
-"working", and the turn ended without CPR (13.3 s); an approval read "Waiting: approval prompt"
+sandbox (`338aa87`), ready 12.7 s later; `symbiote view` stopped mid-turn and started again read
+"working", and the turn ended without Symbiote (13.3 s); an approval read "Waiting: approval prompt"
 2.2 s after the message, "Stop it and send" ran the next turn (1.9 s); Stop 0.36 s; Start again a
 new named thread (1.6 s); the list 19–26 ms, a summary read 4–5 ms, the panel's 50-turn read
 10 ms; Clean up archived both threads. Screenshots light and dark at 1440, 900 and 390 px, no
@@ -3393,7 +3393,7 @@ restarting during a turn (the fake only), macOS and Windows.
 
 Merged into main (2026-10-20), with V27b (entry below).
 
-## V27b spike — Codex's own terminal on a CPR thread (2026-10-20, branch `milestone/v27-codex-terminal`)
+## V27b spike — Codex's own terminal on a Symbiote thread (2026-10-20, branch `milestone/v27-codex-terminal`)
 
 Asked: "Start v27b". Codex 0.163.0, the person's daemon: a thread started as V27a starts one, in a
 throwaway repository's linked worktree, then `codex resume <thread> --remote unix://… -C
@@ -3401,28 +3401,28 @@ throwaway repository's linked worktree, then `codex resume <thread> --remote uni
 stripped; the trust questions measured in throwaway `CODEX_HOME`s with a private app server.
 
 **Learned**:
-- **CPR has been making Codex trust each repository it starts Codex in, since V20a, without
+- **Symbiote has been making Codex trust each repository it starts Codex in, since V20a, without
   saying so.** `thread/start` with `sandbox: "workspace-write"`, the same sandbox in `config`, and
   `codex exec -s workspace-write` each wrote `[projects."<repository>"] trust_level = "trusted"`
   into Codex's `config.toml` (4 of 4); `thread/start` with neither wrote nothing and got a
   read-only sandbox. Found because the person's config held entries for V27a's throwaway
   repositories, written at the second their threads started. There is no writable sandbox without
-  it; CPR will say so (decision 162).
+  it; Symbiote will say so (decision 162).
 - **The TUI still asks for the worktree**: "Trust this folder? Codex can read, edit, and run files
   here, subject to your permission settings. Folder settings can run code automatically … Your
   trust decision will be saved", then "1. Trust and continue · 2. Back to Agent Command Center".
   No way on without trusting. The repository's entry did not count for its linked worktree.
-- **Joined, it is the thread**: first output in 49 ms; CPR's turns drawn with their answers; a
-  turn typed there in CPR's read 111 ms after Enter; the approval CPR's turn asked drawn as
+- **Joined, it is the thread**: first output in 49 ms; Symbiote's turns drawn with their answers; a
+  turn typed there in Symbiote's read 111 ms after Enter; the approval Symbiote's turn asked drawn as
   Codex's prompt ("Would you like to run the following command? … 1. Yes, proceed (y) · 2. Yes,
-  and don't ask again … (p) · 3. No … (esc)"), and `y` there cleared "approval" from CPR's read in
+  and don't ask again … (p) · 3. No … (esc)"), and `y` there cleared "approval" from Symbiote's read in
   65 ms, the turn done 0.85 s later. Codex said why before asking this time (V27a's run: no word).
 - **An Enter written with the text is not a submit**: Codex reads a fast run of characters as a
   paste. Text, then Enter on its own, submitted. A 208-character line written at once (Send the
   verdict) stayed in the input as plain text.
 - **Esc interrupts the turn; Ctrl+C clears the input, and on an empty one quits the client** ("Any
   running work continues", exit 0); a hang-up exits 0 and leaves the thread as it was.
-- **An interrupted turn's command runs on.** After Esc, and after CPR's own Stop (`turn/interrupt`,
+- **An interrupted turn's command runs on.** After Esc, and after Symbiote's own Stop (`turn/interrupt`,
   V27a), the turn's `sleep` went on as a Codex "background terminal" (alive 18 s after Stop).
   `thread/backgroundTerminals/clean`, an experimental method a client opts into at `initialize`
   (`experimentalApi`), ended it in 7 ms; `…/list` named it first. V27a's Stop is not V20a's.
@@ -3435,7 +3435,7 @@ stripped; the trust questions measured in throwaway `CODEX_HOME`s with a private
   the TUI asked to sign in before anything else.
 
 **Not tested**: the TUI on a thread the daemon no longer holds (a restart); two TUIs on one thread;
-Codex's colors in CPR's terminal theme. Cleaned up: the thread archived, the repository removed,
+Codex's colors in Symbiote's terminal theme. Cleaned up: the thread archived, the repository removed,
 and the 4 trust entries this session's runs wrote taken out of the person's config (two older ones,
 for folders of an earlier spike that no longer exist, left as they are).
 
@@ -3452,7 +3452,7 @@ start dialog and the README say that Codex trusts the repository on any writable
   it still sat above an approval in the real run, after the person had trusted the worktree. Any
   key in the terminal answers Codex's first question, so the first key now takes it away.
 - **A fake in a template literal, again**: the first fake TUI wrote `\n` where the template needed
-  `\\n`; the generated `codex` failed to parse, `daemon start` failed with it, and CPR quietly ran
+  `\\n`; the generated `codex` failed to parse, `daemon start` failed with it, and Symbiote quietly ran
   `exec` (the e2e saw "working" and no thread). A syntax check that copies the template's text
   without reading its escapes passed: it must interpret them. V21 found the same trap.
 - **Codex takes a fast run of keys for a paste**: with no delay between keys (Playwright's
@@ -3467,7 +3467,7 @@ start dialog and the README say that Codex trusts the repository on any writable
 
 **Verification**: tests first (client 2, trust 2, service 2, panel 3, reads 2, e2e 1; the e2e red
 without the held reads at "Working", and without the first-key rule at the note). 899 unit tests
-(852 on `main`), 120 of 120 e2e. Real Codex 0.163 on the person's daemon through `cpr view` in
+(852 on `main`), 120 of 120 e2e. Real Codex 0.163 on the person's daemon through `symbiote view` in
 Chromium: the trust question 0.29 s after the page opened and answered in the panel; a commit
 from the sandbox in 15 s; a turn typed in 128 ms to the thread; an approval answered with `y` in
 the panel's terminal (22 ms to clear "needs you"); Stop 45 ms with the command ended; no page
@@ -3487,87 +3487,87 @@ then tried on real merges, then dropped: "any conflict should be resolved by the
 conflict goes to the merger agent, as V26c built it (decision 164).
 
 **Learned**:
-- **Where the rule applies, it is mostly docs.** The last 200 merges of CPR, Bitwarden, Qwik, zod,
+- **Where the rule applies, it is mostly docs.** The last 200 merges of Symbiote, Bitwarden, Qwik, zod,
   vite and CPython (952 merges, 171 conflicting, replayed with `git merge-tree --write-tree` in
-  diff3 style): it wrote 8 (CPR's journal 6 of 11, CPython's `Misc/NEWS` 2), 6 equal to the
+  diff3 style): it wrote 8 (Symbiote's journal 6 of 11, CPython's `Misc/NEWS` 2), 6 equal to the
   committed merge.
 - **A rule cannot see meaning.** File by file it would have kept two `PLAN.md` rows that both
-  claim V21 (CPR `01161fa2f`; the committed merge renumbered one), a changelog's entries twice
+  claim V21 (Symbiote `01161fa2f`; the committed merge renumbered one), a changelog's entries twice
   under two headings (vite `67a8f8022`), and statements added inside a method in the wrong order
   (Bitwarden `0da4f7df7`). Each needed its own guard.
-- **The real merger agent on this repository's 11 conflicting merges**, through `cpr merge` with
+- **The real merger agent on this repository's 11 conflicting merges**, through `symbiote merge` with
   Claude Code 2.1.303 (`sonnet`) and a conflict-marker check: of the 5 the rule left to it, 3
   landed (2 equal to the committed merge, blank lines aside in one; 1 missing a line the committed
   merge changed outside the regions, as V26c found), and 2 stopped rightly with "needs you" (a
   README section rewritten on one side; two milestones both numbered V21). 10.0K–56.3K input
   tokens, 9.9–49.3 s a run. `main` moved only on `--approve`.
 
-## Fix — `cpr/merge.md` can be committed (2026-10-20, branch `fix/merge-md-shared`)
+## Fix — `symbiote/merge.md` can be committed (2026-10-20, branch `fix/merge-md-shared`)
 
-Found while planning V28. `cpr/merge.md` holds a project's merge rules for the merger (V26c), but
-the `cpr/.gitignore` CPR writes (`*`, `!config.json`) hid it, so the rules stayed on one machine.
-Forcing it into git would have been worse: `reviewPlace` treats any tracked file in `cpr/` that is
-not CPR's (`config.json`, `.gitignore`, `AGENTS.md`) as the project's own folder, and moves the
-reviews to CPR's cache.
+Found while planning V28. `symbiote/merge.md` holds a project's merge rules for the merger (V26c), but
+the `symbiote/.gitignore` Symbiote writes (`*`, `!config.json`) hid it, so the rules stayed on one machine.
+Forcing it into git would have been worse: `reviewPlace` treats any tracked file in `symbiote/` that is
+not Symbiote's (`config.json`, `.gitignore`, `AGENTS.md`) as the project's own folder, and moves the
+reviews to Symbiote's cache.
 
-Now `GITIGNORE` also un-ignores `merge.md`, `merge.md` is one of CPR's files, and a
-`cpr/.gitignore` whose text is exactly what CPR wrote from V15 on is replaced by the new text. A
+Now `GITIGNORE` also un-ignores `merge.md`, `merge.md` is one of Symbiote's files, and a
+`symbiote/.gitignore` whose text is exactly what Symbiote wrote from V15 on is replaced by the new text. A
 `.gitignore` with any other text is still the project's and left alone.
 
 **Verification**: 2 tests red first (a committed `merge.md` sent the reviews to the cache;
 `git status` did not show `merge.md`), green after; 900 unit tests, lint, typecheck, build.
-README not changed: its Merging section does not describe `cpr/merge.md` yet (left for later).
+README not changed: its Merging section does not describe `symbiote/merge.md` yet (left for later).
 
 Merged into main (2026-10-20), before V28.
 
-## V28 spike — what CPR tells its agents, and how a project would change it (2026-10-20, branch `milestone/v28-agent-prompts`)
+## V28 spike — what Symbiote tells its agents, and how a project would change it (2026-10-20, branch `milestone/v28-agent-prompts`)
 
 Asked: a settings page to extend the predefined agents; then "every meta prompt of every agent
 should be configurable, with the defaults set as current", saved in `config.json` and shared
 with everyone, only the agents' prompts at first.
 
-Measured on `main` (`eadc0ce`): CPR writes 13 texts its agents are told: a start prompt per kind
+Measured on `main` (`eadc0ce`): Symbiote writes 13 texts its agents are told: a start prompt per kind
 (654–840 characters besides the brief), the two plan sentences (132 and 69), the 4 sentences of a
-verdict for a branch's agent (`verdictText`), `cpr/AGENTS.md` (2,935 characters, 62 lines) and
+verdict for a branch's agent (`verdictText`), `symbiote/AGENTS.md` (2,935 characters, 62 lines) and
 the merger's instructions (1,410). A project can change none of them. `agent.*` chooses the agent,
-not its words; `cpr/merge.md` only adds to the merger's prompt.
+not its words; `symbiote/merge.md` only adds to the merger's prompt.
 
 **Learned**:
-- **`cpr/merge.md` could not be shared.** CPR's `cpr/.gitignore` hid it, and forcing it into git
-  would have moved the reviews to CPR's cache (any tracked file in `cpr/` that is not CPR's makes
+- **`symbiote/merge.md` could not be shared.** Symbiote's `symbiote/.gitignore` hid it, and forcing it into git
+  would have moved the reviews to Symbiote's cache (any tracked file in `symbiote/` that is not Symbiote's makes
   the folder the project's). Fixed on its own branch, `fix/merge-md-shared`.
 - **Additions would not be enough.** This repository's CLAUDE.md keeps experiments in `spikes/`
   and ends every session pushed; the Spike prompt says "Commit nothing unless the brief asks for
-  it". Only a changed prompt can drop CPR's sentence, so V28 makes each prompt whole and
+  it". Only a changed prompt can drop Symbiote's sentence, so V28 makes each prompt whole and
   changeable, with today's text as the default.
 - **What people change is not measured.** The 5 workspace sessions on this machine hold 16
   messages from the person: one corrected how the agent worked ("ask for my permission to do
   something, but don't do it"), before Plan first existed; the rest were answers, "continue", and
   merges V26 now makes.
-- **Rewriting `config.json` breaks the project's own check.** Prettier checks `cpr/config.json`
+- **Rewriting `config.json` breaks the project's own check.** Prettier checks `symbiote/config.json`
   here; `JSON.stringify(…, null, 2)` turns its one-line `merge.checks` into 6 lines, and
   `pnpm check` would fail. `jsonc-parser` 3.3.1's `modify` changed only the member it set (an
   array of long lines, as Prettier writes them), and removing it gave back the file byte for byte.
-- **The merger's last paragraph is a contract, not a prompt**: CPR parses the JSON it asks for.
-  It stays CPR's and is appended after the project's instructions.
+- **The merger's last paragraph is a contract, not a prompt**: Symbiote parses the JSON it asks for.
+  It stays Symbiote's and is appended after the project's instructions.
 - **One case cannot stay byte for byte with placeholders**: with no default branch, today's start
-  prompt stops at "the person reviews the branch in CPR." V28 says "the branch the person picks",
+  prompt stops at "the person reviews the branch in Symbiote." V28 says "the branch the person picks",
   which is what Merge into ▾ asks since V26.
 
 ## V28a — Prompts from config.json (2026-10-20, branch `milestone/v28-agent-prompts`)
 
-The 13 texts CPR's agents are told are now defaults with placeholders
-(`packages/cli/src/prompts.ts`), replaced by `prompts.<key>` in `cpr/config.json` when a project
+The 13 texts Symbiote's agents are told are now defaults with placeholders
+(`packages/cli/src/prompts.ts`), replaced by `prompts.<key>` in `symbiote/config.json` when a project
 has its own. Every use reads them: Claude Code's and Codex's start prompt, Copy the prompt, the
-merger's system prompt (Claude Code's `--system-prompt`, Codex's stdin), `cpr/AGENTS.md`, and a
+merger's system prompt (Claude Code's `--system-prompt`, Codex's stdin), `symbiote/AGENTS.md`, and a
 verdict's text. `GET` and `POST /api/settings/prompts` serve the Settings page to come (V28b).
 
 **Learned**:
 - **Recording `main`'s prompts before changing the code made "nothing changes" checkable.**
   `test/fixtures/prompts-before-v28.json` holds 48 start prompts, the merger's instructions,
-  `cpr/AGENTS.md` and 8 verdict texts from `main`'s build; the defaults give each byte for byte,
+  `symbiote/AGENTS.md` and 8 verdict texts from `main`'s build; the defaults give each byte for byte,
   except decision 171's 20.
-- **`cpr/AGENTS.md` was written once a run.** A Settings change would have waited for a restart;
+- **`symbiote/AGENTS.md` was written once a run.** A Settings change would have waited for a restart;
   it is now written again when the text in use differs from what was written.
 - **Moving the texts was needed to avoid an import cycle**: `reviews.ts` reads the prompts, and
   the prompts' defaults held `reviews.ts`'s `AGENTS`.
@@ -3582,21 +3582,21 @@ verdict's text. `GET` and `POST /api/settings/prompts` serve the Settings page t
 **Verification**: 917 unit tests, lint, typecheck, build. The built CLI in a throwaway repository
 with a fake `claude`: the settings listed, a save written as lines, the next Spike's prompt the
 project's, a stale save 409. The real Claude Code (2.1.303, `sonnet`, read-only, Plan first):
-CPR's Spike prompt gave a plan with "no commits"; a Spike prompt that keeps experiments gave
+Symbiote's Spike prompt gave a plan with "no commits"; a Spike prompt that keeps experiments gave
 `spikes/…`, a commit and a push. Not verified: Codex with a changed prompt; the merger with
 changed instructions on a real conflict; Windows' command-line limit.
 
 ## V28b — The Settings page (2026-10-20, branch `milestone/v28-agent-prompts`)
 
-A third tab in `cpr view`, Settings (`s`, `/settings`): the 13 prompts by agent, each in a text
-area with its placeholders, Save and Reset to CPR's, and what saving means in git. Written
+A third tab in `symbiote view`, Settings (`s`, `/settings`): the 13 prompts by agent, each in a text
+area with its placeholders, Save and Reset to Symbiote's, and what saving means in git. Written
 through V28a's `POST /api/settings/prompts`.
 
 **Learned**:
 - **A line count is not a height.** The merger's instructions are 16 lines but wrap to about 30
   at 1440 px: sized by lines, the text area scrolled inside itself in the first screenshot. It
   now grows with its content (`scrollHeight`), up to 70 % of the window.
-- **`s` pressed before the tabs are drawn is lost**: the page's keys listen once `cpr view`
+- **`s` pressed before the tabs are drawn is lost**: the page's keys listen once `symbiote view`
   answered what the page is. The spec waits for the tab first, as a person would see it.
 - **The Workspaces page's title is squeezed at 390 px** (its help text in a one-word column
   beside "Start a workspace"). It is so on `main`: V28b adds only CSS rules and does not touch
@@ -3606,13 +3606,13 @@ through V28a's `POST /api/settings/prompts`.
 
 **Verification**: 924 unit tests, lint, typecheck, build; 124 of 124 e2e. Screenshots at 1440 and
 390 px, light and dark, no page errors (sent to the user). The real merger (Claude Code,
-`sonnet`) on one conflict, a version constant changed on both sides: with CPR's instructions it
+`sonnet`) on one conflict, a version constant changed on both sides: with Symbiote's instructions it
 kept `2.1.0`; with "a version constant changed on both sides is never yours to answer" it said
 "needs you", naming both values; 4.2K input tokens a run. Not verified: Codex with a changed
 prompt; Windows.
 
 Merged into main (2026-10-20): V28a and V28b, after `fix/merge-md-shared`. Two conflicts, both
-from that fix: `prepareCprFolder`'s doc comment (both kept) and the journal's end (both entries
+from that fix: `prepareSymbioteFolder`'s doc comment (both kept) and the journal's end (both entries
 kept). `main` verified after the merges: frozen install, 925 unit tests, lint, typecheck, build,
 124 of 124 e2e.
 
@@ -3637,21 +3637,21 @@ at every size and 66 px below. The workspace list is 360 px wide and holds three
   `seven_day`, `used_percentage` and `resets_at`, for subscribers after the first answer) and the
   SDK's `rate_limit_event`. Hooks do not get them. Transcripts record a window only when it is hit
   (`apiErrorParams.rate_limit_info`, 2 of this repository's sessions).
-- **A status line of CPR's would replace the person's.** CPR passes its hooks with `--settings`; a
+- **A status line of Symbiote's would replace the person's.** Symbiote passes its hooks with `--settings`; a
   `statusLine` there would win over the person's own, which today's terminal shows. And it would
   only run where a TUI draws the session.
 - **The cached copy has about 20 keys under code names**, one at 100 % here
   (`iguana_necktie`). Its `limits` list (kind, group, percent, reset) is the part meant to be
   shown.
 - **Codex's windows are not "5h · wk" on every plan.** On the Go plan here, `account/rateLimits/read`
-  on the daemon CPR already uses answers one window of 43,200 min (30 days) at 0 %, in 789 ms (it
+  on the daemon Symbiote already uses answers one window of 43,200 min (30 days) at 0 %, in 789 ms (it
   asks OpenAI); `account/read` gives the plan in 3 ms. Rollouts carry the same `rate_limits` per
   turn.
 - **Not measured**: the endpoint Claude Code's `/usage` reads
   (`api.anthropic.com/api/oauth/usage`), because it needs the OAuth token Claude Code stored. It
   waits for the person's yes (decision 172). The token on this machine expires about 8 h after
-  Claude Code last refreshed it. CPR must never refresh it: if the refresh token rotates (not
-  checked), a refresh by CPR would sign Claude Code out.
+  Claude Code last refreshed it. Symbiote must never refresh it: if the refresh token rotates (not
+  checked), a refresh by Symbiote would sign Claude Code out.
 - **e2e**: 125 tests; 6 selectors in 2 specs name the page tabs the shell would move.
 
 ## V29 replanned — no Workspaces page, the reference's look, a modern font (2026-10-20, branch `milestone/v29-workbench`)
@@ -3662,7 +3662,7 @@ current selected page … I want the change in styling also, to match the screen
 like the font family. Make it more modern".
 
 Measured on `main` (`ede9e12`), Chromium at 1440×900:
-- **The font is not CPR's choice.** `system-ui` gives DejaVu Sans here (`CSS.getPlatformFontsForNode`
+- **The font is not Symbiote's choice.** `system-ui` gives DejaVu Sans here (`CSS.getPlatformFontsForNode`
   on History's rows and heading), DejaVu Sans Mono for SHAs; Segoe UI on Windows, SF Pro on macOS.
   Bundled variable fonts for Latin text: Inter 48 KB, JetBrains Mono 40 KB, Geist 29 KB, Geist
   Mono 23 KB (Latin Extended 15–85 KB more, fetched only when used); all OFL 1.1, from
@@ -3700,7 +3700,7 @@ reset. The token was read in the script's process only and not printed.
 ## V29a — the shell: the pages and the workspaces in a sidenav (2026-10-20, branch `milestone/v29-workbench`)
 
 No Workspaces page: a sidenav lists History and Settings, then the workspaces by group and the
-merges in CPR's queue; the main area shows what is picked; a status bar says what the last
+merges in Symbiote's queue; the main area shows what is picked; a status bar says what the last
 action did. `/` alone is History; a workspace keeps `/?branch=`; a merge is `/?merge=`.
 
 **Learned**:
@@ -3723,7 +3723,7 @@ action did. `/` alone is History; a workspace keeps `/?branch=`; a merge is `/?m
 - **A long notice cut to one line hid its button**: the status bar wraps instead.
 - **A key pressed as soon as the page shows** was lost when the shell attached its keys after the
   paint (1 of 130 e2e tests); a layout effect attaches them before, as History's are.
-- **A diff of `cpr view` reads the same capabilities as the shell's pages** (`commits`): the diff
+- **A diff of `symbiote view` reads the same capabilities as the shell's pages** (`commits`): the diff
   shell flashed on History until it was kept to a diff's states.
 
 **Verification**: unit (8 route tests, the server's repository name), 7 shell e2e tests (6 red on
@@ -3737,7 +3737,7 @@ browsers and systems.
 ## V29b — the look: the reference's tokens, Geist, one density (2026-10-20, branch `milestone/v29-workbench`)
 
 Dark by default with light and System in Settings (Appearance, this browser), the reference's
-tokens, Geist and Geist Mono served by CPR, 44 px toolbars, 28 px rows and buttons, 6 px radii,
+tokens, Geist and Geist Mono served by Symbiote, 44 px toolbars, 28 px rows and buttons, 6 px radii,
 tinted badges, cards of 64 px, the keys behind a "?", the terminal black and edge to edge.
 
 **Learned**:
@@ -3752,7 +3752,7 @@ tinted badges, cards of 64 px, the keys behind a "?", the terminal black and edg
   instead of 33. `'Geist Variable', monospace` keeps both fast: DejaVu Sans Mono has ✓ ⚙ ↻.
   These costs are this machine's (WSL); Windows and macOS were not measured.
 - **Preloading the fonts and drawing once they are in costs nothing locally**: they arrive at
-  7–11 ms from CPR's server, before the bundle has run, and the first frame is in Geist.
+  7–11 ms from Symbiote's server, before the bundle has run, and the first frame is in Geist.
 - **Geist Mono's lines are tall**: a cell of 8 × 17 px at 13 px, where the fallback's was
   7.1 × 13. The terminal's box grew to 71 % of a 1440×900 window and its rows fell from 58 to 46
   (`main` 41). Row targets depend on the font; the box is what the layout controls.
@@ -3771,7 +3771,7 @@ tinted badges, cards of 64 px, the keys behind a "?", the terminal black and edg
 storage blocked, token contrast in both themes, the fonts named, the reload race with a fake
 fetch); e2e red before for the race (`/api/merges` delayed 1 s) and new in `look.spec.ts` (dark
 by default on a light system, Light kept across a reload and on a diff, System following the
-scheme, every request to CPR's origin with only the two Geist families and 52.5 KB of fonts on
+scheme, every request to Symbiote's origin with only the two Geist families and 52.5 KB of fonts on
 History, a card at most 64 px) and `shell.spec.ts` (a diff's drawer at 390 px). `pnpm check` 947
 tests, e2e 135 of 135. Against `main` (`ede9e12`), alternated: `/history` on a clone of this
 repository, first paint 48 → 48/52 ms, first rows 969/973 → 131/131 ms (7 rounds, both orders);
@@ -3784,9 +3784,9 @@ systems; the README's screenshots.
 
 ## V29c — usage in the status bar (2026-10-20, branch `milestone/v29-workbench`)
 
-Each subscription CPR's agents run on, at the status bar's right: `Claude Pro · 5h 59% · wk 66%`,
+Each subscription Symbiote's agents run on, at the status bar's right: `Claude Pro · 5h 59% · wk 66%`,
 `Codex Go · 30d 0%`. Claude Code's from the endpoint its `/usage` reads, with the token it stored,
-read only (decision 172); Codex's from its app server. `cpr view` keeps a 60-s copy
+read only (decision 172); Codex's from its app server. `symbiote view` keeps a 60-s copy
 (`GET /api/usage`).
 
 **Learned**:
@@ -3801,8 +3801,8 @@ read only (decision 172); Codex's from its app server. `cpr view` keeps a 60-s c
   `windowDurationMins`, `resetsAt` in seconds, and `rateLimitReachedType`; no experimental
   opt-in needed. Codex's sessions carry the same in snake case.
 - **A fallback can reach the person's files from a test.** The first run of the usage spec fell
-  back to Codex's sessions in this machine's `~/.codex`. Every spec now runs `cpr view` with
-  `CPR_USAGE=off`, and the usage spec gives Claude Code a `CLAUDE_CONFIG_DIR` and Codex a
+  back to Codex's sessions in this machine's `~/.codex`. Every spec now runs `symbiote view` with
+  `SYMBIOTE_USAGE=off`, and the usage spec gives Claude Code a `CLAUDE_CONFIG_DIR` and Codex a
   `CODEX_HOME` of its own.
 - **"One read at a time" needs the decision taken before the read**: a refresh with nothing due
   still left a promise "under way" for a tick, and the next ask, past 60 s, reused it and read
@@ -3915,16 +3915,16 @@ install, 989 unit tests, format, lint, typecheck, build, 140 of 140 e2e.
 ## N1 spike — a native window: Tauri's engine against Chromium (2026-10-20, branch `feature/tauri-integration`)
 
 Measured before planning, on this machine (WSL2 on Windows 11, WSLg, Ubuntu 24.04), with a
-`cpr view` of its own on a clone of this repository (`CPR_CACHE_DIR` in the session's temp,
-`CPR_USAGE=off`, `CPR_TERMINAL=off`), never the person's servers. The scripts stayed in the
+`symbiote view` of its own on a clone of this repository (`SYMBIOTE_CACHE_DIR` in the session's temp,
+`SYMBIOTE_USAGE=off`, `SYMBIOTE_TERMINAL=off`), never the person's servers. The scripts stayed in the
 session's temp folder.
 
 **Learned**:
-- **Tauri draws with the system's engine**: on Linux WebKitGTK, which CPR had never run in. Ubuntu's
+- **Tauri draws with the system's engine**: on Linux WebKitGTK, which Symbiote had never run in. Ubuntu's
   WebKitGTK 2.52.6 (the runtime is installed; a Tauri build also needs its `-dev` packages, with
   sudo) draws History and a 445-symbol diff (`26ac1c6~12..26ac1c6`) as Chromium does: no page
   errors, Geist loaded, the map's 701 nodes and 263 edges.
-- **It is slower where CPR works hardest.** `j` (next change), from the key to the next paint,
+- **It is slower where Symbiote works hardest.** `j` (next change), from the key to the next paint,
   median of 10: Chromium 33 ms in 3 of 3 rounds (two frames, the measure's floor); WebKitGTK 77 and
   145 ms (the third round did not report), its first step 360–415 ms, its slowest 160–174 ms.
   First paint was alike (diff: 52–84 ms against 57–60 ms). Both rendered in software (Xvfb,
@@ -3939,7 +3939,7 @@ session's temp folder.
   no device).
 - **Tauri's Chromium**: a CEF runtime exists, incomplete (an open issue of March 2026 asks for
   back, forward and reload). Electron 44.9.2 is current.
-- **The server starts in 211–232 ms** (3 runs, to its `CPR viewer:` line): a window can show CPR
+- **The server starts in 211–232 ms** (3 runs, to its `Symbiote viewer:` line): a window can show Symbiote
   at once, without a terminal. **Agents outlive it** (decision 95), so closing a window is Ctrl+C.
 - **Windows reaches a server in WSL** at `127.0.0.1` in 2.4 ms, `localhost` in 218 ms.
 - **`pgrep -f` with the pattern on its own command line** matched this session's shell once
@@ -3947,15 +3947,15 @@ session's temp folder.
   after). Match a full path or a unique port.
 
 **Decided with the person**: Electron, not Tauri ("Should we go with Chromium? is it better?",
-then "Yes, plan go with Electron"); CPR's own title bar, with the OS's buttons on CPR's
+then "Yes, plan go with Electron"); Symbiote's own title bar, with the OS's buttons on Symbiote's
 colour. Plan: PLAN.md, N1.
 
-## N1 — CPR's own window: Electron, the launcher, its own title bar (2026-10-20, branch `feature/tauri-integration`)
+## N1 — Symbiote's own window: Electron, the launcher, its own title bar (2026-10-20, branch `feature/tauri-integration`)
 
-N1a: `cpr view` and `cpr pr` open the viewer in an Electron app (`packages/desktop`) when it is
-set up (`pnpm app:setup`), else the browser. N1b: `cpr app install` puts CPR in the desktop's apps;
-opened there, the app starts the repository's `cpr view` itself, and a start page opens
-repositories. N1c: CPR's own title bar, with the system's buttons on CPR's colour.
+N1a: `symbiote view` and `symbiote pr` open the viewer in an Electron app (`packages/desktop`) when it is
+set up (`pnpm app:setup`), else the browser. N1b: `symbiote app install` puts Symbiote in the desktop's apps;
+opened there, the app starts the repository's `symbiote view` itself, and a start page opens
+repositories. N1c: Symbiote's own title bar, with the system's buttons on Symbiote's colour.
 
 **Learned**:
 - **pnpm adds exclusions on its own.** Electron 44.9.2, out that day, was refused by the
@@ -3982,10 +3982,10 @@ repositories. N1c: CPR's own title bar, with the system's buttons on CPR's colou
 - **`app.ts` beside `App.tsx`** would be one file to macOS's file systems in an import of
   `./App.js`: the viewer's side of the app is `desktop.ts`.
 - **A launcher reads no shell profile**: node from nvm, and `claude`, `codex`, `code` on the
-  `PATH`, are recorded by `cpr app install` and again by each `cpr view` that opens the window.
+  `PATH`, are recorded by `symbiote app install` and again by each `symbiote view` that opens the window.
 
 **Verification**: 33 desktop, 16 CLI and 7 viewer unit tests, red before; `pnpm check` 1,047. 16
-e2e on the real app under Xvfb (7 from `cpr view`, 5 from the launcher, 4 of the title bar); the
+e2e on the real app under Xvfb (7 from `symbiote view`, 5 from the launcher, 4 of the title bar); the
 full suite 154 of 156 (the shell's keys test, failing on `main` too under load; a Codex spec's
 lazily loaded chunk lost to its server's stop). From the launcher to History's first paint
 383–493 ms (5 runs); on the 445-symbol diff `j` 32–33 ms, Chromium's; memory 771–893 MB summed over
@@ -3996,7 +3996,7 @@ terminal, a GPU.
 
 ## N1 — the first merge's check, and two races on `main` (2026-10-21, branch `feature/tauri-integration`)
 
-The person approved `5709575`; CPR's merger ran the project's check on the merge (`pnpm test:e2e`
+The person approved `5709575`; Symbiote's merger ran the project's check on the merge (`pnpm test:e2e`
 among it) and stopped on two specs.
 
 **Learned**:
@@ -4012,9 +4012,9 @@ among it) and stopped on two specs.
   1 run in 36 on `main` and on the branch alike; made certain by holding that chunk back 2 s, it
   gave the merge check's exact error. The page now leaves first.
 - **A command's only child is not always the one you started.** Run twice as the merge check
-  runs, "cpr view opens its window" timed out: it took `cpr view`'s only child for the app, and
+  runs, "symbiote view opens its window" timed out: it took `symbiote view`'s only child for the app, and
   under load that child was a short-lived `git`, caught before Electron started; it was stopped,
-  the window stayed. The spec now waits for `cpr view`'s new line, "CPR's window is open: close
+  the window stayed. The spec now waits for `symbiote view`'s new line, "Symbiote's window is open: close
   it, or Ctrl+C, to stop", and finds the app by its command line.
 - **The shell's keys spec failed under load because of a real bug**: a workspace whose agent moves
   on is drawn anew in another group of the sidenav, and the focus fell to the page; arrows then did
@@ -4030,23 +4030,23 @@ among it) and stopped on two specs.
 window on the desktop, no Xvfb left; the Codex race forced (an error) and fixed (none), 72 runs at
 6 workers before and after; a new spec moving the focused card's workspace to Needs you, red then
 green; both shell specs 24 of 24 at 6 workers (the keys spec failed 3 and 4 runs in 12 before, on
-the branch and on `main`). The merge check's commands, as CPR runs them (install, check, build,
+the branch and on `main`). The merge check's commands, as Symbiote runs them (install, check, build,
 e2e) on this machine: before these fixes 155 and 156 of 157 (the app's own spec timing out in
 both, the usage spec once); after the spec found the app by name, 157 of 157, then 156 (the
 Settings race, then fixed); with every fix, 157 of 157.
 
-Merged into main (2026-10-21) by CPR's merger, from the approved `2e44a6f`, no conflicts (`main`
+Merged into main (2026-10-21) by Symbiote's merger, from the approved `2e44a6f`, no conflicts (`main`
 had not moved since the branch). `main` verified after the next merge (the usage fix, below):
 frozen install, 1,054 unit tests, format, lint, typecheck, build, 158 of 158 e2e.
 
-## Fix — usage keeps CPR's own last read, reads every 5 min; a program's output read to its end (2026-10-21, branch `fix/usage-keeps-live-numbers`)
+## Fix — usage keeps Symbiote's own last read, reads every 5 min; a program's output read to its end (2026-10-21, branch `fix/usage-keeps-live-numbers`)
 
 Asked: "sometimes, the claude hourly session disappears, and the chatgpt hourly session does not
 exist"; then "Make the query for usage every 5 minutes instead of one" and "No claude copy
 code...show the last monitored value from the real usage".
 
 **Learned**:
-- **Claude's usage endpoint refuses reads close together.** Two `cpr view`s of this repository,
+- **Claude's usage endpoint refuses reads close together.** Two `symbiote view`s of this repository,
   each reading every minute while asked: 4 reads in 90 s answered 200 (06:41:53 and 06:43:23,
   both servers in the same second each time), the next pair 429, and the 5-minute back-off began
   again. No `retry-after` was read. Its limit is not documented and was not measured further.
@@ -4060,7 +4060,7 @@ code...show the last monitored value from the real usage".
   sessions carry the same. An unstarted window's `resetsAt` moves with each read (now + 30 days).
 - **At 5 minutes the 429 back-off (5 minutes) delays nothing**: the next read is due then anyway.
   It is kept for a shorter interval; its test gives one of 60 s.
-- **The usage spec's Codex first read, open since V29c, was CPR losing a program's output.** Codex
+- **The usage spec's Codex first read, open since V29c, was Symbiote losing a program's output.** Codex
   was missing from the first answer in 3 of 7 full e2e runs on this branch. A spec that only
   loads the page and reads that answer found it in 2 of 8 runs at 8 workers. Logged with a file
   write per step it never failed (0 of 48 runs); logged in memory, it did (2 of 128):
@@ -4070,32 +4070,32 @@ code...show the last monitored value from the real usage".
   came later. Real use had the same window: Codex hidden until its daemon is looked for again a
   minute later, and at 5-minute reads until the next read.
 - **A service a program starts can hold its output**, as `runProgram`'s comment said: it now
-  answers when the output closes, or 1 s after the exit while it is held. CPR's end stays open:
+  answers when the output closes, or 1 s after the exit while it is held. Symbiote's end stays open:
   closed, the service's next write would end it (`SIGPIPE`).
 
-**Changed**: Claude Code's copy is no longer read. Each live read is kept in CPR's cache
-(`usage/claude.json`, shared by every `cpr view` on the machine; written to a temporary file and
+**Changed**: Claude Code's copy is no longer read. Each live read is kept in Symbiote's cache
+(`usage/claude.json`, shared by every `symbiote view` on the machine; written to a temporary file and
 renamed into place), with the account's `accountUuid`; a failed read gives that last read for the
 same account, without the windows reset since, and why. In memory, a failed read, or a copy older
 than the numbers kept (Codex's sessions), keeps the last numbers. The hover says "Read 12 minutes
 ago, not since: Claude's usage asked to wait (429)" and the bar shows the age. The vendors are read
-at most every 5 minutes (decision 175); the page still asks `cpr view` every minute.
+at most every 5 minutes (decision 175); the page still asks `symbiote view` every minute.
 
 **Verification**: unit tests red before: the day-old copy over live numbers (the copy's `wk 22`
 in place of `5h 30 · wk 18`), the 5-min interval (red with 60 s), the hover and the bar's age,
 Claude Code's copy shown on a 429 and on an expired token, nothing kept in the cache, another
 account's read; `runProgram`'s output written after the exit (red: `early` without ` late`),
 and a child holding the output 5 s (answered within 3 s). An e2e test red on the previous build:
-a `cpr view` started while the endpoint answers 429 shows the last read an earlier run kept,
+a `symbiote view` started while the endpoint answers 429 shows the last read an earlier run kept,
 with its age and why (the build showed no Claude). The first-answer spec, 128 runs at 8 workers
 each way: the old `runProgram` 4 without Codex, the new 0. Real `codex` runs, 10 each: the same
 medians as at the exit (daemon start 46 ms, `login status` 42 ms), with all their output.
 `pnpm check` 1,054 tests, build, e2e 158 of 158 in two runs after a forced rebuild.
 
-Real use, a fresh `cpr view` asked every 30 s like a page: on the 5-min build, for 21 min, its
+Real use, a fresh `symbiote view` asked every 30 s like a page: on the 5-min build, for 21 min, its
 first read 429 (just after the two 60-s servers'), then 3 of 3 live (5h 40, 44, 47 %); on the
 final build, for 11 min, 07:09:26 live and 07:14:26 429, through which the bar kept
-`5h 47% · wk 20%` with its age and the 429's note. `~/.cache/cpr/usage/claude.json`: 301 bytes,
+`5h 47% · wk 20%` with its age and the 429's note. `~/.cache/symbiote/usage/claude.json`: 301 bytes,
 the account's id and the subscription, no token.
 
 Not verified: `claude --bg` (it starts a real session), which may now answer up to 1 s after it
@@ -4115,14 +4115,14 @@ on the right of sidenav, and with an option for initial effort, for that session
   1440×900, 23 % at 1920×1080. With More open its content is 883 px and scrolls inside the dialog
   at 1280×720, 1440×900 and 390×844; only 1920×1080 holds it. Its text areas are 598 px wide
   whatever the window. Measured with a throwaway spec on `serveWorkspaces`, deleted after.
-- **Claude Code keeps `--effort` for the session, through CPR's reply.** Each assistant line of
+- **Claude Code keeps `--effort` for the session, through Symbiote's reply.** Each assistant line of
   its transcript records `effort`. `--bg --effort low` ran `low`; after `claude stop`, a
   `--bg --resume <id> "<text>"` without flags said "woke session … with its saved options (--name,
   --effort, --model)" and ran `low`. A resume of a session still running started a copy, which
-  ran `medium` — neither the start's level nor the person's `xhigh`. CPR stops first (V18c), so
+  ran `medium` — neither the start's level nor the person's `xhigh`. Symbiote stops first (V18c), so
   it never makes that copy.
 - **Claude Code ignores a level it does not know, without failing**: "Unknown --effort value
-  'bogus' — ignoring it and using the default effort", exit 0. A fixed list in CPR could offer a
+  'bogus' — ignoring it and using the default effort", exit 0. A fixed list in Symbiote could offer a
   level that silently does nothing; its `--help` line lists the levels (low, medium, high, xhigh,
   max) and takes 70–90 ms. All five ran on Haiku, Sonnet and Opus 5.5.
 - **Codex's app server keeps a thread's effort**: `effort` on the first `turn/start` gave `low`
@@ -4168,9 +4168,9 @@ in a 300 px column beside it, under it below 1,000 px of page. The dialog is gon
 - **A page that saves on leaving races its own next visit**: Escape posted the draft as the page
   unmounted, and `n` right after read it in the same moment. The page keeps its last save as a
   promise and reads the draft after it.
-- **"Back to where it came from" needs to know there is a CPR page behind it.** `history.back()`
-  from a tab opened at `/start` would leave CPR (or do nothing); the Navigation API's entry before
-  this one, same origin or not, decides. A diff before `/start` is CPR's too: Back loads it.
+- **"Back to where it came from" needs to know there is a Symbiote page behind it.** `history.back()`
+  from a tab opened at `/start` would leave Symbiote (or do nothing); the Navigation API's entry before
+  this one, same origin or not, decides. A diff before `/start` is Symbiote's too: Back loads it.
 - **A link was the simpler ⊕**: the shell already opens its own addresses in place from any link,
   and on a diff a link loads the page; a button needed both paths written out.
 - **A flex head squeezed "From main at …" into a 60 px column at 390 px**; a grid with its own
@@ -4208,33 +4208,33 @@ Brief tab as how the agent was started.
 
 **Verification**: tests first (14 CLI tests and 3 viewer tests red, then green; the draft's
 reader written with its test), 1,070 unit tests, format, lint, typecheck, build, 167 of 167 e2e.
-A real Claude Code workspace started through CPR's endpoint at `low`: its transcript's turns
-`low`, before and after CPR's reply, in one session. The options endpoint 5 ms slower warm
-(Codex's two calls). Not verified: a real Codex workspace through CPR (a trust entry would be
+A real Claude Code workspace started through Symbiote's endpoint at `low`: its transcript's turns
+`low`, before and after Symbiote's reply, in one session. The options endpoint 5 ms slower warm
+(Codex's two calls). Not verified: a real Codex workspace through Symbiote (a trust entry would be
 left in the person's Codex configuration), Codex `exec` with a level beyond unit tests. Numbers in
 PLAN.md's V30b results.
 
 Merged into main (2026-10-21) with V30a, no conflicts (`main` had not moved). `main` verified
 after the merge: frozen install, 1,070 unit tests, format, lint, typecheck, build, 167 of 167 e2e.
 
-## V31 spike — what the look needs, beyond its colours (2026-10-21, branch `milestone/v31-cpr-style`)
+## V31 spike — what the look needs, beyond its colours (2026-10-21, branch `milestone/v31-symbiote-style`)
 
 Asked: "The interface still not feel well...feel oldish with a new look." Read a reference app's
-style guide, tokens and component primitives, and its screenshot; recorded as CPR's own style, the
-`cpr-style` skill (merged into main 2026-10-21; renamed on this branch: "It is our own style from
+style guide, tokens and component primitives, and its screenshot; recorded as Symbiote's own style, the
+`symbiote-style` skill (merged into main 2026-10-21; renamed on this branch: "It is our own style from
 now").
 
 **Learned**:
 - **V29b took the reference's colours, not its rules.** The style is "monochrome and quiet":
-  neutral chrome lifted above the darkest content (`#171717` over `#0a0a0a`, 1.10:1; CPR's sidenav
-  over its page was 1.04:1), colour for state only, selection a 10 % wash of the text. CPR's blue (`--moved`) is on
+  neutral chrome lifted above the darkest content (`#171717` over `#0a0a0a`, 1.10:1; Symbiote's sidenav
+  over its page was 1.04:1), colour for state only, selection a 10 % wash of the text. Symbiote's blue (`--moved`) is on
   49 lines: 2 the moved kind, 12 states, 35 an accent (links, picks, cursors, pressed toggles).
 - **The dated parts are controls and states**: 6 native checkboxes, 8 coloured side bars,
   bordered mono chips, a solid HEAD badge, radii of 2–12 px in seven sizes where the style has
   four steps.
-- **The reference's values do not all pass CPR's contrast floors**: region lines of 7 % white are
-  1.15:1 on the canvas (CPR's floor 1.2), an input edge of 15 % white about 1.5:1 (CPR's 3:1), a
-  light muted text 4.16:1 on a chip (CPR's 4.5). The skill's tokens take 11 values to the nearest
+- **The reference's values do not all pass Symbiote's contrast floors**: region lines of 7 % white are
+  1.15:1 on the canvas (Symbiote's floor 1.2), an input edge of 15 % white about 1.5:1 (Symbiote's 3:1), a
+  light muted text 4.16:1 on a chip (Symbiote's 4.5). The skill's tokens take 11 values to the nearest
   neutral that passes, checked by `palette-check.mjs` with `tokens.test.ts`'s rules.
 - **Font and layout constraints carry over**: Geist stays, and no system mono stack may be
   named (V29a); node widths are estimated from characters, so the chrome's 0.01em letter-spacing
@@ -4245,7 +4245,7 @@ paint 267–322 ms, select 73–90 ms, mark reviewed 33–34 ms, pan 63 fps. Scr
 with three workspaces, History, Settings, Start and the V30b diff, dark and light, kept for the
 comparison.
 
-## V31a–b — the style's tokens, the shell and the diff page (2026-10-21, branch `milestone/v31-cpr-style`)
+## V31a–b — the style's tokens, the shell and the diff page (2026-10-21, branch `milestone/v31-symbiote-style`)
 
 The tokens: the content darkest, the chrome lifted, a white page in light. Blue is a
 state; selection, links and pressed controls are neutral. Checkboxes drawn, badges round and
@@ -4274,7 +4274,7 @@ short as j walks 40 changes 21 of 75 both; `/history` first rows 93–122 → 93
 before and after, dark and light. Not verified: Windows and macOS rendering; the Electron window
 beyond its e2e; real agents in the restyled workspace.
 
-## V31c — History, menus, dialogs and selects in the style (2026-10-21, branch `milestone/v31-cpr-style`)
+## V31c — History, menus, dialogs and selects in the style (2026-10-21, branch `milestone/v31-symbiote-style`)
 
 History's refs are names in the text's font on quiet chips, HEAD a success tint instead of a solid
 fill; menus are a blurred glass, dialogs float over a dimmed and blurred page with a ghost Cancel;
@@ -4299,7 +4299,7 @@ rounds alternated: first paint 265–289 (`main`) → 261–295 ms, select 74 �
 light. Not verified: Windows and macOS rendering; the blur's cost on a slow GPU (two layers, only
 while a menu or dialog is open).
 
-Merged into main (2026-10-21), with V31a–b, from branch `milestone/v31-cpr-style`: `pnpm check`
+Merged into main (2026-10-21), with V31a–b, from branch `milestone/v31-symbiote-style`: `pnpm check`
 1,076 tests, build, e2e 169 of 169 on `main`. Decisions 212–217 confirmed by the person.
 
 ## N1d spike — rounded window corners on Linux (2026-10-21, branch `milestone/n1d-rounded-window`)
@@ -4318,12 +4318,12 @@ window's corners kept, enlarged 3×).
   its colour transparent or opaque, on X11 and Wayland.
 - **Wayland is no way out**: the hidden title bar is square there too, with a close button only.
 
-So on Linux CPR draws the frame and the buttons itself (decision 218).
+So on Linux Symbiote draws the frame and the buttons itself (decision 218).
 
 ## N1d — rounded window corners on Linux (2026-10-21, branch `milestone/n1d-rounded-window`)
 
-On Linux CPR's window is transparent and its pages draw it: a 10 px radius with a hairline edge,
-square while maximized or full screen, and CPR's own minimize, maximize/restore and close. macOS
+On Linux Symbiote's window is transparent and its pages draw it: a 10 px radius with a hairline edge,
+square while maximized or full screen, and Symbiote's own minimize, maximize/restore and close. macOS
 and Windows keep their own corners and buttons.
 
 **Learned**:
@@ -4333,20 +4333,20 @@ and Windows keep their own corners and buttons.
 - **A rounded clip over the page costs**: `overflow: hidden` with a radius on the root took select
   on Bitwarden's graph from 73–74 to 88–89 ms (3 rounds alternated). Rounding the strips at the
   corners instead costs nothing measurable.
-- **A shell-less page is a title bar too**: `cpr pr` in the app would have had no buttons.
+- **A shell-less page is a title bar too**: `symbiote pr` in the app would have had no buttons.
 - **A bisect in `dist/` survives `tsc -b`**: an emitted file edited by hand is not re-emitted
   while its source is unchanged; restore it from a copy.
 
 **Verification**: tests first (`frame.test.ts`; 4 app e2e red before); `pnpm check` 1,080 tests;
 e2e 171 of 171. Bitwarden `737ee3f` without and with the frame: first paint 278–284 / 278–283 ms,
-select 73–89 / 72–88 ms, pan 63 fps both. On this machine the real window, opened by `cpr view`
-with a fresh app config and captured from Windows: rounded, the edge, CPR's buttons. Not verified:
-resizing from an edge, maximizing through the window manager, `cpr pr` in the app, macOS and
+select 73–89 / 72–88 ms, pan 63 fps both. On this machine the real window, opened by `symbiote view`
+with a fresh app config and captured from Windows: rounded, the edge, Symbiote's buttons. Not verified:
+resizing from an edge, maximizing through the window manager, `symbiote pr` in the app, macOS and
 Windows.
 
-## N1d — a maximized window on WSLg, held by CPR (2026-10-21, branch `milestone/n1d-rounded-window`)
+## N1d — a maximized window on WSLg, held by Symbiote (2026-10-21, branch `milestone/n1d-rounded-window`)
 
-The person's try of N1d: "The full screen is not working properly from wsl". Maximized, CPR's
+The person's try of N1d: "The full screen is not working properly from wsl". Maximized, Symbiote's
 window was 32 px right and down of the work area: the desktop showed in the strip above and left,
 and the right end, with the window's buttons, and the bottom went off it, under the taskbar.
 
@@ -4364,7 +4364,7 @@ and the right end, with the window's buttons, and the bottom went off it, under 
 - **A size asked of a maximized window is ignored, and an unmaximize lands 15–60 ms after it is
   asked**: setting the bounds right after `unmaximize()`, or 50 ms after it, was undone by it.
   The hold waits for the `unmaximize` event and the bounds to be still for 50 ms.
-- **A window mapped maximized restores to the screen's corner**: CPR opening maximized came
+- **A window mapped maximized restores to the screen's corner**: Symbiote opening maximized came
   back, on Restore, at (2560, 0) instead of (2700, 150). The hold keeps the place it was asked
   from.
 - **WSLg parks a window off the screen as it shows it** (at −32736 for 14 ms); minimize and
@@ -4375,7 +4375,7 @@ and the right end, with the window's buttons, and the bottom went off it, under 
 
 **Verification**: `maximize.test.ts`, 12 tests on a fake window manager with WSLg's measured
 timings, red first (no module; then the start maximized restored to the screen's corner). The
-real window on this machine, sampled from Windows at the right screen's work-area corners: CPR's
+real window on this machine, sampled from Windows at the right screen's work-area corners: Symbiote's
 `#171717` at all four and the taskbar below, for the first Maximize, the second (the area known,
 no round trip), and a start maximized; Restore back to (2700, 150) each time. Not verified: a
 double-click on the title bar and Windows' snap (held as any maximize), dragging a held window
@@ -4388,13 +4388,13 @@ not moved since the branch): frozen install, `pnpm check` 1,092 tests, build; e2
 alone (16 of 16, 8 of 8). Not N1d's: its viewer changes apply only in the app, and these specs run
 in the browser.
 
-## Fix — CPR's window opening maximized on WSLg took no clicks (2026-10-21, branch `fix/wslg-open-maximized`)
+## Fix — Symbiote's window opening maximized on WSLg took no clicks (2026-10-21, branch `fix/wslg-open-maximized`)
 
 The person, right after N1d's merge: "I can't click on anything form the interface...". Their
-window opened maximized (as they had left it) through `cpr view`, and closed 28 s later.
+window opened maximized (as they had left it) through `symbiote view`, and closed 28 s later.
 
 **Learned**:
-- **Playwright's clicks are not the mouse's.** N1d's real-window check clicked CPR's buttons
+- **Playwright's clicks are not the mouse's.** N1d's real-window check clicked Symbiote's buttons
   through the DevTools protocol, which reaches the page whatever Windows shows; the person's
   clicks go through WSLg. Real clicks from Windows (`SendInput`, PowerShell) need the window in
   front first (`SetForegroundWindow` after an Alt press); without it they went to VS Code or
@@ -4416,7 +4416,7 @@ window opened maximized (as they had left it) through `cpr view`, and closed 28 
 **Verification**: `maximize.test.ts`, 14 tests: the fake window manager now maps a window as WSLg
 does and strands one maximized before it is mapped (a test shows it); opening maximized through
 `maximizeOnceShown` and a place as large as the screen restored to 1440×900 were red first. The
-real window through `cpr view` with the person's state, twice: Windows shows it at (2528, −32)–
+real window through `symbiote view` with the person's state, twice: Windows shows it at (2528, −32)–
 (5152, 1424), the right screen's work area; real clicks reached the History list and the sidenav
 at their coordinates; Restore put it at (3120, 246), 1440×900, where Windows shows it too. Not
 verified: the person's own try.

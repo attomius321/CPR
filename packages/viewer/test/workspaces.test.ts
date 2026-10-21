@@ -6,7 +6,7 @@ import type {
   WorkspaceSummary,
   WorkspaceThread,
   ThreadEntry,
-} from '@cpr/core';
+} from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   branchProblem,
@@ -483,7 +483,7 @@ describe('threadItems', () => {
     ...entry,
   });
 
-  it("shows CPR's prompt, the agent's reports, the person's messages, and what the agent waits on", () => {
+  it("shows Symbiote's prompt, the agent's reports, the person's messages, and what the agent waits on", () => {
     const items = threadItems(
       [
         e(0, { kind: 'start', source: 'startup' }),
@@ -514,7 +514,7 @@ describe('threadItems', () => {
       '/w/app.worktrees/x',
     );
     expect(items).toEqual([
-      { who: 'cpr', at: at(0), text: 'You are starting a new feature…' },
+      { who: 'symbiote', at: at(0), text: 'You are starting a new feature…' },
       { who: 'waits', at: at(1), text: 'Asks: End with !? — Yes · No' },
       { who: 'agent', at: at(2), text: 'The plan' },
       { who: 'line', at: at(3), text: 'Continued' },
@@ -572,7 +572,7 @@ describe('replyMode', () => {
     expect(replyMode(codex({ state: 'needs-you', waitingFor: 'approval prompt' }))).toBe(
       'stop-and-send',
     );
-    // Through CPR's runner (V20a), a message still stops its run.
+    // Through Symbiote's runner (V20a), a message still stops its run.
     expect(replyMode(agent({ kind: 'codex', state: 'working' }))).toBe('stop-and-send');
   });
 });
@@ -607,7 +607,7 @@ describe("the agent's terminal in its panel (V21, V27b)", () => {
   it("opens on Claude Code's session, and on Codex's thread on its app server", () => {
     expect(opensTerminal(claude, here)).toBe(true);
     expect(opensTerminal(codex, here)).toBe(true);
-    // Through CPR's runner (V20a), Codex has no terminal; no session, no terminal.
+    // Through Symbiote's runner (V20a), Codex has no terminal; no session, no terminal.
     expect(opensTerminal({ ...codex, remote: undefined }, here)).toBe(false);
     expect(opensTerminal({ state: 'not-started', kind: 'codex' }, here)).toBe(false);
     expect(opensTerminal(claude, { available: false, reason: 'node-pty is not installed' })).toBe(

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { PromptKey, PromptSetting, PromptSettings } from '@cpr/core';
+import type { PromptKey, PromptSetting, PromptSettings } from '@symbiote/core';
 import { Help } from './Help.js';
 import { getJson, postJson } from './http.js';
 import { useShell } from './shell-context.js';
@@ -30,8 +30,8 @@ interface Notice {
 }
 
 /**
- * Settings (V28b): every agent's prompts, CPR's until the project changes them. A change is
- * saved in `cpr/config.json` (`prompts`); unsaved drafts are kept while another prompt is open,
+ * Settings (V28b): every agent's prompts, Symbiote's until the project changes them. A change is
+ * saved in `symbiote/config.json` (`prompts`); unsaved drafts are kept while another prompt is open,
  * and leaving the page with one asks first.
  */
 export function SettingsPage() {
@@ -114,7 +114,7 @@ export function SettingsPage() {
       setDrafts((all) => without(all, prompt.key));
       setNotice({
         key: prompt.key,
-        text: `${text === null ? "CPR's text again." : 'Saved.'} ${gitNote(next)}`,
+        text: `${text === null ? "Symbiote's text again." : 'Saved.'} ${gitNote(next)}`,
       });
     } catch (failed) {
       const message = (failed as Error).message;
@@ -135,8 +135,8 @@ export function SettingsPage() {
       <div className="commits-title settings-bar">
         <h1>Settings</h1>
         <Help label="About Settings">
-          What CPR tells each agent · CPR&apos;s text until you change it · saved in{' '}
-          {settings?.file ?? 'cpr/config.json'}, for everyone once committed
+          What Symbiote tells each agent · Symbiote&apos;s text until you change it · saved in{' '}
+          {settings?.file ?? 'symbiote/config.json'}, for everyone once committed
         </Help>
         <Appearance />
       </div>
@@ -251,7 +251,7 @@ function PromptEditor({
   notice: Notice | null;
   onDraft: (text: string) => void;
   onDiscard: () => void;
-  /** The text to save; null for CPR's. */
+  /** The text to save; null for Symbiote's. */
   onSave: (text: string | null) => void;
   onLoad: () => void;
   onBack: () => void;
@@ -290,7 +290,7 @@ function PromptEditor({
       <h2>
         {prompt.group}: {prompt.title}
         <span className={`settings-state${prompt.changed ? ' changed' : ''}`}>
-          {prompt.changed ? "The project's" : "CPR's"}
+          {prompt.changed ? "The project's" : "Symbiote's"}
         </span>
       </h2>
       <p className="settings-about">{prompt.about}</p>
@@ -318,7 +318,7 @@ function PromptEditor({
       <p className={`settings-size${problem ? ' error' : ''}`}>{problem ?? sizeOf(prompt, text)}</p>
       {prompt.fixed && (
         <div className="settings-fixed">
-          <p>CPR adds this after it, as the answer it reads; it cannot be changed:</p>
+          <p>Symbiote adds this after it, as the answer it reads; it cannot be changed:</p>
           <pre>{prompt.fixed}</pre>
         </div>
       )}
@@ -390,7 +390,7 @@ function PromptEditor({
               disabled={busy}
               onClick={() => setResetting(true)}
             >
-              Reset to CPR&apos;s
+              Reset to Symbiote&apos;s
             </button>
           ))}
         <button
@@ -405,7 +405,7 @@ function PromptEditor({
       </div>
       {prompt.changed && (
         <details className="settings-default">
-          <summary>CPR&apos;s text</summary>
+          <summary>Symbiote&apos;s text</summary>
           <pre>{prompt.default}</pre>
         </details>
       )}

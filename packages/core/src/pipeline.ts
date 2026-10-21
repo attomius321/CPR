@@ -60,7 +60,7 @@ export interface Analysis {
   edges: Edge[];
   context: ContextSymbol[];
   findings: Finding[];
-  /** Changed files left out of symbol analysis (`.cprignore` and default ignores). */
+  /** Changed files left out of symbol analysis (`.symbioteignore` and default ignores). */
   ignored: string[];
   /**
    * The projects holding the changed files and the symbols' files, when there are two or more
@@ -82,7 +82,7 @@ export interface AnalyzeOptions extends Omit<LoadOptions, 'files'> {
   /** Hops of unchanged context around changed symbols. Default: 1. */
   depth?: number;
   /**
-   * Called as each phase starts, for progress (`cpr view` runs an analysis in a child process).
+   * Called as each phase starts, for progress (`symbiote view` runs an analysis in a child process).
    * Phases with nothing to do are not reported: no checkout when no source file changed.
    */
   onPhase?: (phase: AnalysisPhase) => void;
@@ -107,7 +107,7 @@ export interface AnalyzeGitOptions extends AnalyzeOptions {
 }
 
 /**
- * Compares two git revisions of the repository containing `cwd`. `.cprignore` is read from that
+ * Compares two git revisions of the repository containing `cwd`. `.symbioteignore` is read from that
  * working folder, not from the analyzed commits: an edit applies at once, and older commits are
  * read with today's rules.
  */

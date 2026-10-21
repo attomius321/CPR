@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 /**
- * CPR's icons (V29): 16 px line drawings in the text's colour. Inline SVG, so no icon library is
+ * Symbiote's icons (V29): 16 px line drawings in the text's colour. Inline SVG, so no icon library is
  * bundled; each is decorative (`aria-hidden`), named by the control that holds it.
  */
 function Icon({ children, className }: { children: ReactNode; className?: string }) {
@@ -67,8 +67,8 @@ export const MoreIcon = () => (
   </Icon>
 );
 
-/** CPR's mark: two commits and the line between them. */
-/** Back and forward, in CPR's window's title bar (N1c). */
+/** Symbiote's mark: two commits and the line between them. */
+/** Back and forward, in Symbiote's window's title bar (N1c). */
 export const BackIcon = () => (
   <Icon>
     <path d="M13 8H3M7 4L3 8l4 4" />
@@ -81,7 +81,7 @@ export const ForwardIcon = () => (
   </Icon>
 );
 
-export const CprIcon = () => (
+export const SymbioteIcon = () => (
   <Icon>
     <circle cx="5" cy="5" r="2" />
     <circle cx="11" cy="11" r="2" />
@@ -102,7 +102,7 @@ export const CloseIcon = () => (
   </Icon>
 );
 
-/** The window's own buttons, where CPR draws them (N1d). */
+/** The window's own buttons, where Symbiote draws them (N1d). */
 export const MinimizeIcon = () => (
   <Icon>
     <path d="M4 8h8" />
