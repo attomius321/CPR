@@ -4097,3 +4097,6 @@ the account's id and the subscription, no token.
 Not verified: `claude --bg` (it starts a real session), which may now answer up to 1 s after it
 exits if its background process holds the output; the servers already running keep the old code
 until restarted.
+
+Merged into main (2026-10-21), after N1, no conflicts. `main` verified after the merge: frozen
+install, 1,054 unit tests, format, lint, typecheck, build, 158 of 158 e2e.
