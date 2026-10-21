@@ -1,5 +1,14 @@
+import type { Graph } from '@cpr/core';
 import { describe, expect, it } from 'vitest';
-import { backLink, hrefOf, routeOf } from '../src/pages.js';
+import {
+  backLink,
+  diffTitle,
+  hrefOf,
+  pageTitle,
+  revisionsLabel,
+  routeOf,
+  routeTitle,
+} from '../src/pages.js';
 
 describe('routeOf (V29a: no Workspaces page)', () => {
   it('opens History and Settings at their addresses', () => {
@@ -81,5 +90,47 @@ describe('backLink (V25)', () => {
     expect(backLink('https://github.com/acme/widgets/pull/7', origin)).toEqual(history);
     expect(backLink(`${origin}/diff/a..b/`, origin)).toEqual(history);
     expect(backLink('not a url', origin)).toEqual(history);
+  });
+});
+
+describe('pageTitle and routeTitle (N1a: the window names its page)', () => {
+  it('names the page, then the repository, then CPR', () => {
+    expect(routeTitle({ page: 'history' }, 'ky')).toBe('History · ky — CPR');
+    expect(routeTitle({ page: 'settings' }, 'ky')).toBe('Settings · ky — CPR');
+    expect(routeTitle({ page: 'workspace', branch: 'feature/add-clamp' }, 'ky', 'Add clamp')).toBe(
+      'Add clamp · ky — CPR',
+    );
+    expect(routeTitle({ page: 'workspace', branch: 'feature/add-clamp' }, 'ky')).toBe(
+      'feature/add-clamp · ky — CPR',
+    );
+    expect(routeTitle({ page: 'merge', branch: 'fix/x' }, undefined)).toBe('Merge fix/x — CPR');
+  });
+
+  it('leaves out what is not known', () => {
+    expect(pageTitle()).toBe('CPR');
+    expect(pageTitle(undefined, '')).toBe('CPR');
+    expect(pageTitle('main → feature')).toBe('main → feature — CPR');
+  });
+});
+
+describe('diffTitle (N1a)', () => {
+  const graph = (extra: object = {}) =>
+    ({
+      revisions: {
+        base: { ref: 'main', sha: '1234567890abcdef' },
+        head: { ref: 'abcdef0123456789', sha: 'abcdef0123456789' },
+      },
+      ...extra,
+    }) as unknown as Graph;
+
+  it('names a pair by its refs, each SHA once and short', () => {
+    expect(revisionsLabel(graph())).toBe('main (1234567) → abcdef0');
+    expect(diffTitle(graph())).toBe('main (1234567) → abcdef0 — CPR');
+  });
+
+  it('names a branch review, then a pull or merge request, before the pair', () => {
+    expect(diffTitle(graph(), 'feature/add-clamp')).toBe('Review of feature/add-clamp — CPR');
+    const request = { forge: 'gitlab', number: 12, title: 'Add widgets' };
+    expect(diffTitle(graph({ changeRequest: request }), 'x')).toBe('!12 Add widgets — CPR');
   });
 });

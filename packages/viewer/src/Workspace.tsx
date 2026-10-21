@@ -11,6 +11,7 @@ import { AgentTerminal, toTerminal, type OpenedTerminal } from './AgentTerminal.
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { ChangesPanel } from './ChangesPanel.js';
 import { ChangesIcon, MoreIcon } from './icons.js';
+import { InTitleBar } from './TitleBar.js';
 import { keyIsTaken } from './keys.js';
 import { markdownNodes, useMarkdown } from './markdown.js';
 import { MergeControl } from './MergeControl.js';
@@ -644,16 +645,18 @@ function WorkspacePanel({
             </button>
           )}
           {workspace.ahead > 0 && !workspace.merged && <MergeControl branch={branch} />}
-          <button
-            type="button"
-            className="icon-button changes-toggle"
-            aria-label="Changes"
-            aria-pressed={changesShown}
-            title={`${changesShown ? 'Hide' : 'Show'} the branch's changes (])`}
-            onClick={toggleChanges}
-          >
-            <ChangesIcon />
-          </button>
+          <InTitleBar at="end">
+            <button
+              type="button"
+              className="icon-button changes-toggle"
+              aria-label="Changes"
+              aria-pressed={changesShown}
+              title={`${changesShown ? 'Hide' : 'Show'} the branch's changes (])`}
+              onClick={toggleChanges}
+            >
+              <ChangesIcon />
+            </button>
+          </InTitleBar>
           <MoreActions actions={more} />
           {workspace.ahead > 0 && workspace.tip !== null && (
             <button
@@ -688,21 +691,23 @@ function WorkspacePanel({
       )}
       <div className="workspace-split">
         <div className="workspace-main">
-          <div className="workspace-views" role="tablist" aria-label="Talk to the agent">
-            {views.map((name) => (
-              <button
-                key={name}
-                type="button"
-                role="tab"
-                aria-selected={view === name}
-                className={view === name ? 'selected' : ''}
-                {...(name === 'terminal' ? { title: terminalHint(agent) } : {})}
-                onClick={() => show(name)}
-              >
-                {tabName[name]}
-              </button>
-            ))}
-          </div>
+          <InTitleBar>
+            <div className="workspace-views" role="tablist" aria-label="Talk to the agent">
+              {views.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === name}
+                  className={view === name ? 'selected' : ''}
+                  {...(name === 'terminal' ? { title: terminalHint(agent) } : {})}
+                  onClick={() => show(name)}
+                >
+                  {tabName[name]}
+                </button>
+              ))}
+            </div>
+          </InTitleBar>
           <div className="workspace-body">
             {view === 'brief' && <pre className="workspace-brief">{workspace.brief}</pre>}
             {showTerminal && (

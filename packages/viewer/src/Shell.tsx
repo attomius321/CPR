@@ -3,13 +3,30 @@ import type { WorkspaceStart } from '@cpr/core';
 import { HistoryPage } from './HistoryPage.js';
 import { keyIsTaken } from './keys.js';
 import { MergeView } from './Merge.js';
-import { HISTORY_PAGE, SETTINGS_PAGE, hrefOf, inShell, routeOf, type Route } from './pages.js';
+import {
+  HISTORY_PAGE,
+  SETTINGS_PAGE,
+  hrefOf,
+  inShell,
+  routeOf,
+  routeTitle,
+  type Route,
+} from './pages.js';
 import { SettingsPage } from './SettingsPage.js';
-import { ShellContext, type Notice, type Shell as ShellApi } from './shell-context.js';
+import { ConfirmDialog } from './ConfirmDialog.js';
+import { desktop } from './desktop.js';
+import {
+  ShellContext,
+  type LeaveGuard,
+  type Notice,
+  type Shell as ShellApi,
+} from './shell-context.js';
 import { DrawerStrip, Sidenav } from './Sidenav.js';
 import { StatusBar } from './StatusBar.js';
+import { TitleBar, TitleBarSlotsProvider, type TitleBarSlots } from './TitleBar.js';
 import { WorkspaceView } from './Workspace.js';
-import { startedNotice } from './workspaces.js';
+import { useWorkspaces } from './useWorkspaces.js';
+import { startedNotice, workspaceName } from './workspaces.js';
 import { useWorkspaceStarter } from './WorkspaceStarter.js';
 
 const FOLD_KEY = 'cpr.viewer.sidenav';
@@ -57,11 +74,14 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   const [folded, setFolded] = useState(loadFolded);
   const [drawer, setDrawer] = useState(false);
   // A page's question before it is left (Settings with unsaved prompts), and the address shown.
-  const guard = useRef<string | null>(null);
+  const guard = useRef<LeaveGuard | null>(null);
   const shownAt = useRef(window.location.href);
-  const setLeaveGuard = useCallback((question: string | null) => {
-    guard.current = question;
+  const setLeaveGuard = useCallback((next: LeaveGuard | null) => {
+    guard.current = next;
   }, []);
+  // The question asked now, in CPR's own dialog (N1c), and where leaving goes.
+  const [asking, setAsking] = useState<{ guard: LeaveGuard; leave: () => void } | null>(null);
+  const [slots, setSlots] = useState<TitleBarSlots | null>(null);
 
   /** Shows the address `href` (one `routeOf` reads) in place, with a new history entry. */
   const go = useCallback((href: string, replace = false) => {
@@ -72,8 +92,11 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     setDrawer(false);
     // The address shown already: nothing to do (h on History lists nothing anew).
     if (shown === here && !replace) return;
-    if (guard.current && !window.confirm(guard.current)) return;
-    guard.current = null;
+    if (guard.current) {
+      setAsking({ guard: guard.current, leave: () => go(href, replace) });
+      guard.current = null;
+      return;
+    }
     if (replace) window.history.replaceState(null, '', shown);
     else window.history.pushState(null, '', shown);
     setRoute((current) => (sameRoute(current, next) && shown === here ? current : next));
@@ -94,6 +117,12 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     [],
   );
 
+  // The title bar's fold button (N1c): narrow, the sidenav is a drawer, which it opens.
+  const foldOrOpen = useCallback(() => {
+    if (window.matchMedia(NARROW).matches) setDrawer((open) => !open);
+    else fold();
+  }, [fold]);
+
   const started = useCallback(
     (start: WorkspaceStart) => {
       setNotice(startedNotice(start));
@@ -103,18 +132,21 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     [navigate],
   );
   const failed = useCallback((message: string) => setNotice({ text: message, error: true }), []);
+
   const starter = useWorkspaceStarter(started, failed);
   const startWorkspace = starter.open;
 
   // Back and Forward: the route at the address.
   useEffect(() => {
     const onPop = () => {
-      // Asked first; staying puts back the address left.
-      if (guard.current && !window.confirm(guard.current)) {
+      // Asked first: the address left comes back until the person chooses to leave.
+      if (guard.current) {
+        const left = window.location.href;
         window.history.pushState(null, '', shownAt.current);
+        setAsking({ guard: guard.current, leave: () => go(left) });
+        guard.current = null;
         return;
       }
-      guard.current = null;
       shownAt.current = window.location.href;
       const next = routeHere();
       setRoute((current) => (sameRoute(current, next) ? current : next));
@@ -183,17 +215,69 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   return (
     <ShellContext.Provider value={shell}>
       <div className={`shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}`}>
+        {desktop && (
+          <TitleBar
+            repo={repo}
+            folded={folded}
+            onFold={foldOrOpen}
+            label={
+              route.page === 'settings'
+                ? 'Settings'
+                : route.page === 'merge'
+                  ? `Merge ${route.branch}`
+                  : undefined
+            }
+            onSlots={setSlots}
+          />
+        )}
         <DrawerStrip open={drawer} onToggle={() => setDrawer((open) => !open)} />
         <Sidenav repo={repo} folded={folded} onFold={fold} flashed={flashed} />
-        <main className="shell-main">
-          {route.page === 'history' && <HistoryPage key={visit} />}
-          {route.page === 'settings' && <SettingsPage />}
-          {route.page === 'workspace' && <WorkspaceView key={route.branch} branch={route.branch} />}
-          {route.page === 'merge' && <MergeView key={route.branch} branch={route.branch} />}
-        </main>
+        <TitleBarSlotsProvider value={slots}>
+          <main className="shell-main">
+            {route.page === 'history' && <HistoryPage key={visit} />}
+            {route.page === 'settings' && <SettingsPage />}
+            {route.page === 'workspace' && (
+              <WorkspaceView key={route.branch} branch={route.branch} />
+            )}
+            {route.page === 'merge' && <MergeView key={route.branch} branch={route.branch} />}
+          </main>
+        </TitleBarSlotsProvider>
         <StatusBar notice={notice} />
+        <WindowTitle route={route} repo={repo} />
         {starter.dialog}
+        {asking && (
+          <ConfirmDialog
+            question={asking.guard.question}
+            detail={asking.guard.detail}
+            leave="Leave"
+            onLeave={() => {
+              setAsking(null);
+              asking.leave();
+            }}
+            onStay={() => {
+              guard.current = asking.guard;
+              setAsking(null);
+            }}
+          />
+        )}
       </div>
     </ShellContext.Provider>
   );
+}
+
+/**
+ * The window's title (N1a): the page, a workspace by its title, then the repository. Its own
+ * component: a new read of the workspaces renders it alone, not the shell.
+ */
+function WindowTitle({ route, repo }: { route: Route; repo: string | undefined }) {
+  const { list } = useWorkspaces();
+  const picked =
+    route.page === 'workspace'
+      ? list?.workspaces.find((workspace) => workspace.branch === route.branch)
+      : undefined;
+  const name = picked ? workspaceName(picked) : undefined;
+  useEffect(() => {
+    document.title = routeTitle(route, repo, name);
+  }, [route, repo, name]);
+  return null;
 }

@@ -15,6 +15,9 @@
     },
     {
       "path": "packages/plugin-qwik/tsconfig.build.json"
+    },
+    {
+      "path": "packages/desktop/tsconfig.build.json"
     }
   ]
 }

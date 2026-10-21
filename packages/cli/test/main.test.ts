@@ -1,8 +1,9 @@
 import { SCHEMA_VERSION } from '@cpr/core';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { createBranchedRepo, tempDir } from '../../core/test/helpers/git-repo.js';
+import type { AppWindow } from '../src/app.js';
 import { run } from '../src/main.js';
 
 async function cpr(
@@ -47,6 +48,16 @@ describe('cpr', () => {
     expect(stdout).toMatch(
       new RegExp(`^cpr \\d+\\.\\d+\\.\\d+ \\(graph schema ${SCHEMA_VERSION}\\)\\n$`),
     );
+  });
+
+  it('explains cpr app, and refuses what it does not know (N1b)', async () => {
+    expect((await cpr(['app'])).code).toBe(2);
+    const help = await cpr(['app', '--help']);
+    expect(help.code).toBe(0);
+    expect(help.stdout).toContain('Usage: cpr app install | uninstall');
+    const odd = await cpr(['app', 'nope']);
+    expect(odd.code).toBe(2);
+    expect(odd.stderr).toContain("unknown action 'nope'");
   });
 
   it('rejects unknown commands with a usage error', async () => {
@@ -210,6 +221,90 @@ describe('cpr diff', () => {
       delete process.env.CPR_VIEWER_DIR;
       rmSync(viewer, { recursive: true, force: true });
     }
+  });
+
+  describe("in CPR's window (N1a)", () => {
+    type Answer = AppWindow | { error: string } | null;
+
+    /**
+     * `cpr view` where CPR's window answers `answer`; Ctrl+C comes at once when `ctrlC`, else
+     * never (only the window can end it).
+     */
+    async function inApp(argv: string[], answer: Answer, ctrlC = false) {
+      const viewer = tempDir();
+      writeFileSync(join(viewer, 'index.html'), '');
+      process.env.CPR_VIEWER_DIR = viewer;
+      let stdout = '';
+      let stderr = '';
+      const opened: string[] = [];
+      const asked: [string, string][] = [];
+      try {
+        const code = await run(argv, {
+          cwd: repo.root,
+          stdout: (text) => (stdout += text),
+          stderr: (text) => (stderr += text),
+          openUrl: (url) => opened.push(url),
+          openApp: (url, title) => {
+            asked.push([url, title]);
+            return Promise.resolve(answer);
+          },
+          waitForExit: () => (ctrlC ? Promise.resolve() : new Promise(() => undefined)),
+          env: process.env,
+        });
+        return { code, stdout, stderr, opened, asked };
+      } finally {
+        delete process.env.CPR_VIEWER_DIR;
+        rmSync(viewer, { recursive: true, force: true });
+      }
+    }
+
+    const window = (closed: Promise<void>) => {
+      const window = { closed, close: vi.fn() };
+      return window;
+    };
+
+    it('opens the window, not the browser, and stops when the window closes', async () => {
+      const result = await inApp(['view'], window(Promise.resolve()));
+      expect(result.code).toBe(0);
+      expect(result.opened).toEqual([]);
+      // Said once the window shows: what stops the command now.
+      expect(result.stdout).toMatch(/\nCPR's window is open: close it, or Ctrl\+C, to stop\n$/);
+      expect(result.asked).toEqual([
+        [expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/$/), basename(repo.root)],
+      ]);
+    });
+
+    it('closes the window on Ctrl+C', async () => {
+      const shown = window(new Promise(() => undefined));
+      const result = await inApp(['view', 'main', 'feature'], shown, true);
+      expect(result.code).toBe(0);
+      expect(result.asked[0]?.[0]).toMatch(/\/diff\/[0-9a-f]+\.\.[0-9a-f]+\/$/);
+      expect(shown.close).toHaveBeenCalledOnce();
+    });
+
+    it('opens the browser with --browser, or when the app is not set up', async () => {
+      const browser = await inApp(['view', '--browser'], window(Promise.resolve()), true);
+      expect(browser.asked).toEqual([]);
+      expect(browser.stdout).not.toContain("CPR's window");
+      expect(browser.opened).toEqual([expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/$/)]);
+      const none = await inApp(['view'], null, true);
+      expect(none.opened).toHaveLength(1);
+      expect(none.stderr).toBe('');
+    });
+
+    it('opens the browser when the window fails, and says why', async () => {
+      const result = await inApp(['view'], { error: 'cpr app: no display' }, true);
+      expect(result.opened).toHaveLength(1);
+      expect(result.stderr).toBe(
+        "cpr: CPR's window did not open (cpr app: no display); opening the browser\n",
+      );
+    });
+
+    it('opens nothing with --no-open', async () => {
+      const result = await inApp(['view', '--no-open'], window(Promise.resolve()), true);
+      expect(result.asked).toEqual([]);
+      expect(result.opened).toEqual([]);
+    });
   });
 
   it('fails on unknown revisions', async () => {

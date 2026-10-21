@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@cpr/core": "workspace:*",
+    "@cpr/desktop": "workspace:*",
     "@cpr/forge": "workspace:*",
     "@cpr/viewer": "workspace:*",
     "jsonc-parser": "3.3.1"

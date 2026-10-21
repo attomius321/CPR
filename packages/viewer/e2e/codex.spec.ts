@@ -186,6 +186,9 @@ test('the dialog offers the agents installed: Codex alone, or Claude Code alone,
   await expect(dialog(page).getByLabel('agent')).toHaveCount(0);
   await dialog(page).getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Codex is working');
+  // The page leaves first: the workspace it opened may still be loading a chunk of the viewer
+  // (Markdown's), which a server stopped under it fails as a page error (1 run in 36).
+  await page.goto('about:blank');
   cpr.stop();
 
   cpr = await serveWorkspaces();

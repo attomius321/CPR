@@ -68,6 +68,19 @@ export const MoreIcon = () => (
 );
 
 /** CPR's mark: two commits and the line between them. */
+/** Back and forward, in CPR's window's title bar (N1c). */
+export const BackIcon = () => (
+  <Icon>
+    <path d="M13 8H3M7 4L3 8l4 4" />
+  </Icon>
+);
+
+export const ForwardIcon = () => (
+  <Icon>
+    <path d="M3 8h10M9 4l4 4-4 4" />
+  </Icon>
+);
+
 export const CprIcon = () => (
   <Icon>
     <circle cx="5" cy="5" r="2" />

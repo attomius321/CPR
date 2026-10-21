@@ -12,6 +12,12 @@ export interface Notice {
 }
 
 /** What the shell (V29a) gives the pages it shows, and a diff's page under `cpr view`. */
+/** What a page asks before it is left with something not saved (CPR's own dialog, N1c). */
+export interface LeaveGuard {
+  question: string;
+  detail: string;
+}
+
 export interface Shell {
   /** What the main area shows; null on a diff's page, which is no route of the shell's. */
   route: Route | null;
@@ -27,7 +33,7 @@ export interface Shell {
    * What to ask before the main area shows something else (unsaved changes), or null: the page
    * is left in place, so the browser's own question on leaving does not come.
    */
-  setLeaveGuard: (question: string | null) => void;
+  setLeaveGuard: (guard: LeaveGuard | null) => void;
 }
 
 export const ShellContext = createContext<Shell | null>(null);

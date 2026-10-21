@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
@@ -39,6 +39,14 @@ import {
   type TsPlugin,
 } from '@cpr/core';
 import { detectForge, type ChangeRequest, type Forge } from '@cpr/forge';
+import {
+  findApp,
+  installApp,
+  openAppWindow,
+  recordAgain,
+  uninstallApp,
+  type AppWindow,
+} from './app.js';
 import { ciChangeRequestNumber } from './ci.js';
 import { codeQualityReport } from './codequality.js';
 import { Diffs, pairKey } from './diffs.js';
@@ -74,6 +82,11 @@ export interface CliContext {
   stderr: (text: string) => void;
   /** Opens a URL in the user's browser (best effort). */
   openUrl: (url: string) => void;
+  /**
+   * Opens the viewer in CPR's own window (N1): the window once it shows the page, why it did not
+   * open, or null when the desktop app is not set up.
+   */
+  openApp?: (url: string, title: string) => Promise<AppWindow | { error: string } | null>;
   /** Resolves when a long-running command (`view`) should stop: Ctrl+C. */
   waitForExit: () => Promise<void>;
   /** Environment: tokens, API URLs, `CPR_*` settings. */
@@ -90,6 +103,14 @@ const processContext = (): CliContext => ({
   stdout: (text) => process.stdout.write(text),
   stderr: (text) => process.stderr.write(text),
   openUrl,
+  openApp: (url, title) => {
+    const app = findApp(process.env);
+    if (!app) return Promise.resolve(null);
+    // The launcher's app starts cpr view with what this shell has (decision 197).
+    const where = { env: process.env, platform: process.platform };
+    recordAgain({ ...where, node: process.execPath, cli: CLI_SCRIPT });
+    return openAppWindow(app, url, title, process.env);
+  },
   env: process.env,
   // Started by `cpr view` with an IPC channel: phases go back to it.
   ...(process.send ? { onPhase: (phase) => process.send?.({ phase } satisfies PhaseMessage) } : {}),
@@ -97,6 +118,11 @@ const processContext = (): CliContext => ({
     new Promise((resolve) => {
       process.once('SIGINT', () => resolve());
       process.once('SIGTERM', () => resolve());
+      // Started by CPR's app from the desktop (N1b): it stops with the app, even one that died.
+      if (process.env.CPR_STDIN_STOPS === '1') {
+        process.stdin.once('end', () => resolve());
+        process.stdin.resume();
+      }
     }),
 });
 
@@ -129,6 +155,7 @@ Commands:
   pr [<number>]        Review a GitHub pull request or GitLab merge request (alias: mr);
                        in a CI job, the job's own
   merge <branch>       Merge a branch's approved commit, check it, and land it
+  app install          Add CPR's window to your desktop's apps (app uninstall: remove it)
 
 Options:
   -h, --help           Show this help
@@ -157,7 +184,8 @@ Options:
 
 const VIEW_HELP = `Usage: cpr view [<base> [head]] [options]
 
-Serves the graph viewer on localhost until Ctrl+C. It opens on History (h): every
+Serves the graph viewer on localhost until Ctrl+C, in CPR's own window once the
+desktop app is set up (pnpm app:setup), else in the browser. It opens on History (h): every
 branch, local and remote, as a graph. Its sidenav lists the workspaces: each a branch
 with its own worktree and agent, started from the page. In Compare mode (x), pick two commits to
 compare them (the older is the base), or one against its parent; each pair is analyzed
@@ -166,7 +194,8 @@ comparison.
 
 Options:
   --port <n>           Port to listen on (default: any free port)
-  --no-open            Don't open the browser
+  --browser            Open the browser, not CPR's window
+  --no-open            Open neither
   --no-merge-base      Compare against base directly
   --since <rev>        Mark each changed symbol new, updated or the same as in an earlier
                        head of this change (before a push or rebase)
@@ -180,8 +209,9 @@ Options:
 const PR_HELP = `Usage: cpr pr [<number>] [options]      (alias: cpr mr)
 
 Reviews a GitHub pull request or GitLab merge request of the \`origin\` remote: reads it
-through the forge's API, fetches its head and target branch, and opens the viewer, where
-comments on symbols are submitted as one review (comment, approve, or request changes).
+through the forge's API, fetches its head and target branch, and opens the viewer (CPR's
+window, or the browser), where comments on symbols are submitted as one review (comment,
+approve, or request changes).
 
 In a GitHub Actions or GitLab CI job for a pull/merge request, <number> defaults to it.
 
@@ -201,13 +231,26 @@ Options:
   --forge <name>       github or gitlab, for hosts whose name doesn't say
   --remote <name>      Remote to read and fetch from (default: origin)
   --port <n>           Viewer port (default: any free port)
-  --no-open            Don't open the browser
+  --browser            Open the browser, not CPR's window
+  --no-open            Open neither
   --since <sha>        Mark each changed symbol new, updated or the same as in an earlier
                        head of this pull/merge request (fetched if needed)
   --project <path>     tsconfig to load, relative to the repo root (default: tsconfig.json)
   --depth <n>          Hops of unchanged callers/callees to include (default: 1)
   --plugin <name|path> Analyze with a plugin, e.g. angular or qwik (repeatable; also
                        read from "plugins" in cpr/config.json at the repo root)
+  -h, --help           Show this help
+`;
+
+const APP_HELP = `Usage: cpr app install | uninstall
+
+CPR's window, the desktop app (pnpm app:setup in CPR's folder fetches it). install adds
+CPR to your desktop's apps, for this user, so it opens without a terminal: on the last
+repository it showed, or one you choose. It records this node, this CLI and your PATH,
+which an app started from the desktop does not have. uninstall removes it. Linux only
+for now (WSL included, through WSLg).
+
+Options:
   -h, --help           Show this help
 `;
 
@@ -252,6 +295,7 @@ export async function run(
     if (command === 'view') return await view(rest, ctx);
     if (command === 'pr' || command === 'mr') return await pr(rest, ctx);
     if (command === 'merge') return await merge(rest, ctx);
+    if (command === 'app') return appCommand(rest, ctx);
   } catch (error) {
     if (error instanceof UsageError) {
       ctx.stderr(`cpr ${command}: ${error.message}\n\n${error.help}`);
@@ -369,6 +413,7 @@ const REPORT_OPTIONS = {
 const SERVE_OPTIONS = {
   port: { type: 'string', default: '0' },
   'no-open': { type: 'boolean', default: false },
+  browser: { type: 'boolean', default: false },
 } as const;
 
 interface ReportArgs {
@@ -381,6 +426,31 @@ interface ReportArgs {
 interface ServeArgs {
   port: string;
   'no-open': boolean;
+  browser: boolean;
+}
+
+/**
+ * Shows the viewer at `url`: in CPR's window when the app is set up (N1), else, or with
+ * `--browser`, in the browser; nowhere with `--no-open`. Then waits for Ctrl+C or, in the
+ * window, for it to close.
+ */
+async function showUntilExit(
+  url: string,
+  title: string,
+  args: ServeArgs,
+  ctx: CliContext,
+): Promise<void> {
+  if (args['no-open']) return ctx.waitForExit();
+  const shown = args.browser ? null : await ctx.openApp?.(url, title);
+  if (shown && 'closed' in shown) {
+    ctx.stdout("CPR's window is open: close it, or Ctrl+C, to stop\n");
+    await Promise.race([ctx.waitForExit(), shown.closed]);
+    shown.close();
+    return;
+  }
+  if (shown) ctx.stderr(`cpr: CPR's window did not open (${shown.error}); opening the browser\n`);
+  ctx.openUrl(url);
+  return ctx.waitForExit();
 }
 
 function checkFailOn(failOn: string | undefined, help: string): void {
@@ -474,9 +544,8 @@ async function serve(
   });
   ctx.stdout(`${statsLine(graph)}\nCPR viewer: ${server.url}  (Ctrl+C to stop)\n`);
   for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
-  if (!args['no-open']) ctx.openUrl(server.url);
 
-  await ctx.waitForExit();
+  await showUntilExit(server.url, basename(repo.root), args, ctx);
   await server.close();
   return 0;
 }
@@ -620,9 +689,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   }
   ctx.stdout(`CPR viewer: ${url}  (Ctrl+C to stop)\n`);
   for (const warning of first?.analysis.warnings ?? []) ctx.stderr(`warning: ${warning}\n`);
-  if (!values['no-open']) ctx.openUrl(url);
 
-  await ctx.waitForExit();
+  await showUntilExit(url, basename(repo.root), values, ctx);
   diffs.close();
   await server.close();
   return 0;
@@ -676,6 +744,64 @@ function mergeLine(entry: MergeEntry): string {
       return check?.ok === false
         ? `failed: ${check.failed ?? ''}${time}\n${check.output ?? ''}`
         : `failed: ${entry.message ?? ''}`;
+  }
+}
+
+/** `cpr app install|uninstall` (N1b): CPR's window in the desktop's apps. */
+function appCommand(argv: string[], ctx: CliContext): number {
+  const { values, positionals } = parse(
+    {
+      args: argv,
+      allowPositionals: true,
+      options: { help: { type: 'boolean', short: 'h', default: false } },
+    },
+    APP_HELP,
+  );
+  const [action, ...extra] = positionals;
+  if (values.help || action === undefined) {
+    ctx.stdout(APP_HELP);
+    return values.help ? 0 : 2;
+  }
+  if (extra.length > 0) throw new UsageError(`unexpected argument '${extra[0]}'`, APP_HELP);
+  const where = { env: ctx.env, platform: process.platform };
+  if (action === 'uninstall') {
+    ctx.stdout(uninstallApp(where));
+    return 0;
+  }
+  if (action !== 'install') throw new UsageError(`unknown action '${action}'`, APP_HELP);
+  const app = findApp(ctx.env);
+  if (!app) {
+    throw new CprError(
+      "CPR's window is not set up: run pnpm app:setup and pnpm build in CPR's folder",
+    );
+  }
+  const desktop = dirname(require.resolve('@cpr/desktop/package.json'));
+  ctx.stdout(
+    installApp({
+      ...where,
+      app,
+      icon: join(desktop, 'icons', 'cpr.png'),
+      node: process.execPath,
+      cli: CLI_SCRIPT,
+    }),
+  );
+  if (refusesSandbox()) {
+    ctx.stderr(
+      "warning: AppArmor here refuses Chromium's sandbox to apps outside a package " +
+        "(kernel.apparmor_restrict_unprivileged_userns=1): CPR's window may not open; see CPR's window in the README\n",
+    );
+  }
+  return 0;
+}
+
+/** Whether AppArmor refuses user namespaces to unpackaged programs (Ubuntu 23.10 and later). */
+function refusesSandbox(): boolean {
+  try {
+    return (
+      readFileSync('/proc/sys/kernel/apparmor_restrict_unprivileged_userns', 'utf8').trim() === '1'
+    );
+  } catch {
+    return false;
   }
 }
 

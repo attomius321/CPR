@@ -61,6 +61,11 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   await text(page, 'Fix').press('Control+Home');
   await editor(page).getByRole('button', { name: '{plan}' }).click();
   await expect(text(page, 'Fix')).toHaveValue(`{plan}${FIX}`);
+  // The cursor after it, placed on the next frame: typing goes on from there. (Filled before that
+  // frame, the text went in after `{plan}` instead of replacing it: 4 runs in 48 at 8 workers.)
+  await expect
+    .poll(() => text(page, 'Fix').evaluate((field: HTMLTextAreaElement) => field.selectionStart))
+    .toBe('{plan}'.length);
   // Without the brief it cannot be saved.
   await text(page, 'Fix').fill('Fix it on {branch}.');
   await expect(editor(page).locator('.settings-size')).toHaveText(
@@ -118,13 +123,12 @@ test('keeps drafts across prompts, asks before leaving with one, and refuses a s
   await expect(entry(page, 'Spike')).toContainText('not saved');
 
   // Leaving with it asks first; staying keeps it. In the shell (V29a) the page is not unloaded:
-  // the shell asks.
-  page.once('dialog', (dialog) => {
-    expect(dialog.type()).toBe('confirm');
-    expect(dialog.message()).toBe('Leave Settings? A prompt is changed and not saved.');
-    void dialog.dismiss();
-  });
+  // the shell asks, in a dialog of CPR's own (N1c), not the browser's.
   await page.getByRole('link', { name: 'History' }).click();
+  const asking = page.getByRole('alertdialog', { name: 'Leave Settings?' });
+  await expect(asking).toContainText('A prompt is changed and not saved.');
+  await asking.getByRole('button', { name: 'Stay' }).click();
+  await expect(asking).toBeHidden();
   await expect(page).toHaveURL(`${cpr.url}settings?prompt=start.spike`);
   await expect(text(page, 'Spike')).toHaveValue(/Commit it under spikes\/\.$/);
 

@@ -48,6 +48,7 @@ git clone https://github.com/attomius321/CPR.git
 cd CPR
 pnpm install
 pnpm build
+pnpm app:setup    # optional: CPR's own window (Electron, ~100 MB); without it, the browser
 alias cpr="node $PWD/packages/cli/dist/bin.js"   # add this line to your shell profile
 ```
 
@@ -58,7 +59,7 @@ Then, in any git repository with TypeScript or JavaScript:
 
 ```sh
 cpr view          # History and your workspaces: every branch, to check out, review or compare
-cpr view main     # this branch against main, in the browser
+cpr view main     # this branch against main, in CPR's window (or the browser)
 cpr diff main     # the same, in the terminal
 ```
 
@@ -67,8 +68,9 @@ cpr diff main     # the same, in the terminal
 | Command | What it does |
 |---|---|
 | `cpr diff <base> [head]` | Compares `head` (default `HEAD`) with where it left `base`, as a pull request does, and prints the changed symbols and the findings. |
-| `cpr view [<base> [head]]` | Opens the viewer in the browser. Without revisions it opens on the repository's History, with your workspaces in the sidenav; with them, on that comparison. Runs until Ctrl+C. |
+| `cpr view [<base> [head]]` | Opens the viewer: in [CPR's window](#cprs-window) once the desktop app is set up, else in the browser. Without revisions it opens on the repository's History, with your workspaces in the sidenav; with them, on that comparison. Runs until Ctrl+C, or until its window is closed. |
 | `cpr pr [<number>]` | Reviews a GitHub pull request or a GitLab merge request (`cpr mr` is the same command). In a CI job for one, the number comes from the job. |
+| `cpr app install` | Adds [CPR's window](#cprs-window) to your desktop's apps, so it opens without a terminal; `cpr app uninstall` removes it. Linux, WSL included. |
 | `cpr merge <branch>` | Merges the commit your review of `branch` approved, as Merge does in the viewer ([Merging](#merging)): `--into <branch>` picks the target, `--land` lands a merge that waits for you. |
 
 `cpr diff` in a repository where one function was added, one removed and one changed:
@@ -104,7 +106,8 @@ M  src/math.ts
 | `--depth <n>` | all | Hops of unchanged callers and callees to include (default 1). |
 | `--plugin <name\|path>` | all | Analyze with a plugin, such as `angular` or `qwik`. Repeatable. |
 | `--no-merge-base` | diff, view | Compare with `base` itself, not with where `head` left it. |
-| `--port <n>`, `--no-open` | view, pr | The viewer's port (default: any free one), and not opening the browser. |
+| `--port <n>` | view, pr | The viewer's port (default: any free one). |
+| `--browser`, `--no-open` | view, pr | Open the browser instead of [CPR's window](#cprs-window); open neither. |
 | `--summary` | pr | Print the summary instead of opening the viewer. |
 | `--post-findings <level>` | pr | Post new findings at or above the level as comments on their lines, instead of opening the viewer. |
 | `--forge github\|gitlab` | pr | For hosts whose name does not say which forge they are. |
@@ -127,6 +130,42 @@ apart from production code by their path. CPR prefers missing a finding to repor
 one, and every finding links to its symbol and the symbols involved.
 
 ## The viewer
+
+### CPR's window
+
+With the desktop app set up (`pnpm app:setup`, once: it fetches Electron, ~100 MB), `cpr view` and
+`cpr pr` open the viewer in a window of their own, not in a browser tab: its own icon and taskbar
+entry, no tabs or address bar, the page's name as its title. Without it they open the browser,
+as `--browser` does.
+
+- **Closing the window stops `cpr view`**, as Ctrl+C does; Ctrl+C closes the window. Agents in
+  workspaces keep running either way.
+- **From your desktop's apps**: `cpr app install`, once, in a terminal where `cpr` works, adds CPR
+  to them for this user (`~/.local/share/applications/cpr.desktop` and its icon). Opened from
+  there, CPR shows the last repository it showed, else a start page: open a repository, or one
+  of the recent ones. Each repository gets its own window and its own `cpr view`, which stops
+  with the window, and with the app even if it crashes. Opened again, the running CPR comes to
+  the front. A desktop's apps do not read your shell's profile, so `cpr app install` records the
+  node, the CLI and the `PATH` (`~/.config/cpr/app.json`) that `cpr view` will need to find git
+  and your agents; each `cpr view` that opens CPR's window records them again.
+- **Its own title bar**, after Orca's: CPR and the repository, the sidenav's fold and back and
+  forward over the sidenav; the page's tabs beside them (a workspace's Terminal, Thread and Brief,
+  History's All branches and This branch); the panel's toggle and your system's window buttons
+  at the end, in CPR's colours, light or dark as the theme is. Drag its free space to move the
+  window.
+- **Links that leave CPR** (a pull request, a link in a thread) open in your default browser.
+- **Leaving with something not saved** (a prompt in Settings) asks first, in CPR's own dialog
+  inside the page and in your system's when the window closes.
+- **Keys**: Ctrl+= and Ctrl+− zoom, Ctrl+0 back to 100 %; Alt+← and Alt+→ (and the mouse's side
+  buttons) go back and forward; Ctrl+R or F5 reloads; Ctrl+Shift+I opens the inspector. On macOS,
+  ⌘ instead of Ctrl, and ⌘[ ⌘] for back and forward. Where the agent's terminal has the focus, it
+  keeps Ctrl+R and Alt+arrows.
+- **Remembered** for the next window: its size and place, the zoom, and the viewer's own choices
+  (theme, folded sidenav, panel widths), kept in `$XDG_CONFIG_HOME/cpr/app/` (`~/.config/cpr/app/`).
+- **Where it runs**: Linux, and Windows through WSL (its window comes through WSLg). macOS runs the
+  same code but is not tested yet. On Ubuntu 24.04 and later, AppArmor may refuse Chromium's
+  sandbox to an Electron that no package installed: `cpr view` then says so and opens the browser
+  ([Chromium on this restriction](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md)).
 
 ### Reading a change
 
@@ -688,6 +727,7 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 | `CPR_CODEX` | The Codex program workspaces start (default: `codex` on `PATH`). |
 | `CPR_TERMINAL` | `off`: no agent's terminal in a workspace's panel; the panel keeps Talk and the reply box. |
 | `CPR_USAGE` | `off`: no subscription usage is read, and the status bar shows none. |
+| `CPR_APP` | `off`: `cpr view` and `cpr pr` open the browser, never [CPR's window](#cprs-window). A path: the program to run as the app instead. |
 | `CPR_CACHE_DIR` | Where CPR keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/cpr`, else `~/Library/Caches/cpr` on macOS and `~/.cache/cpr` elsewhere. |
 
 ## Limits
@@ -704,7 +744,7 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 pnpm install
 pnpm check        # format, lint, typecheck, unit tests
 pnpm build        # compile the packages and bundle the viewer
-pnpm test:e2e     # viewer end-to-end tests (after pnpm build)
+pnpm test:e2e     # viewer end-to-end tests (after pnpm build; the app's need pnpm app:setup and Xvfb)
 node packages/cli/dist/bin.js diff main
 ```
 
@@ -714,6 +754,7 @@ node packages/cli/dist/bin.js diff main
 | `packages/cli` | The `cpr` command line and the viewer's local server |
 | `packages/forge` | GitHub and GitLab APIs |
 | `packages/viewer` | The browser app `cpr view` and `cpr pr` serve |
+| `packages/desktop` | CPR's window: an Electron app showing the viewer's server (`pnpm app:setup`) |
 | `packages/plugin-angular`, `packages/plugin-qwik` | Framework plugins |
 | `action.yml`, `ci/gitlab/cpr.yml` | The GitHub Action and the GitLab CI template |
 | `spikes/` | Experiments outside the workspace |

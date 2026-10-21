@@ -4874,3 +4874,184 @@ button.changes-file:hover {
 .changes-status.status-conflicted {
   color: var(--removed);
 }
+
+/* ---- CPR's window (N1c): its title bar, after Orca's; in the app only ----------------------
+   `data-app` on <html> is set before the first paint where the app's preload says so: in a
+   browser none of this applies. 38 px, the sidenav's colour, cut along the window's columns.
+   The system's buttons lie over its right end (Windows, Linux: `env(titlebar-area-*)` says
+   where) or its left (macOS's). */
+
+.titlebar {
+  display: none;
+}
+
+:root[data-app] .shell {
+  grid-template-rows: 38px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'title title'
+    'side main'
+    'status status';
+}
+
+:root[data-app] .titlebar {
+  grid-area: title;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  height: 38px;
+  border-bottom: 1px solid var(--line);
+  background: var(--side);
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+/* What can be clicked does not move the window. */
+:root[data-app] .titlebar :is(a, button, [role='tab'], .scopes) {
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-side {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  min-width: var(--sidenav-width, 240px);
+  padding: 0 8px 0 12px;
+  border-right: 1px solid var(--line);
+}
+
+:root[data-app='darwin'] .titlebar-side {
+  padding-left: 78px;
+}
+
+.titlebar-brand {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.titlebar-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.titlebar-repo {
+  color: var(--muted);
+  font-weight: 450;
+}
+
+/* Folded to a rail, the side keeps its buttons; the name goes, and the line (no column to
+   follow). */
+.shell.folded .titlebar-name {
+  display: none;
+}
+
+.shell.folded .titlebar-side {
+  border-right: 0;
+}
+
+/* A diff in the shell: CPR's name is the title bar's. */
+:root[data-app] .shell .app > .bar > .brand {
+  display: none;
+}
+
+.titlebar .icon-button:disabled {
+  color: var(--faint);
+  background: none;
+  cursor: default;
+}
+
+.titlebar-page {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+
+.titlebar-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.titlebar-slot {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.titlebar-end {
+  flex: none;
+  display: flex;
+  align-items: center;
+  /* The system's buttons' width, kept clear. */
+  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 8px);
+}
+
+/* The page's tabs, moved up: Orca's, flat, the picked one raised. */
+.titlebar .workspace-views {
+  gap: 2px;
+  padding: 0;
+  border: 0;
+}
+
+.titlebar .workspace-views button {
+  margin: 0;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 6px;
+}
+
+.titlebar .workspace-views button.selected {
+  background: var(--raised);
+  color: var(--text);
+}
+
+:root[data-app] .shell-top {
+  display: none;
+}
+
+:root[data-app] .sidenav-top {
+  display: none;
+}
+
+/* A page with no shell (cpr pr): its bar is the title bar. */
+:root[data-app] .app.alone > .bar {
+  -webkit-app-region: drag;
+  min-height: 38px;
+  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 16px);
+}
+
+:root[data-app='darwin'] .app.alone > .bar {
+  padding-left: 78px;
+}
+
+:root[data-app] .app.alone > .bar :is(a, button, label, input, select) {
+  -webkit-app-region: no-drag;
+}
+
+@media (max-width: 899px) {
+  :root[data-app] .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 38px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title'
+      'main'
+      'status';
+  }
+
+  :root[data-app] .titlebar-side {
+    min-width: 0;
+  }
+}

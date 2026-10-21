@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'"
+    />
+    <title>CPR</title>
+    <link rel="stylesheet" href="start.css" />
+    <script src="start.js" defer></script>
+  </head>
+  <body>
+    <!-- CPR's window has no system title bar (N1c): this strip moves it, under its buttons. -->
+    <div class="start-bar"></div>
+    <main class="start">
+      <svg class="mark" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M5 7v2a2 2 0 0 0 2 2h2" />
+        <circle cx="5" cy="5" r="2" />
+        <circle class="mark-head" cx="11" cy="11" r="2" />
+      </svg>
+      <h1>CPR</h1>
+      <p class="lede">Review changes as a graph of symbols, with your agents' workspaces.</p>
+      <p id="status" class="status" role="status" hidden></p>
+      <button id="open" type="button" class="primary">
+        Open a repository… <kbd id="open-key">Ctrl+O</kbd>
+      </button>
+      <section class="recent" aria-labelledby="recent-heading">
+        <h2 id="recent-heading">Recent</h2>
+        <ul id="recent"></ul>
+        <p id="no-recent" class="muted" hidden>The repositories you open show here.</p>
+      </section>
+    </main>
+  </body>
+</html>

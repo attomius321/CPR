@@ -11,8 +11,11 @@ const inline = (() => {
   return found?.groups?.code ?? '';
 })();
 
-/** Runs the inline script with `stored` in the browser's storage: the theme it sets. */
-function themeBeforePaint(stored: string | null | Error): string | undefined {
+/**
+ * Runs the inline script with `stored` in the browser's storage, in CPR's window when `app` is
+ * the preload's (N1c): what it sets on <html>.
+ */
+function beforePaint(stored: string | null | Error, app?: { platform: string }) {
   const root = { dataset: {} as Record<string, string> };
   const storage = {
     getItem(key: string) {
@@ -22,13 +25,16 @@ function themeBeforePaint(stored: string | null | Error): string | undefined {
   };
   // The page's own script, run as a browser runs it, with these two in its scope.
   // eslint-disable-next-line @typescript-eslint/no-implied-eval
-  const run = new Function('document', 'localStorage', inline) as (
+  const run = new Function('document', 'localStorage', 'window', inline) as (
     document: unknown,
     localStorage: unknown,
+    window: unknown,
   ) => void;
-  run({ documentElement: root }, storage);
-  return root.dataset.theme;
+  run({ documentElement: root }, storage, app ? { cprApp: app } : {});
+  return root.dataset;
 }
+
+const themeBeforePaint = (stored: string | null | Error) => beforePaint(stored).theme;
 
 describe('the theme (V29b, decision 179)', () => {
   it('is dark unless the person chose light or the system', () => {
@@ -49,5 +55,10 @@ describe('the theme (V29b, decision 179)', () => {
 
   it('is dark where the browser blocks storage', () => {
     expect(themeBeforePaint(new Error('SecurityError'))).toBe('dark');
+  });
+
+  it("marks the page as CPR's window's before the first paint, and only there (N1c)", () => {
+    expect(beforePaint(null, { platform: 'linux' }).app).toBe('linux');
+    expect(beforePaint(null).app).toBeUndefined();
   });
 });
