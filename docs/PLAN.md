@@ -447,7 +447,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V31 ✅ | Symbiote's style, beyond its colours | V29b took the reference's tokens and font; the rest was older than its colours: one black for every surface (1.04:1 between page and sidenav), blue as the accent on 35 rules, 6 native checkboxes, 8 coloured side bars, bordered mono chips, a solid green HEAD. Symbiote's own style, written down as the `symbiote-style` skill. Merged into main (2026-10-21): V31a the tokens and the shell, V31b the diff page, V31c History, menus, dialogs and selects — blue a state only, no side bars, drawn controls, one radius scale; Bitwarden's timings and History's first rows as `main`'s, e2e 169 of 169. See below. |
 | N1d ✅ | Rounded window corners | Symbiote's window was square on Linux (here through WSLg): Electron rounds a frameless window there only with client-side decorations, and draws no buttons over a transparent one. Merged into main (2026-10-21): on Linux a transparent window whose pages draw a 10 px frame and Symbiote's own minimize, maximize and close, square when maximized; on WSLg Symbiote holds a maximized window itself, where WSLg's own maximize lands 32 px off; macOS and Windows unchanged; no cost on Bitwarden's graph. See below. |
 | V32 | Text one can read | V29b chose the reference's density: 13 px body, 12 px for buttons, paths, code and the status bar, 10–11 px for captions, chips, badges, counts and key caps; asked: "The font-size is too small to read … My eyes are hurting". Built on `feature/font-too-small`: one step up (14 px body, nothing under 12 px but uppercase labels; titles stay 16 px), every size from a `--size-*` scale on `:root` with a guard test, the graph's layout unchanged; Bitwarden's graph and History as fast as `main`. See below. |
-| V33 | Start from a branch | The start page starts from the default branch's tip or a commit picked in History; on this repository 102 branches could be started from (40 local, 62 only on `origin`) and the page offers 1. Planned: a Start from choice (the default branch, then local, then remote-only), the branch's newest tip resolved by the server at the start and recorded as `from`. See below. |
+| V33 | Start from a branch | The start page starts from the default branch's tip or a commit picked in History; on this repository 102 branches could be started from (40 local, 62 only on `origin`) and the page offers 1. Planned: a Start from choice (the default branch, then local, then remote-only), the branch's newest tip resolved by the server at the start and recorded as `from`. Built on `feature/start-a-workspace-from-branch`: e2e 175 of 175, the list in 2–3 ms here. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -8950,8 +8950,8 @@ browsers and systems, real agents in the terminal.
 
 ### V33 — Start a workspace from a branch
 
-**Status:** planned and being built on branch `feature/start-a-workspace-from-branch` (a
-workspace started in Symbiote, plan not asked for first).
+**Status:** built on branch `feature/start-a-workspace-from-branch` (a workspace started in
+Symbiote, plan not asked for first), ready for review. Its "As built" and results below.
 
 **Problem** (asked: "There should be an option on start a workspace page where i can select the
 branch from which i start."). The start page starts from the default branch's newest tip (V18,
@@ -9013,6 +9013,26 @@ picked in History stays the first choice ("the commit abc1234") and can be chang
 | 230 | Which branches | **Every branch name, local or only on a remote**, the default first, then local, then remote-only, each by name | A name is what the person knows; `origin/x` and `x` are one branch to start from |
 | 231 | Which tip of a name | **The newest, by `workspaceBase`'s rule**, resolved by the server at the start | The default branch already starts so; one rule for every branch |
 | 232 | Is the pick kept | **In the draft until a start**, then the default branch again | Leaving the page loses nothing (V24c); a stacked workspace is the exception, not the next one's default |
+
+#### As built (V33)
+
+- **A branch is always sent by name**, the default one too (`from: "main"`); `base` only for a
+  History row's commit. The server's `newestTip` is `workspaceBase`'s rule, so a start from the
+  default branch lands where it did on `main`.
+- **`options.base` stays**: it names the default branch, picked when the draft has none.
+- **The row's commit is an option of the same select** ("The commit abc1234", value `''`, a
+  name no branch can have), so going back to it after picking a branch is one choice.
+- **Tab order**: Start from sits between More and Branch; `workspaces.spec`'s keyboard test
+  says so.
+
+**Results.** Tests first, red for the right reason: `workspaces.test.ts` (`startBranches` missing,
+no `branches` in the options, a start with `from` at the default tip, no refusals),
+`workspaces.test.ts` in the viewer (`readRun` dropping `from`), `start.spec.ts` (no Start from).
+`pnpm check` 1,113 tests; e2e 175 of 175. `startBranches` on this repository's main checkout:
+102 names (62 remote-only) in 2–3 ms after `listRefs`' 6 ms; on a synthetic repository of 40
+local and 1,600 remote branches 17–20 ms. Screenshots at 1440×900, dark and light, and 390×844.
+Not verified: a real agent started from a non-default branch (the fake Claude Code's prompt
+says `topic at <sha>`); Bitwarden's 1,591-branch select in a browser.
 
 ### Phase 1 milestones
 
