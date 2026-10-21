@@ -382,7 +382,12 @@ you came from; Start (Ctrl+Enter) opens the new workspace in the page's place. C
 The page offers the agents installed, Claude Code first unless `agent.kind` in
 [`cpr/config.json`](#configuration) says `codex`. Claude Code runs on your own Claude Code login
 (the page says which: your subscription or an API key), in the permission mode you pick: Claude
-Code's default, Accept edits, or Auto. CPR never grants it more. If Claude Code does not start, the branch and worktree are kept and the page
+Code's default, Accept edits, or Auto. CPR never grants it more. **Effort** is the level the agent's
+session starts at: its own default, or one it lists (Claude Code's `--help`; for Codex, its
+configured model's levels, read from its app server). The session keeps it, Start again uses it
+again, and the Brief tab says it ("Started with Claude Code at high effort."); change it later
+in the agent's own terminal (Claude Code: `/effort`). The next workspace starts at the default
+again. If Claude Code does not start, the branch and worktree are kept and the page
 offers the prompt to copy. Claude Code has to trust the folder, so run `claude` there once and
 accept. It is found as `claude` on your `PATH`, or set `CPR_CLAUDE`.
 

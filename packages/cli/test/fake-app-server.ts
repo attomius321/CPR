@@ -226,6 +226,13 @@ export interface FakeAppServer {
   account: Record<string, unknown> | null;
   /** The account's windows (`account/rateLimits/read`): Go's one 30-day window, 0 % used. */
   rateLimits: Record<string, unknown>;
+  /**
+   * What `config/read` answers besides `projects` (V30b): the model and level configured,
+   * `gpt-6-luna` at `medium` as here in the V30 spike.
+   */
+  config: { model?: string; model_reasoning_effort?: string };
+  /** What `model/list` answers (V30b): Codex 0.163's three models, `gpt-6-luna` the default. */
+  models: Record<string, unknown>[];
   /** The server restarts: running turns interrupted, every thread not loaded, clients cut. */
   restart(): void;
   close(): Promise<void>;
@@ -254,6 +261,23 @@ export async function fakeAppServer(
   /** The connections that opted into experimental methods. */
   const experimental = new Set<FakeSocket>();
   const trusted: Record<string, string> = {};
+  const config: FakeAppServer['config'] = { model: 'gpt-6-luna', model_reasoning_effort: 'medium' };
+  const levels = (...efforts: string[]) =>
+    efforts.map((effort) => ({ reasoningEffort: effort, description: `${effort} reasoning` }));
+  const models: Record<string, unknown>[] = [
+    ['gpt-6-luna', true, levels('low', 'medium', 'high', 'xhigh', 'max')],
+    ['gpt-5.6-terra', false, levels('low', 'medium', 'high', 'xhigh', 'max', 'ultra')],
+    ['gpt-5.6-luna', false, levels('low', 'medium', 'high', 'xhigh', 'max')],
+  ].map(([model, isDefault, supported]) => ({
+    id: model,
+    model,
+    displayName: model,
+    description: '',
+    hidden: false,
+    isDefault,
+    supportedReasoningEfforts: supported,
+    defaultReasoningEffort: 'medium',
+  }));
   // As Codex 0.163 answered on a Go plan (V29 spike).
   const usage = {
     account: { type: 'chatgpt', email: 'person@example.com', planType: 'go' } as Record<
@@ -509,8 +533,10 @@ export async function fakeAppServer(
         rateLimits: usage.rateLimits,
         rateLimitsByLimitId: { codex: usage.rateLimits },
       }),
+      'model/list': () => ({ data: models, nextCursor: null }),
       'config/read': () => ({
         config: {
+          ...config,
           projects: Object.fromEntries(
             Object.entries(trusted).map(([folder, level]) => [folder, { trust_level: level }]),
           ),
@@ -632,6 +658,8 @@ export async function fakeAppServer(
       t.terminals.push(value);
     },
     trusted,
+    config,
+    models,
     get account() {
       return usage.account;
     },

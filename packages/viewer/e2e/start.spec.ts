@@ -5,8 +5,10 @@ import { serveFixture, serveWorkspaces, type RunningWorkspaces } from './cpr.js'
 // the run side by side; back to where it was opened from; a start takes its place in the history.
 let running: { stop(): void }[] = [];
 const errors: string[] = [];
-const serve = async (): Promise<RunningWorkspaces> => {
-  const served = await serveWorkspaces();
+const serve = async (
+  options: Parameters<typeof serveWorkspaces>[0] = {},
+): Promise<RunningWorkspaces> => {
+  const served = await serveWorkspaces(options);
   running.push(served);
   return served;
 };
@@ -27,6 +29,7 @@ const startLink = (page: Page) => sidenav(page).getByRole('link', { name: 'Start
 const start = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
 const title = (page: Page) => start(page).getByRole('textbox', { name: 'Title' });
 const goal = (page: Page) => start(page).getByRole('textbox', { name: 'Goal' });
+const effort = (page: Page) => start(page).getByLabel('Effort');
 const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
 
 test('Start a workspace is a page right of the sidenav, at /start', async ({ page }) => {
@@ -157,4 +160,75 @@ test("from a diff, the sidenav's Start and n load /start", async ({ page }) => {
   await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });
   await page.keyboard.press('n');
   await expect(page).toHaveURL(new URL('/start', diff.url).href);
+});
+
+// The agent's effort (V30b): its own default, or a level it lists, for the session it starts.
+test("Effort: the agent's default or a level it lists; a level reaches Claude Code, and the Brief tab says it", async ({
+  page,
+}) => {
+  const cpr = await serve();
+  await page.goto(`${cpr.url}start`);
+  await expect(effort(page).locator('option')).toHaveText([
+    "Claude Code's default",
+    'low',
+    'medium',
+    'high',
+    'xhigh',
+    'max',
+  ]);
+  await expect(effort(page)).toHaveValue('');
+  await title(page).fill('Add clamp');
+  await goal(page).fill('Clamp a value.');
+  await effort(page).selectOption('high');
+  // Leaving keeps it, as the rest of the form.
+  await title(page).press('Escape');
+  await startLink(page).click();
+  await expect(effort(page)).toHaveValue('high');
+  await goal(page).press('Control+Enter');
+  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-clamp`);
+  const args = cpr.calls().at(-1)?.args ?? [];
+  expect(args.slice(args.indexOf('--effort'), args.indexOf('--effort') + 2)).toEqual([
+    '--effort',
+    'high',
+  ]);
+  const workspace = page.getByRole('region', { name: 'Workspace feature/add-clamp' });
+  await workspace.getByRole('tab', { name: 'Brief' }).click();
+  await expect(workspace.locator('.workspace-started')).toHaveText(
+    'Started with Claude Code at high effort.',
+  );
+
+  // For that session only: the next workspace starts at the default, and passes no level.
+  await startLink(page).click();
+  await expect(effort(page)).toHaveValue('');
+  await title(page).fill('Add round');
+  await goal(page).fill('Round a value.');
+  await goal(page).press('Control+Enter');
+  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-round`);
+  expect(cpr.calls().at(-1)?.args).not.toContain('--effort');
+});
+
+test("Effort for Codex on its app server: its model's levels and its default; the level on its first turn", async ({
+  page,
+}) => {
+  const cpr = await serve({ codex: true, appServer: true });
+  await page.goto(`${cpr.url}start`);
+  await effort(page).selectOption('high');
+  // Codex takes high too: kept when the agent changes; its default named with its level.
+  await start(page).getByLabel('Agent').selectOption({ label: 'Codex' });
+  await expect(effort(page)).toHaveValue('high');
+  await expect(effort(page).locator('option')).toHaveText([
+    "Codex's default (medium)",
+    'low',
+    'medium',
+    'high',
+    'xhigh',
+    'max',
+  ]);
+  await effort(page).selectOption('low');
+  await title(page).fill('Add clamp');
+  await goal(page).fill('Clamp a value.');
+  await goal(page).press('Control+Enter');
+  await expect(page).toHaveURL(`${cpr.url}?branch=feature%2Fadd-clamp`);
+  const turn = cpr.codexServer?.calls.find((call) => call.method === 'turn/start');
+  expect(turn?.params).toMatchObject({ effort: 'low' });
 });

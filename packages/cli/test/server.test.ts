@@ -1257,6 +1257,9 @@ describe('cpr view: workspaces (V18)', () => {
     // The agent picked in the dialog (V20a).
     expect((await post('/api/workspaces', { ...request, agent: 'codex' })).status).toBe(200);
     expect(started.at(-1)).toEqual({ ...request, agent: 'codex' });
+    // Its effort level (V30b), the workspaces' to check against the agent's.
+    expect((await post('/api/workspaces', { ...request, effort: 'high' })).status).toBe(200);
+    expect(started.at(-1)).toEqual({ ...request, effort: 'high' });
 
     const taken = await post('/api/workspaces', { ...request, branch: 'main' });
     expect(taken.status).toBe(409);
@@ -1272,6 +1275,7 @@ describe('cpr view: workspaces (V18)', () => {
       { ...request, base: 7 },
       { ...request, permissionMode: 7 },
       { ...request, agent: 7 },
+      { ...request, effort: 7 },
     ]) {
       expect((await post('/api/workspaces', body)).status, JSON.stringify(body)).toBe(400);
     }

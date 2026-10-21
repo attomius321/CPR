@@ -64,7 +64,9 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
   await expect(startPage(page).getByLabel('permission')).toBeVisible();
   await agent.selectOption({ label: 'Codex' });
   await expect(startPage(page)).toContainText('your ChatGPT account');
-  await expect(startPage(page)).toContainText('Sandbox: its worktree and branch');
+  await expect(startPage(page).locator('.start-value').last()).toHaveText(
+    'Its worktree and branch',
+  );
   await expect(startPage(page).getByLabel('permission')).toHaveCount(0);
   await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
   const folder = cpr.folder(BRANCH);
@@ -181,7 +183,7 @@ test('Start a workspace offers the agents installed: Codex alone, or Claude Code
   cpr = await serveWorkspaces({ agent: false, codex: true });
   await page.goto(`${cpr.url}history`);
   await openStart(page);
-  await expect(startPage(page).locator('.start-value')).toHaveText('Codex');
+  await expect(startPage(page).locator('.start-value').first()).toHaveText('Codex');
   await expect(startPage(page)).toContainText('your ChatGPT account');
   await expect(startPage(page).getByLabel('agent')).toHaveCount(0);
   await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();

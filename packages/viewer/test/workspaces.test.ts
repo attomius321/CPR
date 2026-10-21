@@ -1,4 +1,5 @@
 import type {
+  AgentOption,
   BranchReviewSummary,
   WorkspaceAgentState,
   WorkspaceStart,
@@ -9,6 +10,10 @@ import type {
 import { describe, expect, it } from 'vitest';
 import {
   branchProblem,
+  effortChoices,
+  keptEffort,
+  readRun,
+  startedWith,
   workspaceChips,
   workspaceGroups,
   workspaceName,
@@ -25,6 +30,77 @@ import {
   threadItems,
   verdictToSend,
 } from '../src/workspaces.js';
+
+describe('effortChoices and keptEffort (V30b)', () => {
+  const claude: AgentOption = {
+    kind: 'claude',
+    command: 'claude',
+    efforts: { levels: ['low', 'medium', 'high', 'xhigh', 'max'] },
+  };
+  const codex: AgentOption = {
+    kind: 'codex',
+    command: 'codex',
+    efforts: { levels: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'], default: 'medium' },
+  };
+
+  it("offers the agent's default first, named with its level when the agent says it, then its levels", () => {
+    expect(effortChoices(claude)).toEqual([
+      { value: '', label: "Claude Code's default" },
+      { value: 'low', label: 'low' },
+      { value: 'medium', label: 'medium' },
+      { value: 'high', label: 'high' },
+      { value: 'xhigh', label: 'xhigh' },
+      { value: 'max', label: 'max' },
+    ]);
+    expect(effortChoices(codex)[0]).toEqual({ value: '', label: "Codex's default (medium)" });
+    expect(effortChoices(codex).at(-1)).toEqual({ value: 'ultra', label: 'ultra' });
+    // No levels read: no choice.
+    expect(effortChoices({ kind: 'codex', command: 'codex' })).toEqual([]);
+  });
+
+  it('keeps a level the other agent takes when the agent changes, else its default', () => {
+    expect(keptEffort('high', codex)).toBe('high');
+    expect(keptEffort('ultra', claude)).toBeUndefined();
+    expect(keptEffort('high', { kind: 'codex', command: 'codex' })).toBeUndefined();
+    expect(keptEffort(undefined, claude)).toBeUndefined();
+  });
+});
+
+describe('readRun (V30b)', () => {
+  const agents: AgentOption[] = [
+    { kind: 'claude', command: 'claude', efforts: { levels: ['low', 'high', 'max'] } },
+    { kind: 'codex', command: 'codex' },
+  ];
+  it("reads the run's choices a draft kept: an agent installed, a level it lists, a mode, plan first", () => {
+    expect(
+      readRun(
+        { agent: 'claude', effort: 'high', permissionMode: 'auto', planFirst: false },
+        agents,
+      ),
+    ).toEqual({ agent: 'claude', effort: 'high', permissionMode: 'auto', planFirst: false });
+    // What no longer holds is left out: the page's defaults take its place.
+    expect(readRun({ agent: 'codex', effort: 'high' }, agents)).toEqual({ agent: 'codex' });
+    expect(readRun({ agent: 'aider', effort: 'max', permissionMode: 'yolo' }, agents)).toEqual({});
+    // No agent picked: the level is the default agent's, the first.
+    expect(readRun({ effort: 'max' }, agents)).toEqual({ effort: 'max' });
+    expect(readRun({ effort: 'max' }, [...agents].reverse())).toEqual({});
+    expect(readRun(null, agents)).toEqual({});
+    expect(readRun('run', agents)).toEqual({});
+  });
+});
+
+describe('startedWith (V30b)', () => {
+  const agent = (over: Partial<WorkspaceAgentState>): WorkspaceAgentState => ({
+    state: 'working',
+    kind: 'claude',
+    ...over,
+  });
+  it('says how the agent was started: the agent, and its level or its default', () => {
+    expect(startedWith(agent({ effort: 'high' }))).toBe('Started with Claude Code at high effort.');
+    expect(startedWith(agent({ kind: 'codex' }))).toBe('Started with Codex at its default effort.');
+    expect(startedWith(agent({ state: 'no-agent', kind: undefined }))).toBeNull();
+  });
+});
 
 describe('proposeBranch', () => {
   const none = new Set<string>();

@@ -909,7 +909,7 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
   await expect(part(page, 'What happens')).toHaveValue('');
 });
 
-test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, branch, permission (V24c, V30a)', async ({
+test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, branch, effort, permission (V24c, V30)', async ({
   page,
 }) => {
   cpr = await serveWorkspaces();
@@ -935,6 +935,7 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
     doneWhen(page),
     startPage(page).getByRole('button', { name: /More:/ }),
     branch(page),
+    startPage(page).getByLabel('Effort'),
     startPage(page).getByLabel('Permission'),
     startPage(page).getByLabel('Plan first and wait for my OK'),
   ]) {
@@ -972,7 +973,7 @@ test('a workspace started before V24 is named by its brief, with no kind', async
   await row.locator('.workspace-about').click();
   await panel(page, 'feature/old').getByRole('tab', { name: 'Brief' }).click();
   const brief = panel(page, 'feature/old').locator('.workspace-brief');
-  await expect(brief.locator('p')).toHaveText(['Export the totals', 'As CSV.']);
+  await expect(brief.locator('.markdown p')).toHaveText(['Export the totals', 'As CSV.']);
   await expect(brief.getByRole('heading')).toHaveCount(0);
 });
 

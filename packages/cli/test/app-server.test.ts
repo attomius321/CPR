@@ -147,6 +147,66 @@ describe('codexServer', () => {
     });
   });
 
+  it('gives the thread an effort level on its first turn, which Codex keeps for the next (V30b)', async () => {
+    const server = await serve();
+    const codex = codexServer(server.address);
+    await codex.start({
+      cwd: WORKTREE,
+      writable: ROOTS,
+      name: 'feature/csv',
+      prompt: 'Do it',
+      effort: 'high',
+    });
+    expect(server.calls.find((c) => c.method === 'turn/start')?.params).toEqual({
+      threadId: 'thread-1',
+      input: [{ type: 'text', text: 'Do it', text_elements: [] }],
+      effort: 'high',
+    });
+    expect(server.calls.find((c) => c.method === 'thread/start')?.params).not.toHaveProperty(
+      'effort',
+    );
+  });
+
+  it('reads the levels of the model Codex is configured with, and its configured level (V30b)', async () => {
+    const server = await serve();
+    const codex = codexServer(server.address);
+    // As Codex 0.163 answered here: gpt-6-luna configured, at medium.
+    expect(await codex.efforts(WORKTREE)).toEqual({
+      levels: ['low', 'medium', 'high', 'xhigh', 'max'],
+      default: 'medium',
+    });
+    expect(server.calls.find((c) => c.method === 'config/read')?.params).toEqual({ cwd: WORKTREE });
+    // Another model configured: its own levels; none configured: the default model's, and its
+    // default level.
+    server.config.model = 'gpt-5.6-terra';
+    delete server.config.model_reasoning_effort;
+    expect(await codex.efforts(WORKTREE)).toEqual({
+      levels: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+      default: 'medium',
+    });
+    delete server.config.model;
+    server.models[0] = { ...server.models[0], defaultReasoningEffort: 'high' };
+    expect(await codex.efforts(WORKTREE)).toEqual({
+      levels: ['low', 'medium', 'high', 'xhigh', 'max'],
+      default: 'high',
+    });
+  });
+
+  it('reads no levels it cannot trust: a model not listed, levels not words (V30b)', async () => {
+    const server = await serve();
+    const codex = codexServer(server.address);
+    server.config.model = 'gpt-unknown';
+    expect(await codex.efforts(WORKTREE)).toBeNull();
+    server.config.model = 'gpt-6-luna';
+    server.models[0] = { ...server.models[0], supportedReasoningEfforts: [{ effort: 'low' }] };
+    expect(await codex.efforts(WORKTREE)).toBeNull();
+    server.models[0] = {
+      ...server.models[0],
+      supportedReasoningEfforts: [{ reasoningEffort: 'low' }, { reasoningEffort: 'Not one' }],
+    };
+    expect(await codex.efforts(WORKTREE)).toEqual({ levels: ['low'], default: 'medium' });
+  });
+
   it('names the thread once its prompt is in it; a name refused does not fail the start', async () => {
     const path = socketPath();
     const server = await fakeAppServer(path, { refuse: ['thread/name/set'] });

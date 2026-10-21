@@ -3,6 +3,7 @@
 // connection per call: CPR keeps no thread subscribed (a thread's clients get every delta of its
 // turns) and reads what it shows with `thread/read` and `thread/turns/list`. What it reads is
 // checked field by field: the protocol is `[experimental]`.
+import { EFFORT_LEVEL, type AgentEfforts } from '@cpr/core';
 import { openWebSocket, type WebSocketClient } from './websocket.js';
 
 /** An error the app server answered, with its JSON-RPC code; or no answer in time. */
@@ -186,14 +187,22 @@ export interface CodexServer {
   /**
    * Starts a thread in `cwd` in the `workspace-write` sandbox, `writable` also writable (the
    * branch's git folders, decision 130), approvals asked (`on-request`), named `name`, with
-   * `prompt` as its first turn; its ID once the prompt is in the thread.
+   * `prompt` as its first turn — at `effort` when given (V30b), which the server keeps for the
+   * thread's next turns —; its ID once the prompt is in the thread.
    */
   start(request: {
     cwd: string;
     writable: string[];
     name: string;
     prompt: string;
+    effort?: string;
   }): Promise<string>;
+  /**
+   * The effort levels of the model a thread in `cwd` would use (V30b): the configured model's
+   * (`config/read`), else the default model's (`model/list`), and the configured level, else the
+   * model's default. Null when they cannot be read: these methods are `[experimental]`.
+   */
+  efforts(cwd: string): Promise<AgentEfforts | null>;
   /**
    * Gives a thread a message: a new turn, or joined to the one that runs (`turn/steer`).
    * A thread the server does not hold (it restarted) is resumed first, with its own options.
@@ -223,6 +232,32 @@ const text = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : undefined;
 const seconds = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+const level = (value: unknown): string | undefined =>
+  typeof value === 'string' && EFFORT_LEVEL.test(value) ? value : undefined;
+
+/**
+ * A model's effort levels (V30b): the configured model's, else the one `model/list` marks as the
+ * default; the levels that are words, the configured level else the model's default. Only the
+ * list's first page is read (3 models in Codex 0.163): a model past it gives null, not a guess.
+ */
+function effortsOf(config: Record<string, unknown>, models: unknown): AgentEfforts | null {
+  const listed = (Array.isArray(models) ? models : []) as Record<string, unknown>[];
+  const configured = text(config.model);
+  const model = configured
+    ? listed.find((m) => m?.model === configured || m?.id === configured)
+    : listed.find((m) => m?.isDefault === true);
+  if (!model) return null;
+  const options = Array.isArray(model.supportedReasoningEfforts)
+    ? (model.supportedReasoningEfforts as { reasoningEffort?: unknown }[])
+    : [];
+  const levels = options
+    .map((option) => level(option?.reasoningEffort))
+    .filter((found): found is string => found !== undefined);
+  if (levels.length === 0) return null;
+  const fallback = level(config.model_reasoning_effort) ?? level(model.defaultReasoningEffort);
+  return { levels, ...(fallback ? { default: fallback } : {}) };
+}
 
 /** A turn's fields CPR uses, from what the server sent. */
 function turnOf(value: unknown): CodexTurn | null {
@@ -340,7 +375,7 @@ export function codexServer(
 
   return {
     address,
-    start: ({ cwd, writable, name, prompt }) =>
+    start: ({ cwd, writable, name, prompt, effort }) =>
       using(async (connection) => {
         const started = await connection.request<{ thread?: { id?: unknown } }>('thread/start', {
           cwd,
@@ -352,7 +387,11 @@ export function codexServer(
         if (!thread) throw new AppServerError('Codex started no thread');
         const prompted = messageIn(connection, thread);
         try {
-          await connection.request('turn/start', { threadId: thread, input: input(prompt) });
+          await connection.request('turn/start', {
+            threadId: thread,
+            input: input(prompt),
+            ...(effort ? { effort } : {}),
+          });
         } catch (error) {
           throw new AppServerStartFailed((error as Error).message, thread);
         }
@@ -412,6 +451,14 @@ export function codexServer(
       ).catch(() => undefined);
       return interrupted;
     },
+    efforts: (cwd) =>
+      using(async (connection) => {
+        const read = await connection.request<{ config?: Record<string, unknown> }>('config/read', {
+          cwd,
+        });
+        const listed = await connection.request<{ data?: unknown }>('model/list', {});
+        return effortsOf(read.config ?? {}, listed.data);
+      }),
     trust: (cwd) =>
       using(async (connection) => {
         const read = await connection.request<{ config?: { projects?: unknown } }>('config/read', {

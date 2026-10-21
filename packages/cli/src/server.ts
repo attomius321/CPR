@@ -1023,7 +1023,8 @@ function json(res: ServerResponse, status: number, value: unknown): void {
 }
 
 /**
- * `{ kind, title, parts, branch, planFirst, base?, agent?, permissionMode? }` (V24, V20a), or `brief` instead
+ * `{ kind, title, parts, branch, planFirst, base?, agent?, permissionMode?, effort? }` (V24, V20a,
+ * V30b), or `brief` instead
  * of the kind, title and parts, each of its type; what they say is the workspaces' to check (V18).
  */
 function parseWorkspaceRequest(text: string): WorkspaceRequest {
@@ -1031,7 +1032,8 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('expected { kind, title, parts, branch, planFirst }');
   }
-  const { brief, kind, title, parts, branch, planFirst, base, agent, permissionMode } = value;
+  const { brief, kind, title, parts, branch, planFirst, base, agent, permissionMode, effort } =
+    value;
   if (brief === undefined && kind === undefined) {
     throw new Error('kind: feature, fix, refactor, chore or spike');
   }
@@ -1053,6 +1055,8 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
   if (permissionMode !== undefined && typeof permissionMode !== 'string') {
     throw new Error('permissionMode: default, acceptEdits or auto');
   }
+  if (effort !== undefined && typeof effort !== 'string')
+    throw new Error('effort: a level, as high');
   return {
     ...(brief === undefined ? {} : { brief }),
     ...(kind === undefined ? {} : { kind: kind as WorkKind }),
@@ -1063,6 +1067,7 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
     ...(base === undefined ? {} : { base }),
     ...(agent === undefined ? {} : { agent: agent as AgentKind }),
     ...(permissionMode === undefined ? {} : { permissionMode: permissionMode as PermissionMode }),
+    ...(effort === undefined ? {} : { effort }),
   };
 }
 

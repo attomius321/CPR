@@ -25,6 +25,7 @@ import {
   opensTerminal,
   terminalHint,
   startedNotice,
+  startedWith,
   talkCommand,
   threadItems,
   verdictToSend,
@@ -307,17 +308,26 @@ interface MenuAction {
   onSelect: () => void;
 }
 
-/** "⋯": the workspace's less frequent actions, in a menu under the button. */
 /**
  * What the agent was told — since V24 the kind and title as `#`, each part under `##` — drawn as
- * Markdown, as its reports are; as written until the lexer is loaded.
+ * Markdown, as its reports are; as written until the lexer is loaded. Above it, how the agent was
+ * started (V30b).
  */
-function Brief({ text }: { text: string }) {
+function Brief({ text, started }: { text: string; started: string | null }) {
   const lexer = useMarkdown();
-  if (!lexer) return <pre className="workspace-brief">{text}</pre>;
-  return <div className="workspace-brief markdown">{markdownNodes(lexer(text))}</div>;
+  return (
+    <div className="workspace-brief">
+      {started && <p className="workspace-started">{started}</p>}
+      {lexer ? (
+        <div className="markdown">{markdownNodes(lexer(text))}</div>
+      ) : (
+        <div className="workspace-brief-text">{text}</div>
+      )}
+    </div>
+  );
 }
 
+/** "⋯": the workspace's less frequent actions, in a menu under the button. */
 function MoreActions({ actions }: { actions: MenuAction[] }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -717,7 +727,9 @@ function WorkspacePanel({
             </div>
           </InTitleBar>
           <div className="workspace-body">
-            {view === 'brief' && <Brief text={workspace.brief} />}
+            {view === 'brief' && (
+              <Brief text={workspace.brief} started={startedWith(workspace.agent)} />
+            )}
             {showTerminal && (
               <div className="workspace-terminal">
                 {asking ? (

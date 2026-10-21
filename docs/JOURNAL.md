@@ -4184,3 +4184,32 @@ then green; 52 tests in 8 specs moved from the dialog to the page; 165 of 165. T
 measurements and `n`'s time against `main`'s dialog (median 37 against 41 ms) are in PLAN.md's
 V30a results. Screenshots at 1280 × 720, 1440 × 900 and 390 × 844, dark and light. Not verified:
 Firefox and Safari; the Electron window by eye.
+
+## V30b — the agent's effort, for the session it starts (2026-10-21, branch `milestone/v30-start-page`)
+
+Start a workspace offers an Effort choice beside the agent: its own default, or a level the
+installed agent lists (Claude Code's `--help`; Codex's configured model, from its app server).
+The level goes to `--effort`, to Codex's first `turn/start`, or to `model_reasoning_effort` on
+every `exec` run; it is recorded with the workspace, used again by Start again, and said on the
+Brief tab as how the agent was started.
+
+**Learned**:
+- **A level belongs to its agent, so the draft keeps the agent with it.** Keeping only the level
+  made a draft whose agent was not picked lose it: the level was read against no agent. With no
+  agent picked, it is the first agent's, the one the page shows.
+- **Without Codex's daemon there is no list, but there can be a level**: a workspace started on
+  the app server and started again after the daemon stopped falls back to `exec`, which keeps
+  nothing between runs. The recorded level is given to each run.
+- **A test harness written as a template literal needs its escapes doubled**: the fake Claude
+  Code's `--help` broke the whole fake (a newline inside a JS string) and failed unrelated tests
+  first ("each kind starts a workspace").
+- **A muted line under a select reads as that select's note**: Codex's sandbox line under Effort
+  looked like it explained Effort, so it became a field of its own.
+
+**Verification**: tests first (14 CLI tests and 3 viewer tests red, then green; the draft's
+reader written with its test), 1,070 unit tests, format, lint, typecheck, build, 167 of 167 e2e.
+A real Claude Code workspace started through CPR's endpoint at `low`: its transcript's turns
+`low`, before and after CPR's reply, in one session. The options endpoint 5 ms slower warm
+(Codex's two calls). Not verified: a real Codex workspace through CPR (a trust entry would be
+left in the person's Codex configuration), Codex `exec` with a level beyond unit tests. Numbers in
+PLAN.md's V30b results.

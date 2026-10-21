@@ -24,7 +24,16 @@ import {
   checkWords,
   type BriefForm,
 } from './brief.js';
-import { AGENT_NAMES, branchProblem, PERMISSION_LABELS, proposeBranch } from './workspaces.js';
+import {
+  AGENT_NAMES,
+  branchProblem,
+  effortChoices,
+  keptEffort,
+  PERMISSION_LABELS,
+  proposeBranch,
+  readRun,
+  type RunChoices,
+} from './workspaces.js';
 import { getJson, postJson } from './http.js';
 import { shortSha } from './commits.js';
 import { ChevronIcon } from './icons.js';
@@ -37,6 +46,13 @@ const SAVE_AFTER_MS = 400;
 let saving: Promise<unknown> = Promise.resolve();
 function saveDraft(value: object): void {
   saving = postJson('/api/workspaces/draft', value).catch(() => undefined);
+}
+
+/** The run's choices at `level`, or at the agent's own level without one. */
+function atLevel(run: RunChoices, level: string | undefined): RunChoices {
+  const next = { ...run };
+  delete next.effort;
+  return level ? { ...next, effort: level } : next;
 }
 
 interface Loaded {
@@ -144,13 +160,23 @@ function StartForm({
   const [moreShown, setMoreShown] = useState(false);
   // The kinds' info: while hovered or focused, or once tapped.
   const [about, setAbout] = useState(false);
-  const [planFirst, setPlanFirst] = useState(true);
-  // The agents installed, the default first (V20a).
-  const [picked, setPicked] = useState<AgentKind | undefined>(options.agents[0]?.kind);
-  const agent = options.agents.find((a) => a.kind === picked) ?? null;
-  const [mode, setMode] = useState<PermissionMode>(
-    options.agents.find((a) => a.kind === 'claude')?.permissionMode ?? 'default',
+  // The run's choices as the draft kept them (V30b); else the agents installed, the default first
+  // (V20a), at its own effort, Claude Code in its configured mode, plan first.
+  const [run, setRun] = useState<RunChoices>(() =>
+    readRun(
+      draft && typeof draft === 'object' ? (draft as { run?: unknown }).run : null,
+      options.agents,
+    ),
   );
+  const agent =
+    options.agents.find((a) => a.kind === (run.agent ?? options.agents[0]?.kind)) ?? null;
+  const mode: PermissionMode =
+    run.permissionMode ??
+    options.agents.find((a) => a.kind === 'claude')?.permissionMode ??
+    'default';
+  const planFirst = run.planFirst ?? true;
+  const effort = agent ? keptEffort(run.effort, agent) : undefined;
+  const efforts = agent ? effortChoices(agent) : [];
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const spec = specOf(form.kind);
@@ -172,23 +198,34 @@ function StartForm({
     // The kinds do not change while the page is shown.
   }, [base.sha]);
 
-  // The draft: saved once typing pauses, and when the page is left; after a start only the kind.
+  // The draft, the run's choices with it: saved once typing pauses, and when the page is left;
+  // after a start only the kind (a level is for that session, V30b).
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latest = useRef(form);
-  latest.current = form;
+  const latest = useRef({ form, run });
+  latest.current = { form, run };
   const started = useRef(false);
-  const edit = (next: BriefForm) => {
-    setForm(next);
+  const draftNow = () => ({ ...latest.current.form, run: latest.current.run });
+  const later = () => {
     if (pending.current) clearTimeout(pending.current);
     pending.current = setTimeout(() => {
       pending.current = null;
-      saveDraft(next);
+      saveDraft(draftNow());
     }, SAVE_AFTER_MS);
+  };
+  const edit = (next: BriefForm) => {
+    setForm(next);
+    latest.current = { ...latest.current, form: next };
+    later();
+  };
+  const choose = (next: RunChoices) => {
+    setRun(next);
+    latest.current = { ...latest.current, run: next };
+    later();
   };
   useEffect(
     () => () => {
-      if (started.current) saveDraft({ kind: latest.current.kind });
-      else if (pending.current) saveDraft(latest.current);
+      if (started.current) saveDraft({ kind: latest.current.form.kind });
+      else if (pending.current) saveDraft(draftNow());
       if (pending.current) clearTimeout(pending.current);
     },
     [],
@@ -209,7 +246,7 @@ function StartForm({
     if (!ready) return;
     if (pending.current) clearTimeout(pending.current);
     pending.current = null;
-    saveDraft(form);
+    saveDraft(draftNow());
     const request: WorkspaceRequest = {
       kind: form.kind,
       title: form.title,
@@ -220,6 +257,7 @@ function StartForm({
       ...(base.from ? {} : { base: base.sha }),
       ...(agent ? { agent: agent.kind } : {}),
       ...(agent?.kind === 'claude' ? { permissionMode: mode } : {}),
+      ...(effort ? { effort } : {}),
     };
     setRunning(true);
     setError(null);
@@ -470,7 +508,13 @@ function StartForm({
                     <select
                       value={agent.kind}
                       title={agent.command}
-                      onChange={(event) => setPicked(event.target.value as AgentKind)}
+                      onChange={(event) => {
+                        const kind = event.target.value as AgentKind;
+                        const next = options.agents.find((a) => a.kind === kind);
+                        // A level the other agent takes stays; else its default.
+                        const kept = next ? keptEffort(run.effort, next) : undefined;
+                        choose(atLevel({ ...run, agent: kind }, kept));
+                      }}
                     >
                       {options.agents.map((a) => (
                         <option key={a.kind} value={a.kind}>
@@ -488,12 +532,30 @@ function StartForm({
                   </div>
                 )}
                 {agent.account && <p className="dialog-note start-account">{agent.account}</p>}
+                {efforts.length > 0 && (
+                  <label className="workspace-field">
+                    Effort
+                    <select
+                      value={effort ?? ''}
+                      title="The level its session starts at; change it later in its terminal"
+                      onChange={(event) => choose(atLevel(run, event.target.value || undefined))}
+                    >
+                      {efforts.map((choice) => (
+                        <option key={choice.value} value={choice.value}>
+                          {choice.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 {agent.kind === 'claude' ? (
                   <label className="workspace-field">
                     Permission
                     <select
                       value={mode}
-                      onChange={(event) => setMode(event.target.value as PermissionMode)}
+                      onChange={(event) =>
+                        choose({ ...run, permissionMode: event.target.value as PermissionMode })
+                      }
                     >
                       {(Object.keys(PERMISSION_LABELS) as PermissionMode[]).map((m) => (
                         <option key={m} value={m}>
@@ -503,12 +565,13 @@ function StartForm({
                     </select>
                   </label>
                 ) : (
-                  <p
-                    className="dialog-note"
+                  <div
+                    className="workspace-field"
                     title="Codex's workspace-write sandbox: it writes in its worktree and may commit on its branch; nothing else in git. Codex then marks this repository trusted in your Codex configuration, as it does for any writable sandbox."
                   >
-                    Sandbox: its worktree and branch
-                  </p>
+                    Sandbox
+                    <span className="start-value">Its worktree and branch</span>
+                  </div>
                 )}
               </>
             ) : (
@@ -522,7 +585,7 @@ function StartForm({
               <input
                 type="checkbox"
                 checked={planFirst}
-                onChange={(event) => setPlanFirst(event.target.checked)}
+                onChange={(event) => choose({ ...run, planFirst: event.target.checked })}
               />
               Plan first and wait for my OK
             </label>

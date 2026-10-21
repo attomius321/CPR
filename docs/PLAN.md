@@ -443,7 +443,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V28 ✅ | Every agent's prompts in the project's settings | CPR writes all 13 texts its agents are told (a start prompt per kind, the two plan sentences, the verdict's 4 sentences, `cpr/AGENTS.md`, the merger's instructions), and a project can change none of them; `cpr/merge.md` only adds to the merger's. This repository's own rules disagree with the Spike prompt. Planned: each prompt whole, with placeholders and CPR's text as its default, changed on a Settings page and saved under `prompts` in `cpr/config.json` (shared once committed); written with `jsonc-parser` so the rest of the file stays byte for byte (a `JSON.stringify` rewrite failed this repository's `pnpm check`); with no `prompts`, today's prompts byte for byte. Merged (2026-10-20): Settings (s) lists the 13 prompts by agent, saves only `prompts`; with none, `main`'s 48 start prompts, the merger's, `AGENTS.md` and 8 verdict texts byte for byte (decision 171's 20 aside); a saved Fix prompt reached the next Fix agent; the real Claude Code followed a changed Spike prompt and the merger a changed rule. See below. |
 | V29 ✅ | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only: 59 % and 53 % live when its copy on disk said 20 % and 22 %). Confirmed: Claude's live source, History, Geist and Geist Mono. Steps: V29a the shell, V29b the look, V29c usage, V29d the branch's changes (all built). See below. |
 | N1 ✅ | A native window | CPR is a page served by a command: a browser tab, no window of its own, nothing to open without a terminal. Asked: "feel more like a native application … Check tauri", on native Linux too. Measured: Tauri draws with WebKitGTK on Linux, where CPR's `j` takes 77–145 ms (first 360–415 ms) against Chromium's 33 ms on a 445-symbol diff; CPR is Node and tuned on Chromium. Planned with Electron (confirmed). Merged (2026-10-21): a window on `cpr view`'s server, opened by `cpr view` or the desktop's launcher (`cpr app install`), closing it stops the server; CPR's own title bar after Orca's. From the launcher to History's first paint 383–493 ms; `j` as in Chromium (32–33 ms). See below. |
-| V30 | Start a workspace on a page, with the agent's effort | Starting a workspace is the one thing still drawn over the shell: V18's dialog, 640×626 px at every window size, scrolling with More open at 1280×720 and 1440×900 (883 px of content); no effort is passed (here Claude Code runs at the person's `xhigh`, Codex at `medium`). Measured with the real agents: Claude Code's `--effort` and the effort on Codex's first `turn/start` hold for the session (after CPR's stop-and-resume reply, across app-server connections); `codex exec resume` drops it. Planned: `/start` in the main area, the brief and the run in two columns; an Effort choice from the installed agent's own levels (Claude Code's `--help`, Codex's `model/list`), recorded with the workspace. See below. |
+| V30 | Start a workspace on a page, with the agent's effort | Starting a workspace is the one thing still drawn over the shell: V18's dialog, 640×626 px at every window size, scrolling with More open at 1280×720 and 1440×900 (883 px of content); no effort is passed (here Claude Code runs at the person's `xhigh`, Codex at `medium`). Measured with the real agents: Claude Code's `--effort` and the effort on Codex's first `turn/start` hold for the session (after CPR's stop-and-resume reply, across app-server connections); `codex exec resume` drops it. Built (2026-10-21, not merged): V30a, `/start` in the main area, the brief and the run in two columns, More open fitting at 1440×900; V30b, an Effort choice from the installed agent's own levels (Claude Code's `--help`, Codex's `model/list`), recorded with the workspace; a real Claude Code at `low` stayed at `low` through CPR's reply. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -8195,8 +8195,8 @@ throughout).
 
 ### V30 — Start a workspace on a page, with the agent's effort
 
-**Status:** V30a built (2026-10-21) on branch `milestone/v30-start-page`: its "As built" and
-results below; V30b not started. Decisions 207 and 211 and what is left out confirmed by the
+**Status:** V30a and V30b built (2026-10-21) on branch `milestone/v30-start-page`, not merged:
+their "As built" and results below. Decisions 207 and 211 and what is left out confirmed by the
 person (2026-10-21); 210 left to CPR ("Idk"), kept as proposed; 205, 206, 208 and 209 proposed.
 The Brief tab, where 211's line goes, drew the brief's Markdown as source: fixed on its own
 branch first (`fix/brief-markdown`, merged into main 2026-10-21).
@@ -8454,6 +8454,44 @@ From `n` on History to the Title focused and painted, 10 times each, two rounds:
 (`main`) 36–51 ms, median 41; the page 35–51 ms, median 37. Screenshots at 1280, 1440 and 390 px,
 dark and light. Not verified: Firefox and Safari (no Navigation API: Cancel goes to History),
 the Electron window (its title bar names the page; the e2e for it moved to the link and passed).
+
+#### As built (V30b)
+
+- **The Brief tab's line names the agent and its level**, not the permission mode: "Started with
+  Claude Code at high effort." (or "at its default effort"). The mode would have been a new field
+  on every workspace's summary, changing its shape for something not asked.
+- **The draft keeps all the run's choices** (agent, level, permission mode, plan first), not the
+  level alone: a level belongs to its agent, and leaving the page should lose nothing (decision
+  207). After a start only the kind is kept, as before: the next workspace starts at the
+  agent's default. A level kept with no agent picked is the first agent's: the e2e found Escape
+  and back losing `high` until it was.
+- **Codex without its daemon**: no Effort choice (no list to read, decision 209), but a level
+  recorded on the app server goes to `exec` when the workspace is started again without the
+  daemon, and to each `exec resume` (decision 208). The plan's two statements disagreed; both
+  hold this way.
+- **Codex's levels are read at every read of the options** (two app-server calls, about 5 ms);
+  Claude Code's `--help` once per `cpr view`. Only `model/list`'s first page is read (3 models).
+- **Codex's sandbox is a field of its own** ("Sandbox: Its worktree and branch"): under Effort,
+  the line read as Effort's note.
+- Levels are passed only as lowercase words (`EFFORT_LEVEL` in core), on the way in (the
+  request), out (`--effort`, `turn/start`, `model_reasoning_effort`) and back from a record.
+
+**Results (V30b).** Unit: 1,070 (CLI: `--help` parsed, Claude Code's and Codex's arguments, the
+app server's levels and first turn, the service's levels, start, refusals, Start again and
+`exec` replies, the server's parser: 14 red first; viewer: the choices, the line, the draft's
+run). e2e: 2 new (red first), 167 of 167. With the real agents (Claude Code 2.1.306, Codex 0.163,
+this machine):
+
+| What | Result |
+|---|---|
+| Levels offered | Claude Code low, medium, high, xhigh, max (no default named); Codex low … max, "Codex's default (medium)" |
+| A Claude Code workspace started through CPR's endpoint at `low` | First turn `low` (15.3 s), CPR's reply (stop, resume) `low` (8.9 s), the same session; listed with `effort: low`; cleaned up |
+| `GET /api/workspaces/options`, cold · warm, `main` → branch, two runs | 549 and 222 → 263 and 237 ms · 8–12 → 14–17 ms |
+
+Not verified: a real Codex workspace through CPR (it would leave a trust entry for a throwaway
+folder in the person's Codex configuration; the V30 spike showed the app server keeping a first
+turn's level, and the e2e that CPR sends it); Codex `exec` with a level (unit tests only); the
+level after `/effort` in a session's terminal (CPR does not read it back, decision 211).
 
 ### Phase 1 milestones
 

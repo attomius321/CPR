@@ -3227,6 +3227,18 @@ button.workspace-about {
   white-space: pre-wrap;
 }
 
+/* How its agent was started (V30b), above the brief. */
+.workspace-started {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: normal;
+}
+
+.workspace-brief-text {
+  white-space: pre-wrap;
+}
+
 .workspace-said {
   color: var(--muted);
   font-size: 13px;
