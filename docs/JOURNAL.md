@@ -4380,3 +4380,10 @@ real window on this machine, sampled from Windows at the right screen's work-are
 no round trip), and a start maximized; Restore back to (2700, 150) each time. Not verified: a
 double-click on the title bar and Windows' snap (held as any maximize), dragging a held window
 (it moves at full size; a native maximized window restores as it is dragged).
+
+Merged into main (2026-10-21) from branch `milestone/n1d-rounded-window`, no conflicts (`main` had
+not moved since the branch): frozen install, `pnpm check` 1,092 tests, build; e2e 169 then 170 of
+171 in two full runs on `main`, a different spec each time (`changes.spec.ts:94` and
+`shell.spec.ts:160`, then `open-pr.spec.ts:48`), each a key press lost under load, each passing
+alone (16 of 16, 8 of 8). Not N1d's: its viewer changes apply only in the app, and these specs run
+in the browser.

@@ -445,7 +445,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | N1 ✅ | A native window | CPR is a page served by a command: a browser tab, no window of its own, nothing to open without a terminal. Asked: "feel more like a native application … Check tauri", on native Linux too. Measured: Tauri draws with WebKitGTK on Linux, where CPR's `j` takes 77–145 ms (first 360–415 ms) against Chromium's 33 ms on a 445-symbol diff; CPR is Node and tuned on Chromium. Planned with Electron (confirmed). Merged (2026-10-21): a window on `cpr view`'s server, opened by `cpr view` or the desktop's launcher (`cpr app install`), closing it stops the server; CPR's own title bar. From the launcher to History's first paint 383–493 ms; `j` as in Chromium (32–33 ms). See below. |
 | V30 ✅ | Start a workspace on a page, with the agent's effort | Starting a workspace is the one thing still drawn over the shell: V18's dialog, 640×626 px at every window size, scrolling with More open at 1280×720 and 1440×900 (883 px of content); no effort is passed (here Claude Code runs at the person's `xhigh`, Codex at `medium`). Measured with the real agents: Claude Code's `--effort` and the effort on Codex's first `turn/start` hold for the session (after CPR's stop-and-resume reply, across app-server connections); `codex exec resume` drops it. Merged into main (2026-10-21): V30a, `/start` in the main area, the brief and the run in two columns, More open fitting at 1440×900; V30b, an Effort choice from the installed agent's own levels (Claude Code's `--help`, Codex's `model/list`), recorded with the workspace; a real Claude Code at `low` stayed at `low` through CPR's reply. See below. |
 | V31 ✅ | CPR's style, beyond its colours | V29b took the reference's tokens and font; the rest was older than its colours: one black for every surface (1.04:1 between page and sidenav), blue as the accent on 35 rules, 6 native checkboxes, 8 coloured side bars, bordered mono chips, a solid green HEAD. CPR's own style, written down as the `cpr-style` skill. Merged into main (2026-10-21): V31a the tokens and the shell, V31b the diff page, V31c History, menus, dialogs and selects — blue a state only, no side bars, drawn controls, one radius scale; Bitwarden's timings and History's first rows as `main`'s, e2e 169 of 169. See below. |
-| N1d | Rounded window corners | CPR's window was square on Linux (here through WSLg): Electron rounds a frameless window there only with client-side decorations, and draws no buttons over a transparent one. Built, not merged: on Linux a transparent window whose pages draw a 10 px frame and CPR's own minimize, maximize and close, square when maximized; macOS and Windows unchanged; no cost on Bitwarden's graph. See below. |
+| N1d ✅ | Rounded window corners | CPR's window was square on Linux (here through WSLg): Electron rounds a frameless window there only with client-side decorations, and draws no buttons over a transparent one. Merged into main (2026-10-21): on Linux a transparent window whose pages draw a 10 px frame and CPR's own minimize, maximize and close, square when maximized; on WSLg CPR holds a maximized window itself, where WSLg's own maximize lands 32 px off; macOS and Windows unchanged; no cost on Bitwarden's graph. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -8691,8 +8691,8 @@ row's menu and submenu, a confirmation dialog, a workspace's thread, Start, Sett
 
 ### N1d — Rounded window corners
 
-**Status:** built (2026-10-21) on branch `milestone/n1d-rounded-window`, its "As built" and results
-below; not merged. Asked by the person.
+**Status:** merged into main (2026-10-21, from branch `milestone/n1d-rounded-window`): its "As
+built" and results below. Asked by the person; the merge: "Yes".
 
 **Problem** (asked: "I want the window corner to have some radius.."). CPR's window (N1) is
 frameless (`titleBarStyle: 'hidden'`) with Electron's overlay for the system's buttons. macOS rounds
@@ -8763,7 +8763,7 @@ and Windows (their own corners and buttons, the overlay on Windows), every page 
 |---|---|---|
 | N1d | Rounded window corners | Linux: a transparent window, its frame and buttons drawn by CPR's pages; the style's pre-paint colours |
 
-**Proposed decisions**:
+**Decisions** (218–222, as built; merged with the person's "Yes", 2026-10-21):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
