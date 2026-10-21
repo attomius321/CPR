@@ -65,7 +65,7 @@ function usePaintedButtons(): void {
 }
 
 /**
- * CPR's window's title bar (N1c), after Orca's: over the sidenav, CPR and the repository, the
+ * CPR's window's title bar (N1c): over the sidenav, CPR and the repository, the
  * sidenav's fold and back and forward; then the page's tabs (or its name); its panel's toggle at
  * the end, before the system's buttons. Its free space moves the window.
  */

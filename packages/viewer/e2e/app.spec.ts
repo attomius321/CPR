@@ -280,7 +280,7 @@ test('cpr view opens its window, and ends when the window closes', async () => {
   }
 });
 
-// CPR's own title bar, after Orca's (N1c): no system frame, the OS's buttons over CPR's colour.
+// CPR's own title bar (N1c): no system frame, the OS's buttons over CPR's colour.
 test.describe('the title bar', () => {
   test('CPR and the repository, fold, back and forward, the page’s tabs, the OS’s buttons', async () => {
     const { page } = await launch();
@@ -332,9 +332,10 @@ test.describe('the title bar', () => {
       app.evaluate(() => (globalThis as { overlay?: { color?: string }[] }).overlay?.at(-1)?.color);
     await page.keyboard.press('s');
     await page.getByRole('button', { name: 'Light', exact: true }).click();
-    await expect.poll(colour).toBe('#f0f0ee');
+    // The chrome's colour (--side), CPR's style since V31.
+    await expect.poll(colour).toBe('#fafafa');
     await page.getByRole('button', { name: 'Dark', exact: true }).click();
-    await expect.poll(colour).toBe('#111113');
+    await expect.poll(colour).toBe('#171717');
   });
 
   test('a workspace: its tabs and its changes’ toggle in the bar', async () => {
