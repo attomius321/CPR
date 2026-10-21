@@ -67,15 +67,42 @@ describe('the tokens (V29b)', () => {
     expect(systemLight).toEqual(light);
   });
 
-  it('are the reference’s in the dark theme', () => {
+  // V31: Orca's (the orca-theme skill's tokens.md): the content darkest, the chrome lifted.
+  it('are Orca’s in the dark theme', () => {
     expect(Object.fromEntries(BACKGROUNDS.map((t) => [t, dark.get(t)]))).toEqual({
-      '--bg': '#0b0b0c',
-      '--side': '#111113',
-      '--panel': '#161618',
-      '--raised': '#1f1f23',
+      '--bg': '#0a0a0a',
+      '--side': '#171717',
+      '--panel': '#171717',
+      '--raised': '#262626',
     });
-    expect(dark.get('--text')).toBe('#e6e6e9');
-    expect(dark.get('--line')).toBe('#26262b');
+    expect(dark.get('--text')).toBe('#fafafa');
+    expect(dark.get('--muted')).toBe('#a1a1a1');
+    expect(dark.get('--line')).toBe('#2a2a2a');
+  });
+
+  it('are Orca’s in the light theme: a white page, grey chrome', () => {
+    expect(Object.fromEntries(BACKGROUNDS.map((t) => [t, light.get(t)]))).toEqual({
+      '--bg': '#ffffff',
+      '--side': '#fafafa',
+      '--panel': '#fafafa',
+      '--raised': '#f0f0f0',
+    });
+    expect(light.get('--text')).toBe('#0a0a0a');
+  });
+
+  it('name the neutral states every control shares, in both themes', () => {
+    for (const name of [
+      '--hover',
+      '--selected',
+      '--selected-line',
+      '--primary',
+      '--primary-text',
+      '--input-bg',
+      '--shadow-lift',
+      '--shadow-floating',
+    ]) {
+      expect([name, dark.has(name), light.has(name)]).toEqual([name, true, true]);
+    }
   });
 
   for (const [name, theme] of [
@@ -101,6 +128,32 @@ describe('the tokens (V29b)', () => {
       });
     });
   }
+});
+
+/** Every innermost rule of the stylesheet (inside @media too): its selector and its body. */
+const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+  selector: m[1]!.replace(/\/\*[\s\S]*?\*\//g, '').trim(),
+  body: m[2]!,
+}));
+
+describe('colour is for state (V31, decision 214)', () => {
+  // Orca keeps colour for state; selection, links and pressed controls are neutral. Blue is the
+  // moved kind and the states that share its hue: an agent working, "since", the current lane.
+  const STATE_RULES =
+    /tone-moved|minimap-moved|since|review-new|working|merging|merge-tone-wait|lane-0/;
+
+  it('uses --moved only for the moved kind and states', () => {
+    const accent = rules
+      .filter((rule) => rule.body.includes('var(--moved)') && !STATE_RULES.test(rule.selector))
+      .map((rule) => rule.selector);
+    expect(accent).toEqual([]);
+  });
+
+  it('draws its checkboxes: no browser accent colour', () => {
+    expect(
+      rules.filter((rule) => rule.body.includes('accent-color')).map((r) => r.selector),
+    ).toEqual([]);
+  });
 });
 
 describe('the fonts (V29b, decision 180)', () => {

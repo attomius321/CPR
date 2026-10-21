@@ -11,56 +11,76 @@
 }
 
 /* Dark unless the person chose light or the system's (decision 179; index.html sets data-theme
-   before the first paint). Text and muted at least 4.5:1 on the four backgrounds, states, edges
-   and the focus ring 3:1 (test/tokens.test.ts). Lines only separate regions: hairlines. */
+   before the first paint). Orca's since V31 (the orca-theme skill's tokens.md): the content darkest,
+   the chrome lifted, colour for state only. Text and muted at least 4.5:1 on the four backgrounds,
+   states, edges and the focus ring 3:1 (test/tokens.test.ts); where Orca's value fell short, the
+   nearest neutral that passes. Lines only separate regions: hairlines. */
 :root,
 :root[data-theme='dark'] {
-  --bg: #0b0b0c;
-  --side: #111113;
-  --panel: #161618;
-  --raised: #1f1f23;
-  --line: #26262b;
-  --edge: #6a6a73;
-  --text: #e6e6e9;
-  --muted: #8b8b94;
-  --faint: #6a6a73;
-  --focus: #58a6ff;
-  --added: #3fb950;
-  --removed: #f85149;
-  --modified: #d29922;
-  --moved: #58a6ff;
-  --context: #6e6e76;
-  --error: #f85149;
-  --warning: #d29922;
-  --info: #58a6ff;
-  /* Commit graph lanes after the current branch's (V10). */
-  --lane-1: #a371f7;
-  --lane-2: #39c5bb;
-  --lane-3: #f0883e;
-  --lane-4: #f778ba;
-  --lane-5: #8ccf3e;
-  --lane-6: #d4a72c;
+  --bg: #0a0a0a;
+  --side: #171717;
+  --panel: #171717;
+  --raised: #262626;
+  --line: #2a2a2a;
+  --edge: #737373;
+  --text: #fafafa;
+  --muted: #a1a1a1;
+  --faint: #7c7c7c;
+  --focus: #a1a1a1;
+  --added: #81b88b;
+  --removed: #c74e39;
+  --modified: #e2c08d;
+  --moved: #4493f8;
+  --context: #7c7c7c;
+  --error: #ff6568;
+  --warning: #eab308;
+  --info: #4493f8;
+  /* Commit graph lanes after the current branch's (V10): Orca's, and one more. */
+  --lane-1: #b66dff;
+  --lane-2: #40b0a6;
+  --lane-3: #ffb000;
+  --lane-4: #dc267f;
+  --lane-5: #ce9178;
+  --lane-6: #8ccf3e;
   --shadow: rgb(0 0 0 / 50%);
+  /* Neutral states every control shares (V31): hover and selection are washes of the text. */
+  --hover: color-mix(in srgb, var(--text) 8%, transparent);
+  --selected: color-mix(in srgb, var(--text) 10%, transparent);
+  --selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
+  --primary: #e5e5e5;
+  --primary-text: #171717;
+  --input-bg: rgb(255 255 255 / 4.5%);
+  /* The one on, lifted out of a raised track (a segmented control's). */
+  --lifted: rgb(255 255 255 / 7%);
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
+  --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
+  --menu-bg: rgb(0 0 0 / 72%);
+  --menu-line: rgb(255 255 255 / 14%);
+  --menu-hover: rgb(255 255 255 / 14%);
+  --menu-shadow: 0 16px 34px rgb(0 0 0 / 40%), inset 0 1px 0 rgb(255 255 255 / 4%);
+  --dialog-bg: rgb(23 23 23 / 96%);
+  --dialog-shadow: 0 24px 72px rgb(0 0 0 / 55%), inset 0 1px 0 rgb(255 255 255 / 6%);
+  --overlay: rgb(0 0 0 / 55%);
   color-scheme: dark;
 }
 
 :root[data-theme='light'] {
-  --bg: #f7f7f5;
-  --side: #f0f0ee;
-  --panel: #ffffff;
-  --raised: #e8e8ec;
-  --line: #d9d9de;
-  --edge: #808088;
-  --text: #1d1d1f;
-  --muted: #636369;
-  --faint: #808088;
-  --focus: #0969da;
-  --added: #1f883d;
-  --removed: #cf222e;
-  --modified: #b06f00;
+  --bg: #ffffff;
+  --side: #fafafa;
+  --panel: #fafafa;
+  --raised: #f0f0f0;
+  --line: #e5e5e5;
+  --edge: #8a8a8a;
+  --text: #0a0a0a;
+  --muted: #666666;
+  --faint: #8a8a8a;
+  --focus: #737373;
+  --added: #587c0c;
+  --removed: #ad0707;
+  --modified: #895503;
   --moved: #0969da;
-  --context: #7d7d84;
-  --error: #cf222e;
+  --context: #8a8a8a;
+  --error: #e40014;
   --warning: #9a6700;
   --info: #0969da;
   --lane-1: #8250df;
@@ -70,27 +90,43 @@
   --lane-5: #4d7a00;
   --lane-6: #9a6700;
   --shadow: rgb(0 0 0 / 14%);
+  --hover: color-mix(in srgb, var(--text) 5%, transparent);
+  --selected: color-mix(in srgb, var(--text) 8%, transparent);
+  --selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
+  --primary: #171717;
+  --primary-text: #fafafa;
+  --input-bg: transparent;
+  --lifted: #ffffff;
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
+  --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
+  --menu-bg: rgb(255 255 255 / 82%);
+  --menu-line: rgb(0 0 0 / 14%);
+  --menu-hover: rgb(0 0 0 / 8%);
+  --menu-shadow: 0 12px 28px rgb(0 0 0 / 22%), inset 0 1px 0 rgb(255 255 255 / 14%);
+  --dialog-bg: rgb(255 255 255 / 96%);
+  --dialog-shadow: 0 20px 60px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
+  --overlay: rgb(0 0 0 / 55%);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: light) {
   :root[data-theme='system'] {
-    --bg: #f7f7f5;
-    --side: #f0f0ee;
-    --panel: #ffffff;
-    --raised: #e8e8ec;
-    --line: #d9d9de;
-    --edge: #808088;
-    --text: #1d1d1f;
-    --muted: #636369;
-    --faint: #808088;
-    --focus: #0969da;
-    --added: #1f883d;
-    --removed: #cf222e;
-    --modified: #b06f00;
+    --bg: #ffffff;
+    --side: #fafafa;
+    --panel: #fafafa;
+    --raised: #f0f0f0;
+    --line: #e5e5e5;
+    --edge: #8a8a8a;
+    --text: #0a0a0a;
+    --muted: #666666;
+    --faint: #8a8a8a;
+    --focus: #737373;
+    --added: #587c0c;
+    --removed: #ad0707;
+    --modified: #895503;
     --moved: #0969da;
-    --context: #7d7d84;
-    --error: #cf222e;
+    --context: #8a8a8a;
+    --error: #e40014;
     --warning: #9a6700;
     --info: #0969da;
     --lane-1: #8250df;
@@ -100,6 +136,22 @@
     --lane-5: #4d7a00;
     --lane-6: #9a6700;
     --shadow: rgb(0 0 0 / 14%);
+    --hover: color-mix(in srgb, var(--text) 5%, transparent);
+    --selected: color-mix(in srgb, var(--text) 8%, transparent);
+    --selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
+    --primary: #171717;
+    --primary-text: #fafafa;
+    --input-bg: transparent;
+    --lifted: #ffffff;
+    --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
+    --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
+    --menu-bg: rgb(255 255 255 / 82%);
+    --menu-line: rgb(0 0 0 / 14%);
+    --menu-hover: rgb(0 0 0 / 8%);
+    --menu-shadow: 0 12px 28px rgb(0 0 0 / 22%), inset 0 1px 0 rgb(255 255 255 / 14%);
+    --dialog-bg: rgb(255 255 255 / 96%);
+    --dialog-shadow: 0 20px 60px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
+    --overlay: rgb(0 0 0 / 55%);
     color-scheme: light;
   }
 }
@@ -119,6 +171,24 @@ body {
   background: var(--bg);
   color: var(--text);
   font: 13px/1.45 var(--sans);
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Node widths are estimated from characters (nodeWidth): the chrome's spacing stays off the graph. */
+.react-flow {
+  letter-spacing: 0;
+}
+
+/* Thin, neutral scrollbars (Orca's). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted) 34%, transparent) transparent;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
 }
 
 code {
@@ -147,8 +217,9 @@ select {
 .reply textarea,
 .settings-editor textarea {
   border: 1px solid var(--edge);
-  border-radius: 6px;
-  background: var(--bg);
+  border-radius: 8px;
+  background: var(--input-bg);
+  box-shadow: var(--shadow-lift);
   color: var(--text);
 }
 
@@ -174,14 +245,14 @@ select {
   height: 100%;
 }
 
-/* A diff's toolbar: one strip, as History's and a workspace's heads. */
+/* A diff's toolbar: one strip, as History's and a workspace's heads; chrome, lifted (V31). */
 .bar {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 44px;
   padding: 6px 16px;
-  background: var(--bg);
+  background: var(--side);
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
   font-size: 12px;
@@ -214,13 +285,24 @@ select {
   border-radius: 4px;
   padding: 0 6px;
   font-size: 11px;
+  font-weight: 500;
   line-height: 18px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
+/* Metadata (V31, Orca's secondary chip): raised, muted, no border. */
 .chip {
-  border: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--muted);
+}
+
+/* Counts in their state's colour, unboxed (V31): a state's text is not set on a chip's grey. */
+.chip-added,
+.chip-removed,
+.chip-modified {
+  padding: 0 2px;
+  background: none;
 }
 
 .chip-added {
@@ -235,11 +317,15 @@ select {
   color: var(--modified);
 }
 
-/* Tinted in its severity's colour, the words in it (V29b): white on amber read at 2.4:1. */
+/* A state, tinted in its colour, the words in it (V29b: white on amber read at 2.4:1); round, a
+   10 % fill and a 25 % edge, as Orca's status badges (V31). */
 .badge {
-  background: color-mix(in srgb, var(--badge) 16%, transparent);
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--badge) 25%, transparent);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--badge) 10%, transparent);
   color: var(--badge);
-  font-weight: 600;
+  line-height: 16px;
 }
 
 .badge-error {
@@ -267,9 +353,66 @@ select {
   color: var(--text);
 }
 
+/* Drawn as Orca's (V31): the <input> stays, for the keyboard, its label and screen readers. */
 input[type='checkbox'],
 input[type='radio'] {
-  accent-color: var(--moved);
+  appearance: none;
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  background: var(--input-bg);
+  box-shadow: var(--shadow-lift);
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
+}
+
+input[type='radio'] {
+  border-radius: 50%;
+}
+
+input[type='checkbox']::after,
+input[type='radio']::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  background: var(--primary-text);
+  transform: scale(0);
+}
+
+/* lucide's "check" (ISC). */
+input[type='checkbox']::after {
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+input[type='radio']::after {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+input[type='checkbox']:checked,
+input[type='radio']:checked {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+input[type='checkbox']:checked::after,
+input[type='radio']:checked::after {
+  transform: scale(1);
+}
+
+input[type='checkbox']:disabled,
+input[type='radio']:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .canvas {
@@ -307,7 +450,7 @@ input[type='radio'] {
 .resizer:hover::after,
 .resizer:focus-visible::after,
 .resizer.dragging::after {
-  background: var(--moved);
+  background: var(--muted);
 }
 
 .resizer:focus-visible {
@@ -340,7 +483,9 @@ input[type='radio'] {
 }
 
 .workspaces-empty a {
-  color: var(--moved);
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* Before the first layout arrives (V8e): where the canvas will be. */
@@ -372,7 +517,7 @@ input[type='radio'] {
   font-size: 16px;
 }
 
-/* Buttons (V29b): 28 px; the main action filled in the text's colour, the others outlined. */
+/* Buttons (V29b): 28 px; the main action in Orca's primary (V31), the others outlined. */
 .button {
   display: inline-flex;
   align-items: center;
@@ -381,17 +526,21 @@ input[type='radio'] {
   min-height: 28px;
   padding: 0 12px;
   border: 1px solid transparent;
-  border-radius: 6px;
-  background: var(--text);
-  color: var(--bg);
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--primary-text);
   font-size: 12px;
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    color 150ms;
 }
 
 .button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text) 85%, var(--bg));
+  background: color-mix(in srgb, var(--primary) 90%, transparent);
 }
 
 .button:disabled {
@@ -404,7 +553,8 @@ input[type='radio'] {
 .merge-row-actions .button:not(.primary),
 .workspace-confirm .button {
   border-color: var(--line);
-  background: var(--panel);
+  background: var(--input-bg);
+  box-shadow: var(--shadow-lift);
   color: var(--text);
 }
 
@@ -412,7 +562,8 @@ input[type='radio'] {
 .workspace-actions .button:not(.primary):hover:not(:disabled),
 .merge-row-actions .button:not(.primary):hover:not(:disabled),
 .workspace-confirm .button:hover:not(:disabled) {
-  background: var(--raised);
+  border-color: color-mix(in srgb, var(--muted) 35%, transparent);
+  background: var(--hover);
 }
 
 .dropzone .button {
@@ -436,7 +587,7 @@ input[type='radio'] {
 }
 
 .symbol.selected {
-  outline: 2px solid var(--moved);
+  outline: 2px solid var(--text);
 }
 
 .tone-added {
@@ -537,7 +688,7 @@ input[type='radio'] {
 }
 
 .summary-node:hover {
-  border-color: var(--moved);
+  border-color: color-mix(in srgb, var(--text) 40%, var(--line));
 }
 
 .summary-node.expanded {
@@ -565,7 +716,7 @@ input[type='radio'] {
 }
 
 .summary-action {
-  color: var(--moved);
+  color: var(--text);
 }
 
 /* ---- file boxes --------------------------------------------------------------------- */
@@ -1072,7 +1223,7 @@ input[type='radio'] {
 }
 
 .close:hover {
-  background: var(--raised);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -1180,7 +1331,10 @@ input[type='radio'] {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--moved);
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 3px;
   font: inherit;
   cursor: pointer;
 }
@@ -1192,7 +1346,7 @@ input[type='radio'] {
 }
 
 .link:hover:not(:disabled) {
-  text-decoration: underline;
+  text-decoration-color: currentColor;
 }
 
 .link:disabled {
@@ -1385,8 +1539,8 @@ input[type='radio'] {
 }
 
 .list-project-only[aria-pressed='true'] {
-  border-color: var(--moved);
-  background: color-mix(in srgb, var(--moved) 14%, transparent);
+  border-color: var(--selected-line);
+  background: var(--selected);
   color: var(--text);
 }
 
@@ -1411,8 +1565,8 @@ input[type='radio'] {
 }
 
 .list-item.current {
-  background: var(--raised);
-  box-shadow: inset 2px 0 0 var(--moved);
+  background: var(--selected);
+  box-shadow: inset 0 0 0 1px var(--selected-line);
 }
 
 .list-item.done .list-link {
@@ -1468,11 +1622,11 @@ input[type='radio'] {
 }
 
 .finding-row:hover {
-  background: var(--panel);
+  background: var(--hover);
 }
 
 .finding-row.current {
-  background: var(--raised);
+  background: var(--selected);
 }
 
 .finding-row-rule {
@@ -1504,12 +1658,18 @@ input[type='radio'] {
   line-height: 1.8;
 }
 
+/* A key, as Orca's key caps. */
 kbd {
+  display: inline-block;
+  min-width: 16px;
   padding: 0 4px;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
   border-radius: 4px;
-  background: var(--panel);
-  font: 11px var(--mono);
+  background: color-mix(in srgb, var(--raised) 70%, transparent);
+  box-shadow: var(--shadow-lift);
+  color: var(--muted);
+  font: 500 10px/16px var(--sans);
+  text-align: center;
 }
 
 .pad {
@@ -1536,7 +1696,7 @@ kbd {
 }
 
 .review:hover:not(:disabled) {
-  background: var(--raised);
+  background: var(--hover);
 }
 
 .review.done {
@@ -1558,10 +1718,15 @@ kbd {
   padding: 6px;
   border: 0;
   border-top: 1px solid var(--line);
-  background: var(--bg);
-  color: var(--moved);
+  background: none;
+  color: var(--muted);
   font-size: 12px;
   cursor: pointer;
+}
+
+.more:hover {
+  background: var(--hover);
+  color: var(--text);
 }
 
 .request {
@@ -1588,12 +1753,12 @@ kbd {
 }
 
 .row.pickable:hover {
-  outline: 1px solid var(--moved);
+  outline: 1px solid var(--selected-line);
   outline-offset: -1px;
 }
 
 .row.anchored {
-  box-shadow: inset 3px 0 0 var(--moved);
+  box-shadow: inset 0 0 0 1px var(--muted);
 }
 
 .comment-input {
@@ -1622,8 +1787,9 @@ kbd {
 .draft-row {
   margin-bottom: 8px;
   padding: 6px 8px;
-  border-left: 3px solid var(--moved);
-  background: color-mix(in srgb, var(--moved) 6%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
 }
 
 .draft-row {
@@ -1697,14 +1863,15 @@ kbd {
   border: 1px solid transparent;
   border-radius: 4px;
   background: none;
-  color: var(--moved);
+  color: var(--muted);
   cursor: pointer;
 }
 
 .merge-open:hover,
 .merge-open:focus-visible {
-  border-color: color-mix(in srgb, var(--moved) 45%, var(--line));
-  background: color-mix(in srgb, var(--moved) 9%, var(--panel));
+  border-color: var(--line);
+  background: var(--hover);
+  color: var(--text);
 }
 
 .merge-file {
@@ -1785,13 +1952,13 @@ kbd {
 /* ---- commits page and diffs on demand (V9) ------------------------------------------ */
 
 .back {
-  color: var(--moved);
+  color: var(--muted);
   text-decoration: none;
   white-space: nowrap;
 }
 
 .back:hover {
-  text-decoration: underline;
+  color: var(--text);
 }
 
 .commits {
@@ -1832,7 +1999,7 @@ kbd {
   margin: 0;
   padding: 8px 12px 8px 16px;
   border-bottom: 1px solid var(--line);
-  background: var(--bg);
+  background: var(--side);
   font-size: 13px;
   font-weight: normal;
 }
@@ -1886,7 +2053,7 @@ kbd {
 }
 
 .commit:hover {
-  background: var(--panel);
+  background: var(--hover);
 }
 
 .commit.cursor {
@@ -1894,12 +2061,12 @@ kbd {
 }
 
 .commit.picked {
-  background: color-mix(in srgb, var(--moved) 14%, transparent);
+  background: var(--selected);
 }
 
 .commit-pick {
   flex: none;
-  color: var(--moved);
+  color: var(--text);
   width: 1em;
 }
 
@@ -1999,24 +2166,24 @@ kbd {
   width: 40%;
 }
 
-/* A segmented control: the one on is raised, the others muted. */
+/* A segmented control, as Orca's tabs: a raised track, the one on lifted out of it (V31). */
 .scopes {
   display: inline-flex;
   gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--panel);
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--raised);
   font-size: 12px;
 }
 
 .scope {
   height: 22px;
   padding: 0 10px;
-  border: 0;
-  border-radius: 4px;
+  border: 1px solid transparent;
+  border-radius: 7px;
   background: none;
   color: var(--muted);
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -2025,7 +2192,9 @@ kbd {
 }
 
 .scope.active {
-  background: var(--raised);
+  border-color: color-mix(in srgb, var(--text) 15%, transparent);
+  background: var(--lifted);
+  box-shadow: var(--shadow-lift);
   color: var(--text);
 }
 
@@ -2035,7 +2204,7 @@ kbd {
 
 /* ---- compare mode (V13) ------------------------------------------------------------- */
 
-/* Outlined, filled in the accent colour when on: a mode, meant to be found (V12). */
+/* Outlined, filled when on: a mode, meant to be found (V12). */
 .compare-mode {
   display: inline-flex;
   margin-left: auto;
@@ -2044,8 +2213,9 @@ kbd {
   height: 28px;
   padding: 0 6px 0 10px;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--panel);
+  border-radius: 8px;
+  background: var(--input-bg);
+  box-shadow: var(--shadow-lift);
   color: var(--text);
   font-size: 12px;
   font-weight: 500;
@@ -2054,13 +2224,14 @@ kbd {
 }
 
 .compare-mode:hover {
-  background: var(--raised);
+  background: var(--hover);
 }
 
+/* A mode, meant to be found (V12): on, it takes the primary's fill. */
 .compare-mode[aria-pressed='true'] {
-  border-color: var(--moved);
-  background: var(--moved);
-  color: var(--bg);
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-text);
 }
 
 .compare-mode kbd {
@@ -2085,8 +2256,7 @@ kbd {
 
 /* Out of compare mode a click selects: the cursor row is the selection, and shows it. */
 .commits:not(.comparing) .commit.cursor {
-  background: var(--raised);
-  box-shadow: inset 2px 0 0 var(--moved);
+  background: var(--selected);
 }
 
 .commits-error {
@@ -2297,6 +2467,7 @@ kbd {
   box-sizing: border-box;
   padding: 7px 12px 7px 16px;
   border-bottom: 1px solid var(--line);
+  background: var(--side);
 }
 
 .start-top h1 {
@@ -2419,7 +2590,7 @@ kbd {
 
 .kind-info-button:hover,
 .kind-info-button[aria-expanded='true'] {
-  color: var(--moved);
+  color: var(--text);
 }
 
 .kind-about {
@@ -2640,8 +2811,7 @@ kbd {
 }
 
 .ref-branch {
-  border-color: var(--moved);
-  color: var(--moved);
+  color: var(--text);
 }
 
 .ref-tag {
@@ -2745,7 +2915,8 @@ kbd {
   padding: 0 6px 0 8px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--panel);
+  background: var(--input-bg);
+  box-shadow: var(--shadow-lift);
   color: var(--text);
   font-size: 12px;
   font-weight: 500;
@@ -2754,7 +2925,7 @@ kbd {
 }
 
 .open-editor:hover {
-  background: var(--raised);
+  background: var(--hover);
 }
 
 .open-icon {
@@ -2781,7 +2952,7 @@ kbd {
 }
 
 .ln-open:hover {
-  color: var(--moved);
+  color: var(--text);
   text-decoration: underline;
 }
 
@@ -2871,7 +3042,7 @@ kbd {
   width: 260px;
   min-height: 0;
   border-right: 1px solid var(--line);
-  background: var(--bg);
+  background: var(--panel);
 }
 
 /* As tall as History's toolbar beside it (44 px with the list's line). */
@@ -2925,7 +3096,7 @@ kbd {
 
 .branches-folder:hover,
 .branches-branch:hover {
-  background: var(--panel);
+  background: var(--hover);
 }
 
 .branches-folder {
@@ -3013,7 +3184,7 @@ kbd {
 }
 
 .branches-toggle[aria-expanded='true'] {
-  background: var(--raised);
+  background: var(--selected);
 }
 
 @media (max-width: 899px) {
@@ -3042,7 +3213,7 @@ kbd {
 
 @keyframes commit-flash {
   from {
-    background: color-mix(in srgb, var(--moved) 45%, transparent);
+    background: color-mix(in srgb, var(--text) 18%, transparent);
   }
 }
 
@@ -3127,11 +3298,12 @@ a.workspace-mark:hover {
 }
 
 .review-workspace {
-  color: var(--moved);
+  color: var(--muted);
   text-decoration: none;
 }
 
 .review-workspace:hover {
+  color: var(--text);
   text-decoration: underline;
 }
 
@@ -3266,7 +3438,7 @@ button.workspace-about {
 
 .thread-you {
   margin-left: 48px;
-  background: color-mix(in srgb, var(--moved) 9%, var(--panel));
+  background: color-mix(in srgb, var(--text) 7%, var(--panel));
 }
 
 .thread-who,
@@ -3519,7 +3691,9 @@ button.workspace-about {
 }
 
 .markdown a {
-  color: var(--moved);
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* The thread is a list itself: a report's lists start at the first level. */
@@ -3754,7 +3928,7 @@ p.merge-control {
   min-height: 28px;
   padding: 0 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: none;
   color: inherit;
   font-size: 13px;
@@ -3763,11 +3937,11 @@ p.merge-control {
 }
 
 .settings-list button:hover {
-  background: var(--panel);
+  background: var(--hover);
 }
 
 .settings-list button[aria-current='true'] {
-  background: var(--raised);
+  background: var(--selected);
 }
 
 .settings-name {
@@ -3783,7 +3957,7 @@ p.merge-control {
 }
 
 .settings-mark.changed {
-  color: var(--moved);
+  color: var(--modified);
 }
 
 .settings-mark.unsaved {
@@ -3818,8 +3992,8 @@ p.merge-control {
 }
 
 .settings-state.changed {
-  border-color: var(--moved);
-  color: var(--moved);
+  border-color: var(--modified);
+  color: var(--modified);
 }
 
 .settings-about {
@@ -3885,8 +4059,20 @@ p.settings-placeholders {
   margin: 2px 0;
 }
 
+/* Each a button that inserts it: a code chip, as Orca's prompt pills (V31). */
 .settings-placeholders .link {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--raised);
   font-family: var(--mono);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.settings-placeholders .link:hover:not(:disabled) {
+  border-color: var(--selected-line);
+  background: var(--hover);
 }
 
 .settings-actions {
@@ -3992,16 +4178,26 @@ p.settings-placeholders {
   height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: none;
   color: var(--muted);
   cursor: pointer;
 }
 
+.icon-button {
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
 .icon-button:hover,
-.icon-button[aria-expanded='true'],
+.icon-button[aria-expanded='true'] {
+  background: var(--hover);
+  color: var(--text);
+}
+
 .icon-button[aria-current='page'] {
-  background: var(--raised);
+  background: var(--selected);
   color: var(--text);
 }
 
@@ -4016,8 +4212,9 @@ p.settings-placeholders {
   height: 24px;
   border: 1px solid var(--line);
   border-radius: 50%;
+  color: var(--muted);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .help-pop {
@@ -4029,9 +4226,9 @@ p.settings-placeholders {
   max-width: min(420px, 80vw);
   padding: 8px 12px;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--raised);
-  box-shadow: 0 8px 24px var(--shadow);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow-floating);
   color: var(--text);
   font-size: 12px;
   font-weight: normal;
@@ -4062,7 +4259,7 @@ p.settings-placeholders {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 8px 8px 4px 16px;
+  padding: 8px 8px 4px 14px;
 }
 
 .sidenav-brand {
@@ -4099,25 +4296,31 @@ p.settings-placeholders {
 .sidenav-pages a {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 28px;
+  gap: 8px;
+  height: 32px;
   padding: 0 8px;
-  border-radius: 6px;
-  color: var(--text);
+  border-radius: 8px;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: -0.025em;
   text-decoration: none;
+  transition:
+    background-color 150ms,
+    color 150ms;
 }
 
 .sidenav-pages a .icon {
-  color: var(--muted);
+  color: var(--faint);
 }
 
 .sidenav-pages a:hover {
-  background: var(--panel);
+  background: var(--hover);
+  color: var(--text);
 }
 
 .sidenav-pages a[aria-current='page'] {
-  background: var(--raised);
-  font-weight: 500;
+  background: var(--selected);
+  color: var(--text);
 }
 
 .sidenav-pages a[aria-current='page'] .icon {
@@ -4128,12 +4331,19 @@ p.settings-placeholders {
    on Linux before anything showed, V29a). */
 .sidenav-pages kbd {
   margin-left: auto;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font-family: inherit;
-  font-size: 11px;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.sidenav-pages a:hover kbd,
+.sidenav-pages a:focus-visible kbd {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .sidenav-pages kbd {
+    opacity: 1;
+  }
 }
 
 .sidenav-workspaces {
@@ -4152,7 +4362,7 @@ p.settings-placeholders {
   padding: 0 8px 0 16px;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .sidenav-heading .sidenav-label {
@@ -4184,9 +4394,9 @@ p.settings-placeholders {
   align-items: center;
   gap: 6px;
   margin: 12px 8px 4px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 500;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .sidenav .workspace-group h3::before {
@@ -4212,20 +4422,28 @@ p.settings-placeholders {
 }
 
 .sidenav .workspace-group .branches-count {
+  min-width: 18px;
   margin: 0;
   padding: 0 5px;
-  border-radius: 4px;
+  border-radius: 9999px;
   background: var(--raised);
-  font-size: 11px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
   line-height: 16px;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
 /* A card, at most 64 px: the dot and the title; the state and its age; the kind and the branch. */
 .sidenav .workspace-row {
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
   cursor: pointer;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
 }
 
 .sidenav .workspace-row + .workspace-row {
@@ -4233,11 +4451,14 @@ p.settings-placeholders {
 }
 
 .sidenav .workspace-row:hover {
-  background: var(--panel);
+  background: color-mix(in srgb, var(--raised) 40%, transparent);
 }
 
+/* The one shown, as Orca's current card: a wash of the text and a brighter edge. */
 .sidenav .workspace-row.picked {
-  background: var(--raised);
+  border-color: var(--selected-line);
+  background: var(--selected);
+  box-shadow: var(--shadow-lift);
 }
 
 .sidenav .workspace-head {
@@ -4289,14 +4510,14 @@ p.settings-placeholders {
   line-height: 14px;
 }
 
-/* The branch as git names it: plain mono, not History's badge. */
+/* The branch as git names it: plain, not History's badge; in the text's font, as Orca's (V31). */
 .sidenav .workspace-branch .ref-branch {
   padding: 0;
   border: 0;
   border-radius: 0;
   background: none;
   color: var(--muted);
-  font: 11px/16px var(--mono);
+  font: 12px/16px var(--sans);
 }
 
 .sidenav .workspace-branch a.ref-branch:hover {
@@ -4458,6 +4679,7 @@ p.settings-placeholders {
   min-height: 44px;
   padding: 7px 12px 7px 16px;
   border-bottom: 1px solid var(--line);
+  background: var(--side);
 }
 
 .workspace-title {
@@ -4591,7 +4813,7 @@ p.settings-placeholders {
 .more-menu button:hover,
 .more-menu button:focus-visible {
   outline: none;
-  background: var(--raised);
+  background: var(--hover);
 }
 
 .more-menu button:disabled {
@@ -4771,7 +4993,7 @@ p.settings-placeholders {
   width: 36px;
   height: 4px;
   overflow: hidden;
-  border-radius: 2px;
+  border-radius: 9999px;
   background: var(--raised);
 }
 
@@ -4782,7 +5004,7 @@ p.settings-placeholders {
 }
 
 .usage-window.tone-ok {
-  --tone: var(--added);
+  --tone: color-mix(in srgb, var(--muted) 60%, transparent);
 }
 
 .usage-window.tone-high {
@@ -4926,7 +5148,7 @@ button.changes-file {
 }
 
 button.changes-file:hover {
-  background: var(--raised);
+  background: var(--hover);
 }
 
 .changes-name {
@@ -5122,7 +5344,7 @@ button.changes-file:hover {
 }
 
 .titlebar .workspace-views button.selected {
-  background: var(--raised);
+  background: var(--selected);
   color: var(--text);
 }
 

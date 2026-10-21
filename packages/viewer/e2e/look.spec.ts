@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
 
 // The look (V29b): dark by default, light or the system's chosen in Settings for this browser;
-// the bundled fonts, served by CPR; compact cards in the sidenav.
+// the bundled fonts, served by CPR; compact cards in the sidenav. Orca's colours since V31.
 let cpr: RunningWorkspaces;
 const errors: string[] = [];
 
@@ -17,8 +17,8 @@ test.afterEach(() => {
 });
 
 const POLL = { timeout: 12_000 };
-const DARK = 'rgb(11, 11, 12)';
-const LIGHT = 'rgb(247, 247, 245)';
+const DARK = 'rgb(10, 10, 10)';
+const LIGHT = 'rgb(255, 255, 255)';
 const background = (page: Page) =>
   page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 const appearance = (page: Page) => page.getByRole('group', { name: 'Appearance (this browser)' });
@@ -103,6 +103,27 @@ test("the fonts are CPR's: every request goes to its server, and History fetches
   const bytes = (await Promise.all(fonts)).reduce((sum, n) => sum + n, 0);
   expect(bytes).toBeGreaterThan(0);
   expect(bytes).toBeLessThanOrEqual(55_000);
+});
+
+test("the chrome is lifted above the content, as Orca's: the sidenav and the status bar", async ({
+  page,
+}) => {
+  cpr = await serveWorkspaces();
+  await page.goto(`${cpr.url}history`);
+  await expect(page.locator('.commit').first()).toBeVisible();
+  const colour = (selector: string) =>
+    page
+      .locator(selector)
+      .first()
+      .evaluate((e) => getComputedStyle(e).backgroundColor);
+  expect(await background(page)).toBe(DARK);
+  expect(await colour('.sidenav')).toBe('rgb(23, 23, 23)');
+  expect(await colour('.statusbar')).toBe('rgb(23, 23, 23)');
+  // The current page is a neutral wash, not a colour.
+  const current = page.getByRole('link', { name: 'History' });
+  expect(await current.evaluate((e) => getComputedStyle(e).backgroundColor)).toMatch(
+    /^(rgba?\(250, 250, 250|color\(srgb 0\.98)/,
+  );
 });
 
 test('a card in the sidenav is at most 64 px high', async ({ page }) => {
