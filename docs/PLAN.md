@@ -446,7 +446,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V30 ✅ | Start a workspace on a page, with the agent's effort | Starting a workspace is the one thing still drawn over the shell: V18's dialog, 640×626 px at every window size, scrolling with More open at 1280×720 and 1440×900 (883 px of content); no effort is passed (here Claude Code runs at the person's `xhigh`, Codex at `medium`). Measured with the real agents: Claude Code's `--effort` and the effort on Codex's first `turn/start` hold for the session (after Symbiote's stop-and-resume reply, across app-server connections); `codex exec resume` drops it. Merged into main (2026-10-21): V30a, `/start` in the main area, the brief and the run in two columns, More open fitting at 1440×900; V30b, an Effort choice from the installed agent's own levels (Claude Code's `--help`, Codex's `model/list`), recorded with the workspace; a real Claude Code at `low` stayed at `low` through Symbiote's reply. See below. |
 | V31 ✅ | Symbiote's style, beyond its colours | V29b took the reference's tokens and font; the rest was older than its colours: one black for every surface (1.04:1 between page and sidenav), blue as the accent on 35 rules, 6 native checkboxes, 8 coloured side bars, bordered mono chips, a solid green HEAD. Symbiote's own style, written down as the `symbiote-style` skill. Merged into main (2026-10-21): V31a the tokens and the shell, V31b the diff page, V31c History, menus, dialogs and selects — blue a state only, no side bars, drawn controls, one radius scale; Bitwarden's timings and History's first rows as `main`'s, e2e 169 of 169. See below. |
 | N1d ✅ | Rounded window corners | Symbiote's window was square on Linux (here through WSLg): Electron rounds a frameless window there only with client-side decorations, and draws no buttons over a transparent one. Merged into main (2026-10-21): on Linux a transparent window whose pages draw a 10 px frame and Symbiote's own minimize, maximize and close, square when maximized; on WSLg Symbiote holds a maximized window itself, where WSLg's own maximize lands 32 px off; macOS and Windows unchanged; no cost on Bitwarden's graph. See below. |
-| V32 | Text one can read | V29b chose the reference's density: 13 px body, 12 px for buttons, paths, code and the status bar, 10–11 px for captions, chips, badges, counts and key caps; asked: "The font-size is too small to read … My eyes are hurting". Planned: one step up (14 px body, nothing under 12 px but uppercase labels), every size from a `--size-*` scale on `:root`, the graph's layout unchanged. See below. |
+| V32 | Text one can read | V29b chose the reference's density: 13 px body, 12 px for buttons, paths, code and the status bar, 10–11 px for captions, chips, badges, counts and key caps; asked: "The font-size is too small to read … My eyes are hurting". Built on `feature/font-too-small`: one step up (14 px body, nothing under 12 px but uppercase labels; titles stay 16 px), every size from a `--size-*` scale on `:root` with a guard test, the graph's layout unchanged; Bitwarden's graph and History as fast as `main`. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -8841,8 +8841,9 @@ dragging a held window (it moves at full size, where a native maximized window r
 
 ### V32 — Text one can read: a type scale, one step up
 
-**Status:** planned on branch `feature/font-too-small` (a workspace started in Symbiote); the
-person agreed to the plan: one step up, no text-size setting for now.
+**Status:** built on branch `feature/font-too-small` (a workspace started in Symbiote), ready for
+review; the person agreed to the plan: one step up, no text-size setting for now. Its "As built"
+and results below.
 
 **Problem** (asked: "The font-size is too small to read...i know i made the wrong decision. Find
 a good font-size for different texts across the app. My eyes are hurting.."). V29b took the
@@ -8874,8 +8875,7 @@ radii.
 | `--size-caption` | 12 px | 10–11 | captions, chips, badges, counts, key caps, category labels |
 | `--size-small` | 13 px | 12 | buttons, menu items, paths, code, the status bar |
 | `--size-body` | 14 px | 13 | rows, nav, tabs, body text, editors |
-| `--size-title` | 16 px | 14 | page and dialog titles |
-| `--size-heading` | 18 px | 15–16 | a symbol's name in its panel, a dialog's question, a frame's name |
+| `--size-title` | 16 px | 14–16 | titles: a page's, a dialog's, a symbol's in its panel, a frame's name |
 
 - On `:root` beside the font families, the same in both themes. Every `font-size` and `font` in
   `styles.css` uses one (or a multiple: the map's project names are `calc(2 * var(--size-body))`,
@@ -8885,7 +8885,7 @@ radii.
 - The graph's nodes grow inside their boxes: the name 14 px mono (8.6 px a character; `nodeWidth`
   counts 9.4), the signature 13 px, tags and badges 12 px, the kind 11 px; 58 px high still holds
   both lines. Long names, already cut at the 380 px width, lose a few characters: counted.
-- The desktop start page: body 14 px, its heading 22 px, the rest at least 12 px.
+- The desktop start page: body 14 px, the rest at least 12 px, its title as it was (20 px).
 
 #### Verification
 
@@ -8915,13 +8915,37 @@ radii.
 |---|---|---|
 | V32 | Text one can read | The `--size-*` scale, one step up, on every page, the graph, the terminal and the desktop start page |
 
-**Decisions** (226–228, agreed with the person, 2026-10-21):
+**Decisions** (226–228 agreed with the person, 2026-10-21; 229 as built):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 226 | How much larger | **One step: 14 px body, nothing under 12 px** but uppercase labels and one-glyph marks (11 px) | Asked: too small to read. Two steps (15 px body) would need 32 px rows; the person chose one |
 | 227 | Where sizes live | **A `--size-*` scale on `:root`**, every size from it, guarded by a test | One line to change next time; the radii have the same guard (V31c) |
 | 228 | A text-size setting | **Not now** (the person: "For the moment, no") | The scale makes it small later: a block of tokens per choice, as the theme |
+| 229 | Titles (found building it) | **Stay at 16 px**; those at 14 px go to 16 | At 18 px a symbol's long name wrapped mid-word in its panel (Bitwarden's `vault-cipher-row.component.html`), and a frame's name outgrew the band `flow.ts` estimates at 10 px a character. Titles were not what was too small |
+
+#### As built (V32)
+
+- **Five sizes, not six.** The plan's 18 px heading went: at 18 px Bitwarden's
+  `vault-cipher-row.component.html` wrapped mid-word in its panel, and frame names would outgrow
+  `bandWidth`'s 10 px a character. Titles at 16 px stay; those at 14 px (Settings', a
+  workspace's, the start page's) go to 16 (decision 229). An agent's Markdown headings: h3 16 px,
+  h4–h6 the body's 14 px, bold.
+- **The close button's 18 px sized nothing**: its icon is 16 px. Dropped, not mapped.
+- **The terminal keeps its columns**: xterm's cell at 14 px is the 8 px it was at 13; 148 × 44
+  at 1440×900 instead of 148 × 46. `shell.spec`'s floor went from 45 rows to 43.
+- **The sidenav's card stays within 64 px** at 14 px: its lines keep their 16 px line height.
+- **The desktop start page** follows the scale but keeps its 20 px title and 16 px "×".
+- **Commits by kind, not by region**: the stylesheet changed in one mechanical pass (157 sizes
+  mapped one step up, two by hand), so the regions planned as separate commits are one.
+
+**Results.** Tests first: `tokens.test.ts` (red: 159 px sizes) and `look.spec.ts` (red: a 13 px
+body, 10–11 px chips, badges, key caps, dates). `pnpm check` 1,110 tests, e2e 172 of 172;
+`flow.test.ts` unchanged. Against `main`'s build, Bitwarden `737ee3f`: first paint 332–368 ms
+(`main` 355–367), select 120 ms, mark reviewed 51 ms, pan 63 fps; names cut short as j walks 40
+changes 22 of 83 on both; frame bands overflowing 0 of 3 on both. `/history` first rows 161–177 ms
+(`main` 166–240), first paint 64–72 ms (64–68). Not verified: the Electron app itself, other
+browsers and systems, real agents in the terminal.
 
 ### Phase 1 milestones
 
