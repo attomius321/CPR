@@ -27,7 +27,10 @@ export interface UsageSubscription {
   source: 'live' | 'cached';
   /** The vendor says a limit is reached. */
   limited?: true;
-  /** Why the numbers are a copy: the token expired, the request failed. */
+  /**
+   * Why the numbers are a copy, or live ones were not read again: the token expired, the request
+   * failed.
+   */
   note?: string;
 }
 

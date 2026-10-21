@@ -662,6 +662,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
               installed: async () => (await findClaude(ctx.env)) !== null,
               env: ctx.env,
               home: homedir(),
+              // Shared by every `cpr view` on this machine, and kept for the next run.
+              lastFile: join(cacheDir, 'usage', 'claude.json'),
             }),
           codex: () => readCodexUsage({ codex: codexOf, env: ctx.env, home: homedir() }),
         },

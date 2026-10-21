@@ -1,6 +1,13 @@
 import type { UsageSubscription } from '@cpr/core';
 import { describe, expect, it } from 'vitest';
-import { resetText, shownWindows, usageTitle, usageTone, windowLabel } from '../src/usage.js';
+import {
+  resetText,
+  shownWindows,
+  showsAge,
+  usageTitle,
+  usageTone,
+  windowLabel,
+} from '../src/usage.js';
 
 // The status bar's usage (V29c): each window by its length, its tone, and what a hover says.
 const NOW = Date.parse('2026-10-20T16:15:00Z');
@@ -84,5 +91,19 @@ describe('shownWindows and usageTitle', () => {
         "Claude Code's copy, 17 hours ago: Claude Code's token has expired",
       ].join('\n'),
     );
+    expect(showsAge(copy)).toBe(true);
+  });
+
+  it('says when live numbers were not read again, and why; their age shows in the bar', () => {
+    const kept: UsageSubscription = {
+      ...claude,
+      at: new Date(NOW - 4 * MIN).toISOString(),
+      note: "Claude's usage asked to wait (429)",
+    };
+    expect(usageTitle(kept, NOW).split('\n').at(-1)).toBe(
+      "Read 4 minutes ago, not since: Claude's usage asked to wait (429)",
+    );
+    expect(showsAge(kept)).toBe(true);
+    expect(showsAge(claude)).toBe(false);
   });
 });
