@@ -212,6 +212,11 @@ export interface WorkspaceTerminalOpened {
 export interface WorkspaceOptions {
   /** The default branch's tip, where a workspace starts unless a row is picked. */
   base: { from: string; sha: string } | null;
+  /**
+   * The branches a workspace can start from (V33): the default branch first, then the local ones,
+   * then those only on a remote, each by name, at its newest tip.
+   */
+  branches: StartBranch[];
   /** Proposed names start with their kind's (`fix/`, V24). */
   branchPrefixes: Record<WorkKind, string>;
   /** The kinds of work and their parts (V24). */
@@ -222,6 +227,15 @@ export interface WorkspaceOptions {
   agents: AgentOption[];
   /** Longest brief accepted. */
   maxBrief: number;
+}
+
+/** A branch a workspace can start from (V33). */
+export interface StartBranch {
+  name: string;
+  /** Its newest tip: the local branch's or a remote's, the one that holds the others. */
+  sha: string;
+  /** Only on a remote. */
+  remote?: true;
 }
 
 /** An agent the start page offers (V20a). */
@@ -268,6 +282,9 @@ export interface WorkspaceRequest {
   branch: string;
   /** A full SHA; the default branch's tip when absent. */
   base?: string;
+  /** A branch to start from at its newest tip (V33), one of the options' `branches`; not with
+   * `base`. */
+  from?: string;
   planFirst: boolean;
   /** The agent to start (V20a); the default one when absent. */
   agent?: AgentKind;

@@ -1024,17 +1024,28 @@ function json(res: ServerResponse, status: number, value: unknown): void {
 }
 
 /**
- * `{ kind, title, parts, branch, planFirst, base?, agent?, permissionMode?, effort? }` (V24, V20a,
- * V30b), or `brief` instead
- * of the kind, title and parts, each of its type; what they say is the workspaces' to check (V18).
+ * `{ kind, title, parts, branch, planFirst, base?, from?, agent?, permissionMode?, effort? }`
+ * (V24, V20a, V30b, V33), or `brief` instead of the kind, title and parts, each of its type; what
+ * they say is the workspaces' to check (V18).
  */
 function parseWorkspaceRequest(text: string): WorkspaceRequest {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('expected { kind, title, parts, branch, planFirst }');
   }
-  const { brief, kind, title, parts, branch, planFirst, base, agent, permissionMode, effort } =
-    value;
+  const {
+    brief,
+    kind,
+    title,
+    parts,
+    branch,
+    planFirst,
+    base,
+    from,
+    agent,
+    permissionMode,
+    effort,
+  } = value;
   if (brief === undefined && kind === undefined) {
     throw new Error('kind: feature, fix, refactor, chore or spike');
   }
@@ -1052,6 +1063,7 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
   if (typeof branch !== 'string') throw new Error("branch: the new branch's name");
   if (typeof planFirst !== 'boolean') throw new Error('planFirst: true or false');
   if (base !== undefined && typeof base !== 'string') throw new Error('base: a full SHA');
+  if (from !== undefined && typeof from !== 'string') throw new Error("from: a branch's name");
   if (agent !== undefined && typeof agent !== 'string') throw new Error('agent: claude or codex');
   if (permissionMode !== undefined && typeof permissionMode !== 'string') {
     throw new Error('permissionMode: default, acceptEdits or auto');
@@ -1066,6 +1078,7 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
     branch,
     planFirst,
     ...(base === undefined ? {} : { base }),
+    ...(from === undefined ? {} : { from }),
     ...(agent === undefined ? {} : { agent: agent as AgentKind }),
     ...(permissionMode === undefined ? {} : { permissionMode: permissionMode as PermissionMode }),
     ...(effort === undefined ? {} : { effort }),

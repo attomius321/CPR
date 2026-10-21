@@ -369,8 +369,9 @@ you came from; Start (Ctrl+Enter) opens the new workspace in the page's place. S
    failing test first, a refactor and a chore change no behaviour, a spike answers in its report
    and commits nothing unless asked (the kind's start prompt: a project can change it in
    [Settings](#agents-prompts));
-2. names a branch after the title (edit it if you like) and creates it at the default branch's
-   tip, or at the commit you picked;
+2. names a branch after the title (edit it if you like) and creates it where **Start from** says:
+   the default branch's tip unless you pick another branch (local, or only on a remote: its newest
+   tip, the local one's or a remote's), or the commit you picked in History;
 3. gives the branch its own worktree beside your checkout, `../<repo>.worktrees/<branch>` (the
    branch's slashes become dashes), so your checkout and `symbiote view` are untouched and several
    workspaces can run at once;

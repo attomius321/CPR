@@ -10,6 +10,7 @@ import type {
   WorkspaceSummary,
   WorkspaceThread,
   PermissionMode,
+  StartBranch,
   TerminalAvailability,
   ThreadEntry,
 } from '@symbiote/core';
@@ -93,14 +94,20 @@ export interface RunChoices {
   effort?: string;
   permissionMode?: PermissionMode;
   planFirst?: boolean;
+  /** The branch to start from (V33); the default branch when absent. */
+  from?: string;
 }
 
 /**
  * The run's choices a draft kept, those that still hold: an agent still installed, a level it
- * lists, a permission mode Symbiote offers. A level is kept only with its agent: it is that
- * agent's.
+ * lists, a permission mode Symbiote offers, a branch still listed. A level is kept only with its
+ * agent: it is that agent's.
  */
-export function readRun(value: unknown, agents: readonly AgentOption[]): RunChoices {
+export function readRun(
+  value: unknown,
+  agents: readonly AgentOption[],
+  branches: readonly StartBranch[] = [],
+): RunChoices {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   const v = value as Record<string, unknown>;
   const named = agents.find((a) => a.kind === v.agent);
@@ -115,6 +122,7 @@ export function readRun(value: unknown, agents: readonly AgentOption[]): RunChoi
     ...(effort ? { effort } : {}),
     ...(mode ? { permissionMode: mode } : {}),
     ...(typeof v.planFirst === 'boolean' ? { planFirst: v.planFirst } : {}),
+    ...(branches.some((b) => b.name === v.from) ? { from: v.from as string } : {}),
   };
 }
 

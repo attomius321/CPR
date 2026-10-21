@@ -35,6 +35,7 @@ import {
   readWorkspaceConfig,
   runProgram,
   serializeWorkspace,
+  startBranches,
   workKinds,
   worktreeFolder,
   type AgentSession,
@@ -241,6 +242,26 @@ describe('workspaceBase', () => {
     repo.git('branch', '--move', 'main', 'trunk');
     const git = await openRepo(repo.root);
     expect(await workspaceBase(git, await listRefs(git))).toBeNull();
+  });
+});
+
+describe('startBranches (V33)', () => {
+  it('lists every branch name at its newest tip: the default first, then local, then remote-only', async () => {
+    const { repo, shas } = fresh();
+    // topic: local at A, origin/topic ahead of it at C; zeta only local; taken only on origin.
+    repo.git('branch', 'zeta', shas.A);
+    repo.git('branch', 'topic', shas.A);
+    repo.write({ 'src/c.ts': 'export const c = 1;\n' });
+    const C = repo.commit('C');
+    repo.git('update-ref', 'refs/remotes/origin/topic', C);
+    repo.git('reset', '--quiet', '--hard', shas.B);
+    const git = await openRepo(repo.root);
+    expect(await startBranches(git, await listRefs(git))).toEqual([
+      { name: 'main', sha: shas.B },
+      { name: 'topic', sha: C },
+      { name: 'zeta', sha: shas.A },
+      { name: 'taken', sha: shas.A, remote: true },
+    ]);
   });
 });
 
@@ -612,6 +633,10 @@ describe('workspaces', () => {
     const { kinds, ...options } = await (await service(repo, claude)).options();
     expect(options).toEqual({
       base: { from: 'main', sha: shas.B },
+      branches: [
+        { name: 'main', sha: shas.B },
+        { name: 'taken', sha: shas.A, remote: true },
+      ],
       branchPrefixes: {
         feature: 'feature/',
         fix: 'fix/',
@@ -726,6 +751,18 @@ describe('workspaces', () => {
     expect(workspace.base).toBe(shas.A);
     expect(workspace.from).toBeUndefined();
     expect(repo.git('rev-parse', 'fix/one')).toBe(shas.A);
+  });
+
+  it('starts from a branch at its tip, recorded as `from` and said in the prompt (V33)', async () => {
+    const { repo, shas } = fresh();
+    const { claude } = fakeClaude();
+    const { workspace, prompt } = await (
+      await service(repo, claude)
+    ).start({ brief: 'Stack it', branch: 'feature/stacked', from: 'taken', planFirst: false });
+    expect(workspace.base).toBe(shas.A);
+    expect(workspace.from).toBe('taken');
+    expect(repo.git('rev-parse', 'feature/stacked')).toBe(shas.A);
+    expect(prompt).toContain(`taken at ${shas.A.slice(0, 7)}`);
   });
 
   it('starts a kind of work: the brief assembled from its parts, the record keeping both (V24)', async () => {
@@ -880,7 +917,7 @@ describe('workspaces', () => {
   });
 
   it('refuses a bad request before touching anything', async () => {
-    const { repo } = fresh();
+    const { repo, shas } = fresh();
     const { claude, start: launched } = fakeClaude();
     const s = await service(repo, claude);
     const start = (over: Record<string, unknown>) =>
@@ -898,6 +935,8 @@ describe('workspaces', () => {
     await refused({ branch: 'taken' }, 409, /origin has a branch taken/);
     await refused({ base: 'main' }, 400, /full SHA/);
     await refused({ base: '0'.repeat(40) }, 400, /not a commit/);
+    await refused({ from: 'nowhere' }, 400, /no branch nowhere/);
+    await refused({ from: 'main', base: shas.A }, 400, /a branch or a commit/);
     await refused({ permissionMode: 'bypassPermissions' }, 400, /permission mode/);
     mkdirSync(worktreeFolder(repo.root, 'feature/x'), { recursive: true });
     await refused({}, 409, /exists/);
