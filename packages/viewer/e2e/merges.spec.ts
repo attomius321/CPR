@@ -71,7 +71,7 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
   git('commit', '-q', '-am', 'Main: add double');
   const main = git('rev-parse', 'main');
   await approve(page);
-  await page.getByRole('button', { name: 'Merge into main' }).click();
+  await page.getByRole('button', { name: 'Merge into', exact: true }).click();
 
   // Resolved by the agent, written by Symbiote, waiting for review: main has not moved.
   // In the sidenav's Merging group; opened in the main area (V29a).
@@ -125,7 +125,7 @@ test('the merger agent says you must decide: nothing is merged', async ({ page }
   git('commit', '-q', '-am', 'Main: add double');
   const main = git('rev-parse', 'main');
   await approve(page);
-  await page.getByRole('button', { name: 'Merge into main' }).click();
+  await page.getByRole('button', { name: 'Merge into', exact: true }).click();
   // In the sidenav's Merging group; opened in the main area (V29a).
   await page.goto(`${symbiote.url}history`);
   await page.locator('.sidenav [data-merge="agent"]').getByRole('link').click();

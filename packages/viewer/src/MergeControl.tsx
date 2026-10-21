@@ -57,7 +57,7 @@ export function MergeControl({ branch }: { branch: string }) {
         title={`Merge the approved commit ${targets.head.slice(0, 7)} into ${target} in Symbiote's own worktree, check it, and land it`}
         onClick={merge}
       >
-        Merge into {target}
+        Merge into
       </button>{' '}
       <select
         aria-label="Branch to merge into"

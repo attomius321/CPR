@@ -1072,7 +1072,7 @@ test('Merge on an approved workspace: Symbiote merges it in its own worktree, La
   const here = panel(page, branch);
   await expect(here.getByLabel('Branch to merge into')).toHaveValue('main');
   const main = git('rev-parse', 'main');
-  await here.getByRole('button', { name: 'Merge into main' }).click();
+  await here.getByRole('button', { name: 'Merge into', exact: true }).click();
 
   // The sidenav's Merging group, above the workspaces: no check here, so it waits for Land.
   const merging = page.getByRole('region', { name: 'Merging' });
@@ -1108,4 +1108,46 @@ test('Merge on an approved workspace: Symbiote merges it in its own worktree, La
   await here.getByRole('button', { name: 'More actions' }).click();
   await expect(here.getByRole('menuitem', { name: 'Clean up', exact: true })).toBeVisible();
   await expect(here.getByRole('button', { name: /^Merge into/ })).toHaveCount(0);
+});
+
+test('Merge into merges into the branch picked in its dropdown, not main', async ({ page }) => {
+  symbiote = await serveWorkspaces({ terminal: false });
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const tip = symbiote.commit(
+    branch,
+    'src/half.ts',
+    'export const half = (a: number) => a / 2;\n',
+    'Add half',
+  );
+  symbiote.report(branch, 'Done: half() in src/half.ts.');
+  await expect(workspaceRow(page, branch)).toContainText('Ready for review', POLL);
+  await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
+  await page.getByRole('tab', { name: /Review/ }).click();
+  await page.getByLabel('Approve').check();
+  await page.getByRole('button', { name: 'Finish review' }).click();
+  await expect(page.locator('.finished')).toContainText(`Approved ${short(tip)}`);
+  const main = git('rev-parse', 'main');
+  git('branch', 'release', main);
+  await page.goto(`${symbiote.url}?branch=${encodeURIComponent(branch)}`);
+
+  // The button names no branch: the dropdown beside it does, preselected main.
+  const here = panel(page, branch);
+  const target = here.getByLabel('Branch to merge into');
+  await expect(target).toHaveValue('main');
+  const button = here.getByRole('button', { name: 'Merge into', exact: true });
+  await expect(button).toBeVisible();
+  await target.selectOption('release');
+  await expect(button).toBeVisible();
+  await button.click();
+
+  const entry = page.getByRole('region', { name: 'Merging' }).locator(`[data-merge="${branch}"]`);
+  await expect(entry).toContainText('Merged, not checked', POLL);
+  await entry.getByRole('link').click();
+  const merge = page.getByRole('region', { name: `Merge of ${branch}` });
+  await merge.getByRole('button', { name: 'Land' }).click();
+  await expect(merge.locator('.merge-row-state')).toHaveText(/^Landed: release is at/, POLL);
+  expect(git('log', '-1', '--format=%P', 'release')).toBe(`${main} ${tip}`);
+  expect(git('rev-parse', 'main')).toBe(main);
 });
