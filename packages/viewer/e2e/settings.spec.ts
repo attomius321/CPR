@@ -61,6 +61,11 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   await text(page, 'Fix').press('Control+Home');
   await editor(page).getByRole('button', { name: '{plan}' }).click();
   await expect(text(page, 'Fix')).toHaveValue(`{plan}${FIX}`);
+  // The cursor after it, placed on the next frame: typing goes on from there. (Filled before that
+  // frame, the text went in after `{plan}` instead of replacing it: 4 runs in 48 at 8 workers.)
+  await expect
+    .poll(() => text(page, 'Fix').evaluate((field: HTMLTextAreaElement) => field.selectionStart))
+    .toBe('{plan}'.length);
   // Without the brief it cannot be saved.
   await text(page, 'Fix').fill('Fix it on {branch}.');
   await expect(editor(page).locator('.settings-size')).toHaveText(
