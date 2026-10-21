@@ -8196,7 +8196,9 @@ throughout).
 ### V30 — Start a workspace on a page, with the agent's effort
 
 **Status:** planned (2026-10-21), on branch `milestone/v30-start-page`; not started. Decisions
-205–211 proposed.
+207 and 211 and what is left out confirmed by the person (2026-10-21); 210 left to CPR ("Idk"),
+kept as proposed; 205, 206, 208 and 209 proposed. The Brief tab, where 211's line goes, drew the
+brief's Markdown as source: fixed on its own branch first (`fix/brief-markdown`).
 
 **Problem** (asked: "the create a workspace should not be in dialog. it should be itself a page,
 rendered fully on the right of sidenav, and with an option for initial effort, for that
@@ -8394,19 +8396,19 @@ What causes it:
 | V30a | The page | `/start` in the shell, `StartPage.tsx` (head strip, two columns, one below 1,000 px), the ways in and out, the dialog and `WorkspaceStarter` gone, the e2e helpers moved |
 | V30b | Effort | The levels from each agent, `effort` in the request, the record and the summary, `--effort` / `turn/start` / `model_reasoning_effort`, the Effort select, the Brief tab's line |
 
-**Proposed decisions**:
+**Decisions** (207 and 211 confirmed; 210 left to CPR; the others proposed):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 205 | Where the start is | **A page at `/start` (`?at=<sha>` for a commit) in the main area; the dialog goes** | The person's ask. The dialog covers the window, and with More open it scrolls at 1280×720, 1440×900 and 390×844 (883 px of content) |
 | 206 | Its layout | **The brief in a column up to 760 px, the run in a 300 px column beside it; one column under 1,000 px of main area** | The text areas get the width; the run's choices are short. A container query, so the sidenav's rail and drawer change it as the window does |
-| 207 | Leaving it | **The draft keeps the form; Cancel and Escape go back to the page before; a start replaces `/start` in the history** | V24c's draft already makes leaving lossless; keys stay as the dialog's (`n` … Escape); Back after a start should not show an emptied form |
+| 207 | Leaving it | **The draft keeps the form; Cancel and Escape go back to the page before; a start replaces `/start` in the history** (confirmed) | V24c's draft already makes leaving lossless; keys stay as the dialog's (`n` … Escape); Back after a start should not show an emptied form |
 | 208 | How the effort reaches the agent | **Claude Code `--effort` at the start; Codex `effort` on the first `turn/start`, or `-c model_reasoning_effort` on every `exec` run; recorded, passed again by Start again** | Measured: Claude Code and Codex's app server keep it for the session; `exec resume` drops it |
 | 209 | Which levels | **The installed agent's own list: Claude Code's `--help`, Codex's `model/list` for the configured model; none when CPR cannot read one** | Claude Code ignores an unknown level without failing: a fixed list could offer one that silently does nothing |
-| 210 | The default | **"<Agent>'s default", no flag; Codex's level named (from `config/read`), Claude Code's not; each new workspace starts at it** | "For that session": a level is a choice per workspace. Naming Claude Code's would mean resolving its settings layers, and a wrong name is worse than none |
-| 211 | Where it shows after | **The Brief tab's line, as how the agent was started** | The level can be changed in the agent's terminal; CPR does not read it back, so the card and head would show a stale value |
+| 210 | The default | **"<Agent>'s default", no flag; Codex's level named (from `config/read`), Claude Code's not; each new workspace starts at it** (left to CPR) | "For that session": a level is a choice per workspace. Claude Code has no command that reports its level (`claude config …` is no subcommand: it runs as a prompt), so naming it would mean resolving its settings layers, and a wrong name is worse than none |
+| 211 | Where it shows after | **The Brief tab's line, as how the agent was started** (confirmed) | The level can be changed in the agent's terminal; CPR does not read it back, so the card and head would show a stale value |
 
-**Not in V30 (later)**: a project default for the level (`agent.effort` in `cpr/config.json`); a
+**Not in V30 (later)**, confirmed: a project default for the level (`agent.effort` in `cpr/config.json`); a
 model per workspace; changing the level of a running session from CPR; the session's current
 level read back; the merger agent's level (V26c, `merge.model`).
 
