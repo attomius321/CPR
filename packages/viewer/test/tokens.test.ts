@@ -165,6 +165,26 @@ describe('colour is for state (V31, decision 214)', () => {
   });
 });
 
+describe('the geometry is Orca’s (V31c)', () => {
+  // Orca's radii: 4 px chips and keys, 8 px controls and rows, 10 px dialogs and popovers, 11 px
+  // menus, 14 px cards, round badges and dots; `inherit` takes its parent's.
+  const SCALE = new Set(['0', '4px', '8px', '10px', '11px', '14px', '9999px', '50%', 'inherit']);
+
+  it('rounds every corner on its scale', () => {
+    const off = rules.flatMap((rule) =>
+      [...rule.body.matchAll(/border-radius:\s*([^;]+);/g)]
+        .filter((m) =>
+          m[1]!
+            .trim()
+            .split(/\s+/)
+            .some((r) => !SCALE.has(r)),
+        )
+        .map((m) => `${rule.selector.split('\n')[0]}: ${m[1]}`),
+    );
+    expect(off).toEqual([]);
+  });
+});
+
 describe('the fonts (V29b, decision 180)', () => {
   // Every family a system lacks is a font-matching miss: on Linux they held History's first rows
   // for 850–900 ms (V29a). Only the bundled families are named, and monospace after them.

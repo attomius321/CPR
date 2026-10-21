@@ -126,6 +126,42 @@ test("the chrome is lifted above the content, as Orca's: the sidenav and the sta
   );
 });
 
+test("History after Orca: names in the text's font, HEAD a tint, menus and dialogs that float", async ({
+  page,
+}) => {
+  cpr = await serveWorkspaces();
+  await page.goto(`${cpr.url}history`);
+  const head = page.locator('.commit.head');
+  await expect(head).toBeVisible();
+  const style = (selector: string, property: string) =>
+    page
+      .locator(selector)
+      .first()
+      .evaluate((e, p) => getComputedStyle(e).getPropertyValue(p), property);
+  // A branch's name is a name, not code: the text's font, in the panel and on the row.
+  expect(await style('.branches-name', 'font-family')).toBe('"Geist Variable", monospace');
+  expect(await style('.commit .ref', 'font-family')).toBe('"Geist Variable", monospace');
+  // HEAD stands out by a tint of its colour, not a solid fill.
+  /** A computed colour's opacity: `rgba(r, g, b, a)` or `color(srgb r g b / a)`; 1 without. */
+  const alpha = (colour: string) => {
+    const slash = colour.match(/\/\s*([\d.]+)\)$/);
+    const rgba = colour.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)$/);
+    return Number(slash?.[1] ?? rgba?.[1] ?? 1);
+  };
+  expect(alpha(await style('.commit.head .ref-head', 'background-color'))).toBeLessThan(0.5);
+
+  // The row's menu floats over the page as Orca's: a blurred, rounded glass.
+  await head.click({ button: 'right', position: { x: 120, y: 10 } });
+  await expect(page.getByRole('menu')).toBeVisible();
+  expect(await style('.checkout-menu', 'border-radius')).toBe('11px');
+  const glass = await page
+    .locator('.checkout-menu')
+    .first()
+    .evaluate((e) => getComputedStyle(e, '::before').backdropFilter);
+  expect(glass).toContain('blur');
+  await page.keyboard.press('Escape');
+});
+
 test('a card in the sidenav is at most 64 px high', async ({ page }) => {
   cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);

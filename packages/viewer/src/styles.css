@@ -61,6 +61,8 @@
   --dialog-bg: rgb(23 23 23 / 96%);
   --dialog-shadow: 0 24px 72px rgb(0 0 0 / 55%), inset 0 1px 0 rgb(255 255 255 / 6%);
   --overlay: rgb(0 0 0 / 55%);
+  /* A select's chevron (lucide's, ISC) in the muted colour: a data URI cannot read a token. */
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1a1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   /* A diff's lines, as Orca's: a ground for the line, a stronger one for its numbers. */
   --added-ground: color-mix(in srgb, var(--added) 16%, transparent);
   --added-gutter: color-mix(in srgb, var(--added) 30%, transparent);
@@ -111,6 +113,7 @@
   --dialog-bg: rgb(255 255 255 / 96%);
   --dialog-shadow: 0 20px 60px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
   --overlay: rgb(0 0 0 / 55%);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
   --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
   --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
@@ -161,6 +164,7 @@
     --dialog-bg: rgb(255 255 255 / 96%);
     --dialog-shadow: 0 20px 60px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
     --overlay: rgb(0 0 0 / 55%);
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
     --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
     --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
@@ -245,6 +249,33 @@ select {
 .settings-editor textarea:focus-visible {
   outline-offset: -1px;
   border-color: transparent;
+}
+
+/* Selects as Orca's (V31c): a field's edge and a drawn chevron. */
+select {
+  appearance: none;
+  height: 28px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background-color: var(--input-bg);
+  background-image: var(--chevron);
+  background-position: right 8px center;
+  background-repeat: no-repeat;
+  background-size: 14px;
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+  cursor: pointer;
+}
+
+select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+select option {
+  background: var(--panel);
+  color: var(--text);
 }
 
 ::placeholder {
@@ -1160,7 +1191,7 @@ input[type='radio']:disabled {
   width: 14px;
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--text) 16%, var(--line));
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 /* ---- detail panel ------------------------------------------------------------------- */
@@ -2196,7 +2227,7 @@ kbd {
   height: 22px;
   padding: 0 10px;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 8px;
   background: none;
   color: var(--muted);
   font-weight: 500;
@@ -2303,6 +2334,43 @@ kbd {
   color: var(--added);
 }
 
+/* Menus as Orca's (V31c): a blurred glass over the page, faded in. The glass is a layer behind
+   the items: a backdrop-filter on the menu itself would make it the containing block of its
+   fixed submenu, which then opened off screen. */
+.checkout-menu,
+.more-menu {
+  isolation: isolate;
+  border: 1px solid var(--menu-line);
+  border-radius: 11px;
+  box-shadow: var(--menu-shadow);
+  animation: float-in 150ms ease-out;
+}
+
+.checkout-menu::before,
+.more-menu::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--menu-bg);
+  backdrop-filter: blur(40px);
+}
+
+@keyframes float-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkout-menu,
+  .more-menu,
+  .dialog {
+    animation: none;
+  }
+}
+
 .checkout-menu {
   position: fixed;
   z-index: 20;
@@ -2311,10 +2379,6 @@ kbd {
   min-width: 160px;
   max-width: 480px;
   padding: 4px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px var(--shadow);
   outline: none;
 }
 
@@ -2326,16 +2390,18 @@ kbd {
   min-height: 28px;
   padding: 4px 8px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 8px;
   background: none;
   color: var(--text);
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 17px;
   text-align: left;
   cursor: pointer;
 }
 
 .menu-item.active {
-  background: var(--raised);
+  background: var(--menu-hover);
 }
 
 .menu-item:disabled {
@@ -2344,7 +2410,7 @@ kbd {
 }
 
 .menu-note {
-  font-size: 12px;
+  font-size: 11px;
 }
 
 /* V14: "Check out ▸" and its submenu of targets, each named by the row's badge. */
@@ -2369,7 +2435,7 @@ kbd {
 }
 
 .menu-item.has-submenu[aria-expanded='true']:not(.active) {
-  background: color-mix(in srgb, var(--raised) 50%, transparent);
+  background: color-mix(in srgb, var(--menu-hover) 60%, transparent);
 }
 
 .submenu {
@@ -2395,7 +2461,7 @@ kbd {
 
 .menu-kind {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   overflow-wrap: anywhere;
 }
 
@@ -2413,6 +2479,8 @@ kbd {
   font-size: 0.9em;
   line-height: 1.5;
   white-space: normal;
+  /* Its overflow is hidden (.ref): its baseline would be its bottom edge, above the heading's. */
+  vertical-align: -0.3em;
 }
 
 .dialog-backdrop {
@@ -2422,16 +2490,20 @@ kbd {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgb(0 0 0 / 50%);
+  background: var(--overlay);
+  backdrop-filter: blur(2px);
 }
 
+/* Orca's dialog (V31c): its glass, its edge and shadow, faded in. */
 .dialog {
   width: min(520px, 100%);
-  padding: 16px 20px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: 0 16px 48px var(--shadow);
+  padding: 20px 24px;
+  background: var(--dialog-bg);
+  border: 1px solid var(--menu-line);
+  border-radius: 10px;
+  backdrop-filter: blur(40px);
+  box-shadow: var(--dialog-shadow);
+  animation: float-in 200ms ease-out;
 }
 
 .dialog h2 {
@@ -2456,9 +2528,25 @@ kbd {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 16px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 20px;
   font-size: 13px;
+}
+
+/* Backing out stays quiet (Orca's rule): a ghost button, no colour. */
+.dialog-buttons .link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dialog-buttons .link:hover:not(:disabled) {
+  background: var(--hover);
+  text-decoration: none;
 }
 
 /* Start a workspace, a page of the shell's (V30a): a head strip, as a workspace's, then the brief
@@ -2561,12 +2649,6 @@ kbd {
 .start-run select {
   box-sizing: border-box;
   width: 100%;
-  height: 28px;
-  padding: 0 6px;
-  border: 1px solid var(--edge);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
   font-weight: normal;
 }
 
@@ -2657,20 +2739,20 @@ kbd {
   gap: 2px;
   width: fit-content;
   max-width: 100%;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--raised);
 }
 
 .kind {
   height: 24px;
   padding: 0 12px;
-  border: 0;
-  border-radius: 4px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: none;
   color: var(--muted);
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -2679,9 +2761,10 @@ kbd {
 }
 
 .kind.active {
-  background: var(--raised);
+  border-color: color-mix(in srgb, var(--text) 15%, transparent);
+  background: var(--lifted);
+  box-shadow: var(--shadow-lift);
   color: var(--text);
-  font-weight: 500;
 }
 
 /* The five and their info on one line on a phone (390 px: 308 px for them). */
@@ -2785,19 +2868,20 @@ kbd {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 5px;
-  border: 1px solid var(--line);
+  padding: 0 6px;
   border-radius: 4px;
-  font: 11px/18px var(--mono);
+  background: var(--raised);
+  color: var(--muted);
+  font: 500 11px/18px var(--sans);
   white-space: nowrap;
 }
 
-/* HEAD stands out: a solid badge ("HEAD → main"), a tinted row with a bold subject, a ringed
-   dot (V11). */
+/* HEAD stands out (V11): its badge in Orca's success tint ("HEAD → main"; V31c, was solid), a
+   tinted row with a bold subject, a ringed dot. The edge is a shadow: badges keep one height. */
 .ref-head {
-  border-color: var(--added);
-  background: var(--added);
-  color: var(--bg);
+  background: color-mix(in srgb, var(--added) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--added) 30%, transparent);
+  color: var(--added);
   font-weight: 600;
 }
 
@@ -2818,11 +2902,11 @@ kbd {
 .head-chip {
   height: 22px;
   padding: 0 8px;
-  border: 1px solid var(--added);
+  border: 1px solid color-mix(in srgb, var(--added) 30%, transparent);
   border-radius: 4px;
-  background: var(--added);
-  color: var(--bg);
-  font: 600 11px var(--mono);
+  background: color-mix(in srgb, var(--added) 12%, transparent);
+  color: var(--added);
+  font: 600 11px var(--sans);
   cursor: pointer;
 }
 
@@ -2831,7 +2915,6 @@ kbd {
 }
 
 .ref-tag {
-  border-color: var(--modified);
   color: var(--modified);
 }
 
@@ -2997,7 +3080,7 @@ kbd {
   min-width: 14px;
   margin-left: 5px;
   padding: 0 3px;
-  border-radius: 999px;
+  border-radius: 9999px;
   background: var(--review-tone);
   color: var(--panel);
   font-size: 10px;
@@ -3017,12 +3100,6 @@ kbd {
 
 .ref-review-changes {
   --review-tone: var(--removed);
-}
-
-/* HEAD's badge is solid green: the chip is light on it, in its tone. */
-.ref-head .ref-review {
-  background: var(--panel);
-  color: var(--review-tone);
 }
 
 /* Before the subject of a commit added to a reviewed branch since its review. */
@@ -3168,10 +3245,6 @@ kbd {
   font-weight: 600;
 }
 
-.branches-name {
-  font-family: var(--mono);
-}
-
 .branches-current {
   flex: none;
   color: var(--added);
@@ -3192,8 +3265,9 @@ kbd {
   height: 28px;
   padding: 0 10px;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--panel);
+  border-radius: 8px;
+  background: var(--input-bg);
+  box-shadow: var(--shadow-lift);
   color: var(--text);
   font-size: 12px;
   cursor: pointer;
@@ -3289,12 +3363,6 @@ a.workspace-mark:hover {
 
 .workspace-mark-done {
   --workspace-tone: var(--added);
-}
-
-/* HEAD's badge is solid green: the mark is light on it. */
-.ref-head .workspace-mark {
-  border-color: var(--bg);
-  color: var(--bg);
 }
 
 /* In the branches panel the mark is a link beside the entry (no link inside a button). */
@@ -3408,7 +3476,7 @@ button.workspace-about {
   margin: 0;
   padding: 8px 10px;
   overflow: auto;
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--bg);
   font: inherit;
   font-size: 13px;
@@ -3448,7 +3516,7 @@ button.workspace-about {
 
 .thread-item {
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--bg);
 }
 
@@ -3529,10 +3597,11 @@ button.workspace-about {
   margin-bottom: -1px;
   padding: 5px 12px;
   border: 1px solid transparent;
-  border-radius: 6px 6px 0 0;
+  border-radius: 8px 8px 0 0;
   background: none;
   color: var(--muted);
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
 }
 
@@ -3676,7 +3745,7 @@ button.workspace-about {
 .markdown pre {
   padding: 8px 10px;
   overflow: auto;
-  border-radius: 6px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 
@@ -3791,7 +3860,7 @@ button.workspace-about {
   margin: 6px 0 0;
   padding: 6px 8px;
   overflow: auto;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg);
   font-size: 12px;
   white-space: pre-wrap;
@@ -4069,7 +4138,7 @@ p.settings-placeholders {
   margin: 4px 0 0;
   padding: 8px 10px;
   overflow: auto;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg);
   border: 1px solid var(--line);
   font: 12px/1.45 var(--mono);
@@ -4748,7 +4817,7 @@ p.settings-placeholders {
   border-radius: 0;
   background: none;
   color: var(--muted);
-  font: 12px var(--mono);
+  font: 12px var(--sans);
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4821,20 +4890,17 @@ p.settings-placeholders {
   flex-direction: column;
   min-width: 180px;
   padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  box-shadow: 0 8px 24px var(--shadow);
 }
 
 .more-menu button {
   height: 28px;
   padding: 0 8px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 8px;
   background: none;
   color: var(--text);
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 450;
   text-align: left;
   cursor: pointer;
 }
@@ -4842,7 +4908,7 @@ p.settings-placeholders {
 .more-menu button:hover,
 .more-menu button:focus-visible {
   outline: none;
-  background: var(--hover);
+  background: var(--menu-hover);
 }
 
 .more-menu button:disabled {
@@ -5369,7 +5435,7 @@ button.changes-file:hover {
   margin: 0;
   padding: 4px 12px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .titlebar .workspace-views button.selected {
