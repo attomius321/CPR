@@ -4301,3 +4301,21 @@ while a menu or dialog is open).
 
 Merged into main (2026-10-21), with V31a–b, from branch `milestone/v31-cpr-style`: `pnpm check`
 1,076 tests, build, e2e 169 of 169 on `main`. Decisions 212–217 confirmed by the person.
+
+## N1d spike — rounded window corners on Linux (2026-10-21, branch `milestone/n1d-rounded-window`)
+
+Asked: "I want the window corner to have some radius..". A 640×400 Electron 44.9 test window per
+variant, opened through WSLg and captured from Windows (PowerShell, `GetWindowRect`; only the
+window's corners kept, enlarged 3×).
+
+**Learned**:
+- **Electron picks X11 here** (XWayland): `WAYLAND_DISPLAY` is set but `XDG_SESSION_TYPE` is not.
+  WSLg's window rectangle has a 32 px invisible margin around an X11 window, none around a
+  Wayland one.
+- **A transparent window rounds**: the page's 10 px radius shows, and inside the corner the pixels
+  are the desktop's (12, 12, 12), not black: WSLg composites the window's alpha.
+- **A transparent window has no system buttons**: Electron drops the title bar overlay on Linux,
+  its colour transparent or opaque, on X11 and Wayland.
+- **Wayland is no way out**: the hidden title bar is square there too, with a close button only.
+
+So on Linux CPR draws the frame and the buttons itself (decision 218).
