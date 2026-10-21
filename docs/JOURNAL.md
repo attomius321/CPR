@@ -4319,3 +4319,27 @@ window's corners kept, enlarged 3×).
 - **Wayland is no way out**: the hidden title bar is square there too, with a close button only.
 
 So on Linux CPR draws the frame and the buttons itself (decision 218).
+
+## N1d — rounded window corners on Linux (2026-10-21, branch `milestone/n1d-rounded-window`)
+
+On Linux CPR's window is transparent and its pages draw it: a 10 px radius with a hairline edge,
+square while maximized or full screen, and CPR's own minimize, maximize/restore and close. macOS
+and Windows keep their own corners and buttons.
+
+**Learned**:
+- **`setTitleBarOverlay` throws on a window without an overlay**, in the main process, and
+  Electron's error dialog then blocks the app: every app e2e passed its body and hung in its
+  teardown. Found by screenshotting the e2e display (ffmpeg's `x11grab`), not by the test's log.
+- **A rounded clip over the page costs**: `overflow: hidden` with a radius on the root took select
+  on Bitwarden's graph from 73–74 to 88–89 ms (3 rounds alternated). Rounding the strips at the
+  corners instead costs nothing measurable.
+- **A shell-less page is a title bar too**: `cpr pr` in the app would have had no buttons.
+- **A bisect in `dist/` survives `tsc -b`**: an emitted file edited by hand is not re-emitted
+  while its source is unchanged; restore it from a copy.
+
+**Verification**: tests first (`frame.test.ts`; 4 app e2e red before); `pnpm check` 1,080 tests;
+e2e 171 of 171. Bitwarden `737ee3f` without and with the frame: first paint 278–284 / 278–283 ms,
+select 73–89 / 72–88 ms, pan 63 fps both. On this machine the real window, opened by `cpr view`
+with a fresh app config and captured from Windows: rounded, the edge, CPR's buttons. Not verified:
+resizing from an edge, maximizing through the window manager, `cpr pr` in the app, macOS and
+Windows.
