@@ -4273,3 +4273,28 @@ select 74 → 73–89 ms, mark reviewed 34 → 33 ms, pan 63 fps both, 3,134 ele
 short as j walks 40 changes 21 of 75 both; `/history` first rows 93–122 → 93–96 ms. Screenshots
 before and after, dark and light. Not verified: Windows and macOS rendering; the Electron window
 beyond its e2e; real agents in the restyled workspace.
+
+## V31c — History, menus, dialogs and selects after Orca (2026-10-21, branch `milestone/v31-orca-look`)
+
+History's refs are names in the text's font on quiet chips, HEAD a success tint instead of a solid
+fill; menus are Orca's blurred glass, dialogs its dimmed and blurred overlay with a ghost Cancel;
+selects have a drawn chevron; every radius is on Orca's scale.
+
+**Learned**:
+- **`backdrop-filter` makes a containing block**, as `transform` does: with the blur on the row
+  menu, its `position: fixed` submenu was placed from the menu, not the window, and opened off
+  screen (y 1,467 in a 900 px window); 10 e2e tests in checkout, reviews and merges failed. The
+  glass now sits on a `::before` behind the items.
+- **Animate floating surfaces by opacity only**: the menus measure their own box to stay in the
+  window, and a scale would change it while they open.
+- **An inline block that hides its overflow** takes its bottom edge as its baseline: the commit
+  chip in a dialog's heading rose above the line once its border went.
+- **One slow run is not a regression**: select read 88–106 ms on V31c in a run right after the
+  e2e suite; five alternated rounds with `main` and V31b put it at 73–74 ms (88 once).
+
+**Verification**: tests first, red (the radius scale, 14 off; History's names, HEAD's tint, the
+menu's glass in the look spec); `pnpm check` 1,076 tests; e2e 169 of 169. Bitwarden `737ee3f`, 5
+rounds alternated: first paint 265–289 (`main`) → 261–295 ms, select 74 → 73–88 ms, mark reviewed
+33 → 33–34 ms; `/history` first rows 92–121 → 93–96 ms. Screenshots before and after, dark and
+light. Not verified: Windows and macOS rendering; the blur's cost on a slow GPU (two layers, only
+while a menu or dialog is open).

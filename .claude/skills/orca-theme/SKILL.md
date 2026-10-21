@@ -96,6 +96,11 @@ Found on `main` (`30cbd54`) at 1440×900; each line names a place to start.
   buttons, drawn as code chips, not underlined links.
 - **A node's border is part of its content box**: the symbol's 3 px side bar became a 1 px edge
   with 2 px more padding, so labels keep their width.
+- **`backdrop-filter` makes a containing block** for `position: fixed` descendants, as
+  `transform` does: on a menu it sent the fixed submenu off screen. Put the glass on a `::before`
+  behind the content (`isolation: isolate` on the menu, the layer at `z-index: -1`). Fade floating
+  surfaces by opacity only: the menus measure their own box to stay in the window.
+- **Every radius on the scale**: a unit test lists the allowed values; `inherit` passes.
 - **Screenshots of workspaces** need e2e's `serveWorkspaces` (a fake agent): a spec run with its
   own Playwright config, kept outside the repository (ESLint scans any `.ts` in `packages/`).
 

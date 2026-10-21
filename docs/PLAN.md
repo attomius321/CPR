@@ -444,7 +444,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V29 ✅ | A workbench | CPR grew page by page: workspaces live on one page (85 px a card), the agent's terminal gets 38–44 % of the window under 268 px of headings and links, the font is whatever the system gives (DejaVu Sans here), and subscription usage shows nowhere. Replanned on the person's ask: no Workspaces page; a sidenav with the pages (History, Settings) and the workspaces under them; the main area shows what is picked; the reference's dark, dense look with a bundled modern font pair; a status bar with each subscription's windows (Codex's live from its app server, 789 ms; Claude Code's from the endpoint its `/usage` reads, read only: 59 % and 53 % live when its copy on disk said 20 % and 22 %). Confirmed: Claude's live source, History, Geist and Geist Mono. Steps: V29a the shell, V29b the look, V29c usage, V29d the branch's changes (all built). See below. |
 | N1 ✅ | A native window | CPR is a page served by a command: a browser tab, no window of its own, nothing to open without a terminal. Asked: "feel more like a native application … Check tauri", on native Linux too. Measured: Tauri draws with WebKitGTK on Linux, where CPR's `j` takes 77–145 ms (first 360–415 ms) against Chromium's 33 ms on a 445-symbol diff; CPR is Node and tuned on Chromium. Planned with Electron (confirmed). Merged (2026-10-21): a window on `cpr view`'s server, opened by `cpr view` or the desktop's launcher (`cpr app install`), closing it stops the server; CPR's own title bar after Orca's. From the launcher to History's first paint 383–493 ms; `j` as in Chromium (32–33 ms). See below. |
 | V30 ✅ | Start a workspace on a page, with the agent's effort | Starting a workspace is the one thing still drawn over the shell: V18's dialog, 640×626 px at every window size, scrolling with More open at 1280×720 and 1440×900 (883 px of content); no effort is passed (here Claude Code runs at the person's `xhigh`, Codex at `medium`). Measured with the real agents: Claude Code's `--effort` and the effort on Codex's first `turn/start` hold for the session (after CPR's stop-and-resume reply, across app-server connections); `codex exec resume` drops it. Merged into main (2026-10-21): V30a, `/start` in the main area, the brief and the run in two columns, More open fitting at 1440×900; V30b, an Effort choice from the installed agent's own levels (Claude Code's `--help`, Codex's `model/list`), recorded with the workspace; a real Claude Code at `low` stayed at `low` through CPR's reply. See below. |
-| V31 | Orca's look, beyond its colours | V29b took the reference's tokens and font; the rest is older than its colours: one black for every surface (1.04:1 between page and sidenav, Orca 1.10:1), blue as the accent on 35 rules, 6 native checkboxes, 8 coloured side bars, bordered mono chips, a solid green HEAD. After Orca (`stablyai/orca`) through the `orca-theme` skill. Built (2026-10-21), not merged: V31a the tokens and the shell, V31b the diff page — blue a state only, no side bars, drawn checkboxes; Bitwarden's timings and History's first rows as `main`'s, e2e 168 of 168. V31c (History, Settings, a workspace, menus and dialogs) after the person has seen them. See below. |
+| V31 | Orca's look, beyond its colours | V29b took the reference's tokens and font; the rest is older than its colours: one black for every surface (1.04:1 between page and sidenav, Orca 1.10:1), blue as the accent on 35 rules, 6 native checkboxes, 8 coloured side bars, bordered mono chips, a solid green HEAD. After Orca (`stablyai/orca`) through the `orca-theme` skill. Built (2026-10-21), not merged: V31a the tokens and the shell, V31b the diff page, V31c History, menus, dialogs and selects — blue a state only, no side bars, drawn controls, one radius scale; Bitwarden's timings and History's first rows as `main`'s, e2e 169 of 169. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -8496,9 +8496,9 @@ level after `/effort` in a session's terminal (CPR does not read it back, decisi
 
 ### V31 — Orca's look, beyond its colours
 
-**Status:** V31a and V31b built (2026-10-21) on branch `milestone/v31-orca-look`, their "As
-built" and results below; not merged. Confirmed by the person ("Yes"); V31c waits for the person
-to see them. Decisions 212–217 proposed.
+**Status:** V31a, V31b and V31c built (2026-10-21) on branch `milestone/v31-orca-look`, their
+"As built" and results below; not merged. Confirmed by the person ("Yes"; V31c: "Continue with
+v31c"). Decisions 212–217 proposed.
 
 **Problem** (asked: "The interface still not feel well...feel oldish with a new look. Please look
 at Orca"). V29b took the reference's tokens and Geist; the rest of the look is older than its
@@ -8635,9 +8635,8 @@ tooltip component (titles stay); Orca's command palette; moving the legend (216)
 - **Two e2e besides the look spec** read a colour: `app.spec.ts` (the window's buttons take
   `--side`: new values) and `angular-v11.spec.ts` (a symbol's colour read from its left border:
   now its tone, compared with the legend's as before).
-- **Left for V31c**: 13 rules on the old 6 px radius (History's refs, menus, dialogs, the thread,
-  the start page's selects), History's solid HEAD badge and mono branch names, the kind picker,
-  menus and dialogs as Orca's.
+- **Left for V31c** (built since, below): 13 rules on the old 6 px radius, History's solid HEAD
+  badge and mono branch names, the kind picker, menus and dialogs as Orca's.
 
 **Results.** Tests first, red on `main`: 7 unit (Orca's values in both themes, the new tokens,
 `--moved` in 29 accent rules, `accent-color`, 7 side bars) and 3 e2e (`look.spec.ts`'s colours, the
@@ -8655,6 +8654,33 @@ Screenshots, dark and light at 1440×900, before and after: the shell with three
 History, Settings, Start, and the V30b diff (the map, a selection, findings). Not verified: Windows
 and macOS rendering (antialiasing, scrollbars); CPR's Electron window beyond its e2e; real agents
 in the restyled workspace.
+
+#### As built (V31c)
+
+- **History**: refs are names in the text's font on raised chips (SHAs stay mono); HEAD's badge
+  and title chip take the success tint, the badge's edge an inset shadow so every badge keeps
+  one height; the two rules that drew marks light on the solid badge are gone. The branches
+  panel's and a workspace head's branch names in sans.
+- **Menus**: Orca's glass. The blur sits on a `::before` layer behind the items: on the menu
+  itself, `backdrop-filter` made it the containing block of its `position: fixed` submenu, which
+  opened off screen (y 1,467 in a 900 px window; 10 checkout, review and merge e2e tests failed).
+  Faded in by opacity only: a scale would change the boxes the menus measure to stay in the
+  window. Items 12 px, weight 450, as Orca's.
+- **Dialogs**: a dimmed, blurred backdrop, Orca's glass and shadow; Cancel a ghost button (Orca's
+  rule: backing out stays quiet). The target's chip in the heading is aligned by hand: `.ref`
+  hides its overflow, which puts an inline block's baseline at its bottom edge.
+- **Selects**: a field with lucide's chevron, drawn from a token per theme (a data URI cannot read
+  a colour token).
+- **Radii**: every `border-radius` on Orca's scale (0, 4, 8, 10, 11, 14 px, round, or `inherit`):
+  14 declarations moved; a unit test keeps it.
+
+**Results (V31c).** Tests first, red: the radius scale (14 off), and in the look spec History's
+names in the text's font, HEAD a tint, the menu's glass. `pnpm check` 1,076 tests; e2e 169 of 169.
+Against `main`'s build, 5 rounds alternated with V31b's: Bitwarden first paint 265–289 (`main`),
+257–296 (V31b), 261–295 ms (V31c); select 74, 72–74, 73–88 ms; mark reviewed 33, 33–34, 33–34 ms;
+`/history` first rows 92–121 → 93–96 ms. A first run read select at 88–106 ms on V31c; five
+alternated rounds put it at `main`'s. Screenshots before and after, dark and light: History, a
+row's menu and submenu, a confirmation dialog, a workspace's thread, Start, Settings.
 
 ### Phase 1 milestones
 
