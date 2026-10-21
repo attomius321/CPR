@@ -148,7 +148,7 @@ as `--browser` does.
   the front. A desktop's apps do not read your shell's profile, so `cpr app install` records the
   node, the CLI and the `PATH` (`~/.config/cpr/app.json`) that `cpr view` will need to find git
   and your agents; each `cpr view` that opens CPR's window records them again.
-- **Its own title bar**, after Orca's: CPR and the repository, the sidenav's fold and back and
+- **Its own title bar**: CPR and the repository, the sidenav's fold and back and
   forward over the sidenav; the page's tabs beside them (a workspace's Terminal, Thread and Brief,
   History's All branches and This branch); the panel's toggle and your system's window buttons
   at the end, in CPR's colours, light or dark as the theme is. Drag its free space to move the

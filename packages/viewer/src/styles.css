@@ -11,10 +11,10 @@
 }
 
 /* Dark unless the person chose light or the system's (decision 179; index.html sets data-theme
-   before the first paint). Orca's since V31 (the orca-theme skill's tokens.md): the content darkest,
-   the chrome lifted, colour for state only. Text and muted at least 4.5:1 on the four backgrounds,
-   states, edges and the focus ring 3:1 (test/tokens.test.ts); where Orca's value fell short, the
-   nearest neutral that passes. Lines only separate regions: hairlines. */
+   before the first paint). CPR's style since V31 (the cpr-style skill's tokens.md): the content
+   darkest, the chrome lifted, colour for state only. Text and muted at least 4.5:1 on the four
+   backgrounds, states, edges and the focus ring 3:1 (test/tokens.test.ts). Lines only separate
+   regions: hairlines. */
 :root,
 :root[data-theme='dark'] {
   --bg: #0a0a0a;
@@ -35,7 +35,7 @@
   --error: #ff6568;
   --warning: #eab308;
   --info: #4493f8;
-  /* Commit graph lanes after the current branch's (V10): Orca's, and one more. */
+  /* Commit graph lanes after the current branch's (V10). */
   --lane-1: #b66dff;
   --lane-2: #40b0a6;
   --lane-3: #ffb000;
@@ -63,7 +63,7 @@
   --overlay: rgb(0 0 0 / 55%);
   /* A select's chevron (lucide's, ISC) in the muted colour: a data URI cannot read a token. */
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1a1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  /* A diff's lines, as Orca's: a ground for the line, a stronger one for its numbers. */
+  /* A diff's lines: a ground for the line, a stronger one for its numbers. */
   --added-ground: color-mix(in srgb, var(--added) 16%, transparent);
   --added-gutter: color-mix(in srgb, var(--added) 30%, transparent);
   --removed-ground: color-mix(in srgb, var(--removed) 18%, transparent);
@@ -198,7 +198,7 @@ body {
   letter-spacing: 0;
 }
 
-/* Thin, neutral scrollbars (Orca's). */
+/* Thin, neutral scrollbars. */
 * {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--muted) 34%, transparent) transparent;
@@ -251,7 +251,7 @@ select {
   border-color: transparent;
 }
 
-/* Selects as Orca's (V31c): a field's edge and a drawn chevron. */
+/* Selects (V31c): a field's edge and a drawn chevron. */
 select {
   appearance: none;
   height: 28px;
@@ -335,7 +335,7 @@ select option {
   white-space: nowrap;
 }
 
-/* Metadata (V31, Orca's secondary chip): raised, muted, no border. */
+/* Metadata (V31): raised, muted, no border. */
 .chip {
   background: var(--raised);
   color: var(--muted);
@@ -362,7 +362,7 @@ select option {
 }
 
 /* A state, tinted in its colour, the words in it (V29b: white on amber read at 2.4:1); round, a
-   10 % fill and a 25 % edge, as Orca's status badges (V31). */
+   10 % fill and a 25 % edge (V31). */
 .badge {
   padding: 0 8px;
   border: 1px solid color-mix(in srgb, var(--badge) 25%, transparent);
@@ -397,7 +397,7 @@ select option {
   color: var(--text);
 }
 
-/* Drawn as Orca's (V31): the <input> stays, for the keyboard, its label and screen readers. */
+/* Drawn (V31): the <input> stays, for the keyboard, its label and screen readers. */
 input[type='checkbox'],
 input[type='radio'] {
   appearance: none;
@@ -561,7 +561,7 @@ input[type='radio']:disabled {
   font-size: 16px;
 }
 
-/* Buttons (V29b): 28 px; the main action in Orca's primary (V31), the others outlined. */
+/* Buttons (V29b): 28 px; the main action in the primary colour (V31), the others outlined. */
 .button {
   display: inline-flex;
   align-items: center;
@@ -620,7 +620,7 @@ input[type='radio']:disabled {
 
 /* ---- symbol nodes ------------------------------------------------------------------- */
 
-/* Its kind as Orca's git decorations: a tinted ground and edge, not a side bar (V31). */
+/* Its kind as a tinted ground and edge, not a side bar (V31). */
 .symbol {
   --tone: var(--context);
   height: 100%;
@@ -1704,7 +1704,7 @@ input[type='radio']:disabled {
   line-height: 1.8;
 }
 
-/* A key, as Orca's key caps. */
+/* A key, as a key cap. */
 kbd {
   display: inline-block;
   min-width: 16px;
@@ -2213,7 +2213,7 @@ kbd {
   width: 40%;
 }
 
-/* A segmented control, as Orca's tabs: a raised track, the one on lifted out of it (V31). */
+/* A segmented control: a raised track, the one on lifted out of it (V31). */
 .scopes {
   display: inline-flex;
   gap: 2px;
@@ -2334,7 +2334,7 @@ kbd {
   color: var(--added);
 }
 
-/* Menus as Orca's (V31c): a blurred glass over the page, faded in. The glass is a layer behind
+/* Menus (V31c): a blurred glass over the page, faded in. The glass is a layer behind
    the items: a backdrop-filter on the menu itself would make it the containing block of its
    fixed submenu, which then opened off screen. */
 .checkout-menu,
@@ -2494,7 +2494,7 @@ kbd {
   backdrop-filter: blur(2px);
 }
 
-/* Orca's dialog (V31c): its glass, its edge and shadow, faded in. */
+/* A dialog (V31c): glass, an edge and a shadow, faded in. */
 .dialog {
   width: min(520px, 100%);
   padding: 20px 24px;
@@ -2533,7 +2533,7 @@ kbd {
   font-size: 13px;
 }
 
-/* Backing out stays quiet (Orca's rule): a ghost button, no colour. */
+/* Backing out stays quiet: a ghost button, no colour. */
 .dialog-buttons .link {
   display: inline-flex;
   align-items: center;
@@ -2876,7 +2876,7 @@ kbd {
   white-space: nowrap;
 }
 
-/* HEAD stands out (V11): its badge in Orca's success tint ("HEAD → main"; V31c, was solid), a
+/* HEAD stands out (V11): its badge in the success tint ("HEAD → main"; V31c, was solid), a
    tinted row with a bold subject, a ringed dot. The edge is a shadow: badges keep one height. */
 .ref-head {
   background: color-mix(in srgb, var(--added) 12%, transparent);
@@ -3547,7 +3547,7 @@ button.workspace-about {
   margin-top: 6px;
 }
 
-/* What the agent waits on: Orca's warning tint. */
+/* What the agent waits on: the warning tint. */
 .thread-waits {
   padding: 6px 10px;
   border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent);
@@ -4157,7 +4157,7 @@ p.settings-placeholders {
   margin: 2px 0;
 }
 
-/* Each a button that inserts it: a code chip, as Orca's prompt pills (V31). */
+/* Each a button that inserts it: a code chip (V31). */
 .settings-placeholders .link {
   padding: 0 5px;
   border: 1px solid var(--line);
@@ -4552,7 +4552,7 @@ p.settings-placeholders {
   background: color-mix(in srgb, var(--raised) 40%, transparent);
 }
 
-/* The one shown, as Orca's current card: a wash of the text and a brighter edge. */
+/* The one shown: a wash of the text and a brighter edge. */
 .sidenav .workspace-row.picked {
   border-color: var(--selected-line);
   background: var(--selected);
@@ -4608,7 +4608,7 @@ p.settings-placeholders {
   line-height: 14px;
 }
 
-/* The branch as git names it: plain, not History's badge; in the text's font, as Orca's (V31). */
+/* The branch as git names it: plain, not History's badge; in the text's font (V31). */
 .sidenav .workspace-branch .ref-branch {
   padding: 0;
   border: 0;
@@ -5300,7 +5300,7 @@ button.changes-file:hover {
   color: var(--removed);
 }
 
-/* ---- CPR's window (N1c): its title bar, after Orca's; in the app only ----------------------
+/* ---- CPR's window (N1c): its title bar; in the app only ----------------------
    `data-app` on <html> is set before the first paint where the app's preload says so: in a
    browser none of this applies. 38 px, the sidenav's colour, cut along the window's columns.
    The system's buttons lie over its right end (Windows, Linux: `env(titlebar-area-*)` says
@@ -5424,7 +5424,7 @@ button.changes-file:hover {
   padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 8px);
 }
 
-/* The page's tabs, moved up: Orca's, flat, the picked one raised. */
+/* The page's tabs, moved up: flat, the picked one raised. */
 .titlebar .workspace-views {
   gap: 2px;
   padding: 0;

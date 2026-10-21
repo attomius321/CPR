@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './cpr.js';
 
 // The look (V29b): dark by default, light or the system's chosen in Settings for this browser;
-// the bundled fonts, served by CPR; compact cards in the sidenav. Orca's colours since V31.
+// the bundled fonts, served by CPR; compact cards in the sidenav. CPR's style since V31.
 let cpr: RunningWorkspaces;
 const errors: string[] = [];
 
@@ -105,9 +105,7 @@ test("the fonts are CPR's: every request goes to its server, and History fetches
   expect(bytes).toBeLessThanOrEqual(55_000);
 });
 
-test("the chrome is lifted above the content, as Orca's: the sidenav and the status bar", async ({
-  page,
-}) => {
+test('the chrome is lifted above the content: the sidenav and the status bar', async ({ page }) => {
   cpr = await serveWorkspaces();
   await page.goto(`${cpr.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible();
@@ -126,7 +124,7 @@ test("the chrome is lifted above the content, as Orca's: the sidenav and the sta
   );
 });
 
-test("History after Orca: names in the text's font, HEAD a tint, menus and dialogs that float", async ({
+test("History in CPR's style: names in the text's font, HEAD a tint, menus and dialogs that float", async ({
   page,
 }) => {
   cpr = await serveWorkspaces();
@@ -150,7 +148,7 @@ test("History after Orca: names in the text's font, HEAD a tint, menus and dialo
   };
   expect(alpha(await style('.commit.head .ref-head', 'background-color'))).toBeLessThan(0.5);
 
-  // The row's menu floats over the page as Orca's: a blurred, rounded glass.
+  // The row's menu floats over the page: a blurred, rounded glass.
   await head.click({ button: 'right', position: { x: 120, y: 10 } });
   await expect(page.getByRole('menu')).toBeVisible();
   expect(await style('.checkout-menu', 'border-radius')).toBe('11px');

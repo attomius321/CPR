@@ -74,7 +74,7 @@ node packages/cli/dist/bin.js view [<base> [head]]    # opens the viewer (no rev
 |---|---|
 | Anything | `pnpm check` and `pnpm build` |
 | Analysis: core extraction, references, detectors, or a plugin | `regression-check` skill: the `r1` set against `main`; `bitwarden` and `qwik-docs` when references or a plugin change |
-| Viewer | `pnpm test:e2e`; `viewer-check` skill on a real graph (screenshot, first paint); a look change follows the `orca-theme` skill |
+| Viewer | `pnpm test:e2e`; `viewer-check` skill on a real graph (screenshot, first paint); a look change follows the `cpr-style` skill |
 | Graph JSON | schema + `docs/graph-schema.md` + version bump (see `packages/core/CLAUDE.md`) |
 
 IMPORTANT: fixtures are not enough for analysis changes. Q1 passed every fixture and still shipped
@@ -125,6 +125,6 @@ unless the change says otherwise — prove it with the comparisons.
 - `regression-check` — compare a branch with `main` on ky, zod, vite, RealWorld, Bitwarden, Qwik.
 - `framework-plugin` — add or change a framework plugin (`@cpr/plugin-*`).
 - `viewer-check` — check viewer changes in a browser: e2e, screenshots, first paint on real graphs.
-- `orca-theme` — the viewer's look after Orca: tokens (contrast checked), control recipes, dated
-  patterns to replace; for any restyle or new UI in `packages/viewer`.
+- `cpr-style` — CPR's style: tokens (contrast checked), control recipes, dated patterns to
+  replace; for any restyle or new UI in `packages/viewer`.
 - `cpr-review` — act on a review the user left on your branch in CPR (`cpr/AGENTS.md`).

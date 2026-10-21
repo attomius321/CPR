@@ -1,7 +1,7 @@
 // Screenshots of a running `cpr view`'s pages, dark and light, for a restyle's before and after.
 // Usage:
 //   node packages/cli/dist/bin.js view [<base> [head]] --no-open --port 47311 &
-//   node .claude/skills/orca-theme/shots.mjs http://127.0.0.1:47311 <out dir> /history /settings …
+//   node .claude/skills/cpr-style/shots.mjs http://127.0.0.1:47311 <out dir> /history /settings …
 // Options: --width 1440 (repeatable) --height 900 --theme dark|light (repeatable; default both).
 // Writes <out>/<page>-<width>-<theme>.png; the theme is the one Settings keeps (cpr.viewer.theme).
 import { existsSync, mkdirSync } from 'node:fs';

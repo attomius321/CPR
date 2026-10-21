@@ -67,8 +67,8 @@ describe('the tokens (V29b)', () => {
     expect(systemLight).toEqual(light);
   });
 
-  // V31: Orca's (the orca-theme skill's tokens.md): the content darkest, the chrome lifted.
-  it('are Orca’s in the dark theme', () => {
+  // V31: CPR's style (the cpr-style skill's tokens.md): the content darkest, the chrome lifted.
+  it('are the style’s in the dark theme', () => {
     expect(Object.fromEntries(BACKGROUNDS.map((t) => [t, dark.get(t)]))).toEqual({
       '--bg': '#0a0a0a',
       '--side': '#171717',
@@ -80,7 +80,7 @@ describe('the tokens (V29b)', () => {
     expect(dark.get('--line')).toBe('#2a2a2a');
   });
 
-  it('are Orca’s in the light theme: a white page, grey chrome', () => {
+  it('are the style’s in the light theme: a white page, grey chrome', () => {
     expect(Object.fromEntries(BACKGROUNDS.map((t) => [t, light.get(t)]))).toEqual({
       '--bg': '#ffffff',
       '--side': '#fafafa',
@@ -137,7 +137,7 @@ const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
 }));
 
 describe('colour is for state (V31, decision 214)', () => {
-  // Orca keeps colour for state; selection, links and pressed controls are neutral. Blue is the
+  // Colour is for state; selection, links and pressed controls are neutral. Blue is the
   // moved kind and the states that share its hue: an agent working, "since", the current lane.
   const STATE_RULES =
     /tone-moved|minimap-moved|since|review-new|working|merging|merge-tone-wait|lane-0/;
@@ -165,8 +165,8 @@ describe('colour is for state (V31, decision 214)', () => {
   });
 });
 
-describe('the geometry is Orca’s (V31c)', () => {
-  // Orca's radii: 4 px chips and keys, 8 px controls and rows, 10 px dialogs and popovers, 11 px
+describe('the geometry is the style’s (V31c)', () => {
+  // The radii: 4 px chips and keys, 8 px controls and rows, 10 px dialogs and popovers, 11 px
   // menus, 14 px cards, round badges and dots; `inherit` takes its parent's.
   const SCALE = new Set(['0', '4px', '8px', '10px', '11px', '14px', '9999px', '50%', 'inherit']);
 
