@@ -4121,3 +4121,6 @@ code, links, and HTML as text. The styles were the thread's (`.thread-markdown`)
 tab): a structured brief's headings, list items, inline code and an HTML tag kept as text; a
 pre-V24 brief's two paragraphs. Then 1,054 unit tests, format, lint, typecheck, build, 159 of
 159 e2e. Screenshots of the tab at 1440 × 900, dark and light.
+
+Merged into main (2026-10-21), no conflicts (`main` had not moved). `main` verified after the
+merge: frozen install, 1,054 unit tests, format, lint, typecheck, build, 159 of 159 e2e.
