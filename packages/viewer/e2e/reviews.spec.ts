@@ -307,7 +307,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await expect(target).toHaveValue('main');
   await expect(target.locator('option')).toHaveText(['main']);
   const main = git('rev-parse', 'main');
-  await page.getByRole('button', { name: 'Merge into main' }).click();
+  await page.getByRole('button', { name: 'Merge into', exact: true }).click();
   // No check in this repository: merged in Symbiote's worktree, waiting for Land; main unchanged.
   await expect(page.locator('p.merge-control')).toHaveText(
     /^Merged, not checked: no check to run: set merge.checks in symbiote\/config.json/,
@@ -369,7 +369,7 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   await expect(page.locator('.finished')).toContainText(`Approved ${short(cube)}`);
   // Symbiote's merge stops at the conflict (V26a): nothing changes, the file is named.
   const main = git('rev-parse', 'main');
-  await page.getByRole('button', { name: 'Merge into main' }).click();
+  await page.getByRole('button', { name: 'Merge into', exact: true }).click();
   await expect(page.locator('p.merge-control')).toHaveText('Conflicts with main in 1 file');
   expect(git('rev-parse', 'main')).toBe(main);
   await page.goto(`${symbiote.url}?merge=agent`);
