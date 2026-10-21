@@ -149,6 +149,15 @@ describe('colour is for state (V31, decision 214)', () => {
     expect(accent).toEqual([]);
   });
 
+  it('marks no row with a coloured side bar (a blockquote keeps its line)', () => {
+    const bars = rules
+      .filter((rule) =>
+        /border-left:\s*[2-4]px solid(?! var\(--line\))|inset [2-4]px 0 0/.test(rule.body),
+      )
+      .map((rule) => rule.selector);
+    expect(bars).toEqual([]);
+  });
+
   it('draws its checkboxes: no browser accent colour', () => {
     expect(
       rules.filter((rule) => rule.body.includes('accent-color')).map((r) => r.selector),

@@ -61,6 +61,11 @@
   --dialog-bg: rgb(23 23 23 / 96%);
   --dialog-shadow: 0 24px 72px rgb(0 0 0 / 55%), inset 0 1px 0 rgb(255 255 255 / 6%);
   --overlay: rgb(0 0 0 / 55%);
+  /* A diff's lines, as Orca's: a ground for the line, a stronger one for its numbers. */
+  --added-ground: color-mix(in srgb, var(--added) 16%, transparent);
+  --added-gutter: color-mix(in srgb, var(--added) 30%, transparent);
+  --removed-ground: color-mix(in srgb, var(--removed) 18%, transparent);
+  --removed-gutter: color-mix(in srgb, var(--removed) 32%, transparent);
   color-scheme: dark;
 }
 
@@ -106,6 +111,10 @@
   --dialog-bg: rgb(255 255 255 / 96%);
   --dialog-shadow: 0 20px 60px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
   --overlay: rgb(0 0 0 / 55%);
+  --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
+  --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
+  --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
+  --removed-gutter: color-mix(in srgb, var(--removed) 22%, transparent);
   color-scheme: light;
 }
 
@@ -152,6 +161,10 @@
     --dialog-bg: rgb(255 255 255 / 96%);
     --dialog-shadow: 0 20px 60px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
     --overlay: rgb(0 0 0 / 55%);
+    --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
+    --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
+    --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
+    --removed-gutter: color-mix(in srgb, var(--removed) 22%, transparent);
     color-scheme: light;
   }
 }
@@ -576,18 +589,19 @@ input[type='radio']:disabled {
 
 /* ---- symbol nodes ------------------------------------------------------------------- */
 
+/* Its kind as Orca's git decorations: a tinted ground and edge, not a side bar (V31). */
 .symbol {
   --tone: var(--context);
   height: 100%;
-  padding: 6px 10px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--tone);
-  border-radius: 6px;
+  padding: 6px 10px 6px 12px;
+  background: color-mix(in srgb, var(--tone) 9%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--tone) 55%, var(--line));
+  border-radius: 8px;
 }
 
 .symbol.selected {
   outline: 2px solid var(--text);
+  outline-offset: 1px;
 }
 
 .tone-added {
@@ -618,6 +632,8 @@ input[type='radio']:disabled {
 .symbol.tone-context,
 .symbol.tone-external,
 .symbol.tone-unknown {
+  background: var(--panel);
+  border-color: var(--line);
   opacity: 0.75;
 }
 
@@ -669,8 +685,11 @@ input[type='radio']:disabled {
   text-overflow: ellipsis;
 }
 
+/* What changed in a symbol ("signature"): a badge in its kind's colour. */
 .tag {
-  border: 1px solid var(--tone);
+  border: 1px solid color-mix(in srgb, var(--tone) 25%, transparent);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
   color: var(--tone);
   line-height: 16px;
   font-size: 11px;
@@ -683,7 +702,7 @@ input[type='radio']:disabled {
   padding: 6px 10px;
   background: color-mix(in srgb, var(--panel) 70%, transparent);
   border: 1px dashed var(--context);
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
 }
 
@@ -724,7 +743,7 @@ input[type='radio']:disabled {
 .file-box {
   height: 100%;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: color-mix(in srgb, var(--panel) 45%, transparent);
 }
 
@@ -752,9 +771,9 @@ input[type='radio']:disabled {
 
 .project-frame {
   height: 100%;
-  border: 1px solid color-mix(in srgb, var(--text) 28%, var(--line));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--text) 3%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text) 16%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text) 2%, transparent);
 }
 
 /* Only unchanged neighbours come from it: lighter, with a smaller head. */
@@ -785,8 +804,8 @@ input[type='radio']:disabled {
 .project-kind {
   flex: none;
   padding: 0 6px;
-  border: 1px solid var(--line);
   border-radius: 4px;
+  background: var(--raised);
   color: var(--muted);
   font-size: 11px;
 }
@@ -875,7 +894,7 @@ input[type='radio']:disabled {
   --xy-minimap-background-color: var(--side);
   --xy-minimap-mask-background-color: color-mix(in srgb, var(--bg) 60%, transparent);
   --xy-controls-button-background-color: var(--panel);
-  --xy-controls-button-background-color-hover: var(--raised);
+  --xy-controls-button-background-color-hover: var(--hover);
   --xy-controls-button-color: var(--muted);
   --xy-controls-button-color-hover: var(--text);
   --xy-controls-button-border-color: var(--line);
@@ -886,14 +905,16 @@ input[type='radio']:disabled {
 .react-flow__controls {
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 10px;
+  box-shadow: var(--shadow-lift);
 }
 
 .react-flow__minimap {
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--side);
+  box-shadow: var(--shadow-lift);
 }
 
 .minimap-added {
@@ -1049,7 +1070,7 @@ input[type='radio']:disabled {
 .react-flow.map .project-frame {
   border-color: transparent;
   background: transparent;
-  box-shadow: 0 0 0 calc(2px / var(--cpr-zoom, 1)) color-mix(in srgb, var(--text) 35%, var(--line));
+  box-shadow: 0 0 0 calc(2px / var(--cpr-zoom, 1)) color-mix(in srgb, var(--text) 25%, var(--line));
 }
 
 .react-flow.map .project-frame.context {
@@ -1067,7 +1088,7 @@ input[type='radio']:disabled {
 
 .react-flow.map .project-name {
   padding: 3px 8px;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: visible;
   background: color-mix(in srgb, var(--panel) 90%, transparent);
   font-size: 26px;
@@ -1095,7 +1116,7 @@ input[type='radio']:disabled {
   display: flex;
   gap: 14px;
   padding: 5px 16px;
-  background: var(--bg);
+  background: var(--side);
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 11px;
@@ -1108,7 +1129,7 @@ input[type='radio']:disabled {
   width: 8px;
   height: 8px;
   margin-right: 5px;
-  border-radius: 2px;
+  border-radius: 50%;
   background: var(--tone);
   vertical-align: -1px;
 }
@@ -1138,7 +1159,7 @@ input[type='radio']:disabled {
 .legend-project::before {
   width: 14px;
   background: transparent;
-  border: 1px solid color-mix(in srgb, var(--text) 28%, var(--line));
+  border: 1px solid color-mix(in srgb, var(--text) 16%, var(--line));
   border-radius: 3px;
 }
 
@@ -1202,7 +1223,7 @@ input[type='radio']:disabled {
 .panel h3 {
   margin: 16px 0 8px;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--muted);
 }
 
@@ -1214,7 +1235,7 @@ input[type='radio']:disabled {
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: none;
   color: var(--muted);
   font-size: 18px;
@@ -1234,7 +1255,7 @@ input[type='radio']:disabled {
 .sig {
   display: block;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg);
   font-size: 12px;
   white-space: pre-wrap;
@@ -1246,18 +1267,19 @@ input[type='radio']:disabled {
 }
 
 .sig-del {
-  background: color-mix(in srgb, var(--removed) 14%, var(--bg));
+  background: color-mix(in srgb, var(--removed) 18%, var(--bg));
 }
 
 .sig-add {
-  background: color-mix(in srgb, var(--added) 14%, var(--bg));
+  background: color-mix(in srgb, var(--added) 16%, var(--bg));
 }
 
 .code {
   overflow-x: auto;
   tab-size: 2;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 10px;
+  background: var(--bg);
   font: 12px/1.5 var(--mono);
 }
 
@@ -1273,11 +1295,21 @@ input[type='radio']:disabled {
 }
 
 .row-add {
-  background: color-mix(in srgb, var(--added) 14%, transparent);
+  background: var(--added-ground);
 }
 
 .row-del {
-  background: color-mix(in srgb, var(--removed) 14%, transparent);
+  background: var(--removed-ground);
+}
+
+.row-add .ln,
+.row-add .mark {
+  background: var(--added-gutter);
+}
+
+.row-del .ln,
+.row-del .mark {
+  background: var(--removed-gutter);
 }
 
 .ln {
@@ -1297,17 +1329,8 @@ input[type='radio']:disabled {
   padding: 8px 10px;
   margin-bottom: 6px;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--info);
-  border-radius: 4px;
+  border-radius: 10px;
   background: var(--bg);
-}
-
-.finding-error {
-  border-left-color: var(--error);
-}
-
-.finding-warning {
-  border-left-color: var(--warning);
 }
 
 .finding p {
@@ -1315,7 +1338,7 @@ input[type='radio']:disabled {
 }
 
 .finding-rule {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .neighbours {
@@ -1332,8 +1355,6 @@ input[type='radio']:disabled {
   border: 0;
   background: none;
   color: var(--text);
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
   text-underline-offset: 3px;
   font: inherit;
   cursor: pointer;
@@ -1346,7 +1367,7 @@ input[type='radio']:disabled {
 }
 
 .link:hover:not(:disabled) {
-  text-decoration-color: currentColor;
+  text-decoration: underline;
 }
 
 .link:disabled {
@@ -1380,7 +1401,7 @@ input[type='radio']:disabled {
   border-bottom: 2px solid transparent;
   background: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
 }
@@ -1601,11 +1622,12 @@ input[type='radio']:disabled {
 .finding-row {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 2px 8px;
-  width: 100%;
-  padding: 8px 12px;
-  border: 0;
-  border-left: 3px solid var(--info);
+  gap: 4px 8px;
+  width: calc(100% - 12px);
+  margin: 1px 6px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: none;
   color: var(--text);
   font: inherit;
@@ -1613,31 +1635,24 @@ input[type='radio']:disabled {
   cursor: pointer;
 }
 
-.finding-row.finding-error {
-  border-left-color: var(--error);
-}
-
-.finding-row.finding-warning {
-  border-left-color: var(--warning);
-}
-
 .finding-row:hover {
   background: var(--hover);
 }
 
 .finding-row.current {
+  border-color: var(--selected-line);
   background: var(--selected);
 }
 
 .finding-row-rule {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .finding-row-project {
   margin-left: 8px;
   padding: 0 6px;
-  border: 1px solid var(--line);
   border-radius: 4px;
+  background: var(--raised);
   color: var(--muted);
   font-size: 11px;
   font-weight: 400;
@@ -1686,8 +1701,9 @@ kbd {
   height: 28px;
   padding: 0 10px;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--panel);
+  border-radius: 8px;
+  background: var(--input-bg);
+  box-shadow: var(--shadow-lift);
   color: var(--text);
   font-size: 12px;
   font-weight: 500;
@@ -2057,7 +2073,7 @@ kbd {
 }
 
 .commit.cursor {
-  box-shadow: inset 2px 0 0 var(--muted);
+  box-shadow: inset 0 0 0 1px var(--selected-line);
 }
 
 .commit.picked {
@@ -2914,7 +2930,7 @@ kbd {
   height: 26px;
   padding: 0 6px 0 8px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--input-bg);
   box-shadow: var(--shadow-lift);
   color: var(--text);
@@ -3463,9 +3479,12 @@ button.workspace-about {
   margin-top: 6px;
 }
 
+/* What the agent waits on: Orca's warning tint. */
 .thread-waits {
   padding: 6px 10px;
-  border-left: 3px solid var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
   font-size: 13px;
   overflow-wrap: anywhere;
 }
@@ -3709,11 +3728,19 @@ button.workspace-about {
   list-style: square;
 }
 
-/* The merge queue (V26a): one row per merge, its tone on its left edge. */
+/* The merge queue (V26a): one row per merge, its tone as the dot before it (V31). */
 .merge-row {
   padding: 8px 14px;
   border-top: 1px solid var(--line);
-  border-left: 3px solid var(--merge-tone, var(--line));
+}
+
+.merge-row-head::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--merge-tone, var(--faint));
 }
 
 .merge-row:first-child {
@@ -3779,8 +3806,10 @@ button.workspace-about {
 }
 
 p.merge-control {
-  padding-left: 8px;
-  border-left: 3px solid var(--merge-tone, var(--line));
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--merge-tone, var(--muted)) 25%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--merge-tone, var(--muted)) 10%, transparent);
 }
 
 /* A resolution to review (V26c): each region's sides, then what was written in its place. */

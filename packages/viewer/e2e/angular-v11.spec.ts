@@ -109,9 +109,17 @@ const swatch = (page: Page, tone: string) =>
     .locator(`.legend-item.tone-${tone}`)
     .evaluate((el) => getComputedStyle(el, '::before').backgroundColor);
 
-/** A symbol's colour on the canvas: its left edge. */
+/** A symbol's colour on the canvas: its tone, which its ground and edge are mixed from (V31). */
 const colourOf = (symbol: Locator) =>
-  symbol.locator('.symbol').evaluate((el) => getComputedStyle(el).borderLeftColor);
+  symbol.locator('.symbol').evaluate((el) => {
+    // Drawn by a probe, for the page's own `rgb(…)` of whatever the token says.
+    const probe = document.createElement('span');
+    probe.style.color = getComputedStyle(el).getPropertyValue('--tone').trim();
+    el.append(probe);
+    const rgb = getComputedStyle(probe).color;
+    probe.remove();
+    return rgb;
+  });
 
 async function rect(locator: Locator) {
   const r = await locator.boundingBox();
