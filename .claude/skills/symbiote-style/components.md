@@ -333,8 +333,9 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   actions on the right as 28 px ghost or outline buttons with icons; view toggles grouped.
 - Status bar: 24 px, `--side`, `--line` above, 13 px; each segment a button (2 × 4 px padding, 4 px
   radius, hover `color-mix(in srgb, var(--raised) 70%, transparent)`). Usage bars: 4 px high,
-  round, track `--raised`, fill `color-mix(in srgb, var(--muted) 40%, transparent)` under 60 %,
-  `--warning` from 60 %, `--error` from 80 %.
+  round, track `--raised`, fill `--added` under 80 %, `--warning` from 80 % or when the vendor
+  warns, `--removed` at 100 % or a reached limit (V29c's tones: the person wants the colours, not
+  grey).
 - Terminal: `#000` edge to edge; its title row text `rgb(255 255 255 / 52%)`.
 - Empty state: a 28 px icon in `--faint`, a 14 px weight 500 line, 12 px `--muted` text, and the
   action that fills it (a primary or outline button).
