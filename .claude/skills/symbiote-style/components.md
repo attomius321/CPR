@@ -6,11 +6,14 @@ existing class where one already plays the role.
 
 ## Base
 
+Every text is sized from the type scale (`--size-*`, [tokens.md](tokens.md)), never a px value:
+`test/tokens.test.ts` fails on one. Sizes below are the tokens' values.
+
 ```css
 body {
   background: var(--bg);
   color: var(--text);
-  font: 13px/1.45 var(--sans);
+  font: var(--size-body)/1.45 var(--sans);
   letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -76,8 +79,8 @@ outline (standalone toolbar actions), ghost (icon buttons, row triggers, Cancel)
 
 .btn-danger { background: color-mix(in srgb, var(--error) 60%, transparent); color: #fff; } /* dark; light: var(--error) */
 
-.btn-sm { height: 28px; padding: 0 10px; gap: 4px; font-size: 12px; }   /* in a 36 px toolbar */
-.btn-xs { height: 24px; padding: 0 8px; gap: 4px; font-size: 12px; }    /* in a 28 px row */
+.btn-sm { height: 28px; padding: 0 10px; gap: 4px; font-size: var(--size-small); }   /* in a 36 px toolbar */
+.btn-xs { height: 24px; padding: 0 8px; gap: 4px; font-size: var(--size-small); }    /* in a 28 px row */
 .btn-icon { width: 28px; height: 28px; padding: 0; }                     /* 24 px in rows */
 ```
 
@@ -105,9 +108,9 @@ A search *button* that opens a palette is not a text field: no border,
 `background: color-mix(in srgb, var(--text) 5%, transparent)`, hover 8 %, icon in `--faint`,
 keycaps shown on hover only.
 
-Form anatomy: the label (13 px, 500) and a description (12 px,
+Form anatomy: the label (14 px, 500) and a description (13 px,
 `--muted`) 4 px apart, then the control 8 px below; metadata such as "561 of 8,000 characters"
-below the control in 11 px `--muted`; sections 12 px apart.
+below the control in 12 px `--muted`; sections 12 px apart.
 
 ## Checkbox, switch, toggle
 
@@ -181,14 +184,14 @@ One recipe for every list: the sidenav, the change list, branches, findings, men
 - Numbers, counts, keycaps and times align right in `font-variant-numeric: tabular-nums`.
 - Names in sans; mono only for what is literal: SHAs, code, a path shown as code.
 
-Section header (sidenav "Workspaces", a group "In progress 17"): 32 px, 12 px weight 600 in
+Section header (sidenav "Workspaces", a group "In progress 17"): 32 px, 13 px weight 600 in
 `--muted`, a count after it; its actions (add, filter) as 24 px ghost icon buttons on the right.
 
 Workspace card: 10 px radius, 8 × 10 px padding, transparent 1 px border;
 hover `color-mix(in srgb, var(--raised) 40%, transparent)`; current `--selected` with
-`--selected-line` border and `--shadow-lift`. First line: status dot and name (13 px, 500). Second:
-branch in 12 px `--muted` sans, a repository chip. Third, when there is one: the agent's last line
-in 12 px `--muted`, its time right-aligned in 11 px `--faint`.
+`--selected-line` border and `--shadow-lift`. First line: status dot and name (14 px, 500). Second:
+branch in 13 px `--muted` sans, a repository chip. Third, when there is one: the agent's last line
+in 13 px `--muted`, its time right-aligned in 12 px `--faint`.
 
 ## Chips, badges, counts, keycaps
 
@@ -201,7 +204,7 @@ in 12 px `--muted`, its time right-aligned in 11 px `--faint`.
   border-radius: 4px;
   background: var(--raised);
   color: var(--muted);
-  font: 500 11px/18px var(--sans);
+  font: 500 var(--size-caption)/18px var(--sans);
 }
 .badge {           /* a state: --badge is the state's token */
   display: inline-flex;
@@ -213,7 +216,7 @@ in 12 px `--muted`, its time right-aligned in 11 px `--faint`.
   border-radius: 9999px;
   background: color-mix(in srgb, var(--badge) 10%, transparent);
   color: var(--badge);
-  font: 500 11px/1 var(--sans);
+  font: 500 var(--size-caption)/1 var(--sans);
 }
 .count {           /* "Pinned 3", "Changes 0/35" */
   min-width: 18px;
@@ -222,7 +225,7 @@ in 12 px `--muted`, its time right-aligned in 11 px `--faint`.
   border-radius: 9999px;
   background: var(--raised);
   color: var(--muted);
-  font: 500 10px/16px var(--sans);
+  font: 500 var(--size-caption)/16px var(--sans);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -237,12 +240,12 @@ kbd {
   border-radius: 4px;
   background: color-mix(in srgb, var(--raised) 70%, transparent);
   color: var(--muted);
-  font: 500 10px/1 var(--sans);
+  font: 500 var(--size-caption)/1 var(--sans);
   box-shadow: var(--shadow-lift);
 }
 ```
 
-- Diff counts (`+13 −0 ~22`): coloured numbers in 12 px tabular, no box.
+- Diff counts (`+13 −0 ~22`): coloured numbers in 13 px tabular, no box.
 - HEAD and the current branch stand out by a success badge and weight, not a solid fill.
 - Keycaps: trailing in tooltips and menu items; on a row only while it is hovered or focused.
   Never on Cancel.
@@ -299,12 +302,12 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   background: var(--menu-bg);
   backdrop-filter: blur(40px);
 }
-.menu-item { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 8px; font: 450 12px/17px var(--sans); }
+.menu-item { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 8px; font: 450 var(--size-small)/17px var(--sans); }
 .menu-item .icon { width: 14px; height: 14px; color: var(--muted); }
 .menu-item:hover, .menu-item:focus-visible { background: var(--menu-hover); outline: none; }
 .menu-item.danger { color: var(--error); }
 .menu-item.danger:hover { background: color-mix(in srgb, var(--error) 20%, transparent); }
-.menu-label { padding: 4px 8px; color: var(--muted); font: 600 11px var(--sans); }
+.menu-label { padding: 4px 8px; color: var(--muted); font: 600 var(--size-caption) var(--sans); }
 .menu-separator { height: 1px; margin: 4px -4px; background: var(--line); }
 @keyframes float-in { from { opacity: 0; } }   /* no scale: menus measure their own box */
 @media (prefers-reduced-motion: reduce) { .menu { animation: none; } }
@@ -313,11 +316,11 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
 - Popover (arbitrary content: a form, a picker, the "?" help): `--panel`, 1 px `--line`, 10 px
   radius, 14 px padding, `--shadow-floating`.
 - Tooltip (names an icon-only control; never teaches or warns): inverted, `background: var(--text);
-  color: var(--bg)`, 8 px radius, 6 × 12 px padding, 12 px text, shown after 400 ms, above with a
+  color: var(--bg)`, 8 px radius, 6 × 12 px padding, 13 px text, shown after 400 ms, above with a
   4 px gap; a keycap may trail. Until Symbiote has one, `title` is acceptable.
 - Dialog: overlay `--overlay` with `backdrop-filter: blur(2px)`; box `min(512px, 100% - 32px)`
   wide, 20 × 24 px padding, 10 px radius, 1 px `--menu-line`, `--dialog-bg`,
-  `backdrop-filter: blur(40px)`, `--dialog-shadow`, faded in over 200 ms; title 16 px weight 600, description 13 px
+  `backdrop-filter: blur(40px)`, `--dialog-shadow`, faded in over 200 ms; title 18 px weight 600, description 14 px
   `--muted`; footer right-aligned, ghost Cancel then the primary. Size it to its input: a
   confirmation stays compact, a brief or a prompt gets a large dialog or a page.
 
@@ -326,9 +329,9 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
 - Sidenav: `--side`, 240 px, `--line` on its right. From the top: the brand row (36 px, as the
   toolbars), the pages as 32 px rows, a section header per group, the workspace cards, a footer
   of 24 px ghost icon buttons above a hairline.
-- Toolbar or page head: 36 px, `--side`, `--line` below; the page's title in 13 px weight 600;
+- Toolbar or page head: 36 px, `--side`, `--line` below; the page's title in 16 px weight 600;
   actions on the right as 28 px ghost or outline buttons with icons; view toggles grouped.
-- Status bar: 24 px, `--side`, `--line` above, 12 px; each segment a button (2 × 4 px padding, 4 px
+- Status bar: 24 px, `--side`, `--line` above, 13 px; each segment a button (2 × 4 px padding, 4 px
   radius, hover `color-mix(in srgb, var(--raised) 70%, transparent)`). Usage bars: 4 px high,
   round, track `--raised`, fill `color-mix(in srgb, var(--muted) 40%, transparent)` under 60 %,
   `--warning` from 60 %, `--error` from 80 %.

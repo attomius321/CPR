@@ -94,6 +94,23 @@ and system-light are equal and that both themes have the same names).
 A state tint is mixed from its state, never a new hex: `color-mix(in srgb, var(--added) 10%,
 transparent)` for a fill, `25%` for its edge.
 
+## Type scale (V32; on `:root`, both themes)
+
+One step above V29b's dense 13 px, which was too small to read. Every font size in `styles.css`
+is one of these (`test/tokens.test.ts`), a multiple of one (`calc`), `inherit` or an `em`.
+
+| Token | Value | Role |
+|---|---|---|
+| `--size-caps` | 11 px | Uppercase labels (a symbol's kind), one-glyph marks |
+| `--size-caption` | 12 px | Captions, chips, badges, counts, key caps, category labels: the smallest text |
+| `--size-small` | 13 px | Secondary: buttons, menu items, paths, code, the status bar |
+| `--size-body` | 14 px | Rows, nav, tabs, body text, editors |
+| `--size-title` | 16 px | Page and dialog titles |
+| `--size-heading` | 18 px | A symbol's name in its panel, a dialog's question, a frame's name |
+
+The terminal takes a number (`AgentTerminal.tsx`'s `FONT_SIZE`, 14). The map's project names are
+`calc(2 * var(--size-body))`.
+
 ## Shape, type, size (both themes)
 
 | | Value |
@@ -104,15 +121,18 @@ transparent)` for a fill, `25%` for its edge.
 | Radius: menu | 11 px |
 | Radius: card, project frame | 14 px |
 | Radius: badge, count, dot, switch, progress | 9999 px (or 50 %) |
-| Body | 13 px / 1.45, letter-spacing 0.01em, antialiased |
-| Nav row, button label, tab | 13 px, weight 500 (nav letter-spacing −0.025em) |
-| Secondary, paths, menu items, status bar | 12 px (menu items weight 450, line 17 px) |
-| Captions, chips, section counts | 11 px, weight 500 |
-| Category label (menus, settings groups) | 11 px, weight 600, `--muted` |
-| Section header (sidenav "Workspaces") | 12 px, weight 600, `--muted` |
-| Page or dialog title | 14–16 px, weight 600 |
+| Body | 14 px / 1.45, letter-spacing 0.01em, antialiased |
+| Nav row, tab | 14 px, weight 500 (nav letter-spacing −0.025em) |
+| Button label, secondary, paths, code, menu items, status bar | 13 px (menu items weight 450, line 17 px) |
+| Captions, chips, badges, section counts, key caps | 12 px, weight 500 |
+| Uppercase labels (a symbol's kind), one-glyph marks | 11 px |
+| Category label (menus, settings groups) | 12 px, weight 600, `--muted` |
+| Section header (sidenav "Workspaces") | 13 px, weight 600, `--muted` |
+| Page title | 16 px, weight 600 |
+| Dialog title, a symbol's name in its panel | 18 px, weight 600 |
+| Terminal | Geist Mono 14 px |
 | Toolbar / page head | 44 px high (decision 213) |
-| Status bar | 24 px, 12 px text |
+| Status bar | 24 px, 13 px text |
 | Rows | 28 px dense, 32 px nav |
 | Buttons | 28 px in toolbars and forms, 24 px in rows |
 | Icons | 16 px; 14 px in menus and dense rows; 12 px in chips |

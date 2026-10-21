@@ -186,6 +186,42 @@ describe('the geometry is the style’s (V31c)', () => {
   });
 });
 
+describe('the type scale (V32)', () => {
+  // V29b's dense 13 px body, with 10–11 px captions, was too small to read: one step up, and
+  // nothing under 12 px but uppercase labels and one-glyph marks.
+  it('is one step above V29b’s, 14 px for the body', () => {
+    expect(Object.fromEntries([...base].filter(([name]) => name.startsWith('--size-')))).toEqual({
+      '--size-caps': '11px',
+      '--size-caption': '12px',
+      '--size-small': '13px',
+      '--size-body': '14px',
+      '--size-title': '16px',
+      '--size-heading': '18px',
+    });
+  });
+
+  it('sizes every text from the scale', () => {
+    // A token, a multiple of one (calc), the parent's (inherit) or relative to it (em).
+    const SIZE = /^(inherit|[\d.]+em|var\(--size-[a-z]+\)|calc\([^;]*var\(--size-[a-z]+\)[^;]*\))$/;
+    // In the shorthand, a size in px is the one before a line height or a family.
+    const RAW = /(^|\s)[\d.]+px(?=\s*\/|\s+[\w'"])/;
+    const off = rules.flatMap((rule) => [
+      ...[...rule.body.matchAll(/font-size:\s*([^;]+);/g)]
+        .filter((m) => !SIZE.test(m[1]!.trim()))
+        .map((m) => `${rule.selector.split('\n')[0]}: ${m[1]}`),
+      ...[...rule.body.matchAll(/(?:^|[\s;])font:\s*([^;]+);/g)]
+        .filter((m) => m[1]!.trim() !== 'inherit' && RAW.test(m[1]!.replace(/\s+/g, ' ').trim()))
+        .map((m) => `${rule.selector.split('\n')[0]}: font: ${m[1]}`),
+    ]);
+    expect(off).toEqual([]);
+  });
+
+  it('names only sizes it has', () => {
+    const used = new Set([...css.matchAll(/var\((--size-[a-z]+)\)/g)].map((m) => m[1]!));
+    expect([...used].filter((name) => !base.has(name))).toEqual([]);
+  });
+});
+
 describe('the fonts (V29b, decision 180)', () => {
   // Every family a system lacks is a font-matching miss: on Linux they held History's first rows
   // for 850–900 ms (V29a). Only the bundled families are named, and monospace after them.
