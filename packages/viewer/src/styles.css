@@ -5109,7 +5109,7 @@ p.settings-placeholders {
 }
 
 .usage-window.tone-ok {
-  --tone: color-mix(in srgb, var(--muted) 60%, transparent);
+  --tone: var(--added);
 }
 
 .usage-window.tone-high {

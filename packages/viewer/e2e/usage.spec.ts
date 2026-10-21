@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // Each subscription's windows in the status bar (V29c): Claude Code's from a fake of the endpoint
@@ -20,6 +20,17 @@ const POLL = { timeout: 12_000 };
 const in3h = () => new Date(Date.now() + 3 * 3_600_000 + 60_000).toISOString();
 const usage = (page: Page) =>
   page.getByRole('contentinfo', { name: 'Status bar' }).getByRole('list', { name: 'Usage' });
+
+/** Whether a window's bar is filled in a token's colour, resolved as the page resolves it. */
+const filledWith = (window: Locator, token: string) =>
+  window.locator('.usage-bar > span').evaluate((fill, token) => {
+    const probe = document.createElement('span');
+    probe.style.color = `var(${token})`;
+    document.body.append(probe);
+    const want = getComputedStyle(probe).color;
+    probe.remove();
+    return getComputedStyle(fill).backgroundColor === want;
+  }, token);
 
 test("the status bar shows each subscription's windows, what a hover says, and never the token", async ({
   page,
@@ -54,6 +65,9 @@ test("the status bar shows each subscription's windows, what a hover says, and n
   // 84 % is amber, 59 % green: the tone of each window.
   await expect(claude.locator('.usage-window.tone-high')).toHaveText('wk84%');
   await expect(claude.locator('.usage-window.tone-ok')).toHaveText('5h59%');
+  // The bars too: green, then amber (V29c's colours, back after V31a greyed the green).
+  expect(await filledWith(claude.locator('.usage-window.tone-ok'), '--added')).toBe(true);
+  expect(await filledWith(claude.locator('.usage-window.tone-high'), '--warning')).toBe(true);
   await expect(claude).toHaveAttribute(
     'title',
     /^Claude Pro\n5h: 59 % used, resets in 3 h \d+ min\n/,
@@ -72,6 +86,28 @@ test("the status bar shows each subscription's windows, what a hover says, and n
   // On every page of the shell, a diff's too.
   await page.goto(`${symbiote.url}settings`);
   await expect(usage(page).getByRole('listitem')).toHaveCount(2, POLL);
+});
+
+test('a window at its limit is red, the bar and its number', async ({ page }) => {
+  symbiote = await serveWorkspaces({
+    codex: true,
+    appServer: true,
+    usage: {
+      claude: {
+        limits: [
+          { kind: 'session', group: 'session', percent: 100, resets_at: in3h(), scope: null },
+          { kind: 'weekly_all', group: 'weekly', percent: 30, resets_at: in3h(), scope: null },
+        ],
+      },
+    },
+  });
+  await page.goto(`${symbiote.url}history`);
+  const claude = usage(page).getByRole('listitem').first();
+  await expect(claude).toHaveText('ClaudePro5h100%wk30%', POLL);
+  const full = claude.locator('.usage-window.tone-full');
+  await expect(full).toHaveText('5h100%');
+  expect(await filledWith(full, '--removed')).toBe(true);
+  expect(await filledWith(claude.locator('.usage-window.tone-ok'), '--added')).toBe(true);
 });
 
 test("Claude's endpoint failing before Symbiote read it: Claude left out, the rest as it is", async ({
