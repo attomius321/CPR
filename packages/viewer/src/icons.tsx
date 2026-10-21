@@ -101,3 +101,23 @@ export const CloseIcon = () => (
     <path d="M4 4l8 8M12 4l-8 8" />
   </Icon>
 );
+
+/** The window's own buttons, where CPR draws them (N1d). */
+export const MinimizeIcon = () => (
+  <Icon>
+    <path d="M4 8h8" />
+  </Icon>
+);
+
+export const MaximizeIcon = () => (
+  <Icon>
+    <rect x="4" y="4" width="8" height="8" rx="1.5" />
+  </Icon>
+);
+
+export const RestoreIcon = () => (
+  <Icon>
+    <rect x="3.5" y="5.5" width="7" height="7" rx="1.5" />
+    <path d="M6 5.5V5A1.5 1.5 0 0 1 7.5 3.5H11A1.5 1.5 0 0 1 12.5 5v3.5A1.5 1.5 0 0 1 11 10h-.5" />
+  </Icon>
+);

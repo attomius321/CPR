@@ -53,6 +53,37 @@ window.addEventListener('mouseup', (event) => {
   else if (event.button === 4) window.history.forward();
 });
 
+/** The window's state, as CPR's pages see it (N1d): maximized or full screen, or neither. */
+interface WindowState {
+  maximized: boolean;
+}
+
+// Who draws the window's frame (N1d): CPR's pages on Linux, with their own corners and buttons.
+// The page's first script marks <html> with it; the window's state is kept on <html> here.
+const framed = (() => {
+  try {
+    return ipcRenderer.sendSync('cpr:frame') as { frame: string; maximized: boolean };
+  } catch {
+    return { frame: 'system', maximized: false };
+  }
+})();
+const stateListeners = new Set<(state: WindowState) => void>();
+ipcRenderer.on('cpr:window-state', (_event, state: WindowState) => {
+  document.documentElement.dataset.window = state.maximized ? 'maximized' : 'normal';
+  for (const listener of stateListeners) listener({ maximized: state.maximized });
+});
+/** What both kinds of page get of the window, where CPR draws its frame. */
+const ownFrame = {
+  frame: framed.frame,
+  maximized: framed.maximized,
+  window: (action: 'minimize' | 'maximize' | 'restore' | 'close') =>
+    ipcRenderer.send('cpr:window', action),
+  onWindowState: (listener: (state: WindowState) => void) => {
+    stateListeners.add(listener);
+    return () => stateListeners.delete(listener);
+  },
+};
+
 // CPR's pages (N1c): that they are in the app, on which system (its window's buttons are at the
 // left on macOS), and the title bar's colours for those buttons, which follow the page's theme.
 if (window.location.protocol === 'http:') {
@@ -60,6 +91,7 @@ if (window.location.protocol === 'http:') {
     platform: process.platform,
     titleBar: (colors: { color: string; symbol: string }) =>
       ipcRenderer.send('cpr:title-bar', colors),
+    ...ownFrame,
   });
 }
 
@@ -71,5 +103,6 @@ if (window.location.protocol === 'file:') {
     forget: (repo: string): unknown => ipcRenderer.sendSync('cpr:start:forget', repo),
     open: (repo: string) => ipcRenderer.send('cpr:start:open', repo),
     choose: () => ipcRenderer.send('cpr:start:choose'),
+    ...ownFrame,
   });
 }

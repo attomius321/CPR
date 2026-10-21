@@ -445,6 +445,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | N1 ✅ | A native window | CPR is a page served by a command: a browser tab, no window of its own, nothing to open without a terminal. Asked: "feel more like a native application … Check tauri", on native Linux too. Measured: Tauri draws with WebKitGTK on Linux, where CPR's `j` takes 77–145 ms (first 360–415 ms) against Chromium's 33 ms on a 445-symbol diff; CPR is Node and tuned on Chromium. Planned with Electron (confirmed). Merged (2026-10-21): a window on `cpr view`'s server, opened by `cpr view` or the desktop's launcher (`cpr app install`), closing it stops the server; CPR's own title bar. From the launcher to History's first paint 383–493 ms; `j` as in Chromium (32–33 ms). See below. |
 | V30 ✅ | Start a workspace on a page, with the agent's effort | Starting a workspace is the one thing still drawn over the shell: V18's dialog, 640×626 px at every window size, scrolling with More open at 1280×720 and 1440×900 (883 px of content); no effort is passed (here Claude Code runs at the person's `xhigh`, Codex at `medium`). Measured with the real agents: Claude Code's `--effort` and the effort on Codex's first `turn/start` hold for the session (after CPR's stop-and-resume reply, across app-server connections); `codex exec resume` drops it. Merged into main (2026-10-21): V30a, `/start` in the main area, the brief and the run in two columns, More open fitting at 1440×900; V30b, an Effort choice from the installed agent's own levels (Claude Code's `--help`, Codex's `model/list`), recorded with the workspace; a real Claude Code at `low` stayed at `low` through CPR's reply. See below. |
 | V31 ✅ | CPR's style, beyond its colours | V29b took the reference's tokens and font; the rest was older than its colours: one black for every surface (1.04:1 between page and sidenav), blue as the accent on 35 rules, 6 native checkboxes, 8 coloured side bars, bordered mono chips, a solid green HEAD. CPR's own style, written down as the `cpr-style` skill. Merged into main (2026-10-21): V31a the tokens and the shell, V31b the diff page, V31c History, menus, dialogs and selects — blue a state only, no side bars, drawn controls, one radius scale; Bitwarden's timings and History's first rows as `main`'s, e2e 169 of 169. See below. |
+| N1d | Rounded window corners | CPR's window was square on Linux (here through WSLg): Electron rounds a frameless window there only with client-side decorations, and draws no buttons over a transparent one. Built, not merged: on Linux a transparent window whose pages draw a 10 px frame and CPR's own minimize, maximize and close, square when maximized; macOS and Windows unchanged; no cost on Bitwarden's graph. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -8687,6 +8688,145 @@ row's menu and submenu, a confirmation dialog, a workspace's thread, Start, Sett
   own style from now"): the skill is `cpr-style` (it was merged into main under another
   name, renamed here), the branch `milestone/v31-cpr-style`, and no document, comment or test
   names the reference app. Commit messages already on `main` keep their words.
+
+### N1d — Rounded window corners
+
+**Status:** built (2026-10-21) on branch `milestone/n1d-rounded-window`, its "As built" and results
+below; not merged. Asked by the person.
+
+**Problem** (asked: "I want the window corner to have some radius.."). CPR's window (N1) is
+frameless (`titleBarStyle: 'hidden'`) with Electron's overlay for the system's buttons. macOS rounds
+such a window itself; Windows 11 keeps its rounded frame. On Linux, and so on this machine through
+WSLg, the corners are square. Measured with Electron 44.9 on this machine (WSL2, WSLg, Windows 11),
+a 640×400 test window captured from Windows (`GetWindowRect`, corners only):
+
+| Window | Platform Electron picks | Corners | System buttons |
+|---|---|---|---|
+| As CPR's today: hidden title bar, the overlay | X11 (XWayland; `WAYLAND_DISPLAY` is set, `XDG_SESSION_TYPE` is not) | square | drawn |
+| Transparent, the page draws a 10 px radius | X11 | **round**: inside the corner the pixels are the desktop's (12, 12, 12), not black | **none**, the overlay's colour transparent or opaque |
+| Transparent, `--ozone-platform=wayland` | Wayland | round | none |
+| As today, `--ozone-platform=wayland` | Wayland | square | the close button only |
+
+What causes it: Electron rounds a frameless window on Linux "only when the desktop environment
+supports client-side decorations" (its `roundedCorners` docs); WSLg's X11 and Wayland do not. A
+transparent window lets the page draw its own corners, but Electron then draws no overlay buttons.
+
+**Goal**: on Linux, CPR's window has rounded corners (10 px, the style's dialog radius) and a
+hairline edge, with CPR's own minimize, maximize/restore and close buttons at the title bar's right;
+square and edgeless when maximized or full screen. The start page (N1b) too. **Unchanged**: macOS
+and Windows (their own corners and buttons, the overlay on Windows), every page in a browser.
+
+#### The window (desktop)
+
+- The window's options from one pure function per platform (`frame.ts`, unit-tested): Linux
+  `transparent: true`, a transparent background, no overlay; Windows the overlay; macOS the
+  traffic lights. The colours before the page paints become the style's (V31: `#0a0a0a`/`#ffffff`,
+  the title bar `#171717`/`#fafafa`).
+- Its state to the page: maximized or full screen, at load (`sendSync`) and as it changes (the
+  window's `maximize`, `unmaximize`, `enter-full-screen`, `leave-full-screen`).
+- The page's actions: minimize, maximize or restore, close; accepted only from the window's own
+  pages (its server's, or the start page), as the title bar's colours are.
+
+#### The page (viewer and start page)
+
+- `index.html`'s first script sets `data-frame="own"` and `data-window` on `<html>` when the app
+  says the frame is CPR's; the preload updates `data-window` as the window changes.
+- The page's root clips to a 10 px radius with a hairline edge (`--menu-line`) when the window is
+  not maximized; `html` and `body` are transparent there, the root carries `--bg`.
+- The title bar's right end: three 28 px icon buttons (lucide's minus, square, copy, x), labelled
+  Minimize, Maximize or Restore, Close; Close's hover in the error colour.
+
+#### Verification
+
+1. **Tests first**: `frame.test.ts` (each platform's options, red: no module); the app's e2e
+   (Xvfb, Linux): the frame is CPR's, the root rounded, the three buttons; Maximize asks the window
+   (recorded, as N1c's overlay test records its calls: Xvfb has no window manager), a `maximize`
+   event squares the root and names the button Restore; the start page's buttons.
+2. **Nothing else changes**: in a browser no `data-frame`; `pnpm check`, e2e.
+3. **This machine**: the app opened through WSLg, its corners captured from Windows, maximized and
+   restored; the person tries resizing from an edge.
+4. **Cost**: the rounded clip on the page's root: Bitwarden `737ee3f` pan fps and first paint with
+   and without it, in Chromium.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| A transparent window cannot be resized on some platforms (Electron's docs) | WSLg's window keeps its 32 px resize margin (the spike's captures); the person tries it |
+| A rounded clip over the graph costs frames | Measured on Bitwarden's graph before keeping it |
+| The window buttons differ from the system's | The style's icon buttons; the system's are back on Windows and macOS |
+| No window manager in the e2e display | The window's calls recorded, its events sent, as N1c's spec does |
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| N1d | Rounded window corners | Linux: a transparent window, its frame and buttons drawn by CPR's pages; the style's pre-paint colours |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 218 | How to round the window on Linux | **A transparent window, the frame and the buttons drawn by CPR** | The spike: the only way to round corners there; the overlay is gone with transparency |
+| 219 | The radius | **10 px**, square when maximized or full screen | The style's dialog radius; a maximized window meets the screen's edges |
+| 220 | Windows and macOS | **Unchanged** | Their frameless windows are rounded already, with their own buttons |
+| 221 | Wayland | **Not forced** | Square there too without transparency, and only a close button |
+| 222 | Maximize on WSLg (found in the person's try) | **CPR holds it: the work area WSLg chose, as a normal window** | WSLg's maximize of a frameless X11 window is 32 px off (microsoft/wslg#1015); Wayland maximizes right but ignores where the app places a window |
+
+**Not in N1d (later)**: a shadow drawn by CPR (it would need a transparent margin inside the
+window); the Windows build (N2).
+
+#### As built (N1d)
+
+- **No clip over the page**: a rounded `overflow: hidden` on the root cost 15 ms on every select
+  of Bitwarden's graph (88–89 ms against 73–74, 3 rounds). The root's background follows its
+  radius, and the strips at the corners take it: the title bar (or a shell-less page's bar) at
+  the top, the status bar (or its legend) at the bottom; fixed overlays (a dialog's backdrop, the
+  drawer's scrim) take it too.
+- **No overlay colours where there is no overlay**: the page sent the theme's colours for the
+  system's buttons, and `setTitleBarOverlay` on a window without an overlay throws in the main
+  process, where Electron's error dialog blocks the app (every app e2e hung in its teardown). The
+  page sends none and the app ignores them where CPR draws the frame.
+- **A page without the shell** (`cpr pr` in the app) is the window's title bar: it draws the
+  window's buttons too. Not tested in the app (no e2e opens `cpr pr` there).
+- **The start page** is in the style (V31's tokens, the primary button, neutral focus) besides
+  its frame; a synchronous `frame.js` marks `<html>` before its first paint (its CSP allows no
+  inline script).
+- **The window's state comes from its events** (`maximize`, `unmaximize`, the full screen's), and
+  the page asks for `restore` or `maximize` by name: a window manager may answer `isMaximized`
+  late, and the e2e display has none.
+- **Maximize on WSLg is CPR's** (decision 222, the person's try: "the full screen is not working
+  properly"). WSLg pads a frameless X11 window with an invisible 32 px margin and forgets it when
+  it maximizes one: on this machine's 2560×1440 screens the window landed at (2592, 32), the
+  desktop showing in the strip above and left, its right end (the buttons) and its bottom 32 px
+  off the work area. Opaque or transparent alike (N1c's window too); full screen, and a window
+  with the system's frame, are right. On WSLg's X11 (`maximize.ts`) the first maximize on a
+  screen goes through the window manager, which knows the taskbar (Electron's work area there is
+  the whole screen): its bounds read, unmaximized, the window set to them as a normal window. The
+  area is kept for the run; the next Maximize on that screen sets it at once. Win+Up and a start
+  maximized are held the same way; Restore puts back the place it was asked from (WSLg's own,
+  for a window it maps maximized, is the screen's corner). Moved or resized, the window is no
+  longer maximized; a passing move (WSLg parks a window it shows at −32736 for 14 ms) is not.
+
+**Results.** Tests first: `frame.test.ts` (red: no module), and 4 app e2e red on the build before
+(the overlay gone on Linux, the buttons in the theme's colours, the corners round until maximized
+with the window's calls recorded, the start page's frame). `pnpm check` 1,080 tests; e2e 171 of
+171. Bitwarden `737ee3f` in Chromium, without and with the frame, alternated (3 rounds): first
+paint 278–284 / 278–283 ms, select 73–89 / 72–88 ms, mark reviewed 33–34 ms, pan 63 fps both. On
+this machine (WSLg), the real window opened by `cpr view`, captured from Windows: rounded corners,
+the hairline edge, CPR's buttons. Not verified: resizing from an edge and maximizing with the
+window manager (the person's try), a `cpr pr` window in the app, macOS and Windows (unchanged
+code paths, no machine).
+
+Maximize on WSLg (decision 222): `maximize.test.ts` red first (no module; then a start maximized
+restored to the screen's corner, as the real window did), against a fake window manager with
+WSLg's measured timings. Before, a test window with CPR's options, captured from Windows: its
+red edge at x 2592 and y 32, the right and bottom ones off the work area. After, CPR's real
+window driven by Playwright on this machine, sampled at the right screen's work-area corners:
+CPR's `#171717` at all four and the taskbar below, for the first Maximize, the second (no round
+trip), and a start maximized; Restore back to (2700, 150) each time. Not
+verified: a double-click on the title bar and Windows' snap (held as any maximize; not tried),
+dragging a held window (it moves at full size, where a native maximized window restores).
 
 ### Phase 1 milestones
 

@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -7,8 +8,17 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { paintTitleBar } from './desktop.js';
-import { BackIcon, CprIcon, ForwardIcon, SidenavIcon } from './icons.js';
+import { desktop, paintTitleBar } from './desktop.js';
+import {
+  BackIcon,
+  CloseIcon,
+  CprIcon,
+  ForwardIcon,
+  MaximizeIcon,
+  MinimizeIcon,
+  RestoreIcon,
+  SidenavIcon,
+} from './icons.js';
 import { HISTORY_PAGE } from './pages.js';
 import { useTheme } from './theme.js';
 
@@ -62,6 +72,56 @@ function usePaintedButtons(): void {
     media.addEventListener('change', paintTitleBar);
     return () => media.removeEventListener('change', paintTitleBar);
   }, [theme]);
+}
+
+/** Whether the window fills the screen, as the app tells it (N1d). */
+function useMaximized(): boolean {
+  const subscribe = useCallback(
+    (changed: () => void) => desktop?.onWindowState?.(changed) ?? (() => undefined),
+    [],
+  );
+  return useSyncExternalStore(
+    subscribe,
+    () => document.documentElement.dataset.window === 'maximized',
+  );
+}
+
+/** The window's buttons where CPR draws its frame (N1d, Linux): elsewhere they are the system's. */
+export function WindowButtons() {
+  const maximized = useMaximized();
+  const ask = desktop?.window;
+  if (desktop?.frame !== 'own' || !ask) return null;
+  return (
+    <div className="window-buttons">
+      <button
+        type="button"
+        className="icon-button"
+        aria-label="Minimize"
+        title="Minimize"
+        onClick={() => ask('minimize')}
+      >
+        <MinimizeIcon />
+      </button>
+      <button
+        type="button"
+        className="icon-button"
+        aria-label={maximized ? 'Restore' : 'Maximize'}
+        title={maximized ? 'Restore' : 'Maximize'}
+        onClick={() => ask(maximized ? 'restore' : 'maximize')}
+      >
+        {maximized ? <RestoreIcon /> : <MaximizeIcon />}
+      </button>
+      <button
+        type="button"
+        className="icon-button window-close"
+        aria-label="Close"
+        title="Close"
+        onClick={() => ask('close')}
+      >
+        <CloseIcon />
+      </button>
+    </div>
+  );
 }
 
 /**
@@ -133,6 +193,7 @@ export function TitleBar({
         <div className="titlebar-slot" ref={setPage} />
       </div>
       <div className="titlebar-end" ref={setEnd} />
+      <WindowButtons />
     </header>
   );
 }

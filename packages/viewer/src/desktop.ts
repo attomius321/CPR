@@ -2,8 +2,16 @@
 export interface DesktopApp {
   /** The system: the window's buttons are at the left on macOS, at the right elsewhere. */
   platform: string;
-  /** The title bar's colours, for the window's own buttons (Windows and Linux). */
+  /** The title bar's colours, for the system's buttons over it (Windows). */
   titleBar(colors: { color: string; symbol: string }): void;
+  /** Who draws the window's frame and buttons (N1d): `own` (the page) on Linux. */
+  frame?: 'own' | 'system';
+  /** Whether the window filled the screen when the page loaded. */
+  maximized?: boolean;
+  /** Asks the window, where the page draws its buttons (a function of the preload's, unbound). */
+  window?: (action: 'minimize' | 'maximize' | 'restore' | 'close') => void;
+  /** Called as the window fills the screen or leaves it; returns how to stop. */
+  onWindowState?: (listener: (state: { maximized: boolean }) => void) => () => void;
 }
 
 declare global {
@@ -17,7 +25,8 @@ export const desktop: DesktopApp | undefined = window.cprApp;
 
 /** Gives the window's buttons the title bar's colours, as the theme has them now. */
 export function paintTitleBar(): void {
-  if (!desktop) return;
+  // Where the page draws the window's buttons (N1d), there is no overlay to paint.
+  if (!desktop || desktop.frame === 'own') return;
   const style = getComputedStyle(document.documentElement);
   desktop.titleBar({
     color: style.getPropertyValue('--side').trim(),

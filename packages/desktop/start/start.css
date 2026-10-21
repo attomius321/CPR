@@ -1,4 +1,4 @@
-/* The app's start page (N1b): the viewer's tokens and type, on one column. */
+/* The app's start page (N1b): the viewer's tokens (CPR's style, V31) and type, on one column. */
 
 @font-face {
   font-family: 'Geist Variable';
@@ -10,28 +10,34 @@
 
 :root,
 :root[data-theme='dark'] {
-  --bg: #0b0b0c;
-  --side: #111113;
-  --panel: #161618;
-  --raised: #1f1f23;
-  --line: #26262b;
-  --text: #e6e6e9;
-  --muted: #8b8b94;
-  --red: #f85149;
-  --blue: #58a6ff;
+  --bg: #0a0a0a;
+  --side: #171717;
+  --panel: #171717;
+  --line: #2a2a2a;
+  --text: #fafafa;
+  --muted: #a1a1a1;
+  --focus: #a1a1a1;
+  --error: #ff6568;
+  --hover: color-mix(in srgb, var(--text) 8%, transparent);
+  --primary: #e5e5e5;
+  --primary-text: #171717;
+  --edge-line: rgb(255 255 255 / 14%);
   color-scheme: dark;
 }
 
 :root[data-theme='light'] {
-  --bg: #f7f7f5;
-  --side: #f0f0ee;
-  --panel: #ffffff;
-  --raised: #e8e8ec;
-  --line: #d9d9de;
-  --text: #1d1d1f;
-  --muted: #636369;
-  --red: #c4271f;
-  --blue: #0b63c5;
+  --bg: #ffffff;
+  --side: #fafafa;
+  --panel: #fafafa;
+  --line: #e5e5e5;
+  --text: #0a0a0a;
+  --muted: #666666;
+  --focus: #737373;
+  --error: #e40014;
+  --hover: color-mix(in srgb, var(--text) 5%, transparent);
+  --primary: #171717;
+  --primary-text: #fafafa;
+  --edge-line: rgb(0 0 0 / 14%);
   color-scheme: light;
 }
 
@@ -46,8 +52,6 @@ body {
 }
 
 body {
-  display: grid;
-  place-items: center;
   background: var(--bg);
   color: var(--text);
   font:
@@ -56,15 +60,104 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+#root {
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
+
 .start-bar {
   position: fixed;
   top: 0;
   right: 0;
   left: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
   height: 38px;
   border-bottom: 1px solid var(--line);
   background: var(--side);
   -webkit-app-region: drag;
+}
+
+/* CPR's frame, on Linux (N1d): as the viewer's. The window is clear around the root, which
+   carries the background and the corners, square while the window fills the screen. */
+:root[data-frame='own'],
+:root[data-frame='own'] body {
+  background: transparent;
+}
+
+:root[data-frame='own'] #root {
+  background: var(--bg);
+}
+
+:root[data-frame='own'][data-window='normal'] #root {
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+:root[data-frame='own'][data-window='normal'] .start-bar {
+  border-radius: 10px 10px 0 0;
+}
+
+:root[data-frame='own'][data-window='normal'] #root::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--edge-line);
+  pointer-events: none;
+}
+
+.window-buttons {
+  display: flex;
+  gap: 2px;
+  padding: 0 6px;
+  -webkit-app-region: no-drag;
+}
+
+.window-buttons[hidden] {
+  display: none;
+}
+
+.window-buttons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+}
+
+.window-buttons button:hover {
+  background: var(--hover);
+}
+
+.window-buttons .close:hover {
+  background: color-mix(in srgb, var(--error) 85%, transparent);
+  color: #ffffff;
+}
+
+.window-buttons svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#window-maximize .restore,
+#window-maximize.restore .maximize {
+  display: none;
+}
+
+#window-maximize.restore .restore {
+  display: block;
 }
 
 .start {
@@ -86,7 +179,7 @@ body {
 }
 
 .mark-head {
-  stroke: var(--blue);
+  stroke: var(--text);
 }
 
 h1 {
@@ -107,13 +200,13 @@ h1 {
   margin: 4px 0 0;
   padding: 8px 12px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--panel);
   overflow-wrap: anywhere;
 }
 
 .status.error {
-  border-color: var(--red);
+  border-color: color-mix(in srgb, var(--error) 25%, transparent);
   color: var(--text);
 }
 
@@ -124,7 +217,7 @@ h1 {
   height: 8px;
   margin-right: 8px;
   border-radius: 50%;
-  background: var(--red);
+  background: var(--error);
 }
 
 button {
@@ -141,10 +234,10 @@ button {
   margin-top: 8px;
   padding: 0 12px;
   border: 0;
-  border-radius: 6px;
-  background: var(--blue);
-  color: #0b0b0c;
-  font-weight: 600;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--primary-text);
+  font-weight: 500;
 }
 
 .primary:disabled {
@@ -182,12 +275,12 @@ ul {
 .repo-row {
   display: flex;
   align-items: center;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .repo-row:hover,
 .repo-row:focus-within {
-  background: var(--raised);
+  background: var(--hover);
 }
 
 .repo {
@@ -220,7 +313,7 @@ ul {
   height: 28px;
   margin-right: 4px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: none;
   color: var(--muted);
   font-size: 16px;
@@ -238,6 +331,6 @@ ul {
 }
 
 :focus-visible {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--focus);
   outline-offset: 1px;
 }

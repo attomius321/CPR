@@ -62,6 +62,7 @@ import { Sidebar, type SidebarTab } from './Sidebar.js';
 import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
 import { SummaryNode } from './SummaryNode.js';
 import { SymbolNode } from './SymbolNode.js';
+import { WindowButtons } from './TitleBar.js';
 import { useLayout } from './useLayout.js';
 import { useTheme } from './theme.js';
 
@@ -499,6 +500,8 @@ export function App() {
             </label>
           </>
         )}
+        {/* A page with no shell (cpr pr) is the window's title bar: its buttons, on Linux (N1d). */}
+        {!inView && <WindowButtons />}
       </header>
       <main
         className={`canvas${resizing ? ' resizing' : ''}`}
