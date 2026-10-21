@@ -105,10 +105,11 @@ is one of these (`test/tokens.test.ts`), a multiple of one (`calc`), `inherit` o
 | `--size-caption` | 12 px | Captions, chips, badges, counts, key caps, category labels: the smallest text |
 | `--size-small` | 13 px | Secondary: buttons, menu items, paths, code, the status bar |
 | `--size-body` | 14 px | Rows, nav, tabs, body text, editors |
-| `--size-title` | 16 px | Page and dialog titles |
-| `--size-heading` | 18 px | A symbol's name in its panel, a dialog's question, a frame's name |
+| `--size-title` | 16 px | Titles: a page's, a dialog's, a symbol's name in its panel, a frame's name |
 
-The terminal takes a number (`AgentTerminal.tsx`'s `FONT_SIZE`, 14). The map's project names are
+Titles stay at 16 px: at 18 px a symbol's long name wrapped mid-word in its panel (Bitwarden), and
+a frame's name outgrew the band `flow.ts` estimates at 10 px a character. The terminal takes a
+number (`AgentTerminal.tsx`'s `FONT_SIZE`, 14). The map's project names are
 `calc(2 * var(--size-body))`.
 
 ## Shape, type, size (both themes)
@@ -128,8 +129,7 @@ The terminal takes a number (`AgentTerminal.tsx`'s `FONT_SIZE`, 14). The map's p
 | Uppercase labels (a symbol's kind), one-glyph marks | 11 px |
 | Category label (menus, settings groups) | 12 px, weight 600, `--muted` |
 | Section header (sidenav "Workspaces") | 13 px, weight 600, `--muted` |
-| Page title | 16 px, weight 600 |
-| Dialog title, a symbol's name in its panel | 18 px, weight 600 |
+| Page, dialog or panel title | 16 px, weight 600 |
 | Terminal | Geist Mono 14 px |
 | Toolbar / page head | 44 px high (decision 213) |
 | Status bar | 24 px, 13 px text |

@@ -10,13 +10,13 @@
   --mono: 'Geist Mono Variable', monospace;
   /* The type scale (V32): one step above V29b's dense 13 px, which was too small to read. Every
      text is sized from it (test/tokens.test.ts); hierarchy is by weight and colour more than size.
-     Nothing under 12 px but uppercase labels and one-glyph marks. */
+     Nothing under 12 px but uppercase labels and one-glyph marks. Titles stay at 16 px: larger, a
+     symbol's name wrapped in its panel and a frame's name outgrew its band (flow.ts estimates). */
   --size-caps: 11px; /* uppercase labels (a symbol's kind), one-glyph marks */
   --size-caption: 12px; /* captions, chips, badges, counts, key caps, category labels */
   --size-small: 13px; /* secondary: buttons, menu items, paths, code, the status bar */
   --size-body: 14px; /* rows, nav, tabs, body text, editors */
-  --size-title: 16px; /* page and dialog titles */
-  --size-heading: 18px; /* a symbol's name in its panel, a dialog's question, a frame's name */
+  --size-title: 16px; /* titles: a page's, a dialog's, a symbol's in its panel, a frame's name */
 }
 
 /* Dark unless the person chose light or the system's (decision 179; index.html sets data-theme
@@ -567,7 +567,7 @@ input[type='radio']:disabled {
 }
 
 .dropzone h1 {
-  font-size: var(--size-heading);
+  font-size: var(--size-title);
 }
 
 /* Buttons (V29b): 28 px; the main action in the primary colour (V31), the others outlined. */
@@ -837,7 +837,7 @@ input[type='radio']:disabled {
   /* The frame is made wide enough for it; the folder gives way first. */
   flex: none;
   color: var(--text);
-  font-size: var(--size-heading);
+  font-size: var(--size-title);
   font-weight: 600;
 }
 
@@ -1248,7 +1248,7 @@ input[type='radio']:disabled {
 
 .panel-title {
   margin: 4px 0 2px;
-  font: 600 var(--size-heading) var(--mono);
+  font: 600 var(--size-title) var(--mono);
   word-break: break-all;
 }
 
@@ -2518,7 +2518,7 @@ kbd {
 
 .dialog h2 {
   margin: 0 0 8px;
-  font-size: var(--size-heading);
+  font-size: var(--size-title);
   font-weight: 600;
   letter-spacing: -0.01em;
   overflow-wrap: anywhere;
@@ -3723,11 +3723,11 @@ button.workspace-about {
 .markdown h5,
 .markdown h6 {
   margin: 12px 0 6px;
-  font-size: var(--size-title);
+  font-size: var(--size-body);
 }
 
 .markdown h3 {
-  font-size: var(--size-heading);
+  font-size: var(--size-title);
 }
 
 .markdown ul,

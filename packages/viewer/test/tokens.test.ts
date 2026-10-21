@@ -188,7 +188,7 @@ describe('the geometry is the style’s (V31c)', () => {
 
 describe('the type scale (V32)', () => {
   // V29b's dense 13 px body, with 10–11 px captions, was too small to read: one step up, and
-  // nothing under 12 px but uppercase labels and one-glyph marks.
+  // nothing under 12 px but uppercase labels and one-glyph marks; titles stay at 16 px.
   it('is one step above V29b’s, 14 px for the body', () => {
     expect(Object.fromEntries([...base].filter(([name]) => name.startsWith('--size-')))).toEqual({
       '--size-caps': '11px',
@@ -196,7 +196,6 @@ describe('the type scale (V32)', () => {
       '--size-small': '13px',
       '--size-body': '14px',
       '--size-title': '16px',
-      '--size-heading': '18px',
     });
   });
 

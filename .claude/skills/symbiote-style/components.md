@@ -320,7 +320,7 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   4 px gap; a keycap may trail. Until Symbiote has one, `title` is acceptable.
 - Dialog: overlay `--overlay` with `backdrop-filter: blur(2px)`; box `min(512px, 100% - 32px)`
   wide, 20 × 24 px padding, 10 px radius, 1 px `--menu-line`, `--dialog-bg`,
-  `backdrop-filter: blur(40px)`, `--dialog-shadow`, faded in over 200 ms; title 18 px weight 600, description 14 px
+  `backdrop-filter: blur(40px)`, `--dialog-shadow`, faded in over 200 ms; title 16 px weight 600, description 14 px
   `--muted`; footer right-aligned, ghost Cancel then the primary. Size it to its input: a
   confirmation stays compact, a brief or a prompt gets a large dialog or a page.
 
