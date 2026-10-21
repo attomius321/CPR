@@ -4104,3 +4104,36 @@ until restarted.
 
 Merged into main (2026-10-21), after N1, no conflicts. `main` verified after the merge: frozen
 install, 1,054 unit tests, format, lint, typecheck, build, 158 of 158 e2e.
+
+## V30 spike — the start dialog, and how agents keep an effort level (2026-10-21, branch `milestone/v30-start-page`)
+
+Asked: "the create a workspace should not be in dialog. it should be itself a page, rendered fully
+on the right of sidenav, and with an option for initial effort, for that session".
+
+**Learned**:
+- **The dialog is the same 640×626 px at every window size**: 38 % of the main area at
+  1440×900, 23 % at 1920×1080. With More open its content is 883 px and scrolls inside the dialog
+  at 1280×720, 1440×900 and 390×844; only 1920×1080 holds it. Its text areas are 598 px wide
+  whatever the window. Measured with a throwaway spec on `serveWorkspaces`, deleted after.
+- **Claude Code keeps `--effort` for the session, through CPR's reply.** Each assistant line of
+  its transcript records `effort`. `--bg --effort low` ran `low`; after `claude stop`, a
+  `--bg --resume <id> "<text>"` without flags said "woke session … with its saved options (--name,
+  --effort, --model)" and ran `low`. A resume of a session still running started a copy, which
+  ran `medium` — neither the start's level nor the person's `xhigh`. CPR stops first (V18c), so
+  it never makes that copy.
+- **Claude Code ignores a level it does not know, without failing**: "Unknown --effort value
+  'bogus' — ignoring it and using the default effort", exit 0. A fixed list in CPR could offer a
+  level that silently does nothing; its `--help` line lists the levels (low, medium, high, xhigh,
+  max) and takes 70–90 ms. All five ran on Haiku, Sonnet and Opus 5.5.
+- **Codex's app server keeps a thread's effort**: `effort` on the first `turn/start` gave `low`
+  to that turn and to the next one sent without it, and `thread/resume` on a new connection
+  reported `low` (each turn's level from its rollout's `turn_context`). `model/list` (1.1 ms)
+  gives each model's levels and default; `gpt-5.6-terra` has one more level (`ultra`) than
+  `gpt-6-luna`. `config/read` (3 ms) gives the configured model and level (`medium` here).
+- **`codex exec resume` drops the level**: started with `-c model_reasoning_effort="low"`, the
+  resumed run was `medium`. Like the sandbox (V20a), it must be given on every run.
+
+**Verification**: real runs only, one-word prompts, in a detached worktree of this repository
+(trusted through the main checkout): 3 Claude Code turns in the background, 5 `claude -p` runs,
+2 Codex turns on the person's daemon and 2 `codex exec` runs. The sessions were removed (`claude
+rm`), the threads archived, the worktree deleted.
