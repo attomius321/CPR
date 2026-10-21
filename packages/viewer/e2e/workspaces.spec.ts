@@ -961,6 +961,40 @@ test('a workspace started before V24 is named by its brief, with no kind', async
   const row = workspaceRow(page, 'feature/old');
   await expect(row.locator('.workspace-about')).toHaveText('Export the totals');
   await expect(row.locator('.kind-tag')).toHaveCount(0);
+
+  // Its Brief tab: the text as paragraphs, no heading of CPR's.
+  await row.locator('.workspace-about').click();
+  await panel(page, 'feature/old').getByRole('tab', { name: 'Brief' }).click();
+  const brief = panel(page, 'feature/old').locator('.workspace-brief');
+  await expect(brief.locator('p')).toHaveText(['Export the totals', 'As CSV.']);
+  await expect(brief.getByRole('heading')).toHaveCount(0);
+});
+
+test('the Brief tab draws the brief as Markdown: its headings, lists and code', async ({
+  page,
+}) => {
+  cpr = await serveWorkspaces();
+  await page.goto(`${cpr.url}history`);
+  await page.getByRole('button', { name: 'Start a workspace' }).click();
+  await title(page).fill('Add clamp');
+  await goal(page).fill(
+    'Clamp a value:\n\n- below `min` to `min`\n- above `max` to `max`\n\n<b>no</b>',
+  );
+  await doneWhen(page).fill('`npm test` passes');
+  await goal(page).press('Control+Enter');
+  await expect(dialog(page)).toBeHidden();
+
+  const here = panel(page, 'feature/add-clamp');
+  await here.getByRole('tab', { name: 'Brief' }).click();
+  const brief = here.locator('.workspace-brief');
+  // The brief's `#` and `##` lines are headings, below the page's own.
+  await expect(brief.getByRole('heading')).toHaveText(['Feature: Add clamp', 'Goal', 'Done when']);
+  await expect(brief.getByRole('listitem')).toHaveText(['below min to min', 'above max to max']);
+  await expect(brief.locator('code')).toHaveText(['min', 'min', 'max', 'max', 'npm test']);
+  await expect(brief).not.toContainText('## Goal');
+  // HTML in a brief is text, as in an agent's report.
+  await expect(brief).toContainText('<b>no</b>');
+  await expect(brief.locator('b')).toHaveCount(0);
 });
 
 test('the kinds explained: a tooltip after the picker, on hover, focus or a tap (V24c)', async ({
