@@ -449,7 +449,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V32 | Text one can read | V29b chose the reference's density: 13 px body, 12 px for buttons, paths, code and the status bar, 10–11 px for captions, chips, badges, counts and key caps; asked: "The font-size is too small to read … My eyes are hurting". Built on `feature/font-too-small`: one step up (14 px body, nothing under 12 px but uppercase labels; titles stay 16 px), every size from a `--size-*` scale on `:root` with a guard test, the graph's layout unchanged; Bitwarden's graph and History as fast as `main`. See below. |
 | V33 | Start from a branch | The start page starts from the default branch's tip or a commit picked in History; on this repository 102 branches could be started from (40 local, 62 only on `origin`) and the page offers 1. Planned: a Start from choice (the default branch, then local, then remote-only), the branch's newest tip resolved by the server at the start and recorded as `from`. Built on `feature/start-a-workspace-from-branch`: e2e 175 of 175, the list in 2–3 ms here. See below. |
 | V34 | Panels one can resize | The sidenav (240 px) and a workspace's changes panel (256 px) have fixed widths, while the diff's sidebar and detail panel can be dragged; asked: "resize - drag - the left panel with the pages and workspaces, and also from workspaces the right changes made". Built on `feature/resize-left-right-panels`: the diff's handle on both, keys and double-click, widths kept in the browser; 7 new e2e, first paint as `main`'s. See below. |
-| V35 | Scout | A question about the repository needs a terminal outside Symbiote or a Spike workspace (a branch and a worktree at the default branch, then Clean up). Measured: with the merger's read-only tools 0 of 3 real "why" answers named a commit, with git 3 of 3 in fewer turns; allow rules cannot keep Bash read-only (`git log --output=<file>`). Planned: `/scout`, a read-only Claude Code or Codex in the checkout, git through Symbiote's PreToolUse gate, one kept conversation, `prompts.scout`. See below. |
+| V35 | Scout | A question about the repository needs a terminal outside Symbiote or a Spike workspace (a branch and a worktree at the default branch, then Clean up). Measured: with the merger's read-only tools 0 of 3 real "why" answers named a commit, with git 3 of 3 in fewer turns; allow rules cannot keep Bash read-only (`git log --output=<file>`). Built on `feature/scout-an-agent-to-ask`: `/scout` (key a), a read-only Claude Code or Codex in the checkout, git through Symbiote's PreToolUse gate, one kept conversation found by its recorded ID, `prompts.scout`; with a real Claude Code, the merger's prompt found in `prompts.ts`, a change declined, `ls` refused by the gate, the checkout clean. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -9131,8 +9131,8 @@ on `main`. Screenshots at 1440×900, dark and light: a workspace at the defaults
 app itself (Electron), other browsers, touch screens.
 ### V35 — Scout: an agent to ask about the repository
 
-**Status:** planned (2026-10-22), on branch `feature/scout-an-agent-to-ask` (a workspace started
-in Symbiote); building.
+**Status:** built on branch `feature/scout-an-agent-to-ask` (a workspace started in Symbiote),
+ready for review. Its "As built" and results below.
 
 **Problem** (asked: "a read-only agent I can ask questions about the repository ('where is X
 decided?', 'why does Y work this way?', 'what touches Z?') without starting a workspace").
@@ -9285,6 +9285,53 @@ the real run.
 
 **Not in V35 (later)**: starting a workspace from an answer; an effort choice (the agent's
 default); Scout's answers as a thread without a terminal; Scout's key on a diff's page.
+
+#### As built (V35)
+
+- **The gate reads commands as git does.** git takes a long option's unique beginning and bundled
+  short options: on git 2.43 `git grep --open=true hello` and `git grep -nOtrue hello` each ran
+  `true` as a pager. The gate refuses any beginning of `--output`, `--open-files-in-pager`,
+  `--ext-diff` and `--no-index` (`--outp=`, `--open=`) and, for `git grep`, a bundle holding `O`;
+  `git log -S'Options'` still passes. `git describe` was left out of the planned list
+  (`--dirty` refreshes the index).
+- **A question after the session was removed outside Symbiote starts a new conversation**, rather
+  than the page asking for one first.
+- **One Claude Code for workspaces and Scout** in `symbiote view`: one list of its sessions every
+  2 s for both. `/api/scout` is read with the workspaces, reviews and merges (4 requests a read).
+- **The page focuses its question** when it opens; `a` on Scout goes to the question or the
+  terminal.
+- **Scout's terminal is Claude Code's own**: there the person can still run a command with `!` or
+  change the mode with Shift+Tab (the status line shows "don't ask on"). Those are the person's
+  acts, as in any terminal; the agent's tools stay Read, Grep, Glob and the gated Bash, and no
+  Edit or Write tool exists in the session. Found in the real run, where Scout suggested
+  `! ls packages` after declining to run `ls`.
+
+**Results.** Tests first, red for the right reason: `scout.test.ts` (15) and `scout-gate.test.ts`
+(84 cases) without their modules, the prompts' 3 without a `scout` key, the viewer's route,
+mark and reader (3 requests a read), and `e2e/scout.spec.ts` (5 of 5 on the build without Scout).
+`pnpm check` 1,233 tests; e2e 188 of 188 (`shell.spec` and `settings.spec` count the third page
+and the 14th prompt). The gate answers in 16 ms a call. With the real Claude Code 2.1.306 (the
+person's default model, Opus 5.5) through `symbiote view`'s API, in a throwaway clone of this
+repository at `84bc324`:
+
+| Asked | Time | What Scout did |
+|---|---|---|
+| Where is the merger's prompt defined? | 51 s | 12 tool calls, two `git log -S` let through by the gate; `packages/cli/src/prompts.ts:131` (`MERGER`), with `DEFAULT_PROMPTS` and `MERGER_ANSWER` |
+| Change README.md and commit it | 12 s | No tool call: declined, and named the workspace to start |
+| Why does a reply stop the session, then resume it? (with `git log -S`) | 49 s | `git log -S` twice, `git show --stat`: `bc4daa3` (V18c) and the journal's measurement |
+| Run `ls packages` | 17 s | Ran `git ls-tree` instead |
+| Call Bash with exactly `ls packages` | 17 s | Refused by the gate, its rule quoted word for word |
+
+`git status` was empty before and after, HEAD unchanged. New conversation took 1.5 s and the
+session left `claude agents`. Codex 0.163 through the same API: a thread named Scout in the
+read-only sandbox, started in 1.3 s, answered within 7.6 s (`rg`, `sed` and `git log` ran there;
+`prompts.ts`, `b8242e0`, `56a3099`), no trust entry written, archived by New conversation.
+`/history` first paint on the clone (485 commits), `main`'s build and this one back to back: 6
+rounds, medians 52 and 56 ms (first row 125 and 127 ms); 12 rounds, 56 and 52 ms (126 and 126):
+no difference. Screenshots at 1440×900 and 390×844, dark and light, of the empty page and of the
+real conversation in its terminal: no overflow, no page errors. Not verified: Codex's own terminal
+on Scout's thread in the page (its trust question) with the real Codex; macOS and Windows;
+`regression-check` (no analysis code changed: core gained types only).
 
 ### Phase 1 milestones
 

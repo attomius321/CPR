@@ -201,7 +201,8 @@ they are linked to elsewhere.
 
 `symbiote view` without revisions opens on **History** (`/history`, or h): the repository's history,
 every branch, local and remote, drawn as a graph beside the commits, the current branch the
-straight line on the left. The sidenav on the left lists the pages (History, Settings) and, under
+straight line on the left. The sidenav on the left lists the pages (History, [Scout](#scout),
+Settings) and, under
 them, your [workspaces](#workspaces-and-agents); a click opens one beside it, without loading the
 page again. Drag the sidenav's edge to widen or narrow it (180–480 px), or focus the edge and use
 the arrow keys; a double-click restores it. A workspace's changes, at the right of its terminal,
@@ -275,6 +276,7 @@ command on the machine where `symbiote` runs, so WSL, Remote SSH and containers 
 | x | Compare mode | |
 | n | Start a workspace | |
 | h, s | History, Settings | |
+| a | [Scout](#scout); on Scout, its question box or its terminal | |
 | w | The workspaces in the sidenav: ↑ and ↓ move, Enter opens | |
 | [ | Fold the sidenav to a rail, or open it | Open the sidenav, or fold it |
 | ] | | In a workspace: hide or show its branch's changes |
@@ -283,7 +285,7 @@ command on the machine where `symbiote` runs, so WSL, Remote SSH and containers 
 | o | | Open in VS Code |
 | Esc | Leave compare mode | Close the detail panel |
 
-n, h, s, w and [ work on Settings and in a workspace too. In a comment box, Start a workspace, a workspace's
+n, h, a, s, w and [ work on Settings, on Scout and in a workspace too. In a comment box, Start a workspace, a workspace's
 reply box or a prompt in Settings, Ctrl+Enter (Cmd+Enter on macOS) saves, starts or sends.
 
 ## Reviewing a branch
@@ -495,6 +497,40 @@ configuration's (`~/.codex/config.toml`).
   resume <thread> -C <worktree>`; what you do there is not in Symbiote's thread. A workspace started
   this way keeps it until you start its agent again.
 
+## Scout
+
+**Scout** (a, or the sidenav's pages: `/scout`) is an agent to ask about the repository: where
+something is decided, why it works this way, what touches it. It runs in the checkout `symbiote
+view` runs in, as it is now (no branch, no worktree), and it is read-only: it reads and searches
+files and runs git's read commands, and never edits, commits, checks out or pushes. Work it finds
+goes through a workspace you start.
+
+- **Ask:** the question box starts a conversation (Enter asks, Shift+Enter starts a new line). Its
+  answer is in the agent's own terminal on the page, where you ask more. One conversation per
+  repository is kept, and opened again when you come back; **New conversation** stops and removes
+  its session (Claude Code keeps its transcript: `claude --resume` opens it) and starts over.
+- **Its agent** is chosen as a workspace's: `agent.kind` in `symbiote/config.json`, else Claude
+  Code, else Codex; the box offers the other when both are installed.
+- **Claude Code** runs with `--tools Read,Grep,Glob,Bash --permission-mode dontAsk
+  --strict-mcp-config` and Symbiote's settings file, `symbiote/scout-settings.json`, whose
+  PreToolUse hook decides first: Read, Grep and Glob go on to Claude Code's own rules; Bash runs
+  only `git log`, `show`, `blame`, `diff`, `shortlog`, `grep`, `rev-parse`, `merge-base`,
+  `ls-files` and `ls-tree`, one command, with no option that writes a file or runs a program
+  (`--output`, `-O`, `--ext-diff`) and no shell operator but a pipe into `head`, `tail`, `wc` or
+  `grep`; every other command and tool is refused, and nothing asks. Claude Code's own permission
+  rules cannot do this: `Bash(git log *)` also matches `git log --output=<file>`.
+- **Codex** runs on its app server (Codex 0.163 and later), in its `read-only` sandbox with approvals
+  `never`: what the sandbox refuses fails, nobody is asked. Its terminal is Codex's own, joined to
+  the thread; the first time in a folder, Codex asks whether you trust it. Without the app server,
+  Scout says so.
+- **The sidenav** marks Scout while it answers, and when it answered while you were on another page,
+  until you open it.
+- Scout's session is found by the ID Symbiote recorded in `symbiote/scout.json` when it started it,
+  never by its folder: your own sessions in the checkout are left alone. Its prompt is
+  `prompts.scout` ([Agents' prompts](#agents-prompts)).
+- Without terminals (no `node-pty`, or `SYMBIOTE_TERMINAL=off`), the box continues the conversation
+  and its answers are read in a terminal of yours (`claude attach <id>`, which the page names).
+
 ## Pull and merge requests
 
 `symbiote pr 123` works with GitHub (and GitHub Enterprise) and GitLab (gitlab.com and self-managed).
@@ -698,9 +734,11 @@ read at each use, so a change applies to the next agent started.
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The sentences of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`; `{reviewer}`, `{what}`; `{review}`, `{agents}` |
 | `reviews` | `symbiote/AGENTS.md`, how an agent acts on a review | none |
 | `merger` | The merger's instructions; Symbiote adds the answer format it reads | none |
+| `scout` | [Scout](#scout)'s first prompt; its tools stay read-only whatever it says | `{question}` (required) |
 
-A value Symbiote cannot use (not text, a start prompt without `{brief}`, or too long: 8,000
-characters for a start prompt, 1,000 for a sentence, 20,000 otherwise) is ignored, and Symbiote's
+A value Symbiote cannot use (not text, a start prompt without `{brief}`, Scout's without
+`{question}`, or too long: 8,000 characters for a start prompt or Scout's, 1,000 for a sentence,
+20,000 otherwise) is ignored, and Symbiote's
 text is used.
 
 ### `.symbioteignore`

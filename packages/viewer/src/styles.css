@@ -2792,22 +2792,21 @@ kbd {
   resize: vertical;
 }
 
+/* The agent, the keys, then Ask at the right; narrow, Ask stays at the right of its line. */
 .scout-ask-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
   gap: 8px 12px;
 }
 
 .scout-keys {
-  margin-right: auto;
   color: var(--muted);
   font-size: var(--size-caption);
 }
 
-.scout-ask-row select {
-  order: -1;
+.scout-ask-row .button {
+  margin-left: auto;
 }
 
 .scout-terminal {

@@ -4660,3 +4660,48 @@ repository at `84bc324` in the folder the V18c spike had the person trust.
 sandbox; `claude attach` restarting a stopped Scout session (V21 says it keeps the saved options);
 macOS. Cleaned up after: the session stopped and removed, the clone deleted, the Codex thread
 archived.
+
+## V35 — Scout: a read-only agent to ask about the repository (2026-10-22, branch `feature/scout-an-agent-to-ask`)
+
+Asked: a Scout page to ask questions about the repository without starting a workspace. `/scout`
+(the sidenav's pages, key `a`): a question starts a read-only Claude Code or Codex in the checkout
+`symbiote view` runs in; its answer and follow-ups are in its own terminal; New conversation starts
+over. Claude Code's Bash goes through Symbiote's PreToolUse gate (decision 236), the session is
+found by its recorded ID (239), no hook records it (238), the prompt is `prompts.scout`.
+
+**Learned**:
+- **git parses more than a prefix check sees.** On git 2.43 `git grep --open=true hello` and
+  `git grep -nOtrue hello` each ran `true` as the pager: git takes a long option's unique
+  beginning and bundled short options. `git log --outp=…` failed (diff options take no
+  abbreviation), `git diff --no-ind` was taken. The gate now refuses every beginning of the
+  options that write or run a program, and for grep any bundle holding `O`. Probing git itself
+  found this; the first 78 tests passed without it.
+- **The real agent keeps to its prompt before the gate is needed.** Asked to change README.md and
+  commit, it made no tool call and named the workspace to start; asked to run `ls`, it ran
+  `git ls-tree` instead. Only an explicit "call Bash with exactly `ls packages`" reached the gate,
+  which refused it ("PreToolUse:Bash hook error: Scout runs only git's read commands …"), and the
+  agent quoted it. The gate is the boundary; the prompt keeps it from being hit.
+- **`git log -S` is what "why" questions use**: the real agent ran it in two of four answers,
+  through the gate, which Claude Code's own read-only set would have refused.
+- **Scout's terminal is Claude Code's**: the person can run `! <command>` there or Shift+Tab to
+  another mode, as in any terminal of theirs; Scout suggested `! ls packages` itself. The agent's
+  tools stay Read, Grep, Glob and the gated Bash.
+- **The person's default model sets the pace**: 49–51 s for a code or history question with
+  Opus 5.5 (their `model`), against 10 s with Sonnet in the spike; 12–17 s for a short turn.
+- **A test's own address**: the e2e helper's URL ends with `/`; the spec's first run asked for
+  `//scout`, which the shell reads as History, and failed for that reason, not Scout's.
+
+**Verification**: tests first, red for the right reason (`scout.test.ts` 15, `scout-gate.test.ts`
+84 cases, prompts 3, viewer route, mark and reader, e2e 5 of 5 on the build without Scout).
+`pnpm check` 1,233 tests; e2e 188 of 188. After the last style change, five specs together
+(scout, shell, look, settings, workspaces): `shell.spec`'s keys test failed once (ArrowDown left
+the focus on the first card), then passed 27 of 27 alone and 57 of 57 in the same five again; not
+explained, not seen before in this branch's runs. Real Claude Code 2.1.306 and Codex 0.163 through
+`symbiote view`'s API in a throwaway clone of this repository (PLAN.md's V35 results): the merger's
+prompt found in `packages/cli/src/prompts.ts`, a change declined, `ls` refused by the gate, `git
+status` empty and HEAD unchanged after five turns; New conversation removed the session (1.5 s);
+Codex's read-only thread answered in 7.6 s and was archived. `/history` first paint as `main`'s
+(medians within 4 ms, alternating). Screenshots at 1440×900 and 390×844, dark and light. Cleaned
+up: the clone, both conversations (the Claude Code session removed, its transcripts deleted; the
+Codex thread archived), the `main` build. Not verified: Codex's own terminal on Scout's thread in
+the page; macOS and Windows; `regression-check` (no analysis code changed).
