@@ -10,7 +10,8 @@ import type {
 import { AgentTerminal, toTerminal, type OpenedTerminal } from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
 import { ChangesPanel } from './ChangesPanel.js';
-import { ChangesIcon, MoreIcon } from './icons.js';
+import { ChangesIcon } from './icons.js';
+import { MoreActions, type MenuAction } from './MoreActions.js';
 import { InTitleBar } from './TitleBar.js';
 import { keyIsTaken } from './keys.js';
 import { markdownNodes, useMarkdown } from './markdown.js';
@@ -303,13 +304,6 @@ function Thread({ thread, worktree }: { thread: WorkspaceThread | null; worktree
   );
 }
 
-interface MenuAction {
-  label: string;
-  title?: string;
-  disabled?: boolean;
-  onSelect: () => void;
-}
-
 /**
  * What the agent was told — since V24 the kind and title as `#`, each part under `##` — drawn as
  * Markdown, as its reports are; as written until the lexer is loaded. Above it, how the agent was
@@ -324,62 +318,6 @@ function Brief({ text, started }: { text: string; started: string | null }) {
         <div className="markdown">{markdownNodes(lexer(text))}</div>
       ) : (
         <div className="workspace-brief-text">{text}</div>
-      )}
-    </div>
-  );
-}
-
-/** "⋯": the workspace's less frequent actions, in a menu under the button. */
-function MoreActions({ actions }: { actions: MenuAction[] }) {
-  const [open, setOpen] = useState(false);
-  const box = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const away = (event: PointerEvent) => {
-      if (!box.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const key = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('pointerdown', away);
-    document.addEventListener('keydown', key);
-    return () => {
-      document.removeEventListener('pointerdown', away);
-      document.removeEventListener('keydown', key);
-    };
-  }, [open]);
-  if (actions.length === 0) return null;
-  return (
-    <div className="more-actions" ref={box}>
-      <button
-        type="button"
-        className="icon-button"
-        aria-label="More actions"
-        title="More actions"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <MoreIcon />
-      </button>
-      {open && (
-        <div className="more-menu" role="menu" aria-label="More actions">
-          {actions.map((action) => (
-            <button
-              key={action.label}
-              type="button"
-              role="menuitem"
-              disabled={action.disabled}
-              {...(action.title ? { title: action.title } : {})}
-              onClick={() => {
-                setOpen(false);
-                action.onSelect();
-              }}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
       )}
     </div>
   );
