@@ -4035,6 +4035,10 @@ e2e) on this machine: before these fixes 155 and 156 of 157 (the app's own spec 
 both, the usage spec once); after the spec found the app by name, 157 of 157, then 156 (the
 Settings race, then fixed); with every fix, 157 of 157.
 
+Merged into main (2026-10-21) by CPR's merger, from the approved `2e44a6f`, no conflicts (`main`
+had not moved since the branch). `main` verified after the next merge (the usage fix, below):
+frozen install, 1,054 unit tests, format, lint, typecheck, build, 158 of 158 e2e.
+
 ## Fix — usage keeps CPR's own last read, reads every 5 min; a program's output read to its end (2026-10-21, branch `fix/usage-keeps-live-numbers`)
 
 Asked: "sometimes, the claude hourly session disappears, and the chatgpt hourly session does not
