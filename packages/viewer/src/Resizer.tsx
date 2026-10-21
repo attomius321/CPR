@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 
-/** The canvas keeps at least this width; also its flex basis in styles.css. */
+/** The canvas keeps at least this width (unless `room` says otherwise); also its flex basis in
+ * styles.css. */
 const MIN_CANVAS = 240;
 /** Arrow keys move the edge this far; with Shift, four times as far. */
 const STEP = 16;
@@ -22,14 +23,35 @@ interface Props {
   onResize: (width: number | null) => void;
   /** A drag starts or ends. */
   onDrag: (dragging: boolean) => void;
+  /** The panel's narrowest; unset, its CSS `min-width`. */
+  min?: number;
+  /** The panel's widest, room allowing. */
+  max?: number;
+  /** What the rest keeps: the canvas's MIN_CANVAS unless set. */
+  room?: number;
+  /**
+   * The panel and what gives up the room, when they are not the handle's siblings: the sidenav's
+   * handle lies over it in the shell's grid.
+   */
+  find?: (handle: HTMLElement) => { panel: Element | null; rest: Element | null };
 }
 
 /**
  * A handle on a panel's inner edge: drag it, or focus it and use the arrow keys (Home/End for
- * the narrowest and widest), to resize the panel; double-click restores its default width. The
- * canvas beside the panel gives up the room, down to MIN_CANVAS.
+ * the narrowest and widest), to resize the panel; double-click restores its default width. What
+ * is beside the panel gives up the room, down to `room` (the canvas's MIN_CANVAS).
  */
-export function Resizer({ label, side, variable, onResize, onDrag }: Props) {
+export function Resizer({
+  label,
+  side,
+  variable,
+  onResize,
+  onDrag,
+  min: narrowest,
+  max: widest = Infinity,
+  room: keep = MIN_CANVAS,
+  find,
+}: Props) {
   const handle = useRef<HTMLDivElement>(null);
   const drag = useRef<(Range & { x: number; next: number; moved: boolean }) | null>(null);
   const [range, setRange] = useState<Range | null>(null);
@@ -40,13 +62,17 @@ export function Resizer({ label, side, variable, onResize, onDrag }: Props) {
   /** The panel's width as drawn, and how far it can go. */
   const measure = (): Range | null => {
     const el = handle.current;
-    const panel = side === 'before' ? el?.previousElementSibling : el?.nextElementSibling;
-    const canvas = side === 'before' ? el?.nextElementSibling : el?.previousElementSibling;
-    if (!panel || !canvas) return null;
+    if (!el) return null;
+    const { panel, rest } = find
+      ? find(el)
+      : side === 'before'
+        ? { panel: el.previousElementSibling, rest: el.nextElementSibling }
+        : { panel: el.nextElementSibling, rest: el.previousElementSibling };
+    if (!panel || !rest) return null;
     const width = Math.round(panel.getBoundingClientRect().width);
-    const min = Math.round(parseFloat(getComputedStyle(panel).minWidth) || 0);
-    const room = Math.floor(canvas.getBoundingClientRect().width) - MIN_CANVAS;
-    return { width, min, max: Math.max(min, width + room) };
+    const min = narrowest ?? Math.round(parseFloat(getComputedStyle(panel).minWidth) || 0);
+    const room = Math.floor(rest.getBoundingClientRect().width) - keep;
+    return { width, min, max: Math.max(min, Math.min(widest, width + room)) };
   };
 
   const clamp = (width: number, { min, max }: Range) =>

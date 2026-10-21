@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import type {
   BranchMerge,
   WorkspaceReplied,
@@ -16,6 +24,7 @@ import { keyIsTaken } from './keys.js';
 import { markdownNodes, useMarkdown } from './markdown.js';
 import { MergeControl } from './MergeControl.js';
 import { postJson } from './http.js';
+import { Resizer } from './Resizer.js';
 import {
   workspaceGroups,
   workspaceHref,
@@ -35,6 +44,7 @@ import { HISTORY_PAGE } from './pages.js';
 import { useShell, type Notice } from './shell-context.js';
 import { verdictLine } from './terminal.js';
 import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
+import { loadWidths, saveWidth } from './widths.js';
 
 /** `?send=verdict`: from the Review tab, the box filled with the review's verdict (V18c). */
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
@@ -442,6 +452,13 @@ function WorkspacePanel({
   const [asking, setAsking] = useState(() => asksBeforeOpening(agent));
   // The branch's changes at the right (V29d): `]` or the head's button shows or hides them.
   const [changesShown, setChangesShown] = useState(loadChangesShown);
+  // As wide as the person dragged them (V34), kept in this browser.
+  const [changesWidth, setChangesWidth] = useState(() => loadWidths().changes);
+  const [resizing, setResizing] = useState(false);
+  const resizeChanges = useCallback((width: number | null) => {
+    setChangesWidth(width ?? undefined);
+    saveWidth('changes', width);
+  }, []);
   const toggleChanges = useCallback(
     () =>
       setChangesShown((shown) => {
@@ -709,7 +726,12 @@ function WorkspacePanel({
           </button>
         </p>
       )}
-      <div className="workspace-split">
+      <div
+        className={`workspace-split${resizing ? ' resizing' : ''}`}
+        style={
+          changesWidth ? ({ '--changes-width': `${changesWidth}px` } as CSSProperties) : undefined
+        }
+      >
         <div className="workspace-main">
           <InTitleBar>
             <div className="workspace-views" role="tablist" aria-label="Talk to the agent">
@@ -852,6 +874,17 @@ function WorkspacePanel({
             </div>
           </form>
         </div>
+        {changesShown && (
+          <Resizer
+            label="Resize changes panel"
+            side="after"
+            variable="--changes-width"
+            min={200}
+            room={480}
+            onResize={resizeChanges}
+            onDrag={setResizing}
+          />
+        )}
         {changesShown && <ChangesPanel branch={branch} version={version} onSaid={setSaid} />}
       </div>
     </section>

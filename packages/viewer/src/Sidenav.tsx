@@ -1,10 +1,13 @@
 import {
+  useCallback,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type FocusEvent,
   type KeyboardEvent,
+  type ReactNode,
 } from 'react';
 import type { MergeEntry } from '@symbiote/core';
 import { reviewMarks, type ReviewMark } from './branchReviews.js';
@@ -19,10 +22,12 @@ import {
 } from './icons.js';
 import { mergeState } from './merges.js';
 import { HISTORY_PAGE, hrefOf, SETTINGS_PAGE, START_PAGE } from './pages.js';
+import { Resizer } from './Resizer.js';
 import { useShell } from './shell-context.js';
 import { useWorkspaces } from './useWorkspaces.js';
 import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from './Workspace.js';
 import { workspaceGroups, workspaceName, type WorkspaceRow } from './workspaces.js';
+import { loadWidths, saveWidth } from './widths.js';
 
 const GROUPS = [
   ['needsYou', 'Needs you'],
@@ -223,6 +228,47 @@ export function Sidenav({
       </section>
     </aside>
   );
+}
+
+/** The sidenav's handle lies over its right border in the shell's grid, not between the two. */
+const findSidenav = (handle: HTMLElement) => ({
+  panel: handle.parentElement?.querySelector(':scope > .sidenav') ?? null,
+  rest: handle.parentElement?.querySelector(':scope > .shell-main') ?? null,
+});
+
+/**
+ * The sidenav's width as the person drags it (V34): 180–480 px, the main area keeping 480. Gives
+ * the shell's style (`--sidenav-open`, which the folded rail ignores), whether a drag is on, and
+ * the handle, drawn only while the sidenav is open; under 900 px the stylesheet hides it.
+ */
+export function useSidenavWidth(folded: boolean): {
+  style: CSSProperties | undefined;
+  resizing: boolean;
+  handle: ReactNode;
+} {
+  const [width, setWidth] = useState(() => loadWidths().sidenav);
+  const [resizing, setResizing] = useState(false);
+  const onResize = useCallback((next: number | null) => {
+    setWidth(next ?? undefined);
+    saveWidth('sidenav', next);
+  }, []);
+  return {
+    style: width ? ({ '--sidenav-open': `${width}px` } as CSSProperties) : undefined,
+    resizing,
+    handle: folded ? null : (
+      <Resizer
+        label="Resize sidebar"
+        side="before"
+        variable="--sidenav-open"
+        min={180}
+        max={480}
+        room={480}
+        find={findSidenav}
+        onResize={onResize}
+        onDrag={setResizing}
+      />
+    ),
+  };
 }
 
 /**

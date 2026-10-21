@@ -4236,8 +4236,10 @@ p.settings-placeholders {
 /* ---- the shell (V29a): the sidenav, the main area, the status bar --------------------- */
 
 .shell {
+  /* As wide as the person dragged it (V34, `--sidenav-open`), the main area keeping 480 px. */
+  --sidenav-width: min(var(--sidenav-open, 240px), max(180px, calc(100vw - 480px)));
   display: grid;
-  grid-template-columns: var(--sidenav-width, 240px) minmax(0, 1fr);
+  grid-template-columns: var(--sidenav-width) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas:
     'side main'
@@ -4247,6 +4249,19 @@ p.settings-placeholders {
 
 .shell.folded {
   --sidenav-width: 48px;
+}
+
+/* The sidenav's handle (V34) lies over its right border, the height of its column. */
+.shell > .resizer {
+  grid-area: side;
+  justify-self: end;
+  margin: 0 -4px 0 0;
+}
+
+.shell.resizing,
+.workspace-split.resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 
 /* Under 900 px only: the button that opens the sidenav as a drawer. */
@@ -5013,7 +5028,8 @@ p.settings-placeholders {
   }
 
   .sidenav,
-  .sidenav-fold {
+  .sidenav-fold,
+  .shell > .resizer {
     display: none;
   }
 
@@ -5139,7 +5155,8 @@ p.settings-placeholders {
    1440 with the sidenav the terminal keeps 56 % of the window (decision 186). */
 .changes {
   flex: none;
-  width: 256px;
+  /* As wide as the person dragged it (V34), the terminal keeping 480 px. */
+  width: min(var(--changes-width, 256px), calc(100cqi - 480px));
   min-height: 0;
   overflow: auto;
   border-left: 1px solid var(--line);
@@ -5149,7 +5166,8 @@ p.settings-placeholders {
 
 @container workspace (max-width: 1199px) {
   .changes,
-  .changes-toggle {
+  .changes-toggle,
+  .workspace-split > .resizer {
     display: none;
   }
 }
