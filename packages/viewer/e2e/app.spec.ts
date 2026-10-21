@@ -128,6 +128,32 @@ const press = (app: ElectronApplication, keyCode: string, modifiers: ('control' 
 const zoomLevel = (app: ElectronApplication) =>
   app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.webContents.getZoomLevel());
 
+/**
+ * Records what the page asks of the first window (N1d) instead of doing it: the specs' display
+ * has no window manager, and a closed window would end the app.
+ */
+const recordWindow = (app: ElectronApplication) =>
+  app.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0];
+    if (!window) return;
+    const asked: string[] = [];
+    Object.assign(globalThis, { asked });
+    for (const name of ['minimize', 'maximize', 'unmaximize', 'close'] as const) {
+      window[name] = () => {
+        asked.push(name);
+      };
+    }
+  });
+
+const calls = (app: ElectronApplication) =>
+  app.evaluate(() => (globalThis as { asked?: string[] }).asked ?? []);
+
+const style = (page: Page, selector: string, property: string) =>
+  page
+    .locator(selector)
+    .first()
+    .evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), property);
+
 test('opens the server in a window of its own: no menu bar, the page’s title', async () => {
   const { app, page } = await launch();
   expect(page.url()).toBe(`${cpr.url}history`);
@@ -290,14 +316,17 @@ test.describe('the title bar', () => {
     expect(
       await bar.evaluate((el) => getComputedStyle(el).getPropertyValue('-webkit-app-region')),
     ).toBe('drag');
-    // The system's buttons over the page (Windows and Linux).
+    // On Linux the window's buttons are CPR's (N1d): no overlay of the system's over the page.
     expect(
       await page.evaluate(
         () =>
           (navigator as Navigator & { windowControlsOverlay: { visible: boolean } })
             .windowControlsOverlay.visible,
       ),
-    ).toBe(true);
+    ).toBe(false);
+    for (const name of ['Minimize', 'Maximize', 'Close']) {
+      await expect(bar.getByRole('button', { name, exact: true })).toBeVisible();
+    }
     await expect(bar.getByRole('button', { name: 'All branches' })).toBeVisible();
 
     const back = bar.getByRole('button', { name: 'Back' });
@@ -315,7 +344,7 @@ test.describe('the title bar', () => {
     await expect(page.locator('.shell')).toHaveClass(/folded/);
   });
 
-  test('the window’s buttons take the theme’s colour', async () => {
+  test('the window’s buttons take the theme’s colour: drawn by CPR on Linux, no overlay', async () => {
     const { app, page } = await launch();
     await app.evaluate(({ BrowserWindow }) => {
       const window = BrowserWindow.getAllWindows()[0];
@@ -328,14 +357,56 @@ test.describe('the title bar', () => {
         set(options);
       };
     });
-    const colour = () =>
-      app.evaluate(() => (globalThis as { overlay?: { color?: string }[] }).overlay?.at(-1)?.color);
+    const close = page.locator('.titlebar').getByRole('button', { name: 'Close', exact: true });
+    const colour = () => close.evaluate((el) => getComputedStyle(el).color);
     await page.keyboard.press('s');
     await page.getByRole('button', { name: 'Light', exact: true }).click();
-    // The chrome's colour (--side), CPR's style since V31.
-    await expect.poll(colour).toBe('#fafafa');
+    // The text's colour, CPR's style since V31.
+    await expect.poll(colour).toBe('rgb(10, 10, 10)');
     await page.getByRole('button', { name: 'Dark', exact: true }).click();
-    await expect.poll(colour).toBe('#171717');
+    await expect.poll(colour).toBe('rgb(250, 250, 250)');
+    // The overlay is the system's buttons' on Windows: none on Linux.
+    expect(await app.evaluate(() => (globalThis as { overlay?: unknown[] }).overlay?.length)).toBe(
+      0,
+    );
+  });
+
+  test('on Linux the corners are CPR’s: round until maximized; its buttons ask the window (N1d)', async () => {
+    const { app, page } = await launch();
+    await recordWindow(app);
+    const html = page.locator('html');
+    await expect(html).toHaveAttribute('data-frame', 'own');
+    await expect(html).toHaveAttribute('data-window', 'normal');
+    // The page carries the window's background and corners; around it, the window is clear.
+    expect(await style(page, 'html', 'background-color')).toBe('rgba(0, 0, 0, 0)');
+    expect(await style(page, '#root', 'background-color')).toBe('rgb(10, 10, 10)');
+    expect(await style(page, '#root', 'border-radius')).toBe('10px');
+
+    const bar = page.locator('.titlebar');
+    await bar.getByRole('button', { name: 'Minimize', exact: true }).click();
+    await bar.getByRole('button', { name: 'Maximize', exact: true }).click();
+    await expect.poll(() => calls(app)).toEqual(['minimize', 'maximize']);
+    // The window says it is maximized (the display has no window manager to do it): square.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.emit('maximize'));
+    await expect(html).toHaveAttribute('data-window', 'maximized');
+    expect(await style(page, '#root', 'border-radius')).toBe('0px');
+    await bar.getByRole('button', { name: 'Restore', exact: true }).click();
+    await expect.poll(() => calls(app)).toEqual(['minimize', 'maximize', 'unmaximize']);
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.emit('unmaximize'));
+    await expect(html).toHaveAttribute('data-window', 'normal');
+    await expect(bar.getByRole('button', { name: 'Maximize', exact: true })).toBeVisible();
+    // Full screen is square too.
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0]?.emit('enter-full-screen'),
+    );
+    await expect(html).toHaveAttribute('data-window', 'maximized');
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0]?.emit('leave-full-screen'),
+    );
+    await expect(html).toHaveAttribute('data-window', 'normal');
+
+    await bar.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect.poll(() => calls(app)).toEqual(['minimize', 'maximize', 'unmaximize', 'close']);
   });
 
   test('a workspace: its tabs and its changes’ toggle in the bar', async () => {
@@ -502,6 +573,19 @@ test.describe('from the launcher', () => {
     } finally {
       rmSync(notes, { recursive: true, force: true });
     }
+  });
+
+  test('the start page draws the frame and the window’s buttons too, on Linux (N1d)', async () => {
+    installed();
+    const { app, page } = await fromLauncher();
+    await expect(page.getByRole('heading', { name: 'CPR', exact: true })).toBeVisible();
+    await recordWindow(app);
+    await expect(page.locator('html')).toHaveAttribute('data-frame', 'own');
+    expect(await style(page, '#root', 'border-radius')).toBe('10px');
+    const bar = page.locator('.start-bar');
+    await bar.getByRole('button', { name: 'Maximize', exact: true }).click();
+    await bar.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect.poll(() => calls(app)).toEqual(['maximize', 'close']);
   });
 
   test('launched again, the running app takes it: one window', async () => {

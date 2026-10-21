@@ -15,6 +15,7 @@ import {
   type MenuItemConstructorOptions,
   type WebContents,
 } from 'electron';
+import { frameOf, frameOptions } from './frame.js';
 import { readRecorded, startServer, withRecent } from './launcher.js';
 import {
   contextMenuRoles,
@@ -49,18 +50,8 @@ if (fromLauncher) {
 }
 const primary = !fromLauncher || app.requestSingleInstanceLock();
 
-/** The window's background before the page paints: the viewer's `--bg`, in its theme. */
-const BACKGROUND = { dark: '#0b0b0c', light: '#f7f7f5' };
-/**
- * The title bar (N1c): CPR draws it, 38 px, in the viewer's `--side`; the system's buttons
- * stay, over it (Windows and Linux) with its colour and `--text` for their symbols (Windows), or
- * as macOS's own at the left.
- */
-const TITLE_BAR = {
-  height: 38,
-  dark: { color: '#111113', symbolColor: '#e6e6e9' },
-  light: { color: '#f0f0ee', symbolColor: '#1d1d1f' },
-};
+/** Who draws the window's frame and buttons here (N1d): CPR's pages on Linux. */
+const frame = frameOf(process.platform);
 const HEX = /^#[0-9a-f]{6}$/i;
 
 /** What each window shows: its home (a server, or the start page), its repository and server. */
@@ -205,16 +196,7 @@ function createWindow(title: string): BrowserWindow {
     minHeight: 480,
     show: false,
     title,
-    backgroundColor: light ? BACKGROUND.light : BACKGROUND.dark,
-    titleBarStyle: 'hidden',
-    ...(process.platform === 'darwin'
-      ? { trafficLightPosition: { x: 14, y: 12 } }
-      : {
-          titleBarOverlay: {
-            ...(light ? TITLE_BAR.light : TITLE_BAR.dark),
-            height: TITLE_BAR.height,
-          },
-        }),
+    ...frameOptions(process.platform, light),
     icon: join(here, '..', 'icons', 'cpr.png'),
     autoHideMenuBar: true,
     webPreferences: {
@@ -245,6 +227,18 @@ function createWindow(title: string): BrowserWindow {
     windows.get(contents)?.server?.kill('SIGTERM');
     windows.delete(contents);
   });
+
+  // Where CPR draws the frame (N1d), its pages square their corners while the window fills the
+  // screen. Told by the window's events: a window manager may answer `isMaximized` late.
+  if (frame === 'own') {
+    const tell = (maximized: boolean) => {
+      if (!contents.isDestroyed()) contents.send('cpr:window-state', { maximized });
+    };
+    window.on('maximize', () => tell(true));
+    window.on('unmaximize', () => tell(false));
+    window.on('enter-full-screen', () => tell(true));
+    window.on('leave-full-screen', () => tell(window.isMaximized()));
+  }
 
   contents.on('will-navigate', (event) => {
     if (staysInWindow(event.url, home())) return;
@@ -322,10 +316,34 @@ function listen(): void {
     event.returnValue = true;
   });
 
+  // Who draws the frame, and whether the window fills the screen (N1d): asked before the page's
+  // scripts run, so its first paint has the right corners.
+  ipcMain.on('cpr:frame', (event) => {
+    const window = shownFor(event)?.window;
+    const own = !!window && frame === 'own' && (fromServer(event) || fromStart(event));
+    event.returnValue = {
+      frame: own ? 'own' : 'system',
+      maximized: !!window && (window.isMaximized() || window.isFullScreen()),
+    };
+  });
+
+  // The window's own buttons, where CPR draws them (N1d): only its own pages may ask.
+  ipcMain.on('cpr:window', (event, action: unknown) => {
+    const window = shownFor(event)?.window;
+    if (!window || frame !== 'own' || !(fromServer(event) || fromStart(event))) return;
+    if (action === 'minimize') window.minimize();
+    else if (action === 'maximize') window.maximize();
+    else if (action === 'restore') {
+      if (window.isFullScreen()) window.setFullScreen(false);
+      else window.unmaximize();
+    } else if (action === 'close') window.close();
+  });
+
   // The title bar's colours, as the page's theme has them (N1c).
   ipcMain.on('cpr:title-bar', (event, colors: unknown) => {
     const window = shownFor(event)?.window;
-    if (!window || !fromServer(event) || process.platform === 'darwin') return;
+    // No overlay where CPR draws the frame (N1d): Electron throws if asked to paint one.
+    if (!window || !fromServer(event) || process.platform === 'darwin' || frame === 'own') return;
     const { color, symbol } = (colors ?? {}) as { color?: unknown; symbol?: unknown };
     if (typeof color !== 'string' || typeof symbol !== 'string') return;
     if (HEX.test(color) && HEX.test(symbol)) {

@@ -27,8 +27,14 @@
         } catch (e) {}
         document.documentElement.dataset.theme =
           theme === 'light' || theme === 'system' ? theme : 'dark';
-        // In CPR's window (N1c), its title bar is the page's: marked before the first paint.
-        if (window.cprApp) document.documentElement.dataset.app = window.cprApp.platform;
+        // In CPR's window (N1c), its title bar is the page's: marked before the first paint. On
+        // Linux its frame is too (N1d): rounded corners, square while the window fills the screen.
+        var app = window.cprApp;
+        if (app) document.documentElement.dataset.app = app.platform;
+        if (app && app.frame === 'own') {
+          document.documentElement.dataset.frame = 'own';
+          document.documentElement.dataset.window = app.maximized ? 'maximized' : 'normal';
+        }
       })();
     </script>
   </head>
