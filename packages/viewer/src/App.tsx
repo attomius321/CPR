@@ -65,6 +65,7 @@ import { SymbolNode } from './SymbolNode.js';
 import { WindowButtons } from './TitleBar.js';
 import { useLayout } from './useLayout.js';
 import { useTheme } from './theme.js';
+import { loadWidths, saveWidth, withWidth, type Widths } from './widths.js';
 
 const nodeTypes = {
   symbol: SymbolNode,
@@ -128,39 +129,6 @@ function graphUrl(): string {
   return new URLSearchParams(window.location.search).get('graph') ?? './api/graph';
 }
 
-/** Widths the reviewer gave the sidebar and the detail panel; unset, the stylesheet's. */
-interface Widths {
-  sidebar?: number;
-  panel?: number;
-}
-
-const WIDTHS_KEY = 'symbiote.viewer.widths';
-
-/** Kept in this browser for every graph: how wide panels read best is the reviewer's. */
-function loadWidths(): Widths {
-  try {
-    const stored = JSON.parse(window.localStorage.getItem(WIDTHS_KEY) ?? '{}') as unknown;
-    if (!stored || typeof stored !== 'object') return {};
-    const width = (value: unknown) =>
-      typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
-    const { sidebar, panel } = stored as Record<string, unknown>;
-    return {
-      ...(width(sidebar) ? { sidebar: width(sidebar) } : {}),
-      ...(width(panel) ? { panel: width(panel) } : {}),
-    };
-  } catch {
-    return {};
-  }
-}
-
-function saveWidths(widths: Widths): void {
-  try {
-    window.localStorage.setItem(WIDTHS_KEY, JSON.stringify(widths));
-  } catch {
-    // Storage blocked: the widths last until the page closes.
-  }
-}
-
 export function App() {
   const [state, setState] = useState<State>({ status: 'loading' });
   /** A diff of `symbiote view`: in the shell's sidenav and status bar (V29a), with the repository's
@@ -187,14 +155,9 @@ export function App() {
   const [widths, setWidths] = useState<Widths>(loadWidths);
   /** A panel is being resized: the canvas waits for the drop to centre the selection again. */
   const [resizing, setResizing] = useState(false);
-  const resize = useCallback((panel: keyof Widths, width: number | null) => {
-    setWidths((current) => {
-      const next = { ...current };
-      if (width === null) delete next[panel];
-      else next[panel] = width;
-      saveWidths(next);
-      return next;
-    });
+  const resize = useCallback((panel: 'sidebar' | 'panel', width: number | null) => {
+    setWidths((current) => withWidth(current, panel, width));
+    saveWidth(panel, width);
   }, []);
 
   const graph = state.status === 'ready' ? state.graph : undefined;

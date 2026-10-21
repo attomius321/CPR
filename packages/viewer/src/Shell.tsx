@@ -22,7 +22,7 @@ import {
   type Notice,
   type Shell as ShellApi,
 } from './shell-context.js';
-import { DrawerStrip, Sidenav } from './Sidenav.js';
+import { DrawerStrip, Sidenav, useSidenavWidth } from './Sidenav.js';
 import { StatusBar } from './StatusBar.js';
 import { TitleBar, TitleBarSlotsProvider, type TitleBarSlots } from './TitleBar.js';
 import { WorkspaceView } from './Workspace.js';
@@ -73,6 +73,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [flashed, setFlashed] = useState<string | null>(null);
   const [folded, setFolded] = useState(loadFolded);
+  const sidenav = useSidenavWidth(folded);
   const [drawer, setDrawer] = useState(false);
   // A page's question before it is left (Settings with unsaved prompts), and the address shown.
   const guard = useRef<LeaveGuard | null>(null);
@@ -219,7 +220,10 @@ export function Shell({ repo }: { repo?: string | undefined }) {
 
   return (
     <ShellContext.Provider value={shell}>
-      <div className={`shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}`}>
+      <div
+        className={`shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}${sidenav.resizing ? ' resizing' : ''}`}
+        style={sidenav.style}
+      >
         {desktop && (
           <TitleBar
             repo={repo}
@@ -239,6 +243,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
         )}
         <DrawerStrip open={drawer} onToggle={() => setDrawer((open) => !open)} />
         <Sidenav repo={repo} folded={folded} onFold={fold} flashed={flashed} />
+        {sidenav.handle}
         <TitleBarSlotsProvider value={slots}>
           <main className="shell-main">
             {route.page === 'history' && <HistoryPage key={visit} />}

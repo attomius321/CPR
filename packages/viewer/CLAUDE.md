@@ -23,6 +23,9 @@ Pages and their addresses, and a diff's way back: `src/pages.ts`. In code a work
 - `src/App.tsx` — state, the view to lay out, the canvas (map mode, reveal/fit), toolbar.
 - `src/Sidebar.tsx` (change list with search, findings, review tab), `src/DetailPanel.tsx`
   (diff, comments, users/uses), `src/ReviewTab.tsx`.
+- `src/Resizer.tsx` — the one drag handle for panels (the diff's sidebar and detail panel, the
+  shell's sidenav, a workspace's changes; V34): keys, limits, double-click for the default.
+  Widths are kept in the browser through `src/widths.ts`, each panel merged into one entry.
 - `src/review.ts` (change list — by project when it spans several —, search, j/k order, one
   project and its neighbourhood, marks), `src/detail.ts` (excerpts, diff rows),
   `src/comments.ts` (draft comments and anchors), `src/store.ts` (server or browser state).

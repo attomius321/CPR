@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { hrefOf, type Route } from './pages.js';
 import { ShellContext, type Notice, type Shell } from './shell-context.js';
-import { DrawerStrip, Sidenav } from './Sidenav.js';
+import { DrawerStrip, Sidenav, useSidenavWidth } from './Sidenav.js';
 import { desktop } from './desktop.js';
 import { StatusBar } from './StatusBar.js';
 import { TitleBar } from './TitleBar.js';
@@ -35,6 +35,7 @@ function saveFolded(folded: boolean): void {
  */
 export function DiffShell({ repo, children }: { repo?: string | undefined; children: ReactNode }) {
   const [folded, setFolded] = useState(loadFolded);
+  const sidenav = useSidenavWidth(folded);
   // Under 900 px the sidenav is a drawer, opened from the strip at the top (V29b).
   const [drawer, setDrawer] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -91,7 +92,10 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
   );
   return (
     <ShellContext.Provider value={shell}>
-      <div className={`shell diff-shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}`}>
+      <div
+        className={`shell diff-shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}${sidenav.resizing ? ' resizing' : ''}`}
+        style={sidenav.style}
+      >
         {desktop && (
           <TitleBar
             repo={repo}
@@ -104,6 +108,7 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
         )}
         <DrawerStrip open={drawer} onToggle={() => setDrawer((open) => !open)} />
         <Sidenav repo={repo} folded={folded} onFold={fold} flashed={null} />
+        {sidenav.handle}
         <div className="shell-main">{children}</div>
         <StatusBar notice={notice} />
       </div>
