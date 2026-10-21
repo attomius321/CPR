@@ -214,14 +214,14 @@ from elsewhere.
 **Usage.** The status bar's right side shows the subscription of each agent CPR can start and
 how much of each window is used, as its vendor counts it: `Claude Pro · 5h 59% · wk 66%`,
 `Codex Go · 30d 0%`. Amber from 80 % (or when Claude warns), red at the limit; a hover says
-when each window resets and how old the numbers are. `cpr view` reads them at most once a
-minute, while a page asks:
+when each window resets and how old the numbers are. `cpr view` reads them at most every 5
+minutes, while a page asks:
 
 - **Claude Code**: from the endpoint Claude Code's own `/usage` reads, with the token Claude
   Code stored (`~/.claude/.credentials.json`, or the Keychain on macOS). CPR only reads it: it
   never renews it, never gives it to the page, and sends it to `api.anthropic.com` only. When the
-  token has expired or the request fails, the bar shows the copy Claude Code kept the last time
-  `/usage` was opened, with its age.
+  token has expired or the request fails, the bar keeps the last numbers CPR read, with their age;
+  before any, the copy Claude Code kept the last time `/usage` was opened.
 - **Codex**: from its app server (`account/rateLimits/read`); without one, from your newest
   Codex session. An API-key login has no windows and is not shown.
 

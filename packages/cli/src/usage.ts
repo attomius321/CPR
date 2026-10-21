@@ -2,7 +2,7 @@
 // Claude Code's from the endpoint its `/usage` reads, with the token Claude Code stored, read
 // only (decision 172); Codex's from its app server, else its newest session. Both sources are
 // undocumented or `[experimental]`: every field is checked as it is read, and what CPR cannot
-// read is left out, never guessed. `cpr view` keeps a copy for 60 s (`usageService`).
+// read is left out, never guessed. `cpr view` keeps a copy for 5 min (`usageService`).
 import { open, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { UsageReport, UsageSubscription, UsageWindow } from '@cpr/core';
@@ -364,7 +364,7 @@ export async function readCodexUsage({
   };
 }
 
-/** `GET /api/usage`: the copy, read again in the background once older than 60 s. */
+/** `GET /api/usage`: the copy, read again in the background once older than 5 min. */
 export interface UsageService {
   report(): Promise<UsageReport>;
   /** Resolves once the read under way (if any) is done: for tests. */
@@ -374,17 +374,37 @@ export interface UsageService {
 const AGENTS = ['claude', 'codex'] as const;
 
 /**
+ * What to show after a read: its subscription, unless it is older than the one kept. A failed
+ * read gives the agent's own copy, and Claude Code's is as old as its /usage was last opened
+ * (10 h in real use, its 5-hour window long reset): the last numbers are kept instead, with why
+ * they were not read again and without the windows that have reset since.
+ */
+function newer(
+  last: UsageSubscription | null,
+  read: UsageSubscription,
+  now: number,
+): UsageSubscription {
+  if (!last || Date.parse(read.at) >= Date.parse(last.at)) return read;
+  return {
+    ...last,
+    windows: last.windows.filter((w) => !w.resetsAt || Date.parse(w.resetsAt) > now),
+    ...(read.note ? { note: read.note } : {}),
+  };
+}
+
+/**
  * The subscriptions `readers` give, kept in memory (decision 175): the first ask waits for them;
  * after that each ask answers from the copy and reads again in the background once it is older
- * than `maxAgeMs`, one read at a time. A 429 waits `backoffMs`; an error keeps the last numbers,
- * with their time. `off` (`CPR_USAGE=off`) reads nothing.
+ * than `maxAgeMs` (5 min: at 60 s, two `cpr view`s were refused by Claude's endpoint), one read at
+ * a time. A 429 waits `backoffMs`; an error, or a copy older than the
+ * last numbers, keeps the last numbers, with their time. `off` (`CPR_USAGE=off`) reads nothing.
  */
 export function usageService(
   readers: Record<(typeof AGENTS)[number], () => Promise<UsageRead>>,
   {
     off = false,
     now = Date.now,
-    maxAgeMs = 60_000,
+    maxAgeMs = 300_000,
     backoffMs = 300_000,
   }: { off?: boolean; now?: () => number; maxAgeMs?: number; backoffMs?: number } = {},
 ): UsageService {
@@ -402,16 +422,20 @@ export function usageService(
     if (due.length === 0) return Promise.resolve();
     reading = Promise.all(
       due.map(async (agent) => {
-        const last = kept.get(agent);
+        const last = kept.get(agent)?.subscription ?? null;
         try {
           const read = await readers[agent]();
           if (read.backoff) waitUntil.set(agent, now() + backoffMs);
           kept.set(agent, {
-            subscription: read.subscription ?? (read.backoff ? (last?.subscription ?? null) : null),
+            subscription: read.subscription
+              ? newer(last, read.subscription, now())
+              : read.backoff
+                ? last
+                : null,
             readAt: now(),
           });
         } catch {
-          kept.set(agent, { subscription: last?.subscription ?? null, readAt: now() });
+          kept.set(agent, { subscription: last, readAt: now() });
         }
       }),
     ).then(() => {

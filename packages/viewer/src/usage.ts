@@ -68,8 +68,12 @@ export function usageTitle(subscription: UsageSubscription, now: number): string
   const age = relativeDate(at, now);
   lines.push(
     source === 'live'
-      ? `Read ${age}`
+      ? `Read ${age}${note ? `, not since: ${note}` : ''}`
       : `${PROGRAMS[agent]}'s copy, ${age}${note ? `: ${note}` : ''}`,
   );
   return lines.join('\n');
 }
+
+/** The numbers are not from the last read, a copy or the last ones kept: the bar says how old. */
+export const showsAge = (subscription: UsageSubscription): boolean =>
+  subscription.source === 'cached' || subscription.note !== undefined;

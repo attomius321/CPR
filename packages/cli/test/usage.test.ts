@@ -15,8 +15,9 @@ import {
 import { fakeAppServer, type FakeAppServer } from './fake-app-server.js';
 
 // Subscription usage (V29c): Claude Code's from the endpoint its /usage reads, with the token it
-// stored, read only (decision 172); Codex's from its app server; a 60-s copy in `cpr view`.
+// stored, read only (decision 172); Codex's from its app server; a 5-min copy in `cpr view`.
 const NOW = Date.parse('2026-10-20T16:15:00Z');
+const MIN = 60_000;
 const HOUR = 3_600_000;
 
 let home: string;
@@ -412,7 +413,7 @@ describe('usageService', () => {
     return { read, reads: () => reads };
   }
 
-  it('answers from its copy, read again in the background once older than 60 s, one read at a time', async () => {
+  it('answers from its copy, read again in the background once older than 5 min, one read at a time', async () => {
     let now = NOW;
     const claude = reader({ subscription: sub('claude', 10) }, { subscription: sub('claude', 20) });
     const codex = reader({ subscription: sub('codex', 1) });
@@ -420,11 +421,12 @@ describe('usageService', () => {
     expect((await usage.report()).subscriptions.map((s) => s.windows[0]?.usedPercent)).toEqual([
       10, 1,
     ]);
-    now += 30_000;
+    // Read every minute, two cpr views were refused by Claude's endpoint for 5 of 6 minutes.
+    now += 4 * MIN;
     await usage.report();
     expect(claude.reads()).toBe(1);
-    now += 31_000;
-    // Older than 60 s: the copy now, the new numbers on the next ask.
+    now += MIN + 1_000;
+    // Older than 5 min: the copy now, the new numbers on the next ask.
     const [first, second] = await Promise.all([usage.report(), usage.report()]);
     expect(first.subscriptions[0]?.windows[0]?.usedPercent).toBe(10);
     expect(second.subscriptions[0]?.windows[0]?.usedPercent).toBe(10);
@@ -441,7 +443,11 @@ describe('usageService', () => {
       { subscription: sub('claude', 30) },
     );
     const codex = reader({ subscription: sub('codex', 1) }, new Error('socket closed'));
-    const usage = usageService({ claude: claude.read, codex: codex.read }, { now: () => now });
+    // Read every minute: the backoff is what waits.
+    const usage = usageService(
+      { claude: claude.read, codex: codex.read },
+      { now: () => now, maxAgeMs: MIN },
+    );
     await usage.report();
     now += 61_000;
     await usage.report();
@@ -458,6 +464,85 @@ describe('usageService', () => {
     await usage.report();
     await usage.settled();
     expect(claude.reads()).toBe(3);
+  });
+
+  /** Claude's live numbers read at `at`: the session's window resets at `fiveHourResets`. */
+  const live = (usedPercent: number, at: number, fiveHourResets = NOW + 2 * HOUR) =>
+    ({
+      agent: 'claude',
+      windows: [
+        { minutes: 300, usedPercent, resetsAt: new Date(fiveHourResets).toISOString() },
+        { minutes: 10_080, usedPercent: 18, resetsAt: '2026-10-25T21:59:59.000Z' },
+      ],
+      at: new Date(at).toISOString(),
+      source: 'live',
+    }) satisfies UsageSubscription;
+  /** Claude Code's copy as a failed read gives it: the day before, its 5-hour window long reset. */
+  const copy = (note: string, at = NOW - 10 * HOUR): UsageSubscription => ({
+    agent: 'claude',
+    windows: [{ minutes: 10_080, usedPercent: 22, resetsAt: '2026-10-25T21:59:59.000Z' }],
+    at: new Date(at).toISOString(),
+    source: 'cached',
+    note,
+  });
+
+  it('keeps its last numbers over an older copy given with a 429 or a failure, and says why', async () => {
+    // Real use: a 429 gave Claude Code's copy of the day before, and the bar lost its 5h for the
+    // 5 minutes of the backoff.
+    let now = NOW;
+    const claude = reader(
+      { subscription: live(30, NOW) },
+      { subscription: copy("Claude's usage asked to wait (429)"), backoff: true },
+      { subscription: copy("Claude's usage answered 500") },
+      { subscription: live(35, NOW + 16 * MIN) },
+    );
+    const codex = reader({ subscription: null });
+    const usage = usageService({ claude: claude.read, codex: codex.read }, { now: () => now });
+    const shown = async () => {
+      await usage.report();
+      await usage.settled();
+      return (await usage.report()).subscriptions;
+    };
+    await usage.report();
+    now += 5 * MIN + 1_000;
+    expect(await shown()).toEqual([
+      { ...live(30, NOW), note: "Claude's usage asked to wait (429)" },
+    ]);
+    now += 5 * MIN;
+    expect(await shown()).toEqual([{ ...live(30, NOW), note: "Claude's usage answered 500" }]);
+    now += 5 * MIN;
+    expect(await shown()).toEqual([live(35, NOW + 16 * MIN)]);
+    expect(claude.reads()).toBe(4);
+  });
+
+  it('takes a copy newer than its numbers, and leaves out a window that reset since they were read', async () => {
+    let now = NOW;
+    const claude = reader(
+      { subscription: live(30, NOW, NOW + 4 * MIN) },
+      { subscription: copy("Claude's usage answered 500") },
+      // /usage opened in Claude Code since: its copy is the newest.
+      { subscription: copy("Claude's usage answered 500", NOW + 8 * MIN) },
+    );
+    const codex = reader({ subscription: null });
+    const usage = usageService({ claude: claude.read, codex: codex.read }, { now: () => now });
+    await usage.report();
+    now += 5 * MIN + 1_000;
+    await usage.report();
+    await usage.settled();
+    // The session's window reset a minute ago: its 30 % says nothing now.
+    expect((await usage.report()).subscriptions).toEqual([
+      {
+        ...live(30, NOW),
+        windows: [live(30, NOW).windows[1]],
+        note: "Claude's usage answered 500",
+      },
+    ]);
+    now += 5 * MIN;
+    await usage.report();
+    await usage.settled();
+    expect((await usage.report()).subscriptions).toEqual([
+      copy("Claude's usage answered 500", NOW + 8 * MIN),
+    ]);
   });
 
   it('reads nothing with CPR_USAGE=off', async () => {

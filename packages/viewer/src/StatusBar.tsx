@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react';
 import type { UsageReport } from '@cpr/core';
 import { relativeDate } from './commits.js';
 import type { Notice } from './shell-context.js';
-import { AGENT_NAMES, shownWindows, usageTitle, usageTone, windowLabel } from './usage.js';
+import {
+  AGENT_NAMES,
+  shownWindows,
+  showsAge,
+  usageTitle,
+  usageTone,
+  windowLabel,
+} from './usage.js';
 
 /**
  * The shell's status bar (V29a): on the left the last thing said (a start, a checkout, an
@@ -49,7 +56,10 @@ function NoticeLine({ notice }: { notice: Notice }) {
   );
 }
 
-/** How often the page asks: `cpr view` reads the vendors at most this often too (decision 175). */
+/**
+ * How often the page asks `cpr view`, which answers from its copy and reads the vendors at most
+ * every 5 minutes (decision 175): a new read shows within a minute.
+ */
 const USAGE_EVERY_MS = 60_000;
 
 /** `cpr view`'s usage (`GET /api/usage`): asked every minute while the page shows, and on focus. */
@@ -97,7 +107,7 @@ function Usage() {
         return (
           <li
             key={subscription.agent}
-            className={`usage-subscription${subscription.source === 'cached' ? ' cached' : ''}`}
+            className={`usage-subscription${showsAge(subscription) ? ' cached' : ''}`}
             title={title}
             aria-label={title.replaceAll('\n', '. ')}
             tabIndex={0}
@@ -116,7 +126,7 @@ function Usage() {
                 <span className="usage-percent">{Math.round(w.usedPercent)}%</span>
               </span>
             ))}
-            {subscription.source === 'cached' && (
+            {showsAge(subscription) && (
               <span className="usage-age">{relativeDate(subscription.at, now)}</span>
             )}
           </li>

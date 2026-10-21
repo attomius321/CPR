@@ -85,7 +85,7 @@ export interface RepositoryOptions {
   merges?: Merger;
   /** Every agent's prompts (V28): `/api/settings/prompts`. */
   settings?: PromptSettingsService;
-  /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 60-s copy. */
+  /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 5-min copy. */
   usage?: UsageService;
 }
 
