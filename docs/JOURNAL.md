@@ -4035,7 +4035,7 @@ e2e) on this machine: before these fixes 155 and 156 of 157 (the app's own spec 
 both, the usage spec once); after the spec found the app by name, 157 of 157, then 156 (the
 Settings race, then fixed); with every fix, 157 of 157.
 
-## Fix — usage keeps CPR's own last read, and reads every 5 min (2026-10-21, branch `fix/usage-keeps-live-numbers`)
+## Fix — usage keeps CPR's own last read, reads every 5 min; a program's output read to its end (2026-10-21, branch `fix/usage-keeps-live-numbers`)
 
 Asked: "sometimes, the claude hourly session disappears, and the chatgpt hourly session does not
 exist"; then "Make the query for usage every 5 minutes instead of one" and "No claude copy
@@ -4056,10 +4056,18 @@ code...show the last monitored value from the real usage".
   sessions carry the same. An unstarted window's `resetsAt` moves with each read (now + 30 days).
 - **At 5 minutes the 429 back-off (5 minutes) delays nothing**: the next read is due then anyway.
   It is kept for a shorter interval; its test gives one of 60 s.
-- **The usage spec's Codex first read** (Codex missing from the first answer, open since V29c)
-  failed in 2 of 4 full e2e runs on this branch, in both of its tests; with each step logged, 0 in
-  2 runs (the server found in 36–64 ms, its limits in 67–83 ms). The path is unchanged here: with
-  nothing kept, a read that gives nothing still shows nothing. Not chased further.
+- **The usage spec's Codex first read, open since V29c, was CPR losing a program's output.** Codex
+  was missing from the first answer in 3 of 7 full e2e runs on this branch. A spec that only
+  loads the page and reads that answer found it in 2 of 8 runs at 8 workers. Logged with a file
+  write per step it never failed (0 of 48 runs); logged in memory, it did (2 of 128):
+  `codex app-server daemon start` had exited 0 with 0 of its 252 bytes, so no socket, no app
+  server, and the sessions' fallback found none in the test's `CODEX_HOME`. `runProgram` answered
+  at the exit plus one tick ("let the last chunks already written arrive"); under load the output
+  came later. Real use had the same window: Codex hidden until its daemon is looked for again a
+  minute later, and at 5-minute reads until the next read.
+- **A service a program starts can hold its output**, as `runProgram`'s comment said: it now
+  answers when the output closes, or 1 s after the exit while it is held. CPR's end stays open:
+  closed, the service's next write would end it (`SIGPIPE`).
 
 **Changed**: Claude Code's copy is no longer read. Each live read is kept in CPR's cache
 (`usage/claude.json`, shared by every `cpr view` on the machine; written to a temporary file and
@@ -4069,14 +4077,23 @@ than the numbers kept (Codex's sessions), keeps the last numbers. The hover says
 ago, not since: Claude's usage asked to wait (429)" and the bar shows the age. The vendors are read
 at most every 5 minutes (decision 175); the page still asks `cpr view` every minute.
 
-**Verification**: unit tests red before: the day-old copy over live numbers (the copy's `wk 22` in
-place of `5h 30 · wk 18`), the 5-min interval (red with 60 s), the hover and the bar's age, Claude
-Code's copy shown on a 429 and on an expired token, nothing kept in the cache, another account's
-read; an e2e test red on the previous build (a `cpr view` started while the endpoint answers 429
-shows the last read an earlier run kept, with its age and why: the build showed no Claude). `pnpm
-check` 1,052 tests, build, e2e 157 of 158 (the Codex first read, below). Real use, a fresh `cpr
-view` asked every 30 s like a page: on the 5-min build, for 21 min, its first read 429 (just after
-the two 60-s servers'), then 3 of 3 live (5h 40, 44, 47 %); on the final build, for 11 min, 07:09:26
-live and 07:14:26 429, through which the bar kept `5h 47% · wk 20%` with its age and the 429's note.
-`~/.cache/cpr/usage/claude.json`: 301 bytes, the account's id and the subscription, no token. Not
-verified: the old servers already running keep the old code until restarted.
+**Verification**: unit tests red before: the day-old copy over live numbers (the copy's `wk 22`
+in place of `5h 30 · wk 18`), the 5-min interval (red with 60 s), the hover and the bar's age,
+Claude Code's copy shown on a 429 and on an expired token, nothing kept in the cache, another
+account's read; `runProgram`'s output written after the exit (red: `early` without ` late`),
+and a child holding the output 5 s (answered within 3 s). An e2e test red on the previous build:
+a `cpr view` started while the endpoint answers 429 shows the last read an earlier run kept,
+with its age and why (the build showed no Claude). The first-answer spec, 128 runs at 8 workers
+each way: the old `runProgram` 4 without Codex, the new 0. Real `codex` runs, 10 each: the same
+medians as at the exit (daemon start 46 ms, `login status` 42 ms), with all their output.
+`pnpm check` 1,054 tests, build, e2e 158 of 158 in two runs after a forced rebuild.
+
+Real use, a fresh `cpr view` asked every 30 s like a page: on the 5-min build, for 21 min, its
+first read 429 (just after the two 60-s servers'), then 3 of 3 live (5h 40, 44, 47 %); on the
+final build, for 11 min, 07:09:26 live and 07:14:26 429, through which the bar kept
+`5h 47% · wk 20%` with its age and the 429's note. `~/.cache/cpr/usage/claude.json`: 301 bytes,
+the account's id and the subscription, no token.
+
+Not verified: `claude --bg` (it starts a real session), which may now answer up to 1 s after it
+exits if its background process holds the output; the servers already running keep the old code
+until restarted.

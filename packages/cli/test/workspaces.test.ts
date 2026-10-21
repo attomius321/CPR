@@ -7,6 +7,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import {
   commitFolders,
@@ -31,6 +32,7 @@ import {
   parseSessions,
   readWorkspace,
   readWorkspaceConfig,
+  runProgram,
   serializeWorkspace,
   workKinds,
   worktreeFolder,
@@ -2220,5 +2222,39 @@ describe('claudeCode', () => {
       { args: ['--bg', '--resume', 'session-1', 'OK'], cwd: '/w' },
       { args: ['rm', 's1'], cwd: '/repo' },
     ]);
+  });
+});
+
+describe('runProgram', () => {
+  /** A Node program that writes `now`, and starts a child that holds its output `holdMs`. */
+  const program = (now: string, child: string) => [
+    '-e',
+    `require('node:child_process').spawn(process.execPath, ['-e', ${JSON.stringify(child)}], ` +
+      `{ stdio: ['ignore', 'inherit', 'inherit'] }).unref(); process.stdout.write(${JSON.stringify(now)});`,
+  ];
+
+  it('waits for all of the output, some of which can come after the program exits', async () => {
+    // Under load, Codex's `app-server daemon start` answered 0 of its 252 bytes in 2 reads of
+    // 160: its exit was taken before its output, and CPR took its daemon for absent.
+    const late = "setTimeout(() => process.stdout.write(' late'), 200)";
+    const result = await runProgram(process.execPath, program('early', late), {
+      cwd: tmpdir(),
+      timeoutMs: 10_000,
+    });
+    expect(result).toEqual({ code: 0, stdout: 'early late', stderr: '' });
+  });
+
+  it('answers soon after the exit when a child of the program keeps its output open (a daemon)', async () => {
+    const started = Date.now();
+    const result = await runProgram(
+      process.execPath,
+      program('started', 'setTimeout(() => {}, 5000)'),
+      {
+        cwd: tmpdir(),
+        timeoutMs: 10_000,
+      },
+    );
+    expect(result).toEqual({ code: 0, stdout: 'started', stderr: '' });
+    expect(Date.now() - started).toBeLessThan(3_000);
   });
 });

@@ -560,30 +560,43 @@ export type Run = (
   options: { cwd: string; timeoutMs: number },
 ) => Promise<{ code: number | null; stdout: string; stderr: string }>;
 
+/** How long a program's output may close after it exits, at most: a service it starts may hold it. */
+const OUTPUT_AFTER_EXIT_MS = 1_000;
+
 /**
- * Runs a program without a shell; resolves when it exits (not when its output closes: a
- * background service it starts may keep that open), with what it wrote by then.
+ * Runs a program without a shell; resolves once its output has closed, with all it wrote — its
+ * exit can come first: under load, Codex's `app-server daemon start` had answered 0 of its 252
+ * bytes when its exit was taken. A background service the program starts may keep its output
+ * open: then it resolves `OUTPUT_AFTER_EXIT_MS` after the exit, with what it wrote by then.
  */
 export const runProgram: Run = (command, args, { cwd, timeoutMs }) =>
   new Promise((done) => {
     let stdout = '';
     let stderr = '';
+    let answered = false;
+    let afterExit: ReturnType<typeof setTimeout> | undefined;
     const child = spawn(command, args, {
       cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     });
     const timer = setTimeout(() => child.kill(), timeoutMs);
+    const answer = (result: { code: number | null; stdout: string; stderr: string }) => {
+      if (answered) return;
+      answered = true;
+      clearTimeout(timer);
+      clearTimeout(afterExit);
+      done(result);
+    };
     child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
     child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
-    child.on('error', (error) => {
-      clearTimeout(timer);
-      done({ code: null, stdout, stderr: error.message });
-    });
+    child.on('error', (error) => answer({ code: null, stdout, stderr: error.message }));
+    child.on('close', (code) => answer({ code, stdout, stderr }));
     child.on('exit', (code) => {
       clearTimeout(timer);
-      // Let the last chunks already written arrive.
-      setImmediate(() => done({ code, stdout, stderr }));
+      if (answered) return;
+      // Held by a service it started: its pipes stay open (closed, its next write would kill it).
+      afterExit = setTimeout(() => answer({ code, stdout, stderr }), OUTPUT_AFTER_EXIT_MS);
     });
   });
 
