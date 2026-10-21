@@ -220,8 +220,10 @@ minutes, while a page asks:
 - **Claude Code**: from the endpoint Claude Code's own `/usage` reads, with the token Claude
   Code stored (`~/.claude/.credentials.json`, or the Keychain on macOS). CPR only reads it: it
   never renews it, never gives it to the page, and sends it to `api.anthropic.com` only. When the
-  token has expired or the request fails, the bar keeps the last numbers CPR read, with their age;
-  before any, the copy Claude Code kept the last time `/usage` was opened.
+  token has expired or a request fails, the bar shows the last numbers CPR read, with their age
+  and why. CPR keeps them in its cache (`~/.cache/cpr/usage/claude.json` on Linux, or
+  `$CPR_CACHE_DIR/usage/claude.json`), for the account they were read for, so the next run and
+  every `cpr view` on the machine have them; before CPR's first read, Claude is not shown.
 - **Codex**: from its app server (`account/rateLimits/read`); without one, from your newest
   Codex session. An API-key login has no windows and is not shown.
 

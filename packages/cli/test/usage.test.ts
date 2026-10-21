@@ -63,12 +63,14 @@ function claudeFiles({
   expiresIn = HOUR,
   cached,
   organizationType = 'claude_pro',
+  accountUuid = 'account-a',
   dir = join(home, '.claude'),
   config = join(home, '.claude.json'),
 }: {
   expiresIn?: number | null;
   cached?: { fetchedAtMs: number; utilization: unknown };
   organizationType?: string;
+  accountUuid?: string;
   dir?: string;
   config?: string;
 } = {}) {
@@ -91,7 +93,7 @@ function claudeFiles({
   writeFileSync(
     config,
     JSON.stringify({
-      oauthAccount: { organizationType, emailAddress: 'person@example.com' },
+      oauthAccount: { organizationType, accountUuid, emailAddress: 'person@example.com' },
       ...(cached ? { cachedUsageUtilization: { accountUuid: 'a', ...cached } } : {}),
     }),
   );
@@ -121,15 +123,25 @@ function fakeFetch(answer: () => Response | Promise<Response>) {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
-const claude = (fetch: typeof globalThis.fetch, env: Record<string, string> = {}) =>
+/** Where CPR keeps its last read of Claude's usage: the test's cache. */
+const lastFile = () => join(home, 'cpr-cache', 'usage', 'claude.json');
+
+const claude = (fetch: typeof globalThis.fetch, env: Record<string, string> = {}, now = NOW) =>
   readClaudeUsage({
     installed: () => Promise.resolve(true),
     env,
     home,
     platform: 'linux',
     fetch,
-    now: () => NOW,
+    lastFile: lastFile(),
+    now: () => now,
   });
+
+/** Claude Code's copy from the last time its /usage was opened: CPR never shows it. */
+const CLAUDE_CODE_COPY = {
+  fetchedAtMs: NOW - HOUR,
+  utilization: { five_hour: { utilization: 40, resets_at: '2026-10-20T18:00:00Z' } },
+};
 
 describe('readClaudeUsage', () => {
   it('reads the live windows from the endpoint /usage reads, with the stored token', async () => {
@@ -209,57 +221,66 @@ describe('readClaudeUsage', () => {
     ]);
   });
 
-  it('never refreshes an expired token: no request, the copy Claude Code kept, its age', async () => {
-    const { credentials } = claudeFiles({
-      expiresIn: -HOUR,
-      cached: {
-        fetchedAtMs: NOW - 17 * HOUR,
-        utilization: {
-          // Its 5-hour window reset 15 h ago: its number says nothing now.
-          limits: [
-            { kind: 'session', group: 'session', percent: 20, resets_at: '2026-10-20T00:29:59Z' },
-            { kind: 'weekly_all', group: 'weekly', percent: 22, resets_at: '2026-10-25T21:59:59Z' },
-          ],
-        },
-      },
-    });
+  it("never refreshes an expired token: no request, CPR's last read, its age, why", async () => {
+    claudeFiles({ cached: CLAUDE_CODE_COPY });
+    const live = await claude(fakeFetch(() => json(CLAUDE_ANSWER)).fetch);
+    const { credentials } = claudeFiles({ expiresIn: -HOUR, cached: CLAUDE_CODE_COPY });
     const before = readFileSync(credentials, 'utf8');
     const server = fakeFetch(() => json(CLAUDE_ANSWER));
-    const read = await claude(server.fetch);
+    // 4 h later: the 5-hour window reset at 20:00, and its 59 % says nothing now.
+    const read = await claude(server.fetch, {}, NOW + 4 * HOUR);
     expect(server.asked).toEqual([]);
     expect(readFileSync(credentials, 'utf8')).toBe(before);
-    expect(read.subscription).toMatchObject({
-      plan: 'Pro',
-      windows: [{ minutes: 10_080, usedPercent: 22, resetsAt: '2026-10-25T21:59:59.000Z' }],
-      at: new Date(NOW - 17 * HOUR).toISOString(),
-      source: 'cached',
+    const note = "Claude Code's token has expired (CPR never renews it)";
+    expect(read).toEqual({
+      subscription: { ...live.subscription, windows: [live.subscription?.windows[1]], note },
+      failed: note,
     });
-    expect(read.subscription?.note).toMatch(/expired/);
   });
 
-  it('gives the copy when the request fails, and asks to back off after a 429', async () => {
-    const cached = {
-      fetchedAtMs: NOW - HOUR,
-      utilization: { five_hour: { utilization: 40, resets_at: '2026-10-20T18:00:00Z' } },
-    };
-    claudeFiles({ cached });
+  it("gives CPR's last read when a request fails, never Claude Code's copy; a 429 backs off", async () => {
+    claudeFiles({ cached: CLAUDE_CODE_COPY });
+    // Before any read of CPR's: nothing to show, and why.
+    const first = await claude(fakeFetch(() => json({}, 429)).fetch);
+    expect(first).toEqual({
+      subscription: null,
+      failed: "Claude's usage asked to wait (429)",
+      backoff: true,
+    });
+    const live = await claude(fakeFetch(() => json(CLAUDE_ANSWER)).fetch);
+    expect(live.subscription?.source).toBe('live');
     const failed = await claude(fakeFetch(() => json({ error: 'x' }, 500)).fetch);
-    expect(failed.backoff).toBeUndefined();
-    expect(failed.subscription).toMatchObject({ source: 'cached', windows: [{ usedPercent: 40 }] });
-    expect(failed.subscription?.note).toMatch(/500/);
+    expect(failed).toEqual({
+      subscription: { ...live.subscription, note: "Claude's usage answered 500" },
+      failed: "Claude's usage answered 500",
+    });
     const limited = await claude(fakeFetch(() => json({}, 429)).fetch);
     expect(limited.backoff).toBe(true);
-    expect(limited.subscription).toMatchObject({ source: 'cached' });
+    expect(limited.subscription).toMatchObject({ at: live.subscription?.at, source: 'live' });
     const offline = await claude(
       fakeFetch(() => Promise.reject(new TypeError('fetch failed'))).fetch,
     );
-    expect(offline.subscription).toMatchObject({ source: 'cached' });
+    expect(offline.subscription?.note).toBe("Claude's usage did not answer: fetch failed");
+  });
+
+  it('keeps its last read in its cache, for the account it was read for', async () => {
+    claudeFiles();
+    const live = await claude(fakeFetch(() => json(CLAUDE_ANSWER)).fetch);
+    // Another cpr view, or the next run: the file is what they share.
+    expect(JSON.parse(readFileSync(lastFile(), 'utf8'))).toEqual({
+      account: 'account-a',
+      subscription: live.subscription,
+    });
+    expect(readFileSync(lastFile(), 'utf8')).not.toMatch(/stored-(access|refresh)-token/);
+    claudeFiles({ accountUuid: 'account-b' });
+    const other = await claude(fakeFetch(() => json({}, 500)).fetch);
+    expect(other).toEqual({ subscription: null, failed: "Claude's usage answered 500" });
   });
 
   it('lists nothing when Claude Code is not installed or not signed in to a subscription', async () => {
     const server = fakeFetch(() => json(CLAUDE_ANSWER));
-    // No token, no copy: an API key, or never signed in.
-    expect(await claude(server.fetch)).toEqual({ subscription: null });
+    // No token, no read of CPR's: an API key, or never signed in.
+    expect((await claude(server.fetch)).subscription).toBeNull();
     claudeFiles();
     const missing = await readClaudeUsage({
       installed: () => Promise.resolve(false),
@@ -542,6 +563,23 @@ describe('usageService', () => {
     await usage.settled();
     expect((await usage.report()).subscriptions).toEqual([
       copy("Claude's usage answered 500", NOW + 8 * MIN),
+    ]);
+  });
+
+  it('keeps its last numbers through a failed read that gives none, with why', async () => {
+    let now = NOW;
+    const claude = reader(
+      { subscription: live(30, NOW) },
+      { subscription: null, failed: "Claude's usage answered 500" },
+    );
+    const codex = reader({ subscription: null });
+    const usage = usageService({ claude: claude.read, codex: codex.read }, { now: () => now });
+    await usage.report();
+    now += 5 * MIN + 1_000;
+    await usage.report();
+    await usage.settled();
+    expect((await usage.report()).subscriptions).toEqual([
+      { ...live(30, NOW), note: "Claude's usage answered 500" },
     ]);
   });
 

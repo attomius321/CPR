@@ -4034,3 +4034,49 @@ the branch and on `main`). The merge check's commands, as CPR runs them (install
 e2e) on this machine: before these fixes 155 and 156 of 157 (the app's own spec timing out in
 both, the usage spec once); after the spec found the app by name, 157 of 157, then 156 (the
 Settings race, then fixed); with every fix, 157 of 157.
+
+## Fix — usage keeps CPR's own last read, and reads every 5 min (2026-10-21, branch `fix/usage-keeps-live-numbers`)
+
+Asked: "sometimes, the claude hourly session disappears, and the chatgpt hourly session does not
+exist"; then "Make the query for usage every 5 minutes instead of one" and "No claude copy
+code...show the last monitored value from the real usage".
+
+**Learned**:
+- **Claude's usage endpoint refuses reads close together.** Two `cpr view`s of this repository,
+  each reading every minute while asked: 4 reads in 90 s answered 200 (06:41:53 and 06:43:23,
+  both servers in the same second each time), the next pair 429, and the 5-minute back-off began
+  again. No `retry-after` was read. Its limit is not documented and was not measured further.
+- **Through a 429, the bar showed Claude Code's copy**, from 20:16 the day before (the last time
+  its `/usage` was opened): its 5-hour window had reset, so only `wk 22%` was left, while the live
+  numbers were 30–35 % and 18 %. 34 of 46 answers in 12 minutes, logged from both servers, were
+  that copy. `usageService` meant to keep the last numbers on a 429
+  (`read.subscription ?? (read.backoff ? last : null)`), but the reader always gave the copy.
+- **Codex has no 5-hour window on the Go plan.** `account/rateLimits/read` answers one window,
+  43,200 min at 0 %, `secondary: null`, in `rateLimits` and `rateLimitsByLimitId` alike; its
+  sessions carry the same. An unstarted window's `resetsAt` moves with each read (now + 30 days).
+- **At 5 minutes the 429 back-off (5 minutes) delays nothing**: the next read is due then anyway.
+  It is kept for a shorter interval; its test gives one of 60 s.
+- **The usage spec's Codex first read** (Codex missing from the first answer, open since V29c)
+  failed in 2 of 4 full e2e runs on this branch, in both of its tests; with each step logged, 0 in
+  2 runs (the server found in 36–64 ms, its limits in 67–83 ms). The path is unchanged here: with
+  nothing kept, a read that gives nothing still shows nothing. Not chased further.
+
+**Changed**: Claude Code's copy is no longer read. Each live read is kept in CPR's cache
+(`usage/claude.json`, shared by every `cpr view` on the machine; written to a temporary file and
+renamed into place), with the account's `accountUuid`; a failed read gives that last read for the
+same account, without the windows reset since, and why. In memory, a failed read, or a copy older
+than the numbers kept (Codex's sessions), keeps the last numbers. The hover says "Read 12 minutes
+ago, not since: Claude's usage asked to wait (429)" and the bar shows the age. The vendors are read
+at most every 5 minutes (decision 175); the page still asks `cpr view` every minute.
+
+**Verification**: unit tests red before: the day-old copy over live numbers (the copy's `wk 22` in
+place of `5h 30 · wk 18`), the 5-min interval (red with 60 s), the hover and the bar's age, Claude
+Code's copy shown on a 429 and on an expired token, nothing kept in the cache, another account's
+read; an e2e test red on the previous build (a `cpr view` started while the endpoint answers 429
+shows the last read an earlier run kept, with its age and why: the build showed no Claude). `pnpm
+check` 1,052 tests, build, e2e 157 of 158 (the Codex first read, below). Real use, a fresh `cpr
+view` asked every 30 s like a page: on the 5-min build, for 21 min, its first read 429 (just after
+the two 60-s servers'), then 3 of 3 live (5h 40, 44, 47 %); on the final build, for 11 min, 07:09:26
+live and 07:14:26 429, through which the bar kept `5h 47% · wk 20%` with its age and the 429's note.
+`~/.cache/cpr/usage/claude.json`: 301 bytes, the account's id and the subscription, no token. Not
+verified: the old servers already running keep the old code until restarted.

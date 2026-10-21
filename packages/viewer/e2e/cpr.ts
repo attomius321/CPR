@@ -926,8 +926,9 @@ export async function serveWorkspaces({
   /**
    * V29c: usage read, from a fake of Claude's usage endpoint answering `claude` (with `status`),
    * with fake credentials in a CLAUDE_CONFIG_DIR of the test's; Codex's from its fake app server.
+   * `last`: CPR's last read of Claude's usage, as an earlier run kept it in the test's cache.
    */
-  usage?: { claude: unknown; status?: number };
+  usage?: { claude: unknown; status?: number; last?: unknown };
 } = {}): Promise<RunningWorkspaces> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', '-B', 'main');
@@ -942,6 +943,10 @@ export async function serveWorkspaces({
   const fake = mkdtempSync(join(tmpdir(), 'cpr-e2e-claude-'));
   const claude = agent ? fakeClaude(fake) : join(fake, 'not-installed');
   const cache = mkdtempSync(join(tmpdir(), 'cpr-e2e-cache-'));
+  if (usage?.last) {
+    mkdirSync(join(cache, 'usage'));
+    writeFileSync(join(cache, 'usage', 'claude.json'), JSON.stringify(usage.last));
+  }
   const codexServer = appServer ? await fakeAppServer(join(fake, 's.sock')) : null;
   if (codexServer) {
     writeFileSync(join(fake, 'app-server-socket'), daemonStartOutput(codexServer.path));

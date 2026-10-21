@@ -74,7 +74,7 @@ test("the status bar shows each subscription's windows, what a hover says, and n
   await expect(usage(page).getByRole('listitem')).toHaveCount(2, POLL);
 });
 
-test("Claude's endpoint failing: the copy Claude Code kept, or nothing; the rest as it is", async ({
+test("Claude's endpoint failing before CPR read it: Claude left out, the rest as it is", async ({
   page,
 }) => {
   cpr = await serveWorkspaces({
@@ -83,6 +83,43 @@ test("Claude's endpoint failing: the copy Claude Code kept, or nothing; the rest
     usage: { claude: { error: 'overloaded' }, status: 529 },
   });
   await page.goto(`${cpr.url}history`);
-  // No copy in the fake's config: Claude is left out, Codex is shown.
+  // No read of CPR's yet: Claude is left out, Codex is shown.
   await expect(usage(page).getByRole('listitem')).toHaveText(['CodexGo30d0%'], POLL);
+});
+
+test("started while Claude's endpoint refuses: the last read CPR kept, its age, and why", async ({
+  page,
+}) => {
+  const at = new Date(Date.now() - 12 * 60_000).toISOString();
+  cpr = await serveWorkspaces({
+    codex: true,
+    appServer: true,
+    usage: {
+      claude: { error: { type: 'rate_limit_error' } },
+      status: 429,
+      // An earlier run's, for the fake's account (it has no id).
+      last: {
+        account: null,
+        subscription: {
+          agent: 'claude',
+          plan: 'Pro',
+          windows: [
+            { minutes: 300, usedPercent: 40, resetsAt: in3h() },
+            { minutes: 10_080, usedPercent: 19, resetsAt: in3h() },
+          ],
+          at,
+          source: 'live',
+        },
+      },
+    },
+  });
+  await page.goto(`${cpr.url}history`);
+  const claude = usage(page).getByRole('listitem').first();
+  await expect(claude).toHaveText('ClaudePro5h40%wk19%12 minutes ago', POLL);
+  await expect(claude).toHaveClass(/\bcached\b/);
+  await expect(claude).toHaveAttribute(
+    'title',
+    /\nRead 12 minutes ago, not since: Claude's usage asked to wait \(429\)$/,
+  );
+  expect(cpr.usageRequests()).toHaveLength(1);
 });

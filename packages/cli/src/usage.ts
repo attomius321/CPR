@@ -1,10 +1,11 @@
 // Subscription usage (V29c): each window of use the vendors report for the agents CPR starts.
 // Claude Code's from the endpoint its `/usage` reads, with the token Claude Code stored, read
-// only (decision 172); Codex's from its app server, else its newest session. Both sources are
-// undocumented or `[experimental]`: every field is checked as it is read, and what CPR cannot
-// read is left out, never guessed. `cpr view` keeps a copy for 5 min (`usageService`).
-import { open, readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+// only (decision 172), else CPR's own last read; Codex's from its app server, else its newest
+// session. Both sources are undocumented or `[experimental]`: every field is checked as it is
+// read, and what CPR cannot read is left out, never guessed. `cpr view` keeps a copy for 5 min
+// (`usageService`).
+import { mkdir, open, readdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import type { UsageReport, UsageSubscription, UsageWindow } from '@cpr/core';
 import type { Codex } from './codex.js';
 import { runProgram, type Run } from './workspaces.js';
@@ -14,6 +15,8 @@ type Env = Readonly<Record<string, string | undefined>>;
 /** What a read gave: a subscription (none: nothing to show), and whether to wait 5 min. */
 export interface UsageRead {
   subscription: UsageSubscription | null;
+  /** The read failed, and why: the last numbers are kept, with it. */
+  failed?: string;
   /** The vendor answered 429: the next read waits `backoffMs`. */
   backoff?: true;
 }
@@ -48,6 +51,10 @@ function planName(code: unknown): string | undefined {
   return words ? words[0]!.toUpperCase() + words.slice(1) : undefined;
 }
 
+/** The windows that have not reset by `now`: a reset window's number says nothing now. */
+const notReset = (windows: UsageWindow[], now: number): UsageWindow[] =>
+  windows.filter((w) => !w.resetsAt || Date.parse(w.resetsAt) > now);
+
 /** A file's JSON, or null when it is missing or not JSON. */
 async function jsonFile(path: string): Promise<unknown> {
   try {
@@ -58,8 +65,7 @@ async function jsonFile(path: string): Promise<unknown> {
 }
 
 /**
- * The windows of an answer of Claude's usage endpoint (or the copy Claude Code kept of one): its
- * `limits` list — the session (5 hours) and the weeks, a model's own week with its `scope` — else
+ * The windows of an answer of Claude's usage endpoint: its `limits` list — the session (5 hours) and the weeks, a model's own week with its `scope` — else
  * `five_hour` and `seven_day`. Code-named keys (one at 100 % in the spike) are not read.
  */
 export function claudeWindows(answer: unknown): UsageWindow[] {
@@ -156,12 +162,38 @@ function claudeUsageUrl(env: Env): string {
   }
 }
 
+/** CPR's last read of Claude's usage, in `file`, if it was read for `account`; else null. */
+async function lastRead(file: string, account: string | null): Promise<UsageSubscription | null> {
+  const kept = await jsonFile(file);
+  if (!isObject(kept) || kept.account !== account || !isObject(kept.subscription)) return null;
+  const { subscription } = kept;
+  return subscription.agent === 'claude' &&
+    Array.isArray(subscription.windows) &&
+    typeof subscription.at === 'string'
+    ? (subscription as unknown as UsageSubscription)
+    : null;
+}
+
+/** Keeps a live read in `file` for the next run and other `cpr view`s; a failure loses nothing. */
+async function keepRead(file: string, account: string | null, subscription: UsageSubscription) {
+  const next = `${file}.${process.pid}.tmp`;
+  try {
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(next, JSON.stringify({ account, subscription }));
+    // Renamed into place: a reader never sees half a file.
+    await rename(next, file);
+  } catch {
+    // Kept in memory still (`usageService`).
+  }
+}
+
 /**
  * Claude Code's subscription (decision 172): `GET` Claude's usage endpoint with the access token
- * Claude Code stored, which CPR never refreshes and never sends elsewhere. An expired or missing
- * token, or a failed request, gives the copy Claude Code kept (`cachedUsageUtilization` in its
- * config), as old as it is, without the windows that have reset since. Nothing when Claude Code
- * is not installed or not signed in to a subscription.
+ * Claude Code stored, which CPR never refreshes and never sends elsewhere. Each live read is kept
+ * in `lastFile` (CPR's cache) for its account; an expired or missing token, or a failed request,
+ * gives that last read, without the windows that have reset since, and why — never the copy
+ * Claude Code keeps of its /usage (the person's choice: it was a day old). Nothing when Claude
+ * Code is not installed, or before CPR's first read.
  */
 export async function readClaudeUsage({
   installed,
@@ -170,6 +202,7 @@ export async function readClaudeUsage({
   platform = process.platform,
   fetch = globalThis.fetch,
   run = runProgram,
+  lastFile,
   now = Date.now,
 }: {
   installed: () => Promise<boolean>;
@@ -178,6 +211,8 @@ export async function readClaudeUsage({
   platform?: NodeJS.Platform;
   fetch?: typeof globalThis.fetch;
   run?: Run;
+  /** Where CPR keeps its last read: none, nothing kept. */
+  lastFile?: string;
   now?: () => number;
 }): Promise<UsageRead> {
   if (!(await installed())) return { subscription: null };
@@ -186,33 +221,23 @@ export async function readClaudeUsage({
   const dir = custom || join(home, '.claude');
   const config = await jsonFile(custom ? join(dir, '.claude.json') : join(home, '.claude.json'));
   const account = isObject(config) && isObject(config.oauthAccount) ? config.oauthAccount : {};
+  const accountId = typeof account.accountUuid === 'string' ? account.accountUuid : null;
   const plan = planName(account.organizationType);
-  const base = { agent: 'claude' as const, ...(plan ? { plan } : {}) };
 
-  /** The copy Claude Code kept when its /usage was last opened, without reset windows. */
-  const cached = (note: string): UsageSubscription | null => {
-    const copy = isObject(config) ? config.cachedUsageUtilization : null;
-    if (!isObject(copy) || typeof copy.fetchedAtMs !== 'number') return null;
-    const windows = claudeWindows(copy.utilization).filter(
-      (w) => !w.resetsAt || Date.parse(w.resetsAt) > now(),
-    );
+  /** A read that failed: CPR's last for this account, without reset windows, and why. */
+  const failed = async (note: string, backoff = false): Promise<UsageRead> => {
+    const last = lastFile ? await lastRead(lastFile, accountId) : null;
     return {
-      ...base,
-      windows,
-      at: new Date(copy.fetchedAtMs).toISOString(),
-      source: 'cached',
-      note,
+      subscription: last ? { ...last, windows: notReset(last.windows, now()), note } : null,
+      failed: note,
+      ...(backoff ? { backoff: true as const } : {}),
     };
   };
 
   const token = await claudeToken(dir, platform, run);
-  if (!token) return { subscription: cached("Claude Code's token could not be read") };
+  if (!token) return failed("Claude Code's token could not be read");
   if (token.expiresAt <= now()) {
-    return {
-      subscription: cached(
-        "Claude Code's token has expired (CPR never renews it): the copy Claude Code kept",
-      ),
-    };
+    return failed("Claude Code's token has expired (CPR never renews it)");
   }
   let response: Response;
   try {
@@ -224,19 +249,21 @@ export async function readClaudeUsage({
       signal: AbortSignal.timeout(10_000),
     });
   } catch (error) {
-    return { subscription: cached(`Claude's usage did not answer: ${(error as Error).message}`) };
+    return failed(`Claude's usage did not answer: ${(error as Error).message}`);
   }
-  if (response.status === 429) {
-    return { subscription: cached("Claude's usage asked to wait (429)"), backoff: true };
-  }
-  if (!response.ok) {
-    return { subscription: cached(`Claude's usage answered ${response.status}`) };
-  }
+  if (response.status === 429) return failed("Claude's usage asked to wait (429)", true);
+  if (!response.ok) return failed(`Claude's usage answered ${response.status}`);
   const windows = claudeWindows(await response.json().catch(() => null));
-  if (windows.length === 0) {
-    return { subscription: cached("Claude's usage answered without a window CPR reads") };
-  }
-  return { subscription: { ...base, windows, at: new Date(now()).toISOString(), source: 'live' } };
+  if (windows.length === 0) return failed("Claude's usage answered without a window CPR reads");
+  const subscription: UsageSubscription = {
+    agent: 'claude',
+    ...(plan ? { plan } : {}),
+    windows,
+    at: new Date(now()).toISOString(),
+    source: 'live',
+  };
+  if (lastFile) await keepRead(lastFile, accountId, subscription);
+  return { subscription };
 }
 
 /** The windows Codex reports, in its app server's names or its sessions' (`used_percent`). */
@@ -373,31 +400,32 @@ export interface UsageService {
 
 const AGENTS = ['claude', 'codex'] as const;
 
+/** The last numbers, kept through a failed read: without the windows reset since, and why. */
+const keptThrough = (last: UsageSubscription, now: number, note?: string): UsageSubscription => ({
+  ...last,
+  windows: notReset(last.windows, now),
+  ...(note ? { note } : {}),
+});
+
 /**
- * What to show after a read: its subscription, unless it is older than the one kept. A failed
- * read gives the agent's own copy, and Claude Code's is as old as its /usage was last opened
- * (10 h in real use, its 5-hour window long reset): the last numbers are kept instead, with why
- * they were not read again and without the windows that have reset since.
+ * What to show after a read: its subscription, unless it is older than the one kept (a copy an
+ * agent kept, given when the read failed: Codex's last session); with none, the last numbers if
+ * the read failed. In real use a day-old copy shown through a 429 lost the 5-hour window.
  */
-function newer(
-  last: UsageSubscription | null,
-  read: UsageSubscription,
-  now: number,
-): UsageSubscription {
-  if (!last || Date.parse(read.at) >= Date.parse(last.at)) return read;
-  return {
-    ...last,
-    windows: last.windows.filter((w) => !w.resetsAt || Date.parse(w.resetsAt) > now),
-    ...(read.note ? { note: read.note } : {}),
-  };
+function shown(last: UsageSubscription | null, read: UsageRead, now: number) {
+  const { subscription } = read;
+  if (!subscription)
+    return read.failed !== undefined && last ? keptThrough(last, now, read.failed) : null;
+  if (!last || Date.parse(subscription.at) >= Date.parse(last.at)) return subscription;
+  return keptThrough(last, now, subscription.note ?? read.failed);
 }
 
 /**
  * The subscriptions `readers` give, kept in memory (decision 175): the first ask waits for them;
  * after that each ask answers from the copy and reads again in the background once it is older
  * than `maxAgeMs` (5 min: at 60 s, two `cpr view`s were refused by Claude's endpoint), one read at
- * a time. A 429 waits `backoffMs`; an error, or a copy older than the
- * last numbers, keeps the last numbers, with their time. `off` (`CPR_USAGE=off`) reads nothing.
+ * a time. A 429 waits `backoffMs`; an error, a failed read, or a copy older than the last numbers
+ * keeps the last numbers, with their time. `off` (`CPR_USAGE=off`) reads nothing.
  */
 export function usageService(
   readers: Record<(typeof AGENTS)[number], () => Promise<UsageRead>>,
@@ -426,14 +454,7 @@ export function usageService(
         try {
           const read = await readers[agent]();
           if (read.backoff) waitUntil.set(agent, now() + backoffMs);
-          kept.set(agent, {
-            subscription: read.subscription
-              ? newer(last, read.subscription, now())
-              : read.backoff
-                ? last
-                : null,
-            readAt: now(),
-          });
+          kept.set(agent, { subscription: shown(last, read, now()), readAt: now() });
         } catch {
           kept.set(agent, { subscription: last, readAt: now() });
         }
