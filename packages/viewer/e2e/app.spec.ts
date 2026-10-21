@@ -2,6 +2,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import type { Readable } from 'node:stream';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -10,7 +11,9 @@ import { _electron, expect, test, type ElectronApplication, type Page } from '@p
 import { serveCommits, serveWorkspaces, type RunningCommits } from './cpr.js';
 
 // CPR's desktop app (N1): the window `cpr view` opens on its server. It needs Electron's binary
-// (`pnpm app:setup`) and a display: CI runs it under xvfb-run.
+// (`pnpm app:setup`) and Xvfb: the app's windows open on a display of the specs' own, never on
+// the screen of whoever runs them (CPR's merge check, on the person's desktop), where a window
+// manager would also move them.
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const desktop = join(root, 'packages/desktop');
 const electron = ((): string | null => {
@@ -22,15 +25,51 @@ const electron = ((): string | null => {
   }
 })();
 
-test.skip(electron === null, 'the app is not set up: pnpm app:setup');
+const xvfb = (() => {
+  try {
+    execFileSync('which', ['Xvfb'], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+})();
 
-/** The environment for the app: its settings in `config`, on X11 (the test's display). */
+test.skip(electron === null, 'the app is not set up: pnpm app:setup');
+test.skip(!xvfb, "the app's specs need Xvfb, a display of their own");
+
+/**
+ * A display of the specs' own: Xvfb on the first free number from :99, as xvfb-run picks one;
+ * it is ready when it writes that number back (`-displayfd`). Left to choose a number itself,
+ * Xvfb finds none on WSL (/tmp/.X11-unix is not world-writable), and there it listens on an
+ * abstract socket only: no socket file to wait for.
+ */
+async function startXvfb(): Promise<{ name: string; stop(): void }> {
+  for (let number = 99; number < 140; number++) {
+    if (existsSync(`/tmp/.X${number}-lock`)) continue;
+    const server = spawn(
+      'Xvfb',
+      [`:${number}`, '-displayfd', '3', '-screen', '0', '1920x1080x24', '-nolisten', 'tcp'],
+      { stdio: ['ignore', 'ignore', 'ignore', 'pipe'] },
+    );
+    const ready = await new Promise<boolean>((resolve) => {
+      (server.stdio[3] as Readable).once('data', () => resolve(true));
+      server.once('exit', () => resolve(false));
+      server.once('error', () => resolve(false));
+    });
+    if (ready) return { name: `:${number}`, stop: () => server.kill() };
+  }
+  throw new Error('no free display for Xvfb');
+}
+
+let display: { name: string; stop(): void };
+
+/** The environment for the app: its settings in `config`, on the specs' own display (X11). */
 function appEnv(config: string): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined && key !== 'WAYLAND_DISPLAY') env[key] = value;
   }
-  return { ...env, XDG_CONFIG_HOME: config };
+  return { ...env, DISPLAY: display.name, XDG_CONFIG_HOME: config };
 }
 
 let cpr: RunningCommits;
@@ -39,10 +78,13 @@ const errors: string[] = [];
 const running: ElectronApplication[] = [];
 
 test.beforeAll(async () => {
-  cpr = await serveCommits();
+  [cpr, display] = await Promise.all([serveCommits(), startXvfb()]);
 });
 
-test.afterAll(() => cpr.stop());
+test.afterAll(() => {
+  cpr.stop();
+  display.stop();
+});
 
 test.beforeEach(() => {
   config = mkdtempSync(join(tmpdir(), 'cpr-app-'));

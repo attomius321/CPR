@@ -46,7 +46,8 @@ jobs:
         run: |
           pnpm exec playwright install --with-deps chromium
           # The desktop app's specs (N1): Electron's binary, and Chromium's sandbox, which
-          # Ubuntu 24.04's AppArmor refuses to an Electron outside a package.
+          # Ubuntu 24.04's AppArmor refuses to an Electron outside a package. They start their
+          # own Xvfb (installed with Chromium's dependencies).
           pnpm run app:setup
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
-          xvfb-run -a pnpm run test:e2e
+          pnpm run test:e2e

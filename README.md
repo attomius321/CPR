@@ -744,7 +744,7 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 pnpm install
 pnpm check        # format, lint, typecheck, unit tests
 pnpm build        # compile the packages and bundle the viewer
-pnpm test:e2e     # viewer end-to-end tests (after pnpm build; the app's need pnpm app:setup)
+pnpm test:e2e     # viewer end-to-end tests (after pnpm build; the app's need pnpm app:setup and Xvfb)
 node packages/cli/dist/bin.js diff main
 ```
 
