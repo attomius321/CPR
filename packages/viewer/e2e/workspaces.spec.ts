@@ -912,7 +912,7 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
   await expect(part(page, 'What happens')).toHaveValue('');
 });
 
-test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, branch, effort, permission (V24c, V30)', async ({
+test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, start from, branch, effort, permission (V24c, V30, V33)', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -937,6 +937,7 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
     part(page, 'Question'),
     doneWhen(page),
     startPage(page).getByRole('button', { name: /More:/ }),
+    startPage(page).getByLabel('Start from'),
     branch(page),
     startPage(page).getByLabel('Effort'),
     startPage(page).getByLabel('Permission'),

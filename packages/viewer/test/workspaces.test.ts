@@ -87,6 +87,16 @@ describe('readRun (V30b)', () => {
     expect(readRun(null, agents)).toEqual({});
     expect(readRun('run', agents)).toEqual({});
   });
+
+  it('keeps the branch picked to start from while it is listed (V33)', () => {
+    const branches = [
+      { name: 'main', sha: 'a'.repeat(40) },
+      { name: 'topic', sha: 'b'.repeat(40), remote: true as const },
+    ];
+    expect(readRun({ from: 'topic' }, agents, branches)).toEqual({ from: 'topic' });
+    expect(readRun({ from: 'gone' }, agents, branches)).toEqual({});
+    expect(readRun({ from: 'topic' }, agents)).toEqual({});
+  });
 });
 
 describe('startedWith (V30b)', () => {

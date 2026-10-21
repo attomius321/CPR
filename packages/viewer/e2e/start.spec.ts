@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
 import { serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
@@ -30,6 +31,7 @@ const start = (page: Page) => page.getByRole('region', { name: 'Start a workspac
 const title = (page: Page) => start(page).getByRole('textbox', { name: 'Title' });
 const goal = (page: Page) => start(page).getByRole('textbox', { name: 'Goal' });
 const effort = (page: Page) => start(page).getByLabel('Effort');
+const from = (page: Page) => start(page).getByLabel('Start from');
 const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
 
 test('Start a workspace is a page right of the sidenav, at /start', async ({ page }) => {
@@ -231,4 +233,63 @@ test("Effort for Codex on its app server: its model's levels and its default; th
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-clamp`);
   const turn = symbiote.codexServer?.calls.find((call) => call.method === 'turn/start');
   expect(turn?.params).toMatchObject({ effort: 'low' });
+});
+
+// Start from a branch (V33): the default branch first, then the local ones, then remote-only.
+test("Start from: the branches listed; one picked is where it starts and its name the record's", async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  const [base, head] = symbiote.shas;
+  const git = (...args: string[]) =>
+    execFileSync('git', args, { cwd: symbiote.repo, encoding: 'utf8' }).trim();
+  git('branch', 'topic', base ?? '');
+  git('update-ref', 'refs/remotes/origin/shared', base ?? '');
+  await page.goto(`${symbiote.url}start`);
+  await expect(from(page).locator('option')).toHaveText(['main', 'topic', 'shared']);
+  await expect(from(page).locator('optgroup')).toHaveAttribute('label', 'Only on a remote');
+  await expect(from(page)).toHaveValue('main');
+  await expect(start(page)).toContainText(`From main at ${short(head)}`);
+
+  await from(page).selectOption('topic');
+  await expect(start(page)).toContainText(`From topic at ${short(base)}`);
+  await title(page).fill('Stack on topic');
+  await goal(page).fill('Build on it.');
+  // Leaving keeps it, as the rest of the form.
+  await title(page).press('Escape');
+  await startLink(page).click();
+  await expect(from(page)).toHaveValue('topic');
+  await goal(page).press('Control+Enter');
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fstack-on-topic`);
+  expect(git('rev-parse', 'feature/stack-on-topic')).toBe(base);
+  expect(symbiote.calls().at(-1)?.args.at(-1)).toContain(`topic at ${short(base)}`);
+
+  // A start ends it: the next workspace starts from the default branch.
+  await startLink(page).click();
+  await expect(from(page)).toHaveValue('main');
+  // A remote's branch is started from as well.
+  await from(page).selectOption('shared');
+  await title(page).fill('From shared');
+  await goal(page).fill('Build on it.');
+  await goal(page).press('Control+Enter');
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Ffrom-shared`);
+  expect(git('rev-parse', 'feature/from-shared')).toBe(base);
+});
+
+test("Start from a History row: the row's commit first, a branch instead when picked", async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  const [base, head] = symbiote.shas;
+  await page.goto(`${symbiote.url}history`);
+  await page
+    .locator('.commit', { has: page.locator('.commit-subject').getByText('base', { exact: true }) })
+    .click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Start a workspace here' }).click();
+  await expect(from(page).locator('option').first()).toHaveText(`The commit ${short(base)}`);
+  await expect(start(page)).toContainText(`From the commit ${short(base)}`);
+  await from(page).selectOption('main');
+  await expect(start(page)).toContainText(`From main at ${short(head)}`);
+  await from(page).selectOption({ label: `The commit ${short(base)}` });
+  await expect(start(page)).toContainText(`From the commit ${short(base)}`);
 });

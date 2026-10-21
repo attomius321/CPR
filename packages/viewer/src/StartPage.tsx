@@ -65,11 +65,12 @@ interface Loaded {
 
 /**
  * "Start a workspace" (V18, V24c), a page of the shell since V30a: the kind of work, its title and
- * parts (what the server makes the agent's brief of) on the left; on the right the branch (named
- * after the title until edited), the agent — picked among those installed (V20a) — with its
- * account and Claude Code's permission mode, and plan first. Where it starts is the commit `at`,
- * else the default branch's tip. The form is kept as a draft by `symbiote view` until it starts, so
- * leaving loses nothing. Ctrl+Enter starts; Escape and Cancel `leave`.
+ * parts (what the server makes the agent's brief of) on the left; on the right where it starts
+ * from (V33), the branch (named after the title until edited), the agent — picked among those
+ * installed (V20a) — with its account and Claude Code's permission mode, and plan first. Where it
+ * starts is the commit `at` until a branch is picked, else the default branch's tip. The form is
+ * kept as a draft by `symbiote view` until it starts, so leaving loses nothing. Ctrl+Enter starts;
+ * Escape and Cancel `leave`.
  */
 export function StartPage({
   at,
@@ -107,9 +108,8 @@ export function StartPage({
     };
   }, []);
 
-  const base = at ? { sha: at } : loaded?.options.base;
-  if (loaded && base) {
-    return <StartForm {...loaded} base={base} onStarted={onStarted} onLeave={onLeave} />;
+  if (loaded && (at || loaded.options.branches.length > 0)) {
+    return <StartForm {...loaded} at={at} onStarted={onStarted} onLeave={onLeave} />;
   }
   return (
     <section className="start-page" aria-labelledby="start-title">
@@ -126,8 +126,8 @@ export function StartPage({
           <p className="error">{failed}</p>
         ) : loaded ? (
           <p className="error">
-            No default branch to start from: start the workspace from a commit (its menu in History:
-            Start a workspace here).
+            No branch to start from: start the workspace from a commit (its menu in History: Start a
+            workspace here).
           </p>
         ) : (
           <p className="hint">Reading what a workspace needs…</p>
@@ -141,12 +141,12 @@ function StartForm({
   options,
   taken,
   draft,
-  base,
+  at,
   onStarted,
   onLeave,
 }: Loaded & {
-  /** A picked row's commit; else the default branch's tip (`options.base`). */
-  base: { sha: string; from?: string };
+  /** A picked row's commit, where it starts until a branch is picked. */
+  at: string | undefined;
   onStarted: (start: WorkspaceStart) => void;
   onLeave: () => void;
 }) {
@@ -166,8 +166,20 @@ function StartForm({
     readRun(
       draft && typeof draft === 'object' ? (draft as { run?: unknown }).run : null,
       options.agents,
+      options.branches,
     ),
   );
+  // Where it starts (V33): the row's commit until a branch is picked; else the branch picked, the
+  // draft's or the default one, at its newest tip.
+  const [onCommit, setOnCommit] = useState(at !== undefined);
+  const picked =
+    options.branches.find((b) => b.name === (run.from ?? options.base?.from)) ??
+    options.branches[0];
+  // Without a branch there is a row's commit: the page shows no form otherwise.
+  const base: { sha: string; from?: string } =
+    picked && !(onCommit && at) ? { sha: picked.sha, from: picked.name } : { sha: at ?? '' };
+  const local = options.branches.filter((b) => !b.remote);
+  const remote = options.branches.filter((b) => b.remote);
   const agent =
     options.agents.find((a) => a.kind === (run.agent ?? options.agents[0]?.kind)) ?? null;
   const mode: PermissionMode =
@@ -253,8 +265,8 @@ function StartForm({
       parts: formParts(form, spec),
       branch,
       planFirst,
-      // The default branch's tip is the server's to find at the start; a row is that commit.
-      ...(base.from ? {} : { base: base.sha }),
+      // A branch's tip is the server's to find at the start; a row is that commit.
+      ...(base.from ? { from: base.from } : { base: base.sha }),
       ...(agent ? { agent: agent.kind } : {}),
       ...(agent?.kind === 'claude' ? { permissionMode: mode } : {}),
       ...(effort ? { effort } : {}),
@@ -276,7 +288,7 @@ function StartForm({
     if (kind.kind !== form.kind) edit(withKind(form, spec, kind, guess));
   };
   const folder = options.worktrees.replace('<branch>', branch.replaceAll('/', '-'));
-  const at = kinds.indexOf(spec);
+  const kindIndex = kinds.indexOf(spec);
   return (
     <section
       className="start-page"
@@ -345,9 +357,9 @@ function StartForm({
                     n >= 1 && n <= kinds.length
                       ? kinds[n - 1]
                       : event.key === 'ArrowRight' || event.key === 'ArrowDown'
-                        ? kinds[(at + 1) % kinds.length]
+                        ? kinds[(kindIndex + 1) % kinds.length]
                         : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
-                          ? kinds[(at - 1 + kinds.length) % kinds.length]
+                          ? kinds[(kindIndex - 1 + kinds.length) % kinds.length]
                           : undefined;
                   if (!to) return;
                   event.preventDefault();
@@ -484,6 +496,33 @@ function StartForm({
             )}
           </div>
           <div className="start-run">
+            <label className="workspace-field">
+              Start from
+              <select
+                value={base.from ?? ''}
+                onChange={(event) => {
+                  const name = event.target.value;
+                  setOnCommit(name === '');
+                  if (name !== '') choose({ ...run, from: name });
+                }}
+              >
+                {at && <option value="">The commit {shortSha(at)}</option>}
+                {local.map((b) => (
+                  <option key={b.name} value={b.name}>
+                    {b.name}
+                  </option>
+                ))}
+                {remote.length > 0 && (
+                  <optgroup label="Only on a remote">
+                    {remote.map((b) => (
+                      <option key={b.name} value={b.name}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </label>
             <label className="workspace-field">
               Branch
               <input
