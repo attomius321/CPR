@@ -422,7 +422,7 @@ not committed. They are read again with the workspace list (every 5 s while the 
 file opens in VS Code in the worktree at its first change. `]` or the button beside ⋯ hides them,
 remembered in the browser.
 
-The **Brief** tab is what the agent was asked (`&brief`). The **Thread** tab is the workspace's
+The **Brief** tab is what the agent was asked (`&brief`), drawn from its Markdown. The **Thread** tab is the workspace's
 history, read only (`&thread` in the address opens on it):
 the agent's plan and reports (drawn from their Markdown), your messages, and what it waited on
 (a permission to run a command, or a question and its options). The thread comes from hooks CPR

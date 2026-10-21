@@ -3319,55 +3319,55 @@ button.workspace-about {
   font-size: 13px;
 }
 
-/* An agent's report, drawn from its Markdown. */
-.thread-markdown {
+/* Markdown drawn as the page's own elements: an agent's report, a workspace's brief. */
+.markdown {
   white-space: normal;
 }
 
-.thread-markdown > :first-child {
+.markdown > :first-child {
   margin-top: 0;
 }
 
-.thread-markdown > :last-child {
+.markdown > :last-child {
   margin-bottom: 0;
 }
 
-.thread-markdown p,
-.thread-markdown ul,
-.thread-markdown ol,
-.thread-markdown pre,
-.thread-markdown blockquote,
-.thread-markdown table {
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown pre,
+.markdown blockquote,
+.markdown table {
   margin: 0 0 8px;
 }
 
-.thread-markdown h3,
-.thread-markdown h4,
-.thread-markdown h5,
-.thread-markdown h6 {
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
   margin: 12px 0 6px;
   font-size: 14px;
 }
 
-.thread-markdown h3 {
+.markdown h3 {
   font-size: 15px;
 }
 
-.thread-markdown ul,
-.thread-markdown ol {
+.markdown ul,
+.markdown ol {
   padding-left: 20px;
 }
 
-.thread-markdown li > ul,
-.thread-markdown li > ol {
+.markdown li > ul,
+.markdown li > ol {
   margin: 2px 0 0;
 }
 
-.thread-markdown li + li {
+.markdown li + li {
   margin-top: 2px;
 }
 
-.thread-markdown code {
+.markdown code {
   padding: 1px 4px;
   border-radius: 4px;
   background: color-mix(in srgb, var(--text) 8%, transparent);
@@ -3375,56 +3375,56 @@ button.workspace-about {
   font-size: 12px;
 }
 
-.thread-markdown pre {
+.markdown pre {
   padding: 8px 10px;
   overflow: auto;
   border-radius: 6px;
   background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 
-.thread-markdown pre code {
+.markdown pre code {
   padding: 0;
   background: none;
   white-space: pre;
 }
 
-.thread-markdown blockquote {
+.markdown blockquote {
   padding-left: 10px;
   border-left: 3px solid var(--line);
   color: var(--muted);
 }
 
-.thread-markdown hr {
+.markdown hr {
   border: 0;
   border-top: 1px solid var(--line);
 }
 
-.thread-markdown table {
+.markdown table {
   border-collapse: collapse;
   font-size: 12px;
 }
 
-.thread-markdown th,
-.thread-markdown td {
+.markdown th,
+.markdown td {
   padding: 3px 8px;
   border: 1px solid var(--line);
   text-align: left;
 }
 
-.thread-markdown a {
+.markdown a {
   color: var(--moved);
 }
 
 /* The thread is a list itself: a report's lists start at the first level. */
-.thread-markdown ul {
+.markdown ul {
   list-style: disc;
 }
 
-.thread-markdown ul ul {
+.markdown ul ul {
   list-style: circle;
 }
 
-.thread-markdown ul ul ul {
+.markdown ul ul ul {
   list-style: square;
 }
 
