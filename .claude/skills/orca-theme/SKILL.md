@@ -82,6 +82,23 @@ Found on `main` (`30cbd54`) at 1440×900; each line names a place to start.
 | Grey disabled-looking primary (`Save`) | Settings | Primary: `#e5e5e5` fill, `#171717` text, weight 500 |
 | Project frames: border at 28 % of the text colour, 12 px radius | graph | Card frame: `--line` mixed with 12 % text, 14 px radius; the map's fixed label sizes stay |
 
+## Traps found applying it (V31)
+
+- **`--panel` equals `--side`** in Orca's dark theme. A hover or selection painted with a surface
+  token (`--panel`, `--raised`) vanishes or jumps: use `--hover` and `--selected` (V31a moved 13
+  rules).
+- **Guards in `test/tokens.test.ts`**: `--moved` only in state rules (an allowlist of selectors:
+  add a new state there, never an accent), no coloured side bar (`border-left` 2–4 px or an inset
+  bar; a blockquote's `--line` is allowed), no `accent-color`.
+- **Colours pinned in e2e**: `look.spec.ts` (page and chrome) and `app.spec.ts` (the window's
+  title-bar buttons take `--side`). A token change updates them, nothing else should.
+- **Restyling `.link`** reaches every link-styled button: Settings' placeholders are insert
+  buttons, drawn as code chips, not underlined links.
+- **A node's border is part of its content box**: the symbol's 3 px side bar became a 1 px edge
+  with 2 px more padding, so labels keep their width.
+- **Screenshots of workspaces** need e2e's `serveWorkspaces` (a fake agent): a spec run with its
+  own Playwright config, kept outside the repository (ESLint scans any `.ts` in `packages/`).
+
 ## Workflow
 
 A restyle is a milestone: plan it with the `milestone` skill (PLAN section, branch, tests first,

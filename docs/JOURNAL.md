@@ -4244,3 +4244,32 @@ skill (merged into main 2026-10-21).
 paint 267–322 ms, select 73–90 ms, mark reviewed 33–34 ms, pan 63 fps. Screenshots of the shell
 with three workspaces, History, Settings, Start and the V30b diff, dark and light, kept for the
 comparison.
+
+## V31a–b — Orca's tokens, the shell and the diff page (2026-10-21, branch `milestone/v31-orca-look`)
+
+The tokens are Orca's: the content darkest, the chrome lifted, a white page in light. Blue is a
+state; selection, links and pressed controls are neutral. Checkboxes drawn, badges round and
+tinted, no coloured side bars, 8–14 px radii, key caps, thin scrollbars. The sidenav's rows,
+groups and cards, the page heads, the status bar (V31a); the diff's bar, findings, change list,
+canvas chrome and detail panel (V31b).
+
+**Learned**:
+- **Orca's dark theme gives the sidenav and the panels one colour** (`#171717`): a hover painted
+  with `--panel` on a panel did not show. 13 hover and selected rules used a surface token; all now
+  use `--hover` (a wash of the text) and `--selected`.
+- **"Blue is a state" needed a list, not a rule**: 14 of 49 `--moved` uses are states (the moved
+  kind, an agent working, "since", the current lane); the guard test names their selectors, and
+  found 29 accent rules on `main`.
+- **Restyling `.link` reaches buttons that are not links**: Settings' placeholders are insert
+  buttons, now code chips.
+- **The window's title-bar buttons follow `--side`** (N1c): `app.spec.ts` pinned V29b's value;
+  the only e2e change outside the look spec.
+- **A side bar is part of a node's content box**: the symbol's 3 px bar became a 1 px edge with
+  2 px more padding, so its labels keep their width and the layout is untouched.
+
+**Verification**: tests first, red on `main` (7 unit, 3 e2e); `pnpm check` 1,075 tests; e2e 168
+of 168. Against `main`'s build, alternated, Bitwarden `737ee3f`: first paint 266–272 → 268–272 ms,
+select 74 → 73–89 ms, mark reviewed 34 → 33 ms, pan 63 fps both, 3,134 elements both; labels cut
+short as j walks 40 changes 21 of 75 both; `/history` first rows 93–122 → 93–96 ms. Screenshots
+before and after, dark and light. Not verified: Windows and macOS rendering; the Electron window
+beyond its e2e; real agents in the restyled workspace.
