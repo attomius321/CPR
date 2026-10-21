@@ -4421,3 +4421,6 @@ real window through `cpr view` with the person's state, twice: Windows shows it 
 at their coordinates; Restore put it at (3120, 246), 1440×900, where Windows shows it too. Not
 verified: the person's own try.
 
+Merged into main (2026-10-21), no conflicts (`main` had not moved). `main` verified after the
+merge: frozen install, `pnpm check` 1,094 tests, build, e2e 170 of 171 (the shell's keys spec,
+`shell.spec.ts:117`, its focus lost under load as before N1; 8 of 8 alone).
