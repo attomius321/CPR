@@ -447,6 +447,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V31 ✅ | Symbiote's style, beyond its colours | V29b took the reference's tokens and font; the rest was older than its colours: one black for every surface (1.04:1 between page and sidenav), blue as the accent on 35 rules, 6 native checkboxes, 8 coloured side bars, bordered mono chips, a solid green HEAD. Symbiote's own style, written down as the `symbiote-style` skill. Merged into main (2026-10-21): V31a the tokens and the shell, V31b the diff page, V31c History, menus, dialogs and selects — blue a state only, no side bars, drawn controls, one radius scale; Bitwarden's timings and History's first rows as `main`'s, e2e 169 of 169. See below. |
 | N1d ✅ | Rounded window corners | Symbiote's window was square on Linux (here through WSLg): Electron rounds a frameless window there only with client-side decorations, and draws no buttons over a transparent one. Merged into main (2026-10-21): on Linux a transparent window whose pages draw a 10 px frame and Symbiote's own minimize, maximize and close, square when maximized; on WSLg Symbiote holds a maximized window itself, where WSLg's own maximize lands 32 px off; macOS and Windows unchanged; no cost on Bitwarden's graph. See below. |
 | V32 | Text one can read | V29b chose the reference's density: 13 px body, 12 px for buttons, paths, code and the status bar, 10–11 px for captions, chips, badges, counts and key caps; asked: "The font-size is too small to read … My eyes are hurting". Built on `feature/font-too-small`: one step up (14 px body, nothing under 12 px but uppercase labels; titles stay 16 px), every size from a `--size-*` scale on `:root` with a guard test, the graph's layout unchanged; Bitwarden's graph and History as fast as `main`. See below. |
+| V34 | Panels one can resize | The sidenav (240 px) and a workspace's changes panel (256 px) have fixed widths, while the diff's sidebar and detail panel can be dragged; asked: "resize - drag - the left panel with the pages and workspaces, and also from workspaces the right changes made". Planned on `feature/resize-left-right-panels`: the diff's handle on both, keys and double-click, widths kept in the browser. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -8946,6 +8947,79 @@ body, 10–11 px chips, badges, key caps, dates). `pnpm check` 1,110 tests, e2e 
 changes 22 of 83 on both; frame bands overflowing 0 of 3 on both. `/history` first rows 161–177 ms
 (`main` 166–240), first paint 64–72 ms (64–68). Not verified: the Electron app itself, other
 browsers and systems, real agents in the terminal.
+
+### V34 — Panels one can resize: the sidenav and a workspace's changes
+
+**Status:** planned on branch `feature/resize-left-right-panels` (a workspace started in
+Symbiote); the person agreed to the plan and its limits (2026-10-22).
+
+**Problem** (asked: "I would like to have the option to resize - drag - the left panel with the
+pages and workspaces, and also from workspaces the right changes made"). On a diff, the review
+sidebar and the detail panel can be dragged (`Resizer.tsx`, `e2e/resize.spec.ts`, widths kept in
+the browser under `symbiote.viewer.widths`). The shell's two fixed columns cannot:
+
+| Panel | Width on `main` | Where |
+|---|---|---|
+| The sidenav (pages and workspaces) | 240 px (`--sidenav-width`), 48 px folded | `.shell`'s grid, every page of `symbiote view` and a diff's page |
+| A workspace's changes | 256 px (`.changes`), hidden under 1,200 px | right of the terminal (V29d) |
+
+A workspace's long names and branches are cut at 240 px; a changes list of deep paths is cut at
+256 px, and on a wide window the terminal does not need the rest.
+
+**Goal**: both drag like the diff's panels: the same handle, keys (arrows, Shift for four steps,
+Home and End), double-click for the default, widths kept in this browser. **Unchanged**: the
+defaults, the folded rail (48 px, no handle), the narrow drawer (under 900 px, no handle), the
+changes panel hidden under 1,200 px, the diff's panels.
+
+#### Design
+
+- `Resizer.tsx` learns where its panel is when it is not a sibling, and takes limits: an optional
+  `find` (the panel and what gives up the room), `min`, `max` and `room` (what the rest keeps; the
+  canvas's 240 px by default). The diff's two handles keep their behaviour.
+- **Sidenav**: a "Resize sidebar" separator in `.shell`'s grid, over the sidenav's right border
+  (`grid-area: side`, at its end), in `Shell` and `DiffShell` while the sidenav is open. 180–480 px,
+  and the main area keeps at least 480 px. The drag sets `--sidenav-open` on `.shell`, from which
+  `--sidenav-width` comes unless folded: folding and opening keep the width. The title bar's left
+  part follows `--sidenav-width` already.
+- **Changes**: a "Resize changes panel" separator between the terminal and the panel in
+  `.workspace-split`, setting `--changes-width`; 200 px up to what leaves the terminal 480 px.
+  The terminal refits on its `ResizeObserver` (V21). Hidden with the panel under 1,200 px.
+- **Widths** in one place, `src/widths.ts` (pure reading and merging, unit-tested): the entry
+  `symbiote.viewer.widths` gains `sidenav` and `changes`; each writer merges its own field into
+  what is stored, so the shell, a workspace and a diff never overwrite each other's.
+- While dragging, the pointer stays a resize cursor and no text is selected (`.shell.resizing`).
+
+#### Verification
+
+1. **Tests first**: `widths.test.ts` (reading, merging, bad values); `resize.spec.ts` — the
+   sidenav on History and on a workspace: drag, limits (180, 480, the main area's 480), keys,
+   double-click, kept across a reload and a fold; no handle folded or narrow; the changes panel:
+   drag, limits, keys, double-click, kept; the terminal's columns follow.
+2. `pnpm check`, `pnpm build`, every e2e; the diff's resize tests unchanged.
+3. **viewer-check**: screenshots at 1440×900, dark and light, of History and a workspace at the
+   narrowest and widest; `/history` first paint against `main`'s build.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| A sidenav at 180 px cuts cards and the repository's name badly | Screenshots at 180 px; the cards already cut with an ellipsis |
+| Dragging the sidenav over a diff re-lays out or refits React Flow each frame | The width goes to the page only (no render until the drop, as today's handles); tried on a diff |
+| Two pages writing the same storage entry lose a width | Merge on write; unit test |
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V34 | Panels one can resize | The sidenav and a workspace's changes resized by drag and keys, kept in the browser |
+
+**Decisions** (agreed with the person, 2026-10-22):
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 230 | How | **The diff's `Resizer`, generalised** | One handle, one look and one set of keys across the app |
+| 231 | Limits | **Sidenav 180–480 px, main area at least 480 px; changes 200 px up to a 480 px terminal** | Agreed with the person; under 180 px the cards lose their state chip, and a terminal under 480 px is under 60 columns |
+| 232 | Where widths live | **The browser, one entry for every panel**, merged on write | As the diff's panels: how wide panels read best is the person's, not the repository's |
 
 ### Phase 1 milestones
 
