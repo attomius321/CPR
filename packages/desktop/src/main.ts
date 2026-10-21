@@ -233,7 +233,13 @@ function createWindow(title: string): BrowserWindow {
   const home = () => windows.get(contents)?.home ?? startUrl;
 
   window.once('ready-to-show', () => {
-    if (place.maximized) maximize(window, hold);
+    if (place.maximized && hold) {
+      // On WSLg, maximized once it is shown: see `maximizeOnceShown`.
+      window.show();
+      hold.maximizeOnceShown();
+      return;
+    }
+    if (place.maximized) window.maximize();
     window.show();
   });
   window.on('close', () => {

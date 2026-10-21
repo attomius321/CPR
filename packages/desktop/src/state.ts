@@ -124,7 +124,8 @@ export interface Area {
   height: number;
 }
 
-const FIRST = { width: 1440, height: 900 };
+/** The window's size the first time it opens. */
+export const FIRST = { width: 1440, height: 900 };
 
 /**
  * Where the window opens: where it was, if enough of it is still on a screen; else centred on

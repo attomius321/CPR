@@ -27,16 +27,20 @@ const NORMAL: Area = { x: 2700, y: 150, width: 1200, height: 800 };
 /**
  * A window on WSLg's X11, as measured: the window manager answers 10 ms after it is asked, and
  * an unmaximize 60 ms after (longer than the hold's quiet time); it ignores a size asked of a
- * maximized window; it parks a window off the screen for a moment when it shows it.
+ * maximized window; it parks a window off the screen for a moment as it maps it. A window
+ * maximized before it is mapped restores to the left screen's corner and stays there.
  */
 class WslgWindow implements HeldWindow {
   bounds: Area;
   maximized = false;
-  /** Not shown yet: WSLg maps it maximized, and its place to restore is the screen's corner. */
-  opening = false;
+  /** Shown; a test that opens the window sets it false and calls `show`. */
+  mapped = true;
+  /** Restored to the left screen's corner, where it ignores the bounds it is asked. */
+  stranded = false;
   asked: string[] = [];
   hold!: Hold;
   private restoreTo: Area;
+  private maximizeAtMap = false;
 
   constructor(bounds: Area) {
     this.bounds = bounds;
@@ -48,7 +52,8 @@ class WslgWindow implements HeldWindow {
   }
   maximize(): void {
     this.asked.push('maximize');
-    setTimeout(() => this.byWindowManager(), 10);
+    if (this.mapped) setTimeout(() => this.byWindowManager(), 10);
+    else this.maximizeAtMap = true;
   }
   unmaximize(): void {
     this.asked.push('unmaximize');
@@ -61,13 +66,27 @@ class WslgWindow implements HeldWindow {
   setBounds(bounds: Area): void {
     this.asked.push('setBounds');
     setTimeout(() => {
-      if (!this.maximized) this.change(bounds);
+      if (!this.maximized && !this.stranded) this.change(bounds);
     }, 5);
+  }
+  /** Shown: parked off the screen as it is mapped (15 ms), then back (28 ms). */
+  show(): void {
+    const at = this.bounds;
+    setTimeout(() => this.change({ ...at, x: -32736, y: -32736 }), 15);
+    setTimeout(() => {
+      this.mapped = true;
+      this.change(at);
+      if (!this.maximizeAtMap) return;
+      this.restoreTo = { ...at, x: 0, y: 0 };
+      this.stranded = true;
+      this.maximized = true;
+      this.hold.onMaximize();
+      this.change(WORK);
+    }, 28);
   }
   /** Maximized by the window manager, as Win+Up or a double-click on the title bar do. */
   byWindowManager(): void {
-    this.restoreTo = this.opening ? { ...this.bounds, x: WORK.x, y: WORK.y } : this.bounds;
-    this.opening = false;
+    this.restoreTo = this.bounds;
     this.maximized = true;
     this.hold.onMaximize();
     this.change(WORK);
@@ -108,15 +127,41 @@ describe('a maximized window held by CPR on WSLg (N1d)', () => {
     expect(hold.normal).toEqual(NORMAL);
   });
 
-  it('maximized as it opens, Restore puts it where it was, not where WSLg would', async () => {
-    window.opening = true;
+  it('maximized before WSLg maps it, a window is stranded on the left screen', async () => {
+    // Why a window that opens maximized is shown first: the person's "I can't click on
+    // anything" — the window on the left screen, X11 taking it for the right one.
+    window.mapped = false;
     hold.maximize();
+    window.show();
     await vi.runAllTimersAsync();
+    expect(window.stranded).toBe(true);
+    expect(window.bounds).toEqual({ ...NORMAL, x: 0, y: 0 });
+  });
+
+  it('opening maximized, it is maximized once WSLg has mapped it, on its own screen', async () => {
+    window.mapped = false;
+    hold.maximizeOnceShown();
+    window.show();
+    await vi.runAllTimersAsync();
+    expect(window.stranded).toBe(false);
     expect(window.bounds).toEqual(WORK);
-    expect(hold.normal).toEqual(NORMAL);
+    expect(told).toEqual([true]);
     hold.restore();
     await vi.runAllTimersAsync();
     expect(window.bounds).toEqual(NORMAL);
+  });
+
+  it('a place to restore as large as the screen restores to 1440×900, centred', async () => {
+    // WSLg's own maximize, before N1d, saved the work area as the window's normal place.
+    hold.stop();
+    window = new WslgWindow(WORK);
+    hold = holdMaximize(window, (maximized) => told.push(maximized), areas);
+    window.hold = hold;
+    hold.maximize();
+    await vi.runAllTimersAsync();
+    expect(hold.restore()).toBe(true);
+    await vi.runAllTimersAsync();
+    expect(window.bounds).toEqual({ x: 3120, y: 246, width: 1440, height: 900 });
   });
 
   it('Restore puts it back where it was', async () => {
