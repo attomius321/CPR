@@ -1,4 +1,5 @@
-/* The app's start page (N1b): the viewer's tokens (Symbiote's style, V31) and type, on one column. */
+/* The app's start page (N1b): the viewer's tokens (Symbiote's style, V31) and type, on one column.
+   Sizes on the viewer's scale (V32): 14 px body, nothing under 12 px; the title as it was. */
 
 @font-face {
   font-family: 'Geist Variable';
@@ -55,7 +56,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font:
-    13px / 1.5 'Geist Variable',
+    14px / 1.5 'Geist Variable',
     monospace;
   -webkit-font-smoothing: antialiased;
 }
@@ -247,7 +248,7 @@ button {
 
 kbd {
   font:
-    11px 'Geist Variable',
+    12px 'Geist Variable',
     monospace;
   opacity: 0.7;
 }
@@ -260,7 +261,7 @@ kbd {
 h2 {
   margin: 0 0 4px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -303,7 +304,7 @@ ul {
   max-width: 100%;
   overflow: hidden;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

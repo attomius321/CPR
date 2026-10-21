@@ -205,9 +205,9 @@ test('the terminal fills the main area, down to the status bar', async ({ page }
   await workspace(page, branch).getByRole('button', { name: 'Changes' }).click();
   await expect.poll(async () => (await size())[0], POLL).toBeGreaterThanOrEqual(140);
   const [, rows = 0] = await size();
-  // At least 65 % of the window. In Geist Mono at 13 px a cell is 8 x 17 px (V29b): 148 x 46 here,
-  // where the fallback font's 13 px lines gave 58 rows (V29a) and `main` 41.
-  expect(rows).toBeGreaterThanOrEqual(45);
+  // At least 65 % of the window. In Geist Mono at 14 px (V32) a cell is 8 x 18 px: 148 x 44 here;
+  // 46 rows at 13 px (V29b), 58 in the fallback font's 13 px lines (V29a), 41 on `main` then.
+  expect(rows).toBeGreaterThanOrEqual(43);
   const box = await workspace(page, branch).locator('.xterm-screen').boundingBox();
   expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.65);
   const bar = await statusBar(page).boundingBox();

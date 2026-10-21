@@ -33,6 +33,8 @@ Pages and their addresses, and a diff's way back: `src/pages.ts`. In code a work
   (one flat stylesheet: check a new class name is not taken — the sidebar's review bar is
   `.progress`). Colours are tokens on `:root` (dark) and `:root[data-theme='light']`, contrast
   tested by `test/tokens.test.ts`; `src/theme.ts` and `index.html`'s inline script set the theme.
+  Text sizes are the `--size-*` scale on `:root` (V32: 14 px body, nothing under 12 px but
+  uppercase labels), never a px value: the same test fails on one.
 
 ## Fonts (V29b)
 

@@ -24,9 +24,10 @@ density; V31 the rest: lifted chrome, neutral selection, drawn controls, one rad
    selected rows `#262626`. Never one black for everything.
 3. **Selection is neutral.** Active row: a 10 % wash of the text colour and a brighter border. The
    focus ring is grey. Blue is `--moved`/`--info`, a state; it is not the accent.
-4. **Hierarchy by weight and opacity, not by colour or size.** 13 px for rows and nav, 12 px
-   secondary, 11 px captions; weight 500 for labels and buttons, 600 for headings; idle nav text in
-   `--muted`, its icon in `--faint`.
+4. **Hierarchy by weight and opacity, not by colour or size.** 14 px for rows and nav, 13 px
+   secondary, 12 px captions, nothing smaller but uppercase labels (the `--size-*` scale, V32);
+   weight 500 for labels and buttons, 600 for headings; idle nav text in `--muted`, its icon in
+   `--faint`.
 5. **Soft geometry.** Controls and rows 8 px radius, dialogs 10 px, menus 11 px, cards 14 px,
    badges round. Lines are hairlines. Three elevations only: hairline, a slight lift
    (`0 1px 2px`), floating.
@@ -40,6 +41,8 @@ Decisions recorded in `docs/PLAN.md`/`JOURNAL.md`; a new look must keep them.
 - **Fonts**: `'Geist Variable', monospace` and `'Geist Mono Variable', monospace`, nothing else
   (V29a/V29b: a family name the system lacks cost 283–900 ms on Linux). No system font stack.
   Prefer an icon to a new symbol glyph.
+- **Type** (V32): every font size from the `--size-*` scale on `:root`, never a px value (the same
+  test). V29b's 13 px body with 10–11 px captions was too small to read; do not go back under 12 px.
 - **Contrast** (`packages/viewer/test/tokens.test.ts`): text and muted ≥ 4.5:1 on the four
   backgrounds; states, `--faint`, `--focus` ≥ 3:1; a text field's edge (`--edge`) ≥ 3:1; region
   lines ≥ 1.2:1. The tested tokens are `#rrggbb`; translucent values go in other tokens.

@@ -8,6 +8,15 @@
 :root {
   --sans: 'Geist Variable', monospace;
   --mono: 'Geist Mono Variable', monospace;
+  /* The type scale (V32): one step above V29b's dense 13 px, which was too small to read. Every
+     text is sized from it (test/tokens.test.ts); hierarchy is by weight and colour more than size.
+     Nothing under 12 px but uppercase labels and one-glyph marks. Titles stay at 16 px: larger, a
+     symbol's name wrapped in its panel and a frame's name outgrew its band (flow.ts estimates). */
+  --size-caps: 11px; /* uppercase labels (a symbol's kind), one-glyph marks */
+  --size-caption: 12px; /* captions, chips, badges, counts, key caps, category labels */
+  --size-small: 13px; /* secondary: buttons, menu items, paths, code, the status bar */
+  --size-body: 14px; /* rows, nav, tabs, body text, editors */
+  --size-title: 16px; /* titles: a page's, a dialog's, a symbol's in its panel, a frame's name */
 }
 
 /* Dark unless the person chose light or the system's (decision 179; index.html sets data-theme
@@ -187,7 +196,7 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font: 13px/1.45 var(--sans);
+  font: var(--size-body)/1.45 var(--sans);
   letter-spacing: 0.01em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -299,7 +308,7 @@ select option {
   background: var(--side);
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .brand {
@@ -328,7 +337,7 @@ select option {
 .tag {
   border-radius: 4px;
   padding: 0 6px;
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-weight: 500;
   line-height: 18px;
   font-variant-numeric: tabular-nums;
@@ -545,7 +554,7 @@ input[type='radio']:disabled {
   border-radius: 4px;
   background: var(--panel);
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .dropzone {
@@ -558,7 +567,7 @@ input[type='radio']:disabled {
 }
 
 .dropzone h1 {
-  font-size: 16px;
+  font-size: var(--size-title);
 }
 
 /* Buttons (V29b): 28 px; the main action in the primary colour (V31), the others outlined. */
@@ -573,7 +582,7 @@ input[type='radio']:disabled {
   border-radius: 8px;
   background: var(--primary);
   color: var(--primary-text);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
@@ -685,7 +694,7 @@ input[type='radio']:disabled {
 
 .symbol-kind {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--size-caps);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -706,7 +715,7 @@ input[type='radio']:disabled {
   align-items: center;
   margin-top: 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   overflow: hidden;
   white-space: nowrap;
 }
@@ -723,7 +732,7 @@ input[type='radio']:disabled {
   background: color-mix(in srgb, var(--tone) 10%, transparent);
   color: var(--tone);
   line-height: 16px;
-  font-size: 11px;
+  font-size: var(--size-caption);
 }
 
 /* ---- summary nodes: many neighbours of one changed symbol ---------------------------- */
@@ -755,7 +764,7 @@ input[type='radio']:disabled {
   gap: 6px;
   margin-top: 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   white-space: nowrap;
 }
 
@@ -787,7 +796,7 @@ input[type='radio']:disabled {
   text-align: left;
   padding: 6px 12px;
   color: var(--muted);
-  font: 12px var(--mono);
+  font: var(--size-small) var(--mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -828,7 +837,7 @@ input[type='radio']:disabled {
   /* The frame is made wide enough for it; the folder gives way first. */
   flex: none;
   color: var(--text);
-  font-size: 16px;
+  font-size: var(--size-title);
   font-weight: 600;
 }
 
@@ -838,7 +847,7 @@ input[type='radio']:disabled {
   border-radius: 4px;
   background: var(--raised);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
 }
 
 .project-folder {
@@ -846,14 +855,14 @@ input[type='radio']:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--muted);
-  font: 12px var(--mono);
+  font: var(--size-small) var(--mono);
 }
 
 .project-changed {
   flex: none;
   margin-left: auto;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .project-frame.context .project-band {
@@ -862,7 +871,7 @@ input[type='radio']:disabled {
 
 .project-frame.context .project-name {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--size-body);
   font-weight: 500;
 }
 
@@ -911,7 +920,7 @@ input[type='radio']:disabled {
 
 .react-flow__edge-text {
   fill: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
 }
 
 .react-flow__edge-textbg {
@@ -1014,7 +1023,7 @@ input[type='radio']:disabled {
   border-radius: 4px;
   background: color-mix(in srgb, var(--panel) 85%, transparent);
   color: var(--text);
-  font: 13px / 1.25 var(--mono);
+  font: var(--size-body) / 1.25 var(--mono);
   white-space: nowrap;
   transform: scale(calc(1 / var(--symbiote-zoom, 1)));
   transform-origin: 0 0;
@@ -1028,7 +1037,7 @@ input[type='radio']:disabled {
 .react-flow.map .file-box:not(.changed) .file-name {
   background: transparent;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--size-caption);
 }
 
 /* A name may cover a neighbouring box: clicks go to the box under the pointer. */
@@ -1124,13 +1133,14 @@ input[type='radio']:disabled {
   border-radius: 8px;
   overflow: visible;
   background: color-mix(in srgb, var(--panel) 90%, transparent);
-  font-size: 26px;
+  font-size: calc(2 * var(--size-body));
   line-height: 1.25;
-  /* 26 px on screen, smaller only to fit the frame's width, never below a file name's 13 px. */
+  /* 28 px on screen, smaller only to fit the frame's width (0.62 em a character), never below a
+     file name's 14 px. */
   transform: scale(
     clamp(
       calc(0.5 / var(--symbiote-zoom, 1)),
-      calc(var(--frame-width) / var(--name-length) / 16.12),
+      calc(var(--frame-width) / var(--name-length) / 17.36),
       calc(1 / var(--symbiote-zoom, 1))
     )
   );
@@ -1139,7 +1149,7 @@ input[type='radio']:disabled {
 
 .react-flow.map .project-frame.context .project-name {
   background: transparent;
-  font-size: 13px;
+  font-size: var(--size-body);
   transform: scale(calc(1 / var(--symbiote-zoom, 1)));
 }
 
@@ -1152,7 +1162,7 @@ input[type='radio']:disabled {
   background: var(--side);
   border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   flex-wrap: wrap;
 }
 
@@ -1225,7 +1235,7 @@ input[type='radio']:disabled {
   gap: 6px;
   align-items: center;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--size-caps);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1238,13 +1248,13 @@ input[type='radio']:disabled {
 
 .panel-title {
   margin: 4px 0 2px;
-  font: 600 16px var(--mono);
+  font: 600 var(--size-title) var(--mono);
   word-break: break-all;
 }
 
 .panel-file {
   color: var(--muted);
-  font: 12px var(--mono);
+  font: var(--size-small) var(--mono);
   word-break: break-all;
 }
 
@@ -1255,7 +1265,7 @@ input[type='radio']:disabled {
 
 .panel h3 {
   margin: 16px 0 8px;
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-weight: 600;
   color: var(--muted);
 }
@@ -1271,8 +1281,6 @@ input[type='radio']:disabled {
   border-radius: 8px;
   background: none;
   color: var(--muted);
-  font-size: 18px;
-  line-height: 1;
   cursor: pointer;
 }
 
@@ -1290,7 +1298,7 @@ input[type='radio']:disabled {
   padding: 6px 8px;
   border-radius: 8px;
   background: var(--bg);
-  font-size: 12px;
+  font-size: var(--size-small);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -1313,7 +1321,7 @@ input[type='radio']:disabled {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--bg);
-  font: 12px/1.5 var(--mono);
+  font: var(--size-small)/1.5 var(--mono);
 }
 
 .code-rows {
@@ -1396,7 +1404,7 @@ input[type='radio']:disabled {
 /* A symbol's name as a link: as code. */
 .neighbours .link,
 .finding .link {
-  font: 12px var(--mono);
+  font: var(--size-small) var(--mono);
 }
 
 .link:hover:not(:disabled) {
@@ -1434,7 +1442,7 @@ input[type='radio']:disabled {
   border-bottom: 2px solid transparent;
   background: none;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--size-body);
   font-weight: 500;
   cursor: pointer;
 }
@@ -1477,12 +1485,12 @@ input[type='radio']:disabled {
   min-width: 0;
   height: 28px;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .search .count {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--size-small);
   white-space: nowrap;
 }
 
@@ -1509,7 +1517,7 @@ input[type='radio']:disabled {
 .list-file-name {
   padding: 8px 12px 2px;
   color: var(--muted);
-  font: 12px var(--mono);
+  font: var(--size-small) var(--mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1573,7 +1581,7 @@ input[type='radio']:disabled {
 .list-project-progress {
   flex: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1584,7 +1592,7 @@ input[type='radio']:disabled {
   border-radius: 4px;
   background: none;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   cursor: pointer;
 }
 
@@ -1611,7 +1619,7 @@ input[type='radio']:disabled {
   margin: 0;
   padding: 6px 12px 8px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .project-note strong {
@@ -1636,7 +1644,7 @@ input[type='radio']:disabled {
   border: 0;
   background: none;
   color: var(--text);
-  font: 12px var(--mono);
+  font: var(--size-small) var(--mono);
   text-align: left;
   cursor: pointer;
   overflow: hidden;
@@ -1687,14 +1695,14 @@ input[type='radio']:disabled {
   border-radius: 4px;
   background: var(--raised);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-weight: 400;
 }
 
 .finding-row-message {
   grid-column: 1 / -1;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .keys {
@@ -1702,7 +1710,7 @@ input[type='radio']:disabled {
   padding: 8px 12px;
   border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   line-height: 1.8;
 }
 
@@ -1716,7 +1724,7 @@ kbd {
   background: color-mix(in srgb, var(--raised) 70%, transparent);
   box-shadow: var(--shadow-lift);
   color: var(--muted);
-  font: 500 10px/16px var(--sans);
+  font: 500 var(--size-caption)/16px var(--sans);
   text-align: center;
 }
 
@@ -1738,7 +1746,7 @@ kbd {
   background: var(--input-bg);
   box-shadow: var(--shadow-lift);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
@@ -1769,7 +1777,7 @@ kbd {
   border-top: 1px solid var(--line);
   background: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   cursor: pointer;
 }
 
@@ -1814,7 +1822,7 @@ kbd {
   display: block;
   width: 100%;
   padding: 6px 8px;
-  font-size: 12px;
+  font-size: var(--size-small);
   resize: vertical;
 }
 
@@ -1824,7 +1832,7 @@ kbd {
   align-items: center;
   gap: 8px;
   margin-top: 6px;
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .review:disabled {
@@ -1850,25 +1858,25 @@ kbd {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .draft-body {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--size-small);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .small {
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .commented {
   flex: none;
   margin-left: auto;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
 }
 
 .submit-review {
@@ -1930,7 +1938,7 @@ kbd {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .merge-dir {
@@ -1948,7 +1956,7 @@ kbd {
   margin: 0;
   padding: 0;
   border: 0;
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 .events label {
@@ -1961,7 +1969,7 @@ kbd {
 .posted {
   margin: 0;
   color: var(--added);
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 /* ---- changed since reviewed --------------------------------------------------------- */
@@ -1969,7 +1977,7 @@ kbd {
 .stale-note {
   margin: 4px 12px 6px;
   color: var(--modified);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .panel-head .stale-note {
@@ -1979,7 +1987,7 @@ kbd {
 .stale-mark {
   flex: none;
   color: var(--modified);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 /* ---- since an earlier version ------------------------------------------------------- */
@@ -2049,7 +2057,7 @@ kbd {
   padding: 8px 12px 8px 16px;
   border-bottom: 1px solid var(--line);
   background: var(--side);
-  font-size: 13px;
+  font-size: var(--size-body);
   font-weight: normal;
 }
 
@@ -2069,7 +2077,7 @@ kbd {
   min-width: 0;
   padding-top: 5px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   line-height: 18px;
 }
 
@@ -2097,7 +2105,7 @@ kbd {
   align-items: center;
   gap: 10px;
   padding: 0 12px 0 10px;
-  font-size: 13px;
+  font-size: var(--size-body);
   cursor: pointer;
 }
 
@@ -2222,7 +2230,7 @@ kbd {
   padding: 3px;
   border-radius: 10px;
   background: var(--raised);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .scope {
@@ -2266,7 +2274,7 @@ kbd {
   background: var(--input-bg);
   box-shadow: var(--shadow-lift);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
@@ -2290,7 +2298,7 @@ kbd {
   background: none;
   color: inherit;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-weight: normal;
   line-height: 16px;
 }
@@ -2395,7 +2403,7 @@ kbd {
   border-radius: 8px;
   background: none;
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: 450;
   line-height: 17px;
   text-align: left;
@@ -2412,7 +2420,7 @@ kbd {
 }
 
 .menu-note {
-  font-size: 11px;
+  font-size: var(--size-caption);
 }
 
 /* V14: "Check out ▸" and its submenu of targets, each named by the row's badge. */
@@ -2463,7 +2471,7 @@ kbd {
 
 .menu-kind {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   overflow-wrap: anywhere;
 }
 
@@ -2510,7 +2518,7 @@ kbd {
 
 .dialog h2 {
   margin: 0 0 8px;
-  font-size: 16px;
+  font-size: var(--size-title);
   font-weight: 600;
   letter-spacing: -0.01em;
   overflow-wrap: anywhere;
@@ -2532,7 +2540,7 @@ kbd {
   align-items: center;
   gap: 8px;
   margin-top: 20px;
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 /* Backing out stays quiet: a ghost button, no colour. */
@@ -2542,7 +2550,7 @@ kbd {
   min-height: 28px;
   padding: 0 12px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: 500;
 }
 
@@ -2579,7 +2587,7 @@ kbd {
 .start-top h1 {
   grid-area: title;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--size-title);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -2588,7 +2596,7 @@ kbd {
   grid-area: from;
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   overflow-wrap: anywhere;
 }
 
@@ -2601,7 +2609,7 @@ kbd {
   display: flex;
   align-items: center;
   gap: 16px;
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 /* Narrow, where it starts goes under the title and the buttons. */
@@ -2656,7 +2664,7 @@ kbd {
 
 .start-run .dialog-note {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--size-small);
   overflow-wrap: anywhere;
 }
 
@@ -2683,7 +2691,7 @@ kbd {
   border: 0;
   background: none;
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--size-title);
   line-height: 1;
   cursor: help;
 }
@@ -2704,7 +2712,7 @@ kbd {
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0 8px 24px var(--shadow);
-  font-size: 12px;
+  font-size: var(--size-small);
   /* It covers the title for a moment: what is under it keeps the pointer. */
   pointer-events: none;
 }
@@ -2753,7 +2761,7 @@ kbd {
   border-radius: 8px;
   background: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: 500;
   cursor: pointer;
 }
@@ -2782,13 +2790,13 @@ kbd {
 
 .field-optional {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: normal;
 }
 
 .workspace-check-guess {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--size-small);
   overflow-wrap: anywhere;
 }
 
@@ -2810,7 +2818,7 @@ kbd {
   border: 1px solid var(--line);
   border-radius: 4px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-weight: normal;
   line-height: 15px;
   vertical-align: 1px;
@@ -2853,7 +2861,7 @@ kbd {
 
 .commit-sha {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .commit-subject {
@@ -2874,7 +2882,7 @@ kbd {
   border-radius: 4px;
   background: var(--raised);
   color: var(--muted);
-  font: 500 11px/18px var(--sans);
+  font: 500 var(--size-caption)/18px var(--sans);
   white-space: nowrap;
 }
 
@@ -2908,7 +2916,7 @@ kbd {
   border-radius: 4px;
   background: color-mix(in srgb, var(--added) 12%, transparent);
   color: var(--added);
-  font: 600 11px var(--sans);
+  font: 600 var(--size-caption) var(--sans);
   cursor: pointer;
 }
 
@@ -2935,7 +2943,7 @@ kbd {
 .commit-author,
 .commit-date {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -2985,7 +2993,7 @@ kbd {
 }
 
 .diff-progress p {
-  font-size: 14px;
+  font-size: var(--size-title);
 }
 
 .diff-progress pre {
@@ -3019,7 +3027,7 @@ kbd {
   background: var(--input-bg);
   box-shadow: var(--shadow-lift);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
@@ -3040,7 +3048,7 @@ kbd {
   border-radius: 4px;
   background: none;
   color: var(--muted);
-  font: 11px var(--mono);
+  font: var(--size-caption) var(--mono);
 }
 
 /* A row's line number, as a button that opens that line. */
@@ -3060,7 +3068,7 @@ kbd {
 .open-note {
   margin-top: 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .open-note:empty {
@@ -3085,7 +3093,7 @@ kbd {
   border-radius: 9999px;
   background: var(--review-tone);
   color: var(--panel);
-  font-size: 10px;
+  font-size: var(--size-caps);
   font-weight: 700;
   line-height: 14px;
   text-align: center;
@@ -3119,7 +3127,7 @@ kbd {
   min-width: 0;
   overflow: hidden;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--size-body);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -3146,12 +3154,12 @@ kbd {
   height: 28px;
   margin: 8px 8px 7px;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .branches .hint {
   padding: 12px;
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .branches-list {
@@ -3161,14 +3169,14 @@ kbd {
   border-top: 1px solid var(--line);
   overflow: auto;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 .branches-section {
   margin: 12px 0 4px;
   padding: 0 8px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-weight: 500;
 }
 
@@ -3184,7 +3192,7 @@ kbd {
   border-radius: 4px;
   background: none;
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--size-small);
   text-align: left;
   cursor: pointer;
 }
@@ -3216,7 +3224,7 @@ kbd {
 .branches-track {
   margin-left: auto;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-weight: normal;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -3234,7 +3242,7 @@ kbd {
 .branches-age {
   margin-left: auto;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -3250,7 +3258,7 @@ kbd {
 .branches-current {
   flex: none;
   color: var(--added);
-  font-size: 10px;
+  font-size: var(--size-caps);
 }
 
 .branches-branch.unlisted {
@@ -3271,7 +3279,7 @@ kbd {
   background: var(--input-bg);
   box-shadow: var(--shadow-lift);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--size-small);
   cursor: pointer;
 }
 
@@ -3318,7 +3326,7 @@ kbd {
   border-radius: 4px;
   background: var(--warning);
   color: var(--bg);
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-weight: 700;
   line-height: 16px;
   text-align: center;
@@ -3334,7 +3342,7 @@ kbd {
   border: 1px solid var(--workspace-tone);
   border-radius: 4px;
   color: var(--workspace-tone);
-  font-size: 10px;
+  font-size: var(--size-caps);
   font-weight: 700;
   line-height: 13px;
   text-align: center;
@@ -3466,7 +3474,7 @@ button.workspace-about {
 .workspace-state {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 .workspace-state strong {
@@ -3481,7 +3489,7 @@ button.workspace-about {
   border-radius: 10px;
   background: var(--bg);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--size-body);
   white-space: pre-wrap;
 }
 
@@ -3489,7 +3497,7 @@ button.workspace-about {
 .workspace-started {
   margin: 0 0 8px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   white-space: normal;
 }
 
@@ -3499,11 +3507,11 @@ button.workspace-about {
 
 .workspace-said {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 .workspace-confirm {
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 .thread {
@@ -3531,7 +3539,7 @@ button.workspace-about {
 .thread-symbiote summary {
   margin-bottom: 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .thread-symbiote summary {
@@ -3541,7 +3549,7 @@ button.workspace-about {
 
 .thread-text {
   overflow-wrap: anywhere;
-  font-size: 13px;
+  font-size: var(--size-body);
   white-space: pre-wrap;
 }
 
@@ -3555,13 +3563,13 @@ button.workspace-about {
   border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent);
   border-radius: 8px;
   background: color-mix(in srgb, var(--warning) 10%, transparent);
-  font-size: 13px;
+  font-size: var(--size-body);
   overflow-wrap: anywhere;
 }
 
 .thread-line {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   text-align: center;
 }
 
@@ -3574,7 +3582,7 @@ button.workspace-about {
   width: 100%;
   min-height: 64px;
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: var(--size-body);
   resize: vertical;
 }
 
@@ -3584,7 +3592,7 @@ button.workspace-about {
   align-items: center;
   justify-content: flex-end;
   gap: 4px 14px;
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 /* V21: the workspace's agent session in a terminal, beside its thread. */
@@ -3602,7 +3610,7 @@ button.workspace-about {
   border-radius: 8px 8px 0 0;
   background: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: 500;
   cursor: pointer;
 }
@@ -3685,7 +3693,7 @@ button.workspace-about {
 
 .thread-readonly {
   margin: 8px 0 0;
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 /* Markdown drawn as the page's own elements: an agent's report, a workspace's brief. */
@@ -3715,11 +3723,11 @@ button.workspace-about {
 .markdown h5,
 .markdown h6 {
   margin: 12px 0 6px;
-  font-size: 14px;
+  font-size: var(--size-body);
 }
 
 .markdown h3 {
-  font-size: 15px;
+  font-size: var(--size-title);
 }
 
 .markdown ul,
@@ -3741,7 +3749,7 @@ button.workspace-about {
   border-radius: 4px;
   background: color-mix(in srgb, var(--text) 8%, transparent);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .markdown pre {
@@ -3770,7 +3778,7 @@ button.workspace-about {
 
 .markdown table {
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .markdown th,
@@ -3864,7 +3872,7 @@ button.workspace-about {
   overflow: auto;
   border-radius: 8px;
   background: var(--bg);
-  font-size: 12px;
+  font-size: var(--size-small);
   white-space: pre-wrap;
 }
 
@@ -3917,7 +3925,7 @@ p.merge-control {
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--bg);
-  font-size: 12px;
+  font-size: var(--size-small);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -3952,7 +3960,7 @@ p.merge-control {
 
 .settings-bar h1 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--size-title);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -3964,11 +3972,11 @@ p.merge-control {
   gap: 8px;
   margin-left: auto;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .appearance .field-optional {
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .settings > .settings-git,
@@ -3982,7 +3990,7 @@ p.merge-control {
 .settings-git,
 .settings-warning {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .settings-warning {
@@ -4001,7 +4009,7 @@ p.merge-control {
   margin: 0 0 4px;
   padding: 0 8px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-weight: 500;
 }
 
@@ -4031,7 +4039,7 @@ p.merge-control {
   border-radius: 8px;
   background: none;
   color: inherit;
-  font-size: 13px;
+  font-size: var(--size-body);
   text-align: left;
   cursor: pointer;
 }
@@ -4053,7 +4061,7 @@ p.merge-control {
 
 .settings-mark {
   flex: none;
-  font-size: 11px;
+  font-size: var(--size-caption);
 }
 
 .settings-mark.changed {
@@ -4078,7 +4086,7 @@ p.merge-control {
   align-items: baseline;
   gap: 4px 8px;
   margin: 0 0 4px;
-  font-size: 14px;
+  font-size: var(--size-title);
   font-weight: 600;
 }
 
@@ -4087,7 +4095,7 @@ p.merge-control {
   border: 1px solid var(--line);
   border-radius: 4px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-weight: normal;
 }
 
@@ -4099,7 +4107,7 @@ p.merge-control {
 .settings-about {
   margin: 0 0 8px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .settings-editor .settings-warning {
@@ -4110,7 +4118,7 @@ p.merge-control {
   display: block;
   width: 100%;
   padding: 8px 10px;
-  font: 13px/1.45 var(--mono);
+  font: var(--size-body)/1.45 var(--mono);
   max-height: 70vh;
   overflow-y: auto;
   resize: vertical;
@@ -4119,7 +4127,7 @@ p.merge-control {
 .settings-size {
   margin: 4px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .settings-size.error {
@@ -4131,7 +4139,7 @@ p.merge-control {
 p.settings-placeholders {
   margin: 12px 0 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .settings-fixed pre,
@@ -4143,7 +4151,7 @@ p.settings-placeholders {
   border-radius: 8px;
   background: var(--bg);
   border: 1px solid var(--line);
-  font: 12px/1.45 var(--mono);
+  font: var(--size-small)/1.45 var(--mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -4152,7 +4160,7 @@ p.settings-placeholders {
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 .settings-placeholders li {
@@ -4166,7 +4174,7 @@ p.settings-placeholders {
   border-radius: 4px;
   background: var(--raised);
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--size-small);
   text-decoration: none;
 }
 
@@ -4182,7 +4190,7 @@ p.settings-placeholders {
   justify-content: flex-end;
   gap: 6px 14px;
   margin-top: 14px;
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 .settings-notice {
@@ -4196,7 +4204,7 @@ p.settings-placeholders {
 
 .settings-default {
   margin-top: 12px;
-  font-size: 13px;
+  font-size: var(--size-body);
 }
 
 .settings-default summary {
@@ -4313,7 +4321,7 @@ p.settings-placeholders {
   border: 1px solid var(--line);
   border-radius: 50%;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: 500;
 }
 
@@ -4330,7 +4338,7 @@ p.settings-placeholders {
   background: var(--panel);
   box-shadow: var(--shadow-floating);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: normal;
   line-height: 1.5;
 }
@@ -4461,7 +4469,7 @@ p.settings-placeholders {
   margin: 0;
   padding: 0 8px 0 16px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: 600;
 }
 
@@ -4474,7 +4482,7 @@ p.settings-placeholders {
 .sidenav-hint {
   margin: 4px 16px;
   padding: 0;
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .sidenav .workspaces-empty p {
@@ -4495,7 +4503,7 @@ p.settings-placeholders {
   gap: 6px;
   margin: 12px 8px 4px;
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: 600;
 }
 
@@ -4528,7 +4536,7 @@ p.settings-placeholders {
   border-radius: 9999px;
   background: var(--raised);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--size-caption);
   font-weight: 500;
   line-height: 16px;
   text-align: center;
@@ -4567,7 +4575,7 @@ p.settings-placeholders {
 }
 
 .sidenav .workspace-about {
-  font-size: 13px;
+  font-size: var(--size-body);
   font-weight: 500;
 }
 
@@ -4578,7 +4586,7 @@ p.settings-placeholders {
   gap: 6px;
   min-width: 0;
   margin: 1px 0 0 14px;
-  font-size: 12px;
+  font-size: var(--size-small);
   line-height: 16px;
 }
 
@@ -4587,7 +4595,7 @@ p.settings-placeholders {
   min-width: 0;
   margin: 0;
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--size-small);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4601,7 +4609,7 @@ p.settings-placeholders {
   flex: none;
   width: auto;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-variant-numeric: tabular-nums;
 }
 
@@ -4617,7 +4625,7 @@ p.settings-placeholders {
   border-radius: 0;
   background: none;
   color: var(--muted);
-  font: 12px/16px var(--sans);
+  font: var(--size-small)/16px var(--sans);
 }
 
 .sidenav .workspace-branch a.ref-branch:hover {
@@ -4793,7 +4801,7 @@ p.settings-placeholders {
 .workspace-title h1 {
   flex: 0 1 auto;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--size-title);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -4819,7 +4827,7 @@ p.settings-placeholders {
   border-radius: 0;
   background: none;
   color: var(--muted);
-  font: 12px var(--sans);
+  font: var(--size-small) var(--sans);
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4833,7 +4841,7 @@ p.settings-placeholders {
   grid-area: state;
   margin: 0;
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--size-small);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4871,12 +4879,12 @@ p.settings-placeholders {
 
 .workspace-said {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .workspace-actions .merge-control {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .more-actions {
@@ -4901,7 +4909,7 @@ p.settings-placeholders {
   border-radius: 8px;
   background: none;
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-weight: 450;
   text-align: left;
   cursor: pointer;
@@ -4961,7 +4969,7 @@ p.settings-placeholders {
   border-top: 1px solid var(--line);
   background: var(--side);
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
   font-variant-numeric: tabular-nums;
 }
 
@@ -4980,7 +4988,7 @@ p.settings-placeholders {
 }
 
 .statusbar .link {
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 /* Narrow: the sidenav is a drawer over the page, opened from a strip at the top. */
@@ -5136,7 +5144,7 @@ p.settings-placeholders {
   overflow: auto;
   border-left: 1px solid var(--line);
   background: var(--side);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 @container workspace (max-width: 1199px) {
@@ -5162,7 +5170,7 @@ p.settings-placeholders {
   margin: 0 0 4px;
   padding: 0 12px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -5217,7 +5225,7 @@ p.settings-placeholders {
   flex: none;
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--size-caption);
 }
 
 .changes-subject,
@@ -5281,7 +5289,7 @@ button.changes-file:hover {
   width: 10px;
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--size-caption);
   font-weight: 600;
 }
 
@@ -5409,7 +5417,7 @@ button.changes-file:hover {
 
 .titlebar-label {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--size-small);
 }
 
 .titlebar-slot {

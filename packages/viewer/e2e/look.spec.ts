@@ -160,6 +160,68 @@ test("History in Symbiote's style: names in the text's font, HEAD a tint, menus 
   await page.keyboard.press('Escape');
 });
 
+// V32: text one can read. Every text shown, on every page: 12 px at least, 11 px for uppercase
+// labels and one-glyph marks; 14 px for the body and the terminal.
+test('no text under 12 px on any page; the body and the terminal at 14 px', async ({ page }) => {
+  symbiote = await serveWorkspaces();
+  const small = () =>
+    page.evaluate(() => {
+      const under: string[] = [];
+      for (const element of document.body.querySelectorAll('*')) {
+        const text = [...element.childNodes]
+          .filter((node) => node.nodeType === Node.TEXT_NODE)
+          .map((node) => node.textContent)
+          .join('')
+          .trim();
+        // The terminal draws its own text at its own size, checked below.
+        if (!text || element.closest('.xterm') || element.getClientRects().length === 0) continue;
+        const style = getComputedStyle(element);
+        const size = Number.parseFloat(style.fontSize);
+        const mark = style.textTransform === 'uppercase' || [...text].length === 1;
+        if (size < (mark ? 11 : 12)) under.push(`${element.className}: "${text}" ${size}px`);
+      }
+      return under;
+    });
+
+  await page.goto(`${symbiote.url}history`);
+  await expect(page.locator('.commit').first()).toBeVisible(POLL);
+  expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('14px');
+  expect(await small()).toEqual([]);
+  await page.locator('.commit.head').click({ button: 'right', position: { x: 120, y: 10 } });
+  await expect(page.getByRole('menu')).toBeVisible();
+  expect(await small()).toEqual([]);
+  await page.keyboard.press('Escape');
+
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await expect(appearance(page)).toBeVisible();
+  expect(await small()).toEqual([]);
+
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
+  const form = page.getByRole('region', { name: 'Start a workspace' });
+  await form.getByRole('textbox', { name: 'Title' }).fill('Add a half function, with a test');
+  expect(await small()).toEqual([]);
+  await form.getByRole('textbox', { name: 'Goal' }).fill('Half of a number.');
+  await form.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
+  const here = page.getByRole('region', { name: 'Workspace feature/add-a-half-function' });
+  await expect(here.locator('.xterm-rows')).toContainText(/\[\d+x\d+\]/, POLL);
+  expect(
+    await here.locator('.xterm-rows').evaluate((rows) => getComputedStyle(rows).fontSize),
+  ).toBe('14px');
+  expect(await small()).toEqual([]);
+  await here.getByRole('tab', { name: 'Brief' }).click();
+  expect(await small()).toEqual([]);
+
+  const [base, head] = symbiote.shas;
+  await page.goto(`${symbiote.url}diff/${base}..${head}/`);
+  await expect(page.locator('.react-flow__node').first()).toBeVisible(POLL);
+  expect(await small()).toEqual([]);
+  await page.keyboard.press('j');
+  await expect(page.locator('.panel-title')).toBeVisible();
+  expect(await small()).toEqual([]);
+  await page.getByRole('tab', { name: /Findings/ }).click();
+  expect(await small()).toEqual([]);
+});
+
 test('a card in the sidenav is at most 64 px high', async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}history`);

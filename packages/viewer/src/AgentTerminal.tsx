@@ -8,7 +8,8 @@ import { holdReads } from './useWorkspaces.js';
 const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
 /** The bundled mono (V29b), as styles.css names it. */
 const MONO = "'Geist Mono Variable', monospace";
-const FONT_SIZE = 13;
+/** The body's size (`--size-body`, V32): xterm takes a number, not a token. */
+const FONT_SIZE = 14;
 
 /** A write to a terminal (`…/in`, `…/resize`, `…/close`): no answer but its status. */
 export async function toTerminal(id: string, action: string, body: unknown): Promise<void> {
