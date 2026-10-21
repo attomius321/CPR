@@ -203,7 +203,9 @@ they are linked to elsewhere.
 every branch, local and remote, drawn as a graph beside the commits, the current branch the
 straight line on the left. The sidenav on the left lists the pages (History, Settings) and, under
 them, your [workspaces](#workspaces-and-agents); a click opens one beside it, without loading the
-page again. The status bar along the bottom says what the last action did. The whole
+page again. Drag the sidenav's edge to widen or narrow it (180–480 px), or focus the edge and use
+the arrow keys; a double-click restores it. A workspace's changes, at the right of its terminal,
+resize the same way. The widths are kept in this browser. The status bar along the bottom says what the last action did. The whole
 history scrolls, and commits load as they come into view; its keys are behind the "?" in its
 toolbar.
 
