@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -6,6 +14,7 @@ import {
   branchNameProblem,
   commitFolders,
   deleteMergedBranch,
+  fileGitState,
   listRefs,
   listWorktrees,
   mainWorktree,
@@ -13,6 +22,7 @@ import {
   parseWorktreeStatus,
   removeWorktree,
   uncommittedFiles,
+  workingState,
   worktreeStatus,
   WorktreeRefused,
 } from '../src/index.js';
@@ -169,6 +179,27 @@ describe('uncommittedFiles', () => {
     expect(await uncommittedFiles(folder)).toBe(4);
     // The checkout it came from is not counted.
     expect(await uncommittedFiles(repo.root)).toBe(0);
+  });
+});
+
+describe('reading a working tree in the background', () => {
+  it("never rewrites its index: an agent's or the person's git add then is not refused", async () => {
+    const { repo, shas } = fresh();
+    const folder = join(elsewhere(), 'feature-csv');
+    await addWorktree(await openRepo(repo.root), { folder, branch: 'feature/csv', base: shas.B });
+    const index = (cwd: string) =>
+      repo.git('-C', cwd, 'rev-parse', '--path-format=absolute', '--git-path', 'index');
+    // Touched, not changed: git status would refresh the index and write it, under index.lock.
+    const later = new Date(Date.now() + 60_000);
+    for (const cwd of [folder, repo.root]) utimesSync(join(cwd, 'a.ts'), later, later);
+    const before = [readFileSync(index(folder)), readFileSync(index(repo.root))];
+
+    expect(await uncommittedFiles(folder)).toBe(0);
+    expect(await worktreeStatus(folder)).toEqual([]);
+    const opened = await openRepo(repo.root);
+    expect((await workingState(opened)).changed).toBe(0);
+    expect(await fileGitState(opened, 'a.ts')).toBe('committed');
+    expect([readFileSync(index(folder)), readFileSync(index(repo.root))]).toEqual(before);
   });
 });
 

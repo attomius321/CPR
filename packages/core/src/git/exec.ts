@@ -23,14 +23,27 @@ export class GitError extends Error {
   }
 }
 
-/** Runs git in `cwd` and returns stdout. Messages are always in English, prompts are disabled. */
+/**
+ * git's environment: messages in English, no prompts, and no optional lock. Symbiote reads working
+ * trees the person and agents work in, on its own schedule; `git status` would otherwise rewrite
+ * their index under `index.lock`, and a `git add` or `git commit` made then fails ("index.lock:
+ * File exists"). Writes still take the locks they need.
+ */
+const gitEnv = () => ({
+  ...process.env,
+  LC_ALL: 'C',
+  GIT_TERMINAL_PROMPT: '0',
+  GIT_OPTIONAL_LOCKS: '0',
+});
+
+/** Runs git in `cwd` and returns stdout, in {@link gitEnv}'s environment. */
 export async function git(cwd: string, args: readonly string[]): Promise<string> {
   try {
     const { stdout } = await execFileAsync('git', args, {
       cwd,
       encoding: 'utf8',
       maxBuffer: 256 * 1024 * 1024,
-      env: { ...process.env, LC_ALL: 'C', GIT_TERMINAL_PROMPT: '0' },
+      env: gitEnv(),
     });
     return stdout;
   } catch (error) {
@@ -68,7 +81,7 @@ export function gitStream(
   return new Promise((resolve, reject) => {
     const child = spawn('git', args, {
       cwd,
-      env: { ...process.env, LC_ALL: 'C', GIT_TERMINAL_PROMPT: '0' },
+      env: gitEnv(),
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stderr = '';
