@@ -139,6 +139,9 @@ function fakeTerminals() {
     write: () => false,
     resize: () => false,
     image: () => Promise.resolve(undefined),
+    files: () => Promise.resolve(undefined),
+    openFile: () =>
+      Promise.resolve({ opened: false, why: 'terminal', message: 'no such terminal' }),
     close: () => false,
     closeAll: () => {},
   };

@@ -38,7 +38,7 @@ import { parsePromptChange, PromptRefused, type PromptSettingsService } from './
 import type { UsageService } from './usage.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
-import { imageKind, MAX_IMAGE_BYTES, type Terminals } from './terminal.js';
+import { imageKind, MAX_IMAGE_BYTES, type FileAt, type Terminals } from './terminal.js';
 import { ScoutRefused, type Scout } from './scout.js';
 
 export type Side = 'base' | 'head';
@@ -158,10 +158,18 @@ const FULL_SHA = new RegExp(`^${SHA}$`);
 const DIFF_PATH = new RegExp(`^/diff/(${SHA})\\.\\.(${SHA})(/.*)?$`);
 /** `/review/<branch, URL-encoded>` and what follows: a branch's review, as a diff's page. */
 const REVIEW_PATH = /^\/review\/([^/]+)(\/.*)?$/;
-/** `/api/terminals/<id>`, its output; `…/in`, `…/resize`, `…/close` (V21); `…/image` (V36). */
-const TERMINAL_PATH = /^\/api\/terminals\/([0-9a-z]+)(?:\/(in|resize|close|image))?$/;
+/**
+ * `/api/terminals/<id>`, its output; `…/in`, `…/resize`, `…/close` (V21); `…/image` (V36);
+ * `…/paths`, `…/open` (V37).
+ */
+const TERMINAL_PATH = /^\/api\/terminals\/([0-9a-z]+)(?:\/(in|resize|close|image|paths|open))?$/;
 /** Most a terminal is sent at once: keys typed, or a line Symbiote types (V21). */
 const MAX_TERMINAL_INPUT = 64 * 1024;
+/** Most paths a terminal is asked about at once, and their length (V37): a row's worth. */
+const MAX_TERMINAL_PATHS = 50;
+const MAX_TERMINAL_PATH = 1024;
+/** A file a terminal could not open (V37): its status by why. */
+const FILE_REFUSED = { terminal: 404, outside: 400, missing: 409, editor: 502 } as const;
 /** Most an image's request may weigh (V36): the image as base64, in its JSON. */
 const MAX_IMAGE_BODY = Math.ceil(MAX_IMAGE_BYTES / 3) * 4 + 1024;
 const IMAGE_TOO_LARGE = `an image of at most ${MAX_IMAGE_BYTES / 2 ** 20} MB`;
@@ -753,8 +761,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
    * A terminal (V21): `GET` streams its output as server-sent events (`out`, then `exit` and
    * the end); `POST …/in { data }`, `…/resize { cols, rows }` and `…/close` are writes, and so is
    * `…/image { data }` (V36), an image as base64 saved for the agent: its path and the text to
-   * paste. Its ID is unguessable and made only by a write; a read from another site is refused
-   * too.
+   * paste. `…/paths { paths }` answers which paths it printed are files in its folder, and
+   * `…/open { path, line?, column? }` opens one in the editor (V37): writes too, as which files
+   * exist is not for another site. Its ID is unguessable and made only by a write; a read from
+   * another site is refused too.
    */
   async function terminalApi(
     req: IncomingMessage,
@@ -824,6 +834,21 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         },
         MAX_IMAGE_BODY,
       );
+    }
+    if (action === 'paths') {
+      return written(req, res, parseTerminalPaths, async (paths) => {
+        const files = await terminals.files(id, paths);
+        if (!files) return send(res, 404, 'no such terminal');
+        return json(res, 200, { files });
+      });
+    }
+    if (action === 'open') {
+      return written(req, res, parseTerminalFile, async (at) => {
+        const result = await terminals.openFile(id, at);
+        if (!result.opened) return send(res, FILE_REFUSED[result.why], result.message);
+        res.writeHead(204, { 'cache-control': 'no-store' });
+        res.end();
+      });
     }
     return written(req, res, parse, (body) => {
       let done: boolean;
@@ -1182,6 +1207,38 @@ function terminalSize(
   const ok = (n: unknown): n is number =>
     Number.isInteger(n) && (n as number) >= 2 && (n as number) <= 1000;
   return ok(value?.cols) && ok(value.rows) ? { cols: value.cols, rows: value.rows } : null;
+}
+
+/** `{ paths }` (V37): the paths in a row of a terminal, each as the agent printed it. */
+function parseTerminalPaths(text: string): string[] {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  const paths = value?.paths;
+  if (
+    !Array.isArray(paths) ||
+    paths.length > MAX_TERMINAL_PATHS ||
+    !paths.every((path) => typeof path === 'string' && path.length <= MAX_TERMINAL_PATH)
+  ) {
+    throw new Error(
+      `paths: at most ${MAX_TERMINAL_PATHS}, each at most ${MAX_TERMINAL_PATH} characters`,
+    );
+  }
+  return paths as string[];
+}
+
+/** `{ path, line?, column? }` (V37): a path a terminal printed, and where in it, 1-based. */
+function parseTerminalFile(text: string): FileAt {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  const { path, line, column } = value ?? {};
+  if (typeof path !== 'string' || path === '' || path.length > MAX_TERMINAL_PATH) {
+    throw new Error('path: a path the terminal printed');
+  }
+  if (line !== undefined && !isPosition(line)) throw new Error('line: a positive integer');
+  if (column !== undefined && !isPosition(column)) throw new Error('column: a positive integer');
+  return {
+    path,
+    ...(line === undefined ? {} : { line }),
+    ...(column === undefined ? {} : { column }),
+  };
 }
 
 /** `{ branch, cols, rows }`: a terminal on a workspace's agent session (V21). */

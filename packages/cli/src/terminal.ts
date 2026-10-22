@@ -1,11 +1,14 @@
 // Terminals for workspaces' agents (V21): `claude attach <id>` in a pseudo-terminal, its output
 // streamed to the page and the person's keys written back. Claude Code keeps hosting the
 // session; a terminal is only a client of it, and hanging one up leaves the session running.
-// Images pasted or dropped into one are saved for its agent to attach (V36).
+// Images pasted or dropped into one are saved for its agent to attach (V36); files it prints are
+// opened in the editor (V37).
 import { randomBytes } from 'node:crypto';
-import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdir, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join, posix, win32 } from 'node:path';
 import { defaultCacheDir } from '@symbiote/core';
+import type { OpenFolder } from './workspaces.js';
 
 /** A pseudo-terminal's process, as node-pty gives one; tests pass a fake. */
 export interface Pty {
@@ -87,6 +90,48 @@ export function pastedPath(path: string, platform: NodeJS.Platform = process.pla
 /** The names Symbiote gives the images it saves: only those are ever removed. */
 const SAVED_IMAGE = /^[0-9a-f]{32}\.(?:png|jpg|gif|webp)$/;
 
+/** Where a terminal opens a file it printed (V37): its line and column, 1 when not printed. */
+export interface FileAt {
+  path: string;
+  line?: number;
+  column?: number;
+}
+
+/** A file opened, or why not: no such terminal, not in its folder, not a file, the editor's words. */
+export type OpenedFile =
+  | { opened: true }
+  | { opened: false; why: 'terminal' | 'outside' | 'missing' | 'editor'; message: string };
+
+/**
+ * A path an agent printed, as a file of the folder its terminal runs in (V37): relative to that
+ * folder, `~/` from `home`, or absolute in it (through the folder's real path too: the agent may
+ * print that one). Its path in the folder, POSIX; null for anything outside it, or the folder.
+ */
+export function inFolder(
+  folders: readonly string[],
+  path: string,
+  home: string,
+  platform: NodeJS.Platform = process.platform,
+): { folder: string; file: string } | null {
+  const paths = platform === 'win32' ? win32 : posix;
+  if (path === '') return null;
+  const tilde = /^~(?=$|[\\/])/.test(path);
+  for (const folder of folders) {
+    const full = tilde ? paths.join(home, path.slice(1)) : paths.resolve(folder, path);
+    const file = paths.relative(folder, full);
+    if (
+      file === '' ||
+      paths.isAbsolute(file) ||
+      file === '..' ||
+      file.startsWith(`..${paths.sep}`)
+    ) {
+      continue;
+    }
+    return { folder, file: file.split(paths.sep).join('/') };
+  }
+  return null;
+}
+
 /** Who reads a terminal: its output (what was kept first), then its end. */
 export interface TerminalListener {
   out(data: string): void;
@@ -122,6 +167,13 @@ export interface Terminals {
     bytes: Uint8Array,
     kind: ImageKind,
   ): Promise<{ path: string; text: string } | undefined>;
+  /**
+   * Which of the paths its agent printed are files in its folder (V37), as given; undefined when
+   * there is no such terminal.
+   */
+  files(id: string, paths: readonly string[]): Promise<string[] | undefined>;
+  /** Opens a file of its folder in the editor, in the folder's window, at a line (V37). */
+  openFile(id: string, at: FileAt): Promise<OpenedFile>;
   /** Hangs it up: the program it runs ends; Claude Code's session goes on. */
   close(id: string): boolean;
   /** Hangs every terminal up and ends its readers (`symbiote view` stops). */
@@ -131,6 +183,8 @@ export interface Terminals {
 interface Open {
   id: string;
   pty: Pty;
+  /** The folder it runs in: where the paths it prints are read from (V37). */
+  cwd: string;
   opened: number;
   /** What it printed, the oldest dropped past `maxOutput`. */
   output: string[];
@@ -145,7 +199,7 @@ interface Open {
  * MB): a new one hangs up the oldest nobody reads, else is refused. One nobody reads for
  * `graceMs` is hung up (a reload reads it again within that). Their images go in `images`, for
  * the person only, and are removed `keepImagesMs` later: Codex reads one when its message is
- * sent, not when it is pasted (V36 spike).
+ * sent, not when it is pasted (V36 spike). Files they print open with `openFolder` (V37).
  */
 export function terminals({
   pty = () => loadPty(),
@@ -156,6 +210,8 @@ export function terminals({
   images = join(defaultCacheDir(), 'images'),
   keepImagesMs = 24 * 60 * 60_000,
   now = Date.now,
+  home = homedir(),
+  openFolder,
 }: {
   pty?: () => Promise<{ spawn: SpawnPty } | { error: string }>;
   limit?: number;
@@ -165,6 +221,9 @@ export function terminals({
   images?: string;
   keepImagesMs?: number;
   now?: () => number;
+  /** What `~/` in a printed path stands for. */
+  home?: string;
+  openFolder?: OpenFolder;
 } = {}): Terminals {
   let loaded: Promise<{ spawn: SpawnPty } | { error: string }> | null = null;
   const load = () => (loaded ??= pty());
@@ -190,6 +249,27 @@ export function terminals({
         }),
     );
   };
+  /** The terminal's folder as it has it, and its real path. */
+  const foldersOf = async (terminal: Open) => [
+    terminal.cwd,
+    await realpath(terminal.cwd).catch(() => terminal.cwd),
+  ];
+  /** A printed path as a file of the terminal's folder, or why not. */
+  const fileOf = async (
+    terminal: Open,
+    folders: string[],
+    path: string,
+  ): Promise<{ folder: string; file: string } | 'outside' | 'missing'> => {
+    const found = inFolder(folders, path, home, platform);
+    if (!found) return 'outside';
+    const isFile = await stat(join(found.folder, ...found.file.split('/'))).then(
+      (s) => s.isFile(),
+      () => false,
+    );
+    // Opened in the window with the folder as the terminal has it.
+    return isFile ? { folder: terminal.cwd, file: found.file } : 'missing';
+  };
+
   const hangUp = (terminal: Open) => {
     clearTimeout(terminal.idle);
     // Windows' terminals take no signal; elsewhere a hang-up, as a closed terminal window.
@@ -235,6 +315,7 @@ export function terminals({
             COLORTERM: 'truecolor',
           },
         }),
+        cwd,
         opened: count++,
         output: [],
         size: 0,
@@ -291,6 +372,31 @@ export function terminals({
       const path = join(images, `${randomBytes(16).toString('hex')}.${kind}`);
       await writeFile(path, bytes, { mode: 0o600, flag: 'wx' });
       return { path, text: pastedPath(path, platform) };
+    },
+
+    async files(id, paths) {
+      const terminal = open.get(id);
+      if (!terminal) return undefined;
+      const folders = await foldersOf(terminal);
+      const found = await Promise.all(paths.map((path) => fileOf(terminal, folders, path)));
+      return paths.filter((_, i) => typeof found[i] === 'object');
+    },
+
+    async openFile(id, { path, line = 1, column = 1 }) {
+      const terminal = open.get(id);
+      if (!terminal) return { opened: false, why: 'terminal', message: 'no such terminal' };
+      const found = await fileOf(terminal, await foldersOf(terminal), path);
+      if (found === 'outside') {
+        return { opened: false, why: 'outside', message: `${path} is not in ${terminal.cwd}` };
+      }
+      if (found === 'missing') {
+        return { opened: false, why: 'missing', message: `${path} is not a file` };
+      }
+      if (!openFolder) {
+        return { opened: false, why: 'editor', message: 'no editor to open it in' };
+      }
+      const result = await openFolder(found.folder, { file: found.file, line, column });
+      return result.opened ? result : { opened: false, why: 'editor', message: result.message };
     },
 
     close(id) {
