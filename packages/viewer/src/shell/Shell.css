@@ -1,0 +1,108 @@
+/* ---- the shell (V29a): the sidenav, the main area, the status bar --------------------- */
+
+.shell {
+  /* As wide as the person dragged it (V34, `--sidenav-open`), the main area keeping 480 px. */
+  --sidenav-width: min(var(--sidenav-open, 240px), max(180px, calc(100vw - 480px)));
+  display: grid;
+  grid-template-columns: var(--sidenav-width) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'side main'
+    'status status';
+  height: 100%;
+}
+
+.shell.folded {
+  --sidenav-width: 48px;
+}
+
+/* The sidenav's handle (V34) lies over its right border, the height of its column. */
+.shell > .resizer {
+  grid-area: side;
+  justify-self: end;
+  margin: 0 -4px 0 0;
+}
+
+.shell.resizing,
+.workspace-split.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* Under 900 px only: the button that opens the sidenav as a drawer. */
+.shell-top,
+.shell-scrim {
+  display: none;
+}
+
+.shell-main {
+  grid-area: main;
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.main-hint,
+.main-empty {
+  margin: 24px;
+}
+
+.main-empty p:first-child {
+  font-weight: 600;
+}
+
+/* Narrow: the sidenav is a drawer over the page, opened from a strip at the top. */
+@media (max-width: 899px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'top'
+      'main'
+      'status';
+  }
+
+  .shell-top {
+    grid-area: top;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--line);
+    background: var(--side);
+  }
+
+  .sidenav,
+  .sidenav-fold,
+  .shell > .resizer {
+    display: none;
+  }
+
+  .shell.drawer-open .sidenav {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 26;
+    display: flex;
+    width: min(300px, 85vw);
+    box-shadow: 0 0 32px var(--shadow);
+  }
+
+  .shell.drawer-open .shell-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    display: block;
+    background: rgb(0 0 0 / 30%);
+  }
+}
+
+/* A diff of `symbiote view` in the shell (V29a): the diff's own bar, canvas and legend, beside the rail. */
+.shell-main > .app {
+  flex: 1;
+  min-width: 0;
+  height: auto;
+}

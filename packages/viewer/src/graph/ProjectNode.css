@@ -1,0 +1,72 @@
+/* ---- project frames: an app's or library's files, when a change spans several -------- */
+
+/* A click or drag inside a frame reaches the canvas or the box under it; the band takes it. */
+.react-flow__node-project {
+  pointer-events: none !important;
+}
+
+.project-frame {
+  height: 100%;
+  border: 1px solid color-mix(in srgb, var(--text) 16%, var(--line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text) 2%, transparent);
+}
+
+/* Only unchanged neighbours come from it: lighter, with a smaller head. */
+.project-frame.context {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--text) 12%, var(--line));
+  background: transparent;
+}
+
+.project-band {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 11px 16px 0;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.project-name {
+  /* The frame is made wide enough for it; the folder gives way first. */
+  flex: none;
+  color: var(--text);
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+.project-kind {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.project-folder {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font: var(--size-small) var(--mono);
+}
+
+.project-changed {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.project-frame.context .project-band {
+  padding-top: 8px;
+}
+
+.project-frame.context .project-name {
+  color: var(--muted);
+  font-size: var(--size-body);
+  font-weight: 500;
+}

@@ -1,0 +1,83 @@
+/* A row's lanes and its commit's dot (GraphCell.tsx). */
+
+.graph {
+  flex: none;
+  overflow: visible;
+}
+
+/* A lane's class sets its color; lines and dots draw in it. */
+.graph path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.graph .lane-0 {
+  color: var(--moved);
+}
+
+.graph .lane-1 {
+  color: var(--lane-1);
+}
+
+.graph .lane-2 {
+  color: var(--lane-2);
+}
+
+.graph .lane-3 {
+  color: var(--lane-3);
+}
+
+.graph .lane-4 {
+  color: var(--lane-4);
+}
+
+.graph .lane-5 {
+  color: var(--lane-5);
+}
+
+.graph .lane-6 {
+  color: var(--lane-6);
+}
+
+.graph .commit-dot {
+  fill: currentColor;
+}
+
+.graph .commit-dot.merge {
+  fill: var(--bg);
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.graph .pick-ring {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+
+/* Where two diverged picks forked (V10c): what the diff is compared from. */
+.graph .fork-ring {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+  stroke-dasharray: 2.5 2;
+}
+
+.graph .arrow {
+  cursor: pointer;
+}
+
+.graph .arrow path {
+  fill: none;
+}
+
+.graph .arrow .arrow-hit {
+  stroke: transparent;
+  stroke-width: 10;
+  pointer-events: stroke;
+}
+
+.graph .arrow:hover path:not(.arrow-hit) {
+  stroke-width: 2.6;
+}

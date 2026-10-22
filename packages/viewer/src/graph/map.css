@@ -1,0 +1,159 @@
+/* ---- map: zoomed out, files are what you read and click -------------------------------- */
+
+.react-flow.map .react-flow__node-file {
+  /* Above the symbols, so a click lands on the file and its name stays readable. */
+  z-index: 2000 !important;
+  cursor: zoom-in;
+}
+
+.react-flow.map .file-box {
+  background: transparent;
+}
+
+.file-name {
+  display: none;
+}
+
+.react-flow.map .file-label {
+  display: none;
+}
+
+/* The file's name, readable at any zoom; it may run past a narrow box. Map labels keep fixed
+   sizes and are scaled by `1 / --symbiote-zoom`: a transform needs no text layout, a font size does on
+   every zoom frame. `--symbiote-zoom` is set by mapzoom.ts on these labels only (`.file-name`,
+   `.project-frame`, `.project-name`): add any other element that reads it there. */
+.react-flow.map .file-name {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  color: var(--text);
+  font: var(--size-body) / 1.25 var(--mono);
+  white-space: nowrap;
+  transform: scale(calc(1 / var(--symbiote-zoom, 1)));
+  transform-origin: 0 0;
+}
+
+.react-flow.map .file-box.changed .file-name {
+  font-weight: 600;
+}
+
+/* Files with no change are context: their names step back where names crowd. */
+.react-flow.map .file-box:not(.changed) .file-name {
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+/* A name may cover a neighbouring box: clicks go to the box under the pointer. */
+.react-flow.map .file-name {
+  pointer-events: none;
+}
+
+.react-flow.map .symbol,
+.react-flow.map .summary-node {
+  background: color-mix(in srgb, var(--tone) 45%, var(--panel));
+}
+
+.react-flow.map .summary-node {
+  --tone: var(--context);
+}
+
+.react-flow.map .symbol > *,
+.react-flow.map .summary-node > * {
+  visibility: hidden;
+}
+
+.react-flow.map .react-flow__edge path.react-flow__edge-path {
+  stroke-opacity: 0.3;
+}
+
+.react-flow.map .react-flow__edge.edge-active path.react-flow__edge-path {
+  stroke-opacity: 1;
+}
+
+.react-flow.map .react-flow__edge.edge-cross path.react-flow__edge-path {
+  stroke-opacity: 0.6;
+}
+
+/* On the map, one edge per linked file pair (V8c), heavier the more symbol edges it stands for:
+   1, 2–3, 4–9, 10 or more. */
+.react-flow__edge.edge-files-1 path.react-flow__edge-path {
+  stroke-width: 3;
+}
+
+.react-flow__edge.edge-files-2 path.react-flow__edge-path {
+  stroke-width: 5;
+}
+
+.react-flow__edge.edge-files-3 path.react-flow__edge-path {
+  stroke-width: 8;
+}
+
+.react-flow__edge.edge-files-4 path.react-flow__edge-path {
+  stroke-width: 12;
+}
+
+/* Where a file pair's edge starts and ends: never seen, never in the pointer's way. */
+.file-handle {
+  visibility: hidden;
+}
+
+/* Projects read first, files second: the frame is drawn over its files, transparent, its name
+   about twice a file name's size, up to the frame's width. Nothing of it takes the pointer: a
+   name covers files, and they must get their clicks (V8b); a click on an empty part of a frame
+   reaches the canvas, which zooms into the frame under it. */
+.react-flow.map .react-flow__node-project {
+  z-index: 2001 !important;
+}
+
+.react-flow.map .react-flow__node-project * {
+  pointer-events: none;
+}
+
+/* A border would be a tenth of a pixel when zoomed out: a ring that keeps its screen width. */
+.react-flow.map .project-frame {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: 0 0 0 calc(2px / var(--symbiote-zoom, 1))
+    color-mix(in srgb, var(--text) 25%, var(--line));
+}
+
+.react-flow.map .project-frame.context {
+  box-shadow: 0 0 0 calc(1px / var(--symbiote-zoom, 1))
+    color-mix(in srgb, var(--text) 18%, var(--line));
+}
+
+.react-flow.map .project-band {
+  padding: 0;
+  overflow: visible;
+}
+
+.react-flow.map .project-band > :not(.project-name) {
+  display: none;
+}
+
+.react-flow.map .project-name {
+  padding: 3px 8px;
+  border-radius: 8px;
+  overflow: visible;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  font-size: calc(2 * var(--size-body));
+  line-height: 1.25;
+  /* 28 px on screen, smaller only to fit the frame's width (0.62 em a character), never below a
+     file name's 14 px. */
+  transform: scale(
+    clamp(
+      calc(0.5 / var(--symbiote-zoom, 1)),
+      calc(var(--frame-width) / var(--name-length) / 17.36),
+      calc(1 / var(--symbiote-zoom, 1))
+    )
+  );
+  transform-origin: 0 0;
+}
+
+.react-flow.map .project-frame.context .project-name {
+  background: transparent;
+  font-size: var(--size-body);
+  transform: scale(calc(1 / var(--symbiote-zoom, 1)));
+}

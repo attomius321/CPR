@@ -1,0 +1,44 @@
+/* A workspace's mark: what its agent is doing; on badges, a link to the workspace. */
+/* A tinted round badge of its tone (V37: a box drawn in the tone read as a form control). */
+.workspace-mark {
+  --workspace-tone: var(--context);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  margin-right: 5px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--workspace-tone) 16%, transparent);
+  color: var(--workspace-tone);
+  font-size: var(--size-caps);
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: -3px;
+}
+
+a.workspace-mark:hover {
+  background: color-mix(in srgb, var(--workspace-tone) 30%, transparent);
+}
+
+.workspace-mark-working {
+  --workspace-tone: var(--moved);
+}
+
+.workspace-mark-waiting {
+  --workspace-tone: var(--warning);
+}
+
+.workspace-mark-ready {
+  --workspace-tone: var(--added);
+}
+
+.workspace-mark-failed {
+  --workspace-tone: var(--removed);
+}
+
+.workspace-mark-done {
+  --workspace-tone: var(--added);
+}

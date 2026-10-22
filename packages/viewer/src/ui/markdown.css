@@ -1,0 +1,110 @@
+/* Markdown drawn as the page's own elements: an agent's report, a workspace's brief. */
+.markdown {
+  white-space: normal;
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown pre,
+.markdown blockquote,
+.markdown table {
+  margin: 0 0 8px;
+}
+
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  margin: 12px 0 6px;
+  font-size: var(--size-body);
+}
+
+.markdown h3 {
+  font-size: var(--size-title);
+}
+
+.markdown ul,
+.markdown ol {
+  padding-left: 20px;
+}
+
+.markdown li > ul,
+.markdown li > ol {
+  margin: 2px 0 0;
+}
+
+.markdown li + li {
+  margin-top: 2px;
+}
+
+.markdown code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  font-family: var(--mono);
+  font-size: var(--size-small);
+}
+
+.markdown pre {
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.markdown pre code {
+  padding: 0;
+  background: none;
+  white-space: pre;
+}
+
+.markdown blockquote {
+  padding-left: 10px;
+  border-left: 3px solid var(--line);
+  color: var(--muted);
+}
+
+.markdown hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.markdown table {
+  border-collapse: collapse;
+  font-size: var(--size-small);
+}
+
+.markdown th,
+.markdown td {
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.markdown a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The thread is a list itself: a report's lists start at the first level. */
+.markdown ul {
+  list-style: disc;
+}
+
+.markdown ul ul {
+  list-style: circle;
+}
+
+.markdown ul ul ul {
+  list-style: square;
+}

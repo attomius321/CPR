@@ -1,0 +1,109 @@
+/* The status bar (StatusBar.tsx) and the usage at its right (V29c). */
+
+.statusbar {
+  grid-area: status;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  min-height: 24px;
+  padding: 0 12px;
+  border-top: 1px solid var(--line);
+  background: var(--side);
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Wrapped, not cut: a notice can say what to do (trust a folder, copy the prompt). */
+.statusbar-notice {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 3px 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.statusbar-notice.error {
+  color: var(--error);
+}
+
+.statusbar .link {
+  font-size: var(--size-small);
+}
+
+/* Each subscription's windows (V29c), at the status bar's right: a thin bar per window. */
+.usage {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 2px 16px;
+  margin: 0 0 0 auto;
+  padding: 3px 0;
+  list-style: none;
+}
+
+.usage-subscription {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.usage-subscription strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.usage-window {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.usage-plan::after,
+.usage-window:not(:last-of-type)::after {
+  content: '·';
+  margin-left: 6px;
+}
+
+.usage-bar {
+  width: 36px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--raised);
+}
+
+.usage-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--tone);
+}
+
+.usage-window.tone-ok {
+  --tone: var(--added);
+}
+
+.usage-window.tone-high {
+  --tone: var(--warning);
+}
+
+.usage-window.tone-full {
+  --tone: var(--removed);
+}
+
+.usage-window.tone-full .usage-percent {
+  color: var(--removed);
+}
+
+/* A copy the agent kept: dimmer, with its age. */
+.usage-subscription.cached .usage-window {
+  opacity: 0.7;
+}
+
+.usage-age {
+  color: var(--muted);
+}

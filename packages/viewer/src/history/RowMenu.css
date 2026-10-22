@@ -1,0 +1,102 @@
+/* A row's menu (RowMenu.tsx; V11, V14); its glass is the menus' (controls.css). */
+
+.checkout-menu {
+  position: fixed;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  max-width: 480px;
+  padding: 4px;
+  outline: none;
+}
+
+.menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font-size: var(--size-small);
+  font-weight: 450;
+  line-height: 17px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item.active {
+  background: var(--menu-hover);
+}
+
+.menu-item:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.menu-note {
+  font-size: var(--size-caption);
+}
+
+/* V14: "Check out ▸" and its submenu of targets, each named by the row's badge. */
+/* Holds "Check out" and its submenu for screen readers; a column, so the button stretches. */
+.menu-host {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-item.has-submenu {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+/* The arrow is drawn, not read: the item's name stays "Check out". */
+.menu-item.has-submenu::after {
+  content: '';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background: var(--muted);
+  mask: var(--chevron-right) center / contain no-repeat;
+}
+
+.menu-item.has-submenu[aria-expanded='true']:not(.active) {
+  background: color-mix(in srgb, var(--menu-hover) 60%, transparent);
+}
+
+.submenu {
+  min-width: 240px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+
+/* The name keeps its line: a note that does not fit beside it goes under it. */
+.menu-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  max-width: 100%;
+}
+
+.menu-target .ref {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-kind {
+  color: var(--muted);
+  font-size: var(--size-caption);
+  overflow-wrap: anywhere;
+}
+
+.menu-item:disabled .ref {
+  opacity: 0.6;
+}

@@ -1,0 +1,185 @@
+/* ---- branches panel (V10b) ------------------------------------------------------------ */
+
+.branches {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 260px;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+  background: var(--panel);
+}
+
+/* As tall as History's toolbar beside it (44 px with the list's line). */
+.branches-filter {
+  flex: none;
+  height: 28px;
+  margin: 8px 8px 7px;
+  padding: 0 10px;
+  font-size: var(--size-small);
+}
+
+.branches .hint {
+  padding: 12px;
+  font-size: var(--size-small);
+}
+
+.branches-list {
+  flex: 1;
+  margin: 0;
+  padding: 0 8px 12px;
+  border-top: 1px solid var(--line);
+  overflow: auto;
+  list-style: none;
+  font-size: var(--size-body);
+}
+
+.branches-section {
+  margin: 12px 0 4px;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+}
+
+.branches-folder,
+.branches-branch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px 0 6px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font-size: var(--size-small);
+  text-align: left;
+  cursor: pointer;
+}
+
+.branches-folder:hover,
+.branches-branch:hover {
+  background: var(--hover);
+}
+
+.branches-folder {
+  color: var(--muted);
+}
+
+.branches-caret {
+  display: inline-flex;
+  flex: none;
+  color: var(--muted);
+}
+
+/* Names are cut, the full name in the title. */
+.branches-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.branches-count,
+.branches-track {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: normal;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.branches-section .branches-count {
+  margin-left: 4px;
+}
+
+.branches-track.gone {
+  color: var(--removed);
+}
+
+/* How long ago a workspace's agent last acted (V23), at the entry's end. */
+.branches-age {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.branches-track + .branches-age {
+  margin-left: 0;
+}
+
+.branches-branch.current .branches-name {
+  font-weight: 600;
+}
+
+.branches-current {
+  flex: none;
+  color: var(--added);
+  font-size: var(--size-caps);
+}
+
+.branches-branch.unlisted {
+  color: var(--muted);
+  cursor: default;
+}
+
+.branches-branch.unlisted:hover {
+  background: none;
+}
+
+.branches-toggle {
+  display: none;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+  font-size: var(--size-small);
+  cursor: pointer;
+}
+
+.branches-toggle[aria-expanded='true'] {
+  background: var(--selected);
+}
+
+@media (max-width: 899px) {
+  .branches {
+    display: none;
+  }
+
+  .branches.open {
+    display: flex;
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 5;
+    max-width: calc(100% - 32px);
+    box-shadow: 4px 0 16px var(--shadow);
+  }
+
+  .branches-toggle {
+    display: inline-block;
+  }
+}
+
+/* In the branches panel the mark is a link beside the entry (no link inside a button). */
+.branches-list li.has-workspace {
+  display: flex;
+  align-items: center;
+}
+
+.branches-list li.has-workspace .branches-branch {
+  flex: 1;
+  min-width: 0;
+}
+
+.branches-list li.has-workspace .workspace-mark {
+  flex: none;
+  margin: 0 8px 0 0;
+}

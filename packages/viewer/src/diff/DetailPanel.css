@@ -1,0 +1,376 @@
+/* ---- detail panel ------------------------------------------------------------------- */
+
+.panel {
+  flex: 0 1 auto;
+  width: var(--panel-width, min(520px, 45vw));
+  min-width: min(320px, 45vw);
+  overflow: auto;
+  padding: 0 16px 24px;
+  background: var(--side);
+  border-left: 1px solid var(--line);
+}
+
+.panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 0 10px;
+  background: var(--side);
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-kind {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+  font-size: var(--size-caps);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status {
+  color: var(--tone);
+  font-weight: 600;
+}
+
+.panel-title {
+  margin: 4px 0 2px;
+  font: 600 var(--size-title) var(--mono);
+  word-break: break-all;
+}
+
+.panel-file {
+  color: var(--muted);
+  font: var(--size-small) var(--mono);
+  word-break: break-all;
+}
+
+.panel-project {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.panel h3 {
+  margin: 16px 0 8px;
+  font-size: var(--size-caption);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.sig {
+  display: block;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: var(--size-small);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sig + .sig {
+  margin-top: 4px;
+}
+
+.sig-del {
+  background: color-mix(in srgb, var(--removed) 18%, var(--bg));
+}
+
+.sig-add {
+  background: color-mix(in srgb, var(--added) 16%, var(--bg));
+}
+
+.code {
+  overflow-x: auto;
+  tab-size: 2;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  font: var(--size-small)/1.5 var(--mono);
+}
+
+.code-rows {
+  width: max-content;
+  min-width: 100%;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 3.2em 3.2em 1.4em auto;
+  white-space: pre;
+}
+
+.row-add {
+  background: var(--added-ground);
+}
+
+.row-del {
+  background: var(--removed-ground);
+}
+
+.row-add .ln,
+.row-add .mark {
+  background: var(--added-gutter);
+}
+
+.row-del .ln,
+.row-del .mark {
+  background: var(--removed-gutter);
+}
+
+.ln {
+  padding-right: 6px;
+  color: var(--muted);
+  text-align: right;
+  user-select: none;
+}
+
+.mark {
+  color: var(--muted);
+  text-align: center;
+  user-select: none;
+}
+
+.finding {
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.finding p {
+  margin: 4px 0 0;
+}
+
+.finding-rule {
+  font-weight: 500;
+}
+
+/* Used by, Uses: rows, not a bulleted list (V37). */
+.neighbours {
+  margin: 0 -8px;
+  padding: 0;
+  list-style: none;
+}
+
+.neighbours li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.neighbours li:hover {
+  background: var(--hover);
+}
+
+.neighbours li > .muted {
+  overflow: hidden;
+  font-size: var(--size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.neighbours-count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 2px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A symbol's name as a link: as code. */
+.neighbours .link,
+.finding .link {
+  font: var(--size-small) var(--mono);
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.review {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+  font-size: var(--size-small);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.review:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.review.done {
+  border-color: var(--added);
+  color: var(--added);
+}
+
+.more {
+  width: 100%;
+  padding: 6px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  font-size: var(--size-small);
+  cursor: pointer;
+}
+
+.more:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* ---- comments and the review to post ------------------------------------------------ */
+
+.row.pickable {
+  cursor: pointer;
+}
+
+.row.pickable:hover {
+  outline: 1px solid var(--selected-line);
+  outline-offset: -1px;
+}
+
+.row.anchored {
+  box-shadow: inset 0 0 0 1px var(--muted);
+}
+
+.comment-input {
+  display: block;
+  width: 100%;
+  font-size: var(--size-small);
+}
+
+.comment-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: var(--size-small);
+}
+
+.review:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---- open in VS Code ---------------------------------------------------------------- */
+
+/* The file line and the button beside it; the button wraps under a long path. */
+.panel-where {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.panel-where .panel-file {
+  min-width: 0;
+}
+
+.open-editor {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 6px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+  font-size: var(--size-small);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.open-editor:hover {
+  background: var(--hover);
+}
+
+.open-icon {
+  flex: none;
+}
+
+/* The key that does the same. */
+.open-editor kbd {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  font: var(--size-caption) var(--mono);
+}
+
+/* A row's line number, as a button that opens that line. */
+.ln-open {
+  padding: 0 6px 0 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ln-open:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.open-note {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.open-note:empty {
+  display: none;
+}
+
+.open-note.open-error {
+  color: var(--error);
+}

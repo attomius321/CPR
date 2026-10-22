@@ -1,0 +1,154 @@
+/* Scout (V35): a head strip, as a workspace's; then its question, or its agent's terminal edge to
+   edge, as a workspace's terminal is. */
+.scout-page {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.scout-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'title about actions';
+  align-items: center;
+  column-gap: 12px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 7px 12px 7px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--side);
+}
+
+.scout-top h1 {
+  grid-area: title;
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+.scout-about {
+  grid-area: about;
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scout-actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scout-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+/* Narrow, what it reads goes under the title and the actions. */
+@media (max-width: 600px) {
+  .scout-top {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'title actions' 'about about';
+    row-gap: 2px;
+  }
+
+  .scout-state {
+    display: none;
+  }
+}
+
+.scout-error {
+  margin: 12px 16px 0;
+  white-space: pre-wrap;
+}
+
+.scout-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 16px 24px;
+}
+
+.scout-ask {
+  display: grid;
+  gap: 8px;
+  max-width: 760px;
+}
+
+.scout-ask label {
+  font-weight: 500;
+}
+
+.scout-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.scout-note {
+  color: var(--text);
+}
+
+.scout-ask textarea {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 4px;
+  font-size: var(--size-body);
+}
+
+/* The agent, the keys, then Ask at the right; narrow, Ask stays at the right of its line. */
+.scout-ask-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.scout-ask-row .button {
+  margin-left: auto;
+}
+
+/* The level this conversation starts at (fix/scout-effort-level), its label on the track's line. */
+.scout-effort {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.scout-effort-label {
+  font-size: var(--size-small);
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.scout-effort .effort-stepper {
+  flex: 1;
+}
+
+.scout-terminal {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.scout-terminal .agent-terminal {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 480px) {
+  .scout-body {
+    padding: 16px;
+  }
+}

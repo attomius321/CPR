@@ -1,0 +1,55 @@
+/* Icons (icons.tsx) and the icon button. */
+
+.icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Right when folded, down when open. */
+.icon.chevron {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.12s;
+}
+
+.icon.chevron.open {
+  transform: rotate(90deg);
+}
+
+.icon-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.icon-button {
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
+.icon-button:hover,
+.icon-button[aria-expanded='true'] {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.icon-button[aria-current='page'] {
+  background: var(--selected);
+  color: var(--text);
+}

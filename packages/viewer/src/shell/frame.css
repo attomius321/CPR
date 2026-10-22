@@ -1,0 +1,62 @@
+/* ---- Symbiote's frame, on Linux (N1d) ---------------------------------------------------------
+   `data-frame="own"` on <html>: the window is transparent and the page draws its corners and
+   buttons (Electron rounds a frameless window there only with client-side decorations, and draws
+   no buttons over a transparent one). The root carries the background in the radius, and the
+   strips at the window's corners take it too: no clip over the page (a rounded overflow clip cost
+   15 ms on every selection of Bitwarden's graph). Square while the window fills the screen
+   (`data-window="maximized"`). */
+
+:root[data-frame='own'],
+:root[data-frame='own'] body {
+  background: transparent;
+}
+
+:root[data-frame='own'] #root {
+  background: var(--bg);
+}
+
+:root[data-frame='own'][data-window='normal'] #root {
+  border-radius: 10px;
+}
+
+:root[data-frame='own'][data-window='normal'] :is(.titlebar, .app.alone > .bar) {
+  border-radius: 10px 10px 0 0;
+}
+
+:root[data-frame='own'][data-window='normal'] :is(.statusbar, .app.alone > .legend) {
+  border-radius: 0 0 10px 10px;
+}
+
+/* The window's edge, a hairline over everything, never in the pointer's way. */
+:root[data-frame='own'][data-window='normal'] #root::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--menu-line);
+  pointer-events: none;
+}
+
+/* What is fixed over the whole window takes the corners too. */
+:root[data-frame='own'][data-window='normal'] :is(.dialog-backdrop, .shell-scrim) {
+  border-radius: 10px;
+}
+
+/* The window's buttons, in the text's colour as the system's are; Close warns on hover. */
+.window-buttons {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px 0 2px;
+}
+
+.window-buttons .icon-button {
+  color: var(--text);
+}
+
+.window-buttons .window-close:hover {
+  background: color-mix(in srgb, var(--error) 85%, transparent);
+  color: #ffffff;
+}

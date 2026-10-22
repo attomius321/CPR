@@ -1,0 +1,310 @@
+/* ---- review sidebar ----------------------------------------------------------------- */
+
+.sidebar {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  width: var(--sidebar-width, 300px);
+  min-width: 240px;
+  background: var(--side);
+  border-right: 1px solid var(--line);
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+}
+
+.tabs button {
+  flex: 1 1 auto;
+  height: 43px;
+  padding: 0 6px;
+  white-space: nowrap;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font-size: var(--size-body);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tabs button:hover {
+  color: var(--text);
+}
+
+.tabs button[aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--text);
+}
+
+.count {
+  margin-left: 4px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.progress {
+  height: 2px;
+  background: var(--line);
+}
+
+.progress > div {
+  height: 100%;
+  background: var(--added);
+  transition: width 0.2s;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 2px 12px;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 10px;
+  font-size: var(--size-small);
+}
+
+.search .count {
+  margin: 0;
+  font-size: var(--size-small);
+  white-space: nowrap;
+}
+
+.search-clear {
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.search-clear:hover {
+  color: var(--text);
+}
+
+.list {
+  flex: 1;
+  overflow: auto;
+  padding: 6px 0;
+}
+
+.list-file-name {
+  padding: 8px 12px 2px;
+  color: var(--muted);
+  font: var(--size-small) var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px 1px 12px;
+}
+
+/* ---- the change list by project, when the change spans several ------------------------ */
+
+.list-project + .list-project {
+  border-top: 1px solid var(--line);
+}
+
+/* The project's header stays in view while its files scroll by. */
+.list-project-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 4px 6px;
+  background: var(--side);
+}
+
+.list-project-toggle {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.list-project-caret {
+  flex: none;
+  display: inline-flex;
+  align-self: center;
+  color: var(--muted);
+}
+
+.list-project-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.list-project-progress {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.list-project-only {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  cursor: pointer;
+}
+
+.list-project-only:hover {
+  color: var(--text);
+}
+
+.list-project-only[aria-pressed='true'] {
+  border-color: var(--selected-line);
+  background: var(--selected);
+  color: var(--text);
+}
+
+.list-project .list-file-name,
+.list-project .list-item {
+  padding-left: 24px;
+}
+
+.project-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0;
+  padding: 6px 12px 8px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.project-note strong {
+  color: var(--text);
+}
+
+.list-item.current {
+  background: var(--selected);
+  box-shadow: inset 0 0 0 1px var(--selected-line);
+}
+
+.list-item.done .list-link {
+  color: var(--muted);
+}
+
+.list-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 3px 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: var(--size-small) var(--mono);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+
+.finding-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 8px;
+  width: calc(100% - 12px);
+  margin: 1px 6px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.finding-row:hover {
+  background: var(--hover);
+}
+
+.finding-row.current {
+  border-color: var(--selected-line);
+  background: var(--selected);
+}
+
+.finding-row-rule {
+  font-weight: 500;
+}
+
+.finding-row-project {
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 400;
+}
+
+.finding-row-message {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+/* A diff's keys, in its bar's help (V37). */
+.keys {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.9;
+}
+
+.key-entry {
+  white-space: nowrap;
+}
+
+.pad {
+  padding: 8px 12px;
+}
+
+.commented {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}

@@ -1,0 +1,273 @@
+/* ---- settings: every agent's prompts (V28b) ----------------------------------------- */
+
+.settings {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+
+.settings-bar h1 {
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+/* The theme (V29b): at the toolbar's right, for this browser. */
+.appearance {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.appearance .field-optional {
+  font-size: var(--size-small);
+}
+
+.settings > .settings-git,
+.settings > .settings-warning,
+.settings > .commits-error,
+.settings > .hint {
+  margin: 12px 16px 0;
+  padding: 0;
+}
+
+.settings-git,
+.settings-warning {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.settings-warning {
+  color: var(--warning);
+}
+
+.settings-body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  margin: 16px;
+}
+
+.settings-list section h2 {
+  margin: 0 0 4px;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+}
+
+.settings-list section + section h2 {
+  margin-top: 16px;
+}
+
+.settings-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-list li + li {
+  margin-top: 1px;
+}
+
+.settings-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font-size: var(--size-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-list button:hover {
+  background: var(--hover);
+}
+
+.settings-list button[aria-current='true'] {
+  background: var(--selected);
+}
+
+.settings-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-mark {
+  flex: none;
+  font-size: var(--size-caption);
+}
+
+.settings-mark.changed {
+  color: var(--modified);
+}
+
+.settings-mark.unsaved {
+  color: var(--modified);
+}
+
+.settings-mark.warning {
+  color: var(--warning);
+}
+
+.settings-editor {
+  min-width: 0;
+}
+
+.settings-editor h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0 0 8px;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+.settings-state {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: normal;
+}
+
+.settings-state.changed {
+  border-color: var(--modified);
+  color: var(--modified);
+}
+
+.settings-editor .settings-warning {
+  margin: 0 0 8px;
+}
+
+.settings-editor textarea {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.settings-size {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.settings-size.error {
+  color: var(--error);
+}
+
+.settings-fixed p,
+.settings-placeholders p,
+p.settings-placeholders {
+  margin: 12px 0 4px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.settings-fixed pre,
+.settings-default pre {
+  max-height: 40vh;
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  font: var(--size-small)/1.45 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.settings-placeholders ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--size-body);
+}
+
+.settings-placeholders li {
+  margin: 2px 0;
+}
+
+/* Each a button that inserts it: a code chip (V31). */
+.settings-placeholders .link {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--raised);
+  font-family: var(--mono);
+  font-size: var(--size-small);
+  text-decoration: none;
+}
+
+.settings-placeholders .link:hover:not(:disabled) {
+  border-color: var(--selected-line);
+  background: var(--hover);
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 14px;
+  margin-top: 14px;
+  font-size: var(--size-body);
+}
+
+.settings-notice {
+  flex: 1 1 240px;
+  color: var(--muted);
+}
+
+.settings-notice.error {
+  color: var(--error);
+}
+
+.settings-default {
+  margin-top: 12px;
+  font-size: var(--size-body);
+}
+
+.settings-default summary {
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.settings-back {
+  display: none;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 899px) {
+  .settings-body {
+    display: block;
+    margin: 12px;
+  }
+
+  .settings-body.picked .settings-list,
+  .settings-body:not(.picked) .settings-editor {
+    display: none;
+  }
+
+  .settings-back {
+    display: inline-flex;
+    justify-self: start;
+  }
+}

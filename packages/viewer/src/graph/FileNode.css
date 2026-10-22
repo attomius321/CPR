@@ -1,0 +1,23 @@
+/* ---- file boxes --------------------------------------------------------------------- */
+
+.file-box {
+  height: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 45%, transparent);
+}
+
+.file-box.changed {
+  border-color: color-mix(in srgb, var(--modified) 55%, var(--line));
+}
+
+.file-label {
+  direction: rtl;
+  text-align: left;
+  padding: 6px 12px;
+  color: var(--muted);
+  font: var(--size-small) var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

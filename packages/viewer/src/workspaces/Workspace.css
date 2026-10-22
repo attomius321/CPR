@@ -1,0 +1,362 @@
+/* A workspace in the main area (Workspace.tsx): its head, its tabs, its brief and thread. */
+
+/* A workspace's kind before its name in the list and its panel (V24c). */
+.kind-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: normal;
+  line-height: 15px;
+  vertical-align: 1px;
+}
+
+.workspace-brief {
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: 10px;
+  background: var(--bg);
+  font: inherit;
+  font-size: var(--size-body);
+  white-space: pre-wrap;
+}
+
+/* How its agent was started (V30b), above the brief. */
+.workspace-started {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  white-space: normal;
+}
+
+.workspace-brief-text {
+  white-space: pre-wrap;
+}
+
+.workspace-said {
+  color: var(--muted);
+  font-size: var(--size-body);
+}
+
+.workspace-confirm {
+  font-size: var(--size-body);
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.thread-item {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.thread-you {
+  margin-left: 48px;
+  background: color-mix(in srgb, var(--text) 7%, var(--panel));
+}
+
+.thread-who,
+.thread-symbiote summary {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.thread-symbiote summary {
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.thread-text {
+  overflow-wrap: anywhere;
+  font-size: var(--size-body);
+  white-space: pre-wrap;
+}
+
+.thread-symbiote .thread-text {
+  margin-top: 6px;
+}
+
+/* What the agent waits on: the warning tint. */
+.thread-waits {
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  font-size: var(--size-body);
+  overflow-wrap: anywhere;
+}
+
+.thread-line {
+  color: var(--muted);
+  font-size: var(--size-small);
+  text-align: center;
+}
+
+.reply {
+  margin-top: 12px;
+}
+
+.reply textarea {
+  box-sizing: border-box;
+  width: 100%;
+  font-size: var(--size-body);
+}
+
+.reply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 14px;
+  font-size: var(--size-body);
+}
+
+/* V21: the workspace's agent session in a terminal, beside its thread. */
+/* Terminal, Thread, Brief: three views of one thing, flat buttons on the chrome, the picked one a
+   wash of the text, as in Symbiote's title bar (V37: folder tabs, in light a black block on light
+   chrome). */
+.workspace-views {
+  display: flex;
+  gap: 2px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--side);
+}
+
+.workspace-views button {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
+.workspace-views button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.workspace-views button.selected {
+  background: var(--selected);
+  color: var(--text);
+}
+
+/* The tab's content takes the rest of the main area's height (V29a). */
+.workspace-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-body > .workspace-brief,
+.workspace-body > .workspace-thread {
+  margin: 12px 16px;
+}
+
+.workspace-terminal,
+.workspace-thread,
+.workspace-terminal .agent-terminal {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-thread .thread {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.workspace-body .workspace-brief {
+  flex: 1;
+  min-height: 0;
+}
+
+.thread-readonly {
+  margin: 8px 0 0;
+  font-size: var(--size-body);
+}
+
+/* A workspace in the main area: one head strip, its tabs, and the tab's content to the bottom;
+   its branch's changes at the right (V29d), where its area has room for both. */
+.workspace {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  container: workspace / inline-size;
+}
+
+.workspace-split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.workspace-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.icon-button.changes-toggle[aria-pressed='true'] {
+  color: var(--text);
+}
+
+.workspace-top {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr) auto;
+  grid-template-areas: 'title state actions';
+  column-gap: 12px;
+  align-items: center;
+  min-height: 44px;
+  padding: 7px 12px 7px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--side);
+}
+
+.workspace-title {
+  grid-area: title;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workspace-title h1 {
+  flex: 0 1 auto;
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+.workspace-title h1 .kind-tag {
+  vertical-align: 1px;
+}
+
+.workspace-ref {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* The branch as git names it, beside the title. */
+.workspace-ref .ref-branch {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font: var(--size-small) var(--sans);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-ref a.ref-branch:hover {
+  color: var(--text);
+}
+
+.workspace-top .workspace-state {
+  grid-area: state;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-top .workspace-state strong {
+  color: var(--state-tone, var(--text));
+  font-weight: 500;
+}
+
+.workspace-top.tone-working {
+  --state-tone: var(--moved);
+}
+
+.workspace-top.tone-waiting {
+  --state-tone: var(--warning);
+}
+
+.workspace-top.tone-ready,
+.workspace-top.tone-done {
+  --state-tone: var(--added);
+}
+
+.workspace-top.tone-failed {
+  --state-tone: var(--removed);
+}
+
+.workspace-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.workspace-said {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.workspace-actions .merge-control {
+  margin: 0;
+  font-size: var(--size-small);
+}
+
+.workspace > .workspace-confirm {
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.workspace .reply {
+  flex: none;
+  padding: 0 16px 12px;
+}
+
+@media (max-width: 899px) {
+  .workspace-top {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'title'
+      'state'
+      'actions';
+    row-gap: 4px;
+    padding: 8px 12px;
+  }
+
+  .workspace-actions {
+    justify-content: flex-start;
+  }
+}

@@ -1,0 +1,16 @@
+/* Merge into, among a workspace's actions and in a review (MergeControl.tsx). */
+
+.merge-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+p.merge-control {
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--merge-tone, var(--muted)) 25%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--merge-tone, var(--muted)) 10%, transparent);
+}

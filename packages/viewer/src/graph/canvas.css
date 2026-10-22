@@ -1,0 +1,120 @@
+/* The canvas: the minimap's nodes, the edges, React Flow in the page's tokens. */
+
+.minimap-file {
+  fill: transparent;
+  stroke: var(--line);
+}
+
+.minimap-project {
+  fill: transparent;
+  stroke: var(--muted);
+  vector-effect: non-scaling-stroke;
+}
+
+.minimap-summary {
+  fill: transparent;
+  stroke: var(--context);
+  stroke-dasharray: 4 3;
+}
+
+/* ---- edges -------------------------------------------------------------------------- */
+
+.react-flow__edge.edge-both path.react-flow__edge-path {
+  stroke: var(--context);
+}
+
+.react-flow__edge.edge-head path.react-flow__edge-path {
+  stroke: var(--added);
+  stroke-width: 2;
+}
+
+.react-flow__edge.edge-base path.react-flow__edge-path {
+  stroke: var(--removed);
+  stroke-dasharray: 6 4;
+}
+
+.react-flow__edge.edge-type-reference path.react-flow__edge-path,
+.react-flow__edge.edge-unknown path.react-flow__edge-path {
+  stroke-dasharray: 2 4;
+}
+
+.react-flow__edge.edge-summary path.react-flow__edge-path {
+  stroke: var(--context);
+  stroke-dasharray: 4 3;
+}
+
+.react-flow__edge-text {
+  fill: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.react-flow__edge-textbg {
+  fill: var(--bg);
+}
+
+/* React Flow in the page's tokens (V29b): its colour mode follows the theme for the rest. */
+.react-flow {
+  --xy-background-color: var(--bg);
+  --xy-background-pattern-dots-color: var(--line);
+  --xy-minimap-background-color: var(--side);
+  --xy-minimap-mask-background-color: color-mix(in srgb, var(--bg) 60%, transparent);
+  --xy-controls-button-background-color: var(--panel);
+  /* Opaque: a translucent wash made a hovered button darker than the others (V37). */
+  --xy-controls-button-background-color-hover: color-mix(in srgb, var(--text) 6%, var(--panel));
+  --xy-controls-button-color: var(--muted);
+  --xy-controls-button-color-hover: var(--text);
+  --xy-controls-button-border-color: var(--line);
+  --xy-controls-box-shadow: none;
+  --xy-edge-label-background-color: var(--bg);
+}
+
+.react-flow__controls {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lift);
+}
+
+.react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--side);
+  box-shadow: var(--shadow-lift);
+}
+
+.minimap-added {
+  fill: var(--added);
+}
+
+.minimap-removed {
+  fill: var(--removed);
+}
+
+.minimap-modified {
+  fill: var(--modified);
+}
+
+.minimap-moved {
+  fill: var(--moved);
+}
+
+.minimap-context,
+.minimap-external,
+.minimap-unknown {
+  fill: var(--context);
+}
+
+.react-flow__edge.edge-active path.react-flow__edge-path {
+  stroke-width: 2.5;
+  stroke-opacity: 1;
+}
+
+/* Between two projects: what one app or library asks of another. */
+.react-flow__edge.edge-cross path.react-flow__edge-path {
+  stroke-width: 3;
+}
+
+.react-flow__edge.edge-cross.edge-active path.react-flow__edge-path {
+  stroke-width: 4.5;
+}
