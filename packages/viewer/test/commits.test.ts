@@ -10,7 +10,7 @@ import {
   rowBadges,
   type Lines,
   type Picked,
-} from '../src/commits.js';
+} from '../src/history/commits.js';
 
 const sha = (c: string) => c.repeat(40);
 /** Every row's SHA loaded. */

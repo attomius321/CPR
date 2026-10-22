@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { MergeEntry, MergeTargets } from '@symbiote/core';
-import { getJson, postJson } from './http.js';
+import { getJson, postJson } from '../ui/http.js';
 import { mergeState } from './merges.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 

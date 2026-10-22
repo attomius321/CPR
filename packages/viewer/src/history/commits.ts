@@ -1,6 +1,6 @@
 import type { Commit, CommitRef, Graph } from '@symbiote/core';
 import type { ReviewMark } from './branchReviews.js';
-import type { AgentChip } from './workspaces.js';
+import type { AgentChip } from '../workspaces/workspaces.js';
 
 /** Two commits compared directly, by full SHA. */
 export interface Pair {

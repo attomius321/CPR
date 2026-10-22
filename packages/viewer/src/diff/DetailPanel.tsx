@@ -10,7 +10,7 @@ import {
   type Side,
 } from './comments.js';
 import { diffRows, excerpt, symbolDetail, type DiffRow, type Neighbour } from './detail.js';
-import { groupOf, label, tone } from './flow.js';
+import { groupOf, label, tone } from '../graph/flow.js';
 import {
   anchorTarget,
   describeOpen,
@@ -20,8 +20,8 @@ import {
   type OpenTarget,
 } from './open.js';
 import { OpenIcon } from './OpenIcon.js';
-import { pathInProject, projectOf } from './projects.js';
-import { CloseIcon } from './icons.js';
+import { pathInProject, projectOf } from '../graph/projects.js';
+import { CloseIcon } from '../ui/icons.js';
 
 const sources = new Map<string, Promise<string>>();
 

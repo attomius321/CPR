@@ -9,7 +9,7 @@ import {
   revisionsLabel,
   routeOf,
   routeTitle,
-} from '../src/pages.js';
+} from '../src/shell/pages.js';
 
 describe('routeOf (V29a: no Workspaces page)', () => {
   it('opens History and Settings at their addresses', () => {

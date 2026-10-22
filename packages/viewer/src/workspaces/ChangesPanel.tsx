@@ -10,7 +10,7 @@ import {
   splitPath,
   statusLetter,
 } from './changes.js';
-import { postJson, serverWords } from './http.js';
+import { postJson, serverWords } from '../ui/http.js';
 import { shortAge } from './workspaces.js';
 
 /**

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { Graph, GraphNode } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { toFlow } from '../src/flow.js';
+import { toFlow } from '../src/graph/flow.js';
 import {
   byProject,
   changeList,
@@ -16,7 +16,7 @@ import {
   stepChange,
   toggleMark,
   withoutCollapsed,
-} from '../src/review.js';
+} from '../src/diff/review.js';
 
 const golden = (name: string) =>
   JSON.parse(

@@ -12,13 +12,13 @@ import {
   type ReviewDraft,
   type ReviewEvent,
 } from './comments.js';
-import { workspaceHref } from './workspaces.js';
-import { label } from './flow.js';
+import { workspaceHref } from '../workspaces/workspaces.js';
+import { label } from '../graph/flow.js';
 import { openInEditor } from './open.js';
 import { OpenIcon } from './OpenIcon.js';
-import { useWorkspaces } from './useWorkspaces.js';
-import { MergeControl } from './MergeControl.js';
-import { Help } from './Help.js';
+import { useWorkspaces } from '../workspaces/useWorkspaces.js';
+import { MergeControl } from '../workspaces/MergeControl.js';
+import { Help } from '../ui/Help.js';
 
 export interface ReviewProps {
   forge: 'github' | 'gitlab' | 'local';

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { WorkspaceStart } from '@symbiote/core';
-import { HistoryPage } from './HistoryPage.js';
-import { keyIsTaken } from './keys.js';
-import { MergeView } from './Merge.js';
+import { HistoryPage } from '../history/HistoryPage.js';
+import { keyIsTaken } from '../ui/keys.js';
+import { MergeView } from '../workspaces/Merge.js';
 import {
   HISTORY_PAGE,
   SCOUT_PAGE,
@@ -13,10 +13,10 @@ import {
   routeTitle,
   type Route,
 } from './pages.js';
-import { ScoutPage } from './ScoutPage.js';
-import { SettingsPage } from './SettingsPage.js';
-import { StartPage } from './StartPage.js';
-import { ConfirmDialog } from './ConfirmDialog.js';
+import { ScoutPage } from '../scout/ScoutPage.js';
+import { SettingsPage } from '../settings/SettingsPage.js';
+import { StartPage } from '../workspaces/StartPage.js';
+import { ConfirmDialog } from '../ui/ConfirmDialog.js';
 import { desktop } from './desktop.js';
 import {
   ShellContext,
@@ -27,9 +27,9 @@ import {
 import { DrawerStrip, Sidenav, useSidenavWidth } from './Sidenav.js';
 import { StatusBar } from './StatusBar.js';
 import { TitleBar, TitleBarSlotsProvider, type TitleBarSlots } from './TitleBar.js';
-import { WorkspaceView } from './Workspace.js';
-import { useWorkspaces } from './useWorkspaces.js';
-import { startedNotice, workspaceName } from './workspaces.js';
+import { WorkspaceView } from '../workspaces/Workspace.js';
+import { useWorkspaces } from '../workspaces/useWorkspaces.js';
+import { startedNotice, workspaceName } from '../workspaces/workspaces.js';
 
 const FOLD_KEY = 'symbiote.viewer.sidenav';
 /** Under this width the sidenav is a drawer over the page (styles.css says the same). */

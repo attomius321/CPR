@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { UsageReport } from '@symbiote/core';
-import { relativeDate } from './commits.js';
+import { relativeDate } from '../history/commits.js';
 import type { Notice } from './shell-context.js';
 import {
   AGENT_NAMES,

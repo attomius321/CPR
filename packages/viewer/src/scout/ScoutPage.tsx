@@ -1,13 +1,17 @@
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
 import type { AgentKind, ScoutConversation, ScoutEfforts, ScoutState } from '@symbiote/core';
-import { AgentTerminal } from './AgentTerminal.js';
-import { scoutLevel } from './effort.js';
-import { EffortStepper } from './EffortStepper.js';
-import { Help } from './Help.js';
-import { getJson, postJson } from './http.js';
+import { AgentTerminal } from '../workspaces/AgentTerminal.js';
+import { scoutLevel } from '../workspaces/effort.js';
+import { EffortStepper } from '../workspaces/EffortStepper.js';
+import { Help } from '../ui/Help.js';
+import { getJson, postJson } from '../ui/http.js';
 import { scoutStateText } from './scout.js';
-import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
-import { effortChoices } from './workspaces.js';
+import {
+  readWorkspacesAgain,
+  reloadWorkspaces,
+  useWorkspaces,
+} from '../workspaces/useWorkspaces.js';
+import { effortChoices } from '../workspaces/workspaces.js';
 
 const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 

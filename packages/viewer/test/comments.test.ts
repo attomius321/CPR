@@ -13,8 +13,8 @@ import {
   toLocalReview,
   toReview,
   type Draft,
-} from '../src/comments.js';
-import type { DiffRow } from '../src/detail.js';
+} from '../src/diff/comments.js';
+import type { DiffRow } from '../src/diff/detail.js';
 
 const graph = JSON.parse(
   readFileSync(

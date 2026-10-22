@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { IBufferRange, ILink, Terminal } from '@xterm/xterm';
 import type { WorkspaceTerminalOpened } from '@symbiote/core';
-import { postJson } from './http.js';
-import { ImageIcon } from './icons.js';
+import { postJson } from '../ui/http.js';
+import { ImageIcon } from '../ui/icons.js';
 import {
   cellRange,
   droppedFiles,

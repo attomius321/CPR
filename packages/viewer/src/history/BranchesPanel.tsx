@@ -3,9 +3,9 @@ import type { HistoryRefs, HistoryScope } from '@symbiote/core';
 import { branchTree, type PanelEntry } from './branches.js';
 import type { ReviewMark } from './branchReviews.js';
 import { relativeDate } from './commits.js';
-import { WorkspaceMark } from './WorkspaceMark.js';
-import { shortAge, type AgentChip, type FirstBranch } from './workspaces.js';
-import { ChevronIcon } from './icons.js';
+import { WorkspaceMark } from '../workspaces/WorkspaceMark.js';
+import { shortAge, type AgentChip, type FirstBranch } from '../workspaces/workspaces.js';
+import { ChevronIcon } from '../ui/icons.js';
 
 type BranchEntry = Extract<PanelEntry, { kind: 'branch' }>;
 

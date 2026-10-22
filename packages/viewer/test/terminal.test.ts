@@ -14,7 +14,7 @@ import {
   verdictLine,
   wrappedRows,
   type Cell,
-} from '../src/terminal.js';
+} from '../src/workspaces/terminal.js';
 
 describe('verdictLine', () => {
   it("is the verdict's first line and where the review is, as one line", () => {

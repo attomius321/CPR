@@ -9,7 +9,7 @@ import {
   sinceText,
   splitPath,
   statusLetter,
-} from '../src/changes.js';
+} from '../src/workspaces/changes.js';
 
 // A workspace's changes panel (V29d): the words of its rows.
 const file = (over: Partial<WorkspaceFileChange>): WorkspaceFileChange => ({

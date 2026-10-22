@@ -18,7 +18,7 @@ import {
   MinimizeIcon,
   RestoreIcon,
   SidenavIcon,
-} from './icons.js';
+} from '../ui/icons.js';
 import { HISTORY_PAGE } from './pages.js';
 import { useTheme } from './theme.js';
 

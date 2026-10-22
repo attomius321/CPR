@@ -1,6 +1,6 @@
 import type { BranchMerge, FinishResult, Graph, GraphNode, LocalReview } from '@symbiote/core';
 import type { DiffRow } from './detail.js';
-import { label } from './flow.js';
+import { label } from '../graph/flow.js';
 import { fingerprint } from './review.js';
 
 export type Side = 'base' | 'head';

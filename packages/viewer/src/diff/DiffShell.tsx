@@ -1,10 +1,10 @@
 import { useCallback, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
-import { hrefOf, type Route } from './pages.js';
-import { ShellContext, type Notice, type Shell } from './shell-context.js';
-import { DrawerStrip, Sidenav, useSidenavWidth } from './Sidenav.js';
-import { desktop } from './desktop.js';
-import { StatusBar } from './StatusBar.js';
-import { TitleBar } from './TitleBar.js';
+import { hrefOf, type Route } from '../shell/pages.js';
+import { ShellContext, type Notice, type Shell } from '../shell/shell-context.js';
+import { DrawerStrip, Sidenav, useSidenavWidth } from '../shell/Sidenav.js';
+import { desktop } from '../shell/desktop.js';
+import { StatusBar } from '../shell/StatusBar.js';
+import { TitleBar } from '../shell/TitleBar.js';
 
 const FOLD_KEY = 'symbiote.viewer.sidenav.diff';
 

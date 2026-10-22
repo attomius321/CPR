@@ -23,9 +23,14 @@ import { BranchesPanel } from './BranchesPanel.js';
 import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
 import { reviewChoices, reviewMarks, type ReviewChoice, type ReviewMark } from './branchReviews.js';
 import { CheckoutDialog } from './CheckoutDialog.js';
-import { workspaceChips, workspaceHref, workspacesFirst, type AgentChip } from './workspaces.js';
-import { WorkspaceMark } from './WorkspaceMark.js';
-import { useWorkspaces } from './useWorkspaces.js';
+import {
+  workspaceChips,
+  workspaceHref,
+  workspacesFirst,
+  type AgentChip,
+} from '../workspaces/workspaces.js';
+import { WorkspaceMark } from '../workspaces/WorkspaceMark.js';
+import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { RowMenu, type RowMenuItem } from './RowMenu.js';
 import {
   BLOCK,
@@ -43,12 +48,12 @@ import {
   type Picked,
 } from './commits.js';
 import { GraphCell, ROW_HEIGHT } from './GraphCell.js';
-import { Help } from './Help.js';
-import { BackIcon, MoreIcon } from './icons.js';
-import { InTitleBar } from './TitleBar.js';
+import { Help } from '../ui/Help.js';
+import { BackIcon, MoreIcon } from '../ui/icons.js';
+import { InTitleBar } from '../shell/TitleBar.js';
 import { laneSpacing, layoutLanes } from './lanes.js';
-import { backLink, HISTORY_PAGE } from './pages.js';
-import { useShell, type Notice } from './shell-context.js';
+import { backLink, HISTORY_PAGE } from '../shell/pages.js';
+import { useShell, type Notice } from '../shell/shell-context.js';
 
 /** History's API and the diffs it starts live at the server's root (`symbiote view`). */
 const API_ROOT = '/';

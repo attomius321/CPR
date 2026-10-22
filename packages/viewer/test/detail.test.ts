@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { Graph } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { diffRows, excerpt, symbolDetail } from '../src/detail.js';
+import { diffRows, excerpt, symbolDetail } from '../src/diff/detail.js';
 
 const graph = JSON.parse(
   readFileSync(

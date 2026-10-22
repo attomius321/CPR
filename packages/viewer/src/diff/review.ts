@@ -1,6 +1,6 @@
 import type { Graph, GraphNode, GraphSide, Project } from '@symbiote/core';
-import { label } from './flow.js';
-import { projectOf } from './projects.js';
+import { label } from '../graph/flow.js';
+import { projectOf } from '../graph/projects.js';
 
 export interface FileChanges {
   file: string;

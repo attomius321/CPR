@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PromptKey, PromptSetting, PromptSettings, ScoutEfforts } from '@symbiote/core';
-import { EffortStepper } from './EffortStepper.js';
-import { Help } from './Help.js';
-import { getJson, postJson } from './http.js';
-import { BackIcon } from './icons.js';
-import { useShell } from './shell-context.js';
-import { setTheme, useTheme, type Theme } from './theme.js';
+import { EffortStepper } from '../workspaces/EffortStepper.js';
+import { Help } from '../ui/Help.js';
+import { getJson, postJson } from '../ui/http.js';
+import { BackIcon } from '../ui/icons.js';
+import { useShell } from '../shell/shell-context.js';
+import { setTheme, useTheme, type Theme } from '../shell/theme.js';
 import {
   draftProblem,
   gitNote,
@@ -15,7 +15,7 @@ import {
   promptOfUrl,
   sizeOf,
 } from './settings.js';
-import { AGENT_NAMES, effortChoices, keptEffort } from './workspaces.js';
+import { AGENT_NAMES, effortChoices, keptEffort } from '../workspaces/workspaces.js';
 
 const API = '/api/settings/prompts';
 

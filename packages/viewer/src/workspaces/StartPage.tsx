@@ -34,11 +34,11 @@ import {
   readRun,
   type RunChoices,
 } from './workspaces.js';
-import { getJson, postJson } from './http.js';
-import { shortSha } from './commits.js';
-import { ChevronIcon } from './icons.js';
+import { getJson, postJson } from '../ui/http.js';
+import { shortSha } from '../history/commits.js';
+import { ChevronIcon } from '../ui/icons.js';
 import { EffortStepper } from './EffortStepper.js';
-import { Help } from './Help.js';
+import { Help } from '../ui/Help.js';
 import { reloadWorkspaces } from './useWorkspaces.js';
 
 /** How long typing pauses before the draft is saved. */

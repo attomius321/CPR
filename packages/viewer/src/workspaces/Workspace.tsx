@@ -16,16 +16,16 @@ import type {
   TerminalAvailability,
 } from '@symbiote/core';
 import { AgentTerminal, toTerminal, type OpenedTerminal } from './AgentTerminal.js';
-import { reviewMarks, type ReviewMark } from './branchReviews.js';
+import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import { ChangesPanel } from './ChangesPanel.js';
-import { ChangesIcon } from './icons.js';
-import { MoreActions, type MenuAction } from './MoreActions.js';
-import { InTitleBar } from './TitleBar.js';
-import { keyIsTaken } from './keys.js';
-import { markdownNodes, useMarkdown } from './markdown.js';
+import { ChangesIcon } from '../ui/icons.js';
+import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
+import { InTitleBar } from '../shell/TitleBar.js';
+import { keyIsTaken } from '../ui/keys.js';
+import { markdownNodes, useMarkdown } from '../ui/markdown.js';
 import { MergeControl } from './MergeControl.js';
-import { postJson } from './http.js';
-import { Resizer } from './Resizer.js';
+import { postJson } from '../ui/http.js';
+import { Resizer } from '../ui/Resizer.js';
 import {
   workspaceGroups,
   workspaceHref,
@@ -41,11 +41,11 @@ import {
   verdictToSend,
   type WorkspaceRow,
 } from './workspaces.js';
-import { HISTORY_PAGE } from './pages.js';
-import { useShell, type Notice } from './shell-context.js';
+import { HISTORY_PAGE } from '../shell/pages.js';
+import { useShell, type Notice } from '../shell/shell-context.js';
 import { verdictLine } from './terminal.js';
 import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
-import { loadWidths, saveWidth } from './widths.js';
+import { loadWidths, saveWidth } from '../ui/widths.js';
 
 /** `?send=verdict`: from the Review tab, the box filled with the review's verdict (V18c). */
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');

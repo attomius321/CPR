@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { MergeEntry, MergeList, MergeRegion } from '@symbiote/core';
-import { postJson } from './http.js';
+import { postJson } from '../ui/http.js';
 import {
   failedCheck,
   mergeActions,
@@ -13,7 +13,7 @@ import {
   type MergeAction,
   type SideKept,
 } from './merges.js';
-import { MoreActions, type MenuAction } from './MoreActions.js';
+import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 
 const ACTION_NAMES: Record<MergeAction, string> = {

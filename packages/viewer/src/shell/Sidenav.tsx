@@ -11,8 +11,8 @@ import {
   type ReactNode,
 } from 'react';
 import type { MergeEntry } from '@symbiote/core';
-import { reviewMarks, type ReviewMark } from './branchReviews.js';
-import { relativeDate } from './commits.js';
+import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
+import { relativeDate } from '../history/commits.js';
 import {
   SymbioteIcon,
   HistoryIcon,
@@ -21,17 +21,17 @@ import {
   ScoutIcon,
   SettingsIcon,
   SidenavIcon,
-} from './icons.js';
-import { mergeState } from './merges.js';
-import { Help } from './Help.js';
+} from '../ui/icons.js';
+import { mergeState } from '../workspaces/merges.js';
+import { Help } from '../ui/Help.js';
 import { HISTORY_PAGE, hrefOf, SCOUT_PAGE, SETTINGS_PAGE, START_PAGE } from './pages.js';
-import { Resizer } from './Resizer.js';
-import { nextScoutMark, type ScoutMark } from './scout.js';
+import { Resizer } from '../ui/Resizer.js';
+import { nextScoutMark, type ScoutMark } from '../scout/scout.js';
 import { useShell } from './shell-context.js';
-import { useWorkspaces } from './useWorkspaces.js';
-import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from './Workspace.js';
-import { workspaceGroups, workspaceName, type WorkspaceRow } from './workspaces.js';
-import { loadWidths, saveWidth } from './widths.js';
+import { useWorkspaces } from '../workspaces/useWorkspaces.js';
+import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from '../workspaces/Workspace.js';
+import { workspaceGroups, workspaceName, type WorkspaceRow } from '../workspaces/workspaces.js';
+import { loadWidths, saveWidth } from '../ui/widths.js';
 
 const GROUPS = [
   ['needsYou', 'Needs you'],

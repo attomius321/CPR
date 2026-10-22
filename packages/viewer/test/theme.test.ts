@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { THEME_KEY, themeOf } from '../src/theme.js';
+import { THEME_KEY, themeOf } from '../src/shell/theme.js';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 

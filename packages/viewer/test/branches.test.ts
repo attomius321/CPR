@@ -1,6 +1,6 @@
 import type { HistoryRefs } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { branchTree, type PanelEntry } from '../src/branches.js';
+import { branchTree, type PanelEntry } from '../src/history/branches.js';
 
 const sha = (c: string) => c.repeat(40);
 const remote = (name: string, row: number | null = 1) => {

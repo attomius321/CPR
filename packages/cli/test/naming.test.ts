@@ -42,7 +42,7 @@ describe('one word for a workspace (V25)', () => {
         // The kind of work: its prefix, its brief's parts; its line in the dialog.
         'packages/cli/src/workspaces.ts:feature',
         'packages/cli/src/workspaces.ts:feature',
-        'packages/viewer/src/brief.ts:feature',
+        'packages/viewer/src/workspaces/brief.ts:feature',
       ].sort(),
     );
   });

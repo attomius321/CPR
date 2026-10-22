@@ -25,15 +25,15 @@ import {
 import { flushSync } from 'react-dom';
 import type { BranchReviewInfo, Graph } from '@symbiote/core';
 import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
-import type { Loaded, Pair } from './commits.js';
-import { BackLink, DiffProgress, fetchGraph, startDiff } from './HistoryPage.js';
-import { diffTitle, revisionsLabel } from './pages.js';
-import { workspaceHref, workspaceName } from './workspaces.js';
+import type { Loaded, Pair } from '../history/commits.js';
+import { BackLink, DiffProgress, fetchGraph, startDiff } from '../history/HistoryPage.js';
+import { diffTitle, revisionsLabel } from '../shell/pages.js';
+import { workspaceHref, workspaceName } from '../workspaces/workspaces.js';
 import { DiffShell } from './DiffShell.js';
-import { Shell } from './Shell.js';
-import { useWorkspaces } from './useWorkspaces.js';
+import { Shell } from '../shell/Shell.js';
+import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { DetailPanel } from './DetailPanel.js';
-import { FileNode } from './FileNode.js';
+import { FileNode } from '../graph/FileNode.js';
 import {
   decorate,
   edgesToDraw,
@@ -41,7 +41,7 @@ import {
   type FlowEdge,
   type FlowNode,
   type SymbolData,
-} from './flow.js';
+} from '../graph/flow.js';
 import {
   changeList,
   filterChanges,
@@ -55,18 +55,18 @@ import {
   withoutCollapsed,
   type Marks,
 } from './review.js';
-import { ProjectNode } from './ProjectNode.js';
-import { MAP_ZOOM, mapZoomStyle } from './mapzoom.js';
-import { Resizer } from './Resizer.js';
+import { ProjectNode } from '../graph/ProjectNode.js';
+import { MAP_ZOOM, mapZoomStyle } from '../graph/mapzoom.js';
+import { Resizer } from '../ui/Resizer.js';
 import { DiffKeys, Sidebar, type SidebarTab } from './Sidebar.js';
-import { Help } from './Help.js';
+import { Help } from '../ui/Help.js';
 import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
-import { SummaryNode } from './SummaryNode.js';
-import { SymbolNode } from './SymbolNode.js';
-import { WindowButtons } from './TitleBar.js';
-import { useLayout } from './useLayout.js';
-import { useTheme } from './theme.js';
-import { loadWidths, saveWidth, withWidth, type Widths } from './widths.js';
+import { SummaryNode } from '../graph/SummaryNode.js';
+import { SymbolNode } from '../graph/SymbolNode.js';
+import { WindowButtons } from '../shell/TitleBar.js';
+import { useLayout } from '../graph/useLayout.js';
+import { useTheme } from '../shell/theme.js';
+import { loadWidths, saveWidth, withWidth, type Widths } from '../ui/widths.js';
 
 const nodeTypes = {
   symbol: SymbolNode,

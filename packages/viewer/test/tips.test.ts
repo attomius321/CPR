@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placeTip, TIP_GAP, TIP_MARGIN } from '../src/tips.js';
+import { placeTip, TIP_GAP, TIP_MARGIN } from '../src/ui/tips.js';
 
 const view = { width: 1440, height: 900 };
 const tip = { width: 320, height: 120 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { serverWords } from '../src/http.js';
+import { serverWords } from '../src/ui/http.js';
 
 describe('serverWords', () => {
   it("reads a refusal's words: its { error }, else its text", () => {

@@ -11,7 +11,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { comparison } from '../../packages/viewer/src/commits.ts';
+import { comparison } from '../../packages/viewer/src/history/commits.ts';
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,

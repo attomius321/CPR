@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { laneSpacing, layoutLanes, type LaneRow } from '../src/lanes.js';
+import { laneSpacing, layoutLanes, type LaneRow } from '../src/history/lanes.js';
 
 const row = (
   lane: number,

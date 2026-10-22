@@ -1,10 +1,10 @@
 import type { Finding, Graph, GraphNode, Project } from '@symbiote/core';
 import type { ReactNode } from 'react';
-import { groupOf, label, tone } from './flow.js';
-import { pathInProject, projectOf } from './projects.js';
+import { groupOf, label, tone } from '../graph/flow.js';
+import { pathInProject, projectOf } from '../graph/projects.js';
 import { byProject, type FileChanges } from './review.js';
 import { ReviewTab, type ReviewProps } from './ReviewTab.js';
-import { ChevronIcon, CloseIcon } from './icons.js';
+import { ChevronIcon, CloseIcon } from '../ui/icons.js';
 
 const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 } as const;
 

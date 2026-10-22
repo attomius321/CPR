@@ -8,7 +8,7 @@ import {
   mergeState,
   regionFlags,
   reviewRegion,
-} from '../src/merges.js';
+} from '../src/workspaces/merges.js';
 
 const C = 'c'.repeat(40);
 const M = 'm'.repeat(40);
