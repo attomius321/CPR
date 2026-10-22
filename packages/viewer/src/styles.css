@@ -4033,6 +4033,46 @@ button.workspace-about {
   pointer-events: none;
 }
 
+/* A link in the agent's terminal under the pointer (V37): what it opens and its keys, above its
+   row (below the first rows). The style's tooltip, in the terminal's own colours: the screen is
+   black in both themes. The link keeps the pointer. */
+.terminal-link-hint {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(480px, calc(100% - 24px));
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #e6e6e9;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
+  color: #000;
+  font-size: var(--size-small);
+  pointer-events: none;
+  transform: translateY(-100%);
+}
+
+.terminal-link-hint.below {
+  transform: none;
+}
+
+.terminal-link-hint > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-link-hint > kbd {
+  flex: none;
+  border-color: rgb(0 0 0 / 20%);
+  background: none;
+  box-shadow: none;
+  color: #3a3a42;
+}
+
 .thread-readonly {
   margin: 8px 0 0;
   font-size: var(--size-body);

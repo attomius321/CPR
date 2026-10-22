@@ -1,15 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Terminal } from '@xterm/xterm';
+import type { IBufferRange, ILink, Terminal } from '@xterm/xterm';
 import type { WorkspaceTerminalOpened } from '@symbiote/core';
 import { postJson } from './http.js';
 import { ImageIcon } from './icons.js';
 import {
+  cellRange,
   droppedFiles,
+  followsLink,
   isPasteKey,
   keySender,
+  lineText,
+  linkHint,
+  linkTarget,
   MAX_IMAGE_BYTES,
   pastedImages,
+  terminalLinks,
   TERMINAL_THEME,
+  wrappedRows,
+  type LinkTarget,
 } from './terminal.js';
 import { holdReads } from './useWorkspaces.js';
 
@@ -21,6 +29,21 @@ const FONT_SIZE = 14;
 /** Where ⌘V pastes and Ctrl+V stays the agent's (V36). */
 const MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
 const ONLY_IMAGES = 'Only images can be attached: PNG, JPEG, GIF or WebP.';
+/** A printed path the server did not find is asked about again after this (V37): it may be new. */
+const RECHECK_MS = 5_000;
+/** Most paths asked about at once: the server's limit. */
+const MAX_PATHS = 50;
+
+/** The hint over a link (V37): what it opens and its keys, by the pointer, above its row. */
+interface Hint {
+  what: string;
+  keys: string;
+  top: number;
+  /** From the terminal's left edge, or its right one when the pointer is in its right half. */
+  left?: number;
+  right?: number;
+  below: boolean;
+}
 
 /** A file's bytes as base64, for the server. */
 function base64(file: File): Promise<string> {
@@ -59,7 +82,9 @@ export interface OpenedTerminal {
  * is typed here may start a turn. `onOpened` gives the open terminal (to type into it), `onEnded`
  * says it ended. `url`: where it is opened — a workspace's (`branch`), or Scout's (V35). An image
  * pasted (Ctrl+V too, off macOS) or dropped is saved by the server and its path pasted, which the
- * agent attaches to the message being typed (V36).
+ * agent attaches to the message being typed (V36). A path it prints to a file in its folder, a web
+ * address and its own links (OSC 8) are links: Ctrl+click (⌘ on macOS) opens the file in VS Code
+ * at the line printed, or the address in a new tab (V37).
  */
 export function AgentTerminal({
   branch,
@@ -77,6 +102,7 @@ export function AgentTerminal({
   const [error, setError] = useState<string | null>(null);
   const [trust, setTrust] = useState(false);
   const [dropping, setDropping] = useState(false);
+  const [hint, setHint] = useState<Hint | null>(null);
   // The latest callbacks, without opening the terminal again when they change.
   const told = useRef({ onOpened, onEnded });
   told.current = { onOpened, onEnded };
@@ -228,6 +254,120 @@ export function AgentTerminal({
         area.removeEventListener('dragleave', onDragLeave);
         area.removeEventListener('drop', onDrop);
       };
+      // Paths and web addresses it prints (V37). Which paths are files of its folder, as the server
+      // answered: kept, a path not found asked again after RECHECK_MS.
+      const answers = new Map<string, { file: Promise<boolean>; at: number }>();
+      const filesOf = async (paths: string[]): Promise<Set<string>> => {
+        const now = Date.now();
+        const ask = [...new Set(paths)]
+          .filter((path) => {
+            const known = answers.get(path);
+            return !known || now - known.at > RECHECK_MS;
+          })
+          .slice(0, MAX_PATHS);
+        if (ask.length > 0) {
+          const asked = postJson<{ files: string[] }>(`/api/terminals/${terminal}/paths`, {
+            paths: ask,
+          }).then(({ files }) => new Set(files));
+          for (const path of ask) {
+            const file = asked.then((files) => files.has(path));
+            // A file stays one; a failed answer is asked again.
+            answers.set(path, { file, at: now });
+            file.then(
+              (yes) => yes && answers.set(path, { file, at: Infinity }),
+              () => answers.delete(path),
+            );
+          }
+        }
+        const found = await Promise.all(
+          paths.map((path) => answers.get(path)?.file.catch(() => false) ?? Promise.resolve(false)),
+        );
+        return new Set(paths.filter((_, i) => found[i]));
+      };
+      const follow = (target: LinkTarget) => {
+        if (target.kind === 'web') {
+          window.open(target.url, '_blank', 'noopener,noreferrer');
+          return;
+        }
+        const { path, line, column } = target;
+        toTerminal(terminal, 'open', {
+          path,
+          ...(line === undefined ? {} : { line }),
+          ...(column === undefined ? {} : { column }),
+        }).then(
+          () => setError(null),
+          (failed: unknown) => {
+            if (!gone) setError((failed as Error).message);
+          },
+        );
+      };
+      const showHint = (event: MouseEvent, target: LinkTarget, range: IBufferRange) => {
+        const screen = element.querySelector('.xterm-screen');
+        if (!screen) return;
+        const frame = area.getBoundingClientRect();
+        const drawn = screen.getBoundingClientRect();
+        const row = range.start.y - 1 - shown.buffer.active.viewportY;
+        const height = drawn.height / shown.rows;
+        const top = drawn.top - frame.top + row * height;
+        const x = event.clientX - frame.left;
+        const below = top < 40;
+        setHint({
+          ...linkHint(target, MAC),
+          top: below ? top + height + 4 : top - 4,
+          below,
+          ...(x < frame.width / 2 ? { left: x } : { right: frame.width - x }),
+        });
+      };
+      const hideHint = () => setHint(null);
+      // The agent's own links (OSC 8): files and web addresses, without xterm.js's confirm().
+      shown.options.linkHandler = {
+        allowNonHttpProtocols: true,
+        activate: (event, uri) => {
+          const target = linkTarget(uri);
+          if (target && followsLink(event, MAC)) follow(target);
+        },
+        hover: (event, uri, range) => {
+          const target = linkTarget(uri);
+          if (target) showHint(event, target, range);
+        },
+        leave: hideHint,
+      };
+      const provider = shown.registerLinkProvider({
+        provideLinks(y, callback) {
+          const { first, rows } = wrappedRows(shown.buffer.active, y);
+          const { text, at } = lineText(rows);
+          const found = terminalLinks(text)
+            .map((link) => ({ link, range: cellRange(at, link, first) }))
+            .filter(({ range }) => range.start.y <= y && range.end.y >= y);
+          const paths = found.flatMap(({ link }) => (link.kind === 'path' ? [link.path] : []));
+          if (found.length === 0) {
+            callback(undefined);
+            return;
+          }
+          void filesOf(paths)
+            .catch(() => new Set<string>())
+            .then((files) => {
+              const links = found
+                .filter(({ link }) => link.kind === 'web' || files.has(link.path))
+                .map(({ link, range }): ILink => ({
+                  range,
+                  text: text.slice(link.start, link.end),
+                  decorations: { pointerCursor: true, underline: true },
+                  activate: (event) => {
+                    if (followsLink(event, MAC)) follow(link);
+                  },
+                  hover: (event) => showHint(event, link, range),
+                  leave: hideHint,
+                }));
+              callback(links.length > 0 ? links : undefined);
+            });
+        },
+      });
+      const unlistenFiles = unlisten;
+      unlisten = () => {
+        unlistenFiles();
+        provider.dispose();
+      };
       shown.onResize(({ cols, rows }) => {
         clearTimeout(resizing);
         resizing = setTimeout(() => {
@@ -271,6 +411,16 @@ export function AgentTerminal({
         <p className="terminal-drop">
           <ImageIcon />
           Drop to attach
+        </p>
+      )}
+      {hint && (
+        <p
+          className={`terminal-link-hint${hint.below ? ' below' : ''}`}
+          role="tooltip"
+          style={{ top: hint.top, left: hint.left, right: hint.right }}
+        >
+          <span>{hint.what}</span>
+          <kbd>{hint.keys}</kbd>
         </p>
       )}
     </div>

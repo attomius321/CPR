@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { dragTo, stops } from './stepper.js';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
+import { textAt } from './terminal.js';
 
 // Scout (V35): a read-only agent in the checkout, asked from its page — a fake Claude Code, never
 // a real one.
@@ -159,6 +160,25 @@ test('the sidenav says Scout works, then that it answered while you were away', 
   await expect(scoutLink(page)).toHaveAttribute('title', /answered/);
   await scoutLink(page).click();
   await expect(scoutLink(page)).not.toHaveAttribute('data-state', /.+/);
+});
+
+test("a path Scout prints opens in VS Code, in the checkout's window (V37)", async ({ page }) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}scout`);
+  await question(page).fill('Where is add?');
+  await question(page).press('Enter');
+  await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
+  symbiote.setSession('fake0', { state: 'done', status: 'idle', answer: 'In src/math.ts:1.' });
+  await expect(screen(page)).toContainText('In src/math.ts:1.', POLL);
+  const at = await textAt(screen(page), 'src/math.ts:1');
+  await page.mouse.move(at.x, at.y);
+  await expect(scoutPage(page).getByRole('tooltip')).toHaveText(/^Open in VS Code/);
+  await page.keyboard.down('ControlOrMeta');
+  await page.mouse.click(at.x, at.y);
+  await page.keyboard.up('ControlOrMeta');
+  await expect
+    .poll(() => symbiote.opened())
+    .toEqual([[symbiote.repo, '--goto', `${join(symbiote.repo, 'src', 'math.ts')}:1:1`]]);
 });
 
 test('New conversation: the old session stopped and removed, the question box back', async ({
