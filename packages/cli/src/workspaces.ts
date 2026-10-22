@@ -509,6 +509,26 @@ export function parseSessions(text: string): AgentSession[] {
   return sessions;
 }
 
+/** Why `effort` is not an effort level at all: a word, never an option or a sentence (V30b). */
+export const effortWordProblem = (effort: unknown): string =>
+  `an effort level is a word, such as high: ${JSON.stringify(effort)}`;
+
+/**
+ * Why the agent `name` cannot start at `effort` (V30b), or null: it must be one of the `levels` it
+ * lists, and those must be readable (an unknown level, Claude Code ignores without failing).
+ */
+export function effortProblem(
+  effort: string,
+  name: string,
+  levels: readonly string[] | undefined,
+): string | null {
+  if (!levels) return `Symbiote cannot read ${name}'s effort levels: start it at its default`;
+  if (levels.includes(effort)) return null;
+  const listed =
+    levels.length > 1 ? `${levels.slice(0, -1).join(', ')} or ${levels.at(-1)}` : levels[0];
+  return `${name} takes ${listed}: ${effort}`;
+}
+
 /**
  * The levels `claude --help` lists for `--effort` (V30b), in its order: the parenthesis in that
  * option's description, which runs until the next option. Null when there is no such option, or
@@ -690,6 +710,8 @@ export interface ClaudeCode {
     name: string;
     prompt: string;
     settings: string;
+    /** Its effort level (`--effort`), kept as a workspace's is. */
+    effort?: string;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Its sessions, finished ones included; null when it cannot list them. */
   sessions(): Promise<AgentSession[] | null>;
@@ -768,6 +790,7 @@ export function claudeCode(
         '--settings',
         request.settings,
         ...(model ? ['--model', model] : []),
+        ...(request.effort ? ['--effort', request.effort] : []),
         request.prompt,
       ];
       const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
@@ -846,13 +869,15 @@ export interface WorkspaceConfig {
   /** Claude Code's permission mode and model. */
   permissionMode: PermissionMode;
   model?: string;
+  /** Scout's effort level (`scout.effort`): a word; absent, each agent's own. */
+  scoutEffort?: string;
 }
 
 /**
  * `features.branchPrefixes` sets a kind's prefix (V24), each kind its own by default (`fix/`);
  * `features.branchPrefix`, from before V24, sets the Feature's unless `branchPrefixes` does.
  * `agent.kind` names the agent offered first (V20a); `agent.permissionMode` and `agent.model`
- * are Claude Code's.
+ * are Claude Code's. `scout.effort` is the level Scout's conversations start at.
  */
 export function readWorkspaceConfig(root: string): WorkspaceConfig {
   const branchPrefixes = Object.fromEntries(WORK_KINDS.map((k) => [k, `${k}/`])) as Record<
@@ -874,6 +899,7 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
     /** The section's name before V25, still read when `workspaces` is not there. */
     features?: Section;
     agent?: unknown;
+    scout?: { effort?: unknown } | null;
   };
   const section = v.workspaces ?? v.features;
   if (typeof section?.branchPrefix === 'string') {
@@ -899,6 +925,8 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
   const mode = PERMISSION_MODES.find((m) => m === agent.permissionMode);
   if (mode) config.permissionMode = mode;
   if (typeof agent.model === 'string' && agent.model !== '') config.model = agent.model;
+  const effort = v.scout?.effort;
+  if (typeof effort === 'string' && EFFORT_LEVEL.test(effort)) config.scoutEffort = effort;
   return config;
 }
 
@@ -1400,25 +1428,12 @@ export function workspaces(
   async function effortFor(agent: FoundAgent | null, effort: unknown): Promise<string | undefined> {
     if (effort === undefined) return undefined;
     if (typeof effort !== 'string' || !EFFORT_LEVEL.test(effort)) {
-      throw new WorkspaceRefused(
-        `an effort level is a word, such as high: ${JSON.stringify(effort)}`,
-        400,
-      );
+      throw new WorkspaceRefused(effortWordProblem(effort), 400);
     }
     if (!agent) throw new WorkspaceRefused('an effort level needs an agent to start', 400);
-    const name = AGENT_NAMES[agent.kind];
     const { levels } = (await effortsOf(agent)) ?? {};
-    if (!levels) {
-      throw new WorkspaceRefused(
-        `Symbiote cannot read ${name}'s effort levels: start it at its default`,
-        400,
-      );
-    }
-    if (!levels.includes(effort)) {
-      const listed =
-        levels.length > 1 ? `${levels.slice(0, -1).join(', ')} or ${levels.at(-1)}` : levels[0];
-      throw new WorkspaceRefused(`${name} takes ${listed}: ${effort}`, 400);
-    }
+    const problem = effortProblem(effort, AGENT_NAMES[agent.kind], levels);
+    if (problem) throw new WorkspaceRefused(problem, 400);
     return effort;
   }
 

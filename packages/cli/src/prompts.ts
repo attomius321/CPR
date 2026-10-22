@@ -439,14 +439,35 @@ function formatting(source: string): FormattingOptions {
 /** One write at a time: each reads the file it changes. */
 let writing: Promise<unknown> = Promise.resolve();
 
+function oneAtATime(task: () => Promise<void>): Promise<void> {
+  const next = writing.then(task);
+  writing = next.catch(() => undefined);
+  return next;
+}
+
 /**
  * Sets `key`'s prompt in the project's config, or removes it (`null`, or Symbiote's own text), with
  * the rest of the file as it was (decision 167); an emptied section is removed with it.
  */
 export function writePrompt(root: string, change: PromptChange): Promise<void> {
-  const next = writing.then(() => write(root, change));
-  writing = next.catch(() => undefined);
-  return next;
+  return oneAtATime(() => write(root, change));
+}
+
+/**
+ * Sets the value at `path` in the project's config, or removes it (`undefined`), as a prompt is
+ * written: the rest of the file as it was, an emptied section removed with it. Refused (409) when
+ * the file is not JSON.
+ */
+export function writeConfig(
+  root: string,
+  path: readonly string[],
+  value: string | undefined,
+): Promise<void> {
+  return oneAtATime(async () => {
+    const current = readPrompts(root);
+    if (current.warning) throw new PromptRefused(`${current.file} is not JSON: fix it first`, 409);
+    await setIn(root, current, path, value);
+  });
 }
 
 async function write(root: string, change: PromptChange): Promise<void> {
@@ -467,10 +488,19 @@ async function write(root: string, change: PromptChange): Promise<void> {
       : text.includes('\n')
         ? text.split('\n')
         : text;
+  await setIn(root, current, ['prompts', ...key.split('.')], value);
+}
+
+/** Sets `path` to `value` in the config `current` read, or removes it with its emptied sections. */
+async function setIn(
+  root: string,
+  current: ProjectPrompts,
+  path: readonly string[],
+  value: unknown,
+): Promise<void> {
   const before = current.source ?? '{}\n';
   const options = { formattingOptions: formatting(before) };
-  const path = ['prompts', ...key.split('.')];
-  let after = applyEdits(before, modify(before, path, value, options));
+  let after = applyEdits(before, modify(before, [...path], value, options));
   // A section left empty goes too: `prompts.start`, then `prompts`.
   for (let end = path.length - 1; value === undefined && end > 0; end--) {
     const section = path.slice(0, end);
@@ -479,7 +509,7 @@ async function write(root: string, change: PromptChange): Promise<void> {
       JSON.parse(after),
     );
     if (!left || typeof left !== 'object' || Object.keys(left).length > 0) break;
-    after = applyEdits(after, modify(after, section, undefined, options));
+    after = applyEdits(after, modify(after, [...section], undefined, options));
   }
   if (after === before) return;
   await mkdir(dirname(join(root, current.file)), { recursive: true });

@@ -172,6 +172,8 @@ export {
   type ScoutAgent,
   type ScoutAsk,
   type ScoutConversation,
+  type ScoutEffortChange,
+  type ScoutEfforts,
   type ScoutState,
   type ScoutStateName,
   type ScoutTerminalRequest,
