@@ -209,6 +209,14 @@ describe('paths and links in a terminal (V37)', () => {
       ['src/a.ts', 'src/a.ts'],
       ['src/routes/[id]/index.tsx', 'src/routes/[id]/index.tsx'],
     ]);
+    // grep's and ripgrep's `path:line:text`, as Codex showed a search (V37's check).
+    expect(
+      links('    packages/app/src/greet.ts:4:export function greet(name: string): string {'),
+    ).toEqual([['packages/app/src/greet.ts:4', 'packages/app/src/greet.ts', 4]]);
+    expect(links('src/a.ts:4:2:const a = 1; C:\\w\\b.ts:7:x')).toEqual([
+      ['src/a.ts:4:2', 'src/a.ts', 4, 2],
+      ['C:\\w\\b.ts:7', 'C:\\w\\b.ts', 7],
+    ]);
     expect(links('C:\\Users\\a\\x.ts:3 and src\\b.ts')).toEqual([
       ['C:\\Users\\a\\x.ts:3', 'C:\\Users\\a\\x.ts', 3],
       ['src\\b.ts', 'src\\b.ts'],

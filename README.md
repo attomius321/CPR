@@ -438,6 +438,13 @@ questions, Esc, slash commands), so you answer it without leaving Symbiote.
   pastes its path, which the agent reads; images older than a day are removed. Text in the
   clipboard pastes as text. On Linux and Windows, Ctrl+V is the page's paste: it no longer sends
   ^V for the agent to read its own machine's clipboard.
+- **Paths and links:** a path the agent prints to a file of its worktree (`src/a.ts:12:5`,
+  `Update(src/a.ts)`, an absolute path, a compiler's `src/a.ts(12,5)`) is underlined under the
+  pointer, and Ctrl+click (⌘+click on macOS) opens it in VS Code at that line, in the worktree's
+  window. A web address opens in a new tab (Symbiote's window: your browser). The agent's own
+  links (OSC 8) open the same way, a file's in VS Code. Symbiote's server says which paths are
+  files, so a word that only looks like one is not a link; a path outside the worktree is not one
+  either. A plain click stays the terminal's. In Scout's terminal too, for files of the checkout.
 - ← in an empty prompt opens Claude Code's list of all your agents, where you can switch away
   from this one.
 - At most four terminals are open at once (each is a Claude Code process, about 140 MB, or a

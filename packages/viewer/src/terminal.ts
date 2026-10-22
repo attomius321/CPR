@@ -110,6 +110,8 @@ const WORD = /[^\s"'`<>|(){},;*?!&=]+/g;
 /** A path and where in it: `:12`, `:12:5`, `:12-20`, `#L12`, `#L12C5`. */
 const POSITION =
   /^(.+?)(?::(\d+)(?:[:.](\d+))?(?:-\d+(?::\d+)?)?|#L(\d+)(?:C(\d+))?(?:-L?\d+(?:C\d+)?)?)?$/;
+/** grep's `path:line:text` (and `path:line:column:text`): the text after it is not the path's. */
+const GREP = /^(.+?):(\d+)(?::(\d+))?:(?!\d)/;
 /** A file's name with an extension: one with a letter (not `1.2.3`). */
 const NAMED = /^[\w.@+~-]*\.[\w-]*[A-Za-z][\w-]*$/;
 /** Characters left out of a link at its end. */
@@ -170,12 +172,21 @@ function isPathLike(path: string): boolean {
   return /[\\/]/.test(path) || NAMED.test(path);
 }
 
-/** A path with where in it (`a.ts:12:5`), as found in a word; a `file://` address's path too. */
-function pathAt(word: string): Omit<Extract<LinkTarget, { kind: 'path' }>, 'kind'> | null {
+/**
+ * A path with where in it (`a.ts:12:5`), as found at the start of a word, and how much of the word
+ * it is; a `file://` address's path too.
+ */
+function pathAt(
+  word: string,
+): { at: Omit<Extract<LinkTarget, { kind: 'path' }>, 'kind'>; length: number } | null {
   const file = /^file:\/\//i.test(word);
-  const match = POSITION.exec(file ? word.slice('file://'.length) : word);
+  const rest = file ? word.slice('file://'.length) : word;
+  const grep = GREP.exec(rest);
+  const match = grep && isPathLike(grep[1] ?? '') ? grep : POSITION.exec(rest);
   if (!match) return null;
   const [, text = '', line = match[4], column = match[5]] = match;
+  // grep's colon after the line is the text's.
+  const length = word.length - rest.length + match[0].length - (match === grep ? 1 : 0);
   let path = text;
   if (file) {
     try {
@@ -185,11 +196,12 @@ function pathAt(word: string): Omit<Extract<LinkTarget, { kind: 'path' }>, 'kind
     }
   }
   if (!isPathLike(path)) return null;
-  return {
+  const at = {
     path,
     ...(line === undefined ? {} : { line: Number(line) }),
     ...(column === undefined ? {} : { column: Number(column) }),
   };
+  return { at, length };
 }
 
 /**
@@ -209,10 +221,11 @@ export function terminalLinks(text: string): TerminalLink[] {
   }
   for (const match of rest.matchAll(WORD)) {
     const { text: word, from } = unbracketed(match[0].replace(TRAILING, ''));
-    const at = pathAt(word);
-    if (!at) continue;
+    const path = pathAt(word);
+    if (!path) continue;
+    const { at } = path;
     const start = match.index + from;
-    let end = start + word.length;
+    let end = start + path.length;
     // A compiler's place: `src/a.ts(12,5): error`.
     const place = at.line === undefined ? /^\((\d+)(?:,(\d+))?\)/.exec(text.slice(end)) : null;
     if (place) {
@@ -320,8 +333,8 @@ export function linkTarget(uri: string): LinkTarget | null {
   const editor = EDITOR_FILE.exec(uri);
   if (editor) {
     // `/C:/w/a.ts` on Windows.
-    const at = pathAt((editor[1] ?? '').replace(/^\/(?=[A-Za-z]:)/, ''));
-    return at && { kind: 'path', ...at };
+    const path = pathAt((editor[1] ?? '').replace(/^\/(?=[A-Za-z]:)/, ''));
+    return path && { kind: 'path', ...path.at };
   }
   let url: URL;
   try {
@@ -331,8 +344,8 @@ export function linkTarget(uri: string): LinkTarget | null {
   }
   if (url.protocol === 'http:' || url.protocol === 'https:') return { kind: 'web', url: uri };
   if (url.protocol !== 'file:') return null;
-  const at = pathAt(`file://${url.pathname.replace(/^\/(?=[A-Za-z]:)/, '')}`);
-  return at && { kind: 'path', ...at };
+  const path = pathAt(`file://${url.pathname.replace(/^\/(?=[A-Za-z]:)/, '')}`);
+  return path && { kind: 'path', ...path.at };
 }
 
 /** Whether a click follows a link (V37): Ctrl+click, ⌘+click on macOS (Ctrl+click: the menu). */
