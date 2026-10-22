@@ -1087,7 +1087,7 @@ export function agentSettings(
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
- * Opens a folder in the editor, or a file in it at a line (V29d) and column (V37); why not when it
+ * Opens a folder in the editor, or a file in it at a line (V29d) and column (V38); why not when it
  * cannot.
  */
 export type OpenFolder = (

@@ -4914,7 +4914,7 @@ verified: that the race is gone from the e2e suite (seen twice in this journal, 
 check; the test shows its cause instead); `regression-check` (the analysis' git calls take no
 optional lock, so their output cannot change).
 
-## V37 spike — what the agents print in a terminal (2026-10-22, branch `feature/clickable-paths-from-agent-terminal`)
+## V38 spike — what the agents print in a terminal (2026-10-22, branch `feature/clickable-paths-from-agent-terminal`)
 
 Asked: "Provided paths from an agent terminal should be clickable...and open", and web links
 too. Read first: xterm.js 6.0.0 has no link provider of its own beyond OSC 8, and for those its
@@ -4949,4 +4949,48 @@ Markdown link; the raw output replayed into xterm.js in Chromium to read its row
 - A repository under `~/.claude/` makes Claude Code ask before each edit even with `acceptEdits`
   (its own folder); V36's spikes ran under `~/projects`.
 
-Cleaned up after the real-agent checks (V37's verification): see V37's entry.
+Cleaned up after the real-agent checks (V38's verification): see V38's entry.
+
+## V38 — paths and links in an agent's terminal (2026-10-23, branch `feature/clickable-paths-from-agent-terminal`)
+
+Asked: paths an agent prints in its terminal are clickable and open; and web links. In every agent
+terminal (a workspace's Claude Code or Codex, Scout's), a path to a file of the terminal's folder
+and any web address are underlined under the pointer with a hint; Ctrl+click (⌘ on macOS) opens
+the file in VS Code at the line printed, in the folder's window (`POST /api/terminals/<id>/open`),
+or the address in a new tab. The server says which printed paths are files (`…/paths`); the
+agent's own OSC 8 links go through xterm.js's `linkHandler` instead of its `confirm()`. Decisions
+251–256.
+
+**Learned**:
+- **xterm.js asks for a row's links once, as the pointer reaches it**, and keeps them while it
+  stays on that row: one `…/paths` request a row, and a whole screen swept cost 4 (Claude Code)
+  to 11 (Codex) requests. A link provider answers through a callback, so the links wait for the
+  server's answer.
+- **A link range ends on its last cell, 1-based**, both cells of a wide character included. The
+  row's text is read cell by cell from the buffer, an empty cell as a space and the second half of
+  a wide one skipped, so `⏺` before a path does not shift the underline.
+- **On the same cells, xterm.js keeps the earlier provider's link**: its own OSC 8 provider is
+  registered first, so an agent's OSC 8 link wins over the same text found as a path.
+- **An OSC 8 link is drawn with a dashed underline at all times** by xterm.js (Codex's web
+  addresses); a link from the provider only under the pointer.
+- **Codex's mouse tracking does not take the link's click**: xterm.js reports the click to Codex
+  and its link detection, on the same element, follows the link; Codex drew nothing in answer.
+- **grep's `path:line:text` is one word**: `rg -n` in Codex's tool output joined the path, the
+  line and the code's first word; seen only with the real agent, then a unit test.
+- **The e2e fake ends its session when a test sets an answer without `status`**: `setSession`
+  replaces the state fields; the terminal printed "Session fake0 has exited" and the server
+  answered 404. Set `status: 'idle'` with an answer, as Scout's specs do.
+- **`shell.spec`'s "a card keeps the focus when its workspace moves" is flaky on `main`**: alone, 3
+  of 8 runs failed there and 4 of 8 here (ArrowDown leaves the second card unfocused). Not V38's;
+  not fixed here.
+
+**Verification**: tests first, red for the right reason (CLI 4 and 1, viewer 10, then the grep row;
+the e2e workspace test on `main`'s `AgentTerminal`: no hint). `pnpm check` 1,280 tests; build;
+e2e, the new workspace and Scout tests, and every other spec but the flaky one above. The real
+Claude Code 2.1.308 (Scout, Haiku 5.5) and Codex 0.163 (a workspace, GPT-6-Luna) through the page
+from this build, a recorder as `SYMBIOTE_CODE`: every printed file of the folder opened at its line,
+the README by its absolute path, the PR's address in a new tab (Codex's through its OSC 8 link), the
+main checkout's file outside the worktree not linked; screenshots of the hint dark and light. Not
+verified: a real VS Code window; macOS and Windows; the desktop app's new tab. Cleaned up: the
+workspace, Scout's conversation, `claude purge` of the folder, Codex's two trust entries, the
+repository.

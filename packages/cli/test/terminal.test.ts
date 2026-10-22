@@ -315,7 +315,7 @@ describe('images pasted into a terminal (V36)', () => {
   });
 });
 
-describe('files a terminal printed (V37)', () => {
+describe('files a terminal printed (V38)', () => {
   const folder = () => mkdtempSync(join(tmpdir(), 'symbiote-files-'));
   /** A terminal's folder with two files and a folder, and a file outside it. */
   const place = () => {

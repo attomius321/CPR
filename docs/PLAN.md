@@ -451,7 +451,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V34 | Panels one can resize | The sidenav (240 px) and a workspace's changes panel (256 px) have fixed widths, while the diff's sidebar and detail panel can be dragged; asked: "resize - drag - the left panel with the pages and workspaces, and also from workspaces the right changes made". Built on `feature/resize-left-right-panels`: the diff's handle on both, keys and double-click, widths kept in the browser; 7 new e2e, first paint as `main`'s. See below. |
 | V35 | Scout | A question about the repository needs a terminal outside Symbiote or a Spike workspace (a branch and a worktree at the default branch, then Clean up). Measured: with the merger's read-only tools 0 of 3 real "why" answers named a commit, with git 3 of 3 in fewer turns; allow rules cannot keep Bash read-only (`git log --output=<file>`). Built on `feature/scout-an-agent-to-ask`: `/scout` (key a), a read-only Claude Code or Codex in the checkout, git through Symbiote's PreToolUse gate, one kept conversation found by its recorded ID, `prompts.scout`; with a real Claude Code, the merger's prompt found in `prompts.ts`, a change declined, `ls` refused by the gate, the checkout clean. See below. |
 | V36 | Images in an agent's terminal | The agent's terminal takes keys and text only: a pasted screenshot reaches the agent as an empty paste, Ctrl+V sends ^V for the agent to read its own machine's clipboard (no `xclip` or `wl-paste` here), a dropped image does nothing. Claude Code 2.1.308 and Codex 0.163 attach an image when its path is pasted (read in their code), as Orca uses them. Built on `feature/agent-terminal-accept-images`: a pasted or dropped image saved by the server in Symbiote's cache and its path pasted, the agent's own `[Image #n]`; Ctrl+V the page's paste; with the real Claude Code and Codex through the page, a workspace's and Scout's terminals each sent three images, and the models named their colours. See below. |
-| V37 | Paths and links in an agent's terminal | Nothing an agent prints in its terminal can be followed: paths and web addresses are text, and an agent's own OSC 8 link gets xterm.js's "This link could potentially be dangerous" `confirm()` and a `window.open` of no use for `file://` (read in xterm.js 6.0.0). Planned on `feature/clickable-paths-from-agent-terminal`: paths to files in the terminal's folder, checked by the server, and web addresses become links; Ctrl/⌘+click opens the file in VS Code at the line printed, or the address in a new tab. See below. |
+| V38 | Paths and links in an agent's terminal | Nothing an agent prints in its terminal can be followed: paths and web addresses are text, and an agent's own OSC 8 link gets xterm.js's "This link could potentially be dangerous" `confirm()` and a `window.open` of no use for `file://` (read in xterm.js 6.0.0). Built on `feature/clickable-paths-from-agent-terminal`: paths to files in the terminal's folder, checked by the server, web addresses and the agent's own links become links; Ctrl/⌘+click opens the file in VS Code at the line printed, or the address in a new tab. With the real Claude Code (Scout) and Codex (a workspace, its mouse tracking on), every printed file of the folder opened and nothing outside it was linked. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -9555,10 +9555,11 @@ WebP with the real agents (PNG only; the kinds are unit-tested); an image of meg
 real agents; macOS and Windows, where `pastedPath`'s escaping is untested; Firefox and Safari;
 `/history` first paint, not measured again (the bundle +0.3 %).
 
-### V37 — Paths and links in an agent's terminal
+### V38 — Paths and links in an agent's terminal
 
-**Status:** planned (2026-10-22), on branch `feature/clickable-paths-from-agent-terminal` (a
-workspace started in Symbiote); not started.
+**Status:** built on branch `feature/clickable-paths-from-agent-terminal` (a workspace started in
+Symbiote), ready for review. The spike is in the journal ("V38 spike"); as built and results under
+"As built (V38)" below.
 
 **Problem** (asked: "Provided paths from an agent terminal should be clickable...and open"; and,
 for web addresses, "I also want links"). The agent's terminal (a workspace's Claude Code or Codex,
@@ -9663,22 +9664,76 @@ agents, screenshots, README.
 
 | # | Milestone | Output |
 |---|---|---|
-| V37 | Paths and links in an agent's terminal | The spike; `…/paths` and `…/open`; the link provider, the OSC 8 handler and the hint in `AgentTerminal`; the fake's paths; README. |
+| V38 | Paths and links in an agent's terminal | The spike; `…/paths` and `…/open`; the link provider, the OSC 8 handler and the hint in `AgentTerminal`; the fake's paths; README. |
 
 **Proposed decisions**:
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 246 | What a path opens | **VS Code, at the line printed, in the window with the terminal's folder** | Symbiote's one editor (V12, V29d), run from the server where the files are: no case for WSL or SSH. |
-| 247 | Which text becomes a link | **A path only when the server finds a file there; a web address always** | Precise beats complete: a word that looks like a path (`e.g.`, `v1.2`) must not be underlined. |
-| 248 | How a link is followed | **Ctrl+click (⌘+click on macOS); a plain click stays the terminal's** | Asked. VS Code's terminal, Windows Terminal and iTerm do the same; a click to focus the terminal must not bring VS Code forward. |
-| 249 | A path outside the terminal's folder (`~/.claude/…`, the main checkout, `/tmp`) | **Not a link** | Asked. It would open in the worktree's window, among files it does not belong to. |
-| 250 | The agent's own links (OSC 8) | **`file://` and `vscode://file/` as a path, `http(s)` as an address, the rest ignored; no `confirm()`** | xterm.js's warning came for every link and could not open a file; the hint shows the target instead. |
-| 251 | Where a web address opens | **A new tab (the desktop app: the system browser, its `setWindowOpenHandler`)** | Asked ("I also want links"); the page keeps the terminal. |
+| 251 | What a path opens | **VS Code, at the line printed, in the window with the terminal's folder** | Symbiote's one editor (V12, V29d), run from the server where the files are: no case for WSL or SSH. |
+| 252 | Which text becomes a link | **A path only when the server finds a file there; a web address always** | Precise beats complete: a word that looks like a path (`e.g.`, `v1.2`) must not be underlined. |
+| 253 | How a link is followed | **Ctrl+click (⌘+click on macOS); a plain click stays the terminal's** | Asked. VS Code's terminal, Windows Terminal and iTerm do the same; a click to focus the terminal must not bring VS Code forward. |
+| 254 | A path outside the terminal's folder (`~/.claude/…`, the main checkout, `/tmp`) | **Not a link** | Asked. It would open in the worktree's window, among files it does not belong to. |
+| 255 | The agent's own links (OSC 8) | **`file://` and `vscode://file/` as a path, `http(s)` as an address, the rest ignored; no `confirm()`** | xterm.js's warning came for every link and could not open a file; the hint shows the target instead. |
+| 256 | Where a web address opens | **A new tab (the desktop app: the system browser, its `setWindowOpenHandler`)** | Asked ("I also want links"); the page keeps the terminal. |
 
-**Not in V37 (later)**: paths outside the terminal's folder; a path the agent wrapped over two
+**Not in V38 (later)**: paths outside the terminal's folder; a path the agent wrapped over two
 rows itself; another editor than VS Code; opening a file in Symbiote (its changes panel or diff);
 links in the Thread (V18c), whose Markdown has its own.
+
+#### As built (V38)
+
+- **grep's `path:line:text`**: found with the real Codex, whose `rg -n` printed
+  `packages/app/src/greet.ts:4:export function greet(…)` as one word to the first space; the whole
+  word was asked for as a path and nothing was linked. A path followed by `:line:` and text is now
+  read first, and the link is `path:line` (a test, red first).
+- **Codex takes the mouse, and Ctrl+click still follows a link** (spike question 3): xterm.js's link
+  detection listens on the terminal's element on its own, while it reports the click to Codex.
+  Codex 0.163 drew nothing in answer: the screen's text was the same before and after each of the
+  13 Ctrl+clicks compared. No Shift is needed.
+- **No `FORCE_HYPERLINK`**: Claude Code's output stays what its environment makes it. Paths as text
+  go through the link provider, its OSC 8 links (when on) through the handler; on the same cells,
+  xterm.js keeps the OSC 8 link and drops the other.
+- **The hint in the terminal's own colours** (`#e6e6e9` on the black screen, its keys as a key
+  cap), not the page's inverted tooltip: in the light theme that would be dark on black.
+- **The folder's real path** is accepted as well as the one the terminal was opened with (macOS's
+  `/var` and `/private/var`; a folder reached through a link); VS Code gets the latter.
+- **Answers kept**: a file stays a file for the terminal's life; a path not found is asked again
+  after 5 s, a failed request at once.
+- **Not found as paths**: a path with a space, and Next.js route groups (`app/(auth)/a.tsx`): a
+  word ends at a space or a parenthesis, which `Update(src/a.ts)` needs.
+
+**Results.** Tests first, red for the right reason: the CLI's `terminal.test.ts` 4 (`files` and
+`openFile` missing), `server.test.ts` 1 (405, no route), the viewer's `terminal.test.ts` 10 (the
+functions missing) and later the grep row, and the e2e workspace test on `main`'s
+`AgentTerminal` (no hint). `pnpm check` 1,280 tests (V36's fix branch: 1,252). e2e: the new
+workspace test (a file of the worktree opened at its line, a plain click opening nothing, a missing
+file and one outside not linked, an OSC 8 `file://` link, a web address in a new tab, a file gone
+since in the error line) and a Scout test (the checkout's file); 196 of 197 in the first full run.
+The one failure, `shell.spec`'s "a card keeps the focus when its workspace moves", fails on `main`
+too: alone, 3 of 8 runs on `main` and 4 of 8 on this branch.
+
+With the real agents through the page in Chromium (1440 × 900), on a throwaway repository with
+`symbiote view` from this build and a recorder as `SYMBIOTE_CODE`:
+
+| Terminal | Agent | Linked and opened | Not linked | Codex's screen after Ctrl+click |
+|---|---|---|---|---|
+| Scout's | Claude Code 2.1.308, Haiku 5.5 | `math.ts:2`, `math.ts:7`, `greet.ts:4`, the README's absolute path (VS Code: `code <checkout> --goto <file>:<line>:1`); the PR's address in a new tab | — | — |
+| A workspace's | Codex 0.163, GPT-6-Luna (mouse tracking on) | `rg` output (`greet.ts`, `math.ts`, `greet.ts:4`, `greet.ts:5`), the answer's three `path:line` and the README in the worktree; its OSC 8 link to the PR in a new tab | the main checkout's `symbiote/AGENTS.md` (outside the worktree) | unchanged, 13 of 13 compared |
+
+Moving the pointer over a whole screen of output (4 px steps, about 800 px): Claude Code 4
+`…/paths` requests (4 paths), Codex 10–11 (11–12 paths). No page errors, no error line. The hint, dark
+and light: the same, the terminal being black in both. Cost: the main bundle 660,474 → 665,684
+bytes (+5,210; +2,252 gzipped), the stylesheet +533; the xterm.js chunk the same 331,178 bytes,
+and nothing new loads before a terminal opens. Cleaned up after: the workspace (Clean up),
+Scout's conversation, Claude Code's records of the folder (`claude purge`), the two trust entries
+Codex wrote, the repository.
+
+Not verified: a real VS Code window (a recorder took `code`'s arguments; V12's `--goto` is
+unchanged, its column now passed); Claude Code's own OSC 8 links in Symbiote (its `file://` form
+read in the spike, followed in e2e from the fake); macOS (⌘+click) and Windows paths, unit-tested
+only; the desktop app's new tab, which its `setWindowOpenHandler` sends to the system browser;
+Firefox and Safari; `/history` first paint, not measured again (the bundle +0.8 %).
 
 ### Phase 1 milestones
 

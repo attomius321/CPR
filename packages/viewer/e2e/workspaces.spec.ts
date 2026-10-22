@@ -804,7 +804,7 @@ test('images pasted, dropped or Ctrl+V-ed into the terminal attach to the messag
   );
 });
 
-test('paths and web addresses the agent prints open with Ctrl+click: files of its worktree only (V37)', async ({
+test('paths and web addresses the agent prints open with Ctrl+click: files of its worktree only (V38)', async ({
   page,
   context,
 }) => {

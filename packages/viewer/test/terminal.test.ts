@@ -154,7 +154,7 @@ describe('images for the agent (V36)', () => {
   });
 });
 
-describe('paths and links in a terminal (V37)', () => {
+describe('paths and links in a terminal (V38)', () => {
   /** Each link as [its text in the row, what it opens, line, column]. */
   const links = (text: string) =>
     terminalLinks(text).map((link) => [
@@ -164,7 +164,7 @@ describe('paths and links in a terminal (V37)', () => {
       ...(link.kind === 'path' && link.column !== undefined ? [link.column] : []),
     ]);
 
-  it('finds the paths Claude Code and Codex print (rows from the V37 spike)', () => {
+  it('finds the paths Claude Code and Codex print (rows from the V38 spike)', () => {
     expect(links(' ● Update(packages/app/src/math.ts)')).toEqual([
       ['packages/app/src/math.ts', 'packages/app/src/math.ts'],
     ]);
@@ -209,7 +209,7 @@ describe('paths and links in a terminal (V37)', () => {
       ['src/a.ts', 'src/a.ts'],
       ['src/routes/[id]/index.tsx', 'src/routes/[id]/index.tsx'],
     ]);
-    // grep's and ripgrep's `path:line:text`, as Codex showed a search (V37's check).
+    // grep's and ripgrep's `path:line:text`, as Codex showed a search (V38's check).
     expect(
       links('    packages/app/src/greet.ts:4:export function greet(name: string): string {'),
     ).toEqual([['packages/app/src/greet.ts:4', 'packages/app/src/greet.ts', 4]]);

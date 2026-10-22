@@ -2,12 +2,12 @@ import type { Locator } from '@playwright/test';
 
 /**
  * The middle of `text` where xterm.js drew it in a terminal's rows (`.xterm-rows`), in the page:
- * where to hover or click it (V37). xterm.js draws a space as a no-break space.
+ * where to hover or click it (V38). xterm.js draws a space as a no-break space.
  */
 export async function textAt(rows: Locator, text: string): Promise<{ x: number; y: number }> {
   const at = await rows.evaluate((element, text) => {
     for (const row of Array.from(element.children)) {
-      const start = (row.textContent ?? '').replaceAll(' ', ' ').indexOf(text);
+      const start = (row.textContent ?? '').replaceAll('\u00a0', ' ').indexOf(text);
       if (start < 0) continue;
       const range = document.createRange();
       const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);

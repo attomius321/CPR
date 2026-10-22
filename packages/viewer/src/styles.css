@@ -4033,7 +4033,7 @@ button.workspace-about {
   pointer-events: none;
 }
 
-/* A link in the agent's terminal under the pointer (V37): what it opens and its keys, above its
+/* A link in the agent's terminal under the pointer (V38): what it opens and its keys, above its
    row (below the first rows). The style's tooltip, in the terminal's own colours: the screen is
    black in both themes. The link keeps the pointer. */
 .terminal-link-hint {

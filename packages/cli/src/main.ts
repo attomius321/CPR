@@ -614,7 +614,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     }),
   );
   let hinted = false;
-  // VS Code, for a workspace's worktree (V29d) and the files agents print in terminals (V37).
+  // VS Code, for a workspace's worktree (V29d) and the files agents print in terminals (V38).
   const openFolder = vsCodeFolder(ctx.env);
   // Terminals on workspaces' agents (V21): node-pty is loaded only when one is asked for;
   // `SYMBIOTE_TERMINAL=off` turns them off (the panel keeps Talk). Images pasted into them are

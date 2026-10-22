@@ -273,7 +273,7 @@ export function vsCodeOpener(
 
 /**
  * Opens a folder in VS Code (a workspace's worktree, V18b): its window, else a new one; with `at`,
- * a file in it at a line (V29d) and column (V37).
+ * a file in it at a line (V29d) and column (V38).
  */
 export function vsCodeFolder(
   env: Readonly<Record<string, string | undefined>>,

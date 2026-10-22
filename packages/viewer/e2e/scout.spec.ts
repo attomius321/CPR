@@ -162,7 +162,7 @@ test('the sidenav says Scout works, then that it answered while you were away', 
   await expect(scoutLink(page)).not.toHaveAttribute('data-state', /.+/);
 });
 
-test("a path Scout prints opens in VS Code, in the checkout's window (V37)", async ({ page }) => {
+test("a path Scout prints opens in VS Code, in the checkout's window (V38)", async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}scout`);
   await question(page).fill('Where is add?');

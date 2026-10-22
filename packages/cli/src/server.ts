@@ -160,15 +160,15 @@ const DIFF_PATH = new RegExp(`^/diff/(${SHA})\\.\\.(${SHA})(/.*)?$`);
 const REVIEW_PATH = /^\/review\/([^/]+)(\/.*)?$/;
 /**
  * `/api/terminals/<id>`, its output; `…/in`, `…/resize`, `…/close` (V21); `…/image` (V36);
- * `…/paths`, `…/open` (V37).
+ * `…/paths`, `…/open` (V38).
  */
 const TERMINAL_PATH = /^\/api\/terminals\/([0-9a-z]+)(?:\/(in|resize|close|image|paths|open))?$/;
 /** Most a terminal is sent at once: keys typed, or a line Symbiote types (V21). */
 const MAX_TERMINAL_INPUT = 64 * 1024;
-/** Most paths a terminal is asked about at once, and their length (V37): a row's worth. */
+/** Most paths a terminal is asked about at once, and their length (V38): a row's worth. */
 const MAX_TERMINAL_PATHS = 50;
 const MAX_TERMINAL_PATH = 1024;
-/** A file a terminal could not open (V37): its status by why. */
+/** A file a terminal could not open (V38): its status by why. */
 const FILE_REFUSED = { terminal: 404, outside: 400, missing: 409, editor: 502 } as const;
 /** Most an image's request may weigh (V36): the image as base64, in its JSON. */
 const MAX_IMAGE_BODY = Math.ceil(MAX_IMAGE_BYTES / 3) * 4 + 1024;
@@ -762,7 +762,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
    * the end); `POST …/in { data }`, `…/resize { cols, rows }` and `…/close` are writes, and so is
    * `…/image { data }` (V36), an image as base64 saved for the agent: its path and the text to
    * paste. `…/paths { paths }` answers which paths it printed are files in its folder, and
-   * `…/open { path, line?, column? }` opens one in the editor (V37): writes too, as which files
+   * `…/open { path, line?, column? }` opens one in the editor (V38): writes too, as which files
    * exist is not for another site. Its ID is unguessable and made only by a write; a read from
    * another site is refused too.
    */
@@ -1209,7 +1209,7 @@ function terminalSize(
   return ok(value?.cols) && ok(value.rows) ? { cols: value.cols, rows: value.rows } : null;
 }
 
-/** `{ paths }` (V37): the paths in a row of a terminal, each as the agent printed it. */
+/** `{ paths }` (V38): the paths in a row of a terminal, each as the agent printed it. */
 function parseTerminalPaths(text: string): string[] {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   const paths = value?.paths;
@@ -1225,7 +1225,7 @@ function parseTerminalPaths(text: string): string[] {
   return paths as string[];
 }
 
-/** `{ path, line?, column? }` (V37): a path a terminal printed, and where in it, 1-based. */
+/** `{ path, line?, column? }` (V38): a path a terminal printed, and where in it, 1-based. */
 function parseTerminalFile(text: string): FileAt {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   const { path, line, column } = value ?? {};

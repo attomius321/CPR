@@ -2,7 +2,7 @@
 // streamed to the page and the person's keys written back. Claude Code keeps hosting the
 // session; a terminal is only a client of it, and hanging one up leaves the session running.
 // Images pasted or dropped into one are saved for its agent to attach (V36); files it prints are
-// opened in the editor (V37).
+// opened in the editor (V38).
 import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -90,7 +90,7 @@ export function pastedPath(path: string, platform: NodeJS.Platform = process.pla
 /** The names Symbiote gives the images it saves: only those are ever removed. */
 const SAVED_IMAGE = /^[0-9a-f]{32}\.(?:png|jpg|gif|webp)$/;
 
-/** Where a terminal opens a file it printed (V37): its line and column, 1 when not printed. */
+/** Where a terminal opens a file it printed (V38): its line and column, 1 when not printed. */
 export interface FileAt {
   path: string;
   line?: number;
@@ -103,7 +103,7 @@ export type OpenedFile =
   | { opened: false; why: 'terminal' | 'outside' | 'missing' | 'editor'; message: string };
 
 /**
- * A path an agent printed, as a file of the folder its terminal runs in (V37): relative to that
+ * A path an agent printed, as a file of the folder its terminal runs in (V38): relative to that
  * folder, `~/` from `home`, or absolute in it (through the folder's real path too: the agent may
  * print that one). Its path in the folder, POSIX; null for anything outside it, or the folder.
  */
@@ -168,11 +168,11 @@ export interface Terminals {
     kind: ImageKind,
   ): Promise<{ path: string; text: string } | undefined>;
   /**
-   * Which of the paths its agent printed are files in its folder (V37), as given; undefined when
+   * Which of the paths its agent printed are files in its folder (V38), as given; undefined when
    * there is no such terminal.
    */
   files(id: string, paths: readonly string[]): Promise<string[] | undefined>;
-  /** Opens a file of its folder in the editor, in the folder's window, at a line (V37). */
+  /** Opens a file of its folder in the editor, in the folder's window, at a line (V38). */
   openFile(id: string, at: FileAt): Promise<OpenedFile>;
   /** Hangs it up: the program it runs ends; Claude Code's session goes on. */
   close(id: string): boolean;
@@ -183,7 +183,7 @@ export interface Terminals {
 interface Open {
   id: string;
   pty: Pty;
-  /** The folder it runs in: where the paths it prints are read from (V37). */
+  /** The folder it runs in: where the paths it prints are read from (V38). */
   cwd: string;
   opened: number;
   /** What it printed, the oldest dropped past `maxOutput`. */
@@ -199,7 +199,7 @@ interface Open {
  * MB): a new one hangs up the oldest nobody reads, else is refused. One nobody reads for
  * `graceMs` is hung up (a reload reads it again within that). Their images go in `images`, for
  * the person only, and are removed `keepImagesMs` later: Codex reads one when its message is
- * sent, not when it is pasted (V36 spike). Files they print open with `openFolder` (V37).
+ * sent, not when it is pasted (V36 spike). Files they print open with `openFolder` (V38).
  */
 export function terminals({
   pty = () => loadPty(),

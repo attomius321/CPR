@@ -29,12 +29,12 @@ const FONT_SIZE = 14;
 /** Where ⌘V pastes and Ctrl+V stays the agent's (V36). */
 const MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
 const ONLY_IMAGES = 'Only images can be attached: PNG, JPEG, GIF or WebP.';
-/** A printed path the server did not find is asked about again after this (V37): it may be new. */
+/** A printed path the server did not find is asked about again after this (V38): it may be new. */
 const RECHECK_MS = 5_000;
 /** Most paths asked about at once: the server's limit. */
 const MAX_PATHS = 50;
 
-/** The hint over a link (V37): what it opens and its keys, by the pointer, above its row. */
+/** The hint over a link (V38): what it opens and its keys, by the pointer, above its row. */
 interface Hint {
   what: string;
   keys: string;
@@ -84,7 +84,7 @@ export interface OpenedTerminal {
  * pasted (Ctrl+V too, off macOS) or dropped is saved by the server and its path pasted, which the
  * agent attaches to the message being typed (V36). A path it prints to a file in its folder, a web
  * address and its own links (OSC 8) are links: Ctrl+click (⌘ on macOS) opens the file in VS Code
- * at the line printed, or the address in a new tab (V37).
+ * at the line printed, or the address in a new tab (V38).
  */
 export function AgentTerminal({
   branch,
@@ -254,7 +254,7 @@ export function AgentTerminal({
         area.removeEventListener('dragleave', onDragLeave);
         area.removeEventListener('drop', onDrop);
       };
-      // Paths and web addresses it prints (V37). Which paths are files of its folder, as the server
+      // Paths and web addresses it prints (V38). Which paths are files of its folder, as the server
       // answered: kept, a path not found asked again after RECHECK_MS.
       const answers = new Map<string, { file: Promise<boolean>; at: number }>();
       const filesOf = async (paths: string[]): Promise<Set<string>> => {
@@ -363,9 +363,9 @@ export function AgentTerminal({
             });
         },
       });
-      const unlistenFiles = unlisten;
+      const unlistenDrops = unlisten;
       unlisten = () => {
-        unlistenFiles();
+        unlistenDrops();
         provider.dispose();
       };
       shown.onResize(({ cols, rows }) => {

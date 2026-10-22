@@ -1824,7 +1824,7 @@ describe('symbiote view: terminals (V21)', () => {
     return pty;
   };
   const images = join(viewer, 'images');
-  // A worktree with a file, for the paths its agent prints (V37).
+  // A worktree with a file, for the paths its agent prints (V38).
   const work = join(viewer, 'work');
   mkdirSync(join(work, 'src'), { recursive: true });
   writeFileSync(join(work, 'src', 'a.ts'), 'export {};\n');
@@ -2030,7 +2030,7 @@ describe('symbiote view: terminals (V21)', () => {
     expect(readdirSync(images)).toHaveLength(1);
   });
 
-  it('answers which printed paths are files in its folder, and opens one in the editor (V37)', async () => {
+  it('answers which printed paths are files in its folder, and opens one in the editor (V38)', async () => {
     const id = await open('feature/files');
     const asked = await post(`/api/terminals/${id}/paths`, {
       paths: ['src/a.ts', 'missing.ts', '../x.ts', 'src'],

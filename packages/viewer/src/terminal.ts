@@ -1,5 +1,5 @@
 // A workspace's agent session in a terminal (V21): what the panel sends to it, and the paths and
-// links in what it prints (V37), kept pure.
+// links in what it prints (V38), kept pure.
 import type { IBufferRange, ITheme } from '@xterm/xterm';
 
 /**
@@ -96,7 +96,7 @@ export function isPasteKey(
   );
 }
 
-/** What a link in a terminal opens (V37): a file the agent printed, or a web address. */
+/** What a link in a terminal opens (V38): a file the agent printed, or a web address. */
 export type LinkTarget =
   { kind: 'path'; path: string; line?: number; column?: number } | { kind: 'web'; url: string };
 
@@ -162,7 +162,7 @@ function trimmedUrl(url: string): string {
 /**
  * Whether a printed word is worth asking about as a path: with a folder in it (not ending in one),
  * or a file's name with an extension. Never a web address, `~`, `.` or `..` alone. The server
- * says which are files (V37).
+ * says which are files (V38).
  */
 function isPathLike(path: string): boolean {
   if (/^[a-z][\w+.-]*:\/\//i.test(path) || /^[~.]*$/.test(path.replace(/[\\/]/g, ''))) {
@@ -205,7 +205,7 @@ function pathAt(
 }
 
 /**
- * The paths and web addresses in a row of an agent's terminal (V37), in order: web addresses
+ * The paths and web addresses in a row of an agent's terminal (V38), in order: web addresses
  * first (their own paths are not files), then the words that may be paths, with the line and
  * column printed after them — `:12:5`, `#L12`, or a compiler's `(12,5)`. Brackets, quotes and the
  * punctuation of a sentence around them are left out.
@@ -326,7 +326,7 @@ export function wrappedRows(buffer: BufferRows, y: number): { first: number; row
 const EDITOR_FILE = /^(?:vscode|vscode-insiders|cursor|windsurf):\/\/file(\/.*)$/i;
 
 /**
- * Where an agent's own link (OSC 8) goes, when Symbiote follows it (V37): a `file://` address or
+ * Where an agent's own link (OSC 8) goes, when Symbiote follows it (V38): a `file://` address or
  * an editor's address of a file opens the file; `http(s)` the address; anything else nothing.
  */
 export function linkTarget(uri: string): LinkTarget | null {
@@ -348,7 +348,7 @@ export function linkTarget(uri: string): LinkTarget | null {
   return path && { kind: 'path', ...path.at };
 }
 
-/** Whether a click follows a link (V37): Ctrl+click, ⌘+click on macOS (Ctrl+click: the menu). */
+/** Whether a click follows a link (V38): Ctrl+click, ⌘+click on macOS (Ctrl+click: the menu). */
 export function followsLink(event: Pick<MouseEvent, 'ctrlKey' | 'metaKey'>, mac: boolean): boolean {
   return mac ? event.metaKey : event.ctrlKey;
 }
