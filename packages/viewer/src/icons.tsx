@@ -39,6 +39,15 @@ export const SettingsIcon = () => (
   </Icon>
 );
 
+/** An image dropped on the agent's terminal (V36), after lucide's (ISC). */
+export const ImageIcon = () => (
+  <Icon>
+    <rect x="2" y="2" width="12" height="12" rx="1.5" />
+    <circle cx="6" cy="6" r="1.3" />
+    <path d="m14 10-2.1-2.1a1.3 1.3 0 0 0-1.8 0L4 14" />
+  </Icon>
+);
+
 export const PlusIcon = () => (
   <Icon>
     <path d="M8 3v10M3 8h10" />

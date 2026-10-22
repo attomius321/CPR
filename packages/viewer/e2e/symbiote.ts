@@ -581,6 +581,8 @@ export interface RunningWorkspaces extends Running {
   /** The sessions attached to (`claude attach`, V21), and those whose client was hung up. */
   attaches(): string[];
   hangups(): string[];
+  /** The images pasted into `claude attach` (V36): the session, the file, its bytes as base64. */
+  images(): { id: string; path: string; data: string }[];
   /** Commits a file in a workspace's worktree (as its agent would); its SHA. */
   commit(branch: string, file: string, text: string, subject: string): string;
   /** What the fake VS Code was asked to open, newest last. */
@@ -719,9 +721,7 @@ if (args[0] === '--bg' && args[1] === '--resume') {
     process.exit(129);
   });
   let line = '';
-  process.stdin.setRawMode(true);
-  process.stdin.setEncoding('utf8');
-  process.stdin.on('data', (keys) => {
+  const typed = (keys) => {
     for (const key of keys) {
       if (key === '\\r') {
         process.stdout.write('\\r\\ngot: ' + line + '\\r\\n> ');
@@ -731,6 +731,35 @@ if (args[0] === '--bg' && args[1] === '--resume') {
         line += key;
         process.stdout.write(key);
       }
+    }
+  };
+  // V36: bracketed paste on, as Claude Code's; a pasted path to an image attaches it as
+  // [Image #n] (its escapes undone), anything else pasted is typed.
+  process.stdout.write('\\x1b[?2004h');
+  let images = 0;
+  let pending = '';
+  process.stdin.setRawMode(true);
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', (data) => {
+    pending += data;
+    for (;;) {
+      const start = pending.indexOf('\\x1b[200~');
+      const end = start < 0 ? -1 : pending.indexOf('\\x1b[201~', start);
+      if (end < 0) {
+        typed(start < 0 ? pending : pending.slice(0, start));
+        pending = start < 0 ? '' : pending.slice(start);
+        return;
+      }
+      typed(pending.slice(0, start));
+      const text = pending.slice(start + 6, end);
+      pending = pending.slice(end + 6);
+      const path = text.trim().replace(/\\\\(.)/g, '$1');
+      if (/\\.(png|jpe?g|gif|webp)$/i.test(path) && existsSync(path)) {
+        images += 1;
+        const data = readFileSync(path).toString('base64');
+        appendFileSync(join(dir, 'images.jsonl'), JSON.stringify({ id, path, data }) + '\\n');
+        typed('[Image #' + images + '] ');
+      } else typed(text);
     }
   });
   // V35: an answer set by the test is printed once, as the agent's.
@@ -1076,6 +1105,10 @@ export async function serveWorkspaces({
     removed: () => lines('removed.txt'),
     attaches: () => lines('attaches.txt'),
     hangups: () => lines('hangups.txt'),
+    images: () =>
+      lines('images.jsonl').map(
+        (line) => JSON.parse(line) as { id: string; path: string; data: string },
+      ),
     commit(branch, file, text, subject) {
       writeFileSync(join(folder(branch), file), text);
       git(folder(branch), 'add', file);

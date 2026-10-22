@@ -1,6 +1,19 @@
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  imageKind,
   loadPty,
+  pastedPath,
   terminals,
   type Pty,
   type SpawnPty,
@@ -216,6 +229,85 @@ describe('terminals', () => {
     });
     await expect(t.open(request)).rejects.toThrow('node-pty is not installed');
     expect(await terminals({ pty: fakePty().pty }).available()).toEqual({ available: true });
+  });
+});
+
+describe('images pasted into a terminal (V36)', () => {
+  const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+  const folder = () => mkdtempSync(join(tmpdir(), 'symbiote-images-'));
+
+  it('knows the kinds Claude Code and Codex attach, by their first bytes', () => {
+    expect(imageKind(png)).toBe('png');
+    expect(imageKind(Buffer.from('ffd8ffe000104a464946', 'hex'))).toBe('jpg');
+    expect(imageKind(Buffer.from('GIF89a\x01\x00', 'latin1'))).toBe('gif');
+    expect(imageKind(Buffer.from('GIF87a\x01\x00', 'latin1'))).toBe('gif');
+    expect(imageKind(Buffer.from('RIFF\x24\x00\x00\x00WEBPVP8 ', 'latin1'))).toBe('webp');
+    for (const other of [
+      'BM6\x00\x00\x00',
+      'RIFF\x24\x00\x00\x00WAVEfmt ',
+      '<svg xmlns="">',
+      '\x89PNG',
+      '',
+    ]) {
+      expect(imageKind(Buffer.from(other, 'latin1')), JSON.stringify(other)).toBeNull();
+    }
+  });
+
+  it('pastes a path as both agents read it back: escaped only where it must be', () => {
+    const plain = '/home/ada/.cache/symbiote/images/0a1b.png';
+    expect(pastedPath(plain, 'linux')).toBe(plain);
+    expect(pastedPath('/home/Ada Lovelace/.cache/x.png', 'linux')).toBe(
+      '/home/Ada\\ Lovelace/.cache/x.png',
+    );
+    expect(pastedPath("/Users/o'neil/Caches (old)/x.png", 'darwin')).toBe(
+      "/Users/o\\'neil/Caches\\ \\(old\\)/x.png",
+    );
+    // Windows: forward slashes, which Node and Codex take; Claude Code undoes backslashes.
+    expect(pastedPath('C:\\Users\\Ada Lovelace\\AppData\\x.png', 'win32')).toBe(
+      'C:/Users/Ada\\ Lovelace/AppData/x.png',
+    );
+  });
+
+  it("saves an open terminal's image in the images folder, for its owner only", async () => {
+    const images = join(folder(), 'images');
+    const t = terminals({ pty: fakePty().pty, images });
+    const id = await t.open(request);
+    const saved = await t.image(id, png, 'png');
+    expect(saved?.path).toMatch(/[0-9a-f]{32}\.png$/);
+    expect(saved?.path.startsWith(join(images, ''))).toBe(true);
+    expect(saved?.text).toBe(saved?.path);
+    expect(readFileSync(saved!.path)).toEqual(png);
+    if (process.platform !== 'win32') {
+      expect(statSync(images).mode & 0o777).toBe(0o700);
+      expect(statSync(saved!.path).mode & 0o777).toBe(0o600);
+    }
+    const again = await t.image(id, png, 'png');
+    expect(again?.path).not.toBe(saved?.path);
+    // No such terminal: nothing saved.
+    expect(await t.image('nope', png, 'png')).toBeUndefined();
+    expect(readdirSync(images)).toHaveLength(2);
+    t.closeAll();
+    rmSync(join(images, '..'), { recursive: true, force: true });
+  });
+
+  it('removes its images older than keepImagesMs when it saves one, and nothing else', async () => {
+    const images = folder();
+    const now = Date.now();
+    const t = terminals({ pty: fakePty().pty, images, keepImagesMs: 60_000, now: () => now });
+    const id = await t.open(request);
+    const old = join(images, `${'a'.repeat(32)}.png`);
+    const young = join(images, `${'b'.repeat(32)}.jpg`);
+    const notOurs = join(images, 'notes.png');
+    for (const file of [old, young, notOurs]) writeFileSync(file, png);
+    const longAgo = new Date(now - 120_000);
+    utimesSync(old, longAgo, longAgo);
+    utimesSync(notOurs, longAgo, longAgo);
+    const saved = await t.image(id, png, 'png');
+    expect(readdirSync(images).sort()).toEqual(
+      [`${'b'.repeat(32)}.jpg`, 'notes.png', saved!.path.slice(images.length + 1)].sort(),
+    );
+    t.closeAll();
+    rmSync(images, { recursive: true, force: true });
   });
 });
 
