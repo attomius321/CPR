@@ -101,6 +101,9 @@ describe('the tokens (V29b)', () => {
       '--input-bg',
       '--shadow-lift',
       '--shadow-floating',
+      // V37: a text field's quiet edge at rest (decision 246) and the ring of a focused field.
+      '--field-line',
+      '--ring',
     ]) {
       expect([name, dark.has(name), light.has(name)]).toEqual([name, true, true]);
     }

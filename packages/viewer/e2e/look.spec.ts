@@ -275,6 +275,40 @@ test("fields and buttons take the page's font and spacing on every page", async 
   expect(await unlike()).toEqual([]);
 });
 
+// V37 (decision 246): a field's edge is quiet at rest, the 3:1 edge on hover, the focus colour and a
+// ring on focus; fields and selects one height; no resize grip, a textarea grows with its text.
+test('text fields: a quiet edge, a stronger one on hover, a ring on focus, one height', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
+  const form = page.getByRole('region', { name: 'Start a workspace' });
+  const title = form.getByRole('textbox', { name: 'Title' });
+  const goal = form.getByRole('textbox', { name: 'Goal' });
+  await expect(title).toBeVisible();
+  const style = (field: typeof title, property: string) =>
+    field.evaluate((e, p) => getComputedStyle(e).getPropertyValue(p), property);
+  const EDGE = 'rgb(115, 115, 115)';
+  await page.mouse.move(0, 0);
+  expect(await style(goal, 'border-top-color')).not.toBe(EDGE);
+  await goal.hover();
+  await expect.poll(() => style(goal, 'border-top-color')).toBe(EDGE);
+  await title.focus();
+  expect(await style(title, 'outline-style')).toBe('none');
+  await expect.poll(() => style(title, 'box-shadow')).toContain('0px 0px 0px 3px');
+  for (const field of [title, form.getByRole('textbox', { name: 'Branch' })]) {
+    expect((await field.boundingBox())?.height).toBe(32);
+  }
+  for (const select of await form.getByRole('combobox').all()) {
+    expect((await select.boundingBox())?.height).toBe(32);
+  }
+  expect(await style(goal, 'resize')).toBe('none');
+  const before = (await goal.boundingBox())?.height ?? 0;
+  await goal.fill('One\nTwo\nThree\nFour\nFive\nSix\nSeven\nEight\nNine\nTen');
+  expect((await goal.boundingBox())?.height ?? 0).toBeGreaterThan(before);
+});
+
 test('a card in the sidenav is at most 64 px high', async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}history`);

@@ -59,6 +59,10 @@
   --primary: #e5e5e5;
   --primary-text: #171717;
   --input-bg: rgb(255 255 255 / 4.5%);
+  /* A text field's edge at rest, about 1.5:1 (decision 246): `--edge` (3:1) on hover, `--focus`
+     and the ring on focus. */
+  --field-line: color-mix(in srgb, var(--text) 15%, transparent);
+  --ring: color-mix(in srgb, var(--focus) 30%, transparent);
   /* The one on, lifted out of a raised track (a segmented control's). */
   --lifted: rgb(255 255 255 / 7%);
   --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
@@ -112,6 +116,8 @@
   --primary: #171717;
   --primary-text: #fafafa;
   --input-bg: transparent;
+  --field-line: color-mix(in srgb, var(--text) 16%, transparent);
+  --ring: color-mix(in srgb, var(--focus) 30%, transparent);
   --lifted: #ffffff;
   --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
   --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
@@ -163,6 +169,8 @@
     --primary: #171717;
     --primary-text: #fafafa;
     --input-bg: transparent;
+    --field-line: color-mix(in srgb, var(--text) 16%, transparent);
+    --ring: color-mix(in srgb, var(--focus) 30%, transparent);
     --lifted: #ffffff;
     --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
     --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
@@ -238,7 +246,8 @@ select {
   outline-offset: 1px;
 }
 
-/* Text fields: an edge one can find at 3:1 (WCAG 1.4.11), on the page's background. */
+/* Text fields and selects (V37, decision 246): a quiet edge at rest, the 3:1 `--edge` on hover,
+   the focus colour and a soft ring on focus; 32 px, 28 in a toolbar or a row of 28 px buttons. */
 .search-input,
 .comment-input,
 .branches-filter,
@@ -246,12 +255,30 @@ select {
 .workspace-field input,
 .reply textarea,
 .scout-ask textarea,
-.settings-editor textarea {
-  border: 1px solid var(--edge);
+.settings-editor textarea,
+.merge-change textarea,
+select {
+  border: 1px solid var(--field-line);
   border-radius: 8px;
-  background: var(--input-bg);
+  background-color: var(--input-bg);
   box-shadow: var(--shadow-lift);
   color: var(--text);
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.search-input:hover:not(:focus, :disabled),
+.comment-input:hover:not(:focus, :disabled),
+.branches-filter:hover:not(:focus, :disabled),
+.workspace-field textarea:hover:not(:focus, :disabled),
+.workspace-field input:hover:not(:focus, :disabled),
+.reply textarea:hover:not(:focus, :disabled),
+.scout-ask textarea:hover:not(:focus, :disabled),
+.settings-editor textarea:hover:not(:focus, :disabled),
+.merge-change textarea:hover:not(:focus, :disabled),
+select:hover:not(:focus, :disabled) {
+  border-color: var(--edge);
 }
 
 .search-input:focus-visible,
@@ -261,31 +288,63 @@ select {
 .workspace-field input:focus-visible,
 .reply textarea:focus-visible,
 .scout-ask textarea:focus-visible,
-.settings-editor textarea:focus-visible {
-  outline-offset: -1px;
-  border-color: transparent;
+.settings-editor textarea:focus-visible,
+.merge-change textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
-/* Selects (V31c): a field's edge and a drawn chevron. */
+/* No grip: a textarea grows with its text from the height of its rows (which `field-sizing`
+   ignores), then scrolls. */
+.comment-input,
+.workspace-field textarea,
+.reply textarea,
+.scout-ask textarea,
+.settings-editor textarea,
+.merge-change textarea {
+  padding: 8px 10px;
+  line-height: 1.45;
+  field-sizing: content;
+  min-height: calc(3lh + 18px);
+  max-height: 50vh;
+  resize: none;
+}
+
+textarea[rows='2'] {
+  min-height: calc(2lh + 18px);
+}
+
+textarea[rows='4'] {
+  min-height: calc(4lh + 18px);
+}
+
+textarea[rows='7'] {
+  min-height: calc(7lh + 18px);
+}
+
+/* Selects (V31c): a field with a drawn chevron. */
 select {
   appearance: none;
-  height: 28px;
+  height: 32px;
   padding: 0 28px 0 10px;
-  border: 1px solid var(--edge);
-  border-radius: 8px;
-  background-color: var(--input-bg);
   background-image: var(--chevron);
   background-position: right 8px center;
   background-repeat: no-repeat;
   background-size: 14px;
-  box-shadow: var(--shadow-lift);
-  color: var(--text);
   cursor: pointer;
 }
 
 select:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Beside a 28 px button. */
+.scout-ask-row select,
+.merge-control select {
+  height: 28px;
 }
 
 select option {
@@ -471,6 +530,13 @@ input[type='checkbox']:disabled,
 input[type='radio']:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Focused, as a text field is (V37): the ring, not an outline. */
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .canvas {
@@ -1489,7 +1555,7 @@ input[type='radio']:disabled {
   flex: 1;
   min-width: 0;
   height: 28px;
-  padding: 0 8px;
+  padding: 0 10px;
   font-size: var(--size-small);
 }
 
@@ -1826,9 +1892,7 @@ kbd {
 .comment-input {
   display: block;
   width: 100%;
-  padding: 6px 8px;
   font-size: var(--size-small);
-  resize: vertical;
 }
 
 .comment-actions {
@@ -2784,12 +2848,8 @@ kbd {
 .scout-ask textarea {
   box-sizing: border-box;
   width: 100%;
-  min-height: 96px;
   margin-top: 4px;
-  padding: 8px 10px;
   font-size: var(--size-body);
-  line-height: 1.5;
-  resize: vertical;
 }
 
 /* The agent, the keys, then Ask at the right; narrow, Ask stays at the right of its line. */
@@ -3003,16 +3063,21 @@ kbd {
 .workspace-field input {
   box-sizing: border-box;
   width: 100%;
-  padding: 6px 8px;
   font-weight: normal;
 }
 
-.workspace-field textarea {
-  resize: vertical;
+.workspace-field input {
+  height: 32px;
+  padding: 0 10px;
 }
 
-.workspace-field [aria-invalid='true'] {
+.workspace-field [aria-invalid='true'],
+.workspace-field [aria-invalid='true']:hover {
   border-color: var(--error);
+}
+
+.workspace-field [aria-invalid='true']:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 30%, transparent);
 }
 
 /*
@@ -3068,6 +3133,7 @@ kbd {
 
 .effort-stepper .effort-range:focus-visible {
   outline: none;
+  box-shadow: none;
 }
 
 .effort-range::-webkit-slider-runnable-track {
@@ -3466,7 +3532,7 @@ kbd {
   flex: none;
   height: 28px;
   margin: 8px 8px 7px;
-  padding: 0 8px;
+  padding: 0 10px;
   font-size: var(--size-small);
 }
 
@@ -3893,10 +3959,7 @@ button.workspace-about {
 .reply textarea {
   box-sizing: border-box;
   width: 100%;
-  min-height: 64px;
-  padding: 8px 10px;
   font-size: var(--size-body);
-  resize: vertical;
 }
 
 .reply-actions {
@@ -4674,11 +4737,8 @@ p.merge-control {
 .settings-editor textarea {
   display: block;
   width: 100%;
-  padding: 8px 10px;
-  line-height: 1.45;
   max-height: 70vh;
   overflow-y: auto;
-  resize: vertical;
 }
 
 .settings-size {
