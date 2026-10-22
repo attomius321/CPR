@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { MergeEntry, MergeList, MergeRegion } from '@symbiote/core';
 import { postJson } from './http.js';
 import {
+  failedCheck,
   mergeActions,
   mergeLabel,
   mergeState,
@@ -19,6 +20,7 @@ const ACTION_NAMES: Record<MergeAction, string> = {
   land: 'Land',
   approve: 'Approve',
   change: 'Request changes',
+  recheck: 'Check again',
   retry: 'Retry',
   remove: 'Remove',
 };
@@ -32,8 +34,8 @@ export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | 
 /**
  * A merge in Symbiote's queue (V26a), in the shell's main area (V29a; a row of the Workspaces
  * page's Merging section before): its branch, target and state, the merger agent's resolution to
- * review region by region, the end of a failed check's output, and Land, Approve or Request
- * changes, with Retry and Remove under "⋯".
+ * review region by region, what a failed check ran and the end of its output, and Land, Approve,
+ * Request changes or Check again, with Retry and Remove under "⋯".
  */
 export function MergeView({ branch }: { branch: string }) {
   const { merges } = useWorkspaces();
@@ -89,6 +91,12 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
     .map((a) => ({ label: ACTION_NAMES[a], disabled: busy, onSelect: () => act(a) }));
   const regions = toReview(entry) ? (entry.resolution?.regions ?? []) : [];
   const shown = entry.check?.output && entry.check.ok === false;
+  const ran = entry.check ? failedCheck(entry.check) : null;
+  // Approve lands a resolution whatever its check said: the button says so when it failed.
+  const approveTitle =
+    entry.check?.ok === false
+      ? `Land the merge, though its check failed (${entry.check.failed ?? ''})`
+      : undefined;
   return (
     <section className={`merge-row merge-tone-${tone}`} aria-label={`Merge of ${entry.branch}`}>
       <div className="merge-row-head">
@@ -108,6 +116,7 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
               key={action}
               type="button"
               className={action === 'approve' || action === 'land' ? 'button primary' : 'button'}
+              title={action === 'approve' ? approveTitle : undefined}
               disabled={busy}
               onClick={() => act(action)}
             >
@@ -156,10 +165,15 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
       {entry.state === 'needs-you' && entry.message && !entry.resolution?.needsYou && (
         <p className="hint small">{entry.message}</p>
       )}
-      {shown && (
-        <button type="button" className="link small" onClick={() => setOutput((o) => !o)}>
-          {output ? 'Hide its output' : 'Its output'}
-        </button>
+      {(ran || shown) && (
+        <p className="merge-run small">
+          {ran}
+          {shown && (
+            <button type="button" className="link small" onClick={() => setOutput((o) => !o)}>
+              {output ? 'Hide its output' : 'Its output'}
+            </button>
+          )}
+        </p>
       )}
       {shown && output && <pre className="merge-output">{entry.check?.output}</pre>}
       {error && (

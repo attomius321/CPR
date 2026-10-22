@@ -1532,6 +1532,10 @@ describe('symbiote view: merges (V26a)', () => {
       asked.push(`change ${id} ${comments}`);
       return Promise.resolve(entry);
     },
+    recheck: (id) => {
+      asked.push(`recheck ${id}`);
+      return Promise.resolve({ ...entry, recheck: true });
+    },
     remove: (id) => {
       asked.push(`remove ${id}`);
       return id === 'm1'
@@ -1618,8 +1622,13 @@ describe('symbiote view: merges (V26a)', () => {
       (await post('/api/merges/request-changes', { id: 'm1', comments: 'Keep both.' })).status,
     ).toBe(200);
     expect((await post('/api/merges/request-changes', { id: 'm1' })).status).toBe(400);
-    expect(asked.slice(-2)).toEqual(['approve m1', 'change m1 Keep both.']);
-    asked.splice(-2);
+    // Its failed check run again (fix/fix-merger).
+    expect((await post('/api/merges/recheck', { id: 'm1' })).status).toBe(200);
+    expect((await post('/api/merges/recheck', { id: 'm1' }, { 'x-symbiote': '' })).status).toBe(
+      403,
+    );
+    expect(asked.slice(-3)).toEqual(['approve m1', 'change m1 Keep both.', 'recheck m1']);
+    asked.splice(-3);
     expect(asked).toEqual([
       'enqueue feature/csv main',
       'enqueue x main',

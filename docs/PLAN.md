@@ -6865,6 +6865,25 @@ by rule (V26b) would have refused both (additions that share lines; an edit of t
 (`merge.style`), resolving submodule pointers, lockfiles regenerated instead of merged (none
 conflicted in the merges measured).
 
+**After V26: a resolution's failed check** (`fix/fix-merger`, JOURNAL). Asked: "it should display
+what actually happened… not assume the merge was incorrect because of a test". The merger agent
+resolved `docs/JOURNAL.md`'s one region right (merge `26b2676`: both entries kept). Install,
+`pnpm check` and the build passed, and `pnpm test:e2e` failed 1 of 189 on the known flaky keys spec.
+The row turned red, Approve was gone and the server refused it. Request changes asked the agent to
+redo a right answer, and Retry ran it and every check again. V26c's design had the resolution wait
+"plus the check's result. Approve → ready → landed". The block came with V26c's code and no
+decision. Now the check's result goes with the resolution as a fact. The row is the person's
+turn, "Resolved 1 region (sonnet) · its check failed (pnpm test:e2e): review it". The page says
+what ran ("pnpm install, pnpm check and pnpm build passed; pnpm test:e2e failed after 2 min
+31 s"). Approve lands it, and ready and landed keep saying the check failed. **Check again** runs
+the failed check again on the same merge commit, with its resolution kept and no agent. A clean
+merge whose check failed is unchanged (decision 153).
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 242 | A resolution whose check failed | **The person decides: Approve lands it; the row says what passed and what failed** | The check judges the merge, not the resolution: here a flaky e2e failed a right one. Red and no Approve left only ways out that throw a right answer away. The person reads the regions and the check's output, as V26c planned |
+| 243 | Running a failed check again | **Check again: the same merge commit, in Symbiote's merge worktree reset to it, through the queue; no agent** | A flaky check wants the check again, not a new resolution (tokens, and maybe another answer). Through the queue: one merge or check at a time per repository |
+
 ### V27 — Codex in the panel's terminal, through its app server
 
 **Status:** V27a and V27b merged into main (2026-10-20, from branch `milestone/v27-codex-terminal`).

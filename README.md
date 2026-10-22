@@ -337,9 +337,17 @@ worktree of its own in its cache. Your checkout and the agent's worktree are not
 
 Merges go one at a time, each on the result of the last. The sidenav's Merging group shows each
 one, and a click opens it (`/?merge=<branch>`): queued, merging, checking, ready to land, landed or
-failed, with the end of a failed check's output. Without a check, a merge waits there for **Land**. A conflict stops
-the merge with the files named, and nothing changes. Resolve it on the branch, review it again,
-then Retry. A target that moved before landing is merged again on its new tip.
+failed, with the end of a failed check's output. Without a check, a merge waits there for **Land**.
+
+A conflict goes to a merger agent (Claude Code or Codex, `merge.agent`; `merge.model`, else
+`sonnet` for Claude Code), which answers each conflicting region. Symbiote writes the answers, commits the merge
+and runs the check. Nothing lands until you have reviewed the resolution, region by region:
+**Approve** lands it, **Request changes** asks the agent again with your words. A check that
+failed does not take Approve away: the page says which commands passed and which failed, with
+the end of the output, and **Check again** runs the check again on the same merge without
+asking the agent. A file deleted on one side, a binary file or a submodule is given to no one:
+resolve it on the branch, review it again, then Retry. A target that moved before landing is
+merged again on its new tip.
 
 The queue is kept in Symbiote's cache. `symbiote merge <branch>` does the same from a terminal and prints
 each step.

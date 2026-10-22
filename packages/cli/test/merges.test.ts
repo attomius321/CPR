@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { openRepo, type Verdict } from '@symbiote/core';
@@ -674,15 +675,67 @@ describe('the merger agent (V26c)', () => {
     expect(shas.M).not.toBe(repo.git('rev-parse', 'main'));
   });
 
-  it('does not land a resolution whose check failed', async () => {
-    const { repo } = conflicting();
-    config(repo, { checks: 'fail' });
+  it('waits for the person when its check failed, and lands it on Approve: the person decides', async () => {
+    const { repo, shas } = conflicting();
+    config(repo, { checks: ['ok', 'then fail'] });
     const m = await make(repo, fakeChecks().run, { mergerAgent: fakeAgent(BOTH).find });
     const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
     await m.idle();
     const [entry] = (await m.list()).merges;
-    expect(entry).toMatchObject({ state: 'needs-you', check: { ok: false } });
-    await expect(m.approve(id)).rejects.toThrow(/its check failed/);
+    expect(entry).toMatchObject({ state: 'needs-you', check: { ok: false, failed: 'then fail' } });
+    expect(repo.git('rev-parse', 'main')).toBe(shas.M2);
+
+    const landed = await m.approve(id);
+    expect(landed).toMatchObject({ state: 'landed', check: { ok: false, failed: 'then fail' } });
+    expect(repo.git('rev-parse', 'main')).toBe(entry?.merge);
+  });
+
+  it('runs a failed check again on the same merge: its resolution kept, no agent asked', async () => {
+    const { repo, shas } = conflicting();
+    config(repo, { checks: ['ok', 'flaky'] });
+    // `flaky` fails its first run only; each run says which commit the worktree had.
+    const ran: { command: string; head: string }[] = [];
+    let cwd = '';
+    const runCheck: RunCheck = (command, at) => {
+      cwd = at;
+      const head = execFileSync('git', ['-C', at, 'rev-parse', 'HEAD'], { encoding: 'utf8' });
+      ran.push({ command, head: head.trim() });
+      const failed = command === 'flaky' && ran.filter((r) => r.command === 'flaky').length === 1;
+      return Promise.resolve({ code: failed ? 1 : 0, output: failed ? '1 failed\n' : 'ok\n' });
+    };
+    const agent = fakeAgent(BOTH);
+    const m = await make(repo, runCheck, { mergerAgent: agent.find });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [before] = (await m.list()).merges;
+    expect(before).toMatchObject({ state: 'needs-you', check: { ok: false, failed: 'flaky' } });
+    // Another merge in the meantime leaves the worktree elsewhere.
+    execFileSync('git', ['-C', cwd, 'checkout', '--quiet', '--detach', shas.M2]);
+
+    expect(await m.recheck(id)).toMatchObject({ state: 'queued', recheck: true });
+    await m.idle();
+    const [after] = (await m.list()).merges;
+    expect(after).toMatchObject({
+      state: 'needs-you',
+      base: shas.M2,
+      merge: before?.merge,
+      check: { ok: true },
+    });
+    expect(after?.resolution).toEqual(before?.resolution);
+    expect(after?.recheck).toBeUndefined();
+    expect(agent.asked).toHaveLength(1);
+    expect(ran.map((r) => r.command)).toEqual(['ok', 'flaky', 'ok', 'flaky']);
+    expect(ran.slice(2).every((r) => r.head === before?.merge)).toBe(true);
+    expect(repo.git('rev-parse', 'main')).toBe(shas.M2);
+  });
+
+  it('runs the check again only for a resolution whose check failed', async () => {
+    const { repo } = conflicting();
+    config(repo, { checks: 'ok' });
+    const m = await make(repo, fakeChecks().run, { mergerAgent: fakeAgent(BOTH).find });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    await expect(m.recheck(id)).rejects.toThrow(/no failed check to run again/);
   });
 });
 
@@ -837,6 +890,19 @@ describe('symbiote merge (V26a)', () => {
     expect(result.code).toBe(0);
     expect(result.stdout).toMatch(/^landed: main is at/m);
     expect(repo.git('rev-parse', 'main')).not.toBe(shas.M);
+  });
+
+  it('lands a resolution whose check failed on --approve, and still says the check failed', async () => {
+    const { repo } = conflicting();
+    config(repo, { checks: ['ok', 'then fail'] });
+    const m = await make(repo, fakeChecks().run, { mergerAgent: fakeAgent(BOTH).find });
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const { code, stdout } = await symbioteMerge(repo, 'topic', '--approve');
+    expect(code).toBe(0);
+    expect(stdout).toMatch(
+      /^landed: main is at [0-9a-f]{7} \(\d+\.\d s\); its check failed: then fail$/m,
+    );
   });
 });
 

@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveAgentBranch, type RunningAgent } from './symbiote.js';
@@ -138,6 +139,106 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
   expect(merged).not.toMatch(/^(<<<<<<<|=======|>>>>>>>)/m);
   expect(git('log', '-1', '--format=%s', 'main')).toBe('Merge agent: Agent: add cube');
   expect(git('status', '--porcelain', '--untracked-files=no')).toBe('');
+});
+
+/**
+ * fix/fix-merger: main adds a function where the agent added its own, the merger agent keeps
+ * both, and the project's check is `checks`. Approved and merged; the merge's page opened.
+ */
+async function resolvedConflict(page: Page, checks: string[], env: Record<string, string> = {}) {
+  page.on('pageerror', (error) => errors.push(error.message));
+  symbiote = await serveAgentBranch(env, {
+    merger: [
+      JSON.stringify({
+        regions: { '1': `${DOUBLE}\n\n${SQUARE}\n\n${CUBE}` },
+        notes: { '1': 'kept both: main first' },
+      }),
+    ],
+  });
+  const math = join(symbiote.repo, 'src/math.ts');
+  writeFileSync(math, `${readFileSync(math, 'utf8')}\n${DOUBLE}\n`);
+  git('commit', '-q', '-am', 'Main: add double');
+  mkdirSync(join(symbiote.repo, 'symbiote'), { recursive: true });
+  writeFileSync(
+    join(symbiote.repo, 'symbiote', 'config.json'),
+    JSON.stringify({ merge: { checks } }),
+  );
+  const main = git('rev-parse', 'main');
+  await approve(page);
+  await page.getByRole('button', { name: 'Merge into', exact: true }).click();
+  await page.goto(`${symbiote.url}history`);
+  const card = page.locator('.sidenav [data-merge="agent"]');
+  await card.getByRole('link').click();
+  return { main, math, card, entry: page.getByRole('region', { name: 'Merge of agent' }) };
+}
+
+// A resolution whose check failed (a flaky e2e, in the real case) is the person's to judge: the
+// row says what passed and what failed, and Approve lands it.
+test('a resolution whose check failed: what ran is said, and Approve lands it', async ({
+  page,
+}) => {
+  // The project's check: its first command passes, its second fails.
+  const { main, math, card, entry } = await resolvedConflict(page, [
+    'test -f src/math.ts',
+    'ls e2e.passed',
+  ]);
+  await expect(entry.locator('.merge-row-state')).toHaveText(
+    /^Resolved 1 region \(sonnet, [\d.K]+ tokens\) · its check failed \(ls e2e\.passed\): review it$/,
+  );
+  // The person's turn, not a failure.
+  await expect(entry).toHaveClass(/merge-tone-you/);
+  await expect(card).toHaveClass(/merge-tone-you/);
+  await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
+  await expect(entry.locator('.merge-run')).toContainText(
+    /^test -f src\/math\.ts passed; ls e2e\.passed failed after \d+\.\d s/,
+  );
+  await entry.getByRole('button', { name: 'Its output' }).click();
+  await expect(entry.locator('.merge-output')).toContainText('e2e.passed');
+  expect(git('rev-parse', 'main')).toBe(main);
+
+  const approveIt = entry.getByRole('button', { name: 'Approve' });
+  await expect(approveIt).toHaveAttribute(
+    'title',
+    'Land the merge, though its check failed (ls e2e.passed)',
+  );
+  await approveIt.click();
+  await expect(entry.locator('.merge-row-state')).toHaveText(
+    /^Landed: main is at [0-9a-f]{7} · its check failed \(ls e2e\.passed\)$/,
+  );
+  expect(git('log', '-1', '--format=%s', 'main')).toBe('Merge agent: Agent: add cube');
+  for (const text of [DOUBLE, SQUARE, CUBE]) expect(readFileSync(math, 'utf8')).toContain(text);
+});
+
+test('Check again: only the check runs again on the same resolution, then Approve lands it', async ({
+  page,
+}) => {
+  // A flaky check: it passes once a file outside the merge's worktree is there.
+  const flag = join(mkdtempSync(join(tmpdir(), 'symbiote-e2e-flag-')), 'passed');
+  const { main, entry } = await resolvedConflict(page, ['test -f $E2E_FLAG'], { E2E_FLAG: flag });
+  await expect(entry.locator('.merge-row-state')).toHaveText(
+    /· its check failed \(test -f \$E2E_FLAG\): review it$/,
+  );
+
+  writeFileSync(flag, '');
+  await entry.getByRole('button', { name: 'Check again' }).click();
+  await expect(entry.locator('.merge-row-state')).toHaveText(
+    /^Resolved 1 region \(sonnet, [\d.K]+ tokens\) · checked in \d+\.\d s: review it$/,
+  );
+  await expect(entry.locator('.merge-run')).toHaveCount(0);
+  await expect(entry.getByRole('button', { name: 'Check again' })).toHaveCount(0);
+  // The agent was not asked again, and its resolution is still there to review.
+  expect(symbiote.mergerPrompts()).toHaveLength(1);
+  await expect(
+    entry.getByRole('list', { name: 'Its resolution' }).getByRole('listitem'),
+  ).toHaveCount(1);
+  expect(git('rev-parse', 'main')).toBe(main);
+
+  const approveIt = entry.getByRole('button', { name: 'Approve' });
+  expect(await approveIt.getAttribute('title')).toBeNull();
+  await approveIt.click();
+  await expect(entry.locator('.merge-row-state')).toHaveText(
+    /^Landed: main is at [0-9a-f]{7} · checked in \d+\.\d s$/,
+  );
 });
 
 test('the merger agent says you must decide: nothing is merged', async ({ page }) => {
