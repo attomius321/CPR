@@ -197,7 +197,9 @@ body {
   background: var(--bg);
   color: var(--text);
   font: var(--size-body)/1.45 var(--sans);
-  letter-spacing: 0.01em;
+  /* No tracking (V37): at 1× on Linux glyphs sit on whole pixels, and 0.01em (0.14 px) added up
+     into uneven gaps between letters ("n o commits"). */
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -221,12 +223,14 @@ code {
   font-family: var(--mono);
 }
 
-/* Controls in the page's font: a browser's own is the system's (a font-matching miss, V29a). */
+/* Controls in the page's font: a browser's own is the system's (a font-matching miss, V29a). The
+   browser also gives them `letter-spacing: normal`, which `font` does not reset (V37). */
 button,
 input,
 textarea,
 select {
   font: inherit;
+  letter-spacing: inherit;
 }
 
 :focus-visible {
@@ -315,7 +319,6 @@ select option {
 
 .brand {
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 .spacer {
@@ -2522,7 +2525,6 @@ kbd {
   margin: 0 0 8px;
   font-size: var(--size-title);
   font-weight: 600;
-  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
@@ -2591,7 +2593,6 @@ kbd {
   margin: 0;
   font-size: var(--size-title);
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 .start-from {
@@ -2707,7 +2708,6 @@ kbd {
   margin: 0;
   font-size: var(--size-title);
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 .scout-about {
@@ -3009,11 +3009,6 @@ kbd {
 
 .workspace-field textarea {
   resize: vertical;
-}
-
-/* The branch's name, as git shows it. */
-.workspace-field .branch-input {
-  font-family: var(--mono);
 }
 
 .workspace-field [aria-invalid='true'] {
@@ -4525,7 +4520,6 @@ p.merge-control {
   margin: 0;
   font-size: var(--size-title);
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 /* The theme (V29b): at the toolbar's right, for this browser. */
@@ -4681,7 +4675,7 @@ p.merge-control {
   display: block;
   width: 100%;
   padding: 8px 10px;
-  font: var(--size-body)/1.45 var(--mono);
+  line-height: 1.45;
   max-height: 70vh;
   overflow-y: auto;
   resize: vertical;
@@ -4957,7 +4951,6 @@ p.settings-placeholders {
   overflow: hidden;
   color: var(--text);
   font-weight: 600;
-  letter-spacing: -0.01em;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -4988,7 +4981,6 @@ p.settings-placeholders {
   border-radius: 8px;
   color: var(--muted);
   font-weight: 500;
-  letter-spacing: -0.025em;
   text-decoration: none;
   transition:
     background-color 150ms,
@@ -5397,7 +5389,6 @@ p.settings-placeholders {
   margin: 0;
   font-size: var(--size-title);
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 .workspace-title h1 .kind-tag {
@@ -5967,7 +5958,6 @@ button.changes-file:hover {
   overflow: hidden;
   color: var(--text);
   font-weight: 600;
-  letter-spacing: -0.01em;
   text-decoration: none;
   white-space: nowrap;
 }

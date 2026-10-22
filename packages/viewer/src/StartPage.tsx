@@ -528,7 +528,6 @@ function StartForm({
               Branch
               <input
                 type="text"
-                className="branch-input"
                 autoComplete="off"
                 value={branch}
                 spellCheck={false}

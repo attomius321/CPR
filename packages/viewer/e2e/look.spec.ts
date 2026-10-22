@@ -222,6 +222,59 @@ test('no text under 12 px on any page; the body and the terminal at 14 px', asyn
   expect(await small()).toEqual([]);
 });
 
+// V37: the page and its fields in one text. Chromium gives form controls `letter-spacing: normal`
+// whatever the page's (`font: inherit` does not reset it), and the chrome's 0.01em rounded into
+// uneven gaps at 1× on Linux ("n o commits"). Text fields in the text's font: Geist Mono is for what
+// is literal, and buttons drawn as code (a symbol's name, a placeholder to insert) keep it.
+test("fields and buttons take the page's font and spacing on every page", async ({ page }) => {
+  symbiote = await serveWorkspaces();
+  const unlike = () =>
+    page.evaluate(() => {
+      const body = getComputedStyle(document.body);
+      const off: string[] = [];
+      if (!['0px', 'normal'].includes(body.letterSpacing)) off.push(`body: ${body.letterSpacing}`);
+      const controls = 'input:not([type=checkbox], [type=radio], [type=range]), textarea, select';
+      for (const element of document.querySelectorAll(`${controls}, button`)) {
+        if (element.closest('.xterm') || element.getClientRects().length === 0) continue;
+        const style = getComputedStyle(element);
+        const name = `${element.tagName.toLowerCase()}.${element.className}`;
+        if (style.letterSpacing !== body.letterSpacing) {
+          off.push(`${name}: letter-spacing ${style.letterSpacing}`);
+        }
+        if (element.matches(controls) && style.fontFamily !== body.fontFamily) {
+          off.push(`${name}: ${style.fontFamily}`);
+        }
+      }
+      return off;
+    });
+
+  await page.goto(`${symbiote.url}history`);
+  await expect(page.locator('.commit').first()).toBeVisible(POLL);
+  expect(await unlike()).toEqual([]);
+
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
+  const form = page.getByRole('region', { name: 'Start a workspace' });
+  await form.getByRole('textbox', { name: 'Title' }).fill('Add a half function');
+  await form.getByRole('button', { name: /^More:/ }).click();
+  expect(await unlike()).toEqual([]);
+
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: 'Feature' }).click();
+  await expect(page.locator('.settings-editor textarea')).toBeVisible();
+  expect(await unlike()).toEqual([]);
+
+  await page.getByRole('link', { name: 'Scout' }).click();
+  await expect(page.getByRole('textbox', { name: 'Ask Scout' })).toBeVisible();
+  expect(await unlike()).toEqual([]);
+
+  const [base, head] = symbiote.shas;
+  await page.goto(`${symbiote.url}diff/${base}..${head}/`);
+  await expect(page.locator('.react-flow__node').first()).toBeVisible(POLL);
+  await page.keyboard.press('j');
+  await expect(page.locator('.panel-title')).toBeVisible();
+  expect(await unlike()).toEqual([]);
+});
+
 test('a card in the sidenav is at most 64 px high', async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}history`);
