@@ -72,8 +72,13 @@ export function ScoutPage() {
     if (!asking) return;
     let current = true;
     getJson<ScoutEfforts>('/api/scout/efforts')
-      .then((read) => current && setEfforts(read))
-      .catch(() => current && setEfforts(null));
+      .then((read) => {
+        if (current) setEfforts(read);
+      })
+      .catch(() => {
+        // No levels: no stepper, and the question starts at the project's level or the agent's.
+        if (current) setEfforts(null);
+      });
     return () => {
       current = false;
     };

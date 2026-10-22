@@ -202,8 +202,15 @@ test("Scout's effort: a stepper of Claude Code's levels, saved in symbiote/confi
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  const scout = () =>
-    (JSON.parse(readFileSync(config(), 'utf8')) as { scout?: Record<string, unknown> }).scout;
+  // Null while the server writes it: it truncates the file, then writes it.
+  const scout = () => {
+    try {
+      return (JSON.parse(readFileSync(config(), 'utf8')) as { scout?: Record<string, unknown> })
+        .scout;
+    } catch {
+      return null;
+    }
+  };
   await page.goto(`${symbiote.url}settings`);
   const group = list(page).getByRole('region', { name: 'Scout' });
   await expect(group.getByRole('button')).toHaveText(['Instructions', 'Effort']);
@@ -216,7 +223,7 @@ test("Scout's effort: a stepper of Claude Code's levels, saved in symbiote/confi
   await dragTo(page, effort, 3);
   await expect(effort).toHaveAttribute('aria-valuetext', 'high');
   await expect(editor(page).getByRole('status')).toContainText('Saved.');
-  expect(scout()).toEqual({ effort: 'high' });
+  await expect.poll(scout).toEqual({ effort: 'high' });
   // A key steps one level, and saves it.
   await effort.press('ArrowLeft');
   await expect.poll(scout).toEqual({ effort: 'medium' });

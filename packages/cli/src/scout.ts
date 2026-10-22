@@ -160,6 +160,10 @@ function threadState(status: string, waiting: string | undefined): ScoutStateNam
 
 const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
+/** An effort level's word (V30b): what a request may name, before the agent's list is read. */
+const isLevel = (value: unknown): value is string =>
+  typeof value === 'string' && EFFORT_LEVEL.test(value);
+
 /** Scout in `repo`'s checkout, its record beside the reviews (`symbiote/`, else Symbiote's cache). */
 export function scout(
   repo: GitRepo,
@@ -207,8 +211,7 @@ export function scout(
     const v = (value && typeof value === 'object' ? value : {}) as Partial<ScoutRecord>;
     const text = (x: unknown) => (typeof x === 'string' && x !== '' ? x : undefined);
     const started = text(v.started) ?? '';
-    const level =
-      typeof v.effort === 'string' && EFFORT_LEVEL.test(v.effort) ? { effort: v.effort } : {};
+    const level = isLevel(v.effort) ? { effort: v.effort } : {};
     if (v.agent === 'claude' && text(v.id)) {
       const sessionId = text(v.sessionId);
       return {
@@ -480,10 +483,8 @@ export function scout(
       if (agent !== undefined && !AGENT_KINDS.includes(agent)) {
         throw new ScoutRefused(`unknown agent: ${String(agent)}`, 400);
       }
-      if (effort !== undefined && effort !== null) {
-        if (typeof effort !== 'string' || !EFFORT_LEVEL.test(effort)) {
-          throw new ScoutRefused(effortWordProblem(effort), 400);
-        }
+      if (effort !== undefined && effort !== null && !isLevel(effort)) {
+        throw new ScoutRefused(effortWordProblem(effort), 400);
       }
       const where = await place();
       const record = await readRecord(where);
@@ -539,9 +540,7 @@ export function scout(
 
     async setEffort({ effort }) {
       if (effort !== null) {
-        if (typeof effort !== 'string' || !EFFORT_LEVEL.test(effort)) {
-          throw new ScoutRefused(effortWordProblem(effort), 400);
-        }
+        if (!isLevel(effort)) throw new ScoutRefused(effortWordProblem(effort), 400);
         // The level Settings offers: Scout's default agent's.
         const agent = (await installed())[0];
         if (!agent) {

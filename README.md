@@ -388,8 +388,9 @@ The page offers the agents installed, Claude Code first unless `agent.kind` in
 [`symbiote/config.json`](#configuration) says `codex`. Claude Code runs on your own Claude Code login
 (the page says which: your subscription or an API key), in the permission mode you pick: Claude
 Code's default, Accept edits, or Auto. Symbiote never grants it more. **Effort** is the level the agent's
-session starts at: its own default, or one it lists (Claude Code's `--help`; for Codex, its
-configured model's levels, read from its app server). The session keeps it, Start again uses it
+session starts at, on a stepper: its own default (the first stop), or one it lists (Claude Code's
+`--help`; for Codex, its configured model's levels, read from its app server); drag the handle, step
+with the arrow keys, or click a level's word. The session keeps it, Start again uses it
 again, and the Brief tab says it ("Started with Claude Code at high effort."); change it later
 in the agent's own terminal (Claude Code: `/effort`). The next workspace starts at the default
 again. If Claude Code does not start, the branch and worktree are kept and the page
@@ -511,6 +512,11 @@ goes through a workspace you start.
   its session (Claude Code keeps its transcript: `claude --resume` opens it) and starts over.
 - **Its agent** is chosen as a workspace's: `agent.kind` in `symbiote/config.json`, else Claude
   Code, else Codex; the box offers the other when both are installed.
+- **Its effort** is the level a conversation starts at, on a stepper under the question: the
+  project's (`scout.effort` in `symbiote/config.json`, set in **Settings**, Scout's Effort) when
+  the agent lists it, else the agent's own default. Move it before the first question for that
+  conversation only; the page's head names it ("with Claude Code at low effort"). The session keeps
+  it through follow-ups; `/effort` in its terminal changes it.
 - **Claude Code** runs with `--tools Read,Grep,Glob,Bash --permission-mode dontAsk
   --strict-mcp-config` and Symbiote's settings file, `symbiote/scout-settings.json`, whose
   PreToolUse hook decides first: Read, Grep and Glob go on to Claude Code's own rules; Bash runs
@@ -695,6 +701,7 @@ At the repository root (`symbiote.config.json`, the older place, still works). E
 | `agent.kind` | `claude` | The agent Start a workspace offers first, when installed: `claude` or `codex`. |
 | `agent.permissionMode` | `default` | The permission mode Start a workspace suggests for Claude Code: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's | The model Claude Code starts with (Codex's is its own configuration's). |
+| `scout.effort` | the agent's | The effort level each [Scout](#scout) conversation starts at, when Scout's agent lists it (Settings sets it). |
 | `merge.checks` | guessed | The check a merge runs before it lands ([Merging](#merging)): a command, or a list run in order through the shell in Symbiote's merge worktree. Add an install first when the check needs dependencies, e.g. `["pnpm install --frozen-lockfile", "pnpm check"]`. |
 | `merge.push` | `false` | Push the target branch after a merge lands. |
 | `prompts` | Symbiote's | What Symbiote tells its agents, each prompt whole ([below](#agents-prompts)). |
@@ -706,7 +713,7 @@ Before V25 the `workspaces` section was called `features`; that name is still re
 Every text Symbiote gives its agents can be replaced under `prompts`. **Settings** in `symbiote view` (s)
 lists them by agent, each with Symbiote's text until you change it, its placeholders (click one to
 insert it), Save and Reset to Symbiote's; it writes only `prompts` and leaves the rest of the file as
-it is. A missing key is Symbiote's text, so the file keeps only the prompts you change. A prompt is a
+it is. Scout's group also holds its Effort (`scout.effort`), saved when you let go of the stepper. A missing key is Symbiote's text, so the file keeps only the prompts you change. A prompt is a
 string or a list of lines, and `{name}` is filled in where the prompt allows it (any other brace
 is text). Commit `symbiote/config.json` to share them: the page says whether it is committed. It is
 read at each use, so a change applies to the next agent started.

@@ -9284,7 +9284,18 @@ the real run.
 | 241 | Shortcut | **`a`** ("ask") | Free in the shell, History, the diff page and the menus |
 
 **Not in V35 (later)**: starting a workspace from an answer; an effort choice (the agent's
-default); Scout's answers as a thread without a terminal; Scout's key on a diff's page.
+default; since `fix/scout-effort-level`, see below); Scout's answers as a thread without a
+terminal; Scout's key on a diff's page.
+
+**After V35: Scout's effort** (`fix/scout-effort-level`, JOURNAL). Asked: "an option to put scout
+on an effort level from the beginning of the conversation", the default "in config.json, and from
+setting i can adjust that level", and every effort setter "a drag and drop stepper, with a step
+being a level". A conversation starts at `scout.effort` in `symbiote/config.json` when the agent
+lists it, else the agent's own; Scout's box can pick another for that conversation; Settings
+sets `scout.effort` (Scout's group, Effort). The levels are read apart from `/api/scout`
+(`GET /api/scout/efforts`): the shell reads that on every poll, and reading Codex's levels starts
+its daemon. The start page's Effort select is the same stepper: a range input with a stop for
+the agent's own level, then each level it lists.
 
 #### As built (V35)
 
