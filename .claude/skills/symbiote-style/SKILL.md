@@ -1,12 +1,14 @@
 ---
 name: symbiote-style
-description: Symbiote's style — monochrome, quiet chrome lifted above the darkest content, colour only for state, Geist, 8 px controls, lucide-style icons. Gives the tokens (dark and light, contrast checked), plain-CSS recipes for every control, the patterns that make a screen look dated, the traps met applying it, and how to verify a restyle. Use when restyling the viewer, adding or changing any UI in packages/viewer (styles.css, a page, a control, the graph's nodes), when a screen "looks old", or when the user mentions the style, the theme, the look or styling.
+description: Symbiote's style — monochrome, quiet chrome lifted above the darkest content, colour only for state, Geist, 8 px controls, lucide-style icons. Gives the tokens (dark and light, contrast checked), plain-CSS recipes for every control, the patterns that make a screen look dated, the traps met applying it, and how to verify a restyle. Use when restyling the viewer, adding or changing any UI in packages/viewer (its CSS, a page, a control, the graph's nodes), when a screen "looks old", or when the user mentions the style, the theme, the look or styling.
 ---
 
 # Symbiote's style
 
-The viewer's look since V31: one stylesheet (`packages/viewer/src/styles.css`), its tokens on
-`:root`, every control drawn the same way on every page. V29b gave Symbiote its colours, font and
+The viewer's look since V31: one stylesheet, its tokens on `:root` (`ui/base.css` in
+`packages/viewer/src/`), every control drawn the same way on every page (`ui/controls.css`).
+The stylesheet is in parts beside what they draw (`history/HistoryPage.css` beside
+`HistoryPage.tsx`), listed in cascade order by `styles.css`. V29b gave Symbiote its colours, font and
 density; V31 the rest: lifted chrome, neutral selection, drawn controls, one radius scale; V37
 quiet fields, no tracking, a hover apart from the selection, and help behind a "?".
 
@@ -53,8 +55,9 @@ Decisions recorded in `docs/PLAN.md`/`JOURNAL.md`; a new look must keep them.
 - **Letter-spacing 0** but uppercase labels (V37): fractional tracking rounds into uneven gaps
   between letters at 1× on Linux.
 - **No new runtime dependency** without a reason in PLAN.md: no CSS framework, component kit or
-  icon package. Write rules in `styles.css`; draw icons in `src/icons.tsx` from lucide's paths
-  (ISC; keep a one-line credit there).
+  icon package. Write rules in the part beside the component (a shared control's in
+  `src/ui/controls.css`); draw icons in `src/ui/icons.tsx` from lucide's paths (ISC; keep a
+  one-line credit there).
 - **Layout never depends on selection, hover or review state** (viewer `CLAUDE.md`). A selected or
   hovered node may change colour, background, outline or box-shadow; never border width, padding
   or font size. Node widths are estimated from characters (`nodeWidth`); a font-size change in a
@@ -95,7 +98,13 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
 - **Guards in `test/tokens.test.ts`**: `--moved` only in state rules (an allowlist of selectors:
   add a new state there, never an accent), no coloured side bar (`border-left` 2–4 px or an inset
   bar; a blockquote's `--line` is allowed), no `accent-color`, every radius on the scale
-  (`inherit` passes).
+  (`inherit` passes). They read every `.css` under `src/`.
+- **The cascade is `src/styles.css`'s list**: a part later in it wins at equal specificity. Add a
+  new part to the list, never as an import in its component (`test/styles.test.ts` refuses one:
+  Vite would order it by the module graph). Two places where the list's order matters today:
+  `ui/markdown.css` after `workspaces/Workspace.css` (a thread's report is
+  `.thread-text.markdown`), `shell/Shell.css` after `shell/Sidenav.css` (the narrow shell hides
+  the sidenav).
 - **Colours pinned in e2e**: `look.spec.ts` (page and chrome) and `app.spec.ts` (the window's
   title-bar buttons take `--side`). A token change updates them, nothing else should.
 - **Restyling `.link`** reaches every link-styled button: Settings' placeholders are insert
@@ -134,7 +143,7 @@ JOURNAL). Use this checklist inside it.
          `symbiote view [<base> <head>] --no-open --port <n>` (a diff is served at the
          `/diff/<base>..<head>/` its log prints); measure.mjs --shot for real graphs
 - [ ] 3. Tokens first: palette-check.mjs with the new values, then the expected values in
-         test/tokens.test.ts (red), then styles.css (green)
+         test/tokens.test.ts (red), then src/ui/base.css (green)
 - [ ] 4. Components region by region (shell, History, a diff's panels, the graph, Settings,
          workspaces, dialogs), one commit each, by the recipes in components.md
 - [ ] 5. pnpm check, pnpm build, pnpm test:e2e (look.spec.ts asserts fonts, theme, card height)

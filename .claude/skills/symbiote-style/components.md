@@ -1,8 +1,9 @@
 # Components
 
-Symbiote's controls as plain CSS on its tokens ([tokens.md](tokens.md)). Class names here are examples: Symbiote's stylesheet is flat, so check a name
-is not taken before using it (`grep -n '^\.name' packages/viewer/src/styles.css`), and restyle the
-existing class where one already plays the role.
+Symbiote's controls as plain CSS on its tokens ([tokens.md](tokens.md)). Class names here are examples: Symbiote's class names are global (plain CSS, in
+parts beside their components), so check a name is not taken before using it
+(`grep -rn '^\.name' packages/viewer/src --include='*.css'`), and restyle the existing class
+where one already plays the role.
 
 ## Base
 
@@ -38,7 +39,7 @@ button:not(:disabled) {
 
 A theme switch flips every token at once; transitions then fade parts of the page at different
 speeds. A class that sets every `transition: none !important` for one frame around the switch
-avoids it: add it in `setTheme` (`src/theme.ts`) if a transition shows.
+avoids it: add it in `setTheme` (`src/shell/theme.ts`) if a transition shows.
 
 ## Buttons
 
@@ -428,7 +429,7 @@ costly on thousands of nodes). Within them:
 
 ## Icons
 
-lucide's set, drawn in `src/icons.tsx` (no `lucide-react`): copy a path from lucide.dev, keep its
+lucide's set, drawn in `src/ui/icons.tsx` (no `lucide-react`): copy a path from lucide.dev, keep its
 24-unit viewBox (give `Icon` a `viewBox` prop), `stroke-width: 2` scaled by the 16 px box (1.33 px
 drawn; Symbiote's own 16-unit icons use 1.6), round caps and joins, colour from the text. Sizes: 16 px,
 14 px in menus and dense rows, 12 px in chips, 28 px for an empty state. Keep one credit line for
