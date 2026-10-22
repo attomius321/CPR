@@ -4913,3 +4913,36 @@ on `main`, and now stay byte for byte the same. `pnpm check` 1,252 tests; build;
 verified: that the race is gone from the e2e suite (seen twice in this journal, V20a and this
 check; the test shows its cause instead); `regression-check` (the analysis' git calls take no
 optional lock, so their output cannot change).
+
+## V37 spike — what still looks dated, page by page (2026-10-22, branch `feature/ui-improvements`)
+
+Asked: "the inputs, sidenav and everything looks kind of oldish...the hover style..everything",
+the help texts in tooltips under a help button, "the fonts are not good inside inputs", then "check
+every page for uneven spaces...and ugly styling". Audited on `main` (`7c223d4`): a Playwright spec
+outside the repository drove `e2e/symbiote.ts`'s `serveWorkspaces` (three workspaces, one
+reporting, usage), `serveFixture('detectors')` and `serveAgentBranch` (a review and a merge), and
+took 35 states of every page, dark and light, at 1440×900 and device scale 1.
+
+**Learned**:
+- **The uneven letter gaps come from the chrome's `letter-spacing: 0.01em`.** At 1× on Linux,
+  Chromium places glyphs on whole pixels: 0.13–0.14 px a letter adds up into a pixel here and
+  there ("n o commits", "Noth ing", "fea ture/"). At 3× zoom, `letter-spacing: 0` evened every
+  sample; `text-rendering: geometricPrecision` did too (sub-pixel positions), slightly blurrier and
+  with a cost on thousands of graph labels to measure. Spacing 0 costs nothing.
+- **Form controls do not inherit letter-spacing.** `font: inherit` resets the font, not
+  `letter-spacing`, which Chromium's form-control style sets to `normal`: every input, textarea,
+  select and button measured `normal` against the body's 0.14 px. With `inherit` alone, the gaps
+  moved into the fields; with 0 everywhere, page and fields match. Two fields were also in Geist
+  Mono (the start page's Branch, Settings' prompt editor).
+- **The fields' 3:1 edge is what reads as old**: `#737373` on every field, the brightest line on
+  most pages, with a 2 px solid ring on focus over it. A soft edge (15 % of the text, about 1.5:1)
+  brightening on hover and focus was shown beside it; the person chose it (decision 246).
+- **Hover and selection were 8 % and 10 % washes**: indistinguishable (Settings hovered looked
+  current). Cards hovered with a third recipe, nearly invisible in light.
+- **Help had grown as paragraphs** in eight places and as `title`s in two; glyphs stood in for
+  icons in five (`?` `ⓘ` `▸` `▶` `←`).
+- **Uneven layout**, measured: Start and Scout's content 8 px right of their title (264 / 256);
+  History's head 44 → 58 px in compare mode (its instruction wraps); the merge page without a head.
+
+**Not tested**: the person's own window (Electron on WSLg at their scale); Windows and macOS text
+rendering. Screenshots kept for the after comparison.
