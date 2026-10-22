@@ -5054,12 +5054,14 @@ agent's own OSC 8 links go through xterm.js's `linkHandler` instead of its `conf
   replaces the state fields; the terminal printed "Session fake0 has exited" and the server
   answered 404. Set `status: 'idle'` with an answer, as Scout's specs do.
 - **`shell.spec`'s "a card keeps the focus when its workspace moves" is flaky on `main`**: alone, 3
-  of 8 runs failed there and 4 of 8 here (ArrowDown leaves the second card unfocused). Not V38's;
-  not fixed here.
+  of 8 runs failed there and 4 of 8 here (ArrowDown leaves the second card unfocused), and `main`'s
+  own full run lost it. Not V38's; not fixed here.
+- **`main` took V37 while this was built** (the look, `feature/ui-improvements`): this milestone
+  was renumbered V38, its decisions 251–256; its first commits say V37.
 
 **Verification**: tests first, red for the right reason (CLI 4 and 1, viewer 10, then the grep row;
-the e2e workspace test on `main`'s `AgentTerminal`: no hint). `pnpm check` 1,280 tests; build;
-e2e, the new workspace and Scout tests, and every other spec but the flaky one above. The real
+the e2e workspace test on `main`'s `AgentTerminal`: no hint). With `main` (V37) merged in: `pnpm
+check` 1,288 tests; build; e2e 200 of 200. The real
 Claude Code 2.1.308 (Scout, Haiku 5.5) and Codex 0.163 (a workspace, GPT-6-Luna) through the page
 from this build, a recorder as `SYMBIOTE_CODE`: every printed file of the folder opened at its line,
 the README by its absolute path, the PR's address in a new tab (Codex's through its OSC 8 link), the

@@ -9904,12 +9904,13 @@ links in the Thread (V18c), whose Markdown has its own.
 **Results.** Tests first, red for the right reason: the CLI's `terminal.test.ts` 4 (`files` and
 `openFile` missing), `server.test.ts` 1 (405, no route), the viewer's `terminal.test.ts` 10 (the
 functions missing) and later the grep row, and the e2e workspace test on `main`'s
-`AgentTerminal` (no hint). `pnpm check` 1,280 tests (V36's fix branch: 1,252). e2e: the new
-workspace test (a file of the worktree opened at its line, a plain click opening nothing, a missing
-file and one outside not linked, an OSC 8 `file://` link, a web address in a new tab, a file gone
-since in the error line) and a Scout test (the checkout's file); 196 of 197 in the first full run.
-The one failure, `shell.spec`'s "a card keeps the focus when its workspace moves", fails on `main`
-too: alone, 3 of 8 runs on `main` and 4 of 8 on this branch.
+`AgentTerminal` (no hint). `pnpm check` 1,280 tests before `main`'s V37 was merged in, 1,288
+after. e2e: the new workspace test (a file of the worktree opened at its line, a plain click
+opening nothing, a missing file and one outside not linked, an OSC 8 `file://` link, a web address
+in a new tab, a file gone since in the error line) and a Scout test (the checkout's file); with
+`main` merged in, 200 of 200. Before, two full runs lost one and two keyboard-focus tests that pass
+alone; one of them, `shell.spec`'s "a card keeps the focus when its workspace moves", fails on
+`main` too (its own full run: 197 of 198; alone, 3 of 8 runs on `main`, 4 of 8 here).
 
 With the real agents through the page in Chromium (1440 × 900), on a throwaway repository with
 `symbiote view` from this build and a recorder as `SYMBIOTE_CODE`:
