@@ -114,6 +114,13 @@ describe('the tokens (V29b)', () => {
     ['light', light],
   ] as const) {
     describe(`${name}`, () => {
+      // V37 (decision 250): at 8 and 10 % a hovered row looked like the current page.
+      it('draws a hover lighter than the selection: washes of the text 3 points apart', () => {
+        const wash = (token: string) =>
+          Number(/var\(--text\) (\d+)%, transparent/.exec(theme.get(token) ?? '')?.[1]);
+        expect(wash('--selected') - wash('--hover')).toBeGreaterThanOrEqual(3);
+      });
+
       it('gives text at least 4.5:1 on every background', () => {
         expect(under(theme, TEXT, BACKGROUNDS, 4.5)).toEqual([]);
       });

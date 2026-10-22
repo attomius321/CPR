@@ -53,7 +53,8 @@
   --lane-6: #8ccf3e;
   --shadow: rgb(0 0 0 / 50%);
   /* Neutral states every control shares (V31): hover and selection are washes of the text. */
-  --hover: color-mix(in srgb, var(--text) 8%, transparent);
+  /* Lighter than the selection (V37, decision 250): at 8 % a hovered row looked current. */
+  --hover: color-mix(in srgb, var(--text) 5%, transparent);
   --selected: color-mix(in srgb, var(--text) 10%, transparent);
   --selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
   --primary: #e5e5e5;
@@ -2380,9 +2381,11 @@ kbd {
   margin-left: auto;
 }
 
-/* Out of compare mode a click selects: the cursor row is the selection, and shows it. */
+/* Out of compare mode a click selects: the cursor row is the selection, and shows it as the
+   sidenav does, without the compare cursor's ring (V37: a bright box around the whole row). */
 .commits:not(.comparing) .commit.cursor {
   background: var(--selected);
+  box-shadow: none;
 }
 
 .commits-error {
@@ -3699,39 +3702,43 @@ kbd {
 /* ---- workspaces (V18b) ------------------------------------------------------------------ */
 
 /* How many workspaces need the person: the waiting colour. */
+/* How many need you: a count in the warning's tint, round as the groups' counts (V37). */
 .page-count {
-  min-width: 16px;
+  min-width: 18px;
   padding: 0 5px;
-  border-radius: 4px;
-  background: var(--warning);
-  color: var(--bg);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
   font-size: var(--size-caption);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 16px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 /* A workspace's mark: what its agent is doing; on badges, a link to the workspace. */
+/* A tinted round badge of its tone (V37: a box drawn in the tone read as a form control). */
 .workspace-mark {
   --workspace-tone: var(--context);
-  display: inline-block;
-  min-width: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
   margin-right: 5px;
-  padding: 0 3px;
-  border: 1px solid var(--workspace-tone);
-  border-radius: 4px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--workspace-tone) 16%, transparent);
   color: var(--workspace-tone);
   font-size: var(--size-caps);
   font-weight: 700;
-  line-height: 13px;
-  text-align: center;
+  line-height: 1;
   text-decoration: none;
-  vertical-align: 1px;
+  vertical-align: -3px;
 }
 
 a.workspace-mark:hover {
-  background: var(--workspace-tone);
-  color: var(--bg);
+  background: color-mix(in srgb, var(--workspace-tone) 30%, transparent);
 }
 
 .workspace-mark-working {
@@ -5049,6 +5056,7 @@ p.settings-placeholders {
 
 .sidenav-pages a .icon {
   color: var(--faint);
+  stroke-width: 1.4;
 }
 
 .sidenav-pages a:hover {
@@ -5063,6 +5071,7 @@ p.settings-placeholders {
 
 .sidenav-pages a[aria-current='page'] .icon {
   color: var(--text);
+  stroke-width: 1.8;
 }
 
 /* Scout's mark (V35): after its name; in the rail, on its icon's corner. */
@@ -5141,9 +5150,9 @@ p.settings-placeholders {
   align-items: center;
   gap: 6px;
   margin: 12px 8px 4px;
-  color: var(--text);
+  color: var(--muted);
   font-size: var(--size-small);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .sidenav .workspace-group h3::before {
@@ -5198,14 +5207,12 @@ p.settings-placeholders {
 }
 
 .sidenav .workspace-row:hover {
-  background: color-mix(in srgb, var(--raised) 40%, transparent);
+  background: var(--hover);
 }
 
-/* The one shown: a wash of the text and a brighter edge. */
+/* The one shown: a wash of the text, as the current page (V37: no edge or shadow of its own). */
 .sidenav .workspace-row.picked {
-  border-color: var(--selected-line);
   background: var(--selected);
-  box-shadow: var(--shadow-lift);
 }
 
 .sidenav .workspace-head {
