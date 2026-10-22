@@ -38,6 +38,7 @@ import { getJson, postJson } from './http.js';
 import { shortSha } from './commits.js';
 import { ChevronIcon } from './icons.js';
 import { EffortStepper } from './EffortStepper.js';
+import { Help } from './Help.js';
 import { reloadWorkspaces } from './useWorkspaces.js';
 
 /** How long typing pauses before the draft is saved. */
@@ -117,7 +118,7 @@ export function StartPage({
       <header className="start-top">
         <h1 id="start-title">Start a workspace</h1>
         <div className="start-actions">
-          <button type="button" className="link" onClick={onLeave}>
+          <button type="button" className="button ghost" onClick={onLeave}>
             Cancel
           </button>
         </div>
@@ -160,7 +161,6 @@ function StartForm({
   const [guess, setGuess] = useState<CheckGuess | null>(null);
   const [moreShown, setMoreShown] = useState(false);
   // The kinds' info: while hovered or focused, or once tapped.
-  const [about, setAbout] = useState(false);
   // The run's choices as the draft kept them (V30b); else the agents installed, the default first
   // (V20a), at its own effort, Claude Code in its configured mode, plan first.
   const [run, setRun] = useState<RunChoices>(() =>
@@ -316,12 +316,12 @@ function StartForm({
           <code>{shortSha(base.sha)}</code>
         </p>
         <div className="start-actions">
-          <button type="button" className="link" disabled={running} onClick={onLeave}>
+          <button type="button" className="button ghost" disabled={running} onClick={onLeave}>
             Cancel
           </button>
           <button
             type="button"
-            className="link"
+            className="button ghost"
             disabled={running}
             title="Empty the form; the kind stays"
             onClick={() => edit(newForm(spec, guess))}
@@ -385,47 +385,19 @@ function StartForm({
                   </button>
                 ))}
               </div>
-              <span
-                className="kind-info"
-                onMouseEnter={() => setAbout(true)}
-                onMouseLeave={() => setAbout(false)}
-              >
-                <button
-                  type="button"
-                  className="kind-info-button"
-                  aria-label="About the kinds of work"
-                  aria-expanded={about}
-                  {...(about ? { 'aria-describedby': 'kind-about' } : {})}
-                  onFocus={() => setAbout(true)}
-                  onBlur={() => setAbout(false)}
-                  // A tap shows it where there is no hover; focus has already shown it on a click.
-                  onClick={() => setAbout(true)}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Escape' || !about) return;
-                    // Hides the info, and stays on the page.
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setAbout(false);
-                  }}
-                >
-                  ⓘ
-                </button>
-              </span>
-              {about && (
-                <div id="kind-about" role="tooltip" className="kind-about">
-                  <dl>
-                    {kinds.map((kind) => (
-                      <div
-                        key={kind.kind}
-                        className={kind.kind === form.kind ? 'current' : undefined}
-                      >
-                        <dt>{kind.name}</dt>
-                        <dd>{KIND_ABOUT[kind.kind]}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </div>
-              )}
+              <Help label="About the kinds of work" id="kind-about">
+                <dl className="kind-about">
+                  {kinds.map((kind) => (
+                    <div
+                      key={kind.kind}
+                      className={kind.kind === form.kind ? 'current' : undefined}
+                    >
+                      <dt>{kind.name}</dt>
+                      <dd>{KIND_ABOUT[kind.kind]}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </Help>
             </div>
             <label className="workspace-field">
               Title
@@ -524,22 +496,26 @@ function StartForm({
                 )}
               </select>
             </label>
-            <label className="workspace-field">
-              Branch
+            <div className="workspace-field">
+              <span className="field-label">
+                <label htmlFor="start-branch">Branch</label>
+                <Help label="Where its worktree goes">
+                  <p>
+                    Its worktree: <code>{folder}</code>
+                  </p>
+                </Help>
+              </span>
               <input
+                id="start-branch"
                 type="text"
-                className="branch-input"
                 autoComplete="off"
                 value={branch}
                 spellCheck={false}
                 aria-invalid={form.title.trim() !== '' && problem !== null}
                 onChange={(event) => edit({ ...form, branch: event.target.value })}
               />
-            </label>
+            </div>
             {form.title.trim() !== '' && problem && <p className="error">{problem}</p>}
-            <p className="dialog-note start-folder">
-              in <code title={folder}>{folder}</code>
-            </p>
             {agent ? (
               <>
                 {options.agents.length > 1 ? (
@@ -574,12 +550,16 @@ function StartForm({
                 {agent.account && <p className="dialog-note start-account">{agent.account}</p>}
                 {efforts.length > 0 && (
                   <div className="workspace-field">
-                    Effort
+                    <span className="field-label">
+                      Effort
+                      <Help label="About the effort">
+                        The level its session starts at; change it later in its terminal.
+                      </Help>
+                    </span>
                     <EffortStepper
                       label="Effort"
                       choices={efforts}
                       value={effort ?? ''}
-                      title="The level its session starts at; change it later in its terminal"
                       onChange={(level) => choose(atLevel(run, level || undefined))}
                     />
                   </div>
@@ -601,11 +581,15 @@ function StartForm({
                     </select>
                   </label>
                 ) : (
-                  <div
-                    className="workspace-field"
-                    title="Codex's workspace-write sandbox: it writes in its worktree and may commit on its branch; nothing else in git. Codex then marks this repository trusted in your Codex configuration, as it does for any writable sandbox."
-                  >
-                    Sandbox
+                  <div className="workspace-field">
+                    <span className="field-label">
+                      Sandbox
+                      <Help label="About Codex's sandbox">
+                        Codex&apos;s workspace-write sandbox: it writes in its worktree and may
+                        commit on its branch; nothing else in git. Codex then marks this repository
+                        trusted in your Codex configuration, as it does for any writable sandbox.
+                      </Help>
+                    </span>
                     <span className="start-value">Its worktree and branch</span>
                   </div>
                 )}

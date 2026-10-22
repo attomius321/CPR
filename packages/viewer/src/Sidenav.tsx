@@ -23,6 +23,7 @@ import {
   SidenavIcon,
 } from './icons.js';
 import { mergeState } from './merges.js';
+import { Help } from './Help.js';
 import { HISTORY_PAGE, hrefOf, SCOUT_PAGE, SETTINGS_PAGE, START_PAGE } from './pages.js';
 import { Resizer } from './Resizer.js';
 import { nextScoutMark, type ScoutMark } from './scout.js';
@@ -199,13 +200,13 @@ export function Sidenav({
         {list?.note && <p className="hint workspaces-note">{list.note}</p>}
         {!list && <p className="hint sidenav-hint">Listing workspaces…</p>}
         {empty && (
-          <div className="hint workspaces-empty">
-            <p>No workspaces yet.</p>
-            <p>
-              Start one (n): describe the work, and Symbiote makes its branch and worktree and
-              starts an agent there. Or start one from a commit in History.
-            </p>
-          </div>
+          <p className="hint workspaces-empty">
+            No workspaces yet.
+            <Help label="About workspaces">
+              Start one (<kbd>n</kbd>): describe the work, and Symbiote makes its branch and
+              worktree and starts an agent there. Or start one from a commit in History.
+            </Help>
+          </p>
         )}
         <div
           className="sidenav-list"

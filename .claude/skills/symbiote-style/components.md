@@ -14,13 +14,15 @@ body {
   background: var(--bg);
   color: var(--text);
   font: var(--size-body)/1.45 var(--sans);
-  letter-spacing: 0.01em;
+  letter-spacing: 0; /* fractional tracking rounds into uneven gaps at 1× on Linux (V37) */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-.react-flow {
-  letter-spacing: 0; /* node widths are estimated from characters: measure before widening */
+/* The browser gives controls `letter-spacing: normal`; `font: inherit` does not reset it. */
+button, input, textarea, select {
+  font: inherit;
+  letter-spacing: inherit;
 }
 
 button:not(:disabled) {
@@ -85,24 +87,41 @@ outline (standalone toolbar actions), ghost (icon buttons, row triggers, Cancel)
 ```
 
 - Cancel, Dismiss, Close and Discard are ghost: no colour, no keycap. Danger only loses data.
+  Symbiote's class is `.button.ghost` (V37: they were text links beside a filled button).
 - One primary per view. A Save that is disabled until a change stays primary, at 50 %.
 - Match the button to its row: never a 32 px button in a 28 px row.
 
 ## Text fields
 
+Decision 246 (V37): a quiet edge at rest, the 3:1 `--edge` on hover, the focus colour and a soft
+ring on focus. The 3:1 edge on every field at rest, with a 2 px outline over it on focus, was what
+made the fields look old. Every field has a visible label.
+
 ```css
 .field {
-  height: 32px;
+  height: 32px;                   /* 28 px in a toolbar or beside 28 px buttons */
   padding: 0 10px;
-  border: 1px solid var(--edge);  /* 3:1: a field's edge must show */
+  border: 1px solid var(--field-line);  /* ~1.5:1 */
   border-radius: 8px;
   background: var(--input-bg);
-  color: var(--text);
   box-shadow: var(--shadow-lift);
+  transition: border-color 150ms, box-shadow 150ms;
 }
-.field:focus-visible { outline: 2px solid var(--focus); outline-offset: -1px; border-color: transparent; }
-textarea.field { height: auto; padding: 8px 10px; line-height: 1.5; }
+.field:hover:not(:focus, :disabled) { border-color: var(--edge); }
+.field:focus-visible { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px var(--ring); }
+.field[aria-invalid='true'] { border-color: var(--error); }
+textarea.field {
+  height: auto;
+  padding: 8px 10px;
+  line-height: 1.45;
+  field-sizing: content;          /* grows with its text: no grip */
+  min-height: calc(3lh + 18px);   /* `field-sizing` ignores `rows`: give their height here */
+  max-height: 50vh;
+  resize: none;
+}
 ```
+
+Mono only for what is literal: a branch name or a prompt in a field is in the text's font.
 
 A search *button* that opens a palette is not a text field: no border,
 `background: color-mix(in srgb, var(--text) 5%, transparent)`, hover 8 %, icon in `--faint`,
@@ -141,6 +160,7 @@ input[type='checkbox']::after {
 }
 input[type='checkbox']:checked { border-color: var(--primary); background: var(--primary); }
 input[type='checkbox']:checked::after { transform: scale(1); }
+input[type='checkbox']:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 ```
 
 A view toggle in a toolbar (the diff's Focus, Context, Type references) reads better as a toggle
@@ -224,9 +244,9 @@ One recipe for every list: the sidenav, the change list, branches, findings, men
 Section header (sidenav "Workspaces", a group "In progress 17"): 32 px, 13 px weight 600 in
 `--muted`, a count after it; its actions (add, filter) as 24 px ghost icon buttons on the right.
 
-Workspace card: 10 px radius, 8 × 10 px padding, transparent 1 px border;
-hover `color-mix(in srgb, var(--raised) 40%, transparent)`; current `--selected` with
-`--selected-line` border and `--shadow-lift`. First line: status dot and name (14 px, 500). Second:
+Workspace card: 10 px radius, 8 × 10 px padding; hover `--hover` and current `--selected`, as
+every row (V37: a hover of `--raised` at 40 % vanished in light, and a border and shadow made the
+current card a box). First line: status dot and name (14 px, 500). Second:
 branch in 13 px `--muted` sans, a repository chip. Third, when there is one: the agent's last line
 in 13 px `--muted`, its time right-aligned in 12 px `--faint`.
 
@@ -355,6 +375,16 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
 - Tooltip (names an icon-only control; never teaches or warns): inverted, `background: var(--text);
   color: var(--bg)`, 8 px radius, 6 × 12 px padding, 13 px text, shown after 400 ms, above with a
   4 px gap; a keycap may trail. Until Symbiote has one, `title` is acceptable.
+- Help (V37, `Help.tsx`): the one way to explain. A 24 px ghost icon button (`HelpIcon`, lucide's
+  circle-help) beside what it explains — a title, a field's name, a submit button. Hover (300 ms)
+  or focus shows the tip, a click keeps it until a click elsewhere or Escape (which the page then
+  does not get). The tip is a popover (`.help-tip`: `--panel`, `--line`, 10 px radius, 10 × 12 px
+  padding, 13 px, at most 340 px wide) drawn on `document.body` and placed `fixed` by `placeTip`
+  (`tips.ts`: under the button, left edges aligned, 8 px inside the window, above when it fits
+  only there). It is always in the document, hidden, as the button's `aria-describedby`.
+  What goes behind it: explanation — what a page or setting is, where something is saved or
+  goes, keys. What stays on the page: states, warnings, errors, notices, loading lines,
+  placeholders, an empty state's one line.
 - Dialog: overlay `--overlay` with `backdrop-filter: blur(2px)`; box `min(512px, 100% - 32px)`
   wide, 20 × 24 px padding, 10 px radius, 1 px `--menu-line`, `--dialog-bg`,
   `backdrop-filter: blur(40px)`, `--dialog-shadow`, faded in over 200 ms; title 16 px weight 600, description 14 px

@@ -474,7 +474,7 @@ function Neighbours({
   return (
     <section>
       <h3>
-        {title} <span className="muted">({items.length})</span>
+        {title} <span className="neighbours-count">{items.length}</span>
       </h3>
       <ul className="neighbours">
         {items.map((item) => (

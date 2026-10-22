@@ -54,7 +54,7 @@ export function CheckoutDialog({
         {note && <p className={blocked ? 'error' : 'dialog-note'}>{note}</p>}
         {error && <pre className="error">{error}</pre>}
         <div className="dialog-buttons">
-          <button type="button" className="link" disabled={running} onClick={onCancel}>
+          <button type="button" className="button ghost" disabled={running} onClick={onCancel}>
             Cancel
           </button>
           <button
