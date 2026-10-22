@@ -1,5 +1,5 @@
 // Symbiote's merger on the page (V26a): what a queued merge's row says and offers. Pure.
-import type { MergeEntry, MergeRegion } from '@symbiote/core';
+import type { MergeCheckRun, MergeEntry, MergeRegion } from '@symbiote/core';
 
 /** How a row is marked: waiting, the person's turn, done, or something went wrong. */
 export type MergeTone = 'wait' | 'you' | 'done' | 'bad';
@@ -17,10 +17,42 @@ export function duration(ms: number): string {
   return `${Math.floor(s / 60)} min ${s % 60} s`;
 }
 
-/** Where a merge is, in a line, and its tone. */
+/** `a`, `a and b`, `a, b and c`. */
+const listed = (words: readonly string[]) =>
+  words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words.at(-1)}`;
+
+/** `its check failed (pnpm check)` for a check that failed; null otherwise. */
+function checkFailed(check: MergeCheckRun | undefined): string | null {
+  if (check?.ok !== false) return null;
+  return `its check failed${check.failed ? ` (${check.failed})` : ''}`;
+}
+
+/**
+ * A failed check, command by command (fix/fix-merger): those before the one that failed passed,
+ * those after it did not run. Null unless it failed and says which command did.
+ */
+export function failedCheck(check: MergeCheckRun): string | null {
+  if (check.ok !== false || !check.failed) return null;
+  const at = check.commands.indexOf(check.failed);
+  const passed = at < 0 ? [] : check.commands.slice(0, at);
+  const skipped = at < 0 ? [] : check.commands.slice(at + 1);
+  return [
+    passed.length > 0 ? `${listed(passed)} passed` : null,
+    `${check.failed} failed${check.ms === undefined ? '' : ` after ${duration(check.ms)}`}`,
+    skipped.length > 0 ? `${listed(skipped)} did not run` : null,
+  ]
+    .filter(Boolean)
+    .join('; ');
+}
+
+/**
+ * Where a merge is, in a line, and its tone. A resolution's failed check is said, not taken for
+ * a wrong resolution: the person reads what failed and decides (fix/fix-merger).
+ */
 export function mergeState(entry: MergeEntry): { text: string; tone: MergeTone } {
   const { check } = entry;
-  const took = check?.ms === undefined ? null : `checked in ${duration(check.ms)}`;
+  const failed = checkFailed(check);
+  const took = failed ?? (check?.ms === undefined ? null : `checked in ${duration(check.ms)}`);
   switch (entry.state) {
     case 'queued':
       return {
@@ -42,7 +74,12 @@ export function mergeState(entry: MergeEntry): { text: string; tone: MergeTone }
             text: `Checked in ${duration(check.ms ?? 0)}: ready to land${entry.message ? ` · ${entry.message}` : ''}`,
             tone: 'you',
           }
-        : { text: `Merged, not checked: ${entry.message ?? 'Land when you have'}`, tone: 'you' };
+        : failed
+          ? {
+              text: `Approved, ${failed}: ready to land${entry.message ? ` · ${entry.message}` : ''}`,
+              tone: 'you',
+            }
+          : { text: `Merged, not checked: ${entry.message ?? 'Land when you have'}`, tone: 'you' };
     case 'landed': {
       const pushed = entry.pushed
         ? entry.pushed.ok
@@ -62,15 +99,14 @@ export function mergeState(entry: MergeEntry): { text: string; tone: MergeTone }
         ]
           .filter(Boolean)
           .join(', ');
-        const checked =
-          check?.ok === false
-            ? ` · its check failed: ${check.failed ?? ''}`
-            : check?.ok
-              ? ` · checked in ${duration(check.ms ?? 0)}: review it`
-              : ': review it';
+        const checked = failed
+          ? ` · ${failed}: review it`
+          : check?.ok
+            ? ` · checked in ${duration(check.ms ?? 0)}: review it`
+            : ': review it';
         return {
           text: `Resolved ${plural(regions.length, 'region')} (${by})${checked}`,
-          tone: check?.ok === false ? 'bad' : 'you',
+          tone: 'you',
         };
       }
       if (entry.resolution?.needsYou && entry.message) {
@@ -124,14 +160,13 @@ export const toReview = (entry: MergeEntry) =>
   (entry.resolution?.regions.length ?? 0) > 0;
 
 /**
- * What a row offers: Land when ready; Approve (unless its check failed) and Request changes on a
- * resolution; Retry when it stopped; Remove unless it runs.
+ * What a row offers: Land when ready; Approve and Request changes on a resolution, its check
+ * passed or failed; Retry when it stopped; Remove unless it runs.
  */
 export function mergeActions(entry: MergeEntry): MergeAction[] {
   if (['merging', 'resolving', 'checking'].includes(entry.state)) return [];
   return [
-    ...(toReview(entry) && entry.check?.ok !== false ? (['approve'] as const) : []),
-    ...(toReview(entry) ? (['change'] as const) : []),
+    ...(toReview(entry) ? (['approve', 'change'] as const) : []),
     ...(entry.state === 'ready' ? (['land'] as const) : []),
     ...(entry.state === 'failed' || entry.state === 'needs-you' ? (['retry'] as const) : []),
     'remove',

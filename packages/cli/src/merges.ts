@@ -205,7 +205,7 @@ export interface Merger {
   land(id: string): Promise<MergeEntry>;
   /** Queues a failed or stopped merge again. */
   retry(id: string): Promise<MergeEntry>;
-  /** Approves the merger agent's resolution (V26c): the merge lands. */
+  /** Approves the merger agent's resolution (V26c): the merge lands, whatever its check said. */
   approve(id: string): Promise<MergeEntry>;
   /** Asks the merger agent again, with the person's words on its resolution (V26c). */
   requestChanges(id: string, comments: string): Promise<MergeEntry>;
@@ -790,12 +790,7 @@ export function merger(
       if (entry.state !== 'needs-you' || !entry.resolution || !entry.merge) {
         throw new MergeRefused(`${entry.branch} has no resolution: nothing to approve`, 409);
       }
-      if (entry.check?.ok === false) {
-        throw new MergeRefused(
-          `its check failed (${entry.check.failed ?? ''}): request changes, or fix it on the branch`,
-          409,
-        );
-      }
+      // A failed check does not refuse it: the person read what failed and decided (decision 242).
       const after = await landEntry(await set(id, { state: 'ready', message: undefined }));
       kick();
       return after;

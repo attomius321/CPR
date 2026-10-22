@@ -719,6 +719,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
 function mergeLine(entry: MergeEntry): string {
   const check = entry.check;
   const time = check?.ms === undefined ? '' : ` (${(check.ms / 1000).toFixed(1)} s)`;
+  // An approved resolution lands whatever its check said; a failed one is still said.
+  const failed = check?.ok === false ? `; its check failed: ${check.failed ?? ''}` : '';
   switch (entry.state) {
     case 'queued':
       return `queued: ${entry.head.slice(0, 7)} into ${entry.into}${entry.message ? ` (${entry.message})` : ''}`;
@@ -735,12 +737,7 @@ function mergeLine(entry: MergeEntry): string {
         const tokens = entry.resolution?.usage
           ? `, ${entry.resolution.usage.input} tokens in, ${entry.resolution.usage.output} out`
           : '';
-        const checked =
-          check?.ok === false
-            ? `; its check failed: ${check.failed ?? ''}`
-            : check?.ok
-              ? `; checked${time}`
-              : '';
+        const checked = failed || (check?.ok ? `; checked${time}` : '');
         const lines = regions.map(
           (r) =>
             `  ${r.path}:${r.line}${r.note ? ` — ${r.note}` : ''}\n${r.text.replace(/^/gm, '    | ')}`,
@@ -750,14 +747,14 @@ function mergeLine(entry: MergeEntry): string {
       return `needs you: ${entry.message ?? ''}${entry.conflicts ? `\n  ${entry.conflicts.join('\n  ')}` : ''}`;
     }
     case 'ready':
-      return `ready to land${time}${entry.message ? `: ${entry.message}` : ''}`;
+      return `ready to land${time}${entry.message ? `: ${entry.message}` : ''}${failed}`;
     case 'landed': {
       const pushed = entry.pushed
         ? entry.pushed.ok
           ? `, pushed to ${entry.pushed.remote}`
           : `; not pushed: ${entry.pushed.error}`
         : '';
-      return `landed: ${entry.into} is at ${entry.merge?.slice(0, 7) ?? entry.head.slice(0, 7)}${time}${pushed}${entry.message ? ` (${entry.message})` : ''}`;
+      return `landed: ${entry.into} is at ${entry.merge?.slice(0, 7) ?? entry.head.slice(0, 7)}${time}${pushed}${failed}${entry.message ? ` (${entry.message})` : ''}`;
     }
     case 'failed':
       return check?.ok === false

@@ -1,6 +1,7 @@
 import type { MergeEntry } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
+  failedCheck,
   mergeActions,
   mergeLabel,
   mergeLive,
@@ -82,6 +83,7 @@ describe('a resolution to review (V26c)', () => {
       text: 'Resolved 1 region (sonnet, 3.2K tokens) · checked in 4.2 s: review it',
       tone: 'you',
     });
+    // A failed check is said, not taken for a wrong resolution: it is still the person's turn.
     expect(
       mergeState(
         entry({
@@ -90,8 +92,11 @@ describe('a resolution to review (V26c)', () => {
           resolution,
           check: { ...check, ok: false, failed: 'pnpm check' },
         }),
-      ).text,
-    ).toBe('Resolved 1 region (sonnet) · its check failed: pnpm check');
+      ),
+    ).toEqual({
+      text: 'Resolved 1 region (sonnet) · its check failed (pnpm check): review it',
+      tone: 'you',
+    });
     expect(
       mergeState(
         entry({
@@ -104,14 +109,58 @@ describe('a resolution to review (V26c)', () => {
     ).toEqual({ text: 'The merger agent: a: two values', tone: 'bad' });
   });
 
-  it('offers Approve and Request changes on a resolution; no Approve when its check failed', () => {
+  it('offers Approve and Request changes on a resolution, its check passed or failed', () => {
     const resolved = entry({ state: 'needs-you', merge: M, resolution });
     expect(mergeActions(resolved)).toEqual(['approve', 'change', 'retry', 'remove']);
     expect(mergeActions({ ...resolved, check: { ...check, ok: false } })).toEqual([
+      'approve',
       'change',
       'retry',
       'remove',
     ]);
+  });
+
+  it('keeps saying the check failed once an approved resolution is ready or landed', () => {
+    const failed = { ...check, ok: false, ms: 151_000, failed: 'pnpm check' };
+    expect(
+      mergeState(
+        entry({
+          state: 'ready',
+          merge: M,
+          resolution,
+          check: failed,
+          message: 'main was not moved: local changes',
+        }),
+      ),
+    ).toEqual({
+      text: 'Approved, its check failed (pnpm check): ready to land · main was not moved: local changes',
+      tone: 'you',
+    });
+    expect(mergeState(entry({ state: 'landed', merge: M, resolution, check: failed }))).toEqual({
+      text: 'Landed: main is at mmmmmmm · its check failed (pnpm check)',
+      tone: 'done',
+    });
+  });
+});
+
+describe('failedCheck (fix/fix-merger)', () => {
+  const commands = ['pnpm install', 'pnpm check', 'pnpm build', 'pnpm test:e2e'];
+  const run = { commands, source: 'symbiote/config.json (merge.checks)' };
+
+  it('says which commands passed, which failed and after how long, and which did not run', () => {
+    expect(failedCheck({ ...run, ok: false, ms: 151_000, failed: 'pnpm test:e2e' })).toBe(
+      'pnpm install, pnpm check and pnpm build passed; pnpm test:e2e failed after 2 min 31 s',
+    );
+    expect(failedCheck({ ...run, ok: false, ms: 40_000, failed: 'pnpm check' })).toBe(
+      'pnpm install passed; pnpm check failed after 40.0 s; pnpm build and pnpm test:e2e did not run',
+    );
+    expect(failedCheck({ ...check, ok: false, failed: 'pnpm check' })).toBe('pnpm check failed');
+  });
+
+  it('says nothing of a check that passed, runs, or does not name what failed', () => {
+    expect(failedCheck({ ...run, ok: true, ms: 1000 })).toBeNull();
+    expect(failedCheck(run)).toBeNull();
+    expect(failedCheck({ ...run, ok: false })).toBeNull();
   });
 });
 

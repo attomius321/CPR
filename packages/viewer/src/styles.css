@@ -4223,6 +4223,17 @@ button.workspace-about {
   margin-left: auto;
 }
 
+/* A failed check, command by command, and the toggle for its output. */
+.merge-run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 .merge-output {
   max-height: 240px;
   margin: 6px 0 0;
