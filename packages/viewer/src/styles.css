@@ -4219,8 +4219,14 @@ button.workspace-about {
 
 .merge-row-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-left: auto;
+}
+
+/* Three actions on a phone: a button goes to the next line rather than break its label. */
+.merge-row-actions .button {
+  white-space: nowrap;
 }
 
 /* A failed check, command by command, and the toggle for its output. */
