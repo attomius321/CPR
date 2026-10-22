@@ -4459,6 +4459,9 @@ two focus specs (`shell.spec.ts:119`, `:162`), a key press lost under load. Alte
 failed 8 of 30 on `main`, 7 of 30 here. The move's first version asked git on every refresh of
 the workspaces; it now asks only when the former folder is there.
 
+Merged into main (2026-10-21) by Symbiote's merger, from the approved `6d0275d`, no conflicts
+(`main` had not moved since the branch).
+
 ## V32 — text one can read: a type scale, one step up (2026-10-21, branch `feature/font-too-small`)
 
 Asked: "The font-size is too small to read ... My eyes are hurting". Every text one step larger,
@@ -4498,6 +4501,9 @@ Bitwarden's graph, panel and map; the desktop start page (900×640, with a stub 
 verified: the desktop app itself (Electron) and other browsers and systems; real agents in the
 terminal; the README's screenshots, not retaken.
 
+Merged into main (2026-10-21) by Symbiote's merger, from the approved `eb7b076`, no conflicts
+(`main` had not moved since the branch).
+
 ## Fix — Merge into names no branch; the dropdown does (2026-10-21, branch `fix/fix-merge-into-main-button`)
 
 The person: the button read "Merge into main" beside a dropdown of branches preselected with the
@@ -4517,6 +4523,9 @@ merges, lands, and checks `release`'s merge parents and that `main` did not move
 clicked "Merge into main" now click "Merge into". `pnpm check`: 1,110 tests; build; e2e 173 of
 173 twice (a first full run failed once without naming a test in the summary kept; not
 reproduced).
+
+Merged into main (2026-10-22) by Symbiote's merger, from the approved `4d544c8`, no conflicts
+(`main` had not moved since the branch).
 
 ## Feature — the usage bars' colours back (2026-10-22, branch `feature/bottom-statuses-of-models`)
 
@@ -4538,6 +4547,9 @@ red first on the green checks only. `--added` against `--raised` was already in 
 `pnpm check`: 1,110 tests; build; e2e 174 of 174. Screenshots of the status bar at 1440×900,
 dark and light, at 59/84 % (green, amber) and 100/30 % (red, green). Not verified: other browsers;
 real usage numbers (the spec's fake endpoint only).
+
+Merged into main (2026-10-22) by Symbiote's merger, from the approved `b73a965`, no conflicts
+(`main` had not moved since the branch).
 
 ## V33 — start a workspace from a branch (2026-10-22, branch `feature/start-a-workspace-from-branch`)
 
@@ -4563,6 +4575,9 @@ branch, a History row's commit). `pnpm check` 1,113 tests, `pnpm build`, e2e 175
 keyboard test's Tab order now includes Start from). Screenshots at 1440×900 dark and light and
 390×844. Not verified: a real agent from a non-default branch; a 1,591-branch select in a
 browser.
+
+Merged into main (2026-10-22) by Symbiote's merger, from the approved `5c82f01`; `main` had moved
+since the branch: a conflict in `docs/JOURNAL.md`, resolved in the merge.
 
 ## V34 — panels one can resize: the sidenav and a workspace's changes (2026-10-22, branch `feature/resize-left-right-panels`)
 
@@ -4593,6 +4608,9 @@ e2e 180 of 180. `/history` first contentful paint, 6 rounds back to back: median
 builds. Screenshots at 1440×900, dark and light: defaults, narrowest, widest, the handle on hover.
 Not verified: the desktop app (Electron), other browsers, touch.
 
+Merged into main (2026-10-22) by Symbiote's merger, from the approved `ca57f97`; `main` had moved
+since the branch: a conflict in `docs/JOURNAL.md` and `docs/PLAN.md`, both resolved in the merge.
+
 ## Chore — the merge page remake, built (2026-10-22, branch `chore/lost-feature`)
 
 The person: "There was a remake of the merger page… that seems to be lost." It was never built.
@@ -4619,6 +4637,9 @@ in the symbiote-style tokens.
 dropped lines, the conflict folded, the menu). `pnpm check` 1,119 tests; build; e2e 176 of 176.
 Screenshots at 1440×900 dark and light and 390 px wide. Not verified: a real merger agent's
 resolution (the e2e's fake answers only); a region of hundreds of lines.
+
+Merged into main (2026-10-22) by Symbiote's merger, from the approved `e6588ca`; `main` had moved
+since the branch: a conflict in `docs/JOURNAL.md`, resolved in the merge.
 
 ## V35 spike — what a read-only agent in the checkout takes (2026-10-22, branch `feature/scout-an-agent-to-ask`)
 
@@ -4706,6 +4727,9 @@ up: the clone, both conversations (the Claude Code session removed, its transcri
 Codex thread archived), the `main` build. Not verified: Codex's own terminal on Scout's thread in
 the page; macOS and Windows; `regression-check` (no analysis code changed).
 
+Merged into main (2026-10-22) by Symbiote's merger, from the approved `8fb3152`, no conflicts
+(`main` had not moved since the branch).
+
 ## Fix — Scout starts at an effort level; every effort setter a stepper (2026-10-22, branch `fix/scout-effort-level`)
 
 The person: "I should have an option to put scout on a effort level from the begining of the
@@ -4763,6 +4787,9 @@ clone and the server gone, `main`'s worktree removed. Not verified: a real Codex
 level (its first-turn level is in the unit test on the fake app server, as V30b's was); Firefox's
 range pseudo-elements (styled, not run); macOS and Windows; `regression-check` (no analysis code).
 
+Merged into main (2026-10-22) by Symbiote's merger, from the approved `a6182a3`, no conflicts
+(`main` had not moved since the branch).
+
 ## Fix — a resolution's failed check is said, not taken for a wrong one; Check again (2026-10-22, branch `fix/fix-merger`)
 
 The person approved `feature/agent-terminal-accept-images` (`9a7c9dd`) into `main` (`43924ec`).
@@ -4816,6 +4843,9 @@ Request changes and Check again are offered. No horizontal overflow and no page 
 Not verified: a real merge with a real flaky check through Check again (the e2e uses a check that
 passes once a file exists); `regression-check` (no analysis code: core gained one optional field
 on a queue type).
+
+Merged into main (2026-10-22) by Symbiote's merger, from the approved `c258eb5`, no conflicts
+(`main` had not moved since the branch).
 
 ## V36 spike — what the agents take as an image, through Symbiote's terminals (2026-10-22, branch `feature/agent-terminal-accept-images`)
 
@@ -4883,6 +4913,9 @@ Claude Code's records (`claude purge`), Codex's trust entries, the repository, t
 Not verified: a screenshot from the Windows clipboard in Symbiote's window (WSLg); JPEG, GIF and
 WebP with the real agents; macOS and Windows; Firefox and Safari; `/history` first paint.
 
+Merged into main (2026-10-22) by Symbiote's merger, from the approved `9a7c9dd`; `main` had moved
+since the branch: a conflict in `docs/JOURNAL.md`, resolved in the merge.
+
 ## Fix — Symbiote's git reads take no optional lock (2026-10-22, branch `fix/background-status-no-lock`)
 
 The merger's check on `feature/agent-terminal-accept-images` (merge `e80530e`, its JOURNAL.md
@@ -4913,6 +4946,9 @@ on `main`, and now stay byte for byte the same. `pnpm check` 1,252 tests; build;
 verified: that the race is gone from the e2e suite (seen twice in this journal, V20a and this
 check; the test shows its cause instead); `regression-check` (the analysis' git calls take no
 optional lock, so their output cannot change).
+
+Merged into main (2026-10-22) by Symbiote's merger, from the approved `7fdd235`; `main` had moved
+since the branch: a conflict in `docs/JOURNAL.md`, resolved in the merge.
 
 ## V37 spike — what still looks dated, page by page (2026-10-22, branch `feature/ui-improvements`)
 
@@ -4986,6 +5022,9 @@ on this repository's `e659928..7c223d4` (1,975 symbols, 4,124 edges): first pain
 alternated: first paint 60–68 / 60–68 ms, first rows 152–259 / 157–183 ms. Screenshots of 35 states of every page, dark and light, at 1440 × 900 and 1×,
 before and after. Not verified: the Electron window on WSLg; Bitwarden's graph (no clone here);
 Windows and macOS rendering; real agents in the restyled pages.
+
+Merged into main (2026-10-23) by Symbiote's merger, from the approved `76c6920`, no conflicts
+(`main` had not moved since the branch).
 
 ## V38 spike — what the agents print in a terminal (2026-10-22, branch `feature/clickable-paths-from-agent-terminal`)
 
@@ -5069,3 +5108,6 @@ main checkout's file outside the worktree not linked; screenshots of the hint da
 verified: a real VS Code window; macOS and Windows; the desktop app's new tab. Cleaned up: the
 workspace, Scout's conversation, `claude purge` of the folder, Codex's two trust entries, the
 repository.
+
+Merged into main (2026-10-23) by Symbiote's merger, from the approved `a6af371`, no conflicts (the
+branch had merged `main` in first).
