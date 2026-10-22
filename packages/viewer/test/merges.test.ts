@@ -109,15 +109,33 @@ describe('a resolution to review (V26c)', () => {
     ).toEqual({ text: 'The merger agent: a: two values', tone: 'bad' });
   });
 
-  it('offers Approve and Request changes on a resolution, its check passed or failed', () => {
+  it('offers Approve and Request changes on a resolution, and Check again when its check failed', () => {
     const resolved = entry({ state: 'needs-you', merge: M, resolution });
     expect(mergeActions(resolved)).toEqual(['approve', 'change', 'retry', 'remove']);
-    expect(mergeActions({ ...resolved, check: { ...check, ok: false } })).toEqual([
+    expect(mergeActions({ ...resolved, check: { ...check, ok: true } })).toEqual([
       'approve',
       'change',
       'retry',
       'remove',
     ]);
+    expect(mergeActions({ ...resolved, check: { ...check, ok: false } })).toEqual([
+      'approve',
+      'change',
+      'recheck',
+      'retry',
+      'remove',
+    ]);
+    // A clean merge whose check failed: Retry merges and checks it again, no agent asked.
+    expect(
+      mergeActions(entry({ state: 'failed', merge: M, check: { ...check, ok: false } })),
+    ).toEqual(['retry', 'remove']);
+  });
+
+  it('says a resolution waits for its check to run again', () => {
+    expect(mergeState(entry({ state: 'queued', merge: M, resolution, recheck: true }))).toEqual({
+      text: 'Queued: its check runs again on mmmmmmm',
+      tone: 'wait',
+    });
   });
 
   it('keeps saying the check failed once an approved resolution is ready or landed', () => {

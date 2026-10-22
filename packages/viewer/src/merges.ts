@@ -55,6 +55,9 @@ export function mergeState(entry: MergeEntry): { text: string; tone: MergeTone }
   const took = failed ?? (check?.ms === undefined ? null : `checked in ${duration(check.ms)}`);
   switch (entry.state) {
     case 'queued':
+      if (entry.recheck && entry.merge) {
+        return { text: `Queued: its check runs again on ${short(entry.merge)}`, tone: 'wait' };
+      }
       return {
         text: `Queued: ${short(entry.head)} into ${entry.into}${entry.message ? ` (${entry.message})` : ''}`,
         tone: 'wait',
@@ -151,7 +154,7 @@ export function mergeLabel(entry: MergeEntry): string {
   }
 }
 
-export type MergeAction = 'land' | 'approve' | 'change' | 'retry' | 'remove';
+export type MergeAction = 'land' | 'approve' | 'change' | 'recheck' | 'retry' | 'remove';
 
 /** Whether a merge waits for the person's review of the merger agent's resolution (V26c). */
 export const toReview = (entry: MergeEntry) =>
@@ -161,12 +164,13 @@ export const toReview = (entry: MergeEntry) =>
 
 /**
  * What a row offers: Land when ready; Approve and Request changes on a resolution, its check
- * passed or failed; Retry when it stopped; Remove unless it runs.
+ * passed or failed, and Check again when it failed; Retry when it stopped; Remove unless it runs.
  */
 export function mergeActions(entry: MergeEntry): MergeAction[] {
   if (['merging', 'resolving', 'checking'].includes(entry.state)) return [];
   return [
     ...(toReview(entry) ? (['approve', 'change'] as const) : []),
+    ...(toReview(entry) && entry.check?.ok === false ? (['recheck'] as const) : []),
     ...(entry.state === 'ready' ? (['land'] as const) : []),
     ...(entry.state === 'failed' || entry.state === 'needs-you' ? (['retry'] as const) : []),
     'remove',

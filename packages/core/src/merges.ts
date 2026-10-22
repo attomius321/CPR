@@ -92,6 +92,8 @@ export interface MergeEntry {
   resolution?: MergeResolution;
   /** The person's words on an earlier resolution, for the next run, and that run's texts. */
   again?: { comments: string; previous: string[] };
+  /** Queued to run its failed check again on `merge`, its resolution kept (fix/fix-merger). */
+  recheck?: true;
   /** Absent: none was found or set, and the merge waits for Land. */
   check?: MergeCheckRun;
   /** Why it waits or failed, in git's words where git said it. */

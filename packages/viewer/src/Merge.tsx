@@ -20,6 +20,7 @@ const ACTION_NAMES: Record<MergeAction, string> = {
   land: 'Land',
   approve: 'Approve',
   change: 'Request changes',
+  recheck: 'Check again',
   retry: 'Retry',
   remove: 'Remove',
 };
@@ -33,8 +34,8 @@ export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | 
 /**
  * A merge in Symbiote's queue (V26a), in the shell's main area (V29a; a row of the Workspaces
  * page's Merging section before): its branch, target and state, the merger agent's resolution to
- * review region by region, the end of a failed check's output, and Land, Approve or Request
- * changes, with Retry and Remove under "⋯".
+ * review region by region, what a failed check ran and the end of its output, and Land, Approve,
+ * Request changes or Check again, with Retry and Remove under "⋯".
  */
 export function MergeView({ branch }: { branch: string }) {
   const { merges } = useWorkspaces();

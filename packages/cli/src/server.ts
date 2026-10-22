@@ -363,6 +363,9 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         if (url.pathname === '/api/merges/approve') {
           return written(req, res, parseMergeId, (id) => answer(res, () => merges.approve(id)));
         }
+        if (url.pathname === '/api/merges/recheck') {
+          return written(req, res, parseMergeId, (id) => answer(res, () => merges.recheck(id)));
+        }
         if (url.pathname === '/api/merges/request-changes') {
           return written(req, res, parseMergeChanges, ({ id, comments }) =>
             answer(res, () => merges.requestChanges(id, comments)),

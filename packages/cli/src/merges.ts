@@ -209,6 +209,8 @@ export interface Merger {
   approve(id: string): Promise<MergeEntry>;
   /** Asks the merger agent again, with the person's words on its resolution (V26c). */
   requestChanges(id: string, comments: string): Promise<MergeEntry>;
+  /** Runs a resolution's failed check again on the same merge; the agent is not asked. */
+  recheck(id: string): Promise<MergeEntry>;
   /** Takes an entry out of the queue (not while it merges or checks). */
   remove(id: string): Promise<void>;
   /** Resolves once nothing in the queue can go further. */
@@ -294,6 +296,7 @@ export function merger(
     resolution: undefined,
     check: undefined,
     message: undefined,
+    recheck: undefined,
   };
 
   /** A branch's tip: the local branch's, else a remote's (`origin` first); null when none. */
@@ -376,6 +379,13 @@ export function merger(
   /** Merges, checks and, when the check passed, lands one entry. */
   async function mergeOne(entry: MergeEntry): Promise<void> {
     const { id } = entry;
+    if (entry.recheck && entry.merge && entry.base) {
+      // The same merge checked again: another merge may have used the worktree since.
+      await resetMergeWorktree(repo, worktree, entry.merge);
+      await set(id, { recheck: undefined, check: undefined });
+      await checkMerge(id, entry.base, entry.merge, true);
+      return;
+    }
     const refs = await listRefs(repo);
     const tip = tipOf(refs, entry.into);
     if (!tip) {
@@ -808,6 +818,18 @@ export function merger(
         state: 'queued',
         again: { comments, previous: regions.map((r) => r.text) },
       });
+      kick();
+      return after;
+    },
+
+    async recheck(id) {
+      const entry = await entryOf(id);
+      const resolved =
+        entry.state === 'needs-you' && entry.merge && (entry.resolution?.regions.length ?? 0) > 0;
+      if (!resolved || entry.check?.ok !== false) {
+        throw new MergeRefused(`${entry.branch} has no failed check to run again`, 409);
+      }
+      const after = await set(id, { state: 'queued', recheck: true, message: undefined });
       kick();
       return after;
     },
