@@ -69,8 +69,11 @@ export function insertAt(
   return { text: text.slice(0, start) + insert + text.slice(end), cursor: start + insert.length };
 }
 
-/** `?prompt=<key>`: the prompt open, when there is one by that key; else the first. */
-export function promptOfUrl(search: string, keys: readonly PromptKey[]): PromptKey | null {
+/** `?prompt=<key>`: the prompt (or setting) open, when there is one by that key; else the first. */
+export function promptOfUrl<K extends string = PromptKey>(
+  search: string,
+  keys: readonly K[],
+): K | null {
   const asked = new URLSearchParams(search).get('prompt');
   return keys.find((key) => key === asked) ?? keys[0] ?? null;
 }

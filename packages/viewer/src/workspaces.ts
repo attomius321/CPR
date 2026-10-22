@@ -74,7 +74,9 @@ export const PERMISSION_LABELS: Record<PermissionMode, string> = {
  * level when the agent says it (Codex), not otherwise (Claude Code, decision 210) — then the
  * levels it lists, in its words. None when Symbiote could not read its levels.
  */
-export function effortChoices(agent: AgentOption): { value: string; label: string }[] {
+export function effortChoices(
+  agent: Pick<AgentOption, 'kind' | 'efforts'>,
+): { value: string; label: string }[] {
   if (!agent.efforts) return [];
   const own = agent.efforts.default ? ` (${agent.efforts.default})` : '';
   return [
@@ -84,7 +86,10 @@ export function effortChoices(agent: AgentOption): { value: string; label: strin
 }
 
 /** The level picked, kept when the agent picked now takes it too; else its default. */
-export function keptEffort(effort: string | undefined, agent: AgentOption): string | undefined {
+export function keptEffort(
+  effort: string | undefined,
+  agent: Pick<AgentOption, 'efforts'>,
+): string | undefined {
   return effort && agent.efforts?.levels.includes(effort) ? effort : undefined;
 }
 

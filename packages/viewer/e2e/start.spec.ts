@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
+import { dragTo, stops } from './stepper.js';
 import { serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // Start a workspace as a page (V30a): /start in the main area, right of the sidenav; the brief and
@@ -30,7 +31,7 @@ const startLink = (page: Page) => sidenav(page).getByRole('link', { name: 'Start
 const start = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
 const title = (page: Page) => start(page).getByRole('textbox', { name: 'Title' });
 const goal = (page: Page) => start(page).getByRole('textbox', { name: 'Goal' });
-const effort = (page: Page) => start(page).getByLabel('Effort');
+const effort = (page: Page) => start(page).getByRole('slider', { name: 'Effort' });
 const from = (page: Page) => start(page).getByLabel('Start from');
 const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
 
@@ -164,28 +165,33 @@ test("from a diff, the sidenav's Start and n load /start", async ({ page }) => {
   await expect(page).toHaveURL(new URL('/start', diff.url).href);
 });
 
-// The agent's effort (V30b): its own default, or a level it lists, for the session it starts.
+// The agent's effort (V30b): its own default, or a level it lists, for the session it starts; on a
+// stepper, a stop for each (fix/scout-effort-level).
 test("Effort: the agent's default or a level it lists; a level reaches Claude Code, and the Brief tab says it", async ({
   page,
 }) => {
   const symbiote = await serve();
   await page.goto(`${symbiote.url}start`);
-  await expect(effort(page).locator('option')).toHaveText([
-    "Claude Code's default",
+  await expect(stops(effort(page))).toHaveText([
+    'Default',
     'low',
     'medium',
     'high',
     'xhigh',
     'max',
   ]);
-  await expect(effort(page)).toHaveValue('');
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', "Claude Code's default");
   await title(page).fill('Add clamp');
   await goal(page).fill('Clamp a value.');
-  await effort(page).selectOption('high');
+  // A stop's word picks it.
+  await stops(effort(page))
+    .filter({ hasText: /^high$/ })
+    .click();
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
   // Leaving keeps it, as the rest of the form.
   await title(page).press('Escape');
   await startLink(page).click();
-  await expect(effort(page)).toHaveValue('high');
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
   await goal(page).press('Control+Enter');
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-clamp`);
   const args = symbiote.calls().at(-1)?.args ?? [];
@@ -201,7 +207,7 @@ test("Effort: the agent's default or a level it lists; a level reaches Claude Co
 
   // For that session only: the next workspace starts at the default, and passes no level.
   await startLink(page).click();
-  await expect(effort(page)).toHaveValue('');
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', "Claude Code's default");
   await title(page).fill('Add round');
   await goal(page).fill('Round a value.');
   await goal(page).press('Control+Enter');
@@ -214,19 +220,24 @@ test("Effort for Codex on its app server: its model's levels and its default; th
 }) => {
   const symbiote = await serve({ codex: true, appServer: true });
   await page.goto(`${symbiote.url}start`);
-  await effort(page).selectOption('high');
+  await dragTo(page, effort(page), 3);
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
   // Codex takes high too: kept when the agent changes; its default named with its level.
   await start(page).getByLabel('Agent').selectOption({ label: 'Codex' });
-  await expect(effort(page)).toHaveValue('high');
-  await expect(effort(page).locator('option')).toHaveText([
-    "Codex's default (medium)",
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
+  await expect(stops(effort(page))).toHaveText([
+    'Default',
     'low',
     'medium',
     'high',
     'xhigh',
     'max',
   ]);
-  await effort(page).selectOption('low');
+  await expect(stops(effort(page)).first()).toHaveAttribute('title', "Codex's default (medium)");
+  await effort(page).press('Home');
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', "Codex's default (medium)");
+  await effort(page).press('ArrowRight');
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'low');
   await title(page).fill('Add clamp');
   await goal(page).fill('Clamp a value.');
   await goal(page).press('Control+Enter');

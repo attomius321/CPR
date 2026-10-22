@@ -151,6 +151,43 @@ A switch (an on/off setting): track 36 × 20 px, round, off `color-mix(in srgb, 
 transparent)` with a 1 px `--edge` border (Symbiote's 3:1 for a control's edge), on `var(--text)`;
 thumb 14 px, `var(--bg)`, `--shadow-lift`, moved 16 px when on.
 
+## Stepper (one of a few ordered levels)
+
+An agent's effort (`EffortStepper.tsx`): a choice among a handful of ordered levels, dragged.
+Keep the browser's `<input type="range">` (drag, arrows, Home/End, the slider role) with
+`aria-valuetext` naming the level; draw the rail and its stops behind it, and the stops' words
+under it, clickable. Neutral: no fill when the first stop is not "less" (an agent's own level).
+
+```css
+.effort-rail {                 /* behind the input: centred on the handle's line */
+  position: absolute; top: 6px; left: 8px; right: 8px; height: 4px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
+}
+.effort-rail > span {          /* a dot per stop, at 100% * i / last */
+  position: absolute; top: -1px; width: 6px; height: 6px; margin-left: -3px;
+  border-radius: 9999px; background: var(--faint);
+}
+.effort-range { appearance: none; height: 16px; background: transparent; }
+.effort-range::-webkit-slider-thumb {        /* and ::-moz-range-thumb */
+  appearance: none; width: 16px; height: 16px; border-radius: 9999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--edge), var(--shadow-lift);
+  cursor: grab;
+}
+.effort-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--focus);
+}
+.effort-stops > span {         /* 12 px --muted words; the current one --text, 500 */
+  position: absolute; transform: translateX(-50%);
+}
+```
+
+The handle's centre runs half its width in from either end: place the dots and words on that
+line, and keep the first and last words inside the edges (`translateX(-8px)`,
+`translateX(calc(8px - 100%))`). Under `.workspace-field input` (a text field's rule) the range
+input needs a more specific selector to drop the border, padding and shadow.
+
 ## Rows and lists
 
 One recipe for every list: the sidenav, the change list, branches, findings, menus' items.

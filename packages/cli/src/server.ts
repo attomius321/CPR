@@ -25,6 +25,7 @@ import {
   type RefList,
   type RepoStatus,
   type ScoutAsk,
+  type ScoutEffortChange,
   type ScoutTerminalRequest,
   type WorkKind,
 } from '@symbiote/core';
@@ -324,6 +325,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         if (url.pathname === '/api/scout/terminal') {
           return written(req, res, parseScoutTerminal, (request) =>
             answer(res, () => scout.terminal(request)),
+          );
+        }
+        // The levels, read where a stepper shows them (Codex's start its daemon); the project's.
+        if (url.pathname === '/api/scout/efforts') return read(req, res, () => scout.efforts());
+        if (url.pathname === '/api/scout/effort') {
+          return written(req, res, parseScoutEffort, (change) =>
+            answer(res, () => scout.setEffort(change)),
           );
         }
       }
@@ -1154,14 +1162,32 @@ function parseWorkspaceTerminal(text: string): WorkspaceTerminalRequest {
   return { branch: value.branch, ...size };
 }
 
-/** `{ text, agent? }`: a question for Scout (V35). */
+/** `{ text, agent?, effort? }`: a question for Scout (V35). */
 function parseScoutAsk(text: string): ScoutAsk {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   if (typeof value?.text !== 'string') throw new Error('text: the question');
   if (value.agent !== undefined && value.agent !== 'claude' && value.agent !== 'codex') {
     throw new Error('agent: claude or codex');
   }
-  return { text: value.text, ...(value.agent ? { agent: value.agent } : {}) };
+  const { effort } = value;
+  if (effort !== undefined && effort !== null && typeof effort !== 'string') {
+    throw new Error("effort: a level, as high, or null for the agent's own");
+  }
+  return {
+    text: value.text,
+    ...(value.agent ? { agent: value.agent } : {}),
+    ...(effort === undefined ? {} : { effort }),
+  };
+}
+
+/** `{ effort }`: Scout's level in the project's config, or null for each agent's own. */
+function parseScoutEffort(text: string): ScoutEffortChange {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  const effort = value?.effort;
+  if (effort !== null && typeof effort !== 'string') {
+    throw new Error("effort: a level, as high, or null for each agent's own");
+  }
+  return { effort };
 }
 
 /** `{ cols, rows }`: a terminal on Scout's session (V35). */

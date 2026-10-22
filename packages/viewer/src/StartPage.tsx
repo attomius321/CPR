@@ -37,6 +37,7 @@ import {
 import { getJson, postJson } from './http.js';
 import { shortSha } from './commits.js';
 import { ChevronIcon } from './icons.js';
+import { EffortStepper } from './EffortStepper.js';
 import { reloadWorkspaces } from './useWorkspaces.js';
 
 /** How long typing pauses before the draft is saved. */
@@ -572,20 +573,16 @@ function StartForm({
                 )}
                 {agent.account && <p className="dialog-note start-account">{agent.account}</p>}
                 {efforts.length > 0 && (
-                  <label className="workspace-field">
+                  <div className="workspace-field">
                     Effort
-                    <select
+                    <EffortStepper
+                      label="Effort"
+                      choices={efforts}
                       value={effort ?? ''}
                       title="The level its session starts at; change it later in its terminal"
-                      onChange={(event) => choose(atLevel(run, event.target.value || undefined))}
-                    >
-                      {efforts.map((choice) => (
-                        <option key={choice.value} value={choice.value}>
-                          {choice.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      onChange={(level) => choose(atLevel(run, level || undefined))}
+                    />
+                  </div>
                 )}
                 {agent.kind === 'claude' ? (
                   <label className="workspace-field">

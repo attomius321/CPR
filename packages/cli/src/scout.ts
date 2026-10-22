@@ -9,11 +9,15 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   AGENT_KINDS,
+  EFFORT_LEVEL,
+  type AgentEfforts,
   type AgentKind,
   type GitRepo,
   type ScoutAgent,
   type ScoutAsk,
   type ScoutConversation,
+  type ScoutEffortChange,
+  type ScoutEfforts,
   type ScoutState,
   type ScoutStateName,
   type ScoutTerminalRequest,
@@ -21,10 +25,12 @@ import {
 } from '@symbiote/core';
 import { AppServerStartFailed, type CodexServer } from './app-server.js';
 import { asksTrust, type Codex } from './codex.js';
-import { fillPrompt, readPrompts } from './prompts.js';
+import { fillPrompt, PromptRefused, readPrompts, writeConfig } from './prompts.js';
 import { prepareSymbioteFolder, reviewPlace, type ReviewPlace } from './reviews.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
 import {
+  effortProblem,
+  effortWordProblem,
   readWorkspaceConfig,
   shellWord,
   type AgentSession,
@@ -50,6 +56,8 @@ interface ScoutRecord {
   sessionId?: string;
   /** Codex: its thread on the app server. */
   thread?: string;
+  /** The effort level it started at; absent: the agent's own. */
+  effort?: string;
   started: string;
 }
 
@@ -73,6 +81,10 @@ export interface Scout {
   renew(): Promise<ScoutState>;
   /** Opens the conversation in a terminal (V21): `claude attach`, or Codex's TUI on its thread. */
   terminal(request: ScoutTerminalRequest): Promise<WorkspaceTerminalOpened>;
+  /** Each agent's levels and the project's (`scout.effort`); Codex's start its daemon. */
+  efforts(): Promise<ScoutEfforts>;
+  /** Sets the project's level in its config (null removes it), one Scout's default agent lists. */
+  setEffort(change: ScoutEffortChange): Promise<ScoutEfforts>;
 }
 
 /**
@@ -148,6 +160,10 @@ function threadState(status: string, waiting: string | undefined): ScoutStateNam
 
 const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
+/** An effort level's word (V30b): what a request may name, before the agent's list is read. */
+const isLevel = (value: unknown): value is string =>
+  typeof value === 'string' && EFFORT_LEVEL.test(value);
+
 /** Scout in `repo`'s checkout, its record beside the reviews (`symbiote/`, else Symbiote's cache). */
 export function scout(
   repo: GitRepo,
@@ -195,6 +211,7 @@ export function scout(
     const v = (value && typeof value === 'object' ? value : {}) as Partial<ScoutRecord>;
     const text = (x: unknown) => (typeof x === 'string' && x !== '' ? x : undefined);
     const started = text(v.started) ?? '';
+    const level = isLevel(v.effort) ? { effort: v.effort } : {};
     if (v.agent === 'claude' && text(v.id)) {
       const sessionId = text(v.sessionId);
       return {
@@ -202,11 +219,12 @@ export function scout(
         agent: 'claude',
         id: v.id,
         ...(sessionId ? { sessionId } : {}),
+        ...level,
         started,
       };
     }
     if (v.agent === 'codex' && text(v.thread)) {
-      return { about: SCOUT_ABOUT, agent: 'codex', thread: v.thread, started };
+      return { about: SCOUT_ABOUT, agent: 'codex', thread: v.thread, ...level, started };
     }
     return null;
   }
@@ -250,6 +268,47 @@ export function scout(
   const commandOf = (agent: { claude?: ClaudeCode; codex?: Codex }) =>
     agent.claude?.command ?? agent.codex?.command ?? '';
 
+  /** The levels an agent takes (V30b): Claude Code's `--help`, Codex's app server; null unread. */
+  async function levelsOf(agent: {
+    claude?: ClaudeCode;
+    codex?: Codex;
+  }): Promise<AgentEfforts | null> {
+    if (agent.codex) return agent.codex.efforts();
+    const levels = (await agent.claude?.efforts()) ?? null;
+    return levels ? { levels } : null;
+  }
+
+  /**
+   * The level a new conversation starts at: the one asked, if the agent lists it; none for null;
+   * else the project's (`scout.effort`) when the agent lists it, its own otherwise — the project's
+   * file may name another agent's level, or an older one's.
+   */
+  async function levelFor(
+    agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
+    effort: string | null | undefined,
+  ): Promise<string | undefined> {
+    if (effort === null) return undefined;
+    if (effort === undefined) {
+      const project = readWorkspaceConfig(root).scoutEffort;
+      if (!project) return undefined;
+      return (await levelsOf(agent))?.levels.includes(project) ? project : undefined;
+    }
+    const problem = effortProblem(effort, AGENT_NAMES[agent.kind], (await levelsOf(agent))?.levels);
+    if (problem) throw new ScoutRefused(problem, 400);
+    return effort;
+  }
+
+  async function efforts(): Promise<ScoutEfforts> {
+    const agents = await Promise.all(
+      (await installed()).map(async (agent) => {
+        const efforts = await levelsOf(agent);
+        return { kind: agent.kind, ...(efforts ? { efforts } : {}) };
+      }),
+    );
+    const effort = readWorkspaceConfig(root).scoutEffort;
+    return { agents, ...(effort ? { effort } : {}), file: readPrompts(root).file };
+  }
+
   /** Codex's app server, or why Scout cannot run on it. */
   async function serverOf(agent: Codex | null): Promise<CodexServer> {
     if (!agent) throw new ScoutRefused('Codex is not installed', 409);
@@ -264,7 +323,11 @@ export function scout(
   }
 
   async function conversationOf(record: ScoutRecord): Promise<ScoutConversation> {
-    const head = { kind: record.agent, started: record.started };
+    const head = {
+      kind: record.agent,
+      started: record.started,
+      ...(record.effort ? { effort: record.effort } : {}),
+    };
     const unknown = (error: string): ScoutConversation => ({ ...head, state: 'unknown', error });
     if (record.agent === 'claude') {
       const agent = await claude();
@@ -301,8 +364,13 @@ export function scout(
     return { checkout: root, agents, conversation, ...(terminal ? { terminal } : {}) };
   }
 
-  /** Starts a conversation with `text` as the question. */
-  async function start(where: ReviewPlace, text: string, kind: AgentKind | undefined) {
+  /** Starts a conversation with `text` as the question, at the level asked (`levelFor`). */
+  async function start(
+    where: ReviewPlace,
+    text: string,
+    kind: AgentKind | undefined,
+    effort: string | null | undefined,
+  ) {
     const agents = await installed();
     const agent = kind ? agents.find((a) => a.kind === kind) : agents[0];
     if (!agent) {
@@ -313,6 +381,8 @@ export function scout(
         409,
       );
     }
+    const level = await levelFor(agent, effort);
+    const at = level ? { effort: level } : {};
     const prompt = fillPrompt(readPrompts(root).text.scout, { question: text });
     const started = now().toISOString();
     if (agent.claude) {
@@ -324,6 +394,7 @@ export function scout(
         name: SCOUT_NAME,
         prompt,
         settings,
+        ...at,
       });
       if (!result.ok) throw new ScoutRefused(result.error, 502);
       const session = newScoutSession(before, (await agent.claude.sessions()) ?? [], root, real);
@@ -338,6 +409,7 @@ export function scout(
         agent: 'claude',
         id: session.id,
         ...(session.sessionId ? { sessionId: session.sessionId } : {}),
+        ...at,
         started,
       };
       await put(where, recordPath(where), `${JSON.stringify(record, null, 2)}\n`);
@@ -357,13 +429,14 @@ export function scout(
         name: SCOUT_NAME,
         prompt,
         readOnly: true,
+        ...at,
       });
     } catch (error) {
       // A thread made before the failure goes out of Codex's lists.
       if (error instanceof AppServerStartFailed) await server.archive(error.thread).catch(() => {});
       throw new ScoutRefused(`Codex's app server: ${(error as Error).message}`, 502);
     }
-    const record: ScoutRecord = { about: SCOUT_ABOUT, agent: 'codex', thread, started };
+    const record: ScoutRecord = { about: SCOUT_ABOUT, agent: 'codex', thread, ...at, started };
     await put(where, recordPath(where), `${JSON.stringify(record, null, 2)}\n`);
   }
 
@@ -399,7 +472,7 @@ export function scout(
   return {
     state,
 
-    async ask({ text, agent }) {
+    async ask({ text, agent, effort }) {
       if (text.trim() === '') throw new ScoutRefused('a question cannot be empty', 400);
       if (text.length > MAX_QUESTION) {
         throw new ScoutRefused(
@@ -410,14 +483,23 @@ export function scout(
       if (agent !== undefined && !AGENT_KINDS.includes(agent)) {
         throw new ScoutRefused(`unknown agent: ${String(agent)}`, 400);
       }
+      if (effort !== undefined && effort !== null && !isLevel(effort)) {
+        throw new ScoutRefused(effortWordProblem(effort), 400);
+      }
       const where = await place();
       const record = await readRecord(where);
       // A session removed outside Symbiote: the question starts a new conversation.
       const gone = record ? (await conversationOf(record)).state === 'gone' : false;
-      if (!record || gone) await start(where, text, agent);
+      if (!record || gone) await start(where, text, agent, effort);
       else if (agent !== undefined && agent !== record.agent) {
         throw new ScoutRefused(
           `this conversation is ${AGENT_NAMES[record.agent]}'s: start a new one for ${AGENT_NAMES[agent]}`,
+          409,
+        );
+      } else if (effort !== undefined) {
+        // Set at its start, kept by its session; `/effort` in its terminal changes it.
+        throw new ScoutRefused(
+          'this conversation started at its level: change it in its terminal',
           409,
         );
       } else await reply(record, text);
@@ -452,6 +534,29 @@ export function scout(
       }
       await rm(recordPath(where), { force: true });
       return state();
+    },
+
+    efforts,
+
+    async setEffort({ effort }) {
+      if (effort !== null) {
+        if (!isLevel(effort)) throw new ScoutRefused(effortWordProblem(effort), 400);
+        // The level Settings offers: Scout's default agent's.
+        const agent = (await installed())[0];
+        if (!agent) {
+          throw new ScoutRefused('Scout needs Claude Code or Codex: neither is installed', 409);
+        }
+        const levels = (await levelsOf(agent))?.levels;
+        const problem = effortProblem(effort, AGENT_NAMES[agent.kind], levels);
+        if (problem) throw new ScoutRefused(problem, 400);
+      }
+      try {
+        await writeConfig(root, ['scout', 'effort'], effort ?? undefined);
+      } catch (error) {
+        if (error instanceof PromptRefused) throw new ScoutRefused(error.message, error.status);
+        throw error;
+      }
+      return efforts();
     },
 
     async terminal({ cols, rows }) {

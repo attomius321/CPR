@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openRepo } from '@symbiote/core';
+import { openRepo, type ScoutAsk } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { codexServer } from '../src/app-server.js';
@@ -225,6 +225,20 @@ describe('claudeCode().startReadOnly (V35, decision 236)', () => {
         cwd: '/repo',
       },
     ]);
+  });
+
+  it('starts at the level given, before the prompt, as a workspace does (V30b)', async () => {
+    const calls: string[][] = [];
+    const run: Run = (_command, args) => {
+      calls.push(args);
+      return Promise.resolve({ code: 0, stdout: '', stderr: '' });
+    };
+    const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
+    const request = { cwd: '/repo', name: 'Scout', prompt: 'Q', settings: '/s' };
+    await claude.startReadOnly({ ...request, effort: 'low' });
+    await claude.startReadOnly(request);
+    expect(calls[0]?.slice(-3)).toEqual(['--effort', 'low', 'Q']);
+    expect(calls[1]).not.toContain('--effort');
   });
 
   it("says Claude Code's words when it does not start", async () => {
@@ -528,5 +542,155 @@ describe('scout (V35)', () => {
     // Without its app server, Codex has no terminal: Scout says so.
     const without = await service(repo, { codex: fakeCodex(null).codex });
     await expect(without.ask({ text: 'Q' })).rejects.toThrow(/app server/);
+  });
+});
+
+describe("Scout's effort (fix/scout-effort-level)", () => {
+  const LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
+  const config = (repo: TestRepo) => join(repo.root, 'symbiote', 'config.json');
+  /** Claude Code with the levels its `--help` lists. */
+  const leveled = (repo: TestRepo) => {
+    const fake = fakeClaude(repo.root);
+    fake.claude.efforts = () => Promise.resolve(LEVELS);
+    return fake;
+  };
+
+  it("lists each agent's levels and the project's, read only when asked for", async () => {
+    const repo = fresh();
+    const { claude } = leveled(repo);
+    const efforts = vi.fn(() => Promise.resolve(LEVELS));
+    claude.efforts = efforts;
+    const { codex } = fakeCodex(null);
+    codex.efforts = () => Promise.resolve({ levels: ['low', 'medium', 'high'], default: 'medium' });
+    const s = await service(repo, { claude, codex });
+    await s.state();
+    // Read with the shell's every read, Codex's would start its daemon: never there.
+    expect(efforts).not.toHaveBeenCalled();
+    expect(await s.efforts()).toEqual({
+      agents: [
+        { kind: 'claude', efforts: { levels: LEVELS } },
+        { kind: 'codex', efforts: { levels: ['low', 'medium', 'high'], default: 'medium' } },
+      ],
+      file: 'symbiote/config.json',
+    });
+    repo.write({ 'symbiote/config.json': '{ "scout": { "effort": "high" } }\n' });
+    expect(await s.efforts()).toMatchObject({ effort: 'high' });
+    // Not a level's word: none.
+    repo.write({ 'symbiote/config.json': '{ "scout": { "effort": "--max" } }\n' });
+    expect(await s.efforts()).not.toHaveProperty('effort');
+    // An agent whose levels cannot be read: listed without them.
+    claude.efforts = () => Promise.resolve(null);
+    expect((await s.efforts()).agents[0]).toEqual({ kind: 'claude' });
+  });
+
+  it('starts Claude Code at the level asked, records it, and says it', async () => {
+    const repo = fresh();
+    const { claude, startReadOnly } = leveled(repo);
+    const s = await service(repo, { claude });
+    const state = await s.ask({ text: 'Q', effort: 'high' });
+    expect(startReadOnly.mock.calls[0]?.[0]).toMatchObject({ effort: 'high' });
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({ effort: 'high' });
+    expect(state.conversation).toMatchObject({ kind: 'claude', effort: 'high' });
+  });
+
+  it("starts at the project's level when none is asked; at the agent's own for null or one it does not list", async () => {
+    const repo = fresh();
+    const { claude, startReadOnly } = leveled(repo);
+    const s = await service(repo, { claude });
+    repo.write({ 'symbiote/config.json': '{ "scout": { "effort": "medium" } }\n' });
+    expect((await s.ask({ text: 'Q' })).conversation).toMatchObject({ effort: 'medium' });
+    expect(startReadOnly.mock.lastCall?.[0]).toMatchObject({ effort: 'medium' });
+    await s.renew();
+    // Null: the agent's own default, whatever the project says.
+    expect((await s.ask({ text: 'Q', effort: null })).conversation).not.toHaveProperty('effort');
+    expect(startReadOnly.mock.lastCall?.[0]).not.toHaveProperty('effort');
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).not.toHaveProperty('effort');
+    await s.renew();
+    // A level this agent does not list: its default, not a refusal (the project's file may be
+    // another agent's or an older Claude Code's).
+    repo.write({ 'symbiote/config.json': '{ "scout": { "effort": "ultra" } }\n' });
+    await s.ask({ text: 'Q' });
+    expect(startReadOnly.mock.lastCall?.[0]).not.toHaveProperty('effort');
+  });
+
+  it('refuses a level the agent does not list, and one for a conversation that runs', async () => {
+    const repo = fresh();
+    const { claude, startReadOnly } = leveled(repo);
+    const s = await service(repo, { claude });
+    await expect(s.ask({ text: 'Q', effort: 'ultra' })).rejects.toMatchObject({
+      status: 400,
+      message: 'Claude Code takes low, medium, high, xhigh or max: ultra',
+    });
+    await expect(s.ask({ text: 'Q', effort: 3 } as unknown as ScoutAsk)).rejects.toMatchObject({
+      status: 400,
+      message: 'an effort level is a word, such as high: 3',
+    });
+    claude.efforts = () => Promise.resolve(null);
+    await expect(s.ask({ text: 'Q', effort: 'high' })).rejects.toMatchObject({
+      status: 400,
+      message: "Symbiote cannot read Claude Code's effort levels: start it at its default",
+    });
+    expect(startReadOnly).not.toHaveBeenCalled();
+    expect(existsSync(record(repo))).toBe(false);
+    claude.efforts = () => Promise.resolve(LEVELS);
+    await s.ask({ text: 'Q', effort: 'low' });
+    await expect(s.ask({ text: 'And?', effort: 'high' })).rejects.toMatchObject({
+      status: 409,
+      message: 'this conversation started at its level: change it in its terminal',
+    });
+  });
+
+  it('starts Codex at the level on its first turn', async () => {
+    const repo = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    codex.efforts = () => Promise.resolve({ levels: ['low', 'medium', 'high'], default: 'medium' });
+    const s = await service(repo, { codex });
+    const state = await s.ask({ text: 'Where is it?', effort: 'low' });
+    const turn = server.calls.find((c) => c.method === 'turn/start');
+    expect(turn?.params).toMatchObject({ effort: 'low' });
+    expect(state.conversation).toMatchObject({ kind: 'codex', effort: 'low' });
+  });
+
+  it("saves the project's level in its config, the rest as it was; null removes it", async () => {
+    const repo = fresh();
+    const { claude } = leveled(repo);
+    const s = await service(repo, { claude });
+    // The shape of a real one: four spaces, an inline list, the last section over several lines.
+    // (jsonc-parser rewrites the line it inserts after: an inline object there would be spread.)
+    const before =
+      '{\n    "merge": {\n        "checks": ["pnpm check", "pnpm build"],\n        "push": true\n    },\n' +
+      '    "prompts": {\n        "scout": "Q: {question}"\n    }\n}\n';
+    repo.write({ 'symbiote/config.json': before });
+    expect(await s.setEffort({ effort: 'high' })).toMatchObject({ effort: 'high' });
+    expect(JSON.parse(readFileSync(config(repo), 'utf8'))).toEqual({
+      merge: { checks: ['pnpm check', 'pnpm build'], push: true },
+      prompts: { scout: 'Q: {question}' },
+      scout: { effort: 'high' },
+    });
+    expect(readFileSync(config(repo), 'utf8')).toContain('\n    "scout": {');
+    // Null: the agent's own default, and the file as it was.
+    expect(await s.setEffort({ effort: null })).not.toHaveProperty('effort');
+    expect(readFileSync(config(repo), 'utf8')).toBe(before);
+    // Scout's default agent decides what can be saved.
+    await expect(s.setEffort({ effort: 'ultra' })).rejects.toMatchObject({
+      status: 400,
+      message: 'Claude Code takes low, medium, high, xhigh or max: ultra',
+    });
+    repo.write({ 'symbiote/config.json': '{ not json' });
+    await expect(s.setEffort({ effort: 'high' })).rejects.toMatchObject({ status: 409 });
+    expect(readFileSync(config(repo), 'utf8')).toBe('{ not json');
+  });
+
+  it('creates symbiote/config.json for a level, out of the way of nothing else', async () => {
+    const repo = fresh();
+    const { claude } = leveled(repo);
+    const s = await service(repo, { claude });
+    await s.setEffort({ effort: 'low' });
+    expect(JSON.parse(readFileSync(config(repo), 'utf8'))).toEqual({ scout: { effort: 'low' } });
+    await expect((await service(fresh())).setEffort({ effort: 'low' })).rejects.toMatchObject({
+      status: 409,
+      message: 'Scout needs Claude Code or Codex: neither is installed',
+    });
   });
 });

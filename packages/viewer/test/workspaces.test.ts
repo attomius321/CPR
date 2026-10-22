@@ -55,13 +55,13 @@ describe('effortChoices and keptEffort (V30b)', () => {
     expect(effortChoices(codex)[0]).toEqual({ value: '', label: "Codex's default (medium)" });
     expect(effortChoices(codex).at(-1)).toEqual({ value: 'ultra', label: 'ultra' });
     // No levels read: no choice.
-    expect(effortChoices({ kind: 'codex', command: 'codex' })).toEqual([]);
+    expect(effortChoices({ kind: 'codex' })).toEqual([]);
   });
 
   it('keeps a level the other agent takes when the agent changes, else its default', () => {
     expect(keptEffort('high', codex)).toBe('high');
     expect(keptEffort('ultra', claude)).toBeUndefined();
-    expect(keptEffort('high', { kind: 'codex', command: 'codex' })).toBeUndefined();
+    expect(keptEffort('high', {})).toBeUndefined();
     expect(keptEffort(undefined, claude)).toBeUndefined();
   });
 });
