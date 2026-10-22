@@ -1,8 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
+import { textAt } from './terminal.js';
 
 // Starting a workspace from the commits page (V18a): a branch, its worktree beside the repository,
 // the record, and the agent started there — a fake Claude Code, never a real one.
@@ -805,6 +806,96 @@ test('images pasted, dropped or Ctrl+V-ed into the terminal attach to the messag
   await expect(screen(page, branch)).toContainText(
     'got: [Image #1] [Image #2] [Image #3] half[Image #4]',
   );
+});
+
+test('paths and web addresses the agent prints open with Ctrl+click: files of its worktree only (V38)', async ({
+  page,
+  context,
+}) => {
+  symbiote = await serveWorkspaces();
+  await context.route('https://example.com/**', (route) => route.fulfill({ body: 'the PR' }));
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const rows = screen(page, branch);
+  await expect(rows).toContainText('Fake Claude Code · fake0', POLL);
+  const worktree = symbiote.folder(branch);
+  // The main checkout's file: outside the worktree.
+  const outside = join(symbiote.repo, 'src', 'math.ts');
+  // The agent's own link (OSC 8) to a file, as Claude Code makes one.
+  const link = `\u001b]8;;file://${worktree}/src/app.ts\u0007the app\u001b]8;;\u0007`;
+  symbiote.setSession('fake0', {
+    state: 'done',
+    status: 'idle',
+    answer: [
+      'Halved in src/math.ts:3',
+      'not missing.ts',
+      `nor ${outside}`,
+      `see ${link}`,
+      'and https://example.com/pr/1.',
+    ].join('\r\n'),
+  });
+  await expect(rows).toContainText('and https://example.com/pr/1.', POLL);
+  const hint = terminal(page, branch).getByRole('tooltip');
+  const opens: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().endsWith('/open')) opens.push(request.postData() ?? '');
+  });
+  const hover = async (text: string) => {
+    const at = await textAt(rows, text);
+    // Each row's paths are asked about once, as the pointer reaches it.
+    const asked = page.waitForResponse((response) => response.url().endsWith('/paths'));
+    await page.mouse.move(at.x, at.y);
+    return { at, asked };
+  };
+  const ctrlClick = async ({ x, y }: { x: number; y: number }) => {
+    await page.keyboard.down('ControlOrMeta');
+    await page.mouse.click(x, y);
+    await page.keyboard.up('ControlOrMeta');
+  };
+
+  // A file of its worktree: underlined, with a hint; a plain click is the terminal's.
+  const math = await hover('src/math.ts:3');
+  await expect(hint).toHaveText(/^Open in VS Code\s*Ctrl\+click$/);
+  await page.mouse.click(math.at.x, math.at.y);
+  await ctrlClick(math.at);
+  await expect
+    .poll(() => symbiote.opened())
+    .toEqual([[worktree, '--goto', `${join(worktree, 'src', 'math.ts')}:3:1`]]);
+  expect(opens).toEqual([JSON.stringify({ path: 'src/math.ts', line: 3 })]);
+
+  // A file that is not there, and one outside the worktree: no link.
+  for (const text of ['missing.ts', outside]) {
+    const { at, asked } = await hover(text);
+    await asked;
+    await expect(hint).toBeHidden();
+    await ctrlClick(at);
+  }
+
+  // The agent's own link opens the file it names.
+  const app = await textAt(rows, 'the app');
+  await page.mouse.move(app.x, app.y);
+  await expect(hint).toHaveText(/^Open in VS Code/);
+  await ctrlClick(app);
+  await expect
+    .poll(() => symbiote.opened().at(-1))
+    .toEqual([worktree, '--goto', `${join(worktree, 'src', 'app.ts')}:1:1`]);
+  expect(opens).toHaveLength(2);
+
+  // A web address, in a new tab, without the sentence's full stop.
+  const web = await textAt(rows, 'example.com/pr/1');
+  await page.mouse.move(web.x, web.y);
+  await expect(hint).toHaveText(/^Open https:\/\/example\.com\/pr\/1\s*Ctrl\+click$/);
+  const tab = context.waitForEvent('page');
+  await ctrlClick(web);
+  expect((await tab).url()).toBe('https://example.com/pr/1');
+
+  // A file gone since it was linked: the server's words in the error line.
+  rmSync(join(worktree, 'src', 'math.ts'));
+  await page.mouse.move(math.at.x, math.at.y);
+  await ctrlClick(math.at);
+  await expect(terminal(page, branch).getByRole('alert')).toHaveText('src/math.ts is not a file');
+  expect(symbiote.opened()).toHaveLength(2);
 });
 
 test('without terminals, the panel keeps Talk in its menu, and no Terminal tab', async ({

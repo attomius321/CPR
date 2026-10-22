@@ -1824,16 +1824,32 @@ describe('symbiote view: terminals (V21)', () => {
     return pty;
   };
   const images = join(viewer, 'images');
-  const terminals = makeTerminals({ pty: () => Promise.resolve({ spawn }), images });
+  // A worktree with a file, for the paths its agent prints (V38).
+  const work = join(viewer, 'work');
+  mkdirSync(join(work, 'src'), { recursive: true });
+  writeFileSync(join(work, 'src', 'a.ts'), 'export {};\n');
+  const editor: { opened: [string, unknown][]; fails: string | null } = { opened: [], fails: null };
+  const terminals = makeTerminals({
+    pty: () => Promise.resolve({ spawn }),
+    images,
+    openFolder: (folder, at) => {
+      editor.opened.push([folder, at]);
+      return Promise.resolve(
+        editor.fails === null ? { opened: true } : { opened: false, message: editor.fails },
+      );
+    },
+  });
   const asked: { branch: string; cols: number; rows: number }[] = [];
+  const cwds: Record<string, string> = { 'feature/csv': '/w', 'feature/files': work };
   const workspaces = {
     terminal: (request: { branch: string; cols: number; rows: number }) => {
       asked.push(request);
-      if (request.branch !== 'feature/csv') {
+      const cwd = cwds[request.branch];
+      if (!cwd) {
         return Promise.reject(new WorkspaceRefused('its agent has no session to open', 409));
       }
       return terminals
-        .open({ command: 'claude', args: ['attach', 's1'], cwd: '/w', env: {}, ...request })
+        .open({ command: 'claude', args: ['attach', 's1'], cwd, env: {}, ...request })
         .then((id) => ({ id }));
     },
   } as unknown as Workspaces;
@@ -2012,6 +2028,59 @@ describe('symbiote view: terminals (V21)', () => {
     expect((await post('/api/terminals/nope/image', { data })).status).toBe(404);
     expect((await fetch(new URL(`/api/terminals/${id}/image`, server.url))).status).toBe(405);
     expect(readdirSync(images)).toHaveLength(1);
+  });
+
+  it('answers which printed paths are files in its folder, and opens one in the editor (V38)', async () => {
+    const id = await open('feature/files');
+    const asked = await post(`/api/terminals/${id}/paths`, {
+      paths: ['src/a.ts', 'missing.ts', '../x.ts', 'src'],
+    });
+    expect(asked.status).toBe(200);
+    expect(await asked.json()).toEqual({ files: ['src/a.ts'] });
+    const opened = await post(`/api/terminals/${id}/open`, {
+      path: 'src/a.ts',
+      line: 3,
+      column: 2,
+    });
+    expect(opened.status).toBe(204);
+    expect(editor.opened).toEqual([[work, { file: 'src/a.ts', line: 3, column: 2 }]]);
+
+    for (const [path, body] of [
+      ['paths', {}],
+      ['paths', { paths: 'src/a.ts' }],
+      ['paths', { paths: [3] }],
+      ['paths', { paths: Array<string>(51).fill('a') }],
+      ['paths', { paths: ['x'.repeat(1025)] }],
+      ['open', {}],
+      ['open', { path: '' }],
+      ['open', { path: 'src/a.ts', line: 0 }],
+      ['open', { path: 'src/a.ts', column: 1.5 }],
+    ] as const) {
+      expect((await post(`/api/terminals/${id}/${path}`, body)).status, JSON.stringify(body)).toBe(
+        400,
+      );
+    }
+    const outside = await post(`/api/terminals/${id}/open`, { path: '../x.ts' });
+    expect([outside.status, await outside.text()]).toEqual([400, `../x.ts is not in ${work}`]);
+    const missing = await post(`/api/terminals/${id}/open`, { path: 'src' });
+    expect([missing.status, await missing.text()]).toEqual([409, 'src is not a file']);
+    editor.fails = 'code exited with 1';
+    const failed = await post(`/api/terminals/${id}/open`, { path: 'src/a.ts' });
+    expect([failed.status, await failed.text()]).toEqual([502, 'code exited with 1']);
+    editor.fails = null;
+    expect(editor.opened).toHaveLength(2);
+
+    const attacker = { origin: 'https://attacker.example' };
+    for (const path of ['paths', 'open']) {
+      const body = { paths: ['src/a.ts'], path: 'src/a.ts' };
+      expect((await post(`/api/terminals/${id}/${path}`, body, { 'x-symbiote': '' })).status).toBe(
+        403,
+      );
+      expect((await post(`/api/terminals/${id}/${path}`, body, attacker)).status).toBe(403);
+      expect((await post(`/api/terminals/nope/${path}`, body)).status).toBe(404);
+      expect((await fetch(new URL(`/api/terminals/${id}/${path}`, server.url))).status).toBe(405);
+    }
+    expect(editor.opened).toHaveLength(2);
   });
 
   it('hangs its terminals up and ends their streams when it closes', async () => {

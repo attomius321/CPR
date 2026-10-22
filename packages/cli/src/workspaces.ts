@@ -1086,10 +1086,13 @@ export function agentSettings(
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-/** Opens a folder in the editor, or a file in it at a line (V29d); why not when it cannot. */
+/**
+ * Opens a folder in the editor, or a file in it at a line (V29d) and column (V38); why not when it
+ * cannot.
+ */
 export type OpenFolder = (
   folder: string,
-  at?: { file: string; line: number },
+  at?: { file: string; line: number; column?: number },
 ) => Promise<{ opened: true } | { opened: false; message: string }>;
 
 /** How many commits, and files, a workspace's changes list (V29d). */

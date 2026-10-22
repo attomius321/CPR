@@ -1,9 +1,12 @@
 import {
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
@@ -12,6 +15,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   imageKind,
+  inFolder,
   loadPty,
   pastedPath,
   terminals,
@@ -308,6 +312,152 @@ describe('images pasted into a terminal (V36)', () => {
     );
     t.closeAll();
     rmSync(images, { recursive: true, force: true });
+  });
+});
+
+describe('files a terminal printed (V38)', () => {
+  const folder = () => mkdtempSync(join(tmpdir(), 'symbiote-files-'));
+  /** A terminal's folder with two files and a folder, and a file outside it. */
+  const place = () => {
+    const root = folder();
+    const work = join(root, 'work');
+    mkdirSync(join(work, 'src'), { recursive: true });
+    writeFileSync(join(work, 'src', 'a.ts'), 'export {};\n');
+    writeFileSync(join(work, 'README.md'), '# A\n');
+    writeFileSync(join(root, 'outside.ts'), '');
+    return { root, work };
+  };
+  const opener = () => {
+    const opened: [string, { file: string; line: number; column?: number } | undefined][] = [];
+    let fails: string | null = null;
+    return {
+      opened,
+      fail: (message: string) => (fails = message),
+      openFolder: (folder: string, at?: { file: string; line: number; column?: number }) => {
+        opened.push([folder, at]);
+        return Promise.resolve(
+          fails === null ? { opened: true as const } : { opened: false as const, message: fails },
+        );
+      },
+    };
+  };
+
+  it('answers which of the paths it was given are files in its folder', async () => {
+    const { root, work } = place();
+    const t = terminals({ pty: fakePty().pty, home: work });
+    const id = await t.open({ ...request, cwd: work });
+    const asked = [
+      'src/a.ts',
+      './README.md',
+      'src/../README.md',
+      join(work, 'src', 'a.ts'),
+      '~/README.md',
+      'src',
+      'missing.ts',
+      '../outside.ts',
+      join(root, 'outside.ts'),
+      '',
+    ];
+    expect(await t.files(id, asked)).toEqual([
+      'src/a.ts',
+      './README.md',
+      'src/../README.md',
+      join(work, 'src', 'a.ts'),
+      '~/README.md',
+    ]);
+    expect(await t.files('nope', asked)).toBeUndefined();
+    t.closeAll();
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('reads a printed path as a file of the folder, on Windows too', () => {
+    const work = ['/w/app'];
+    expect(inFolder(work, 'src/a.ts', '/home/a', 'linux')).toEqual({
+      folder: '/w/app',
+      file: 'src/a.ts',
+    });
+    expect(inFolder(['/home/a'], '~/notes/b.md', '/home/a', 'linux')?.file).toBe('notes/b.md');
+    for (const path of ['/w/app', '.', '/w/application/a.ts', '../app/../x.ts', '~/a.ts', '']) {
+      expect(inFolder(work, path, '/home/a', 'linux'), path).toBeNull();
+    }
+    const windows = ['C:\\w\\app'];
+    for (const path of ['src\\a.ts', 'src/a.ts', 'C:\\w\\app\\src\\a.ts', 'C:/w/app/src/a.ts']) {
+      expect(inFolder(windows, path, 'C:\\Users\\a', 'win32'), path).toEqual({
+        folder: 'C:\\w\\app',
+        file: 'src/a.ts',
+      });
+    }
+    for (const path of ['D:\\w\\app\\a.ts', '..\\x.ts', '~\\a.ts']) {
+      expect(inFolder(windows, path, 'C:\\Users\\a', 'win32'), path).toBeNull();
+    }
+  });
+
+  it('takes a path through the real folder when it was opened through a link', async () => {
+    const { root, work } = place();
+    const link = join(root, 'link');
+    symlinkSync(work, link, 'dir');
+    const t = terminals({ pty: fakePty().pty });
+    const id = await t.open({ ...request, cwd: link });
+    const real = realpathSync(work);
+    expect(await t.files(id, [join(real, 'README.md'), join(link, 'README.md')])).toEqual([
+      join(real, 'README.md'),
+      join(link, 'README.md'),
+    ]);
+    t.closeAll();
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it("opens a file of its folder in the editor, in the folder's window, at the line printed", async () => {
+    const { root, work } = place();
+    const editor = opener();
+    const t = terminals({ pty: fakePty().pty, home: work, openFolder: editor.openFolder });
+    const id = await t.open({ ...request, cwd: work });
+    expect(await t.openFile(id, { path: join(work, 'src', 'a.ts'), line: 3, column: 2 })).toEqual({
+      opened: true,
+    });
+    expect(await t.openFile(id, { path: './README.md' })).toEqual({ opened: true });
+    expect(editor.opened).toEqual([
+      [work, { file: 'src/a.ts', line: 3, column: 2 }],
+      [work, { file: 'README.md', line: 1, column: 1 }],
+    ]);
+
+    expect(await t.openFile(id, { path: '../outside.ts' })).toEqual({
+      opened: false,
+      why: 'outside',
+      message: `../outside.ts is not in ${work}`,
+    });
+    expect(await t.openFile(id, { path: 'src' })).toEqual({
+      opened: false,
+      why: 'missing',
+      message: 'src is not a file',
+    });
+    expect(await t.openFile('nope', { path: 'src/a.ts' })).toEqual({
+      opened: false,
+      why: 'terminal',
+      message: 'no such terminal',
+    });
+    editor.fail('code exited with 1');
+    expect(await t.openFile(id, { path: 'src/a.ts' })).toEqual({
+      opened: false,
+      why: 'editor',
+      message: 'code exited with 1',
+    });
+    expect(editor.opened).toHaveLength(3);
+    t.closeAll();
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('says there is no editor when none was given', async () => {
+    const { root, work } = place();
+    const t = terminals({ pty: fakePty().pty });
+    const id = await t.open({ ...request, cwd: work });
+    expect(await t.openFile(id, { path: 'src/a.ts' })).toEqual({
+      opened: false,
+      why: 'editor',
+      message: 'no editor to open it in',
+    });
+    t.closeAll();
+    rmSync(root, { recursive: true, force: true });
   });
 });
 
