@@ -1816,6 +1816,10 @@ input[type='radio']:focus-visible {
   line-height: 1.9;
 }
 
+.key-entry {
+  white-space: nowrap;
+}
+
 /* A key, as a key cap. */
 kbd {
   display: inline-block;

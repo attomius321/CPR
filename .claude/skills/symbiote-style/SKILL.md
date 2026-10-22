@@ -7,7 +7,8 @@ description: Symbiote's style — monochrome, quiet chrome lifted above the dark
 
 The viewer's look since V31: one stylesheet (`packages/viewer/src/styles.css`), its tokens on
 `:root`, every control drawn the same way on every page. V29b gave Symbiote its colours, font and
-density; V31 the rest: lifted chrome, neutral selection, drawn controls, one radius scale.
+density; V31 the rest: lifted chrome, neutral selection, drawn controls, one radius scale; V37
+quiet fields, no tracking, a hover apart from the selection, and help behind a "?".
 
 - Tokens, dark and light, with their contrast: [tokens.md](tokens.md)
 - Plain-CSS recipes for each control: [components.md](components.md)
@@ -32,7 +33,8 @@ density; V31 the rest: lifted chrome, neutral selection, drawn controls, one rad
    badges round. Lines are hairlines. Three elevations only: hairline, a slight lift
    (`0 1px 2px`), floating.
 6. **Recede and frame.** Symbiote hosts a graph, diffs and a terminal: its own UI frames them. Show the
-   frequent actions; put the rare ones in a menu, a "?" or a hover.
+   frequent actions; put the rare ones in a menu. Explanation goes behind a "?" (`Help.tsx`, a
+   tooltip on hover or focus); states, warnings and errors stay on the page.
 
 ## Constraints the style keeps
 
@@ -44,8 +46,12 @@ Decisions recorded in `docs/PLAN.md`/`JOURNAL.md`; a new look must keep them.
 - **Type** (V32): every font size from the `--size-*` scale on `:root`, never a px value (the same
   test). V29b's 13 px body with 10–11 px captions was too small to read; do not go back under 12 px.
 - **Contrast** (`packages/viewer/test/tokens.test.ts`): text and muted ≥ 4.5:1 on the four
-  backgrounds; states, `--faint`, `--focus` ≥ 3:1; a text field's edge (`--edge`) ≥ 3:1; region
-  lines ≥ 1.2:1. The tested tokens are `#rrggbb`; translucent values go in other tokens.
+  backgrounds; states, `--faint`, `--focus` ≥ 3:1; `--edge` ≥ 3:1 (a field on hover, a checkbox);
+  region lines ≥ 1.2:1. The tested tokens are `#rrggbb`; translucent values go in other tokens.
+  A text field at rest has the soft `--field-line` (~1.5:1, decision 246, the person's choice):
+  its label names it, and hover and focus bring the 3:1 edge and the ring.
+- **Letter-spacing 0** but uppercase labels (V37): fractional tracking rounds into uneven gaps
+  between letters at 1× on Linux.
 - **No new runtime dependency** without a reason in PLAN.md: no CSS framework, component kit or
   icon package. Write rules in `styles.css`; draw icons in `src/icons.tsx` from lucide's paths
   (ISC; keep a one-line credit there).
@@ -75,6 +81,11 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
 | Letters as buttons and hints | lucide-style icons; key caps on hover or in the tooltip |
 | A grey, disabled-looking main action | The primary: `#e5e5e5` fill, `#171717` text in dark |
 | Radii of seven sizes | The scale: 4, 8, 10, 11, 14 px and round |
+| Uneven gaps between letters ("n o commits") at 1× (V37) | `letter-spacing: 0`; controls `inherit` |
+| A 3:1 edge on every field, a 2 px outline over it on focus, a resize grip (V37) | `--field-line` at rest, `--edge` on hover, `--focus` and a 3 px `--ring`; textareas `field-sizing: content` |
+| Hover and selection 2 points apart (8 and 10 %) (V37) | Hover 5 %, selection 10 % (`tokens.test.ts` keeps them 3 apart) |
+| Help as paragraphs, `title`s and a `ⓘ` (V37) | One `Help` button: a tooltip on hover or focus, kept by a click |
+| Folder tabs; capitals for section headings (V37) | Flat buttons, the picked one `--selected`; sentence case and a round count |
 
 ## Traps found applying it (V31)
 
@@ -98,7 +109,19 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
 - **An inline block that hides its overflow** takes its bottom edge as its baseline: a chip in a
   heading needs `vertical-align`.
 - **Screenshots of workspaces** need e2e's `serveWorkspaces` (a fake agent): a spec run with its
-  own Playwright config, kept outside the repository (ESLint scans any `.ts` in `packages/`).
+  own Playwright config, kept outside the repository (ESLint scans any `.ts` in `packages/`), with
+  a `package.json` of `{"type":"module"}` beside it (`e2e/symbiote.ts` uses `import.meta`).
+- **Form controls do not inherit letter-spacing** (V37): Chromium sets `normal` on them, and
+  `font: inherit` does not reset it. Check with a computed style, not by eye.
+- **A floating tip inside the page is clipped or misplaced**: `container-type` (the start page),
+  `transform` and `backdrop-filter` make a containing block for `position: fixed`, and scrolling
+  panels clip. `Help` draws its tip on `document.body`; tests find it by role, not inside a region.
+- **A tip shown by a hover must let the pointer through** (`pointer-events: none` until a click
+  keeps it): it covers the field under its button, and a test (or a person) moving there is
+  stopped by it.
+- **`field-sizing: content` ignores `rows`**: give the rows' height as a `min-height` (`lh` units).
+- **A help button inside a `<label>`** joins the field's accessible name: put the name in its own
+  `<label htmlFor>` and the button beside it (`.field-label`).
 
 ## Workflow
 

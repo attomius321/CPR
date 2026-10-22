@@ -12,7 +12,7 @@ the lowest over the backgrounds `test/tokens.test.ts` checks (WCAG 2), from `pal
 | `--panel` | Panels beside the canvas, file boxes, cards | `#171717` | `#fafafa` | — |
 | `--raised` | Chips, counts, segmented track | `#262626` | `#f0f0f0` | — |
 | `--line` | Region hairlines | `#2a2a2a` | `#e5e5e5` | 1.25 / 1.21 (≥ 1.2) |
-| `--edge` | A text field's, select's or checkbox's edge | `#737373` | `#8a8a8a` | 3.78 / 3.31 (≥ 3) |
+| `--edge` | A field's edge on hover; a checkbox's edge | `#737373` | `#8a8a8a` | 3.78 / 3.31 (≥ 3) |
 | `--text` | Text | `#fafafa` | `#0a0a0a` | 14.50 / 17.37 |
 | `--muted` | Secondary text, idle nav, placeholders | `#a1a1a1` | `#666666` | 5.86 / 5.04 (≥ 4.5) |
 | `--faint` | Idle icons, captions on hover rows | `#7c7c7c` | `#8a8a8a` | 3.63 / 3.03 (≥ 3) |
@@ -45,12 +45,14 @@ and system-light are equal and that both themes have the same names).
 
 ```css
 /* dark */
---hover: color-mix(in srgb, var(--text) 8%, transparent);
+--hover: color-mix(in srgb, var(--text) 5%, transparent);        /* 3 points under the selection (V37) */
 --selected: color-mix(in srgb, var(--text) 10%, transparent);
 --selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
 --primary: #e5e5e5;                                              /* the one affirmative action */
 --primary-text: #171717;
 --input-bg: rgb(255 255 255 / 4.5%);
+--field-line: color-mix(in srgb, var(--text) 15%, transparent);  /* a field at rest, ~1.5:1 (decision 246) */
+--ring: color-mix(in srgb, var(--focus) 30%, transparent);       /* a focused field's 3 px ring */
 --lifted: rgb(255 255 255 / 7%);                                 /* the choice in a segmented control */
 --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
 --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
@@ -74,6 +76,8 @@ and system-light are equal and that both themes have the same names).
 --primary: #171717;
 --primary-text: #fafafa;
 --input-bg: transparent;
+--field-line: color-mix(in srgb, var(--text) 16%, transparent);
+--ring: color-mix(in srgb, var(--focus) 30%, transparent);
 --lifted: #ffffff;
 --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
 --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
@@ -122,8 +126,8 @@ number (`AgentTerminal.tsx`'s `FONT_SIZE`, 14). The map's project names are
 | Radius: menu | 11 px |
 | Radius: card, project frame | 14 px |
 | Radius: badge, count, dot, switch, progress | 9999 px (or 50 %) |
-| Body | 14 px / 1.45, letter-spacing 0.01em, antialiased |
-| Nav row, tab | 14 px, weight 500 (nav letter-spacing −0.025em) |
+| Body | 14 px / 1.45, letter-spacing 0 (V37), antialiased |
+| Nav row, tab | 14 px, weight 500 |
 | Button label, secondary, paths, code, menu items, status bar | 13 px (menu items weight 450, line 17 px) |
 | Captions, chips, badges, section counts, key caps | 12 px, weight 500 |
 | Uppercase labels (a symbol's kind), one-glyph marks | 11 px |
@@ -139,6 +143,9 @@ number (`AgentTerminal.tsx`'s `FONT_SIZE`, 14). The map's project names are
 | Sidenav | 240 px |
 | Motion | colours 150 ms; menus fade in 150 ms, dialogs 200 ms, by opacity only |
 
-Letter-spacing widens text: Symbiote's node widths are estimated from characters (`nodeWidth`, 9.4 px a
-character, with slack). `0.01em` is on the chrome (`body`) and `letter-spacing: 0` on
-`.react-flow`; measure labels cut short (viewer-check) before changing either.
+Letter-spacing is 0 everywhere but uppercase labels (V37). At 1× on Linux Chromium puts glyphs on
+whole pixels: V29b's 0.01em on the chrome (0.13–0.14 px a letter) added up into uneven gaps ("n o
+commits"), and fractional tracking on titles (−0.01em) and the nav (−0.025em) did the same. Form
+controls take `letter-spacing: inherit` (the browser gives them `normal`, which `font: inherit` does
+not reset). The graph's node widths are estimated from characters (`nodeWidth`, 9.4 px a character):
+measure labels cut short (viewer-check) before tracking anything.

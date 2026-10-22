@@ -1,4 +1,5 @@
 import type { Finding, Graph, GraphNode, Project } from '@symbiote/core';
+import type { ReactNode } from 'react';
 import { groupOf, label, tone } from './flow.js';
 import { pathInProject, projectOf } from './projects.js';
 import { byProject, type FileChanges } from './review.js';
@@ -270,26 +271,30 @@ export function DiffKeys({
   review: boolean;
   canOpen: boolean;
 }) {
+  // Each key with its words, so a line never ends between them.
+  const keys: [ReactNode, string][] = [
+    [
+      <>
+        <kbd>j</kbd>/<kbd>k</kbd>
+      </>,
+      'next/previous',
+    ],
+    [<kbd>r</kbd>, 'reviewed'],
+    [<kbd>f</kbd>, 'focus'],
+    ...(grouped ? [[<kbd>p</kbd>, 'project'] as [ReactNode, string]] : []),
+    [<kbd>/</kbd>, 'search'],
+    ...(review ? [[<kbd>c</kbd>, 'comment'] as [ReactNode, string]] : []),
+    ...(canOpen ? [[<kbd>o</kbd>, 'VS Code'] as [ReactNode, string]] : []),
+    [<kbd>Esc</kbd>, 'close'],
+  ];
   return (
     <p className="keys">
-      <kbd>j</kbd>/<kbd>k</kbd> next/previous · <kbd>r</kbd> reviewed · <kbd>f</kbd> focus ·{' '}
-      {grouped && (
-        <>
-          <kbd>p</kbd> project ·{' '}
-        </>
-      )}
-      <kbd>/</kbd> search ·{' '}
-      {review && (
-        <>
-          <kbd>c</kbd> comment ·{' '}
-        </>
-      )}
-      {canOpen && (
-        <>
-          <kbd>o</kbd> VS Code ·{' '}
-        </>
-      )}
-      <kbd>Esc</kbd> close
+      {keys.map(([key, words], i) => (
+        <span key={words} className="key-entry">
+          {key} {words}
+          {i < keys.length - 1 ? ' · ' : ''}
+        </span>
+      ))}
     </p>
   );
 }
