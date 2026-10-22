@@ -1,12 +1,14 @@
 import type { Graph } from '@symbiote/core';
 
 /**
- * `symbiote view`'s pages and what its sidenav opens (V29a): History, Settings, a workspace or a
- * merge, and Start a workspace (V30a), each shown in the shell's main area. There is no Workspaces
+ * `symbiote view`'s pages and what its sidenav opens (V29a): History, Scout (V35), Settings, a
+ * workspace or a merge, and Start a workspace (V30a), each shown in the shell's main area. There is no Workspaces
  * page since V29a: the workspaces are in the sidenav, and `/` alone opens History.
  */
 export type Route =
   | { page: 'history' }
+  /** Scout (V35), at `/scout`: a read-only agent to ask about the repository. */
+  | { page: 'scout' }
   | { page: 'settings' }
   /** A workspace, at `/?branch=<branch>`: the address Symbiote has given out since V25. */
   | { page: 'workspace'; branch: string }
@@ -17,6 +19,7 @@ export type Route =
 
 export const HISTORY_PAGE = '/history';
 export const SETTINGS_PAGE = '/settings';
+export const SCOUT_PAGE = '/scout';
 export const START_PAGE = '/start';
 
 /**
@@ -33,6 +36,8 @@ export function routeTitle(route: Route, repo: string | undefined, name?: string
   switch (route.page) {
     case 'history':
       return pageTitle('History', repo);
+    case 'scout':
+      return pageTitle('Scout', repo);
     case 'settings':
       return pageTitle('Settings', repo);
     case 'workspace':
@@ -69,6 +74,8 @@ export function hrefOf(route: Route): string {
   switch (route.page) {
     case 'history':
       return HISTORY_PAGE;
+    case 'scout':
+      return SCOUT_PAGE;
     case 'settings':
       return SETTINGS_PAGE;
     case 'workspace':
@@ -87,6 +94,7 @@ export function hrefOf(route: Route): string {
 export function routeOf(pathname: string, search: string): { route: Route; moved?: string } {
   if (pathname === HISTORY_PAGE) return { route: { page: 'history' } };
   if (pathname === SETTINGS_PAGE) return { route: { page: 'settings' } };
+  if (pathname === SCOUT_PAGE) return { route: { page: 'scout' } };
   const params = new URLSearchParams(search);
   if (pathname === START_PAGE) {
     const at = params.get('at');
@@ -108,6 +116,7 @@ export function inShell(url: URL): boolean {
   return (
     url.pathname === HISTORY_PAGE ||
     url.pathname === SETTINGS_PAGE ||
+    url.pathname === SCOUT_PAGE ||
     url.pathname === START_PAGE ||
     url.pathname === '/' ||
     OLD_WORKSPACES.has(url.pathname)

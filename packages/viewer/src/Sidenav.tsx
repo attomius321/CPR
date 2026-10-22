@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -17,12 +18,14 @@ import {
   HistoryIcon,
   MenuIcon,
   PlusIcon,
+  ScoutIcon,
   SettingsIcon,
   SidenavIcon,
 } from './icons.js';
 import { mergeState } from './merges.js';
-import { HISTORY_PAGE, hrefOf, SETTINGS_PAGE, START_PAGE } from './pages.js';
+import { HISTORY_PAGE, hrefOf, SCOUT_PAGE, SETTINGS_PAGE, START_PAGE } from './pages.js';
 import { Resizer } from './Resizer.js';
+import { nextScoutMark, type ScoutMark } from './scout.js';
 import { useShell } from './shell-context.js';
 import { useWorkspaces } from './useWorkspaces.js';
 import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from './Workspace.js';
@@ -56,13 +59,20 @@ export function Sidenav({
   flashed: string | null;
 }) {
   const shell = useShell();
-  const { list, reviews, merges } = useWorkspaces();
+  const { list, reviews, merges, scout } = useWorkspaces();
   const groups = useMemo(() => workspaceGroups(list?.workspaces ?? [], reviews), [list, reviews]);
   const marks = useMemo(() => reviewMarks(reviews).marks, [reviews]);
   const route = shell?.route;
   const queued = merges?.merges ?? [];
   const needs = groups.needsYou.length;
   const empty = list !== null && list.workspaces.length === 0 && queued.length === 0;
+  // Scout's mark (V35): working while it answers; answered when it did while you were elsewhere.
+  const scoutState = scout?.conversation?.state;
+  const onScout = route?.page === 'scout';
+  const [scoutMark, setScoutMark] = useState<ScoutMark>(null);
+  useEffect(() => {
+    setScoutMark((shown) => nextScoutMark(shown, scoutState, onScout));
+  }, [scoutState, onScout]);
 
   // A card whose workspace moves to another group (its agent moved on) is drawn anew there, and
   // the focus would fall to the page: it follows the card. Only the card the focus was on, and
@@ -133,6 +143,28 @@ export function Sidenav({
           <HistoryIcon />
           <span className="sidenav-label">History</span>
           <kbd aria-hidden="true">h</kbd>
+        </a>
+        <a
+          href={SCOUT_PAGE}
+          title={
+            scoutMark === 'working'
+              ? 'Scout: answering (a)'
+              : scoutMark === 'answered'
+                ? 'Scout: answered while you were away (a)'
+                : 'Scout: ask about the repository, read-only (a)'
+          }
+          aria-current={route?.page === 'scout' ? 'page' : undefined}
+          data-state={scoutMark ?? undefined}
+        >
+          <ScoutIcon />
+          <span className="sidenav-label">Scout</span>
+          {scoutMark && (
+            <span
+              className={`state-dot ${scoutMark === 'working' ? 'tone-working' : 'tone-done'}`}
+              aria-hidden="true"
+            />
+          )}
+          <kbd aria-hidden="true">a</kbd>
         </a>
         <a
           href={SETTINGS_PAGE}

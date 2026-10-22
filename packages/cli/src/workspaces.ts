@@ -680,6 +680,17 @@ export interface ClaudeCode {
     /** Its effort level (V30b, `--effort`): the session keeps it, through a resume too. */
     effort?: string;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
+  /**
+   * Starts Scout's background session in `cwd` (V35, decision 236): read tools and Bash only, Bash
+   * through the gate in `settings`, nothing asked (`dontAsk`), no MCP server. A wake keeps all of
+   * it (V35 spike). Its words when it does not start.
+   */
+  startReadOnly(request: {
+    cwd: string;
+    name: string;
+    prompt: string;
+    settings: string;
+  }): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Its sessions, finished ones included; null when it cannot list them. */
   sessions(): Promise<AgentSession[] | null>;
   /** Stops a background session (`claude stop <id>`); its words when it cannot. */
@@ -734,6 +745,29 @@ export function claudeCode(
           : ['--permission-mode', request.permissionMode]),
         ...(model ? ['--model', model] : []),
         ...(request.effort ? ['--effort', request.effort] : []),
+        request.prompt,
+      ];
+      const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
+      sessions = null;
+      if (result.code === 0) return { ok: true };
+      return {
+        ok: false,
+        error: wordsOf(result) || `${basename(command)} exited with code ${result.code ?? 'none'}`,
+      };
+    },
+    async startReadOnly(request) {
+      const args = [
+        '--bg',
+        '--name',
+        request.name,
+        '--tools',
+        'Read,Grep,Glob,Bash',
+        '--permission-mode',
+        'dontAsk',
+        '--strict-mcp-config',
+        '--settings',
+        request.settings,
+        ...(model ? ['--model', model] : []),
         request.prompt,
       ];
       const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
@@ -992,7 +1026,7 @@ const HOOKED_EVENTS = [
 ] as const;
 
 /** A path as one word of a hook's command line (Claude Code runs it in a shell). */
-function shellWord(path: string, platform: NodeJS.Platform): string {
+export function shellWord(path: string, platform: NodeJS.Platform): string {
   return platform === 'win32' ? `"${path}"` : `'${path.replaceAll("'", "'\\''")}'`;
 }
 

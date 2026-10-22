@@ -326,3 +326,40 @@ describe('promptSettingsService', () => {
     expect((await settings.prompts()).git).toBe('changed');
   });
 });
+
+describe("Scout's prompt (V35)", () => {
+  it("is Symbiote's until the project has its own, and holds the question", () => {
+    const scout = DEFAULT_PROMPTS.scout;
+    expect(scout).toContain('{question}');
+    // Read only, with work going through a workspace; the workspace rules are not Scout's.
+    expect(scout).toMatch(/read-only/i);
+    expect(scout).toContain('symbiote/AGENTS.md');
+    expect(fillPrompt(scout, { question: 'Where is X?' })).toContain('Where is X?');
+    expect(readPrompts(withConfig({})).text.scout).toBe(scout);
+
+    const own = readPrompts(withConfig({ prompts: { scout: ['Be brief.', '', '{question}'] } }));
+    expect(own.text.scout).toBe('Be brief.\n\n{question}');
+    expect([...own.changed]).toEqual(['scout']);
+  });
+
+  it("refuses a project prompt without the question, using Symbiote's", () => {
+    const { text, warnings } = readPrompts(withConfig({ prompts: { scout: 'Be brief.' } }));
+    expect(text.scout).toBe(DEFAULT_PROMPTS.scout);
+    expect(warnings.scout).toContain('{question}');
+  });
+
+  it('is listed in Settings, in its own group', async () => {
+    const repo = createRepo();
+    dirs.push(repo.root);
+    repo.write({ 'src/a.ts': 'export const a = 1;\n' });
+    repo.commit('A');
+    const { prompts } = await promptSettingsService(await openRepo(repo.root)).prompts();
+    expect(prompts.find((p) => p.key === 'scout')).toMatchObject({
+      group: 'Scout',
+      title: 'Instructions',
+      text: DEFAULT_PROMPTS.scout,
+      placeholders: [{ name: 'question', about: "the person's question", required: true }],
+    });
+    expect(prompts.at(-1)?.key).toBe('scout');
+  });
+});

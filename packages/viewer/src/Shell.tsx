@@ -5,6 +5,7 @@ import { keyIsTaken } from './keys.js';
 import { MergeView } from './Merge.js';
 import {
   HISTORY_PAGE,
+  SCOUT_PAGE,
   SETTINGS_PAGE,
   hrefOf,
   inShell,
@@ -12,6 +13,7 @@ import {
   routeTitle,
   type Route,
 } from './pages.js';
+import { ScoutPage } from './ScoutPage.js';
 import { SettingsPage } from './SettingsPage.js';
 import { StartPage } from './StartPage.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
@@ -62,7 +64,7 @@ const sameRoute = (a: Route, b: Route) => hrefOf(a) === hrefOf(b);
 
 /**
  * `symbiote view`'s window (V29a): the sidenav (the pages, then the workspaces), the main area with
- * what is picked — History, Settings, a workspace, a merge or Start a workspace —, and the status
+ * what is picked — History, Scout, Settings, a workspace, a merge or Start a workspace —, and the status
  * bar. Going from
  * one to another happens in place: the address changes, the page does not load again.
  */
@@ -188,15 +190,20 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     return () => document.removeEventListener('click', onClick, true);
   }, [go]);
 
-  // h and s go to the pages, w to the workspaces (the arrows between them), n starts one (on its
-  // page, back to its title), [ folds the sidenav. Attached before the first paint, as History's
-  // keys are: a key pressed as soon as the page shows is not lost.
+  // h and s go to the pages, a to Scout (V35; on its page, to its question or its terminal), w to
+  // the workspaces (the arrows between them), n starts one (on its page, back to its title), [
+  // folds the sidenav. Attached before the first paint, as History's keys are: a key pressed as
+  // soon as the page shows is not lost.
   useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (keyIsTaken(event)) return;
       if (event.key === 'h') go(HISTORY_PAGE);
       else if (event.key === 's') go(SETTINGS_PAGE);
-      else if (event.key === 'n') {
+      else if (event.key === 'a') {
+        const box = document.querySelector<HTMLElement>('.scout-page textarea');
+        if (box) box.focus();
+        else go(SCOUT_PAGE);
+      } else if (event.key === 'n') {
         const title = document.querySelector<HTMLElement>('.start-page input[name="title"]');
         if (title) title.focus();
         else startWorkspace();
@@ -232,11 +239,13 @@ export function Shell({ repo }: { repo?: string | undefined }) {
             label={
               route.page === 'settings'
                 ? 'Settings'
-                : route.page === 'merge'
-                  ? `Merge ${route.branch}`
-                  : route.page === 'start'
-                    ? 'Start a workspace'
-                    : undefined
+                : route.page === 'scout'
+                  ? 'Scout'
+                  : route.page === 'merge'
+                    ? `Merge ${route.branch}`
+                    : route.page === 'start'
+                      ? 'Start a workspace'
+                      : undefined
             }
             onSlots={setSlots}
           />
@@ -247,6 +256,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
         <TitleBarSlotsProvider value={slots}>
           <main className="shell-main">
             {route.page === 'history' && <HistoryPage key={visit} />}
+            {route.page === 'scout' && <ScoutPage />}
             {route.page === 'settings' && <SettingsPage />}
             {route.page === 'workspace' && (
               <WorkspaceView key={route.branch} branch={route.branch} />
