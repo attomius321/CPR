@@ -451,7 +451,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V34 | Panels one can resize | The sidenav (240 px) and a workspace's changes panel (256 px) have fixed widths, while the diff's sidebar and detail panel can be dragged; asked: "resize - drag - the left panel with the pages and workspaces, and also from workspaces the right changes made". Built on `feature/resize-left-right-panels`: the diff's handle on both, keys and double-click, widths kept in the browser; 7 new e2e, first paint as `main`'s. See below. |
 | V35 | Scout | A question about the repository needs a terminal outside Symbiote or a Spike workspace (a branch and a worktree at the default branch, then Clean up). Measured: with the merger's read-only tools 0 of 3 real "why" answers named a commit, with git 3 of 3 in fewer turns; allow rules cannot keep Bash read-only (`git log --output=<file>`). Built on `feature/scout-an-agent-to-ask`: `/scout` (key a), a read-only Claude Code or Codex in the checkout, git through Symbiote's PreToolUse gate, one kept conversation found by its recorded ID, `prompts.scout`; with a real Claude Code, the merger's prompt found in `prompts.ts`, a change declined, `ls` refused by the gate, the checkout clean. See below. |
 | V36 | Images in an agent's terminal | The agent's terminal takes keys and text only: a pasted screenshot reaches the agent as an empty paste, Ctrl+V sends ^V for the agent to read its own machine's clipboard (no `xclip` or `wl-paste` here), a dropped image does nothing. Claude Code 2.1.308 and Codex 0.163 attach an image when its path is pasted (read in their code), as Orca uses them. Built on `feature/agent-terminal-accept-images`: a pasted or dropped image saved by the server in Symbiote's cache and its path pasted, the agent's own `[Image #n]`; Ctrl+V the page's paste; with the real Claude Code and Codex through the page, a workspace's and Scout's terminals each sent three images, and the models named their colours. See below. |
-| V37 | A look that is not dated | Asked: "looks kind of oldish… the help texts should be in a tooltip… the fonts are not good inside inputs", and every page checked for uneven spaces. Audited 35 states, dark and light, at 1×: uneven letter gaps from 0.01em letter-spacing, controls at `normal` spacing and two fields in mono, 3:1 field edges with a heavy focus ring, hover and selection alike, glyphs as icons, help as paragraphs. Planned on `feature/ui-improvements`: letter-spacing 0, one field recipe with a soft edge, a lighter hover, icons, one head per page, help behind a "?" tooltip; see below. |
+| V37 | A look that is not dated | Asked: "looks kind of oldish… the help texts should be in a tooltip… the fonts are not good inside inputs", and every page checked for uneven spaces. Audited 35 states, dark and light, at 1×: uneven letter gaps from 0.01em letter-spacing, controls at `normal` spacing and two fields in mono, 3:1 field edges with a heavy focus ring, hover and selection alike, glyphs as icons, help as paragraphs. Built on `feature/ui-improvements`: letter-spacing 0, one field recipe with a soft edge, a lighter hover, icons, one head per page, help behind a "?" tooltip; timings as `main`'s; see below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -9557,9 +9557,10 @@ real agents; macOS and Windows, where `pastedPath`'s escaping is untested; Firef
 
 ### V37 — A look that is not dated: type, fields, hover, help in tooltips
 
-**Status:** planned (2026-10-22) on branch `feature/ui-improvements` (a workspace started in
-Symbiote); the plan and decisions 246–248 confirmed by the person ("1. B 2. Yes 3. Your
-recommandation"). The audit is in the journal ("V37 spike").
+**Status:** built on branch `feature/ui-improvements` (a workspace started in Symbiote), ready for
+review; the plan and decisions 246–248 confirmed by the person ("1. B 2. Yes 3. Your
+recommandation"). The audit is in the journal ("V37 spike"); as built and results under "As built
+(V37)" below.
 
 **Problem** (asked: "the inputs, sidenav and everything looks kind of oldish...the hover
 style..everything. You should keep the colors, i like them...but the elements are not that nice.
@@ -9697,6 +9698,58 @@ moves; screenshots and timings at the end.
 
 **Not in V37 (later)**: drawn tooltips for icon buttons' `title`s (13 e2e read them); a command
 palette; new colours.
+
+#### As built (V37)
+
+- **Tracking off everywhere, not only on the body**: the titles' −0.01em and the nav's −0.025em
+  round into the same uneven gaps; only uppercase labels keep theirs.
+- **The tip is drawn on the page's body** (a portal), not fixed inside the page: the start page's
+  `container-type` makes a containing block for `position: fixed`, and the main area clips. Tests
+  find tips by role or id, not inside a region.
+- **A tip shown by a hover lets the pointer through**; a click keeps it and it takes the pointer.
+  The kinds' tip covers the Title field, and moving there must reach the field (the V24c test
+  hovers it).
+- **Help buttons are in the Tab order** before the field they explain (Branch, Effort): focus shows
+  the help. A help button sits beside a `<label htmlFor>`, not in it, or it joins the field's
+  name.
+- **A workspace's tabs are flat buttons on a strip**, the picked one `--selected`, as they already
+  were in Symbiote's title bar (N1c), not a segmented track: the tablist is the strip itself.
+- **The minimap is smaller** (160 × 112 against React Flow's 200 × 150) rather than moved: its
+  corner is React Flow's; it covers less of the canvas beside the detail panel.
+- **The Thread's line is an action**, not help: "To answer, open its terminal." (the button e2e
+  uses keeps its name).
+- **Found by the audit and fixed with the rest**: a workspace's mark in History and the branches
+  panel (a box drawn in its tone) is a round tint; the zoom buttons' hover went darker than the
+  others (a translucent wash over the canvas), now opaque; Settings' placeholder list is headed
+  "Placeholders", how to insert one in the prompt's help.
+- **Kept**: the merge page's branch chips keep their sides' colours (a state its regions use);
+  native `title`s on icon buttons.
+- **Tests first, with two exceptions**: `tips.test.ts` was written with `placeTip` and the help e2e
+  after `Help.tsx`; neither was seen red.
+
+**Results.** Tests first, red on `main` for the right reason: `look.spec.ts`'s text test (the body
+at 0.14 px and 12 controls at `normal` on History alone), its fields test (the edge at rest
+`rgb(115, 115, 115)`), `tokens.test.ts` (no `--field-line`, `--ring`; dark hover 8 against 10).
+`pnpm check` 1,271 tests (`main` 1,263); e2e 198 of 198. Specs changed where text moved
+behind a help (the worktree's path, the review's verdict, History's compare instruction read
+there), where names changed ("Back to History", "All prompts"), and the Tab order (two help
+buttons). Against `main`'s build, alternated, 3 rounds, on a real graph of this repository
+(`e659928..7c223d4`, V31 to V36: 1,975 symbols, 4,124 edges, 343 files; no Bitwarden clone here):
+
+| What | `main` | V37 |
+|---|---|---|
+| First paint | 904–942 ms | 896–948 ms |
+| Select · mark reviewed | 275–301 · 64–67 ms | 273–279 · 65–67 ms |
+| Pan | 62 fps | 62–63 fps |
+| Nodes drawn in view | 831 | 846 |
+| `/history` first paint · first rows (6 rounds) | 60–68 · 152–259 ms | 60–68 · 157–183 ms |
+
+The 15 more nodes are a taller canvas: on `main` the legend wrapped its hint onto a second line
+(32 px); node positions are the same. Screenshots of 35 states of every page, dark and light, at
+1440 × 900 and 1×, before and after, and five help tips open.
+
+Not verified: the Electron window on WSLg (the person's); Bitwarden's graph; Windows and macOS
+text rendering; real agents in the restyled pages.
 
 ### Phase 1 milestones
 
