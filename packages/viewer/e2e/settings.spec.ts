@@ -189,7 +189,7 @@ test('on a phone, the list first; a prompt takes the page, and comes back to the
   await entry(page, 'symbiote/AGENTS.md').click();
   await expect(list(page)).toBeHidden();
   await expect(text(page, 'symbiote/AGENTS.md')).toHaveValue(/^# Symbiote reviews/);
-  await editor(page).getByRole('button', { name: '← All prompts' }).click();
+  await editor(page).getByRole('button', { name: 'All prompts' }).click();
   await expect(list(page)).toBeVisible();
   await expect(page).toHaveURL(`${symbiote.url}settings`);
   // Nothing wider than the screen.

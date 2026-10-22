@@ -118,7 +118,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   expect(git('status', '--porcelain', '--untracked-files=all')).toBe('');
 
   // Back on the commits page the branch is being reviewed (V16: "✓" is an approval).
-  await page.getByRole('link', { name: '← History' }).click();
+  await page.getByRole('link', { name: 'Back to History' }).click();
   await expect(row(page, 'Agent: add cube').locator('.ref-review')).toHaveText('…');
 
   // The agent changes square and adds half.
@@ -225,7 +225,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
     }),
   ]);
   expect(() => originGit('rev-parse', '--verify', '--quiet', 'agent')).toThrow();
-  await page.getByRole('link', { name: '← History' }).click();
+  await page.getByRole('link', { name: 'Back to History' }).click();
   await expect(row(page, 'Agent: add cube').locator('.ref-review')).toHaveText('✗');
   await expect(row(page, 'Agent: add cube').locator('.ref-review')).toHaveClass(
     /ref-review-changes/,
@@ -255,9 +255,12 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await reviewTab(page).click();
   await expect(page.locator('.merge-check')).toHaveText('Merges cleanly into main.');
   await page.getByLabel('Approve').check();
-  await expect(page.locator('.submit-review')).toContainText(
+  // Where the verdict goes, behind the help beside Finish review (V37).
+  await page.getByRole('button', { name: 'Where the verdict goes' }).hover();
+  await expect(page.getByRole('tooltip')).toContainText(
     `Approve, then Merge: Symbiote merges ${short(fix)} into main (or a branch you pick), checks it and lands it.`,
   );
+  await page.mouse.move(0, 0);
   // Not approved yet: nothing to merge.
   await expect(page.getByRole('button', { name: /^Merge into/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Finish review' }).click();
@@ -280,7 +283,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   expect(agents).not.toContain('git merge --no-ff');
   expect(agents).toContain('Do not merge it yourself');
   expect(git('status', '--porcelain', '--untracked-files=all')).toBe('');
-  await page.getByRole('link', { name: '← History' }).click();
+  await page.getByRole('link', { name: 'Back to History' }).click();
   const approved = row(page, 'Agent: square returns early').locator('.ref-review').first();
   await expect(approved).toHaveText('✓');
   await expect(approved).toHaveAttribute('title', 'Approved');

@@ -252,27 +252,45 @@ export function Sidebar({
           {findings.length === 0 && <p className="muted pad">No findings.</p>}
         </div>
       )}
-      <p className="keys">
-        <kbd>j</kbd>/<kbd>k</kbd> next/previous · <kbd>r</kbd> reviewed · <kbd>f</kbd> focus ·{' '}
-        {grouped && (
-          <>
-            <kbd>p</kbd> project ·{' '}
-          </>
-        )}
-        <kbd>/</kbd> search ·{' '}
-        {review && (
-          <>
-            <kbd>c</kbd> comment ·{' '}
-          </>
-        )}
-        {canOpen && (
-          <>
-            <kbd>o</kbd> VS Code ·{' '}
-          </>
-        )}
-        <kbd>Esc</kbd> close
-      </p>
     </nav>
+  );
+}
+
+/**
+ * A diff's keys, in the help of its bar (V37: a strip under the change list, three lines in the
+ * review tab): `p` when the list is by project, `c` when there is a review to comment in, `o` when
+ * VS Code can open a line.
+ */
+export function DiffKeys({
+  grouped,
+  review,
+  canOpen,
+}: {
+  grouped: boolean;
+  review: boolean;
+  canOpen: boolean;
+}) {
+  return (
+    <p className="keys">
+      <kbd>j</kbd>/<kbd>k</kbd> next/previous · <kbd>r</kbd> reviewed · <kbd>f</kbd> focus ·{' '}
+      {grouped && (
+        <>
+          <kbd>p</kbd> project ·{' '}
+        </>
+      )}
+      <kbd>/</kbd> search ·{' '}
+      {review && (
+        <>
+          <kbd>c</kbd> comment ·{' '}
+        </>
+      )}
+      {canOpen && (
+        <>
+          <kbd>o</kbd> VS Code ·{' '}
+        </>
+      )}
+      <kbd>Esc</kbd> close
+    </p>
   );
 }
 

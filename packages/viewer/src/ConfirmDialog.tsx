@@ -34,7 +34,7 @@ export function ConfirmDialog({
         <h2 id="confirm-question">{question}</h2>
         <p id="confirm-detail">{detail}</p>
         <div className="dialog-buttons">
-          <button type="button" className="link" onClick={onLeave}>
+          <button type="button" className="button ghost" onClick={onLeave}>
             {leave}
           </button>
           <button type="button" className="button" autoFocus onClick={onStay}>

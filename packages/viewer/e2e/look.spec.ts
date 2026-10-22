@@ -259,7 +259,7 @@ test("fields and buttons take the page's font and spacing on every page", async 
   expect(await unlike()).toEqual([]);
 
   await page.getByRole('link', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: 'Feature' }).click();
+  await page.getByRole('button', { name: 'Feature', exact: true }).click();
   await expect(page.locator('.settings-editor textarea')).toBeVisible();
   expect(await unlike()).toEqual([]);
 
@@ -309,6 +309,58 @@ test('text fields: a quiet edge, a stronger one on hover, a ring on focus, one h
   expect((await goal.boundingBox())?.height ?? 0).toBeGreaterThan(before);
 });
 
+// V37: help behind a "?" on every page: hidden at rest, a tooltip on hover or focus, inside the
+// window wherever its button is, the button described by it for screen readers.
+test('help texts wait behind a "?": a tooltip on hover, inside the window', async ({ page }) => {
+  symbiote = await serveWorkspaces();
+  const inside = async (tip: ReturnType<Page['getByRole']>) => {
+    const box = await tip.boundingBox();
+    const view = page.viewportSize();
+    expect(box && view).toBeTruthy();
+    if (!box || !view) return;
+    expect(box.x).toBeGreaterThanOrEqual(8);
+    expect(box.y).toBeGreaterThanOrEqual(8);
+    expect(box.x + box.width).toBeLessThanOrEqual(view.width - 8);
+    expect(box.y + box.height).toBeLessThanOrEqual(view.height - 8);
+  };
+  const tip = page.getByRole('tooltip');
+
+  // A diff's keys and how to read its canvas: behind the bar's "?", at the window's right edge.
+  const [base, head] = symbiote.shas;
+  await page.goto(`${symbiote.url}diff/${base}..${head}/`);
+  await expect(page.locator('.react-flow__node').first()).toBeVisible(POLL);
+  await expect(page.getByText('next/previous')).toBeHidden();
+  await expect(page.getByText('a group to show its symbols')).toBeHidden();
+  const keys = page.getByRole('button', { name: "This page's keys" });
+  await keys.hover();
+  await expect(tip).toBeVisible();
+  await expect(tip).toContainText('next/previous');
+  await expect(tip).toContainText('a group to show its symbols');
+  await inside(tip);
+  const described = await keys.getAttribute('aria-describedby');
+  expect(await tip.getAttribute('id')).toBe(described);
+  await page.mouse.move(700, 600);
+  await expect(tip).toBeHidden();
+
+  // Scout's: what it is and its keys, behind the "?" by its question.
+  await page.goto(`${symbiote.url}scout`);
+  await expect(page.getByRole('textbox', { name: 'Ask Scout' })).toBeVisible();
+  await expect(page.getByText('changes nothing')).toBeHidden();
+  await page.getByRole('button', { name: 'About Scout' }).focus();
+  await expect(tip).toContainText('changes nothing');
+  await inside(tip);
+  await page.keyboard.press('Escape');
+  await expect(tip).toBeHidden();
+
+  // A prompt's description in Settings, by its title.
+  await page.goto(`${symbiote.url}settings`);
+  await page.getByRole('button', { name: 'Feature', exact: true }).click();
+  await expect(page.getByText("What a Feature workspace's agent is told")).toBeHidden();
+  await page.getByRole('button', { name: 'About Workspaces: Feature' }).click();
+  await expect(tip).toContainText("What a Feature workspace's agent is told");
+  await inside(tip);
+});
+
 test('a card in the sidenav is at most 64 px high', async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}history`);
@@ -322,7 +374,10 @@ test('a card in the sidenav is at most 64 px high', async ({ page }) => {
   expect((await card.boundingBox())?.height ?? 0).toBeLessThanOrEqual(64);
 });
 
-test("the Terminal tab joins the terminal's black and stays readable in light", async ({
+// V37: Terminal, Thread and Brief are flat buttons on the chrome's strip, the picked one a wash of
+// the text (they were folder tabs, the picked one joining the terminal's black: a black block on
+// light chrome).
+test("a workspace's views: the picked one a wash on the chrome, readable in light", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -337,12 +392,16 @@ test("the Terminal tab joins the terminal's black and stays readable in light", 
   const tab = page.getByRole('tab', { name: 'Terminal' });
   await expect(tab).toHaveAttribute('aria-selected', 'true', POLL);
   await expect(page.locator('.xterm-screen')).toBeVisible(POLL);
+  const strip = await page
+    .getByRole('tablist', { name: 'Talk to the agent' })
+    .evaluate((e) => getComputedStyle(e).backgroundColor);
+  expect(strip).toBe('rgb(250, 250, 250)');
   const [color, under] = await tab.evaluate((element) => {
     const style = getComputedStyle(element);
     return [style.color, style.backgroundColor];
   });
-  expect(under).toBe('rgb(0, 0, 0)');
-  // WCAG's contrast of the label on the tab: at least 4.5:1.
+  expect(under).not.toBe('rgb(0, 0, 0)');
+  // WCAG's contrast of the label on the strip: at least 4.5:1 (the wash only darkens it a little).
   const luminance = (rgb: string) => {
     const [r = 0, g = 0, b = 0] = (rgb.match(/\d+/g) ?? []).map((c) => {
       const s = Number(c) / 255;
@@ -350,5 +409,5 @@ test("the Terminal tab joins the terminal's black and stays readable in light", 
     });
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   };
-  expect((luminance(color) + 0.05) / (luminance(under) + 0.05)).toBeGreaterThanOrEqual(4.5);
+  expect((luminance(strip) + 0.05) / (luminance(color) + 0.05)).toBeGreaterThanOrEqual(4.5);
 });

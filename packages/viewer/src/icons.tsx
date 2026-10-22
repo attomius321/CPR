@@ -48,6 +48,15 @@ export const ImageIcon = () => (
   </Icon>
 );
 
+/** Help (V37), after lucide's circle-help (ISC): the button a page's or a field's help is behind. */
+export const HelpIcon = () => (
+  <Icon>
+    <circle cx="8" cy="8" r="6" />
+    <path d="M6.1 6a2 2 0 0 1 3.9.7c0 1.3-2 2-2 2" />
+    <path d="M8 11.3h.01" />
+  </Icon>
+);
+
 export const PlusIcon = () => (
   <Icon>
     <path d="M8 3v10M3 8h10" />

@@ -18,6 +18,7 @@ import { openInEditor } from './open.js';
 import { OpenIcon } from './OpenIcon.js';
 import { useWorkspaces } from './useWorkspaces.js';
 import { MergeControl } from './MergeControl.js';
+import { Help } from './Help.js';
 
 export interface ReviewProps {
   forge: 'github' | 'gitlab' | 'local';
@@ -148,36 +149,38 @@ export function ReviewTab({
             </label>
           ))}
         </fieldset>
-        {local && (
-          <p className="muted small">
-            The verdict and its comments stay in this repository, for the agent to read.{' '}
-            {into
-              ? `Approve, then Merge: Symbiote merges ${head} into ${into} (or a branch you pick), checks it and lands it.`
-              : 'Approve tells it these commits may be pushed.'}
-          </p>
-        )}
         {local && into && <MergeCheck branch={review.local?.branch ?? ''} canOpen={canOpen} />}
         {forge === 'gitlab' && event === 'request-changes' && (
           <p className="muted small">
             GitLab gets a note marked “Changes requested”, and your approval is withdrawn.
           </p>
         )}
-        <button
-          type="submit"
-          className="button"
-          disabled={
-            submission.status === 'posting' ||
-            !(local ? canFinish : canSubmit)(draft.drafts, event, draft.body)
-          }
-        >
-          {submission.status === 'posting'
-            ? local
-              ? 'Finishing…'
-              : 'Posting…'
-            : local
-              ? 'Finish review'
-              : `Submit review to ${site}`}
-        </button>
+        <div className="review-submit">
+          <button
+            type="submit"
+            className="button"
+            disabled={
+              submission.status === 'posting' ||
+              !(local ? canFinish : canSubmit)(draft.drafts, event, draft.body)
+            }
+          >
+            {submission.status === 'posting'
+              ? local
+                ? 'Finishing…'
+                : 'Posting…'
+              : local
+                ? 'Finish review'
+                : `Submit review to ${site}`}
+          </button>
+          {local && (
+            <Help label="Where the verdict goes">
+              The verdict and its comments stay in this repository, for the agent to read.{' '}
+              {into
+                ? `Approve, then Merge: Symbiote merges ${head} into ${into} (or a branch you pick), checks it and lands it.`
+                : 'Approve tells it these commits may be pushed.'}
+            </Help>
+          )}
+        </div>
         {submission.status === 'finished' && (
           <Finished branch={review.local?.branch ?? ''} result={submission.result} />
         )}

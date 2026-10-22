@@ -17,6 +17,8 @@
   --size-small: 13px; /* secondary: buttons, menu items, paths, code, the status bar */
   --size-body: 14px; /* rows, nav, tabs, body text, editors */
   --size-title: 16px; /* titles: a page's, a dialog's, a symbol's in its panel, a frame's name */
+  /* lucide's chevron-right (ISC) as a mask, drawn in the text's colour: a submenu's, a <summary>'s. */
+  --chevron-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
 }
 
 /* Dark unless the person chose light or the system's (decision 179; index.html sets data-theme
@@ -588,10 +590,6 @@ input[type='radio']:focus-visible {
   user-select: none;
 }
 
-.legend-hint {
-  margin-left: auto;
-}
-
 .hint {
   padding: 24px;
   color: var(--muted);
@@ -600,17 +598,6 @@ input[type='radio']:focus-visible {
 /* What the list says of where workspaces are kept (V25), under the title. */
 .workspaces-note {
   padding: 0 24px 8px;
-}
-
-/* Workspaces with none yet (V25): what to do, then a way to start. */
-.workspaces-empty p {
-  margin: 0 0 12px;
-}
-
-.workspaces-empty a {
-  color: var(--text);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 /* Before the first layout arrives (V8e): where the canvas will be. */
@@ -671,6 +658,17 @@ input[type='radio']:focus-visible {
 .button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Backing out stays quiet (Cancel, Clear, Discard, Keep it): a ghost button, no colour. */
+.button.ghost {
+  background: transparent;
+  color: var(--muted);
+}
+
+.button.ghost:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
 }
 
 .button.secondary,
@@ -1006,7 +1004,8 @@ input[type='radio']:focus-visible {
   --xy-minimap-background-color: var(--side);
   --xy-minimap-mask-background-color: color-mix(in srgb, var(--bg) 60%, transparent);
   --xy-controls-button-background-color: var(--panel);
-  --xy-controls-button-background-color-hover: var(--hover);
+  /* Opaque: a translucent wash made a hovered button darker than the others (V37). */
+  --xy-controls-button-background-color-hover: color-mix(in srgb, var(--text) 6%, var(--panel));
   --xy-controls-button-color: var(--muted);
   --xy-controls-button-color-hover: var(--text);
   --xy-controls-button-border-color: var(--line);
@@ -1454,13 +1453,46 @@ input[type='radio']:focus-visible {
   font-weight: 500;
 }
 
+/* Used by, Uses: rows, not a bulleted list (V37). */
 .neighbours {
-  margin: 0;
-  padding-left: 18px;
+  margin: 0 -8px;
+  padding: 0;
+  list-style: none;
 }
 
 .neighbours li {
-  margin: 2px 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.neighbours li:hover {
+  background: var(--hover);
+}
+
+.neighbours li > .muted {
+  overflow: hidden;
+  font-size: var(--size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.neighbours-count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 2px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .link {
@@ -1777,13 +1809,11 @@ input[type='radio']:focus-visible {
   font-size: var(--size-small);
 }
 
+/* A diff's keys, in its bar's help (V37). */
 .keys {
   margin: 0;
-  padding: 8px 12px;
-  border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: var(--size-caption);
-  line-height: 1.8;
+  line-height: 1.9;
 }
 
 /* A key, as a key cap. */
@@ -2036,6 +2066,17 @@ kbd {
   cursor: pointer;
 }
 
+/* Finish review, and where the verdict goes behind its help (V37). */
+.review-submit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.review-submit .button {
+  flex: 1;
+}
+
 .posted {
   margin: 0;
   color: var(--added);
@@ -2079,6 +2120,9 @@ kbd {
 /* ---- commits page and diffs on demand (V9) ------------------------------------------ */
 
 .back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--muted);
   text-decoration: none;
   white-space: nowrap;
@@ -2142,18 +2186,6 @@ kbd {
 }
 
 /* Compare mode's words beside the toggle: their first line centred on it, however many wrap. */
-.commits-help {
-  flex: 1 1 0;
-  min-width: 0;
-  padding-top: 5px;
-  color: var(--muted);
-  font-size: var(--size-small);
-  line-height: 18px;
-}
-
-.help-pop .commits-help {
-  padding-top: 0;
-}
 
 .commit-list {
   position: relative;
@@ -2509,11 +2541,41 @@ kbd {
   gap: 24px;
 }
 
-/* The arrow is drawn, not read: empty alternative text keeps the item's name "Check out". */
+/* The arrow is drawn, not read: the item's name stays "Check out". */
 .menu-item.has-submenu::after {
-  content: '▸';
-  content: '▸' / '';
-  color: var(--muted);
+  content: '';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background: var(--muted);
+  mask: var(--chevron-right) center / contain no-repeat;
+}
+
+/* A <summary>'s marker: the chevron, turned down when open (V37: the browser's ▶). */
+summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+  cursor: pointer;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary::before {
+  content: '';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background: currentColor;
+  mask: var(--chevron-right) center / contain no-repeat;
+  transition: transform 150ms;
+}
+
+details[open] > summary::before {
+  transform: rotate(90deg);
 }
 
 .menu-item.has-submenu[aria-expanded='true']:not(.active) {
@@ -2614,22 +2676,6 @@ kbd {
   font-size: var(--size-body);
 }
 
-/* Backing out stays quiet: a ghost button, no colour. */
-.dialog-buttons .link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 12px;
-  border-radius: 8px;
-  font-size: var(--size-small);
-  font-weight: 500;
-}
-
-.dialog-buttons .link:hover:not(:disabled) {
-  background: var(--hover);
-  text-decoration: none;
-}
-
 /* Start a workspace, a page of the shell's (V30a): a head strip, as a workspace's, then the brief
    and the run side by side where the main area has the room, the run under the brief where not.
    The body scrolls under the head, which keeps Start in view. */
@@ -2678,8 +2724,7 @@ kbd {
   grid-area: actions;
   display: flex;
   align-items: center;
-  gap: 16px;
-  font-size: var(--size-body);
+  gap: 4px;
 }
 
 /* Narrow, where it starts goes under the title and the buttons. */
@@ -2691,7 +2736,7 @@ kbd {
 }
 
 .start-error {
-  margin: 12px 24px 0;
+  margin: 12px 16px 0;
   white-space: pre-wrap;
 }
 
@@ -2699,7 +2744,7 @@ kbd {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 16px 24px 24px;
+  padding: 16px 16px 24px;
 }
 
 .start-columns {
@@ -2816,7 +2861,7 @@ kbd {
 }
 
 .scout-error {
-  margin: 12px 24px 0;
+  margin: 12px 16px 0;
   white-space: pre-wrap;
 }
 
@@ -2824,7 +2869,7 @@ kbd {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 24px;
+  padding: 16px 16px 24px;
 }
 
 .scout-ask {
@@ -2837,7 +2882,6 @@ kbd {
   font-weight: 500;
 }
 
-.scout-lede,
 .scout-note {
   margin: 0;
   color: var(--muted);
@@ -2861,11 +2905,6 @@ kbd {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-}
-
-.scout-keys {
-  color: var(--muted);
-  font-size: var(--size-caption);
 }
 
 .scout-ask-row .button {
@@ -2917,44 +2956,18 @@ kbd {
   gap: 6px;
 }
 
-.kind-info-button {
-  padding: 0 2px;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font-size: var(--size-title);
-  line-height: 1;
-  cursor: help;
-}
-
-.kind-info-button:hover,
-.kind-info-button[aria-expanded='true'] {
-  color: var(--text);
+/* The kinds, explained in their help (V24c; a tip of Help's since V37). */
+.help-tip:has(.kind-about) {
+  max-width: min(480px, calc(100vw - 16px));
 }
 
 .kind-about {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 1;
-  padding: 8px 12px;
-  background: var(--raised);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px var(--shadow);
-  font-size: var(--size-small);
-  /* It covers the title for a moment: what is under it keeps the pointer. */
-  pointer-events: none;
-}
-
-.kind-about dl {
   display: grid;
   gap: 4px;
   margin: 0;
 }
 
-.kind-about dl > div {
+.kind-about > div {
   display: grid;
   grid-template-columns: 5.5em 1fr;
   gap: 8px;
@@ -2971,6 +2984,13 @@ kbd {
 
 .kind-about .current dd {
   color: var(--text);
+}
+
+/* A field's name and its help, in a row above the field. */
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* The kind of work (V24c), as History's scopes: one segmented control. */
@@ -3979,41 +3999,40 @@ button.workspace-about {
 }
 
 /* V21: the workspace's agent session in a terminal, beside its thread. */
+/* Terminal, Thread, Brief: three views of one thing, flat buttons on the chrome, the picked one a
+   wash of the text, as in Symbiote's title bar (V37: folder tabs, in light a black block on light
+   chrome). */
 .workspace-views {
   display: flex;
   gap: 2px;
-  padding: 6px 12px 0;
+  padding: 6px 12px;
   border-bottom: 1px solid var(--line);
+  background: var(--side);
 }
 
 .workspace-views button {
-  margin-bottom: -1px;
-  padding: 5px 12px;
-  border: 1px solid transparent;
-  border-radius: 8px 8px 0 0;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
   background: none;
   color: var(--muted);
   font-size: var(--size-small);
   font-weight: 500;
   cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
 }
 
 .workspace-views button:hover {
+  background: var(--hover);
   color: var(--text);
 }
 
-/* The tab picked joins what it shows: the terminal's black, the page's background otherwise. On
-   the black, the dark theme's text in both themes (light's on black read 1.25:1). */
 .workspace-views button.selected {
-  border-color: var(--line);
-  border-bottom-color: var(--tab-under, var(--bg));
-  background: var(--tab-under, var(--bg));
-  color: var(--tab-text, var(--text));
-}
-
-.workspace-views:has(+ .workspace-body > .workspace-terminal) {
-  --tab-under: #000;
-  --tab-text: #e6e6e9;
+  background: var(--selected);
+  color: var(--text);
 }
 
 /* The tab's content takes the rest of the main area's height (V29a). */
@@ -4710,9 +4729,9 @@ p.merge-control {
 .settings-editor h2 {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 4px 8px;
-  margin: 0 0 4px;
+  margin: 0 0 8px;
   font-size: var(--size-title);
   font-weight: 600;
 }
@@ -4729,12 +4748,6 @@ p.merge-control {
 .settings-state.changed {
   border-color: var(--modified);
   color: var(--modified);
-}
-
-.settings-about {
-  margin: 0 0 8px;
-  color: var(--muted);
-  font-size: var(--size-small);
 }
 
 .settings-editor .settings-warning {
@@ -4853,7 +4866,8 @@ p.settings-placeholders {
   }
 
   .settings-back {
-    display: inline;
+    display: inline-flex;
+    justify-self: start;
   }
 }
 
@@ -4948,30 +4962,27 @@ p.settings-placeholders {
   color: var(--text);
 }
 
-/* A page's help behind its "?" (V29b). */
-.help {
-  position: relative;
-  display: inline-flex;
-}
-
+/* Help behind a "?" (V37): a ghost icon button beside what it explains, its tip a popover drawn on
+   the page's body (Help.tsx places it, fixed, kept inside the window). */
 .help-button {
   width: 24px;
   height: 24px;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  color: var(--muted);
-  font-size: var(--size-small);
-  font-weight: 500;
+  color: var(--faint);
+  font-weight: normal;
+  vertical-align: middle;
 }
 
-.help-pop {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 20;
+.help-button[aria-expanded='true'] {
+  color: var(--text);
+}
+
+.help-tip {
+  position: fixed;
+  z-index: 60;
+  box-sizing: border-box;
   width: max-content;
-  max-width: min(420px, 80vw);
-  padding: 8px 12px;
+  max-width: min(340px, calc(100vw - 16px));
+  padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel);
@@ -4980,15 +4991,39 @@ p.settings-placeholders {
   font-size: var(--size-small);
   font-weight: normal;
   line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+  animation: float-in 150ms ease-out;
 }
 
-.help-pop[hidden] {
+.help-tip[hidden] {
   display: none;
 }
 
-.commits-actions .help-pop {
-  right: 0;
-  left: auto;
+/* Shown by a hover or the focus, it may cover a field for a moment: what is under it keeps the
+   pointer. Kept by a click, it takes it (its text can be selected). */
+.help-tip:not(.pinned) {
+  pointer-events: none;
+}
+
+.help-tip p {
+  margin: 0;
+}
+
+.help-tip p + p,
+.help-tip p + dl,
+.help-tip dl + p {
+  margin-top: 8px;
+}
+
+.help-tip code {
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .help-tip {
+    animation: none;
+  }
 }
 
 .sidenav {
@@ -5133,8 +5168,11 @@ p.settings-placeholders {
   font-size: var(--size-small);
 }
 
-.sidenav .workspaces-empty p {
-  margin: 6px 0;
+/* None yet: one line, what to do behind its help (V37). */
+.sidenav .workspaces-empty {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .sidenav-list {
@@ -5589,21 +5627,38 @@ p.settings-placeholders {
   padding: 0 16px 12px;
 }
 
-/* A merge in the main area (V29a). */
+/* A merge in the main area (V29a), under a 44 px head as every page has (V37: its sides and actions
+   sat loose at the top). */
 .merge-view {
   flex: 1;
   min-width: 0;
   overflow: auto;
-  padding: 12px 16px;
+  padding: 0 0 16px;
 }
 
 .merge-view .hint {
   padding: 0;
 }
 
+.merge-view > .hint {
+  margin: 12px 16px 0;
+}
+
 .merge-view .merge-row {
-  padding: 0;
+  padding: 0 16px;
   border: 0;
+}
+
+.merge-view .merge-row-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  min-height: 44px;
+  box-sizing: border-box;
+  margin: 0 -16px 12px;
+  padding: 7px 12px 7px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--side);
 }
 
 .merge-title {
@@ -5818,34 +5873,40 @@ p.settings-placeholders {
   border-bottom: 0;
 }
 
+/* A section header, as the sidenav's (V37: in capitals, which the style keeps for a symbol's kind):
+   its name, a round count, what it is counted from at the right. */
 .changes-section h2 {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   margin: 0 0 4px;
   padding: 0 12px;
   color: var(--muted);
-  font-size: var(--size-caption);
+  font-size: var(--size-small);
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
 
 .changes-count {
-  color: var(--text);
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
 .changes-since {
   margin-left: auto;
+  font-size: var(--size-caption);
   font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
 }
 
 .changes-section h2 .changes-lines {
   margin-left: auto;
-  letter-spacing: 0;
 }
 
 .changes-list {
@@ -6088,23 +6149,11 @@ button.changes-file:hover {
   padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 8px);
 }
 
-/* The page's tabs, moved up: flat, the picked one raised. */
+/* The page's tabs, moved up: the same buttons, without the strip. */
 .titlebar .workspace-views {
-  gap: 2px;
   padding: 0;
   border: 0;
-}
-
-.titlebar .workspace-views button {
-  margin: 0;
-  padding: 4px 12px;
-  border: 0;
-  border-radius: 8px;
-}
-
-.titlebar .workspace-views button.selected {
-  background: var(--selected);
-  color: var(--text);
+  background: none;
 }
 
 :root[data-app] .shell-top {

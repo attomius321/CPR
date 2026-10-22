@@ -3,6 +3,7 @@ import type { PromptKey, PromptSetting, PromptSettings, ScoutEfforts } from '@sy
 import { EffortStepper } from './EffortStepper.js';
 import { Help } from './Help.js';
 import { getJson, postJson } from './http.js';
+import { BackIcon } from './icons.js';
 import { useShell } from './shell-context.js';
 import { setTheme, useTheme, type Theme } from './theme.js';
 import {
@@ -275,17 +276,24 @@ function ScoutEffort({ onSaved, onBack }: { onSaved: () => void; onBack: () => v
 
   return (
     <section className="settings-editor" aria-label="Scout: Effort">
-      <button type="button" className="link settings-back" onClick={onBack}>
-        ← All prompts
+      <button type="button" className="button ghost settings-back" onClick={onBack}>
+        <BackIcon /> All prompts
       </button>
-      <h2>Scout: Effort</h2>
-      <p className="settings-about">
-        The level each of Scout&apos;s conversations starts at
-        {name ? `, from ${name}'s levels` : ''}. Default passes none: the agent&apos;s own setting
-        decides. Scout&apos;s page can start one conversation at another; <code>/effort</code> in
-        its terminal changes it after. Saved in {read?.file ?? 'symbiote/config.json'} (
-        <code>scout.effort</code>) when you let go.
-      </p>
+      <h2>
+        Scout: Effort
+        <Help label="About Scout's effort">
+          <p>
+            The level each of Scout&apos;s conversations starts at
+            {name ? `, from ${name}'s levels` : ''}. Default passes none: the agent&apos;s own
+            setting decides.
+          </p>
+          <p>
+            Scout&apos;s page can start one conversation at another; <code>/effort</code> in its
+            terminal changes it after. Saved in {read?.file ?? 'symbiote/config.json'} (
+            <code>scout.effort</code>) when you let go.
+          </p>
+        </Help>
+      </h2>
       {error && (
         <p className="settings-warning" role="alert">
           {error}
@@ -406,16 +414,23 @@ function PromptEditor({
 
   return (
     <section className="settings-editor" aria-label={`${prompt.group}: ${prompt.title}`}>
-      <button type="button" className="link settings-back" onClick={onBack}>
-        ← All prompts
+      <button type="button" className="button ghost settings-back" onClick={onBack}>
+        <BackIcon /> All prompts
       </button>
       <h2>
         {prompt.group}: {prompt.title}
         <span className={`settings-state${prompt.changed ? ' changed' : ''}`}>
           {prompt.changed ? "The project's" : "Symbiote's"}
         </span>
+        <Help label={`About ${prompt.group}: ${prompt.title}`}>
+          <p>{prompt.about}</p>
+          {prompt.placeholders.length > 0 && (
+            <p>
+              Its placeholders are filled in when it is used; click one to insert it at the cursor.
+            </p>
+          )}
+        </Help>
       </h2>
-      <p className="settings-about">{prompt.about}</p>
       {prompt.warning && (
         <p className="settings-warning" role="alert">
           {prompt.warning}
@@ -446,7 +461,7 @@ function PromptEditor({
       )}
       {prompt.placeholders.length > 0 ? (
         <div className="settings-placeholders">
-          <p>Filled in when it is used (click one to insert it at the cursor):</p>
+          <p>Placeholders</p>
           <ul>
             {prompt.placeholders.map((p) => (
               <li key={p.name}>
@@ -482,7 +497,7 @@ function PromptEditor({
           </span>
         )}
         {edited && (
-          <button type="button" className="link" disabled={busy} onClick={onDiscard}>
+          <button type="button" className="button ghost" disabled={busy} onClick={onDiscard}>
             Discard changes
           </button>
         )}
@@ -501,14 +516,14 @@ function PromptEditor({
               >
                 Reset
               </button>{' '}
-              <button type="button" className="link" onClick={() => setResetting(false)}>
+              <button type="button" className="button ghost" onClick={() => setResetting(false)}>
                 Keep it
               </button>
             </span>
           ) : (
             <button
               type="button"
-              className="link"
+              className="button ghost"
               disabled={busy}
               onClick={() => setResetting(true)}
             >
