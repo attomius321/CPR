@@ -446,13 +446,13 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V30 ✅ | Start a workspace on a page, with the agent's effort | Starting a workspace is the one thing still drawn over the shell: V18's dialog, 640×626 px at every window size, scrolling with More open at 1280×720 and 1440×900 (883 px of content); no effort is passed (here Claude Code runs at the person's `xhigh`, Codex at `medium`). Measured with the real agents: Claude Code's `--effort` and the effort on Codex's first `turn/start` hold for the session (after Symbiote's stop-and-resume reply, across app-server connections); `codex exec resume` drops it. Merged into main (2026-10-21): V30a, `/start` in the main area, the brief and the run in two columns, More open fitting at 1440×900; V30b, an Effort choice from the installed agent's own levels (Claude Code's `--help`, Codex's `model/list`), recorded with the workspace; a real Claude Code at `low` stayed at `low` through Symbiote's reply. See below. |
 | V31 ✅ | Symbiote's style, beyond its colours | V29b took the reference's tokens and font; the rest was older than its colours: one black for every surface (1.04:1 between page and sidenav), blue as the accent on 35 rules, 6 native checkboxes, 8 coloured side bars, bordered mono chips, a solid green HEAD. Symbiote's own style, written down as the `symbiote-style` skill. Merged into main (2026-10-21): V31a the tokens and the shell, V31b the diff page, V31c History, menus, dialogs and selects — blue a state only, no side bars, drawn controls, one radius scale; Bitwarden's timings and History's first rows as `main`'s, e2e 169 of 169. See below. |
 | N1d ✅ | Rounded window corners | Symbiote's window was square on Linux (here through WSLg): Electron rounds a frameless window there only with client-side decorations, and draws no buttons over a transparent one. Merged into main (2026-10-21): on Linux a transparent window whose pages draw a 10 px frame and Symbiote's own minimize, maximize and close, square when maximized; on WSLg Symbiote holds a maximized window itself, where WSLg's own maximize lands 32 px off; macOS and Windows unchanged; no cost on Bitwarden's graph. See below. |
-| V32 | Text one can read | V29b chose the reference's density: 13 px body, 12 px for buttons, paths, code and the status bar, 10–11 px for captions, chips, badges, counts and key caps; asked: "The font-size is too small to read … My eyes are hurting". Built on `feature/font-too-small`: one step up (14 px body, nothing under 12 px but uppercase labels; titles stay 16 px), every size from a `--size-*` scale on `:root` with a guard test, the graph's layout unchanged; Bitwarden's graph and History as fast as `main`. See below. |
-| V33 | Start from a branch | The start page starts from the default branch's tip or a commit picked in History; on this repository 102 branches could be started from (40 local, 62 only on `origin`) and the page offers 1. Planned: a Start from choice (the default branch, then local, then remote-only), the branch's newest tip resolved by the server at the start and recorded as `from`. Built on `feature/start-a-workspace-from-branch`: e2e 175 of 175, the list in 2–3 ms here. See below. |
-| V34 | Panels one can resize | The sidenav (240 px) and a workspace's changes panel (256 px) have fixed widths, while the diff's sidebar and detail panel can be dragged; asked: "resize - drag - the left panel with the pages and workspaces, and also from workspaces the right changes made". Built on `feature/resize-left-right-panels`: the diff's handle on both, keys and double-click, widths kept in the browser; 7 new e2e, first paint as `main`'s. See below. |
-| V35 | Scout | A question about the repository needs a terminal outside Symbiote or a Spike workspace (a branch and a worktree at the default branch, then Clean up). Measured: with the merger's read-only tools 0 of 3 real "why" answers named a commit, with git 3 of 3 in fewer turns; allow rules cannot keep Bash read-only (`git log --output=<file>`). Built on `feature/scout-an-agent-to-ask`: `/scout` (key a), a read-only Claude Code or Codex in the checkout, git through Symbiote's PreToolUse gate, one kept conversation found by its recorded ID, `prompts.scout`; with a real Claude Code, the merger's prompt found in `prompts.ts`, a change declined, `ls` refused by the gate, the checkout clean. See below. |
-| V36 | Images in an agent's terminal | The agent's terminal takes keys and text only: a pasted screenshot reaches the agent as an empty paste, Ctrl+V sends ^V for the agent to read its own machine's clipboard (no `xclip` or `wl-paste` here), a dropped image does nothing. Claude Code 2.1.308 and Codex 0.163 attach an image when its path is pasted (read in their code), as Orca uses them. Built on `feature/agent-terminal-accept-images`: a pasted or dropped image saved by the server in Symbiote's cache and its path pasted, the agent's own `[Image #n]`; Ctrl+V the page's paste; with the real Claude Code and Codex through the page, a workspace's and Scout's terminals each sent three images, and the models named their colours. See below. |
-| V37 | A look that is not dated | Asked: "looks kind of oldish… the help texts should be in a tooltip… the fonts are not good inside inputs", and every page checked for uneven spaces. Audited 35 states, dark and light, at 1×: uneven letter gaps from 0.01em letter-spacing, controls at `normal` spacing and two fields in mono, 3:1 field edges with a heavy focus ring, hover and selection alike, glyphs as icons, help as paragraphs. Built on `feature/ui-improvements`: letter-spacing 0, one field recipe with a soft edge, a lighter hover, icons, one head per page, help behind a "?" tooltip; timings as `main`'s; see below. |
-| V38 | Paths and links in an agent's terminal | Nothing an agent prints in its terminal can be followed: paths and web addresses are text, and an agent's own OSC 8 link gets xterm.js's "This link could potentially be dangerous" `confirm()` and a `window.open` of no use for `file://` (read in xterm.js 6.0.0). Built on `feature/clickable-paths-from-agent-terminal`: paths to files in the terminal's folder, checked by the server, web addresses and the agent's own links become links; Ctrl/⌘+click opens the file in VS Code at the line printed, or the address in a new tab. With the real Claude Code (Scout) and Codex (a workspace, its mouse tracking on), every printed file of the folder opened and nothing outside it was linked. See below. |
+| V32 ✅ | Text one can read | V29b chose the reference's density: 13 px body, 12 px for buttons, paths, code and the status bar, 10–11 px for captions, chips, badges, counts and key caps; asked: "The font-size is too small to read … My eyes are hurting". Merged into main (2026-10-21, from `feature/font-too-small`): one step up (14 px body, nothing under 12 px but uppercase labels; titles stay 16 px), every size from a `--size-*` scale on `:root` with a guard test, the graph's layout unchanged; Bitwarden's graph and History as fast as `main`. See below. |
+| V33 ✅ | Start from a branch | The start page starts from the default branch's tip or a commit picked in History; on this repository 102 branches could be started from (40 local, 62 only on `origin`) and the page offers 1. Planned: a Start from choice (the default branch, then local, then remote-only), the branch's newest tip resolved by the server at the start and recorded as `from`. Merged into main (2026-10-22, from `feature/start-a-workspace-from-branch`): e2e 175 of 175, the list in 2–3 ms here. See below. |
+| V34 ✅ | Panels one can resize | The sidenav (240 px) and a workspace's changes panel (256 px) have fixed widths, while the diff's sidebar and detail panel can be dragged; asked: "resize - drag - the left panel with the pages and workspaces, and also from workspaces the right changes made". Merged into main (2026-10-22, from `feature/resize-left-right-panels`): the diff's handle on both, keys and double-click, widths kept in the browser; 7 new e2e, first paint as `main`'s. See below. |
+| V35 ✅ | Scout | A question about the repository needs a terminal outside Symbiote or a Spike workspace (a branch and a worktree at the default branch, then Clean up). Measured: with the merger's read-only tools 0 of 3 real "why" answers named a commit, with git 3 of 3 in fewer turns; allow rules cannot keep Bash read-only (`git log --output=<file>`). Merged into main (2026-10-22, from `feature/scout-an-agent-to-ask`): `/scout` (key a), a read-only Claude Code or Codex in the checkout, git through Symbiote's PreToolUse gate, one kept conversation found by its recorded ID, `prompts.scout`; with a real Claude Code, the merger's prompt found in `prompts.ts`, a change declined, `ls` refused by the gate, the checkout clean. See below. |
+| V36 ✅ | Images in an agent's terminal | The agent's terminal takes keys and text only: a pasted screenshot reaches the agent as an empty paste, Ctrl+V sends ^V for the agent to read its own machine's clipboard (no `xclip` or `wl-paste` here), a dropped image does nothing. Claude Code 2.1.308 and Codex 0.163 attach an image when its path is pasted (read in their code), as Orca uses them. Merged into main (2026-10-22, from `feature/agent-terminal-accept-images`): a pasted or dropped image saved by the server in Symbiote's cache and its path pasted, the agent's own `[Image #n]`; Ctrl+V the page's paste; with the real Claude Code and Codex through the page, a workspace's and Scout's terminals each sent three images, and the models named their colours. See below. |
+| V37 ✅ | A look that is not dated | Asked: "looks kind of oldish… the help texts should be in a tooltip… the fonts are not good inside inputs", and every page checked for uneven spaces. Audited 35 states, dark and light, at 1×: uneven letter gaps from 0.01em letter-spacing, controls at `normal` spacing and two fields in mono, 3:1 field edges with a heavy focus ring, hover and selection alike, glyphs as icons, help as paragraphs. Merged into main (2026-10-23, from `feature/ui-improvements`): letter-spacing 0, one field recipe with a soft edge, a lighter hover, icons, one head per page, help behind a "?" tooltip; timings as `main`'s; see below. |
+| V38 ✅ | Paths and links in an agent's terminal | Nothing an agent prints in its terminal can be followed: paths and web addresses are text, and an agent's own OSC 8 link gets xterm.js's "This link could potentially be dangerous" `confirm()` and a `window.open` of no use for `file://` (read in xterm.js 6.0.0). Merged into main (2026-10-23, from `feature/clickable-paths-from-agent-terminal`): paths to files in the terminal's folder, checked by the server, web addresses and the agent's own links become links; Ctrl/⌘+click opens the file in VS Code at the line printed, or the address in a new tab. With the real Claude Code (Scout) and Codex (a workspace, its mouse tracking on), every printed file of the folder opened and nothing outside it was linked. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -8866,9 +8866,9 @@ dragging a held window (it moves at full size, where a native maximized window r
 
 ### V32 — Text one can read: a type scale, one step up
 
-**Status:** built on branch `feature/font-too-small` (a workspace started in Symbiote), ready for
-review; the person agreed to the plan: one step up, no text-size setting for now. Its "As built"
-and results below.
+**Status:** merged into main (2026-10-21, from branch `feature/font-too-small`, a workspace started
+in Symbiote; approved in Symbiote at `eb7b076`); the person agreed to the plan: one step up, no
+text-size setting for now. Its "As built" and results below.
 
 **Problem** (asked: "The font-size is too small to read...i know i made the wrong decision. Find
 a good font-size for different texts across the app. My eyes are hurting.."). V29b took the
@@ -8974,8 +8974,9 @@ browsers and systems, real agents in the terminal.
 
 ### V33 — Start a workspace from a branch
 
-**Status:** built on branch `feature/start-a-workspace-from-branch` (a workspace started in
-Symbiote, plan not asked for first), ready for review. Its "As built" and results below.
+**Status:** merged into main (2026-10-22, from branch `feature/start-a-workspace-from-branch`, a
+workspace started in Symbiote, plan not asked for first; approved in Symbiote at `5c82f01`). Its "As
+built" and results below.
 
 **Problem** (asked: "There should be an option on start a workspace page where i can select the
 branch from which i start."). The start page starts from the default branch's newest tip (V18,
@@ -9060,9 +9061,9 @@ says `topic at <sha>`); Bitwarden's 1,591-branch select in a browser.
 
 ### V34 — Panels one can resize: the sidenav and a workspace's changes
 
-**Status:** built on branch `feature/resize-left-right-panels` (a workspace started in
-Symbiote), ready for review; the person agreed to the plan and its limits (2026-10-22). Its "As
-built" and results below.
+**Status:** merged into main (2026-10-22, from branch `feature/resize-left-right-panels`, a
+workspace started in Symbiote; approved in Symbiote at `ca57f97`); the person agreed to the plan and
+its limits (2026-10-22). Its "As built" and results below.
 
 **Problem** (asked: "I would like to have the option to resize - drag - the left panel with the
 pages and workspaces, and also from workspaces the right changes made"). On a diff, the review
@@ -9153,8 +9154,8 @@ on `main`. Screenshots at 1440×900, dark and light: a workspace at the defaults
 app itself (Electron), other browsers, touch screens.
 ### V35 — Scout: an agent to ask about the repository
 
-**Status:** built on branch `feature/scout-an-agent-to-ask` (a workspace started in Symbiote),
-ready for review. Its "As built" and results below.
+**Status:** merged into main (2026-10-22, from branch `feature/scout-an-agent-to-ask`, a workspace
+started in Symbiote; approved in Symbiote at `8fb3152`). Its "As built" and results below.
 
 **Problem** (asked: "a read-only agent I can ask questions about the repository ('where is X
 decided?', 'why does Y work this way?', 'what touches Z?') without starting a workspace").
@@ -9368,9 +9369,9 @@ on Scout's thread in the page (its trust question) with the real Codex; macOS an
 
 ### V36 — Images in an agent's terminal
 
-**Status:** built on branch `feature/agent-terminal-accept-images` (a workspace started in
-Symbiote), ready for review. The spike is in the journal ("V36 spike"); as built and results
-under "As built (V36)" below.
+**Status:** merged into main (2026-10-22, from branch `feature/agent-terminal-accept-images`, a
+workspace started in Symbiote; approved in Symbiote at `9a7c9dd`). The spike is in the journal ("V36
+spike"); as built and results under "As built (V36)" below.
 
 **Problem** (asked: "Terminals with agents should be able to accept images", with
 [Orca](https://github.com/stablyai/orca) as the example). The agent's terminal (a workspace's
@@ -9558,10 +9559,10 @@ real agents; macOS and Windows, where `pastedPath`'s escaping is untested; Firef
 
 ### V37 — A look that is not dated: type, fields, hover, help in tooltips
 
-**Status:** built on branch `feature/ui-improvements` (a workspace started in Symbiote), ready for
-review; the plan and decisions 246–248 confirmed by the person ("1. B 2. Yes 3. Your
-recommandation"). The audit is in the journal ("V37 spike"); as built and results under "As built
-(V37)" below.
+**Status:** merged into main (2026-10-23, from branch `feature/ui-improvements`, a workspace started
+in Symbiote; approved in Symbiote at `76c6920`); the plan and decisions 246–248 confirmed by the
+person ("1. B 2. Yes 3. Your recommandation"). The audit is in the journal ("V37 spike"); as built
+and results under "As built (V37)" below.
 
 **Problem** (asked: "the inputs, sidenav and everything looks kind of oldish...the hover
 style..everything. You should keep the colors, i like them...but the elements are not that nice.
@@ -9754,9 +9755,9 @@ text rendering; real agents in the restyled pages.
 
 ### V38 — Paths and links in an agent's terminal
 
-**Status:** built on branch `feature/clickable-paths-from-agent-terminal` (a workspace started in
-Symbiote), ready for review. The spike is in the journal ("V38 spike"); as built and results under
-"As built (V38)" below.
+**Status:** merged into main (2026-10-23, from branch `feature/clickable-paths-from-agent-terminal`,
+a workspace started in Symbiote; approved in Symbiote at `a6af371`). The spike is in the journal
+("V38 spike"); as built and results under "As built (V38)" below.
 
 **Problem** (asked: "Provided paths from an agent terminal should be clickable...and open"; and,
 for web addresses, "I also want links"). The agent's terminal (a workspace's Claude Code or Codex,
