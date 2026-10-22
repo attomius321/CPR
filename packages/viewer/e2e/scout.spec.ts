@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { dragTo, stops } from './stepper.js';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // Scout (V35): a read-only agent in the checkout, asked from its page — a fake Claude Code, never
@@ -175,4 +176,72 @@ test('without Claude Code or Codex, Scout says what it needs', async ({ page }) 
   await page.goto(`${symbiote.url}scout`);
   await expect(scoutPage(page)).toContainText('Scout needs Claude Code or Codex');
   await expect(question(page)).toBeDisabled();
+});
+
+// Scout's effort (fix/scout-effort-level): the project's level in symbiote/config.json, a level
+// picked on the stepper for one conversation.
+const effort = (page: Page) => scoutPage(page).getByRole('slider', { name: 'Effort' });
+const config = () => join(symbiote.repo, 'symbiote', 'config.json');
+const flag = (args: readonly string[] = []) =>
+  args.includes('--effort') ? args[args.indexOf('--effort') + 1] : undefined;
+
+test("Effort: the box starts at the project's level; one dragged to reaches Claude Code for that conversation", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  mkdirSync(join(symbiote.repo, 'symbiote'), { recursive: true });
+  writeFileSync(config(), '{ "scout": { "effort": "medium" } }\n');
+  await page.goto(`${symbiote.url}scout`);
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'medium');
+  await expect(stops(effort(page))).toHaveText([
+    'Default',
+    'low',
+    'medium',
+    'high',
+    'xhigh',
+    'max',
+  ]);
+  await dragTo(page, effort(page), 3);
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
+  await question(page).fill('Where is the merger decided?');
+  await question(page).press('Enter');
+  await expect.poll(() => scoutCalls().length, POLL).toBe(1);
+  const args = scoutCalls()[0]?.args ?? [];
+  expect(flag(args)).toBe('high');
+  // Before the question, as Claude Code takes options.
+  expect(args.indexOf('--effort')).toBeLessThan(args.length - 2);
+  await expect(scoutPage(page).locator('.scout-about')).toContainText(
+    'with Claude Code at high effort',
+  );
+  // For that conversation: the project's level is as it was, and the next starts at it.
+  expect(JSON.parse(readFileSync(config(), 'utf8'))).toEqual({ scout: { effort: 'medium' } });
+  await scoutPage(page).getByRole('button', { name: 'New conversation' }).click();
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'medium');
+  // Home: the agent's own default, no flag, even with the project's level set.
+  await effort(page).press('Home');
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', "Claude Code's default");
+  await question(page).fill('And reviews?');
+  await question(page).press('Enter');
+  await expect.poll(() => scoutCalls().length, POLL).toBe(2);
+  expect(scoutCalls()[1]?.args).not.toContain('--effort');
+  await expect(scoutPage(page).locator('.scout-about')).not.toContainText('effort');
+});
+
+test('Effort: without a level in the project, the box is at the default and passes none; a key steps one level', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}scout`);
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', "Claude Code's default");
+  await effort(page).press('ArrowRight');
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'low');
+  await effort(page).press('ArrowLeft');
+  await question(page).fill('Q');
+  await question(page).press('Enter');
+  await expect.poll(() => scoutCalls().length, POLL).toBe(1);
+  expect(scoutCalls()[0]?.args).not.toContain('--effort');
+  // A conversation that runs has no stepper: its level is its session's.
+  await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
+  await expect(effort(page)).toHaveCount(0);
+  expect(existsSync(config())).toBe(false);
 });

@@ -97,7 +97,7 @@ test('a card opens its workspace from History and Settings, in place; Back retur
 
   await pages(page).getByRole('link', { name: 'Settings' }).click();
   await expect(page).toHaveURL(`${symbiote.url}settings`);
-  await expect(page.getByRole('navigation', { name: 'Prompts' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Settings' })).toBeVisible();
   await mark(page);
   await card(page, half).getByRole('button', { name: 'Add a half function' }).click();
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);

@@ -1,9 +1,12 @@
-import { useState, type FormEvent, type KeyboardEvent } from 'react';
-import type { AgentKind, ScoutConversation, ScoutState } from '@symbiote/core';
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
+import type { AgentKind, ScoutConversation, ScoutEfforts, ScoutState } from '@symbiote/core';
 import { AgentTerminal } from './AgentTerminal.js';
-import { postJson } from './http.js';
+import { scoutLevel } from './effort.js';
+import { EffortStepper } from './EffortStepper.js';
+import { getJson, postJson } from './http.js';
 import { scoutStateText } from './scout.js';
 import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
+import { effortChoices } from './workspaces.js';
 
 const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
@@ -47,6 +50,10 @@ export function ScoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [ended, setEnded] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // The levels and the project's, read for a new conversation; the level picked for it (null: none
+  // picked, the project's).
+  const [efforts, setEfforts] = useState<ScoutEfforts | null>(null);
+  const [level, setLevel] = useState<string | null>(null);
 
   const conversation = scout?.conversation ?? null;
   const agents = scout?.agents ?? [];
@@ -55,6 +62,22 @@ export function ScoutPage() {
   const agent = conversation?.kind ?? (picked || agents[0]?.kind);
   // Known only once read: until then a question can be asked, and the server answers.
   const none = scout !== null && agents.length === 0;
+  const levels = efforts?.agents.find((a) => a.kind === agent);
+  const choices = !live && levels ? effortChoices(levels) : [];
+  const effort = levels ? scoutLevel(level, efforts?.effort, levels) : '';
+
+  // Read where the stepper shows, for each new conversation: the project's level may have changed.
+  const asking = scout !== null && !live && !none;
+  useEffect(() => {
+    if (!asking) return;
+    let current = true;
+    getJson<ScoutEfforts>('/api/scout/efforts')
+      .then((read) => current && setEfforts(read))
+      .catch(() => current && setEfforts(null));
+    return () => {
+      current = false;
+    };
+  }, [asking]);
 
   /** Runs a write, then reads Scout's state again before the page goes on. */
   const act = (task: () => Promise<ScoutState>, after?: () => void) => {
@@ -81,8 +104,13 @@ export function ScoutPage() {
         postJson<ScoutState>('/api/scout/ask', {
           text,
           ...(picked && !live ? { agent: picked } : {}),
+          // Null: the agent's own, even where the project names a level.
+          ...(choices.length > 0 ? { effort: effort || null } : {}),
         }),
-      () => setText(''),
+      () => {
+        setText('');
+        setLevel(null);
+      },
     );
   };
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -99,6 +127,7 @@ export function ScoutPage() {
           <p className="scout-about" title={scout.checkout}>
             Read-only in {folderName(scout.checkout)} as it is now
             {agent ? `, with ${AGENT_NAMES[agent]}` : ''}
+            {conversation?.effort ? ` at ${conversation.effort} effort` : ''}
           </p>
         )}
         <div className="scout-actions">
@@ -188,6 +217,18 @@ export function ScoutPage() {
               onChange={(event) => setText(event.target.value)}
               onKeyDown={onKeyDown}
             />
+            {choices.length > 0 && (
+              <div className="scout-effort">
+                <span className="scout-effort-label">Effort</span>
+                <EffortStepper
+                  label="Effort"
+                  choices={choices}
+                  value={effort}
+                  title="The level this conversation starts at; Settings sets the one each starts at"
+                  onChange={setLevel}
+                />
+              </div>
+            )}
             <div className="scout-ask-row">
               {agents.length > 1 && !live && (
                 <select

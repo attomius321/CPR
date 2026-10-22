@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { PromptKey, PromptSetting, PromptSettings } from '@symbiote/core';
+import type { PromptKey, PromptSetting, PromptSettings, ScoutEfforts } from '@symbiote/core';
+import { EffortStepper } from './EffortStepper.js';
 import { Help } from './Help.js';
 import { getJson, postJson } from './http.js';
 import { useShell } from './shell-context.js';
@@ -13,8 +14,13 @@ import {
   promptOfUrl,
   sizeOf,
 } from './settings.js';
+import { AGENT_NAMES, effortChoices, keptEffort } from './workspaces.js';
 
 const API = '/api/settings/prompts';
+
+/** Scout's effort (fix/scout-effort-level): listed in Scout's group, after its prompt. */
+const SCOUT_EFFORT = 'scout.effort';
+type SettingKey = PromptKey | typeof SCOUT_EFFORT;
 
 /** The drafts without `key`'s. */
 const without = (drafts: Partial<Record<PromptKey, string>>, key: PromptKey) =>
@@ -37,7 +43,7 @@ interface Notice {
 export function SettingsPage() {
   const [settings, setSettings] = useState<PromptSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<PromptKey | null>(null);
+  const [open, setOpen] = useState<SettingKey | null>(null);
   /** On a narrow screen, a prompt picked takes the page (`?prompt=` in the address). */
   const [picked, setPicked] = useState(() =>
     new URLSearchParams(window.location.search).has('prompt'),
@@ -61,10 +67,10 @@ export function SettingsPage() {
     void load().then((read) => {
       if (read)
         setOpen(
-          promptOfUrl(
-            window.location.search,
-            read.prompts.map((p) => p.key),
-          ),
+          promptOfUrl<SettingKey>(window.location.search, [
+            ...read.prompts.map((p) => p.key),
+            SCOUT_EFFORT,
+          ]),
         );
     });
   }, [load]);
@@ -90,7 +96,7 @@ export function SettingsPage() {
     };
   }, [edited.length, setLeaveGuard]);
 
-  const show = (key: PromptKey) => {
+  const show = (key: SettingKey) => {
     setOpen(key);
     setPicked(true);
     setNotice((current) => (current?.key === key ? current : null));
@@ -155,7 +161,7 @@ export function SettingsPage() {
         !error && <p className="hint">Reading the prompts…</p>
       ) : (
         <div className={`settings-body${picked ? ' picked' : ''}`}>
-          <nav className="settings-list" aria-label="Prompts">
+          <nav className="settings-list" aria-label="Settings">
             {promptGroups(settings.prompts).map(({ group, prompts }) => (
               <section key={group} aria-label={group}>
                 <h2>{group}</h2>
@@ -178,6 +184,17 @@ export function SettingsPage() {
                       </button>
                     </li>
                   ))}
+                  {group === 'Scout' && (
+                    <li>
+                      <button
+                        type="button"
+                        aria-current={open === SCOUT_EFFORT ? 'true' : undefined}
+                        onClick={() => show(SCOUT_EFFORT)}
+                      >
+                        <span className="settings-name">Effort</span>
+                      </button>
+                    </li>
+                  )}
                 </ul>
               </section>
             ))}
@@ -196,9 +213,114 @@ export function SettingsPage() {
               onBack={back}
             />
           )}
+          {open === SCOUT_EFFORT && (
+            // A save changes the file: the prompts' version is read again, or their next save
+            // would be refused as changed since.
+            <ScoutEffort onSaved={() => void load()} onBack={back} />
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Scout's effort (fix/scout-effort-level): `scout.effort` in the project's config, the level each
+ * conversation starts at, on a stepper of Scout's agent's levels; saved when the handle is let go.
+ */
+function ScoutEffort({ onSaved, onBack }: { onSaved: () => void; onBack: () => void }) {
+  const [read, setRead] = useState<ScoutEfforts | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [level, setLevel] = useState('');
+  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
+  // One save after another, in the order they were made.
+  const saving = useRef<Promise<void>>(Promise.resolve());
+  useEffect(() => {
+    let current = true;
+    getJson<ScoutEfforts>('/api/scout/efforts')
+      .then((answer) => {
+        if (!current) return;
+        setRead(answer);
+        setLevel(keptEffort(answer.effort, answer.agents[0] ?? {}) ?? '');
+      })
+      .catch((failed: unknown) => {
+        if (current) setError(`Scout's levels could not be read: ${(failed as Error).message}`);
+      });
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  // Scout's default agent: the one a conversation starts with unless another is picked.
+  const agent = read?.agents[0];
+  const name = agent ? AGENT_NAMES[agent.kind] : '';
+  const choices = agent ? effortChoices(agent) : [];
+  const unlisted =
+    read?.effort && agent?.efforts && !agent.efforts.levels.includes(read.effort)
+      ? read.effort
+      : undefined;
+  const commit = (next: string) => {
+    saving.current = saving.current.then(async () => {
+      try {
+        setRead(await postJson<ScoutEfforts>('/api/scout/effort', { effort: next || null }));
+        setNotice({
+          text: `Saved. Scout's next conversation starts at ${next ? next : `${name}'s default`}.`,
+        });
+        onSaved();
+      } catch (failed) {
+        setNotice({ text: (failed as Error).message, error: true });
+      }
+    });
+  };
+
+  return (
+    <section className="settings-editor" aria-label="Scout: Effort">
+      <button type="button" className="link settings-back" onClick={onBack}>
+        ← All prompts
+      </button>
+      <h2>Scout: Effort</h2>
+      <p className="settings-about">
+        The level each of Scout&apos;s conversations starts at
+        {name ? `, from ${name}'s levels` : ''}. Default passes none: the agent&apos;s own setting
+        decides. Scout&apos;s page can start one conversation at another; <code>/effort</code> in
+        its terminal changes it after. Saved in {read?.file ?? 'symbiote/config.json'} (
+        <code>scout.effort</code>) when you let go.
+      </p>
+      {error && (
+        <p className="settings-warning" role="alert">
+          {error}
+        </p>
+      )}
+      {read && !agent && (
+        <p className="settings-warning" role="alert">
+          Scout needs Claude Code or Codex: neither is installed here.
+        </p>
+      )}
+      {agent && !agent.efforts && (
+        <p className="settings-warning" role="alert">
+          Symbiote cannot read {name}&apos;s effort levels: Scout starts it at its default.
+        </p>
+      )}
+      {unlisted && (
+        <p className="settings-warning" role="alert">
+          scout.effort is {unlisted}, which {name} does not list: Scout starts it at its default.
+        </p>
+      )}
+      {choices.length > 0 && (
+        <EffortStepper
+          label="Effort"
+          choices={choices}
+          value={level}
+          onChange={setLevel}
+          onCommit={commit}
+        />
+      )}
+      {notice && (
+        <p className={`settings-notice${notice.error ? ' error' : ''}`} role="status">
+          {notice.text}
+        </p>
+      )}
+    </section>
   );
 }
 
