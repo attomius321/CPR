@@ -33,6 +33,8 @@ const ONLY_IMAGES = 'Only images can be attached: PNG, JPEG, GIF or WebP.';
 const RECHECK_MS = 5_000;
 /** Most paths asked about at once: the server's limit. */
 const MAX_PATHS = 50;
+/** The style's tooltip: shown once the pointer stays (V38), not while it crosses the screen. */
+const HINT_DELAY_MS = 400;
 
 /** The hint over a link (V38): what it opens and its keys, by the pointer, above its row. */
 interface Hint {
@@ -301,6 +303,7 @@ export function AgentTerminal({
           },
         );
       };
+      let hinting: ReturnType<typeof setTimeout> | undefined;
       const showHint = (event: MouseEvent, target: LinkTarget, range: IBufferRange) => {
         const screen = element.querySelector('.xterm-screen');
         if (!screen) return;
@@ -311,14 +314,19 @@ export function AgentTerminal({
         const top = drawn.top - frame.top + row * height;
         const x = event.clientX - frame.left;
         const below = top < 40;
-        setHint({
+        const next: Hint = {
           ...linkHint(target, MAC),
           top: below ? top + height + 4 : top - 4,
           below,
           ...(x < frame.width / 2 ? { left: x } : { right: frame.width - x }),
-        });
+        };
+        clearTimeout(hinting);
+        hinting = setTimeout(() => setHint(next), HINT_DELAY_MS);
       };
-      const hideHint = () => setHint(null);
+      const hideHint = () => {
+        clearTimeout(hinting);
+        setHint(null);
+      };
       // The agent's own links (OSC 8): files and web addresses, without xterm.js's confirm().
       shown.options.linkHandler = {
         allowNonHttpProtocols: true,
@@ -367,6 +375,7 @@ export function AgentTerminal({
       unlisten = () => {
         unlistenDrops();
         provider.dispose();
+        clearTimeout(hinting);
       };
       shown.onResize(({ cols, rows }) => {
         clearTimeout(resizing);

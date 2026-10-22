@@ -9892,7 +9892,8 @@ links in the Thread (V18c), whose Markdown has its own.
   go through the link provider, its OSC 8 links (when on) through the handler; on the same cells,
   xterm.js keeps the OSC 8 link and drops the other.
 - **The hint in the terminal's own colours** (`#e6e6e9` on the black screen, its keys as a key
-  cap), not the page's inverted tooltip: in the light theme that would be dark on black.
+  cap), not the page's inverted tooltip: in the light theme that would be dark on black. Otherwise
+  the style's tooltip: shown after 400 ms, so a pointer crossing the screen flashes none.
 - **The folder's real path** is accepted as well as the one the terminal was opened with (macOS's
   `/var` and `/private/var`; a folder reached through a link); VS Code gets the latter.
 - **Answers kept**: a file stays a file for the terminal's life; a path not found is asked again
