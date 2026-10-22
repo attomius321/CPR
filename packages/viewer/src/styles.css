@@ -17,6 +17,8 @@
   --size-small: 13px; /* secondary: buttons, menu items, paths, code, the status bar */
   --size-body: 14px; /* rows, nav, tabs, body text, editors */
   --size-title: 16px; /* titles: a page's, a dialog's, a symbol's in its panel, a frame's name */
+  /* lucide's chevron-right (ISC) as a mask, drawn in the text's colour: a submenu's, a <summary>'s. */
+  --chevron-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
 }
 
 /* Dark unless the person chose light or the system's (decision 179; index.html sets data-theme
@@ -53,12 +55,17 @@
   --lane-6: #8ccf3e;
   --shadow: rgb(0 0 0 / 50%);
   /* Neutral states every control shares (V31): hover and selection are washes of the text. */
-  --hover: color-mix(in srgb, var(--text) 8%, transparent);
+  /* Lighter than the selection (V37, decision 250): at 8 % a hovered row looked current. */
+  --hover: color-mix(in srgb, var(--text) 5%, transparent);
   --selected: color-mix(in srgb, var(--text) 10%, transparent);
   --selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
   --primary: #e5e5e5;
   --primary-text: #171717;
   --input-bg: rgb(255 255 255 / 4.5%);
+  /* A text field's edge at rest, about 1.5:1 (decision 246): `--edge` (3:1) on hover, `--focus`
+     and the ring on focus. */
+  --field-line: color-mix(in srgb, var(--text) 15%, transparent);
+  --ring: color-mix(in srgb, var(--focus) 30%, transparent);
   /* The one on, lifted out of a raised track (a segmented control's). */
   --lifted: rgb(255 255 255 / 7%);
   --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
@@ -112,6 +119,8 @@
   --primary: #171717;
   --primary-text: #fafafa;
   --input-bg: transparent;
+  --field-line: color-mix(in srgb, var(--text) 16%, transparent);
+  --ring: color-mix(in srgb, var(--focus) 30%, transparent);
   --lifted: #ffffff;
   --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
   --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
@@ -163,6 +172,8 @@
     --primary: #171717;
     --primary-text: #fafafa;
     --input-bg: transparent;
+    --field-line: color-mix(in srgb, var(--text) 16%, transparent);
+    --ring: color-mix(in srgb, var(--focus) 30%, transparent);
     --lifted: #ffffff;
     --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
     --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
@@ -197,7 +208,9 @@ body {
   background: var(--bg);
   color: var(--text);
   font: var(--size-body)/1.45 var(--sans);
-  letter-spacing: 0.01em;
+  /* No tracking (V37): at 1× on Linux glyphs sit on whole pixels, and 0.01em (0.14 px) added up
+     into uneven gaps between letters ("n o commits"). */
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -221,12 +234,14 @@ code {
   font-family: var(--mono);
 }
 
-/* Controls in the page's font: a browser's own is the system's (a font-matching miss, V29a). */
+/* Controls in the page's font: a browser's own is the system's (a font-matching miss, V29a). The
+   browser also gives them `letter-spacing: normal`, which `font` does not reset (V37). */
 button,
 input,
 textarea,
 select {
   font: inherit;
+  letter-spacing: inherit;
 }
 
 :focus-visible {
@@ -234,7 +249,8 @@ select {
   outline-offset: 1px;
 }
 
-/* Text fields: an edge one can find at 3:1 (WCAG 1.4.11), on the page's background. */
+/* Text fields and selects (V37, decision 246): a quiet edge at rest, the 3:1 `--edge` on hover,
+   the focus colour and a soft ring on focus; 32 px, 28 in a toolbar or a row of 28 px buttons. */
 .search-input,
 .comment-input,
 .branches-filter,
@@ -242,12 +258,30 @@ select {
 .workspace-field input,
 .reply textarea,
 .scout-ask textarea,
-.settings-editor textarea {
-  border: 1px solid var(--edge);
+.settings-editor textarea,
+.merge-change textarea,
+select {
+  border: 1px solid var(--field-line);
   border-radius: 8px;
-  background: var(--input-bg);
+  background-color: var(--input-bg);
   box-shadow: var(--shadow-lift);
   color: var(--text);
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.search-input:hover:not(:focus, :disabled),
+.comment-input:hover:not(:focus, :disabled),
+.branches-filter:hover:not(:focus, :disabled),
+.workspace-field textarea:hover:not(:focus, :disabled),
+.workspace-field input:hover:not(:focus, :disabled),
+.reply textarea:hover:not(:focus, :disabled),
+.scout-ask textarea:hover:not(:focus, :disabled),
+.settings-editor textarea:hover:not(:focus, :disabled),
+.merge-change textarea:hover:not(:focus, :disabled),
+select:hover:not(:focus, :disabled) {
+  border-color: var(--edge);
 }
 
 .search-input:focus-visible,
@@ -257,31 +291,63 @@ select {
 .workspace-field input:focus-visible,
 .reply textarea:focus-visible,
 .scout-ask textarea:focus-visible,
-.settings-editor textarea:focus-visible {
-  outline-offset: -1px;
-  border-color: transparent;
+.settings-editor textarea:focus-visible,
+.merge-change textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
-/* Selects (V31c): a field's edge and a drawn chevron. */
+/* No grip: a textarea grows with its text from the height of its rows (which `field-sizing`
+   ignores), then scrolls. */
+.comment-input,
+.workspace-field textarea,
+.reply textarea,
+.scout-ask textarea,
+.settings-editor textarea,
+.merge-change textarea {
+  padding: 8px 10px;
+  line-height: 1.45;
+  field-sizing: content;
+  min-height: calc(3lh + 18px);
+  max-height: 50vh;
+  resize: none;
+}
+
+textarea[rows='2'] {
+  min-height: calc(2lh + 18px);
+}
+
+textarea[rows='4'] {
+  min-height: calc(4lh + 18px);
+}
+
+textarea[rows='7'] {
+  min-height: calc(7lh + 18px);
+}
+
+/* Selects (V31c): a field with a drawn chevron. */
 select {
   appearance: none;
-  height: 28px;
+  height: 32px;
   padding: 0 28px 0 10px;
-  border: 1px solid var(--edge);
-  border-radius: 8px;
-  background-color: var(--input-bg);
   background-image: var(--chevron);
   background-position: right 8px center;
   background-repeat: no-repeat;
   background-size: 14px;
-  box-shadow: var(--shadow-lift);
-  color: var(--text);
   cursor: pointer;
 }
 
 select:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Beside a 28 px button. */
+.scout-ask-row select,
+.merge-control select {
+  height: 28px;
 }
 
 select option {
@@ -315,7 +381,6 @@ select option {
 
 .brand {
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 .spacer {
@@ -470,6 +535,13 @@ input[type='radio']:disabled {
   cursor: default;
 }
 
+/* Focused, as a text field is (V37): the ring, not an outline. */
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
 .canvas {
   position: relative;
   min-height: 0;
@@ -518,10 +590,6 @@ input[type='radio']:disabled {
   user-select: none;
 }
 
-.legend-hint {
-  margin-left: auto;
-}
-
 .hint {
   padding: 24px;
   color: var(--muted);
@@ -530,17 +598,6 @@ input[type='radio']:disabled {
 /* What the list says of where workspaces are kept (V25), under the title. */
 .workspaces-note {
   padding: 0 24px 8px;
-}
-
-/* Workspaces with none yet (V25): what to do, then a way to start. */
-.workspaces-empty p {
-  margin: 0 0 12px;
-}
-
-.workspaces-empty a {
-  color: var(--text);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 /* Before the first layout arrives (V8e): where the canvas will be. */
@@ -601,6 +658,17 @@ input[type='radio']:disabled {
 .button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Backing out stays quiet (Cancel, Clear, Discard, Keep it): a ghost button, no colour. */
+.button.ghost {
+  background: transparent;
+  color: var(--muted);
+}
+
+.button.ghost:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
 }
 
 .button.secondary,
@@ -936,7 +1004,8 @@ input[type='radio']:disabled {
   --xy-minimap-background-color: var(--side);
   --xy-minimap-mask-background-color: color-mix(in srgb, var(--bg) 60%, transparent);
   --xy-controls-button-background-color: var(--panel);
-  --xy-controls-button-background-color-hover: var(--hover);
+  /* Opaque: a translucent wash made a hovered button darker than the others (V37). */
+  --xy-controls-button-background-color-hover: color-mix(in srgb, var(--text) 6%, var(--panel));
   --xy-controls-button-color: var(--muted);
   --xy-controls-button-color-hover: var(--text);
   --xy-controls-button-border-color: var(--line);
@@ -1384,13 +1453,46 @@ input[type='radio']:disabled {
   font-weight: 500;
 }
 
+/* Used by, Uses: rows, not a bulleted list (V37). */
 .neighbours {
-  margin: 0;
-  padding-left: 18px;
+  margin: 0 -8px;
+  padding: 0;
+  list-style: none;
 }
 
 .neighbours li {
-  margin: 2px 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.neighbours li:hover {
+  background: var(--hover);
+}
+
+.neighbours li > .muted {
+  overflow: hidden;
+  font-size: var(--size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.neighbours-count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 2px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .link {
@@ -1486,7 +1588,7 @@ input[type='radio']:disabled {
   flex: 1;
   min-width: 0;
   height: 28px;
-  padding: 0 8px;
+  padding: 0 10px;
   font-size: var(--size-small);
 }
 
@@ -1707,13 +1809,15 @@ input[type='radio']:disabled {
   font-size: var(--size-small);
 }
 
+/* A diff's keys, in its bar's help (V37). */
 .keys {
   margin: 0;
-  padding: 8px 12px;
-  border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: var(--size-caption);
-  line-height: 1.8;
+  line-height: 1.9;
+}
+
+.key-entry {
+  white-space: nowrap;
 }
 
 /* A key, as a key cap. */
@@ -1823,9 +1927,7 @@ kbd {
 .comment-input {
   display: block;
   width: 100%;
-  padding: 6px 8px;
   font-size: var(--size-small);
-  resize: vertical;
 }
 
 .comment-actions {
@@ -1968,6 +2070,17 @@ kbd {
   cursor: pointer;
 }
 
+/* Finish review, and where the verdict goes behind its help (V37). */
+.review-submit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.review-submit .button {
+  flex: 1;
+}
+
 .posted {
   margin: 0;
   color: var(--added);
@@ -2011,6 +2124,9 @@ kbd {
 /* ---- commits page and diffs on demand (V9) ------------------------------------------ */
 
 .back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--muted);
   text-decoration: none;
   white-space: nowrap;
@@ -2074,18 +2190,6 @@ kbd {
 }
 
 /* Compare mode's words beside the toggle: their first line centred on it, however many wrap. */
-.commits-help {
-  flex: 1 1 0;
-  min-width: 0;
-  padding-top: 5px;
-  color: var(--muted);
-  font-size: var(--size-small);
-  line-height: 18px;
-}
-
-.help-pop .commits-help {
-  padding-top: 0;
-}
 
 .commit-list {
   position: relative;
@@ -2313,9 +2417,11 @@ kbd {
   margin-left: auto;
 }
 
-/* Out of compare mode a click selects: the cursor row is the selection, and shows it. */
+/* Out of compare mode a click selects: the cursor row is the selection, and shows it as the
+   sidenav does, without the compare cursor's ring (V37: a bright box around the whole row). */
 .commits:not(.comparing) .commit.cursor {
   background: var(--selected);
+  box-shadow: none;
 }
 
 .commits-error {
@@ -2439,11 +2545,41 @@ kbd {
   gap: 24px;
 }
 
-/* The arrow is drawn, not read: empty alternative text keeps the item's name "Check out". */
+/* The arrow is drawn, not read: the item's name stays "Check out". */
 .menu-item.has-submenu::after {
-  content: '▸';
-  content: '▸' / '';
-  color: var(--muted);
+  content: '';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background: var(--muted);
+  mask: var(--chevron-right) center / contain no-repeat;
+}
+
+/* A <summary>'s marker: the chevron, turned down when open (V37: the browser's ▶). */
+summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+  cursor: pointer;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary::before {
+  content: '';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background: currentColor;
+  mask: var(--chevron-right) center / contain no-repeat;
+  transition: transform 150ms;
+}
+
+details[open] > summary::before {
+  transform: rotate(90deg);
 }
 
 .menu-item.has-submenu[aria-expanded='true']:not(.active) {
@@ -2522,7 +2658,6 @@ kbd {
   margin: 0 0 8px;
   font-size: var(--size-title);
   font-weight: 600;
-  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
@@ -2543,22 +2678,6 @@ kbd {
   gap: 8px;
   margin-top: 20px;
   font-size: var(--size-body);
-}
-
-/* Backing out stays quiet: a ghost button, no colour. */
-.dialog-buttons .link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 12px;
-  border-radius: 8px;
-  font-size: var(--size-small);
-  font-weight: 500;
-}
-
-.dialog-buttons .link:hover:not(:disabled) {
-  background: var(--hover);
-  text-decoration: none;
 }
 
 /* Start a workspace, a page of the shell's (V30a): a head strip, as a workspace's, then the brief
@@ -2591,7 +2710,6 @@ kbd {
   margin: 0;
   font-size: var(--size-title);
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 .start-from {
@@ -2610,8 +2728,7 @@ kbd {
   grid-area: actions;
   display: flex;
   align-items: center;
-  gap: 16px;
-  font-size: var(--size-body);
+  gap: 4px;
 }
 
 /* Narrow, where it starts goes under the title and the buttons. */
@@ -2623,7 +2740,7 @@ kbd {
 }
 
 .start-error {
-  margin: 12px 24px 0;
+  margin: 12px 16px 0;
   white-space: pre-wrap;
 }
 
@@ -2631,7 +2748,7 @@ kbd {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 16px 24px 24px;
+  padding: 16px 16px 24px;
 }
 
 .start-columns {
@@ -2707,7 +2824,6 @@ kbd {
   margin: 0;
   font-size: var(--size-title);
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 .scout-about {
@@ -2749,7 +2865,7 @@ kbd {
 }
 
 .scout-error {
-  margin: 12px 24px 0;
+  margin: 12px 16px 0;
   white-space: pre-wrap;
 }
 
@@ -2757,7 +2873,7 @@ kbd {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 24px;
+  padding: 16px 16px 24px;
 }
 
 .scout-ask {
@@ -2770,7 +2886,6 @@ kbd {
   font-weight: 500;
 }
 
-.scout-lede,
 .scout-note {
   margin: 0;
   color: var(--muted);
@@ -2784,12 +2899,8 @@ kbd {
 .scout-ask textarea {
   box-sizing: border-box;
   width: 100%;
-  min-height: 96px;
   margin-top: 4px;
-  padding: 8px 10px;
   font-size: var(--size-body);
-  line-height: 1.5;
-  resize: vertical;
 }
 
 /* The agent, the keys, then Ask at the right; narrow, Ask stays at the right of its line. */
@@ -2798,11 +2909,6 @@ kbd {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-}
-
-.scout-keys {
-  color: var(--muted);
-  font-size: var(--size-caption);
 }
 
 .scout-ask-row .button {
@@ -2854,44 +2960,18 @@ kbd {
   gap: 6px;
 }
 
-.kind-info-button {
-  padding: 0 2px;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font-size: var(--size-title);
-  line-height: 1;
-  cursor: help;
-}
-
-.kind-info-button:hover,
-.kind-info-button[aria-expanded='true'] {
-  color: var(--text);
+/* The kinds, explained in their help (V24c; a tip of Help's since V37). */
+.help-tip:has(.kind-about) {
+  max-width: min(480px, calc(100vw - 16px));
 }
 
 .kind-about {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 1;
-  padding: 8px 12px;
-  background: var(--raised);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px var(--shadow);
-  font-size: var(--size-small);
-  /* It covers the title for a moment: what is under it keeps the pointer. */
-  pointer-events: none;
-}
-
-.kind-about dl {
   display: grid;
   gap: 4px;
   margin: 0;
 }
 
-.kind-about dl > div {
+.kind-about > div {
   display: grid;
   grid-template-columns: 5.5em 1fr;
   gap: 8px;
@@ -2908,6 +2988,13 @@ kbd {
 
 .kind-about .current dd {
   color: var(--text);
+}
+
+/* A field's name and its help, in a row above the field. */
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* The kind of work (V24c), as History's scopes: one segmented control. */
@@ -3003,21 +3090,21 @@ kbd {
 .workspace-field input {
   box-sizing: border-box;
   width: 100%;
-  padding: 6px 8px;
   font-weight: normal;
 }
 
-.workspace-field textarea {
-  resize: vertical;
+.workspace-field input {
+  height: 32px;
+  padding: 0 10px;
 }
 
-/* The branch's name, as git shows it. */
-.workspace-field .branch-input {
-  font-family: var(--mono);
-}
-
-.workspace-field [aria-invalid='true'] {
+.workspace-field [aria-invalid='true'],
+.workspace-field [aria-invalid='true']:hover {
   border-color: var(--error);
+}
+
+.workspace-field [aria-invalid='true']:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 30%, transparent);
 }
 
 /*
@@ -3073,6 +3160,7 @@ kbd {
 
 .effort-stepper .effort-range:focus-visible {
   outline: none;
+  box-shadow: none;
 }
 
 .effort-range::-webkit-slider-runnable-track {
@@ -3471,7 +3559,7 @@ kbd {
   flex: none;
   height: 28px;
   margin: 8px 8px 7px;
-  padding: 0 8px;
+  padding: 0 10px;
   font-size: var(--size-small);
 }
 
@@ -3638,39 +3726,43 @@ kbd {
 /* ---- workspaces (V18b) ------------------------------------------------------------------ */
 
 /* How many workspaces need the person: the waiting colour. */
+/* How many need you: a count in the warning's tint, round as the groups' counts (V37). */
 .page-count {
-  min-width: 16px;
+  min-width: 18px;
   padding: 0 5px;
-  border-radius: 4px;
-  background: var(--warning);
-  color: var(--bg);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
   font-size: var(--size-caption);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 16px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 /* A workspace's mark: what its agent is doing; on badges, a link to the workspace. */
+/* A tinted round badge of its tone (V37: a box drawn in the tone read as a form control). */
 .workspace-mark {
   --workspace-tone: var(--context);
-  display: inline-block;
-  min-width: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
   margin-right: 5px;
-  padding: 0 3px;
-  border: 1px solid var(--workspace-tone);
-  border-radius: 4px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--workspace-tone) 16%, transparent);
   color: var(--workspace-tone);
   font-size: var(--size-caps);
   font-weight: 700;
-  line-height: 13px;
-  text-align: center;
+  line-height: 1;
   text-decoration: none;
-  vertical-align: 1px;
+  vertical-align: -3px;
 }
 
 a.workspace-mark:hover {
-  background: var(--workspace-tone);
-  color: var(--bg);
+  background: color-mix(in srgb, var(--workspace-tone) 30%, transparent);
 }
 
 .workspace-mark-working {
@@ -3898,10 +3990,7 @@ button.workspace-about {
 .reply textarea {
   box-sizing: border-box;
   width: 100%;
-  min-height: 64px;
-  padding: 8px 10px;
   font-size: var(--size-body);
-  resize: vertical;
 }
 
 .reply-actions {
@@ -3914,41 +4003,40 @@ button.workspace-about {
 }
 
 /* V21: the workspace's agent session in a terminal, beside its thread. */
+/* Terminal, Thread, Brief: three views of one thing, flat buttons on the chrome, the picked one a
+   wash of the text, as in Symbiote's title bar (V37: folder tabs, in light a black block on light
+   chrome). */
 .workspace-views {
   display: flex;
   gap: 2px;
-  padding: 6px 12px 0;
+  padding: 6px 12px;
   border-bottom: 1px solid var(--line);
+  background: var(--side);
 }
 
 .workspace-views button {
-  margin-bottom: -1px;
-  padding: 5px 12px;
-  border: 1px solid transparent;
-  border-radius: 8px 8px 0 0;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
   background: none;
   color: var(--muted);
   font-size: var(--size-small);
   font-weight: 500;
   cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
 }
 
 .workspace-views button:hover {
+  background: var(--hover);
   color: var(--text);
 }
 
-/* The tab picked joins what it shows: the terminal's black, the page's background otherwise. On
-   the black, the dark theme's text in both themes (light's on black read 1.25:1). */
 .workspace-views button.selected {
-  border-color: var(--line);
-  border-bottom-color: var(--tab-under, var(--bg));
-  background: var(--tab-under, var(--bg));
-  color: var(--tab-text, var(--text));
-}
-
-.workspace-views:has(+ .workspace-body > .workspace-terminal) {
-  --tab-under: #000;
-  --tab-text: #e6e6e9;
+  background: var(--selected);
+  color: var(--text);
 }
 
 /* The tab's content takes the rest of the main area's height (V29a). */
@@ -4525,7 +4613,6 @@ p.merge-control {
   margin: 0;
   font-size: var(--size-title);
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 /* The theme (V29b): at the toolbar's right, for this browser. */
@@ -4646,9 +4733,9 @@ p.merge-control {
 .settings-editor h2 {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 4px 8px;
-  margin: 0 0 4px;
+  margin: 0 0 8px;
   font-size: var(--size-title);
   font-weight: 600;
 }
@@ -4667,12 +4754,6 @@ p.merge-control {
   color: var(--modified);
 }
 
-.settings-about {
-  margin: 0 0 8px;
-  color: var(--muted);
-  font-size: var(--size-small);
-}
-
 .settings-editor .settings-warning {
   margin: 0 0 8px;
 }
@@ -4680,11 +4761,8 @@ p.merge-control {
 .settings-editor textarea {
   display: block;
   width: 100%;
-  padding: 8px 10px;
-  font: var(--size-body)/1.45 var(--mono);
   max-height: 70vh;
   overflow-y: auto;
-  resize: vertical;
 }
 
 .settings-size {
@@ -4792,7 +4870,8 @@ p.settings-placeholders {
   }
 
   .settings-back {
-    display: inline;
+    display: inline-flex;
+    justify-self: start;
   }
 }
 
@@ -4887,30 +4966,27 @@ p.settings-placeholders {
   color: var(--text);
 }
 
-/* A page's help behind its "?" (V29b). */
-.help {
-  position: relative;
-  display: inline-flex;
-}
-
+/* Help behind a "?" (V37): a ghost icon button beside what it explains, its tip a popover drawn on
+   the page's body (Help.tsx places it, fixed, kept inside the window). */
 .help-button {
   width: 24px;
   height: 24px;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  color: var(--muted);
-  font-size: var(--size-small);
-  font-weight: 500;
+  color: var(--faint);
+  font-weight: normal;
+  vertical-align: middle;
 }
 
-.help-pop {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 20;
+.help-button[aria-expanded='true'] {
+  color: var(--text);
+}
+
+.help-tip {
+  position: fixed;
+  z-index: 60;
+  box-sizing: border-box;
   width: max-content;
-  max-width: min(420px, 80vw);
-  padding: 8px 12px;
+  max-width: min(340px, calc(100vw - 16px));
+  padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel);
@@ -4919,15 +4995,39 @@ p.settings-placeholders {
   font-size: var(--size-small);
   font-weight: normal;
   line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+  animation: float-in 150ms ease-out;
 }
 
-.help-pop[hidden] {
+.help-tip[hidden] {
   display: none;
 }
 
-.commits-actions .help-pop {
-  right: 0;
-  left: auto;
+/* Shown by a hover or the focus, it may cover a field for a moment: what is under it keeps the
+   pointer. Kept by a click, it takes it (its text can be selected). */
+.help-tip:not(.pinned) {
+  pointer-events: none;
+}
+
+.help-tip p {
+  margin: 0;
+}
+
+.help-tip p + p,
+.help-tip p + dl,
+.help-tip dl + p {
+  margin-top: 8px;
+}
+
+.help-tip code {
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .help-tip {
+    animation: none;
+  }
 }
 
 .sidenav {
@@ -4957,7 +5057,6 @@ p.settings-placeholders {
   overflow: hidden;
   color: var(--text);
   font-weight: 600;
-  letter-spacing: -0.01em;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -4988,7 +5087,6 @@ p.settings-placeholders {
   border-radius: 8px;
   color: var(--muted);
   font-weight: 500;
-  letter-spacing: -0.025em;
   text-decoration: none;
   transition:
     background-color 150ms,
@@ -4997,6 +5095,7 @@ p.settings-placeholders {
 
 .sidenav-pages a .icon {
   color: var(--faint);
+  stroke-width: 1.4;
 }
 
 .sidenav-pages a:hover {
@@ -5011,6 +5110,7 @@ p.settings-placeholders {
 
 .sidenav-pages a[aria-current='page'] .icon {
   color: var(--text);
+  stroke-width: 1.8;
 }
 
 /* Scout's mark (V35): after its name; in the rail, on its icon's corner. */
@@ -5072,8 +5172,11 @@ p.settings-placeholders {
   font-size: var(--size-small);
 }
 
-.sidenav .workspaces-empty p {
-  margin: 6px 0;
+/* None yet: one line, what to do behind its help (V37). */
+.sidenav .workspaces-empty {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .sidenav-list {
@@ -5089,9 +5192,9 @@ p.settings-placeholders {
   align-items: center;
   gap: 6px;
   margin: 12px 8px 4px;
-  color: var(--text);
+  color: var(--muted);
   font-size: var(--size-small);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .sidenav .workspace-group h3::before {
@@ -5146,14 +5249,12 @@ p.settings-placeholders {
 }
 
 .sidenav .workspace-row:hover {
-  background: color-mix(in srgb, var(--raised) 40%, transparent);
+  background: var(--hover);
 }
 
-/* The one shown: a wash of the text and a brighter edge. */
+/* The one shown: a wash of the text, as the current page (V37: no edge or shadow of its own). */
 .sidenav .workspace-row.picked {
-  border-color: var(--selected-line);
   background: var(--selected);
-  box-shadow: var(--shadow-lift);
 }
 
 .sidenav .workspace-head {
@@ -5397,7 +5498,6 @@ p.settings-placeholders {
   margin: 0;
   font-size: var(--size-title);
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
 .workspace-title h1 .kind-tag {
@@ -5531,21 +5631,38 @@ p.settings-placeholders {
   padding: 0 16px 12px;
 }
 
-/* A merge in the main area (V29a). */
+/* A merge in the main area (V29a), under a 44 px head as every page has (V37: its sides and actions
+   sat loose at the top). */
 .merge-view {
   flex: 1;
   min-width: 0;
   overflow: auto;
-  padding: 12px 16px;
+  padding: 0 0 16px;
 }
 
 .merge-view .hint {
   padding: 0;
 }
 
+.merge-view > .hint {
+  margin: 12px 16px 0;
+}
+
 .merge-view .merge-row {
-  padding: 0;
+  padding: 0 16px;
   border: 0;
+}
+
+.merge-view .merge-row-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  min-height: 44px;
+  box-sizing: border-box;
+  margin: 0 -16px 12px;
+  padding: 7px 12px 7px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--side);
 }
 
 .merge-title {
@@ -5760,34 +5877,40 @@ p.settings-placeholders {
   border-bottom: 0;
 }
 
+/* A section header, as the sidenav's (V37: in capitals, which the style keeps for a symbol's kind):
+   its name, a round count, what it is counted from at the right. */
 .changes-section h2 {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   margin: 0 0 4px;
   padding: 0 12px;
   color: var(--muted);
-  font-size: var(--size-caption);
+  font-size: var(--size-small);
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
 
 .changes-count {
-  color: var(--text);
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
 .changes-since {
   margin-left: auto;
+  font-size: var(--size-caption);
   font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
 }
 
 .changes-section h2 .changes-lines {
   margin-left: auto;
-  letter-spacing: 0;
 }
 
 .changes-list {
@@ -5967,7 +6090,6 @@ button.changes-file:hover {
   overflow: hidden;
   color: var(--text);
   font-weight: 600;
-  letter-spacing: -0.01em;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -6031,23 +6153,11 @@ button.changes-file:hover {
   padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 8px);
 }
 
-/* The page's tabs, moved up: flat, the picked one raised. */
+/* The page's tabs, moved up: the same buttons, without the strip. */
 .titlebar .workspace-views {
-  gap: 2px;
   padding: 0;
   border: 0;
-}
-
-.titlebar .workspace-views button {
-  margin: 0;
-  padding: 4px 12px;
-  border: 0;
-  border-radius: 8px;
-}
-
-.titlebar .workspace-views button.selected {
-  background: var(--selected);
-  color: var(--text);
+  background: none;
 }
 
 :root[data-app] .shell-top {

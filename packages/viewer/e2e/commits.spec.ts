@@ -275,7 +275,7 @@ test('picks two commits, analyzes them, and goes back', async ({ page }) => {
   await expect(symbol(page, 'cube')).toBeVisible();
   await expect(page.getByRole('status')).toHaveCount(0);
 
-  await page.getByRole('link', { name: '← History' }).click();
+  await page.getByRole('link', { name: 'Back to History' }).click();
   await expect(page).toHaveURL(`${symbiote.url}history`);
   await expect(page.locator('.commit')).toHaveCount(7);
   // Back in browse mode.

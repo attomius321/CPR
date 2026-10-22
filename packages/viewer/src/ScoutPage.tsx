@@ -3,6 +3,7 @@ import type { AgentKind, ScoutConversation, ScoutEfforts, ScoutState } from '@sy
 import { AgentTerminal } from './AgentTerminal.js';
 import { scoutLevel } from './effort.js';
 import { EffortStepper } from './EffortStepper.js';
+import { Help } from './Help.js';
 import { getJson, postJson } from './http.js';
 import { scoutStateText } from './scout.js';
 import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
@@ -187,12 +188,19 @@ export function ScoutPage() {
       ) : (
         <div className="scout-body">
           <form className="scout-ask" onSubmit={ask}>
-            <label htmlFor="scout-question">Ask Scout</label>
-            <p className="scout-lede">
-              Where something is decided, why it works this way, what touches it. Scout reads the
-              files and git's history of this checkout and changes nothing; work it finds goes
-              through a workspace.
-            </p>
+            <span className="field-label">
+              <label htmlFor="scout-question">Ask Scout</label>
+              <Help label="About Scout">
+                <p>
+                  Where something is decided, why it works this way, what touches it. Scout reads
+                  the files and git&apos;s history of this checkout and changes nothing; work it
+                  finds goes through a workspace.
+                </p>
+                <p>
+                  <kbd>Enter</kbd> asks; <kbd>Shift</kbd>+<kbd>Enter</kbd> starts a new line.
+                </p>
+              </Help>
+            </span>
             {none && (
               <p className="scout-note">
                 Scout needs Claude Code or Codex: neither is installed here.
@@ -224,12 +232,16 @@ export function ScoutPage() {
             />
             {choices.length > 0 && (
               <div className="scout-effort">
-                <span className="scout-effort-label">Effort</span>
+                <span className="scout-effort-label field-label">
+                  Effort
+                  <Help label="About the effort">
+                    The level this conversation starts at; Settings sets the one each starts at.
+                  </Help>
+                </span>
                 <EffortStepper
                   label="Effort"
                   choices={choices}
                   value={effort}
-                  title="The level this conversation starts at; Settings sets the one each starts at"
                   onChange={setLevel}
                 />
               </div>
@@ -248,7 +260,6 @@ export function ScoutPage() {
                   ))}
                 </select>
               )}
-              <span className="scout-keys">Enter asks; Shift+Enter starts a new line</span>
               <button
                 type="submit"
                 className="button"

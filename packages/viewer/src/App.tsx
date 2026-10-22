@@ -58,7 +58,8 @@ import {
 import { ProjectNode } from './ProjectNode.js';
 import { MAP_ZOOM, mapZoomStyle } from './mapzoom.js';
 import { Resizer } from './Resizer.js';
-import { Sidebar, type SidebarTab } from './Sidebar.js';
+import { DiffKeys, Sidebar, type SidebarTab } from './Sidebar.js';
+import { Help } from './Help.js';
 import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
 import { SummaryNode } from './SummaryNode.js';
 import { SymbolNode } from './SymbolNode.js';
@@ -464,6 +465,14 @@ export function App() {
               />
               Type references
             </label>
+            <Help label="This page's keys">
+              <DiffKeys
+                grouped={changes.some((file) => file.project)}
+                review={Boolean(forge)}
+                canOpen={state.open}
+              />
+              <p>Click a symbol for its details, a group to show its symbols.</p>
+            </Help>
           </>
         )}
         {/* A page with no shell (symbiote pr) is the window's title bar: its buttons, on Linux (N1d). */}
@@ -627,6 +636,8 @@ const MOVE_END_DELAY = 100;
 /** Nothing uses edge clicks or hovers: no invisible wide path beside each edge. */
 const EDGE_OPTIONS = { interactionWidth: 0 };
 const PRO_OPTIONS = { hideAttribution: true };
+/** Smaller than React Flow's 200 × 150 (V37): beside the detail panel it covered the nodes. */
+const MINIMAP_SIZE = { width: 160, height: 112 };
 
 /** The minimap draws every node: its class must not change identity with each render. */
 function minimapClass(n: Node): string {
@@ -752,7 +763,7 @@ function Canvas({
     >
       <Background gap={24} />
       <Controls showInteractive={false} />
-      <MiniMap pannable zoomable nodeClassName={minimapClass} />
+      <MiniMap pannable zoomable nodeClassName={minimapClass} style={MINIMAP_SIZE} />
       {pending && (
         <Panel position="top-center" className="layout-pending" role="status">
           Laying out…
@@ -897,7 +908,6 @@ function Legend({ frames }: { frames: boolean }) {
       {frames && <span className="legend-edge edge-cross">edge between projects</span>}
       <span className="legend-item legend-summary">many neighbours, grouped</span>
       {frames && <span className="legend-item legend-project">project (app or library)</span>}
-      <span className="legend-hint">click a symbol for details, a group to show its symbols</span>
     </footer>
   );
 }

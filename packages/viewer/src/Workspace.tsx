@@ -596,7 +596,8 @@ function WorkspacePanel({
               className="button"
               disabled={busy}
               onClick={() =>
-                act(() => postJson('/api/workspaces/stop', { branch }).then(() => 'Stopped'))
+                // The head's state says Stopped: no word of its own beside the buttons (V37).
+                act(() => postJson('/api/workspaces/stop', { branch }).then(() => null))
               }
             >
               Stop the agent
@@ -659,7 +660,7 @@ function WorkspacePanel({
           <button type="button" className="button" onClick={() => clean(true)}>
             Clean up anyway
           </button>{' '}
-          <button type="button" className="link" onClick={() => setConfirming(null)}>
+          <button type="button" className="button ghost" onClick={() => setConfirming(null)}>
             Cancel
           </button>
         </p>
@@ -737,7 +738,7 @@ function WorkspacePanel({
                 <Thread thread={thread} worktree={workspace.worktree.path} />
                 {terminals && (
                   <p className="hint thread-readonly">
-                    The agent's messages and reports. To answer it,{' '}
+                    To answer,{' '}
                     <button type="button" className="link" onClick={() => show('terminal')}>
                       open its terminal
                     </button>
@@ -795,7 +796,11 @@ function WorkspacePanel({
                   >
                     Stop it and send
                   </button>{' '}
-                  <button type="button" className="link" onClick={() => setConfirming(null)}>
+                  <button
+                    type="button"
+                    className="button ghost"
+                    onClick={() => setConfirming(null)}
+                  >
                     Cancel
                   </button>
                 </span>

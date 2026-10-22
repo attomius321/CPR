@@ -51,7 +51,11 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
   await expect(branch(page)).toHaveValue('feature/add-a-half-function');
   const folder = `${symbiote.repo}.worktrees/feature-add-a-half-function`;
   await expect(startPage(page)).toContainText(`From main at ${short(main)}`);
-  await expect(startPage(page)).toContainText(`in ${folder}`);
+  // The worktree's path is in Branch's help (V37, decision 248).
+  await startPage(page).getByRole('button', { name: 'Where its worktree goes' }).click();
+  await expect(page.getByRole('tooltip')).toContainText(folder);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('tooltip')).toBeHidden();
   // The agent, the only one installed, and whose account it runs on.
   await expect(startPage(page).locator('.start-value')).toHaveText('Claude Code');
   await expect(startPage(page)).toContainText('your Pro subscription');
@@ -289,7 +293,7 @@ test('a workspace and its branch lead to each other', async ({ page }) => {
   const link = page.getByRole('link', { name: 'Workspace: Add a half function' });
   await expect(link).toBeVisible();
   // Opened from the workspace, its way back is there (V25).
-  await expect(page.getByRole('link', { name: '← Workspace' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Back to Workspace' })).toHaveAttribute(
     'href',
     '/?branch=feature%2Fadd-a-half-function',
   );
@@ -1008,7 +1012,7 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
   await expect(part(page, 'What happens')).toHaveValue('');
 });
 
-test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, start from, branch, effort, permission (V24c, V30, V33)', async ({
+test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, start from, branch and effort with their help, permission (V24c, V30, V33, V37)', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -1034,8 +1038,11 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
     doneWhen(page),
     startPage(page).getByRole('button', { name: /More:/ }),
     startPage(page).getByLabel('Start from'),
+    // V37: a field's help is a button before it, in the Tab order.
+    startPage(page).getByRole('button', { name: 'Where its worktree goes' }),
     branch(page),
-    startPage(page).getByLabel('Effort'),
+    startPage(page).getByRole('button', { name: 'About the effort' }),
+    startPage(page).getByLabel('Effort', { exact: true }),
     startPage(page).getByLabel('Permission'),
     startPage(page).getByLabel('Plan first and wait for my OK'),
   ]) {
@@ -1111,7 +1118,8 @@ test('the kinds explained: a tooltip after the picker, on hover, focus or a tap 
   await page.goto(`${symbiote.url}history`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await kind(page, 'Fix').click();
-  const about = startPage(page).getByRole('tooltip');
+  // A help's tip is drawn on the page's body (V37), named by the button's aria-describedby.
+  const about = page.locator('#kind-about[role="tooltip"]');
   await expect(about).toBeHidden();
   await info(page).hover();
   await expect(about).toBeVisible();

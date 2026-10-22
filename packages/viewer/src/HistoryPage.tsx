@@ -44,7 +44,7 @@ import {
 } from './commits.js';
 import { GraphCell, ROW_HEIGHT } from './GraphCell.js';
 import { Help } from './Help.js';
-import { MoreIcon } from './icons.js';
+import { BackIcon, MoreIcon } from './icons.js';
 import { InTitleBar } from './TitleBar.js';
 import { laneSpacing, layoutLanes } from './lanes.js';
 import { backLink, HISTORY_PAGE } from './pages.js';
@@ -164,12 +164,12 @@ export async function fetchGraph(url: string): Promise<Loaded> {
   }
 }
 
-/** "← History" or "← Workspaces", on a diff's page: back where it was opened from (V25). */
+/** "Back to History" or "Back to Workspaces", on a diff's page: where it was opened from (V25). */
 export function BackLink() {
   const { href, label } = backLink(document.referrer, window.location.origin);
   return (
-    <a className="back" href={href} title={`Back to ${label}`}>
-      ← {label}
+    <a className="back" href={href} aria-label={`Back to ${label}`}>
+      <BackIcon /> {label}
     </a>
   );
 }
@@ -851,21 +851,16 @@ function History({
               </button>
             )}
             <span className="commits-tail">
-              {/* Compare mode says what to do beside it; the keys are behind the "?" (V29b). */}
-              {comparing && (
-                <span className="commits-help">
-                  Pick two to compare them, or one against its parent · x picks, Enter compares, Esc
-                  leaves
-                </span>
-              )}
               <span className="commits-actions">
-                {!comparing && (
-                  <Help label="History's keys">
-                    <span className="commits-help">
-                      j/k move · c checks out · r reviews · x picks to compare · / finds a branch
-                    </span>
-                  </Help>
-                )}
+                {/* The keys behind the "?" (V29b), and what compare mode asks (V37: beside the
+                    toggle it wrapped the head onto two lines). */}
+                <Help label="History's keys">
+                  <span className="commits-help">
+                    {comparing
+                      ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
+                      : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch'}
+                  </span>
+                </Help>
                 <button
                   type="button"
                   className="compare-mode"
@@ -971,7 +966,7 @@ function History({
           {current?.diverged && (
             <button
               type="button"
-              className="link"
+              className="button ghost"
               title="Compare the other pick from the fork point"
               onClick={() => setSwapped((s) => !s)}
             >
@@ -981,7 +976,7 @@ function History({
           {picks.length > 0 && (
             <button
               type="button"
-              className="link"
+              className="button ghost"
               onClick={() => {
                 setPicks([]);
                 setSwapped(false);
