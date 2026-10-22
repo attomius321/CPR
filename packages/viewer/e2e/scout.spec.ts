@@ -98,6 +98,19 @@ test('opens from the sidenav and by its key; a question starts a read-only agent
   await page.keyboard.press('Enter');
   await expect(screen(page)).toContainText('got: And why there?');
   expect(symbiote.attaches()).toEqual(['fake1']);
+  // An image pasted there is attached too (V36), and kept out of the checkout.
+  await scoutPage(page)
+    .locator('.xterm-helper-textarea')
+    .evaluate((element, data) => {
+      const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+      const clipboardData = new DataTransfer();
+      clipboardData.items.add(new File([bytes], 'image.png', { type: 'image/png' }));
+      element.dispatchEvent(
+        new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }),
+      );
+    }, 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+  await expect(screen(page)).toContainText('[Image #1]');
+  expect(symbiote.images().map((image) => image.id)).toEqual(['fake1']);
   // Read-only: the checkout is as it was.
   expect(git('status', '--porcelain')).toBe('');
 });

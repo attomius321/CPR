@@ -431,6 +431,13 @@ questions, Esc, slash commands), so you answer it without leaving Symbiote.
 - **Send the verdict:** after you finish a review of the workspace's branch, this (or "Send to the
   agent" in the Review tab) types the verdict's first line and where the review is into the
   agent's input, for you to send with Enter.
+- **Images:** paste a screenshot (Ctrl+V, Ctrl+Shift+V or ⌘V) or drop image files (PNG, JPEG,
+  GIF or WebP, 20 MB at most) on the terminal, and the agent attaches them to the message you
+  are typing, as `[Image #1]`, sent with Enter. Claude Code and Codex alike, and in Scout's terminal.
+  Symbiote saves each image in its cache (`~/.cache/symbiote/images` on Linux, readable by you only) and
+  pastes its path, which the agent reads; images older than a day are removed. Text in the
+  clipboard pastes as text. On Linux and Windows, Ctrl+V is the page's paste: it no longer sends
+  ^V for the agent to read its own machine's clipboard.
 - ← in an empty prompt opens Claude Code's list of all your agents, where you can switch away
   from this one.
 - At most four terminals are open at once (each is a Claude Code process, about 140 MB, or a

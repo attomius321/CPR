@@ -1,7 +1,11 @@
 // Terminals for workspaces' agents (V21): `claude attach <id>` in a pseudo-terminal, its output
 // streamed to the page and the person's keys written back. Claude Code keeps hosting the
 // session; a terminal is only a client of it, and hanging one up leaves the session running.
+// Images pasted or dropped into one are saved for its agent to attach (V36).
 import { randomBytes } from 'node:crypto';
+import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { defaultCacheDir } from '@symbiote/core';
 
 /** A pseudo-terminal's process, as node-pty gives one; tests pass a fake. */
 export interface Pty {
@@ -53,6 +57,36 @@ export class TerminalRefused extends Error {
   }
 }
 
+/** The kinds of image Claude Code and Codex attach from a pasted path (V36). */
+export type ImageKind = 'png' | 'jpg' | 'gif' | 'webp';
+
+/** Most an image for an agent may weigh (V36): screenshots weigh less; both agents shrink theirs. */
+export const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+
+/** An image's kind by its first bytes, or null for anything else. */
+export function imageKind(bytes: Uint8Array): ImageKind | null {
+  const at = (offset: number, ...head: number[]) =>
+    head.every((byte, i) => bytes[offset + i] === byte);
+  if (at(0, 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) return 'png';
+  if (at(0, 0xff, 0xd8, 0xff)) return 'jpg';
+  if (at(0, 0x47, 0x49, 0x46, 0x38) && (at(4, 0x37, 0x61) || at(4, 0x39, 0x61))) return 'gif';
+  if (at(0, 0x52, 0x49, 0x46, 0x46) && at(8, 0x57, 0x45, 0x42, 0x50)) return 'webp';
+  return null;
+}
+
+/**
+ * A saved image's path as the text to paste (V36): as it is when it holds only safe characters,
+ * else each other character backslash-escaped, which Claude Code and Codex both undo (Codex splits
+ * a raw path at a space). On Windows, forward slashes: Claude Code takes a backslash as an escape.
+ */
+export function pastedPath(path: string, platform: NodeJS.Platform = process.platform): string {
+  const slashed = platform === 'win32' ? path.replaceAll('\\', '/') : path;
+  return slashed.replace(/[^\w./@:\-\u0080-\uffff]/g, '\\$&');
+}
+
+/** The names Symbiote gives the images it saves: only those are ever removed. */
+const SAVED_IMAGE = /^[0-9a-f]{32}\.(?:png|jpg|gif|webp)$/;
+
 /** Who reads a terminal: its output (what was kept first), then its end. */
 export interface TerminalListener {
   out(data: string): void;
@@ -79,6 +113,15 @@ export interface Terminals {
   /** Each false when there is no such terminal. */
   write(id: string, data: string): boolean;
   resize(id: string, cols: number, rows: number): boolean;
+  /**
+   * Saves an image for the terminal's agent to attach (V36): where, and the text to paste for it.
+   * Undefined when there is no such terminal.
+   */
+  image(
+    id: string,
+    bytes: Uint8Array,
+    kind: ImageKind,
+  ): Promise<{ path: string; text: string } | undefined>;
   /** Hangs it up: the program it runs ends; Claude Code's session goes on. */
   close(id: string): boolean;
   /** Hangs every terminal up and ends its readers (`symbiote view` stops). */
@@ -100,7 +143,9 @@ interface Open {
 /**
  * Terminals, at most `limit` at once (each `claude attach` is a Claude Code process, about 140
  * MB): a new one hangs up the oldest nobody reads, else is refused. One nobody reads for
- * `graceMs` is hung up (a reload reads it again within that).
+ * `graceMs` is hung up (a reload reads it again within that). Their images go in `images`, for
+ * the person only, and are removed `keepImagesMs` later: Codex reads one when its message is
+ * sent, not when it is pasted (V36 spike).
  */
 export function terminals({
   pty = () => loadPty(),
@@ -108,12 +153,18 @@ export function terminals({
   graceMs = 10_000,
   maxOutput = 1 << 20,
   platform = process.platform,
+  images = join(defaultCacheDir(), 'images'),
+  keepImagesMs = 24 * 60 * 60_000,
+  now = Date.now,
 }: {
   pty?: () => Promise<{ spawn: SpawnPty } | { error: string }>;
   limit?: number;
   graceMs?: number;
   maxOutput?: number;
   platform?: NodeJS.Platform;
+  images?: string;
+  keepImagesMs?: number;
+  now?: () => number;
 } = {}): Terminals {
   let loaded: Promise<{ spawn: SpawnPty } | { error: string }> | null = null;
   const load = () => (loaded ??= pty());
@@ -125,6 +176,19 @@ export function terminals({
     if (terminal.listeners.size === 0) {
       terminal.idle = setTimeout(() => hangUp(terminal), graceMs);
     }
+  };
+  const sweep = async () => {
+    const names = await readdir(images).catch(() => []);
+    const before = now() - keepImagesMs;
+    await Promise.all(
+      names
+        .filter((name) => SAVED_IMAGE.test(name))
+        .map(async (name) => {
+          const file = join(images, name);
+          const { mtimeMs } = await stat(file).catch(() => ({ mtimeMs: Infinity }));
+          if (mtimeMs < before) await rm(file, { force: true });
+        }),
+    );
   };
   const hangUp = (terminal: Open) => {
     clearTimeout(terminal.idle);
@@ -218,6 +282,15 @@ export function terminals({
       const terminal = open.get(id);
       terminal?.pty.resize(cols, rows);
       return terminal !== undefined;
+    },
+
+    async image(id, bytes, kind) {
+      if (!open.has(id)) return undefined;
+      await mkdir(images, { recursive: true, mode: 0o700 });
+      await sweep();
+      const path = join(images, `${randomBytes(16).toString('hex')}.${kind}`);
+      await writeFile(path, bytes, { mode: 0o600, flag: 'wx' });
+      return { path, text: pastedPath(path, platform) };
     },
 
     close(id) {

@@ -38,7 +38,7 @@ import { parsePromptChange, PromptRefused, type PromptSettingsService } from './
 import type { UsageService } from './usage.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
-import type { Terminals } from './terminal.js';
+import { imageKind, MAX_IMAGE_BYTES, type Terminals } from './terminal.js';
 import { ScoutRefused, type Scout } from './scout.js';
 
 export type Side = 'base' | 'head';
@@ -158,10 +158,13 @@ const FULL_SHA = new RegExp(`^${SHA}$`);
 const DIFF_PATH = new RegExp(`^/diff/(${SHA})\\.\\.(${SHA})(/.*)?$`);
 /** `/review/<branch, URL-encoded>` and what follows: a branch's review, as a diff's page. */
 const REVIEW_PATH = /^\/review\/([^/]+)(\/.*)?$/;
-/** `/api/terminals/<id>`, its output; `…/in`, `…/resize`, `…/close` (V21). */
-const TERMINAL_PATH = /^\/api\/terminals\/([0-9a-z]+)(?:\/(in|resize|close))?$/;
+/** `/api/terminals/<id>`, its output; `…/in`, `…/resize`, `…/close` (V21); `…/image` (V36). */
+const TERMINAL_PATH = /^\/api\/terminals\/([0-9a-z]+)(?:\/(in|resize|close|image))?$/;
 /** Most a terminal is sent at once: keys typed, or a line Symbiote types (V21). */
 const MAX_TERMINAL_INPUT = 64 * 1024;
+/** Most an image's request may weigh (V36): the image as base64, in its JSON. */
+const MAX_IMAGE_BODY = Math.ceil(MAX_IMAGE_BYTES / 3) * 4 + 1024;
+const IMAGE_TOO_LARGE = `an image of at most ${MAX_IMAGE_BYTES / 2 ** 20} MB`;
 
 /**
  * Serves the viewer, `/api/graph` and `/api/source` on localhost only: one graph at `/`
@@ -733,12 +736,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     res: ServerResponse,
     parse: (text: string) => T,
     act: (request: T) => Promise<void>,
+    limit = MAX_BODY_BYTES,
   ): Promise<void> {
     if (req.method !== 'POST') return send(res, 405, 'method not allowed');
     if (!writable(req)) return send(res, 403, 'forbidden');
     let request: T;
     try {
-      request = parse(await readBody(req, MAX_BODY_BYTES));
+      request = parse(await readBody(req, limit));
     } catch (error) {
       return send(res, 400, (error as Error).message);
     }
@@ -747,8 +751,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
   /**
    * A terminal (V21): `GET` streams its output as server-sent events (`out`, then `exit` and
-   * the end); `POST …/in { data }`, `…/resize { cols, rows }` and `…/close` are writes. Its ID
-   * is unguessable and made only by a write; a read from another site is refused too.
+   * the end); `POST …/in { data }`, `…/resize { cols, rows }` and `…/close` are writes, and so is
+   * `…/image { data }` (V36), an image as base64 saved for the agent: its path and the text to
+   * paste. Its ID is unguessable and made only by a write; a read from another site is refused
+   * too.
    */
   async function terminalApi(
     req: IncomingMessage,
@@ -792,30 +798,52 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       });
       return;
     }
-    return written(
-      req,
-      res,
-      (text) => JSON.parse(text) as Record<string, unknown> | null,
-      (body) => {
-        let done: boolean;
-        if (action === 'in') {
-          if (typeof body?.data !== 'string' || body.data.length > MAX_TERMINAL_INPUT) {
-            return Promise.resolve(
-              send(res, 400, `data: what to type, at most ${MAX_TERMINAL_INPUT} characters`),
-            );
+    const parse = (text: string) => JSON.parse(text) as Record<string, unknown> | null;
+    if (action === 'image') {
+      // Refused before it is read: the page checks the size first.
+      if (Number(req.headers['content-length']) > MAX_IMAGE_BODY) {
+        req.resume();
+        return send(res, 413, IMAGE_TOO_LARGE);
+      }
+      return written(
+        req,
+        res,
+        parse,
+        async (body) => {
+          if (typeof body?.data !== 'string' || body.data === '') {
+            return send(res, 400, 'data: the image, as base64');
           }
-          done = terminals.write(id, body.data);
-        } else if (action === 'resize') {
-          const size = terminalSize(body);
-          if (!size) return Promise.resolve(send(res, 400, 'cols, rows: whole numbers, 2 to 1000'));
-          done = terminals.resize(id, size.cols, size.rows);
-        } else done = terminals.close(id);
-        if (!done) return Promise.resolve(send(res, 404, 'no such terminal'));
-        res.writeHead(204, { 'cache-control': 'no-store' });
-        res.end();
-        return Promise.resolve();
-      },
-    );
+          const bytes = Buffer.from(body.data, 'base64');
+          if (bytes.length > MAX_IMAGE_BYTES) return send(res, 413, IMAGE_TOO_LARGE);
+          const kind = imageKind(bytes);
+          if (!kind)
+            return send(res, 400, 'not an image the agents attach: PNG, JPEG, GIF or WebP');
+          const saved = await terminals.image(id, bytes, kind);
+          if (!saved) return send(res, 404, 'no such terminal');
+          return json(res, 200, saved);
+        },
+        MAX_IMAGE_BODY,
+      );
+    }
+    return written(req, res, parse, (body) => {
+      let done: boolean;
+      if (action === 'in') {
+        if (typeof body?.data !== 'string' || body.data.length > MAX_TERMINAL_INPUT) {
+          return Promise.resolve(
+            send(res, 400, `data: what to type, at most ${MAX_TERMINAL_INPUT} characters`),
+          );
+        }
+        done = terminals.write(id, body.data);
+      } else if (action === 'resize') {
+        const size = terminalSize(body);
+        if (!size) return Promise.resolve(send(res, 400, 'cols, rows: whole numbers, 2 to 1000'));
+        done = terminals.resize(id, size.cols, size.rows);
+      } else done = terminals.close(id);
+      if (!done) return Promise.resolve(send(res, 404, 'no such terminal'));
+      res.writeHead(204, { 'cache-control': 'no-store' });
+      res.end();
+      return Promise.resolve();
+    });
   }
 
   /** One such write at a time: another meanwhile is refused (409) with `words`. */

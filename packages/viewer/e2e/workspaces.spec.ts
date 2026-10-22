@@ -707,6 +707,102 @@ test('Send the verdict types one line into the terminal, without Enter', async (
   await expect(screen(page, branch)).toContainText('got: Address this review');
 });
 
+/** A 1×1 PNG and GIF, as base64 (V36). */
+const PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+const GIF = 'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+/** Files as the page gets them from a clipboard or a drop: name, type and base64 bytes. */
+type Given = { name: string; type: string; data: string };
+const transfer = (page: Page, files: Given[], text = '') =>
+  page.evaluateHandle(
+    ({ files, text }) => {
+      const data = new DataTransfer();
+      for (const file of files) {
+        const bytes = Uint8Array.from(atob(file.data), (c) => c.charCodeAt(0));
+        data.items.add(new File([bytes], file.name, { type: file.type }));
+      }
+      if (text) data.setData('text/plain', text);
+      return data;
+    },
+    { files, text },
+  );
+
+test('images pasted, dropped or Ctrl+V-ed into the terminal attach to the message (V36)', async ({
+  page,
+  context,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
+  const input = terminal(page, branch).locator('.xterm-helper-textarea');
+  const box = terminal(page, branch).locator('.agent-terminal-screen');
+  const paste = async (files: Given[], text = '') => {
+    const clipboardData = await transfer(page, files, text);
+    await input.evaluate(
+      (element, clipboardData) =>
+        element.dispatchEvent(
+          new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }),
+        ),
+      clipboardData,
+    );
+  };
+
+  // A screenshot pasted: Symbiote saves it, and pastes its path for the agent to attach.
+  await paste([{ name: 'image.png', type: 'image/png', data: PNG }]);
+  await expect(screen(page, branch)).toContainText('[Image #1]');
+  const [first] = symbiote.images();
+  expect(first?.data).toBe(PNG);
+  expect(first?.path).toMatch(/[\\/]images[\\/][0-9a-f]{32}\.png$/);
+  // Kept out of the worktree, where git would see it.
+  expect(first?.path.startsWith(symbiote.folder(branch))).toBe(false);
+
+  // Two dropped: both, in order; while dragged over, the terminal says where they go.
+  const dropped = await transfer(page, [
+    { name: 'a.gif', type: 'image/gif', data: GIF },
+    { name: 'b.png', type: 'image/png', data: PNG },
+  ]);
+  await box.dispatchEvent('dragenter', { dataTransfer: dropped });
+  await box.dispatchEvent('dragover', { dataTransfer: dropped });
+  await expect(terminal(page, branch).getByText('Drop to attach')).toBeVisible();
+  await box.dispatchEvent('drop', { dataTransfer: dropped });
+  await expect(terminal(page, branch).getByText('Drop to attach')).toBeHidden();
+  await expect(screen(page, branch)).toContainText('[Image #3]');
+  expect(symbiote.images().map((image) => image.data)).toEqual([PNG, GIF, PNG]);
+
+  // A file that is not an image: said, nothing pasted.
+  const notes = await transfer(page, [{ name: 'notes.txt', type: 'text/plain', data: btoa('hi') }]);
+  await box.dispatchEvent('drop', { dataTransfer: notes });
+  await expect(terminal(page, branch).getByRole('alert')).toHaveText(
+    'Only images can be attached: PNG, JPEG, GIF or WebP.',
+  );
+  // Text pastes as it did, even beside an image.
+  await paste([{ name: 'image.png', type: 'image/png', data: PNG }], 'half');
+  await expect(screen(page, branch)).toContainText('[Image #3] half');
+  expect(symbiote.images()).toHaveLength(3);
+
+  // Ctrl+V: the browser's paste, from the clipboard the page sees, not ^V to the agent.
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.evaluate(async (data) => {
+    const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+    const blob = new Blob([bytes], { type: 'image/png' });
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+  }, PNG);
+  await input.focus();
+  await page.keyboard.press('Control+V');
+  await expect(screen(page, branch)).toContainText('[Image #4]');
+  // The error went with the next image attached.
+  await expect(terminal(page, branch).getByRole('alert')).toBeHidden();
+
+  // Nothing is sent until Enter: then the message carries them all.
+  await expect(screen(page, branch)).not.toContainText('got:');
+  await page.keyboard.press('Enter');
+  await expect(screen(page, branch)).toContainText(
+    'got: [Image #1] [Image #2] [Image #3] half[Image #4]',
+  );
+});
+
 test('without terminals, the panel keeps Talk in its menu, and no Terminal tab', async ({
   page,
 }) => {

@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { request } from 'node:http';
 import { join } from 'node:path';
 import {
@@ -1823,7 +1823,8 @@ describe('symbiote view: terminals (V21)', () => {
     };
     return pty;
   };
-  const terminals = makeTerminals({ pty: () => Promise.resolve({ spawn }) });
+  const images = join(viewer, 'images');
+  const terminals = makeTerminals({ pty: () => Promise.resolve({ spawn }), images });
   const asked: { branch: string; cols: number; rows: number }[] = [];
   const workspaces = {
     terminal: (request: { branch: string; cols: number; rows: number }) => {
@@ -1978,6 +1979,39 @@ describe('symbiote view: terminals (V21)', () => {
       expect(response.status, path).toBe(404);
     }
     expect((await fetch(new URL('/api/terminals/nope', server.url))).status).toBe(404);
+  });
+
+  it('saves an image for the agent to attach, and answers with its path to paste (V36)', async () => {
+    const id = await open();
+    const pty = made.at(-1)!;
+    const png = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.from('pixels')]);
+    const data = png.toString('base64');
+    const response = await post(`/api/terminals/${id}/image`, { data });
+    expect(response.status).toBe(200);
+    const saved = (await response.json()) as { path: string; text: string };
+    expect(saved.path.startsWith(join(images, ''))).toBe(true);
+    expect(saved.path).toMatch(/[0-9a-f]{32}\.png$/);
+    expect(saved.text).toBe(saved.path);
+    expect(readFileSync(saved.path)).toEqual(png);
+    // Nothing typed: the page pastes the path, bracketed as the agent asked.
+    expect(pty.written).toEqual([]);
+
+    for (const body of [{}, { data: 3 }, { data: '' }, { data: btoa('<svg></svg>') }]) {
+      const refused = await post(`/api/terminals/${id}/image`, body);
+      expect(refused.status, JSON.stringify(body)).toBe(400);
+    }
+    // Over 20 MB: refused before it is read.
+    const big = await post(`/api/terminals/${id}/image`, { data: 'A'.repeat(28 << 20) });
+    expect(big.status).toBe(413);
+    expect(await big.text()).toBe('an image of at most 20 MB');
+    expect((await post(`/api/terminals/${id}/image`, { data }, { 'x-symbiote': '' })).status).toBe(
+      403,
+    );
+    const attacker = { origin: 'https://attacker.example' };
+    expect((await post(`/api/terminals/${id}/image`, { data }, attacker)).status).toBe(403);
+    expect((await post('/api/terminals/nope/image', { data })).status).toBe(404);
+    expect((await fetch(new URL(`/api/terminals/${id}/image`, server.url))).status).toBe(405);
+    expect(readdirSync(images)).toHaveLength(1);
   });
 
   it('hangs its terminals up and ends their streams when it closes', async () => {

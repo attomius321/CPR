@@ -4009,6 +4009,30 @@ button.workspace-about {
   padding: 8px 16px;
 }
 
+/* An image dragged over the agent's terminal (V36): a frame and what a drop does, in the
+   terminal's own colours, its screen being black in both themes. The drop is the terminal's: the
+   frame takes no pointer. */
+.agent-terminal {
+  position: relative;
+}
+
+.terminal-drop {
+  position: absolute;
+  inset: 8px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed rgb(230 230 233 / 45%);
+  border-radius: 10px;
+  background: rgb(0 0 0 / 72%);
+  color: #e6e6e9;
+  font-size: var(--size-body);
+  font-weight: 500;
+  pointer-events: none;
+}
+
 .thread-readonly {
   margin: 8px 0 0;
   font-size: var(--size-body);

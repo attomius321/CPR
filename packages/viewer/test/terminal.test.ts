@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { keySender, verdictLine } from '../src/terminal.js';
+import {
+  droppedFiles,
+  isPasteKey,
+  keySender,
+  MAX_IMAGE_BYTES,
+  pastedImages,
+  verdictLine,
+} from '../src/terminal.js';
 
 describe('verdictLine', () => {
   it("is the verdict's first line and where the review is, as one line", () => {
@@ -75,5 +82,66 @@ describe('keySender', () => {
     fail = false;
     send('b');
     expect(sent).toEqual(['a', 'b']);
+  });
+});
+
+describe('images for the agent (V36)', () => {
+  const file = (name: string, type: string) => new File([new Uint8Array([1, 2])], name, { type });
+  const png = file('image.png', 'image/png');
+  const clipboard = (text: string, files: File[]) => ({
+    getData: (type: string) => (type === 'text/plain' ? text : ''),
+    files,
+  });
+
+  it("a paste attaches the clipboard's images when it holds no text", () => {
+    expect(pastedImages(clipboard('', [png]))).toEqual([png]);
+    const jpeg = file('photo.jpg', 'image/jpeg');
+    expect(pastedImages(clipboard('', [png, jpeg]))).toEqual([png, jpeg]);
+    expect(pastedImages(clipboard('', []))).toEqual([]);
+    expect(pastedImages(null)).toEqual([]);
+  });
+
+  it('a paste with text is text, as before: a copied range or page carries an image too', () => {
+    expect(pastedImages(clipboard('A1\tB1', [png]))).toEqual([]);
+  });
+
+  it('only the kinds Claude Code and Codex attach: PNG, JPEG, GIF, WebP', () => {
+    const kinds = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'].map((t) => file('x', t));
+    expect(pastedImages(clipboard('', kinds))).toEqual(kinds);
+    const others = [file('x.svg', 'image/svg+xml'), file('x.bmp', 'image/bmp'), file('x.txt', '')];
+    expect(pastedImages(clipboard('', others))).toEqual([]);
+  });
+
+  it('a drop: its images to attach, in order, and the files that cannot be', () => {
+    const notes = file('notes.txt', 'text/plain');
+    const gif = file('a.gif', 'image/gif');
+    expect(droppedFiles([png, notes, gif])).toEqual({ images: [png, gif], others: [notes] });
+    expect(droppedFiles([])).toEqual({ images: [], others: [] });
+  });
+
+  it("Ctrl+V is the browser's paste off macOS, where ⌘V is; other keys stay the agent's", () => {
+    const key = (init: Partial<KeyboardEvent>) =>
+      ({
+        type: 'keydown',
+        key: 'v',
+        code: 'KeyV',
+        ctrlKey: false,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        ...init,
+      }) as KeyboardEvent;
+    expect(isPasteKey(key({ ctrlKey: true }), false)).toBe(true);
+    // A layout whose V key types another letter: the key's place decides, as for xterm.js.
+    expect(isPasteKey(key({ ctrlKey: true, key: 'м' }), false)).toBe(true);
+    expect(isPasteKey(key({ ctrlKey: true }), true)).toBe(false);
+    expect(isPasteKey(key({ ctrlKey: true, shiftKey: true }), false)).toBe(false);
+    expect(isPasteKey(key({ ctrlKey: true, altKey: true }), false)).toBe(false);
+    expect(isPasteKey(key({}), false)).toBe(false);
+    expect(isPasteKey(key({ ctrlKey: true, key: 'c', code: 'KeyC' }), false)).toBe(false);
+  });
+
+  it("refuses an image over the server's limit before reading it", () => {
+    expect(MAX_IMAGE_BYTES).toBe(20 * 1024 * 1024);
   });
 });

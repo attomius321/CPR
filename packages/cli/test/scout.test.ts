@@ -138,6 +138,7 @@ function fakeTerminals() {
     listen: () => undefined,
     write: () => false,
     resize: () => false,
+    image: () => Promise.resolve(undefined),
     close: () => false,
     closeAll: () => {},
   };

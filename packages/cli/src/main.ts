@@ -615,14 +615,16 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   );
   let hinted = false;
   // Terminals on workspaces' agents (V21): node-pty is loaded only when one is asked for;
-  // `SYMBIOTE_TERMINAL=off` turns them off (the panel keeps Talk).
-  const terminals = agentTerminals(
-    ctx.env.SYMBIOTE_TERMINAL === 'off'
+  // `SYMBIOTE_TERMINAL=off` turns them off (the panel keeps Talk). Images pasted into them are
+  // kept in the cache (V36).
+  const terminals = agentTerminals({
+    images: join(cacheDir, 'images'),
+    ...(ctx.env.SYMBIOTE_TERMINAL === 'off'
       ? {
           pty: () => Promise.resolve({ error: 'terminals are turned off (SYMBIOTE_TERMINAL=off)' }),
         }
-      : {},
-  );
+      : {}),
+  });
   // One Codex for workspaces and usage: one connection to its app server.
   const codexOf = codexFinder(repo.root, ctx.env);
   // One Claude Code for workspaces and Scout (V35): one read of its sessions every 2 s.
