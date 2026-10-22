@@ -4913,3 +4913,40 @@ on `main`, and now stay byte for byte the same. `pnpm check` 1,252 tests; build;
 verified: that the race is gone from the e2e suite (seen twice in this journal, V20a and this
 check; the test shows its cause instead); `regression-check` (the analysis' git calls take no
 optional lock, so their output cannot change).
+
+## V37 spike — what the agents print in a terminal (2026-10-22, branch `feature/clickable-paths-from-agent-terminal`)
+
+Asked: "Provided paths from an agent terminal should be clickable...and open", and web links
+too. Read first: xterm.js 6.0.0 has no link provider of its own beyond OSC 8, and for those its
+default asks `confirm("…WARNING: This link could potentially be dangerous")` and calls
+`window.open`. Then the real agents in a pseudo-terminal (node-pty, 120 × 40, `TERM=xterm-256color`,
+`COLORTERM=truecolor`, the job's environment without `TERM_PROGRAM`), one turn each on a throwaway
+repository (two files in `packages/app/src/`, a README) asking to read both, add a function, and
+answer with each function as `path:line`, the README's absolute path, a web address and a
+Markdown link; the raw output replayed into xterm.js in Chromium to read its rows.
+
+**Learned**:
+- **Claude Code 2.1.308 (Haiku 5.5) prints paths as text**: `● Update(packages/app/src/math.ts)`,
+  `- cube (new): packages/app/src/math.ts:12`, absolute paths in `Bash(…)` and its output. A
+  Markdown link comes out as `xterm.js (https://xtermjs.org)`: an address's closing `)` is not
+  its own. A long `Bash(…)` line was wrapped by Claude Code itself onto a second row, which
+  xterm.js does not mark as wrapped. No OSC 8 link, no mouse tracking (only `ESC[?1004h`, focus).
+- **With `FORCE_HYPERLINK=1` it makes OSC 8 links**: `file:///…/packages/app/src/math.ts` on the
+  `Update(…)` header, `https://xtermjs.org` behind the text "xterm.js", and the web address. Which
+  of the two the person sees depends on what environment `symbiote view` was started in
+  (`TERM_PROGRAM=vscode` turns links on): both must work.
+- **Codex 0.163 (GPT-6-Luna, low) takes the mouse**: the alternate screen (`ESC[?1049h`) and
+  any-event mouse tracking (`ESC[?1000h ?1002h ?1003h ?1006h`), still on at the end. xterm.js
+  then reports clicks to Codex, while its link detection listens on the same element on its own:
+  a click on a link both follows it and reaches Codex (to check in the page).
+- **Codex's OSC 8 links are web addresses only**, each drawn four times by its redraws; its paths
+  are text: `packages/app/src/math.ts:2`, absolute ones, and `Read math.ts` (a name, not a path
+  from the folder: nothing to open). "Added cube to packages/app/src/math.ts
+  (packages/app/src/math.ts)": a file citation drawn with its target.
+- **Claude Code writes the words of a dialog apart with cursor moves** (`Quick ESC[8Gsafety
+  ESC[15Gcheck`): in the buffer the cells between are empty, read as spaces. A row's text must
+  come from the buffer, never from the stream.
+- A repository under `~/.claude/` makes Claude Code ask before each edit even with `acceptEdits`
+  (its own folder); V36's spikes ran under `~/projects`.
+
+Cleaned up after the real-agent checks (V37's verification): see V37's entry.
