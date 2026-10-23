@@ -701,15 +701,18 @@ export interface ClaudeCode {
     effort?: string;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
   /**
-   * Starts Scout's background session in `cwd` (V35, decision 236): read tools and Bash only, Bash
-   * through the gate in `settings`, nothing asked (`dontAsk`), no MCP server. A wake keeps all of
-   * it (V35 spike). Its words when it does not start.
+   * Starts a page's agent as a background session in `cwd`: Scout (V35, decision 236), read tools
+   * and Bash, nothing asked (`dontAsk`); Scribe (V41, decision 275), Write and Edit too, in
+   * `default`, where Claude Code asks before a write into `.claude`. Every tool through the gate in
+   * `settings`, no MCP server. A wake keeps all of it (V35 spike). Its words when it does not start.
    */
-  startReadOnly(request: {
+  startPageAgent(request: {
     cwd: string;
     name: string;
     prompt: string;
     settings: string;
+    tools: readonly string[];
+    permissionMode: 'dontAsk' | 'default';
     /** Its effort level (`--effort`), kept as a workspace's is. */
     effort?: string;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
@@ -777,15 +780,15 @@ export function claudeCode(
         error: wordsOf(result) || `${basename(command)} exited with code ${result.code ?? 'none'}`,
       };
     },
-    async startReadOnly(request) {
+    async startPageAgent(request) {
       const args = [
         '--bg',
         '--name',
         request.name,
         '--tools',
-        'Read,Grep,Glob,Bash',
+        request.tools.join(','),
         '--permission-mode',
-        'dontAsk',
+        request.permissionMode,
         '--strict-mcp-config',
         '--settings',
         request.settings,

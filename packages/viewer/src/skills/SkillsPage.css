@@ -120,3 +120,35 @@
 .skills-field .settings-size {
   font-weight: normal;
 }
+
+/* Scribe (V41b): Scout's conversation (`ScoutPage.css`'s parts) in the editor's place, framed, as
+   tall as the window allows: its terminal needs a height of its own. */
+.skills-scribe {
+  min-width: 0;
+}
+
+.skills-scribe-note {
+  margin: 0 0 8px;
+}
+
+.scribe-pane {
+  display: flex;
+  flex-direction: column;
+  height: max(420px, calc(100dvh - 190px));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.scribe-pane .scout-top h2 {
+  grid-area: title;
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+@media (max-width: 899px) {
+  .scribe-pane {
+    height: max(420px, calc(100dvh - 160px));
+  }
+}

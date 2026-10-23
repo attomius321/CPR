@@ -14,6 +14,7 @@ const state = (...agents: WorkspaceSummary['agent'][]): WorkspacesState => ({
   reviews: null,
   merges: null,
   scout: null,
+  scribe: null,
 });
 
 describe('readEvery', () => {
@@ -25,7 +26,9 @@ describe('readEvery', () => {
 
   it('also while a terminal is open: what is typed there starts a turn (V27b)', () => {
     expect(readEvery(state({ state: 'plan-ready' }), 1)).toBe(5_000);
-    expect(readEvery({ list: null, reviews: null, merges: null, scout: null }, 1)).toBe(5_000);
+    expect(
+      readEvery({ list: null, reviews: null, merges: null, scout: null, scribe: null }, 1),
+    ).toBe(5_000);
   });
 
   it('also while Scout answers (V35)', () => {
@@ -40,6 +43,20 @@ describe('readEvery', () => {
     });
     expect(readEvery(scout('working'), 0)).toBe(5_000);
     expect(readEvery(scout('answered'), 0)).toBeNull();
+  });
+
+  it('also while Scribe writes (V41)', () => {
+    const done = state({ state: 'ready' });
+    const scribe = (state: ScoutStateName): WorkspacesState => ({
+      ...done,
+      scribe: {
+        checkout: '/repo',
+        agents: [],
+        conversation: { kind: 'claude', started: '2026-10-23T09:00:00.000Z', state },
+      },
+    });
+    expect(readEvery(scribe('working'), 0)).toBe(5_000);
+    expect(readEvery(scribe('answered'), 0)).toBeNull();
   });
 });
 
@@ -65,14 +82,14 @@ describe('reloadWorkspaces (V29b)', () => {
   it('asked during a read, reads again after it: a change made meanwhile is not answered by the older read', async () => {
     const server = fakeServer();
     const opened = reloadWorkspaces();
-    // The workspaces, the reviews, the merges and Scout (V35).
-    expect(server.asked).toHaveLength(4);
+    // The workspaces, the reviews, the merges, Scout (V35) and Scribe (V41).
+    expect(server.asked).toHaveLength(5);
     // Land is clicked while the page's first read is under way; what follows it reads again.
     let landed = false;
     const after = reloadWorkspaces().then(() => (landed = true));
     server.answer();
     await opened;
-    await vi.waitFor(() => expect(server.asked).toHaveLength(8));
+    await vi.waitFor(() => expect(server.asked).toHaveLength(10));
     expect(landed).toBe(false);
     server.answer();
     await after;
@@ -86,9 +103,9 @@ describe('reloadWorkspaces (V29b)', () => {
     const third = reloadWorkspaces();
     server.answer();
     await first;
-    await vi.waitFor(() => expect(server.asked).toHaveLength(8));
+    await vi.waitFor(() => expect(server.asked).toHaveLength(10));
     server.answer();
     await Promise.all([second, third]);
-    expect(server.asked).toHaveLength(8);
+    expect(server.asked).toHaveLength(10);
   });
 });

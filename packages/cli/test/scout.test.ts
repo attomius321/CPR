@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { codexServer } from '../src/app-server.js';
 import type { Codex } from '../src/codex.js';
-import { DEFAULT_PROMPTS } from '../src/prompts.js';
+import { DEFAULT_PROMPTS, fillPrompt } from '../src/prompts.js';
 import {
   findScoutSession,
   newScoutSession,
@@ -15,6 +15,7 @@ import {
   scoutSettings,
   scoutState,
 } from '../src/scout.js';
+import { scribe } from '../src/scribe.js';
 import type { Terminals } from '../src/terminal.js';
 import { claudeCode, type AgentSession, type ClaudeCode, type Run } from '../src/workspaces.js';
 import { fakeAppServer, type FakeAppServer } from './fake-app-server.js';
@@ -69,7 +70,7 @@ function fakeClaude(root: string) {
     },
   ];
   let next = 9;
-  const startReadOnly = vi.fn<ClaudeCode['startReadOnly']>(({ cwd, name }) => {
+  const startPageAgent = vi.fn<ClaudeCode['startPageAgent']>(({ cwd, name }) => {
     listed.push({
       cwd,
       kind: 'background',
@@ -108,7 +109,7 @@ function fakeClaude(root: string) {
   const claude: ClaudeCode = {
     command: '/usr/bin/claude',
     start: () => Promise.reject(new Error('Scout never starts a workspace agent')),
-    startReadOnly,
+    startPageAgent,
     sessions,
     stop,
     resume,
@@ -123,7 +124,7 @@ function fakeClaude(root: string) {
     for (const key of ['state', 'status', 'waitingFor'] as const) delete session[key];
     Object.assign(session, fields);
   };
-  return { claude, listed, startReadOnly, sessions, stop, resume, remove, set };
+  return { claude, listed, startPageAgent, sessions, stop, resume, remove, set };
 }
 
 /** Fake terminals (V21): records what it is asked to open. */
@@ -193,7 +194,10 @@ const service = async (
 
 const record = (repo: TestRepo) => join(repo.root, 'symbiote', 'scout.json');
 
-describe('claudeCode().startReadOnly (V35, decision 236)', () => {
+/** Scout's tools and mode (V35, decision 236). */
+const READ_ONLY = { tools: ['Read', 'Grep', 'Glob', 'Bash'], permissionMode: 'dontAsk' } as const;
+
+describe('claudeCode().startPageAgent (V35, decision 236)', () => {
   it('starts a background session with read tools, Bash only through the gate, nothing asked', async () => {
     const calls: { args: string[]; cwd: string }[] = [];
     const run: Run = (_command, args, { cwd }) => {
@@ -202,11 +206,12 @@ describe('claudeCode().startReadOnly (V35, decision 236)', () => {
     };
     const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo', model: 'sonnet' });
     expect(
-      await claude.startReadOnly({
+      await claude.startPageAgent({
         cwd: '/repo',
         name: 'Scout',
         prompt: 'Where is it?',
         settings: '/repo/symbiote/scout-settings.json',
+        ...READ_ONLY,
       }),
     ).toEqual({ ok: true });
     expect(calls).toEqual([
@@ -238,9 +243,9 @@ describe('claudeCode().startReadOnly (V35, decision 236)', () => {
       return Promise.resolve({ code: 0, stdout: '', stderr: '' });
     };
     const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
-    const request = { cwd: '/repo', name: 'Scout', prompt: 'Q', settings: '/s' };
-    await claude.startReadOnly({ ...request, effort: 'low' });
-    await claude.startReadOnly(request);
+    const request = { cwd: '/repo', name: 'Scout', prompt: 'Q', settings: '/s', ...READ_ONLY };
+    await claude.startPageAgent({ ...request, effort: 'low' });
+    await claude.startPageAgent(request);
     expect(calls[0]?.slice(-3)).toEqual(['--effort', 'low', 'Q']);
     expect(calls[1]).not.toContain('--effort');
   });
@@ -250,7 +255,13 @@ describe('claudeCode().startReadOnly (V35, decision 236)', () => {
       Promise.resolve({ code: 1, stdout: '', stderr: 'Workspace not trusted. Run `claude`…\n' });
     const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
     expect(
-      await claude.startReadOnly({ cwd: '/repo', name: 'Scout', prompt: 'Q', settings: '/s' }),
+      await claude.startPageAgent({
+        cwd: '/repo',
+        name: 'Scout',
+        prompt: 'Q',
+        settings: '/s',
+        ...READ_ONLY,
+      }),
     ).toEqual({ ok: false, error: 'Workspace not trusted. Run `claude`…' });
   });
 });
@@ -352,13 +363,13 @@ describe('scout (V35)', () => {
 
   it("starts Claude Code read-only in the checkout and records its session's ID", async () => {
     const repo = fresh();
-    const { claude, startReadOnly } = fakeClaude(repo.root);
+    const { claude, startPageAgent } = fakeClaude(repo.root);
     const s = await service(repo, { claude });
     const state = await s.ask({ text: "Where is the merger's prompt defined?" });
     const settings = join(repo.root, 'symbiote', 'scout-settings.json');
-    expect(startReadOnly).toHaveBeenCalledTimes(1);
-    const request = startReadOnly.mock.calls[0]?.[0];
-    expect(request).toMatchObject({ cwd: repo.root, name: 'Scout', settings });
+    expect(startPageAgent).toHaveBeenCalledTimes(1);
+    const request = startPageAgent.mock.calls[0]?.[0];
+    expect(request).toMatchObject({ cwd: repo.root, name: 'Scout', settings, ...READ_ONLY });
     expect(request?.prompt).toBe(
       DEFAULT_PROMPTS.scout.replace('{question}', "Where is the merger's prompt defined?"),
     );
@@ -417,14 +428,14 @@ describe('scout (V35)', () => {
 
   it("refuses a start when Claude Code's new session cannot be found, recording nothing", async () => {
     const repo = fresh();
-    const { claude, startReadOnly } = fakeClaude(repo.root);
-    startReadOnly.mockImplementation(() => Promise.resolve({ ok: true }));
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    startPageAgent.mockImplementation(() => Promise.resolve({ ok: true }));
     const s = await service(repo, { claude });
     await expect(s.ask({ text: 'Q' })).rejects.toThrow(
       /Claude Code started no session Symbiote can find/,
     );
     expect(existsSync(record(repo))).toBe(false);
-    startReadOnly.mockImplementation(() =>
+    startPageAgent.mockImplementation(() =>
       Promise.resolve({ ok: false, error: 'Workspace not trusted.' }),
     );
     await expect(s.ask({ text: 'Q' })).rejects.toThrow('Workspace not trusted.');
@@ -457,7 +468,7 @@ describe('scout (V35)', () => {
 
   it('starts a new conversation: the old session stopped and removed, the record gone', async () => {
     const repo = fresh();
-    const { claude, stop, remove, startReadOnly } = fakeClaude(repo.root);
+    const { claude, stop, remove, startPageAgent } = fakeClaude(repo.root);
     const s = await service(repo, { claude });
     await s.ask({ text: 'Q' });
     expect((await s.renew()).conversation).toBeNull();
@@ -466,7 +477,7 @@ describe('scout (V35)', () => {
     expect(existsSync(record(repo))).toBe(false);
     // The next question starts another.
     expect((await s.ask({ text: 'Q2' })).conversation).toMatchObject({ id: 's10' });
-    expect(startReadOnly).toHaveBeenCalledTimes(2);
+    expect(startPageAgent).toHaveBeenCalledTimes(2);
     // Gone already: only the record goes.
     remove.mockClear();
     await claude.remove('s10');
@@ -498,7 +509,7 @@ describe('scout (V35)', () => {
 
   it("uses the project's prompt (prompts.scout), and refuses what it cannot ask", async () => {
     const repo = fresh();
-    const { claude, startReadOnly } = fakeClaude(repo.root);
+    const { claude, startPageAgent } = fakeClaude(repo.root);
     const s = await service(repo, { claude });
     await expect(s.ask({ text: '  ' })).rejects.toMatchObject({ status: 400 });
     await expect(s.ask({ text: 'x'.repeat(20_001) })).rejects.toMatchObject({ status: 400 });
@@ -509,7 +520,7 @@ describe('scout (V35)', () => {
       '{ "prompts": { "scout": "Answer briefly. {question}" } }\n',
     );
     await s.ask({ text: 'Where is X?' });
-    expect(startReadOnly.mock.calls[0]?.[0].prompt).toBe('Answer briefly. Where is X?');
+    expect(startPageAgent.mock.calls[0]?.[0].prompt).toBe('Answer briefly. Where is X?');
     await expect((await service(fresh())).ask({ text: 'Q' })).rejects.toThrow(
       /Scout needs Claude Code or Codex/,
     );
@@ -589,37 +600,37 @@ describe("Scout's effort (fix/scout-effort-level)", () => {
 
   it('starts Claude Code at the level asked, records it, and says it', async () => {
     const repo = fresh();
-    const { claude, startReadOnly } = leveled(repo);
+    const { claude, startPageAgent } = leveled(repo);
     const s = await service(repo, { claude });
     const state = await s.ask({ text: 'Q', effort: 'high' });
-    expect(startReadOnly.mock.calls[0]?.[0]).toMatchObject({ effort: 'high' });
+    expect(startPageAgent.mock.calls[0]?.[0]).toMatchObject({ effort: 'high' });
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({ effort: 'high' });
     expect(state.conversation).toMatchObject({ kind: 'claude', effort: 'high' });
   });
 
   it("starts at the project's level when none is asked; at the agent's own for null or one it does not list", async () => {
     const repo = fresh();
-    const { claude, startReadOnly } = leveled(repo);
+    const { claude, startPageAgent } = leveled(repo);
     const s = await service(repo, { claude });
     repo.write({ 'symbiote/config.json': '{ "scout": { "effort": "medium" } }\n' });
     expect((await s.ask({ text: 'Q' })).conversation).toMatchObject({ effort: 'medium' });
-    expect(startReadOnly.mock.lastCall?.[0]).toMatchObject({ effort: 'medium' });
+    expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ effort: 'medium' });
     await s.renew();
     // Null: the agent's own default, whatever the project says.
     expect((await s.ask({ text: 'Q', effort: null })).conversation).not.toHaveProperty('effort');
-    expect(startReadOnly.mock.lastCall?.[0]).not.toHaveProperty('effort');
+    expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('effort');
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).not.toHaveProperty('effort');
     await s.renew();
     // A level this agent does not list: its default, not a refusal (the project's file may be
     // another agent's or an older Claude Code's).
     repo.write({ 'symbiote/config.json': '{ "scout": { "effort": "ultra" } }\n' });
     await s.ask({ text: 'Q' });
-    expect(startReadOnly.mock.lastCall?.[0]).not.toHaveProperty('effort');
+    expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('effort');
   });
 
   it('refuses a level the agent does not list, and one for a conversation that runs', async () => {
     const repo = fresh();
-    const { claude, startReadOnly } = leveled(repo);
+    const { claude, startPageAgent } = leveled(repo);
     const s = await service(repo, { claude });
     await expect(s.ask({ text: 'Q', effort: 'ultra' })).rejects.toMatchObject({
       status: 400,
@@ -634,7 +645,7 @@ describe("Scout's effort (fix/scout-effort-level)", () => {
       status: 400,
       message: "Symbiote cannot read Claude Code's effort levels: start it at its default",
     });
-    expect(startReadOnly).not.toHaveBeenCalled();
+    expect(startPageAgent).not.toHaveBeenCalled();
     expect(existsSync(record(repo))).toBe(false);
     claude.efforts = () => Promise.resolve(LEVELS);
     await s.ask({ text: 'Q', effort: 'low' });
@@ -696,5 +707,104 @@ describe("Scout's effort (fix/scout-effort-level)", () => {
       status: 409,
       message: 'Scout needs Claude Code or Codex: neither is installed',
     });
+  });
+});
+
+describe('Scribe (V41): the same conversation, writing skills', () => {
+  const SCRIBE_GATE = '/opt/symbiote/dist/scribe-hook.js';
+  const scribeService = async (
+    repo: TestRepo,
+    {
+      claude = null,
+      codex = null,
+      terminals,
+    }: { claude?: ClaudeCode | null; codex?: Codex | null; terminals?: Terminals } = {},
+  ) =>
+    scribe(await openRepo(repo.root), cache, {
+      claude: () => Promise.resolve(claude),
+      codex: () => Promise.resolve(codex),
+      now: () => NOW,
+      env: { PATH: '/usr/bin' },
+      gate: SCRIBE_GATE,
+      node: '/usr/bin/node',
+      ...(terminals ? { terminals } : {}),
+    });
+  const scribeRecord = (repo: TestRepo) => join(repo.root, 'symbiote', 'scribe.json');
+
+  it('starts Claude Code in the checkout with Write and Edit, its gate given the skills folder, asking', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    const s = await scribeService(repo, { claude });
+    const state = await s.ask({ text: 'A skill for adding a prompt to Settings' });
+    const skills = join(repo.root, '.claude', 'skills');
+    const settings = join(repo.root, 'symbiote', 'scribe-settings.json');
+    expect(startPageAgent).toHaveBeenCalledTimes(1);
+    const request = startPageAgent.mock.calls[0]?.[0];
+    expect(request).toMatchObject({
+      cwd: repo.root,
+      name: 'Scribe',
+      settings,
+      tools: ['Read', 'Grep', 'Glob', 'Bash', 'Write', 'Edit'],
+      // Claude Code asks the person before each write into .claude (decision 275).
+      permissionMode: 'default',
+    });
+    expect(request?.prompt).toBe(
+      fillPrompt(DEFAULT_PROMPTS.scribe, {
+        request: 'A skill for adding a prompt to Settings',
+        skills,
+        checkout: repo.root,
+      }),
+    );
+    expect(readFileSync(settings, 'utf8')).toBe(
+      scoutSettings({ node: '/usr/bin/node', gate: SCRIBE_GATE, args: [skills] }),
+    );
+    expect(JSON.parse(readFileSync(scribeRecord(repo), 'utf8'))).toMatchObject({
+      about:
+        "Scribe's conversation in this checkout (V41): an agent started in Symbiote that writes skills in .claude/skills. Not a workspace.",
+      agent: 'claude',
+      id: 's9',
+    });
+    expect(state.conversation).toMatchObject({ kind: 'claude', state: 'working', id: 's9' });
+    // Its folder is made for it; nothing shows in git until it writes a skill.
+    expect(existsSync(skills)).toBe(true);
+    expect(repo.git('status', '--porcelain')).toBe('');
+    // Scout's conversation is apart.
+    expect(existsSync(record(repo))).toBe(false);
+    expect((await (await service(repo, { claude })).state()).conversation).toBeNull();
+  });
+
+  it('starts Codex in the skills folder, writing there and nowhere else, asking nobody', async () => {
+    const repo = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    const { terminals, opening } = fakeTerminals();
+    const s = await scribeService(repo, { codex, terminals });
+    await s.ask({ text: 'A skill for releases' });
+    const skills = join(repo.root, '.claude', 'skills');
+    const start = server.calls.find((c) => c.method === 'thread/start');
+    expect(start?.params).toEqual({
+      cwd: skills,
+      sandbox: 'workspace-write',
+      approvalPolicy: 'never',
+    });
+    expect(server.thread('thread-1')).toMatchObject({ name: 'Scribe' });
+    await s.terminal({ cols: 100, rows: 30 });
+    expect(opening[0]).toMatchObject({
+      command: '/usr/bin/codex',
+      args: ['resume', 'thread-1', '--remote', server.address, '-C', skills],
+      cwd: skills,
+    });
+  });
+
+  it('speaks of itself, and has no level in the project’s config', async () => {
+    const repo = fresh();
+    await expect((await scribeService(repo)).ask({ text: 'Q' })).rejects.toThrow(
+      'Scribe needs Claude Code or Codex: neither is installed',
+    );
+    await expect(
+      (await scribeService(repo, { claude: fakeClaude(repo.root).claude })).setEffort({
+        effort: null,
+      }),
+    ).rejects.toThrow("Scribe has no level in the project's config");
   });
 });

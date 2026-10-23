@@ -4,6 +4,9 @@ import { Help } from '../ui/Help.js';
 import { getJson, postJson } from '../ui/http.js';
 import { BackIcon, PlusIcon } from '../ui/icons.js';
 import { useShell } from '../shell/shell-context.js';
+import { Conversation, type ConversationAgent } from '../scout/Conversation.js';
+import { scoutStateText } from '../scout/scout.js';
+import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
   isSkillEdited,
   newSkillProblem,
@@ -15,8 +18,11 @@ import {
 } from './skills.js';
 
 const API = '/api/skills';
-/** The form for a new skill, in the list's place of a skill's path. */
+/** The form for a new skill, and Scribe's conversation, in the list's place of a skill's path. */
 const NEW = 'new';
+const SCRIBE = 'scribe';
+/** While Scribe works, how often the skills are read again: what it writes shows. */
+const SCRIBE_POLL_MS = 5_000;
 
 /** What the page says after a change, under the skill (or the form) it was made from. */
 interface Notice {
@@ -31,16 +37,50 @@ interface Notice {
 const without = (drafts: Record<string, string>, path: string) =>
   Object.fromEntries(Object.entries(drafts).filter(([p]) => p !== path));
 
-/** The address of what is open: a skill by its path, or the form. */
+/** The address of what is open: a skill by its path, the form, or Scribe. */
 function addressOf(open: string): string {
-  return open === NEW ? '?new' : `?skill=${encodeURIComponent(open)}`;
+  if (open === NEW || open === SCRIBE) return `?${open}`;
+  return `?skill=${encodeURIComponent(open)}`;
 }
+
+/** Scribe (V41b) as its conversation shows it, `draft` put in its box by Improve with Scribe. */
+const scribeAgent = (
+  state: ConversationAgent['state'],
+  draft: ConversationAgent['draft'],
+): ConversationAgent => ({
+  name: 'Scribe',
+  api: '/api/scribe',
+  state,
+  className: 'scribe-pane',
+  heading: 'h2',
+  doing: 'Writes skills in .claude/skills of',
+  label: 'Ask Scribe for a skill',
+  help: (
+    <>
+      <p>
+        Scribe writes a new skill, or changes one, in .claude/skills, from what you ask. It reads
+        this checkout&apos;s files and git&apos;s history, and writes nothing else.
+      </p>
+      <p>
+        Claude Code asks you before each write into .claude, in its terminal here. Scribe never
+        commits: read the skill here, change it, and commit it.
+      </p>
+    </>
+  ),
+  placeholder:
+    'A skill for adding a prompt to Settings: where the texts live, the tests to write first, how the page lists it.',
+  submit: 'Write',
+  noun: 'request',
+  effortHelp: "The level this conversation starts at: the agent's own unless you pick one.",
+  ...(draft ? { draft } : {}),
+});
 
 /**
  * Skills (V41a): the checkout's skills — `.claude/skills/` (Claude Code) and `.agents/skills/`
  * (Codex) — each opened as its `SKILL.md`, checked as one types, saved in place for the person to
  * commit; a new one from its name and description; Link for Codex when Codex does not read Claude
- * Code's. Drafts are kept while another skill is open; leaving with one asks first.
+ * Code's. Scribe (V41b) first in the list: its conversation, which writes skills here. Drafts are
+ * kept while another skill is open; leaving with one asks first.
  */
 export function SkillsPage() {
   const [state, setState] = useState<SkillsState | null>(null);
@@ -49,8 +89,11 @@ export function SkillsPage() {
   /** On a narrow screen, a skill picked takes the page. */
   const [picked, setPicked] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.has('skill') || params.has(NEW);
+    return params.has('skill') || params.has(NEW) || params.has(SCRIBE);
   });
+  const { scribe } = useWorkspaces();
+  /** What Improve with Scribe puts in Scribe's box. */
+  const [asking, setAsking] = useState<{ text: string; at: number } | undefined>(undefined);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -71,8 +114,11 @@ export function SkillsPage() {
       if (!read) return;
       const search = window.location.search;
       const paths = read.skills.map((s) => s.path);
+      const params = new URLSearchParams(search);
       // No skill yet: the form for the first one.
-      setOpen(new URLSearchParams(search).has(NEW) ? NEW : (skillOfUrl(search, paths) ?? NEW));
+      setOpen(
+        params.has(SCRIBE) ? SCRIBE : params.has(NEW) ? NEW : (skillOfUrl(search, paths) ?? NEW),
+      );
     });
   }, [load]);
   // A skill written elsewhere (an editor, an agent) shows when the page is back in view.
@@ -81,6 +127,18 @@ export function SkillsPage() {
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [load]);
+
+  // While Scribe works, the skills are read again: what it writes shows in the list; once more when
+  // it stops.
+  const writing = scribe?.conversation?.state === 'working';
+  useEffect(() => {
+    if (!writing) return;
+    const timer = setInterval(() => void load(), SCRIBE_POLL_MS);
+    return () => {
+      clearInterval(timer);
+      void load();
+    };
+  }, [writing, load]);
 
   const edited = useMemo(
     () => state?.skills.filter((s) => isSkillEdited(s, drafts[s.path])).map((s) => s.path) ?? [],
@@ -171,6 +229,10 @@ export function SkillsPage() {
     window.history.replaceState(null, '', addressOf(made.path));
     return true;
   };
+  const improve = (skill: Skill) => {
+    setAsking({ text: `Improve ${skill.path}: `, at: Date.now() });
+    show(SCRIBE);
+  };
   const link = () =>
     void change('codex', { action: 'link' }, (next) =>
       `Linked: Codex reads .agents/skills, now .claude/skills. ${next.codex.git === 'new' ? 'The link is not committed: commit it to share it.' : ''}`.trim(),
@@ -234,6 +296,28 @@ export function SkillsPage() {
       ) : (
         <div className={`settings-body${picked ? ' picked' : ''}`}>
           <nav className="settings-list" aria-label="Skills">
+            <section aria-label="Scribe">
+              <h2>Agent</h2>
+              <ul>
+                <li>
+                  <button
+                    type="button"
+                    aria-current={open === SCRIBE ? 'true' : undefined}
+                    onClick={() => show(SCRIBE)}
+                  >
+                    <span className="settings-name">Scribe</span>
+                    {scribe?.conversation && (
+                      <span className="settings-mark" title={scoutStateText(scribe.conversation)}>
+                        <span
+                          className={`state-dot ${scribe.conversation.state === 'working' ? 'tone-working' : scribe.conversation.state === 'needs-you' ? 'tone-waiting' : 'tone-done'}`}
+                          aria-hidden="true"
+                        />
+                      </span>
+                    )}
+                  </button>
+                </li>
+              </ul>
+            </section>
             {groups.length === 0 && (
               <p className="hint skills-none">No skills in this checkout yet.</p>
             )}
@@ -265,6 +349,20 @@ export function SkillsPage() {
               </section>
             ))}
           </nav>
+          {open === SCRIBE && (
+            <div className="skills-scribe">
+              <button type="button" className="button ghost settings-back" onClick={back}>
+                <BackIcon /> All skills
+              </button>
+              {asking && scribe?.conversation && scribe.conversation.state !== 'gone' && (
+                <p className="settings-git skills-scribe-note">
+                  Its conversation goes on: tell it in its terminal, or start a new one, which takes
+                  &ldquo;{asking.text.trim()}&rdquo;.
+                </p>
+              )}
+              <Conversation agent={scribeAgent(scribe, asking)} />
+            </div>
+          )}
           {open === NEW && (
             <NewSkill
               busy={busy}
@@ -273,6 +371,7 @@ export function SkillsPage() {
                 state.skills.some((s) => s.folder === '.claude/skills' && s.name === name)
               }
               onCreate={create}
+              onScribe={() => show(SCRIBE)}
               onBack={back}
             />
           )}
@@ -287,6 +386,7 @@ export function SkillsPage() {
               onDiscard={() => setDrafts((all) => without(all, current.path))}
               onSave={(text) => void save(current, text)}
               onDelete={() => void remove(current)}
+              onImprove={() => improve(current)}
               onLoad={() => void load().then(() => setNotice(null))}
               onBack={back}
             />
@@ -311,6 +411,7 @@ function SkillEditor({
   onDiscard,
   onSave,
   onDelete,
+  onImprove,
   onLoad,
   onBack,
 }: {
@@ -322,6 +423,7 @@ function SkillEditor({
   onDiscard: () => void;
   onSave: (text: string) => void;
   onDelete: () => void;
+  onImprove: () => void;
   onLoad: () => void;
   onBack: () => void;
 }) {
@@ -449,6 +551,14 @@ function SkillEditor({
             Delete…
           </button>
         )}
+        <button
+          type="button"
+          className="button ghost"
+          title="Ask Scribe to change this skill"
+          onClick={onImprove}
+        >
+          Improve with Scribe
+        </button>
         {edited && (
           <button type="button" className="button ghost" disabled={busy} onClick={onDiscard}>
             Discard changes
@@ -474,12 +584,14 @@ function NewSkill({
   notice,
   taken,
   onCreate,
+  onScribe,
   onBack,
 }: {
   busy: boolean;
   notice: Notice | null;
   taken: (name: string) => boolean;
   onCreate: (name: string, description: string) => Promise<boolean>;
+  onScribe: () => void;
   onBack: () => void;
 }) {
   const [name, setName] = useState('');
@@ -506,6 +618,13 @@ function NewSkill({
         <BackIcon /> All skills
       </button>
       <h2>New skill</h2>
+      <p className="skills-where">
+        Its name and description here, its instructions in the editor next; or{' '}
+        <button type="button" className="link" onClick={onScribe}>
+          ask Scribe to write it
+        </button>
+        .
+      </p>
       <div className="skills-field">
         <span className="field-label">
           <label htmlFor="skill-name">Name</label>

@@ -2,7 +2,8 @@
 // repository, asked from its page. Claude Code runs with read tools and Bash through Symbiote's gate
 // (`scout-gate.ts`, decision 236); Codex in its read-only sandbox on its app server. Its record is
 // `symbiote/scout.json`: the session's ID, by which it is found (never by its folder, where the
-// person's own sessions run too, decision 239).
+// person's own sessions run too, decision 239). Scribe (V41, `scribe.ts`) is the same conversation
+// with its own name, tools, gate and prompt (`pageAgent`).
 import { realpathSync } from 'node:fs';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -47,7 +48,48 @@ export const SCOUT_ABOUT =
 /** Longest question: it goes on Claude Code's command line with Scout's prompt (8,000 at most). */
 export const MAX_QUESTION = 20_000;
 
-/** `symbiote/scout.json`. */
+/** What makes a page's agent Scout or Scribe (V41): its name, record, tools, gate and prompt. */
+export interface PageAgentSpec {
+  /** Its session's and thread's name, and how it speaks of itself. */
+  name: string;
+  /** Its record's first key. */
+  about: string;
+  /** Its record and its settings file, in `symbiote/`. */
+  record: string;
+  settings: string;
+  /** Claude Code's tools and mode for it. */
+  tools: readonly string[];
+  permissionMode: 'dontAsk' | 'default';
+  /** What its gate is given after its script: Scribe's, the skills' folder. */
+  gateArgs(root: string): string[];
+  /** Its first prompt: the project's text, the person's words in it. */
+  prompt(root: string, text: string): string;
+  /**
+   * Where Codex's thread runs: in the checkout read-only (Scout), or writing in that folder and
+   * nowhere else (Scribe, its skills; decision 275).
+   */
+  codex(root: string): { cwd: string; writes: boolean };
+  /** Made before a start: Scribe's skills folder. */
+  prepare?(root: string): Promise<void>;
+  /** The project's level in its config (`scout.effort`), and where it is set. */
+  effort?: { read(root: string): string | undefined; key: readonly string[] };
+}
+
+/** Scout's: read-only in the checkout, `prompts.scout`, `scout.effort`. */
+const SCOUT: PageAgentSpec = {
+  name: SCOUT_NAME,
+  about: SCOUT_ABOUT,
+  record: 'scout.json',
+  settings: 'scout-settings.json',
+  tools: ['Read', 'Grep', 'Glob', 'Bash'],
+  permissionMode: 'dontAsk',
+  gateArgs: () => [],
+  prompt: (root, text) => fillPrompt(readPrompts(root).text.scout, { question: text }),
+  codex: (root) => ({ cwd: root, writes: false }),
+  effort: { read: (root) => readWorkspaceConfig(root).scoutEffort, key: ['scout', 'effort'] },
+};
+
+/** `symbiote/scout.json`, or a page agent's record. */
 interface ScoutRecord {
   about: string;
   agent: AgentKind;
@@ -72,7 +114,7 @@ export class ScoutRefused extends Error {
   }
 }
 
-/** What the server needs of Scout. */
+/** What the server needs of Scout, or of Scribe (V41). */
 export interface Scout {
   state(): Promise<ScoutState>;
   /** Starts a conversation with the question, or continues the one there is. */
@@ -92,10 +134,12 @@ export interface Scout {
  * records its thread (decision 238).
  */
 export function scoutSettings(
-  where: { node: string; gate: string },
+  where: { node: string; gate: string; args?: readonly string[] },
   platform: NodeJS.Platform = process.platform,
 ): string {
-  const command = [where.node, where.gate].map((p) => shellWord(p, platform)).join(' ');
+  const command = [where.node, where.gate, ...(where.args ?? [])]
+    .map((p) => shellWord(p, platform))
+    .join(' ');
   const hooks = {
     PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command, timeout: 30 }] }],
   };
@@ -103,14 +147,15 @@ export function scoutSettings(
 }
 
 /**
- * The session a start made: the background session named Scout in the checkout that `before` did
- * not list (the newest, if two were). `--bg`'s own text is not read (V18).
+ * The session a start made: the background session named Scout (or `name`) in the checkout that
+ * `before` did not list (the newest, if two were). `--bg`'s own text is not read (V18).
  */
 export function newScoutSession(
   before: readonly AgentSession[],
   after: readonly AgentSession[],
   root: string,
   real: (path: string) => string,
+  name = SCOUT_NAME,
 ): AgentSession | undefined {
   const known = new Set(before.map((s) => s.id));
   const folder = real(root);
@@ -118,7 +163,7 @@ export function newScoutSession(
     .filter(
       (s) =>
         s.kind === 'background' &&
-        s.name === SCOUT_NAME &&
+        s.name === name &&
         s.id !== undefined &&
         !known.has(s.id) &&
         real(s.cwd) === folder,
@@ -164,8 +209,34 @@ const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: '
 const isLevel = (value: unknown): value is string =>
   typeof value === 'string' && EFFORT_LEVEL.test(value);
 
+/** What a page's agent is given: its agents, its clock, its gate, its terminals. */
+export interface PageAgentOptions {
+  claude: () => Promise<ClaudeCode | null>;
+  codex?: () => Promise<Codex | null>;
+  now?: () => Date;
+  env?: Readonly<Record<string, string | undefined>>;
+  /** The checkout it works in, where `symbiote/config.json` is read too. */
+  root?: string;
+  /** Its gate (`dist/scout-hook.js`, `dist/scribe-hook.js`) and the Node that runs it. */
+  gate?: string;
+  node?: string;
+  terminals?: Terminals;
+}
+
 /** Scout in `repo`'s checkout, its record beside the reviews (`symbiote/`, else Symbiote's cache). */
-export function scout(
+export function scout(repo: GitRepo, cacheDir: string, options: PageAgentOptions): Scout {
+  return pageAgent(SCOUT, repo, cacheDir, {
+    gate: fileURLToPath(new URL('./scout-hook.js', import.meta.url)),
+    ...options,
+  });
+}
+
+/**
+ * A page's agent (`spec`: Scout, Scribe) in `repo`'s checkout: one conversation, its record beside
+ * the reviews (`symbiote/`, else Symbiote's cache).
+ */
+export function pageAgent(
+  spec: PageAgentSpec,
   repo: GitRepo,
   cacheDir: string,
   {
@@ -174,22 +245,13 @@ export function scout(
     now = () => new Date(),
     env = process.env,
     root = repo.root,
-    gate = fileURLToPath(new URL('./scout-hook.js', import.meta.url)),
+    gate = '',
     node = process.execPath,
     terminals,
-  }: {
-    claude: () => Promise<ClaudeCode | null>;
-    codex?: () => Promise<Codex | null>;
-    now?: () => Date;
-    env?: Readonly<Record<string, string | undefined>>;
-    /** The checkout Scout reads, where `symbiote/config.json` is read too. */
-    root?: string;
-    /** Scout's gate (`dist/scout-hook.js`) and the Node that runs it. */
-    gate?: string;
-    node?: string;
-    terminals?: Terminals;
-  },
+  }: PageAgentOptions,
 ): Scout {
+  const { name } = spec;
+  const codexAt = spec.codex(root);
   const real = (path: string) => {
     try {
       return realpathSync(path);
@@ -199,7 +261,7 @@ export function scout(
   };
   const place = () => reviewPlace(repo, cacheDir);
   const folder = (where: ReviewPlace) => dirname(where.dir);
-  const recordPath = (where: ReviewPlace) => join(folder(where), 'scout.json');
+  const recordPath = (where: ReviewPlace) => join(folder(where), spec.record);
 
   async function readRecord(where: ReviewPlace): Promise<ScoutRecord | null> {
     let value: unknown;
@@ -215,7 +277,7 @@ export function scout(
     if (v.agent === 'claude' && text(v.id)) {
       const sessionId = text(v.sessionId);
       return {
-        about: SCOUT_ABOUT,
+        about: spec.about,
         agent: 'claude',
         id: v.id,
         ...(sessionId ? { sessionId } : {}),
@@ -224,7 +286,7 @@ export function scout(
       };
     }
     if (v.agent === 'codex' && text(v.thread)) {
-      return { about: SCOUT_ABOUT, agent: 'codex', thread: v.thread, ...level, started };
+      return { about: spec.about, agent: 'codex', thread: v.thread, ...level, started };
     }
     return null;
   }
@@ -243,8 +305,8 @@ export function scout(
    * it again, and does not start without it (V18c spike). Its path.
    */
   async function settingsFile(where: ReviewPlace): Promise<string> {
-    const path = join(folder(where), 'scout-settings.json');
-    const text = scoutSettings({ node, gate });
+    const path = join(folder(where), spec.settings);
+    const text = scoutSettings({ node, gate, args: spec.gateArgs(root) });
     if ((await readFile(path, 'utf8').catch(() => null)) !== text) await put(where, path, text);
     return path;
   }
@@ -289,7 +351,7 @@ export function scout(
   ): Promise<string | undefined> {
     if (effort === null) return undefined;
     if (effort === undefined) {
-      const project = readWorkspaceConfig(root).scoutEffort;
+      const project = spec.effort?.read(root);
       if (!project) return undefined;
       return (await levelsOf(agent))?.levels.includes(project) ? project : undefined;
     }
@@ -305,7 +367,7 @@ export function scout(
         return { kind: agent.kind, ...(efforts ? { efforts } : {}) };
       }),
     );
-    const effort = readWorkspaceConfig(root).scoutEffort;
+    const effort = spec.effort?.read(root);
     return { agents, ...(effort ? { effort } : {}), file: readPrompts(root).file };
   }
 
@@ -315,7 +377,7 @@ export function scout(
     const server = await agent.server();
     if (!server) {
       throw new ScoutRefused(
-        "Scout runs Codex on its app server, and none runs: `codex app-server daemon start` started none (it needs Codex 0.163 or later). Codex's terminal joins a thread there.",
+        `${name} runs Codex on its app server, and none runs: \`codex app-server daemon start\` started none (it needs Codex 0.163 or later). Codex's terminal joins a thread there.`,
         409,
       );
     }
@@ -377,35 +439,44 @@ export function scout(
       throw new ScoutRefused(
         kind
           ? `${AGENT_NAMES[kind]} is not installed`
-          : 'Scout needs Claude Code or Codex: neither is installed',
+          : `${name} needs Claude Code or Codex: neither is installed`,
         409,
       );
     }
     const level = await levelFor(agent, effort);
     const at = level ? { effort: level } : {};
-    const prompt = fillPrompt(readPrompts(root).text.scout, { question: text });
+    const prompt = spec.prompt(root, text);
     const started = now().toISOString();
+    await spec.prepare?.(root);
     if (agent.claude) {
       // Copied: what Claude Code lists after the start is told from what it listed before.
       const before = [...((await agent.claude.sessions()) ?? [])];
       const settings = await settingsFile(where);
-      const result = await agent.claude.startReadOnly({
+      const result = await agent.claude.startPageAgent({
         cwd: root,
-        name: SCOUT_NAME,
+        name,
         prompt,
         settings,
+        tools: spec.tools,
+        permissionMode: spec.permissionMode,
         ...at,
       });
       if (!result.ok) throw new ScoutRefused(result.error, 502);
-      const session = newScoutSession(before, (await agent.claude.sessions()) ?? [], root, real);
+      const session = newScoutSession(
+        before,
+        (await agent.claude.sessions()) ?? [],
+        root,
+        real,
+        name,
+      );
       if (!session?.id) {
         throw new ScoutRefused(
-          `Claude Code started no session Symbiote can find: \`claude agents\` lists none named ${SCOUT_NAME} in ${root}`,
+          `Claude Code started no session Symbiote can find: \`claude agents\` lists none named ${name} in ${root}`,
           502,
         );
       }
       const record: ScoutRecord = {
-        about: SCOUT_ABOUT,
+        about: spec.about,
         agent: 'claude',
         id: session.id,
         ...(session.sessionId ? { sessionId: session.sessionId } : {}),
@@ -424,11 +495,11 @@ export function scout(
     let thread: string;
     try {
       thread = await server.start({
-        cwd: root,
+        cwd: codexAt.cwd,
         writable: [],
-        name: SCOUT_NAME,
+        name,
         prompt,
-        readOnly: true,
+        ...(codexAt.writes ? { confined: true as const } : { readOnly: true as const }),
         ...at,
       });
     } catch (error) {
@@ -436,7 +507,7 @@ export function scout(
       if (error instanceof AppServerStartFailed) await server.archive(error.thread).catch(() => {});
       throw new ScoutRefused(`Codex's app server: ${(error as Error).message}`, 502);
     }
-    const record: ScoutRecord = { about: SCOUT_ABOUT, agent: 'codex', thread, ...at, started };
+    const record: ScoutRecord = { about: spec.about, agent: 'codex', thread, ...at, started };
     await put(where, recordPath(where), `${JSON.stringify(record, null, 2)}\n`);
   }
 
@@ -451,13 +522,13 @@ export function scout(
     const session = findScoutSession(record, (await agent.sessions()) ?? []);
     const sessionId = record.sessionId ?? session?.sessionId;
     if (!session || !sessionId) {
-      throw new ScoutRefused("Scout's session is gone: start a new conversation", 409);
+      throw new ScoutRefused(`${name}'s session is gone: start a new conversation`, 409);
     }
     // A live process is stopped first: a resume of a running session makes a copy (V18c).
     const alive = session.status !== undefined;
     if (alive && (session.status !== 'idle' || session.waitingFor !== undefined)) {
       throw new ScoutRefused(
-        'Scout is answering: wait for its answer, or type in its terminal',
+        `${name} is answering: wait for its answer, or type in its terminal`,
         409,
       );
     }
@@ -541,17 +612,18 @@ export function scout(
     async setEffort({ effort }) {
       if (effort !== null) {
         if (!isLevel(effort)) throw new ScoutRefused(effortWordProblem(effort), 400);
-        // The level Settings offers: Scout's default agent's.
+        // The level Settings offers: the default agent's.
         const agent = (await installed())[0];
         if (!agent) {
-          throw new ScoutRefused('Scout needs Claude Code or Codex: neither is installed', 409);
+          throw new ScoutRefused(`${name} needs Claude Code or Codex: neither is installed`, 409);
         }
         const levels = (await levelsOf(agent))?.levels;
         const problem = effortProblem(effort, AGENT_NAMES[agent.kind], levels);
         if (problem) throw new ScoutRefused(problem, 400);
       }
+      if (!spec.effort) throw new ScoutRefused(`${name} has no level in the project's config`, 400);
       try {
-        await writeConfig(root, ['scout', 'effort'], effort ?? undefined);
+        await writeConfig(root, spec.effort.key, effort ?? undefined);
       } catch (error) {
         if (error instanceof PromptRefused) throw new ScoutRefused(error.message, error.status);
         throw error;
@@ -562,7 +634,8 @@ export function scout(
     async terminal({ cols, rows }) {
       const where = await place();
       const record = await readRecord(where);
-      if (!record) throw new ScoutRefused('Scout has no conversation: ask it something first', 409);
+      if (!record)
+        throw new ScoutRefused(`${name} has no conversation: ask it something first`, 409);
       if (!terminals) throw new ScoutRefused('no terminals here', 409);
       const can = await terminals.available();
       if (!can.available) throw new ScoutRefused(can.reason, 409);
@@ -577,7 +650,7 @@ export function scout(
         // `attach` to an ID Claude Code does not know exits 0, saying "No job matching…".
         const session = findScoutSession(record, (await agent.sessions()) ?? []);
         if (!session?.id) {
-          throw new ScoutRefused("Scout's session is gone: start a new conversation", 409);
+          throw new ScoutRefused(`${name}'s session is gone: start a new conversation`, 409);
         }
         command = agent.command;
         args = ['attach', session.id];
@@ -585,15 +658,16 @@ export function scout(
         const agent = await codex();
         const server = await serverOf(agent);
         command = agent?.command ?? 'codex';
-        args = ['resume', record.thread ?? '', '--remote', server.address, '-C', root];
+        args = ['resume', record.thread ?? '', '--remote', server.address, '-C', codexAt.cwd];
         // Codex asks to trust a folder first (V27b, decision 160): said, never answered here.
-        asks = await server.trust(root).then(
-          (entries) => asksTrust(entries, [root, real(root)]),
+        asks = await server.trust(codexAt.cwd).then(
+          (entries) => asksTrust(entries, [codexAt.cwd, real(codexAt.cwd)]),
           () => false,
         );
       }
       try {
-        const id = await terminals.open({ command, args, cwd: root, cols, rows, env });
+        const cwd = record.agent === 'codex' ? codexAt.cwd : root;
+        const id = await terminals.open({ command, args, cwd, cols, rows, env });
         return { id, ...(asks ? { trusted: false as const } : {}) };
       } catch (error) {
         if (error instanceof TerminalRefused) throw new ScoutRefused(error.message, 409);

@@ -64,8 +64,12 @@ test('lists the skills, checks one as it is typed, saves it, and refuses a save 
   await page.keyboard.press('i');
   await expect(page).toHaveURL(`${symbiote.url}skills`);
   await expect(page.getByRole('link', { name: 'Skills' })).toHaveAttribute('aria-current', 'page');
-  await expect(list(page).getByRole('heading')).toHaveText(['.claude/skills · Claude Code']);
-  await expect(list(page).getByRole('button')).toHaveText(['review', 'style']);
+  // Scribe first, then the skills by folder.
+  await expect(list(page).getByRole('heading')).toHaveText([
+    'Agent',
+    '.claude/skills · Claude Code',
+  ]);
+  await expect(list(page).getByRole('button')).toHaveText(['Scribe', 'review', 'style']);
   // The first is open, with nothing to say of it.
   await expect(entry(page, 'review')).toHaveAttribute('aria-current', 'true');
   await expect(text(page, 'review')).toHaveValue(REVIEW);
@@ -176,6 +180,7 @@ test('links .agents/skills to .claude/skills for Codex, which then reads them', 
   );
   await expect(page.locator('.skills-codex')).toHaveCount(0);
   await expect(list(page).getByRole('heading')).toHaveText([
+    'Agent',
     '.claude/skills · Claude Code and Codex',
   ]);
   const link = join(symbiote.repo, '.agents/skills');
@@ -207,4 +212,83 @@ test('on a phone, the list first; a skill takes the page, and goes back to the l
   expect(wide).toBe(0);
   await editor(page).getByRole('button', { name: 'All skills' }).click();
   await expect(list(page)).toBeVisible();
+});
+
+/** Lists are read every 5 s while an agent works (V18b). */
+const POLL = { timeout: 15_000 };
+const scribePane = (page: Page) => page.getByRole('region', { name: 'Scribe' });
+const request = (page: Page) =>
+  scribePane(page).getByRole('textbox', { name: 'Ask Scribe for a skill' });
+/** The fake's starts named Scribe, as Claude Code was asked for them. */
+const scribeCalls = () => symbiote.calls().filter((call) => call.args.includes('Scribe'));
+
+test('Scribe: a request starts Claude Code writing skills only, and what it writes is listed', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  commit({ '.claude/skills/review/SKILL.md': REVIEW });
+  await page.goto(`${symbiote.url}skills`);
+  await list(page).getByRole('button', { name: 'Scribe' }).click();
+  await expect(page).toHaveURL(`${symbiote.url}skills?scribe`);
+  await expect(scribePane(page).getByRole('heading', { name: 'Scribe' })).toBeVisible();
+  // Nothing is started or written until it is asked.
+  expect(scribeCalls()).toEqual([]);
+
+  await request(page).fill('A skill for adding a prompt to Settings');
+  await request(page).press('Enter');
+  await expect.poll(() => scribeCalls().length, POLL).toBe(1);
+  const [call] = scribeCalls();
+  expect(call?.cwd).toBe(symbiote.repo);
+  const args = call?.args ?? [];
+  expect(args.slice(0, 9)).toEqual([
+    '--bg',
+    '--name',
+    'Scribe',
+    '--tools',
+    'Read,Grep,Glob,Bash,Write,Edit',
+    '--permission-mode',
+    'default',
+    '--strict-mcp-config',
+    '--settings',
+  ]);
+  const settings = join(symbiote.repo, 'symbiote', 'scribe-settings.json');
+  expect(args[9]).toBe(settings);
+  // Its gate is given the skills folder.
+  expect(readFileSync(settings, 'utf8')).toContain(join(symbiote.repo, '.claude', 'skills'));
+  expect(args.at(-1)).toContain('A skill for adding a prompt to Settings');
+  await expect(scribePane(page).locator('.agent-terminal .xterm-rows')).toContainText(
+    'Fake Claude Code · fake0',
+    POLL,
+  );
+
+  // While it works, what it writes shows in the list; the sidenav marks Skills elsewhere.
+  mkdirSync(join(symbiote.repo, '.claude/skills/adding-prompts'), { recursive: true });
+  writeFileSync(
+    join(symbiote.repo, '.claude/skills/adding-prompts/SKILL.md'),
+    '---\nname: adding-prompts\ndescription: Adds a prompt to Settings. Use when an agent needs a new text.\n---\n\n# Adding a prompt\n',
+  );
+  await expect(entry(page, 'adding-prompts')).toBeVisible(POLL);
+  await expect(entry(page, 'adding-prompts')).toContainText('new');
+  await page.getByRole('link', { name: 'History' }).click();
+  const skillsLink = page.getByRole('navigation', { name: 'Pages' }).getByRole('link', {
+    name: /Skills/,
+  });
+  await expect(skillsLink).toHaveAttribute('data-state', 'working', POLL);
+  symbiote.setSession('fake0', { state: 'done', status: 'idle', answer: 'Wrote it.' });
+  await expect(skillsLink).toHaveAttribute('data-state', 'answered', POLL);
+  await skillsLink.click();
+  await expect(skillsLink).not.toHaveAttribute('data-state');
+});
+
+test('Improve with Scribe: its box takes the skill to change', async ({ page }) => {
+  symbiote = await serveWorkspaces();
+  commit({ '.claude/skills/review/SKILL.md': REVIEW });
+  await page.goto(`${symbiote.url}skills`);
+  await editor(page).getByRole('button', { name: 'Improve with Scribe' }).click();
+  await expect(page).toHaveURL(`${symbiote.url}skills?scribe`);
+  await expect(request(page)).toHaveValue('Improve .claude/skills/review/SKILL.md: ');
+  // From the new skill's form too.
+  await page.getByRole('button', { name: 'New skill' }).click();
+  await page.getByRole('button', { name: 'ask Scribe to write it' }).click();
+  await expect(request(page)).toBeVisible();
 });

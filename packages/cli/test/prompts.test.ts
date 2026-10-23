@@ -360,6 +360,43 @@ describe("Scout's prompt (V35)", () => {
       text: DEFAULT_PROMPTS.scout,
       placeholders: [{ name: 'question', about: "the person's question", required: true }],
     });
-    expect(prompts.at(-1)?.key).toBe('scout');
+    // Scribe's follows it since V41.
+    expect(prompts.at(-2)?.key).toBe('scout');
+  });
+});
+
+describe("Scribe's prompt (V41)", () => {
+  it("is Symbiote's until the project has its own, and holds the request and the folder", () => {
+    const scribe = DEFAULT_PROMPTS.scribe;
+    expect(scribe).toContain('{request}');
+    expect(scribe).toContain('{skills}');
+    // It writes skills only, never commits, and writes them as the standard has them.
+    expect(scribe).toMatch(/never commit/i);
+    expect(scribe).toContain('1,024');
+    expect(scribe).toContain('500 lines');
+    const filled = fillPrompt(scribe, {
+      request: 'A skill for adding a prompt',
+      skills: '/repo/.claude/skills',
+      checkout: '/repo',
+    });
+    expect(filled).toContain('A skill for adding a prompt');
+    expect(filled).toContain('/repo/.claude/skills');
+    expect(filled).not.toMatch(/\{(request|skills|checkout)\}/);
+    expect(readPrompts(withConfig({})).text.scribe).toBe(scribe);
+  });
+
+  it("refuses a project prompt without the request, using Symbiote's", () => {
+    const { text, warnings } = readPrompts(withConfig({ prompts: { scribe: 'Write well.' } }));
+    expect(text.scribe).toBe(DEFAULT_PROMPTS.scribe);
+    expect(warnings.scribe).toContain('{request}');
+  });
+
+  it('is listed in Settings, in its own group, after Scout', async () => {
+    const repo = createRepo();
+    dirs.push(repo.root);
+    repo.write({ 'src/a.ts': 'export const a = 1;\n' });
+    repo.commit('A');
+    const { prompts } = await promptSettingsService(await openRepo(repo.root)).prompts();
+    expect(prompts.at(-1)).toMatchObject({ key: 'scribe', group: 'Scribe', title: 'Instructions' });
   });
 });

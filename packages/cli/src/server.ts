@@ -95,6 +95,8 @@ export interface RepositoryOptions {
   scout?: Scout;
   /** The checkout's skills (V41): `/skills`, `/api/skills`. */
   skills?: SkillsService;
+  /** Scribe, the Skills page's agent that writes skills (V41): `/api/scribe…`. */
+  scribe?: Scout;
   /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 5-min copy. */
   usage?: UsageService;
 }
@@ -353,6 +355,30 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
             answer(res, () => scout.setEffort(change)),
           );
         }
+      }
+      const { scribe } = repository;
+      if (scribe) {
+        // Scribe (V41), on the Skills page: Scout's conversation, its own agent.
+        if (url.pathname === '/api/scribe') return read(req, res, () => scribe.state());
+        if (url.pathname === '/api/scribe/ask') {
+          return written(req, res, parseScoutAsk, (request) =>
+            oneAtATime(res, 'Scribe is being asked', () => scribe.ask(request)),
+          );
+        }
+        if (url.pathname === '/api/scribe/new') {
+          return written(
+            req,
+            res,
+            () => ({}),
+            () => oneAtATime(res, 'Scribe is being asked', () => scribe.renew()),
+          );
+        }
+        if (url.pathname === '/api/scribe/terminal') {
+          return written(req, res, parseScoutTerminal, (request) =>
+            answer(res, () => scribe.terminal(request)),
+          );
+        }
+        if (url.pathname === '/api/scribe/efforts') return read(req, res, () => scribe.efforts());
       }
       const { skills } = repository;
       if (skills) {

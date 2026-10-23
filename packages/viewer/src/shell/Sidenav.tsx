@@ -68,7 +68,7 @@ export function Sidenav({
   flashed: string | null;
 }) {
   const shell = useShell();
-  const { list, reviews, merges, scout } = useWorkspaces();
+  const { list, reviews, merges, scout, scribe } = useWorkspaces();
   const groups = useMemo(() => workspaceGroups(list?.workspaces ?? [], reviews), [list, reviews]);
   const marks = useMemo(() => reviewMarks(reviews).marks, [reviews]);
   const route = shell?.route;
@@ -82,6 +82,13 @@ export function Sidenav({
   useEffect(() => {
     setScoutMark((shown) => nextScoutMark(shown, scoutState, onScout));
   }, [scoutState, onScout]);
+  // Scribe's, on Skills (V41): as Scout's.
+  const scribeState = scribe?.conversation?.state;
+  const onSkills = route?.page === 'skills';
+  const [scribeMark, setScribeMark] = useState<ScoutMark>(null);
+  useEffect(() => {
+    setScribeMark((shown) => nextScoutMark(shown, scribeState, onSkills));
+  }, [scribeState, onSkills]);
 
   // A card whose workspace moves to another group (its agent moved on) is drawn anew there, and
   // the focus would fall to the page: it follows the card. Only the card the focus was on, and
@@ -177,11 +184,24 @@ export function Sidenav({
         </a>
         <a
           href={SKILLS_PAGE}
-          title="Skills: what agents load to work in this repository (i)"
+          title={
+            scribeMark === 'working'
+              ? 'Skills: Scribe is writing (i)'
+              : scribeMark === 'answered'
+                ? 'Skills: Scribe answered while you were away (i)'
+                : 'Skills: what agents load to work in this repository (i)'
+          }
           aria-current={route?.page === 'skills' ? 'page' : undefined}
+          data-state={scribeMark ?? undefined}
         >
           <SkillsIcon />
           <span className="sidenav-label">Skills</span>
+          {scribeMark && (
+            <span
+              className={`state-dot ${scribeMark === 'working' ? 'tone-working' : 'tone-done'}`}
+              aria-hidden="true"
+            />
+          )}
           <kbd aria-hidden="true">i</kbd>
         </a>
         <a
