@@ -79,7 +79,8 @@ interface Loaded {
  * "Start a workspace" (V18, V24c), a page of the shell since V30a: the kind of work, its title and
  * parts (what the server makes the agent's brief of) on the left; on the right where it starts
  * from (V33), the branch (named after the title until edited), the agent — picked among those
- * installed (V20a) — with its account and Claude Code's permission mode, and plan first. Where it
+ * installed (V20a) — with its account and Claude Code's permission mode, plan first, and the
+ * documents given with the brief (V40; a drop or a paste anywhere on the page adds them). Where it
  * starts is the commit `at` until a branch is picked, else the default branch's tip. The form is
  * kept as a draft by `symbiote view` until it starts, so leaving loses nothing. Ctrl+Enter starts;
  * Escape and Cancel `leave`.
@@ -526,15 +527,6 @@ function StartForm({
                 Check: <code>{guess.command}</code>, from {guess.source}
               </p>
             )}
-            <StartDocuments
-              entries={documents}
-              options={options.documents}
-              folder={options.documents.folder.replace('<branch>', branch)}
-              onAdd={addFiles}
-              onRemove={(key) =>
-                listDocuments(latest.current.documents.filter((d) => d.key !== key))
-              }
-            />
             <button
               type="button"
               className="link workspace-more"
@@ -709,6 +701,15 @@ function StartForm({
               />
               Plan first and wait for my OK
             </label>
+            <StartDocuments
+              entries={documents}
+              options={options.documents}
+              folder={options.documents.folder.replace('<branch>', branch)}
+              onAdd={addFiles}
+              onRemove={(key) =>
+                listDocuments(latest.current.documents.filter((d) => d.key !== key))
+              }
+            />
             {agent?.apiKey && (
               <p className="error">
                 ANTHROPIC_API_KEY is set where symbiote view runs: the agent may use that key
