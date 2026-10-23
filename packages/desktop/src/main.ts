@@ -17,6 +17,7 @@ import {
 } from 'electron';
 import { moveFormerConfig } from './former-name.js';
 import { frameOf, frameOptions } from './frame.js';
+import { hardwareGlFails } from './gpu.js';
 import { readRecorded, startServer, withRecent } from './launcher.js';
 import { holdMaximize, holdsMaximize, type Hold } from './maximize.js';
 import {
@@ -58,6 +59,9 @@ const primary = !fromLauncher || app.requestSingleInstanceLock();
 // shaders from untrusted pages: this window shows only Symbiote's own (anything else opens in the
 // browser). Where there is a GPU, WebGL uses it as before.
 app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+// On WSL it never finds GL: in software from the start, since falling back later loses the
+// intro's WebGL context (`gpu.ts`).
+if (hardwareGlFails(process.platform, process.env)) app.disableHardwareAcceleration();
 
 /** Who draws the window's frame and buttons here (N1d): Symbiote's pages on Linux. */
 const frame = frameOf(process.platform);

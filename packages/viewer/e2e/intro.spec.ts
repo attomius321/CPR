@@ -136,6 +136,65 @@ test('without WebGL there is no intro, and it counts as seen', async ({ page }) 
   await expect.poll(() => existsSync(record())).toBe(true);
 });
 
+/**
+ * The first WebGL context the page makes is lost at once and given back `restoreMs` later (if the
+ * page took the loss), as Chromium does when its GPU process finds no GL and starts again in
+ * software (Xvfb, a VM; measured: lost 70–110 ms after it is made, back 1,004 ms after that).
+ */
+const loseFirstContext = (page: Page, restoreMs: number | null) =>
+  page.addInitScript((restoreMs) => {
+    const { prototype } = HTMLCanvasElement;
+    const real = Object.getOwnPropertyDescriptor(prototype, 'getContext')?.value as (
+      this: HTMLCanvasElement,
+      ...args: unknown[]
+    ) => unknown;
+    let lost = false;
+    Object.defineProperty(prototype, 'getContext', {
+      value(this: HTMLCanvasElement, id: string, ...rest: unknown[]) {
+        const context = real.call(this, id, ...rest) as WebGLRenderingContext | null;
+        if (id !== 'webgl' || !context || lost) return context;
+        lost = true;
+        const lose = context.getExtension('WEBGL_lose_context');
+        if (restoreMs !== null) {
+          this.addEventListener('webglcontextlost', () =>
+            setTimeout(() => lose?.restoreContext(), restoreMs),
+          );
+        }
+        setTimeout(() => lose?.loseContext());
+        return context;
+      },
+    });
+  }, restoreMs);
+
+/** Whether the intro's canvas has a live WebGL context: one lost and never back draws nothing. */
+const liveCanvases = (page: Page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll<HTMLCanvasElement>('.intro canvas')].map(
+      (canvas) => canvas.getContext('webgl')?.isContextLost() === false,
+    ),
+  );
+
+test('a WebGL context lost before the koi show and given back: the intro starts again, drawn', async ({
+  page,
+}) => {
+  symbiote = await firstTime();
+  await loseFirstContext(page, 300);
+  await page.goto(symbiote.url);
+  await expect(intro(page)).toHaveAttribute('data-state', 'formed', { timeout: 8_000 });
+  expect(await liveCanvases(page)).toEqual([true]);
+  await expect(intro(page)).toHaveCount(0, { timeout: 2_500 });
+});
+
+test('a WebGL context lost and never given back: the intro ends, the page is there', async ({
+  page,
+}) => {
+  symbiote = await firstTime();
+  await loseFirstContext(page, null);
+  await page.goto(symbiote.url);
+  await expect(rows(page).first()).toBeVisible();
+  await expect(intro(page)).toHaveCount(0, { timeout: 3_500 });
+});
+
 test('with reduced motion: the finished S at once, held, then gone without a fade', async ({
   page,
 }) => {

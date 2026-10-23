@@ -25,6 +25,11 @@
   aspect-ratio: 1;
 }
 
+/* Until the koi are drawn, and while a lost context comes back (play.ts): a lost one is blank. */
+.intro[data-state='loading'] canvas {
+  visibility: hidden;
+}
+
 .intro[data-state='leaving'] {
   opacity: 0;
   pointer-events: none;
