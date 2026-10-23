@@ -96,6 +96,9 @@ export function keptDocuments(entries: readonly DocumentEntry[]): { id: string; 
   return entries.flatMap((d) => (d.state === 'kept' && d.id ? [{ id: d.id, name: d.name }] : []));
 }
 
+/** Whether a name is one the agents read as an image: drawn with the image icon. */
+export const isImageName = (name: string): boolean => /\.(?:png|jpe?g|gif|webp|svg)$/i.test(name);
+
 /** A file's size as a person reads it: bytes, KB or MB, one decimal under 10. */
 export function documentSize(bytes: number): string {
   const [value, unit] =

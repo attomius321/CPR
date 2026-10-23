@@ -2,10 +2,7 @@ import { useRef } from 'react';
 import type { WorkspaceOptions } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
 import { CloseIcon, FileIcon, ImageIcon, PlusIcon } from '../ui/icons.js';
-import { documentSize, type DocumentEntry } from './documents.js';
-
-/** Names the agents read as images. */
-const IMAGE = /\.(?:png|jpe?g|gif|webp|svg)$/i;
+import { documentSize, isImageName, type DocumentEntry } from './documents.js';
 
 /**
  * The start page's Documents (V40): the files given with the brief, each listed with its size
@@ -28,7 +25,11 @@ export function StartDocuments({
 }) {
   const input = useRef<HTMLInputElement>(null);
   return (
-    <div className="workspace-field" role="group" aria-labelledby="start-documents-label">
+    <div
+      className="workspace-field start-documents-field"
+      role="group"
+      aria-labelledby="start-documents-label"
+    >
       <span className="field-label">
         <span id="start-documents-label">
           Documents <span className="field-optional">optional</span>
@@ -48,7 +49,7 @@ export function StartDocuments({
         <ul className="start-documents">
           {entries.map((entry) => (
             <li key={entry.key} className={entry.state === 'failed' ? 'failed' : undefined}>
-              {IMAGE.test(entry.name) ? <ImageIcon /> : <FileIcon />}
+              {isImageName(entry.name) ? <ImageIcon /> : <FileIcon />}
               <span className="start-document-name" title={entry.name}>
                 {entry.name}
               </span>

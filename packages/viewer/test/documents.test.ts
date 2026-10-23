@@ -3,6 +3,7 @@ import {
   addDocuments,
   documentsBlocking,
   documentSize,
+  isImageName,
   keptDocuments,
   pastedFiles,
   readDocuments,
@@ -104,5 +105,16 @@ describe('documentSize (V40)', () => {
     expect(documentSize(204_800)).toBe('200 KB');
     expect(documentSize(3_250_000)).toBe('3.1 MB');
     expect(documentSize(20 * 1024 * 1024)).toBe('20 MB');
+  });
+});
+
+describe('isImageName (V40)', () => {
+  it('is a name the agents read as an image, by its extension, in any case', () => {
+    for (const name of ['a.png', 'b.JPG', 'c.jpeg', 'd.gif', 'e.webp', 'f.svg']) {
+      expect(isImageName(name), name).toBe(true);
+    }
+    for (const name of ['spec.pdf', 'png', 'a.png.txt', 'notes']) {
+      expect(isImageName(name), name).toBe(false);
+    }
   });
 });

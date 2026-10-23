@@ -1,7 +1,14 @@
 /* The start page's Documents (V40): the files as rows of a list (icon, name, size, ✕), Add files
    under them, and the frame over the page while files are dragged over it. */
+
+/* One column the field's width: a long name is cut, not the column widened. */
+.start-documents-field {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .start-documents {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
   margin: 0;
   padding: 4px;

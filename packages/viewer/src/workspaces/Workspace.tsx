@@ -18,7 +18,8 @@ import type {
 import { AgentTerminal, toTerminal, type OpenedTerminal } from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import { ChangesPanel } from './ChangesPanel.js';
-import { ChangesIcon, FileIcon } from '../ui/icons.js';
+import { ChangesIcon, FileIcon, ImageIcon } from '../ui/icons.js';
+import { isImageName } from './documents.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { InTitleBar } from '../shell/TitleBar.js';
 import { keyIsTaken } from '../ui/keys.js';
@@ -349,7 +350,7 @@ function Brief({
           <ul>
             {documents.files.map((name) => (
               <li key={name}>
-                <FileIcon /> {name}
+                {isImageName(name) ? <ImageIcon /> : <FileIcon />} {name}
               </li>
             ))}
           </ul>
