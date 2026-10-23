@@ -1,0 +1,13 @@
+/* The confirmation names its target as the row does, at the heading's size. */
+.dialog h2 .dialog-ref {
+  display: inline-block;
+  /* Room for the "?" after it. */
+  max-width: calc(100% - 1em);
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  line-height: 1.5;
+  white-space: normal;
+  /* Its overflow is hidden (.ref): its baseline would be its bottom edge, above the heading's. */
+  vertical-align: -0.3em;
+}

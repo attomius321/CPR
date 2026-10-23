@@ -1,0 +1,150 @@
+/*
+ * The effort stepper (fix/scout-effort-level): a rail with a dot at each stop, the range input's
+ * handle over it, the stops' words under it. The handle is 16 px: its centre runs 8 px in from
+ * either end, and the dots and words are placed on that line. Neutral: no fill, since the agent's
+ * own level (the first stop) is not less than low.
+ */
+.effort-stepper {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  max-width: 360px;
+  font-weight: normal;
+}
+
+.effort-rail {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  left: 8px;
+  height: 4px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
+  pointer-events: none;
+}
+
+.effort-rail > span {
+  position: absolute;
+  top: -1px;
+  left: calc(100% * var(--stop) / var(--last));
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 9999px;
+  background: var(--faint);
+}
+
+/* Over `.workspace-field input`'s text field. */
+.effort-stepper .effort-range {
+  appearance: none;
+  position: relative;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.effort-stepper .effort-range:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.effort-range::-webkit-slider-runnable-track {
+  height: 16px;
+  background: transparent;
+}
+
+.effort-range::-moz-range-track {
+  height: 16px;
+  background: transparent;
+}
+
+.effort-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--primary);
+  box-shadow:
+    0 0 0 1px var(--edge),
+    var(--shadow-lift);
+  cursor: grab;
+}
+
+.effort-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--primary);
+  box-shadow:
+    0 0 0 1px var(--edge),
+    var(--shadow-lift);
+  cursor: grab;
+}
+
+.effort-range:active::-webkit-slider-thumb {
+  cursor: grabbing;
+}
+
+.effort-range:active::-moz-range-thumb {
+  cursor: grabbing;
+}
+
+.effort-range:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--focus);
+}
+
+.effort-range:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--focus);
+}
+
+.effort-range:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.effort-stops {
+  position: relative;
+  height: 18px;
+  margin: 0 8px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  line-height: 18px;
+}
+
+/* Centred on its stop; the first and the last kept inside the stepper's edges. */
+.effort-stops > span {
+  position: absolute;
+  left: calc(100% * var(--stop) / var(--last));
+  transform: translateX(-50%);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.effort-stops > span:first-child {
+  transform: translateX(-8px);
+}
+
+.effort-stops > span:last-child {
+  transform: translateX(calc(8px - 100%));
+}
+
+.effort-stops > span:hover,
+.effort-stops > span.at {
+  color: var(--text);
+}
+
+.effort-stops > span.at {
+  font-weight: 500;
+}

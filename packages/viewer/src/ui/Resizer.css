@@ -1,0 +1,36 @@
+/* ---- resizing the panels ------------------------------------------------------------ */
+
+/* Takes no room: it straddles the panel's edge, over the border. */
+.resizer {
+  position: relative;
+  z-index: 5;
+  flex: none;
+  width: 8px;
+  margin: 0 -4px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.resizer::after {
+  content: '';
+  position: absolute;
+  inset: 0 3px;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.resizer:hover::after,
+.resizer:focus-visible::after,
+.resizer.dragging::after {
+  background: var(--muted);
+}
+
+.resizer:focus-visible {
+  outline: none;
+}
+
+/* While dragging, the pointer stays a resize cursor and text is not selected. */
+.canvas.resizing {
+  cursor: col-resize;
+  user-select: none;
+}

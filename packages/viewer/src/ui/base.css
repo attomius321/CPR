@@ -1,0 +1,250 @@
+/* The look (V29b): after the reference — dark by default, dense, flat, hairline lines — in one
+   font pair served by Symbiote. Font names cost on Linux, where Chromium asks fontconfig (V29a: 850–
+   900 ms before History's first rows): no system family is named, and not sans-serif after
+   Geist either (matched as a name, 283 ms a time, four times before the first paint). monospace
+   matches in a millisecond, and its font here (DejaVu Sans Mono) has what Geist lacks (✓ ⚙ ↻):
+   a glyph found nowhere in the stack is a search of every font (~100 ms; marking reviewed took
+   250 ms instead of 33). */
+:root {
+  --sans: 'Geist Variable', monospace;
+  --mono: 'Geist Mono Variable', monospace;
+  /* The type scale (V32): one step above V29b's dense 13 px, which was too small to read. Every
+     text is sized from it (test/tokens.test.ts); hierarchy is by weight and colour more than size.
+     Nothing under 12 px but uppercase labels and one-glyph marks. Titles stay at 16 px: larger, a
+     symbol's name wrapped in its panel and a frame's name outgrew its band (flow.ts estimates). */
+  --size-caps: 11px; /* uppercase labels (a symbol's kind), one-glyph marks */
+  --size-caption: 12px; /* captions, chips, badges, counts, key caps, category labels */
+  --size-small: 13px; /* secondary: buttons, menu items, paths, code, the status bar */
+  --size-body: 14px; /* rows, nav, tabs, body text, editors */
+  --size-title: 16px; /* titles: a page's, a dialog's, a symbol's in its panel, a frame's name */
+  /* lucide's chevron-right (ISC) as a mask, drawn in the text's colour: a submenu's, a <summary>'s. */
+  --chevron-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
+}
+
+/* Dark unless the person chose light or the system's (decision 179; index.html sets data-theme
+   before the first paint). Symbiote's style since V31 (the symbiote-style skill's tokens.md): the content
+   darkest, the chrome lifted, colour for state only. Text and muted at least 4.5:1 on the four
+   backgrounds, states, edges and the focus ring 3:1 (test/tokens.test.ts). Lines only separate
+   regions: hairlines. */
+:root,
+:root[data-theme='dark'] {
+  --bg: #0a0a0a;
+  --side: #171717;
+  --panel: #171717;
+  --raised: #262626;
+  --line: #2a2a2a;
+  --edge: #737373;
+  --text: #fafafa;
+  --muted: #a1a1a1;
+  --faint: #7c7c7c;
+  --focus: #a1a1a1;
+  --added: #81b88b;
+  --removed: #c74e39;
+  --modified: #e2c08d;
+  --moved: #4493f8;
+  --context: #7c7c7c;
+  --error: #ff6568;
+  --warning: #eab308;
+  --info: #4493f8;
+  /* Commit graph lanes after the current branch's (V10). */
+  --lane-1: #b66dff;
+  --lane-2: #40b0a6;
+  --lane-3: #ffb000;
+  --lane-4: #dc267f;
+  --lane-5: #ce9178;
+  --lane-6: #8ccf3e;
+  --shadow: rgb(0 0 0 / 50%);
+  /* Neutral states every control shares (V31): hover and selection are washes of the text. */
+  /* Lighter than the selection (V37, decision 250): at 8 % a hovered row looked current. */
+  --hover: color-mix(in srgb, var(--text) 5%, transparent);
+  --selected: color-mix(in srgb, var(--text) 10%, transparent);
+  --selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
+  --primary: #e5e5e5;
+  --primary-text: #171717;
+  --input-bg: rgb(255 255 255 / 4.5%);
+  /* A text field's edge at rest, about 1.5:1 (decision 246): `--edge` (3:1) on hover, `--focus`
+     and the ring on focus. */
+  --field-line: color-mix(in srgb, var(--text) 15%, transparent);
+  --ring: color-mix(in srgb, var(--focus) 30%, transparent);
+  /* The one on, lifted out of a raised track (a segmented control's). */
+  --lifted: rgb(255 255 255 / 7%);
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
+  --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
+  --menu-bg: rgb(0 0 0 / 72%);
+  --menu-line: rgb(255 255 255 / 14%);
+  --menu-hover: rgb(255 255 255 / 14%);
+  --menu-shadow: 0 16px 34px rgb(0 0 0 / 40%), inset 0 1px 0 rgb(255 255 255 / 4%);
+  --dialog-bg: rgb(23 23 23 / 96%);
+  --dialog-shadow: 0 24px 72px rgb(0 0 0 / 55%), inset 0 1px 0 rgb(255 255 255 / 6%);
+  --overlay: rgb(0 0 0 / 55%);
+  /* A select's chevron (lucide's, ISC) in the muted colour: a data URI cannot read a token. */
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1a1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  /* A diff's lines: a ground for the line, a stronger one for its numbers. */
+  --added-ground: color-mix(in srgb, var(--added) 16%, transparent);
+  --added-gutter: color-mix(in srgb, var(--added) 30%, transparent);
+  --removed-ground: color-mix(in srgb, var(--removed) 18%, transparent);
+  --removed-gutter: color-mix(in srgb, var(--removed) 32%, transparent);
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: #ffffff;
+  --side: #fafafa;
+  --panel: #fafafa;
+  --raised: #f0f0f0;
+  --line: #e5e5e5;
+  --edge: #8a8a8a;
+  --text: #0a0a0a;
+  --muted: #666666;
+  --faint: #8a8a8a;
+  --focus: #737373;
+  --added: #587c0c;
+  --removed: #ad0707;
+  --modified: #895503;
+  --moved: #0969da;
+  --context: #8a8a8a;
+  --error: #e40014;
+  --warning: #9a6700;
+  --info: #0969da;
+  --lane-1: #8250df;
+  --lane-2: #0a7f6f;
+  --lane-3: #bc4c00;
+  --lane-4: #bf3989;
+  --lane-5: #4d7a00;
+  --lane-6: #9a6700;
+  --shadow: rgb(0 0 0 / 14%);
+  --hover: color-mix(in srgb, var(--text) 5%, transparent);
+  --selected: color-mix(in srgb, var(--text) 8%, transparent);
+  --selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
+  --primary: #171717;
+  --primary-text: #fafafa;
+  --input-bg: transparent;
+  --field-line: color-mix(in srgb, var(--text) 16%, transparent);
+  --ring: color-mix(in srgb, var(--focus) 30%, transparent);
+  --lifted: #ffffff;
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
+  --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
+  --menu-bg: rgb(255 255 255 / 82%);
+  --menu-line: rgb(0 0 0 / 14%);
+  --menu-hover: rgb(0 0 0 / 8%);
+  --menu-shadow: 0 12px 28px rgb(0 0 0 / 22%), inset 0 1px 0 rgb(255 255 255 / 14%);
+  --dialog-bg: rgb(255 255 255 / 96%);
+  --dialog-shadow: 0 20px 60px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
+  --overlay: rgb(0 0 0 / 55%);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
+  --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
+  --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
+  --removed-gutter: color-mix(in srgb, var(--removed) 22%, transparent);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme='system'] {
+    --bg: #ffffff;
+    --side: #fafafa;
+    --panel: #fafafa;
+    --raised: #f0f0f0;
+    --line: #e5e5e5;
+    --edge: #8a8a8a;
+    --text: #0a0a0a;
+    --muted: #666666;
+    --faint: #8a8a8a;
+    --focus: #737373;
+    --added: #587c0c;
+    --removed: #ad0707;
+    --modified: #895503;
+    --moved: #0969da;
+    --context: #8a8a8a;
+    --error: #e40014;
+    --warning: #9a6700;
+    --info: #0969da;
+    --lane-1: #8250df;
+    --lane-2: #0a7f6f;
+    --lane-3: #bc4c00;
+    --lane-4: #bf3989;
+    --lane-5: #4d7a00;
+    --lane-6: #9a6700;
+    --shadow: rgb(0 0 0 / 14%);
+    --hover: color-mix(in srgb, var(--text) 5%, transparent);
+    --selected: color-mix(in srgb, var(--text) 8%, transparent);
+    --selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
+    --primary: #171717;
+    --primary-text: #fafafa;
+    --input-bg: transparent;
+    --field-line: color-mix(in srgb, var(--text) 16%, transparent);
+    --ring: color-mix(in srgb, var(--focus) 30%, transparent);
+    --lifted: #ffffff;
+    --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
+    --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
+    --menu-bg: rgb(255 255 255 / 82%);
+    --menu-line: rgb(0 0 0 / 14%);
+    --menu-hover: rgb(0 0 0 / 8%);
+    --menu-shadow: 0 12px 28px rgb(0 0 0 / 22%), inset 0 1px 0 rgb(255 255 255 / 14%);
+    --dialog-bg: rgb(255 255 255 / 96%);
+    --dialog-shadow: 0 20px 60px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
+    --overlay: rgb(0 0 0 / 55%);
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
+    --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
+    --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
+    --removed-gutter: color-mix(in srgb, var(--removed) 22%, transparent);
+    color-scheme: light;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: var(--size-body)/1.45 var(--sans);
+  /* No tracking (V37): at 1× on Linux glyphs sit on whole pixels, and 0.01em (0.14 px) added up
+     into uneven gaps between letters ("n o commits"). */
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Node widths are estimated from characters (nodeWidth): the chrome's spacing stays off the graph. */
+.react-flow {
+  letter-spacing: 0;
+}
+
+/* Thin, neutral scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted) 34%, transparent) transparent;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+code {
+  font-family: var(--mono);
+}
+
+/* Controls in the page's font: a browser's own is the system's (a font-matching miss, V29a). The
+   browser also gives them `letter-spacing: normal`, which `font` does not reset (V37). */
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}

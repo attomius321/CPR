@@ -1,0 +1,184 @@
+/* ---- a workspace's changes (V29d) ---------------------------------------------------------- */
+
+/* 256 px at the right of the terminal, where the workspace's area is at least 1,200 px wide: at
+   1440 with the sidenav the terminal keeps 56 % of the window (decision 186). */
+.changes {
+  flex: none;
+  /* As wide as the person dragged it (V34), the terminal keeping 480 px. */
+  width: min(var(--changes-width, 256px), calc(100cqi - 480px));
+  min-height: 0;
+  overflow: auto;
+  border-left: 1px solid var(--line);
+  background: var(--side);
+  font-size: var(--size-small);
+}
+
+@container workspace (max-width: 1199px) {
+  .changes,
+  .changes-toggle,
+  .workspace-split > .resizer {
+    display: none;
+  }
+}
+
+.changes-section {
+  padding: 10px 0 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.changes-section:last-child {
+  border-bottom: 0;
+}
+
+/* A section header, as the sidenav's (V37: in capitals, which the style keeps for a symbol's kind):
+   its name, a round count, what it is counted from at the right. */
+.changes-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px;
+  padding: 0 12px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 600;
+}
+
+.changes-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.changes-since {
+  margin-left: auto;
+  font-size: var(--size-caption);
+  font-weight: 400;
+}
+
+.changes-section h2 .changes-lines {
+  margin-left: auto;
+}
+
+.changes-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.changes-empty {
+  margin: 2px 0;
+  padding: 0 12px;
+  color: var(--muted);
+}
+
+.changes-commit,
+.changes-file {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 24px;
+  padding: 4px 12px;
+  line-height: 16px;
+}
+
+.changes-commit {
+  color: var(--text);
+}
+
+.changes-sha {
+  flex: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: var(--size-caption);
+}
+
+.changes-subject,
+.changes-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.changes-age {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+button.changes-file {
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.changes-file:hover {
+  background: var(--hover);
+}
+
+.changes-name {
+  flex: 0 1 auto;
+}
+
+/* The folder gives way first, from its end: the file's name stays readable. */
+.changes-folder {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.changes-lines {
+  flex: none;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.changes-added {
+  color: var(--added);
+}
+
+.changes-removed {
+  color: var(--removed);
+}
+
+.changes-status {
+  flex: none;
+  width: 10px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: var(--size-caption);
+  font-weight: 600;
+}
+
+.changes-status.status-added,
+.changes-status.status-untracked {
+  color: var(--added);
+}
+
+.changes-status.status-modified,
+.changes-status.status-renamed,
+.changes-status.status-copied,
+.changes-status.status-type-changed {
+  color: var(--modified);
+}
+
+.changes-status.status-deleted,
+.changes-status.status-conflicted {
+  color: var(--removed);
+}

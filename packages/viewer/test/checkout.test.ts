@@ -1,6 +1,6 @@
 import type { Commit, CommitRef, RefList } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { checkedOut, checkoutChoices, changesNote, type Head } from '../src/checkout.js';
+import { checkedOut, checkoutChoices, changesNote, type Head } from '../src/history/checkout.js';
 
 const sha = (c: string) => c.repeat(40);
 const commit = (c: string, refs: CommitRef[]): Commit => ({

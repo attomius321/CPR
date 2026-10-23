@@ -7,7 +7,7 @@
 import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { parseArgs } from 'node:util';
-import { layoutLanes } from '../../packages/viewer/src/lanes.ts';
+import { layoutLanes } from '../../packages/viewer/src/history/lanes.ts';
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,

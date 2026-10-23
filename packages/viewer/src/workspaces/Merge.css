@@ -1,0 +1,386 @@
+/* The merge queue (V26a): one row per merge, its tone on the label beside its branches. */
+.merge-row {
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.merge-row:first-child {
+  border-top: 0;
+}
+
+.merge-tone-wait {
+  --merge-tone: var(--moved);
+}
+
+.merge-tone-you {
+  --merge-tone: var(--warning);
+}
+
+.merge-tone-done {
+  --merge-tone: var(--added);
+}
+
+.merge-tone-bad {
+  --merge-tone: var(--removed);
+}
+
+.merge-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.merge-arrow {
+  color: var(--muted);
+}
+
+.merge-row-state {
+  min-width: 0;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+/* Where a merge is, in a tinted label with its tone's dot. */
+.merge-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--merge-tone, var(--faint)) 12%, transparent);
+  color: var(--merge-tone, var(--muted));
+  font-size: var(--size-caption);
+  font-weight: 500;
+}
+
+.merge-label::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+/* A merge's sides keep a colour on its page: the target blue, the branch purple. */
+.merge-ref-ours,
+.merge-row .from-ours {
+  --merge-side: var(--info);
+}
+
+.merge-ref-theirs,
+.merge-row .from-theirs {
+  --merge-side: var(--lane-1);
+}
+
+.merge-row .from-both,
+.merge-row .from-base {
+  --merge-side: var(--muted);
+}
+
+.merge-row .from-new {
+  --merge-side: var(--modified);
+}
+
+.merge-ref-ours,
+.merge-ref-theirs {
+  color: var(--merge-side);
+}
+
+.merge-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* Three actions on a phone: a button goes to the next line rather than break its label. */
+.merge-row-actions .button {
+  white-space: nowrap;
+}
+
+/* A failed check, command by command, and the toggle for its output. */
+.merge-run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.merge-output {
+  max-height: 240px;
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: var(--size-small);
+  white-space: pre-wrap;
+}
+
+/*
+ * A resolution to review (V26c; remade from the Oct 20 mockup): what it lost or added in words,
+ * the resolution with each line's side in its gutter, the dropped lines, the raw conflict folded.
+ */
+.merge-regions {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.merge-region {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.merge-region-where {
+  margin: 0 0 8px;
+}
+
+.merge-file {
+  font-family: var(--mono);
+  font-size: var(--size-small);
+  font-weight: 600;
+}
+
+.merge-note {
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-style: italic;
+}
+
+.merge-verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.merge-flag {
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--merge-flag) 30%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--merge-flag) 12%, transparent);
+  color: var(--merge-flag);
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.merge-flag-ok {
+  --merge-flag: var(--added);
+}
+
+.merge-flag-bad {
+  --merge-flag: var(--removed);
+}
+
+.merge-flag-new {
+  --merge-flag: var(--modified);
+}
+
+.merge-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.merge-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.merge-count::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--merge-side);
+}
+
+.merge-count b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.merge-code {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  font-size: var(--size-small);
+}
+
+.merge-line {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
+  min-height: 20px;
+  background: color-mix(in srgb, var(--merge-side, transparent) 10%, transparent);
+}
+
+.merge-line.from-blank {
+  background: none;
+}
+
+.merge-line-from {
+  overflow: hidden;
+  padding: 1px 8px;
+  color: var(--merge-side, var(--muted));
+  font-size: var(--size-caption);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.merge-line-text {
+  padding: 1px 8px;
+  font-family: var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.merge-twice {
+  outline: 1px solid var(--removed);
+  outline-offset: -1px;
+}
+
+.merge-line-tag {
+  padding: 1px 8px;
+  color: var(--removed);
+  font-size: var(--size-caption);
+  font-weight: 600;
+}
+
+.merge-dropped .merge-line {
+  --merge-side: var(--removed);
+}
+
+.merge-dropped .merge-line-text {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--removed) 60%, transparent);
+}
+
+.merge-sub {
+  margin: 10px 0 4px;
+  color: var(--removed);
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.merge-more {
+  margin: 0;
+  padding: 2px 8px 2px 96px;
+  color: var(--muted);
+}
+
+.merge-conflict {
+  margin: 8px 0 0;
+}
+
+.merge-region-sides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.merge-side {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.merge-side figcaption {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--merge-side) 10%, transparent);
+  color: var(--merge-side);
+  font-weight: 600;
+}
+
+.merge-side pre {
+  max-height: 200px;
+  margin: 0;
+  padding: 6px 8px;
+  overflow: auto;
+  background: var(--bg);
+  font-size: var(--size-small);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .merge-line {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+  }
+
+  .merge-more {
+    padding-left: 72px;
+  }
+
+  .merge-counts {
+    margin-left: 0;
+  }
+}
+
+.merge-change {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+
+.merge-change textarea {
+  flex: 1;
+  min-width: 0;
+}
+
+/* A merge in the main area (V29a), under a 44 px head as every page has (V37: its sides and actions
+   sat loose at the top). */
+.merge-view {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 0 0 16px;
+}
+
+.merge-view .hint {
+  padding: 0;
+}
+
+.merge-view > .hint {
+  margin: 12px 16px 0;
+}
+
+.merge-view .merge-row {
+  padding: 0 16px;
+  border: 0;
+}
+
+.merge-view .merge-row-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  min-height: 44px;
+  box-sizing: border-box;
+  margin: 0 -16px 12px;
+  padding: 7px 12px 7px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--side);
+}
+
+.merge-title {
+  margin: 4px 0 0;
+}

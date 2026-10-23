@@ -12,7 +12,7 @@ import {
   withCheck,
   withKind,
   type BriefForm,
-} from '../src/brief.js';
+} from '../src/workspaces/brief.js';
 
 /** The kinds as `symbiote view` gives them (`/api/workspaces/options`). */
 const KINDS: WorkKindSpec[] = [

@@ -1,0 +1,42 @@
+/* ---- summary nodes: many neighbours of one changed symbol ---------------------------- */
+
+.summary-node {
+  height: 100%;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  border: 1px dashed var(--context);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.summary-node:hover {
+  border-color: color-mix(in srgb, var(--text) 40%, var(--line));
+}
+
+.summary-node.expanded {
+  opacity: 0.8;
+}
+
+.summary-count {
+  font-weight: 600;
+}
+
+.summary-where {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  white-space: nowrap;
+}
+
+.summary-in {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.summary-action {
+  color: var(--text);
+}

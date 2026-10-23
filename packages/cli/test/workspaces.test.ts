@@ -372,7 +372,8 @@ describe('briefOf (V24)', () => {
 
 describe("the start dialog's length of a brief (V24c)", () => {
   it("is the length of the brief the server makes, so the dialog's count is the server's", async () => {
-    const { briefLength, formParts, newForm } = await import('../../viewer/src/brief.js');
+    const { briefLength, formParts, newForm } =
+      await import('../../viewer/src/workspaces/brief.js');
     const kinds = workKinds();
     const forms = [
       { kind: 'fix', title: '  Dates  ', main: '\n\n  They sort.\n  \n', more: { notes: 'N ' } },

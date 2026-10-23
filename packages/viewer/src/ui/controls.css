@@ -1,0 +1,512 @@
+/* The controls every page draws (the symbiote-style skill's components.md): fields, selects,
+   chips and badges, checkboxes, buttons, links, key caps, the segmented control, menus' glass,
+   dialogs. */
+
+/* Text fields and selects (V37, decision 246): a quiet edge at rest, the 3:1 `--edge` on hover,
+   the focus colour and a soft ring on focus; 32 px, 28 in a toolbar or a row of 28 px buttons. */
+.search-input,
+.comment-input,
+.branches-filter,
+.workspace-field textarea,
+.workspace-field input,
+.reply textarea,
+.scout-ask textarea,
+.settings-editor textarea,
+.merge-change textarea,
+select {
+  border: 1px solid var(--field-line);
+  border-radius: 8px;
+  background-color: var(--input-bg);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.search-input:hover:not(:focus, :disabled),
+.comment-input:hover:not(:focus, :disabled),
+.branches-filter:hover:not(:focus, :disabled),
+.workspace-field textarea:hover:not(:focus, :disabled),
+.workspace-field input:hover:not(:focus, :disabled),
+.reply textarea:hover:not(:focus, :disabled),
+.scout-ask textarea:hover:not(:focus, :disabled),
+.settings-editor textarea:hover:not(:focus, :disabled),
+.merge-change textarea:hover:not(:focus, :disabled),
+select:hover:not(:focus, :disabled) {
+  border-color: var(--edge);
+}
+
+.search-input:focus-visible,
+.comment-input:focus-visible,
+.branches-filter:focus-visible,
+.workspace-field textarea:focus-visible,
+.workspace-field input:focus-visible,
+.reply textarea:focus-visible,
+.scout-ask textarea:focus-visible,
+.settings-editor textarea:focus-visible,
+.merge-change textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* No grip: a textarea grows with its text from the height of its rows (which `field-sizing`
+   ignores), then scrolls. */
+.comment-input,
+.workspace-field textarea,
+.reply textarea,
+.scout-ask textarea,
+.settings-editor textarea,
+.merge-change textarea {
+  padding: 8px 10px;
+  line-height: 1.45;
+  field-sizing: content;
+  min-height: calc(3lh + 18px);
+  max-height: 50vh;
+  resize: none;
+}
+
+textarea[rows='2'] {
+  min-height: calc(2lh + 18px);
+}
+
+textarea[rows='4'] {
+  min-height: calc(4lh + 18px);
+}
+
+textarea[rows='7'] {
+  min-height: calc(7lh + 18px);
+}
+
+/* Selects (V31c): a field with a drawn chevron. */
+select {
+  appearance: none;
+  height: 32px;
+  padding: 0 28px 0 10px;
+  background-image: var(--chevron);
+  background-position: right 8px center;
+  background-repeat: no-repeat;
+  background-size: 14px;
+  cursor: pointer;
+}
+
+select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Beside a 28 px button. */
+.scout-ask-row select,
+.merge-control select {
+  height: 28px;
+}
+
+select option {
+  background: var(--panel);
+  color: var(--text);
+}
+
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.chip,
+.badge,
+.tag {
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: var(--size-caption);
+  font-weight: 500;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Metadata (V31): raised, muted, no border. */
+.chip {
+  background: var(--raised);
+  color: var(--muted);
+}
+
+/* Counts in their state's colour, unboxed (V31): a state's text is not set on a chip's grey. */
+.chip-added,
+.chip-removed,
+.chip-modified {
+  padding: 0 2px;
+  background: none;
+}
+
+.chip-added {
+  color: var(--added);
+}
+
+.chip-removed {
+  color: var(--removed);
+}
+
+.chip-modified {
+  color: var(--modified);
+}
+
+/* A state, tinted in its colour, the words in it (V29b: white on amber read at 2.4:1); round, a
+   10 % fill and a 25 % edge (V31). */
+.badge {
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--badge) 25%, transparent);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--badge) 10%, transparent);
+  color: var(--badge);
+  line-height: 16px;
+}
+
+.badge-error {
+  --badge: var(--error);
+}
+
+.badge-warning {
+  --badge: var(--warning);
+}
+
+.badge-info {
+  --badge: var(--info);
+}
+
+/* Drawn (V31): the <input> stays, for the keyboard, its label and screen readers. */
+input[type='checkbox'],
+input[type='radio'] {
+  appearance: none;
+  display: inline-grid;
+  flex: none;
+  place-content: center;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  background: var(--input-bg);
+  box-shadow: var(--shadow-lift);
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
+}
+
+input[type='radio'] {
+  border-radius: 50%;
+}
+
+input[type='checkbox']::after,
+input[type='radio']::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  background: var(--primary-text);
+  transform: scale(0);
+}
+
+/* lucide's "check" (ISC). */
+input[type='checkbox']::after {
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+input[type='radio']::after {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+input[type='checkbox']:checked,
+input[type='radio']:checked {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+input[type='checkbox']:checked::after,
+input[type='radio']:checked::after {
+  transform: scale(1);
+}
+
+input[type='checkbox']:disabled,
+input[type='radio']:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Focused, as a text field is (V37): the ring, not an outline. */
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.hint {
+  padding: 24px;
+  color: var(--muted);
+}
+
+/* Buttons (V29b): 28 px; the main action in the primary colour (V31), the others outlined. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--primary-text);
+  font-size: var(--size-small);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    color 150ms;
+}
+
+.button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 90%, transparent);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Backing out stays quiet (Cancel, Clear, Discard, Keep it): a ghost button, no colour. */
+.button.ghost {
+  background: transparent;
+  color: var(--muted);
+}
+
+.button.ghost:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.button.secondary,
+.workspace-actions .button:not(.primary),
+.merge-row-actions .button:not(.primary),
+.workspace-confirm .button {
+  border-color: var(--line);
+  background: var(--input-bg);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+}
+
+.button.secondary:hover:not(:disabled),
+.workspace-actions .button:not(.primary):hover:not(:disabled),
+.merge-row-actions .button:not(.primary):hover:not(:disabled),
+.workspace-confirm .button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--muted) 35%, transparent);
+  background: var(--hover);
+}
+
+.error {
+  color: var(--error);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-underline-offset: 3px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.link:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+/* A key, as a key cap. */
+kbd {
+  display: inline-block;
+  min-width: 16px;
+  padding: 0 4px;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--raised) 70%, transparent);
+  box-shadow: var(--shadow-lift);
+  color: var(--muted);
+  font: 500 var(--size-caption)/16px var(--sans);
+  text-align: center;
+}
+
+.small {
+  font-size: var(--size-small);
+}
+
+/* A segmented control: a raised track, the one on lifted out of it (V31). */
+.scopes {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--raised);
+  font-size: var(--size-small);
+}
+
+.scope {
+  height: 22px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.scope:hover {
+  color: var(--text);
+}
+
+.scope.active {
+  border-color: color-mix(in srgb, var(--text) 15%, transparent);
+  background: var(--lifted);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+}
+
+/* Menus (V31c): a blurred glass over the page, faded in. The glass is a layer behind
+   the items: a backdrop-filter on the menu itself would make it the containing block of its
+   fixed submenu, which then opened off screen. */
+.checkout-menu,
+.more-menu {
+  isolation: isolate;
+  border: 1px solid var(--menu-line);
+  border-radius: 11px;
+  box-shadow: var(--menu-shadow);
+  animation: float-in 150ms ease-out;
+}
+
+.checkout-menu::before,
+.more-menu::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--menu-bg);
+  backdrop-filter: blur(40px);
+}
+
+@keyframes float-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkout-menu,
+  .more-menu,
+  .dialog {
+    animation: none;
+  }
+}
+
+/* A <summary>'s marker: the chevron, turned down when open (V37: the browser's ▶). */
+summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+  cursor: pointer;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary::before {
+  content: '';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  background: currentColor;
+  mask: var(--chevron-right) center / contain no-repeat;
+  transition: transform 150ms;
+}
+
+details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--overlay);
+  backdrop-filter: blur(2px);
+}
+
+/* A dialog (V31c): glass, an edge and a shadow, faded in. */
+.dialog {
+  width: min(520px, 100%);
+  padding: 20px 24px;
+  background: var(--dialog-bg);
+  border: 1px solid var(--menu-line);
+  border-radius: 10px;
+  backdrop-filter: blur(40px);
+  box-shadow: var(--dialog-shadow);
+  animation: float-in 200ms ease-out;
+}
+
+.dialog h2 {
+  margin: 0 0 8px;
+  font-size: var(--size-title);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.dialog pre {
+  max-height: 30vh;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.dialog-note {
+  color: var(--muted);
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  font-size: var(--size-body);
+}
+
+/* A field's name and its help, in a row above the field. */
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.field-optional {
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: normal;
+}

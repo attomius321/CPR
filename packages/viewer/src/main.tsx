@@ -6,7 +6,7 @@ import '@fontsource-variable/geist';
 import '@fontsource-variable/geist-mono';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
-import { App } from './App.js';
+import { App } from './diff/App.js';
 
 /**
  * The page draws once its fonts' Latin faces are in (from Symbiote's own server, in milliseconds),

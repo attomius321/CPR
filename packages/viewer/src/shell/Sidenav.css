@@ -1,0 +1,502 @@
+/* The sidenav (Sidenav.tsx): the pages, the workspaces' cards, the rail it folds to. */
+
+/* What the list says of where workspaces are kept (V25), under the title. */
+.workspaces-note {
+  padding: 0 24px 8px;
+}
+
+/* ---- workspaces (V18b) ------------------------------------------------------------------ */
+
+/* How many workspaces need the person: the waiting colour. */
+/* How many need you: a count in the warning's tint, round as the groups' counts (V37). */
+.page-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+  font-size: var(--size-caption);
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.workspace-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-row.flash {
+  animation: commit-flash 1.2s ease-out;
+}
+
+.workspace-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workspace-head .workspace-mark {
+  margin-right: 0;
+}
+
+.workspace-head a.ref {
+  text-decoration: none;
+}
+
+.workspace-head a.ref:hover {
+  text-decoration: underline;
+}
+
+.workspace-about {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-branch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 4px;
+}
+
+.workspace-branch .ref {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-branch a.ref:hover {
+  text-decoration: underline;
+}
+
+button.workspace-about {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.workspace-state {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--size-body);
+}
+
+.workspace-state strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.sidenav {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--line);
+  background: var(--side);
+}
+
+.sidenav-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 4px 14px;
+}
+
+.sidenav-brand {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sidenav-brand .sidenav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidenav-repo {
+  color: var(--muted);
+  font-weight: 450;
+}
+
+.sidenav-pages {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px;
+}
+
+.sidenav-pages a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
+.sidenav-pages a .icon {
+  color: var(--faint);
+  stroke-width: 1.4;
+}
+
+.sidenav-pages a:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.sidenav-pages a[aria-current='page'] {
+  background: var(--selected);
+  color: var(--text);
+}
+
+.sidenav-pages a[aria-current='page'] .icon {
+  color: var(--text);
+  stroke-width: 1.8;
+}
+
+/* Scout's mark (V35): after its name; in the rail, on its icon's corner. */
+.sidenav-pages a .state-dot {
+  margin-left: auto;
+}
+
+.sidenav-pages a .state-dot + kbd {
+  margin-left: 0;
+}
+
+/* In the text's font: a monospace stack here made the first paint wait for font matching (850 ms
+   on Linux before anything showed, V29a). */
+.sidenav-pages kbd {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.sidenav-pages a:hover kbd,
+.sidenav-pages a:focus-visible kbd {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .sidenav-pages kbd {
+    opacity: 1;
+  }
+}
+
+.sidenav-workspaces {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+}
+
+.sidenav-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 8px 0 16px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 600;
+}
+
+.sidenav-heading .sidenav-label {
+  flex: 1;
+}
+
+.sidenav .workspaces-empty,
+.sidenav .workspaces-note,
+.sidenav-hint {
+  margin: 4px 16px;
+  padding: 0;
+  font-size: var(--size-small);
+}
+
+/* None yet: one line, what to do behind its help (V37). */
+.sidenav .workspaces-empty {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sidenav-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 8px 12px;
+}
+
+/* A group: its state's dot, its name and how many. */
+.sidenav .workspace-group h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 8px 4px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.sidenav .workspace-group h3::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--group-tone, var(--faint));
+}
+
+.sidenav .group-needsYou {
+  --group-tone: var(--warning);
+}
+
+.sidenav .group-working,
+.sidenav .merging {
+  --group-tone: var(--moved);
+}
+
+.sidenav .group-done {
+  --group-tone: var(--added);
+}
+
+.sidenav .workspace-group .branches-count {
+  min-width: 18px;
+  margin: 0;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A card, at most 64 px: the dot and the title; the state and its age; the kind and the branch. */
+.sidenav .workspace-row {
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
+}
+
+.sidenav .workspace-row + .workspace-row {
+  margin-top: 1px;
+}
+
+.sidenav .workspace-row:hover {
+  background: var(--hover);
+}
+
+/* The one shown: a wash of the text, as the current page (V37: no edge or shadow of its own). */
+.sidenav .workspace-row.picked {
+  background: var(--selected);
+}
+
+.sidenav .workspace-head {
+  gap: 7px;
+  line-height: 18px;
+}
+
+.sidenav .workspace-about {
+  font-size: var(--size-body);
+  font-weight: 500;
+}
+
+.sidenav .workspace-line,
+.sidenav .workspace-branch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 1px 0 0 14px;
+  font-size: var(--size-small);
+  line-height: 16px;
+}
+
+.sidenav .workspace-state {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidenav .workspace-state strong {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.sidenav .workspace-line .commit-date {
+  flex: none;
+  width: auto;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.sidenav .workspace-branch .kind-tag {
+  margin: 0;
+  line-height: 14px;
+}
+
+/* The branch as git names it: plain, not History's badge; in the text's font (V31). */
+.sidenav .workspace-branch .ref-branch {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font: var(--size-small)/16px var(--sans);
+}
+
+.sidenav .workspace-branch a.ref-branch:hover {
+  color: var(--text);
+}
+
+.sidenav a.workspace-about {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* A workspace's state (V29b): the colour of its group and its mark. */
+.state-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dot, var(--faint));
+}
+
+.state-dot.tone-working {
+  --dot: var(--moved);
+}
+
+.state-dot.tone-waiting {
+  --dot: var(--warning);
+}
+
+.state-dot.tone-ready,
+.state-dot.tone-done {
+  --dot: var(--added);
+}
+
+.state-dot.tone-failed {
+  --dot: var(--removed);
+}
+
+.merge-card .state-dot {
+  --dot: var(--merge-tone);
+}
+
+/* Folded (wide windows only): a rail of icons and each workspace's mark. */
+@media (min-width: 900px) {
+  .sidenav.rail .sidenav-label,
+  .sidenav.rail kbd,
+  .sidenav.rail .page-count,
+  .sidenav.rail .branches-count,
+  .sidenav.rail .workspace-line,
+  .sidenav.rail .workspace-branch,
+  .sidenav.rail .workspaces-empty,
+  .sidenav.rail .workspaces-note,
+  .sidenav.rail .sidenav-hint {
+    display: none;
+  }
+
+  .sidenav.rail .sidenav-top,
+  .sidenav.rail .sidenav-heading {
+    flex-direction: column;
+    padding: 6px 0;
+  }
+
+  .sidenav.rail .sidenav-brand {
+    flex: none;
+  }
+
+  .sidenav.rail .sidenav-pages {
+    padding: 4px 6px;
+  }
+
+  .sidenav.rail .sidenav-pages a {
+    position: relative;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .sidenav.rail .sidenav-pages a .state-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+  }
+
+  .sidenav.rail .sidenav-list {
+    padding: 0 6px 12px;
+  }
+
+  .sidenav.rail .workspace-group h3 {
+    height: 0;
+    margin: 6px 4px;
+    overflow: hidden;
+    border-top: 1px solid var(--line);
+  }
+
+  .sidenav.rail .workspace-group h3::before {
+    display: none;
+  }
+
+  .sidenav.rail .workspace-row {
+    padding: 8px 0;
+  }
+
+  .sidenav.rail .workspace-head {
+    justify-content: center;
+  }
+
+  /* Its name stays for screen readers and the keyboard; the mark is what shows. */
+  .sidenav.rail .workspace-about {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { Graph } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { layoutFlow, type FlowLayout } from '../src/flow.js';
+import { layoutFlow, type FlowLayout } from '../src/graph/flow.js';
 import {
   LayoutCache,
   layoutKey,
@@ -9,7 +9,7 @@ import {
   type LayoutMessage,
   type LayoutReply,
   type LayoutWorker,
-} from '../src/layouts.js';
+} from '../src/graph/layouts.js';
 
 const golden = (name: string) =>
   JSON.parse(

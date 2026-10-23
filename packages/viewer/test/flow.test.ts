@@ -20,7 +20,7 @@ import {
   type ProjectFlowNode,
   type SummaryFlowNode,
   type SymbolFlowNode,
-} from '../src/flow.js';
+} from '../src/graph/flow.js';
 
 /** The engine's golden graphs double as viewer fixtures. */
 const golden = (name: string) =>

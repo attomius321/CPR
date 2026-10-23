@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { parseArgs } from 'node:util';
 import { defaultBranchTips, openRepo } from '../../packages/core/dist/index.js';
-import { comparison } from '../../packages/viewer/src/commits.ts';
+import { comparison } from '../../packages/viewer/src/history/commits.ts';
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,

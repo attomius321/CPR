@@ -1,8 +1,22 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
+const SRC = new URL('../src/', import.meta.url);
+
+/** Every file under src/, in its folders too, whose path matches: [path, text]. */
+function sources(path: RegExp): [string, string][] {
+  return readdirSync(SRC, { recursive: true, encoding: 'utf8' })
+    .map((file) => file.replaceAll('\\', '/'))
+    .filter((file) => path.test(file))
+    .sort()
+    .map((file) => [file, readFileSync(new URL(file, SRC), 'utf8')]);
+}
+
 // The look's colours (V29b): tokens on <html>, dark by default, light chosen or the system's.
-const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
+// Every stylesheet is read: a rule in any of them is held to the guards below.
+const css = sources(/\.css$/)
+  .map(([, text]) => text)
+  .join('\n');
 
 /** The custom properties declared in the first block whose selector is `selector`. */
 function tokens(selector: string): Map<string, string> {
@@ -236,9 +250,7 @@ describe('the fonts (V29b, decision 180)', () => {
   // for 850–900 ms (V29a). Only the bundled families are named, and monospace after them.
   const SYSTEM_NAMES =
     /system-ui|-apple-system|Segoe UI|ui-monospace|SFMono|Menlo|Consolas|Helvetica|Arial|Roboto/;
-  const sources = readdirSync(new URL('../src/', import.meta.url))
-    .filter((file) => /\.(css|tsx?)$/.test(file))
-    .map((file) => [file, readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8')]);
+  const files = sources(/\.(css|tsx?)$/);
 
   it('are the bundled pair, for text and for code', () => {
     // monospace after Geist, not sans-serif: Chromium on Linux matched sans-serif as a name, 283
@@ -248,12 +260,12 @@ describe('the fonts (V29b, decision 180)', () => {
   });
 
   it('name no font a system may lack', () => {
-    const named = sources.filter(([, text]) => SYSTEM_NAMES.test(text ?? '')).map(([f]) => f);
+    const named = files.filter(([, text]) => SYSTEM_NAMES.test(text ?? '')).map(([f]) => f);
     expect(named).toEqual([]);
   });
 
   it('put no sans-serif after Geist, anywhere', () => {
     const declared = /(font(-family)?|--sans):[^;{}]*sans-serif/;
-    expect(sources.filter(([, text]) => declared.test(text ?? '')).map(([f]) => f)).toEqual([]);
+    expect(files.filter(([, text]) => declared.test(text ?? '')).map(([f]) => f)).toEqual([]);
   });
 });

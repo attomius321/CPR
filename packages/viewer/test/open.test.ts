@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import type { Graph, GraphNode } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import type { DiffRow } from '../src/detail.js';
-import { anchorTarget, describeOpen, rowTarget, symbolTarget } from '../src/open.js';
+import type { DiffRow } from '../src/diff/detail.js';
+import { anchorTarget, describeOpen, rowTarget, symbolTarget } from '../src/diff/open.js';
 
 const read = (name: string) =>
   JSON.parse(

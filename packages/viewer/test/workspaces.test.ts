@@ -29,7 +29,7 @@ import {
   opensTerminal,
   threadItems,
   verdictToSend,
-} from '../src/workspaces.js';
+} from '../src/workspaces/workspaces.js';
 
 describe('effortChoices and keptEffort (V30b)', () => {
   const claude: AgentOption = {

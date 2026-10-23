@@ -8,7 +8,7 @@ import {
   promptGroups,
   promptOfUrl,
   sizeOf,
-} from '../src/settings.js';
+} from '../src/settings/settings.js';
 
 const prompt = (fields: Partial<PromptSetting>): PromptSetting => ({
   key: 'start.fix',

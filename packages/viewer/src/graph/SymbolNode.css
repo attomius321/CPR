@@ -1,0 +1,116 @@
+/* ---- symbol nodes ------------------------------------------------------------------- */
+
+/* Its kind as a tinted ground and edge, not a side bar (V31). */
+.symbol {
+  --tone: var(--context);
+  height: 100%;
+  padding: 6px 10px 6px 12px;
+  background: color-mix(in srgb, var(--tone) 9%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--tone) 55%, var(--line));
+  border-radius: 8px;
+}
+
+.symbol.selected {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+
+.tone-added {
+  --tone: var(--added);
+}
+
+.tone-removed {
+  --tone: var(--removed);
+}
+
+.tone-modified {
+  --tone: var(--modified);
+}
+
+.tone-moved {
+  --tone: var(--moved);
+}
+
+.tone-context {
+  --tone: var(--context);
+}
+
+.tone-external,
+.tone-unknown {
+  --tone: var(--context);
+}
+
+.symbol.tone-context,
+.symbol.tone-external,
+.symbol.tone-unknown {
+  background: var(--panel);
+  border-color: var(--line);
+  opacity: 0.75;
+}
+
+.symbol.tone-external,
+.symbol.tone-unknown {
+  border-style: dashed;
+}
+
+.symbol.tone-removed .symbol-name {
+  text-decoration: line-through;
+}
+
+.symbol-head {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.symbol-kind {
+  color: var(--muted);
+  font-size: var(--size-caps);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.symbol-name {
+  font-family: var(--mono);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.symbol-file {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.symbol-file > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* What changed in a symbol ("signature"): a badge in its kind's colour. */
+.tag {
+  border: 1px solid color-mix(in srgb, var(--tone) 25%, transparent);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
+  color: var(--tone);
+  line-height: 16px;
+  font-size: var(--size-caption);
+}
+
+.symbol.reviewed {
+  opacity: 0.55;
+}
+
+.check {
+  color: var(--added);
+  font-weight: 700;
+}

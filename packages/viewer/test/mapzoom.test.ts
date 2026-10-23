@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAP_ZOOM, nextMapZoom } from '../src/mapzoom.js';
+import { MAP_ZOOM, nextMapZoom } from '../src/graph/mapzoom.js';
 
 describe('nextMapZoom', () => {
   it('writes the zoom on the map, once per value', () => {

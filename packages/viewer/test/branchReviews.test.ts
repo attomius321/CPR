@@ -1,7 +1,7 @@
 import type { BranchReviewList, Commit, CommitRef, RefList } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { reviewChoices, reviewMarks } from '../src/branchReviews.js';
-import { rowBadges } from '../src/commits.js';
+import { reviewChoices, reviewMarks } from '../src/history/branchReviews.js';
+import { rowBadges } from '../src/history/commits.js';
 
 const sha = (c: string) => c.repeat(40);
 const commit = (c: string, refs: CommitRef[]): Commit => ({

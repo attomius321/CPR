@@ -1,0 +1,133 @@
+/* The review tab (ReviewTab.tsx): the drafts, the review to post, whether the branch merges. */
+
+.draft,
+.draft-row {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+.draft-row {
+  margin: 0 12px 8px;
+}
+
+.draft-where {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--size-small);
+}
+
+.draft-body {
+  margin: 4px 0 0;
+  font-size: var(--size-small);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.submit-review {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+
+/* Whether the branch merges cleanly into the default branch (V17). */
+.merge-check {
+  margin: 0;
+}
+
+.merge-check-head {
+  margin: 0 0 4px;
+  color: var(--warning);
+}
+
+/* One conflicting file per line: open it, its name, then its folder, cut short when long. */
+.merge-files {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.merge-files li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.merge-open {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.merge-open:hover,
+.merge-open:focus-visible {
+  border-color: var(--line);
+  background: var(--hover);
+  color: var(--text);
+}
+
+.merge-file {
+  flex: none;
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: var(--size-small);
+}
+
+.merge-dir {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.events {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: var(--size-body);
+}
+
+.events label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* Finish review, and where the verdict goes behind its help (V37). */
+.review-submit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.review-submit .button {
+  flex: 1;
+}
+
+.posted {
+  margin: 0;
+  color: var(--added);
+  font-size: var(--size-body);
+}

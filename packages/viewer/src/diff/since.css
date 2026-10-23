@@ -1,0 +1,33 @@
+/* ---- changed since reviewed --------------------------------------------------------- */
+
+.stale-note {
+  margin: 4px 12px 6px;
+  color: var(--modified);
+  font-size: var(--size-small);
+}
+
+.panel-head .stale-note {
+  margin: 4px 0 0;
+}
+
+.stale-mark {
+  flex: none;
+  color: var(--modified);
+  font-size: var(--size-small);
+}
+
+/* ---- since an earlier version ------------------------------------------------------- */
+
+.symbol.settled {
+  opacity: 0.4;
+}
+
+.tag-since {
+  border-color: var(--moved);
+  color: var(--moved);
+}
+
+.chip-since {
+  border-color: var(--moved);
+  color: var(--moved);
+}

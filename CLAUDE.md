@@ -115,7 +115,7 @@ unless the change says otherwise — prove it with the comparisons.
 - `pkill -f <pattern>` can match and kill your own shell: find PIDs with `pgrep -f '[n]ode …'`.
 - The CLI keeps worktrees in its cache (`SYMBIOTE_CACHE_DIR`, else `~/.cache/symbiote` on Linux). A worktree
   with `main` checked out blocks `git checkout main`: add worktrees with `git worktree add --detach`.
-- Viewer TypeScript (e.g. `packages/viewer/src/flow.ts`) runs in scripts with
+- Viewer TypeScript (e.g. `packages/viewer/src/graph/flow.ts`) runs in scripts with
   `node --experimental-strip-types`.
 - Real-repo runs take minutes: run them in the background and keep working.
 

@@ -1,6 +1,10 @@
 import type { ScoutStateName, WorkspaceSummary } from '@symbiote/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { readEvery, reloadWorkspaces, type WorkspacesState } from '../src/useWorkspaces.js';
+import {
+  readEvery,
+  reloadWorkspaces,
+  type WorkspacesState,
+} from '../src/workspaces/useWorkspaces.js';
 
 const state = (...agents: WorkspaceSummary['agent'][]): WorkspacesState => ({
   list: {

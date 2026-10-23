@@ -1,7 +1,7 @@
 import { createElement, Fragment } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { markdownNodes, MARKDOWN_OPTIONS } from '../src/markdown.js';
+import { markdownNodes, MARKDOWN_OPTIONS } from '../src/ui/markdown.js';
 import { lexer } from 'marked';
 
 /** A report as the thread draws it. */

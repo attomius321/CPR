@@ -1,6 +1,6 @@
 # Tokens
 
-Symbiote's tokens (`packages/viewer/src/styles.css`), their roles and values in both themes. Ratios:
+Symbiote's tokens (`packages/viewer/src/ui/base.css`), their roles and values in both themes. Ratios:
 the lowest over the backgrounds `test/tokens.test.ts` checks (WCAG 2), from `palette-check.mjs`.
 
 ## Surfaces, text, lines (tested; `#rrggbb`)
@@ -100,7 +100,7 @@ transparent)` for a fill, `25%` for its edge.
 
 ## Type scale (V32; on `:root`, both themes)
 
-One step above V29b's dense 13 px, which was too small to read. Every font size in `styles.css`
+One step above V29b's dense 13 px, which was too small to read. Every font size in the stylesheet
 is one of these (`test/tokens.test.ts`), a multiple of one (`calc`), `inherit` or an `em`.
 
 | Token | Value | Role |

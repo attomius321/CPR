@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readWidths, withWidth } from '../src/widths.js';
+import { readWidths, withWidth } from '../src/ui/widths.js';
 
 describe('readWidths', () => {
   it('reads every panel the reviewer gave a width', () => {

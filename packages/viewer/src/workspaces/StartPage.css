@@ -1,0 +1,251 @@
+/* Start a workspace, a page of the shell's (V30a): a head strip, as a workspace's, then the brief
+   and the run side by side where the main area has the room, the run under the brief where not.
+   The body scrolls under the head, which keeps Start in view. */
+.start-page {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  container: start / inline-size;
+}
+
+.start-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'title from actions';
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 7px 12px 7px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--side);
+}
+
+.start-top h1 {
+  grid-area: title;
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+.start-from {
+  grid-area: from;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+.start-from .ref {
+  display: inline;
+}
+
+.start-actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Narrow, where it starts goes under the title and the buttons. */
+@container start (max-width: 599px) {
+  .start-top {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'title actions' 'from from';
+  }
+}
+
+.start-error {
+  margin: 12px 16px 0;
+  white-space: pre-wrap;
+}
+
+.start-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 16px 24px;
+}
+
+.start-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 760px);
+  column-gap: 32px;
+}
+
+/* One column: the run after the brief, a little apart. */
+.start-run {
+  margin-top: 8px;
+}
+
+@container start (min-width: 1000px) {
+  .start-columns {
+    grid-template-columns: minmax(0, 760px) 300px;
+  }
+
+  /* Side by side, both columns start at the same height: the kinds, and the branch. */
+  .start-run,
+  .start-run > :first-child {
+    margin-top: 0;
+  }
+}
+
+/* The run's choices, each a field as the brief's are. */
+.start-run select {
+  box-sizing: border-box;
+  width: 100%;
+  font-weight: normal;
+}
+
+.start-run .dialog-note {
+  margin: 4px 0 0;
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+.start-value {
+  font-weight: normal;
+}
+
+@media (max-width: 480px) {
+  .start-body {
+    padding: 12px 16px 16px;
+  }
+}
+
+/* The kinds and their info button; the info spans the brief's column below them (V24c). */
+.kind-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The kinds, explained in their help (V24c; a tip of Help's since V37). */
+.help-tip:has(.kind-about) {
+  max-width: min(480px, calc(100vw - 16px));
+}
+
+.kind-about {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.kind-about > div {
+  display: grid;
+  grid-template-columns: 5.5em 1fr;
+  gap: 8px;
+}
+
+.kind-about dt {
+  font-weight: 600;
+}
+
+.kind-about dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+.kind-about .current dd {
+  color: var(--text);
+}
+
+/* The kind of work (V24c), as History's scopes: one segmented control. */
+.kind-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--raised);
+}
+
+.kind {
+  height: 24px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.kind:hover {
+  color: var(--text);
+}
+
+.kind.active {
+  border-color: color-mix(in srgb, var(--text) 15%, transparent);
+  background: var(--lifted);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+}
+
+/* The five and their info on one line on a phone (390 px: 308 px for them). */
+@media (max-width: 480px) {
+  .kind {
+    padding: 0 6px;
+  }
+}
+
+.kind:focus-visible {
+  outline-offset: -2px;
+}
+
+.workspace-check-guess {
+  margin: 4px 0 0;
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+.workspace-more {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 0;
+  font-family: inherit;
+  text-align: left;
+}
+
+.workspace-field {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+  font-weight: 600;
+}
+
+.workspace-field textarea,
+.workspace-field input {
+  box-sizing: border-box;
+  width: 100%;
+  font-weight: normal;
+}
+
+.workspace-field input {
+  height: 32px;
+  padding: 0 10px;
+}
+
+.workspace-field [aria-invalid='true'],
+.workspace-field [aria-invalid='true']:hover {
+  border-color: var(--error);
+}
+
+.workspace-field [aria-invalid='true']:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 30%, transparent);
+}
+
+.workspace-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+}

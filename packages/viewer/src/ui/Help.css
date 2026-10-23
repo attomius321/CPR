@@ -1,0 +1,63 @@
+/* Help behind a "?" (V37): a ghost icon button beside what it explains, its tip a popover drawn on
+   the page's body (Help.tsx places it, fixed, kept inside the window). */
+.help-button {
+  width: 24px;
+  height: 24px;
+  color: var(--faint);
+  font-weight: normal;
+  vertical-align: middle;
+}
+
+.help-button[aria-expanded='true'] {
+  color: var(--text);
+}
+
+.help-tip {
+  position: fixed;
+  z-index: 60;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(340px, calc(100vw - 16px));
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow-floating);
+  color: var(--text);
+  font-size: var(--size-small);
+  font-weight: normal;
+  line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+  animation: float-in 150ms ease-out;
+}
+
+.help-tip[hidden] {
+  display: none;
+}
+
+/* Shown by a hover or the focus, it may cover a field for a moment: what is under it keeps the
+   pointer. Kept by a click, it takes it (its text can be selected). */
+.help-tip:not(.pinned) {
+  pointer-events: none;
+}
+
+.help-tip p {
+  margin: 0;
+}
+
+.help-tip p + p,
+.help-tip p + dl,
+.help-tip dl + p {
+  margin-top: 8px;
+}
+
+.help-tip code {
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .help-tip {
+    animation: none;
+  }
+}

@@ -1,6 +1,6 @@
 import type { ScoutConversation } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { nextScoutMark, scoutStateText } from '../src/scout.js';
+import { nextScoutMark, scoutStateText } from '../src/scout/scout.js';
 
 describe("the sidenav's mark for Scout (V35, decision 238)", () => {
   it('says working while Scout answers, wherever the person is', () => {

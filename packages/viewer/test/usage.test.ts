@@ -7,7 +7,7 @@ import {
   usageTitle,
   usageTone,
   windowLabel,
-} from '../src/usage.js';
+} from '../src/shell/usage.js';
 
 // The status bar's usage (V29c): each window by its length, its tone, and what a hover says.
 const NOW = Date.parse('2026-10-20T16:15:00Z');
