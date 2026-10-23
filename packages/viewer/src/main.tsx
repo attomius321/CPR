@@ -7,6 +7,7 @@ import '@fontsource-variable/geist-mono';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
 import { App } from './diff/App.js';
+import { askIntro, startIntro } from './intro/intro.js';
 
 /**
  * The page draws once its fonts' Latin faces are in (from Symbiote's own server, in milliseconds),
@@ -19,13 +20,20 @@ const fonts = Promise.all([
   document.fonts.load("13px 'Geist Mono Variable'"),
 ]).catch(() => undefined);
 
+// The first-time intro (V39): asked during the same wait, put up before the page's first render.
+const intro = askIntro(window.location.search);
+
 const root = document.getElementById('root');
 if (!root) throw new Error('missing #root');
 const shown = root;
-void Promise.race([fonts, new Promise((resolve) => setTimeout(resolve, FONT_WAIT_MS))]).then(() =>
+void Promise.all([
+  Promise.race([fonts, new Promise((resolve) => setTimeout(resolve, FONT_WAIT_MS))]),
+  intro,
+]).then(([, show]) => {
+  if (show) startIntro({ record: true });
   createRoot(shown).render(
     <StrictMode>
       <App />
     </StrictMode>,
-  ),
-);
+  );
+});

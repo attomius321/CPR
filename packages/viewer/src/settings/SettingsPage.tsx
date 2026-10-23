@@ -6,6 +6,7 @@ import { getJson, postJson } from '../ui/http.js';
 import { BackIcon } from '../ui/icons.js';
 import { useShell } from '../shell/shell-context.js';
 import { setTheme, useTheme, type Theme } from '../shell/theme.js';
+import { startIntro } from '../intro/intro.js';
 import {
   draftProblem,
   gitNote,
@@ -146,6 +147,14 @@ export function SettingsPage() {
           {settings?.file ?? 'symbiote/config.json'}, for everyone once committed
         </Help>
         <Appearance />
+        {/* The first-time intro again (V39), as often as one likes: nothing is recorded. */}
+        <button
+          type="button"
+          className="button secondary"
+          onClick={() => startIntro({ record: false })}
+        >
+          Play the intro
+        </button>
       </div>
       {error && (
         <p className="commits-error error" role="alert">

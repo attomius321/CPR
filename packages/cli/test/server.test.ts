@@ -1787,6 +1787,109 @@ describe('symbiote view: usage (V29c)', () => {
   });
 });
 
+describe('/api/intro (V39)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const servers: ViewServer[] = [];
+  let seen = false;
+  const intro = {
+    seen: () => Promise.resolve(seen),
+    markSeen: () => {
+      seen = true;
+      return Promise.resolve();
+    },
+  };
+  const repository = {
+    history: new Histories({
+      state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+      stream: () => Promise.resolve(),
+      details: () => Promise.resolve([]),
+    }),
+    status: () =>
+      Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+    refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+    checkout: () => Promise.reject(new Error('no')),
+    isCommit: () => Promise.resolve(true),
+    diffs: new Diffs(() => Promise.reject(new Error('no'))),
+    readFile: () => Promise.resolve(''),
+  };
+  beforeAll(() => writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>'));
+  afterAll(async () => {
+    for (const server of servers) await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+  const start = async (options: Partial<Parameters<typeof startViewServer>[0]>) => {
+    const server = await startViewServer({ viewerDir: viewer, ...options });
+    servers.push(server);
+    return server;
+  };
+  const mark = (server: ViewServer, headers: Record<string, string> = {}) =>
+    fetch(new URL('/api/intro', server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      body: '{}',
+    });
+
+  for (const mode of ['symbiote view', 'symbiote pr'] as const) {
+    it(`${mode}: answers whether to show it, and records it seen`, async () => {
+      seen = false;
+      const server = await start(
+        mode === 'symbiote view'
+          ? { repository, intro }
+          : { graph, readSource: () => Promise.resolve(''), intro },
+      );
+      const first = await fetch(new URL('/api/intro', server.url));
+      expect(first.status).toBe(200);
+      expect(first.headers.get('cache-control')).toBe('no-store');
+      expect(await first.json()).toEqual({ show: true });
+      expect((await mark(server)).status).toBe(204);
+      expect(seen).toBe(true);
+      expect(await (await fetch(new URL('/api/intro', server.url))).json()).toEqual({
+        show: false,
+      });
+    });
+  }
+
+  it('refuses writes other sites could send, and other methods', async () => {
+    seen = false;
+    const server = await start({ repository, intro });
+    expect((await mark(server, { origin: 'https://attacker.example' })).status).toBe(403);
+    expect((await mark(server, { 'x-symbiote': '' })).status).toBe(403);
+    expect((await mark(server, { 'content-type': 'text/plain' })).status).toBe(403);
+    const put = await fetch(new URL('/api/intro', server.url), {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+    });
+    expect(put.status).toBe(405);
+    expect(seen).toBe(false);
+  });
+
+  it('a record it cannot write: 500, and still unseen', async () => {
+    const server = await start({
+      repository,
+      intro: {
+        seen: () => Promise.resolve(false),
+        markSeen: () => Promise.reject(new Error('EACCES')),
+      },
+    });
+    expect((await mark(server)).status).toBe(500);
+  });
+
+  it('is not there without a record', async () => {
+    const server = await start({ repository });
+    expect((await fetch(new URL('/api/intro', server.url))).status).toBe(404);
+  });
+
+  it('serves WebP images as images', async () => {
+    mkdirSync(join(viewer, 'assets'), { recursive: true });
+    writeFileSync(join(viewer, 'assets', 'koi.webp'), 'RIFF');
+    const server = await start({ repository });
+    const response = await fetch(new URL('/assets/koi.webp', server.url));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('image/webp');
+  });
+});
+
 describe('symbiote view: terminals (V21)', () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);

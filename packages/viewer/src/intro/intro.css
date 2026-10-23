@@ -1,0 +1,32 @@
+/* ---- the first-time intro (V39): two koi form the S over the page, once -------------------- */
+
+.intro {
+  position: fixed;
+  inset: 0;
+  /* Over the page; under the window's edge (frame.css, 100). */
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+}
+
+/* In the app the title bar stays above it: its buttons, and the strip that moves the window. */
+:root[data-app] .intro {
+  top: 38px;
+}
+
+/* Symbiote's own frame (N1d): the window's bottom corners. */
+:root[data-frame='own'][data-window='normal'] .intro {
+  border-radius: 0 0 10px 10px;
+}
+
+.intro canvas {
+  width: min(62vmin, 380px);
+  aspect-ratio: 1;
+}
+
+.intro[data-state='leaving'] {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 450ms ease;
+}

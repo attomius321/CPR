@@ -131,11 +131,20 @@ one, and every finding links to its symbol and the symbols involved.
 
 ## The viewer
 
+### The first time
+
+The first time you open Symbiote on a repository, in its window or a browser, two koi rise out of
+deep water and form its S, with the sound of the water and a drop as the S locks (about 5 s). Any
+key or a click ends it at once. It plays once for you, whichever repository: `symbiote view`
+records it in Symbiote's config folder (`~/.config/symbiote/intro.json` on Linux). Settings plays it
+again (**Play the intro**). With reduced motion the S is shown formed; without WebGL there is no
+intro. In a browser the sound plays only where the page may play audio before a click.
+
 ### Symbiote's window
 
 With the desktop app set up (`pnpm app:setup`, once: it fetches Electron, ~100 MB), `symbiote view` and
 `symbiote pr` open the viewer in a window of their own, not in a browser tab: its own icon and taskbar
-entry, no tabs or address bar, the page's name as its title. Without it they open the browser,
+entry (the S the intro's koi form), no tabs or address bar, the page's name as its title. Without it they open the browser,
 as `--browser` does.
 
 - **Closing the window stops `symbiote view`**, as Ctrl+C does; Ctrl+C closes the window. Agents in
@@ -806,6 +815,7 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 | `SYMBIOTE_CODEX` | The Codex program workspaces start (default: `codex` on `PATH`). |
 | `SYMBIOTE_TERMINAL` | `off`: no agent's terminal in a workspace's panel; the panel keeps Talk and the reply box. |
 | `SYMBIOTE_USAGE` | `off`: no subscription usage is read, and the status bar shows none. |
+| `SYMBIOTE_INTRO` | `off`: no [first-time intro](#the-first-time), and nothing recorded of it. |
 | `SYMBIOTE_APP` | `off`: `symbiote view` and `symbiote pr` open the browser, never [Symbiote's window](#symbiotes-window). A path: the program to run as the app instead. |
 | `SYMBIOTE_CACHE_DIR` | Where Symbiote keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/symbiote`, else `~/Library/Caches/symbiote` on macOS and `~/.cache/symbiote` elsewhere. |
 

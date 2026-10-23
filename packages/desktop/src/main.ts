@@ -53,6 +53,12 @@ if (fromLauncher) {
 }
 const primary = !fromLauncher || app.requestSingleInstanceLock();
 
+// WebGL in software where Chromium finds no GL (V39: the first-time intro). On WSLg it finds none
+// (`gl=none`), and since Chromium 137 it falls back to SwiftShader only when asked. "Unsafe" for
+// shaders from untrusted pages: this window shows only Symbiote's own (anything else opens in the
+// browser). Where there is a GPU, WebGL uses it as before.
+app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+
 /** Who draws the window's frame and buttons here (N1d): Symbiote's pages on Linux. */
 const frame = frameOf(process.platform);
 /** Where Symbiote holds a maximized window itself (N1d): WSLg's X11; the work areas it has learned.
@@ -223,6 +229,8 @@ function createWindow(title: string): BrowserWindow {
       nodeIntegration: false,
       spellcheck: false,
       zoomFactor: 1.2 ** (state.zoom ?? 0),
+      // The first-time intro's sound from the start (V39): Symbiote's own pages, no click first.
+      autoplayPolicy: 'no-user-gesture-required',
     },
   });
   const contents = window.webContents;

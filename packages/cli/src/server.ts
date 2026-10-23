@@ -36,6 +36,7 @@ import { WorkspaceRefused, type Workspaces } from './workspaces.js';
 import { MergeRefused, type Merger } from './merges.js';
 import { parsePromptChange, PromptRefused, type PromptSettingsService } from './prompts.js';
 import type { UsageService } from './usage.js';
+import type { IntroRecord } from './intro.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 import { imageKind, MAX_IMAGE_BYTES, type FileAt, type Terminals } from './terminal.js';
@@ -115,6 +116,8 @@ export interface ViewServerOptions {
    * the branch reviewed is checked out in another worktree (V18b).
    */
   open?: (request: OpenRequest, worktree?: string) => Promise<OpenResult>;
+  /** Enables `/api/intro` (V39): whether a person saw the first-time intro, for every page. */
+  intro?: IntroRecord;
 }
 
 /** A graph served with its sources, review state and reviews. */
@@ -144,6 +147,7 @@ const TYPES: Record<string, string> = {
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.webp': 'image/webp',
   '.woff2': 'font/woff2',
 };
 
@@ -215,6 +219,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!hosts.has(req.headers.host ?? '')) return send(res, 421, 'unknown host');
     const url = new URL(req.url ?? '/', 'http://localhost');
+    if (url.pathname === '/api/intro' && options.intro) return introApi(req, res, options.intro);
     if (repository) {
       const diff = DIFF_PATH.exec(url.pathname);
       if (diff) {
@@ -662,6 +667,20 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       remotes: remotes.map((r, i) => ({ ...r, row: rows[branches.length + i] ?? null })),
     };
     return json(res, 200, answer);
+  }
+
+  /** `GET /api/intro`: `{ show }`; `POST`: the intro seen (V39). */
+  async function introApi(
+    req: IncomingMessage,
+    res: ServerResponse,
+    intro: IntroRecord,
+  ): Promise<void> {
+    if (req.method === 'GET') return json(res, 200, { show: !(await intro.seen()) });
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    await intro.markSeen();
+    res.writeHead(204, { 'cache-control': 'no-store' });
+    res.end();
   }
 
   /** A GET answered with a value of the repository. */

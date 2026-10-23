@@ -26,6 +26,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 | `shell/` | The shell: sidenav, title bar, status bar and usage, pages, theme, the desktop window |
 | `ui/` | Shared: the tokens and controls' CSS, `Help`, `Resizer`, icons, menus, Markdown, HTTP |
 | `scout/`, `settings/` | Scout, Settings |
+| `intro/` | The first-time intro (V39): the koi engine, its rig and images, the overlay |
 
 - `src/graph/flow.ts` — **pure** layout: `layoutFlow` (what is drawn and where: summaries for big
   neighbourhoods, file boxes, cluster packing, project frames) and `decorate`/`decorateEdges`
@@ -48,6 +49,15 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   the shape (V10c; checked against git by `scripts/viewer/compare-check.mjs`), the label, reading `api/graph`'s
   202/502/404 while a diff is analyzed), `HistoryPage.tsx` (History, a diff's progress; never `Commits.tsx` beside `commits.ts`: macOS file systems ignore case).
 - `src/graph/ProjectNode.tsx`, `FileNode.tsx`, `SymbolNode.tsx`, `SummaryNode.tsx`.
+- `src/intro/` — the first-time intro (V39). `intro.ts` (main bundle): `askIntro` asks `/api/intro`
+  (absolute, like `/api/history`) during `main.tsx`'s font wait, never on a `?graph=` page;
+  `startIntro` puts `.intro` on `document.body` before the first render. `play.ts` and the engine
+  (`koi-intro.ts`, the person's, kept as delivered: only Prettier and non-null reads differ),
+  `koi-rig.json` and five WebP images are a chunk of their own. `koi-aux.webp` is a lossless data
+  map: serve it byte for byte. The e2e harness runs every server with `SYMBIOTE_INTRO=off`;
+  `intro.spec.ts` turns it on with a config folder of its own. The app's icon and the favicon are
+  the engine's last frame (`scripts/desktop/icon.mjs`): rerun it after changing the engine or
+  its assets.
 - The stylesheet: plain CSS in parts beside what they draw, **listed in cascade order by
   `src/styles.css`**, which `main.tsx` imports after React Flow's stylesheet. At equal
   specificity a later part wins, so a part is added to that list, never imported by its
