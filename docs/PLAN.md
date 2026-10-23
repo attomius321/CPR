@@ -456,7 +456,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V39 | A first-time intro | Symbiote opens straight onto its pages, and its icon is the graph glyph. Asked: "a first time intro into the app", with the person's koi intro (a WebGL engine, its rig and images): two koi form the S. Ready for review (2026-10-23, `feature/first-time-intro`): it plays once per person over the first page `symbiote view` or `symbiote pr` serves (recorded in Symbiote's config folder: browser storage is per run), with sound from the start, any key or a click ends it, Settings plays it again; its last frame is the app's icon and the favicon. In the app it had no WebGL (WSLg has no GL): the app now asks for SwiftShader. 60 fps in the app; History's first paint as `main`'s (52 ms). See below. |
 | V40 | Documents for a workspace's agent | The start page takes text only: a screenshot or a PDF is put somewhere by hand and its path typed into the brief. Measured: a folder in the worktree is out of git by its own `.gitignore`, but Prettier and ESLint still check it (4 of 6 sample files, 2 errors); Codex's sandbox reads outside its worktree, yet its model did not try until told it could. Built: files chosen, dropped or pasted on the start page, uploaded as added, put in `symbiote/documents/<branch>/` beside the record at the start (never the worktree), each named in the agent's first prompt; real Claude Code and Codex each read a PNG and a PDF from there (14 and 18 s), no permission asked. Ready for review (2026-10-23). See below. |
 | V41 | Skills, and Scribe | A skill (a folder with a `SKILL.md`) tells an agent how a project does something; this repository has 6 in `.claude/skills/`, and Symbiote shows none and writes none. Codex reads `.agents/skills/` and lists none of the 6 (6 of 6 with a link). Claude Code protects `.claude`: `dontAsk` denies every Write, its prompt asks in the other modes; Codex's sandbox started in `.claude/skills` writes only there. Ready for review (2026-10-24, `feature/skill-creator`): V41a a Skills page (`/skills`, key `i`) listing, editing, adding and deleting the checkout's skills with the standard's checks and Link for Codex; V41b Scribe, an agent there that writes skills into `.claude/skills/` only, for the person to read and commit. With the real Claude Code it wrote a 79-line skill this repository's checks pass and a fresh session loads for a matching task; its README edit was refused by the gate; Codex's sandbox refused a write outside. See below. |
-| V42 | Koi: colours from the intro | Since V31 the chrome is neutral grey and colour is for state only; V39 gave Symbiote a koi mark on deep water, and none of the app's colours come from it. Asked: "change the color palette … the colors from the intro video with the fishes … primary, secondary … make it look modern". Sampled from the intro's images: the water `#05080f`–`#081828`, the koi's glow `#3060b8`–`#4c82d2`, the white koi `#a8c0e8`–`#e8e8f8`. Planned (2026-10-24, `feature/ui-improvements-v2`): the palette in both themes, one accent (the koi blue) in named roles, moved and info in cyan, the koi S as the mark, the diff's tabs segmented. See below. |
+| V42 | Koi: colours from the intro | Since V31 the chrome is neutral grey and colour is for state only; V39 gave Symbiote a koi mark on deep water, and none of the app's colours come from it. Asked: "change the color palette … the colors from the intro video with the fishes … primary, secondary … make it look modern". Sampled from the intro's images: the water `#05080f`–`#081828`, the koi's glow `#3060b8`–`#4c82d2`, the white koi `#a8c0e8`–`#e8e8f8`. Ready for review (2026-10-24, `feature/ui-improvements-v2`): the palette in both themes (canvas `#05080f`, chrome `#0f1626`, primary `#3c6fd6`, accent `#7a9ee8`), one accent in named roles, moved and info in cyan, the koi S as the mark, the diff's tabs segmented; every contrast rule passes, timings as `main`'s. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -10605,9 +10605,10 @@ own settings deny writes into `.claude`; `regression-check` (no analysis code ch
 had to be trusted by Claude Code first, as any folder a background session starts in.
 ### V42 — Koi: Symbiote's colours from its intro, and what still looks old
 
-**Status:** planned (2026-10-24), on branch `feature/ui-improvements-v2` (a workspace started in
-Symbiote, from `main` at `e380fef`); the plan and its three choices OK'd by the person ("1.
-Recommended 2. Recommended 3. Recommended. OK").
+**Status:** ready for review (2026-10-24), on branch `feature/ui-improvements-v2` (a workspace
+started in Symbiote, from `main` at `e380fef`); the plan and its three choices OK'd by the person
+("1. Recommended 2. Recommended 3. Recommended. OK"). As built and results under "As built (V42)"
+below.
 
 **Problem** (asked: "We need a revamp of the UI. Still looks old. And i want to change the color
 palette. Will use the colors from the intro video with the fishes. Grab some colors: primary,
@@ -10641,7 +10642,7 @@ yellow, History's lanes, the graph's geometry (node sizes, `layoutFlow`) and its
 
 | Role | Token | Dark | Light | From |
 |---|---|---|---|---|
-| Canvas | `--bg` | `#060a12` | `#ffffff` | the abyss (tile centre) |
+| Canvas | `--bg` | `#05080f` (planned `#060a12`, see As built) | `#ffffff` | the abyss (tile centre) |
 | Chrome | `--side`, `--panel` | `#0f1626` | `#f6f8fc` | deep water |
 | Raised | `--raised` | `#1c2539` | `#e9eef7` | |
 | Lines | `--line` / `--edge` | `#232d43` / `#5f6c8c` | `#dce3ef` / `#7f8aa3` | |
@@ -10732,7 +10733,45 @@ audit's fixes and the documents.
 | 284 | The diff sidebar's tabs | **A segmented control** | The style's table names underlined tabs as dated; the start page's kinds already use one |
 
 **Not in V42 (later)**: a new layout for any page; the graph's node shapes and fonts (a layout
-change: `nodeWidth`); the koi on the app's start page.
+change: `nodeWidth`); the intro on the app's start page; the README's screenshots (from V25, three
+restyles old).
+
+#### As built (V42)
+
+- **The canvas is the tile's centre itself, `#05080f`**, not the planned `#060a12`: the test of
+  V31's step from content to chrome (≥ 1.10:1) failed at 1.097; `#05080f` gives 1.11.
+- **The states and lanes kept every value**: on the navy surfaces each still passes 3:1 (lowest
+  `--removed` 3.33:1 and `--lane-4` 3.37:1 on `--raised`; light `--error` 4.19:1). Only moved,
+  info and context changed.
+- **Two tokens more than planned**: `--primary-hover` and `--primary-shine`. A lighter blue under
+  the pointer, as most dark UIs do, takes white under 4.5:1 (`#4375dc` 4.36:1): the hover is a step
+  darker (`#3466cc`, 5.36:1; light `#2856b8`, 6.74:1), tested. The shine is a 1 px inset highlight
+  on the primary's top edge; a ghost button resets it.
+- **"Copy for the agent" is secondary** (found in the audit): with blue primaries it stood beside
+  "Merge into" or "Send to the agent" as a second primary in one panel.
+- **The mark reaches the window's title bar (20 px) and the app's start page (40 px)** too, which
+  drew the same graph glyph; the start page takes the palette's tokens and the primary's hover.
+- **The terminal** is `#02040a`, the koi's deepest water under the canvas, in its theme and its
+  CSS (the drop frame and the link hint follow).
+- **The guard on `--accent` was written with the code**, not seen red: nothing used the token
+  before. The token tests were red first for the right reasons (8 of 28: the values, `--accent`
+  missing, a selection that was a wash of the text).
+
+**Results.**
+
+| What | Measured |
+|---|---|
+| Contrast, dark / light (lowest over the four backgrounds) | text 13.16 / 16.08, muted 6.19 / 5.27, accent 5.74 / 4.82, states 3.33 / 3.26, edge 3.45 / 3.26, lines 1.31 / 1.21; white on the primary 4.73 / 5.62, on its hover 5.36 / 6.74 |
+| `pnpm check` | 1,380 tests in 100 files, green |
+| e2e | 216 of 217; the one, `shell.spec`'s "a card keeps the focus when its workspace moves", is the flake V37 and V38 measured on `main`; alone 6 of 6 |
+| A diff (this repository's `e659928..7c223d4`, 1,975 symbols, 4,124 edges), 3 rounds alternated with `main`'s build | first paint 873–885 / 874–906 ms, select 189–237 / 170–256 ms, mark reviewed 48–80 / 52–85 ms, pan 63–65 / 62–63 fps; the same 846 nodes, 341 edges and 10,392 elements drawn |
+| `/history` of this repository, 8 rounds alternated | first contentful paint median 64 / 64 ms, first rows 133 / 139 ms |
+| Size | JS −4 bytes, CSS +653 bytes; the mark a 6,149-byte PNG |
+| Screenshots | 27 states × 2 themes at 1440×900, device scale 1, before and after (History and its menus, compare mode, Start, a workspace's three tabs, changes and menu, a report, the folded rail, Scout, Skills, Settings, a diff's changes, findings, selection and map, a review, a merge and its conflict, a phone width); no page errors |
+
+Not verified: Bitwarden's graph (no clone here; this repository's largest range instead); the
+person's own window (Electron on WSLg at their scale); macOS and Windows rendering; a real agent's
+colours in the restyled terminal.
 
 ### Phase 1 milestones
 

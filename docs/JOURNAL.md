@@ -5453,3 +5453,46 @@ colors from the intro video with the fishes. Grab some colors: primary, secondar
   own copy of the tokens), and the terminal's theme (`terminal.ts`).
 - **What the style itself calls dated is still on one page**: the diff sidebar's Changes /
   Findings, underlined tabs with a 2 px rule.
+
+## V42 — Koi: Symbiote's colours from its intro (2026-10-24, branch `feature/ui-improvements-v2`)
+
+The palette is the intro's: the canvas the tile's abyss (`#05080f`), the chrome its deep water
+(`#0f1626`), the text the white koi (`#eaeef7`, muted `#9aa5be`), the primary the koi's blue
+(`#3c6fd6`, white text) and one accent, the white koi's halo (`#7a9ee8`), for what a person acts
+with: focus, the current page, the selection, the selected node, a link under the pointer. Light
+takes the same hues on white. Moved and info leave blue to the accent for cyan. The koi S
+replaces the graph glyph as the mark; the diff sidebar's underlined tabs become a segmented
+control. Decisions 279–284.
+
+**Learned**:
+- **V31's step from content to chrome is a hard edge**: the planned canvas `#060a12` sat 1.097:1
+  under the chrome and failed the step's test (≥ 1.10); the tile's own centre `#05080f` gives 1.11.
+- **No state needed a new value**: on navy surfaces every state and lane still passes 3:1 (lowest
+  `--removed` 3.33:1, `--lane-4` 3.37:1 on `--raised`). Darker and bluer surfaces barely move the
+  luminance a state is measured against.
+- **A blue primary cannot lighten on hover**: every blue lighter than `#3c6fd6` takes white under
+  4.5:1 (`#4375dc` 4.36:1). The hover is a step darker, and a test holds white at 4.5:1 on both.
+- **A selection in a colour needs a different test**: "washes of the text 3 points apart"
+  (V37) cannot compare a 5 % wash of the text with a 16 % wash of the accent. The test now lays
+  both over `--bg` and `--side` and asks the selection to stand further from its ground.
+- **A lit edge on the primary shows on every `.button`**, ghost ones too (a white line along the
+  top of Cancel): the ghost variant resets `box-shadow`.
+- **Blue made a second primary visible**: "Copy for the agent" beside "Merge into" had been two
+  near-white buttons; in blue it read as two main actions. It is secondary now.
+- **The koi S at 24 px is an image, not an icon**: the app's icon cropped to its tile (the 512 px
+  file has 39 px of transparent margin) and drawn at 48 px for 24; sharp at 1× in both themes.
+
+**Verification**: tests first, red for the right reason: `tokens.test.ts` 8 of 28 (the koi's
+values, `--accent` missing, a selection that was a wash of the text), `frame.test.ts` 2 of 4 (the
+window's colours); the accent's guard and the primary-hover test written with the code.
+`pnpm check` 1,380 tests. e2e 216 of 217: `shell.spec`'s card-focus test, flaky on `main` since
+V37, failed once and passed 6 of 6 alone. Against `main`'s build, alternated, on this repository's
+`e659928..7c223d4` (1,975 symbols, 4,124 edges), 3 rounds: first paint 873–885 / 874–906 ms, select
+189–237 / 170–256 ms, mark reviewed 48–80 / 52–85 ms, pan 63–65 / 62–63 fps, the same 846 nodes and
+10,392 elements. `/history`, 8 rounds: first contentful paint median 64 / 64 ms, first rows 133 /
+139 ms. CSS +653 bytes, the mark 6,149 bytes. Screenshots of 27 states of every page, dark and
+light, 1440×900 at 1×, before and after, no page errors; the app's start page in both themes.
+
+Not verified: Bitwarden's graph (no clone here); the person's own window (Electron on WSLg at
+their scale); macOS and Windows rendering; a real agent's output in the restyled terminal. The
+README's screenshots are from V25 and were not retaken.
