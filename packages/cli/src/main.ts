@@ -56,6 +56,7 @@ import { frameworkHints, loadPlugins } from './plugins.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ReviewTarget } from './server.js';
+import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
 import { terminals as agentTerminals } from './terminal.js';
 import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
@@ -544,6 +545,7 @@ async function serve(
     state: fileStateStore(stateDir(defaultCacheDir(ctx.env), repo.id, graph)),
     ...(review ? { review } : {}),
     open: vsCodeOpener(repo, ctx.env),
+    intro: introOf(ctx),
   });
   ctx.stdout(`${statsLine(graph)}\nSymbiote viewer: ${server.url}  (Ctrl+C to stop)\n`);
   for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
@@ -551,6 +553,12 @@ async function serve(
   await showUntilExit(server.url, basename(repo.root), args, ctx);
   await server.close();
   return 0;
+}
+
+/** The first-time intro's record (V39), in Symbiote's config folder; `SYMBIOTE_INTRO=off`: none. */
+function introOf(ctx: CliContext): IntroRecord {
+  const folder = symbioteConfigDir(ctx.env, process.platform, homedir());
+  return introRecord(join(folder, 'intro.json'), { off: ctx.env.SYMBIOTE_INTRO === 'off' });
 }
 
 function statsLine(graph: Graph): string {
@@ -693,6 +701,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       ),
     },
     open: vsCodeOpener(repo, ctx.env),
+    intro: introOf(ctx),
   });
 
   let url = server.url;

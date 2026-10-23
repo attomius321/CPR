@@ -83,6 +83,8 @@ async function startSymbiote(
       SYMBIOTE_CODEX: '/nonexistent/codex',
       // Never your subscriptions' usage either: a spec that wants it fakes it (V29c).
       SYMBIOTE_USAGE: 'off',
+      // No first-time intro over the page, and never your record of it (V39): intro.spec's own.
+      SYMBIOTE_INTRO: 'off',
       ...extraEnv,
     },
   });
@@ -253,9 +255,9 @@ process.stdout.write(JSON.stringify({ result, is_error: false, usage: { input_to
  * newer: `wip` ("Try a wobble") from "Add square", the remote-only `origin/topic` ("Sketch a
  * topic") from head. `feature` points at head; tag `v1` at "Add cube", `r1` to `r4` at base; tag
  * `v0` at a commit no branch reaches ("Old release"). Served by `symbiote view` without revisions:
- * the commits page.
+ * the commits page, with `extraEnv` (e.g. `SYMBIOTE_INTRO`).
  */
-export async function serveCommits(): Promise<RunningCommits> {
+export async function serveCommits(extraEnv: Record<string, string> = {}): Promise<RunningCommits> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', '-B', 'main');
   let math = readFileSync(join(repo, 'src/math.ts'), 'utf8');
@@ -287,7 +289,10 @@ export async function serveCommits(): Promise<RunningCommits> {
   git(repo, 'tag', 'v0', aside(base, 6, 'Old release'));
   git(repo, 'checkout', '-q', 'main');
   const cache = mkdtempSync(join(tmpdir(), 'symbiote-e2e-cache-'));
-  const { url, child } = await startSymbiote(['view'], repo, { SYMBIOTE_CACHE_DIR: cache });
+  const { url, child } = await startSymbiote(['view'], repo, {
+    SYMBIOTE_CACHE_DIR: cache,
+    ...extraEnv,
+  });
   return {
     url,
     shas,
