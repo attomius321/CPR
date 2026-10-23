@@ -50,7 +50,8 @@ function contrast(a: string, b: string): number {
 }
 
 const BACKGROUNDS = ['--bg', '--side', '--panel', '--raised'];
-const TEXT = ['--text', '--muted'];
+// V42: the accent marks a link under the pointer and the current page's name: read as text.
+const TEXT = ['--text', '--muted', '--accent'];
 const STATES = [
   '--added',
   '--removed',
@@ -75,6 +76,22 @@ function under(theme: Map<string, string>, fronts: string[], backs: string[], mi
   return low;
 }
 
+/**
+ * A wash token (`color-mix(in srgb, var(--x) n%, transparent)`) laid over `back`, as `#rrggbb`:
+ * what a hovered or selected row shows.
+ */
+function washed(theme: Map<string, string>, token: string, back: string): string {
+  const match = /var\((--[\w-]+)\) (\d+)%, transparent/.exec(theme.get(token) ?? '');
+  if (!match) throw new Error(`${token} is not a wash: ${theme.get(token)}`);
+  const [front, under] = [theme.get(match[1]!) ?? '', theme.get(back) ?? ''].map((hex) =>
+    Number.parseInt(hex.slice(1), 16),
+  ) as [number, number];
+  const share = Number(match[2]) / 100;
+  const channel = (shift: number) =>
+    Math.round(((front >> shift) & 255) * share + ((under >> shift) & 255) * (1 - share));
+  return `#${[16, 8, 0].map((shift) => channel(shift).toString(16).padStart(2, '0')).join('')}`;
+}
+
 describe('the tokens (V29b)', () => {
   it('are the same names in both themes, and the system light is the light theme', () => {
     expect([...light.keys()].sort()).toEqual([...dark.keys()].sort());
@@ -82,27 +99,58 @@ describe('the tokens (V29b)', () => {
   });
 
   // V31: Symbiote's style (the symbiote-style skill's tokens.md): the content darkest, the chrome
-  // lifted.
-  it('are the style’s in the dark theme', () => {
+  // lifted. V42: in the koi's colours, sampled from the intro: the canvas its abyss, the chrome
+  // its deep water, the text the white koi's pearl and silver.
+  it('are the koi’s in the dark theme: the water, a step lighter for the chrome', () => {
     expect(Object.fromEntries(BACKGROUNDS.map((t) => [t, dark.get(t)]))).toEqual({
-      '--bg': '#0a0a0a',
-      '--side': '#171717',
-      '--panel': '#171717',
-      '--raised': '#262626',
+      '--bg': '#05080f',
+      '--side': '#0f1626',
+      '--panel': '#0f1626',
+      '--raised': '#1c2539',
     });
-    expect(dark.get('--text')).toBe('#fafafa');
-    expect(dark.get('--muted')).toBe('#a1a1a1');
-    expect(dark.get('--line')).toBe('#2a2a2a');
+    expect(dark.get('--text')).toBe('#eaeef7');
+    expect(dark.get('--muted')).toBe('#9aa5be');
+    expect(dark.get('--line')).toBe('#232d43');
+    // V31's step from the content to the chrome.
+    expect(contrast(dark.get('--bg')!, dark.get('--side')!)).toBeGreaterThanOrEqual(1.1);
   });
 
-  it('are the style’s in the light theme: a white page, grey chrome', () => {
+  it('are the koi’s in the light theme: a white page, cool chrome, navy text', () => {
     expect(Object.fromEntries(BACKGROUNDS.map((t) => [t, light.get(t)]))).toEqual({
       '--bg': '#ffffff',
-      '--side': '#fafafa',
-      '--panel': '#fafafa',
-      '--raised': '#f0f0f0',
+      '--side': '#f6f8fc',
+      '--panel': '#f6f8fc',
+      '--raised': '#e9eef7',
     });
-    expect(light.get('--text')).toBe('#0a0a0a');
+    expect(light.get('--text')).toBe('#0b1220');
+  });
+
+  // V42 (decisions 279–281): primary and secondary from the koi's blue light; the moved kind and
+  // info leave blue to them, for cyan.
+  it('take the koi’s blue for the primary and the accent, and cyan for moved and info', () => {
+    const pick = (theme: Map<string, string>) =>
+      Object.fromEntries(
+        ['--primary', '--primary-text', '--accent', '--focus', '--moved', '--info'].map((t) => [
+          t,
+          theme.get(t),
+        ]),
+      );
+    expect(pick(dark)).toEqual({
+      '--primary': '#3c6fd6',
+      '--primary-text': '#ffffff',
+      '--accent': '#7a9ee8',
+      '--focus': '#7a9ee8',
+      '--moved': '#3fc5d6',
+      '--info': '#3fc5d6',
+    });
+    expect(pick(light)).toEqual({
+      '--primary': '#2f62cc',
+      '--primary-text': '#ffffff',
+      '--accent': '#2f62cc',
+      '--focus': '#2f62cc',
+      '--moved': '#0a7d8c',
+      '--info': '#0a7d8c',
+    });
   });
 
   it('name the neutral states every control shares, in both themes', () => {
@@ -118,6 +166,8 @@ describe('the tokens (V29b)', () => {
       // V37: a text field's quiet edge at rest (decision 246) and the ring of a focused field.
       '--field-line',
       '--ring',
+      // V42: the secondary colour, the koi's blue light (decision 280).
+      '--accent',
     ]) {
       expect([name, dark.has(name), light.has(name)]).toEqual([name, true, true]);
     }
@@ -128,11 +178,25 @@ describe('the tokens (V29b)', () => {
     ['light', light],
   ] as const) {
     describe(`${name}`, () => {
-      // V37 (decision 250): at 8 and 10 % a hovered row looked like the current page.
-      it('draws a hover lighter than the selection: washes of the text 3 points apart', () => {
-        const wash = (token: string) =>
-          Number(/var\(--text\) (\d+)%, transparent/.exec(theme.get(token) ?? '')?.[1]);
-        expect(wash('--selected') - wash('--hover')).toBeGreaterThanOrEqual(3);
+      // V37 (decision 250): at 8 and 10 % a hovered row looked like the current page. V42: the
+      // hover a wash of the text, the selection one of the accent; on every chrome the selection
+      // stands further from its ground than the hover.
+      it('draws a hover lighter than the selection, which is a wash of the accent', () => {
+        expect(theme.get('--hover')).toMatch(/var\(--text\) \d+%, transparent/);
+        expect(theme.get('--selected')).toMatch(/var\(--accent\) \d+%, transparent/);
+        const close = ['--bg', '--side'].flatMap((back) => {
+          const ground = theme.get(back)!;
+          const hover = contrast(washed(theme, '--hover', back), ground);
+          const selected = contrast(washed(theme, '--selected', back), ground);
+          return selected - hover < 0.05
+            ? [`on ${back}: ${hover.toFixed(2)}, ${selected.toFixed(2)}`]
+            : [];
+        });
+        expect(close).toEqual([]);
+      });
+
+      it('writes white on the primary at 4.5:1 at least, under the pointer too', () => {
+        expect(under(theme, ['--primary-text'], ['--primary', '--primary-hover'], 4.5)).toEqual([]);
       });
 
       it('gives text at least 4.5:1 on every background', () => {
@@ -162,8 +226,8 @@ const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
 }));
 
 describe('colour is for state (V31, decision 214)', () => {
-  // Colour is for state; selection, links and pressed controls are neutral. Blue is the
-  // moved kind and the states that share its hue: an agent working, "since", the current lane.
+  // Colour is for state, and one accent (V42). Cyan is the moved kind and the states that share
+  // its hue: an agent working, "since", the current lane (blue until V42, decision 281).
   const STATE_RULES =
     /tone-moved|minimap-moved|since|review-new|working|merging|merge-tone-wait|lane-0/;
 
@@ -172,6 +236,20 @@ describe('colour is for state (V31, decision 214)', () => {
       .filter((rule) => rule.body.includes('var(--moved)') && !STATE_RULES.test(rule.selector))
       .map((rule) => rule.selector);
     expect(accent).toEqual([]);
+  });
+
+  // V42 (decision 280): one accent, the koi's blue, for what a person acts with: the current
+  // page, what is selected or checked, focus, a link under the pointer, selected text. Never a
+  // state, a lane or a diff kind: those keep their colours.
+  const ACCENT_ROLES =
+    /aria-current|aria-selected|aria-pressed|\.selected|\.current|:checked|focus|::selection|\.link|a:hover/;
+
+  it('uses --accent only for its roles', () => {
+    const elsewhere = rules
+      .filter((rule) => rule.body.includes('var(--accent)') && !ACCENT_ROLES.test(rule.selector))
+      .filter((rule) => !rule.selector.startsWith(':root'))
+      .map((rule) => rule.selector);
+    expect(elsewhere).toEqual([]);
   });
 
   it('marks no row with a coloured side bar (a blockquote keeps its line)', () => {

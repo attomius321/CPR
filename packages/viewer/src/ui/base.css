@@ -23,29 +23,35 @@
 
 /* Dark unless the person chose light or the system's (decision 179; index.html sets data-theme
    before the first paint). Symbiote's style since V31 (the symbiote-style skill's tokens.md): the content
-   darkest, the chrome lifted, colour for state only. Text and muted at least 4.5:1 on the four
-   backgrounds, states, edges and the focus ring 3:1 (test/tokens.test.ts). Lines only separate
-   regions: hairlines. */
+   darkest, the chrome lifted, colour for state and one accent. Since V42 in the koi's colours,
+   sampled from the intro (decision 279): the canvas its abyss, the chrome its deep water, the text
+   the white koi, the primary and the accent the koi's blue light. Text, muted and the accent at
+   least 4.5:1 on the four backgrounds, states, edges and the focus ring 3:1 (test/tokens.test.ts).
+   Lines only separate regions: hairlines. */
 :root,
 :root[data-theme='dark'] {
-  --bg: #0a0a0a;
-  --side: #171717;
-  --panel: #171717;
-  --raised: #262626;
-  --line: #2a2a2a;
-  --edge: #737373;
-  --text: #fafafa;
-  --muted: #a1a1a1;
-  --faint: #7c7c7c;
-  --focus: #a1a1a1;
+  --bg: #05080f;
+  --side: #0f1626;
+  --panel: #0f1626;
+  --raised: #1c2539;
+  --line: #232d43;
+  --edge: #5f6c8c;
+  --text: #eaeef7;
+  --muted: #9aa5be;
+  --faint: #717d99;
+  /* The secondary colour (V42, decision 280): the white koi's halo. Focus, the current page, what
+     is selected or checked, a link under the pointer; never a state. */
+  --accent: #7a9ee8;
+  --focus: #7a9ee8;
   --added: #81b88b;
   --removed: #c74e39;
   --modified: #e2c08d;
-  --moved: #4493f8;
-  --context: #7c7c7c;
+  /* Cyan since V42 (decision 281): the koi's blue is the accent, 6° of hue from V31's #4493f8. */
+  --moved: #3fc5d6;
+  --context: #717d99;
   --error: #ff6568;
   --warning: #eab308;
-  --info: #4493f8;
+  --info: #3fc5d6;
   /* Commit graph lanes after the current branch's (V10). */
   --lane-1: #b66dff;
   --lane-2: #40b0a6;
@@ -54,31 +60,36 @@
   --lane-5: #ce9178;
   --lane-6: #8ccf3e;
   --shadow: rgb(0 0 0 / 50%);
-  /* Neutral states every control shares (V31): hover and selection are washes of the text. */
-  /* Lighter than the selection (V37, decision 250): at 8 % a hovered row looked current. */
+  /* States every control shares (V31): the hover a wash of the text, the selection one of the
+     accent (V42), further from its ground than the hover (V37, decision 250). */
   --hover: color-mix(in srgb, var(--text) 5%, transparent);
-  --selected: color-mix(in srgb, var(--text) 10%, transparent);
-  --selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
-  --primary: #e5e5e5;
-  --primary-text: #171717;
-  --input-bg: rgb(255 255 255 / 4.5%);
+  --selected: color-mix(in srgb, var(--accent) 16%, transparent);
+  --selected-line: color-mix(in srgb, var(--accent) 40%, var(--line));
+  /* The primary colour (V42): the koi's blue, white on it 4.73:1. */
+  --primary: #3c6fd6;
+  --primary-text: #ffffff;
+  /* Under the pointer, a step darker: a lighter blue takes white under 4.5:1. */
+  --primary-hover: #3466cc;
+  --input-bg: rgb(170 195 240 / 4.5%);
   /* A text field's edge at rest, about 1.5:1 (decision 246): `--edge` (3:1) on hover, `--focus`
      and the ring on focus. */
   --field-line: color-mix(in srgb, var(--text) 15%, transparent);
   --ring: color-mix(in srgb, var(--focus) 30%, transparent);
   /* The one on, lifted out of a raised track (a segmented control's). */
-  --lifted: rgb(255 255 255 / 7%);
-  --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
-  --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
-  --menu-bg: rgb(0 0 0 / 72%);
-  --menu-line: rgb(255 255 255 / 14%);
-  --menu-hover: rgb(255 255 255 / 14%);
-  --menu-shadow: 0 16px 34px rgb(0 0 0 / 40%), inset 0 1px 0 rgb(255 255 255 / 4%);
-  --dialog-bg: rgb(23 23 23 / 96%);
-  --dialog-shadow: 0 24px 72px rgb(0 0 0 / 55%), inset 0 1px 0 rgb(255 255 255 / 6%);
-  --overlay: rgb(0 0 0 / 55%);
+  --lifted: rgb(170 195 240 / 9%);
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 20%);
+  --shadow-floating: 0 12px 28px rgb(1 4 10 / 40%);
+  /* The primary's lit top edge (V42): light from above, as on the koi's tile. */
+  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 16%);
+  --menu-bg: rgb(8 12 22 / 78%);
+  --menu-line: rgb(170 195 240 / 14%);
+  --menu-hover: rgb(170 195 240 / 13%);
+  --menu-shadow: 0 16px 34px rgb(1 4 10 / 50%), inset 0 1px 0 rgb(170 195 240 / 6%);
+  --dialog-bg: rgb(15 22 38 / 96%);
+  --dialog-shadow: 0 24px 72px rgb(1 4 10 / 60%), inset 0 1px 0 rgb(170 195 240 / 8%);
+  --overlay: rgb(2 5 12 / 62%);
   /* A select's chevron (lucide's, ISC) in the muted colour: a data URI cannot read a token. */
-  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a1a1a1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa5be' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   /* A diff's lines: a ground for the line, a stronger one for its numbers. */
   --added-ground: color-mix(in srgb, var(--added) 16%, transparent);
   --added-gutter: color-mix(in srgb, var(--added) 30%, transparent);
@@ -89,49 +100,52 @@
 
 :root[data-theme='light'] {
   --bg: #ffffff;
-  --side: #fafafa;
-  --panel: #fafafa;
-  --raised: #f0f0f0;
-  --line: #e5e5e5;
-  --edge: #8a8a8a;
-  --text: #0a0a0a;
-  --muted: #666666;
-  --faint: #8a8a8a;
-  --focus: #737373;
+  --side: #f6f8fc;
+  --panel: #f6f8fc;
+  --raised: #e9eef7;
+  --line: #dce3ef;
+  --edge: #7f8aa3;
+  --text: #0b1220;
+  --muted: #56627a;
+  --faint: #78839c;
+  --accent: #2f62cc;
+  --focus: #2f62cc;
   --added: #587c0c;
   --removed: #ad0707;
   --modified: #895503;
-  --moved: #0969da;
-  --context: #8a8a8a;
+  --moved: #0a7d8c;
+  --context: #78839c;
   --error: #e40014;
   --warning: #9a6700;
-  --info: #0969da;
+  --info: #0a7d8c;
   --lane-1: #8250df;
   --lane-2: #0a7f6f;
   --lane-3: #bc4c00;
   --lane-4: #bf3989;
   --lane-5: #4d7a00;
   --lane-6: #9a6700;
-  --shadow: rgb(0 0 0 / 14%);
+  --shadow: rgb(11 18 32 / 14%);
   --hover: color-mix(in srgb, var(--text) 5%, transparent);
-  --selected: color-mix(in srgb, var(--text) 8%, transparent);
-  --selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
-  --primary: #171717;
-  --primary-text: #fafafa;
+  --selected: color-mix(in srgb, var(--accent) 12%, transparent);
+  --selected-line: color-mix(in srgb, var(--accent) 35%, var(--line));
+  --primary: #2f62cc;
+  --primary-text: #ffffff;
+  --primary-hover: #2856b8;
   --input-bg: transparent;
   --field-line: color-mix(in srgb, var(--text) 16%, transparent);
-  --ring: color-mix(in srgb, var(--focus) 30%, transparent);
+  --ring: color-mix(in srgb, var(--focus) 25%, transparent);
   --lifted: #ffffff;
-  --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
-  --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
+  --shadow-lift: 0 1px 2px rgb(11 18 32 / 6%);
+  --shadow-floating: 0 10px 24px rgb(11 18 32 / 16%);
+  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);
   --menu-bg: rgb(255 255 255 / 82%);
-  --menu-line: rgb(0 0 0 / 14%);
-  --menu-hover: rgb(0 0 0 / 8%);
-  --menu-shadow: 0 12px 28px rgb(0 0 0 / 22%), inset 0 1px 0 rgb(255 255 255 / 14%);
+  --menu-line: rgb(11 18 32 / 13%);
+  --menu-hover: rgb(11 18 32 / 7%);
+  --menu-shadow: 0 12px 28px rgb(11 18 32 / 20%), inset 0 1px 0 rgb(255 255 255 / 14%);
   --dialog-bg: rgb(255 255 255 / 96%);
-  --dialog-shadow: 0 20px 60px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
-  --overlay: rgb(0 0 0 / 55%);
-  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --dialog-shadow: 0 20px 60px rgb(11 18 32 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
+  --overlay: rgb(11 18 32 / 45%);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2356627a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
   --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
   --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
@@ -142,49 +156,52 @@
 @media (prefers-color-scheme: light) {
   :root[data-theme='system'] {
     --bg: #ffffff;
-    --side: #fafafa;
-    --panel: #fafafa;
-    --raised: #f0f0f0;
-    --line: #e5e5e5;
-    --edge: #8a8a8a;
-    --text: #0a0a0a;
-    --muted: #666666;
-    --faint: #8a8a8a;
-    --focus: #737373;
+    --side: #f6f8fc;
+    --panel: #f6f8fc;
+    --raised: #e9eef7;
+    --line: #dce3ef;
+    --edge: #7f8aa3;
+    --text: #0b1220;
+    --muted: #56627a;
+    --faint: #78839c;
+    --accent: #2f62cc;
+    --focus: #2f62cc;
     --added: #587c0c;
     --removed: #ad0707;
     --modified: #895503;
-    --moved: #0969da;
-    --context: #8a8a8a;
+    --moved: #0a7d8c;
+    --context: #78839c;
     --error: #e40014;
     --warning: #9a6700;
-    --info: #0969da;
+    --info: #0a7d8c;
     --lane-1: #8250df;
     --lane-2: #0a7f6f;
     --lane-3: #bc4c00;
     --lane-4: #bf3989;
     --lane-5: #4d7a00;
     --lane-6: #9a6700;
-    --shadow: rgb(0 0 0 / 14%);
+    --shadow: rgb(11 18 32 / 14%);
     --hover: color-mix(in srgb, var(--text) 5%, transparent);
-    --selected: color-mix(in srgb, var(--text) 8%, transparent);
-    --selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
-    --primary: #171717;
-    --primary-text: #fafafa;
+    --selected: color-mix(in srgb, var(--accent) 12%, transparent);
+    --selected-line: color-mix(in srgb, var(--accent) 35%, var(--line));
+    --primary: #2f62cc;
+    --primary-text: #ffffff;
+    --primary-hover: #2856b8;
     --input-bg: transparent;
     --field-line: color-mix(in srgb, var(--text) 16%, transparent);
-    --ring: color-mix(in srgb, var(--focus) 30%, transparent);
+    --ring: color-mix(in srgb, var(--focus) 25%, transparent);
     --lifted: #ffffff;
-    --shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
-    --shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
+    --shadow-lift: 0 1px 2px rgb(11 18 32 / 6%);
+    --shadow-floating: 0 10px 24px rgb(11 18 32 / 16%);
+    --primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);
     --menu-bg: rgb(255 255 255 / 82%);
-    --menu-line: rgb(0 0 0 / 14%);
-    --menu-hover: rgb(0 0 0 / 8%);
-    --menu-shadow: 0 12px 28px rgb(0 0 0 / 22%), inset 0 1px 0 rgb(255 255 255 / 14%);
+    --menu-line: rgb(11 18 32 / 13%);
+    --menu-hover: rgb(11 18 32 / 7%);
+    --menu-shadow: 0 12px 28px rgb(11 18 32 / 20%), inset 0 1px 0 rgb(255 255 255 / 14%);
     --dialog-bg: rgb(255 255 255 / 96%);
-    --dialog-shadow: 0 20px 60px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
-    --overlay: rgb(0 0 0 / 55%);
-    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    --dialog-shadow: 0 20px 60px rgb(11 18 32 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
+    --overlay: rgb(11 18 32 / 45%);
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2356627a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
     --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
     --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
@@ -247,4 +264,9 @@ select {
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 1px;
+}
+
+/* Selected text in the accent (V42). */
+::selection {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
 }

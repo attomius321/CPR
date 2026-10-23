@@ -23,20 +23,20 @@ describe('the window frame (N1d)', () => {
   it("on Windows: the system's buttons over the title bar, in the style's colours", () => {
     expect(frameOptions('win32', false)).toEqual({
       titleBarStyle: 'hidden',
-      backgroundColor: '#0a0a0a',
-      titleBarOverlay: { color: '#171717', symbolColor: '#fafafa', height: 38 },
+      backgroundColor: '#05080f',
+      titleBarOverlay: { color: '#0f1626', symbolColor: '#eaeef7', height: 38 },
     });
     expect(frameOptions('win32', true)).toEqual({
       titleBarStyle: 'hidden',
       backgroundColor: '#ffffff',
-      titleBarOverlay: { color: '#fafafa', symbolColor: '#0a0a0a', height: 38 },
+      titleBarOverlay: { color: '#f6f8fc', symbolColor: '#0b1220', height: 38 },
     });
   });
 
   it("on macOS: its own buttons at the left, on the page's background", () => {
     expect(frameOptions('darwin', false)).toEqual({
       titleBarStyle: 'hidden',
-      backgroundColor: '#0a0a0a',
+      backgroundColor: '#05080f',
       trafficLightPosition: { x: 14, y: 12 },
     });
   });
