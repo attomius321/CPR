@@ -151,6 +151,27 @@ const recordWindow = (app: ElectronApplication) =>
 const calls = (app: ElectronApplication) =>
   app.evaluate(() => (globalThis as { asked?: string[] }).asked ?? []);
 
+/** How many colours the first window shows in `box` (the page's pixels, as composited). */
+const colours = (
+  app: ElectronApplication,
+  box: { x: number; y: number; width: number; height: number },
+) =>
+  app.evaluate(
+    async ({ BrowserWindow }, rect) => {
+      const image = await BrowserWindow.getAllWindows()[0]?.webContents.capturePage(rect);
+      const pixels = image?.toBitmap() ?? Buffer.alloc(0);
+      const seen = new Set<number>();
+      for (let i = 0; i + 3 < pixels.length; i += 4) seen.add(pixels.readUInt32LE(i) & 0xffffff);
+      return seen.size;
+    },
+    {
+      x: Math.round(box.x),
+      y: Math.round(box.y),
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+    },
+  );
+
 const style = (page: Page, selector: string, property: string) =>
   page
     .locator(selector)
@@ -277,6 +298,10 @@ test('the first-time intro: with sound at once, under the title bar, in the wind
     expect(bar && box && Math.round(box.y)).toBe(bar && Math.round(bar.y + bar.height));
     await expect(page.locator('html')).toHaveAttribute('data-frame', 'own');
     expect(await style(page, '.intro', 'border-bottom-left-radius')).toBe('10px');
+    // The koi on screen, not a canvas whose context was lost (a blank tile): the window's pixels.
+    await expect(intro).toHaveAttribute('data-state', 'formed', { timeout: 8_000 });
+    const tile = await intro.locator('canvas').boundingBox();
+    expect(tile && (await colours(app, tile))).toBeGreaterThan(1_000);
     await expect(intro).toHaveCount(0, { timeout: 10_000 });
   } finally {
     first.stop();

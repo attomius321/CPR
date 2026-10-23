@@ -17,6 +17,8 @@ const HOLD_MS = 900;
 const FADE_MS = 450;
 /** Whatever happens (a hidden tab stops its frames), the intro is gone by then. */
 const LONGEST_MS = 12_000;
+/** A lost WebGL context not back by then ends the intro (Chromium gives one back after 1 s). */
+const RESTORE_MS = 2_000;
 
 /**
  * Plays the intro in `overlay` (put up by `startIntro`) and removes it at the end. Without WebGL,
@@ -25,11 +27,10 @@ const LONGEST_MS = 12_000;
  */
 export function playIntro(overlay: HTMLElement): Promise<void> {
   return new Promise((done) => {
-    const canvas = document.createElement('canvas');
-    overlay.append(canvas);
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let intro: KoiIntro | null = null;
     let over = false;
+    let again = true;
     const timers: number[] = [];
 
     const remove = () => {
@@ -60,22 +61,56 @@ export function playIntro(overlay: HTMLElement): Promise<void> {
     overlay.addEventListener('pointerdown', onPointer);
     timers.push(window.setTimeout(() => leave(true), LONGEST_MS));
 
-    KoiIntro.create(canvas, rig as KoiRig, ASSETS, {
-      // Without Web Audio it plays silent; a lost context ends it.
-      onError: (error) => {
-        if (error.code !== 'audio-unavailable') leave(false);
-      },
-    })
-      .then(async (made) => {
-        if (over) return made.destroy();
-        intro = made;
-        intro.setSound(true);
-        overlay.dataset.state = 'playing';
-        await intro.play();
-        if (over) return;
-        overlay.dataset.state = 'formed';
-        timers.push(window.setTimeout(() => leave(true), HOLD_MS));
+    /** The koi on a canvas of their own, from the start. */
+    const start = () => {
+      const canvas = document.createElement('canvas');
+      overlay.append(canvas);
+      let lost = false;
+      // Chromium's GPU process, finding no GL, starts again in software and loses the contexts it
+      // made, even before the engine listens (Xvfb, a VM). Taken, a context comes back a second
+      // later: the koi start again then, on a new canvas, once; a second loss ends the intro.
+      canvas.addEventListener(
+        'webglcontextlost',
+        (event) => {
+          if (over) return;
+          if (!again) return leave(false);
+          again = false;
+          lost = true;
+          event.preventDefault();
+          intro?.destroy();
+          intro = null;
+          overlay.dataset.state = 'loading';
+          const late = window.setTimeout(() => leave(false), RESTORE_MS);
+          timers.push(late);
+          canvas.addEventListener('webglcontextrestored', () => {
+            window.clearTimeout(late);
+            canvas.remove();
+            if (!over) start();
+          });
+        },
+        { once: true },
+      );
+      KoiIntro.create(canvas, rig as KoiRig, ASSETS, {
+        // Without Web Audio it plays silent; any other error ends it.
+        onError: (error) => {
+          if (error.code !== 'audio-unavailable') leave(false);
+        },
       })
-      .catch(() => leave(false));
+        .then(async (made) => {
+          if (over || lost) return made.destroy();
+          intro = made;
+          intro.setSound(true);
+          overlay.dataset.state = 'playing';
+          await intro.play();
+          if (over) return;
+          overlay.dataset.state = 'formed';
+          timers.push(window.setTimeout(() => leave(true), HOLD_MS));
+        })
+        .catch(() => {
+          // A run given up for a lost context: the next one plays.
+          if (!lost) leave(false);
+        });
+    };
+    start();
   });
 }

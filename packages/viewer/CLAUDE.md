@@ -57,7 +57,9 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   map: serve it byte for byte. The e2e harness runs every server with `SYMBIOTE_INTRO=off`;
   `intro.spec.ts` turns it on with a config folder of its own. The app's icon and the favicon are
   the engine's last frame (`scripts/desktop/icon.mjs`): rerun it after changing the engine or
-  its assets.
+  its assets. A WebGL context can be lost before the engine listens (Chromium's GPU process
+  falling back to software: Xvfb, WSL): `play.ts` takes the loss from the canvas's start and
+  plays again on a new canvas; the app turns hardware GL off on WSL (`packages/desktop/src/gpu.ts`).
 - The stylesheet: plain CSS in parts beside what they draw, **listed in cascade order by
   `src/styles.css`**, which `main.tsx` imports after React Flow's stylesheet. At equal
   specificity a later part wins, so a part is added to that list, never imported by its
