@@ -46,8 +46,9 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   await expect(page.locator('.settings-git')).toHaveText(
     "No prompt changed: every agent is told Symbiote's text.",
   );
-  // 14 prompts and Scout's effort.
-  await expect(list(page).getByRole('button')).toHaveCount(15);
+  // 15 prompts (Documents since V40) and Scout's effort.
+  await expect(list(page).getByRole('button')).toHaveCount(16);
+  await expect(entry(page, 'Documents')).toBeVisible();
   // The first is open; each group in its order (Scout's since V35).
   await expect(entry(page, 'Feature')).toHaveAttribute('aria-current', 'true');
   await expect(list(page).getByRole('heading')).toHaveText([

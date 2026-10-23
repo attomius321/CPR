@@ -2,6 +2,7 @@
    and the run side by side where the main area has the room, the run under the brief where not.
    The body scrolls under the head, which keeps Start in view. */
 .start-page {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;

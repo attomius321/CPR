@@ -48,6 +48,14 @@ export const ImageIcon = () => (
   </Icon>
 );
 
+/** A file given with a brief (V40), after lucide's file (ISC). */
+export const FileIcon = () => (
+  <Icon>
+    <path d="M9.5 1.5H4.5A1.5 1.5 0 0 0 3 3v10a1.5 1.5 0 0 0 1.5 1.5h7A1.5 1.5 0 0 0 13 13V5Z" />
+    <path d="M9.5 1.5V4A1 1 0 0 0 10.5 5H13" />
+  </Icon>
+);
+
 /** Help (V37), after lucide's circle-help (ISC): the button a page's or a field's help is behind. */
 export const HelpIcon = () => (
   <Icon>

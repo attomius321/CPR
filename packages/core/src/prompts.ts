@@ -9,6 +9,8 @@ export type PromptKey =
   | `start.${WorkKind}`
   | 'plan.first'
   | 'plan.direct'
+  /** What `{documents}` becomes when the person gave files with the brief (V40). */
+  | 'documents'
   | 'verdict.approve'
   | 'verdict.push'
   | 'verdict.address'
@@ -27,6 +29,7 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'start.spike',
   'plan.first',
   'plan.direct',
+  'documents',
   'verdict.approve',
   'verdict.push',
   'verdict.address',

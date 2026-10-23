@@ -193,6 +193,7 @@ export {
   type WorkspaceAgentState,
   type WorkspaceChanges,
   type WorkspaceCommit,
+  type WorkspaceDocument,
   type WorkspaceFileChange,
   type WorkspaceList,
   type WorkspaceOptions,

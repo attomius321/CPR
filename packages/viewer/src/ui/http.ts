@@ -29,3 +29,14 @@ export async function getJson<T>(path: string): Promise<T> {
   if (!response.ok) throw new Error(await response.text());
   return (await response.json()) as T;
 }
+
+/** A file's bytes as base64, for the server (V36's images, V40's documents). */
+export function fileBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    // A data URL, as asked: its text after the comma.
+    reader.onload = () => resolve((reader.result as string).replace(/^data:[^,]*,/, ''));
+    reader.onerror = () => reject(reader.error ?? new Error(`${file.name} could not be read`));
+    reader.readAsDataURL(file);
+  });
+}

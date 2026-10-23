@@ -304,3 +304,110 @@ test("Start from a History row: the row's commit first, a branch instead when pi
   await from(page).selectOption({ label: `The commit ${short(base)}` });
   await expect(start(page)).toContainText(`From the commit ${short(base)}`);
 });
+
+/** Files as the page gets them from a clipboard or a drop: name, type and their text. */
+type Given = { name: string; type: string; text: string };
+const transfer = (page: Page, files: Given[], text = '') =>
+  page.evaluateHandle(
+    ({ files, text }) => {
+      const data = new DataTransfer();
+      for (const file of files)
+        data.items.add(new File([file.text], file.name, { type: file.type }));
+      if (text) data.setData('text/plain', text);
+      return data;
+    },
+    { files, text },
+  );
+
+test('Documents: chosen, dropped and pasted files go beside the record, and the prompt names each (V40)', async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}start`);
+  const documents = start(page).getByRole('group', { name: /^Documents/ });
+  const rows = documents.getByRole('listitem');
+  await title(page).fill('Read the spec');
+  await goal(page).fill('Build what the spec says.');
+
+  // Chosen with Add files.
+  await documents.getByLabel('Add files').setInputFiles([
+    { name: 'spec.md', mimeType: 'text/markdown', buffer: Buffer.from('# Spec\n') },
+    { name: 'data.json', mimeType: 'application/json', buffer: Buffer.from('{"a":1}\n') },
+  ]);
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText('spec.md7 B');
+  await expect(rows.nth(1)).toContainText('data.json8 B');
+
+  // Dropped anywhere on the page; while dragged over, the page says what a drop does.
+  const dropped = await transfer(page, [{ name: 'notes.txt', type: 'text/plain', text: 'hi' }]);
+  await goal(page).dispatchEvent('dragenter', { dataTransfer: dropped });
+  await goal(page).dispatchEvent('dragover', { dataTransfer: dropped });
+  await expect(start(page).getByText('Drop to add them to the documents')).toBeVisible();
+  await goal(page).dispatchEvent('drop', { dataTransfer: dropped });
+  await expect(start(page).getByText('Drop to add them to the documents')).toBeHidden();
+  await expect(rows.nth(2)).toContainText('notes.txt2 B');
+
+  // A screenshot pasted into the brief; text pastes as text, even beside an image.
+  const paste = async (files: Given[], text = '') => {
+    const clipboardData = await transfer(page, files, text);
+    await goal(page).evaluate(
+      (element, clipboardData) =>
+        element.dispatchEvent(
+          new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }),
+        ),
+      clipboardData,
+    );
+  };
+  await paste([{ name: 'image.png', type: 'image/png', text: 'png' }]);
+  await expect(rows).toHaveCount(4);
+  await expect(rows.nth(3)).toContainText('image.png3 B');
+  await paste([{ name: 'image.png', type: 'image/png', text: 'png' }], 'A1\tB1');
+  await expect(rows).toHaveCount(4);
+
+  // Too large: listed with why, Start waits until it is removed.
+  const startButton = start(page).getByRole('button', { name: 'Start', exact: true });
+  await documents
+    .getByLabel('Add files')
+    .setInputFiles([
+      { name: 'movie.mp4', mimeType: 'video/mp4', buffer: Buffer.alloc((20 << 20) + 1) },
+    ]);
+  await expect(rows.nth(4)).toContainText('movie.mp4Larger than 20 MB.');
+  await expect(startButton).toBeDisabled();
+  await expect(startButton).toHaveAttribute(
+    'title',
+    'movie.mp4 was not added: remove it to start.',
+  );
+  await documents.getByRole('button', { name: 'Remove movie.mp4' }).click();
+  // One taken off is not given.
+  await documents.getByRole('button', { name: 'Remove data.json' }).click();
+  await expect(rows).toHaveCount(3);
+  await expect(startButton).toBeEnabled();
+
+  // Leaving keeps them, as the rest of the form.
+  await title(page).press('Escape');
+  await startLink(page).click();
+  await expect(rows).toHaveCount(3);
+
+  await goal(page).press('Control+Enter');
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fread-the-spec`);
+  const folder = `${symbiote.repo}/symbiote/documents/feature/read-the-spec`;
+  const prompt = symbiote.calls().at(-1)?.args.at(-1) ?? '';
+  expect(prompt).toContain(`in ${folder}:\n\n- spec.md\n- notes.txt\n- image.png\n`);
+  expect(execFileSync('ls', [folder], { encoding: 'utf8' }).trim().split('\n').sort()).toEqual([
+    'image.png',
+    'notes.txt',
+    'spec.md',
+  ]);
+  expect(execFileSync('cat', [`${folder}/spec.md`], { encoding: 'utf8' })).toBe('# Spec\n');
+
+  // The workspace's Brief lists them, and where they are.
+  const workspace = page.getByRole('region', { name: 'Workspace feature/read-the-spec' });
+  await workspace.getByRole('tab', { name: 'Brief' }).click();
+  const listed = workspace.getByRole('region', { name: 'Documents' });
+  await expect(listed).toContainText(`In ${folder}`);
+  await expect(listed.getByRole('listitem')).toHaveText(['spec.md', 'notes.txt', 'image.png']);
+
+  // A start ends them: the next form has none.
+  await startLink(page).click();
+  await expect(rows).toHaveCount(0);
+});

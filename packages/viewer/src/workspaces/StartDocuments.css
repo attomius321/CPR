@@ -1,0 +1,106 @@
+/* The start page's Documents (V40): the files as rows of a list (icon, name, size, ✕), Add files
+   under them, and the frame over the page while files are dragged over it. */
+
+/* One column the field's width: a long name is cut, not the column widened. */
+.start-documents-field {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.start-documents {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--field-line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  list-style: none;
+  font-weight: normal;
+}
+
+.start-documents li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 4px 0 8px;
+  border-radius: 8px;
+  transition: background-color 150ms;
+}
+
+.start-documents li:hover {
+  background: var(--hover);
+}
+
+.start-documents .icon {
+  color: var(--faint);
+}
+
+.start-document-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.start-document-state {
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.start-documents li.failed .start-document-state {
+  color: var(--error);
+}
+
+.start-document-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+}
+
+.start-document-remove:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.start-documents-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+}
+
+.start-documents-hint {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+/* Files dragged over the page: dropped anywhere, they are added. */
+.start-drop {
+  position: absolute;
+  inset: 8px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--edge);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  color: var(--text);
+  font-size: var(--size-body);
+  margin: 0;
+  font-weight: 500;
+  pointer-events: none;
+}

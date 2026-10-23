@@ -1103,7 +1103,7 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
   await expect(part(page, 'What happens')).toHaveValue('');
 });
 
-test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, start from, branch and effort with their help, permission (V24c, V30, V33, V37)', async ({
+test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, start from, branch and effort with their help, permission, documents (V24c, V30, V33, V37, V40)', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -1136,6 +1136,9 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
     startPage(page).getByLabel('Effort', { exact: true }),
     startPage(page).getByLabel('Permission'),
     startPage(page).getByLabel('Plan first and wait for my OK'),
+    // V40: the documents' help, then Add files (its file input is not a stop).
+    startPage(page).getByRole('button', { name: 'About documents' }),
+    startPage(page).getByRole('button', { name: 'Add files' }),
   ]) {
     await page.keyboard.press('Tab');
     await expect(next).toBeFocused();

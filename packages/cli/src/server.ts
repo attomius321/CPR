@@ -32,7 +32,7 @@ import {
 import type { Review, ReviewComment, ReviewEvent } from '@symbiote/forge';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
 import type { OpenRequest, OpenResult } from './editor.js';
-import { WorkspaceRefused, type Workspaces } from './workspaces.js';
+import { MAX_DOCUMENT_BYTES, WorkspaceRefused, type Workspaces } from './workspaces.js';
 import { MergeRefused, type Merger } from './merges.js';
 import { parsePromptChange, PromptRefused, type PromptSettingsService } from './prompts.js';
 import type { UsageService } from './usage.js';
@@ -177,6 +177,9 @@ const FILE_REFUSED = { terminal: 404, outside: 400, missing: 409, editor: 502 } 
 /** Most an image's request may weigh (V36): the image as base64, in its JSON. */
 const MAX_IMAGE_BODY = Math.ceil(MAX_IMAGE_BYTES / 3) * 4 + 1024;
 const IMAGE_TOO_LARGE = `an image of at most ${MAX_IMAGE_BYTES / 2 ** 20} MB`;
+/** Most a document's request may weigh (V40): the file as base64, in its JSON with its name. */
+const MAX_DOCUMENT_BODY = Math.ceil(MAX_DOCUMENT_BYTES / 3) * 4 + 4096;
+const DOCUMENT_TOO_LARGE = `a document of at most ${MAX_DOCUMENT_BYTES / 2 ** 20} MB`;
 
 /**
  * Serves the viewer, `/api/graph` and `/api/source` on localhost only: one graph at `/`
@@ -268,6 +271,20 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           if (req.method === 'GET') return json(res, 200, await workspaces.draft());
           return written(req, res, parseDraft, (draft) =>
             answer(res, () => workspaces.saveDraft(draft).then(() => ({}))),
+          );
+        }
+        if (url.pathname === '/api/workspaces/documents') {
+          // A file for the start (V40), refused before it is read: the page checks the size first.
+          if (Number(req.headers['content-length']) > MAX_DOCUMENT_BODY) {
+            req.resume();
+            return send(res, 413, DOCUMENT_TOO_LARGE);
+          }
+          return written(
+            req,
+            res,
+            parseDocument,
+            ({ name, bytes }) => answer(res, () => workspaces.saveDocument(name, bytes)),
+            MAX_DOCUMENT_BODY,
           );
         }
         if (url.pathname === '/api/workspaces/check') {
@@ -1159,6 +1176,7 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
     agent,
     permissionMode,
     effort,
+    documents,
   } = value;
   if (brief === undefined && kind === undefined) {
     throw new Error('kind: feature, fix, refactor, chore or spike');
@@ -1184,6 +1202,14 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
   }
   if (effort !== undefined && typeof effort !== 'string')
     throw new Error('effort: a level, as high');
+  const isDocument = (d: unknown): d is { id: string; name: string } =>
+    d !== null &&
+    typeof d === 'object' &&
+    typeof (d as { id?: unknown }).id === 'string' &&
+    typeof (d as { name?: unknown }).name === 'string';
+  if (documents !== undefined && !(Array.isArray(documents) && documents.every(isDocument))) {
+    throw new Error('documents: each { id, name }, as kept');
+  }
   return {
     ...(brief === undefined ? {} : { brief }),
     ...(kind === undefined ? {} : { kind: kind as WorkKind }),
@@ -1196,7 +1222,21 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
     ...(agent === undefined ? {} : { agent: agent as AgentKind }),
     ...(permissionMode === undefined ? {} : { permissionMode: permissionMode as PermissionMode }),
     ...(effort === undefined ? {} : { effort }),
+    ...(documents === undefined
+      ? {}
+      : { documents: documents.map(({ id, name }) => ({ id, name })) }),
   };
+}
+
+/** A file for a workspace about to start (V40): `{ name, data }`, the file as base64. */
+function parseDocument(text: string): { name: string; bytes: Buffer } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('expected { name, data }');
+  }
+  if (typeof value.name !== 'string') throw new Error("name: the file's name");
+  if (typeof value.data !== 'string') throw new Error('data: the file, as base64');
+  return { name: value.name, bytes: Buffer.from(value.data, 'base64') };
 }
 
 /** The start page's draft (V24c): any object; what it holds is the page's to read. */

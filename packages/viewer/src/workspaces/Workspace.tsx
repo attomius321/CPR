@@ -18,7 +18,8 @@ import type {
 import { AgentTerminal, toTerminal, type OpenedTerminal } from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import { ChangesPanel } from './ChangesPanel.js';
-import { ChangesIcon } from '../ui/icons.js';
+import { ChangesIcon, FileIcon, ImageIcon } from '../ui/icons.js';
+import { isImageName } from './documents.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { InTitleBar } from '../shell/TitleBar.js';
 import { keyIsTaken } from '../ui/keys.js';
@@ -319,7 +320,16 @@ function Thread({ thread, worktree }: { thread: WorkspaceThread | null; worktree
  * Markdown, as its reports are; as written until the lexer is loaded. Above it, how the agent was
  * started (V30b).
  */
-function Brief({ text, started }: { text: string; started: string | null }) {
+function Brief({
+  text,
+  started,
+  documents,
+}: {
+  text: string;
+  started: string | null;
+  /** The files given with it (V40). */
+  documents: WorkspaceSummary['documents'];
+}) {
   const lexer = useMarkdown();
   return (
     <div className="workspace-brief">
@@ -328,6 +338,23 @@ function Brief({ text, started }: { text: string; started: string | null }) {
         <div className="markdown">{markdownNodes(lexer(text))}</div>
       ) : (
         <div className="workspace-brief-text">{text}</div>
+      )}
+      {documents && (
+        <section className="workspace-documents" aria-label="Documents">
+          <h2>
+            Documents <span className="count">{documents.files.length}</span>
+          </h2>
+          <p className="workspace-documents-folder">
+            In <code>{documents.folder}</code>
+          </p>
+          <ul>
+            {documents.files.map((name) => (
+              <li key={name}>
+                {isImageName(name) ? <ImageIcon /> : <FileIcon />} {name}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );
@@ -691,7 +718,11 @@ function WorkspacePanel({
           </InTitleBar>
           <div className="workspace-body">
             {view === 'brief' && (
-              <Brief text={workspace.brief} started={startedWith(workspace.agent)} />
+              <Brief
+                text={workspace.brief}
+                started={startedWith(workspace.agent)}
+                documents={workspace.documents}
+              />
             )}
             {showTerminal && (
               <div className="workspace-terminal">

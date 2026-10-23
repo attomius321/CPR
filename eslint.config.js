@@ -4,7 +4,16 @@ import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  { ignores: ['**/dist/**', '**/coverage/**', 'packages/*/test/fixtures/**', 'spikes/**'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      'packages/*/test/fixtures/**',
+      'spikes/**',
+      // Files given to a workspace's agent with its brief (V40): the person's, not linted.
+      'symbiote/documents/**',
+    ],
+  },
   js.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
   {
