@@ -5284,3 +5284,35 @@ Merged into main (2026-10-23), asked: "Merge". On `main`: `pnpm check` 1,307 tes
 208 of 210, both failures `shell.spec`'s focus tests (a card's focus, the terminal's size), which
 failed alone at the same rate on `main` before the merge (`241371d`: 1 of 42 runs; after: 1 of
 42, in alternated rounds).
+
+## V41 spike — what a skill is, and what each agent lets a skill writer do (2026-10-23, branch `feature/skill-creator`)
+
+Asked: an agent that creates the project's skills, and editing or adding skills from Symbiote,
+"research before that on how a skill should be created". Read: Anthropic's skill authoring best
+practices, Claude Code's skills and permissions documentation, the agentskills.io specification,
+Codex's skills documentation, and the two skill creators installed here (Anthropic's, synced from
+the person's claude.ai account; Codex's, in `~/.codex/skills/.system/`). Probed in a throwaway
+clone of this repository at `bf0e717`, Claude Code 2.1.309 (`haiku` for the probes), Codex 0.163.
+
+**Learned**:
+- **Codex does not read `.claude/skills/`.** `codex debug prompt-input` (the model's input, no
+  model call) listed none of this repository's 6 skills; with `.agents/skills/viewer-check` a copy,
+  that one; with `.agents/skills` a link to `../.claude/skills`, all 6, by their real path.
+- **Claude Code's `dontAsk` refuses every Write**, whatever approves it: a PreToolUse hook
+  answering `allow`, or an `Edit(<path>/**)` allow rule (a `Write(…)` rule is refused at load:
+  "only Edit(path) rules are" matched). For `.claude/skills/…` and for a plain path alike. The same
+  hook's `allow` let `git log -S'MERGER_ANSWER'` run in `dontAsk`, as Scout's gate does.
+- **`.claude` is protected in Claude Code**: its writes are prompted in `default` and
+  `acceptEdits`, routed to a classifier in `auto`, denied in `dontAsk`, allowed only in
+  `bypassPermissions`; allow rules do not change that. The prompt offers "allow Claude to edit
+  files in this project's .claude folder for this session".
+- **Codex's sandbox can hold a writer to one folder**: `codex exec --sandbox workspace-write -C
+  <clone>/.claude/skills` wrote `probe-codex/SKILL.md` there; `printf 'x' >> <clone>/README.md`
+  failed with "Read-only file system". The cwd is the only writable root (with temporary folders).
+- **This repository's skills** pass `claude plugin validate .claude/skills`; 2 of 6 descriptions
+  hold `<` and `>`, which Anthropic's validator (`quick_validate.py`) and the API refuse.
+- **What both skill creators leave to the project**: where a project's skills live (Codex's
+  writes to `$CODEX_HOME/skills`), the project's own conventions, and the other agent's folder.
+
+Decided with the person: the name Scribe; Scribe writes in the checkout, as Settings writes
+`config.json`; the Codex link offered; personal skills left out. Plan: PLAN.md, V41.
