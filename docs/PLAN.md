@@ -453,6 +453,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V36 ✅ | Images in an agent's terminal | The agent's terminal takes keys and text only: a pasted screenshot reaches the agent as an empty paste, Ctrl+V sends ^V for the agent to read its own machine's clipboard (no `xclip` or `wl-paste` here), a dropped image does nothing. Claude Code 2.1.308 and Codex 0.163 attach an image when its path is pasted (read in their code), as Orca uses them. Merged into main (2026-10-22, from `feature/agent-terminal-accept-images`): a pasted or dropped image saved by the server in Symbiote's cache and its path pasted, the agent's own `[Image #n]`; Ctrl+V the page's paste; with the real Claude Code and Codex through the page, a workspace's and Scout's terminals each sent three images, and the models named their colours. See below. |
 | V37 ✅ | A look that is not dated | Asked: "looks kind of oldish… the help texts should be in a tooltip… the fonts are not good inside inputs", and every page checked for uneven spaces. Audited 35 states, dark and light, at 1×: uneven letter gaps from 0.01em letter-spacing, controls at `normal` spacing and two fields in mono, 3:1 field edges with a heavy focus ring, hover and selection alike, glyphs as icons, help as paragraphs. Merged into main (2026-10-23, from `feature/ui-improvements`): letter-spacing 0, one field recipe with a soft edge, a lighter hover, icons, one head per page, help behind a "?" tooltip; timings as `main`'s; see below. |
 | V38 ✅ | Paths and links in an agent's terminal | Nothing an agent prints in its terminal can be followed: paths and web addresses are text, and an agent's own OSC 8 link gets xterm.js's "This link could potentially be dangerous" `confirm()` and a `window.open` of no use for `file://` (read in xterm.js 6.0.0). Merged into main (2026-10-23, from `feature/clickable-paths-from-agent-terminal`): paths to files in the terminal's folder, checked by the server, web addresses and the agent's own links become links; Ctrl/⌘+click opens the file in VS Code at the line printed, or the address in a new tab. With the real Claude Code (Scout) and Codex (a workspace, its mouse tracking on), every printed file of the folder opened and nothing outside it was linked. See below. |
+| V39 | A first-time intro | Symbiote opens straight onto its pages, and its icon is the graph glyph. Asked: "a first time intro into the app", with the person's koi intro (a WebGL engine, its rig and images): two koi form the S. Measured in Chromium's software WebGL: ready in 65–86 ms, the S at 4.19 s, 60 fps, 0.6 ms of main-thread work a frame. Planned: once per person (recorded by `symbiote view` in Symbiote's config folder: browser storage is per run), sound on from the start, any key or click skips it, Settings plays it again; the final S as the app's icon. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -10027,6 +10028,123 @@ Not verified: the computed styles of states the e2e suite does not reach (e.g. a
 under 900 px with its own narrow rules); there the pair check stands alone, on the className
 literals for classes the suite never showed. Hover states were compared only where a test's
 pointer rested. Firefox and Safari; the desktop app's window beyond what its e2e specs show.
+
+### V39 — A first-time intro: two koi form the S
+
+**Status:** planned (2026-10-23), on branch `feature/first-time-intro` (a workspace started in
+Symbiote, from `main` at `c223db6`); the plan and its three choices OK'd by the person.
+
+**Problem** (asked: "I want a first time intro into the app. You can find everything you need
+here", with `koi-intro.zip`; then, on the plan's choices, "Sound on from the start", "Yes, would
+need an icon as well. we need the final S formation as an icon", and the start page "As you
+recommend"). The zip holds an intro made for Symbiote's new mark: two koi, a white and a black,
+rise out of deep water and lock into an S on a dark rounded tile. A WebGL1 engine
+(`koi-intro.ts`, 1,285 lines, no dependency), its rig (`koi-rig.json`, 40 KB: spines and swim
+paths), five images (450 KB of WebP, one a lossless data map), a splash for a web app's first
+launch, and the Python that made the assets from the icon (the icon itself is not in the zip).
+Symbiote has no intro, and its icon is the graph glyph (`packages/desktop/icons/symbiote.svg`).
+
+Measured with the zip's engine in Playwright's Chromium (headless, WebGL on SwiftShader: software,
+a worst case) at 1440×900, the tile 380 px:
+
+| What | Measured |
+|---|---|
+| Assets loaded and GL ready | 65–86 ms |
+| The S formed | 4,185 and 4,188 ms (its `duration`, 4,200) |
+| Frames | 60 fps: gap median 16.7 ms, p95 16.7–16.8, max 50 (the first) |
+| Main-thread work per frame | 0.6 ms median, 0.9 ms p95 |
+| On a white page (the light theme) | Drawn alike: the tile's corners are transparent |
+| WebGL off (`--disable-webgl`) | `KoiIntroError` `webgl-unavailable`, nothing drawn |
+| Under the repository's TypeScript options | 103 errors, all `noUncheckedIndexedAccess` on typed-array reads; none without that option |
+
+What decides the design:
+- Each `symbiote view` serves a new port, so browser storage is per run (decision 17): the zip's
+  splash keeps "seen" in `localStorage`, which would replay the intro on every run in a browser.
+  The desktop app carries a fixed list of the viewer's keys across runs (`CHOICES`, N1a).
+- Browsers keep audio locked until a click or a key; the app can lift that for its own window.
+- The 200 e2e tests open fresh browser contexts: an intro on every first page would cover them.
+
+**Goal**: the first time a person opens Symbiote on a repository, in the app's window or a
+browser, the koi swim in and form the S, with sound, then the page is there. Once per person;
+Settings plays it again. The S's final frame is the app's icon. **Unchanged**: every page after
+the intro, its first paint (the intro's question is answered in the font wait), the API, `?graph=`
+pages, the e2e suite (the intro off).
+
+#### The record (`packages/cli/src/intro.ts`, `server.ts`)
+
+- `<config>/intro.json` (`{ "seen": "<ISO date>" }`) in Symbiote's config folder: Linux
+  `$XDG_CONFIG_HOME/symbiote` else `~/.config/symbiote`, macOS `~/Library/Application
+  Support/symbiote`, Windows `%APPDATA%\symbiote` — the app's folder (`configDir`,
+  `packages/desktop/src/state.ts`). Written to a temporary file and renamed.
+- `GET /api/intro` → `{ show }`; `POST /api/intro` records it seen (204), under the write rule
+  (JSON, `x-symbiote`, same origin). Absolute, as `/api/history`: one answer for every page of
+  every mode (`symbiote view` with or without revisions, `symbiote pr`).
+- `SYMBIOTE_INTRO=off`: `show` is false and nothing is written (as `SYMBIOTE_USAGE=off`, V29c).
+- `.webp` is served as `image/webp` (today `application/octet-stream`).
+
+#### The page (`packages/viewer/src/intro/`)
+
+- `main.tsx` asks `/api/intro` beside its font wait (both from Symbiote's own server, in
+  milliseconds), never on a `?graph=` page or without an answer within the wait. To show it: an
+  overlay in the theme's `--bg` is put up before the app's first render (no flash of the page),
+  `intro.json` is marked seen, and the intro's chunk is loaded — the engine, the rig and the image
+  URLs, apart from the main bundle. The page renders beneath at once.
+- The tile at `min(62vmin, 380px)`, centred. In the app the title bar stays above it (its buttons
+  and drag strip), and with Symbiote's own frame (N1d) the overlay takes the window's corners.
+- Sound on from the start (asked): the engine's water and the drop as the S locks. In the app,
+  Electron's `autoplayPolicy: 'no-user-gesture-required'` lets it play at once; a browser plays it
+  when it allows audio (after a gesture on the page, e.g. Settings' button).
+- The S forms (4.2 s), holds 0.9 s (the drop's ring), fades in 0.45 s; the sound eases out with
+  it. A click, Escape or any key fades it at once. With reduced motion: the finished S, the hold,
+  no fade. Without WebGL, or an image or the chunk failing: no intro (it counts as seen). A
+  safety stop at 12 s.
+- Settings → Appearance: "Play the intro".
+- The engine as delivered, but for the repository's checks: Prettier, and non-null reads of its
+  typed arrays (`noUncheckedIndexedAccess`). Its final frame is compared, pixel for pixel, with
+  the zip's.
+
+#### The icon (`scripts/desktop/icon.mjs`, `packages/desktop/icons/`)
+
+- `icon.mjs` renders the engine's final frame (reduced motion: the S at rest, the water still)
+  in Chromium and writes `symbiote.png` at 512 px — the window, the taskbar, `symbiote app
+  install`'s launcher entry — and the viewer's favicon. `symbiote.svg` goes; the sidenav's and the
+  start page's 16-unit mark stay (the S does not read at 16 px).
+
+#### Verification
+
+1. **Tests first** (red before): the record (folder by platform, read, write, a broken file,
+   `off`), `/api/intro` (GET, POST under the write rule, 404 without a record); the page's
+   question (`?graph=`, an answer, no answer); `e2e/intro.spec.ts`: plays on a first visit and
+   the page works beneath and after; not on the next; Escape and a click skip it; Settings plays
+   it; no WebGL, no intro; reduced motion, the finished S.
+2. **Nothing else changes**: the e2e harness runs `symbiote view` with `SYMBIOTE_INTRO=off`; the
+   suite and the app's specs as on `main`.
+3. **Viewer**: first paint of `/history` against `main`'s; the time to the overlay on a first
+   visit; screenshots at 1×, dark and light; the main bundle's size.
+4. **The app**: Electron under Xvfb (software GL): frames during the intro, the sound's context
+   running without a gesture, the icon in the window.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| A slow GPU path in the person's window (WSLg) | Measured under software GL; the canvas is capped at the rig's 1,254 px and at 2× pixel ratio |
+| An intro over a page someone came to use | Once per person, skipped by any key or click |
+| Sound where one does not expect it | Asked for; it fades with the intro; reduced motion still plays the drop |
+
+**Proposed decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 259 | Where the intro plays | **The first page `symbiote view` or `symbiote pr` serves, in the app's window or a browser; not the app's start page** | One engine, built by the viewer's Vite. The start page is a file of the app's own with no bundler: it would need the engine built a second time (the person: "As you recommend"). |
+| 260 | Where "seen" is kept | **`intro.json` in Symbiote's config folder, through `/api/intro`** | Browser storage is per origin and each run has its own port (decision 17): the zip's `localStorage` would replay it every run in a browser. Once per person, whichever repository or window. |
+| 261 | Sound | **On from the start; the app lets its window play audio without a gesture** | Asked. Browsers lock audio until a gesture; Electron's `autoplayPolicy` lifts that for Symbiote's own window. |
+| 262 | Ending it | **A click, Escape or any key; Settings plays it again** | 5.6 s once is short, but a page someone came to use must not wait. Settings is how to see it again. |
+| 263 | The engine | **Vendored as delivered, in its own chunk; only what the checks need changed; no still image without WebGL** | Its look is the person's; a final frame compared with the zip's shows nothing else moved. Most visits are not first ones and load none of it. An intro that cannot play is skipped. |
+| 264 | The app's icon | **The engine's final frame at 512 px (`icon.mjs`), and the favicon; the 16-unit mark stays** | Asked: "the final S formation as an icon". The painted koi do not read at 16 px. |
+
+**Not in V39 (later)**: the intro on the app's start page; the S as the sidenav's or the start
+page's mark; the zip's asset builder (it needs the source icon, not in the zip).
 
 ### Phase 1 milestones
 

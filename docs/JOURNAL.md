@@ -5163,3 +5163,30 @@ History's dates and anti-aliasing, as between two shots of `main`. `pnpm check` 
 199 of 200 (`shell.spec`'s keyboard test, flaky on `main`). Not verified: states the e2e suite
 does not reach (the pair check alone there), hovers where no test's pointer rests, Firefox and
 Safari, the desktop app's window.
+
+## V39 spike — the koi intro in Chromium (2026-10-23, branch `feature/first-time-intro`)
+
+Asked: "a first time intro into the app", with `koi-intro.zip`: a WebGL1 engine (`koi-intro.ts`,
+1,285 lines), its rig, five WebP images, a splash for a web app's first launch and the Python that
+made the assets. The engine was read whole before running it: WebGL, Web Audio, and nothing
+fetched but its own images. Run out of the repository (transpiled with the repository's
+TypeScript, the assets served as files) in Playwright's Chromium 1.63, headless, 1440×900.
+
+**Learned**:
+- **It runs as designed on software GL**: SwiftShader (Vulkan, Subzero) keeps 60 fps (frame gap
+  median 16.7 ms, p95 16.7–16.8); the engine's own work is 0.6 ms a frame (p95 0.9): the water is a
+  144×144 grid on the CPU, the koi two meshes of 170×24 vertices. Assets and GL ready in 65–86 ms;
+  the S formed at 4,185–4,188 ms of its 4,200.
+- **The tile's corners are transparent**: on the light theme's white page it is the same dark
+  tile, nothing to redraw per theme.
+- **Without WebGL** (`--disable-webgl`) `create` throws `KoiIntroError` `webgl-unavailable`
+  before drawing anything.
+- **The zip's splash keeps "seen" in `localStorage`**, and each `symbiote view` is a new origin
+  (decision 17): in a browser it would play on every run. The app keeps five viewer keys across
+  runs (`CHOICES`); anything else is lost with the port.
+- **The final frame is not the three layers composited**: the koi cast soft shadows on the floor
+  (`uShadowOn`), so the icon must be the engine's own frame, not a stack of the images.
+- **Under the repository's options** the engine has 103 type errors, all reads of typed arrays
+  under `noUncheckedIndexedAccess`; under `strict` alone, none.
+- The server sends `.webp` as `application/octet-stream` today; the 200 e2e tests each open a
+  fresh browser, where a first-visit intro would cover the page for 5.6 s.
