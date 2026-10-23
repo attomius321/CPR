@@ -453,7 +453,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V36 ✅ | Images in an agent's terminal | The agent's terminal takes keys and text only: a pasted screenshot reaches the agent as an empty paste, Ctrl+V sends ^V for the agent to read its own machine's clipboard (no `xclip` or `wl-paste` here), a dropped image does nothing. Claude Code 2.1.308 and Codex 0.163 attach an image when its path is pasted (read in their code), as Orca uses them. Merged into main (2026-10-22, from `feature/agent-terminal-accept-images`): a pasted or dropped image saved by the server in Symbiote's cache and its path pasted, the agent's own `[Image #n]`; Ctrl+V the page's paste; with the real Claude Code and Codex through the page, a workspace's and Scout's terminals each sent three images, and the models named their colours. See below. |
 | V37 ✅ | A look that is not dated | Asked: "looks kind of oldish… the help texts should be in a tooltip… the fonts are not good inside inputs", and every page checked for uneven spaces. Audited 35 states, dark and light, at 1×: uneven letter gaps from 0.01em letter-spacing, controls at `normal` spacing and two fields in mono, 3:1 field edges with a heavy focus ring, hover and selection alike, glyphs as icons, help as paragraphs. Merged into main (2026-10-23, from `feature/ui-improvements`): letter-spacing 0, one field recipe with a soft edge, a lighter hover, icons, one head per page, help behind a "?" tooltip; timings as `main`'s; see below. |
 | V38 ✅ | Paths and links in an agent's terminal | Nothing an agent prints in its terminal can be followed: paths and web addresses are text, and an agent's own OSC 8 link gets xterm.js's "This link could potentially be dangerous" `confirm()` and a `window.open` of no use for `file://` (read in xterm.js 6.0.0). Merged into main (2026-10-23, from `feature/clickable-paths-from-agent-terminal`): paths to files in the terminal's folder, checked by the server, web addresses and the agent's own links become links; Ctrl/⌘+click opens the file in VS Code at the line printed, or the address in a new tab. With the real Claude Code (Scout) and Codex (a workspace, its mouse tracking on), every printed file of the folder opened and nothing outside it was linked. See below. |
-| V39 | A first-time intro | Symbiote opens straight onto its pages, and its icon is the graph glyph. Asked: "a first time intro into the app", with the person's koi intro (a WebGL engine, its rig and images): two koi form the S. Measured in Chromium's software WebGL: ready in 65–86 ms, the S at 4.19 s, 60 fps, 0.6 ms of main-thread work a frame. Planned: once per person (recorded by `symbiote view` in Symbiote's config folder: browser storage is per run), sound on from the start, any key or click skips it, Settings plays it again; the final S as the app's icon. See below. |
+| V39 | A first-time intro | Symbiote opens straight onto its pages, and its icon is the graph glyph. Asked: "a first time intro into the app", with the person's koi intro (a WebGL engine, its rig and images): two koi form the S. Ready for review (2026-10-23, `feature/first-time-intro`): it plays once per person over the first page `symbiote view` or `symbiote pr` serves (recorded in Symbiote's config folder: browser storage is per run), with sound from the start, any key or a click ends it, Settings plays it again; its last frame is the app's icon and the favicon. In the app it had no WebGL (WSLg has no GL): the app now asks for SwiftShader. 60 fps in the app; History's first paint as `main`'s (52 ms). See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -10031,8 +10031,9 @@ pointer rested. Firefox and Safari; the desktop app's window beyond what its e2e
 
 ### V39 — A first-time intro: two koi form the S
 
-**Status:** planned (2026-10-23), on branch `feature/first-time-intro` (a workspace started in
-Symbiote, from `main` at `c223db6`); the plan and its three choices OK'd by the person.
+**Status:** ready for review (2026-10-23), on branch `feature/first-time-intro` (a workspace
+started in Symbiote, from `main` at `c223db6`); the plan and its three choices OK'd by the person.
+As built and results under "As built (V39)" below.
 
 **Problem** (asked: "I want a first time intro into the app. You can find everything you need
 here", with `koi-intro.zip`; then, on the plan's choices, "Sound on from the start", "Yes, would
@@ -10142,9 +10143,51 @@ pages, the e2e suite (the intro off).
 | 262 | Ending it | **A click, Escape or any key; Settings plays it again** | 5.6 s once is short, but a page someone came to use must not wait. Settings is how to see it again. |
 | 263 | The engine | **Vendored as delivered, in its own chunk; only what the checks need changed; no still image without WebGL** | Its look is the person's; a final frame compared with the zip's shows nothing else moved. Most visits are not first ones and load none of it. An intro that cannot play is skipped. |
 | 264 | The app's icon | **The engine's final frame at 512 px (`icon.mjs`), and the favicon; the 16-unit mark stays** | Asked: "the final S formation as an icon". The painted koi do not read at 16 px. |
+| 265 | WebGL in the app (made while building) | **The app asks Chromium for SwiftShader's WebGL (`enable-unsafe-swiftshader`)** | Without it Symbiote's window had no WebGL on WSLg (`gl=none`) or under Xvfb, and the intro never played where the person uses it. "Unsafe" is for shaders from untrusted pages: the window shows only Symbiote's own (N1a hands anything else to the browser). Where a GPU works, WebGL uses it as before; Playwright's Chromium passes the same switch. |
 
 **Not in V39 (later)**: the intro on the app's start page; the S as the sidenav's or the start
 page's mark; the zip's asset builder (it needs the source icon, not in the zip).
+
+#### As built (V39)
+
+- **WebGL in the app** (not in the plan, decision 265): Electron 44 had none on WSLg (`gl=none`,
+  probed on the person's display with a hidden window) nor under Xvfb; Chromium has fallen back to
+  SwiftShader only on request since 137. Only a spec in the real app showed it: the browser specs
+  ran on Playwright's Chromium, which asks for SwiftShader itself.
+- **Ending it**: any key but a modifier alone (Shift, Ctrl, Alt, Meta…), so a zoom chord's Ctrl
+  does not end it; the key that ends it does nothing else (Escape does not also clear a selection).
+- **The icon** needed the engine itself: the koi cast soft shadows on the floor, so the last frame
+  is not the three layers stacked. `icon.mjs` draws it with reduced motion and reads the canvas in
+  the task that drew it; two runs give the same bytes (`symbiote.png` 292 KB, the favicon 8 KB).
+- **Sound in a browser**: the context is made with the intro and plays where the browser allows
+  audio before a gesture. Playwright's headless Chromium does (the context `running` on a first
+  visit); a desktop browser's autoplay policy may hold it until a click, which ends the intro.
+  Settings' button is a gesture.
+
+**Results**:
+
+- **The engine**: the JavaScript emitted is the zip's but for one `Promise.all`; its last frame at
+  512 px is the zip's engine's, 0 of 1,048,576 channels apart. The images are byte-identical.
+- **The icon is the swim's last frame**: once the engine stops on its own (3.8 s after the S), 0
+  pixels differ from the icon's frame; at 3.5 s the drop's ripple still runs (22,692 pixels, by
+  1–9 levels).
+- **In the app** (Electron 44 under Xvfb, SwiftShader, 1440×900, dark and light): the swim at 60
+  fps, 243–245 frames in 4.06–4.08 s, gap median and p95 16.7 ms, worst 16.8 ms, none over 20 ms;
+  audible with no click; the title bar and its buttons above it; no page errors.
+- **First paint** (`/history` of this repository, Playwright's Chromium, 10 rounds alternated with
+  `main`'s viewer, the intro seen): first contentful paint 52 ms and first rows 94 ms (medians), on
+  both. **A first visit**: the overlay at 41 ms, before the first contentful paint (64 ms): no
+  flash of the page; the koi swim from 133 ms; History's rows beneath at 251 ms.
+- **Size**: the main bundle +1,219 bytes of JS and +337 of CSS; the intro's chunk 65.4 KB (27.8
+  KB gzipped), its images 452 KB, loaded only when it plays.
+- **Tests**: `pnpm check` 1,305 tests in 95 files (15 new: the record, `/api/intro` in both modes,
+  the page's question and keys). e2e 207 of 208 with `intro.spec` (7) and the app's intro test;
+  the one failure, `shell.spec`'s keyboard test, passed 5 of 5 alone (flaky on `main`, as the
+  refactor's journal says).
+
+Not verified: the person's own window (the probe showed no GL and SwiftShader's WebGL there, but
+the intro's frames were measured on Xvfb); sound through a real device (Electron's
+`isCurrentlyAudible` only); a desktop browser's autoplay; macOS and Windows; a machine with a GPU.
 
 ### Phase 1 milestones
 
