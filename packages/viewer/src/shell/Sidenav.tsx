@@ -21,10 +21,18 @@ import {
   ScoutIcon,
   SettingsIcon,
   SidenavIcon,
+  SkillsIcon,
 } from '../ui/icons.js';
 import { mergeState } from '../workspaces/merges.js';
 import { Help } from '../ui/Help.js';
-import { HISTORY_PAGE, hrefOf, SCOUT_PAGE, SETTINGS_PAGE, START_PAGE } from './pages.js';
+import {
+  HISTORY_PAGE,
+  hrefOf,
+  SCOUT_PAGE,
+  SETTINGS_PAGE,
+  SKILLS_PAGE,
+  START_PAGE,
+} from './pages.js';
 import { Resizer } from '../ui/Resizer.js';
 import { nextScoutMark, type ScoutMark } from '../scout/scout.js';
 import { useShell } from './shell-context.js';
@@ -166,6 +174,15 @@ export function Sidenav({
             />
           )}
           <kbd aria-hidden="true">a</kbd>
+        </a>
+        <a
+          href={SKILLS_PAGE}
+          title="Skills: what agents load to work in this repository (i)"
+          aria-current={route?.page === 'skills' ? 'page' : undefined}
+        >
+          <SkillsIcon />
+          <span className="sidenav-label">Skills</span>
+          <kbd aria-hidden="true">i</kbd>
         </a>
         <a
           href={SETTINGS_PAGE}
