@@ -46,11 +46,14 @@ You need git, Node 22.12 or newer and pnpm 12, on macOS or Linux (WSL included).
 ```sh
 git clone https://github.com/attomius321/Symbiote.git
 cd Symbiote
-pnpm install
-pnpm build
-pnpm app:setup    # optional: Symbiote's own window (Electron, ~100 MB); without it, the browser
-alias symbiote="node $PWD/packages/cli/dist/bin.js"   # add this line to your shell profile
+pnpm cli:install   # pnpm install, pnpm build, and the symbiote command in ~/.local/bin
+pnpm app:install   # or: the same, plus Symbiote's own window (Electron, ~100 MB) in your desktop's apps
 ```
+
+Both run again after a `git pull` to rebuild. The command is a two-line script that runs this
+checkout's `packages/cli/dist/bin.js` with the `node` on your `PATH` (`$XDG_BIN_HOME` instead of
+`~/.local/bin` when set; the install says when that folder is not on your `PATH`). Remove it to
+uninstall, and `symbiote app uninstall` for the window.
 
 On Linux, `pnpm install` also compiles `node-pty` for [the agent's terminal](#workspaces-and-agents)
 when python3, make and a C++ compiler are there. Without them it is skipped, and the rest works.
@@ -142,14 +145,14 @@ intro. In a browser the sound plays only where the page may play audio before a 
 
 ### Symbiote's window
 
-With the desktop app set up (`pnpm app:setup`, once: it fetches Electron, ~100 MB), `symbiote view` and
+With the desktop app set up (`pnpm app:install`, or `pnpm app:setup` for Electron alone: ~100 MB), `symbiote view` and
 `symbiote pr` open the viewer in a window of their own, not in a browser tab: its own icon and taskbar
 entry (the S the intro's koi form), no tabs or address bar, the page's name as its title. Without it they open the browser,
 as `--browser` does.
 
 - **Closing the window stops `symbiote view`**, as Ctrl+C does; Ctrl+C closes the window. Agents in
   workspaces keep running either way.
-- **From your desktop's apps**: `symbiote app install`, once, in a terminal where `symbiote` works, adds Symbiote
+- **From your desktop's apps**: `symbiote app install` (part of `pnpm app:install`), once, in a terminal where `symbiote` works, adds Symbiote
   to them for this user (`~/.local/share/applications/symbiote.desktop` and its icon). Opened from
   there, Symbiote shows the last repository it showed, else a start page: open a repository, or one
   of the recent ones. Each repository gets its own window and its own `symbiote view`, which stops

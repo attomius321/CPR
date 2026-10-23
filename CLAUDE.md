@@ -33,6 +33,7 @@ Node ≥ 22.12 (`.nvmrc`: 24), pnpm 12 (`packageManager`). Run from the repo roo
 pnpm install --frozen-lockfile                  # add --offline in a container with the store
 pnpm check                                      # format:check + lint + typecheck + unit tests
 pnpm build                                      # tsc -b + viewer bundle; needed by the CLI, e2e, scripts
+pnpm cli:install                                # install + build + `symbiote` in ~/.local/bin (app:install: + window)
 npx vitest run packages/core/test/compat.test.ts -t "interfaces"   # one file / one test
 pnpm test:e2e                                   # viewer Playwright tests (after pnpm build)
 (cd packages/viewer && npx playwright test e2e/qwik.spec.ts)       # one e2e spec

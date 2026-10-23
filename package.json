@@ -16,7 +16,9 @@
     "test:watch": "vitest",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test",
     "test:e2e": "pnpm --filter @symbiote/viewer run test:e2e",
-    "app:setup": "node packages/desktop/node_modules/electron/install.js"
+    "app:setup": "node packages/desktop/node_modules/electron/install.js",
+    "cli:install": "node scripts/install.mjs",
+    "app:install": "node scripts/install.mjs --app"
   },
   "devDependencies": {
     "@symbiote/plugin-angular": "workspace:*",
