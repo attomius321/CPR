@@ -45,6 +45,9 @@ function startPrompt(kind: WorkKind): string {
     '',
     '{brief}',
     '',
+    // Its line goes when the person gave no files (V40): the prompt is what it was before.
+    '{documents}',
+    '',
     ...(line ? [line, ''] : []),
     '{plan}',
     '',
@@ -107,6 +110,8 @@ A workspace started in Symbiote is a branch with a worktree of its own and a rec
 \`planFirst\`. If you were started on one:
 
 - Work only in its worktree, on its branch.
+- \`documents\` in its record: files the person gave with the brief, in
+  \`symbiote/documents/<branch>/\`. Read them as part of the brief; leave them as they are.
 - With \`planFirst\`, write the plan (what you will change and how you will check it), then stop
   and wait for the person's OK before changing anything.
 - Commit on the branch as you go; say when it is ready for review.
@@ -176,6 +181,11 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
     'First write a plan: what you will change and how you will check it, then stop and wait ' +
     "for the person's OK before changing anything.",
   'plan.direct': "Plan it, build it and check it as the project's own instructions say.",
+  documents:
+    'The person gave you these files with the brief, in {folder}:\n\n{files}\n\n' +
+    'Read them before you start: they are part of the brief. That folder is outside this ' +
+    'worktree, and you can read it. Leave the files there as they are; copy one into the ' +
+    'worktree only if the work needs it in the code.',
   'verdict.approve':
     'Approved the branch {branch} at {at}: Symbiote merges {at} into {into}; do not merge it yourself.',
   'verdict.push': 'Approved the unpushed commits of {branch} up to {at}: they may be pushed.',
@@ -201,6 +211,12 @@ const START_PLACEHOLDERS: PromptPlaceholder[] = [
   { name: 'start', about: 'where it starts: "main at abc1234", or "the commit abc1234"' },
   { name: 'brief', about: "the person's brief, as the start page made it", required: true },
   { name: 'plan', about: 'Plan first or Plan without, as the person chose' },
+  {
+    name: 'documents',
+    about:
+      'Documents, when the person gave files with the brief; else its line goes (added at the ' +
+      'end when a prompt leaves it out)',
+  },
   {
     name: 'into',
     about:
@@ -248,6 +264,22 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     title: 'Plan without',
     about: 'What {plan} becomes in a start prompt otherwise.',
     placeholders: [],
+    max: MAX_LINE,
+  },
+  documents: {
+    group: 'Workspaces',
+    title: 'Documents',
+    about:
+      'What {documents} becomes in a start prompt when the person gave files with the brief, ' +
+      "kept beside the workspace's record; added after a start prompt without {documents}.",
+    placeholders: [
+      {
+        name: 'folder',
+        about: 'the folder holding them, symbiote/documents/<branch>/',
+        required: true,
+      },
+      { name: 'files', about: 'their names, one per line' },
+    ],
     max: MAX_LINE,
   },
   'verdict.approve': {

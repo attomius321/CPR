@@ -1,8 +1,28 @@
 import { spawn } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { constants as fsConstants, existsSync, readFileSync, realpathSync } from 'node:fs';
+import {
+  copyFile,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  rmdir,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
+import {
+  basename,
+  dirname,
+  extname,
+  isAbsolute,
+  join,
+  posix,
+  relative,
+  resolve,
+  sep,
+} from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   addWorktree,
@@ -39,6 +59,7 @@ import {
   type AgentStateName,
   type WorkspaceAgentState,
   type WorkspaceChanges,
+  type WorkspaceDocument,
   type WorkspaceFileChange,
   type WorkspaceList,
   type WorkspaceOptions,
@@ -115,6 +136,11 @@ export interface WorkspaceFile {
   from?: string;
   /** When it was cleaned up (V18c): no longer listed. */
   finished?: string;
+  /**
+   * The files the person gave with the brief (V40), by name, in `symbiote/documents/<branch>/`;
+   * removed at Clean up, their names kept here.
+   */
+  documents?: string[];
   /** What it is for, its name, and the parts `brief` was made of (V24); absent before V24. */
   kind?: WorkKind;
   parts?: BriefParts;
@@ -157,6 +183,43 @@ export const MAX_BRIEF = 20_000;
 
 /** Longest title: a workspace's name in lists and the start of its branch's (V24). */
 export const MAX_TITLE = 200;
+
+/** Most files given with a brief (V40), the most one may weigh (V36's image limit), and all. */
+export const MAX_DOCUMENTS = 20;
+export const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
+export const MAX_DOCUMENTS_BYTES = 100 * 1024 * 1024;
+/** Uploads not started with within a week are removed when the next one is saved (V40). */
+const UPLOADS_KEPT_MS = 7 * 24 * 3600 * 1000;
+/** The names Symbiote gives the uploads it keeps: only those are ever removed. */
+const UPLOAD = /^[0-9a-f]{32}$/;
+/** Longest name a document is given, its extension kept. */
+const MAX_DOCUMENT_NAME = 120;
+
+/**
+ * A file's name as Symbiote keeps it beside a workspace's record (V40): the last part of a path;
+ * control characters and those Windows refuses as dashes; no leading or trailing dots and spaces
+ * (no hidden file, no `.gitignore`); at most 120 characters, the extension kept; `document` when
+ * nothing is left.
+ */
+export function documentName(name: string): string {
+  const last = name.split(/[\\/]/).pop() ?? '';
+  // eslint-disable-next-line no-control-regex
+  const safe = last.replace(/[\u0000-\u001f\u007f:*?"<>|]/g, '-').replace(/^[.\s]+|[.\s]+$/g, '');
+  if (safe === '') return 'document';
+  if (safe.length <= MAX_DOCUMENT_NAME) return safe;
+  const ext = extname(safe).length <= 20 ? extname(safe) : '';
+  return `${safe.slice(0, MAX_DOCUMENT_NAME - ext.length)}${ext}`;
+}
+
+/** `name`, or `name (2).ext`, `name (3).ext`… : the first not in `taken`, which then holds it. */
+function freeName(name: string, taken: Set<string>): string {
+  const ext = extname(name);
+  const stem = name.slice(0, name.length - ext.length);
+  let free = name;
+  for (let n = 2; taken.has(free); n++) free = `${stem} (${n})${ext}`;
+  taken.add(free);
+  return free;
+}
 
 /** Each part's heading in the brief, in the brief's order (V24). */
 const HEADINGS: Record<BriefPart, string> = {
@@ -259,7 +322,7 @@ export class WorkspaceRefused extends Error {
   override name = 'FeatureRefused';
   constructor(
     message: string,
-    readonly status: 400 | 404 | 409 | 502,
+    readonly status: 400 | 404 | 409 | 413 | 502,
   ) {
     super(message);
   }
@@ -299,6 +362,7 @@ export async function readWorkspace(path: string): Promise<WorkspaceFile | null>
     brief: text(v.brief),
     ...(text(v.by) ? { by: text(v.by) } : {}),
     created: text(v.created),
+    ...documentsRead(v.documents),
     ...(text(v.from) ? { from: text(v.from) } : {}),
     ...(text(v.finished) ? { finished: text(v.finished) } : {}),
     ...kindOf(v.kind),
@@ -307,6 +371,16 @@ export async function readWorkspace(path: string): Promise<WorkspaceFile | null>
     ...(text(v.title) ? { title: text(v.title) } : {}),
     worktree: text(v.worktree),
   };
+}
+
+/** The documents' names that are names Symbiote would give (V40); none when there are none. */
+function documentsRead(value: unknown): { documents?: string[] } {
+  if (!Array.isArray(value)) return {};
+  const names = value.filter(
+    (name): name is string =>
+      typeof name === 'string' && name !== '' && documentName(name) === name,
+  );
+  return names.length > 0 ? { documents: names } : {};
 }
 
 function kindOf(value: unknown): { kind?: WorkKind } {
@@ -438,11 +512,31 @@ async function newestTip(repo: GitRepo, refs: RefList, name: string): Promise<st
  */
 export function workspacePrompt(
   workspace: WorkspaceFile,
-  where: { record: string; reviews: string; agents: string; into: string | null },
+  where: {
+    record: string;
+    reviews: string;
+    agents: string;
+    into: string | null;
+    /** Where its documents are (V40). */
+    documents?: string;
+  },
   prompts: Readonly<Record<PromptKey, string>> = DEFAULT_PROMPTS,
 ): string {
   const kind = workspace.kind ?? 'feature';
-  const text = fillPrompt(prompts[`start.${kind}`], {
+  const files = workspace.documents ?? [];
+  // The files the person gave (V40): `{documents}`, else after a prompt that leaves it out. With
+  // none, the line holding `{documents}` goes with the blank line after it.
+  const documents =
+    files.length > 0 && where.documents
+      ? fillPrompt(prompts.documents, {
+          folder: where.documents,
+          files: files.map((name) => `- ${name}`).join('\n'),
+        }).trimEnd()
+      : '';
+  const start = prompts[`start.${kind}`];
+  const template = documents ? start : start.replace(/^\{documents\}(?:\n\n?|$)/m, '');
+  const filled = fillPrompt(template, {
+    documents,
     branch: workspace.branch,
     start: workspace.from
       ? `${workspace.from} at ${workspace.base.slice(0, 7)}`
@@ -456,6 +550,8 @@ export function workspacePrompt(
     agents: where.agents,
     symbiote: dirname(where.agents),
   });
+  const text =
+    documents && !template.includes('{documents}') ? `${filled.trimEnd()}\n\n${documents}` : filled;
   return `${text.trimEnd()}\n`;
 }
 
@@ -1009,6 +1105,11 @@ export interface Workspaces {
    */
   draft(): Promise<Record<string, unknown>>;
   saveDraft(value: Record<string, unknown>): Promise<void>;
+  /**
+   * Keeps a file for a workspace about to start (V40), in Symbiote's cache until a start moves it
+   * beside the record: its ID, the name it will have, its size. Rejects one over 20 MB (413).
+   */
+  saveDocument(name: string, bytes: Uint8Array): Promise<WorkspaceDocument>;
   /** Stops its agent while it works or waits. */
   stopAgent(branch: string): Promise<WorkspaceStart>;
   /**
@@ -1162,6 +1263,96 @@ export function workspaces(
   /** `workspaces.worktrees` is relative to the checkout that holds `symbiote/`. */
   const mainRoot = (where: ReviewPlace) =>
     where.place === 'repository' ? dirname(symbioteFolder(where)) : repo.root;
+  /** Where a workspace's documents go (V40): beside its record, the branch's slashes as folders. */
+  const documentsDir = (where: ReviewPlace, branch: string) =>
+    join(symbioteFolder(where), 'documents', ...branch.split('/'));
+  /** Files uploaded for a workspace about to start (V40), each by its ID. */
+  const uploads = join(cacheDir, 'state', repo.id, 'uploads');
+
+  /** Removes the uploads older than a week; only files Symbiote named. */
+  async function sweepUploads(): Promise<void> {
+    const oldest = now().getTime() - UPLOADS_KEPT_MS;
+    for (const name of await readdir(uploads).catch(() => [] as string[])) {
+      if (!UPLOAD.test(name)) continue;
+      const file = join(uploads, name);
+      const info = await stat(file).catch(() => null);
+      if (info && info.mtimeMs < oldest) await rm(file, { force: true });
+    }
+  }
+
+  /**
+   * A start's documents, checked before anything is made (V40): every upload still kept, none
+   * twice, at most 20 and 100 MB in all; each with the name it will have.
+   */
+  async function uploadsOf(
+    asked: WorkspaceRequest['documents'],
+  ): Promise<{ from: string; name: string }[]> {
+    if (!asked || asked.length === 0) return [];
+    if (asked.length > MAX_DOCUMENTS) {
+      throw new WorkspaceRefused(`at most ${MAX_DOCUMENTS} files with a brief`, 400);
+    }
+    const seen = new Set<string>();
+    const kept: { from: string; name: string }[] = [];
+    let total = 0;
+    for (const { id, name } of asked) {
+      if (!UPLOAD.test(id)) throw new WorkspaceRefused(`not a document: ${id}`, 400);
+      const named = documentName(name);
+      if (seen.has(id)) throw new WorkspaceRefused(`${named} is given twice`, 400);
+      seen.add(id);
+      const from = join(uploads, id);
+      const info = await stat(from).catch(() => null);
+      if (!info?.isFile()) {
+        throw new WorkspaceRefused(`${named} is no longer kept: add it again`, 400);
+      }
+      total += info.size;
+      kept.push({ from, name: named });
+    }
+    if (total > MAX_DOCUMENTS_BYTES) {
+      throw new WorkspaceRefused(
+        `at most ${MAX_DOCUMENTS_BYTES / 2 ** 20} MB of files with a brief`,
+        400,
+      );
+    }
+    return kept;
+  }
+
+  /** Moves a start's uploads into `folder` under their names, a taken one numbered; the names. */
+  async function placeDocuments(
+    folder: string,
+    files: { from: string; name: string }[],
+  ): Promise<string[]> {
+    await mkdir(folder, { recursive: true });
+    const taken = new Set<string>();
+    const names: string[] = [];
+    for (const { from, name } of files) {
+      const to = join(folder, freeName(name, taken));
+      try {
+        await rename(from, to);
+      } catch (error) {
+        // The cache on another file system than the repository.
+        if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
+        await copyFile(from, to, fsConstants.COPYFILE_EXCL);
+        await rm(from, { force: true });
+      }
+      names.push(basename(to));
+    }
+    return names;
+  }
+
+  /** Removes a workspace's documents, and the folders left empty above them up to `documents/`. */
+  async function removeDocuments(where: ReviewPlace, branch: string): Promise<void> {
+    const top = join(symbioteFolder(where), 'documents');
+    let folder = documentsDir(where, branch);
+    await rm(folder, { recursive: true, force: true });
+    while (folder !== top && folder.startsWith(top)) {
+      folder = dirname(folder);
+      const removed = await rmdir(folder).then(
+        () => true,
+        () => false,
+      );
+      if (!removed) break;
+    }
+  }
 
   /**
    * Symbiote's settings file, written when its text differs (Symbiote moved) or it is gone: a
@@ -1262,6 +1453,14 @@ export function workspaces(
       ahead,
       merged,
       agent,
+      ...(workspace.documents
+        ? {
+            documents: {
+              folder: documentsDir(where, workspace.branch),
+              files: workspace.documents,
+            },
+          }
+        : {}),
       ...(acted ? { lastAction: acted } : {}),
     };
   }
@@ -1299,6 +1498,7 @@ export function workspaces(
         reviews: join(where.dir, ...workspace.branch.split('/')),
         agents: where.agents,
         into: await defaultBranch(repo, await listRefs(repo)),
+        documents: documentsDir(where, workspace.branch),
       },
       readPrompts(root).text,
     );
@@ -1832,6 +2032,12 @@ export function workspaces(
         worktrees: join(dirname(worktreeFolder(mainRoot(where), 'x', worktrees)), '<branch>'),
         agents,
         maxBrief: MAX_BRIEF,
+        documents: {
+          folder: join(symbioteFolder(where), 'documents', '<branch>'),
+          maxFiles: MAX_DOCUMENTS,
+          maxBytes: MAX_DOCUMENT_BYTES,
+          maxTotal: MAX_DOCUMENTS_BYTES,
+        },
       };
     },
 
@@ -1874,6 +2080,7 @@ export function workspaces(
         );
       }
       const effort = await effortFor(agent, request.effort);
+      const documents = await uploadsOf(request.documents);
       const refs = await listRefs(repo);
       const problem = await branchNameProblem(repo, request.branch, refs);
       if (problem) {
@@ -1909,6 +2116,13 @@ export function workspaces(
       const where = await place();
       const folder = worktreeFolder(mainRoot(where), request.branch, config().worktrees);
       if (existsSync(folder)) throw new WorkspaceRefused(`${folder} exists`, 409);
+      const papers = documentsDir(where, request.branch);
+      if (documents.length > 0 && (await readdir(papers).catch(() => [])).length > 0) {
+        throw new WorkspaceRefused(
+          `${papers} holds files of an earlier workspace: move or remove them first`,
+          409,
+        );
+      }
       try {
         await addWorktree(repo, { folder, branch: request.branch, base: base.sha });
       } catch (error) {
@@ -1928,6 +2142,8 @@ export function workspaces(
         worktree: folder,
       };
       await prepareSymbioteFolder(where, { text: readPrompts(root).text.reviews });
+      // After the folder's .gitignore: the documents are never seen by git (V40).
+      if (documents.length > 0) workspace.documents = await placeDocuments(papers, documents);
       const prompt = await launch(where, workspace, agent, permissionMode, effort);
       return started(where, workspace, prompt);
     },
@@ -1977,6 +2193,17 @@ export function workspaces(
       const temp = `${draftFile}.${process.pid}.tmp`;
       await writeFile(temp, `${JSON.stringify(value)}\n`);
       await rename(temp, draftFile);
+    },
+
+    async saveDocument(name, bytes) {
+      if (bytes.length > MAX_DOCUMENT_BYTES) {
+        throw new WorkspaceRefused(`a document of at most ${MAX_DOCUMENT_BYTES / 2 ** 20} MB`, 413);
+      }
+      await mkdir(uploads, { recursive: true, mode: 0o700 });
+      await sweepUploads();
+      const id = randomBytes(16).toString('hex');
+      await writeFile(join(uploads, id), bytes, { mode: 0o600, flag: 'wx' });
+      return { id, name: documentName(name), size: bytes.length };
     },
 
     async check(at) {
@@ -2297,6 +2524,8 @@ export function workspaces(
         if (error instanceof WorktreeRefused) throw new WorkspaceRefused(error.message, 409);
         throw error;
       }
+      // Its documents go with its worktree; the record keeps their names (V40).
+      if (workspace.documents) await removeDocuments(where, workspace.branch);
       workspace.finished = now().toISOString();
       await save(where, workspace);
       return { finished: workspace.finished };

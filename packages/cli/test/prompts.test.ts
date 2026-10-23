@@ -84,8 +84,16 @@ describe('with no prompts set (V28)', () => {
     const text = readPrompts(folder()).text;
     expect(MERGER_INSTRUCTIONS).toBe(BEFORE.merger);
     expect(mergerInstructions(text.merger)).toBe(BEFORE.merger);
-    expect(AGENTS).toBe(BEFORE.agents);
-    expect(agentsFile(text.reviews)).toBe(BEFORE.agents);
+    // Since V40, one line on a workspace's documents.
+    const agents = BEFORE.agents.replace(
+      '- Work only in its worktree, on its branch.\n',
+      '- Work only in its worktree, on its branch.\n' +
+        '- `documents` in its record: files the person gave with the brief, in\n' +
+        '  `symbiote/documents/<branch>/`. Read them as part of the brief; leave them as they are.\n',
+    );
+    expect(agents).not.toBe(BEFORE.agents);
+    expect(AGENTS).toBe(agents);
+    expect(agentsFile(text.reviews)).toBe(agents);
     expect(BEFORE.verdicts).toHaveLength(8);
     for (const { info, reviewer, verdict, where, text: before } of BEFORE.verdicts) {
       expect(verdictText(info, reviewer, verdict, where, text)).toBe(before);
@@ -306,7 +314,15 @@ describe('promptSettingsService', () => {
       ...kinds.map((k) => k[0]!.toUpperCase() + k.slice(1)),
       'Plan first',
       'Plan without',
+      'Documents',
     ]);
+    // What {documents} becomes (V40): its folder is required, the files' names are not.
+    const documents = first.prompts.find((p) => p.key === 'documents');
+    expect(documents?.placeholders.map((p) => [p.name, p.required ?? false])).toEqual([
+      ['folder', true],
+      ['files', false],
+    ]);
+    expect(fix?.placeholders.map((p) => p.name)).toContain('documents');
 
     const saved = await settings.setPrompt({
       key: 'start.fix',

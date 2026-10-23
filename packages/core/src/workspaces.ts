@@ -127,6 +127,8 @@ export interface WorkspaceSummary {
   /** Its commits are all in the default branch. */
   merged: boolean;
   agent: WorkspaceAgentState;
+  /** The files the person gave with the brief (V40): the folder holding them, and their names. */
+  documents?: { folder: string; files: string[] };
   /**
    * When its agent last acted (V23): its thread's newest report or question, else when it last
    * started; absent when no agent was found.
@@ -227,6 +229,11 @@ export interface WorkspaceOptions {
   agents: AgentOption[];
   /** Longest brief accepted. */
   maxBrief: number;
+  /**
+   * Where the files given with the brief go (V40), `<branch>` standing for the branch's folders;
+   * how many, how large each, and all together, in bytes.
+   */
+  documents: { folder: string; maxFiles: number; maxBytes: number; maxTotal: number };
 }
 
 /** A branch a workspace can start from (V33). */
@@ -292,6 +299,15 @@ export interface WorkspaceRequest {
   permissionMode?: PermissionMode;
   /** The agent's effort level for its session (V30b), one of its `efforts`; its own when absent. */
   effort?: string;
+  /** Files to give the agent with the brief (V40), each kept by `POST /api/workspaces/documents`. */
+  documents?: { id: string; name: string }[];
+}
+
+/** A file kept for a workspace about to start (V40): its ID, the name it will have, its size. */
+export interface WorkspaceDocument {
+  id: string;
+  name: string;
+  size: number;
 }
 
 /** A workspace just made or restarted, with the prompt its agent was given (to copy). */

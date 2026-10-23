@@ -1,10 +1,14 @@
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   renameSync,
   rmSync,
+  statSync,
+  truncateSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -23,6 +27,8 @@ import {
   agentState,
   briefOf,
   claudeCode,
+  documentName,
+  MAX_DOCUMENT_BYTES,
   workspaceBase,
   workspacePath,
   workspacePrompt,
@@ -44,6 +50,7 @@ import {
   type Run,
 } from '../src/workspaces.js';
 import { reviewPlace } from '../src/reviews.js';
+import { DEFAULT_PROMPTS } from '../src/prompts.js';
 import type { Terminals } from '../src/terminal.js';
 import type { Codex } from '../src/codex.js';
 import { codexServer } from '../src/app-server.js';
@@ -160,6 +167,47 @@ describe('workspacePath and serializeWorkspace', () => {
     expect(read?.kind).toBeUndefined();
     expect(read?.title).toBeUndefined();
     expect(read?.parts).toEqual({ happens: 'H' });
+  });
+
+  it("reads a record's documents (V40): names only, none when empty", async () => {
+    const dir = tempDir();
+    folders.push(dir);
+    const path = workspacePath(dir, 'feature/csv');
+    mkdirSync(dirname(path), { recursive: true });
+    const given = record({ documents: ['spec.pdf', 'shot.png'] });
+    writeFileSync(path, serializeWorkspace(given));
+    expect(await readWorkspace(path)).toEqual(given);
+    writeFileSync(
+      path,
+      serializeWorkspace({ ...given, documents: ['spec.pdf', 3, '', '../x'] as never }),
+    );
+    expect((await readWorkspace(path))?.documents).toEqual(['spec.pdf']);
+    writeFileSync(path, serializeWorkspace({ ...given, documents: [] }));
+    expect(await readWorkspace(path)).toEqual(record());
+  });
+});
+
+describe('documentName (V40)', () => {
+  it('keeps a name that is safe as a file name in one folder, on any system', () => {
+    expect(documentName('shot.png')).toBe('shot.png');
+    expect(documentName('Screenshot 2026-10-23 at 21.04.png')).toBe(
+      'Screenshot 2026-10-23 at 21.04.png',
+    );
+    // The last part of a path, whichever its separators.
+    expect(documentName('C:\\Users\\ada\\spec.pdf')).toBe('spec.pdf');
+    expect(documentName('../../etc/passwd')).toBe('passwd');
+    // Characters Windows refuses, and control characters, as dashes.
+    expect(documentName('a:b*c?"<d>|.txt')).toBe('a-b-c---d--.txt');
+    expect(documentName('line\nbreak\u0000.txt')).toBe('line-break-.txt');
+    // No hidden file (nor one named .gitignore), no name ending in a dot or a space.
+    expect(documentName('.gitignore')).toBe('gitignore');
+    expect(documentName('  notes.md. ')).toBe('notes.md');
+    expect(documentName('')).toBe('document');
+    expect(documentName('...')).toBe('document');
+    // At most 120 characters, the extension kept.
+    const long = documentName(`${'x'.repeat(200)}.json`);
+    expect(long).toHaveLength(120);
+    expect(long.endsWith('x.json')).toBe(true);
   });
 });
 
@@ -312,6 +360,40 @@ describe('workspacePrompt', () => {
     const spike = workspacePrompt(record({ kind: 'spike', title: 'T' }), where);
     expect(spike).not.toMatch(/Commit your work/);
     expect(spike).toMatch(/Commit nothing unless the brief asks for it/);
+  });
+
+  it('names the documents and their folder after the brief, saying the folder can be read (V40)', () => {
+    const folder = '/work/app/symbiote/documents/feature/csv';
+    const given = record({ documents: ['spec.pdf', 'shot (2).png'] });
+    const text = workspacePrompt(given, { ...where, documents: folder });
+    expect(text).toContain(`in ${folder}:\n\n- spec.pdf\n- shot (2).png\n\n`);
+    expect(text).toMatch(/outside this worktree, and you can read it/);
+    expect(text.indexOf('Export a review as CSV')).toBeLessThan(text.indexOf(folder));
+    expect(text.indexOf(folder)).toBeLessThan(text.indexOf('First write a plan'));
+    // Without documents, nothing of them; their folder alone changes nothing.
+    expect(workspacePrompt(record(), { ...where, documents: folder })).toBe(
+      workspacePrompt(record(), where),
+    );
+    expect(workspacePrompt(record(), where)).not.toMatch(/documents|you can read it/);
+  });
+
+  it("adds the documents after a project's start prompt that leaves {documents} out (V40)", () => {
+    const folder = '/work/app/symbiote/documents/feature/csv';
+    const prompts = {
+      ...DEFAULT_PROMPTS,
+      'start.feature': 'Build {brief} on {branch}.',
+      documents: 'Files in {folder}: {files}',
+    };
+    const given = record({ documents: ['spec.pdf'] });
+    expect(workspacePrompt(given, { ...where, documents: folder }, prompts)).toBe(
+      `Build Export a review as CSV on feature/csv.\n\nFiles in ${folder}: - spec.pdf\n`,
+    );
+    // Where it holds {documents}, there; without documents, nothing there.
+    const placed = { ...prompts, 'start.feature': '{brief}\n\n{documents}\n\nGo.' };
+    expect(workspacePrompt(given, { ...where, documents: folder }, placed)).toBe(
+      `Export a review as CSV\n\nFiles in ${folder}: - spec.pdf\n\nGo.\n`,
+    );
+    expect(workspacePrompt(record(), where, placed)).toBe('Export a review as CSV\n\nGo.\n');
   });
 });
 
@@ -662,6 +744,13 @@ describe('workspaces', () => {
         },
       ],
       maxBrief: 20000,
+      // Where documents go, and how many (V40).
+      documents: {
+        folder: join(repo.root, 'symbiote', 'documents', '<branch>'),
+        maxFiles: 20,
+        maxBytes: 20 << 20,
+        maxTotal: 100 << 20,
+      },
     });
     // The kinds as the dialog offers them (V24): each one's parts in the brief's order.
     expect(
@@ -746,6 +835,138 @@ describe('workspaces', () => {
     // The agents' instructions and the folder's .gitignore, as for reviews.
     expect(existsSync(join(repo.root, 'symbiote', 'AGENTS.md'))).toBe(true);
     expect(existsSync(join(repo.root, 'symbiote', '.gitignore'))).toBe(true);
+  });
+
+  /** Where a repository's uploads wait for their workspace (V40). */
+  const uploadsOf = async (repo: TestRepo) =>
+    join(cache, 'state', (await openRepo(repo.root)).id, 'uploads');
+
+  it('keeps a document for a workspace about to start: in the cache, its name made safe (V40)', async () => {
+    const { repo } = fresh();
+    const s = await service(repo, fakeClaude().claude);
+    const bytes = Buffer.from('%PDF-1.7 spec');
+    const saved = await s.saveDocument('C:\\Users\\ada\\spec?.pdf', bytes);
+    expect(saved).toEqual({
+      id: expect.stringMatching(/^[0-9a-f]{32}$/) as string,
+      name: 'spec-.pdf',
+      size: bytes.length,
+    });
+    const uploads = await uploadsOf(repo);
+    expect(readFileSync(join(uploads, saved.id))).toEqual(bytes);
+    // The person's only: the folder 0700, the file 0600, as V36's images.
+    expect(statSync(uploads).mode & 0o777).toBe(0o700);
+    expect(statSync(join(uploads, saved.id)).mode & 0o777).toBe(0o600);
+    // Nothing in the repository yet.
+    expect(existsSync(join(repo.root, 'symbiote', 'documents'))).toBe(false);
+    // Too large: refused, nothing kept.
+    const big = Buffer.alloc(MAX_DOCUMENT_BYTES + 1);
+    await expect(s.saveDocument('big.bin', big)).rejects.toMatchObject({ status: 413 });
+    expect(readdirSync(uploads)).toEqual([saved.id]);
+    // Kept a week: an older one goes when the next is saved; anything else there stays.
+    const old = join(uploads, 'f'.repeat(32));
+    writeFileSync(old, 'old');
+    const eightDays = (NOW.getTime() - 8 * 24 * 3600 * 1000) / 1000;
+    utimesSync(old, eightDays, eightDays);
+    utimesSync(join(uploads, saved.id), NOW.getTime() / 1000, NOW.getTime() / 1000);
+    writeFileSync(join(uploads, 'notes.txt'), 'not ours');
+    utimesSync(join(uploads, 'notes.txt'), eightDays, eightDays);
+    const next = await s.saveDocument('shot.png', Buffer.from('png'));
+    expect(readdirSync(uploads).sort()).toEqual([saved.id, next.id, 'notes.txt'].sort());
+  });
+
+  it('starts a workspace with documents: moved beside its record, named in its prompt, kept by the record (V40)', async () => {
+    const { repo } = fresh();
+    const { claude, start } = fakeClaude();
+    const s = await service(repo, claude);
+    const png = Buffer.from('89504e470d0a1a0a', 'hex');
+    const spec = await s.saveDocument('spec.md', Buffer.from('# Spec\n'));
+    const again = await s.saveDocument('spec.md', Buffer.from('# Spec, older\n'));
+    const shot = await s.saveDocument('shot.png', png);
+    const { workspace, prompt } = await s.start({
+      brief: 'Export a review as CSV',
+      branch: 'feature/csv',
+      planFirst: true,
+      documents: [spec, again, shot].map(({ id, name }) => ({ id, name })),
+    });
+    const folder = join(repo.root, 'symbiote', 'documents', 'feature', 'csv');
+    const files = ['spec.md', 'spec (2).md', 'shot.png'];
+    expect(readdirSync(folder).sort()).toEqual([...files].sort());
+    expect(readFileSync(join(folder, 'spec.md'), 'utf8')).toBe('# Spec\n');
+    expect(readFileSync(join(folder, 'spec (2).md'), 'utf8')).toBe('# Spec, older\n');
+    expect(readFileSync(join(folder, 'shot.png'))).toEqual(png);
+    // Moved, not copied: the uploads are gone.
+    expect(readdirSync(await uploadsOf(repo))).toEqual([]);
+    // Out of the worktree and out of git: neither checkout has anything to commit.
+    expect(repo.git('status', '--porcelain')).toBe('');
+    expect(repo.git('-C', workspace.worktree.path, 'status', '--porcelain')).toBe('');
+    expect(workspace.documents).toEqual({ folder, files });
+    for (const name of files) expect(prompt).toContain(`- ${name}\n`);
+    expect(prompt).toContain(folder);
+    expect(start.mock.calls[0]?.[0].prompt).toBe(prompt);
+    const saved = JSON.parse(
+      readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'csv.json'), 'utf8'),
+    ) as WorkspaceFile;
+    expect(saved.documents).toEqual(files);
+    // Its agent started again is told the same; the prompt to copy too.
+    expect((await s.startAgent('feature/csv')).prompt).toBe(prompt);
+    expect(await s.prompt('feature/csv')).toBe(prompt);
+    expect((await s.list()).workspaces[0]?.documents).toEqual({ folder, files });
+    // Without documents: no folder, nothing in the summary.
+    const plain = await s.start({ brief: 'Two', branch: 'feature/two', planFirst: false });
+    expect(plain.workspace.documents).toBeUndefined();
+    expect(existsSync(join(repo.root, 'symbiote', 'documents', 'feature', 'two'))).toBe(false);
+  });
+
+  it('refuses documents it cannot take, before making the branch (V40)', async () => {
+    const { repo } = fresh();
+    const s = await service(repo, fakeClaude().claude);
+    const doc = await s.saveDocument('spec.md', Buffer.from('# Spec\n'));
+    const uploads = await uploadsOf(repo);
+    /** Uploads of `size` bytes each, written sparse. */
+    const sized = (count: number, size: number) =>
+      Array.from({ length: count }, (_, i) => {
+        const id = i.toString(16).padStart(32, 'a');
+        writeFileSync(join(uploads, id), '');
+        truncateSync(join(uploads, id), size);
+        return { id, name: `part ${i}.bin` };
+      });
+    const request = { brief: 'One', branch: 'feature/one', planFirst: false };
+    const cases: [NonNullable<WorkspaceRequest['documents']>, number, RegExp][] = [
+      [
+        [{ id: 'b'.repeat(32), name: 'gone.pdf' }],
+        400,
+        /gone\.pdf is no longer kept: add it again/,
+      ],
+      [[{ id: '../x', name: 'x' }], 400, /not a document/],
+      [
+        [
+          { id: doc.id, name: 'a' },
+          { id: doc.id, name: 'b' },
+        ],
+        400,
+        /twice/,
+      ],
+      [sized(21, 1), 400, /at most 20 files/],
+      [sized(6, 18 << 20), 400, /at most 100 MB/],
+    ];
+    for (const [documents, status, words] of cases) {
+      await expect(s.start({ ...request, documents })).rejects.toMatchObject({
+        status,
+        message: expect.stringMatching(words) as string,
+      });
+    }
+    // A folder still holding files of an earlier workspace on that branch name.
+    const left = join(repo.root, 'symbiote', 'documents', 'feature', 'one');
+    mkdirSync(left, { recursive: true });
+    writeFileSync(join(left, 'old.md'), 'old');
+    await expect(
+      s.start({ ...request, documents: [{ id: doc.id, name: 'spec.md' }] }),
+    ).rejects.toMatchObject({ status: 409, message: expect.stringContaining(left) as string });
+    expect(repo.git('branch', '--list', 'feature/one')).toBe('');
+    expect(existsSync(worktreeFolder(repo.root, 'feature/one'))).toBe(false);
+    expect(readFileSync(join(left, 'old.md'), 'utf8')).toBe('old');
+    // The upload is still there for the next try.
+    expect(existsSync(join(uploads, doc.id))).toBe(true);
   });
 
   it('starts at a picked commit, without `from`', async () => {
@@ -1699,17 +1920,26 @@ describe('workspaces', () => {
     const { repo } = fresh();
     const { claude, remove } = fakeClaude();
     const s = await service(repo, claude);
-    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    const doc = await s.saveDocument('spec.md', Buffer.from('# Spec\n'));
+    const { workspace } = await s.start({
+      brief: 'One',
+      branch: 'feature/one',
+      planFirst: false,
+      documents: [{ id: doc.id, name: doc.name }],
+    });
     await commitIn(workspace.worktree.path, 'src/c.ts', 'export const c = 1;\n');
     repo.git('merge', '--quiet', '--ff-only', 'feature/one');
     await s.clean({ branch: 'feature/one' });
     expect(remove).toHaveBeenCalledWith('s1');
     expect(existsSync(workspace.worktree.path)).toBe(false);
+    // Its documents go with it (V40); the record keeps their names.
+    expect(existsSync(join(repo.root, 'symbiote', 'documents', 'feature', 'one'))).toBe(false);
     expect(repo.git('branch', '--list', 'feature/one')).toBe('');
     const saved = JSON.parse(
       readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'one.json'), 'utf8'),
     ) as WorkspaceFile;
     expect(saved.finished).toBe(NOW.toISOString());
+    expect(saved.documents).toEqual(['spec.md']);
     expect((await s.list()).workspaces).toEqual([]);
   });
 

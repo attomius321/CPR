@@ -1121,8 +1121,15 @@ describe('symbiote view: workspaces (V18)', () => {
     worktrees: '/work/app.worktrees/<branch>',
     agents: [{ kind: 'claude', command: '/usr/bin/claude', permissionMode: 'default' }],
     maxBrief: 20000,
+    documents: {
+      folder: '/work/app/symbiote/documents/<branch>',
+      maxFiles: 20,
+      maxBytes: 20 << 20,
+      maxTotal: 100 << 20,
+    },
   };
   const started: WorkspaceRequest[] = [];
+  const uploads: { name: string; bytes: Buffer }[] = [];
   const drafts: Record<string, unknown>[] = [];
   const restarted: string[] = [];
   /** While set, a start waits for it. */
@@ -1145,6 +1152,10 @@ describe('symbiote view: workspaces (V18)', () => {
       branch === 'feature/csv'
         ? Promise.resolve('Build it.')
         : Promise.reject(new WorkspaceRefused(`no workspace ${branch}`, 404)),
+    saveDocument: (name, bytes) => {
+      uploads.push({ name, bytes: Buffer.from(bytes) });
+      return Promise.resolve({ id: 'd'.repeat(32), name: `${name}!`, size: bytes.length });
+    },
     draft: () => Promise.resolve(drafts.at(-1) ?? {}),
     saveDraft: (value) => {
       drafts.push(value);
@@ -1317,6 +1328,60 @@ describe('symbiote view: workspaces (V18)', () => {
       { branch: 'fix/dates', planFirst: false },
     ]) {
       expect((await post('/api/workspaces', body)).status, JSON.stringify(body)).toBe(400);
+    }
+    expect(started.length).toBe(before);
+  });
+
+  it('keeps a document for the start, as base64 under the write rule; at most 20 MB (V40)', async () => {
+    const bytes = Buffer.from('%PDF-1.7 spec');
+    const ok = await post('/api/workspaces/documents', {
+      name: 'spec.pdf',
+      data: bytes.toString('base64'),
+    });
+    expect(ok.status).toBe(200);
+    // The workspaces' answer, with the name they made safe.
+    expect(await ok.json()).toEqual({ id: 'd'.repeat(32), name: 'spec.pdf!', size: bytes.length });
+    expect(uploads.at(-1)).toEqual({ name: 'spec.pdf', bytes });
+    // An empty file is a file.
+    expect((await post('/api/workspaces/documents', { name: 'empty.txt', data: '' })).status).toBe(
+      200,
+    );
+    expect(uploads.at(-1)?.bytes.length).toBe(0);
+
+    const before = uploads.length;
+    for (const body of [{}, { name: 'a' }, { data: 'AA==' }, { name: 3, data: 'AA==' }, []]) {
+      const refused = await post('/api/workspaces/documents', body);
+      expect(refused.status, JSON.stringify(body)).toBe(400);
+    }
+    // Over 20 MB: refused before it is read.
+    const big = await post('/api/workspaces/documents', {
+      name: 'big',
+      data: 'A'.repeat(28 << 20),
+    });
+    expect(big.status).toBe(413);
+    expect(await big.text()).toBe('a document of at most 20 MB');
+    const data = bytes.toString('base64');
+    const headers: Record<string, string>[] = [
+      { 'x-symbiote': '' },
+      { origin: 'https://attacker.example' },
+    ];
+    for (const header of headers) {
+      expect((await post('/api/workspaces/documents', { name: 'a', data }, header)).status).toBe(
+        403,
+      );
+    }
+    expect((await get('/api/workspaces/documents')).status).toBe(405);
+    expect(uploads.length).toBe(before);
+  });
+
+  it("passes a start's documents on: each an id and a name (V40)", async () => {
+    const documents = [{ id: 'd'.repeat(32), name: 'spec.pdf' }];
+    expect((await post('/api/workspaces', { ...request, documents })).status).toBe(200);
+    expect(started.at(-1)).toEqual({ ...request, documents });
+    const before = started.length;
+    for (const bad of ['spec.pdf', [{ id: 3, name: 'a' }], [{ id: 'x' }], [null]]) {
+      const refused = await post('/api/workspaces', { ...request, documents: bad });
+      expect(refused.status, JSON.stringify(bad)).toBe(400);
     }
     expect(started.length).toBe(before);
   });
