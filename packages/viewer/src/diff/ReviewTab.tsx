@@ -301,9 +301,10 @@ function Finished({ branch, result }: { branch: string; result: FinishResult }) 
           `Approved ${at}: the agent may push these commits when you ask it to act on this review.`
         )}
       </p>
+      {/* Secondary (V42): Send to the agent or Merge into is the action that follows. */}
       <button
         type="button"
-        className="button"
+        className="button secondary"
         onClick={() =>
           void navigator.clipboard
             .writeText(result.text)

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import koiMark from './koi-mark.png';
 
 /**
  * Symbiote's icons (V29): 16 px line drawings in the text's colour. Inline SVG, so no icon library
@@ -123,12 +124,12 @@ export const ForwardIcon = () => (
   </Icon>
 );
 
-export const SymbioteIcon = () => (
-  <Icon>
-    <circle cx="5" cy="5" r="2" />
-    <circle cx="11" cy="11" r="2" />
-    <path d="M5 7v2a2 2 0 0 0 2 2h2" />
-  </Icon>
+/**
+ * Symbiote's mark (V42, decision 282): the koi S, the app's icon cropped to its tile, at 48 px for
+ * 24 px on screen. It reads as an S from 24 px; V39 kept a glyph because it does not at 16.
+ */
+export const KoiMark = () => (
+  <img className="koi-mark" src={koiMark} alt="" width={24} height={24} draggable={false} />
 );
 
 /** Open or folded (a folder, a project, More): down when open, right when folded. */

@@ -1,5 +1,6 @@
-/* The app's start page (N1b): the viewer's tokens (Symbiote's style, V31) and type, on one column.
-   Sizes on the viewer's scale (V32): 14 px body, nothing under 12 px; the title as it was. */
+/* The app's start page (N1b): the viewer's tokens (Symbiote's style, V31; the koi's colours, V42)
+   and type, on one column. Sizes on the viewer's scale (V32): 14 px body, nothing under 12 px; the
+   title as it was. */
 
 @font-face {
   font-family: 'Geist Variable';
@@ -11,34 +12,38 @@
 
 :root,
 :root[data-theme='dark'] {
-  --bg: #0a0a0a;
-  --side: #171717;
-  --panel: #171717;
-  --line: #2a2a2a;
-  --text: #fafafa;
-  --muted: #a1a1a1;
-  --focus: #a1a1a1;
+  --bg: #05080f;
+  --side: #0f1626;
+  --panel: #0f1626;
+  --line: #232d43;
+  --text: #eaeef7;
+  --muted: #9aa5be;
+  --focus: #7a9ee8;
   --error: #ff6568;
-  --hover: color-mix(in srgb, var(--text) 8%, transparent);
-  --primary: #e5e5e5;
-  --primary-text: #171717;
-  --edge-line: rgb(255 255 255 / 14%);
+  --hover: color-mix(in srgb, var(--text) 5%, transparent);
+  --primary: #3c6fd6;
+  --primary-hover: #3466cc;
+  --primary-text: #ffffff;
+  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 16%);
+  --edge-line: rgb(170 195 240 / 14%);
   color-scheme: dark;
 }
 
 :root[data-theme='light'] {
   --bg: #ffffff;
-  --side: #fafafa;
-  --panel: #fafafa;
-  --line: #e5e5e5;
-  --text: #0a0a0a;
-  --muted: #666666;
-  --focus: #737373;
+  --side: #f6f8fc;
+  --panel: #f6f8fc;
+  --line: #dce3ef;
+  --text: #0b1220;
+  --muted: #56627a;
+  --focus: #2f62cc;
   --error: #e40014;
   --hover: color-mix(in srgb, var(--text) 5%, transparent);
-  --primary: #171717;
-  --primary-text: #fafafa;
-  --edge-line: rgb(0 0 0 / 14%);
+  --primary: #2f62cc;
+  --primary-hover: #2856b8;
+  --primary-text: #ffffff;
+  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);
+  --edge-line: rgb(11 18 32 / 13%);
   color-scheme: light;
 }
 
@@ -170,17 +175,10 @@ body {
 }
 
 .mark {
+  display: block;
   width: 40px;
   height: 40px;
-  fill: none;
-  stroke: var(--text);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.mark-head {
-  stroke: var(--text);
+  user-select: none;
 }
 
 h1 {
@@ -237,8 +235,13 @@ button {
   border: 0;
   border-radius: 8px;
   background: var(--primary);
+  box-shadow: var(--primary-shine);
   color: var(--primary-text);
   font-weight: 500;
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--primary-hover);
 }
 
 .primary:disabled {
