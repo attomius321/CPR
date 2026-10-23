@@ -5284,3 +5284,34 @@ Merged into main (2026-10-23), asked: "Merge". On `main`: `pnpm check` 1,307 tes
 208 of 210, both failures `shell.spec`'s focus tests (a card's focus, the terminal's size), which
 failed alone at the same rate on `main` before the merge (`241371d`: 1 of 42 runs; after: 1 of
 42, in alternated rounds).
+
+## V40 spike — where a workspace's documents can go (2026-10-23, branch `feature/providing-documents-on-workspace-ceation`)
+
+Asked: "I need a way to provide you with images, documents, etc on workspace creation", put in a
+folder after the worktree and branch are made, and the agent guided there. Measured in a
+throwaway detached worktree of this repository (`node_modules` linked from the main checkout),
+with six sample files (`.md`, `.json`, `.ts`, `.js`, `.yaml`, `.png`) in a folder holding a
+`.gitignore` of `*`; then Codex 0.163 in a throwaway repository.
+
+**Learned**:
+- **A folder's own `.gitignore` keeps git out, not the project's tools.** `git status` listed
+  nothing of it, and `git worktree remove` (Clean up) removed it without `--force`. But Prettier
+  3 reads only the root's `.gitignore` and `.prettierignore`: `prettier --check .` flagged the
+  `.json`, `.yaml`, `.js` and `.ts` (the `.md` is in this repository's `.prettierignore`, the
+  `.png` has no parser). ESLint's flat config ignores no dot-folder: `eslint .` gave 2 errors
+  there, the repository's only ones (an unused variable; a `.ts` "not found by the project
+  service"). A JSON the person gives would fail an agent's `pnpm check` in its worktree. `tsc -p`
+  listed none of them (its `include`s).
+- **Codex's sandbox reads outside the worktree; its model does not assume so.** Asked to read a
+  file in another folder and give the word in it, Codex 0.163 (`workspace-write`, low effort)
+  answered "I can't access that file: it's outside the permitted workspace" and ran nothing.
+  Asked to run `cat` on it, the command exited 0 with the file's text. The prompt must say the
+  folder can be read.
+- **`symbiote/` already fits**: out of git by `symbiote/.gitignore` (`*`, `!config.json`,
+  `!merge.md`), and Claude Code is started with it as `--add-dir`. `prettier --check symbiote` in
+  the main checkout passes today: Symbiote's own JSON is written as Prettier would.
+- The merger's checks run in its own worktree, not the main checkout: a document there never
+  reaches them.
+
+The person chose the files beside the record ("Make the alternative as long as the agent see
+them") and no setting for the folder. Cleaned up: the worktree, the Codex repository.
