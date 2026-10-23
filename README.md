@@ -211,7 +211,7 @@ they are linked to elsewhere.
 `symbiote view` without revisions opens on **History** (`/history`, or h): the repository's history,
 every branch, local and remote, drawn as a graph beside the commits, the current branch the
 straight line on the left. The sidenav on the left lists the pages (History, [Scout](#scout),
-Settings) and, under
+[Skills](#skills), Settings) and, under
 them, your [workspaces](#workspaces-and-agents); a click opens one beside it, without loading the
 page again. Drag the sidenav's edge to widen or narrow it (180–480 px), or focus the edge and use
 the arrow keys; a double-click restores it. A workspace's changes, at the right of its terminal,
@@ -286,6 +286,7 @@ command on the machine where `symbiote` runs, so WSL, Remote SSH and containers 
 | n | Start a workspace | |
 | h, s | History, Settings | |
 | a | [Scout](#scout); on Scout, its question box or its terminal | |
+| i | [Skills](#skills) | |
 | w | The workspaces in the sidenav: ↑ and ↓ move, Enter opens | |
 | [ | Fold the sidenav to a rail, or open it | Open the sidenav, or fold it |
 | ] | | In a workspace: hide or show its branch's changes |
@@ -294,7 +295,7 @@ command on the machine where `symbiote` runs, so WSL, Remote SSH and containers 
 | o | | Open in VS Code |
 | Esc | Leave compare mode | Close the detail panel |
 
-n, h, a, s, w and [ work on Settings, on Scout and in a workspace too. In a comment box, Start a workspace, a workspace's
+n, h, a, i, s, w and [ work on Settings, on Scout, on Skills and in a workspace too. In a comment box, Start a workspace, a workspace's
 reply box or a prompt in Settings, Ctrl+Enter (Cmd+Enter on macOS) saves, starts or sends.
 
 ## Reviewing a branch
@@ -568,6 +569,53 @@ goes through a workspace you start.
 - Without terminals (no `node-pty`, or `SYMBIOTE_TERMINAL=off`), the box continues the conversation
   and its answers are read in a terminal of yours (`claude attach <id>`, which the page names).
 
+## Skills
+
+A skill is a folder with a `SKILL.md`: its frontmatter's `name` and `description` tell an agent
+when to load it, and the rest how to do the work in this repository. Claude Code reads
+`.claude/skills/<name>/`, Codex `.agents/skills/<name>/`. **Skills** (i, or the sidenav's pages:
+`/skills`) shows them for the checkout `symbiote view` runs in, and **Scribe** writes them.
+
+- **The list** has Scribe first, then the skills by folder, each folder named with the agents
+  that read it. A skill opens as its whole `SKILL.md`, frontmatter included, with its other files
+  listed and its git state ("Not committed: commit it to share it…").
+- **Checks**, as you type: only what the open standard ([agentskills.io](https://agentskills.io/specification)),
+  Anthropic's API or an agent would refuse, or a limit passed. Errors: no frontmatter, one not
+  closed, a value YAML cannot read (a plain `description:` holding `: `), which leaves Claude Code
+  with no description to match. Warnings: a name missing, unlike its folder, or not lowercase
+  letters, digits and hyphens (64 at most), or holding "claude" or "anthropic" (the API refuses
+  it); a description missing, over 1,024 characters (the standard) or 1,536 (Claude Code cuts it
+  in its list), or holding `<` or `>`; a body empty or over 500 lines; a link to a file the skill
+  does not have. Whether it says the right thing is yours to read.
+- **Save** (Ctrl+S) writes the file in place; commit it to share it. A save over a file written
+  since you opened it (by an editor, by Scribe) is refused, your draft kept: **Read it again**,
+  then save. Drafts are kept while you open another skill; leaving the page with one asks first.
+- **New skill** writes `.claude/skills/<name>/SKILL.md` from a name and a description; you write
+  its instructions next. **Delete** removes the skill's folder (it asks first, and says whether git
+  can bring it back).
+- **Link for Codex**, when Codex is installed and `.agents/skills` does not exist, makes it a link
+  to `../.claude/skills`: one copy of each skill, read by both agents (Codex 0.163 lists none of
+  `.claude/skills` without it). Commit the link to share it. Not offered on Windows.
+
+### Scribe
+
+**Scribe** writes a new skill, or changes one, from what you ask (**Improve with Scribe** on a
+skill starts the request for it). It runs in the checkout, as Scout does: one conversation per
+repository, in its own terminal on the page, **New conversation** to start over, its agent and
+effort chosen in its box. It reads the repository's instructions and skills first, writes only in
+`.claude/skills/`, and never commits: you read what it wrote on the page, change it, and commit it.
+While it writes, the list is read again every 5 s, and the sidenav marks Skills.
+
+- **Claude Code** runs with `--tools Read,Grep,Glob,Bash,Write,Edit --permission-mode default
+  --strict-mcp-config` and `symbiote/scribe-settings.json`, whose PreToolUse hook decides first:
+  reads go on to Claude Code's rules, Bash runs only git's read commands (as Scout's), Write and
+  Edit only a file in a skill's folder of `.claude/skills/` (by its real path, no `..`), anything
+  else is refused. `.claude` is a folder Claude Code protects: it asks you in Scribe's terminal
+  before each write there; "allow … for this session" lets the rest of the conversation write.
+- **Codex** runs on its app server in `workspace-write`, started in `.claude/skills`, its only
+  writable folder, with approvals `never`: a write elsewhere fails, nobody is asked.
+- Its record is `symbiote/scribe.json`, its prompt `prompts.scribe` ([Agents' prompts](#agents-prompts)).
+
 ## Pull and merge requests
 
 `symbiote pr 123` works with GitHub (and GitHub Enterprise) and GitLab (gitlab.com and self-managed).
@@ -773,9 +821,11 @@ read at each use, so a change applies to the next agent started.
 | `reviews` | `symbiote/AGENTS.md`, how an agent acts on a review | none |
 | `merger` | The merger's instructions; Symbiote adds the answer format it reads | none |
 | `scout` | [Scout](#scout)'s first prompt; its tools stay read-only whatever it says | `{question}` (required) |
+| `scribe` | [Scribe](#scribe)'s first prompt; it writes only in `.claude/skills/` whatever it says | `{request}` (required), `{skills}`, `{checkout}` |
 
 A value Symbiote cannot use (not text, a start prompt without `{brief}`, Scout's without
-`{question}`, or too long: 8,000 characters for a start prompt or Scout's, 1,000 for a sentence,
+`{question}`, Scribe's without `{request}`, or too long: 8,000 characters for a start prompt,
+Scout's or Scribe's, 1,000 for a sentence,
 20,000 otherwise) is ignored, and Symbiote's
 text is used.
 
