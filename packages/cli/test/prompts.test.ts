@@ -162,6 +162,7 @@ describe('readPrompts', () => {
         start: { fix: 'Fix {branch}; no brief.', chore: 42, refactor: 'x'.repeat(8_001) },
         verdict: { where: ['one', 2] },
         merger: 'Keep both sides.',
+        documents: 'Files: {files}',
         unknown: 'ignored',
       },
     });
@@ -170,6 +171,7 @@ describe('readPrompts', () => {
     expect(text['start.chore']).toBe(DEFAULT_PROMPTS['start.chore']);
     expect(text['start.refactor']).toBe(DEFAULT_PROMPTS['start.refactor']);
     expect(text['verdict.where']).toBe(DEFAULT_PROMPTS['verdict.where']);
+    expect(text.documents).toBe(DEFAULT_PROMPTS.documents);
     expect(text.merger).toBe('Keep both sides.');
     expect([...changed]).toEqual(['merger']);
     expect(warnings).toEqual({
@@ -177,6 +179,7 @@ describe('readPrompts', () => {
       'start.chore': expect.stringContaining('not text') as string,
       'start.refactor': expect.stringContaining('8,000') as string,
       'verdict.where': expect.stringContaining('not text') as string,
+      documents: expect.stringContaining('{folder}') as string,
     });
   });
 

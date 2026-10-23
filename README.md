@@ -382,8 +382,16 @@ with its package manager, a Makefile's `check` or `test` target, `scripts/test.s
 `go test ./...`, `pytest`), and says where it found it. The ⓘ after the kinds says what each is
 for. The kind is picked with `1`–`5` too, and
 the form is kept as a draft (in Symbiote's cache, so it outlives a new `symbiote view`) until the workspace
-starts, so leaving the page loses nothing; Clear empties it. Cancel or Esc goes back to the page
-you came from; Start (Ctrl+Enter) opens the new workspace in the page's place. Symbiote then:
+starts, so leaving the page loses nothing; Clear empties it.
+
+**Documents** (optional) are files for the agent: screenshots, PDFs, notes, samples. Add files,
+drop them anywhere on the page, or paste one (a screenshot) when the clipboard holds no text. Each
+is uploaded as you add it, listed with its size, and kept in Symbiote's cache until the workspace
+starts (one never started is removed after a week); up to 20 files, 20 MB each, 100 MB in all.
+The draft keeps them. Start waits while one is on its way, or while one too large is listed.
+
+Cancel or Esc goes back to the page you came from; Start (Ctrl+Enter) opens the new workspace in
+the page's place. Symbiote then:
 
 1. makes the agent's brief from the parts, under fixed headings (`# Fix: <title>`, `## What
    happens`, …, `## Done when` last), and adds one line for the kind: a fix is reproduced with a
@@ -397,9 +405,17 @@ you came from; Start (Ctrl+Enter) opens the new workspace in the page's place. S
    branch's slashes become dashes), so your checkout and `symbiote view` are untouched and several
    workspaces can run at once;
 4. records the brief, and the parts it was made of, in `symbiote/workspaces/<branch>.json` (`symbiote/features/` before V25, moved there the first time);
-5. starts the agent you picked there in the background with the brief: Claude Code (`claude
+5. puts the documents beside that record, in `symbiote/documents/<branch>/` (the branch's slashes
+   as folders; out of git with the rest of `symbiote/`), never in the worktree, where the
+   project's checks would see them; a name taken twice becomes `name (2).ext`;
+6. starts the agent you picked there in the background with the brief: Claude Code (`claude
    --bg`) or [Codex](#codex). With "Plan first and wait for my OK" (on by default), the agent
-   stops after its plan.
+   stops after its plan. Its first prompt names the documents' folder and each file, and says it
+   may read them there (the Documents prompt in [Settings](#agents-prompts)).
+
+Prettier and ESLint read only the root's ignore files, so in your main checkout they check a
+`.json` or `.js` given as a document: add `symbiote/documents` to `.prettierignore` and ESLint's
+`ignores`, as this repository does.
 
 The page offers the agents installed, Claude Code first unless `agent.kind` in
 [`symbiote/config.json`](#configuration) says `codex`. Claude Code runs on your own Claude Code login
@@ -466,7 +482,8 @@ not committed. They are read again with the workspace list (every 5 s while the 
 file opens in VS Code in the worktree at its first change. `]` or the button beside ⋯ hides them,
 remembered in the browser.
 
-The **Brief** tab is what the agent was asked (`&brief`), drawn from its Markdown. The **Thread** tab is the workspace's
+The **Brief** tab is what the agent was asked (`&brief`), drawn from its Markdown, with the
+documents given with it and where they are. The **Thread** tab is the workspace's
 history, read only (`&thread` in the address opens on it):
 the agent's plan and reports (drawn from their Markdown), your messages, and what it waited on
 (a permission to run a command, or a question and its options). The thread comes from hooks Symbiote
@@ -483,7 +500,8 @@ The terminal needs `node-pty`, an optional dependency: on Linux `pnpm install` c
 - **Send the verdict** fills the box with what you decided. Nothing is sent until you press Send.
 
 A workspace's branch carries its agent's mark in History, and each leads to the other.
-Once a workspace is merged, Clean up removes its agent's sessions, its worktree and its branch. An
+Once a workspace is merged, Clean up removes its agent's sessions, its worktree, its documents
+(their names stay in the record) and its branch. An
 unmerged one is cleaned up only after you confirm, and keeps its branch. Neither happens while
 the worktree has files not committed.
 
@@ -767,15 +785,16 @@ read at each use, so a change applies to the next agent started.
 
 | Key | What | Placeholders |
 |---|---|---|
-| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace's start prompt for that kind | `{branch}`, `{start}`, `{brief}` (required), `{plan}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{symbiote}` |
+| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace's start prompt for that kind | `{branch}`, `{start}`, `{brief}` (required), `{documents}`, `{plan}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{symbiote}` |
 | `plan.first`, `plan.direct` | What `{plan}` becomes, with Plan first and without | none |
+| `documents` | What `{documents}` becomes when files were given with the brief (else its line goes); added after a start prompt without `{documents}` | `{folder}` (required), `{files}` |
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The sentences of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`; `{reviewer}`, `{what}`; `{review}`, `{agents}` |
 | `reviews` | `symbiote/AGENTS.md`, how an agent acts on a review | none |
 | `merger` | The merger's instructions; Symbiote adds the answer format it reads | none |
 | `scout` | [Scout](#scout)'s first prompt; its tools stay read-only whatever it says | `{question}` (required) |
 
 A value Symbiote cannot use (not text, a start prompt without `{brief}`, Scout's without
-`{question}`, or too long: 8,000 characters for a start prompt or Scout's, 1,000 for a sentence,
+`{question}`, Documents without `{folder}`, or too long: 8,000 characters for a start prompt or Scout's, 1,000 for a sentence,
 20,000 otherwise) is ignored, and Symbiote's
 text is used.
 
