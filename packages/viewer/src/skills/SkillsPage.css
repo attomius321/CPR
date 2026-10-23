@@ -25,6 +25,12 @@
   color: var(--added);
 }
 
+/* A new skill's chip, as the list marks it. */
+.settings-state.added {
+  border-color: var(--added);
+  color: var(--added);
+}
+
 .skills-none {
   margin: 0;
   padding: 0 8px;

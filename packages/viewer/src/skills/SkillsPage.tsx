@@ -43,6 +43,14 @@ function addressOf(open: string): string {
   return `?skill=${encodeURIComponent(open)}`;
 }
 
+/** A conversation's state as a dot's tone, as the sidenav draws a workspace's. */
+function toneOf(state: string): string {
+  if (state === 'working') return 'tone-working';
+  if (state === 'needs-you' || state === 'interrupted') return 'tone-waiting';
+  if (state === 'failed' || state === 'gone') return 'tone-failed';
+  return 'tone-done';
+}
+
 /** Scribe (V41b) as its conversation shows it, `draft` put in its box by Improve with Scribe. */
 const scribeAgent = (
   state: ConversationAgent['state'],
@@ -303,16 +311,16 @@ export function SkillsPage() {
                   <button
                     type="button"
                     aria-current={open === SCRIBE ? 'true' : undefined}
+                    title={scribe?.conversation ? scoutStateText(scribe.conversation) : undefined}
                     onClick={() => show(SCRIBE)}
                   >
                     <span className="settings-name">Scribe</span>
                     {scribe?.conversation && (
-                      <span className="settings-mark" title={scoutStateText(scribe.conversation)}>
-                        <span
-                          className={`state-dot ${scribe.conversation.state === 'working' ? 'tone-working' : scribe.conversation.state === 'needs-you' ? 'tone-waiting' : 'tone-done'}`}
-                          aria-hidden="true"
-                        />
-                      </span>
+                      // A flex item, as in the sidenav: an inline dot has no size.
+                      <span
+                        className={`state-dot ${toneOf(scribe.conversation.state)}`}
+                        aria-hidden="true"
+                      />
                     )}
                   </button>
                 </li>
@@ -448,7 +456,9 @@ function SkillEditor({
       </button>
       <h2>
         {skill.name}
-        <span className={`settings-state${skill.git === 'committed' ? '' : ' changed'}`}>
+        <span
+          className={`settings-state${skill.git === 'new' ? ' added' : skill.git === 'committed' ? '' : ' changed'}`}
+        >
           {skill.git === 'new' ? 'New' : skill.git === 'changed' ? 'Changed' : 'Committed'}
         </span>
       </h2>

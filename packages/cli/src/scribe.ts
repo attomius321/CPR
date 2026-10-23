@@ -22,6 +22,10 @@ const SCRIBE: PageAgentSpec = {
   tools: ['Read', 'Grep', 'Glob', 'Bash', 'Write', 'Edit'],
   permissionMode: 'default',
   gateArgs: (root) => [skillsOf(root)],
+  // A background session refuses an edit in the checkout until it enters a worktree of its own
+  // (Claude Code 2.1.309): Scribe's skills are for the checkout's Skills page, so its own settings
+  // say none, for its session only.
+  claudeSettings: { worktree: { bgIsolation: 'none' } },
   prompt: (root, text) =>
     fillPrompt(readPrompts(root).text.scribe, {
       request: text,

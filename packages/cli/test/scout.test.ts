@@ -755,9 +755,25 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
         checkout: repo.root,
       }),
     );
-    expect(readFileSync(settings, 'utf8')).toBe(
-      scoutSettings({ node: '/usr/bin/node', gate: SCRIBE_GATE, args: [skills] }),
-    );
+    // Its gate, given the folder; and its writes in the checkout, not in a worktree of Claude
+    // Code's own: a background session refuses an edit outside one unless told so (V41).
+    expect(JSON.parse(readFileSync(settings, 'utf8'))).toEqual({
+      worktree: { bgIsolation: 'none' },
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: '*',
+            hooks: [
+              {
+                type: 'command',
+                command: `'/usr/bin/node' '${SCRIBE_GATE}' '${skills}'`,
+                timeout: 30,
+              },
+            ],
+          },
+        ],
+      },
+    });
     expect(JSON.parse(readFileSync(scribeRecord(repo), 'utf8'))).toMatchObject({
       about:
         "Scribe's conversation in this checkout (V41): an agent started in Symbiote that writes skills in .claude/skills. Not a workspace.",

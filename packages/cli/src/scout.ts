@@ -62,6 +62,8 @@ export interface PageAgentSpec {
   permissionMode: 'dontAsk' | 'default';
   /** What its gate is given after its script: Scribe's, the skills' folder. */
   gateArgs(root: string): string[];
+  /** Claude Code's settings besides the gate (Scribe: its edits in the checkout). */
+  claudeSettings?: Readonly<Record<string, unknown>>;
   /** Its first prompt: the project's text, the person's words in it. */
   prompt(root: string, text: string): string;
   /**
@@ -136,6 +138,7 @@ export interface Scout {
 export function scoutSettings(
   where: { node: string; gate: string; args?: readonly string[] },
   platform: NodeJS.Platform = process.platform,
+  more: Readonly<Record<string, unknown>> = {},
 ): string {
   const command = [where.node, where.gate, ...(where.args ?? [])]
     .map((p) => shellWord(p, platform))
@@ -143,7 +146,7 @@ export function scoutSettings(
   const hooks = {
     PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command, timeout: 30 }] }],
   };
-  return `${JSON.stringify({ hooks }, null, 2)}\n`;
+  return `${JSON.stringify({ ...more, hooks }, null, 2)}\n`;
 }
 
 /**
@@ -306,7 +309,11 @@ export function pageAgent(
    */
   async function settingsFile(where: ReviewPlace): Promise<string> {
     const path = join(folder(where), spec.settings);
-    const text = scoutSettings({ node, gate, args: spec.gateArgs(root) });
+    const text = scoutSettings(
+      { node, gate, args: spec.gateArgs(root) },
+      process.platform,
+      spec.claudeSettings,
+    );
     if ((await readFile(path, 'utf8').catch(() => null)) !== text) await put(where, path, text);
     return path;
   }
