@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import type {
   AgentKind,
   CheckGuess,
   PermissionMode,
   RefList,
   WorkKindSpec,
+  WorkspaceDocument,
   WorkspaceOptions,
   WorkspaceRequest,
   WorkspaceStart,
@@ -34,12 +35,21 @@ import {
   readRun,
   type RunChoices,
 } from './workspaces.js';
-import { getJson, postJson } from '../ui/http.js';
+import { fileBase64, getJson, postJson } from '../ui/http.js';
 import { shortSha } from '../history/commits.js';
 import { ChevronIcon } from '../ui/icons.js';
 import { EffortStepper } from './EffortStepper.js';
 import { Help } from '../ui/Help.js';
 import { reloadWorkspaces } from './useWorkspaces.js';
+import {
+  addDocuments,
+  documentsBlocking,
+  keptDocuments,
+  pastedFiles,
+  readDocuments,
+  type DocumentEntry,
+} from './documents.js';
+import { StartDocuments } from './StartDocuments.js';
 
 /** How long typing pauses before the draft is saved. */
 const SAVE_AFTER_MS = 400;
@@ -192,6 +202,9 @@ function StartForm({
   const efforts = agent ? effortChoices(agent) : [];
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The files given with the brief (V40), kept by the draft once uploaded.
+  const [documents, setDocuments] = useState<DocumentEntry[]>(() => readDocuments(draft));
+  const [dropping, setDropping] = useState(false);
   const spec = specOf(form.kind);
 
   // The check command, guessed at the commit it starts from (V24b); words until it comes.
@@ -214,10 +227,16 @@ function StartForm({
   // The draft, the run's choices with it: saved once typing pauses, and when the page is left;
   // after a start only the kind (a level is for that session, V30b).
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latest = useRef({ form, run });
-  latest.current = { form, run };
+  const latest = useRef({ form, run, documents });
+  latest.current = { form, run, documents };
   const started = useRef(false);
-  const draftNow = () => ({ ...latest.current.form, run: latest.current.run });
+  const draftNow = () => ({
+    ...latest.current.form,
+    run: latest.current.run,
+    documents: latest.current.documents.flatMap((d) =>
+      d.state === 'kept' ? [{ id: d.id, name: d.name, size: d.size }] : [],
+    ),
+  });
   const later = () => {
     if (pending.current) clearTimeout(pending.current);
     pending.current = setTimeout(() => {
@@ -235,6 +254,40 @@ function StartForm({
     latest.current = { ...latest.current, run: next };
     later();
   };
+  const listDocuments = (next: DocumentEntry[]) => {
+    setDocuments(next);
+    latest.current = { ...latest.current, documents: next };
+    later();
+  };
+  // Each file uploaded as it is added, one after another (V40); one taken off meanwhile is not.
+  const uploads = useRef<Promise<void>>(Promise.resolve());
+  const changeDocument = (key: string, change: Partial<DocumentEntry>) =>
+    listDocuments(latest.current.documents.map((d) => (d.key === key ? { ...d, ...change } : d)));
+  const addFiles = (files: File[]) => {
+    if (files.length === 0) return;
+    const before = latest.current.documents;
+    const next = addDocuments(before, files, options.documents);
+    listDocuments(next);
+    next.slice(before.length).forEach((entry, i) => {
+      const file = files[i];
+      if (entry.state !== 'uploading' || !file) return;
+      uploads.current = uploads.current.then(async () => {
+        if (!latest.current.documents.some((d) => d.key === entry.key)) return;
+        try {
+          const kept = await postJson<WorkspaceDocument>('/api/workspaces/documents', {
+            name: file.name,
+            data: await fileBase64(file),
+          });
+          changeDocument(entry.key, { state: 'kept', id: kept.id, name: kept.name });
+        } catch (failed) {
+          changeDocument(entry.key, { state: 'failed', error: (failed as Error).message });
+        }
+      });
+    });
+  };
+  // Files dragged over the page, counted: entering its own elements leaves the one before.
+  const over = useRef(0);
+  const carriesFiles = (event: DragEvent) => event.dataTransfer.types.includes('Files');
   useEffect(
     () => () => {
       if (started.current) saveDraft({ kind: latest.current.form.kind });
@@ -248,7 +301,8 @@ function StartForm({
   const problem = branchProblem(branch, taken);
   const length = briefLength(form, spec);
   const tooLong = length > options.maxBrief;
-  const ready = formReady(form) && !problem && !tooLong && !running;
+  const waiting = documentsBlocking(documents);
+  const ready = formReady(form) && !problem && !tooLong && !running && !waiting;
   const more = morePartsOf(spec);
   const moreText = more.some((part) => (form.more[part] ?? '').trim() !== '');
   const moreOpen = moreShown || moreText;
@@ -271,6 +325,7 @@ function StartForm({
       ...(agent ? { agent: agent.kind } : {}),
       ...(agent?.kind === 'claude' ? { permissionMode: mode } : {}),
       ...(effort ? { effort } : {}),
+      ...(documents.length > 0 ? { documents: keptDocuments(documents) } : {}),
     };
     setRunning(true);
     setError(null);
@@ -301,7 +356,39 @@ function StartForm({
         event.preventDefault();
         event.stopPropagation();
       }}
+      // A file or a screenshot pasted anywhere is a document; text pastes as text (V40).
+      onPaste={(event) => {
+        const files = pastedFiles(event.clipboardData);
+        if (files.length === 0) return;
+        event.preventDefault();
+        addFiles(files);
+      }}
+      onDragEnter={(event) => {
+        if (!carriesFiles(event)) return;
+        event.preventDefault();
+        over.current += 1;
+        setDropping(true);
+      }}
+      onDragOver={(event) => {
+        if (!carriesFiles(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+      }}
+      onDragLeave={(event) => {
+        if (!carriesFiles(event)) return;
+        over.current = Math.max(0, over.current - 1);
+        if (over.current === 0) setDropping(false);
+      }}
+      // A drop the page does not take would open the file in the window.
+      onDrop={(event) => {
+        if (!carriesFiles(event)) return;
+        event.preventDefault();
+        over.current = 0;
+        setDropping(false);
+        addFiles(Array.from(event.dataTransfer.files));
+      }}
     >
+      {dropping && <p className="start-drop">Drop to add them to the documents</p>}
       <header className="start-top">
         <h1 id="start-title">Start a workspace</h1>
         <p className="start-from">
@@ -324,7 +411,10 @@ function StartForm({
             className="button ghost"
             disabled={running}
             title="Empty the form; the kind stays"
-            onClick={() => edit(newForm(spec, guess))}
+            onClick={() => {
+              edit(newForm(spec, guess));
+              listDocuments([]);
+            }}
           >
             Clear
           </button>
@@ -332,7 +422,7 @@ function StartForm({
             type="button"
             className="button primary"
             disabled={!ready}
-            title="Ctrl+Enter"
+            title={waiting ?? 'Ctrl+Enter'}
             onClick={() => void start()}
           >
             {running ? 'Starting…' : agent ? 'Start' : 'Make the branch'}
@@ -436,6 +526,15 @@ function StartForm({
                 Check: <code>{guess.command}</code>, from {guess.source}
               </p>
             )}
+            <StartDocuments
+              entries={documents}
+              options={options.documents}
+              folder={options.documents.folder.replace('<branch>', branch)}
+              onAdd={addFiles}
+              onRemove={(key) =>
+                listDocuments(latest.current.documents.filter((d) => d.key !== key))
+              }
+            />
             <button
               type="button"
               className="link workspace-more"

@@ -360,3 +360,43 @@
     justify-content: flex-start;
   }
 }
+
+/* The files given with the brief (V40), under it: where they are, then their names. */
+.workspace-documents {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  white-space: normal;
+}
+
+.workspace-documents h2 {
+  margin: 0;
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+.workspace-documents-folder {
+  margin: 4px 0 8px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+.workspace-documents ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-documents li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+
+.workspace-documents .icon {
+  color: var(--faint);
+}

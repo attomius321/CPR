@@ -8,3 +8,5 @@ packages/*/test/fixtures
 spikes
 test-results
 playwright-report
+# Files given to a workspace's agent with its brief (V40): the person's, not formatted.
+symbiote/documents

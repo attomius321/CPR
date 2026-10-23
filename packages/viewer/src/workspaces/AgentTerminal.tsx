@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { IBufferRange, ILink, Terminal } from '@xterm/xterm';
 import type { WorkspaceTerminalOpened } from '@symbiote/core';
-import { postJson } from '../ui/http.js';
+import { fileBase64, postJson } from '../ui/http.js';
 import { ImageIcon } from '../ui/icons.js';
 import {
   cellRange,
@@ -45,17 +45,6 @@ interface Hint {
   left?: number;
   right?: number;
   below: boolean;
-}
-
-/** A file's bytes as base64, for the server. */
-function base64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    // A data URL, as asked: its text after the comma.
-    reader.onload = () => resolve((reader.result as string).replace(/^data:[^,]*,/, ''));
-    reader.onerror = () => reject(reader.error ?? new Error(`${file.name} could not be read`));
-    reader.readAsDataURL(file);
-  });
 }
 
 /** A write to a terminal (`…/in`, `…/resize`, `…/close`): no answer but its status. */
@@ -193,7 +182,7 @@ export function AgentTerminal({
                 throw new Error(`${image.name}: an image of at most ${MAX_IMAGE_BYTES >> 20} MB`);
               }
               const saved = await postJson<{ text: string }>(`/api/terminals/${terminal}/image`, {
-                data: await base64(image),
+                data: await fileBase64(image),
               });
               if (gone) return;
               shown.paste(saved.text);
