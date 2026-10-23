@@ -32,6 +32,14 @@ export const ScoutIcon = () => (
   </Icon>
 );
 
+/** Skills (V41): an open book, after lucide's book-open (ISC). */
+export const SkillsIcon = () => (
+  <Icon>
+    <path d="M8 4.7V14" />
+    <path d="M2 12V2.7h3.3A2.7 2.7 0 0 1 8 5.3a2.7 2.7 0 0 1 2.7-2.6H14V12h-4a2 2 0 0 0-2 2 2 2 0 0 0-2-2z" />
+  </Icon>
+);
+
 export const SettingsIcon = () => (
   <Icon>
     <circle cx="8" cy="8" r="2" />

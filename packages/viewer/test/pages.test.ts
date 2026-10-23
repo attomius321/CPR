@@ -158,3 +158,15 @@ describe('Scout (V35)', () => {
     expect(routeTitle({ page: 'scout' }, 'symbiote')).toBe('Scout · symbiote — Symbiote');
   });
 });
+
+describe('Skills (V41)', () => {
+  it('opens at /skills, a page of the shell, titled Skills', () => {
+    expect(routeOf('/skills', '')).toEqual({ route: { page: 'skills' } });
+    expect(routeOf('/skills', '?skill=.claude%2Fskills%2Fa%2FSKILL.md')).toEqual({
+      route: { page: 'skills' },
+    });
+    expect(hrefOf({ page: 'skills' })).toBe('/skills');
+    expect(inShell(new URL('http://symbiote/skills?new'))).toBe(true);
+    expect(routeTitle({ page: 'skills' }, 'symbiote')).toBe('Skills · symbiote — Symbiote');
+  });
+});

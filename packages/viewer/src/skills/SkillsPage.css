@@ -1,0 +1,160 @@
+/* ---- skills: the checkout's skills (V41) --------------------------------------------- */
+
+/* The list and the editor are Settings' (`.settings-body`, `.settings-list`, `.settings-editor`):
+   the two pages are drawn alike. What follows is the Skills page's own. */
+
+.skills .settings-bar .skills-new-button {
+  margin-left: auto;
+  gap: 6px;
+}
+
+.skills > .skills-codex,
+.skills > .settings-git {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 12px 16px 0;
+}
+
+.skills > .settings-git.error {
+  color: var(--error);
+}
+
+.settings-mark.added {
+  color: var(--added);
+}
+
+/* A new skill's chip, as the list marks it. */
+.settings-state.added {
+  border-color: var(--added);
+  color: var(--added);
+}
+
+.skills-none {
+  margin: 0;
+  padding: 0 8px;
+}
+
+.skills-where {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+.skills-where code {
+  font-family: var(--mono);
+  font-size: var(--size-small);
+}
+
+/* Each check a line with its level's dot: colour for the state only. */
+.skills-checks {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--size-body);
+}
+
+.skills-checks li {
+  position: relative;
+  margin: 4px 0;
+  padding-left: 16px;
+}
+
+.skills-checks li::before {
+  content: '';
+  position: absolute;
+  top: 0.55em;
+  left: 2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.skills-checks li.error::before {
+  background: var(--error);
+}
+
+.skills-checks li.warning::before {
+  background: var(--warning);
+}
+
+.skills-checks-none {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.skills-files p {
+  margin: 12px 0 4px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.skills-files ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font: var(--size-small) / 1.6 var(--mono);
+}
+
+.skills-field {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+  font-weight: 600;
+}
+
+.skills-field input,
+.skills-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  font-weight: normal;
+}
+
+.skills-field input {
+  height: 32px;
+  padding: 0 10px;
+}
+
+.skills-field .settings-size {
+  font-weight: normal;
+}
+
+/* Scribe (V41b): Scout's conversation (`ScoutPage.css`'s parts) in the editor's place, framed, as
+   tall as the window allows: its terminal needs a height of its own. */
+.skills-scribe {
+  min-width: 0;
+}
+
+.skills-scribe-note {
+  margin: 0 0 8px;
+}
+
+.scribe-pane {
+  display: flex;
+  flex-direction: column;
+  height: max(420px, calc(100dvh - 190px));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.scribe-pane .scout-top h2 {
+  grid-area: title;
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+@media (max-width: 899px) {
+  .scribe-pane {
+    height: max(420px, calc(100dvh - 160px));
+  }
+}

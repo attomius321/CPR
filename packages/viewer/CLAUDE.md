@@ -25,7 +25,8 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 | `workspaces/` | A workspace, its agent's terminal, its changes, merges, Start a workspace |
 | `shell/` | The shell: sidenav, title bar, status bar and usage, pages, theme, the desktop window |
 | `ui/` | Shared: the tokens and controls' CSS, `Help`, `Resizer`, icons, menus, Markdown, HTTP |
-| `scout/`, `settings/` | Scout, Settings |
+| `scout/`, `settings/` | Scout, Settings; `scout/Conversation.tsx` is a page agent's conversation, Scout's page and Scribe's pane (V41) |
+| `skills/` | Skills (V41): the checkout's skills, their checks (`skills.ts`, pure), Scribe's pane |
 | `intro/` | The first-time intro (V39): the koi engine, its rig and images, the overlay |
 
 - `src/graph/flow.ts` — **pure** layout: `layoutFlow` (what is drawn and where: summaries for big
@@ -49,6 +50,12 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   the shape (V10c; checked against git by `scripts/viewer/compare-check.mjs`), the label, reading `api/graph`'s
   202/502/404 while a diff is analyzed), `HistoryPage.tsx` (History, a diff's progress; never `Commits.tsx` beside `commits.ts`: macOS file systems ignore case).
 - `src/graph/ProjectNode.tsx`, `FileNode.tsx`, `SymbolNode.tsx`, `SummaryNode.tsx`.
+- `src/skills/skills.ts` — **pure**: a small reader of a `SKILL.md`'s frontmatter (plain, quoted
+  and block text; a value YAML refuses is `invalid`, an anchor or a tag `unknown`) and the checks
+  the page shows as one types (V41, decision 274): only what the open standard, Anthropic's API or
+  an agent refuses, or a limit passed. `test/skills.test.ts` runs them on this repository's own
+  skills: no error. `SkillsPage.tsx` draws its list and editor with Settings' rules
+  (`.settings-list`, `.settings-editor`): `SkillsPage.css` comes after `SettingsPage.css`.
 - `src/intro/` — the first-time intro (V39). `intro.ts` (main bundle): `askIntro` asks `/api/intro`
   (absolute, like `/api/history`) during `main.tsx`'s font wait, never on a `?graph=` page;
   `startIntro` puts `.intro` on `document.body` before the first render. `play.ts` and the engine

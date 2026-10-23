@@ -65,6 +65,8 @@ import { merger, MergeRefused } from './merges.js';
 import { claudeMerger, codexMerger, type MergerAgent } from './merge-agent.js';
 import { promptSettingsService } from './prompts.js';
 import { scout } from './scout.js';
+import { scribe } from './scribe.js';
+import { skillsService } from './skills.js';
 import { readClaudeUsage, readCodexUsage, usageService } from './usage.js';
 import { codex, findCodex, type Codex } from './codex.js';
 import {
@@ -638,7 +640,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   });
   // One Codex for workspaces and usage: one connection to its app server.
   const codexOf = codexFinder(repo.root, ctx.env);
-  // One Claude Code for workspaces and Scout (V35): one read of its sessions every 2 s.
+  // One Claude Code for workspaces, Scout (V35) and Scribe (V41): one read of its sessions every 2 s.
   const claudeOf = agentFinder(repo.root, ctx.env);
   const server = await startViewServer({
     port,
@@ -679,6 +681,13 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       merges: merger(repo, cacheDir, { mergerAgent: mergerFinder(repo.root, ctx.env) }),
       settings: promptSettingsService(repo),
       scout: scout(repo, cacheDir, {
+        claude: claudeOf,
+        codex: codexOf,
+        env: ctx.env,
+        terminals,
+      }),
+      skills: skillsService(repo, { codexInstalled: async () => (await codexOf()) !== null }),
+      scribe: scribe(repo, cacheDir, {
         claude: claudeOf,
         codex: codexOf,
         env: ctx.env,

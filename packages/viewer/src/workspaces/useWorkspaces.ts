@@ -4,7 +4,8 @@ import { mergeLive } from './merges.js';
 
 /**
  * The workspaces, the reviews and the merge queue (V26), read together: a review changes what a
- * workspace needs next, and an approval is merged. Scout's state too (V35): the sidenav shows it.
+ * workspace needs next, and an approval is merged. Scout's state too (V35), and Scribe's (V41):
+ * the sidenav shows them.
  */
 export interface WorkspacesState {
   list: WorkspaceList | null;
@@ -13,6 +14,8 @@ export interface WorkspacesState {
   merges: MergeList | null;
   /** Null where there is no Scout (no repository). */
   scout: ScoutState | null;
+  /** Null where there is no Scribe (no repository). */
+  scribe: ScoutState | null;
 }
 
 /** While an agent works or waits, how often its state is read again. */
@@ -21,7 +24,13 @@ const POLL_MS = 5_000;
 const MERGE_POLL_MS = 1_500;
 
 // One reader for every component on the page (the tab bar, the page, the review header).
-let current: WorkspacesState = { list: null, reviews: null, merges: null, scout: null };
+let current: WorkspacesState = {
+  list: null,
+  reviews: null,
+  merges: null,
+  scout: null,
+  scribe: null,
+};
 const listeners = new Set<(state: WorkspacesState) => void>();
 let loading: Promise<void> | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -31,7 +40,8 @@ const live = (state: WorkspacesState) =>
     (f) => f.agent.state === 'working' || f.agent.state === 'needs-you',
   ) ??
     false) ||
-  state.scout?.conversation?.state === 'working';
+  state.scout?.conversation?.state === 'working' ||
+  state.scribe?.conversation?.state === 'working';
 
 const merging = (state: WorkspacesState) => mergeLive(state.merges?.merges ?? []);
 
@@ -40,7 +50,7 @@ let terminalsOpen = 0;
 
 /**
  * How long until the next read: 1.5 s while a merge runs; 5 s while an agent works or waits, Scout
- * answers, or a terminal is open (`open`); none otherwise.
+ * answers, Scribe writes, or a terminal is open (`open`); none otherwise.
  */
 export function readEvery(state: WorkspacesState, open: number): number | null {
   if (merging(state)) return MERGE_POLL_MS;
@@ -63,16 +73,17 @@ async function read<T>(path: string): Promise<T | null> {
   return response.ok ? ((await response.json()) as T) : null;
 }
 
-/** Reads the workspaces (V18b), the reviews, the merges and Scout, unless a read is under way. */
+/** Reads the workspaces (V18b), the reviews, the merges, Scout and Scribe, unless one is under way. */
 function refresh(): Promise<void> {
   loading ??= Promise.all([
     read<WorkspaceList>('/api/workspaces'),
     read<BranchReviewList>('/api/reviews'),
     read<MergeList>('/api/merges'),
     read<ScoutState>('/api/scout'),
+    read<ScoutState>('/api/scribe'),
   ])
-    .then(([list, reviews, merges, scout]) => {
-      current = { list, reviews, merges, scout };
+    .then(([list, reviews, merges, scout, scribe]) => {
+      current = { list, reviews, merges, scout, scribe };
       for (const listener of listeners) listener(current);
     })
     .catch(() => {})

@@ -18,7 +18,9 @@ export type PromptKey =
   | 'reviews'
   | 'merger'
   /** Scout's instructions, its first prompt with the question (V35). */
-  | 'scout';
+  | 'scout'
+  /** Scribe's instructions, its first prompt with the person's request (V41). */
+  | 'scribe';
 
 /** Every prompt, in the Settings page's order. */
 export const PROMPT_KEYS: readonly PromptKey[] = [
@@ -37,6 +39,7 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'reviews',
   'merger',
   'scout',
+  'scribe',
 ];
 
 /** A name a prompt may hold as `{name}`, replaced by what it stands for when it is used. */

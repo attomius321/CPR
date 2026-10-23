@@ -15,6 +15,8 @@ import {
   type MergeEntry,
   type PromptChange,
   type PromptSettings,
+  type SkillChange,
+  type SkillsState,
   type UsageReport,
 } from '@symbiote/core';
 import type { Review } from '@symbiote/forge';
@@ -35,6 +37,7 @@ import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
 import { WorkspaceRefused, type Workspaces } from '../src/workspaces.js';
 import { MergeRefused, type Merger } from '../src/merges.js';
 import { PromptRefused, type PromptSettingsService } from '../src/prompts.js';
+import { SkillRefused, type SkillsService } from '../src/skills.js';
 import { terminals as makeTerminals, type Pty, type SpawnPty } from '../src/terminal.js';
 
 const graph = JSON.parse(
@@ -1786,6 +1789,82 @@ describe('symbiote view: settings (V28)', () => {
       { key: 'start.fix', text: 'Fix it: {brief}', version: 'v1' },
       { key: 'merger', text: null, version: 'v1' },
       { key: 'merger', text: 'Keep both.', version: 'v0' },
+    ]);
+  });
+});
+
+describe('symbiote view: skills (V41)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const answer: SkillsState = {
+    checkout: '/repo',
+    skills: [],
+    codex: { installed: false, link: 'none', canLink: true },
+  };
+  const asked: SkillChange[] = [];
+  const skills: SkillsService = {
+    state: () => Promise.resolve(answer),
+    change: (change) => {
+      asked.push(change);
+      return change.action === 'delete'
+        ? Promise.reject(
+            new SkillRefused('.claude/skills/a/SKILL.md changed since you opened it', 409),
+          )
+        : Promise.resolve(answer);
+    },
+  };
+  let server: ViewServer;
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        skills,
+      },
+    });
+  });
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+  const post = (body: unknown, headers: Record<string, string> = {}) =>
+    fetch(new URL('/api/skills', server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      body: JSON.stringify(body),
+    });
+
+  it('serves the page, reads the skills, makes a change, and refuses a stale or a wrong one', async () => {
+    expect(await (await fetch(new URL('/skills', server.url))).text()).toContain('viewer');
+    expect(await (await fetch(new URL('/api/skills', server.url))).json()).toEqual(answer);
+    const saved = await post({ action: 'new', name: 'a', description: 'Does a.' });
+    expect(saved.status).toBe(200);
+    const stale = await post({
+      action: 'delete',
+      path: '.claude/skills/a/SKILL.md',
+      version: 'v0',
+    });
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toEqual({
+      error: '.claude/skills/a/SKILL.md changed since you opened it',
+    });
+    expect((await post({ action: 'move' })).status).toBe(400);
+    expect((await post({ action: 'link' }, { 'x-symbiote': '' })).status).toBe(403);
+    expect(asked).toEqual([
+      { action: 'new', name: 'a', description: 'Does a.' },
+      { action: 'delete', path: '.claude/skills/a/SKILL.md', version: 'v0' },
     ]);
   });
 });

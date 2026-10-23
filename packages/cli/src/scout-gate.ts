@@ -165,15 +165,18 @@ export function gateDecision(input: unknown): GateDecision {
   };
 }
 
-/** The hook's output: Claude Code's PreToolUse decision, or nothing to leave it to its rules. */
-export function hookOutput(decision: GateDecision): string {
+/**
+ * The hook's output: Claude Code's PreToolUse decision, or nothing to leave it to its rules; `who`
+ * is the agent whose gate let a command through (Scout's, or Scribe's since V41).
+ */
+export function hookOutput(decision: GateDecision, who = 'Scout'): string {
   if (!decision) return '';
   return JSON.stringify({
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
       permissionDecision: decision.allow ? 'allow' : 'deny',
       permissionDecisionReason: decision.allow
-        ? "Scout: one of git's read commands"
+        ? `${who}: one of git's read commands`
         : decision.reason,
     },
   });
