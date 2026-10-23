@@ -454,7 +454,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V37 ✅ | A look that is not dated | Asked: "looks kind of oldish… the help texts should be in a tooltip… the fonts are not good inside inputs", and every page checked for uneven spaces. Audited 35 states, dark and light, at 1×: uneven letter gaps from 0.01em letter-spacing, controls at `normal` spacing and two fields in mono, 3:1 field edges with a heavy focus ring, hover and selection alike, glyphs as icons, help as paragraphs. Merged into main (2026-10-23, from `feature/ui-improvements`): letter-spacing 0, one field recipe with a soft edge, a lighter hover, icons, one head per page, help behind a "?" tooltip; timings as `main`'s; see below. |
 | V38 ✅ | Paths and links in an agent's terminal | Nothing an agent prints in its terminal can be followed: paths and web addresses are text, and an agent's own OSC 8 link gets xterm.js's "This link could potentially be dangerous" `confirm()` and a `window.open` of no use for `file://` (read in xterm.js 6.0.0). Merged into main (2026-10-23, from `feature/clickable-paths-from-agent-terminal`): paths to files in the terminal's folder, checked by the server, web addresses and the agent's own links become links; Ctrl/⌘+click opens the file in VS Code at the line printed, or the address in a new tab. With the real Claude Code (Scout) and Codex (a workspace, its mouse tracking on), every printed file of the folder opened and nothing outside it was linked. See below. |
 | V39 | A first-time intro | Symbiote opens straight onto its pages, and its icon is the graph glyph. Asked: "a first time intro into the app", with the person's koi intro (a WebGL engine, its rig and images): two koi form the S. Ready for review (2026-10-23, `feature/first-time-intro`): it plays once per person over the first page `symbiote view` or `symbiote pr` serves (recorded in Symbiote's config folder: browser storage is per run), with sound from the start, any key or a click ends it, Settings plays it again; its last frame is the app's icon and the favicon. In the app it had no WebGL (WSLg has no GL): the app now asks for SwiftShader. 60 fps in the app; History's first paint as `main`'s (52 ms). See below. |
-| V40 | Documents for a workspace's agent | The start page takes text only: a screenshot or a PDF is put somewhere by hand and its path typed into the brief. Measured: a folder in the worktree is out of git by its own `.gitignore`, but Prettier and ESLint still check it (4 of 6 sample files, 2 errors); Codex's sandbox reads outside its worktree, yet its model did not try until told it could. Planned: files chosen, dropped or pasted on the start page, put in `symbiote/documents/<branch>/` beside the record, each named in the agent's first prompt. See below. |
+| V40 | Documents for a workspace's agent | The start page takes text only: a screenshot or a PDF is put somewhere by hand and its path typed into the brief. Measured: a folder in the worktree is out of git by its own `.gitignore`, but Prettier and ESLint still check it (4 of 6 sample files, 2 errors); Codex's sandbox reads outside its worktree, yet its model did not try until told it could. Built: files chosen, dropped or pasted on the start page, uploaded as added, put in `symbiote/documents/<branch>/` beside the record at the start (never the worktree), each named in the agent's first prompt; real Claude Code and Codex each read a PNG and a PDF from there (14 and 18 s), no permission asked. Ready for review (2026-10-23). See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -10192,9 +10192,9 @@ the intro's frames were measured on Xvfb); sound through a real device (Electron
 
 ### V40 — Documents for a workspace's agent
 
-**Status:** planned (2026-10-23), on branch `feature/providing-documents-on-workspace-ceation` (a
-workspace started in Symbiote, from `main` at `bf0e717`); the plan's choices answered by the
-person.
+**Status:** ready for review (2026-10-23), on branch `feature/providing-documents-on-workspace-ceation`
+(a workspace started in Symbiote, from `main` at `bf0e717`); the plan's choices answered by the
+person. As built and results under "As built (V40)" below.
 
 **Problem** (asked: "I need a way to provide you with images, documents, etc on workspace
 creation … inside a defined folder … along with a way to guide the agent to that folder"). The
@@ -10328,6 +10328,57 @@ the real agents, screenshots, README.
 
 **Not in V40 (later)**: adding files to a running workspace (V36 attaches images to its
 terminal); documents for Scout; a setting for the folder (declined).
+
+#### As built (V40)
+
+- **Documents in the run's column**, not after Done when. In the brief's column the empty field
+  (56 px and its margin) took the start page, More open, 66 px past 1440 × 900, which V30a keeps
+  without a scroll (it had 2 px to spare). The run's column ended at 444 px of 892: there it fits,
+  with room for about a dozen files. On a phone the run is under the brief, as before.
+- **Uploads kept per repository**, `<cache>/state/<repo>/uploads/` beside the start page's draft,
+  not `<cache>/documents/`: with the records in the cache (no `user.email`), a workspace's
+  documents are `<cache>/state/<repo>/documents/<branch>/`, the folder Claude Code is given as
+  `--add-dir`.
+- **Start waits for a file not added** too, not only for uploads: it is listed with why (larger
+  than 20 MB, one file too many, more than 100 MB in all) until the person removes it, so the
+  agent gets what the page lists.
+- **A long name is cut in its row**: the screenshots showed the list wider than the 300 px
+  column, the field's and the list's grids sizing their one track to the longest name.
+- **Clean up also removes the folders left empty** above the branch's, up to `documents/`.
+- `fileBase64` moved from `AgentTerminal.tsx` to `ui/http.ts`, shared with V36's images.
+
+**Results.**
+
+- **Tests first**, red for the right reason: 13 (the functions, fields and route missing); now
+  `pnpm check` 1,323 tests in 97 files (`main` 1,307: 16 new). The e2e test passed first time;
+  with the request's documents left out, it failed where it should (the prompt named none).
+  Two tests were written after the code and passed first time: documents kept in the cache, and
+  `isImageName`. e2e: 210 of 211 with the new Documents test; the one failure, `shell.spec`'s keyboard
+  test, passed 5 of 5 alone (flaky on `main`, as the journal says). The first full run's other
+  failures were this change's: Settings lists 16 entries, Tab reaches Documents' help and Add
+  files, and the start page no longer fit 1440 × 900 (above).
+- **Nothing changes without documents**: the 48 start prompts recorded before V28 are given
+  byte for byte (`prompts.test.ts`); no folder is made; `symbiote/AGENTS.md` gains one line.
+- **Real agents**, through `symbiote view` from this branch on a throwaway repository (the
+  person's trusted spike folder), each given a 64 × 64 red PNG and a one-page PDF ("The code word
+  is HERON.") through `…/documents` and the start, plan without, asked for the colour and the word:
+
+  | Agent | Answer | Time | How it read them |
+  |---|---|---|---|
+  | Claude Code 2.1.309, Haiku 5.5 | "The square is **red**, and the code word in the PDF is **HERON**." | 14 s | Its Read tool on both files; no permission asked |
+  | Codex 0.163, low effort | "The square is **red**, and the code word in the PDF is **HERON**." | 18 s | `rg --files` and `file` on the folder, the PNG decoded in Python, in its sandbox; no approval asked |
+
+  Clean up removed both worktrees and `symbiote/documents/` (empty parents too); the records kept
+  `["square.png", "brief.pdf"]`; no upload left; `git status` empty in the checkout.
+- **Viewer**: screenshots at 1440 × 900, 1×, dark and light (the start page empty, with four files
+  and one too large, while files are dragged; a workspace's Brief; Settings' Documents; a phone),
+  no page errors. The main bundle 669,162 → 674,459 bytes (+5,297; +1,651 gzipped), the
+  stylesheet 104,620 → 106,656 (+2,036).
+
+Not verified: a drag from the system's file manager and a real clipboard (e2e dispatches the
+events, as V36's); Symbiote's window on WSLg; Firefox and Safari; macOS and Windows, where an
+upload moved across file systems takes the copy path (untested); a file of megabytes given to a
+real agent (1.3 MB uploaded in the screenshots' run only).
 
 ### Phase 1 milestones
 
