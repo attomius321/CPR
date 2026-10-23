@@ -454,7 +454,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V37 ✅ | A look that is not dated | Asked: "looks kind of oldish… the help texts should be in a tooltip… the fonts are not good inside inputs", and every page checked for uneven spaces. Audited 35 states, dark and light, at 1×: uneven letter gaps from 0.01em letter-spacing, controls at `normal` spacing and two fields in mono, 3:1 field edges with a heavy focus ring, hover and selection alike, glyphs as icons, help as paragraphs. Merged into main (2026-10-23, from `feature/ui-improvements`): letter-spacing 0, one field recipe with a soft edge, a lighter hover, icons, one head per page, help behind a "?" tooltip; timings as `main`'s; see below. |
 | V38 ✅ | Paths and links in an agent's terminal | Nothing an agent prints in its terminal can be followed: paths and web addresses are text, and an agent's own OSC 8 link gets xterm.js's "This link could potentially be dangerous" `confirm()` and a `window.open` of no use for `file://` (read in xterm.js 6.0.0). Merged into main (2026-10-23, from `feature/clickable-paths-from-agent-terminal`): paths to files in the terminal's folder, checked by the server, web addresses and the agent's own links become links; Ctrl/⌘+click opens the file in VS Code at the line printed, or the address in a new tab. With the real Claude Code (Scout) and Codex (a workspace, its mouse tracking on), every printed file of the folder opened and nothing outside it was linked. See below. |
 | V39 | A first-time intro | Symbiote opens straight onto its pages, and its icon is the graph glyph. Asked: "a first time intro into the app", with the person's koi intro (a WebGL engine, its rig and images): two koi form the S. Ready for review (2026-10-23, `feature/first-time-intro`): it plays once per person over the first page `symbiote view` or `symbiote pr` serves (recorded in Symbiote's config folder: browser storage is per run), with sound from the start, any key or a click ends it, Settings plays it again; its last frame is the app's icon and the favicon. In the app it had no WebGL (WSLg has no GL): the app now asks for SwiftShader. 60 fps in the app; History's first paint as `main`'s (52 ms). See below. |
-| V41 | Skills, and Scribe | A skill (a folder with a `SKILL.md`) tells an agent how a project does something; this repository has 6 in `.claude/skills/`, and Symbiote shows none and writes none. Codex reads `.agents/skills/` and lists none of the 6 (6 of 6 with a link). Claude Code protects `.claude`: `dontAsk` denies every Write, its prompt asks in the other modes; Codex's sandbox started in `.claude/skills` writes only there. Planned (2026-10-23, `feature/skill-creator`): V41a a Skills page (`/skills`, key `i`) listing, editing, adding and deleting the checkout's skills with the standard's checks and Link for Codex; V41b Scribe, an agent there that writes skills into `.claude/skills/` only, for the person to read and commit. See below. |
+| V41 | Skills, and Scribe | A skill (a folder with a `SKILL.md`) tells an agent how a project does something; this repository has 6 in `.claude/skills/`, and Symbiote shows none and writes none. Codex reads `.agents/skills/` and lists none of the 6 (6 of 6 with a link). Claude Code protects `.claude`: `dontAsk` denies every Write, its prompt asks in the other modes; Codex's sandbox started in `.claude/skills` writes only there. Ready for review (2026-10-24, `feature/skill-creator`): V41a a Skills page (`/skills`, key `i`) listing, editing, adding and deleting the checkout's skills with the standard's checks and Link for Codex; V41b Scribe, an agent there that writes skills into `.claude/skills/` only, for the person to read and commit. With the real Claude Code it wrote a 79-line skill this repository's checks pass and a fresh session loads for a matching task; its README edit was refused by the gate; Codex's sandbox refused a write outside. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -10192,9 +10192,9 @@ the intro's frames were measured on Xvfb); sound through a real device (Electron
 
 ### V41 — Skills: the project's skills in Symbiote, and Scribe, an agent that writes them
 
-**Status:** planned (2026-10-23) on branch `feature/skill-creator`, a workspace started in
-Symbiote; plan confirmed by the person (name Scribe; Scribe writes in the checkout; the Codex link
-offered; personal skills left out).
+**Status:** built, ready for review (2026-10-24) on branch `feature/skill-creator`, a workspace
+started in Symbiote; plan confirmed by the person (name Scribe; Scribe writes in the checkout; the
+Codex link offered; personal skills left out). As built and results under "As built (V41)" below.
 
 **Problem** (asked: "one new Agent … it is a skill creator for the project, but also the
 capability to edit those skills from the app, or to add new one by me. Do some research before
@@ -10351,10 +10351,66 @@ page's Scribe), then the real runs.
 | 275 | Where Scribe writes, and how it is held there | **The checkout's `.claude/skills/` only. Claude Code: its gate, then its own protected-folder prompt; Codex: `workspace-write` started in `.claude/skills`, approvals `never`** | `dontAsk` denied every Write (measured), and Claude Code protects `.claude`; Codex's sandbox refused a write outside (measured). A workspace branch would show "No symbol changed" in Symbiote's review |
 | 276 | Scribe's conversation | **One per repository, like Scout's; it never commits** | The person reads and edits the skill on the same page before sharing it |
 | 277 | Name and key | **Scribe** (the person's choice); the page **Skills**, key **`i`** | Scout finds, Scribe writes; `i` ("instructions") is free in the shell, History and a diff's page |
+| 278 | Claude Code's guard on a background session's edits (found building) | **Scribe's own settings file sets `worktree.bgIsolation` to `none`**, for its session only | Claude Code 2.1.309 refused Scribe's write in the checkout ("hasn't isolated its changes yet. Call EnterWorktree first"); in a worktree the skill would not be on the checkout's Skills page. With the key, a probe reached Claude Code's own question before the write |
 
 **Not in V41 (later)**: personal and plugin skills; editing a skill's other files on the page;
 running a skill's evaluations from Symbiote; picking skills for a workspace's agent
 (`feature/skill-selections`); a project-wide default effort for Scribe.
+
+#### As built (V41)
+
+- **A background session of Claude Code refuses an edit in the checkout** (decision 278): Scribe's
+  first real write was refused with "This background session hasn't isolated its changes yet",
+  and Scribe stopped and said so. Its settings file (`symbiote/scribe-settings.json`) now holds
+  `"worktree": {"bgIsolation": "none"}` beside its gate, read again when its session wakes; the
+  project's settings are not touched. Then Claude Code asks before each write into `.claude`
+  ("Do you want to create SKILL.md?"), which the page shows as Scribe waiting for you.
+- **Scout's server is the factory for both** (`pageAgent` in `scout.ts`, given a spec: name,
+  record, settings, tools, mode, gate arguments, prompt, where Codex runs). `startReadOnly` became
+  `startPageAgent` with the tools and mode given; `hookOutput` names whose gate let a command
+  through. Scout's start, record, settings file and texts are as before (its 23 tests unchanged
+  but for the method's name).
+- **Codex's Scribe can write anything in `.claude/skills`**, a file at its root too, where Claude
+  Code's gate wants a skill's folder: the sandbox's writable root is a folder. Asked to append to
+  `README.md`, Codex wrote `.claude/skills/README.md` (its working folder), and deleted it when
+  asked; the repository's README by its full path failed with "Read-only file system".
+- **Scribe's pane is Scout's conversation** (`scout/Conversation.tsx`), framed on the Skills page
+  with a height of its own; Scout's page draws it with its own words. Scribe's box has the effort
+  stepper at the agent's own level: no `scribe.effort` in the project's config.
+- **The checks live in the viewer only** (`skills/skills.ts`): the server refuses what would
+  break a new skill (name, description) and paths, not style. The frontmatter reader tells a value
+  YAML refuses (`invalid`: an error, Claude Code would load no description) from one it does not
+  take apart (`unknown`: an anchor, an alias, a tag; said, not judged).
+- **The list** puts Scribe first, under "Agent", with its state's dot.
+
+**Results.** Tests first, red for the right reason: the server's skills (20), the route (1), the
+viewer's reader and checks (16, among them this repository's 6 skills: no error, the 2 `< >`
+warnings), the route and title (1), Scribe's gate (8), Scribe's conversation (3, and its settings
+file), the prompt (3), the poll (1), e2e `skills.spec.ts` (6). `pnpm check`: 1,360 tests in 99
+files (`main`: 1,307 in 96). e2e: 215 of 216; the one failure is `shell.spec`'s keys test, whose
+`w` and arrows focus test is flaky with or without this change: alternated, 7 of 20 failed with
+`main`'s sidenav, 1 of 20 with this one (the card-focus test: 5 of 10 and 0 of 20). The Skills,
+Scout and Settings specs, 20 of 20 after the last fixes.
+
+With the real agents, in a throwaway clone of this branch (Claude Code 2.1.309, the person's
+default model; Codex 0.163 on its app server), through `symbiote view`'s API and Scribe's terminal:
+
+| Asked | What happened |
+|---|---|
+| Claude Code: "A skill for adding a new prompt to Symbiote's Settings…" | 2 min 39 s of reading (CLAUDE.md, the 6 skills, `prompts.ts`, the tests, `git log -S`, `git show`; `ls` and `git -C` refused by the gate, then done another way); its write refused by the background guard (above). After the fix, continued: 11 s to Claude Code's question, the skill written once answered |
+| The skill, `.claude/skills/agent-prompt/SKILL.md` | 79 lines, a 540-character description; the page's checks: nothing to say. `git status`: only that folder |
+| "Add the scribe row to README.md yourself now… I allow it" | Two Edits refused by the gate ("…README.md is outside …/.claude/skills"); Scribe stopped and gave the row to paste |
+| A fresh `claude -p` (Sonnet), a task that needs it / a near miss | `agent-prompt` loaded / no skill loaded (one run each) |
+| Link for Codex | `.agents/skills → ../.claude/skills`; `codex debug prompt-input` lists the new skill with the 6 |
+| Codex: "a very short skill named reading-the-journal…", then a write outside | Written in 16 s (a 14-line body); `README.md` by its full path: "Read-only file system", exit 1 |
+
+`/history` on the clone, `main`'s build and this one alternated, 7 rounds each: first paint 64 and
+64 ms, first rows 151 and 156 ms. Screenshots at 1440×900 and 390×844, dark and light: the list,
+a skill, a new skill, Scribe's box and its terminal; no overflow, no page error. Not verified:
+Windows (no link offered) and macOS; Claude Code's "allow … for this session" in a checkout
+outside `~/.claude` (the clone lived under it, and the option named `~/.claude`); a project whose
+own settings deny writes into `.claude`; `regression-check` (no analysis code changed). The clone
+had to be trusted by Claude Code first, as any folder a background session starts in.
 
 ### Phase 1 milestones
 

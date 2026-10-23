@@ -5316,3 +5316,46 @@ clone of this repository at `bf0e717`, Claude Code 2.1.309 (`haiku` for the prob
 
 Decided with the person: the name Scribe; Scribe writes in the checkout, as Settings writes
 `config.json`; the Codex link offered; personal skills left out. Plan: PLAN.md, V41.
+
+## V41 — Skills in Symbiote, and Scribe, an agent that writes them (2026-10-24, branch `feature/skill-creator`)
+
+Asked: "one new Agent … a skill creator for the project, but also the capability to edit those
+skills from the app, or to add new one by me". Built: a Skills page (`/skills`, i) that lists,
+checks, edits, adds and deletes the checkout's skills and links them for Codex; Scribe, an agent
+there that writes them into `.claude/skills/` only. PLAN.md, V41.
+
+**Learned**:
+- **A background session of Claude Code (2.1.309) refuses every edit outside a worktree of its
+  own**: "This background session hasn't isolated its changes yet. Call EnterWorktree first",
+  whatever the hook, the mode or the folder. `"worktree": {"bgIsolation": "none"}` in the session's
+  own `--settings` file lifts it for that session; Claude Code's protected-folder rule for
+  `.claude` then asks before the write. Fakes cannot show this: only a real run did. (Scout never
+  writes; workspaces run in worktrees.)
+- **`--bg` refuses a folder Claude Code was never trusted in** ("Workspace not trusted. Run
+  `claude` … once"): the throwaway clone was trusted with Claude Code's own dialog, where the first
+  option is "No, exit". Started from a Claude Code session, `symbiote view` passes on its
+  `CLAUDE_CODE_*` variables (the agent printed "inherited CLAUDE_CODE_CHILD_SESSION marker"): the
+  real runs unset them first.
+- **The gate shapes how the agent works, and it works around a refusal the right way**: Scribe's
+  `ls` and `git -C` were refused, and it used Glob and plain `git log -S`; told to edit README.md
+  "I allow it", it tried twice, was refused twice, and gave the row to paste instead.
+- **Codex's sandbox is a folder, not a skill**: started in `.claude/skills`, a relative
+  `README.md` landed at that folder's root (allowed), the repository's by its full path failed
+  ("Read-only file system").
+- **A skill Scribe writes is used**: a fresh `claude -p` loaded `agent-prompt` for "add a prompt
+  for an agent called Herald", and no skill for moving the Appearance switch (one run each).
+- **An inline dot has no size**: `.state-dot` inside an inline `span` drew 0×0; the sidenav's
+  are flex items. Seen only in a screenshot; e2e found it (aria-hidden) fine.
+- **`shell.spec`'s focus tests are flaky on this machine either way**: alternated with `main`'s
+  sidenav, the keys test failed 7 of 20 against 1 of 20 here, the card test 5 of 10 against 0 of
+  20; a 300 ms wait after the arrow made it pass 3 of 3.
+
+**Verification**: tests first, red for the right reason (skills server 20, route 1, viewer checks
+16 with this repository's own skills, page route 1, Scribe's gate 8, Scribe's conversation 3,
+prompt 3, poll 1, e2e 6). `pnpm check` 1,360 tests in 99 files; e2e 215 of 216 (the flaky keys
+test above). Real Claude Code and Codex in a throwaway clone: PLAN.md's table. `/history` first
+paint 64 ms on both builds, first rows 151 and 156 ms. Screenshots of every state at 1440×900 and
+390×844, dark and light.
+
+Not verified: Windows and macOS; "allow … for this session" in a checkout outside `~/.claude`; a
+project whose own settings deny writes into `.claude`.
