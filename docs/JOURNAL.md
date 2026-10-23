@@ -5427,3 +5427,29 @@ paint 64 ms on both builds, first rows 151 and 156 ms. Screenshots of every stat
 
 Not verified: Windows and macOS; "allow … for this session" in a checkout outside `~/.claude`; a
 project whose own settings deny writes into `.claude`.
+
+## V42 spike — the intro's colours, and the palette tried on today's pages (2026-10-24, branch `feature/ui-improvements-v2`)
+
+Asked: "a revamp of the UI. Still looks old. And i want to change the color palette. Will use the
+colors from the intro video with the fishes. Grab some colors: primary, secondary etc." Read on
+`main` (`e380fef`): the intro's images (`koi-bg.webp`, `koi-white.webp`, `koi-black.webp`) and the
+512 px icon, decoded with ffmpeg and bucketed by colour; then today's pages screenshotted at
+1440×900, dark and light, with and without the candidate tokens injected as a stylesheet.
+
+**Learned**:
+- **The intro is two hues**: near-black navy water (the tile's centre `#05080f`, its body
+  `#081828`, a rim lit `#334781`) and the koi's blue light — the black koi's glow `#2858b0`–
+  `#3060b8`, vivid pixels averaging `#427cd3`–`#4c82d2`, the white koi's halo `#a8c0e8`, its shade
+  `#c8d1e1` and body `#e8e8f8`. No warm colour but the black koi's few orange fringe pixels.
+- **The koi blue sits on today's moved/info blue**: hue 220° against `#4493f8`'s 214°. With the
+  koi blue as an accent, a moved node or an agent working would read as selected; moved goes cyan.
+- **A navy chrome keeps V31's steps**: canvas `#060a12` to chrome `#0f1626` is 1.10:1 (V31's
+  `#0a0a0a`/`#171717`); every text, state and line rule of `tokens.test.ts` passes in both themes
+  (muted 6.19:1, `--faint` 3.71:1, lines 1.31:1; light: muted 5.27:1, lines 1.21:1). White on the
+  koi primary `#3c6fd6` is 4.73:1; on the light `#2f62cc` 5.62:1.
+- **The koi S reads at 24 px**: rendered from the icon at 20, 24 and 28 px on the new chrome, it is
+  an S from 24 px; V39 kept the graph glyph because it does not at 16.
+- **Colours outside the tokens**: the app's window and title bar (`frame.ts`), its start page (its
+  own copy of the tokens), and the terminal's theme (`terminal.ts`).
+- **What the style itself calls dated is still on one page**: the diff sidebar's Changes /
+  Findings, underlined tabs with a 2 px rule.
