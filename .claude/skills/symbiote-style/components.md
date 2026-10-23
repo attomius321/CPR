@@ -68,8 +68,8 @@ outline (standalone toolbar actions), ghost (icon buttons, row triggers, Cancel)
 .btn .icon { width: 16px; height: 16px; }
 .btn:disabled { opacity: 0.5; pointer-events: none; }
 
-.btn-primary { background: var(--primary); color: var(--primary-text); }
-.btn-primary:hover { background: color-mix(in srgb, var(--primary) 90%, transparent); }
+.btn-primary { background: var(--primary); box-shadow: var(--primary-shine); color: var(--primary-text); }
+.btn-primary:hover { background: var(--primary-hover); }   /* darker: a lighter blue loses white's 4.5:1 */
 
 .btn-secondary { background: var(--raised); }
 .btn-secondary:hover { background: color-mix(in srgb, var(--raised) 80%, transparent); }
@@ -230,11 +230,12 @@ One recipe for every list: the sidenav, the change list, branches, findings, men
 .row[aria-current='page'],
 .row.selected { background: var(--selected); color: var(--text); }
 .row[aria-current='page'] .icon,
-.row.selected .icon { color: var(--text); stroke-width: 2.25; }  /* nav: 1.75 idle, 2.25 active */
+.row.selected .icon { color: var(--accent); stroke-width: 2.25; }  /* nav: 1.75 idle, 2.25 active */
 .row.cursor { box-shadow: inset 0 0 0 1px var(--selected-line); }  /* j/k cursor, apart from selection */
 ```
 
-- Selection, the j/k cursor and the current page are neutral. A state shows as a dot (6–8 px,
+- Selection and the current page are washes of the accent (V42); the current page's icon in
+  `--accent`; the hover a wash of the text. A state shows as a dot (6–8 px,
   round), a lucide icon or a tinted badge at the row's start or end, never as the row's background
   or a coloured side bar.
 - Actions that belong to a row appear on hover and on focus within; keep them visible on touch:
@@ -404,7 +405,9 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   round, track `--raised`, fill `--added` under 80 %, `--warning` from 80 % or when the vendor
   warns, `--removed` at 100 % or a reached limit (V29c's tones: the person wants the colours, not
   grey).
-- Terminal: `#000` edge to edge; its title row text `rgb(255 255 255 / 52%)`.
+- Brand: the koi S (`KoiMark`, `ui/koi-mark.png`) at 24 px before the name; 20 px in the title bar.
+- Terminal: `#02040a` (the koi's deepest water) edge to edge, dark in both themes; its theme in
+  `workspaces/terminal.ts`.
 - Empty state: a 28 px icon in `--faint`, a 14 px weight 500 line, 12 px `--muted` text, and the
   action that fills it (a primary or outline button).
 
@@ -418,7 +421,7 @@ costly on thousands of nodes). Within them:
 - File boxes: `--panel`, 1 px `--line`, 10 px radius; the name in mono 12 px weight 500 (a path is
   literal).
 - Symbols: a 9 % ground and a 1 px edge at 55 % of the kind's colour, text in `--text`, 8 px
-  radius. Selected: `outline: 2px solid var(--text)`, offset 1 px (neutral, no size change).
+  radius. Selected: `outline: 2px solid var(--accent)`, offset 1 px (no size change).
   Reviewed: dimmed; mixing the text tokens toward the surface (`color-mix(in oklab, …)`) is a fixed
   step on any background, where `opacity` fades with what is behind.
 - Edges in `--faint`, the selected symbol's in `--text`; removed edges dashed in `--removed`.

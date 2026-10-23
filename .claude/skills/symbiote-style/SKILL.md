@@ -1,6 +1,6 @@
 ---
 name: symbiote-style
-description: Symbiote's style — monochrome, quiet chrome lifted above the darkest content, colour only for state, Geist, 8 px controls, lucide-style icons. Gives the tokens (dark and light, contrast checked), plain-CSS recipes for every control, the patterns that make a screen look dated, the traps met applying it, and how to verify a restyle. Use when restyling the viewer, adding or changing any UI in packages/viewer (its CSS, a page, a control, the graph's nodes), when a screen "looks old", or when the user mentions the style, the theme, the look or styling.
+description: Symbiote's style — the koi's colours (deep-water chrome lifted above the darkest content, one koi-blue accent, colour otherwise for state), Geist, 8 px controls, lucide-style icons. Gives the tokens (dark and light, contrast checked), plain-CSS recipes for every control, the patterns that make a screen look dated, the traps met applying it, and how to verify a restyle. Use when restyling the viewer, adding or changing any UI in packages/viewer (its CSS, a page, a control, the graph's nodes), when a screen "looks old", or when the user mentions the style, the theme, the look or styling.
 ---
 
 # Symbiote's style
@@ -10,7 +10,9 @@ The viewer's look since V31: one stylesheet, its tokens on `:root` (`ui/base.css
 The stylesheet is in parts beside what they draw (`history/HistoryPage.css` beside
 `HistoryPage.tsx`), listed in cascade order by `styles.css`. V29b gave Symbiote its colours, font and
 density; V31 the rest: lifted chrome, neutral selection, drawn controls, one radius scale; V37
-quiet fields, no tracking, a hover apart from the selection, and help behind a "?".
+quiet fields, no tracking, a hover apart from the selection, and help behind a "?"; V42 the koi's
+colours, sampled from the intro: the water for the chrome, the white koi for the text, their blue
+light for the primary and one accent.
 
 - Tokens, dark and light, with their contrast: [tokens.md](tokens.md)
 - Plain-CSS recipes for each control: [components.md](components.md)
@@ -20,13 +22,18 @@ quiet fields, no tracking, a hover apart from the selection, and help behind a "
 
 ## The style in six rules
 
-1. **Monochrome and quiet.** Neutral greys carry the chrome. Colour is for state only: diff kinds,
-   findings' severity, an agent's status, git lanes. Reach for muted/raised/line before a colour.
-2. **The content is darkest; the chrome is lifted.** Canvas `#0a0a0a` (the graph, History's rows,
-   the terminal is `#000`); sidenav, panels, toolbars and the status bar `#171717`; chips and
-   selected rows `#262626`. Never one black for everything.
-3. **Selection is neutral.** Active row: a 10 % wash of the text colour and a brighter border. The
-   focus ring is grey. Blue is `--moved`/`--info`, a state; it is not the accent.
+1. **Quiet, in the koi's colours.** The koi's deep water carries the chrome: navy-tinted
+   neutrals, not greys. Colour is for state — diff kinds, findings' severity, an agent's status,
+   git lanes — and for one accent, the koi's blue light, in named roles (rule 3). Reach for
+   muted/raised/line before a colour.
+2. **The content is darkest; the chrome is lifted.** Canvas `#05080f`, the intro tile's abyss (the
+   graph, History's rows; the terminal is `#02040a`); sidenav, panels, toolbars and the status bar
+   `#0f1626`; chips and the segmented track `#1c2539`. Never one black for everything.
+3. **The accent marks what a person acts with.** The primary action (`--primary`, the koi's blue,
+   white text), focus, what is checked, the current page, the selection (a 16 % wash of
+   `--accent`), the selected node, a link under the pointer. Never a state: moved and info are cyan
+   (V42), and a guard in `tokens.test.ts` keeps `--accent` to its roles. The hover stays a wash of
+   the text.
 4. **Hierarchy by weight and opacity, not by colour or size.** 14 px for rows and nav, 13 px
    secondary, 12 px captions, nothing smaller but uppercase labels (the `--size-*` scale, V32);
    weight 500 for labels and buttons, 600 for headings; idle nav text in `--muted`, its icon in
@@ -47,9 +54,9 @@ Decisions recorded in `docs/PLAN.md`/`JOURNAL.md`; a new look must keep them.
   Prefer an icon to a new symbol glyph.
 - **Type** (V32): every font size from the `--size-*` scale on `:root`, never a px value (the same
   test). V29b's 13 px body with 10–11 px captions was too small to read; do not go back under 12 px.
-- **Contrast** (`packages/viewer/test/tokens.test.ts`): text and muted ≥ 4.5:1 on the four
-  backgrounds; states, `--faint`, `--focus` ≥ 3:1; `--edge` ≥ 3:1 (a field on hover, a checkbox);
-  region lines ≥ 1.2:1. The tested tokens are `#rrggbb`; translucent values go in other tokens.
+- **Contrast** (`packages/viewer/test/tokens.test.ts`): text, muted and the accent ≥ 4.5:1 on the
+  four backgrounds; white on the primary and its hover ≥ 4.5:1; states, `--faint`, `--focus` ≥
+  3:1; `--edge` ≥ 3:1 (a field on hover, a checkbox); region lines ≥ 1.2:1. The tested tokens are `#rrggbb`; translucent values go in other tokens.
   A text field at rest has the soft `--field-line` (~1.5:1, decision 246, the person's choice):
   its label names it, and hover and focus bring the 3:1 edge and the ring.
 - **Letter-spacing 0** but uppercase labels (V37): fractional tracking rounds into uneven gaps
@@ -74,15 +81,16 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
 
 | Dated pattern | The style's answer |
 |---|---|
-| One black for every surface (page and sidenav 1.04:1 apart) | Canvas `#0a0a0a`, chrome `#171717` (1.10:1) |
-| Blue as the accent: picks, links, selected nodes, checkboxes | Neutral selection (components.md, *Rows and lists*); links in the text colour, underlined on hover |
+| One black for every surface (page and sidenav 1.04:1 apart) | Canvas `#05080f`, chrome `#0f1626` (1.11:1) |
+| Blue for everything: picks, links, selected nodes, checkboxes, states (before V31) | One accent in named roles (V42), states in their own colours; links in the text colour, the accent and an underline on hover |
+| Neutral greys with no colour of Symbiote's own (V31–V41) | The koi's palette (V42): navy-tinted chrome, the koi's blue for the primary and the accent |
 | Native checkboxes and selects | Drawn controls; the `<input>` and `<select>` stay |
 | A 2–4 px coloured left border on a row | A neutral row; the state as a dot, an icon or a tinted badge |
 | Bordered chips, mono text for names | Quiet chips: `--raised`, muted text, 4 px radius, no border; names in sans |
 | A filled saturated pill (HEAD's) | A success tint: a 12 % fill and a 30 % edge, the state colour as text |
-| Underlined tabs with a heavy rule | A segmented control, or line tabs in the text colour |
+| Underlined tabs with a heavy rule (the diff's sidebar until V42) | A segmented control, or line tabs in the text colour |
 | Letters as buttons and hints | lucide-style icons; key caps on hover or in the tooltip |
-| A grey, disabled-looking main action | The primary: `#e5e5e5` fill, `#171717` text in dark |
+| A grey, disabled-looking main action | The primary: the koi's blue `#3c6fd6`, white text, its top edge lit (`--primary-shine`) |
 | Radii of seven sizes | The scale: 4, 8, 10, 11, 14 px and round |
 | Uneven gaps between letters ("n o commits") at 1× (V37) | `letter-spacing: 0`; controls `inherit` |
 | A 3:1 edge on every field, a 2 px outline over it on focus, a resize grip (V37) | `--field-line` at rest, `--edge` on hover, `--focus` and a 3 px `--ring`; textareas `field-sizing: content` |
@@ -96,7 +104,8 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
   token (`--panel`, `--raised`) vanishes or jumps: use `--hover` and `--selected` (V31a moved 13
   rules).
 - **Guards in `test/tokens.test.ts`**: `--moved` only in state rules (an allowlist of selectors:
-  add a new state there, never an accent), no coloured side bar (`border-left` 2–4 px or an inset
+  add a new state there, never an accent), `--accent` only in its roles (`ACCENT_ROLES`: add a
+  role's selector, never a state's), no coloured side bar (`border-left` 2–4 px or an inset
   bar; a blockquote's `--line` is allowed), no `accent-color`, every radius on the scale
   (`inherit` passes). They read every `.css` under `src/`.
 - **The cascade is `src/styles.css`'s list**: a part later in it wins at equal specificity. Add a
@@ -106,7 +115,14 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
   `.thread-text.markdown`), `shell/Shell.css` after `shell/Sidenav.css` (the narrow shell hides
   the sidenav).
 - **Colours pinned in e2e**: `look.spec.ts` (page and chrome) and `app.spec.ts` (the window's
-  title-bar buttons take `--side`). A token change updates them, nothing else should.
+  title-bar buttons take `--side`). A token change updates them, nothing else should. Outside the
+  viewer's tokens, kept by hand (tokens.md, *Outside the tokens*): the terminal's theme, the app's
+  window and title bar (`frame.ts` and its test), the app's start page (`start.css`).
+- **A lighter primary on hover loses its text** (V42): every blue lighter than `#3c6fd6` takes white
+  under 4.5:1. The hover is a step darker (`--primary-hover`); a ghost button resets the primary's
+  lit edge (`box-shadow: none`), or a white line shows on its top.
+- **The koi S does not read under 24 px** (V39, V42): the mark is an image (`ui/koi-mark.png`, the
+  app's icon cropped to its tile, 48 px) at 24 px, 20 in the title bar; never 16.
 - **Restyling `.link`** reaches every link-styled button: Settings' placeholders are insert
   buttons, drawn as code chips, not links.
 - **A node's border is part of its content box**: the symbol's 3 px side bar became a 1 px edge
