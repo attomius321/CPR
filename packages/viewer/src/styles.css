@@ -46,3 +46,5 @@
 @import './shell/StatusBar.css';
 @import './shell/TitleBar.css';
 @import './shell/frame.css';
+/* Last: the first-time intro is over every page. */
+@import './intro/intro.css';
