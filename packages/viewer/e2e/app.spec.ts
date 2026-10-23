@@ -63,13 +63,16 @@ async function startXvfb(): Promise<{ name: string; stop(): void }> {
 
 let display: { name: string; stop(): void };
 
-/** The environment for the app: its settings in `config`, on the specs' own display (X11). */
+/**
+ * The environment for the app: its settings in `config`, on the specs' own display (X11); the
+ * servers it starts show no first-time intro (V39: its own test serves one that does).
+ */
 function appEnv(config: string): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined && key !== 'WAYLAND_DISPLAY') env[key] = value;
   }
-  return { ...env, DISPLAY: display.name, XDG_CONFIG_HOME: config };
+  return { ...env, DISPLAY: display.name, XDG_CONFIG_HOME: config, SYMBIOTE_INTRO: 'off' };
 }
 
 let symbiote: RunningCommits;
@@ -247,6 +250,37 @@ test('remembers the window, the zoom and the page’s choices for the next run',
     ).toEqual({ x: 40, y: 30, width: 1000, height: 700 });
   } finally {
     other.stop();
+  }
+});
+
+test('the first-time intro: with sound at once, under the title bar, in the window’s corners (V39)', async () => {
+  const home = mkdtempSync(join(tmpdir(), 'symbiote-app-home-'));
+  const first = await serveCommits({
+    SYMBIOTE_INTRO: 'on',
+    HOME: home,
+    XDG_CONFIG_HOME: join(home, '.config'),
+  });
+  try {
+    const { app, page } = await launch(first.url);
+    const intro = page.locator('.intro');
+    await expect(intro.locator('canvas')).toBeVisible();
+    // Sound with no click or key: the app lets its own window play audio.
+    await expect
+      .poll(() =>
+        app.evaluate(({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows()[0]?.webContents.isCurrentlyAudible(),
+        ),
+      )
+      .toBe(true);
+    const bar = await page.locator('.titlebar').boundingBox();
+    const box = await intro.boundingBox();
+    expect(bar && box && Math.round(box.y)).toBe(bar && Math.round(bar.y + bar.height));
+    await expect(page.locator('html')).toHaveAttribute('data-frame', 'own');
+    expect(await style(page, '.intro', 'border-bottom-left-radius')).toBe('10px');
+    await expect(intro).toHaveCount(0, { timeout: 10_000 });
+  } finally {
+    first.stop();
+    rmSync(home, { recursive: true, force: true });
   }
 });
 
