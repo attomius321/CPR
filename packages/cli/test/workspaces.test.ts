@@ -917,6 +917,29 @@ describe('workspaces', () => {
     expect(existsSync(join(repo.root, 'symbiote', 'documents', 'feature', 'two'))).toBe(false);
   });
 
+  it("keeps a workspace's documents in Symbiote's cache when its records are kept there (V40)", async () => {
+    const { repo } = fresh();
+    // No user.email: reviews and workspaces are kept in the cache (V15).
+    repo.git('config', '--unset', 'user.email');
+    const { claude, start } = fakeClaude();
+    const s = await service(repo, claude);
+    const doc = await s.saveDocument('spec.md', Buffer.from('# Spec\n'));
+    const { workspace, prompt } = await s.start({
+      brief: 'One',
+      branch: 'feature/one',
+      planFirst: false,
+      documents: [{ id: doc.id, name: doc.name }],
+    });
+    const state = join(cache, 'state', (await openRepo(repo.root)).id);
+    const folder = join(state, 'documents', 'feature', 'one');
+    expect(readFileSync(join(folder, 'spec.md'), 'utf8')).toBe('# Spec\n');
+    expect(workspace.documents).toEqual({ folder, files: ['spec.md'] });
+    expect(prompt).toContain(`in ${folder}:`);
+    // The folder Claude Code is given to read holds them.
+    expect(start.mock.calls[0]?.[0].addDir).toBe(state);
+    expect(existsSync(join(repo.root, 'symbiote', 'documents'))).toBe(false);
+  });
+
   it('refuses documents it cannot take, before making the branch (V40)', async () => {
     const { repo } = fresh();
     const s = await service(repo, fakeClaude().claude);
