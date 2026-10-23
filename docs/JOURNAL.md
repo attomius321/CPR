@@ -5352,3 +5352,29 @@ spike folder's own Claude Code records and trust entry were left as they were, a
 
 Not verified: a drag from the system's file manager or a real clipboard; Symbiote's window on
 WSLg; Firefox, Safari; macOS and Windows (an upload moved across file systems copies, untested).
+
+## Fix — shell.spec's focus tests waited for the start page, not the sidenav's card (2026-10-24, branch `feature/providing-documents-on-workspace-ceation`)
+
+Found when Symbiote's merger checked V40's approved merge: `pnpm test:e2e` failed on `shell.spec`'s
+two focus tests ("keys: h and s…", "a card keeps the focus…"), at the same step: after `w`, the
+arrow down left the second workspace's card unfocused. The journal had them as flaky on `main`
+(1 of 42 runs each, alone).
+
+**Learned**:
+- **They fail as often on `main`**: run 10 times each, 4 workers, in three rounds alternated with
+  a build of `main` (`bf0e717`): `main` 22 of 60 failed, this branch 13 of 60. Alone they rarely
+  fail; the full suite's 4 workers are the load that brings it out.
+- **The sidenav listed one card**: focus, keys and the cards traced in the page, the failing runs
+  (3 of 40) had `cards=1` when `w` and the arrow were pressed. The list is read again after a
+  start (`reloadWorkspaces`); the tests' `start` helper waited only for the start page to close.
+  The arrow on a one-card list keeps the focus there, as it should; then the second card came,
+  and the test expected the focus on it. Not the app's bug: the test pressed keys before the list
+  it meant was there.
+- A trace that called `getComputedStyle` in the key listener passed 16 of 16: it slowed the keys
+  enough for the list to arrive. Measure such races with cheap logging.
+
+**Fixed**: the helper waits for the new workspace's card in the sidenav, attached rather than
+visible (on a phone the sidenav is a closed drawer by then).
+
+**Verification**: the two tests, 20 times each with 4 workers in three rounds: 120 of 120 (13 of
+60 failed before); all of `shell.spec` 9 of 9; the full suite 211 of 211.

@@ -38,6 +38,12 @@ const start = async (page: Page, what: string) => {
   await startPage(page).getByRole('textbox', { name: 'Goal' }).fill(what);
   await startPage(page).getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
   await expect(startPage(page)).toBeHidden();
+  // Its card is listed once the list is read again, after the start: `w` and the arrows pressed
+  // before it move among the cards listed then (1 of 2 in a third of the runs with 4 workers).
+  // Attached, not visible: on a phone the sidenav is a closed drawer by then.
+  await expect(
+    page.locator('.sidenav').getByRole('button', { name: what, exact: true, includeHidden: true }),
+  ).toBeAttached();
 };
 /** Marks the document: a navigation that keeps the mark did not load the page again. */
 const mark = (page: Page) =>
