@@ -5279,3 +5279,8 @@ runs that lost the context showed nothing for 1,063–1,067 ms, then the whole s
 
 Not verified: CI itself; WSLg's Wayland (the app takes X11 there); macOS, Windows, a GPU (the
 fix leaves them as they were: no switch off WSL, and the loss handling only runs on a loss).
+
+Merged into main (2026-10-23), asked: "Merge". On `main`: `pnpm check` 1,307 tests; build; e2e
+208 of 210, both failures `shell.spec`'s focus tests (a card's focus, the terminal's size), which
+failed alone at the same rate on `main` before the merge (`241371d`: 1 of 42 runs; after: 1 of
+42, in alternated rounds).
