@@ -65,6 +65,7 @@ import { merger, MergeRefused } from './merges.js';
 import { claudeMerger, codexMerger, type MergerAgent } from './merge-agent.js';
 import { promptSettingsService } from './prompts.js';
 import { scout } from './scout.js';
+import { skillsService } from './skills.js';
 import { readClaudeUsage, readCodexUsage, usageService } from './usage.js';
 import { codex, findCodex, type Codex } from './codex.js';
 import {
@@ -684,6 +685,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         env: ctx.env,
         terminals,
       }),
+      skills: skillsService(repo, { codexInstalled: async () => (await codexOf()) !== null }),
       // Each subscription's windows (V29c): agents Symbiote can start, signed in to a plan.
       usage: usageService(
         {
