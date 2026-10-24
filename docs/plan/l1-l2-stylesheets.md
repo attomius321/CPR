@@ -350,8 +350,11 @@ finding; the viewer, CLI and docs last.
   unmatched file (11139e6: 6.1–6.6 s → 4.5 s; `main` 3.8 s, reading no stylesheets).
 - **Unresolved SCSS names** are `unknown:$x`, `unknown:v.$x`, `unknown:@include m`; an
   ambiguous one is an edge to each candidate with `resolution: "unknown"`.
-- **The viewer needed no change**: it is kind- and language-agnostic; an e2e spec
-  (`e2e/stylesheets.spec.ts`) covers a rule's and a token's diff, users and a comment.
+- **The viewer needed one change**: it is kind- and language-agnostic (an e2e spec,
+  `e2e/stylesheets.spec.ts`, covers a rule's and a token's diff, users and a comment), but a
+  stylesheet's rules and tokens in one file box made dagre take 60–70 s to order Symbiote's
+  `3fff617` (2,186 edges inside `styles.css`; first paint 48–73 s). A box with over 1,000 edges
+  inside is laid out in about square columns (decision 331): first paint 0.53–0.58 s.
 - **A CSS-only commit now loads the TypeScript program** (markup's mentions): Bitwarden's
   `c1cfaabfb1` went from 26 ms (nothing analyzed on `main`) to 9 s.
 - **Regression sets** `stylesheets` (Symbiote, 110 commits, the `symbiote` repo by its SSH
@@ -363,3 +366,4 @@ finding; the viewer, CLI and docs last.
 |---|---|---|---|
 | 329 | A rule's signature | **None of its own: rules, custom properties and keyframes hash a constant signature; a new selector is a move** | Selector lists gaining a member read as breaking signature changes with "users not updated" (Symbiote `b5f0dad`, `d2335ca`) |
 | 330 | When a mention reaches a rule | **Only when the mention's file renders every class one of the rule's selectors needs; certain when its symbol renders them all** | `.merge-row-actions .button` had 13 users, 12 wrong (Symbiote `042112a`) |
+| 331 | A file box too dense for dagre | **Over 1,000 edges inside: columns, about square, no dagre** | 2,186 edges took dagre 60–70 s (Symbiote `3fff617`); TypeScript's densest boxes seen hold under 100 (Bitwarden `737ee3f`: 57) |

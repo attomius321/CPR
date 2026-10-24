@@ -104,8 +104,11 @@ nothing now, is a warning. Decisions 306–312, 330.
   4.5 s (`main`, reading no stylesheets: 3.8 s).
 - **Decision numbers collide across workspaces**: `feature/merger-logs` took 313–314 while this
   branch was built; this branch's two are 329–330 (the highest elsewhere was 328).
-- **The viewer is kind-agnostic**: rules, tokens and their users needed no viewer change; the
-  e2e spec passed on its first run.
+- **The viewer is kind-agnostic, but dagre is not linear**: rules, tokens and their users
+  needed no viewer change and the e2e spec passed on its first run, yet `3fff617`'s first paint
+  took 48–73 s: dagre ordering one file box with 2,186 edges inside (a 5,000-line `styles.css`),
+  while 1,782 edges (`9220e20`) took 0.6 s. Boxes with over 1,000 edges are now laid out in
+  square columns: 0.53–0.58 s.
 
 **Verification**: tests first (`markup.test.ts`: the `markup` fixture, the 13-users case, the
 `:not()` and rename case, `selectorClasses`; plugin fixtures `styles` (Angular) and
