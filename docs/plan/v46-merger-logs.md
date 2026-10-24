@@ -2,8 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v46-merger-logs.md)
 
-**Status:** planned (2026-10-24), on branch `feature/merger-logs` (a workspace started in
-Symbiote, from `main` at `561826d`); waiting for the person's OK before anything is built.
+**Status:** in progress (2026-10-24), on branch `feature/merger-logs` (a workspace started in
+Symbiote, from `main` at `561826d`). The plan OK'd by the person, with its three questions
+answered: "1. Add a merger effort in settings. 2. Yes 3. Yes, recommendation. Ok" — a merger
+effort in Settings (V46d), the log in a terminal, a file's regions only.
 
 **Problem** (asked: "The merger page feel empty for the moment...there is no feedback in
 processing, nothing. I need some logs if there are tests. and if the merge needs an agent, i need
@@ -85,10 +87,25 @@ the check; landing; `symbiote merge`'s output; nothing in the analysis.
 - **`--thinking-display` is not in `claude --help`.** A Claude Code that refuses it ("unknown
   option") is run again at once without it, and the log says its thinking is not shown. The
   answer never depends on it.
-- **The model thinks when it decides to.** No `--effort` is added: the merger's cost stays
-  V26c's (question 1 below).
+- **The model thinks when it decides to.** How much is the merger's effort's (below).
 - **Codex**: its `exec --json` lines read as they come: `reasoning` → `{ think }`,
   `command_execution` → `{ tool: '$', input }` and its exit code, `agent_message` → `{ say }`.
+
+## The merger's effort (V46d; CLI `merges.ts`, Settings)
+
+Asked, on question 1: "Add a merger effort in settings".
+
+- **`merge.effort`** in `symbiote/config.json`, beside `merge.agent` and `merge.model`: one word
+  (`EFFORT_LEVEL`). Absent: no level is passed, the agent's own setting decides (as today).
+- **Passed to each run**: Claude Code `--effort <level>`, Codex `-c model_reasoning_effort="<level>"`
+  (as `codex.ts` starts a workspace's turn). A level the merger's agent does not list is not
+  passed, as Scout's (fix/scout-effort-level): the project's file may name another agent's level.
+  The resolve step's log says which: "Effort: high (merge.effort)", or "merge.effort is ultra,
+  which Claude Code does not list: its own level".
+- **Settings**: "Effort" in the Merger group, after its Instructions, on the same stepper as
+  Scout's Effort (the merger's agent's levels, read where the stepper shows); saved in the config
+  when the handle is let go. `GET /api/merges/efforts`, `POST /api/merges/effort { effort }`
+  (null removes it), shaped as Scout's (`ScoutEfforts`, `ScoutEffortChange`).
 
 ## The stream (server)
 
@@ -177,6 +194,7 @@ which is most of the waiting), then V46b (the agent's process in it), then V46c 
 | V46a | A merge's log | The log file per entry, the git steps' lines, each check command's output as it comes, `/api/merges/log`, the steps and the terminal on the page |
 | V46b | The merger agent's process | Claude Code's stream (thinking summaries, tool calls, text, usage) and Codex's events in the log; the fallback without `--thinking-display` |
 | V46c | A resolution's files | The list of conflicting files with each one's summary; a file's regions; Files and Log tabs |
+| V46d | The merger's effort | `merge.effort`, passed to Claude Code and Codex when listed; Effort in Settings' Merger group |
 
 **Proposed decisions**:
 
@@ -188,17 +206,17 @@ which is most of the waiting), then V46b (the agent's process in it), then V46c 
 | 316 | How the log is drawn | **A read-only terminal (xterm.js), steps beside it, following the end** | Asked "in a terminal"; it draws any project's colours and `\r` as the person's terminal does, with the agent terminal's look (question 2) |
 | 317 | A resolution's files | **A list of the conflicting files, each with its regions' flags put together; a click shows its regions; the first shown is the first that loses or doubles lines** | 10 of the 22 conflicting merges here have 2–4 files; the reviewer's question per file is still "what was lost?" (chore-lost-feature) |
 | 318 | Huge output | **1 MB a step: its first 64 KB and its end** | The start says what ran, the end what failed; 30 KB measured here |
+| 319 | How much the merger thinks | **`merge.effort`, set in Settings; absent, the agent's own level** | Asked ("Add a merger effort in settings"). The model thinks when it decides to (0 thinking tokens on an easy region, 161–250 where the sides disagree): the person picks the cost |
 
-**Questions for the person**:
-1. **How much thinking.** Claude Code's model thinks only when it decides to (0 thinking tokens
-   on an easy region, 161–250 where the sides disagree). Keep the merger at its default
-   (recommended: the cost stays V26c's), or add `merge.effort` so it thinks more on every merge?
-2. **The log: a terminal or page text.** A read-only terminal like the agent's (recommended, as
-   asked), or page text styled like one (it wraps, and the browser's find searches it)?
-3. **A file's result: its regions, or the whole file too.** A click shows the file's resolved
-   regions (recommended). Also open the file's whole merge in VS Code's diff, as V43 opens a
-   changed file, from the target's version to the merge's?
+**Questions for the person**, answered on 2026-10-24 ("1. Add a merger effort in settings. 2. Yes
+3. Yes, recommendation. Ok"):
+1. **How much thinking.** Keep the merger at its default, or add `merge.effort`? → `merge.effort`
+   in Settings (V46d, decision 319).
+2. **The log: a terminal or page text.** → A read-only terminal like the agent's (decision 316).
+3. **A file's result: its regions, or the whole file too** (VS Code's diff, as V43)? → Its
+   regions (decision 317).
 
 **Not in V46 (later)**: `symbiote merge` printing the log as it goes; paths and links in the log
-(V38); a log for merges made before V46; the person's own Claude Code hooks run in the merger's
-`claude -p` (2 `SessionStart` hooks in every spike run).
+(V38); a log for merges made before V46; a file's whole merge in VS Code's diff (question 3); the
+person's own Claude Code hooks run in the merger's `claude -p` (2 `SessionStart` hooks in every
+spike run).
