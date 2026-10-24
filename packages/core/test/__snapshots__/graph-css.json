@@ -350,9 +350,104 @@
           "body": "747614001f0119ba"
         }
       }
+    },
+    {
+      "id": "src/ui/tokens.css#:root[data-theme=\"light\"] › --accent",
+      "kind": "variable",
+      "name": "--accent",
+      "container": "src/ui/tokens.css#:root[data-theme=\"light\"]",
+      "language": "css",
+      "exported": false,
+      "status": "unchanged",
+      "previousId": null,
+      "base": {
+        "file": "src/ui/tokens.css",
+        "range": {
+          "start": {
+            "line": 7,
+            "col": 3
+          },
+          "end": {
+            "line": 7,
+            "col": 21
+          }
+        },
+        "signature": "--accent: #2563eb",
+        "hashes": {
+          "signature": "50de48a2faf12ba5",
+          "body": "e7b00c296b8c5492"
+        }
+      },
+      "head": {
+        "file": "src/ui/tokens.css",
+        "range": {
+          "start": {
+            "line": 7,
+            "col": 3
+          },
+          "end": {
+            "line": 7,
+            "col": 21
+          }
+        },
+        "signature": "--accent: #2563eb",
+        "hashes": {
+          "signature": "50de48a2faf12ba5",
+          "body": "e7b00c296b8c5492"
+        }
+      }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "src/ui/controls.css#.button",
+      "to": "src/ui/tokens.css#:root › --accent",
+      "kind": "reference",
+      "side": "both",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "src/ui/controls.css",
+            "line": 2,
+            "col": 14
+          }
+        ],
+        "head": [
+          {
+            "file": "src/ui/controls.css",
+            "line": 2,
+            "col": 14
+          }
+        ]
+      }
+    },
+    {
+      "id": "e2",
+      "from": "src/ui/controls.css#.button",
+      "to": "src/ui/tokens.css#:root[data-theme=\"light\"] › --accent",
+      "kind": "reference",
+      "side": "both",
+      "resolution": "resolved",
+      "sites": {
+        "base": [
+          {
+            "file": "src/ui/controls.css",
+            "line": 2,
+            "col": 14
+          }
+        ],
+        "head": [
+          {
+            "file": "src/ui/controls.css",
+            "line": 2,
+            "col": 14
+          }
+        ]
+      }
+    }
+  ],
   "findings": [],
   "stats": {
     "filesChanged": 3,
@@ -360,9 +455,9 @@
       "added": 2,
       "removed": 2,
       "modified": 4,
-      "context": 0
+      "context": 1
     },
-    "edges": 0
+    "edges": 2
   },
   "warnings": []
 }

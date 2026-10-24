@@ -1,7 +1,8 @@
 import type { AtRule, ChildNode, Container, Declaration, Node, Root } from 'postcss';
-import type { Range, Shape, SymbolDecl, SymbolKind } from '../../model.js';
+import type { Range, Shape, SymbolDecl, SymbolId, SymbolKind } from '../../model.js';
 import { stylesheetLanguage } from './files.js';
 import { canonicalSelector, canonicalValue, hash, splitTopLevel, valueTokens } from './tokens.js';
+import { UseCollector, type StyleImport, type StyleUse } from './uses.js';
 
 /** Joins a context (an at-rule, the rule of a custom property) to what it holds in an ID. */
 export const CONTEXT = ' › ';
@@ -38,15 +39,29 @@ interface Enclosing {
 interface Scope {
   context: string[];
   rule?: Enclosing;
+  /** Who the names used here belong to: the enclosing symbol, or the file's top-level code. */
+  owner: SymbolId;
+  /** SCSS variables local here (a loop's). */
+  locals: ReadonlySet<string>;
+}
+
+/** What one stylesheet declares, uses and imports. */
+export interface StylesheetFacts {
+  symbols: SymbolDecl[];
+  uses: StyleUse[];
+  imports: StyleImport[];
 }
 
 /**
  * The symbols of one stylesheet: rules (with their resolved selector), the custom properties
  * they define, keyframes, and SCSS's top-level variables, mixins and functions. IDs are
- * `<file>#<context › name>`; a name repeated in one file gets ` (2)`, ` (3)`.
+ * `<file>#<context › name>`; a name repeated in one file gets ` (2)`, ` (3)`. With them, the
+ * names each symbol uses and the stylesheets the file imports.
  */
-export function extractStylesheet(file: string, root: Root): SymbolDecl[] {
+export function extractStylesheet(file: string, root: Root): StylesheetFacts {
   const language = stylesheetLanguage(file);
+  const module = `${file}#(module)`;
+  const uses = new UseCollector(file, root, language === 'scss');
   const symbols: SymbolDecl[] = [];
   const counts = new Map<string, number>();
   const unique = (qualified: string) => {
@@ -96,10 +111,11 @@ export function extractStylesheet(file: string, root: Root): SymbolDecl[] {
       own.tokens,
     );
     const enclosing = { id, qualified: id.slice(id.indexOf('#') + 1), selectors };
+    const locals = new Set(scope.locals);
     for (const child of node.nodes ?? []) {
       if (child.type === 'decl' && child.prop.startsWith('--')) {
         const property = `${enclosing.qualified}${CONTEXT}${child.prop}`;
-        add(
+        const propertyId = add(
           child,
           'variable',
           child.prop,
@@ -108,18 +124,33 @@ export function extractStylesheet(file: string, root: Root): SymbolDecl[] {
           { shown: shorten(`${child.prop}: ${canonicalValue(child.value)}`), parts: [property] },
           valueTokens(child.value),
         );
+        uses.declaration(child, propertyId, locals);
+      } else if (child.type === 'decl') {
+        uses.declaration(child, id, locals);
+        if (child.prop.startsWith('$')) locals.add(child.prop);
+      } else if (child.type === 'atrule' && !isOwnRule(child)) {
+        const inner = new Set(locals);
+        uses.atRule(child, id, inner);
+        uses.block(child.nodes, id, inner);
       }
     }
-    walk(node.nodes, { context: scope.context, rule: enclosing });
+    walk(node.nodes, { context: scope.context, rule: enclosing, owner: id, locals });
   };
 
   const atRule = (node: AtRule, scope: Scope) => {
     const name = node.name.toLowerCase();
-    if (!node.nodes) return; // a statement: @import, @use, @include at the top level, @extend…
+    if (!node.nodes) {
+      // A statement: @import, @use, @include at the top level (inside a rule, its body).
+      if (!scope.rule) {
+        uses.statement(node);
+        uses.atRule(node, scope.owner, new Set(scope.locals));
+      }
+      return;
+    }
     if (/keyframes$/.test(name)) {
       const own = `@${node.name} ${node.params.trim()}`;
       const qualified = [...scope.context, own].join(CONTEXT);
-      add(
+      const id = add(
         node,
         'keyframes',
         own,
@@ -128,23 +159,24 @@ export function extractStylesheet(file: string, root: Root): SymbolDecl[] {
         { shown: own, parts: [qualified] },
         all(node.nodes),
       );
+      uses.block(node.nodes, id, scope.locals);
     } else if (name === 'mixin' || name === 'function') {
       if (!scope.rule && scope.context.length === 0) callable(node, name);
     } else if (name === 'at-root') {
       const selectors = node.params ? splitTopLevel(canonicalSelector(node.params), ',') : [];
-      if (selectors.length > 0)
-        rule(node, selectors, selectors.join(', '), { context: scope.context });
-      else walk(node.nodes, { context: scope.context });
+      const outer = { context: scope.context, owner: module, locals: scope.locals };
+      if (selectors.length > 0) rule(node, selectors, selectors.join(', '), outer);
+      else walk(node.nodes, outer);
     } else if (scope.rule) {
       // Inside a rule, only a condition (`@media`) holds a rule of its own; anything else
       // (`@include … { }`, `@if`) is part of the rule's body.
       if (!GROUPING.has(name)) return;
       const context = [...scope.context, prelude(node)];
+      const inner = { ...scope, context };
       if (node.nodes.some((child) => child.type === 'decl')) {
-        const own = scope.rule.selectors.join(', ');
-        rule(node, scope.rule.selectors, own, { context, rule: scope.rule });
+        rule(node, scope.rule.selectors, scope.rule.selectors.join(', '), inner);
       } else {
-        walk(node.nodes, { context, rule: scope.rule });
+        walk(node.nodes, inner);
       }
     } else if (
       !GROUPING.has(name) &&
@@ -155,7 +187,9 @@ export function extractStylesheet(file: string, root: Root): SymbolDecl[] {
       const own = prelude(node);
       rule(node, [own], own, scope);
     } else {
-      walk(node.nodes, { context: [...scope.context, prelude(node)] });
+      const locals = new Set(scope.locals);
+      uses.atRule(node, scope.owner, locals);
+      walk(node.nodes, { ...scope, context: [...scope.context, prelude(node)], locals });
     }
   };
 
@@ -172,7 +206,7 @@ export function extractStylesheet(file: string, root: Root): SymbolDecl[] {
     });
     const own = `@${kind} ${bare}`;
     const shown = `${own}(${params.map((p) => (p.value === undefined ? p.name : `${p.name}: ${canonicalValue(p.value)}`)).join(', ')})`;
-    add(
+    const id = add(
       node,
       kind,
       own,
@@ -194,13 +228,23 @@ export function extractStylesheet(file: string, root: Root): SymbolDecl[] {
         rest: own,
       },
     );
+    // Defaults are read where the mixin is declared: they use the stylesheet's own names.
+    const start = UseCollector.preludeOffset(node);
+    if (start !== undefined) {
+      for (const p of params) {
+        if (p.value !== undefined) {
+          uses.expression(p.value, start + node.params.indexOf(p.value), id, new Set());
+        }
+      }
+    }
+    uses.block(node.nodes, id, new Set(params.map((p) => p.name.replace(/\.\.\.$/, ''))));
   };
 
   const variable = (node: Declaration) => {
     const tokens = valueTokens(node.value);
     const isFlag = (t: string) => t === '!default' || t === '!global';
     const flags = tokens.filter(isFlag);
-    add(
+    const id = add(
       node,
       'variable',
       node.prop,
@@ -212,6 +256,7 @@ export function extractStylesheet(file: string, root: Root): SymbolDecl[] {
       },
       tokens.filter((t) => !isFlag(t)),
     );
+    uses.declaration(node, id, new Set());
   };
 
   const walk = (nodes: readonly ChildNode[] | undefined, scope: Scope) => {
@@ -231,8 +276,14 @@ export function extractStylesheet(file: string, root: Root): SymbolDecl[] {
     }
   };
 
-  walk(root.nodes, { context: [] });
-  return symbols;
+  walk(root.nodes, { context: [], owner: module, locals: new Set() });
+  return { symbols, uses: uses.uses, imports: uses.imports };
+}
+
+/** An at-rule inside a rule that holds a rule of its own (a condition, `@at-root`). */
+function isOwnRule(node: AtRule): boolean {
+  const name = node.name.toLowerCase();
+  return node.nodes !== undefined && (GROUPING.has(name) || name === 'at-root');
 }
 
 /** A nested selector list resolved against its parent's, as Sass and CSS nesting do. */

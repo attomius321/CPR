@@ -1,0 +1,7 @@
+@use 'variables' as v;
+
+.grid {
+  gap: v.$gap;
+  margin: v.$kept;
+  @include v.legacy;
+}

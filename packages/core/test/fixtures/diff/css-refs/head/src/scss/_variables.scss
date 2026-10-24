@@ -1,0 +1,9 @@
+$primary: #123456 !default;
+
+@mixin themify($t: light, $dense) {
+  color: $primary;
+}
+
+@function rem($px) {
+  @return $px / 16px * 1rem;
+}

@@ -192,6 +192,110 @@ describe('stylesheet hashes', () => {
   });
 });
 
+const SCSS = `@use 'sass:math';
+@import 'variables';
+$primary: #175ddc !default;
+$-private: 1px;
+%button-base {
+  padding: 0 8px;
+  border: 0;
+}
+@mixin themify($themes: $themes) {
+  @each $theme, $map in $themes {
+    .theme_#{$theme} & {
+      @content;
+    }
+  }
+}
+@function rem($px, $base: 16px) {
+  @return math.div($px, $base) * 1rem;
+}
+.btn {
+  @extend %button-base;
+  @include themify() {
+    color: themed('textColor');
+  }
+  color: $primary;
+  &__icon { width: rem(16px); }
+  &.is-active { font-weight: 600; }
+  .theme-dark & { color: white; }
+  @media (max-width: 600px) { padding: 0; }
+  @at-root .btn-group { display: flex; }
+}
+@each $name, $glyph in $icons {
+  .icon-#{$name}:before { content: $glyph; }
+}
+@include themify;
+// a line comment
+`;
+
+describe('SCSS symbols', () => {
+  it('are variables, placeholders, mixins, functions and nested rules', async () => {
+    const { symbols, warnings } = await extractStyles({ 'src/_btn.scss': SCSS });
+    expect(warnings).toEqual([]);
+    expect([...symbols.values()].map(brief)).toEqual([
+      'variable src/_btn.scss#$primary',
+      'variable src/_btn.scss#$-private',
+      'rule src/_btn.scss#%button-base',
+      'mixin src/_btn.scss#@mixin themify',
+      'function src/_btn.scss#@function rem',
+      'rule src/_btn.scss#.btn',
+      'rule src/_btn.scss#.btn__icon ⊂ src/_btn.scss#.btn',
+      'rule src/_btn.scss#.btn.is-active ⊂ src/_btn.scss#.btn',
+      'rule src/_btn.scss#.theme-dark .btn ⊂ src/_btn.scss#.btn',
+      'rule src/_btn.scss#@media (max-width: 600px) › .btn ⊂ src/_btn.scss#.btn',
+      'rule src/_btn.scss#.btn-group',
+      'rule src/_btn.scss#@each $name, $glyph in $icons › .icon-#{$name}:before',
+    ]);
+    expect(symbols.get('src/_btn.scss#$primary')).toMatchObject({
+      language: 'scss',
+      exported: true,
+      signature: '$primary: #175ddc !default',
+    });
+    expect(symbols.get('src/_btn.scss#$-private')?.exported).toBe(false);
+    expect(symbols.get('src/_btn.scss#@mixin themify')).toMatchObject({
+      signature: '@mixin themify($themes: $themes)',
+      shape: { params: [{ optional: true, type: '' }], rest: '@mixin themify' },
+    });
+    expect(symbols.get('src/_btn.scss#@function rem')).toMatchObject({
+      signature: '@function rem($px, $base: 16px)',
+      shape: {
+        params: [
+          { optional: false, type: '' },
+          { optional: true, type: '' },
+        ],
+      },
+    });
+    expect(symbols.get('src/_btn.scss#.btn')?.signature).toBe(
+      '{ @extend %button-base; @include themify() { … }; color: $primary }',
+    );
+  });
+
+  it('change with a parameter, a default, what a mixin holds, or an include', async () => {
+    const one = async (scss: string) => {
+      const { symbols } = await extractStyles({ 'a.scss': scss });
+      const [first] = symbols.values();
+      return first?.hashes;
+    };
+    const base = await one('@mixin m($a, $b: 1px) { padding: $a $b; }');
+    expect(await one('@mixin m($a,$b:1px){padding:$a $b}')).toEqual(base);
+    expect((await one('@mixin m($a, $b: 2px) { padding: $a $b; }'))?.signature).not.toBe(
+      base?.signature,
+    );
+    expect((await one('@mixin m($a, $b: 1px, $c) { padding: $a $b; }'))?.signature).not.toBe(
+      base?.signature,
+    );
+    const swapped = await one('@mixin m($a, $b: 1px) { padding: $b $a; }');
+    expect(swapped?.signature).toBe(base?.signature);
+    expect(swapped?.body).not.toBe(base?.body);
+    const rule = await one('.a { @include m(1px); }');
+    expect((await one('.a { @include m(2px); }'))?.body).not.toBe(rule?.body);
+    expect((await one('$x: 1px !default;'))?.signature).not.toBe(
+      (await one('$x: 1px;'))?.signature,
+    );
+  });
+});
+
 describe('stylesheet exposure', () => {
   it('keeps rules, custom properties, variables and keyframes from being orphans', async () => {
     const { symbols } = await extractStyles({
@@ -246,5 +350,118 @@ describe('stylesheet changes', () => {
       'added src/ui/tokens.css#:root › --new',
     ]);
     expect(analysis.warnings).toEqual([]);
+  });
+});
+
+describe('stylesheet references', () => {
+  const edgesOf = (analysis: Awaited<ReturnType<typeof analyzeDirectories>>) =>
+    analysis.edges
+      .map(
+        (e) =>
+          `${e.from} -${e.kind}-> ${e.to} [${e.side}${e.resolution === 'unknown' ? ', unknown' : ''}]`,
+      )
+      .sort();
+
+  it('link tokens, keyframes and SCSS members to their users across stylesheets', async () => {
+    const analysis = await analyzeDirectories(
+      fixture('css-refs', 'base'),
+      fixture('css-refs', 'head'),
+    );
+    expect(edgesOf(analysis)).toEqual(
+      [
+        'src/scss/_variables.scss#@mixin themify -reference-> src/scss/_variables.scss#$primary [both]',
+        'src/scss/buttons.scss#.btn -call-> src/scss/_variables.scss#@mixin themify [both]',
+        'src/scss/buttons.scss#.btn -reference-> src/scss/_variables.scss#$primary [both]',
+        'src/scss/card.scss#.card -call-> @angular/material#@mixin core [both]',
+        'src/scss/card.scss#.card -call-> src/scss/_variables.scss#@mixin themify [both]',
+        'src/scss/card.scss#.card -reference-> src/scss/_variables.scss#$primary [both]',
+        'src/ui/controls.css#.button -reference-> src/ui/controls.css#@keyframes spin [both]',
+        'src/ui/controls.css#.button -reference-> src/ui/tokens.css#:root › --accent [both]',
+        'src/ui/controls.css#.link -reference-> src/ui/tokens.css#:root › --accent [both]',
+      ].sort(),
+    );
+    const site = analysis.edges.find(
+      (e) => e.from === 'src/scss/buttons.scss#.btn' && e.kind === 'call',
+    );
+    expect(site?.sites.head).toEqual([{ file: 'src/scss/buttons.scss', line: 3, col: 12 }]);
+    expect(analysis.context.map((c) => `${c.kind} ${c.id}`)).toEqual([
+      'external @angular/material#@mixin core',
+      'rule src/scss/buttons.scss#.btn',
+      'rule src/ui/controls.css#.button',
+      'rule src/ui/controls.css#.link',
+    ]);
+    expect(
+      analysis.findings.map((f) => `${f.severity} ${f.rule} ${f.symbol} — ${f.message}`),
+    ).toEqual([
+      'warning signature-changed src/scss/_variables.scss#@mixin themify — @mixin themify changed its signature; 1 of 2 users not updated: .btn',
+    ]);
+  });
+
+  it('find what a removal leaves behind: errors for SCSS, warnings for the cascade', async () => {
+    const analysis = await analyzeDirectories(
+      fixture('css-removed', 'base'),
+      fixture('css-removed', 'head'),
+    );
+    expect(
+      analysis.findings.map((f) => `${f.severity} ${f.rule} ${f.symbol} — ${f.message}`),
+    ).toEqual([
+      'error removed-still-referenced src/_variables.scss#@mixin legacy — @mixin legacy was removed but is still used by 1 symbol: .grid',
+      'error removed-still-referenced src/_variables.scss#$gap — $gap was removed but is still used by 1 symbol: .grid',
+      'warning orphan-added src/_variables.scss#@mixin unused — @mixin unused is new and nothing references it',
+      'warning removed-still-referenced src/tokens.css#:root › --old — :root › --old was removed but is still used by 1 symbol: .x',
+      'warning removed-still-referenced src/tokens.css#@keyframes fade — @keyframes fade was removed but is still used by 1 symbol: .y',
+    ]);
+    const gap = analysis.findings.find((f) => f.symbol === 'src/_variables.scss#$gap');
+    expect(gap?.data).toEqual({
+      referencedBy: ['src/layout.scss#.grid'],
+      certainty: 'resolved',
+      sites: [{ file: 'src/layout.scss', line: 4, col: 8 }],
+    });
+  });
+});
+
+describe('SCSS names that do not resolve to one declaration', () => {
+  /** Analyzes two versions of some stylesheets written to temp folders. */
+  async function analyzeStyles(base: Record<string, string>, head: Record<string, string>) {
+    const dirs = [tempDir(), tempDir()] as const;
+    try {
+      for (const [dir, files] of [
+        [dirs[0], base],
+        [dirs[1], head],
+      ] as const) {
+        for (const [path, content] of Object.entries(files)) {
+          mkdirSync(dirname(join(dir, path)), { recursive: true });
+          writeFileSync(join(dir, path), content);
+        }
+      }
+      return await analyzeDirectories(dirs[0], dirs[1]);
+    } finally {
+      for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it('are ambiguous when entry files give a partial two, unknown when nothing defines them', async () => {
+    const shared = {
+      '_a.scss': '$c: red;',
+      '_b.scss': '$c: blue;',
+      'entry1.scss': "@import 'a';\n@import 'x';",
+      'entry2.scss': "@import 'b';\n@import 'x';",
+    };
+    const analysis = await analyzeStyles(
+      { ...shared, 'x.scss': '.x { color: $c; }\n.y { margin: 0; }' },
+      {
+        ...shared,
+        'x.scss':
+          '.x { color: $c; margin: 0; }\n.y { margin: 1px; @include nowhere; color: $missing; width: lighten(red, 10%); }',
+      },
+    );
+    expect(
+      analysis.edges.map((e) => `${e.from} -${e.kind}-> ${e.to} [${e.resolution}]`).sort(),
+    ).toEqual([
+      'x.scss#.x -reference-> _a.scss#$c [unknown]',
+      'x.scss#.x -reference-> _b.scss#$c [unknown]',
+      'x.scss#.y -call-> unknown:@include nowhere [unknown]',
+      'x.scss#.y -reference-> unknown:$missing [unknown]',
+    ]);
   });
 });

@@ -1,0 +1,5 @@
+.btn {
+  color: $primary;
+  @include themify();
+  width: rem(16px);
+}

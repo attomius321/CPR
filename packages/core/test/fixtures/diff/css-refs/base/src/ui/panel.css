@@ -1,0 +1,4 @@
+.panel {
+  color: var(--text);
+  border-color: var(--xy-edge);
+}

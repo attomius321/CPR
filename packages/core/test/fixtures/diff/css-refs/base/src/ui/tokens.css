@@ -1,0 +1,7 @@
+:root {
+  --accent: blue;
+  --text: #111;
+}
+:root[data-theme='light'] {
+  --accent: navy;
+}
