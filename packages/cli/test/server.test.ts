@@ -1210,6 +1210,8 @@ describe('symbiote view: workspaces (V18)', () => {
       return Promise.resolve({ finished: C });
     },
     terminal: () => Promise.reject(new WorkspaceRefused('no terminals here', 409)),
+    shell: () => Promise.reject(new WorkspaceRefused('no terminals here', 409)),
+    shells: () => Promise.resolve({ shells: [] }),
   };
   const changes: WorkspaceChanges = {
     branch: 'feature/csv',
@@ -2108,6 +2110,8 @@ describe('symbiote view: terminals (V21)', () => {
   });
   const asked: { branch: string; cols: number; rows: number }[] = [];
   const cwds: Record<string, string> = { 'feature/csv': '/w', 'feature/files': work };
+  /** The shells opened (V45), by branch. */
+  const shells: Record<string, string[]> = {};
   const workspaces = {
     terminal: (request: { branch: string; cols: number; rows: number }) => {
       asked.push(request);
@@ -2118,6 +2122,27 @@ describe('symbiote view: terminals (V21)', () => {
       return terminals
         .open({ command: 'claude', args: ['attach', 's1'], cwd, env: {}, ...request })
         .then((id) => ({ id }));
+    },
+    shell: async ({ branch, ...size }: { branch: string; cols: number; rows: number }) => {
+      asked.push({ branch, ...size });
+      const cwd = cwds[branch];
+      if (!cwd) throw new WorkspaceRefused('no workspace feature/x', 404);
+      const id = await terminals.open({
+        command: '/bin/sh',
+        args: [],
+        cwd,
+        env: {},
+        kept: true,
+        ...size,
+      });
+      (shells[branch] ??= []).push(id);
+      return { id, number: shells[branch].length };
+    },
+    shells: (branch: string) => {
+      if (!cwds[branch]) return Promise.reject(new WorkspaceRefused('no workspace feature/x', 404));
+      return Promise.resolve({
+        shells: (shells[branch] ?? []).map((id, i) => ({ id, number: i + 1 })),
+      });
     },
   } as unknown as Workspaces;
   let server: ViewServer;
@@ -2210,6 +2235,52 @@ describe('symbiote view: terminals (V21)', () => {
     const attacker = { origin: 'https://attacker.example' };
     expect((await post('/api/workspaces/terminal', body, attacker)).status).toBe(403);
     expect(asked.length).toBe(before);
+  });
+
+  it('opens a shell in a workspace and lists its shells, for the page only (V45)', async () => {
+    const opened = await post('/api/workspaces/shell', {
+      branch: 'feature/files',
+      cols: 100,
+      rows: 30,
+    });
+    expect(opened.status).toBe(200);
+    const { id, number } = (await opened.json()) as { id: string; number: number };
+    expect(number).toBe(1);
+    expect(asked.at(-1)).toEqual({ branch: 'feature/files', cols: 100, rows: 30 });
+    // Its terminal is one as any other: keys in.
+    expect((await post(`/api/terminals/${id}/in`, { data: 'ls\r' })).status).toBe(204);
+    expect(made.at(-1)?.written).toEqual(['ls\r']);
+
+    const list = (query: string, headers: Record<string, string> = {}) =>
+      fetch(new URL(`/api/workspaces/shells${query}`, server.url), {
+        headers: { 'x-symbiote': '1', ...headers },
+      });
+    const listed = await list('?branch=feature/files');
+    expect(listed.status).toBe(200);
+    expect(await listed.json()).toEqual({ shells: [{ id, number: 1 }] });
+    // It hands out terminals' IDs, which read and drive them: not to another site, nor to a
+    // read without the page's header.
+    expect((await list('?branch=feature/files', { 'x-symbiote': '' })).status).toBe(403);
+    const attacker = { origin: 'https://attacker.example' };
+    expect((await list('?branch=feature/files', attacker)).status).toBe(403);
+    expect((await list('')).status).toBe(400);
+    expect((await list('?branch=nope')).status).toBe(404);
+
+    const before = asked.length;
+    for (const body of [
+      { branch: 'feature/files' },
+      { branch: 'feature/files', cols: 0, rows: 24 },
+      { cols: 80, rows: 24 },
+    ]) {
+      expect((await post('/api/workspaces/shell', body)).status, JSON.stringify(body)).toBe(400);
+    }
+    const body = { branch: 'feature/files', cols: 80, rows: 24 };
+    expect((await post('/api/workspaces/shell', body, { 'x-symbiote': '' })).status).toBe(403);
+    expect((await post('/api/workspaces/shell', body, attacker)).status).toBe(403);
+    expect(asked.length).toBe(before);
+    const gone = await post('/api/workspaces/shell', { ...body, branch: 'nope' });
+    expect(gone.status).toBe(404);
+    expect(await gone.json()).toEqual({ error: 'no workspace feature/x' });
   });
 
   it('streams what it printed so far, then live, then its end', async () => {

@@ -19,6 +19,7 @@ import {
   inFolder,
   loadPty,
   pastedPath,
+  shellOf,
   terminals,
   type Pty,
   type SpawnPty,
@@ -36,17 +37,19 @@ function fakePty() {
     signals: (string | undefined)[];
     print: (data: string) => void;
     exit: (code: number) => void;
+    /** node-pty's name for the program in the foreground. */
+    process?: string | undefined;
   }[] = [];
   const spawn: SpawnPty = (file, args, options) => {
     let onData: (data: string) => void = () => {};
     let onExit: (event: { exitCode: number }) => void = () => {};
-    const record = {
+    const record: (typeof made)[number] = {
       file,
       args,
       options,
-      written: [] as string[],
-      sizes: [] as [number, number][],
-      signals: [] as (string | undefined)[],
+      written: [],
+      sizes: [],
+      signals: [],
       print: (data: string) => onData(data),
       exit: (code: number) => onExit({ exitCode: code }),
     };
@@ -57,6 +60,9 @@ function fakePty() {
       write: (data) => record.written.push(data),
       resize: (cols, rows) => record.sizes.push([cols, rows]),
       kill: (signal) => record.signals.push(signal),
+      get process() {
+        return record.process;
+      },
     };
     return pty;
   };
@@ -213,6 +219,67 @@ describe('terminals', () => {
     t.closeAll();
   });
 
+  it('keeps a kept terminal (a shell, V45) open with nobody reading it, until it is closed', async () => {
+    vi.useFakeTimers();
+    const fake = fakePty();
+    const t = terminals({ pty: fake.pty, graceMs: 10_000 });
+    const id = await t.open({ ...request, kept: true });
+    vi.advanceTimersByTime(60_000);
+    const stop = t.listen(id, reader().listener);
+    stop?.();
+    vi.advanceTimersByTime(60_000);
+    expect(fake.made[0]?.signals).toEqual([]);
+    expect(t.write(id, 'x')).toBe(true);
+    t.closeAll();
+    expect(fake.made[0]?.signals).toEqual(['SIGHUP']);
+  });
+
+  it('never closes a kept terminal to make room, nor counts it in the limit', async () => {
+    const fake = fakePty();
+    const t = terminals({ pty: fake.pty, limit: 2 });
+    const kept = [];
+    for (let i = 0; i < 3; i += 1) kept.push(await t.open({ ...request, kept: true }));
+    const a = await t.open(request);
+    await t.open(request);
+    // A third attach closes the oldest one nobody reads: an attach, not a shell.
+    await t.open(request);
+    expect(fake.made.map((m) => m.signals)).toEqual([[], [], [], ['SIGHUP'], [], []]);
+    expect(t.write(a, 'x')).toBe(false);
+    for (const id of kept) expect(t.write(id, 'x')).toBe(true);
+    t.closeAll();
+  });
+
+  it('says what runs in a terminal when it is not its own program (V45)', async () => {
+    const fake = fakePty();
+    const t = terminals({ pty: fake.pty });
+    const id = await t.open({ ...request, command: '/bin/bash', args: [], kept: true });
+    const made = fake.made[0]!;
+    // node-pty's name for the foreground program: the shell at its prompt.
+    made.process = '/bin/bash';
+    expect(t.running(id)).toBeNull();
+    // A login shell's name starts with a dash.
+    made.process = '-bash';
+    expect(t.running(id)).toBeNull();
+    made.process = 'sleep';
+    expect(t.running(id)).toBe('sleep');
+    made.process = '/usr/local/bin/node';
+    expect(t.running(id)).toBe('node');
+    made.process = undefined;
+    expect(t.running(id)).toBeNull();
+    expect(t.running('nope')).toBeUndefined();
+    made.exit(0);
+    expect(t.running(id)).toBeUndefined();
+
+    // Windows names a program with its extension, in any case.
+    const windows = fakePty();
+    const w = terminals({ pty: windows.pty, platform: 'win32' });
+    const shell = await w.open({ ...request, command: 'C:\\Windows\\system32\\cmd.exe', args: [] });
+    windows.made[0]!.process = 'CMD.EXE';
+    expect(w.running(shell)).toBeNull();
+    t.closeAll();
+    w.closeAll();
+  });
+
   it('closeAll hangs every terminal up and ends its readers', async () => {
     const fake = fakePty();
     const t = terminals({ pty: fake.pty });
@@ -234,6 +301,21 @@ describe('terminals', () => {
     });
     await expect(t.open(request)).rejects.toThrow('node-pty is not installed');
     expect(await terminals({ pty: fakePty().pty }).available()).toEqual({ available: true });
+  });
+});
+
+describe('shellOf (V45)', () => {
+  it("is the person's shell, else /bin/sh; on Windows %COMSPEC%, else cmd.exe", () => {
+    expect(shellOf({ SHELL: '/usr/bin/zsh' }, 'linux')).toBe('/usr/bin/zsh');
+    expect(shellOf({ SHELL: '/bin/zsh' }, 'darwin')).toBe('/bin/zsh');
+    expect(shellOf({}, 'linux')).toBe('/bin/sh');
+    expect(shellOf({ SHELL: '' }, 'darwin')).toBe('/bin/sh');
+    // Git Bash sets SHELL on Windows too: node-pty there runs a Windows program.
+    const cmd = 'C:\\Windows\\system32\\cmd.exe';
+    expect(shellOf({ COMSPEC: cmd, SHELL: '/usr/bin/bash' }, 'win32')).toBe(cmd);
+    // Windows names it ComSpec; a copy of the environment keeps the name's case.
+    expect(shellOf({ ComSpec: cmd }, 'win32')).toBe(cmd);
+    expect(shellOf({}, 'win32')).toBe('cmd.exe');
   });
 });
 
@@ -514,4 +596,34 @@ describe('loadPty', () => {
     t.close(id);
     await vi.waitFor(() => expect(r.ended).toEqual([7]), { timeout: 5_000 });
   });
+
+  it.skipIf(process.platform === 'win32')(
+    'runs a shell in a real terminal (V45): a line typed, what runs in it, its exit',
+    async () => {
+      const t = terminals();
+      const id = await t.open({
+        ...request,
+        command: '/bin/sh',
+        args: [],
+        cwd: process.cwd(),
+        env: { ...process.env, PS1: 'shell$ ' },
+        kept: true,
+      });
+      const r = reader();
+      t.listen(id, r.listener);
+      const printed = (text: string) =>
+        vi.waitFor(() => expect(r.seen.join('')).toContain(text), { timeout: 5_000 });
+      await printed('shell$ ');
+      t.write(id, 'echo "a""b"\r');
+      await printed('ab');
+      expect(t.running(id)).toBeNull();
+      t.write(id, 'sleep 30\r');
+      await vi.waitFor(() => expect(t.running(id)).toBe('sleep'), { timeout: 5_000 });
+      t.write(id, '\x03');
+      await vi.waitFor(() => expect(t.running(id)).toBeNull(), { timeout: 5_000 });
+      t.write(id, 'exit 3\r');
+      await vi.waitFor(() => expect(r.ended).toEqual([3]), { timeout: 5_000 });
+      expect(t.running(id)).toBeUndefined();
+    },
+  );
 });

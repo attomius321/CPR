@@ -210,6 +210,24 @@ export interface WorkspaceTerminalOpened {
   trusted?: false;
 }
 
+/**
+ * A shell in a workspace's worktree (V45): a terminal of its own beside its agent's, kept until it
+ * is closed, exits, the workspace is cleaned up or `symbiote view` exits.
+ */
+export interface WorkspaceShell {
+  /** Its terminal: `/api/terminals/<id>…`. */
+  id: string;
+  /** `Shell <number>`: the lowest number free in the workspace when it opened. */
+  number: number;
+  /** The program in its foreground when it is not the shell (`node`): closing it ends that. */
+  running?: string;
+}
+
+/** `GET /api/workspaces/shells?branch=` (V45): a workspace's shells, by number. */
+export interface WorkspaceShells {
+  shells: WorkspaceShell[];
+}
+
 /** What the start page needs. */
 export interface WorkspaceOptions {
   /** The default branch's tip, where a workspace starts unless a row is picked. */

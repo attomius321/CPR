@@ -51,7 +51,7 @@ import {
 } from '../src/workspaces.js';
 import { reviewPlace } from '../src/reviews.js';
 import { DEFAULT_PROMPTS } from '../src/prompts.js';
-import type { Terminals } from '../src/terminal.js';
+import { shellOf, type Terminals } from '../src/terminal.js';
 import type { Codex } from '../src/codex.js';
 import { codexServer } from '../src/app-server.js';
 import { fakeAppServer, type FakeAppServer } from './fake-app-server.js';
@@ -680,27 +680,38 @@ describe('workspaces', () => {
     };
     return { claude, listed, start, sessions, stop, resume, remove };
   }
-  /** Fake terminals (V21): records what it is asked to open. */
+  /**
+   * Fake terminals (V21): records what it is asked to open and close; `programs`, what runs in
+   * each open one (null: a shell at its prompt, V45).
+   */
   function fakeTerminals(reason?: string) {
     const opening: Parameters<Terminals['open']>[0][] = [];
+    const closed: string[] = [];
+    const programs = new Map<string, string | null>();
     const terminals: Terminals = {
       available: () => Promise.resolve(reason ? { available: false, reason } : { available: true }),
       open: (request) => {
         if (reason) return Promise.reject(new Error(reason));
         opening.push(request);
-        return Promise.resolve(`t${opening.length}`);
+        const id = `t${opening.length}`;
+        programs.set(id, null);
+        return Promise.resolve(id);
       },
       listen: () => undefined,
       write: () => false,
       resize: () => false,
+      running: (id) => programs.get(id),
       image: () => Promise.resolve(undefined),
       files: () => Promise.resolve(undefined),
       openFile: () =>
         Promise.resolve({ opened: false, why: 'terminal', message: 'no such terminal' }),
-      close: () => false,
+      close: (id) => {
+        closed.push(id);
+        return programs.delete(id);
+      },
       closeAll: () => {},
     };
-    return { terminals, opening };
+    return { terminals, opening, closed, programs };
   }
   const opened: string[] = [];
   const service = (
@@ -1408,6 +1419,114 @@ describe('workspaces', () => {
     await expect(
       none.terminal({ branch: 'feature/one', cols: 80, rows: 24 }),
     ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('opens shells in its worktree: Shell 1, Shell 2, the lowest free number again (V45)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const { terminals, opening, programs } = fakeTerminals();
+    const s = await service(repo, claude, HOOK, terminals);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    expect(await s.shells('feature/one')).toEqual({ shells: [] });
+    const size = { cols: 100, rows: 30 };
+    expect(await s.shell({ branch: 'feature/one', ...size })).toEqual({ id: 't1', number: 1 });
+    expect(opening).toEqual([
+      {
+        command: shellOf({ PATH: '/usr/bin' }),
+        args: [],
+        cwd: workspace.worktree.path,
+        cols: 100,
+        rows: 30,
+        env: { PATH: '/usr/bin' },
+        kept: true,
+      },
+    ]);
+    expect(await s.shell({ branch: 'feature/one', ...size })).toEqual({ id: 't2', number: 2 });
+    expect(await s.shell({ branch: 'feature/one', ...size })).toEqual({ id: 't3', number: 3 });
+    programs.set('t2', 'node');
+    expect(await s.shells('feature/one')).toEqual({
+      shells: [
+        { id: 't1', number: 1 },
+        { id: 't2', number: 2, running: 'node' },
+        { id: 't3', number: 3 },
+      ],
+    });
+    // Closed (its ×) or exited: off the list, its number free again.
+    terminals.close('t2');
+    expect(await s.shell({ branch: 'feature/one', ...size })).toEqual({ id: 't4', number: 2 });
+    expect((await s.shells('feature/one')).shells.map((shell) => shell.id)).toEqual([
+      't1',
+      't4',
+      't3',
+    ]);
+    // Each workspace numbers its own.
+    await s.start({ brief: 'Two', branch: 'feature/two', planFirst: true });
+    expect(await s.shell({ branch: 'feature/two', ...size })).toEqual({ id: 't5', number: 1 });
+    expect((await s.shells('feature/one')).shells).toHaveLength(3);
+    await expect(s.shells('feature/nope')).rejects.toMatchObject({ status: 404 });
+    await expect(s.shell({ branch: 'feature/nope', ...size })).rejects.toMatchObject({
+      status: 404,
+    });
+  });
+
+  it('opens at most 8 shells in a workspace, and none without terminals or a worktree (V45)', async () => {
+    const { repo } = fresh();
+    const { claude, listed } = fakeClaude();
+    const { terminals } = fakeTerminals();
+    const s = await service(repo, claude, HOOK, terminals);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    // Its agent has no session: its own terminal cannot open, a shell can.
+    listed.length = 0;
+    const size = { cols: 80, rows: 24 };
+    for (let n = 1; n <= 8; n += 1) {
+      expect((await s.shell({ branch: 'feature/one', ...size })).number).toBe(n);
+    }
+    await expect(s.shell({ branch: 'feature/one', ...size })).rejects.toMatchObject({
+      status: 409,
+      message: '8 shells are open in feature/one: close one first',
+    });
+
+    const missing = fakeTerminals('node-pty is not installed');
+    await expect(
+      (await service(repo, claude, HOOK, missing.terminals)).shell({
+        branch: 'feature/one',
+        ...size,
+      }),
+    ).rejects.toMatchObject({ status: 409, message: 'node-pty is not installed' });
+    await expect(
+      (await service(repo, claude)).shell({ branch: 'feature/one', ...size }),
+    ).rejects.toMatchObject({ status: 409, message: 'no terminals here' });
+    // Without terminals, a workspace has no shells to list.
+    expect(await (await service(repo, claude)).shells('feature/one')).toEqual({ shells: [] });
+
+    await s.start({ brief: 'Two', branch: 'feature/two', planFirst: true });
+    const two = worktreeFolder(repo.root, 'feature/two');
+    repo.git('worktree', 'remove', '--force', two);
+    await expect(s.shell({ branch: 'feature/two', ...size })).rejects.toMatchObject({
+      status: 409,
+      message: `its worktree is gone: ${two}`,
+    });
+    expect(workspace.worktree.exists).toBe(true);
+  });
+
+  it('closes its shells when it is cleaned up, and only then (V45)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const { terminals, closed } = fakeTerminals();
+    const s = await service(repo, claude, HOOK, terminals);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    await s.start({ brief: 'Two', branch: 'feature/two', planFirst: false });
+    const size = { cols: 80, rows: 24 };
+    await s.shell({ branch: 'feature/one', ...size });
+    await s.shell({ branch: 'feature/one', ...size });
+    await s.shell({ branch: 'feature/two', ...size });
+    await commitIn(workspace.worktree.path, 'src/c.ts', 'export const c = 1;\n');
+    // Refused: its shells stay.
+    await expect(s.clean({ branch: 'feature/one' })).rejects.toMatchObject({ status: 409 });
+    expect(closed).toEqual([]);
+    await s.clean({ branch: 'feature/one', unmerged: true });
+    expect(closed).toEqual(['t1', 't2']);
+    expect(await s.shells('feature/two')).toEqual({ shells: [{ id: 't3', number: 1 }] });
   });
 
   it('lists whether terminals can run, once there are workspaces (V21)', async () => {

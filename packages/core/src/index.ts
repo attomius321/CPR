@@ -204,6 +204,8 @@ export {
   type WorkspaceRequest,
   type WorkspaceStart,
   type WorkspaceSummary,
+  type WorkspaceShell,
+  type WorkspaceShells,
   type WorkspaceTerminalOpened,
   type WorkspaceTerminalRequest,
   type WorkspaceThread,
