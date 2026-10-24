@@ -124,7 +124,7 @@ hosted.
 | [V44](plan/v44-workspace-group-icons.md) | An icon for each group of workspaces | ✅ | 289 | [journal](journal/v44-workspace-group-icons.md) |
 | Fix | the start page named the plan Claude Code's token kept from login | ✅ | | [journal](journal/fix-workspace-start.md) |
 | [V43](plan/v43-changed-file-diff.md) | A changed file opens as its diff | ✅ | 285–288 | [journal](journal/v43-changed-file-diff.md) |
-| [V45](plan/v45-workspace-terminals.md) | More terminals in a workspace: shells in its worktree | planned | 294–298 | [journal](journal/v45-workspace-terminals.md) |
+| [V45](plan/v45-workspace-terminals.md) | More terminals in a workspace: shells in its worktree | ready for review | 294–298 | [journal](journal/v45-workspace-terminals.md) |
 
 ### Agents
 

@@ -2,8 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v45-workspace-terminals.md)
 
-**Status:** planned (2026-10-24), on branch `feature/workspace-multiple-terminal` (a workspace
-started in Symbiote, from `main` at `c4ff77a`); waiting for the person's OK. Not started.
+**Status:** ready for review (2026-10-24), on branch `feature/workspace-multiple-terminal` (a
+workspace started in Symbiote, from `main` at `c4ff77a`); the plan and its three choices OK'd by the
+person ("1. For the moment, just a shell. 2. For the moment Shell is ok. 3. Yes. OK"). As built
+and results under "As built (V45)" below.
 
 **Problem** (asked: "I would like in a workspace to have the capability to open multiple
 terminals. The workspace creation stay the same. We only extend"). A workspace's panel has one
@@ -125,10 +127,10 @@ screenshots. One branch.
 
 | # | Milestone | Output |
 |---|---|---|
-| V45a | Shells in the server | Kept terminals in `terminal.ts` (no idle hang-up, outside the limit of 4, `running`); a workspace's shells in `workspaces.ts` (open, list, 8 at most, closed at Clean up); `POST /api/workspaces/shell`, `GET /api/workspaces/shells` |
-| V45b | Shells in the panel | The shells' tabs, `+` and ×, `&shell=<n>`; `AgentTerminal` listening to a terminal by ID; the close question; README |
+| V45a ✅ | Shells in the server | Kept terminals in `terminal.ts` (no idle hang-up, outside the limit of 4, `running`); a workspace's shells in `workspaces.ts` (open, list, 8 at most, closed at Clean up); `POST /api/workspaces/shell`, `GET /api/workspaces/shells` |
+| V45b ✅ | Shells in the panel | The shells' tabs, `+` and ×, `&shell=<n>`; `AgentTerminal` listening to a terminal by ID; the close question; README |
 
-**Proposed decisions**:
+**Decisions** (294–298, as proposed; OK'd with the plan):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
@@ -141,3 +143,80 @@ screenshots. One branch.
 **Not in V45 (later)**: terminals side by side (split); shells that outlive `symbiote view`
 (tmux-like); renaming a shell; a shell in the main checkout or on the commits page; choosing
 another program than the shell for a new terminal; more agent sessions in one workspace.
+
+## As built (V45)
+
+- **A shell carries its number, not its name**: `{ id, number, running? }` (`WorkspaceShell` in
+  `@symbiote/core`); the page names it `Shell <n>` and puts `&shell=<n>` in the address.
+- **What runs in it** (`Terminals.running`): node-pty's foreground program by name, against the
+  name of the program the terminal started, so the shell at its prompt is null. A login shell's
+  `-bash` and Windows' `CMD.EXE` are read as `bash` and `cmd`. Undefined is "no such terminal":
+  the workspace's list drops a shell that exited or was closed by that.
+- **The shell on Windows** is `%COMSPEC%` found whatever the case of its name (Windows names it
+  `ComSpec`; a copy of the environment keeps the case), and never Git Bash's `SHELL`. Not run.
+- **Numbered once open**: the number is taken after the terminal opens, with no wait between, so
+  two shells opened at once cannot share one. The limit is checked before (two at once could make
+  a ninth: not worth a lock).
+- **Clean up closes the shells after its refusals** (not merged, files not committed), just before
+  the worktree goes: a refused Clean up leaves them running.
+- **The list needs `x-symbiote`** (`GET /api/workspaces/shells`): a 403 without it or from another
+  origin, before the method and branch checks.
+- **A new shell's size**: `+` opens the shell before any terminal is drawn for it, at the size the
+  last terminal in the page was fitted to (80 × 24 before any); the tab then fits it to its box and
+  sends that size, as it does each time it is shown (another window may have resized it).
+- **`AgentTerminal` with an `id`** listens to a terminal that is open: no POST to open, no close
+  when it unmounts, and the list is not read every 5 s for it (V21's reason, a key that starts a
+  turn, is the agent's).
+- **Which tab shows when a shell goes**: its neighbour, the one before first, else the one after,
+  else the agent's default tab (Terminal, else Thread). The plan said "the tab before it", which
+  for `Shell 1` is Brief.
+- **× reads the list again** before closing, for what runs now; a program there asks first in the
+  panel's confirm line ("Close it" / Cancel), as Clean up does.
+- **The strip in the title bar** (Symbiote's window) scrolls sideways like the page's: it got 4 px
+  of padding inside a −4 px margin, so a focus ring is not cut by the scrolling box and the tabs
+  stay where they were.
+- **The e2e harness runs `/bin/sh` with `PS1='shell$ '`** for workspaces' shells, not the person's
+  shell (`serveWorkspaces({ shell })` for another).
+- **A program that set its title** is named by the title's first word on Linux: closing a shell
+  running `npx vitest --watch …` first asked "shells.test.ts is running", node-pty giving npm's
+  title (`npm exec vitest --watch packages/viewer/test/shells.test.ts`) as the program; now "npm
+  is running in Shell 1". Windows' name is taken as it is (spaces are part of its paths).
+- **The strip with many shells**, seen in screenshots at 900 px with eight: the picked tab and `+`
+  were scrolled out of sight. The picked tab now scrolls into sight when it is picked and when the
+  strip narrows (a `ResizeObserver`), clear of `+`, which stays pinned at the strip's end
+  (`position: sticky`); the wheel scrolls the strip sideways. At 1440 px with the changes panel
+  eight shells overflow by 19 px.
+- **A shell that goes** (×, `exit`) is removed by ID, twice being once (a close is followed by its
+  exit event), and the tab shown for it is derived while rendering; see the journal.
+- **The environment**: a shell gets `symbiote view`'s, as the agent's terminal does. Started through
+  `npx`, that includes npm's `npm_config_*` variables (the person's nvm warned about
+  `npm_config_prefix` in the check below). Left as it is.
+
+**Results.** Tests first, red for the missing pieces, except the e2e (written after the panel) and
+the 900 px check (written after the fix the screenshots asked for). Unit: 1,401 (1,387 on `main`;
+14 new: terminal 5, one in a real pseudo-terminal running `/bin/sh`; workspaces 3; server 1; the
+viewer's shells 5). e2e: 221 of 221, twice in a row (220 on `main`; one new test, and checks added to
+the no-terminals, Codex `exec` and app title-bar tests). An earlier full run failed once in
+`changes.spec` ("] … kept across a reload"), which passed 6 of 6 alone and in both later full runs.
+
+Real use, through `symbiote view` (the e2e's fake agent) in Chromium at 1440 × 900, with the person's
+bash 5.2 and its rc files:
+
+| Check | Measured |
+|---|---|
+| `+` to the shell's first output | 293–315 ms (4 shells, two runs) |
+| A shell's memory | 9.3–9.5 MB resident (9,472–9,728 KB) |
+| Back to a shell, its output redrawn | 71–86 ms (10 switches; median 83). Over the 50 ms planned: each switch makes the xterm.js terminal and its event stream anew; keeping one stream per shell open would meet HTTP/1.1's 6 connections per origin |
+| `npx vitest --watch` in Shell 1 | Still running after Shell 2, Thread, Terminal, another workspace's shell, 12 s, and a reload; its output there |
+| × on it | "npm is running in Shell 1: closing the shell ends it."; Close it: vitest's 3 processes and the shell gone |
+| Quitting `symbiote view` | The two shells left gone 45 ms later |
+| `top` in a shell, left, the window narrowed to 1100 × 700, back | Drawn whole at the new size |
+| Page errors | None |
+
+Screenshots light and dark at 1440 and 900 px: no shell, one, eight, the close question; `top`
+after a resize. Main bundle 698,278 → 701,812 bytes (+0.5 %); xterm.js's chunk unchanged.
+
+Not verified: Windows (`%COMSPEC%`, ConPTY) and macOS; Firefox and Safari; Symbiote's window by eye
+(its title-bar test passes with Shell 1 and `+` in the bar; no screenshot); `/workspaces` first paint
+against `main`; a real Claude Code beside the shells (the agent's terminal is unchanged and its
+tests pass).

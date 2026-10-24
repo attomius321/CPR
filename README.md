@@ -159,7 +159,7 @@ as `--browser` does.
   and your agents; each `symbiote view` that opens Symbiote's window records them again.
 - **Its own title bar**: Symbiote and the repository, the sidenav's fold and back and
   forward over the sidenav; the page's tabs beside them (a workspace's Terminal, Thread and Brief,
-  History's All branches and This branch); the panel's toggle and the window's buttons at the
+  its shells, History's All branches and This branch); the panel's toggle and the window's buttons at the
   end, in Symbiote's colours, light or dark as the theme is (on Linux Symbiote draws them, and the
   window's rounded corners). Drag its free space to move the window.
 - **Links that leave Symbiote** (a pull request, a link in a thread) open in your default browser.
@@ -476,7 +476,16 @@ questions, Esc, slash commands), so you answer it without leaving Symbiote.
 - ← in an empty prompt opens Claude Code's list of all your agents, where you can switch away
   from this one.
 - At most four terminals are open at once (each is a Claude Code process, about 140 MB, or a
-  Codex one, about 315 MB).
+  Codex one, about 315 MB). Shells are not counted.
+
+**Shells:** the **+** after the Brief tab opens a shell in the workspace's worktree, in a tab of
+its own (`Shell 1`, `Shell 2`, …; `&shell=<n>` in the address), for tests, a dev server or git
+beside the agent. It is your shell (`$SHELL`, else `/bin/sh`; `%COMSPEC%` on Windows) with
+`symbiote view`'s environment, and every workspace has its own, at most eight. A shell keeps running
+while you look at another tab or workspace, or reload the page: its tab draws what it printed
+again (its last 1 MB). It ends when you close its tab (×, which asks first when a program runs
+in it, and names it), type `exit`, clean the workspace up, or quit Symbiote. Paths it prints and
+images you paste work as in the agent's terminal.
 
 At the terminal's right, where the window has room (1440 px wide with the sidenav open, about 1,250
 with it folded), the workspace's **Changes**: its branch's commits since it left the default branch
