@@ -40,3 +40,67 @@ Planned as V46 (decisions 313–318): a log file per queue entry streamed to the
 read-only terminal beside the merge's steps (V46a), the merger agent's thinking summaries and
 tool calls in it (V46b), and a resolution's files as a list (V46c). Three questions are left to
 the person: the merger's effort, terminal or page text, and a file's whole merge in VS Code.
+
+## V46 — a merge's log, the merger agent at work, a resolution's files, the merger's effort (2026-10-24, branch `feature/merger-logs`)
+
+The plan OK'd with its questions answered ("1. Add a merger effort in settings. 2. Yes 3. Yes,
+recommendation. Ok"). Each queue entry writes its steps and their output to a log of its own,
+streamed to its page: the steps beside a read-only terminal (V46a). The merger's `claude -p`
+streams its thinking's summary, tool calls and text into it; Codex's items too (V46b). A
+conflicted merge lists its files, each with what its resolution did; a click shows its regions
+(V46c). `merge.effort`, set in Settings, is passed to the merger's runs (V46d). Decisions 313–319.
+
+**Learned**:
+- **The log found the fake's bug.** With the fake Claude Code moved to `stream-json`, every
+  conflict e2e stopped at "Conflicts with main in 1 file". The page's own log said why: "The
+  merger agent did not answer: … at node:internal/main/run_main_module". A `'\n'` in the
+  fake's template had become a real newline in the generated script. Before V46 the page said
+  only the state.
+- **A newline in a template that writes a script needs `\\n` in the source**: Python's `\\n`
+  wrote `\n` into TypeScript, which the template turned into a line break inside a string.
+- **The command heads its own step**: an e2e that checked "second half" was not printed yet found
+  it in the heading `── echo first half; …; echo second half`. Its output is now computed
+  (`$((40 + 3))` prints 43), so the text appears only when the command prints it.
+- **A step that throws stayed open.** The queue's drain catches a merge that throws, but its step
+  had no end and was drawn "stopped". Found reading the diff: the drain now writes what it said
+  and ends the step. Each process keeps its own steps' starts, so an `end` with no step open in
+  it writes nothing.
+- **The init event lists the person's skills, plugins and memory path**: the recorded stream kept
+  as a test fixture is trimmed to the fields Symbiote reads; no account data.
+- **Files first only once resolved**: the default tab follows the entry (Files when a
+  resolution is there to read and nothing runs), the person's pick wins after, and both views
+  stay mounted so the log keeps streaming in the background.
+- **The real answer buried the thinking.** On `e380fef` the agent's answer was 18.8K tokens of
+  escaped JSON, streamed after 703 characters of thinking summary: a terminal of `\n`-escaped
+  journal entries, the part asked for ("its thinking process") a few lines at the top. Its
+  content is on Files region by region, so the answer is now one line counted in place ("Writing
+  its answer: 46,788 characters"); prose that is not the answer is written as it comes.
+- **The agent read no file** on that merge: 5 regions in a 51K-character prompt were enough. Its
+  visible process was its thinking summary, first shown 4.0 s after it started, and the count.
+- **A step's name is a button's name too.** Playwright matches `{ name: 'Land' }` by substring,
+  so the landing's step ("Land: passed, 0.0 s") met it. The V16/V17 review spec failed once in
+  the full run and passed alone: it depended on whether the log's landing line had arrived. The
+  merge page's Land locators are exact now.
+- **"Kept twice" flags correct resolutions** (the merge page remake's review, not V46): on that
+  merge, which the agent resolved exactly as committed, `JOURNAL.md` read "2 lines kept twice" and
+  `PLAN.md` "10", because both sides added entries with their own `**Learned**:` and table lines.
+  Files puts each file's flags together, so it shows them. Left for a fix of its own.
+
+**Verification**: tests first, red for the reason given: the log's lines (13 in the merger's
+tests, 7 of the log file), the agent's stream (3, on a recorded Claude Code 2.1.310 stream trimmed
+to the fields read), the routes, the effort (6), the viewer's steps, terminal text and files (17).
+`pnpm check`: 1,449 tests. e2e: 225 of 225 on the last full run (the two earlier ones: 224, the
+V17 spec reading the old list, then the Land locator above); new specs
+(a check's output while it runs; the agent's thought and file read while it works; two files) and
+the Merger's Effort in Settings. Screenshots at 1440×900 and 390×844, dark and light: running, the
+agent at work, a resolution's files, the log, Settings. No page error.
+
+Real use: `e380fef` replayed through `symbiote merge` in a throwaway clone with the real Claude
+Code (`sonnet`) and a conflict-marker check: resolved equal to the committed merge, 85 s, 27.0K
+tokens in and 18.8K out; then its page in `symbiote view` on that clone, Files and Log.
+
+Not verified: a real Codex merger (its events are tested on recorded shapes; at its default it
+gave no reasoning item in the spike); a Claude Code without `--thinking-display` (the fallback is
+tested on its error text); a check writing past 512 KB in a real merge (the cap is tested on the
+log file); the summaries' cost on a real merge (one run); macOS and Windows; `regression-check`
+(no analysis code: core gained types and one optional queue field).

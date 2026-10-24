@@ -2,10 +2,11 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v46-merger-logs.md)
 
-**Status:** in progress (2026-10-24), on branch `feature/merger-logs` (a workspace started in
-Symbiote, from `main` at `561826d`). The plan OK'd by the person, with its three questions
+**Status:** ready for review (2026-10-24), on branch `feature/merger-logs` (a workspace started
+in Symbiote, from `main` at `561826d`). The plan OK'd by the person, with its three questions
 answered: "1. Add a merger effort in settings. 2. Yes 3. Yes, recommendation. Ok" — a merger
-effort in Settings (V46d), the log in a terminal, a file's regions only.
+effort in Settings (V46d), the log in a terminal, a file's regions only. As built and results
+under "As built (V46)" below.
 
 **Problem** (asked: "The merger page feel empty for the moment...there is no feedback in
 processing, nothing. I need some logs if there are tests. and if the merge needs an agent, i need
@@ -220,3 +221,66 @@ which is most of the waiting), then V46b (the agent's process in it), then V46c 
 (V38); a log for merges made before V46; a file's whole merge in VS Code's diff (question 3); the
 person's own Claude Code hooks run in the merger's `claude -p` (2 `SessionStart` hooks in every
 spike run).
+
+## As built (V46)
+
+- **The size cap** (decision 318): a step's output is written as it comes up to 512 KB; past it,
+  only its last 512 KB, written when the step ends, after a line saying how much was left out. An
+  appended file cannot drop its middle later, so the plan's "its first 64 KB and its end" became
+  "its start live, its end once done". This repository's whole check writes 30 KB.
+- **An `end` closes only a step its process started**; a merge that throws (the queue's drain
+  catches it) writes what it said and ends its step failed. Found reading the diff: such a step
+  stayed open and was drawn "stopped".
+- **The steps the page shows** come from the log, and two from the entry: while it checks, the
+  commands not started yet are "waiting" (`check.commands`); after a failed one, the rest "not
+  run", before a landing that followed (Approve after a failed check).
+- **A `note` event** (`MergeAgentEvent`), drawn dim as the agent's start: the run again without
+  `--thinking-display` says its thinking is not shown.
+- **`unresolvable`** (`MergeEntry`, optional): the conflicting files not given to the agent and
+  why (deleted on one side, a submodule, binary), so the Files list can say it per file. The
+  entry's message is unchanged.
+- **Files and Log are tabs only when the merge conflicted.** Files is shown first once a
+  resolution is there to read (not while it runs); the person's pick then stays. The view not
+  shown stays mounted, so the log keeps streaming. "Its output" stays for a merge made before V46.
+- **The e2e's fake Claude Code speaks `stream-json`**: its start, a thought, a file read, the
+  answer; with `E2E_AGENT_FLAG` it answers once that file exists, so a spec sees it at work. It
+  answers `--help` with effort levels and records its arguments (V46d).
+- **Settings' Effort editor is one for both** (`AgentEffort`): Scout's texts unchanged, the
+  merger's its own; the Merger group lists Effort after Instructions.
+- **`symbiote merge` reads the merger's levels too**, through the same finders as `symbiote view`.
+- **The agent's JSON answer is counted, not printed** (decision 315, as built): its text streams
+  as one dim line rewritten in place ("Writing its answer: 46,788 characters"). In the real run
+  below the answer was 18.8K tokens of escaped JSON that buried the thinking above it, and its
+  content is on Files, region by region with its notes. Text that is not the answer (prose before
+  a tool call) is written as it comes; the log file keeps every piece.
+
+**Results.** Tests first throughout, each red for the reason given. `pnpm check`: 1,449 tests;
+build. e2e: **225 of 225** on the last full run. Two earlier full runs each had one failure, both
+from V46: the V17 reviews spec read the list V46c replaced, and the V16/V17 spec's `{ name: 'Land' }`
+also matched the landing's step button ("Land: passed", Playwright matches by substring) whenever
+the log's line arrived first; the specs read Files and use exact names now. New: 13 log tests in the merger's and 7 of the log file, 3 agent-stream tests on a
+recorded Claude Code 2.1.310 stream, the routes', 17 viewer unit tests (steps, the terminal's text,
+files), 3 e2e (a check's output while it runs; the agent's thought and file read while it works;
+two files), the Merger's Effort in Settings.
+
+Real use, `e380fef` (feature/skill-creator into main: README, JOURNAL, PLAN and an e2e spec
+conflicting, 5 regions) replayed through `symbiote merge` in a throwaway clone with the real
+Claude Code (`sonnet`, its default effort) and a conflict-marker check:
+
+| What | Measured |
+|---|---|
+| The resolution | Equal to the committed merge (`git diff e380fef <merge>` empty) |
+| The run | 85 s; 27.0K tokens in, 18.8K out (its prompt 50,988 characters; V26c's median was 10.0K in, 7–49 s, on smaller conflicts) |
+| Its thinking, shown | 58 pieces, 703 characters of summary, the first 4.0 s after its start |
+| Its tools | none: the regions were enough |
+| Its log | 2,404 lines, 2,333 of them the answer's pieces |
+| The page | Files: 4 files, each with its words; Log: the steps, the thinking, "Writing its answer: 46,788 characters", the time and tokens, the check |
+
+Whether summarized thinking costs output tokens was not measured on this merge (one run). On the
+spike's small conflict, at the same effort: 475 output tokens without it, 516 with (243 and 250
+thinking): within a run's spread.
+
+Found, not V46's: the review's "kept twice" (the merge page remake) flagged correct resolutions
+on this merge — `JOURNAL.md` "2 lines kept twice", `PLAN.md` "10": both sides added an entry with
+its own `**Learned**:` and table lines, and keeping both counts as doubling. Files shows the
+regions' flags put together, so it shows them too. A fix of its own.

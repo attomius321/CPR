@@ -347,17 +347,24 @@ worktree of its own in its cache. Your checkout and the agent's worktree are not
 
 Merges go one at a time, each on the result of the last. The sidenav's Merging group shows each
 one, and a click opens it (`/?merge=<branch>`): queued, merging, checking, ready to land, landed or
-failed, with the end of a failed check's output. Without a check, a merge waits there for **Land**.
+failed. Under that, its steps (the merge, the merger agent, each check command, the landing), each
+with its time, beside a log of everything they write as they write it, in a read-only terminal:
+what git did, the check's output, and the merger agent at work. A click on a step scrolls the log
+to it; a merge that runs again (Retry, Request changes, Check again) keeps the earlier runs above.
+Without a check, a merge waits for **Land**.
 
 A conflict goes to a merger agent (Claude Code or Codex, `merge.agent`; `merge.model`, else
-`sonnet` for Claude Code), which answers each conflicting region. Symbiote writes the answers, commits the merge
-and runs the check. Nothing lands until you have reviewed the resolution, region by region:
-**Approve** lands it, **Request changes** asks the agent again with your words. A check that
-failed does not take Approve away: the page says which commands passed and which failed, with
-the end of the output, and **Check again** runs the check again on the same merge without
-asking the agent. A file deleted on one side, a binary file or a submodule is given to no one:
-resolve it on the branch, review it again, then Retry. A target that moved before landing is
-merged again on its new tip.
+`sonnet` for Claude Code; `merge.effort`, else the agent's own level), which answers each
+conflicting region. Its log shows what it does: a summary of its thinking, each file it reads and
+its answer as it writes it. Symbiote writes the answers, commits the merge and runs the check.
+Nothing lands until you have reviewed the resolution: **Files** lists the conflicting files, each
+with what its resolution did ("Drops 3 lines from main", "Keeps every line of both sides"), the
+first that loses lines first, and a click shows a file's regions. **Approve** lands it,
+**Request changes** asks the agent again with your words. A check that failed does not take
+Approve away: the page says which commands passed and which failed, the log has the output, and
+**Check again** runs the check again on the same merge without asking the agent. A file deleted on
+one side, a binary file or a submodule is given to no one: resolve it on the branch, review it
+again, then Retry. A target that moved before landing is merged again on its new tip.
 
 The queue is kept in Symbiote's cache. `symbiote merge <branch>` does the same from a terminal and prints
 each step.
@@ -815,6 +822,7 @@ At the repository root (`symbiote.config.json`, the older place, still works). E
 | `scout.effort` | the agent's | The effort level each [Scout](#scout) conversation starts at, when Scout's agent lists it (Settings sets it). |
 | `merge.checks` | guessed | The check a merge runs before it lands ([Merging](#merging)): a command, or a list run in order through the shell in Symbiote's merge worktree. Add an install first when the check needs dependencies, e.g. `["pnpm install --frozen-lockfile", "pnpm check"]`. |
 | `merge.push` | `false` | Push the target branch after a merge lands. |
+| `merge.effort` | the agent's | The effort level each merger agent's run is asked at, when the merger's agent lists it (Settings sets it). |
 | `prompts` | Symbiote's | What Symbiote tells its agents, each prompt whole ([below](#agents-prompts)). |
 
 Before V25 the `workspaces` section was called `features`; that name is still read when `workspaces` is not there.

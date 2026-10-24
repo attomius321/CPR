@@ -186,3 +186,4 @@ merge commit.
 - 2026-10-24 [V45 spike — a shell in a pseudo-terminal, and what V21's rules would do to it](journal/v45-workspace-terminals.md)
 - 2026-10-24 [V45 — shells in a workspace's worktree](journal/v45-workspace-terminals.md)
 - 2026-10-24 [V46 spike — what a merge could show while it runs](journal/v46-merger-logs.md)
+- 2026-10-24 [V46 — a merge's log, the merger agent at work, a resolution's files, the merger's effort](journal/v46-merger-logs.md)
