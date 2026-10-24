@@ -20,9 +20,11 @@ import {
   gitNote,
   insertAt,
   isEdited,
+  markOf,
   promptGroups,
   promptOfUrl,
   sizeOf,
+  type PrebuiltAgent,
 } from './settings.js';
 import {
   AGENT_NAMES,
@@ -34,18 +36,23 @@ import {
 
 const API = '/api/settings/prompts';
 
+/** A prebuilt agent's model in the project's config (V47), from its agent's own list. */
+interface ModelSetting {
+  key: 'scout.model' | 'scribe.model' | 'merge.model';
+  /** What the model is for, before "from <agent>'s list". */
+  about: string;
+  /** What the next run does on `model` once saved. */
+  saved: (model: string) => string;
+  /** What happens with a configured model its agent does not list (decision 343). */
+  unlisted: string;
+}
+
 /**
- * An agent's effort in the project's config, listed in its group after its prompt: Scout's
- * (fix/scout-effort-level) and the merger's (V46d).
+ * A prebuilt agent's effort in the project's config: Scout's (fix/scout-effort-level) and the
+ * merger's (V46d).
  */
 interface EffortSetting {
   key: 'scout.effort' | 'merge.effort';
-  group: 'Scout' | 'Merger';
-  /** Where its levels are read and its level set: `<api>/efforts`, `<api>/effort`. */
-  api: string;
-  /** Its name in a sentence, and whose effort it is. */
-  who: string;
-  whose: string;
   /** What the level is for, before "from <agent>'s levels". */
   about: string;
   /** Where else it changes, when it does. */
@@ -56,92 +63,77 @@ interface EffortSetting {
   saved: (level: string) => string;
 }
 
-const EFFORTS: readonly EffortSetting[] = [
-  {
-    key: 'scout.effort',
-    group: 'Scout',
-    api: '/api/scout',
-    who: 'Scout',
-    whose: "Scout's",
-    about: "The level each of Scout's conversations starts at",
-    also: (
-      <>
-        Scout&apos;s page can start one conversation at another; <code>/effort</code> in its
-        terminal changes it after.
-      </>
-    ),
-    atDefault: 'Scout starts it at its default',
-    saved: (level) => `Saved. Scout's next conversation starts at ${level}.`,
-  },
-  {
-    key: 'merge.effort',
-    group: 'Merger',
+/** A prebuilt agent's settings beside its prompts, on its page (fix/scout-merger-scribe-settings). */
+interface AgentSettings {
+  /** Where its models and levels are read (`<api>/efforts`), and set (`<api>/model`, `/effort`). */
+  api: string;
+  /** Its name in a sentence, and whose settings they are. */
+  who: string;
+  whose: string;
+  model: ModelSetting;
+  /** Its effort, when Settings sets one (Scribe's is picked in its box). */
+  effort?: EffortSetting;
+}
+
+const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
+  Merger: {
     api: '/api/merges',
     who: 'The merger',
     whose: "the merger's",
-    about: "The level each of the merger agent's runs is asked at",
-    also: (
-      <>Its log says the level each run was asked at, or why it was not (the merge&apos;s Log).</>
-    ),
-    atDefault: 'the merger runs it at its default',
-    saved: (level) => `Saved. The merger agent's next run is asked at ${level}.`,
+    model: {
+      key: 'merge.model',
+      about: "The model each of the merger agent's runs is asked on",
+      saved: (model) => `Saved. The merger agent's next run is asked on ${model}.`,
+      unlisted: 'the merger asks on it as written',
+    },
+    effort: {
+      key: 'merge.effort',
+      about: "The level each of the merger agent's runs is asked at",
+      also: (
+        <>Its log says the level each run was asked at, or why it was not (the merge&apos;s Log).</>
+      ),
+      atDefault: 'the merger runs it at its default',
+      saved: (level) => `Saved. The merger agent's next run is asked at ${level}.`,
+    },
   },
-];
-type EffortKey = EffortSetting['key'];
-
-/**
- * An agent's model in the project's config (V47), listed in its group before its Effort: Scout's,
- * Scribe's and the merger's, from their agent's own list.
- */
-interface ModelSetting {
-  key: 'scout.model' | 'scribe.model' | 'merge.model';
-  group: 'Scout' | 'Scribe' | 'Merger';
-  /** Where its models are read and its model set: `<api>/efforts`, `<api>/model`. */
-  api: string;
-  who: string;
-  whose: string;
-  /** What the model is for, before "from <agent>'s list". */
-  about: string;
-  /** What the next run does on `model` once saved. */
-  saved: (model: string) => string;
-  /** What happens with a configured model its agent does not list (decision 343). */
-  unlisted: string;
-}
-
-const MODELS: readonly ModelSetting[] = [
-  {
-    key: 'scout.model',
-    group: 'Scout',
+  Scout: {
     api: '/api/scout',
     who: 'Scout',
     whose: "Scout's",
-    about: "The model each of Scout's conversations starts on",
-    saved: (model) => `Saved. Scout's next conversation starts on ${model}.`,
-    unlisted: 'Scout starts on the default',
+    model: {
+      key: 'scout.model',
+      about: "The model each of Scout's conversations starts on",
+      saved: (model) => `Saved. Scout's next conversation starts on ${model}.`,
+      unlisted: 'Scout starts on the default',
+    },
+    effort: {
+      key: 'scout.effort',
+      about: "The level each of Scout's conversations starts at",
+      also: (
+        <>
+          Scout&apos;s page can start one conversation at another; <code>/effort</code> in its
+          terminal changes it after.
+        </>
+      ),
+      atDefault: 'Scout starts it at its default',
+      saved: (level) => `Saved. Scout's next conversation starts at ${level}.`,
+    },
   },
-  {
-    key: 'scribe.model',
-    group: 'Scribe',
+  Scribe: {
     api: '/api/scribe',
     who: 'Scribe',
     whose: "Scribe's",
-    about: "The model each of Scribe's conversations starts on",
-    saved: (model) => `Saved. Scribe's next conversation starts on ${model}.`,
-    unlisted: 'Scribe starts on the default',
+    model: {
+      key: 'scribe.model',
+      about: "The model each of Scribe's conversations starts on",
+      saved: (model) => `Saved. Scribe's next conversation starts on ${model}.`,
+      unlisted: 'Scribe starts on the default',
+    },
   },
-  {
-    key: 'merge.model',
-    group: 'Merger',
-    api: '/api/merges',
-    who: 'The merger',
-    whose: "the merger's",
-    about: "The model each of the merger agent's runs is asked on",
-    saved: (model) => `Saved. The merger agent's next run is asked on ${model}.`,
-    unlisted: 'the merger asks on it as written',
-  },
-];
-type ModelKey = ModelSetting['key'];
-type SettingKey = PromptKey | EffortKey | ModelKey;
+};
+
+/** The list's mark for an entry, by `markOf`. */
+const MARKS = { unsaved: 'not saved', warning: 'not used', changed: 'changed' } as const;
 
 /** The drafts without `key`'s. */
 const without = (drafts: Partial<Record<PromptKey, string>>, key: PromptKey) =>
@@ -159,12 +151,13 @@ interface Notice {
 /**
  * Settings (V28b): every agent's prompts, Symbiote's until the project changes them. A change is
  * saved in `symbiote/config.json` (`prompts`); unsaved drafts are kept while another prompt is
- * open, and leaving the page with one asks first.
+ * open, and leaving the page with one asks first. A prebuilt agent is one entry, whose page holds
+ * its model, its effort and its prompt (fix/scout-merger-scribe-settings).
  */
 export function SettingsPage() {
   const [settings, setSettings] = useState<PromptSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<SettingKey | null>(null);
+  const [open, setOpen] = useState<PromptKey | null>(null);
   /** On a narrow screen, a prompt picked takes the page (`?prompt=` in the address). */
   const [picked, setPicked] = useState(() =>
     new URLSearchParams(window.location.search).has('prompt'),
@@ -186,17 +179,14 @@ export function SettingsPage() {
   }, []);
   useEffect(() => {
     void load().then((read) => {
-      if (read)
-        setOpen(
-          promptOfUrl<SettingKey>(window.location.search, [
-            ...read.prompts.map((p) => p.key),
-            ...MODELS.map((m) => m.key),
-            ...EFFORTS.map((e) => e.key),
-          ]),
-        );
+      if (read) {
+        const keys = promptGroups(read.prompts).flatMap((g) => g.entries.map((e) => e.key));
+        setOpen(promptOfUrl(window.location.search, keys));
+      }
     });
   }, [load]);
 
+  const groups = useMemo(() => (settings ? promptGroups(settings.prompts) : []), [settings]);
   const edited = useMemo(
     () => settings?.prompts.filter((p) => isEdited(p, drafts[p.key])).map((p) => p.key) ?? [],
     [settings, drafts],
@@ -218,7 +208,7 @@ export function SettingsPage() {
     };
   }, [edited.length, setLeaveGuard]);
 
-  const show = (key: SettingKey) => {
+  const show = (key: PromptKey) => {
     setOpen(key);
     setPicked(true);
     setNotice((current) => (current?.key === key ? current : null));
@@ -257,7 +247,22 @@ export function SettingsPage() {
     }
   };
 
-  const current = settings?.prompts.find((p) => p.key === open);
+  const editor = (prompt: PromptSetting, part?: boolean) => (
+    <PromptEditor
+      key={prompt.key}
+      prompt={prompt}
+      part={part}
+      draft={drafts[prompt.key]}
+      busy={busy}
+      notice={notice?.key === prompt.key ? notice : null}
+      onDraft={(text) => setDrafts((all) => ({ ...all, [prompt.key]: text }))}
+      onDiscard={() => setDrafts((all) => without(all, prompt.key))}
+      onSave={(text) => void save(prompt, text)}
+      onLoad={() => void load().then(() => setNotice(null))}
+      onBack={back}
+    />
+  );
+  const current = groups.flatMap((g) => g.entries).find((e) => e.key === open);
   return (
     <div className="settings">
       <div className="commits-title settings-bar">
@@ -292,122 +297,157 @@ export function SettingsPage() {
       ) : (
         <div className={`settings-body${picked ? ' picked' : ''}`}>
           <nav className="settings-list" aria-label="Settings">
-            {promptGroups(settings.prompts).map(({ group, prompts }) => (
+            {groups.map(({ group, entries }) => (
               <section key={group} aria-label={group}>
                 <h2>{group}</h2>
                 <ul>
-                  {prompts.map((p) => (
-                    <li key={p.key}>
-                      <button
-                        type="button"
-                        aria-current={p.key === open ? 'true' : undefined}
-                        onClick={() => show(p.key)}
-                      >
-                        <span className="settings-name">{p.title}</span>
-                        {edited.includes(p.key) ? (
-                          <span className="settings-mark unsaved">not saved</span>
-                        ) : p.warning ? (
-                          <span className="settings-mark warning">not used</span>
-                        ) : (
-                          p.changed && <span className="settings-mark changed">changed</span>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                  {MODELS.filter((m) => m.group === group).map((m) => (
-                    <li key={m.key}>
-                      <button
-                        type="button"
-                        aria-current={open === m.key ? 'true' : undefined}
-                        onClick={() => show(m.key)}
-                      >
-                        <span className="settings-name">Model</span>
-                      </button>
-                    </li>
-                  ))}
-                  {EFFORTS.filter((e) => e.group === group).map((e) => (
-                    <li key={e.key}>
-                      <button
-                        type="button"
-                        aria-current={open === e.key ? 'true' : undefined}
-                        onClick={() => show(e.key)}
-                      >
-                        <span className="settings-name">Effort</span>
-                      </button>
-                    </li>
-                  ))}
+                  {entries.map((entry) => {
+                    const mark = markOf(entry.prompts, edited);
+                    return (
+                      <li key={entry.key}>
+                        <button
+                          type="button"
+                          aria-current={entry.key === open ? 'true' : undefined}
+                          onClick={() => show(entry.key)}
+                        >
+                          <span className="settings-name">{entry.name}</span>
+                          {mark && <span className={`settings-mark ${mark}`}>{MARKS[mark]}</span>}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             ))}
           </nav>
-          {current && (
-            <PromptEditor
-              key={current.key}
-              prompt={current}
-              draft={drafts[current.key]}
-              busy={busy}
-              notice={notice?.key === current.key ? notice : null}
-              onDraft={(text) => setDrafts((all) => ({ ...all, [current.key]: text }))}
-              onDiscard={() => setDrafts((all) => without(all, current.key))}
-              onSave={(text) => void save(current, text)}
-              onLoad={() => void load().then(() => setNotice(null))}
-              onBack={back}
-            />
-          )}
-          {MODELS.filter((m) => m.key === open).map((m) => (
-            <AgentModelSetting key={m.key} setting={m} onSaved={() => void load()} onBack={back} />
-          ))}
-          {EFFORTS.filter((e) => e.key === open).map((e) => (
+          {current?.agent ? (
             // A save changes the file: the prompts' version is read again, or their next save
             // would be refused as changed since.
-            <AgentEffort key={e.key} setting={e} onSaved={() => void load()} onBack={back} />
-          ))}
+            <AgentPage
+              key={current.key}
+              name={current.agent}
+              settings={AGENTS[current.agent]}
+              onSaved={() => void load()}
+              onBack={back}
+            >
+              {current.prompts.map((prompt) => editor(prompt, true))}
+            </AgentPage>
+          ) : (
+            current?.prompts[0] && editor(current.prompts[0])
+          )}
         </div>
       )}
     </div>
   );
 }
 
+/** The way back to the list, when a page takes a narrow screen. */
+function BackToList({ onBack }: { onBack: () => void }) {
+  return (
+    <button type="button" className="button ghost settings-back" onClick={onBack}>
+      <BackIcon /> All settings
+    </button>
+  );
+}
+
 /**
- * An agent's effort in the project's config, on a stepper of its agent's levels, saved when the
- * handle is let go: `scout.effort`, the level each Scout conversation starts at
- * (fix/scout-effort-level); `merge.effort`, the level each merger agent's run is asked at (V46d).
+ * A prebuilt agent's page (fix/scout-merger-scribe-settings): its Model, its Effort when Settings
+ * sets one, then its prompts (`children`). The agent's models and levels are read once for both:
+ * a model saved answers with its own levels, and the Effort follows it.
  */
-function AgentEffort({
-  setting,
+function AgentPage({
+  name,
+  settings,
   onSaved,
   onBack,
+  children,
 }: {
-  setting: EffortSetting;
+  name: PrebuiltAgent;
+  settings: AgentSettings;
   onSaved: () => void;
   onBack: () => void;
+  children: ReactNode;
 }) {
   const [read, setRead] = useState<ScoutEfforts | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [level, setLevel] = useState('');
-  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
-  // One save after another, in the order they were made.
-  const saving = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
     let current = true;
-    getJson<ScoutEfforts>(`${setting.api}/efforts`)
+    getJson<ScoutEfforts>(`${settings.api}/efforts`)
       .then((answer) => {
-        if (!current) return;
-        setRead(answer);
-        setLevel(keptEffort(answer.effort, answer.agents[0] ?? {}) ?? '');
+        if (current) setRead(answer);
       })
       .catch((failed: unknown) => {
         if (current) {
-          setError(`${setting.whose} levels could not be read: ${(failed as Error).message}`);
+          const what = settings.effort ? 'models and levels' : 'models';
+          setError(`${settings.whose} ${what} could not be read: ${(failed as Error).message}`);
         }
       });
     return () => {
       current = false;
     };
-  }, [setting]);
+  }, [settings]);
+  const saved = (answer: ScoutEfforts) => {
+    setRead(answer);
+    onSaved();
+  };
 
-  // Its agent: Scout's default (a conversation may pick another), the merger's (`merge.agent`).
+  // Its agent: Scout's and Scribe's default (Scout's box may pick another), the merger's.
   const agent = read?.agents[0];
+  return (
+    <section className="settings-editor" aria-label={name}>
+      <BackToList onBack={onBack} />
+      <h2>{name}</h2>
+      {error && (
+        <p className="settings-warning" role="alert">
+          {error}
+        </p>
+      )}
+      {read && !agent && (
+        <p className="settings-warning" role="alert">
+          {settings.who} needs Claude Code or Codex: neither is installed here.
+        </p>
+      )}
+      <AgentModel settings={settings} read={read} onSaved={saved} />
+      {settings.effort && (
+        // Drawn again on another model: its levels, and the level kept on them, are that model's.
+        <AgentEffort
+          key={read ? `on ${read.model ?? ''}` : 'reading'}
+          settings={settings}
+          setting={settings.effort}
+          read={read}
+          onSaved={saved}
+        />
+      )}
+      {children}
+    </section>
+  );
+}
+
+/**
+ * A prebuilt agent's effort in the project's config, on a stepper of its agent's levels, saved
+ * when the handle is let go: `scout.effort`, the level each Scout conversation starts at
+ * (fix/scout-effort-level); `merge.effort`, the level each merger agent's run is asked at (V46d).
+ */
+function AgentEffort({
+  settings,
+  setting,
+  read,
+  onSaved,
+}: {
+  settings: AgentSettings;
+  setting: EffortSetting;
+  /** The agent's models and levels, null while they are read. */
+  read: ScoutEfforts | null;
+  onSaved: (answer: ScoutEfforts) => void;
+}) {
+  const agent = read?.agents[0];
+  const [level, setLevel] = useState(() =>
+    read && agent ? (keptEffort(read.effort, agent) ?? '') : '',
+  );
+  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
+  // One save after another, in the order they were made.
+  const saving = useRef<Promise<void>>(Promise.resolve());
+
   const name = agent ? AGENT_NAMES[agent.kind] : '';
   const choices = agent ? effortChoices(agent) : [];
   const unlisted =
@@ -417,9 +457,8 @@ function AgentEffort({
   const commit = (next: string) => {
     saving.current = saving.current.then(async () => {
       try {
-        setRead(await postJson<ScoutEfforts>(`${setting.api}/effort`, { effort: next || null }));
+        onSaved(await postJson<ScoutEfforts>(`${settings.api}/effort`, { effort: next || null }));
         setNotice({ text: setting.saved(next ? next : `${name}'s default`) });
-        onSaved();
       } catch (failed) {
         setNotice({ text: (failed as Error).message, error: true });
       }
@@ -427,13 +466,10 @@ function AgentEffort({
   };
 
   return (
-    <section className="settings-editor" aria-label={`${setting.group}: Effort`}>
-      <button type="button" className="button ghost settings-back" onClick={onBack}>
-        <BackIcon /> All prompts
-      </button>
-      <h2>
-        {setting.group}: Effort
-        <Help label={`About ${setting.whose} effort`}>
+    <section className="settings-part" aria-label="Effort">
+      <h3>
+        Effort
+        <Help label={`About ${settings.whose} effort`}>
           <p>
             {setting.about}
             {name ? `, from ${name}'s levels` : ''}. Default passes none: the agent&apos;s own
@@ -444,17 +480,7 @@ function AgentEffort({
             <code>{setting.key}</code>) when you let go.
           </p>
         </Help>
-      </h2>
-      {error && (
-        <p className="settings-warning" role="alert">
-          {error}
-        </p>
-      )}
-      {read && !agent && (
-        <p className="settings-warning" role="alert">
-          {setting.who} needs Claude Code or Codex: neither is installed here.
-        </p>
-      )}
+      </h3>
       {agent && !agent.efforts && (
         <p className="settings-warning" role="alert">
           Symbiote cannot read {name}&apos;s effort levels: {setting.atDefault}.
@@ -484,39 +510,23 @@ function AgentEffort({
 }
 
 /**
- * An agent's model in the project's config (V47), a select of its agent's own list, saved when
- * picked: `scout.model`, `scribe.model`, `merge.model`.
+ * A prebuilt agent's model in the project's config (V47), a select of its agent's own list, saved
+ * when picked: `scout.model`, `scribe.model`, `merge.model`.
  */
-function AgentModelSetting({
-  setting,
+function AgentModel({
+  settings,
+  read,
   onSaved,
-  onBack,
 }: {
-  setting: ModelSetting;
-  onSaved: () => void;
-  onBack: () => void;
+  settings: AgentSettings;
+  /** The agent's models and levels, null while they are read. */
+  read: ScoutEfforts | null;
+  onSaved: (answer: ScoutEfforts) => void;
 }) {
-  const [read, setRead] = useState<ScoutEfforts | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { model: setting } = settings;
   const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    let current = true;
-    getJson<ScoutEfforts>(`${setting.api}/efforts`)
-      .then((answer) => {
-        if (current) setRead(answer);
-      })
-      .catch((failed: unknown) => {
-        if (current) {
-          setError(`${setting.whose} models could not be read: ${(failed as Error).message}`);
-        }
-      });
-    return () => {
-      current = false;
-    };
-  }, [setting]);
 
-  // Its agent: Scout's and Scribe's default (Scout's box may pick another), the merger's.
   const agent = read?.agents[0];
   const name = agent ? AGENT_NAMES[agent.kind] : '';
   const choices = agent ? modelChoices(agent) : [];
@@ -526,13 +536,12 @@ function AgentModelSetting({
   const pick = async (next: string) => {
     setSaving(true);
     try {
-      const answer = await postJson<ScoutEfforts>(`${setting.api}/model`, {
+      const answer = await postJson<ScoutEfforts>(`${settings.api}/model`, {
         model: next || null,
       });
-      setRead(answer);
+      onSaved(answer);
       const label = choices.find((c) => c.value === next)?.label ?? next;
       setNotice({ text: setting.saved(label) });
-      onSaved();
     } catch (failed) {
       setNotice({ text: (failed as Error).message, error: true });
     } finally {
@@ -541,34 +550,24 @@ function AgentModelSetting({
   };
 
   return (
-    <section className="settings-editor" aria-label={`${setting.group}: Model`}>
-      <button type="button" className="button ghost settings-back" onClick={onBack}>
-        <BackIcon /> All prompts
-      </button>
-      <h2>
-        {setting.group}: Model
-        <Help label={`About ${setting.whose} model`}>
+    <section className="settings-part" aria-label="Model">
+      <h3>
+        Model
+        <Help label={`About ${settings.whose} model`}>
           <p>
             {setting.about}
             {name ? `, from ${name}'s own list` : ''}. Default passes none of Settings&apos;: the
             first entry says which it is.
           </p>
           <p>
-            Its Effort follows it: the levels shown are this model&apos;s. Saved in{' '}
-            {read?.file ?? 'symbiote/config.json'} (<code>{setting.key}</code>) when you pick one.
+            {settings.effort && (
+              <>The Effort below follows it: its levels are this model&apos;s. </>
+            )}
+            Saved in {read?.file ?? 'symbiote/config.json'} (<code>{setting.key}</code>) when you
+            pick one.
           </p>
         </Help>
-      </h2>
-      {error && (
-        <p className="settings-warning" role="alert">
-          {error}
-        </p>
-      )}
-      {read && !agent && (
-        <p className="settings-warning" role="alert">
-          {setting.who} needs Claude Code or Codex: neither is installed here.
-        </p>
-      )}
+      </h3>
       {agent && !agent.models && (
         <p className="settings-warning" role="alert">
           Symbiote cannot read {name}&apos;s models: none can be picked here.
@@ -636,9 +635,13 @@ function Appearance() {
   );
 }
 
-/** One prompt: its text to change, its placeholders, Save and Reset. */
+/**
+ * One prompt: its text to change, its placeholders, Save and Reset. Its own page, or a part of its
+ * agent's (`part`), under its title alone.
+ */
 function PromptEditor({
   prompt,
+  part,
   draft,
   busy,
   notice,
@@ -649,6 +652,7 @@ function PromptEditor({
   onBack,
 }: {
   prompt: PromptSetting;
+  part?: boolean;
   draft: string | undefined;
   busy: boolean;
   notice: Notice | null;
@@ -685,13 +689,15 @@ function PromptEditor({
     });
   };
 
+  const Heading = part ? 'h3' : 'h2';
   return (
-    <section className="settings-editor" aria-label={`${prompt.group}: ${prompt.title}`}>
-      <button type="button" className="button ghost settings-back" onClick={onBack}>
-        <BackIcon /> All prompts
-      </button>
-      <h2>
-        {prompt.group}: {prompt.title}
+    <section
+      className={part ? 'settings-part' : 'settings-editor'}
+      aria-label={part ? prompt.title : `${prompt.group}: ${prompt.title}`}
+    >
+      {!part && <BackToList onBack={onBack} />}
+      <Heading>
+        {part ? prompt.title : `${prompt.group}: ${prompt.title}`}
         <span className={`settings-state${prompt.changed ? ' changed' : ''}`}>
           {prompt.changed ? "The project's" : "Symbiote's"}
         </span>
@@ -703,7 +709,7 @@ function PromptEditor({
             </p>
           )}
         </Help>
-      </h2>
+      </Heading>
       {prompt.warning && (
         <p className="settings-warning" role="alert">
           {prompt.warning}

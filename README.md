@@ -600,11 +600,11 @@ goes through a workspace you start.
 - **Its agent** is chosen as a workspace's: `agent.kind` in `symbiote/config.json`, else Claude
   Code, else Codex; the box offers the other when both are installed.
 - **Its effort** is the level a conversation starts at, on a stepper under the question: the
-  project's (`scout.effort` in `symbiote/config.json`, set in **Settings**, Scout's Effort) when
+  project's (`scout.effort` in `symbiote/config.json`, set in **Settings**, on Scout's page) when
   the agent lists it, else the agent's own default. Move it before the first question for that
   conversation only; the page's head names it ("with Claude Code at low effort"). The session keeps
   it through follow-ups; `/effort` in its terminal changes it.
-- **Its model** is the project's (`scout.model`, set in **Settings**, Scout's Model) when the
+- **Its model** is the project's (`scout.model`, set on the same page of **Settings**) when the
   conversation's agent lists it, else `agent.model` for Claude Code, else the agent's own; the
   page's head names it ("with Claude Code on sonnet at low effort"), and the levels on the stepper
   are that model's.
@@ -918,9 +918,10 @@ Before V25 the `workspaces` section was called `features`; that name is still re
 Every text Symbiote gives its agents can be replaced under `prompts`. **Settings** in `symbiote view` (s)
 lists them by agent, each with Symbiote's text until you change it, its placeholders (click one to
 insert it), Save and Reset to Symbiote's; it writes only `prompts` and leaves the rest of the file as
-it is. Scout's group also holds its Model (`scout.model`) and Effort (`scout.effort`), Scribe's its
-Model, the Merger's its Model and Effort: a model is saved when you pick it, from the agent's own
-list, a level when you let go of the stepper. A missing key is Symbiote's text, so the file keeps only the prompts you change. A prompt is a
+it is. Under **Prebuilt agents**, the Merger, Scout and Scribe each have one page: its Model
+(`merge.model`, `scout.model`, `scribe.model`), its Effort (`merge.effort`, `scout.effort`; Scribe's
+is picked in its box) and its Instructions. A model is saved when you pick it, from the agent's own
+list, a level when you let go of the stepper; the Effort follows the model picked. A missing key is Symbiote's text, so the file keeps only the prompts you change. A prompt is a
 string or a list of lines, and `{name}` is filled in where the prompt allows it (any other brace
 is text). Commit `symbiote/config.json` to share them: the page says whether it is committed. It is
 read at each use, so a change applies to the next agent started.

@@ -64,9 +64,10 @@
   margin-top: 16px;
 }
 
+/* A group's entries a little in from its heading (fix/scout-merger-scribe-settings). */
 .settings-list ul {
   margin: 0;
-  padding: 0;
+  padding: 0 0 0 12px;
   list-style: none;
 }
 
@@ -153,6 +154,32 @@
 
 .settings-editor .settings-warning {
   margin: 0 0 8px;
+}
+
+/* A prebuilt agent's page (fix/scout-merger-scribe-settings): its Model, Effort and
+   Instructions one under another, a hairline between them. */
+.settings-part {
+  margin-top: 16px;
+}
+
+.settings-part + .settings-part {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.settings-part h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0 0 8px;
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+.settings-part > .settings-notice {
+  margin: 8px 0 0;
 }
 
 /* An agent's model (V47): its agent's list, as wide as the effort stepper beside it. */
