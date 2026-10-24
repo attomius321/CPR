@@ -1289,6 +1289,9 @@ describe('symbiote view: workspaces (V18)', () => {
     // Its effort level (V30b), the workspaces' to check against the agent's.
     expect((await post('/api/workspaces', { ...request, effort: 'high' })).status).toBe(200);
     expect(started.at(-1)).toEqual({ ...request, effort: 'high' });
+    // Its model (V47), the workspaces' to check against the agent's list.
+    expect((await post('/api/workspaces', { ...request, model: 'sonnet' })).status).toBe(200);
+    expect(started.at(-1)).toEqual({ ...request, model: 'sonnet' });
     // A branch to start from (V33), the workspaces' to find.
     expect((await post('/api/workspaces', { ...request, from: 'topic' })).status).toBe(200);
     expect(started.at(-1)).toEqual({ ...request, from: 'topic' });
@@ -1309,6 +1312,7 @@ describe('symbiote view: workspaces (V18)', () => {
       { ...request, permissionMode: 7 },
       { ...request, agent: 7 },
       { ...request, effort: 7 },
+      { ...request, model: 7 },
     ]) {
       expect((await post('/api/workspaces', body)).status, JSON.stringify(body)).toBe(400);
     }

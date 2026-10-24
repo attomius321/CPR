@@ -3,7 +3,13 @@
 // connection per call: Symbiote keeps no thread subscribed (a thread's clients get every delta of
 // its turns) and reads what it shows with `thread/read` and `thread/turns/list`. What it reads is
 // checked field by field: the protocol is `[experimental]`.
-import { EFFORT_LEVEL, type AgentEfforts } from '@symbiote/core';
+import {
+  EFFORT_LEVEL,
+  MODEL_ID,
+  type AgentEfforts,
+  type AgentModel,
+  type AgentModels,
+} from '@symbiote/core';
 import { openWebSocket, type WebSocketClient } from './websocket.js';
 
 /** An error the app server answered, with its JSON-RPC code; or no answer in time. */
@@ -191,7 +197,8 @@ export interface CodexServer {
    * thread's next turns —; its ID once the prompt is in the thread. `readOnly` (Scout, V35): the
    * `read-only` sandbox instead, nothing writable, approvals `never`: a command the sandbox refuses
    * fails, nobody is asked. `confined` (Scribe, V41): `workspace-write` with `cwd` its only writable
-   * folder, approvals `never`: a write elsewhere fails (decision 275).
+   * folder, approvals `never`: a write elsewhere fails (decision 275). On `model` when given (V47):
+   * the thread's own, kept for its turns and through a resume (V47's real run).
    */
   start(request: {
     cwd: string;
@@ -199,6 +206,7 @@ export interface CodexServer {
     name: string;
     prompt: string;
     effort?: string;
+    model?: string;
     readOnly?: true;
     confined?: true;
   }): Promise<string>;
@@ -208,6 +216,12 @@ export interface CodexServer {
    * model's default. Null when they cannot be read: these methods are `[experimental]`.
    */
   efforts(cwd: string): Promise<AgentEfforts | null>;
+  /**
+   * The models a thread in `cwd` can run on (V47): `model/list`'s, every page, not hidden, each
+   * with its levels; the default, the configured model (`config/read`) else the one marked as
+   * the default. Null when none can be read.
+   */
+  models(cwd: string): Promise<AgentModels | null>;
   /**
    * Gives a thread a message: a new turn, or joined to the one that runs (`turn/steer`).
    * A thread the server does not hold (it restarted) is resumed first, with its own options.
@@ -262,6 +276,49 @@ function effortsOf(config: Record<string, unknown>, models: unknown): AgentEffor
   if (levels.length === 0) return null;
   const fallback = level(config.model_reasoning_effort) ?? level(model.defaultReasoningEffort);
   return { levels, ...(fallback ? { default: fallback } : {}) };
+}
+
+/** Pages of `model/list` read at most (V47): Codex 0.163 gave its 3 models in one. */
+const MODEL_PAGES = 5;
+
+/**
+ * The models Codex lists (V47), not hidden, with the ID it takes (`model`), its name, description
+ * and levels — each one's default the configured level, else its own, as `effortsOf` —; the
+ * default, the configured model else the listed default. Null with none.
+ */
+function modelsOf(
+  config: Record<string, unknown>,
+  listed: Record<string, unknown>[],
+): AgentModels | null {
+  const models = listed
+    .filter((m) => m?.hidden !== true)
+    .map((m): AgentModel | null => {
+      const id = text(m.model) ?? text(m.id);
+      if (!id || !MODEL_ID.test(id)) return null;
+      const description = text(m.description);
+      const levels = (
+        Array.isArray(m.supportedReasoningEfforts)
+          ? (m.supportedReasoningEfforts as { reasoningEffort?: unknown }[])
+          : []
+      )
+        .map((option) => level(option?.reasoningEffort))
+        .filter((found): found is string => found !== undefined);
+      const fallback = level(config.model_reasoning_effort) ?? level(m.defaultReasoningEffort);
+      return {
+        id,
+        name: text(m.displayName) ?? id,
+        ...(description ? { description } : {}),
+        ...(levels.length > 0
+          ? { efforts: { levels, ...(fallback ? { default: fallback } : {}) } }
+          : {}),
+      };
+    })
+    .filter((m): m is AgentModel => m !== null);
+  if (models.length === 0) return null;
+  const marked = listed.find((m) => m?.isDefault === true);
+  const chosen =
+    text(config.model) ?? (marked ? (text(marked.model) ?? text(marked.id)) : undefined);
+  return { models, ...(chosen && MODEL_ID.test(chosen) ? { default: chosen } : {}) };
 }
 
 /** A turn's fields Symbiote uses, from what the server sent. */
@@ -380,16 +437,18 @@ export function codexServer(
 
   return {
     address,
-    start: ({ cwd, writable, name, prompt, effort, readOnly, confined }) =>
+    start: ({ cwd, writable, name, prompt, effort, model, readOnly, confined }) =>
       using(async (connection) => {
+        const on = model ? { model } : {};
         const started = await connection.request<{ thread?: { id?: unknown } }>(
           'thread/start',
           readOnly
-            ? { cwd, sandbox: 'read-only', approvalPolicy: 'never' }
+            ? { cwd, ...on, sandbox: 'read-only', approvalPolicy: 'never' }
             : confined
-              ? { cwd, sandbox: 'workspace-write', approvalPolicy: 'never' }
+              ? { cwd, ...on, sandbox: 'workspace-write', approvalPolicy: 'never' }
               : {
                   cwd,
+                  ...on,
                   sandbox: 'workspace-write',
                   approvalPolicy: 'on-request',
                   config: { sandbox_workspace_write: { writable_roots: writable } },
@@ -470,6 +529,25 @@ export function codexServer(
         });
         const listed = await connection.request<{ data?: unknown }>('model/list', {});
         return effortsOf(read.config ?? {}, listed.data);
+      }),
+    models: (cwd) =>
+      using(async (connection) => {
+        const read = await connection.request<{ config?: Record<string, unknown> }>('config/read', {
+          cwd,
+        });
+        const listed: Record<string, unknown>[] = [];
+        let cursor: string | undefined;
+        for (let page = 0; page < MODEL_PAGES; page++) {
+          const answer = await connection.request<{ data?: unknown; nextCursor?: unknown }>(
+            'model/list',
+            cursor ? { cursor } : {},
+          );
+          if (Array.isArray(answer.data))
+            listed.push(...(answer.data as Record<string, unknown>[]));
+          cursor = text(answer.nextCursor);
+          if (!cursor) break;
+        }
+        return modelsOf(read.config ?? {}, listed);
       }),
     trust: (cwd) =>
       using(async (connection) => {

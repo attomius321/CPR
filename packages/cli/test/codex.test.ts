@@ -326,6 +326,29 @@ describe('codexArgs (V20a)', () => {
       'model_reasoning_effort',
     );
   });
+
+  it('gives a model on the start and on every resume, before what it is given (V47)', () => {
+    const start = codexArgs({ cwd: '/w', writable: ['/g'], prompt: 'P', model: 'gpt-5.6-luna' });
+    expect(start.slice(-4)).toEqual(['-m', 'gpt-5.6-luna', '--', 'P']);
+    const resume = codexArgs({
+      writable: ['/g'],
+      sessionId: T,
+      prompt: 'Go',
+      effort: 'low',
+      model: 'gpt-5.6-luna',
+    });
+    expect(resume.slice(-7)).toEqual([
+      '-c',
+      'model_reasoning_effort="low"',
+      '-m',
+      'gpt-5.6-luna',
+      '--',
+      T,
+      'Go',
+    ]);
+    // None given: Codex's configured one, as before.
+    expect(codexArgs({ cwd: '/w', writable: ['/g'], prompt: 'P' })).not.toContain('-m');
+  });
 });
 
 describe('codex (V20a)', () => {

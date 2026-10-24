@@ -116,6 +116,7 @@ function fakeClaude(root: string) {
     remove,
     account: () => Promise.resolve('your Pro subscription'),
     efforts: () => Promise.resolve(null),
+    models: () => Promise.resolve(null),
   };
   /** Sets what Claude Code says of Scout's session. */
   const set = (id: string, fields: Partial<AgentSession>) => {
@@ -163,6 +164,7 @@ function fakeCodex(server: FakeAppServer | null) {
     account: () => Promise.resolve('your ChatGPT account'),
     server: () => Promise.resolve(server ? codexServer(server.address, { waitMs: 500 }) : null),
     efforts: () => Promise.resolve(null),
+    models: () => Promise.resolve(null),
   };
   return { codex, archive };
 }

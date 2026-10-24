@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import type {
   AgentEfforts,
+  AgentModels,
   AgentStateName,
   WorkspaceAgentState,
   ThreadEntry,
@@ -50,10 +51,12 @@ export interface Codex {
     prompt: string;
     /** Its effort level (V30b); Codex's configured one when absent. */
     effort?: string;
+    /** Its model (V47); Codex's configured one when absent. */
+    model?: string;
   }): Promise<{ ok: true; pid: number } | { ok: false; error: string }>;
   /**
    * Continues the thread `sessionId` with `text` (`codex exec resume`), the same way, at `effort`
-   * again: a resume keeps none of the start's options (V30 spike).
+   * and on `model` again: a resume keeps none of the start's options (V30 spike).
    */
   resume(request: {
     cwd: string;
@@ -63,6 +66,7 @@ export interface Codex {
     sessionId: string;
     text: string;
     effort?: string;
+    model?: string;
   }): Promise<{ ok: true; pid: number } | { ok: false; error: string }>;
   /** Whether the runner started as `pid` still runs. */
   alive(pid: number): boolean;
@@ -80,6 +84,8 @@ export interface Codex {
   server(): Promise<CodexServer | null>;
   /** The effort levels it takes (V30b), from its app server; null without one. */
   efforts(): Promise<AgentEfforts | null>;
+  /** The models it lists (V47), from its app server; null without one. */
+  models(): Promise<AgentModels | null>;
 }
 
 /** Whether a process runs (signal 0 asks without signalling). */
@@ -99,20 +105,24 @@ const tomlList = (values: readonly string[]) =>
 
 /**
  * Codex's arguments (decision 130): `exec` in the worktree, or `exec resume` of a thread, in the
- * `workspace-write` sandbox with the branch's git folders writable, at the effort level given
- * (V30b) — on every run, since a resume keeps none of the first run's options (V20a and V30
- * spikes). Never a bypass, never `--add-dir`. What it is given comes after `--`: a message may
- * start with `-`.
+ * `workspace-write` sandbox with the branch's git folders writable, at the effort level and on
+ * the model given (V30b, V47) — on every run, since a resume keeps none of the first run's options
+ * (V20a and V30 spikes). Never a bypass, never `--add-dir`. What it is given comes after `--`: a
+ * message may start with `-`.
  */
 export function codexArgs(
-  request: { writable: readonly string[]; prompt: string; effort?: string | undefined } & (
-    { cwd: string; sessionId?: undefined } | { sessionId: string; cwd?: undefined }
-  ),
+  request: {
+    writable: readonly string[];
+    prompt: string;
+    effort?: string | undefined;
+    model?: string | undefined;
+  } & ({ cwd: string; sessionId?: undefined } | { sessionId: string; cwd?: undefined }),
 ): string[] {
   const roots = `sandbox_workspace_write.writable_roots=${tomlList(request.writable)}`;
-  const effort = request.effort
-    ? ['-c', `model_reasoning_effort=${JSON.stringify(request.effort)}`]
-    : [];
+  const effort = [
+    ...(request.effort ? ['-c', `model_reasoning_effort=${JSON.stringify(request.effort)}`] : []),
+    ...(request.model ? ['-m', request.model] : []),
+  ];
   if (request.sessionId !== undefined) {
     return [
       'exec',
@@ -209,6 +219,7 @@ function lastingServer(
     archive: retried((server, thread: string) => server.archive(thread)),
     limits: retried((server) => server.limits()),
     efforts: retried((server, cwd: string) => server.efforts(cwd)),
+    models: retried((server, cwd: string) => server.models(cwd)),
   };
 }
 
@@ -291,14 +302,20 @@ export function codex(
   };
   return {
     command,
-    start: ({ cwd: folder, thread, run: id, writable, prompt, effort }) =>
-      runner_(thread, 'startup', id, codexArgs({ cwd: folder, writable, prompt, effort }), folder),
-    resume: ({ cwd: folder, thread, run: id, writable, sessionId, text, effort }) =>
+    start: ({ cwd: folder, thread, run: id, writable, prompt, effort, model }) =>
+      runner_(
+        thread,
+        'startup',
+        id,
+        codexArgs({ cwd: folder, writable, prompt, effort, model }),
+        folder,
+      ),
+    resume: ({ cwd: folder, thread, run: id, writable, sessionId, text, effort, model }) =>
       runner_(
         thread,
         'resume',
         id,
-        codexArgs({ sessionId, writable, prompt: text, effort }),
+        codexArgs({ sessionId, writable, prompt: text, effort, model }),
         folder,
       ),
     alive,
@@ -337,6 +354,10 @@ export function codex(
     async efforts() {
       const found = await server();
       return found ? found.efforts(cwd).catch(() => null) : null;
+    },
+    async models() {
+      const found = await server();
+      return found ? found.models(cwd).catch(() => null) : null;
     },
   };
 }

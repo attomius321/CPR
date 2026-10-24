@@ -231,8 +231,13 @@ export interface FakeAppServer {
    * `gpt-6-luna` at `medium` as here in the V30 spike.
    */
   config: { model?: string; model_reasoning_effort?: string };
-  /** What `model/list` answers (V30b): Codex 0.163's three models, `gpt-6-luna` the default. */
+  /**
+   * What `model/list` answers (V30b): Codex 0.163's three models, `gpt-6-luna` the default, with
+   * their names and descriptions as it gave them (V47 spike).
+   */
   models: Record<string, unknown>[];
+  /** How many models a page of `model/list` holds (V47); all of them in one page when null. */
+  modelPage: number | null;
   /** The server restarts: running turns interrupted, every thread not loaded, clients cut. */
   restart(): void;
   close(): Promise<void>;
@@ -265,14 +270,32 @@ export async function fakeAppServer(
   const levels = (...efforts: string[]) =>
     efforts.map((effort) => ({ reasoningEffort: effort, description: `${effort} reasoning` }));
   const models: Record<string, unknown>[] = [
-    ['gpt-6-luna', true, levels('low', 'medium', 'high', 'xhigh', 'max')],
-    ['gpt-5.6-terra', false, levels('low', 'medium', 'high', 'xhigh', 'max', 'ultra')],
-    ['gpt-5.6-luna', false, levels('low', 'medium', 'high', 'xhigh', 'max')],
-  ].map(([model, isDefault, supported]) => ({
+    [
+      'gpt-6-luna',
+      'GPT-6-Luna',
+      'Fast and affordable model for easier tasks.',
+      true,
+      levels('low', 'medium', 'high', 'xhigh', 'max'),
+    ],
+    [
+      'gpt-5.6-terra',
+      'GPT-5.6-Terra',
+      'Older balanced model for straightforward work.',
+      false,
+      levels('low', 'medium', 'high', 'xhigh', 'max', 'ultra'),
+    ],
+    [
+      'gpt-5.6-luna',
+      'GPT-5.6-Luna',
+      'Older fast and efficient model.',
+      false,
+      levels('low', 'medium', 'high', 'xhigh', 'max'),
+    ],
+  ].map(([model, displayName, description, isDefault, supported]) => ({
     id: model,
     model,
-    displayName: model,
-    description: '',
+    displayName,
+    description,
     hidden: false,
     isDefault,
     supportedReasoningEfforts: supported,
@@ -537,7 +560,15 @@ export async function fakeAppServer(
         rateLimits: usage.rateLimits,
         rateLimitsByLimitId: { codex: usage.rateLimits },
       }),
-      'model/list': () => ({ data: models, nextCursor: null }),
+      'model/list': (params) => {
+        const from = typeof params.cursor === 'string' ? Number(params.cursor) : 0;
+        const size = fake.modelPage ?? models.length;
+        const to = from + size;
+        return {
+          data: models.slice(from, to),
+          nextCursor: to < models.length ? String(to) : null,
+        };
+      },
       'config/read': () => ({
         config: {
           ...config,
@@ -602,7 +633,7 @@ export async function fakeAppServer(
     });
   });
 
-  return {
+  const fake: FakeAppServer = {
     address: `unix://${path}`,
     path,
     calls,
@@ -664,6 +695,7 @@ export async function fakeAppServer(
     trusted,
     config,
     models,
+    modelPage: null,
     get account() {
       return usage.account;
     },
@@ -693,6 +725,7 @@ export async function fakeAppServer(
     },
     close: () => ws.close(),
   };
+  return fake;
 }
 
 /** What `codex app-server daemon start` prints (Codex 0.163): log lines, then its state as JSON. */

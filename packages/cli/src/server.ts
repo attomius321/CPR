@@ -1347,8 +1347,8 @@ function json(res: ServerResponse, status: number, value: unknown): void {
 }
 
 /**
- * `{ kind, title, parts, branch, planFirst, base?, from?, agent?, permissionMode?, effort? }`
- * (V24, V20a, V30b, V33), or `brief` instead of the kind, title and parts, each of its type; what
+ * `{ kind, title, parts, branch, planFirst, base?, from?, agent?, permissionMode?, effort?,
+ * model? }` (V24, V20a, V30b, V33, V47), or `brief` instead of the kind, title and parts, each of its type; what
  * they say is the workspaces' to check (V18).
  */
 function parseWorkspaceRequest(text: string): WorkspaceRequest {
@@ -1368,6 +1368,7 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
     agent,
     permissionMode,
     effort,
+    model,
     documents,
   } = value;
   if (brief === undefined && kind === undefined) {
@@ -1394,6 +1395,7 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
   }
   if (effort !== undefined && typeof effort !== 'string')
     throw new Error('effort: a level, as high');
+  if (model !== undefined && typeof model !== 'string') throw new Error('model: its ID, as sonnet');
   const isDocument = (d: unknown): d is { id: string; name: string } =>
     d !== null &&
     typeof d === 'object' &&
@@ -1414,6 +1416,7 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
     ...(agent === undefined ? {} : { agent: agent as AgentKind }),
     ...(permissionMode === undefined ? {} : { permissionMode: permissionMode as PermissionMode }),
     ...(effort === undefined ? {} : { effort }),
+    ...(model === undefined ? {} : { model }),
     ...(documents === undefined
       ? {}
       : { documents: documents.map(({ id, name }) => ({ id, name })) }),

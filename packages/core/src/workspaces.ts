@@ -47,6 +47,8 @@ export interface WorkspaceAgentState {
    * changed it since (Claude Code's `/effort`): Symbiote does not read it back.
    */
   effort?: string;
+  /** The model it was started on (V47); absent for its default. Its session may change it since. */
+  model?: string;
 }
 
 /** The agents Symbiote starts: Claude Code (V18) and Codex (V20a). */
@@ -277,9 +279,45 @@ export interface AgentOption {
   apiKey?: boolean;
   /** Claude Code: the permission mode it starts in unless the person picks another. */
   permissionMode?: PermissionMode;
-  /** The effort levels it takes (V30b); absent when Symbiote cannot read them: no choice is
-   * offered. */
+  /** The effort levels it takes (V30b) on its default model; absent when Symbiote cannot read
+   * them: no choice is offered. */
   efforts?: AgentEfforts;
+  /** The models it lists (V47), in its order; absent when Symbiote cannot read them: no choice. */
+  models?: AgentModel[];
+  /** The model it runs on when none is picked, when Symbiote knows it (V47). */
+  defaultModel?: DefaultModel;
+}
+
+/**
+ * A model as Symbiote passes it to an agent (V47): the agent's own ID (`opus`,
+ * `claude-opus-4-6`, `gpt-6-luna`), never an option or a sentence.
+ */
+export const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:/@[\]-]{0,99}$/;
+
+/** A model an agent lists (V47): Claude Code's `initialize` answer, Codex's `model/list`. */
+export interface AgentModel {
+  /** What the agent takes: Claude Code's `--model`, Codex's `model`. */
+  id: string;
+  /** Its name in the agent's words: "Sonnet 5.5", "GPT-6-Luna". */
+  name: string;
+  description?: string;
+  /** The levels it takes; absent: none (Claude Code's Haiku 4.5). */
+  efforts?: AgentEfforts;
+}
+
+/** An agent's models (V47), and the one it runs on without a pick when it says (Codex). */
+export interface AgentModels {
+  models: AgentModel[];
+  default?: string;
+}
+
+/**
+ * The model an agent runs on when none is picked (V47), and whose choice it is: the agent's
+ * configuration (Codex's), the project's (`agent.model`), or Symbiote's (the merger's `sonnet`).
+ */
+export interface DefaultModel {
+  id: string;
+  by: 'agent' | 'project' | 'symbiote';
 }
 
 /**
@@ -317,6 +355,8 @@ export interface WorkspaceRequest {
   permissionMode?: PermissionMode;
   /** The agent's effort level for its session (V30b), one of its `efforts`; its own when absent. */
   effort?: string;
+  /** The model for its session (V47), one of its `models`; its default when absent. */
+  model?: string;
   /** Files to give the agent with the brief (V40), each kept by `POST /api/workspaces/documents`. */
   documents?: { id: string; name: string }[];
 }
