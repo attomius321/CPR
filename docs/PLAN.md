@@ -10763,7 +10763,7 @@ restyles old).
 |---|---|
 | Contrast, dark / light (lowest over the four backgrounds) | text 13.16 / 16.08, muted 6.19 / 5.27, accent 5.74 / 4.82, states 3.33 / 3.26, edge 3.45 / 3.26, lines 1.31 / 1.21; white on the primary 4.73 / 5.62, on its hover 5.36 / 6.74 |
 | `pnpm check` | 1,380 tests in 100 files, green |
-| e2e | 216 of 217; the one, `shell.spec`'s "a card keeps the focus when its workspace moves", is the flake V37 and V38 measured on `main`; alone 6 of 6 |
+| e2e | 216 of 217; the one, `shell.spec`'s "a card keeps the focus when its workspace moves", is the flake V37 and V38 measured on `main`; alone 6 of 6. It then stopped the merge's checks, and was fixed on this branch: a race in the test (see the journal's fix entry), 0 of 64 failures on 8 workers against 4 of 64 before |
 | A diff (this repository's `e659928..7c223d4`, 1,975 symbols, 4,124 edges), 3 rounds alternated with `main`'s build | first paint 873–885 / 874–906 ms, select 189–237 / 170–256 ms, mark reviewed 48–80 / 52–85 ms, pan 63–65 / 62–63 fps; the same 846 nodes, 341 edges and 10,392 elements drawn |
 | `/history` of this repository, 8 rounds alternated | first contentful paint median 64 / 64 ms, first rows 133 / 139 ms |
 | Size | JS −4 bytes, CSS +653 bytes; the mark a 6,149-byte PNG |

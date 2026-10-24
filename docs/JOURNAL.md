@@ -5496,3 +5496,22 @@ light, 1440×900 at 1×, before and after, no page errors; the app's start page 
 Not verified: Bitwarden's graph (no clone here); the person's own window (Electron on WSLg at
 their scale); macOS and Windows rendering; a real agent's output in the restyled terminal. The
 README's screenshots are from V25 and were not retaken.
+
+## Fix — the sidenav's card-focus test pressed its keys before the second card was listed (2026-10-24, branch `feature/ui-improvements-v2`)
+
+`shell.spec`'s "a card keeps the focus when its workspace moves to another group" had been flaky
+since V37 (3 of 6 on `main` then; V38: 3 of 8 failed alone) and stopped Symbiote's merger's checks
+of V42 (216 of 217). Asked whether the intro caused it: no, the e2e servers run with
+`SYMBIOTE_INTRO=off`, and it failed on `main` the day before V39.
+
+**Learned**: a copy of the test logging every focus change and key failed 7 of 88 times on 8
+parallel workers (25 of 25 passed on one): in each failure ArrowDown reached the first card with
+**1 card** in the sidenav, and no focus moved. The test waits for the second start page to close,
+then presses `h`, `w` and ArrowDown; under load the sidenav lists the second workspace a moment
+later, and ArrowDown on the only card rightly stays there. Not the app: the two workspaces stay in
+one group in a stable order (sampled every 25 ms for 6 s after the start, 4 runs), and a focused
+card that is redrawn gets its focus back. Chromium 153 fires `blur` on a removed focused element,
+on the detached node: React's handler on the list never sees it.
+
+**Verification**: the test waits for both cards before its keys. On 8 workers: 4 of 64 failed
+before, 0 of 64 after.

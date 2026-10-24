@@ -169,10 +169,14 @@ test('a card keeps the focus when its workspace moves to another group', async (
   await page.locator('body').click({ position: { x: 1, y: 1 } });
   await page.keyboard.press('h');
   await expect(page).toHaveURL(`${symbiote.url}history`);
+  // Both cards listed before the keys: under load the sidenav lists the second workspace a moment
+  // after its start page closes, and ArrowDown on the only card stays there (on 8 workers, 4 of 64
+  // runs failed with 1 card listed at the key; 0 of 64 once it waits).
+  const buttons = sidenav(page).locator('.workspace-row .workspace-about');
+  await expect(buttons).toHaveCount(2, POLL);
 
   // The second card, by the arrows; then its agent reports, and it needs you.
   await page.keyboard.press('w');
-  const buttons = sidenav(page).locator('.workspace-row .workspace-about');
   await expect(buttons.first()).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(buttons.nth(1)).toBeFocused();
