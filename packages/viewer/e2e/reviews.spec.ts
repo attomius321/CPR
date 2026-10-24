@@ -325,7 +325,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await page.goto(`${symbiote.url}?merge=agent`);
   const entry = page.getByRole('region', { name: 'Merge of agent' });
   await expect(entry.locator('.merge-row-state')).toHaveText(/^Merged, not checked/);
-  await entry.getByRole('button', { name: 'Land' }).click();
+  await entry.getByRole('button', { name: 'Land', exact: true }).click();
   await expect(entry.locator('.merge-row-state')).toHaveText(/^Landed: main is at [0-9a-f]{7}$/);
   const merge = git('rev-parse', 'main');
   expect(git('log', '-1', '--format=%P%n%s', merge)).toBe(
@@ -334,7 +334,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   // Fast-forwarded in this checkout, which has main: its files are the merge's.
   expect(git('status', '--porcelain', '--untracked-files=all')).toBe('');
   expect(readFileSync(math, 'utf8')).toContain('if (a === 0) return 0;');
-  await expect(entry.getByRole('button', { name: 'Land' })).toHaveCount(0);
+  await expect(entry.getByRole('button', { name: 'Land', exact: true })).toHaveCount(0);
 
   await page.goto(`${symbiote.url}history`);
   await expect(
