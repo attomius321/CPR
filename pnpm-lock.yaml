@@ -308,6 +308,9 @@ importers:
       '@symbiote/core':
         specifier: workspace:*
         version: link:../core
+      '@symbiote/monitor':
+        specifier: workspace:*
+        version: link:../monitor
       '@types/react':
         specifier: ^19.3.0
         version: 19.3.0

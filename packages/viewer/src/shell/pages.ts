@@ -2,7 +2,7 @@ import type { Graph } from '@symbiote/core';
 
 /**
  * `symbiote view`'s pages and what its sidenav opens (V29a): History, Scout (V35), Skills (V41),
- * Settings, a workspace or a merge, and Start a workspace (V30a), each shown in the shell's main area. There is no Workspaces
+ * Monitor (RM1), Settings, a workspace or a merge, and Start a workspace (V30a), each shown in the shell's main area. There is no Workspaces
  * page since V29a: the workspaces are in the sidenav, and `/` alone opens History.
  */
 export type Route =
@@ -11,6 +11,8 @@ export type Route =
   | { page: 'scout' }
   /** The checkout's skills, and Scribe, at `/skills` (V41); the skill open is in `?skill=`. */
   | { page: 'skills' }
+  /** Where the checkout's code is (RM1), at `/monitor`; the folder in view in `?path=`. */
+  | { page: 'monitor'; path?: string }
   | { page: 'settings' }
   /** A workspace, at `/?branch=<branch>`: the address Symbiote has given out since V25. */
   | { page: 'workspace'; branch: string }
@@ -23,6 +25,7 @@ export const HISTORY_PAGE = '/history';
 export const SETTINGS_PAGE = '/settings';
 export const SCOUT_PAGE = '/scout';
 export const SKILLS_PAGE = '/skills';
+export const MONITOR_PAGE = '/monitor';
 export const START_PAGE = '/start';
 
 /**
@@ -43,6 +46,8 @@ export function routeTitle(route: Route, repo: string | undefined, name?: string
       return pageTitle('Scout', repo);
     case 'skills':
       return pageTitle('Skills', repo);
+    case 'monitor':
+      return pageTitle(route.path, 'Monitor', repo);
     case 'settings':
       return pageTitle('Settings', repo);
     case 'workspace':
@@ -83,6 +88,8 @@ export function hrefOf(route: Route): string {
       return SCOUT_PAGE;
     case 'skills':
       return SKILLS_PAGE;
+    case 'monitor':
+      return route.path ? `${MONITOR_PAGE}?path=${encodeURIComponent(route.path)}` : MONITOR_PAGE;
     case 'settings':
       return SETTINGS_PAGE;
     case 'workspace':
@@ -104,6 +111,10 @@ export function routeOf(pathname: string, search: string): { route: Route; moved
   if (pathname === SCOUT_PAGE) return { route: { page: 'scout' } };
   if (pathname === SKILLS_PAGE) return { route: { page: 'skills' } };
   const params = new URLSearchParams(search);
+  if (pathname === MONITOR_PAGE) {
+    const path = params.get('path');
+    return { route: path ? { page: 'monitor', path } : { page: 'monitor' } };
+  }
   if (pathname === START_PAGE) {
     const at = params.get('at');
     return { route: at ? { page: 'start', at } : { page: 'start' } };
@@ -126,6 +137,7 @@ export function inShell(url: URL): boolean {
     url.pathname === SETTINGS_PAGE ||
     url.pathname === SCOUT_PAGE ||
     url.pathname === SKILLS_PAGE ||
+    url.pathname === MONITOR_PAGE ||
     url.pathname === START_PAGE ||
     url.pathname === '/' ||
     OLD_WORKSPACES.has(url.pathname)

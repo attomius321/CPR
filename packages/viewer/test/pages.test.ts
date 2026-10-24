@@ -170,3 +170,21 @@ describe('Skills (V41)', () => {
     expect(routeTitle({ page: 'skills' }, 'symbiote')).toBe('Skills · symbiote — Symbiote');
   });
 });
+
+describe('Monitor (RM1)', () => {
+  it('opens at /monitor, a page of the shell, with the folder in view in ?path=', () => {
+    expect(routeOf('/monitor', '')).toEqual({ route: { page: 'monitor' } });
+    expect(routeOf('/monitor', '?path=packages%2Fviewer')).toEqual({
+      route: { page: 'monitor', path: 'packages/viewer' },
+    });
+    expect(hrefOf({ page: 'monitor' })).toBe('/monitor');
+    expect(hrefOf({ page: 'monitor', path: 'packages/viewer' })).toBe(
+      '/monitor?path=packages%2Fviewer',
+    );
+    expect(inShell(new URL('http://symbiote/monitor?path=src'))).toBe(true);
+    expect(routeTitle({ page: 'monitor' }, 'symbiote')).toBe('Monitor · symbiote — Symbiote');
+    expect(routeTitle({ page: 'monitor', path: 'src' }, 'symbiote')).toBe(
+      'src · Monitor · symbiote — Symbiote',
+    );
+  });
+});
