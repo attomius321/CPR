@@ -132,6 +132,15 @@ export function openArgs(folder: string, file: string, line: number, column: num
   return [folder, '--goto', `${join(folder, ...file.split('/'))}:${line}:${column}`];
 }
 
+/**
+ * `code <folder> --diff <left> <right>` (V43): two files side by side in the window with that
+ * folder. VS Code sorts what it is given into folders and files before `--diff` takes the first
+ * two files, as `--goto` relies on (1.143's `mainImpl.js`).
+ */
+export function diffArgs(folder: string, left: string, right: string): string[] {
+  return [folder, '--diff', left, right];
+}
+
 /** How to start VS Code with `args`; a `.cmd` of an unknown shape goes through `cmd.exe`. */
 export function invocation(
   code: VsCode,
@@ -271,23 +280,31 @@ export function vsCodeOpener(
   };
 }
 
+/** Where in a folder VS Code opens: a file at a line (V29d, V38), or two files side by side (V43). */
+export type FolderAt =
+  { file: string; line: number; column?: number } | { left: string; right: string };
+
 /**
  * Opens a folder in VS Code (a workspace's worktree, V18b): its window, else a new one; with `at`,
- * a file in it at a line (V29d) and column (V38).
+ * a file in it at a line (V29d) and column (V38), or two files as a diff (V43).
  */
 export function vsCodeFolder(
   env: Readonly<Record<string, string | undefined>>,
   host: Host = localHost(env),
 ): (
   folder: string,
-  at?: { file: string; line: number; column?: number },
+  at?: FolderAt,
 ) => Promise<{ opened: true } | { opened: false; message: string }> {
   return async (folder, at) => {
     const code = await findVsCode(host);
     if (!code) return { opened: false, message: notFound(env) };
     try {
       const where = normalize(folder);
-      const args = at ? openArgs(where, at.file, at.line, at.column ?? 1) : [where];
+      const args = !at
+        ? [where]
+        : 'left' in at
+          ? diffArgs(where, at.left, at.right)
+          : openArgs(where, at.file, at.line, at.column ?? 1);
       await runVsCode(invocation(code, args, env));
       return { opened: true };
     } catch (error) {

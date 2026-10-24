@@ -18,7 +18,7 @@ export {
   type LineCount,
 } from './git/changed-files.js';
 export {
-  firstChangedLine,
+  fileChangedSince,
   listChangedLines,
   parseChangedLines,
   type ChangedLines,
@@ -108,7 +108,7 @@ export {
   type ProjectSide,
   type ProjectSource,
 } from './projects.js';
-export { listTreeAt, readFileAtRevision } from './git/show.js';
+export { fileForCheckout, listTreeAt, readFileAtRevision } from './git/show.js';
 export { mapLine, workingLine, type LineHunk, type WorkingLine } from './git/working-line.js';
 export {
   commitDetails,

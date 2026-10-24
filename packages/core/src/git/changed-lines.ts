@@ -1,4 +1,4 @@
-import { git } from './exec.js';
+import { git, GitError } from './exec.js';
 import type { GitRepo } from './repo.js';
 
 /** Lines that differ between two commits, as the forges' diffs show them. */
@@ -102,30 +102,16 @@ function unquote(quoted: string): string {
 }
 
 /**
- * Where a file's first change is in the working copy at `repo.root`, against `from` (V29d): the
- * first line of its first hunk (`git diff -U0`), the line before them when lines were only
- * removed; null when it does not differ or git does not track it. `paths` are its path and, for a
- * rename, its path before it, so that the rename is found.
+ * Whether the working copy's file at `repo.root` differs from a commit's (V43): `git diff --quiet`,
+ * what is on the disk against the commit, whatever is staged. A file git does not track differs
+ * from nothing.
  */
-export async function firstChangedLine(
-  repo: GitRepo,
-  from: string,
-  paths: readonly string[],
-): Promise<number | null> {
-  const patch = await git(repo.root, [
-    'diff',
-    '-U0',
-    '-M',
-    '--no-color',
-    '--no-ext-diff',
-    '--no-relative',
-    from,
-    '--',
-    ...paths.map((path) => `:(top,literal)${path}`),
-  ]);
-  for (const line of patch.split('\n')) {
-    const hunk = HUNK.exec(line);
-    if (hunk) return Math.max(1, Number(hunk[3]));
+export async function fileChangedSince(repo: GitRepo, sha: string, path: string): Promise<boolean> {
+  try {
+    await git(repo.root, ['diff', '--quiet', '--no-ext-diff', sha, '--', `:(top,literal)${path}`]);
+    return false;
+  } catch (error) {
+    if (error instanceof GitError && error.exitCode === 1) return true;
+    throw error;
   }
-  return null;
 }

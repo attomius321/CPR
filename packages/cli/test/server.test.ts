@@ -1176,8 +1176,12 @@ describe('symbiote view: workspaces (V18)', () => {
         ? Promise.resolve({ workspace: summary, prompt: 'Build it.' })
         : Promise.reject(new WorkspaceRefused('its agent is not running', 409));
     },
-    openWorktree: (branch, file) => {
-      openedWorkspaces.push(file ? `${branch} ${JSON.stringify(file)}` : branch);
+    openWorktree: (branch) => {
+      openedWorkspaces.push(branch);
+      return Promise.resolve();
+    },
+    openDiff: (branch, file) => {
+      openedDiffs.push(`${branch} ${JSON.stringify(file)}`);
       return Promise.resolve();
     },
     changes: (branch) =>
@@ -1220,6 +1224,7 @@ describe('symbiote view: workspaces (V18)', () => {
   const cleaned: { branch: string; unmerged?: boolean }[] = [];
   const stopped: string[] = [];
   const openedWorkspaces: string[] = [];
+  const openedDiffs: string[] = [];
   let server: ViewServer;
   let bare: ViewServer;
   const repository = (withWorkspaces: boolean) => ({
@@ -1462,7 +1467,7 @@ describe('symbiote view: workspaces (V18)', () => {
     expect(openedWorkspaces.length).toBe(1);
   });
 
-  it("gives a workspace's changes and opens one of its files (V29d)", async () => {
+  it("gives a workspace's changes and opens one of its files as its diff (V29d, V43)", async () => {
     const answer = await get('/api/workspaces/changes?branch=feature%2Fcsv');
     expect(answer.status).toBe(200);
     expect(await answer.json()).toEqual(changes);
@@ -1470,19 +1475,34 @@ describe('symbiote view: workspaces (V18)', () => {
     expect((await get('/api/workspaces/changes')).status).toBe(400);
     expect((await post('/api/workspaces/changes', { branch: 'feature/csv' })).status).toBe(405);
 
-    openedWorkspaces.length = 0;
+    // A file as its diff (V43): the branch's change, or the worktree's.
+    openedDiffs.length = 0;
     const file = { branch: 'feature/csv', file: 'src/new.ts', previousPath: 'src/old.ts' };
-    expect((await post('/api/workspaces/open', file)).status).toBe(200);
-    expect(openedWorkspaces).toEqual([
+    const opened = await post('/api/workspaces/diff', file);
+    expect(opened.status).toBe(200);
+    expect(await opened.json()).toEqual({});
+    expect((await post('/api/workspaces/diff', { ...file, uncommitted: true })).status).toBe(200);
+    expect(openedDiffs).toEqual([
       'feature/csv {"path":"src/new.ts","previousPath":"src/old.ts"}',
+      'feature/csv {"path":"src/new.ts","previousPath":"src/old.ts","uncommitted":true}',
     ]);
     for (const bad of [
+      { file: 'src/a.ts' },
+      { branch: 'feature/csv' },
       { branch: 'feature/csv', file: 3 },
       { branch: 'feature/csv', file: '' },
+      { branch: 'feature/csv', file: 'src/a.ts', previousPath: 3 },
+      { branch: 'feature/csv', file: 'src/a.ts', uncommitted: 'yes' },
     ]) {
-      expect((await post('/api/workspaces/open', bad)).status, JSON.stringify(bad)).toBe(400);
+      expect((await post('/api/workspaces/diff', bad)).status, JSON.stringify(bad)).toBe(400);
     }
-    expect(openedWorkspaces).toHaveLength(1);
+    expect(openedDiffs).toHaveLength(2);
+    expect((await get('/api/workspaces/diff')).status).toBe(405);
+    expect((await post('/api/workspaces/diff', file, { 'x-symbiote': '' })).status).toBe(403);
+    // Its folder only, now: the panel opens a file's diff.
+    openedWorkspaces.length = 0;
+    expect((await post('/api/workspaces/open', file)).status).toBe(200);
+    expect(openedWorkspaces).toEqual(['feature/csv']);
   });
 
   it('starts one workspace at a time, and only for the page itself', async () => {

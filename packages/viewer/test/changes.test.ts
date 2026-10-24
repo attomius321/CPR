@@ -5,7 +5,6 @@ import {
   fileTitle,
   linesOf,
   moreText,
-  opensInEditor,
   sinceText,
   splitPath,
   statusLetter,
@@ -56,18 +55,10 @@ describe('linesOf', () => {
   });
 });
 
-describe('opensInEditor', () => {
-  it('opens every file but one deleted', () => {
-    expect(opensInEditor(file({}))).toBe(true);
-    expect(opensInEditor(file({ status: 'untracked' }))).toBe(true);
-    expect(opensInEditor(file({ status: 'deleted' }))).toBe(false);
-  });
-});
-
 describe('fileTitle', () => {
-  it('names the file, its status and lines, and what a click does', () => {
+  it('names the file, its status and lines, and what a click does: its diff, a deleted one too (V43)', () => {
     expect(fileTitle(file({ added: 1, removed: 0 }))).toBe(
-      'src/a.ts · modified · +1 −0. Opens in VS Code at its first change',
+      'src/a.ts · modified · +1 −0. Opens its changes in VS Code',
     );
     expect(
       fileTitle(
@@ -79,18 +70,18 @@ describe('fileTitle', () => {
           removed: 0,
         }),
       ),
-    ).toBe('src/a.ts → src/b.ts · renamed · +0 −0. Opens in VS Code at its first change');
+    ).toBe('src/a.ts → src/b.ts · renamed · +0 −0. Opens its changes in VS Code');
     expect(fileTitle(file({ status: 'untracked', path: 'notes.md' }))).toBe(
-      'notes.md · new, not tracked by git yet. Opens in VS Code',
+      'notes.md · new, not tracked by git yet. Opens its changes in VS Code',
     );
     expect(fileTitle(file({ status: 'deleted', added: 0, removed: 4 }))).toBe(
-      'src/a.ts · deleted · +0 −4',
+      'src/a.ts · deleted · +0 −4. Opens its changes in VS Code',
     );
     expect(fileTitle(file({ status: 'conflicted' }))).toBe(
-      'src/a.ts · in conflict. Opens in VS Code at its first change',
+      'src/a.ts · in conflict. Opens its changes in VS Code',
     );
     expect(fileTitle(file({ binary: true }))).toBe(
-      'src/a.ts · modified · binary. Opens in VS Code at its first change',
+      'src/a.ts · modified · binary. Opens its changes in VS Code',
     );
   });
 });

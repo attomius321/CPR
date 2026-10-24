@@ -45,9 +45,6 @@ export function linesOf(
   return { added: `+${file.added}`, removed: `−${file.removed}` };
 }
 
-/** A deleted file has nothing to open. */
-export const opensInEditor = (file: WorkspaceFileChange): boolean => file.status !== 'deleted';
-
 /** A file row's hover: its path (both, for a rename), its status and lines, what a click does. */
 export function fileTitle(file: WorkspaceFileChange): string {
   const path = file.previousPath ? `${file.previousPath} → ${file.path}` : file.path;
@@ -57,8 +54,7 @@ export function fileTitle(file: WorkspaceFileChange): string {
     WORDS[file.status],
     ...(lines === null ? [] : [lines === 'binary' ? lines : `${lines.added} ${lines.removed}`]),
   ].join(' · ');
-  if (!opensInEditor(file)) return facts;
-  return `${facts}. Opens in VS Code${file.status === 'untracked' ? '' : ' at its first change'}`;
+  return `${facts}. Opens its changes in VS Code`;
 }
 
 /** Where the commits start: the default branch's fork point, else where the workspace started. */

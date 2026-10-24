@@ -1,9 +1,10 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { writeFileSync } from 'node:fs';
+import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   SymbioteError,
-  firstChangedLine,
+  fileChangedSince,
+  fileForCheckout,
   listChangedFiles,
   listChangedLines,
   listLineCounts,
@@ -184,7 +185,7 @@ describe('parseNumstat (V29d)', () => {
   });
 });
 
-describe('listLineCounts and firstChangedLine (V29d)', () => {
+describe('listLineCounts (V29d)', () => {
   const { repo, shas } = createBranchedRepo();
   afterAll(() => repo.cleanup());
 
@@ -213,31 +214,58 @@ describe('listLineCounts and firstChangedLine (V29d)', () => {
       repo.git('clean', '--quiet', '--force', '--', 'src/untracked.ts');
     }
   });
+});
 
-  it("finds a file's first change in the working copy against a commit", async () => {
+describe('fileForCheckout and fileChangedSince (V43)', () => {
+  const repo = createRepo();
+  afterAll(() => repo.cleanup());
+  const binary = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff, 0x0d, 0x0a, 0x1a]);
+  repo.write({
+    '.gitattributes': 'crlf.txt text eol=crlf\n',
+    'src/a.ts': 'export const a = 1;\n',
+    'crlf.txt': 'one\ntwo\n',
+  });
+  writeFileSync(join(repo.root, 'logo.png'), binary);
+  repo.commit('Files');
+  // A submodule's entry (a gitlink), without the submodule itself.
+  const pinned = repo.git('rev-parse', 'HEAD');
+  repo.git('update-index', '--add', '--cacheinfo', `160000,${pinned},vendor/lib`);
+  repo.git('commit', '--quiet', '--message', 'Submodule');
+  const sha = repo.git('rev-parse', 'HEAD');
+
+  it("gives a file's bytes at a commit as a checkout writes them", async () => {
     const git = await openRepo(repo.root);
-    repo.git('switch', '--quiet', 'feature');
+    expect((await fileForCheckout(git, sha, 'src/a.ts'))?.toString()).toBe('export const a = 1;\n');
+    expect(await fileForCheckout(git, sha, 'logo.png')).toEqual(binary);
+    // Its line endings as the worktree's attributes have them, not the blob's.
+    expect((await fileForCheckout(git, sha, 'crlf.txt'))?.toString()).toBe('one\r\ntwo\r\n');
+    // A submodule as git diff shows it.
+    expect((await fileForCheckout(git, sha, 'vendor/lib'))?.toString()).toBe(
+      `Subproject commit ${pinned}\n`,
+    );
+  });
+
+  it('gives none for a path that is not a file at that commit', async () => {
+    const git = await openRepo(repo.root);
+    expect(await fileForCheckout(git, sha, 'src/gone.ts')).toBeNull();
+    expect(await fileForCheckout(git, sha, 'src')).toBeNull();
+    expect(await fileForCheckout(git, pinned, 'vendor/lib')).toBeNull();
+  });
+
+  it("says whether the working copy's file differs from a commit's", async () => {
+    const git = await openRepo(repo.root);
+    expect(await fileChangedSince(git, sha, 'src/a.ts')).toBe(false);
     try {
-      writeFileSync(
-        join(repo.root, 'src', 'new.ts'),
-        'export function old() {\n  return "a body long enough for rename detection";\n}\nexport const more = 1;\n',
-      );
-      // Committed and uncommitted changes alike; a rename found through both of its paths.
-      expect(await firstChangedLine(git, shas.root, ['src/a.ts'])).toBe(1);
-      expect(await firstChangedLine(git, shas.root, ['src/new.ts', 'src/old.ts'])).toBe(4);
-      // Its new path alone: the whole file is new, from its first line.
-      expect(await firstChangedLine(git, shas.root, ['src/new.ts'])).toBe(1);
-      // Only lines removed: the line before them.
-      writeFileSync(join(repo.root, 'src', 'a.ts'), '');
-      expect(await firstChangedLine(git, shas.feature, ['src/a.ts'])).toBe(1);
-      // No change, or a file git does not track: none.
-      expect(await firstChangedLine(git, shas.feature, ['src/added.ts'])).toBeNull();
-      writeFileSync(join(repo.root, 'src', 'loose.ts'), '1;\n');
-      expect(await firstChangedLine(git, shas.feature, ['src/loose.ts'])).toBeNull();
+      repo.write({ 'src/a.ts': 'export const a = 2;\n' });
+      expect(await fileChangedSince(git, sha, 'src/a.ts')).toBe(true);
+      // Staged, then put back in the working copy: what is on the disk counts.
+      repo.git('add', 'src/a.ts');
+      repo.write({ 'src/a.ts': 'export const a = 1;\n' });
+      expect(await fileChangedSince(git, sha, 'src/a.ts')).toBe(false);
+      rmSync(join(repo.root, 'src', 'a.ts'));
+      expect(await fileChangedSince(git, sha, 'src/a.ts')).toBe(true);
     } finally {
-      repo.git('checkout', '--quiet', '--', '.');
-      repo.git('clean', '--quiet', '--force');
-      repo.git('switch', '--quiet', 'main');
+      repo.git('reset', '--quiet', '--hard');
     }
   });
 });
