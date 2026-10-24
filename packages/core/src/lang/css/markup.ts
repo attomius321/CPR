@@ -182,7 +182,7 @@ export function danglingMarkup(
       if (names.size === 0) continue;
       for (const mention of head.peers.mentions({ names, kind: 'class' })) {
         if (!within(mention, before)) continue;
-        const styled = (head.index.classes.get(mention.name) ?? []).some(({ rule }) =>
+        const styled = (head.index.named.get(mention.name) ?? []).some((rule) =>
           within(mention, reachOf(head.index, head.peers, rule.file)),
         );
         if (!styled) found.push(dangling(symbol, mention));

@@ -59,7 +59,7 @@
         },
         "signature": "{ display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 4px }",
         "hashes": {
-          "signature": "57a402e9a5869173",
+          "signature": "7369949b47ef2c6b",
           "body": "fc6f03f761ec8a32"
         }
       },
@@ -77,7 +77,7 @@
         },
         "signature": "{ display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 4px }",
         "hashes": {
-          "signature": "57a402e9a5869173",
+          "signature": "7369949b47ef2c6b",
           "body": "fc6f03f761ec8a32"
         }
       }
@@ -110,7 +110,7 @@
         },
         "signature": "{ color: var(--accent); padding: 0 8px }",
         "hashes": {
-          "signature": "ab5c47f074a14e29",
+          "signature": "7369949b47ef2c6b",
           "body": "a4fd2edef2f0519f"
         }
       },
@@ -128,7 +128,7 @@
         },
         "signature": "{ color: var(--accent); padding: 0 12px }",
         "hashes": {
-          "signature": "ab5c47f074a14e29",
+          "signature": "7369949b47ef2c6b",
           "body": "ae15c9b23e605275"
         }
       }
@@ -142,7 +142,7 @@
       "exported": true,
       "status": "modified",
       "delta": {
-        "signature": true,
+        "signature": false,
         "body": false,
         "moved": true
       },
@@ -161,7 +161,7 @@
         },
         "signature": "{ display: inline-block; font-size: var(--size-12); line-height: 16px; … }",
         "hashes": {
-          "signature": "5382416e8c394915",
+          "signature": "7369949b47ef2c6b",
           "body": "a47426d44a61cee7"
         }
       },
@@ -179,7 +179,7 @@
         },
         "signature": "{ display: inline-block; font-size: var(--size-12); line-height: 16px; … }",
         "hashes": {
-          "signature": "b3240c79277950c9",
+          "signature": "7369949b47ef2c6b",
           "body": "a47426d44a61cee7"
         }
       }
@@ -207,7 +207,7 @@
         },
         "signature": "{ display: none }",
         "hashes": {
-          "signature": "abec17f7919651f1",
+          "signature": "7369949b47ef2c6b",
           "body": "05c9d15f848c051b"
         }
       },
@@ -237,7 +237,7 @@
         },
         "signature": "{ gap: 4px }",
         "hashes": {
-          "signature": "b3c0bcf5e62e1039",
+          "signature": "7369949b47ef2c6b",
           "body": "85b93092c4a13453"
         }
       }
@@ -270,7 +270,7 @@
         },
         "signature": "--accent: #3b82f6",
         "hashes": {
-          "signature": "655809f021242c93",
+          "signature": "3b325109deb02ebf",
           "body": "b51de63d0eac0534"
         }
       },
@@ -288,7 +288,7 @@
         },
         "signature": "--accent: #60a5fa",
         "hashes": {
-          "signature": "655809f021242c93",
+          "signature": "3b325109deb02ebf",
           "body": "8940f2c623d01f01"
         }
       }
@@ -316,7 +316,7 @@
         },
         "signature": "--old: 1px",
         "hashes": {
-          "signature": "0b18bc2cd4ac93bf",
+          "signature": "3b325109deb02ebf",
           "body": "93e20626bf9c355d"
         }
       },
@@ -346,7 +346,7 @@
         },
         "signature": "--new: 2px",
         "hashes": {
-          "signature": "22aaa1cebb90d0e2",
+          "signature": "3b325109deb02ebf",
           "body": "747614001f0119ba"
         }
       }
@@ -374,7 +374,7 @@
         },
         "signature": "--accent: #2563eb",
         "hashes": {
-          "signature": "50de48a2faf12ba5",
+          "signature": "3b325109deb02ebf",
           "body": "e7b00c296b8c5492"
         }
       },
@@ -392,7 +392,7 @@
         },
         "signature": "--accent: #2563eb",
         "hashes": {
-          "signature": "50de48a2faf12ba5",
+          "signature": "3b325109deb02ebf",
           "body": "e7b00c296b8c5492"
         }
       }

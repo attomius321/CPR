@@ -79,6 +79,46 @@ describe('markup that uses stylesheets', () => {
     }
   });
 
+  it("keeps a class that head's selectors still name, even in :not(), and renames rules as moves", async () => {
+    const dirs = [tempDir(), tempDir()] as const;
+    try {
+      const write = (dir: string, files: Record<string, string>) => {
+        for (const [path, text] of Object.entries(files)) {
+          mkdirSync(dirname(join(dir, path)), { recursive: true });
+          writeFileSync(join(dir, path), text);
+        }
+      };
+      const markup = {
+        'src/jsx.d.ts':
+          'declare namespace JSX { interface IntrinsicElements { [name: string]: { className?: string } } }',
+        'src/Actions.tsx':
+          'export const Actions = () => <div className="actions field"><button className="button primary" /></div>;',
+        'src/Other.tsx': 'export const Other = () => <div className="field" />;',
+      };
+      write(dirs[0], {
+        ...markup,
+        'src/a.css':
+          '.button { color: red; }\n.actions .button.primary { color: blue; }\n' +
+          '.field, .search { border: 1px solid; padding: 4px 8px; margin: 0; }',
+      });
+      write(dirs[1], {
+        ...markup,
+        'src/a.css':
+          '.button { color: red; }\n.actions .button:not(.primary) { color: gray; }\n' +
+          '.field, .search, .skills { border: 1px solid; padding: 4px 8px; margin: 0; }',
+      });
+      const analysis = await analyzeDirectories(dirs[0], dirs[1]);
+      expect(findingsOf(analysis)).toEqual([]);
+      const renamed = analysis.changes.find((c) => c.previousId === 'src/a.css#.field, .search');
+      expect(renamed).toMatchObject({
+        id: 'src/a.css#.field, .search, .skills',
+        delta: { signature: false, body: false, moved: true },
+      });
+    } finally {
+      for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('changes nothing for TypeScript alone', async () => {
     const analysis = await analyzeDirectories(
       fixture('markup', 'base'),

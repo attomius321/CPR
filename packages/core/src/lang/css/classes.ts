@@ -32,8 +32,19 @@ export function selectorClasses(selectors: string): SelectorClass[] {
   return [...found].map(([name, subject]) => ({ name, subject }));
 }
 
+/**
+ * Every class a selector list names, also inside `:not()` and `:has()`: a class its rules still
+ * style by its absence (`.button:not(.primary)`) still matters to the look.
+ */
+export function selectorNames(selectors: string): string[] {
+  const names = new Set<string>();
+  for (const part of selectorParts(selectors, true))
+    for (const name of part.classes) names.add(name);
+  return [...names];
+}
+
 /** Each selector of a list with the classes it needs (see `selectorClasses`). */
-export function selectorParts(selectors: string): SelectorPart[] {
+export function selectorParts(selectors: string, negated = false): SelectorPart[] {
   const parts: SelectorPart[] = [];
   for (const selector of splitTopLevel(selectors, ',')) {
     if (selector.includes('#{')) continue;
@@ -57,7 +68,7 @@ export function selectorParts(selectors: string): SelectorPart[] {
           else if (/[\w\-\u00a0-\uffff]/.test(d)) name += d;
           else break;
         }
-        if (!pseudo.includes('not')) {
+        if (negated || !pseudo.includes('not')) {
           classes.add(name);
           if (i >= subjectStart && !pseudo.includes('has')) subjects.add(name);
         }

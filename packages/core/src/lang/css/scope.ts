@@ -1,7 +1,7 @@
 import { readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import type { SymbolDecl } from '../../model.js';
-import { selectorClasses } from './classes.js';
+import { selectorClasses, selectorNames } from './classes.js';
 import type { StylesheetFacts } from './extract.js';
 import { isStylesheet } from './files.js';
 import type { StyleImport, StyleUse, UseKind } from './uses.js';
@@ -24,6 +24,8 @@ export interface StylesheetIndex {
   includedBy: ReadonlyMap<string, string[]>;
   /** Rules by the classes their selectors name, with whether the class is the subject's. */
   classes: ReadonlyMap<string, { rule: SymbolDecl; subject: boolean }[]>;
+  /** Rules by every class their selectors name, `:not()` included. */
+  named: ReadonlyMap<string, SymbolDecl[]>;
 }
 
 /** What an import's URL names: a stylesheet of the revision, a package, or Sass's own. */
@@ -111,6 +113,7 @@ export function buildIndex(files: ReadonlyMap<string, StylesheetFacts>): Stylesh
   const importers = new Map<string, string[]>();
   const includedBy = new Map<string, string[]>();
   const classes = new Map<string, { rule: SymbolDecl; subject: boolean }[]>();
+  const named = new Map<string, SymbolDecl[]>();
   for (const [file, facts] of files) {
     for (const symbol of facts.symbols) {
       const key = memberKey(symbol);
@@ -118,6 +121,9 @@ export function buildIndex(files: ReadonlyMap<string, StylesheetFacts>): Stylesh
       if (symbol.kind === 'rule' && !/^[%@]/.test(symbol.name)) {
         for (const { name, subject } of selectorClasses(symbol.name)) {
           classes.set(name, [...(classes.get(name) ?? []), { rule: symbol, subject }]);
+        }
+        for (const name of selectorNames(symbol.name)) {
+          named.set(name, [...(named.get(name) ?? []), symbol]);
         }
       }
     }
@@ -134,7 +140,7 @@ export function buildIndex(files: ReadonlyMap<string, StylesheetFacts>): Stylesh
       includedBy.set(target.file, [...(includedBy.get(target.file) ?? []), file]);
     }
   }
-  return { files, byKey, uses, imports, importers, includedBy, classes };
+  return { files, byKey, uses, imports, importers, includedBy, classes, named };
 }
 
 /**

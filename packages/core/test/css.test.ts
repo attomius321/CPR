@@ -342,7 +342,7 @@ describe('stylesheet changes', () => {
     expect(analysis.changes.filter((c) => c.status !== 'unchanged').map(describeChange)).toEqual([
       'modified src/ui/badge.css#.badge ← src/ui/controls.css#.badge [moved]',
       'modified src/ui/controls.css#.button [body]',
-      'modified src/ui/controls.css#.chip ← src/ui/controls.css#.chip-old [signature, moved]',
+      'modified src/ui/controls.css#.chip ← src/ui/controls.css#.chip-old [moved]',
       'removed src/ui/controls.css#.legacy',
       'added src/ui/controls.css#.new-thing',
       'modified src/ui/tokens.css#:root › --accent [body]',

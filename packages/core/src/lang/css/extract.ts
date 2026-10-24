@@ -107,7 +107,9 @@ export function extractStylesheet(file: string, root: Root): StylesheetFacts {
       name,
       qualified,
       scope.rule?.id ?? null,
-      { shown: block(own.shown), parts: [qualified] },
+      // A rule's identity is its ID: a new selector is a move (users of the old one are found
+      // by what the removed one styled), not a signature its users must follow.
+      { shown: block(own.shown), parts: [] },
       own.tokens,
     );
     const enclosing = { id, qualified: id.slice(id.indexOf('#') + 1), selectors };
@@ -121,7 +123,7 @@ export function extractStylesheet(file: string, root: Root): StylesheetFacts {
           child.prop,
           property,
           id,
-          { shown: shorten(`${child.prop}: ${canonicalValue(child.value)}`), parts: [property] },
+          { shown: shorten(`${child.prop}: ${canonicalValue(child.value)}`), parts: [] },
           valueTokens(child.value),
         );
         uses.declaration(child, propertyId, locals);
@@ -156,7 +158,7 @@ export function extractStylesheet(file: string, root: Root): StylesheetFacts {
         own,
         qualified,
         null,
-        { shown: own, parts: [qualified] },
+        { shown: own, parts: [] },
         all(node.nodes),
       );
       uses.block(node.nodes, id, scope.locals);
