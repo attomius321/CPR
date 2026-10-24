@@ -325,3 +325,75 @@ export function regionFlags(review: RegionReview, into: string, branch: string):
     ? flags
     : [{ tone: 'ok', text: 'Keeps every line of both sides, nothing new' }];
 }
+
+/** A conflicting file of a merge and what its resolution did (V46c). */
+export interface ResolutionFile {
+  path: string;
+  /** Its regions in the resolution, in order; none when nobody resolved it. */
+  regions: MergeRegion[];
+  /** Its regions' flags put together: what it lost, kept twice or had written. */
+  flags: RegionFlag[];
+  /** `bad` when it loses or doubles lines; `new` when the agent wrote some; `none` unresolved. */
+  tone: RegionFlag['tone'] | 'none';
+  /** Why it has no resolution. */
+  why?: string;
+}
+
+const UNRESOLVABLE = {
+  deleted: 'Deleted on one side',
+  submodule: 'A submodule',
+  binary: 'Binary',
+} as const;
+
+/**
+ * A merge's conflicting files (decision 317), each once in git's order: its regions and what
+ * they did together, read as `regionFlags` reads one — or, unresolved, why.
+ */
+export function resolutionFiles(entry: MergeEntry): ResolutionFile[] {
+  const regions = entry.resolution?.regions ?? [];
+  const paths = [...new Set([...(entry.conflicts ?? []), ...regions.map((r) => r.path)])];
+  return paths.map((path) => {
+    const own = regions.filter((r) => r.path === path);
+    if (own.length === 0) {
+      const kind = entry.unresolvable?.find((u) => u.path === path)?.kind;
+      return {
+        path,
+        regions: [],
+        flags: [],
+        tone: 'none',
+        why: kind
+          ? `${UNRESOLVABLE[kind]}: not given to the merger agent`
+          : entry.state === 'resolving' || entry.state === 'merging'
+            ? 'Resolving…'
+            : 'Not resolved',
+      };
+    }
+    const reviews = own.map(reviewRegion);
+    const sum = (side: 'ours' | 'theirs') =>
+      reviews.reduce(
+        (all, r) => ({ kept: all.kept + r.kept[side].kept, of: all.of + r.kept[side].of }),
+        { kept: 0, of: 0 },
+      );
+    const together: RegionReview = {
+      lines: reviews.flatMap((r) => r.lines),
+      kept: { ours: sum('ours'), theirs: sum('theirs') },
+      dropped: {
+        ours: reviews.flatMap((r) => r.dropped.ours),
+        theirs: reviews.flatMap((r) => r.dropped.theirs),
+      },
+      twice: reviews.reduce((n, r) => n + r.twice, 0),
+      written: reviews.reduce((n, r) => n + r.written, 0),
+    };
+    const flags = regionFlags(together, entry.into, entry.branch);
+    const tone = flags.some((f) => f.tone === 'bad')
+      ? 'bad'
+      : flags.some((f) => f.tone === 'new')
+        ? 'new'
+        : 'ok';
+    return { path, regions: own, flags, tone };
+  });
+}
+
+/** The file a resolution's page shows first: the first that loses or doubles lines, else the first. */
+export const firstFile = (files: readonly ResolutionFile[]): ResolutionFile | undefined =>
+  files.find((f) => f.tone === 'bad') ?? files[0];

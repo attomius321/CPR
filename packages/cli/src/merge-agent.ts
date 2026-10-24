@@ -2,7 +2,8 @@
 // conflict, that answers each region's text. It writes no file: Symbiote writes its answer between
 // the markers, commits the merge, and the person reviews each region before it lands.
 import { spawn } from 'node:child_process';
-import type { AgentKind } from '@symbiote/core';
+import { isAbsolute, relative } from 'node:path';
+import type { AgentKind, MergeAgentEvent } from '@symbiote/core';
 import { DEFAULT_PROMPTS, MERGER_ANSWER } from './prompts.js';
 
 /** A conflict region, its lines 0-based in the file: `<<<<<<<` at `start`, `>>>>>>>` at `end`. */
@@ -210,29 +211,45 @@ export type MergerRun =
 /** A merger agent: one run in `cwd`, waited for. */
 export interface MergerAgent {
   kind: AgentKind;
-  /** `instructions`: its system prompt, `MERGER_INSTRUCTIONS` unless the project has its own. */
+  /**
+   * `instructions`: its system prompt, `MERGER_INSTRUCTIONS` unless the project has its own.
+   * `onEvent`: what it does as it works (V46b): its thinking, tools, text.
+   */
   run(request: {
     cwd: string;
     prompt: string;
     model?: string;
     instructions?: string;
+    /** Its effort level (`merge.effort`, V46d), one it lists. */
+    effort?: string;
+    onEvent?: (event: MergeAgentEvent) => void;
   }): Promise<MergerRun>;
 }
 
-/** Runs a program with `input` on its stdin, without a shell; resolves when it exits. */
+/**
+ * Runs a program with `input` on its stdin, without a shell; resolves when it exits. `onLine`:
+ * each line of its stdout as it comes (V46b).
+ */
 export type RunWithInput = (
   command: string,
   args: string[],
-  options: { cwd: string; input: string; timeoutMs: number },
+  options: { cwd: string; input: string; timeoutMs: number; onLine?: (line: string) => void },
 ) => Promise<{ code: number | null; stdout: string; stderr: string }>;
 
-export const runWithInput: RunWithInput = (command, args, { cwd, input, timeoutMs }) =>
+export const runWithInput: RunWithInput = (command, args, { cwd, input, timeoutMs, onLine }) =>
   new Promise((done) => {
     let stdout = '';
     let stderr = '';
+    let line = '';
     const child = spawn(command, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     const timer = setTimeout(() => child.kill(), timeoutMs);
-    child.stdout.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk));
+    child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
+      stdout += chunk;
+      if (!onLine) return;
+      const lines = (line + chunk).split('\n');
+      line = lines.pop() ?? '';
+      for (const each of lines) onLine(each);
+    });
     child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
     child.on('error', (error) => {
       clearTimeout(timer);
@@ -240,6 +257,7 @@ export const runWithInput: RunWithInput = (command, args, { cwd, input, timeoutM
     });
     child.on('close', (code) => {
       clearTimeout(timer);
+      if (line !== '') onLine?.(line);
       done({ code, stdout, stderr });
     });
     child.stdin.on('error', () => undefined);
@@ -251,9 +269,140 @@ const RUN_TIMEOUT_MS = 15 * 60_000;
 
 const lastWords = (text: string) => text.trim().split('\n').slice(-3).join('\n');
 
+/** A path as the log shows it: from the merge worktree, when it is in it. */
+function shownPath(path: string, cwd: string): string {
+  if (!isAbsolute(path)) return path;
+  const inside = relative(cwd, path);
+  return inside !== '' && !inside.startsWith('..') && !isAbsolute(inside) ? inside : path;
+}
+
+/** A tool call's main input, in a few words: the file read, the pattern looked for. */
+function toolInput(input: Record<string, unknown>, cwd: string): string {
+  const text = (key: string) => (typeof input[key] === 'string' ? input[key] : undefined);
+  const path = text('file_path') ?? text('path');
+  const pattern = text('pattern');
+  const where = path ? shownPath(path, cwd) : undefined;
+  if (pattern) return where ? `${pattern} in ${where}` : pattern;
+  if (where) {
+    const from = typeof input.offset === 'number' ? input.offset : undefined;
+    const lines = typeof input.limit === 'number' ? input.limit : undefined;
+    return from !== undefined || lines !== undefined
+      ? `${where} (from line ${from ?? 1}${lines !== undefined ? `, ${lines} lines` : ''})`
+      : where;
+  }
+  return JSON.stringify(input).slice(0, 200);
+}
+
+/** What a tool gave back, by its size: `214 lines`; a refusal by its first line. */
+function resultSize(content: unknown, failed: boolean): string {
+  const text =
+    typeof content === 'string'
+      ? content
+      : Array.isArray(content)
+        ? content
+            .map((part) =>
+              part &&
+              typeof part === 'object' &&
+              typeof (part as { text?: unknown }).text === 'string'
+                ? (part as { text: string }).text
+                : '',
+            )
+            .join('\n')
+        : '';
+  if (failed) return `refused: ${text.trim().split('\n')[0]?.slice(0, 200) ?? ''}`;
+  const lines = text === '' ? 0 : text.replace(/\n$/, '').split('\n').length;
+  return `${lines} line${lines === 1 ? '' : 's'}`;
+}
+
+/**
+ * One line of Claude Code's `stream-json` (V46b): the events the log keeps — its start, its
+ * thinking summary and text as they stream, its tool calls and their results by size — and, for
+ * its last line, the run's result. Hook, rate-limit and message events are not kept.
+ */
+export function claudeLine(
+  line: string,
+  cwd: string,
+): { events: MergeAgentEvent[]; result?: Record<string, unknown> } {
+  let value: unknown;
+  try {
+    value = JSON.parse(line);
+  } catch {
+    return { events: [] };
+  }
+  const v = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
+  if (v.type === 'result') return { events: [], result: v };
+  if (v.type === 'system' && v.subtype === 'init') {
+    const version = typeof v.claude_code_version === 'string' ? ` ${v.claude_code_version}` : '';
+    const model = typeof v.model === 'string' ? ` · ${v.model}` : '';
+    return { events: [{ start: `Claude Code${version}${model}` }] };
+  }
+  if (v.type === 'stream_event') {
+    const delta = (v.event as { type?: unknown; delta?: Record<string, unknown> } | undefined)
+      ?.delta;
+    if (delta?.type === 'thinking_delta' && typeof delta.thinking === 'string' && delta.thinking) {
+      return { events: [{ think: delta.thinking }] };
+    }
+    if (delta?.type === 'text_delta' && typeof delta.text === 'string' && delta.text) {
+      return { events: [{ say: delta.text }] };
+    }
+    return { events: [] };
+  }
+  const content = (v.message as { content?: unknown } | undefined)?.content;
+  if (!Array.isArray(content)) return { events: [] };
+  const events: MergeAgentEvent[] = [];
+  for (const part of content as Record<string, unknown>[]) {
+    if (v.type === 'assistant' && part.type === 'tool_use' && typeof part.name === 'string') {
+      const input = (part.input && typeof part.input === 'object' ? part.input : {}) as Record<
+        string,
+        unknown
+      >;
+      events.push({ tool: part.name, input: toolInput(input, cwd) });
+    } else if (v.type === 'user' && part.type === 'tool_result') {
+      events.push({ result: resultSize(part.content, part.is_error === true) });
+    }
+  }
+  return { events };
+}
+
+/** One line of Codex's `exec --json` (V46b): its reasoning, its commands and their exit, its message. */
+export function codexLine(line: string, model?: string): MergeAgentEvent[] {
+  let value: unknown;
+  try {
+    value = JSON.parse(line);
+  } catch {
+    return [];
+  }
+  const v = (value && typeof value === 'object' ? value : {}) as {
+    type?: unknown;
+    item?: Record<string, unknown>;
+  };
+  if (v.type === 'thread.started') return [{ start: model ? `Codex · ${model}` : 'Codex' }];
+  const item = v.item;
+  if (!item) return [];
+  const text = typeof item.text === 'string' ? item.text : '';
+  if (item.type === 'command_execution' && typeof item.command === 'string') {
+    if (v.type === 'item.started') return [{ tool: '$', input: item.command }];
+    if (v.type !== 'item.completed') return [];
+    const output = typeof item.aggregated_output === 'string' ? item.aggregated_output : '';
+    const code = typeof item.exit_code === 'number' ? `exit ${item.exit_code} · ` : '';
+    return [{ result: `${code}${resultSize(output, false)}` }];
+  }
+  if (v.type !== 'item.completed' || text === '') return [];
+  if (item.type === 'reasoning') return [{ think: text.endsWith('\n') ? text : `${text}\n` }];
+  if (item.type === 'agent_message') return [{ say: text }];
+  return [];
+}
+
+/** Claude Code refused `--thinking-display`: an older one, or one that dropped it. */
+const NO_THINKING_DISPLAY = /unknown option '--thinking-display'/;
+
 /**
  * Claude Code as the merger: `claude -p`, its system prompt the merger's instructions, read-only
  * tools, no MCP servers, nothing kept; the prompt on stdin (a long one would not fit an argument).
+ * Its `stream-json` is read as it comes (V46b): its thinking's summary (`--thinking-display
+ * summarized`, a flag its `--help` does not list: run again without it when refused), its tool
+ * calls and its text go to `onEvent`; the answer is its last line, the `result` that `--output-format
+ * json` gave alone.
  */
 export function claudeMerger(
   command: string,
@@ -261,26 +410,45 @@ export function claudeMerger(
 ): MergerAgent {
   return {
     kind: 'claude',
-    async run({ cwd, prompt, model, instructions = MERGER_INSTRUCTIONS }) {
-      const args = [
+    async run({ cwd, prompt, model, instructions = MERGER_INSTRUCTIONS, effort, onEvent }) {
+      const argsOf = (thinking: boolean) => [
         '-p',
         '--output-format',
-        'json',
+        'stream-json',
+        '--verbose',
+        '--include-partial-messages',
+        ...(thinking ? ['--thinking-display', 'summarized'] : []),
         '--tools',
         'Read,Grep,Glob',
         '--strict-mcp-config',
         '--no-session-persistence',
         ...(model ? ['--model', model] : []),
+        ...(effort ? ['--effort', effort] : []),
         '--system-prompt',
         instructions,
       ];
       const started = Date.now();
-      const result = await run(command, args, { cwd, input: prompt, timeoutMs: RUN_TIMEOUT_MS });
+      let value: Record<string, unknown> | undefined;
+      const once = (thinking: boolean) =>
+        run(command, argsOf(thinking), {
+          cwd,
+          input: prompt,
+          timeoutMs: RUN_TIMEOUT_MS,
+          onLine: (line) => {
+            const read = claudeLine(line, cwd);
+            if (read.result) value = read.result;
+            for (const event of read.events) onEvent?.(event);
+          },
+        });
+      let result = await once(true);
+      if (!value && result.code !== 0 && NO_THINKING_DISPLAY.test(result.stderr)) {
+        onEvent?.({
+          note: 'This Claude Code has no --thinking-display: its thinking is not shown',
+        });
+        result = await once(false);
+      }
       const ms = Date.now() - started;
-      let value: unknown;
-      try {
-        value = JSON.parse(result.stdout);
-      } catch {
+      if (!value) {
         return {
           ok: false,
           error:
@@ -328,13 +496,14 @@ export function codexMerger(
 ): MergerAgent {
   return {
     kind: 'codex',
-    async run({ cwd, prompt, model, instructions = MERGER_INSTRUCTIONS }) {
+    async run({ cwd, prompt, model, instructions = MERGER_INSTRUCTIONS, effort, onEvent }) {
       const args = [
         'exec',
         '--json',
         '--sandbox',
         'read-only',
         '--ephemeral',
+        ...(effort ? ['-c', `model_reasoning_effort=${JSON.stringify(effort)}`] : []),
         ...(model ? ['--model', model] : []),
         '--cd',
         cwd,
@@ -342,7 +511,14 @@ export function codexMerger(
       ];
       const started = Date.now();
       const input = `${instructions}\n\n---\n\n${prompt}`;
-      const result = await run(command, args, { cwd, input, timeoutMs: RUN_TIMEOUT_MS });
+      const result = await run(command, args, {
+        cwd,
+        input,
+        timeoutMs: RUN_TIMEOUT_MS,
+        onLine: (line) => {
+          for (const event of codexLine(line, model)) onEvent?.(event);
+        },
+      });
       const ms = Date.now() - started;
       let text: string | null = null;
       let failure: string | null = null;

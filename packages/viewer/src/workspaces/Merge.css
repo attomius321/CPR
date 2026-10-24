@@ -24,6 +24,11 @@
   --merge-tone: var(--removed);
 }
 
+/* A file whose resolution has lines the agent wrote (V46c), as its "new" count. */
+.merge-tone-new {
+  --merge-tone: var(--modified);
+}
+
 .merge-row-head {
   display: flex;
   flex-wrap: wrap;
@@ -383,4 +388,157 @@
 
 .merge-title {
   margin: 4px 0 0;
+}
+
+/* A conflicted merge's two views (V46c): flat buttons, the picked one a wash of the text, as a
+   workspace's Terminal, Thread and Brief. */
+.merge-tabs {
+  display: flex;
+  gap: 2px;
+  margin-top: 12px;
+}
+
+.merge-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
+.merge-tabs button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.merge-tabs button.selected {
+  background: var(--selected);
+  color: var(--text);
+}
+
+.merge-tabs button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+/* The view not picked stays, its log streaming: hidden, not gone. */
+.merge-log[hidden],
+.merge-fileview[hidden] {
+  display: none;
+}
+
+/* Its files beside the picked file's regions. */
+.merge-fileview {
+  display: grid;
+  grid-template-columns: minmax(200px, 300px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 12px;
+}
+
+.merge-filelist {
+  position: sticky;
+  top: 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A file: its tone's dot, its name and folder, its regions' count; what its resolution did under. */
+.merge-filerow {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+
+.merge-filerow:hover {
+  background: var(--hover);
+}
+
+.merge-filerow[aria-current='true'] {
+  background: var(--selected);
+}
+
+.merge-filerow:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.merge-filerow.unresolved .merge-step-dot {
+  border: 1px solid var(--faint);
+  background: transparent;
+}
+
+.merge-filerow-name {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.merge-filerow-folder {
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 400;
+}
+
+.merge-filerow-count {
+  color: var(--faint);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.merge-filerow-what {
+  grid-column: 2 / -1;
+  color: var(--muted);
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+.merge-fileview .merge-regions {
+  margin: 0;
+}
+
+.merge-fileview .merge-region:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.merge-fileview-why {
+  margin: 0;
+}
+
+/* Narrow: the files above the picked file's regions. */
+@media (max-width: 699px) {
+  .merge-fileview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .merge-filelist {
+    position: static;
+  }
 }

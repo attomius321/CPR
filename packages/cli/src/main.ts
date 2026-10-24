@@ -33,6 +33,7 @@ import {
   type AnalysisPhase,
   type ChangedLines,
   type Graph,
+  type AgentEfforts,
   type AgentKind,
   type MergeEntry,
   type Severity,
@@ -678,7 +679,10 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         terminals,
       }),
       terminals,
-      merges: merger(repo, cacheDir, { mergerAgent: mergerFinder(repo.root, ctx.env) }),
+      merges: merger(repo, cacheDir, {
+        mergerAgent: mergerFinder(repo.root, ctx.env),
+        levels: levelsFinder(claudeOf, codexOf),
+      }),
       settings: promptSettingsService(repo),
       scout: scout(repo, cacheDir, {
         claude: claudeOf,
@@ -875,6 +879,7 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
   const merges = merger(repo, defaultCacheDir(ctx.env), {
     onChange: print,
     mergerAgent: mergerFinder(repo.root, ctx.env),
+    levels: levelsFinder(agentFinder(repo.root, ctx.env), codexFinder(repo.root, ctx.env)),
   });
   const done = (entry: MergeEntry | undefined) => (entry?.state === 'landed' ? 0 : 1);
   try {
@@ -982,6 +987,21 @@ function mergerFinder(
       if (command) return each === 'claude' ? claudeMerger(command) : codexMerger(command);
     }
     return null;
+  };
+}
+
+/**
+ * An agent's effort levels for the merger (V46d): Claude Code's `--help`, Codex's models (which
+ * start its app server); null when unread.
+ */
+function levelsFinder(
+  claude: () => Promise<ClaudeCode | null>,
+  codexOf: () => Promise<Codex | null>,
+): (kind: AgentKind) => Promise<AgentEfforts | null> {
+  return async (kind) => {
+    if (kind === 'codex') return (await (await codexOf())?.efforts()) ?? null;
+    const levels = (await (await claude())?.efforts()) ?? null;
+    return levels ? { levels } : null;
   };
 }
 

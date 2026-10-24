@@ -16,16 +16,14 @@ import {
   pastedImages,
   terminalLinks,
   TERMINAL_THEME,
+  TERMINAL_FONT,
+  TERMINAL_FONT_SIZE,
   wrappedRows,
   type LinkTarget,
 } from './terminal.js';
 import { holdReads } from './useWorkspaces.js';
 
 const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
-/** The bundled mono (V29b), as styles.css names it. */
-const MONO = "'Geist Mono Variable', monospace";
-/** The body's size (`--size-body`, V32): xterm takes a number, not a token. */
-const FONT_SIZE = 14;
 /** Where ⌘V pastes and Ctrl+V stays the agent's (V36). */
 const MAC = /Mac|iPhone|iPad/.test(navigator.userAgent);
 const ONLY_IMAGES = 'Only images can be attached: PNG, JPEG, GIF or WebP.';
@@ -127,15 +125,15 @@ export function AgentTerminal({
         import('@xterm/xterm/css/xterm.css'),
         // xterm measures its cell from the font it is given: loaded first, or the columns the
         // agent is told would be counted with the fallback's width.
-        document.fonts.load(`${FONT_SIZE}px ${MONO}`),
+        document.fonts.load(`${TERMINAL_FONT_SIZE}px ${TERMINAL_FONT}`),
       ]);
       const element = box.current;
       const area = root.current;
       if (gone || !element || !area) return;
       term = new Terminal({
         theme: TERMINAL_THEME,
-        fontFamily: MONO,
-        fontSize: FONT_SIZE,
+        fontFamily: TERMINAL_FONT,
+        fontSize: TERMINAL_FONT_SIZE,
         cursorBlink: true,
         scrollback: 5000,
       });

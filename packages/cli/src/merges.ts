@@ -23,21 +23,32 @@ import {
   pushCommit,
   resetMergeWorktree,
   upstreamOf,
+  EFFORT_LEVEL,
+  type AgentEfforts,
   type GitRepo,
   type MergeCheckRun,
   type AgentKind,
   type MergeEntry,
   type MergeList,
+  type MergeLogRead,
   type MergeRegion,
   type MergeRequest,
   type MergeTargets,
   type RefList,
+  type ScoutEffortChange,
+  type ScoutEfforts,
   type Verdict,
 } from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
 import { CONFIG_FILES } from './plugins.js';
 import { readReview, reviewPath, reviewPlace } from './reviews.js';
-import { readWorkspace, workspacePath, type WorkspaceFile } from './workspaces.js';
+import {
+  effortProblem,
+  effortWordProblem,
+  readWorkspace,
+  workspacePath,
+  type WorkspaceFile,
+} from './workspaces.js';
 import {
   applyAnswer,
   conflictRegions,
@@ -47,17 +58,20 @@ import {
   type MergerAgent,
   type MergerInput,
 } from './merge-agent.js';
-import { readPrompts } from './prompts.js';
+import { mergeLogs } from './merge-log.js';
+import { PromptRefused, readPrompts, writeConfig } from './prompts.js';
 
 /**
  * What `symbiote/config.json` says of merges: `merge.checks` (one command or several),
- * `merge.push`, and the merger agent's `merge.agent` and `merge.model` (V26c).
+ * `merge.push`, and the merger agent's `merge.agent` and `merge.model` (V26c) and `merge.effort`
+ * (V46d).
  */
 export interface MergeConfig {
   checks?: string[];
   push: boolean;
   agent?: AgentKind;
   model?: string;
+  effort?: string;
 }
 
 /** The merge section of the config file in `root`; anything unknown is ignored. */
@@ -76,6 +90,7 @@ export function readMergeConfig(root: string): MergeConfig {
     push?: unknown;
     agent?: unknown;
     model?: unknown;
+    effort?: unknown;
   };
   const listed =
     typeof v.checks === 'string' ? [v.checks] : Array.isArray(v.checks) ? v.checks : [];
@@ -85,6 +100,7 @@ export function readMergeConfig(root: string): MergeConfig {
     push: v.push === true,
     ...(v.agent === 'claude' || v.agent === 'codex' ? { agent: v.agent } : {}),
     ...(typeof v.model === 'string' && v.model !== '' ? { model: v.model } : {}),
+    ...(typeof v.effort === 'string' && EFFORT_LEVEL.test(v.effort) ? { effort: v.effort } : {}),
   };
 }
 
@@ -101,10 +117,14 @@ export class MergeRefused extends Error {
   }
 }
 
-/** Runs one check command in `cwd` through the shell: its exit code and what it wrote. */
+/**
+ * Runs one check command in `cwd` through the shell: its exit code and what it wrote, and what it
+ * writes as it comes (`onOutput`, V46a).
+ */
 export type RunCheck = (
   command: string,
   cwd: string,
+  onOutput?: (chunk: string) => void,
 ) => Promise<{ code: number | null; output: string }>;
 
 /** States in which a merge runs: never removed, merged again after a stop. */
@@ -117,7 +137,7 @@ const CHECK_TIMEOUT_MS = 60 * 60_000;
 const OUTPUT_LINES = 60;
 
 /** The shell's run of a command, its output and errors together, as a terminal shows them. */
-export const runShell: RunCheck = (command, cwd) =>
+export const runShell: RunCheck = (command, cwd, onOutput) =>
   new Promise((done) => {
     let output = '';
     const child = spawn(command, {
@@ -128,6 +148,7 @@ export const runShell: RunCheck = (command, cwd) =>
     });
     const timer = setTimeout(() => child.kill(), CHECK_TIMEOUT_MS);
     const keep = (chunk: string) => {
+      onOutput?.(chunk);
       output += chunk;
       // Only the end is kept: a check can write megabytes.
       if (output.length > 1_000_000) output = output.slice(-200_000);
@@ -136,6 +157,7 @@ export const runShell: RunCheck = (command, cwd) =>
     child.stderr.setEncoding('utf8').on('data', keep);
     child.on('error', (error) => {
       clearTimeout(timer);
+      onOutput?.(`${error.message}\n`);
       done({ code: null, output: `${output}${error.message}\n` });
     });
     child.on('close', (code) => {
@@ -143,6 +165,18 @@ export const runShell: RunCheck = (command, cwd) =>
       done({ code, output });
     });
   });
+
+const short = (sha: string) => sha.slice(0, 7);
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+/** `4.0 s`, `1 min 21 s`: as the page says a time. */
+const seconds = (ms: number) => {
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)} s`;
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s / 60)} min ${s % 60} s`;
+};
+/** Tokens, short: `950`, `3.1K`. */
+const tokens = (n: number) => (n < 1000 ? String(n) : `${(n / 1000).toFixed(1)}K`);
+const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
 const lastLines = (text: string) =>
   text.replace(/\n+$/, '').split('\n').slice(-OUTPUT_LINES).join('\n');
@@ -211,8 +245,14 @@ export interface Merger {
   requestChanges(id: string, comments: string): Promise<MergeEntry>;
   /** Runs a resolution's failed check again on the same merge; the agent is not asked. */
   recheck(id: string): Promise<MergeEntry>;
-  /** Takes an entry out of the queue (not while it merges or checks). */
+  /** Takes an entry out of the queue (not while it merges or checks), with its log. */
   remove(id: string): Promise<void>;
+  /** An entry's log from byte `from` (V46a); null when there is no such entry. */
+  log(id: string, from?: number): Promise<MergeLogRead | null>;
+  /** The merger's agent's effort levels and `merge.effort` (V46d), as Scout's are listed. */
+  efforts(): Promise<ScoutEfforts>;
+  /** Sets `merge.effort`, one of the merger's agent's levels; null removes it. */
+  setEffort(change: ScoutEffortChange): Promise<ScoutEfforts>;
   /** Resolves once nothing in the queue can go further. */
   idle(): Promise<void>;
 }
@@ -228,6 +268,7 @@ export function merger(
     root = repo.root,
     onChange,
     mergerAgent = () => Promise.resolve(null),
+    levels = () => Promise.resolve(null),
     changedSymbols = analyzedSymbols(repo, cacheDir),
   }: {
     now?: () => Date;
@@ -238,6 +279,8 @@ export function merger(
     onChange?: (entry: MergeEntry) => void;
     /** The merger agent of `kind` (`merge.agent`, else the default), when installed (V26c). */
     mergerAgent?: (kind?: AgentKind) => Promise<MergerAgent | null>;
+    /** An agent's effort levels (V46d): Claude Code's `--help`, Codex's models; null unread. */
+    levels?: (kind: AgentKind) => Promise<AgentEfforts | null>;
     /** The symbols a side changed in the conflicting files; Symbiote's analysis by default. */
     changedSymbols?: ChangedSymbols;
   } = {},
@@ -246,6 +289,8 @@ export function merger(
   const queueFile = join(stateDir, 'merges.json');
   const lockFile = join(stateDir, 'merges.lock');
   const worktree = join(cacheDir, 'worktrees', repo.id, 'merge');
+  // Each entry's log (V46a), beside the queue.
+  const logs = mergeLogs(join(stateDir, 'merges'));
 
   async function read(): Promise<MergeEntry[]> {
     try {
@@ -293,6 +338,7 @@ export function merger(
     base: undefined,
     merge: undefined,
     conflicts: undefined,
+    unresolvable: undefined,
     resolution: undefined,
     check: undefined,
     message: undefined,
@@ -386,25 +432,39 @@ export function merger(
       await checkMerge(id, entry.base, entry.merge, true);
       return;
     }
+    const log = logs.of(id);
+    log.step('merge', `Merge ${entry.branch} into ${entry.into}`);
     const refs = await listRefs(repo);
     const tip = tipOf(refs, entry.into);
     if (!tip) {
+      log.out(`No branch ${entry.into}\n`);
+      log.end(false);
       await set(id, { ...fresh, state: 'failed', message: `no branch ${entry.into}` });
       return;
     }
     await set(id, { ...fresh, state: 'merging', base: tip.sha });
     await resetMergeWorktree(repo, worktree, tip.sha);
+    log.out(`Symbiote's merge worktree at ${entry.into} (${short(tip.sha)})\n`);
     const outcome = await mergeInWorktree(worktree, entry.head, entry.title, { keep: true });
     if ('conflicts' in outcome) {
+      const n = outcome.conflicts.length;
+      log.out(
+        `${plural(n, 'file')} conflict${n === 1 ? 's' : ''}: ${outcome.conflicts.join(', ')}\n`,
+      );
+      log.end(true);
       const merged = await resolve(entry, tip.sha, outcome.conflicts);
       if (merged) await checkMerge(id, tip.sha, merged, true);
       return;
     }
     if ('error' in outcome) {
+      log.out(`${outcome.error}\n`);
+      log.end(false);
       await set(id, { state: 'failed', message: outcome.error });
       return;
     }
     if ('upToDate' in outcome) {
+      log.out(`Already in ${entry.into}: nothing to merge\n`);
+      log.end(true);
       await set(id, {
         state: 'landed',
         landed: now().toISOString(),
@@ -412,6 +472,8 @@ export function merger(
       });
       return;
     }
+    log.out(`Merged ${short(entry.head)}: ${short(outcome.merged)}\n`);
+    log.end(true);
     await checkMerge(id, tip.sha, outcome.merged, false);
   }
 
@@ -420,22 +482,29 @@ export function merger(
    * the person's review either way, its check's result with it.
    */
   async function checkMerge(id: string, base: string, merged: string, resolved: boolean) {
+    const log = logs.of(id);
     const check = await checkOf(base);
     if (!check) {
-      await set(id, {
-        state: resolved ? 'needs-you' : 'ready',
-        merge: merged,
-        message: resolved
-          ? 'no check to run: review the resolution, then Approve lands it'
-          : 'no check to run: set merge.checks in symbiote/config.json, or Land once you have checked it',
-      });
+      const message = resolved
+        ? 'no check to run: review the resolution, then Approve lands it'
+        : 'no check to run: set merge.checks in symbiote/config.json, or Land once you have checked it';
+      log.out(`${message.charAt(0).toUpperCase()}${message.slice(1)}\n`);
+      await set(id, { state: resolved ? 'needs-you' : 'ready', merge: merged, message });
       return;
     }
     await set(id, { state: 'checking', merge: merged, check: { ...check } });
     const started = Date.now();
     let output = '';
     for (const command of check.commands) {
-      const result = await runCheck(command, worktree);
+      log.step('check', command);
+      // A runner that does not stream gives its output at the end.
+      let streamed = false;
+      const result = await runCheck(command, worktree, (chunk) => {
+        streamed = true;
+        log.out(chunk);
+      });
+      if (!streamed) log.out(result.output);
+      log.end(result.code === 0);
       output += result.output;
       if (result.code !== 0) {
         await set(id, {
@@ -503,7 +572,12 @@ export function merger(
     conflicts: string[],
   ): Promise<string | null> {
     const { id } = entry;
-    const stop = async (message: string, fields: Partial<MergeEntry> = {}) => {
+    const log = logs.of(id);
+    log.step('resolve', 'Merger agent');
+    /** `said`: the log's words, when they are not the entry's message. */
+    const stop = async (message: string, fields: Partial<MergeEntry> = {}, said = message) => {
+      log.out(`${said.charAt(0).toUpperCase()}${said.slice(1)}\n`);
+      log.end(false);
       await abortMerge(worktree);
       await set(id, { state: 'needs-you', conflicts, message, again: undefined, ...fields });
       return null;
@@ -518,6 +592,9 @@ export function merger(
       };
       return stop(
         `${kept.map(([path, kind]) => `${path} ${words[kind as keyof typeof words]}`).join('; ')}: not given to the merger agent. Merge ${entry.into} into ${entry.branch}, resolve it there, and review it again`,
+        {
+          unresolvable: kept.map(([path, kind]) => ({ path, kind: kind as keyof typeof words })),
+        },
       );
     }
     const config = readMergeConfig(root);
@@ -533,6 +610,11 @@ export function merger(
       conflicts.map(async (path) => ({ path, text: await readFile(join(worktree, path), 'utf8') })),
     );
     const rules = await readFile(join(root, 'symbiote', 'merge.md'), 'utf8').catch(() => undefined);
+    const analysed = Date.now();
+    const symbols = await bothChanged(base, entry.head, conflicts);
+    log.out(
+      `Symbols both sides changed in ${conflicts.join(', ')}: ${symbols.length} (${seconds(Date.now() - analysed)})\n`,
+    );
     const prompt = mergerPrompt({
       branch: entry.branch,
       into: entry.into,
@@ -540,17 +622,28 @@ export function merger(
       base,
       sides: await sidesOf(entry, base),
       files,
-      symbols: await bothChanged(base, entry.head, conflicts),
+      symbols,
       ...(rules ? { rules } : {}),
       ...(entry.again ? { again: entry.again } : {}),
     });
+    const regionCount = files.reduce((n, f) => n + conflictRegions(f.text).length, 0);
+    log.out(
+      `Asking ${AGENT_NAMES[agent.kind]}${model ? ` (${model})` : ''}: ${plural(regionCount, 'region')} in ${plural(files.length, 'file')}, ${prompt.length.toLocaleString('en-US')} characters\n`,
+    );
+    const effort = await effortOf(agent.kind, config.effort, (line) => log.out(line));
     const run = await agent.run({
       cwd: worktree,
       prompt,
       ...(model ? { model } : {}),
+      ...(effort ? { effort } : {}),
       instructions: mergerInstructions(readPrompts(root).text.merger),
+      // What it does as it works (V46b), in its step.
+      onEvent: (event) => log.agent(event),
     });
     if (!run.ok) return stop(`the merger agent did not answer: ${run.error}`);
+    log.out(
+      `Answered in ${seconds(run.ms)}${run.usage ? ` · ${tokens(run.usage.input)} tokens in, ${tokens(run.usage.output)} out` : ''}\n`,
+    );
     const about = {
       agent: agent.kind,
       ...(model ? { model } : {}),
@@ -561,9 +654,11 @@ export function merger(
     const count = perFile.reduce((n, f) => n + f.regions.length, 0);
     const answer = parseAnswer(run.text, count);
     if ('needsYou' in answer) {
-      return stop(`the merger agent: ${answer.needsYou}`, {
-        resolution: { ...about, regions: [], needsYou: answer.needsYou },
-      });
+      return stop(
+        `the merger agent: ${answer.needsYou}`,
+        { resolution: { ...about, regions: [], needsYou: answer.needsYou } },
+        `it says you must decide: ${answer.needsYou}`,
+      );
     }
     if ('error' in answer) return stop(`the merger agent's answer: ${answer.error}`);
     const regions: MergeRegion[] = [];
@@ -592,17 +687,61 @@ export function merger(
       if (error instanceof MergeStepRefused) return stop(error.message);
       throw error;
     }
+    log.out(
+      `Wrote ${plural(regions.length, 'region')} in ${plural(perFile.length, 'file')}; committed the merge ${short(merged)}\n`,
+    );
+    log.end(true);
     await set(id, { conflicts, resolution: { ...about, regions }, again: undefined });
     return merged;
+  }
+
+  /**
+   * The level the merger agent is asked at (V46d): `merge.effort` when the agent lists it, none
+   * otherwise, as Scout's (the project's file may name another agent's level). `say` is told which.
+   */
+  async function effortOf(
+    kind: AgentKind,
+    effort: string | undefined,
+    say: (line: string) => void,
+  ): Promise<string | undefined> {
+    if (!effort) return undefined;
+    const name = AGENT_NAMES[kind];
+    const listed = (await levels(kind))?.levels;
+    if (!listed) {
+      say(`Symbiote cannot read ${name}'s effort levels: its own level\n`);
+      return undefined;
+    }
+    if (!listed.includes(effort)) {
+      say(`merge.effort is ${effort}, which ${name} does not list: its own level\n`);
+      return undefined;
+    }
+    say(`Effort: ${effort} (merge.effort)\n`);
+    return effort;
+  }
+
+  async function efforts(): Promise<ScoutEfforts> {
+    const config = readMergeConfig(root);
+    const agent = await mergerAgent(config.agent);
+    const listed = agent ? await levels(agent.kind) : null;
+    return {
+      agents: agent ? [{ kind: agent.kind, ...(listed ? { efforts: listed } : {}) }] : [],
+      ...(config.effort ? { effort: config.effort } : {}),
+      file: readPrompts(root).file,
+    };
   }
 
   /** Moves `into` to the merge, or says why not; merged again when `into` moved meanwhile. */
   async function landEntry(entry: MergeEntry): Promise<MergeEntry> {
     const { id, into, merge, base } = entry;
     if (!merge || !base) throw new MergeRefused('nothing merged to land', 409);
+    const log = logs.of(id);
+    log.step('land', `Land in ${into}`);
     const refs = await listRefs(repo);
     const tip = tipOf(refs, into);
     if (!tip || tip.sha !== base || !(await isAncestor(repo, base, merge))) {
+      log.out(`${into} moved since the merge (now ${tip ? short(tip.sha) : 'gone'})\n`);
+      log.end(false);
+      log.run(`Merging again on ${into}'s tip`);
       return set(id, {
         ...fresh,
         state: 'queued',
@@ -622,20 +761,38 @@ export function merger(
     } catch (error) {
       if (error instanceof MergeStepRefused) {
         const where = holder ? ` in ${holder.path}` : '';
+        log.out(`${into} was not moved${where}: ${error.message}\n`);
+        log.end(false);
         return set(id, {
           state: 'ready',
           message: `${into} was not moved${where}: ${error.message}`,
         });
       }
+      log.end(false);
       throw error;
     }
+    log.out(
+      holder
+        ? `${into} fast-forwarded to ${short(merge)} in ${holder.path}\n`
+        : `${into} set to ${short(merge)}: checked out nowhere\n`,
+    );
     const landed = await set(id, {
       state: 'landed',
       landed: now().toISOString(),
       message: undefined,
     });
-    if (!pushing) return landed;
-    return set(id, { pushed: await push(into, merge) });
+    if (!pushing) {
+      log.end(true);
+      return landed;
+    }
+    const pushed = await push(into, merge);
+    log.out(
+      pushed.ok
+        ? `Pushed to ${pushed.remote}\n`
+        : `Not pushed${pushed.remote ? ` to ${pushed.remote}` : ''}: ${pushed.error}\n`,
+    );
+    log.end(true);
+    return set(id, { pushed });
   }
 
   /** Pushes the landed branch to its upstream, else to `origin`. */
@@ -684,9 +841,16 @@ export function merger(
     if (!release) return;
     try {
       // A process that stopped mid-merge left its entry merging or checking: merged again.
-      await change((merges) => {
-        for (const e of merges) if (RUNNING.has(e.state)) e.state = 'queued';
+      const kept = await change((merges) => {
+        for (const e of merges) {
+          if (!RUNNING.has(e.state)) continue;
+          e.state = 'queued';
+          logs.of(e.id).run('Symbiote stopped during the merge: merging again');
+        }
+        return new Set(merges.map((e) => e.id));
       });
+      // Logs of entries removed by another process, or while none ran.
+      await logs.prune(kept);
       for (;;) {
         const merges = await read();
         const next = merges.find(
@@ -698,10 +862,12 @@ export function merger(
         try {
           await mergeOne(next);
         } catch (error) {
-          await set(next.id, {
-            state: 'failed',
-            message: error instanceof Error ? error.message : String(error),
-          });
+          const message = error instanceof Error ? error.message : String(error);
+          // The step that threw ends with what it said.
+          const log = logs.of(next.id);
+          log.out(`${message}\n`);
+          log.end(false);
+          await set(next.id, { state: 'failed', message });
         }
       }
     } finally {
@@ -791,6 +957,7 @@ export function merger(
         throw new MergeRefused(`${entry.branch} is ${entry.state}: nothing to retry`, 409);
       }
       const after = await set(id, { ...fresh, again: undefined, state: 'queued' });
+      logs.of(id).run('Retry');
       kick();
       return after;
     },
@@ -818,6 +985,7 @@ export function merger(
         state: 'queued',
         again: { comments, previous: regions.map((r) => r.text) },
       });
+      logs.of(id).run(`Request changes: ${comments.trim()}`);
       kick();
       return after;
     },
@@ -830,6 +998,7 @@ export function merger(
         throw new MergeRefused(`${entry.branch} has no failed check to run again`, 409);
       }
       const after = await set(id, { state: 'queued', recheck: true, message: undefined });
+      logs.of(id).run('Check again');
       kick();
       return after;
     },
@@ -845,7 +1014,42 @@ export function merger(
           1,
         );
       });
+      await logs.remove(id);
       kick();
+    },
+
+    async log(id, from = 0) {
+      if (!(await read()).some((e) => e.id === id)) return null;
+      return logs.read(id, from);
+    },
+
+    efforts,
+
+    async setEffort({ effort }) {
+      if (effort !== null) {
+        if (typeof effort !== 'string' || !EFFORT_LEVEL.test(effort)) {
+          throw new MergeRefused(effortWordProblem(effort), 400);
+        }
+        const agent = await mergerAgent(readMergeConfig(root).agent);
+        if (!agent)
+          throw new MergeRefused(
+            'the merger needs Claude Code or Codex: neither is installed',
+            409,
+          );
+        const problem = effortProblem(
+          effort,
+          AGENT_NAMES[agent.kind],
+          (await levels(agent.kind))?.levels,
+        );
+        if (problem) throw new MergeRefused(problem, 400);
+      }
+      try {
+        await writeConfig(root, ['merge', 'effort'], effort ?? undefined);
+      } catch (error) {
+        if (error instanceof PromptRefused) throw new MergeRefused(error.message, error.status);
+        throw error;
+      }
+      return efforts();
     },
 
     async idle() {

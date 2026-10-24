@@ -232,13 +232,17 @@ export {
 export type { UsageReport, UsageSubscription, UsageWindow } from './usage.js';
 export {
   MERGE_STATES,
+  type MergeAgentEvent,
   type MergeCheckRun,
   type MergeEntry,
   type MergeList,
+  type MergeLogLine,
+  type MergeLogRead,
   type MergeRegion,
   type MergeRequest,
   type MergeResolution,
   type MergeState,
+  type MergeStep,
   type MergeTargets,
 } from './merges.js';
 export {

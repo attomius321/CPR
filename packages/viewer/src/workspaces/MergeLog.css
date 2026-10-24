@@ -1,0 +1,153 @@
+/* A merge's log (MergeLog.tsx, V46a): its steps beside a read-only terminal of what they wrote. */
+.merge-log {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  gap: 12px;
+  height: clamp(320px, calc(100vh - 260px), 900px);
+  margin-top: 12px;
+}
+
+/* A merge made before V46 has no log: nothing is drawn once it no longer runs. */
+.merge-log.empty {
+  display: none;
+}
+
+.merge-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.merge-steps-run {
+  padding: 8px 8px 4px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.merge-steps-run:first-child {
+  padding-top: 0;
+}
+
+/* A step: its mark as a dot in its tone, its name, its time at the right (rows' recipe). */
+.merge-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+
+.merge-step:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.merge-step:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.merge-step:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.merge-step-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--merge-tone);
+}
+
+/* Waiting and not run: an empty ring. */
+.merge-step.mark-waiting .merge-step-dot,
+.merge-step.mark-not-run .merge-step-dot {
+  border: 1px solid var(--faint);
+  background: transparent;
+}
+
+.merge-step.mark-running .merge-step-dot {
+  animation: merge-step-beat 1.2s ease-in-out infinite;
+}
+
+@keyframes merge-step-beat {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .merge-step.mark-running .merge-step-dot {
+    animation: none;
+  }
+}
+
+.merge-step-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A check's command is literal: in mono. */
+.merge-step-command {
+  font-family: var(--mono);
+  font-size: var(--size-small);
+}
+
+.merge-step-time {
+  flex: none;
+  color: var(--faint);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dark in both themes, as an agent's terminal (AgentTerminal.css): the theme's background is
+   kept by hand in terminal.ts (tokens.md, Outside the tokens). */
+.merge-terminal {
+  min-width: 0;
+  min-height: 0;
+  padding: 8px 0 8px 12px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #02040a;
+}
+
+.merge-terminal .xterm {
+  height: 100%;
+}
+
+/* Narrow: the steps above the log. */
+@media (max-width: 699px) {
+  .merge-log {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(280px, 1fr);
+    height: auto;
+  }
+
+  .merge-steps {
+    max-height: 200px;
+  }
+
+  .merge-terminal {
+    height: 360px;
+  }
+}

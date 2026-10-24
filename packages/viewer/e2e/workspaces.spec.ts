@@ -1410,7 +1410,7 @@ test('Merge on an approved workspace: Symbiote merges it in its own worktree, La
   });
   await card.getByRole('link').click();
   const entry = page.getByRole('region', { name: `Merge of ${branch}` });
-  await entry.getByRole('button', { name: 'Land' }).click();
+  await entry.getByRole('button', { name: 'Land', exact: true }).click();
   await expect(entry.locator('.merge-row-state')).toHaveText(/^Landed: main is at/, POLL);
   expect(git('log', '-1', '--format=%P%n%s', 'main')).toBe(
     `${main} ${tip}\nMerge ${branch}: Add a half function`,
@@ -1460,7 +1460,7 @@ test('Merge into merges into the branch picked in its dropdown, not main', async
   await expect(entry).toContainText('Merged, not checked', POLL);
   await entry.getByRole('link').click();
   const merge = page.getByRole('region', { name: `Merge of ${branch}` });
-  await merge.getByRole('button', { name: 'Land' }).click();
+  await merge.getByRole('button', { name: 'Land', exact: true }).click();
   await expect(merge.locator('.merge-row-state')).toHaveText(/^Landed: release is at/, POLL);
   expect(git('log', '-1', '--format=%P', 'release')).toBe(`${main} ${tip}`);
   expect(git('rev-parse', 'main')).toBe(main);
