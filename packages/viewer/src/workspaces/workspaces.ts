@@ -1,6 +1,7 @@
 // Workspaces started from the commits page (V18): pure helpers for the start page and the
 // line the page shows after Start.
 import type {
+  AgentEfforts,
   AgentKind,
   AgentOption,
   BranchReviewList,
@@ -69,33 +70,96 @@ export const PERMISSION_LABELS: Record<PermissionMode, string> = {
   auto: 'Auto',
 };
 
+/** A Model choice (V47): a model's ID (`''` for the agent's default), its name, its words. */
+export interface ModelChoice {
+  value: string;
+  label: string;
+  description?: string;
+}
+
 /**
- * The start page's Effort choices for an agent (V30b): its own default first — named with its
- * level when the agent says it (Codex), not otherwise (Claude Code, decision 210) — then the
- * levels it lists, in its words. None when Symbiote could not read its levels.
+ * The Model choices for an agent (V47): its default first — named when Symbiote knows it: Codex's
+ * configured model, the project's (`agent.model`), Symbiote's (the merger's), not Claude Code's
+ * own (decision 337) — then the models it lists, by their names. None when Symbiote could not
+ * read its models.
  */
-export function effortChoices(
-  agent: Pick<AgentOption, 'kind' | 'efforts'>,
-): { value: string; label: string }[] {
-  if (!agent.efforts) return [];
-  const own = agent.efforts.default ? ` (${agent.efforts.default})` : '';
+export function modelChoices(
+  agent: Pick<AgentOption, 'kind' | 'models' | 'defaultModel'>,
+): ModelChoice[] {
+  if (!agent.models) return [];
+  const known = agent.defaultModel;
+  const listed = known ? agent.models.find((m) => m.id === known.id) : undefined;
+  const name = listed?.name ?? known?.id;
+  const label = !known
+    ? `${AGENT_NAMES[agent.kind]}'s default`
+    : known.by === 'agent'
+      ? `${AGENT_NAMES[agent.kind]}'s default (${name})`
+      : known.by === 'project'
+        ? `The project's (${name})`
+        : `Symbiote's default (${name})`;
   return [
-    { value: '', label: `${AGENT_NAMES[agent.kind]}'s default${own}` },
-    ...agent.efforts.levels.map((level) => ({ value: level, label: level })),
+    { value: '', label, ...(listed?.description ? { description: listed.description } : {}) },
+    ...agent.models.map((m) => ({
+      value: m.id,
+      label: m.name,
+      ...(m.description ? { description: m.description } : {}),
+    })),
   ];
 }
 
-/** The level picked, kept when the agent picked now takes it too; else its default. */
+/** The model picked, kept when the agent lists it; else its default. */
+export function keptModel(
+  model: string | undefined,
+  agent: Pick<AgentOption, 'models'>,
+): string | undefined {
+  return model && agent.models?.some((m) => m.id === model) ? model : undefined;
+}
+
+/**
+ * The levels an agent takes on `model` (V47): the model's own when the agent lists it (none for
+ * a model that takes none), else the agent's, its default model's.
+ */
+function levelsOn(
+  agent: Pick<AgentOption, 'efforts' | 'models'>,
+  model: string | undefined,
+): AgentEfforts | undefined {
+  const listed = model ? agent.models?.find((m) => m.id === model) : undefined;
+  return listed ? listed.efforts : agent.efforts;
+}
+
+/**
+ * The Effort choices for an agent (V30b) on the model picked (V47): its own default first —
+ * named with its level when the agent says it (Codex), not otherwise (Claude Code, decision
+ * 210) — then the levels it lists, in its words. None when Symbiote could not read its levels,
+ * or the model takes none.
+ */
+export function effortChoices(
+  agent: Pick<AgentOption, 'kind' | 'efforts' | 'models'>,
+  model?: string,
+): { value: string; label: string }[] {
+  const efforts = levelsOn(agent, model);
+  if (!efforts) return [];
+  const own = efforts.default ? ` (${efforts.default})` : '';
+  return [
+    { value: '', label: `${AGENT_NAMES[agent.kind]}'s default${own}` },
+    ...efforts.levels.map((level) => ({ value: level, label: level })),
+  ];
+}
+
+/** The level picked, kept when the agent picked now takes it too, on its model; else its default. */
 export function keptEffort(
   effort: string | undefined,
-  agent: Pick<AgentOption, 'efforts'>,
+  agent: Pick<AgentOption, 'efforts' | 'models'>,
+  model?: string,
 ): string | undefined {
-  return effort && agent.efforts?.levels.includes(effort) ? effort : undefined;
+  return effort && levelsOn(agent, model)?.levels.includes(effort) ? effort : undefined;
 }
 
 /** The run's choices on the start page (V30b): kept with the draft, so leaving loses none. */
 export interface RunChoices {
   agent?: AgentKind;
+  /** The model picked (V47); the agent's default when absent. */
+  model?: string;
   effort?: string;
   permissionMode?: PermissionMode;
   planFirst?: boolean;
@@ -104,9 +168,9 @@ export interface RunChoices {
 }
 
 /**
- * The run's choices a draft kept, those that still hold: an agent still installed, a level it
- * lists, a permission mode Symbiote offers, a branch still listed. A level is kept only with its
- * agent: it is that agent's.
+ * The run's choices a draft kept, those that still hold: an agent still installed, a model it
+ * lists and a level that model takes (V47), a permission mode Symbiote offers, a branch still
+ * listed. A model and a level are kept only with their agent: they are that agent's.
  */
 export function readRun(
   value: unknown,
@@ -118,12 +182,15 @@ export function readRun(
   const named = agents.find((a) => a.kind === v.agent);
   // None picked: the page's default agent, the first, is the level's.
   const agent = named ?? (v.agent === undefined ? agents[0] : undefined);
-  const effort = agent && typeof v.effort === 'string' ? keptEffort(v.effort, agent) : undefined;
+  const model = agent && typeof v.model === 'string' ? keptModel(v.model, agent) : undefined;
+  const effort =
+    agent && typeof v.effort === 'string' ? keptEffort(v.effort, agent, model) : undefined;
   const mode = (Object.keys(PERMISSION_LABELS) as PermissionMode[]).find(
     (m) => m === v.permissionMode,
   );
   return {
     ...(named ? { agent: named.kind } : {}),
+    ...(model ? { model } : {}),
     ...(effort ? { effort } : {}),
     ...(mode ? { permissionMode: mode } : {}),
     ...(typeof v.planFirst === 'boolean' ? { planFirst: v.planFirst } : {}),
@@ -132,13 +199,14 @@ export function readRun(
 }
 
 /**
- * How a workspace's agent was started (V30b), for its Brief tab: the agent and its level. Said as
- * a start, since its session may have changed the level since (decision 211).
+ * How a workspace's agent was started (V30b), for its Brief tab: the agent, its model (V47) and
+ * its level. Said as a start, since its session may have changed them since (decisions 211, 341).
  */
 export function startedWith(agent: WorkspaceAgentState): string | null {
   if (!agent.kind) return null;
+  const model = agent.model ? ` on ${agent.model}` : '';
   const level = agent.effort ? `${agent.effort} effort` : 'its default effort';
-  return `Started with ${AGENT_NAMES[agent.kind]} at ${level}.`;
+  return `Started with ${AGENT_NAMES[agent.kind]}${model} at ${level}.`;
 }
 
 /** Longest name proposed after the prefix. */

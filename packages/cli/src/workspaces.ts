@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { constants as fsConstants, existsSync, readFileSync, realpathSync } from 'node:fs';
 import {
   copyFile,
@@ -43,6 +43,7 @@ import {
   listLineCounts,
   listRefs,
   EFFORT_LEVEL,
+  MODEL_ID,
   PERMISSION_MODES,
   removeWorktree,
   resolveCommit,
@@ -53,6 +54,8 @@ import {
   WORK_KINDS,
   type AgentEfforts,
   type AgentKind,
+  type AgentModel,
+  type AgentModels,
   type AgentOption,
   type BranchMerge,
   type BriefPart,
@@ -102,6 +105,7 @@ import {
   type Codex,
 } from './codex.js';
 import { localHost, onPath, type FolderAt } from './editor.js';
+import { runWithInput, type RunWithInput } from './merge-agent.js';
 import { shellOf, TerminalRefused, type Terminals } from './terminal.js';
 import { CONFIG_FILES } from './plugins.js';
 import {
@@ -161,6 +165,8 @@ export interface WorkspaceAgentRecord {
   /** The effort level it was started at (V30b), given again when it starts again; its own if
    * absent. */
   effort?: string;
+  /** The model it was started on (V47), given again when it starts again; its default if absent. */
+  model?: string;
   /** When it last started: for Codex, its last run (V20a). */
   started?: string;
   /** Codex: its last run's ID, on the thread entries it wrote, and its runner's process (V20a). */
@@ -404,6 +410,15 @@ function partsRead(value: unknown): { parts?: BriefParts } {
   return Object.keys(parts).length > 0 ? { parts } : {};
 }
 
+/** How an agent was started (V30b, V47): its level and its model, each absent for its own. */
+type StartedAs = Pick<WorkspaceAgentRecord, 'effort' | 'model'>;
+
+/** `how` with only the fields it has: what a start passes and a record keeps. */
+const startedAs = ({ effort, model }: StartedAs): StartedAs => ({
+  ...(effort ? { effort } : {}),
+  ...(model ? { model } : {}),
+});
+
 function asAgent(value: unknown): WorkspaceAgentRecord | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const v = value as Partial<Record<keyof WorkspaceAgentRecord, unknown>>;
@@ -414,6 +429,7 @@ function asAgent(value: unknown): WorkspaceAgentRecord | null {
     kind,
     ...(kind === 'claude' ? { permissionMode: mode } : {}),
     ...(typeof v.effort === 'string' && EFFORT_LEVEL.test(v.effort) ? { effort: v.effort } : {}),
+    ...(typeof v.model === 'string' && MODEL_ID.test(v.model) ? { model: v.model } : {}),
     ...(typeof v.started === 'string' ? { started: v.started } : {}),
     ...(typeof v.run === 'string' && v.run !== '' ? { run: v.run } : {}),
     ...(typeof v.pid === 'number' && Number.isInteger(v.pid) && v.pid > 0 ? { pid: v.pid } : {}),
@@ -629,6 +645,56 @@ export function effortProblem(
   return `${name} takes ${listed}: ${effort}`;
 }
 
+/** Why `model` is not a model's ID at all: never an option or a sentence (V47). */
+export const modelWordProblem = (model: unknown): string =>
+  `a model is its ID, such as sonnet: ${JSON.stringify(model)}`;
+
+/**
+ * Why the agent `name` cannot start on `model` (V47), or null: it must be one of the `models` it
+ * lists, and those must be readable.
+ */
+export function modelProblem(
+  model: string,
+  name: string,
+  models: readonly AgentModel[] | null | undefined,
+): string | null {
+  if (!models) return `Symbiote cannot read ${name}'s models: start it on its default`;
+  if (models.some((m) => m.id === model)) return null;
+  return `${name} lists no model ${model}: pick one it lists`;
+}
+
+/**
+ * Why the agent `name` cannot start at `effort` on `model` (V47), or null: the model's own levels
+ * when the agent lists it — none for a model that takes none —, else `fallback`, its default
+ * model's.
+ */
+export function effortOnProblem(
+  effort: string,
+  name: string,
+  models: readonly AgentModel[] | null | undefined,
+  model: string | undefined,
+  fallback: AgentEfforts | null,
+): string | null {
+  const listed = model ? models?.find((m) => m.id === model) : undefined;
+  if (listed && !listed.efforts)
+    return `${listed.name} takes no effort level: start it at its default`;
+  return effortProblem(effort, listed?.name ?? name, (listed?.efforts ?? fallback)?.levels);
+}
+
+/**
+ * The levels an agent takes on `model` (V47): the model's own when the agent lists it (none for a
+ * model that takes none), else `fallback`, its default model's (Claude Code's `--help`).
+ */
+export function levelsOn(
+  models: readonly AgentModel[] | null | undefined,
+  model: string | undefined,
+  fallback: AgentEfforts | null,
+): AgentEfforts | null {
+  const listed = model ? models?.find((m) => m.id === model) : undefined;
+  if (!listed) return fallback;
+  return listed.efforts ?? null;
+}
+
 /**
  * The levels `claude --help` lists for `--effort` (V30b), in its order: the parenthesis in that
  * option's description, which runs until the next option. Null when there is no such option, or
@@ -646,6 +712,111 @@ export function parseEffortLevels(help: string): string[] | null {
   if (!list) return null;
   const levels = list.split(',').map((level) => level.trim());
   return levels.every((level) => EFFORT_LEVEL.test(level)) ? levels : null;
+}
+
+/**
+ * Claude Code's models from its answer to `initialize` (V47): the `models` of its
+ * `control_response`, as its SDK's `supportedModels()` reads them — each one's `value` (what
+ * `--model` takes), `displayName`, `description` and `supportedEffortLevels`. Its own "default"
+ * entry is left out: it is the account's recommended model, not the person's setting (V47 spike,
+ * decision 337). Null when there is no such answer or no model in it; IDs that are not `MODEL_ID`s
+ * and levels that are not words are left out.
+ */
+export function parseClaudeModels(stdout: string): AgentModel[] | null {
+  for (const line of stdout.split('\n')) {
+    let value: unknown;
+    try {
+      value = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const v = (value ?? {}) as { type?: unknown; response?: { response?: { models?: unknown } } };
+    if (v.type !== 'control_response') continue;
+    const listed = v.response?.response?.models;
+    if (!Array.isArray(listed)) return null;
+    const models = (listed as Record<string, unknown>[])
+      .map((m): AgentModel | null => {
+        const id = typeof m?.value === 'string' ? m.value : '';
+        if (id === 'default' || !MODEL_ID.test(id)) return null;
+        const name = typeof m.displayName === 'string' && m.displayName !== '' ? m.displayName : id;
+        const description =
+          typeof m.description === 'string' && m.description !== '' ? m.description : undefined;
+        const levels = (
+          Array.isArray(m.supportedEffortLevels) ? m.supportedEffortLevels : []
+        ).filter((level): level is string => typeof level === 'string' && EFFORT_LEVEL.test(level));
+        return {
+          id,
+          name,
+          ...(description ? { description } : {}),
+          ...(levels.length > 0 ? { efforts: { levels } } : {}),
+        };
+      })
+      .filter((m): m is AgentModel => m !== null);
+    return models.length > 0 ? models : null;
+  }
+  return null;
+}
+
+/** How Claude Code is asked for its models (V47): its SDK's handshake, with no turn after it. */
+const MODEL_ARGS = [
+  '-p',
+  '--input-format',
+  'stream-json',
+  '--output-format',
+  'stream-json',
+  '--verbose',
+  // Nothing written: no transcript for a session that never takes a turn.
+  '--no-session-persistence',
+  // Without the person's hooks, plugins and MCP servers; settings, login and models as ever.
+  '--safe-mode',
+  '--strict-mcp-config',
+  '--tools',
+  '',
+];
+const INITIALIZE = `${JSON.stringify({
+  type: 'control_request',
+  request_id: 'symbiote-models',
+  request: { subtype: 'initialize' },
+})}\n`;
+
+/** A list of models kept this long is read again, in the background (decision 340: a day). */
+export const MODELS_KEPT_MS = 24 * 60 * 60_000;
+
+/** Where Claude Code at `command` keeps its models in Symbiote's cache (V47), for every view. */
+export const claudeModelsFile = (cacheDir: string, command: string): string =>
+  join(
+    cacheDir,
+    'agents',
+    `claude-models-${createHash('sha256').update(command).digest('hex').slice(0, 12)}.json`,
+  );
+
+/** Models kept in `file` and when they were read; null when there are none it can trust. */
+function readKeptModels(file: string): { at: number; models: AgentModel[] } | null {
+  try {
+    const v = JSON.parse(readFileSync(file, 'utf8')) as { read?: unknown; models?: unknown };
+    const at = typeof v.read === 'string' ? Date.parse(v.read) : NaN;
+    // Read back as Claude Code's own answer would be: what it could not pass stays out.
+    const models = parseClaudeModels(
+      JSON.stringify({
+        type: 'control_response',
+        response: {
+          response: {
+            models: (Array.isArray(v.models) ? (v.models as Partial<AgentModel>[]) : []).map(
+              (m) => ({
+                value: m?.id,
+                displayName: m?.name,
+                description: m?.description,
+                supportedEffortLevels: m?.efforts?.levels,
+              }),
+            ),
+          },
+        },
+      }),
+    );
+    return Number.isFinite(at) && models ? { at, models } : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -802,6 +973,8 @@ export interface ClaudeCode {
     settings?: string;
     /** Its effort level (V30b, `--effort`): the session keeps it, through a resume too. */
     effort?: string;
+    /** Its model (V47, `--model`), over the project's: the session keeps it, as its level. */
+    model?: string;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
   /**
    * Starts a page's agent as a background session in `cwd`: Scout (V35, decision 236), read tools
@@ -818,6 +991,8 @@ export interface ClaudeCode {
     permissionMode: 'dontAsk' | 'default';
     /** Its effort level (`--effort`), kept as a workspace's is. */
     effort?: string;
+    /** Its model (V47, `--model`), over the project's. */
+    model?: string;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Its sessions, finished ones included; null when it cannot list them. */
   sessions(): Promise<AgentSession[] | null>;
@@ -839,25 +1014,80 @@ export interface ClaudeCode {
   account(): Promise<string | undefined>;
   /** The effort levels its `--help` lists (V30b); null when it lists none Symbiote can read. */
   efforts(): Promise<string[] | null>;
+  /**
+   * The models it lists (V47), in its order, from its answer to `initialize`; null when Symbiote
+   * has none and cannot read them.
+   */
+  models(): Promise<AgentModel[] | null>;
 }
 
 /**
  * Claude Code at `command`. Sessions are asked for at most every 2 s (`claude agents --json`
  * takes 150 ms), the account every minute, with `plan`, its profile's, when given; its effort
- * levels once (`--help`, 70–90 ms).
+ * levels once (`--help`, 70–90 ms). Its models (1.2 s to read, V47 spike) are kept in
+ * `modelsFile` for every view on the machine, and read again in the background once a day
+ * (decision 340); a use waits for the read only when none is kept.
  */
 export function claudeCode(
   command: string,
   {
     run = runProgram,
+    runInput = runWithInput,
     cwd,
     model,
     plan,
-  }: { run?: Run; cwd: string; model?: string; plan?: () => Promise<string | undefined> },
+    modelsFile,
+    now = Date.now,
+  }: {
+    run?: Run;
+    runInput?: RunWithInput;
+    cwd: string;
+    /** The project's model (`agent.model`), for a start that picks none. */
+    model?: string;
+    plan?: () => Promise<string | undefined>;
+    modelsFile?: string;
+    now?: () => number;
+  },
 ): ClaudeCode {
   let sessions: { at: number; list: Promise<AgentSession[] | null> } | null = null;
   let account: { at: number; text: Promise<string | undefined> } | null = null;
   let efforts: Promise<string[] | null> | null = null;
+  let kept: { at: number; models: AgentModel[] } | null = null;
+  let reading: Promise<AgentModel[] | null> | null = null;
+  /** Asks Claude Code, one read at a time; keeps what it answers. A failure keeps the old list. */
+  const readModels = () => {
+    reading ??= runInput(command, MODEL_ARGS, { cwd, input: INITIALIZE, timeoutMs: 20_000 })
+      .then((result) => parseClaudeModels(result.stdout))
+      .catch(() => null)
+      .then(async (models) => {
+        if (models) {
+          kept = { at: now(), models };
+          if (modelsFile) {
+            const text = JSON.stringify(
+              {
+                about: `Claude Code's models (${command}), as it lists them: Symbiote reads them again once a day (V47).`,
+                read: new Date(kept.at).toISOString(),
+                models,
+              },
+              null,
+              2,
+            );
+            await mkdir(dirname(modelsFile), { recursive: true })
+              .then(() => writeFile(`${modelsFile}.${process.pid}.tmp`, `${text}\n`))
+              .then(() => rename(`${modelsFile}.${process.pid}.tmp`, modelsFile))
+              .catch(() => undefined);
+          }
+        }
+        reading = null;
+        return models ?? kept?.models ?? null;
+      });
+    return reading;
+  };
+  const fresh = (list: typeof kept) => list !== null && now() - list.at < MODELS_KEPT_MS;
+  const choose = (...args: (string | undefined)[]) => {
+    const picked = args.find((value) => value !== undefined);
+    return picked ? ['--model', picked] : [];
+  };
   return {
     command,
     efforts() {
@@ -865,6 +1095,16 @@ export function claudeCode(
         .then((result) => (result.code === 0 ? parseEffortLevels(result.stdout) : null))
         .catch(() => null);
       return efforts;
+    },
+    models() {
+      // Another view may have read them since: the file first, when the list in hand is old.
+      if (!fresh(kept) && modelsFile) {
+        const onDisk = readKeptModels(modelsFile);
+        if (onDisk && (!kept || onDisk.at > kept.at)) kept = onDisk;
+      }
+      if (!kept) return readModels();
+      if (!fresh(kept)) void readModels();
+      return Promise.resolve(kept.models);
     },
     async start(request) {
       const args = [
@@ -877,7 +1117,7 @@ export function claudeCode(
         ...(request.permissionMode === 'default'
           ? []
           : ['--permission-mode', request.permissionMode]),
-        ...(model ? ['--model', model] : []),
+        ...choose(request.model, model),
         ...(request.effort ? ['--effort', request.effort] : []),
         request.prompt,
       ];
@@ -901,7 +1141,7 @@ export function claudeCode(
         '--strict-mcp-config',
         '--settings',
         request.settings,
-        ...(model ? ['--model', model] : []),
+        ...choose(request.model, model),
         ...(request.effort ? ['--effort', request.effort] : []),
         request.prompt,
       ];
@@ -984,13 +1224,17 @@ export interface WorkspaceConfig {
   model?: string;
   /** Scout's effort level (`scout.effort`): a word; absent, each agent's own. */
   scoutEffort?: string;
+  /** Scout's and Scribe's models (`scout.model`, `scribe.model`, V47): IDs; absent, the default. */
+  scoutModel?: string;
+  scribeModel?: string;
 }
 
 /**
  * `features.branchPrefixes` sets a kind's prefix (V24), each kind its own by default (`fix/`);
  * `features.branchPrefix`, from before V24, sets the Feature's unless `branchPrefixes` does.
  * `agent.kind` names the agent offered first (V20a); `agent.permissionMode` and `agent.model`
- * are Claude Code's. `scout.effort` is the level Scout's conversations start at.
+ * are Claude Code's. `scout.effort` is the level Scout's conversations start at; `scout.model`
+ * and `scribe.model` the models Scout's and Scribe's start on (V47).
  */
 export function readWorkspaceConfig(root: string): WorkspaceConfig {
   const branchPrefixes = Object.fromEntries(WORK_KINDS.map((k) => [k, `${k}/`])) as Record<
@@ -1012,7 +1256,8 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
     /** The section's name before V25, still read when `workspaces` is not there. */
     features?: Section;
     agent?: unknown;
-    scout?: { effort?: unknown } | null;
+    scout?: { effort?: unknown; model?: unknown } | null;
+    scribe?: { model?: unknown } | null;
   };
   const section = v.workspaces ?? v.features;
   if (typeof section?.branchPrefix === 'string') {
@@ -1040,6 +1285,12 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
   if (typeof agent.model === 'string' && agent.model !== '') config.model = agent.model;
   const effort = v.scout?.effort;
   if (typeof effort === 'string' && EFFORT_LEVEL.test(effort)) config.scoutEffort = effort;
+  const id = (value: unknown) =>
+    typeof value === 'string' && MODEL_ID.test(value) ? value : undefined;
+  const scoutModel = id(v.scout?.model);
+  if (scoutModel) config.scoutModel = scoutModel;
+  const scribeModel = id(v.scribe?.model);
+  if (scribeModel) config.scribeModel = scribeModel;
   return config;
 }
 
@@ -1511,6 +1762,7 @@ export function workspaces(
           : agentState(workspace, sessions, ahead, real, ended);
     }
     if (workspace.agent?.effort) agent = { ...agent, effort: workspace.agent.effort };
+    if (workspace.agent?.model) agent = { ...agent, model: workspace.agent.model };
     return {
       branch: workspace.branch,
       ...(workspace.kind ? { kind: workspace.kind } : {}),
@@ -1711,15 +1963,47 @@ export function workspaces(
     return levels ? { levels } : null;
   }
 
-  /** A level asked for a start (V30b), checked against what `agent` lists; undefined for none. */
-  async function effortFor(agent: FoundAgent | null, effort: unknown): Promise<string | undefined> {
+  /** The models `agent` lists (V47); null when Symbiote cannot read them. */
+  async function modelsOf(agent: FoundAgent): Promise<AgentModels | null> {
+    if (agent.kind === 'codex') return agent.codex.models();
+    const models = await agent.claude.models();
+    return models ? { models } : null;
+  }
+
+  /** A model asked for a start (V47), checked against what `agent` lists; undefined for none. */
+  async function modelFor(agent: FoundAgent | null, model: unknown): Promise<string | undefined> {
+    if (model === undefined) return undefined;
+    if (typeof model !== 'string' || !MODEL_ID.test(model)) {
+      throw new WorkspaceRefused(modelWordProblem(model), 400);
+    }
+    if (!agent) throw new WorkspaceRefused('a model needs an agent to start', 400);
+    const problem = modelProblem(model, AGENT_NAMES[agent.kind], (await modelsOf(agent))?.models);
+    if (problem) throw new WorkspaceRefused(problem, 400);
+    return model;
+  }
+
+  /**
+   * A level asked for a start (V30b), checked against what `agent` lists on the model it starts
+   * on (V47): the one picked, else the project's for Claude Code; undefined for none.
+   */
+  async function effortFor(
+    agent: FoundAgent | null,
+    effort: unknown,
+    model: string | undefined,
+  ): Promise<string | undefined> {
     if (effort === undefined) return undefined;
     if (typeof effort !== 'string' || !EFFORT_LEVEL.test(effort)) {
       throw new WorkspaceRefused(effortWordProblem(effort), 400);
     }
     if (!agent) throw new WorkspaceRefused('an effort level needs an agent to start', 400);
-    const { levels } = (await effortsOf(agent)) ?? {};
-    const problem = effortProblem(effort, AGENT_NAMES[agent.kind], levels);
+    const on = model ?? (agent.kind === 'claude' ? config().model : undefined);
+    const problem = effortOnProblem(
+      effort,
+      AGENT_NAMES[agent.kind],
+      on ? (await modelsOf(agent))?.models : undefined,
+      on,
+      await effortsOf(agent),
+    );
     if (problem) throw new WorkspaceRefused(problem, 400);
     return effort;
   }
@@ -1730,15 +2014,15 @@ export function workspaces(
     workspace: WorkspaceFile,
     agent: FoundAgent | null,
     permissionMode: PermissionMode,
-    effort: string | undefined,
+    how: StartedAs,
   ): Promise<string> {
     const prompt = await promptOf(where, workspace);
-    const level = effort ? { effort } : {};
+    const level = startedAs(how);
     if (!agent) {
       workspace.agent = null;
     } else if (agent.kind === 'codex') {
       workspace.agent = {
-        ...(await launchCodex(where, workspace, agent.codex, prompt, effort)),
+        ...(await launchCodex(where, workspace, agent.codex, prompt, level)),
         ...level,
       };
       await save(where, workspace);
@@ -1773,9 +2057,9 @@ export function workspaces(
     workspace: WorkspaceFile,
     agent: Codex,
     prompt: string,
-    effort: string | undefined,
+    how: StartedAs,
   ): Promise<WorkspaceAgentRecord> {
-    const level = effort ? { effort } : {};
+    const level = startedAs(how);
     const earlier = [
       ...(workspace.agent?.threads ?? []),
       ...(workspace.agent?.thread ? [workspace.agent.thread] : []),
@@ -1960,8 +2244,7 @@ export function workspaces(
     }
     const run = randomUUID();
     const startedAt = now().toISOString();
-    const effort = workspace.agent?.effort;
-    const level = effort ? { effort } : {};
+    const level = startedAs(workspace.agent ?? {});
     const resumed = await agent.resume({
       cwd: workspace.worktree,
       thread: threadPath(symbioteFolder(where), workspace.branch),
@@ -2077,14 +2360,23 @@ export function workspaces(
     async options() {
       const [refs, claudeCode, codexAgent] = await Promise.all([listRefs(repo), claude(), codex()]);
       const where = await place();
-      const { branchPrefixes, worktrees, permissionMode, agent: first } = config();
+      const {
+        branchPrefixes,
+        worktrees,
+        permissionMode,
+        agent: first,
+        model: projectModel,
+      } = config();
       const apiKey = Boolean(env.ANTHROPIC_API_KEY);
       const agents: AgentOption[] = [];
       if (claudeCode) {
-        const [account, efforts] = await Promise.all([
+        const [account, levels, models] = await Promise.all([
           claudeCode.account(),
           effortsOf({ kind: 'claude', claude: claudeCode }),
+          claudeCode.models(),
         ]);
+        // Its levels on the model it starts on without a pick: the project's, else its own.
+        const efforts = levelsOn(models, projectModel, levels);
         agents.push({
           kind: 'claude',
           command: claudeCode.command,
@@ -2092,18 +2384,25 @@ export function workspaces(
           ...(apiKey ? { apiKey } : {}),
           permissionMode,
           ...(efforts ? { efforts } : {}),
+          ...(models ? { models } : {}),
+          ...(projectModel ? { defaultModel: { id: projectModel, by: 'project' as const } } : {}),
         });
       }
       if (codexAgent) {
-        const [account, efforts] = await Promise.all([
+        const [account, efforts, listed] = await Promise.all([
           codexAgent.account(),
           effortsOf({ kind: 'codex', codex: codexAgent }),
+          codexAgent.models(),
         ]);
         agents.push({
           kind: 'codex',
           command: codexAgent.command,
           ...(account ? { account } : {}),
           ...(efforts ? { efforts } : {}),
+          ...(listed ? { models: listed.models } : {}),
+          ...(listed?.default
+            ? { defaultModel: { id: listed.default, by: 'agent' as const } }
+            : {}),
         });
       }
       // The default first: `agent.kind`, else Claude Code, else Codex (decision 132).
@@ -2163,7 +2462,8 @@ export function workspaces(
           400,
         );
       }
-      const effort = await effortFor(agent, request.effort);
+      const model = await modelFor(agent, request.model);
+      const effort = await effortFor(agent, request.effort, model);
       const documents = await uploadsOf(request.documents);
       const refs = await listRefs(repo);
       const problem = await branchNameProblem(repo, request.branch, refs);
@@ -2228,7 +2528,7 @@ export function workspaces(
       await prepareSymbioteFolder(where, { text: readPrompts(root).text.reviews });
       // After the folder's .gitignore: the documents are never seen by git (V40).
       if (documents.length > 0) workspace.documents = await placeDocuments(papers, documents);
-      const prompt = await launch(where, workspace, agent, permissionMode, effort);
+      const prompt = await launch(where, workspace, agent, permissionMode, { effort, model });
       return started(where, workspace, prompt);
     },
 
@@ -2250,8 +2550,8 @@ export function workspaces(
         throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
       }
       const mode = workspace.agent?.permissionMode ?? config().permissionMode;
-      // The level it was started at: the person chose it for this work (V30b).
-      const prompt = await launch(where, workspace, agent, mode, workspace.agent?.effort);
+      // The level and the model it was started on: the person chose them for this work (V30b, V47).
+      const prompt = await launch(where, workspace, agent, mode, startedAs(workspace.agent ?? {}));
       return started(where, workspace, prompt);
     },
 

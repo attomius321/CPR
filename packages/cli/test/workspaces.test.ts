@@ -17,6 +17,7 @@ import {
   commitFolders,
   listRefs,
   openRepo,
+  type AgentModel,
   type WorkspaceRequest,
   type ThreadEntry,
   type WorkKind,
@@ -35,6 +36,7 @@ import {
   workspaces,
   WorkspaceRefused,
   parseAccount,
+  parseClaudeModels,
   parseEffortLevels,
   parseSessions,
   readWorkspace,
@@ -49,6 +51,7 @@ import {
   type WorkspaceFile,
   type Run,
 } from '../src/workspaces.js';
+import type { RunWithInput } from '../src/merge-agent.js';
 import { reviewPlace } from '../src/reviews.js';
 import { DEFAULT_PROMPTS } from '../src/prompts.js';
 import { shellOf, type Terminals } from '../src/terminal.js';
@@ -98,6 +101,35 @@ const fresh = () => {
 const NOW = new Date('2026-10-15T09:00:00Z');
 /** Claude Code 2.1.306's levels, as its `--help` lists them (V30 spike). */
 const CLAUDE_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+/**
+ * Some of Claude Code 2.1.310's models, as its `initialize` answer lists them (V47 spike): Haiku
+ * 4.5 takes no level, Opus 4.6 no `xhigh`.
+ */
+const CLAUDE_MODELS: AgentModel[] = [
+  {
+    id: 'opus',
+    name: 'Opus 5.5',
+    description: 'For complex work and everyday tasks',
+    efforts: { levels: [...CLAUDE_LEVELS] },
+  },
+  {
+    id: 'sonnet',
+    name: 'Sonnet 5.5',
+    description: 'Most efficient for simpler tasks',
+    efforts: { levels: [...CLAUDE_LEVELS] },
+  },
+  {
+    id: 'claude-haiku-4-5-20251001',
+    name: 'Haiku 4.5',
+    description: 'Fastest for quick answers',
+  },
+  {
+    id: 'claude-opus-4-6',
+    name: 'Opus 4.6',
+    description: 'Best for everyday, complex tasks',
+    efforts: { levels: ['low', 'medium', 'high', 'max'] },
+  },
+];
 /** Where Symbiote's hook would be installed. */
 const HOOK = '/opt/symbiote/dist/agent-hook.js';
 
@@ -677,6 +709,7 @@ describe('workspaces', () => {
       remove,
       account: () => Promise.resolve('your Pro subscription'),
       efforts: () => Promise.resolve([...CLAUDE_LEVELS]),
+      models: () => Promise.resolve(structuredClone(CLAUDE_MODELS)),
     };
     return { claude, listed, start, sessions, stop, resume, remove };
   }
@@ -769,6 +802,8 @@ describe('workspaces', () => {
           permissionMode: 'default',
           // The levels it lists; its own default is not named (decision 210).
           efforts: { levels: [...CLAUDE_LEVELS] },
+          // Its models (V47); the one it runs on without a pick is not named (decision 337).
+          models: CLAUDE_MODELS,
         },
       ],
       maxBrief: 20000,
@@ -1267,6 +1302,109 @@ describe('workspaces', () => {
     );
     expect(repo.git('branch', '--list', 'feature/*')).toBe('');
     expect(launched).not.toHaveBeenCalled();
+  });
+
+  it('starts Claude Code on the model picked, recorded; started again on it; none without one (V47)', async () => {
+    const { repo } = fresh();
+    const { claude, start } = fakeClaude();
+    const s = await service(repo, claude);
+    const { workspace } = await s.start({
+      brief: 'Do it',
+      branch: 'feature/x',
+      planFirst: true,
+      model: 'sonnet',
+      effort: 'high',
+    });
+    expect(start).toHaveBeenLastCalledWith(
+      expect.objectContaining({ model: 'sonnet', effort: 'high' }),
+    );
+    expect(workspace.agent).toEqual({
+      state: 'working',
+      kind: 'claude',
+      id: 's1',
+      effort: 'high',
+      model: 'sonnet',
+    });
+    const saved = JSON.parse(
+      readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'x.json'), 'utf8'),
+    ) as WorkspaceFile;
+    expect(saved.agent).toMatchObject({ kind: 'claude', model: 'sonnet' });
+    await s.startAgent('feature/x');
+    expect(start).toHaveBeenLastCalledWith(expect.objectContaining({ model: 'sonnet' }));
+    // No model: none given, none recorded; a record from before V47 reads without one.
+    const other = await s.start({ brief: 'Do it', branch: 'feature/y', planFirst: true });
+    expect(start.mock.lastCall?.[0]).not.toHaveProperty('model');
+    expect(other.workspace.agent).not.toHaveProperty('model');
+    // Read back only as a model's ID.
+    const path = join(tempDir(), 'old.json');
+    folders.push(dirname(path));
+    const kept = record({ agent: { kind: 'claude', permissionMode: 'default', model: '--yolo' } });
+    writeFileSync(path, serializeWorkspace(kept));
+    expect((await readWorkspace(path))?.agent).not.toHaveProperty('model');
+  });
+
+  it("checks a model against the agent's list, and a level against the model's (V47)", async () => {
+    const { repo } = fresh();
+    const { claude, start: launched } = fakeClaude();
+    const s = await service(repo, claude);
+    const refused = async (over: Partial<WorkspaceRequest>, words: RegExp) => {
+      const error = (await s
+        .start({
+          brief: 'Do it',
+          branch: 'feature/x',
+          planFirst: true,
+          ...over,
+        })
+        .catch((e: unknown) => e)) as WorkspaceRefused;
+      expect(error).toBeInstanceOf(WorkspaceRefused);
+      expect(error.status).toBe(400);
+      expect(error.message).toMatch(words);
+    };
+    await refused({ model: 'gpt-6-luna' }, /Claude Code lists no model gpt-6-luna/);
+    await refused({ model: '--dangerously-skip-permissions' }, /a model is its ID/);
+    await refused({ model: 3 as unknown as string }, /a model is its ID/);
+    // The model's levels, not --help's: Haiku 4.5 takes none, Opus 4.6 no xhigh.
+    await refused(
+      { model: 'claude-haiku-4-5-20251001', effort: 'low' },
+      /Haiku 4.5 takes no effort level/,
+    );
+    await refused(
+      { model: 'claude-opus-4-6', effort: 'xhigh' },
+      /Opus 4.6 takes low, medium, high or max: xhigh/,
+    );
+    claude.models = () => Promise.resolve(null);
+    await refused(
+      { model: 'sonnet' },
+      /Symbiote cannot read Claude Code's models: start it on its default/,
+    );
+    expect(repo.git('branch', '--list', 'feature/*')).toBe('');
+    expect(launched).not.toHaveBeenCalled();
+  });
+
+  it("names the project's model as the default, and offers its levels (V47)", async () => {
+    const { repo } = fresh();
+    mkdirSync(join(repo.root, 'symbiote'), { recursive: true });
+    writeFileSync(
+      join(repo.root, 'symbiote', 'config.json'),
+      JSON.stringify({ agent: { model: 'claude-opus-4-6' } }),
+    );
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    expect((await s.options()).agents[0]).toMatchObject({
+      defaultModel: { id: 'claude-opus-4-6', by: 'project' },
+      efforts: { levels: ['low', 'medium', 'high', 'max'] },
+    });
+    // Its levels decide when none is picked; a pick decides otherwise.
+    await expect(
+      s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true, effort: 'xhigh' }),
+    ).rejects.toMatchObject({ status: 400 });
+    await s.start({
+      brief: 'Do it',
+      branch: 'feature/y',
+      planFirst: true,
+      model: 'opus',
+      effort: 'xhigh',
+    });
   });
 
   it('keeps the workspace when the agent does not start, and starts it again later', async () => {
@@ -2277,6 +2415,7 @@ describe('workspaces', () => {
       server: () => Promise.resolve(server ? codexServer(server.address, { waitMs: 500 }) : null),
       efforts: () =>
         server ? codexServer(server.address).efforts('/repo') : Promise.resolve(null),
+      models: () => (server ? codexServer(server.address).models('/repo') : Promise.resolve(null)),
     };
     /** The run ends, as the runner records it. */
     const end = (pid: number) => live.delete(pid);
@@ -2732,6 +2871,55 @@ describe('workspaces', () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
+  it('starts Codex on the model picked: on its thread, or by exec at every run (V47)', async () => {
+    const { repo } = fresh();
+    const server = await appServer();
+    const { codex, start, resume } = fakeCodex(undefined, server);
+    const s = await service(repo, null, HOOK, undefined, codex);
+    expect((await s.options()).agents[0]).toMatchObject({
+      kind: 'codex',
+      models: [
+        expect.objectContaining({ id: 'gpt-6-luna', name: 'GPT-6-Luna' }),
+        expect.objectContaining({ id: 'gpt-5.6-terra' }),
+        expect.objectContaining({ id: 'gpt-5.6-luna' }),
+      ],
+      // Its configured model, named (decision 337).
+      defaultModel: { id: 'gpt-6-luna', by: 'agent' },
+    });
+    const { workspace } = await s.start({
+      brief: 'Do it',
+      branch: 'feature/one',
+      planFirst: true,
+      model: 'gpt-5.6-terra',
+      effort: 'ultra',
+    });
+    expect(server.calls.find((c) => c.method === 'thread/start')?.params).toMatchObject({
+      model: 'gpt-5.6-terra',
+    });
+    expect(workspace.agent).toMatchObject({ kind: 'codex', model: 'gpt-5.6-terra' });
+    // `ultra` is that model's alone.
+    await expect(
+      s.start({
+        brief: 'Do it',
+        branch: 'feature/two',
+        planFirst: true,
+        model: 'gpt-5.6-luna',
+        effort: 'ultra',
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    // The daemon gone: started again by exec on the recorded model, and given it at each reply.
+    await s.stopAgent('feature/one');
+    codex.server = () => Promise.resolve(null);
+    await s.startAgent('feature/one');
+    expect(start).toHaveBeenLastCalledWith(expect.objectContaining({ model: 'gpt-5.6-terra' }));
+    recordRun(repo, 'feature/one', [
+      { kind: 'report', text: 'Plan' },
+      { kind: 'end', reason: 'completed' },
+    ]);
+    await s.reply({ branch: 'feature/one', text: 'Go' });
+    expect(resume).toHaveBeenLastCalledWith(expect.objectContaining({ model: 'gpt-5.6-terra' }));
+  });
+
   it('keeps a Codex level through exec: started again without its daemon, and at every reply (V30b)', async () => {
     const { repo } = fresh();
     const server = await appServer();
@@ -2896,6 +3084,121 @@ describe('claudeCode', () => {
     ]);
   });
 
+  it("starts on the model picked, else the project's, with --model (V47)", async () => {
+    const calls: string[][] = [];
+    const run: Run = (_command, args) => {
+      calls.push(args);
+      return Promise.resolve({ code: 0, stdout: '', stderr: '' });
+    };
+    const request = {
+      cwd: '/w',
+      name: 'feature/x',
+      prompt: 'Do it',
+      permissionMode: 'default' as const,
+      addDir: '/repo/symbiote',
+    };
+    const page = {
+      cwd: '/repo',
+      name: 'Scout',
+      prompt: 'Q',
+      settings: '/s.json',
+      tools: ['Read'],
+      permissionMode: 'dontAsk' as const,
+    };
+    const plain = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
+    await plain.start({ ...request, model: 'sonnet' });
+    await plain.startPageAgent({ ...page, model: 'claude-opus-4-6' });
+    const project = claudeCode('/usr/bin/claude', { run, cwd: '/repo', model: 'opus' });
+    await project.start(request);
+    await project.start({ ...request, model: 'sonnet' });
+    expect(calls.map((args) => args.slice(-3))).toEqual([
+      ['--model', 'sonnet', 'Do it'],
+      ['--model', 'claude-opus-4-6', 'Q'],
+      ['--model', 'opus', 'Do it'],
+      ['--model', 'sonnet', 'Do it'],
+    ]);
+    expect(calls.every((args) => args.filter((a) => a === '--model').length === 1)).toBe(true);
+  });
+
+  it('reads its models from its initialize answer, kept on disk a day, read again in the background (V47)', async () => {
+    const dir = tempDir();
+    folders.push(dir);
+    const file = join(dir, 'agents', 'claude-models.json');
+    let clock = Date.parse('2026-10-24T12:00:00Z');
+    const asked: { args: string[]; input: string; cwd: string }[] = [];
+    let answer = INITIALIZE_ANSWER;
+    let release: () => void = () => {};
+    let gate: Promise<void> | null = null;
+    const runInput: RunWithInput = async (_command, args, { cwd, input }) => {
+      asked.push({ args, input, cwd });
+      if (gate) await gate;
+      return { code: 0, stdout: answer, stderr: '' };
+    };
+    const make = () =>
+      claudeCode('/usr/bin/claude', { cwd: '/repo', runInput, modelsFile: file, now: () => clock });
+    // None kept: read, and waited for.
+    const first = await make().models();
+    expect(first?.map((m) => m.id)).toEqual(['opus', 'sonnet', 'claude-haiku-4-5-20251001']);
+    expect(asked).toHaveLength(1);
+    expect(asked[0]?.args).toEqual([
+      '-p',
+      '--input-format',
+      'stream-json',
+      '--output-format',
+      'stream-json',
+      '--verbose',
+      '--no-session-persistence',
+      '--safe-mode',
+      '--strict-mcp-config',
+      '--tools',
+      '',
+    ]);
+    expect(asked[0]?.cwd).toBe('/repo');
+    expect(JSON.parse(asked[0]?.input ?? '')).toMatchObject({
+      type: 'control_request',
+      request: { subtype: 'initialize' },
+    });
+    // Kept for every view on the machine: another one reads the file, not Claude Code.
+    clock += 23 * 60 * 60_000;
+    expect((await make().models())?.length).toBe(3);
+    expect(asked).toHaveLength(1);
+    // A day old: the kept list answers at once, and is read again behind it.
+    clock += 60 * 60_000;
+    answer = INITIALIZE_ANSWER.replace('"value":"sonnet"', '"value":"fable"');
+    gate = new Promise((resolve) => (release = resolve));
+    const later = make();
+    expect((await later.models())?.map((m) => m.id)).toContain('sonnet');
+    expect(asked).toHaveLength(2);
+    // One read at a time.
+    await later.models();
+    expect(asked).toHaveLength(2);
+    release();
+    gate = null;
+    await vi.waitFor(async () =>
+      expect((await later.models())?.map((m) => m.id)).toContain('fable'),
+    );
+    expect((await make().models())?.map((m) => m.id)).toContain('fable');
+    // A failed read keeps the old list, and is tried again at the next use.
+    clock += 25 * 60 * 60_000;
+    answer = 'Unknown option --safe-mode';
+    const failing = make();
+    expect((await failing.models())?.map((m) => m.id)).toContain('fable');
+    await vi.waitFor(() => expect(asked).toHaveLength(3));
+    // Once that read has ended, the next use asks again.
+    await vi.waitFor(async () => {
+      expect((await failing.models())?.map((m) => m.id)).toContain('fable');
+      expect(asked).toHaveLength(4);
+    });
+  });
+
+  it('reads its models without a file to keep them in, and none it cannot read (V47)', async () => {
+    let answer = INITIALIZE_ANSWER;
+    const runInput: RunWithInput = () => Promise.resolve({ code: 0, stdout: answer, stderr: '' });
+    expect((await claudeCode('/c', { cwd: '/r', runInput }).models())?.length).toBe(3);
+    answer = '';
+    expect(await claudeCode('/c', { cwd: '/r', runInput }).models()).toBeNull();
+  });
+
   it('reads its effort levels from its --help once (V30b)', async () => {
     const asked: string[][] = [];
     const run: Run = (_command, args) => {
@@ -2936,6 +3239,102 @@ describe('claudeCode', () => {
       plan: () => Promise.resolve(undefined),
     });
     expect(await noPlan.account()).toBe('your Pro subscription');
+  });
+});
+
+/**
+ * Claude Code 2.1.310's answer to `initialize` (V47 spike), cut to three of its models after its
+ * own "Default (recommended)": its hooks' lines first, then the answer.
+ */
+const INITIALIZE_ANSWER = [
+  { type: 'system', subtype: 'hook_started', hook_name: 'SessionStart:startup' },
+  {
+    type: 'control_response',
+    response: {
+      subtype: 'success',
+      request_id: 'symbiote-models',
+      response: {
+        commands: [],
+        models: [
+          {
+            value: 'default',
+            resolvedModel: 'claude-opus-5-5',
+            displayName: 'Default (recommended)',
+            description: 'Opus 5.5 · Best for everyday, complex tasks',
+            supportsEffort: true,
+            supportedEffortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
+          },
+          {
+            value: 'opus',
+            resolvedModel: 'claude-opus-5-5',
+            displayName: 'Opus 5.5',
+            description: 'For complex work and everyday tasks',
+            supportsEffort: true,
+            supportedEffortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
+          },
+          {
+            value: 'sonnet',
+            resolvedModel: 'claude-sonnet-5-5',
+            displayName: 'Sonnet 5.5',
+            description: 'Most efficient for simpler tasks',
+            supportsEffort: true,
+            supportedEffortLevels: ['low', 'medium', 'high', 'xhigh', 'max'],
+          },
+          {
+            value: 'claude-haiku-4-5-20251001',
+            resolvedModel: 'claude-haiku-4-5-20251001',
+            displayName: 'Haiku 4.5',
+            description: 'Fastest for quick answers',
+            supportsThinkingOff: true,
+          },
+        ],
+        claude_code_version: '2.1.310',
+      },
+    },
+  },
+]
+  .map((line) => JSON.stringify(line))
+  .join('\n');
+
+describe('parseClaudeModels (V47)', () => {
+  it("reads each model's ID, name, description and levels, without its own default", () => {
+    expect(parseClaudeModels(INITIALIZE_ANSWER)).toEqual([
+      {
+        id: 'opus',
+        name: 'Opus 5.5',
+        description: 'For complex work and everyday tasks',
+        efforts: { levels: ['low', 'medium', 'high', 'xhigh', 'max'] },
+      },
+      {
+        id: 'sonnet',
+        name: 'Sonnet 5.5',
+        description: 'Most efficient for simpler tasks',
+        efforts: { levels: ['low', 'medium', 'high', 'xhigh', 'max'] },
+      },
+      {
+        id: 'claude-haiku-4-5-20251001',
+        name: 'Haiku 4.5',
+        description: 'Fastest for quick answers',
+      },
+    ]);
+  });
+
+  it('reads none from an answer without models, and leaves out what it cannot pass', () => {
+    expect(parseClaudeModels('')).toBeNull();
+    expect(parseClaudeModels('not json\n{"type":"result"}')).toBeNull();
+    const answer = (models: unknown) =>
+      JSON.stringify({ type: 'control_response', response: { response: { models } } });
+    expect(parseClaudeModels(answer('none'))).toBeNull();
+    expect(parseClaudeModels(answer([]))).toBeNull();
+    expect(
+      parseClaudeModels(
+        answer([
+          { value: '--yolo', displayName: 'Bad' },
+          { value: 'has space' },
+          { value: 'opus[1m]', supportedEffortLevels: ['low', 'Not a level'] },
+        ]),
+      ),
+    ).toEqual([{ id: 'opus[1m]', name: 'opus[1m]', efforts: { levels: ['low'] } }]);
   });
 });
 

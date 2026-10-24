@@ -210,6 +210,100 @@ describe('codexServer', () => {
     expect(await codex.efforts(WORKTREE)).toEqual({ levels: ['low'], default: 'medium' });
   });
 
+  it('lists its models with their names, descriptions and levels, the configured one its default (V47)', async () => {
+    const server = await serve();
+    const codex = codexServer(server.address);
+    const luna = ['low', 'medium', 'high', 'xhigh', 'max'];
+    // As Codex 0.163 answered here: gpt-6-luna configured, at medium.
+    expect(await codex.models(WORKTREE)).toEqual({
+      models: [
+        {
+          id: 'gpt-6-luna',
+          name: 'GPT-6-Luna',
+          description: 'Fast and affordable model for easier tasks.',
+          efforts: { levels: luna, default: 'medium' },
+        },
+        {
+          id: 'gpt-5.6-terra',
+          name: 'GPT-5.6-Terra',
+          description: 'Older balanced model for straightforward work.',
+          efforts: { levels: [...luna, 'ultra'], default: 'medium' },
+        },
+        {
+          id: 'gpt-5.6-luna',
+          name: 'GPT-5.6-Luna',
+          description: 'Older fast and efficient model.',
+          efforts: { levels: luna, default: 'medium' },
+        },
+      ],
+      default: 'gpt-6-luna',
+    });
+    expect(server.calls.find((c) => c.method === 'config/read')?.params).toEqual({ cwd: WORKTREE });
+    // Every page; a hidden model left out; none configured: the one it marks as its default.
+    server.modelPage = 1;
+    server.models[1] = { ...server.models[1], hidden: true };
+    delete server.config.model;
+    server.models[0] = { ...server.models[0], isDefault: false };
+    server.models[2] = { ...server.models[2], isDefault: true };
+    const listed = await codex.models(WORKTREE);
+    expect(listed?.models.map((m) => m.id)).toEqual(['gpt-6-luna', 'gpt-5.6-luna']);
+    expect(listed?.default).toBe('gpt-5.6-luna');
+    expect(server.calls.filter((c) => c.method === 'model/list').length).toBe(1 + 3);
+  });
+
+  it('lists no model it cannot pass: an ID that is no word, a list with none (V47)', async () => {
+    const server = await serve();
+    const codex = codexServer(server.address);
+    server.models[0] = { ...server.models[0], model: '--yolo', id: '--yolo' };
+    server.models[1] = { ...server.models[1], displayName: undefined, description: '' };
+    server.models[2] = { ...server.models[2], supportedReasoningEfforts: [] };
+    expect(await codex.models(WORKTREE)).toEqual({
+      models: [
+        {
+          id: 'gpt-5.6-terra',
+          name: 'gpt-5.6-terra',
+          efforts: {
+            levels: ['low', 'medium', 'high', 'xhigh', 'max', 'ultra'],
+            default: 'medium',
+          },
+        },
+        {
+          id: 'gpt-5.6-luna',
+          name: 'GPT-5.6-Luna',
+          description: 'Older fast and efficient model.',
+        },
+      ],
+      default: 'gpt-6-luna',
+    });
+    server.models.splice(0, server.models.length);
+    expect(await codex.models(WORKTREE)).toBeNull();
+  });
+
+  it('starts a thread on the model picked: the thread keeps it (V47)', async () => {
+    const server = await serve();
+    await codexServer(server.address).start({
+      cwd: WORKTREE,
+      writable: ROOTS,
+      name: 'feature/csv',
+      prompt: 'Do it',
+      model: 'gpt-5.6-luna',
+    });
+    expect(server.calls.find((c) => c.method === 'thread/start')?.params).toMatchObject({
+      model: 'gpt-5.6-luna',
+    });
+    expect(server.calls.find((c) => c.method === 'turn/start')?.params).not.toHaveProperty('model');
+    // None picked: none given, the configured one runs.
+    await codexServer(server.address).start({
+      cwd: WORKTREE,
+      writable: ROOTS,
+      name: 'feature/two',
+      prompt: 'Do it',
+    });
+    expect(server.calls.filter((c) => c.method === 'thread/start')[1]?.params).not.toHaveProperty(
+      'model',
+    );
+  });
+
   it('names the thread once its prompt is in it; a name refused does not fail the start', async () => {
     const path = socketPath();
     const server = await fakeAppServer(path, { refuse: ['thread/name/set'] });

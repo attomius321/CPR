@@ -155,6 +155,23 @@
   margin: 0 0 8px;
 }
 
+/* An agent's model (V47): its agent's list, as wide as the effort stepper beside it. */
+.settings-model {
+  max-width: 360px;
+  margin-bottom: 8px;
+}
+
+.settings-model select {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.settings-model-note {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
 .settings-editor textarea {
   display: block;
   width: 100%;

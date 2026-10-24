@@ -165,6 +165,7 @@ export function Conversation({ agent: own }: { agent: ConversationAgent }) {
           <p className="scout-about" title={read.checkout}>
             {own.doing} {folderName(read.checkout)}
             {agent ? `, with ${AGENT_NAMES[agent]}` : ''}
+            {conversation?.model ? ` on ${conversation.model}` : ''}
             {conversation?.effort ? ` at ${conversation.effort} effort` : ''}
           </p>
         )}

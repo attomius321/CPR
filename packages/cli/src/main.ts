@@ -34,6 +34,7 @@ import {
   type ChangedLines,
   type Graph,
   type AgentEfforts,
+  type AgentModels,
   type AgentKind,
   type MergeEntry,
   type Severity,
@@ -73,6 +74,7 @@ import { readClaudeProfile, readClaudeUsage, readCodexUsage, usageService } from
 import { codex, findCodex, type Codex } from './codex.js';
 import {
   claudeCode,
+  claudeModelsFile,
   workspaces,
   findClaude,
   readWorkspaceConfig,
@@ -643,7 +645,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   // One Codex for workspaces and usage: one connection to its app server.
   const codexOf = codexFinder(repo.root, ctx.env);
   // One Claude Code for workspaces, Scout (V35) and Scribe (V41): one read of its sessions every 2 s.
-  const claudeOf = agentFinder(repo.root, ctx.env);
+  const claudeOf = agentFinder(repo.root, ctx.env, cacheDir);
   const server = await startViewServer({
     port,
     viewerDir: viewerDir(ctx),
@@ -683,6 +685,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       merges: merger(repo, cacheDir, {
         mergerAgent: mergerFinder(repo.root, ctx.env),
         levels: levelsFinder(claudeOf, codexOf),
+        models: modelsFinder(claudeOf, codexOf),
       }),
       settings: promptSettingsService(repo),
       scout: scout(repo, cacheDir, {
@@ -879,10 +882,14 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
     if (line !== last) ctx.stdout(`${line}\n`);
     last = line;
   };
-  const merges = merger(repo, defaultCacheDir(ctx.env), {
+  const cacheDir = defaultCacheDir(ctx.env);
+  const merges = merger(repo, cacheDir, {
     onChange: print,
     mergerAgent: mergerFinder(repo.root, ctx.env),
-    levels: levelsFinder(agentFinder(repo.root, ctx.env), codexFinder(repo.root, ctx.env)),
+    levels: levelsFinder(
+      agentFinder(repo.root, ctx.env, cacheDir),
+      codexFinder(repo.root, ctx.env),
+    ),
   });
   const done = (entry: MergeEntry | undefined) => (entry?.state === 'landed' ? 0 : 1);
   try {
@@ -937,10 +944,14 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
   }
 }
 
-/** Claude Code for workspaces (V18), found when first needed and looked for again until it is. */
+/**
+ * Claude Code for workspaces (V18), found when first needed and looked for again until it is; its
+ * models kept in Symbiote's cache for every view (V47).
+ */
 function agentFinder(
   root: string,
   env: Readonly<Record<string, string | undefined>>,
+  cacheDir: string,
 ): () => Promise<ClaudeCode | null> {
   let found: ClaudeCode | null = null;
   return async () => {
@@ -951,6 +962,7 @@ function agentFinder(
     found = claudeCode(command, {
       cwd: root,
       ...(model ? { model } : {}),
+      modelsFile: claudeModelsFile(cacheDir, command),
       // The plan the status bar names (V29c), not the one its token kept from login.
       plan: async () => (await readClaudeProfile({ env, home: homedir() })).plan,
     });
@@ -1005,6 +1017,18 @@ function levelsFinder(
     if (kind === 'codex') return (await (await codexOf())?.efforts()) ?? null;
     const levels = (await (await claude())?.efforts()) ?? null;
     return levels ? { levels } : null;
+  };
+}
+
+/** An agent's models (V47), for the merger's in Settings: Claude Code's kept list, Codex's. */
+function modelsFinder(
+  claude: () => Promise<ClaudeCode | null>,
+  codexOf: () => Promise<Codex | null>,
+): (kind: AgentKind) => Promise<AgentModels | null> {
+  return async (kind) => {
+    if (kind === 'codex') return (await (await codexOf())?.models()) ?? null;
+    const models = (await (await claude())?.models()) ?? null;
+    return models ? { models } : null;
   };
 }
 

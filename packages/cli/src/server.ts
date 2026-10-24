@@ -27,6 +27,7 @@ import {
   type RepoStatus,
   type ScoutAsk,
   type ScoutEffortChange,
+  type ScoutModelChange,
   type ScoutTerminalRequest,
   type WorkKind,
 } from '@symbiote/core';
@@ -395,6 +396,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
             answer(res, () => scout.setEffort(change)),
           );
         }
+        // Its model in the project's config (V47), set in Settings.
+        if (url.pathname === '/api/scout/model') {
+          return written(req, res, parseModelChange, (change) =>
+            answer(res, () => scout.setModel(change)),
+          );
+        }
       }
       const { scribe } = repository;
       if (scribe) {
@@ -419,6 +426,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           );
         }
         if (url.pathname === '/api/scribe/efforts') return read(req, res, () => scribe.efforts());
+        if (url.pathname === '/api/scribe/model') {
+          return written(req, res, parseModelChange, (change) =>
+            answer(res, () => scribe.setModel(change)),
+          );
+        }
       }
       const { skills } = repository;
       if (skills) {
@@ -474,6 +486,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         if (url.pathname === '/api/merges/effort') {
           return written(req, res, parseScoutEffort, (change) =>
             answer(res, () => merges.setEffort(change)),
+          );
+        }
+        if (url.pathname === '/api/merges/model') {
+          return written(req, res, parseModelChange, (change) =>
+            answer(res, () => merges.setModel(change)),
           );
         }
         if (url.pathname === '/api/merges/approve') {
@@ -1347,8 +1364,8 @@ function json(res: ServerResponse, status: number, value: unknown): void {
 }
 
 /**
- * `{ kind, title, parts, branch, planFirst, base?, from?, agent?, permissionMode?, effort? }`
- * (V24, V20a, V30b, V33), or `brief` instead of the kind, title and parts, each of its type; what
+ * `{ kind, title, parts, branch, planFirst, base?, from?, agent?, permissionMode?, effort?,
+ * model? }` (V24, V20a, V30b, V33, V47), or `brief` instead of the kind, title and parts, each of its type; what
  * they say is the workspaces' to check (V18).
  */
 function parseWorkspaceRequest(text: string): WorkspaceRequest {
@@ -1368,6 +1385,7 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
     agent,
     permissionMode,
     effort,
+    model,
     documents,
   } = value;
   if (brief === undefined && kind === undefined) {
@@ -1394,6 +1412,7 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
   }
   if (effort !== undefined && typeof effort !== 'string')
     throw new Error('effort: a level, as high');
+  if (model !== undefined && typeof model !== 'string') throw new Error('model: its ID, as sonnet');
   const isDocument = (d: unknown): d is { id: string; name: string } =>
     d !== null &&
     typeof d === 'object' &&
@@ -1414,6 +1433,7 @@ function parseWorkspaceRequest(text: string): WorkspaceRequest {
     ...(agent === undefined ? {} : { agent: agent as AgentKind }),
     ...(permissionMode === undefined ? {} : { permissionMode: permissionMode as PermissionMode }),
     ...(effort === undefined ? {} : { effort }),
+    ...(model === undefined ? {} : { model }),
     ...(documents === undefined
       ? {}
       : { documents: documents.map(({ id, name }) => ({ id, name })) }),
@@ -1527,6 +1547,16 @@ function parseScoutEffort(text: string): ScoutEffortChange {
     throw new Error("effort: a level, as high, or null for each agent's own");
   }
   return { effort };
+}
+
+/** `{ model }` (V47): a model's ID, or null for the default; Scout's, Scribe's, the merger's. */
+function parseModelChange(text: string): ScoutModelChange {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  const model = value?.model;
+  if (model !== null && typeof model !== 'string') {
+    throw new Error('model: its ID, as sonnet, or null for the default');
+  }
+  return { model };
 }
 
 /** `{ cols, rows }`: a terminal on Scout's session (V35). */

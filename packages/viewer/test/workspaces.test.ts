@@ -12,6 +12,8 @@ import {
   branchProblem,
   effortChoices,
   keptEffort,
+  keptModel,
+  modelChoices,
   readRun,
   startedWith,
   workspaceChips,
@@ -66,6 +68,118 @@ describe('effortChoices and keptEffort (V30b)', () => {
   });
 });
 
+describe('modelChoices, keptModel and the levels on a model (V47)', () => {
+  const LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
+  const claude: AgentOption = {
+    kind: 'claude',
+    command: 'claude',
+    efforts: { levels: LEVELS },
+    models: [
+      {
+        id: 'opus',
+        name: 'Opus 5.5',
+        description: 'For complex work',
+        efforts: { levels: LEVELS },
+      },
+      { id: 'claude-haiku-4-5-20251001', name: 'Haiku 4.5', description: 'Fastest' },
+      {
+        id: 'claude-opus-4-6',
+        name: 'Opus 4.6',
+        efforts: { levels: ['low', 'medium', 'high', 'max'] },
+      },
+    ],
+  };
+  const codex: AgentOption = {
+    kind: 'codex',
+    command: 'codex',
+    efforts: { levels: LEVELS, default: 'medium' },
+    models: [
+      {
+        id: 'gpt-6-luna',
+        name: 'GPT-6-Luna',
+        description: 'Fast and affordable model for easier tasks.',
+        efforts: { levels: LEVELS, default: 'medium' },
+      },
+      {
+        id: 'gpt-5.6-terra',
+        name: 'GPT-5.6-Terra',
+        efforts: { levels: [...LEVELS, 'ultra'], default: 'high' },
+      },
+    ],
+    defaultModel: { id: 'gpt-6-luna', by: 'agent' },
+  };
+
+  it("offers the agent's default first, named when Symbiote knows it, then its models by name", () => {
+    expect(modelChoices(claude)).toEqual([
+      { value: '', label: "Claude Code's default" },
+      { value: 'opus', label: 'Opus 5.5', description: 'For complex work' },
+      { value: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', description: 'Fastest' },
+      { value: 'claude-opus-4-6', label: 'Opus 4.6' },
+    ]);
+    expect(modelChoices(codex)[0]).toEqual({
+      value: '',
+      label: "Codex's default (GPT-6-Luna)",
+      description: 'Fast and affordable model for easier tasks.',
+    });
+    // The project's (`agent.model`), and the merger's Symbiote picks; an ID not listed as is.
+    expect(
+      modelChoices({ ...claude, defaultModel: { id: 'claude-opus-4-6', by: 'project' } })[0],
+    ).toEqual({ value: '', label: "The project's (Opus 4.6)" });
+    expect(modelChoices({ ...claude, defaultModel: { id: 'sonnet', by: 'symbiote' } })[0]).toEqual({
+      value: '',
+      label: "Symbiote's default (sonnet)",
+    });
+    // No models read: no choice.
+    expect(modelChoices({ kind: 'codex' })).toEqual([]);
+  });
+
+  it('keeps a model the agent lists, else its default', () => {
+    expect(keptModel('opus', claude)).toBe('opus');
+    expect(keptModel('gpt-6-luna', claude)).toBeUndefined();
+    expect(keptModel(undefined, codex)).toBeUndefined();
+    expect(keptModel('opus', {})).toBeUndefined();
+  });
+
+  it("offers the picked model's levels: none for a model that takes none", () => {
+    expect(effortChoices(claude, 'claude-opus-4-6').map((c) => c.value)).toEqual([
+      '',
+      'low',
+      'medium',
+      'high',
+      'max',
+    ]);
+    expect(effortChoices(claude, 'claude-haiku-4-5-20251001')).toEqual([]);
+    expect(effortChoices(codex, 'gpt-5.6-terra')[0]).toEqual({
+      value: '',
+      label: "Codex's default (high)",
+    });
+    expect(effortChoices(codex, 'gpt-5.6-terra').at(-1)?.value).toBe('ultra');
+    // The default model, or one not listed: the agent's levels, as before.
+    expect(effortChoices(claude, undefined)).toEqual(effortChoices(claude));
+    expect(keptEffort('xhigh', claude, 'claude-opus-4-6')).toBeUndefined();
+    expect(keptEffort('max', claude, 'claude-opus-4-6')).toBe('max');
+    expect(keptEffort('low', claude, 'claude-haiku-4-5-20251001')).toBeUndefined();
+    expect(keptEffort('ultra', codex, 'gpt-5.6-terra')).toBe('ultra');
+  });
+
+  it('keeps a model with its agent in the draft, and a level only when that model takes it', () => {
+    const agents = [claude, codex];
+    expect(readRun({ model: 'claude-opus-4-6', effort: 'max' }, agents)).toEqual({
+      model: 'claude-opus-4-6',
+      effort: 'max',
+    });
+    expect(readRun({ model: 'claude-opus-4-6', effort: 'xhigh' }, agents)).toEqual({
+      model: 'claude-opus-4-6',
+    });
+    expect(readRun({ agent: 'codex', model: 'opus' }, agents)).toEqual({ agent: 'codex' });
+    expect(readRun({ agent: 'codex', model: 'gpt-5.6-terra', effort: 'ultra' }, agents)).toEqual({
+      agent: 'codex',
+      model: 'gpt-5.6-terra',
+      effort: 'ultra',
+    });
+  });
+});
+
 describe('readRun (V30b)', () => {
   const agents: AgentOption[] = [
     { kind: 'claude', command: 'claude', efforts: { levels: ['low', 'high', 'max'] } },
@@ -109,6 +223,15 @@ describe('startedWith (V30b)', () => {
     expect(startedWith(agent({ effort: 'high' }))).toBe('Started with Claude Code at high effort.');
     expect(startedWith(agent({ kind: 'codex' }))).toBe('Started with Codex at its default effort.');
     expect(startedWith(agent({ state: 'no-agent', kind: undefined }))).toBeNull();
+  });
+
+  it('says the model it was started on (V47)', () => {
+    expect(startedWith(agent({ effort: 'high', model: 'sonnet' }))).toBe(
+      'Started with Claude Code on sonnet at high effort.',
+    );
+    expect(startedWith(agent({ kind: 'codex', model: 'gpt-5.6-luna' }))).toBe(
+      'Started with Codex on gpt-5.6-luna at its default effort.',
+    );
   });
 });
 

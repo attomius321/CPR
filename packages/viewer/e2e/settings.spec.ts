@@ -46,8 +46,9 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   await expect(page.locator('.settings-git')).toHaveText(
     "No prompt changed: every agent is told Symbiote's text.",
   );
-  // 16 prompts (Documents since V40, Scribe's since V41), Scout's effort and the merger's (V46d).
-  await expect(list(page).getByRole('button')).toHaveCount(18);
+  // 16 prompts (Documents since V40, Scribe's since V41), Scout's effort and the merger's (V46d),
+  // and Scout's, Scribe's and the merger's model (V47).
+  await expect(list(page).getByRole('button')).toHaveCount(21);
   await expect(entry(page, 'Documents')).toBeVisible();
   // The first is open; each group in its order (Scout's since V35).
   await expect(entry(page, 'Feature')).toHaveAttribute('aria-current', 'true');
@@ -215,7 +216,7 @@ test("Scout's effort: a stepper of Claude Code's levels, saved in symbiote/confi
   };
   await page.goto(`${symbiote.url}settings`);
   const group = list(page).getByRole('region', { name: 'Scout' });
-  await expect(group.getByRole('button')).toHaveText(['Instructions', 'Effort']);
+  await expect(group.getByRole('button')).toHaveText(['Instructions', 'Model', 'Effort']);
   await group.getByRole('button', { name: 'Effort' }).click();
   await expect(page).toHaveURL(`${symbiote.url}settings?prompt=scout.effort`);
   await expect(editor(page).getByRole('heading')).toHaveText('Scout: Effort');
@@ -273,7 +274,7 @@ test("the merger's effort: a stepper of its agent's levels, saved as merge.effor
   };
   await page.goto(`${symbiote.url}settings`);
   const group = list(page).getByRole('region', { name: 'Merger' });
-  await expect(group.getByRole('button')).toHaveText(['Instructions', 'Effort']);
+  await expect(group.getByRole('button')).toHaveText(['Instructions', 'Model', 'Effort']);
   await group.getByRole('button', { name: 'Effort' }).click();
   await expect(page).toHaveURL(`${symbiote.url}settings?prompt=merge.effort`);
   await expect(editor(page).getByRole('heading')).toHaveText('Merger: Effort');
@@ -316,4 +317,106 @@ test("Scout's effort: a level its agent does not list is said, and Scout starts 
     'aria-valuetext',
     "Claude Code's default",
   );
+});
+
+// Scout's, Scribe's and the merger's model (V47): from their agent's own list, saved in the
+// project's config when picked; their Effort follows it.
+const section =
+  <T>(name: string) =>
+  (): T | null | undefined => {
+    try {
+      return (JSON.parse(readFileSync(config(), 'utf8')) as Record<string, T>)[name];
+    } catch {
+      // Null while the server writes it.
+      return null;
+    }
+  };
+const modelSelect = (page: Page) => editor(page).getByRole('combobox', { name: 'Model' });
+
+test("Scout's model: Claude Code's own list, saved as scout.model when picked; its Effort and the next conversation follow it", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  const scout = section<Record<string, unknown>>('scout');
+  await page.goto(`${symbiote.url}settings`);
+  const group = list(page).getByRole('region', { name: 'Scout' });
+  await group.getByRole('button', { name: 'Model' }).click();
+  await expect(page).toHaveURL(`${symbiote.url}settings?prompt=scout.model`);
+  await expect(editor(page).getByRole('heading')).toHaveText('Scout: Model');
+  await expect(modelSelect(page).locator('option')).toHaveText([
+    "Claude Code's default",
+    'Opus 5.5',
+    'Sonnet 5.5',
+    'Haiku 4.5',
+    'Opus 4.6',
+  ]);
+  await modelSelect(page).selectOption({ label: 'Opus 4.6' });
+  await expect(editor(page).getByRole('status')).toHaveText(
+    "Saved. Scout's next conversation starts on Opus 4.6.",
+  );
+  await expect.poll(scout).toEqual({ model: 'claude-opus-4-6' });
+  await expect(editor(page).locator('.settings-model-note')).toHaveText(
+    'Best for everyday, complex tasks',
+  );
+  // Its Effort follows: Opus 4.6 has no xhigh.
+  await group.getByRole('button', { name: 'Effort' }).click();
+  await expect(stops(editor(page).getByRole('slider', { name: 'Effort' }))).toHaveText([
+    'Default',
+    'low',
+    'medium',
+    'high',
+    'max',
+  ]);
+  // The next conversation starts on it, and its head says so.
+  await page.goto(`${symbiote.url}scout`);
+  const scoutPage = page.getByRole('region', { name: 'Scout' });
+  await scoutPage.getByRole('textbox', { name: 'Ask Scout' }).fill('Where is it?');
+  await scoutPage.getByRole('textbox', { name: 'Ask Scout' }).press('Enter');
+  await expect
+    .poll(() => symbiote.calls().find((call) => call.args.includes('Scout'))?.args ?? [])
+    .toEqual(expect.arrayContaining(['--model', 'claude-opus-4-6']));
+  await expect(scoutPage.locator('.scout-about')).toContainText(
+    'with Claude Code on claude-opus-4-6',
+  );
+  // Back to the default: the key goes.
+  await page.goto(`${symbiote.url}settings?prompt=scout.model`);
+  await expect(modelSelect(page)).toHaveValue('claude-opus-4-6');
+  await modelSelect(page).selectOption({ label: "Claude Code's default" });
+  await expect.poll(scout).toBeUndefined();
+});
+
+test("the merger's model: Symbiote's sonnet named as its default; merge.model saved, one written by hand said", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  mkdirSync(join(symbiote.repo, 'symbiote'), { recursive: true });
+  writeFileSync(config(), '{ "merge": { "checks": ["pnpm check"] } }\n');
+  const merge = section<Record<string, unknown>>('merge');
+  await page.goto(`${symbiote.url}settings?prompt=merge.model`);
+  await expect(editor(page).getByRole('heading')).toHaveText('Merger: Model');
+  await expect(modelSelect(page).locator('option').first()).toHaveText(
+    "Symbiote's default (Sonnet 5.5)",
+  );
+  await modelSelect(page).selectOption({ label: 'Opus 5.5' });
+  await expect(editor(page).getByRole('status')).toHaveText(
+    "Saved. The merger agent's next run is asked on Opus 5.5.",
+  );
+  await expect.poll(merge).toEqual({ checks: ['pnpm check'], model: 'opus' });
+  // A full name Claude Code takes but does not list: passed as written (decision 343), and said.
+  writeFileSync(config(), '{ "merge": { "model": "claude-sonnet-4-5-20250929" } }\n');
+  await page.reload();
+  await expect(editor(page).getByRole('alert')).toHaveText(
+    'merge.model is claude-sonnet-4-5-20250929, which Claude Code does not list: the merger asks on it as written.',
+  );
+});
+
+test("Scribe's model: in its group, saved as scribe.model", async ({ page }) => {
+  symbiote = await serveWorkspaces();
+  const scribe = section<Record<string, unknown>>('scribe');
+  await page.goto(`${symbiote.url}settings`);
+  const group = list(page).getByRole('region', { name: 'Scribe' });
+  await expect(group.getByRole('button')).toHaveText(['Instructions', 'Model']);
+  await group.getByRole('button', { name: 'Model' }).click();
+  await modelSelect(page).selectOption({ label: 'Sonnet 5.5' });
+  await expect.poll(scribe).toEqual({ model: 'sonnet' });
 });

@@ -246,6 +246,117 @@ test("Effort for Codex on its app server: its model's levels and its default; th
   expect(turn?.params).toMatchObject({ effort: 'low' });
 });
 
+// The agent's model (V47): its default, or one from the agent's own list; the levels follow it.
+const model = (page: Page) => start(page).getByLabel('Model', { exact: true });
+
+test("Model: Claude Code's own list after its default; the levels follow the model; a pick reaches it as --model", async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}start`);
+  // Its list, not its "Default (recommended)": that is not the person's default (decision 337).
+  await expect(model(page).locator('option')).toHaveText([
+    "Claude Code's default",
+    'Opus 5.5',
+    'Sonnet 5.5',
+    'Haiku 4.5',
+    'Opus 4.6',
+  ]);
+  await expect(model(page)).toHaveValue('');
+  await title(page).fill('Add clamp');
+  await goal(page).fill('Clamp a value.');
+  await stops(effort(page))
+    .filter({ hasText: /^xhigh$/ })
+    .click();
+  // Opus 4.6 takes no xhigh: its own levels, the level back to the default; its words under it.
+  await model(page).selectOption({ label: 'Opus 4.6' });
+  await expect(stops(effort(page))).toHaveText(['Default', 'low', 'medium', 'high', 'max']);
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', "Claude Code's default");
+  await expect(start(page).locator('.start-model-note')).toHaveText(
+    'Best for everyday, complex tasks',
+  );
+  // Haiku 4.5 takes none: no Effort.
+  await model(page).selectOption({ label: 'Haiku 4.5' });
+  await expect(effort(page)).toHaveCount(0);
+  await model(page).selectOption({ label: 'Sonnet 5.5' });
+  await stops(effort(page))
+    .filter({ hasText: /^high$/ })
+    .click();
+  // Leaving keeps both, as the rest of the form.
+  await title(page).press('Escape');
+  await startLink(page).click();
+  await expect(model(page)).toHaveValue('sonnet');
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
+  await goal(page).press('Control+Enter');
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-clamp`);
+  const args = symbiote.calls().at(-1)?.args ?? [];
+  expect(args.slice(args.indexOf('--model'), args.indexOf('--model') + 2)).toEqual([
+    '--model',
+    'sonnet',
+  ]);
+  const workspace = page.getByRole('region', { name: 'Workspace feature/add-clamp' });
+  await workspace.getByRole('tab', { name: 'Brief' }).click();
+  await expect(workspace.locator('.workspace-started')).toHaveText(
+    'Started with Claude Code on sonnet at high effort.',
+  );
+
+  // For that session only: the next workspace starts on the default, and passes no model.
+  await startLink(page).click();
+  await expect(model(page)).toHaveValue('');
+  await title(page).fill('Add round');
+  await goal(page).fill('Round a value.');
+  await goal(page).press('Control+Enter');
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-round`);
+  expect(symbiote.calls().at(-1)?.args).not.toContain('--model');
+  // Its list was read once, and kept (decision 340).
+  expect(symbiote.modelReads()).toBe(1);
+});
+
+test("Model for Codex on its app server: its list, its configured model named; a pick on the thread's start", async ({
+  page,
+}) => {
+  const symbiote = await serve({ codex: true, appServer: true });
+  await page.goto(`${symbiote.url}start`);
+  await model(page).selectOption({ label: 'Haiku 4.5' });
+  // A model is one agent's: the other starts on its default.
+  await start(page).getByLabel('Agent').selectOption({ label: 'Codex' });
+  await expect(model(page).locator('option')).toHaveText([
+    "Codex's default (GPT-6-Luna)",
+    'GPT-6-Luna',
+    'GPT-5.6-Terra',
+    'GPT-5.6-Luna',
+  ]);
+  await expect(model(page)).toHaveValue('');
+  await expect(start(page).locator('.start-model-note')).toHaveText(
+    'Fast and affordable model for easier tasks.',
+  );
+  // GPT-5.6-Terra has one more level.
+  await model(page).selectOption({ label: 'GPT-5.6-Terra' });
+  await expect(stops(effort(page)).last()).toHaveText('ultra');
+  await effort(page).press('End');
+  await title(page).fill('Add clamp');
+  await goal(page).fill('Clamp a value.');
+  await goal(page).press('Control+Enter');
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-clamp`);
+  const calls = symbiote.codexServer?.calls ?? [];
+  expect(calls.find((call) => call.method === 'thread/start')?.params).toMatchObject({
+    model: 'gpt-5.6-terra',
+  });
+  expect(calls.find((call) => call.method === 'turn/start')?.params).toMatchObject({
+    effort: 'ultra',
+  });
+});
+
+test('Model: none offered for an agent whose list Symbiote cannot read (Codex without its daemon)', async ({
+  page,
+}) => {
+  const symbiote = await serve({ codex: true });
+  await page.goto(`${symbiote.url}start`);
+  await expect(model(page)).toBeVisible();
+  await start(page).getByLabel('Agent').selectOption({ label: 'Codex' });
+  await expect(model(page)).toHaveCount(0);
+});
+
 // Start from a branch (V33): the default branch first, then the local ones, then remote-only.
 test("Start from: the branches listed; one picked is where it starts and its name the record's", async ({
   page,

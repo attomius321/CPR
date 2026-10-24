@@ -11,14 +11,18 @@ import { fileURLToPath } from 'node:url';
 import {
   AGENT_KINDS,
   EFFORT_LEVEL,
+  MODEL_ID,
   type AgentEfforts,
   type AgentKind,
+  type AgentModels,
+  type DefaultModel,
   type GitRepo,
   type ScoutAgent,
   type ScoutAsk,
   type ScoutConversation,
   type ScoutEffortChange,
   type ScoutEfforts,
+  type ScoutModelChange,
   type ScoutState,
   type ScoutStateName,
   type ScoutTerminalRequest,
@@ -30,8 +34,11 @@ import { fillPrompt, PromptRefused, readPrompts, writeConfig } from './prompts.j
 import { prepareSymbioteFolder, reviewPlace, type ReviewPlace } from './reviews.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
 import {
-  effortProblem,
+  effortOnProblem,
   effortWordProblem,
+  levelsOn,
+  modelProblem,
+  modelWordProblem,
   readWorkspaceConfig,
   shellWord,
   type AgentSession,
@@ -75,6 +82,8 @@ export interface PageAgentSpec {
   prepare?(root: string): Promise<void>;
   /** The project's level in its config (`scout.effort`), and where it is set. */
   effort?: { read(root: string): string | undefined; key: readonly string[] };
+  /** The project's model in its config (`scout.model`, `scribe.model`, V47), and where it is set. */
+  model: { read(root: string): string | undefined; key: readonly string[] };
 }
 
 /** Scout's: read-only in the checkout, `prompts.scout`, `scout.effort`. */
@@ -89,6 +98,7 @@ const SCOUT: PageAgentSpec = {
   prompt: (root, text) => fillPrompt(readPrompts(root).text.scout, { question: text }),
   codex: (root) => ({ cwd: root, writes: false }),
   effort: { read: (root) => readWorkspaceConfig(root).scoutEffort, key: ['scout', 'effort'] },
+  model: { read: (root) => readWorkspaceConfig(root).scoutModel, key: ['scout', 'model'] },
 };
 
 /** `symbiote/scout.json`, or a page agent's record. */
@@ -102,6 +112,8 @@ interface ScoutRecord {
   thread?: string;
   /** The effort level it started at; absent: the agent's own. */
   effort?: string;
+  /** The model it started on (V47): the project's; absent: its default. */
+  model?: string;
   started: string;
 }
 
@@ -129,6 +141,11 @@ export interface Scout {
   efforts(): Promise<ScoutEfforts>;
   /** Sets the project's level in its config (null removes it), one Scout's default agent lists. */
   setEffort(change: ScoutEffortChange): Promise<ScoutEfforts>;
+  /**
+   * Sets the project's model in its config (V47, `scout.model`; null removes it), one Scout's
+   * default agent lists.
+   */
+  setModel(change: ScoutModelChange): Promise<ScoutEfforts>;
 }
 
 /**
@@ -276,7 +293,10 @@ export function pageAgent(
     const v = (value && typeof value === 'object' ? value : {}) as Partial<ScoutRecord>;
     const text = (x: unknown) => (typeof x === 'string' && x !== '' ? x : undefined);
     const started = text(v.started) ?? '';
-    const level = isLevel(v.effort) ? { effort: v.effort } : {};
+    const level = {
+      ...(isLevel(v.effort) ? { effort: v.effort } : {}),
+      ...(typeof v.model === 'string' && MODEL_ID.test(v.model) ? { model: v.model } : {}),
+    };
     if (v.agent === 'claude' && text(v.id)) {
       const sessionId = text(v.sessionId);
       return {
@@ -337,14 +357,88 @@ export function pageAgent(
   const commandOf = (agent: { claude?: ClaudeCode; codex?: Codex }) =>
     agent.claude?.command ?? agent.codex?.command ?? '';
 
+  /** The models an agent lists (V47); null unread. */
+  async function modelsOf(agent: {
+    claude?: ClaudeCode;
+    codex?: Codex;
+  }): Promise<AgentModels | null> {
+    if (agent.codex) return agent.codex.models();
+    const models = (await agent.claude?.models()) ?? null;
+    return models ? { models } : null;
+  }
+
+  /**
+   * The model a new conversation starts on (V47): the project's (`scout.model`) when its agent
+   * lists it — the box may pick the other agent, whose list will not have it —, else none passed
+   * (Claude Code's `agent.model`, or the agent's own).
+   */
+  async function modelFor(agent: {
+    claude?: ClaudeCode;
+    codex?: Codex;
+  }): Promise<string | undefined> {
+    const project = spec.model.read(root);
+    if (!project) return undefined;
+    return (await modelsOf(agent))?.models.some((m) => m.id === project) ? project : undefined;
+  }
+
+  /** The model an agent runs on without the project's (V47), when Symbiote knows it. */
+  async function defaultModelOf(agent: {
+    kind: AgentKind;
+    codex?: Codex;
+  }): Promise<DefaultModel | undefined> {
+    if (agent.kind === 'claude') {
+      const project = readWorkspaceConfig(root).model;
+      return project ? { id: project, by: 'project' } : undefined;
+    }
+    const listed = await agent.codex?.models();
+    return listed?.default ? { id: listed.default, by: 'agent' } : undefined;
+  }
+
   /** The levels an agent takes (V30b): Claude Code's `--help`, Codex's app server; null unread. */
-  async function levelsOf(agent: {
+  async function defaultLevelsOf(agent: {
     claude?: ClaudeCode;
     codex?: Codex;
   }): Promise<AgentEfforts | null> {
     if (agent.codex) return agent.codex.efforts();
     const levels = (await agent.claude?.efforts()) ?? null;
     return levels ? { levels } : null;
+  }
+
+  /**
+   * The model an agent's new conversation runs on (V47) — the project's when it lists it, else
+   * Claude Code's `agent.model` — and the levels it takes there; the default's without one.
+   */
+  async function onModel(agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex }): Promise<{
+    model: string | undefined;
+    models: AgentModels | null;
+    fallback: AgentEfforts | null;
+  }> {
+    const picked = await modelFor(agent);
+    const model = picked ?? (agent.kind === 'claude' ? readWorkspaceConfig(root).model : undefined);
+    return {
+      model,
+      models: model ? await modelsOf(agent) : null,
+      fallback: await defaultLevelsOf(agent),
+    };
+  }
+
+  /** The levels an agent takes on the model its new conversation would start on (V30b, V47). */
+  async function levelsOf(agent: {
+    kind: AgentKind;
+    claude?: ClaudeCode;
+    codex?: Codex;
+  }): Promise<AgentEfforts | null> {
+    const { model, models, fallback } = await onModel(agent);
+    return levelsOn(models?.models, model, fallback);
+  }
+
+  /** Why `effort` cannot start a conversation of `agent`'s, on its model, or null. */
+  async function levelProblem(
+    agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
+    effort: string,
+  ): Promise<string | null> {
+    const { model, models, fallback } = await onModel(agent);
+    return effortOnProblem(effort, AGENT_NAMES[agent.kind], models?.models, model, fallback);
   }
 
   /**
@@ -362,7 +456,7 @@ export function pageAgent(
       if (!project) return undefined;
       return (await levelsOf(agent))?.levels.includes(project) ? project : undefined;
     }
-    const problem = effortProblem(effort, AGENT_NAMES[agent.kind], (await levelsOf(agent))?.levels);
+    const problem = await levelProblem(agent, effort);
     if (problem) throw new ScoutRefused(problem, 400);
     return effort;
   }
@@ -370,12 +464,27 @@ export function pageAgent(
   async function efforts(): Promise<ScoutEfforts> {
     const agents = await Promise.all(
       (await installed()).map(async (agent) => {
-        const efforts = await levelsOf(agent);
-        return { kind: agent.kind, ...(efforts ? { efforts } : {}) };
+        const [efforts, listed, defaultModel] = await Promise.all([
+          levelsOf(agent),
+          modelsOf(agent),
+          defaultModelOf(agent),
+        ]);
+        return {
+          kind: agent.kind,
+          ...(efforts ? { efforts } : {}),
+          ...(listed ? { models: listed.models } : {}),
+          ...(defaultModel ? { defaultModel } : {}),
+        };
       }),
     );
     const effort = spec.effort?.read(root);
-    return { agents, ...(effort ? { effort } : {}), file: readPrompts(root).file };
+    const model = spec.model.read(root);
+    return {
+      agents,
+      ...(effort ? { effort } : {}),
+      ...(model ? { model } : {}),
+      file: readPrompts(root).file,
+    };
   }
 
   /** Codex's app server, or why Scout cannot run on it. */
@@ -396,6 +505,7 @@ export function pageAgent(
       kind: record.agent,
       started: record.started,
       ...(record.effort ? { effort: record.effort } : {}),
+      ...(record.model ? { model: record.model } : {}),
     };
     const unknown = (error: string): ScoutConversation => ({ ...head, state: 'unknown', error });
     if (record.agent === 'claude') {
@@ -451,7 +561,8 @@ export function pageAgent(
       );
     }
     const level = await levelFor(agent, effort);
-    const at = level ? { effort: level } : {};
+    const model = await modelFor(agent);
+    const at = { ...(level ? { effort: level } : {}), ...(model ? { model } : {}) };
     const prompt = spec.prompt(root, text);
     const started = now().toISOString();
     await spec.prepare?.(root);
@@ -624,13 +735,38 @@ export function pageAgent(
         if (!agent) {
           throw new ScoutRefused(`${name} needs Claude Code or Codex: neither is installed`, 409);
         }
-        const levels = (await levelsOf(agent))?.levels;
-        const problem = effortProblem(effort, AGENT_NAMES[agent.kind], levels);
+        const problem = await levelProblem(agent, effort);
         if (problem) throw new ScoutRefused(problem, 400);
       }
       if (!spec.effort) throw new ScoutRefused(`${name} has no level in the project's config`, 400);
       try {
         await writeConfig(root, spec.effort.key, effort ?? undefined);
+      } catch (error) {
+        if (error instanceof PromptRefused) throw new ScoutRefused(error.message, error.status);
+        throw error;
+      }
+      return efforts();
+    },
+
+    async setModel({ model }) {
+      if (model !== null) {
+        if (typeof model !== 'string' || !MODEL_ID.test(model)) {
+          throw new ScoutRefused(modelWordProblem(model), 400);
+        }
+        // The model Settings offers: the default agent's.
+        const agent = (await installed())[0];
+        if (!agent) {
+          throw new ScoutRefused(`${name} needs Claude Code or Codex: neither is installed`, 409);
+        }
+        const problem = modelProblem(
+          model,
+          AGENT_NAMES[agent.kind],
+          (await modelsOf(agent))?.models,
+        );
+        if (problem) throw new ScoutRefused(problem, 400);
+      }
+      try {
+        await writeConfig(root, spec.model.key, model ?? undefined);
       } catch (error) {
         if (error instanceof PromptRefused) throw new ScoutRefused(error.message, error.status);
         throw error;

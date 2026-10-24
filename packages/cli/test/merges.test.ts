@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { openRepo, type MergeLogLine, type Verdict } from '@symbiote/core';
+import { openRepo, type AgentModel, type MergeLogLine, type Verdict } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { run } from '../src/main.js';
@@ -1331,5 +1331,81 @@ describe("the merger's effort (V46d)", () => {
     const m = await make(repo);
     expect(await m.efforts()).toEqual({ agents: [], file: 'symbiote/config.json' });
     await expect(m.setEffort({ effort: 'high' })).rejects.toThrow(/needs Claude Code or Codex/);
+  });
+});
+
+describe("the merger's model (V47)", () => {
+  const LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
+  const MODELS: AgentModel[] = [
+    { id: 'opus', name: 'Opus 5.5', efforts: { levels: LEVELS } },
+    { id: 'sonnet', name: 'Sonnet 5.5', efforts: { levels: LEVELS } },
+    { id: 'claude-haiku-4-5-20251001', name: 'Haiku 4.5' },
+    {
+      id: 'claude-opus-4-6',
+      name: 'Opus 4.6',
+      efforts: { levels: ['low', 'medium', 'high', 'max'] },
+    },
+  ];
+  const options = (agent: ReturnType<typeof fakeAgent>) => ({
+    mergerAgent: agent.find,
+    levels: () => Promise.resolve({ levels: LEVELS }),
+    models: () => Promise.resolve({ models: structuredClone(MODELS) }),
+  });
+  const written = (repo: TestRepo) =>
+    JSON.parse(readFileSync(join(repo.root, 'symbiote', 'config.json'), 'utf8')) as {
+      merge: Record<string, unknown>;
+    };
+
+  it("lists its agent's models, Symbiote's sonnet its default; sets merge.model, or removes it", async () => {
+    const { repo } = setup();
+    config(repo, { checks: ['ok'] });
+    const m = await make(repo, fakeChecks().run, options(fakeAgent(BOTH)));
+    expect(await m.efforts()).toEqual({
+      agents: [
+        {
+          kind: 'claude',
+          efforts: { levels: LEVELS },
+          models: MODELS,
+          defaultModel: { id: 'sonnet', by: 'symbiote' },
+        },
+      ],
+      file: 'symbiote/config.json',
+    });
+    // Opus 4.6: its levels are the merger's now.
+    const set = await m.setModel({ model: 'claude-opus-4-6' });
+    expect(set).toMatchObject({
+      model: 'claude-opus-4-6',
+      agents: [{ efforts: { levels: ['low', 'medium', 'high', 'max'] } }],
+    });
+    expect(written(repo).merge).toEqual({ checks: ['ok'], model: 'claude-opus-4-6' });
+    await expect(m.setModel({ model: 'gpt-6-luna' })).rejects.toThrow(
+      'Claude Code lists no model gpt-6-luna: pick one it lists',
+    );
+    await expect(m.setModel({ model: '--yolo' })).rejects.toThrow(/a model is its ID/);
+    expect((await m.setModel({ model: null })).model).toBeUndefined();
+    expect(written(repo).merge).toEqual({ checks: ['ok'] });
+  });
+
+  it('asks on merge.model as written, and at a level that model takes', async () => {
+    const { repo } = conflicting();
+    // A full name Claude Code takes but does not list: passed as before (decision 343).
+    config(repo, { model: 'claude-sonnet-4-5-20250929', effort: 'high' });
+    const agent = fakeAgent(BOTH);
+    const m = await make(repo, fakeChecks().run, options(agent));
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    expect(agent.asked[0]).toMatchObject({ model: 'claude-sonnet-4-5-20250929', effort: 'high' });
+    // Haiku 4.5 takes no level: none asked, and the log says why.
+    const second = conflicting();
+    config(second.repo, { model: 'claude-haiku-4-5-20251001', effort: 'high' });
+    const other = fakeAgent(BOTH);
+    const n = await make(second.repo, fakeChecks().run, options(other));
+    const { id } = await n.enqueue({ branch: 'topic', into: 'main' });
+    await n.idle();
+    expect(other.asked[0]?.model).toBe('claude-haiku-4-5-20251001');
+    expect(other.asked[0]?.effort).toBeUndefined();
+    expect(shortLog(await logOf(n, id))).toContain(
+      'out merge.effort is high, which Haiku 4.5 does not take: its own level',
+    );
   });
 });

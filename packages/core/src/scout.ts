@@ -1,6 +1,12 @@
 // Scout (V35): a read-only agent in the checkout `symbiote view` runs in, asked from its page. Types
 // only; the CLI starts the agent, keeps its record in `symbiote/scout.json` and serves `/api/scout`.
-import type { AgentEfforts, AgentKind, TerminalAvailability } from './workspaces.js';
+import type {
+  AgentEfforts,
+  AgentKind,
+  AgentModel,
+  DefaultModel,
+  TerminalAvailability,
+} from './workspaces.js';
 
 /** What Scout's agent is doing, as its page and the sidenav say it. */
 export type ScoutStateName =
@@ -26,6 +32,8 @@ export interface ScoutConversation {
   id?: string;
   /** The effort level it started at; absent: the agent's own. Its terminal may change it since. */
   effort?: string;
+  /** The model it started on (V47); absent: its default. Its terminal may change it since. */
+  model?: string;
   /** Why its state is unknown. */
   error?: string;
 }
@@ -60,14 +68,25 @@ export interface ScoutAsk {
 }
 
 /**
- * `GET /api/scout/efforts`: the levels Scout can start at. Read only where they are shown: Codex's
- * are on its app server, whose daemon a read starts.
+ * `GET /api/scout/efforts`: the levels Scout can start at, and its models (V47); also Scribe's and
+ * the merger's. Read only where they are shown: Codex's are on its app server, whose daemon a read
+ * starts.
  */
 export interface ScoutEfforts {
-  /** The agents installed, Scout's default first; each one's levels when Symbiote can read them. */
-  agents: { kind: AgentKind; efforts?: AgentEfforts }[];
+  /**
+   * The agents installed, Scout's default first; each one's levels on the model it would start
+   * on, its models and the model it runs on without the project's, when Symbiote can read them.
+   */
+  agents: {
+    kind: AgentKind;
+    efforts?: AgentEfforts;
+    models?: AgentModel[];
+    defaultModel?: DefaultModel;
+  }[];
   /** `scout.effort` in the project's config: the level a conversation starts at. */
   effort?: string;
+  /** `scout.model` (`scribe.model`, `merge.model`) in the project's config (V47). */
+  model?: string;
   /** The project's config file, repo-relative: `symbiote/config.json`. */
   file: string;
 }
@@ -75,6 +94,11 @@ export interface ScoutEfforts {
 /** `POST /api/scout/effort`: Scout's level in the project's config; null removes it. */
 export interface ScoutEffortChange {
   effort: string | null;
+}
+
+/** `POST /api/scout/model` (V47): Scout's model in the project's config; null removes it. */
+export interface ScoutModelChange {
+  model: string | null;
 }
 
 /** `POST /api/scout/terminal`: a terminal on Scout's session, at that size. */

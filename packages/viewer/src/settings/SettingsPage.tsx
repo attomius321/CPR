@@ -24,7 +24,13 @@ import {
   promptOfUrl,
   sizeOf,
 } from './settings.js';
-import { AGENT_NAMES, effortChoices, keptEffort } from '../workspaces/workspaces.js';
+import {
+  AGENT_NAMES,
+  effortChoices,
+  keptEffort,
+  keptModel,
+  modelChoices,
+} from '../workspaces/workspaces.js';
 
 const API = '/api/settings/prompts';
 
@@ -82,7 +88,60 @@ const EFFORTS: readonly EffortSetting[] = [
   },
 ];
 type EffortKey = EffortSetting['key'];
-type SettingKey = PromptKey | EffortKey;
+
+/**
+ * An agent's model in the project's config (V47), listed in its group before its Effort: Scout's,
+ * Scribe's and the merger's, from their agent's own list.
+ */
+interface ModelSetting {
+  key: 'scout.model' | 'scribe.model' | 'merge.model';
+  group: 'Scout' | 'Scribe' | 'Merger';
+  /** Where its models are read and its model set: `<api>/efforts`, `<api>/model`. */
+  api: string;
+  who: string;
+  whose: string;
+  /** What the model is for, before "from <agent>'s list". */
+  about: string;
+  /** What the next run does on `model` once saved. */
+  saved: (model: string) => string;
+  /** What happens with a configured model its agent does not list (decision 343). */
+  unlisted: string;
+}
+
+const MODELS: readonly ModelSetting[] = [
+  {
+    key: 'scout.model',
+    group: 'Scout',
+    api: '/api/scout',
+    who: 'Scout',
+    whose: "Scout's",
+    about: "The model each of Scout's conversations starts on",
+    saved: (model) => `Saved. Scout's next conversation starts on ${model}.`,
+    unlisted: 'Scout starts on the default',
+  },
+  {
+    key: 'scribe.model',
+    group: 'Scribe',
+    api: '/api/scribe',
+    who: 'Scribe',
+    whose: "Scribe's",
+    about: "The model each of Scribe's conversations starts on",
+    saved: (model) => `Saved. Scribe's next conversation starts on ${model}.`,
+    unlisted: 'Scribe starts on the default',
+  },
+  {
+    key: 'merge.model',
+    group: 'Merger',
+    api: '/api/merges',
+    who: 'The merger',
+    whose: "the merger's",
+    about: "The model each of the merger agent's runs is asked on",
+    saved: (model) => `Saved. The merger agent's next run is asked on ${model}.`,
+    unlisted: 'the merger asks on it as written',
+  },
+];
+type ModelKey = ModelSetting['key'];
+type SettingKey = PromptKey | EffortKey | ModelKey;
 
 /** The drafts without `key`'s. */
 const without = (drafts: Partial<Record<PromptKey, string>>, key: PromptKey) =>
@@ -131,6 +190,7 @@ export function SettingsPage() {
         setOpen(
           promptOfUrl<SettingKey>(window.location.search, [
             ...read.prompts.map((p) => p.key),
+            ...MODELS.map((m) => m.key),
             ...EFFORTS.map((e) => e.key),
           ]),
         );
@@ -254,6 +314,17 @@ export function SettingsPage() {
                       </button>
                     </li>
                   ))}
+                  {MODELS.filter((m) => m.group === group).map((m) => (
+                    <li key={m.key}>
+                      <button
+                        type="button"
+                        aria-current={open === m.key ? 'true' : undefined}
+                        onClick={() => show(m.key)}
+                      >
+                        <span className="settings-name">Model</span>
+                      </button>
+                    </li>
+                  ))}
                   {EFFORTS.filter((e) => e.group === group).map((e) => (
                     <li key={e.key}>
                       <button
@@ -283,6 +354,9 @@ export function SettingsPage() {
               onBack={back}
             />
           )}
+          {MODELS.filter((m) => m.key === open).map((m) => (
+            <AgentModelSetting key={m.key} setting={m} onSaved={() => void load()} onBack={back} />
+          ))}
           {EFFORTS.filter((e) => e.key === open).map((e) => (
             // A save changes the file: the prompts' version is read again, or their next save
             // would be refused as changed since.
@@ -399,6 +473,128 @@ function AgentEffort({
           onChange={setLevel}
           onCommit={commit}
         />
+      )}
+      {notice && (
+        <p className={`settings-notice${notice.error ? ' error' : ''}`} role="status">
+          {notice.text}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * An agent's model in the project's config (V47), a select of its agent's own list, saved when
+ * picked: `scout.model`, `scribe.model`, `merge.model`.
+ */
+function AgentModelSetting({
+  setting,
+  onSaved,
+  onBack,
+}: {
+  setting: ModelSetting;
+  onSaved: () => void;
+  onBack: () => void;
+}) {
+  const [read, setRead] = useState<ScoutEfforts | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    let current = true;
+    getJson<ScoutEfforts>(`${setting.api}/efforts`)
+      .then((answer) => {
+        if (current) setRead(answer);
+      })
+      .catch((failed: unknown) => {
+        if (current) {
+          setError(`${setting.whose} models could not be read: ${(failed as Error).message}`);
+        }
+      });
+    return () => {
+      current = false;
+    };
+  }, [setting]);
+
+  // Its agent: Scout's and Scribe's default (Scout's box may pick another), the merger's.
+  const agent = read?.agents[0];
+  const name = agent ? AGENT_NAMES[agent.kind] : '';
+  const choices = agent ? modelChoices(agent) : [];
+  const value = agent ? (keptModel(read?.model, agent) ?? '') : '';
+  const unlisted = read?.model && agent?.models && value === '' ? read.model : undefined;
+  const picked = choices.find((c) => c.value === value);
+  const pick = async (next: string) => {
+    setSaving(true);
+    try {
+      const answer = await postJson<ScoutEfforts>(`${setting.api}/model`, {
+        model: next || null,
+      });
+      setRead(answer);
+      const label = choices.find((c) => c.value === next)?.label ?? next;
+      setNotice({ text: setting.saved(label) });
+      onSaved();
+    } catch (failed) {
+      setNotice({ text: (failed as Error).message, error: true });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="settings-editor" aria-label={`${setting.group}: Model`}>
+      <button type="button" className="button ghost settings-back" onClick={onBack}>
+        <BackIcon /> All prompts
+      </button>
+      <h2>
+        {setting.group}: Model
+        <Help label={`About ${setting.whose} model`}>
+          <p>
+            {setting.about}
+            {name ? `, from ${name}'s own list` : ''}. Default passes none of Settings&apos;: the
+            first entry says which it is.
+          </p>
+          <p>
+            Its Effort follows it: the levels shown are this model&apos;s. Saved in{' '}
+            {read?.file ?? 'symbiote/config.json'} (<code>{setting.key}</code>) when you pick one.
+          </p>
+        </Help>
+      </h2>
+      {error && (
+        <p className="settings-warning" role="alert">
+          {error}
+        </p>
+      )}
+      {read && !agent && (
+        <p className="settings-warning" role="alert">
+          {setting.who} needs Claude Code or Codex: neither is installed here.
+        </p>
+      )}
+      {agent && !agent.models && (
+        <p className="settings-warning" role="alert">
+          Symbiote cannot read {name}&apos;s models: none can be picked here.
+        </p>
+      )}
+      {unlisted && (
+        <p className="settings-warning" role="alert">
+          {setting.key} is {unlisted}, which {name} does not list: {setting.unlisted}.
+        </p>
+      )}
+      {choices.length > 0 && (
+        <div className="settings-model">
+          <select
+            aria-label="Model"
+            value={value}
+            disabled={saving}
+            onChange={(event) => void pick(event.target.value)}
+          >
+            {choices.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+          {picked?.description && <p className="settings-model-note">{picked.description}</p>}
+        </div>
       )}
       {notice && (
         <p className={`settings-notice${notice.error ? ' error' : ''}`} role="status">

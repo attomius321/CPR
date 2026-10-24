@@ -24,7 +24,9 @@ import {
   resetMergeWorktree,
   upstreamOf,
   EFFORT_LEVEL,
+  MODEL_ID,
   type AgentEfforts,
+  type AgentModels,
   type GitRepo,
   type MergeCheckRun,
   type AgentKind,
@@ -37,14 +39,18 @@ import {
   type RefList,
   type ScoutEffortChange,
   type ScoutEfforts,
+  type ScoutModelChange,
   type Verdict,
 } from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
 import { CONFIG_FILES } from './plugins.js';
 import { readReview, reviewPath, reviewPlace } from './reviews.js';
 import {
-  effortProblem,
+  effortOnProblem,
   effortWordProblem,
+  levelsOn,
+  modelProblem,
+  modelWordProblem,
   readWorkspace,
   workspacePath,
   type WorkspaceFile,
@@ -105,6 +111,13 @@ export function readMergeConfig(root: string): MergeConfig {
 }
 
 const configFile = (root: string) => CONFIG_FILES.find((name) => existsSync(join(root, name)));
+
+/** The model the merger asks Claude Code on without `merge.model` (V26c). */
+const MERGER_CLAUDE_MODEL = 'sonnet';
+
+/** The model the merger agent of `kind` is asked on: `merge.model`, else Symbiote's for Claude Code. */
+const modelOf = (kind: AgentKind, config: MergeConfig): string | undefined =>
+  config.model ?? (kind === 'claude' ? MERGER_CLAUDE_MODEL : undefined);
 
 /** A request the server answers with `status` and the message. */
 export class MergeRefused extends Error {
@@ -253,6 +266,8 @@ export interface Merger {
   efforts(): Promise<ScoutEfforts>;
   /** Sets `merge.effort`, one of the merger's agent's levels; null removes it. */
   setEffort(change: ScoutEffortChange): Promise<ScoutEfforts>;
+  /** Sets `merge.model` (V47), one of the merger's agent's models; null removes it. */
+  setModel(change: ScoutModelChange): Promise<ScoutEfforts>;
   /** Resolves once nothing in the queue can go further. */
   idle(): Promise<void>;
 }
@@ -269,6 +284,7 @@ export function merger(
     onChange,
     mergerAgent = () => Promise.resolve(null),
     levels = () => Promise.resolve(null),
+    models = () => Promise.resolve(null),
     changedSymbols = analyzedSymbols(repo, cacheDir),
   }: {
     now?: () => Date;
@@ -281,6 +297,8 @@ export function merger(
     mergerAgent?: (kind?: AgentKind) => Promise<MergerAgent | null>;
     /** An agent's effort levels (V46d): Claude Code's `--help`, Codex's models; null unread. */
     levels?: (kind: AgentKind) => Promise<AgentEfforts | null>;
+    /** An agent's models (V47); null unread. */
+    models?: (kind: AgentKind) => Promise<AgentModels | null>;
     /** The symbols a side changed in the conflicting files; Symbiote's analysis by default. */
     changedSymbols?: ChangedSymbols;
   } = {},
@@ -604,7 +622,7 @@ export function merger(
         `${entry.head.slice(0, 7)} conflicts with ${entry.into}: merge ${entry.into} into ${entry.branch}, resolve it there, and review it again (no merger agent: install Claude Code or Codex)`,
       );
     }
-    const model = config.model ?? (agent.kind === 'claude' ? 'sonnet' : undefined);
+    const model = modelOf(agent.kind, config);
     await set(id, { state: 'resolving', conflicts });
     const files = await Promise.all(
       conflicts.map(async (path) => ({ path, text: await readFile(join(worktree, path), 'utf8') })),
@@ -630,7 +648,7 @@ export function merger(
     log.out(
       `Asking ${AGENT_NAMES[agent.kind]}${model ? ` (${model})` : ''}: ${plural(regionCount, 'region')} in ${plural(files.length, 'file')}, ${prompt.length.toLocaleString('en-US')} characters\n`,
     );
-    const effort = await effortOf(agent.kind, config.effort, (line) => log.out(line));
+    const effort = await effortOf(agent.kind, config.effort, model, (line) => log.out(line));
     const run = await agent.run({
       cwd: worktree,
       prompt,
@@ -696,23 +714,30 @@ export function merger(
   }
 
   /**
-   * The level the merger agent is asked at (V46d): `merge.effort` when the agent lists it, none
+   * The level the merger agent is asked at (V46d): `merge.effort` when the agent takes it on
+   * `model` (V47: that model's levels when the agent lists it, its default's otherwise), none
    * otherwise, as Scout's (the project's file may name another agent's level). `say` is told which.
    */
   async function effortOf(
     kind: AgentKind,
     effort: string | undefined,
+    model: string | undefined,
     say: (line: string) => void,
   ): Promise<string | undefined> {
     if (!effort) return undefined;
     const name = AGENT_NAMES[kind];
-    const listed = (await levels(kind))?.levels;
+    const on = model ? (await models(kind))?.models.find((m) => m.id === model) : undefined;
+    if (on && !on.efforts) {
+      say(`merge.effort is ${effort}, which ${on.name} does not take: its own level\n`);
+      return undefined;
+    }
+    const listed = (on?.efforts ?? (await levels(kind)))?.levels;
     if (!listed) {
       say(`Symbiote cannot read ${name}'s effort levels: its own level\n`);
       return undefined;
     }
     if (!listed.includes(effort)) {
-      say(`merge.effort is ${effort}, which ${name} does not list: its own level\n`);
+      say(`merge.effort is ${effort}, which ${on?.name ?? name} does not list: its own level\n`);
       return undefined;
     }
     say(`Effort: ${effort} (merge.effort)\n`);
@@ -722,11 +747,28 @@ export function merger(
   async function efforts(): Promise<ScoutEfforts> {
     const config = readMergeConfig(root);
     const agent = await mergerAgent(config.agent);
-    const listed = agent ? await levels(agent.kind) : null;
-    return {
-      agents: agent ? [{ kind: agent.kind, ...(listed ? { efforts: listed } : {}) }] : [],
+    const about = {
       ...(config.effort ? { effort: config.effort } : {}),
+      ...(config.model ? { model: config.model } : {}),
       file: readPrompts(root).file,
+    };
+    if (!agent) return { agents: [], ...about };
+    const [fallback, listed] = await Promise.all([levels(agent.kind), models(agent.kind)]);
+    // Its levels on the model it runs on (V47).
+    const efforts = levelsOn(listed?.models, modelOf(agent.kind, config), fallback);
+    // Without merge.model: Symbiote's for Claude Code (V26c), Codex's configured one.
+    const fixed = agent.kind === 'claude' ? MERGER_CLAUDE_MODEL : listed?.default;
+    const by = agent.kind === 'claude' ? ('symbiote' as const) : ('agent' as const);
+    return {
+      agents: [
+        {
+          kind: agent.kind,
+          ...(efforts ? { efforts } : {}),
+          ...(listed ? { models: listed.models } : {}),
+          ...(listed && fixed ? { defaultModel: { id: fixed, by } } : {}),
+        },
+      ],
+      ...about,
     };
   }
 
@@ -1036,15 +1078,46 @@ export function merger(
             'the merger needs Claude Code or Codex: neither is installed',
             409,
           );
-        const problem = effortProblem(
+        const model = modelOf(agent.kind, readMergeConfig(root));
+        const problem = effortOnProblem(
           effort,
           AGENT_NAMES[agent.kind],
-          (await levels(agent.kind))?.levels,
+          model ? (await models(agent.kind))?.models : undefined,
+          model,
+          await levels(agent.kind),
         );
         if (problem) throw new MergeRefused(problem, 400);
       }
       try {
         await writeConfig(root, ['merge', 'effort'], effort ?? undefined);
+      } catch (error) {
+        if (error instanceof PromptRefused) throw new MergeRefused(error.message, error.status);
+        throw error;
+      }
+      return efforts();
+    },
+
+    async setModel({ model }) {
+      if (model !== null) {
+        if (typeof model !== 'string' || !MODEL_ID.test(model)) {
+          throw new MergeRefused(modelWordProblem(model), 400);
+        }
+        const agent = await mergerAgent(readMergeConfig(root).agent);
+        if (!agent) {
+          throw new MergeRefused(
+            'the merger needs Claude Code or Codex: neither is installed',
+            409,
+          );
+        }
+        const problem = modelProblem(
+          model,
+          AGENT_NAMES[agent.kind],
+          (await models(agent.kind))?.models,
+        );
+        if (problem) throw new MergeRefused(problem, 400);
+      }
+      try {
+        await writeConfig(root, ['merge', 'model'], model ?? undefined);
       } catch (error) {
         if (error instanceof PromptRefused) throw new MergeRefused(error.message, error.status);
         throw error;

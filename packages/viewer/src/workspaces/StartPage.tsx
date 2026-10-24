@@ -30,6 +30,8 @@ import {
   branchProblem,
   effortChoices,
   keptEffort,
+  keptModel,
+  modelChoices,
   PERMISSION_LABELS,
   proposeBranch,
   readRun,
@@ -65,6 +67,13 @@ function atLevel(run: RunChoices, level: string | undefined): RunChoices {
   const next = { ...run };
   delete next.effort;
   return level ? { ...next, effort: level } : next;
+}
+
+/** The run's choices on `model` (V47), or on the agent's default without one. */
+function onModel(run: RunChoices, model: string | undefined): RunChoices {
+  const next = { ...run };
+  delete next.model;
+  return model ? { ...next, model } : next;
 }
 
 interface Loaded {
@@ -199,8 +208,12 @@ function StartForm({
     options.agents.find((a) => a.kind === 'claude')?.permissionMode ??
     'default';
   const planFirst = run.planFirst ?? true;
-  const effort = agent ? keptEffort(run.effort, agent) : undefined;
-  const efforts = agent ? effortChoices(agent) : [];
+  // The model picked (V47), while the agent lists it; the level and its choices are that model's.
+  const model = agent ? keptModel(run.model, agent) : undefined;
+  const models = agent ? modelChoices(agent) : [];
+  const described = models.find((m) => m.value === (model ?? ''))?.description;
+  const effort = agent ? keptEffort(run.effort, agent, model) : undefined;
+  const efforts = agent ? effortChoices(agent, model) : [];
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The files given with the brief (V40), kept by the draft once uploaded.
@@ -325,6 +338,7 @@ function StartForm({
       ...(base.from ? { from: base.from } : { base: base.sha }),
       ...(agent ? { agent: agent.kind } : {}),
       ...(agent?.kind === 'claude' ? { permissionMode: mode } : {}),
+      ...(model ? { model } : {}),
       ...(effort ? { effort } : {}),
       ...(documents.length > 0 ? { documents: keptDocuments(documents) } : {}),
     };
@@ -618,9 +632,10 @@ function StartForm({
                       onChange={(event) => {
                         const kind = event.target.value as AgentKind;
                         const next = options.agents.find((a) => a.kind === kind);
-                        // A level the other agent takes stays; else its default.
+                        // A model is one agent's: the other starts on its default (V47). A level
+                        // its default model takes stays; else its default.
                         const kept = next ? keptEffort(run.effort, next) : undefined;
-                        choose(atLevel({ ...run, agent: kind }, kept));
+                        choose(atLevel(onModel({ ...run, agent: kind }, undefined), kept));
                       }}
                     >
                       {options.agents.map((a) => (
@@ -639,6 +654,34 @@ function StartForm({
                   </div>
                 )}
                 {agent.account && <p className="dialog-note start-account">{agent.account}</p>}
+                {models.length > 0 && (
+                  <div className="workspace-field">
+                    <span className="field-label">
+                      <label htmlFor="start-model">Model</label>
+                      <Help label="About the model">
+                        The model its session starts on, from {AGENT_NAMES[agent.kind]}&apos;s own
+                        list; change it later in its terminal (<code>/model</code>).
+                      </Help>
+                    </span>
+                    <select
+                      id="start-model"
+                      value={model ?? ''}
+                      onChange={(event) => {
+                        const next = event.target.value || undefined;
+                        // A level the new model takes stays; else its default.
+                        const kept = keptEffort(run.effort, agent, next);
+                        choose(atLevel(onModel(run, next), kept));
+                      }}
+                    >
+                      {models.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                    {described && <p className="dialog-note start-model-note">{described}</p>}
+                  </div>
+                )}
                 {efforts.length > 0 && (
                   <div className="workspace-field">
                     <span className="field-label">

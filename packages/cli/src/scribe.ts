@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { GitRepo } from '@symbiote/core';
 import { fillPrompt, readPrompts } from './prompts.js';
+import { readWorkspaceConfig } from './workspaces.js';
 import { pageAgent, type PageAgentOptions, type PageAgentSpec, type Scout } from './scout.js';
 import { CLAUDE_SKILLS } from './skills.js';
 
@@ -36,6 +37,7 @@ const SCRIBE: PageAgentSpec = {
   prepare: async (root) => {
     await mkdir(skillsOf(root), { recursive: true });
   },
+  model: { read: (root) => readWorkspaceConfig(root).scribeModel, key: ['scribe', 'model'] },
 };
 
 /** Scribe in `repo`'s checkout, its record beside the reviews (`symbiote/`, else Symbiote's cache). */

@@ -196,3 +196,7 @@ merge commit.
 - 2026-10-24 [RM2 spike — what the Monitor shows, and how long files are](journal/rm2-monitor-styling.md)
 - 2026-10-24 [RM2 — long files in heat, the folder in view as the heading, a way back](journal/rm2-monitor-styling.md)
 - 2026-10-24 [Fix — Attach images beside a workspace's terminal: no drop reaches the window on WSL](journal/fix-drop-file-in-workspace.md)
+- 2026-10-24 [V47 spike — what each agent lists, and how it takes a model](journal/v47-agent-model.md)
+- 2026-10-24 [V47a — each agent's models, and a workspace started on one](journal/v47-agent-model.md)
+- 2026-10-24 [V47b — the Model select on the start page](journal/v47-agent-model.md)
+- 2026-10-24 [V47c — Scout's, Scribe's and the merger's model in Settings](journal/v47-agent-model.md)
