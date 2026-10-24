@@ -34,7 +34,8 @@ import {
   commitsBetween,
   defaultBranch,
   deleteMergedBranch,
-  firstChangedLine,
+  fileChangedSince,
+  fileForCheckout,
   forkPoint,
   isAncestor,
   isCommit,
@@ -44,6 +45,7 @@ import {
   EFFORT_LEVEL,
   PERMISSION_MODES,
   removeWorktree,
+  resolveCommit,
   uncommittedFiles,
   userEmail,
   worktreeStatus,
@@ -97,7 +99,7 @@ import {
   serverState,
   type Codex,
 } from './codex.js';
-import { localHost, onPath } from './editor.js';
+import { localHost, onPath, type FolderAt } from './editor.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
 import { CONFIG_FILES } from './plugins.js';
 import {
@@ -1125,11 +1127,17 @@ export interface Workspaces {
   saveDocument(name: string, bytes: Uint8Array): Promise<WorkspaceDocument>;
   /** Stops its agent while it works or waits. */
   stopAgent(branch: string): Promise<WorkspaceStart>;
+  /** Opens its worktree's folder in the editor (V12's VS Code). */
+  openWorktree(branch: string): Promise<void>;
   /**
-   * Opens its worktree's folder in the editor (V12's VS Code); with `file`, that file in it at its
-   * first change since the fork point (V29d). `previousPath`: where a renamed file was.
+   * Opens a file its changes list as a diff in the editor (V43), exactly what the row counts: one
+   * of the branch's from the fork point to the tip, one not committed (`uncommitted`) from its
+   * worktree's HEAD to the worktree. `previousPath`: where a renamed file was.
    */
-  openWorktree(branch: string, file?: { path: string; previousPath?: string }): Promise<void>;
+  openDiff(
+    branch: string,
+    file: { path: string; previousPath?: string; uncommitted?: true },
+  ): Promise<void>;
   /**
    * Its branch's commits and files since the fork point (what Review will show), and its
    * worktree's files not committed (V29d).
@@ -1206,7 +1214,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
  */
 export type OpenFolder = (
   folder: string,
-  at?: { file: string; line: number; column?: number },
+  at?: FolderAt,
 ) => Promise<{ opened: true } | { opened: false; message: string }>;
 
 /** How many commits, and files, a workspace's changes list (V29d). */
@@ -1281,6 +1289,45 @@ export function workspaces(
     join(symbioteFolder(where), 'documents', ...branch.split('/'));
   /** Files uploaded for a workspace about to start (V40), each by its ID. */
   const uploads = join(cacheDir, 'state', repo.id, 'uploads');
+  /** Commits' files as VS Code's diffs are given them (V43, decision 288), by commit and path. */
+  const revisions = join(cacheDir, 'state', repo.id, 'revisions');
+
+  /**
+   * A commit's file kept for a diff (V43): written the first time, as a checkout in `checkout`
+   * writes it, and read-only; null when the commit has no file there.
+   */
+  async function keptFile(checkout: GitRepo, sha: string, path: string): Promise<string | null> {
+    const file = join(revisions, sha, ...path.split('/'));
+    if (existsSync(file)) return file;
+    const bytes = await fileForCheckout(checkout, sha, path);
+    return bytes && keep(file, bytes);
+  }
+
+  const isFile = (path: string) =>
+    stat(path).then(
+      (s) => s.isFile(),
+      () => false,
+    );
+
+  /** An empty file by that name: the side of a diff with no file. */
+  const emptyFile = (path: string) =>
+    keep(join(revisions, 'empty', ...path.split('/')), new Uint8Array());
+
+  /** Writes a read-only file once: to a name of its own, then renamed (two clicks at once). */
+  async function keep(file: string, bytes: Uint8Array): Promise<string> {
+    if (existsSync(file)) return file;
+    await mkdir(dirname(file), { recursive: true });
+    const temporary = `${file}.${randomBytes(4).toString('hex')}`;
+    await writeFile(temporary, bytes, { mode: 0o444 });
+    try {
+      await rename(temporary, file);
+    } catch (error) {
+      // Windows does not rename onto a file: the other click's copy is the same.
+      await rm(temporary, { force: true });
+      if (!existsSync(file)) throw error;
+    }
+    return file;
+  }
 
   /** Removes the uploads older than a week; only files Symbiote named. */
   async function sweepUploads(): Promise<void> {
@@ -2269,33 +2316,60 @@ export function workspaces(
       return started(where, workspace, await promptOf(where, workspace));
     },
 
-    async openWorktree(branch, file) {
+    async openWorktree(branch) {
       const workspace = await recorded(await place(), branch);
-      const paths = file ? [file.path, ...(file.previousPath ? [file.previousPath] : [])] : [];
-      for (const path of paths) {
+      if (!existsSync(workspace.worktree)) {
+        throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
+      }
+      if (!openFolder) throw new WorkspaceRefused('no editor to open it in', 409);
+      const result = await openFolder(workspace.worktree);
+      if (!result.opened) throw new WorkspaceRefused(result.message, 502);
+    },
+
+    async openDiff(branch, file) {
+      const workspace = await recorded(await place(), branch);
+      const before = file.previousPath ?? file.path;
+      for (const path of [file.path, before]) {
         const normal = posix.normalize(path);
         if (path === '' || isAbsolute(path) || normal.startsWith('../') || normal === '..') {
           throw new WorkspaceRefused(`not a path in its worktree: ${path}`, 400);
         }
       }
-      if (!existsSync(workspace.worktree)) {
-        throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
-      }
-      let at: { file: string; line: number } | undefined;
-      if (file) {
-        if (!existsSync(join(workspace.worktree, ...file.path.split('/')))) {
-          throw new WorkspaceRefused(`${file.path} is not in its worktree`, 409);
+      const worktree = existsSync(workspace.worktree)
+        ? { ...repo, root: workspace.worktree }
+        : null;
+      const own = join(workspace.worktree, ...file.path.split('/'));
+      let left: string | null;
+      let right: string | null;
+      if (file.uncommitted) {
+        if (!worktree) {
+          throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
         }
-        // Its first change since where its commits start, the working copy included.
+        left = await keptFile(worktree, await resolveCommit(worktree, 'HEAD'), before);
+        right = (await isFile(own)) ? own : null;
+      } else {
         const refs = await listRefs(repo);
         const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha;
-        const { base } = tip ? await changesBase(workspace, refs, tip) : { base: workspace.base };
-        const worktree = { ...repo, root: workspace.worktree };
-        const line = await firstChangedLine(worktree, base, paths).catch(() => null);
-        at = { file: file.path, line: line ?? 1 };
+        if (!tip) throw new WorkspaceRefused(`its branch ${workspace.branch} is gone`, 409);
+        const { base } = await changesBase(workspace, refs, tip);
+        left = await keptFile(worktree ?? repo, base, before);
+        right = await keptFile(worktree ?? repo, tip, file.path);
+        // The worktree's own file when it is the tip's (decision 287): editable, with VS Code's
+        // language features.
+        if (
+          right &&
+          worktree &&
+          (await isFile(own)) &&
+          !(await fileChangedSince(worktree, tip, file.path))
+        )
+          right = own;
       }
+      if (!left && !right) throw new WorkspaceRefused(`${file.path} is in neither side`, 409);
       if (!openFolder) throw new WorkspaceRefused('no editor to open it in', 409);
-      const result = await openFolder(workspace.worktree, at);
+      const result = await openFolder(worktree ? workspace.worktree : repo.root, {
+        left: left ?? (await emptyFile(before)),
+        right: right ?? (await emptyFile(file.path)),
+      });
       if (!result.opened) throw new WorkspaceRefused(result.message, 502);
     },
 

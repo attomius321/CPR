@@ -719,7 +719,13 @@ describe('workspaces', () => {
         hook,
         node: '/usr/bin/node',
         openFolder: (folder, at) => {
-          opened.push(at ? `${folder} ${at.file}:${at.line}` : folder);
+          opened.push(
+            !at
+              ? folder
+              : 'left' in at
+                ? `${folder} --diff ${at.left} ${at.right}`
+                : `${folder} ${at.file}:${at.line}`,
+          );
           return Promise.resolve({ opened: true });
         },
         ...(terminals ? { terminals } : {}),
@@ -1571,23 +1577,6 @@ describe('workspaces', () => {
       ],
     });
 
-    // Opened in its worktree at the first change: committed or not; a new file at its first line.
-    opened.length = 0;
-    await s.openWorktree('feature/one', { path: 'src/a.ts' });
-    await s.openWorktree('feature/one', { path: 'src/b.ts' });
-    await s.openWorktree('feature/one', { path: 'notes.md' });
-    expect(opened).toEqual([`${path} src/a.ts:2`, `${path} src/b.ts:1`, `${path} notes.md:1`]);
-    // Nothing outside its worktree; nothing that is not there.
-    for (const outside of ['../app/src/a.ts', '/etc/passwd', 'src/../../x', '']) {
-      await expect(s.openWorktree('feature/one', { path: outside }), outside).rejects.toMatchObject(
-        { status: 400 },
-      );
-    }
-    await expect(s.openWorktree('feature/one', { path: 'src/gone.ts' })).rejects.toMatchObject({
-      status: 409,
-      message: 'src/gone.ts is not in its worktree',
-    });
-    expect(opened).toHaveLength(3);
     await expect(s.changes('feature/nope')).rejects.toMatchObject({ status: 404 });
   });
 
@@ -1627,6 +1616,126 @@ describe('workspaces', () => {
     // Its worktree gone: nothing to say of it.
     rmSync(path, { recursive: true, force: true });
     expect((await s.changes('feature/one')).uncommitted).toBeNull();
+  });
+
+  it("opens a changed file as its diff in VS Code: what its row counts, a commit's side a read-only copy (V43)", async () => {
+    const { repo, shas } = fresh();
+    const s = await service(repo, fakeClaude().claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    const path = workspace.worktree.path;
+    const { id } = await openRepo(repo.root);
+    /** A commit's file as Symbiote keeps it for VS Code; `empty` for a side with none. */
+    const copy = (sha: string, file: string) =>
+      join(cache, 'state', id, 'revisions', sha, ...file.split('/'));
+    const diff = (folder: string, left: string, right: string) =>
+      `${folder} --diff ${left} ${right}`;
+    const open = async (file: { path: string; previousPath?: string; uncommitted?: true }) => {
+      opened.length = 0;
+      await s.openDiff('feature/one', file);
+      return opened;
+    };
+
+    // Committed: a.ts changed, c.ts added, b.ts renamed to d.ts; then c.ts changed again, not
+    // committed, and notes.md new.
+    await commitIn(path, 'src/a.ts', 'export const a = 1;\nexport const a2 = 2;\n');
+    await commitIn(path, 'src/c.ts', 'export const c = 1;\n');
+    await gitIn(path, 'mv', 'src/b.ts', 'src/d.ts');
+    await gitIn(path, 'commit', '--quiet', '-m', 'Rename');
+    const tip = await gitIn(path, 'rev-parse', 'HEAD');
+    writeFileSync(join(path, 'src', 'c.ts'), 'export const c = 2;\n');
+    writeFileSync(join(path, 'notes.md'), 'To do\n');
+
+    // A Files row: from the fork point to the worktree's own file, when it is the tip's.
+    expect(await open({ path: 'src/a.ts' })).toEqual([
+      diff(path, copy(shas.B, 'src/a.ts'), join(path, 'src', 'a.ts')),
+    ]);
+    const left = copy(shas.B, 'src/a.ts');
+    expect(readFileSync(left, 'utf8')).toBe('export const a = 1;\n');
+    expect(statSync(left).mode & 0o222).toBe(0);
+    // Written once: the same copy, untouched, the next time.
+    const written = statSync(left).mtimeMs;
+    await open({ path: 'src/a.ts' });
+    expect(statSync(left).mtimeMs).toBe(written);
+    // Added, and changed since without a commit: from nothing to the tip's, not the worktree's.
+    expect(await open({ path: 'src/c.ts' })).toEqual([
+      diff(path, copy('empty', 'src/c.ts'), copy(tip, 'src/c.ts')),
+    ]);
+    expect(readFileSync(copy('empty', 'src/c.ts'), 'utf8')).toBe('');
+    expect(readFileSync(copy(tip, 'src/c.ts'), 'utf8')).toBe('export const c = 1;\n');
+    // Renamed: from its path before.
+    expect(await open({ path: 'src/d.ts', previousPath: 'src/b.ts' })).toEqual([
+      diff(path, copy(shas.B, 'src/b.ts'), join(path, 'src', 'd.ts')),
+    ]);
+
+    // A Not committed row: from the worktree's HEAD to its file.
+    expect(await open({ path: 'src/c.ts', uncommitted: true })).toEqual([
+      diff(path, copy(tip, 'src/c.ts'), join(path, 'src', 'c.ts')),
+    ]);
+    expect(await open({ path: 'notes.md', uncommitted: true })).toEqual([
+      diff(path, copy('empty', 'notes.md'), join(path, 'notes.md')),
+    ]);
+
+    // Deleted, committed (d.ts, which was b.ts) and not (a.ts); a rename staged (c.ts to f.ts).
+    await gitIn(path, 'rm', '--quiet', 'src/d.ts');
+    await gitIn(path, 'commit', '--quiet', '-m', 'Remove d');
+    const last = await gitIn(path, 'rev-parse', 'HEAD');
+    rmSync(join(path, 'src', 'a.ts'));
+    await gitIn(path, 'mv', 'src/c.ts', 'src/f.ts');
+    expect(await open({ path: 'src/b.ts' })).toEqual([
+      diff(path, copy(shas.B, 'src/b.ts'), copy('empty', 'src/b.ts')),
+    ]);
+    // Written again, not tracked: still the branch's deletion, not the worktree's new file.
+    writeFileSync(join(path, 'src', 'b.ts'), 'export const b = 3;\n');
+    expect(await open({ path: 'src/b.ts' })).toEqual([
+      diff(path, copy(shas.B, 'src/b.ts'), copy('empty', 'src/b.ts')),
+    ]);
+    rmSync(join(path, 'src', 'b.ts'));
+    expect(await open({ path: 'src/a.ts', uncommitted: true })).toEqual([
+      diff(path, copy(last, 'src/a.ts'), copy('empty', 'src/a.ts')),
+    ]);
+    // The branch's a.ts: the worktree's is gone, so the tip's.
+    expect(await open({ path: 'src/a.ts' })).toEqual([
+      diff(path, copy(shas.B, 'src/a.ts'), copy(last, 'src/a.ts')),
+    ]);
+    expect(await open({ path: 'src/f.ts', previousPath: 'src/c.ts', uncommitted: true })).toEqual([
+      diff(path, copy(last, 'src/c.ts'), join(path, 'src', 'f.ts')),
+    ]);
+
+    // Nothing outside its worktree; nothing in neither side.
+    for (const outside of ['../app/src/a.ts', '/etc/passwd', 'src/../../x', '']) {
+      await expect(s.openDiff('feature/one', { path: outside }), outside).rejects.toMatchObject({
+        status: 400,
+      });
+    }
+    await expect(
+      s.openDiff('feature/one', { path: 'src/a.ts', previousPath: '../b.ts' }),
+    ).rejects.toMatchObject({ status: 400 });
+    await expect(s.openDiff('feature/one', { path: 'src/nope.ts' })).rejects.toMatchObject({
+      status: 409,
+      message: 'src/nope.ts is in neither side',
+    });
+    await expect(
+      s.openDiff('feature/one', { path: 'src/nope.ts', uncommitted: true }),
+    ).rejects.toMatchObject({ status: 409, message: 'src/nope.ts is in neither side' });
+
+    // Its worktree gone: a Files row from the commits alone, in the repository's window.
+    rmSync(path, { recursive: true, force: true });
+    expect(await open({ path: 'src/a.ts' })).toEqual([
+      diff(repo.root, copy(shas.B, 'src/a.ts'), copy(last, 'src/a.ts')),
+    ]);
+    await expect(
+      s.openDiff('feature/one', { path: 'notes.md', uncommitted: true }),
+    ).rejects.toMatchObject({ status: 409, message: `its worktree is gone: ${path}` });
+    // Its branch gone: nothing to compare.
+    repo.git('worktree', 'prune');
+    repo.git('branch', '--quiet', '-D', 'feature/one');
+    await expect(s.openDiff('feature/one', { path: 'src/a.ts' })).rejects.toMatchObject({
+      status: 409,
+      message: 'its branch feature/one is gone',
+    });
+    await expect(s.openDiff('feature/nope', { path: 'src/a.ts' })).rejects.toMatchObject({
+      status: 404,
+    });
   });
 
   it('counts the commits a workspace lists from its fork point, as its changes and Review do', async () => {

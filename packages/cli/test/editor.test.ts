@@ -6,6 +6,7 @@ import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-
 import {
   findVsCode,
   invocation,
+  diffArgs,
   openArgs,
   runVsCode,
   vsCodeFolder,
@@ -125,6 +126,15 @@ describe('invocation', () => {
       '/home/ada/repo',
       '--goto',
       '/home/ada/repo/src/app/a.ts:12:3',
+    ]);
+  });
+
+  it('opens the folder and two files side by side in it (V43)', () => {
+    expect(diffArgs('/home/ada/repo', '/cache/a.ts', '/home/ada/repo/src/a.ts')).toEqual([
+      '/home/ada/repo',
+      '--diff',
+      '/cache/a.ts',
+      '/home/ada/repo/src/a.ts',
     ]);
   });
 
@@ -324,6 +334,18 @@ describe('vsCodeFolder', () => {
       '/work/app.worktrees/x',
       '--goto',
       '/work/app.worktrees/x/src/a b.ts:12:1',
+    ]);
+    // Two files side by side (V43): a diff, in the folder's window.
+    const sides = {
+      left: '/cache/revisions/abc/src/a b.ts',
+      right: '/work/app.worktrees/x/src/a b.ts',
+    };
+    await vsCodeFolder({ SYMBIOTE_CODE: fake, PATH: '' })('/work/app.worktrees/x', sides);
+    expect(JSON.parse(readFileSync(log, 'utf8'))).toEqual([
+      '/work/app.worktrees/x',
+      '--diff',
+      '/cache/revisions/abc/src/a b.ts',
+      '/work/app.worktrees/x/src/a b.ts',
     ]);
     const nowhere = await vsCodeFolder({ PATH: '' }, host('linux', { PATH: '' }))('/w');
     expect(nowhere).toMatchObject({ opened: false });

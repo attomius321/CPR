@@ -1,5 +1,6 @@
-import { writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join, sep } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
@@ -45,7 +46,7 @@ const lastSize = async (page: Page) => {
   return { columns: Number(columns), rows: Number(rows) };
 };
 
-test("lists the branch's commits and files and what is not committed; a file opens at its change", async ({
+test("lists the branch's commits and files and what is not committed; a file opens as its diff", async ({
   page,
 }) => {
   const symbiote = await serve();
@@ -72,17 +73,26 @@ test("lists the branch's commits and files and what is not committed; a file ope
   await expect(commits.getByRole('listitem').nth(1)).toContainText('Add half');
   await expect(files.getByRole('heading')).toContainText('2');
   await expect(files.getByRole('heading')).toContainText('+3');
-  const half = files.getByRole('button', { name: 'Open half.ts in VS Code' });
+  const half = files.getByRole('button', { name: 'Open the changes to half.ts in VS Code' });
   await expect(half).toContainText('+1');
   await expect(
-    files.getByRole('button', { name: 'Open src/half.test.ts in VS Code' }),
+    files.getByRole('button', { name: 'Open the changes to src/half.test.ts in VS Code' }),
   ).toContainText('+2');
-  await expect(loose.getByRole('button', { name: 'Open notes.md in VS Code' })).toContainText('U');
+  await expect(
+    loose.getByRole('button', { name: 'Open the changes to notes.md in VS Code' }),
+  ).toContainText('U');
 
   await half.click();
-  await expect(workspace(page).getByRole('status')).toHaveText('Opened half.ts in VS Code');
+  await expect(workspace(page).getByRole('status')).toHaveText(
+    'Opened the changes to half.ts in VS Code',
+  );
+  // A new file: from nothing to the worktree's (V43).
   const folder = symbiote.folder(BRANCH);
-  expect(symbiote.opened()).toEqual([[folder, '--goto', `${join(folder, 'half.ts')}:1:1`]]);
+  const [args] = symbiote.opened();
+  expect(args?.slice(0, 2)).toEqual([folder, '--diff']);
+  expect(args?.[2]).toMatch(new RegExp(`\\${sep}revisions\\${sep}empty\\${sep}half\\.ts$`));
+  expect(readFileSync(args?.[2] ?? '', 'utf8')).toBe('');
+  expect(args?.[3]).toBe(join(folder, 'half.ts'));
 
   // Beside it the terminal keeps more than half the window (decision 186).
   await expect.poll(async () => (await lastSize(page)).columns, POLL).toBeGreaterThan(0);
@@ -120,4 +130,65 @@ test("] and the head's button hide it, kept across a reload; shown only where th
   await expect(toggle(page)).toBeHidden();
   await sidenav(page).getByRole('button', { name: 'Fold the sidenav' }).click();
   await expect(panel(page)).toBeVisible();
+});
+
+test('a file opens as its diff: the fork point against the worktree, a deleted file too, what is not committed against HEAD (V43)', async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}history`);
+  await start(page);
+  const files = panel(page).getByRole('region', { name: 'Files' });
+  const loose = panel(page).getByRole('region', { name: 'Not committed' });
+  const status = workspace(page).getByRole('status');
+  const folder = symbiote.folder(BRANCH);
+  const inFolder = (...args: string[]) =>
+    execFileSync('git', ['-C', folder, ...args], { encoding: 'utf8' }).trim();
+  const fork = inFolder('rev-parse', 'main');
+  const before = inFolder('show', 'main:src/math.ts');
+  /** The last thing VS Code was asked to open, and its left side's text. */
+  const last = () => {
+    const args = symbiote.opened().at(-1) ?? [];
+    return { args, left: readFileSync(args[2] ?? '', 'utf8') };
+  };
+  const copy = (sha: string, path: string) =>
+    new RegExp(`\\${sep}revisions\\${sep}${sha}\\${sep}${path.replaceAll('/', `\\${sep}`)}$`);
+
+  symbiote.commit(BRANCH, 'src/math.ts', `${before}\nexport const two = 2;\n`, 'Two');
+  inFolder('rm', '-q', 'src/app.ts');
+  inFolder('commit', '-q', '-m', 'No app');
+  const tip = inFolder('rev-parse', 'HEAD');
+  const math = files.getByRole('button', { name: 'Open the changes to src/math.ts in VS Code' });
+  const app = files.getByRole('button', { name: 'Open the changes to src/app.ts in VS Code' });
+  await expect(app).toContainText('D', POLL);
+
+  // The fork point's file against the worktree's own.
+  await math.click();
+  await expect(status).toHaveText('Opened the changes to src/math.ts in VS Code');
+  expect(last().args.slice(0, 2)).toEqual([folder, '--diff']);
+  expect(last().args[2]).toMatch(copy(fork, 'src/math.ts'));
+  expect(last().left).toBe(`${before}\n`);
+  expect(last().args[3]).toBe(join(folder, 'src', 'math.ts'));
+  // Deleted: a button too, against an empty side.
+  await app.click();
+  await expect(status).toHaveText('Opened the changes to src/app.ts in VS Code');
+  expect(last().args[2]).toMatch(copy(fork, 'src/app.ts'));
+  expect(last().args[3]).toMatch(copy('empty', 'src/app.ts'));
+  expect(readFileSync(last().args[3] ?? '', 'utf8')).toBe('');
+
+  // Changed again, not committed: its row from HEAD; the branch's row now ends at the tip's.
+  writeFileSync(join(folder, 'src', 'math.ts'), `${before}\nexport const three = 3;\n`);
+  const changed = loose.getByRole('button', {
+    name: 'Open the changes to src/math.ts in VS Code',
+  });
+  await expect(changed).toContainText('M', POLL);
+  await changed.click();
+  await expect.poll(() => last().args[2]).toMatch(copy(tip, 'src/math.ts'));
+  expect(last().left).toBe(`${before}\nexport const two = 2;\n`);
+  expect(last().args[3]).toBe(join(folder, 'src', 'math.ts'));
+  const count = symbiote.opened().length;
+  await math.click();
+  await expect.poll(() => symbiote.opened().length).toBe(count + 1);
+  expect(last().args[2]).toMatch(copy(fork, 'src/math.ts'));
+  expect(last().args[3]).toMatch(copy(tip, 'src/math.ts'));
 });

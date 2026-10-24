@@ -47,26 +47,49 @@ export async function git(cwd: string, args: readonly string[]): Promise<string>
     });
     return stdout;
   } catch (error) {
-    const { code, stdout, stderr, message } = error as {
-      code?: unknown;
-      stdout?: unknown;
-      stderr?: unknown;
-      message: string;
-    };
-    if (code === 'ENOENT') {
-      // Spawn reports a missing cwd and a missing git binary the same way.
-      if (!existsSync(cwd)) throw new Error(`directory does not exist: ${cwd}`, { cause: error });
-      throw new SymbioteError('git is not installed or not on PATH', { cause: error });
-    }
-    const failure = new GitError(
-      args,
-      typeof code === 'number' ? code : null,
-      typeof stderr === 'string' && stderr ? stderr : message,
-      { cause: error },
-    );
-    if (typeof stdout === 'string') failure.stdout = stdout;
-    throw failure;
+    throw failure(error, cwd, args);
   }
+}
+
+/** As {@link git}, its stdout as bytes: a file as git gives it, a binary one too (V43). */
+export async function gitBytes(cwd: string, args: readonly string[]): Promise<Buffer> {
+  try {
+    const { stdout } = await execFileAsync('git', args, {
+      cwd,
+      encoding: 'buffer',
+      maxBuffer: 256 * 1024 * 1024,
+      env: gitEnv(),
+    });
+    return stdout;
+  } catch (error) {
+    throw failure(error, cwd, args);
+  }
+}
+
+/** What a failed run of git throws: why it did not start, else a {@link GitError}. */
+function failure(error: unknown, cwd: string, args: readonly string[]): Error {
+  const { code, stdout, stderr, message } = error as {
+    code?: unknown;
+    stdout?: unknown;
+    stderr?: unknown;
+    message: string;
+  };
+  if (code === 'ENOENT') {
+    // Spawn reports a missing cwd and a missing git binary the same way.
+    if (!existsSync(cwd)) return new Error(`directory does not exist: ${cwd}`, { cause: error });
+    return new SymbioteError('git is not installed or not on PATH', { cause: error });
+  }
+  const text = (value: unknown) => (Buffer.isBuffer(value) ? value.toString('utf8') : value);
+  const words = text(stderr);
+  const failed = new GitError(
+    args,
+    typeof code === 'number' ? code : null,
+    typeof words === 'string' && words ? words : message,
+    { cause: error },
+  );
+  const out = text(stdout);
+  if (typeof out === 'string') failed.stdout = out;
+  return failed;
 }
 
 /**

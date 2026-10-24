@@ -13,6 +13,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { FolderAt } from '../src/editor.js';
 import {
   imageKind,
   inFolder,
@@ -328,12 +329,12 @@ describe('files a terminal printed (V38)', () => {
     return { root, work };
   };
   const opener = () => {
-    const opened: [string, { file: string; line: number; column?: number } | undefined][] = [];
+    const opened: [string, FolderAt | undefined][] = [];
     let fails: string | null = null;
     return {
       opened,
       fail: (message: string) => (fails = message),
-      openFolder: (folder: string, at?: { file: string; line: number; column?: number }) => {
+      openFolder: (folder: string, at?: FolderAt) => {
         opened.push([folder, at]);
         return Promise.resolve(
           fails === null ? { opened: true as const } : { opened: false as const, message: fails },

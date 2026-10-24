@@ -5,7 +5,6 @@ import {
   fileTitle,
   linesOf,
   moreText,
-  opensInEditor,
   sinceText,
   splitPath,
   statusLetter,
@@ -49,7 +48,7 @@ function Lines({ added, removed }: { added: number; removed: number }) {
   );
 }
 
-/** A file's row: its status letter, name, folder and lines; a click opens it in VS Code. */
+/** A file's row: its status letter, name, folder and lines; a click opens its diff in VS Code. */
 function FileRow({
   file,
   onOpen,
@@ -59,8 +58,14 @@ function FileRow({
 }) {
   const { name, folder } = splitPath(file.path);
   const lines = linesOf(file);
-  const content = (
-    <>
+  return (
+    <button
+      type="button"
+      className="changes-file"
+      aria-label={`Open the changes to ${file.path} in VS Code`}
+      title={fileTitle(file)}
+      onClick={() => onOpen(file)}
+    >
       <span className={`changes-status status-${file.status}`}>{statusLetter(file.status)}</span>
       <span className="changes-name">{name}</span>
       <span className="changes-folder">{folder}</span>
@@ -69,24 +74,6 @@ function FileRow({
       ) : (
         lines && <Lines added={file.added ?? 0} removed={file.removed ?? 0} />
       )}
-    </>
-  );
-  if (!opensInEditor(file)) {
-    return (
-      <div className="changes-file" title={fileTitle(file)}>
-        {content}
-      </div>
-    );
-  }
-  return (
-    <button
-      type="button"
-      className="changes-file"
-      aria-label={`Open ${file.path} in VS Code`}
-      title={fileTitle(file)}
-      onClick={() => onOpen(file)}
-    >
-      {content}
     </button>
   );
 }
@@ -119,7 +106,8 @@ function Files({
 /**
  * A workspace's branch at the right of its terminal (V29d, decision 186): its commits since the
  * fork point and the files they change — what Review will show —, then the files its worktree has
- * not committed. A file opens in VS Code in the worktree, at its first change.
+ * not committed. A file opens as its diff in VS Code, what its row counts (V43): the branch's from
+ * the fork point, one not committed from the worktree's HEAD.
  */
 export function ChangesPanel({
   branch,
@@ -133,13 +121,14 @@ export function ChangesPanel({
   onSaid: (words: string) => void;
 }) {
   const changes = useChanges(branch, version);
-  const open = (file: WorkspaceFileChange) =>
-    void postJson('/api/workspaces/open', {
+  const opener = (uncommitted: boolean) => (file: WorkspaceFileChange) =>
+    void postJson('/api/workspaces/diff', {
       branch,
       file: file.path,
       ...(file.previousPath ? { previousPath: file.previousPath } : {}),
+      ...(uncommitted ? { uncommitted } : {}),
     }).then(
-      () => onSaid(`Opened ${file.path} in VS Code`),
+      () => onSaid(`Opened the changes to ${file.path} in VS Code`),
       (e: unknown) => onSaid((e as Error).message),
     );
   const commitsMore =
@@ -183,7 +172,7 @@ export function ChangesPanel({
                 <Lines added={changes.files.added} removed={changes.files.removed} />
               )}
             </h2>
-            <Files files={changes.files} empty="No files changed yet" onOpen={open} />
+            <Files files={changes.files} empty="No files changed yet" onOpen={opener(false)} />
           </section>
           <section className="changes-section" aria-label="Not committed">
             <h2>
@@ -193,7 +182,7 @@ export function ChangesPanel({
               )}
             </h2>
             {changes.uncommitted ? (
-              <Files files={changes.uncommitted} empty="Nothing" onOpen={open} />
+              <Files files={changes.uncommitted} empty="Nothing" onOpen={opener(true)} />
             ) : (
               <p className="changes-empty">Its worktree is gone</p>
             )}

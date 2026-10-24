@@ -307,8 +307,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           return onBranch(req, res, (branch) => answer(res, () => workspaces.stopAgent(branch)));
         }
         if (url.pathname === '/api/workspaces/open') {
-          return written(req, res, parseWorkspaceOpen, ({ branch, file }) =>
-            answer(res, () => workspaces.openWorktree(branch, file).then(() => ({}))),
+          return written(req, res, parseWorkspaceOpen, ({ branch }) =>
+            answer(res, () => workspaces.openWorktree(branch).then(() => ({}))),
+          );
+        }
+        if (url.pathname === '/api/workspaces/diff') {
+          return written(req, res, parseWorkspaceDiff, ({ branch, file }) =>
+            answer(res, () => workspaces.openDiff(branch, file).then(() => ({}))),
           );
         }
         if (url.pathname === '/api/workspaces/changes') {
@@ -1400,27 +1405,41 @@ function parseWorkspaceClean(text: string): { branch: string; unmerged?: boolean
   return { branch: value.branch, ...(value.unmerged ? { unmerged: true } : {}) };
 }
 
+/** `{ branch }`: a workspace's worktree to open. */
+function parseWorkspaceOpen(text: string): { branch: string } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
+  return { branch: value.branch };
+}
+
 /**
- * `{ branch, file?, previousPath? }`: a workspace's worktree to open, or a file in it (V29d) and,
- * for a renamed file, where it was.
+ * `{ branch, file, previousPath?, uncommitted? }` (V43): a file a workspace's changes list, to
+ * open as its diff; for a renamed file, where it was; `uncommitted`, a file its worktree has not
+ * committed.
  */
-function parseWorkspaceOpen(text: string): {
+function parseWorkspaceDiff(text: string): {
   branch: string;
-  file?: { path: string; previousPath?: string };
+  file: { path: string; previousPath?: string; uncommitted?: true };
 } {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
-  if (value.file === undefined) return { branch: value.branch };
   if (typeof value.file !== 'string' || value.file === '') {
     throw new Error('file: a path in its worktree');
   }
   if (value.previousPath !== undefined && typeof value.previousPath !== 'string') {
     throw new Error('previousPath: where a renamed file was');
   }
-  const { previousPath } = value;
+  if (value.uncommitted !== undefined && typeof value.uncommitted !== 'boolean') {
+    throw new Error('uncommitted: true for a file its worktree has not committed');
+  }
+  const { previousPath, uncommitted } = value;
   return {
     branch: value.branch,
-    file: { path: value.file, ...(previousPath ? { previousPath } : {}) },
+    file: {
+      path: value.file,
+      ...(previousPath ? { previousPath } : {}),
+      ...(uncommitted ? { uncommitted: true as const } : {}),
+    },
   };
 }
 
