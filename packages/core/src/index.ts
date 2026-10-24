@@ -43,6 +43,13 @@ export type {
 } from './model.js';
 export type { LanguageAdapter, LoadOptions } from './adapter.js';
 export {
+  combineAdapters,
+  createAdapter,
+  defaultAdapter,
+  type CombinedRevision,
+} from './adapters.js';
+export { stylesheetAdapter, type CssRevision } from './lang/css/index.js';
+export {
   createTypescriptAdapter,
   typescriptAdapter,
   type TsRevision,

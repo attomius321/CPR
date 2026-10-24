@@ -88,7 +88,7 @@ export interface Graph {
 
 export interface BuildGraphOptions {
   generator: { name: string; version: string };
-  /** Language of the analyzed symbols. Default: `typescript`. */
+  /** Language of symbols that name none of their own (TypeScript's). Default: `typescript`. */
   language?: string;
   durationMs?: number;
   changeRequest?: GraphChangeRequest;
@@ -135,12 +135,16 @@ export function buildGraph(analysis: Analysis, options: BuildGraphOptions): Grap
     ),
     nodes: [
       ...changed.map((change) => {
-        const node = changeNode(change, language);
+        const node = changeNode(change, (change.head ?? change.base)?.language ?? language);
         const since = analysis.since?.symbols[change.id];
         return since ? { ...node, since } : node;
       }),
       ...analysis.context.map((context) =>
-        contextNode(context, unchanged.get(context.id), language),
+        contextNode(
+          context,
+          unchanged.get(context.id),
+          context.decl?.language ?? context.language ?? language,
+        ),
       ),
     ],
     edges: analysis.edges.map((edge, i) => ({

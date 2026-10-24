@@ -54,6 +54,11 @@ export interface LanguageAdapter<L = unknown> {
    * those found by convention (workspaces, packages).
    */
   projects?(revision: L): DeclaredProject[];
+  /**
+   * The language of a repo-relative file it reads (`css`), when it is not the analysis's default
+   * (TypeScript); for nodes without a declaration, such as a file's top-level code.
+   */
+  languageOf?(path: string): string | undefined;
   /** Problems worth telling the user about (configs that failed to load, skipped files). */
   warnings(revision: L): string[];
 }

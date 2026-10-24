@@ -46,6 +46,8 @@ export interface SymbolDecl {
   bodySize: number;
   /** Pieces of the contract, to judge whether a signature change is backward compatible. */
   shape?: Shape;
+  /** Its language when it is not the analysis's default (TypeScript): `css`, `scss`. */
+  language?: string;
 }
 
 /** Normalized type texts; equal text means equal type. */

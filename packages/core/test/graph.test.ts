@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
-import { analyzeDirectories, buildGraph, SCHEMA_VERSION, type Graph } from '../src/index.js';
+import {
+  analyzeDirectories,
+  buildGraph,
+  SCHEMA_VERSION,
+  type Graph,
+  type SymbolDecl,
+} from '../src/index.js';
 
 const schema = JSON.parse(
   readFileSync(new URL('../schema/graph.schema.json', import.meta.url), 'utf8'),
@@ -62,5 +68,57 @@ describe('buildGraph', () => {
 
   it('rejects malformed graphs', () => {
     expect(validate({ schemaVersion: '0.1.0' })).toBe(false);
+  });
+
+  it("gives each node its own language: its declaration's, else the one found for it", () => {
+    const decl = (id: string, language?: string): SymbolDecl => ({
+      id,
+      kind: 'variable',
+      name: id.slice(id.indexOf('#') + 1),
+      container: null,
+      exported: true,
+      file: id.slice(0, id.indexOf('#')),
+      range: { start: { line: 1, col: 1 }, end: { line: 1, col: 9 } },
+      signature: '',
+      hashes: { signature: 'a', body: 'b' },
+      bodySize: 1,
+      ...(language ? { language } : {}),
+    });
+    const graph = buildGraph(
+      {
+        revisions: {
+          base: { ref: 'base', sha: null, mergeBase: null },
+          head: { ref: 'head', sha: null },
+          from: null,
+        },
+        files: [],
+        changes: [
+          { id: 'a.ts#x', status: 'added', previousId: null, base: null, head: decl('a.ts#x') },
+          {
+            id: 'b.css#--x',
+            status: 'added',
+            previousId: null,
+            base: null,
+            head: decl('b.css#--x', 'css'),
+          },
+        ],
+        edges: [],
+        context: [
+          { id: 'c.scss#(module)', kind: 'module', decl: null, language: 'scss' },
+          { id: 'd.ts#(module)', kind: 'module', decl: null },
+        ],
+        findings: [],
+        ignored: [],
+        warnings: [],
+        timings: {},
+      },
+      { generator: { name: 'symbiote', version: 'test' } },
+    );
+    expect(Object.fromEntries(graph.nodes.map((n) => [n.id, n.language]))).toEqual({
+      'a.ts#x': 'typescript',
+      'b.css#--x': 'css',
+      'c.scss#(module)': 'scss',
+      'd.ts#(module)': 'typescript',
+    });
   });
 });
