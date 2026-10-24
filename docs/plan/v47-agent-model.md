@@ -3,7 +3,11 @@
 [Index](../PLAN.md) · [Journal](../journal/v47-agent-model.md)
 
 **Status:** planned (2026-10-24), on branch `feature/workspace-agent-model` (a workspace started
-in Symbiote, from `main` at `f6e5408`); waiting for the person's OK. Not started.
+in Symbiote, from `main` at `f6e5408`). The plan OK'd by the person with its three questions
+answered: "1. Yes, should be set from the Settings. 2. Should run in the background maybe
+...every 24 hours or so..idk 3. Yes. Ok" — Scout, Scribe and the merger get a model in Settings
+(V47c, decisions 342–343); Claude Code's list is kept on disk and read again in the background
+once a day (decision 340, changed); its "Default (recommended)" left out (337, confirmed).
 
 **Problem** (asked: "At the moment there is no way to choose a model per agent. There should be a
 selector with the model. The model should be queried from available models, respective to Claude
@@ -62,9 +66,13 @@ What causes it:
 - **Effort follows the model**: the levels shown are the picked model's.
 - The model goes to the agent when its session starts, is recorded with the workspace, used
   again by Start again, and said on the Brief tab as how the agent was started.
+- **Scout, Scribe and the merger** (asked: "should be set from the Settings"): a Model in their
+  Settings groups beside Effort, from their agent's list, saved in `symbiote/config.json`
+  (`scout.model`, `scribe.model`, `merge.model`).
 - **Unchanged**: a start without `model` gives each agent the same arguments as `main`
   (`agent.model` still passed to Claude Code when set); `POST /api/workspaces` without `model`;
-  Scout, Scribe and the merger; `symbiote diff` and `symbiote pr`. No graph or analysis change.
+  Scout, Scribe and the merger with no model set; `merge.model` written by hand; `symbiote diff`
+  and `symbiote pr`. No graph or analysis change.
 
 ## The list (core, cli)
 
@@ -80,10 +88,11 @@ What causes it:
   (`parseClaudeModels`): `value` as the ID, `displayName` as the name, `description`,
   `supportedEffortLevels` (words only) as the levels; the `default` entry left out (decision
   337). 20 s at most; no answer, an error, or no `models`: null, and no Model choice.
-- **When** (decision 340): once per `symbiote view`, as `--help` is, begun by the first
-  workspaces request (the sidenav's list at page load), so the start page rarely waits; the
-  options read waits for it if it has not ended. A failed read is tried again at the next options
-  read, not kept.
+- **When** (decision 340, as the person answered): kept on disk in Symbiote's cache
+  (`<cache>/agents/claude-models-<hash of the command>.json`, with when it was read), shared by
+  every `symbiote view` on the machine. A use of a list a day old or older answers with it and
+  reads it again in the background (one read at a time); only when none is kept does a use wait
+  for the read (1.2 s, once). A failed read keeps the old list and is tried again at the next use.
 - **Codex** (`CodexServer.models(cwd)`, `app-server.ts`): `config/read`, then `model/list`'s
   pages (`cursor`, at most 5), models not `hidden`; `model` (the ID `--model` and `thread/start`
   take) as the ID, `displayName`, `description`, `supportedReasoningEfforts` and
@@ -115,6 +124,33 @@ What causes it:
   effort." — the recorded ID, as `--model` was given it; without a pick, as today.
 - Styles: the select and the note reuse the Run column's (`workspace-field`, `dialog-note`); no
   new tokens. Checked with the `symbiote-style` skill.
+
+## Settings: Scout, Scribe and the merger (V47c)
+
+- **Config** (decision 342): `scout.model`, `scribe.model` (new) and `merge.model` (V26c, read by
+  hand until now), each a model ID. Settings writes only a model the agent lists; removed by
+  picking the default.
+- **Settings page**: a "Model" item in the Scout, Scribe and Merger groups (Scout's and the
+  merger's before their Effort). Its editor: a select of the agent's models — its default first,
+  as on the start page, the merger's Claude Code default being Symbiote's ("Symbiote's default
+  (sonnet)", V26c) —, the picked model's description, saved when picked ("Saved. Scout's next
+  conversation starts on Sonnet 5.5."). Warnings as Effort's: no agent, a list Symbiote cannot
+  read, a configured model the agent does not list.
+- **Which agent's list**: Scout's and Scribe's default agent (`agent.kind`, else the first
+  installed), the merger's (`merge.agent`, else the default), as their Effort.
+- **The endpoints**: `GET /api/scout/efforts`, `/api/scribe/efforts` and `/api/merges/efforts`
+  give each agent's `models` and `defaultModel` and the project's `model`; `POST
+  /api/scout/model`, `/api/scribe/model`, `/api/merges/model` (`{ model: string | null }`) set it,
+  as `…/effort` sets the level.
+- **Used** (decision 343):
+  - Scout and Scribe: a new conversation starts on `scout.model` / `scribe.model` when its agent
+    lists it (the box can pick the other agent, whose list will not have it), else on
+    `agent.model` (Claude Code, as today), else the agent's own; recorded with the conversation;
+    the page's head says it ("…, with Claude Code on sonnet at high effort").
+  - The merger: `merge.model` passed as today (a hand-written full model name keeps working);
+    its log already names the model it asks.
+  - Their Effort follows the model as the start page's does: Scout's box and Settings' stepper
+    show the levels of the model the next conversation or run is on.
 
 ## Starting with it (cli)
 
@@ -149,7 +185,14 @@ What causes it:
      record from before V47 reads without one.
    - Viewer unit: the model choices (each default's words, the agent's order); the effort choices
      following a model (kept, dropped, none); `readRun` with a model (kept, another agent's,
-     unlisted); `startedWith` with a model.
+     unlisted); `startedWith` with a model; the Settings model choices (the merger's
+     Symbiote default).
+   - V47c CLI unit: `scout.model` and `scribe.model` read and written (`setModel`: listed only,
+     null removes); a conversation started on the project's model when its agent lists it, not
+     when the other agent is picked, `agent.model` otherwise; the record keeps it; the merger's
+     `efforts()` lists its models and Symbiote's default; `setModel` writes `merge.model`; the
+     levels shown follow the model; the kept list (a fresh file used, a day-old one used and read
+     again, none read and awaited, a failed read keeping the old one).
 2. **e2e** (`start.spec.ts`, `workspaces.spec.ts`, `codex-server.spec.ts`, `codex.spec.ts`): the
    fake Claude Code answers the `initialize` request with a short list (a model without levels,
    one without `xhigh`); the fake app server's `model/list` lists two models. New tests: the
@@ -158,7 +201,10 @@ What causes it:
    `xhigh` drops a picked `xhigh` to the default; Codex's default named, its pick reaching
    `thread/start`; `exec`'s start and resume carrying `-m`; the draft keeping the model across a
    visit to History; the agent's change resetting it; the Brief tab's line. The keyboard test's Tab
-   order gains the Model select. All of today's 221 pass.
+   order gains the Model select. Settings (`settings.spec.ts`): Scout's, Scribe's and the merger's
+   Model listed in their groups, a pick saved in the config file and read back, the merger's
+   default naming Symbiote's `sonnet`; a Scout conversation started after a pick gives the fake
+   `--model`. All of today's 221 pass.
 3. **Real agents**: a Claude Code workspace started through Symbiote's endpoint on `haiku` at
    `low`: its transcript's assistant lines on `claude-haiku-5-5`, again after Symbiote's reply
    (stop, resume), one session; removed after. A Codex thread on the person's daemon, in a
@@ -180,16 +226,16 @@ What causes it:
 |---|---|
 | The `initialize` answer changes (it is the SDK's protocol with the CLI, not a documented command) | Read field by field; no `models`: no Model choice, never a guessed list. A unit test holds today's answer |
 | The read runs the person's hooks or plugins | `--safe-mode` (no hooks, plugins, MCP servers, CLAUDE.md); settings, auth and model selection still apply, so the list is the one the person's sessions get (13 with and without it, measured) |
-| 1.2 s and a Claude Code process once per `symbiote view` | Begun by the first workspaces request, in the background; only views that serve workspaces; kept for the run |
+| 1.2 s and a Claude Code process | Kept on disk for every view on the machine; read again in the background once a day; waited on only when no list is kept |
 | A listed model the account cannot use | Claude Code's own list for this login; a start it refuses shows its words, as today |
-| Claude Code's list goes stale in a long-running view (an update, a login) | Read again at the next `symbiote view`; a failed read is tried again. Said in the plan; not re-read on a timer |
+| Claude Code's list goes stale (an update, a login) | At most a day old: read again in the background at the first use after that (the person's "every 24 hours or so") |
 | A model that takes fewer levels than `--help` lists | Effort follows the model (decision 338): Opus 4.6 is not offered `xhigh` |
 | Codex's `model/list` changes (`[experimental]`) | Read field by field, as V30b's levels |
 | The model shown is not the session's any more (`/model` in its terminal) | Said as how the agent was started, on the Brief tab only (as decision 211) |
 
-**Order**: V47a (the lists, `options()`, the request, passing and recording it, unit tests) then
-V47b (the select, effort following it, the draft, the Brief tab line, e2e, look). One branch,
-committed per part.
+**Order**: V47a (the lists, `options()`, the request, passing and recording it, unit tests),
+V47b (the select, effort following it, the draft, the Brief tab line, e2e, look), then V47c
+(Settings for Scout, Scribe and the merger). One branch, committed per part.
 
 ## Milestones
 
@@ -197,19 +243,22 @@ committed per part.
 |---|---|---|
 | V47a | The models | Claude Code's `initialize` read, Codex's `model/list` read, `models` on each agent option, `model` in the request, checked, passed (`--model`, `thread/start` or `turn/start`, `-m`), recorded, given again by Start again |
 | V47b | The Model select | The select and its note, Effort following the model, the draft, the Brief tab's line, the fakes and e2e |
+| V47c | Settings | `scout.model`, `scribe.model`, `merge.model` set in Settings from their agent's list; Scout's and Scribe's conversations started on it; their Effort following it |
 
-**Proposed decisions**:
+**Decisions** (337 confirmed; 340 as the person answered; 342 asked; the others proposed):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 336 | Which models | **The installed agent's own list: Claude Code's `initialize` answer, Codex's `model/list` (every page, not hidden); none when Symbiote cannot read one** | The ask ("queried from available models"). A fixed list in Symbiote would offer a model the login or the version does not have; the agents' lists differ by account and version |
-| 337 | The default entry | **"<Agent>'s default", no flag: Codex's named from `config/read`, Claude Code's not; with `agent.model` in `symbiote/config.json`, "The project's (<model>)", passed as today. Claude Code's "Default (recommended)" entry left out** | Its entry is the account's recommended model, not the person's setting (measured: settings `haiku` and `--model sonnet` both still said Opus 5.5); offering it beside "Claude Code's default" would be two defaults, one of them overriding the person's `model` |
+| 337 | The default entry | **"<Agent>'s default", no flag: Codex's named from `config/read`, Claude Code's not; with `agent.model` in `symbiote/config.json`, "The project's (<model>)", passed as today. Claude Code's "Default (recommended)" entry left out** (confirmed) | Its entry is the account's recommended model, not the person's setting (measured: settings `haiku` and `--model sonnet` both still said Opus 5.5); offering it beside "Claude Code's default" would be two defaults, one of them overriding the person's `model` |
 | 338 | Effort and model | **The levels shown are the picked model's; a picked level stays if the new model takes it; no Effort for a model with none; the default model keeps today's levels** | Claude Code's levels differ per model (Opus 4.6 has no `xhigh`, Haiku 4.5 none), and it ignores a level it does not take without failing (V30) |
 | 339 | How the model reaches the agent | **Claude Code `--model` at the start; Codex `model` on `thread/start` (else the first `turn/start`, decided by the first real run), `-m` on every `exec` run; recorded, passed again by Start again** | As V30's levels: what each agent keeps for a session, measured, and the record for runs that keep nothing |
-| 340 | When Claude Code's list is read | **Once per `symbiote view`, begun by the first workspaces request, awaited by the options read; a failed read tried again** | 1.2 s: too slow for every options read (V30b's warm read is 14–17 ms), too slow to make the start page wait on its first open |
+| 340 | When Claude Code's list is read | **Kept on disk for every view on the machine; read again in the background when a day old; waited on only when none is kept; a failed read keeps the old list** (as answered) | The person: "Should run in the background maybe ...every 24 hours or so". 1.2 s is too slow for every options read (V30b's warm read is 14–17 ms) |
 | 341 | Where the model shows after | **The Brief tab's line, as how the agent was started: "Started with Claude Code on sonnet at high effort."** | As decision 211: `/model` in the agent's terminal changes it, and Symbiote does not read it back |
+| 342 | Scout's, Scribe's and the merger's model | **Set in Settings, in their groups beside Effort, from their agent's list: `scout.model`, `scribe.model`, `merge.model`** (asked) | The person: "should be set from the Settings". Their Effort is set there already (fix/scout-effort-level, V46d) |
+| 343 | When a project's model is used | **Scout and Scribe: when the conversation's agent lists it, else `agent.model` (Claude Code), else the agent's own. The merger: `merge.model` as today, unchecked** | Scout's box can pick the other agent, whose list will not have the model. `merge.model` has been passed as written since V26c; a full model name Claude Code takes but does not list must keep working |
 
-**Not in V47 (later)**: a model for Scout's conversations, for Scribe, and for the merger
-(`merge.model` stays a file setting); a project default picked in Settings (`agent.model` stays
-a file setting); the model of a running session read back or changed from Symbiote; Codex's
-model without its daemon offered (no list to read).
+**Not in V47 (later)**: a model picked per conversation in Scout's box (Settings sets it, as
+asked); a project default for workspaces picked in Settings (`agent.model` stays a file setting);
+the model of a running session read back or changed from Symbiote; Codex's model without its
+daemon offered (no list to read).
