@@ -457,6 +457,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V40 | Documents for a workspace's agent | The start page takes text only: a screenshot or a PDF is put somewhere by hand and its path typed into the brief. Measured: a folder in the worktree is out of git by its own `.gitignore`, but Prettier and ESLint still check it (4 of 6 sample files, 2 errors); Codex's sandbox reads outside its worktree, yet its model did not try until told it could. Built: files chosen, dropped or pasted on the start page, uploaded as added, put in `symbiote/documents/<branch>/` beside the record at the start (never the worktree), each named in the agent's first prompt; real Claude Code and Codex each read a PNG and a PDF from there (14 and 18 s), no permission asked. Ready for review (2026-10-23). See below. |
 | V41 | Skills, and Scribe | A skill (a folder with a `SKILL.md`) tells an agent how a project does something; this repository has 6 in `.claude/skills/`, and Symbiote shows none and writes none. Codex reads `.agents/skills/` and lists none of the 6 (6 of 6 with a link). Claude Code protects `.claude`: `dontAsk` denies every Write, its prompt asks in the other modes; Codex's sandbox started in `.claude/skills` writes only there. Ready for review (2026-10-24, `feature/skill-creator`): V41a a Skills page (`/skills`, key `i`) listing, editing, adding and deleting the checkout's skills with the standard's checks and Link for Codex; V41b Scribe, an agent there that writes skills into `.claude/skills/` only, for the person to read and commit. With the real Claude Code it wrote a 79-line skill this repository's checks pass and a fresh session loads for a matching task; its README edit was refused by the gate; Codex's sandbox refused a write outside. See below. |
 | V42 | Koi: colours from the intro | Since V31 the chrome is neutral grey and colour is for state only; V39 gave Symbiote a koi mark on deep water, and none of the app's colours come from it. Asked: "change the color palette … the colors from the intro video with the fishes … primary, secondary … make it look modern". Sampled from the intro's images: the water `#05080f`–`#081828`, the koi's glow `#3060b8`–`#4c82d2`, the white koi `#a8c0e8`–`#e8e8f8`. Ready for review (2026-10-24, `feature/ui-improvements-v2`): the palette in both themes (canvas `#05080f`, chrome `#0f1626`, primary `#3c6fd6`, accent `#7a9ee8`), one accent in named roles, moved and info in cyan, the koi S as the mark, the diff's tabs segmented; every contrast rule passes, timings as `main`'s. See below. |
+| V43 | An icon for each group of workspaces | The sidenav's groups (Merging, Needs you, Working, Done) are told apart by a 6 px dot in their state's colour: the shape of every card's dot, and Merging's and Working's are the same cyan. Folded, a group is a 1 px line. Asked: "Workspaces statuses should be represented through some icons. Only the category should have that icon. Eg. Working should have a clock icon". Planned (2026-10-24, `feature/workspaces-list-upgrades`): a lucide icon per group in its colour, the cards' dots kept; an hourglass for Working, not the clock History's page already has. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -10772,6 +10773,73 @@ restyles old).
 Not verified: Bitwarden's graph (no clone here; this repository's largest range instead); the
 person's own window (Electron on WSLg at their scale); macOS and Windows rendering; a real agent's
 colours in the restyled terminal.
+
+### V43 — An icon for each group of workspaces
+
+**Status:** planned (2026-10-24), on branch `feature/workspaces-list-upgrades` (a workspace
+started in Symbiote, from `main` at `ab9e352`); the plan and its two choices OK'd by the person
+("Ok").
+
+**Problem** (asked: "Workspaces statuses should be represented thorugh some icons. Only the category
+should have that icon. Eg. Working should have a clock icon. This is just an example, if you find a
+more appropiate icon, use that."). The sidenav lists the workspaces in up to four groups, the merge
+queue first: Merging, Needs you, Working, Done. Measured on `main` (`ab9e352`):
+
+| What | Measured |
+|---|---|
+| A group's mark | A 6 px dot before its name (`h3::before`), in its state's colour; each card under it has a 7 px dot of the same shape |
+| Telling groups apart by the mark | Merging and Working: both `--moved` (cyan); only the name tells them apart |
+| A Needs you card's dot | Amber, green, red or grey (waiting, ready, failed, idle): the group's amber dot is one of four |
+| Folded (the rail) | A group is a 1 px line, 0 px high: which group a dot belongs to is not shown |
+| The clock | History's page icon, two rows above the groups (`HistoryIcon`) |
+| Found in the rail | A merge card's state text is not hidden there: it shows as "Che…" under its dot |
+
+**Goal**: each group's heading carries an icon that says what the group is, in the state's colour
+it has today; the cards keep their dots. Folded, the icon stands for its group where the line was.
+**Unchanged**: the groups, their order and counts, the cards (their dots, text and height), the
+pages' icons, the colours.
+
+#### Design
+
+| Group | Icon (after lucide, ISC) | Colour | Why |
+|---|---|---|---|
+| Merging | `git-merge` | `--moved`, as today | A branch merged into another |
+| Needs you | `bell` | `--warning`, as today | The person's turn. The group holds "Plan ready" and "Ready for review" as well as failures: a "!" would read as an error |
+| Working | `hourglass` | `--moved`, as today | Busy, wait: the brief's clock, which History's icon already is two rows above |
+| Done | `circle-check` | `--added`, as today | Merged and finished |
+
+- `src/ui/icons.tsx`: the four icons, 16 px line drawings like the others, each credited.
+- `src/shell/Sidenav.tsx`: `GROUPS` gives each group its icon; Merging's heading takes its own.
+  The heading's `title` names the group (the rail hides its name).
+- `src/shell/Sidenav.css`: the dot (`h3::before`) gives way to the icon, 14 px beside the 13 px
+  name, in the group's tone (`--group-tone`, as the dot). Folded: the icon, centred, in place of
+  the line. No animation.
+- The rail's merge card shows only its dot, as a workspace's card does.
+
+#### Verification
+
+1. **Test first** (red before), `e2e/shell.spec.ts`: with a workspace in each group and a merge in
+   the queue, each group's heading has one icon in its token's colour; the four drawings differ
+   and none is History's; the cards keep their dots and no icon; folded, each icon is shown with
+   the group's name as its title, the names hidden, and the merge card's text hidden.
+2. `pnpm check`, `pnpm build`, `pnpm test:e2e` (`look.spec.ts`'s 64 px card among them).
+3. Screenshots before and after: the sidenav open and folded with the four groups, dark and light,
+   1440×900, device scale 1 (and 2 to read the icons).
+4. `/history`'s first paint against `main`'s build, alternated: inline SVG only, no font or glyph.
+5. No analysis changes: no regression run.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| An icon at 14 px blurs at 1× | Lucide's 24-unit paths redrawn on the 16-unit grid; screenshots at 1× |
+| The rail grows | About 20 px a group, at most four groups |
+
+**Decisions**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 285 | How a group of workspaces is marked | **A lucide icon per group in its state's colour** (Merging `git-merge`, Needs you `bell`, Working `hourglass`, Done `circle-check`); the cards keep their dots; folded, the icon in place of the line | Asked for icons on the categories only; an hourglass for Working because the clock is History's icon (the person: "Ok") |
 
 ### Phase 1 milestones
 
