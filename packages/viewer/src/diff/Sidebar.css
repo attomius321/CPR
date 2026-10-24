@@ -12,19 +12,25 @@
 
 .tabs {
   display: flex;
-  border-bottom: 1px solid var(--line);
+  gap: 2px;
+  margin: 8px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--raised);
 }
 
+/* A segmented control (V42, decision 284): the style's table calls underlined tabs dated. 8 + 28
+   + 8 px: as high as the toolbar beside it (decision 213). */
 .tabs button {
   flex: 1 1 auto;
-  height: 43px;
+  height: 22px;
   padding: 0 6px;
   white-space: nowrap;
-  border: 0;
-  border-bottom: 2px solid transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: none;
   color: var(--muted);
-  font-size: var(--size-body);
+  font-size: var(--size-small);
   font-weight: 500;
   cursor: pointer;
 }
@@ -34,8 +40,10 @@
 }
 
 .tabs button[aria-selected='true'] {
+  border-color: color-mix(in srgb, var(--text) 15%, transparent);
+  background: var(--lifted);
+  box-shadow: var(--shadow-lift);
   color: var(--text);
-  border-bottom-color: var(--text);
 }
 
 .count {

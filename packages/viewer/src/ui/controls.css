@@ -251,7 +251,8 @@ input[type='radio']:focus-visible {
   color: var(--muted);
 }
 
-/* Buttons (V29b): 28 px; the main action in the primary colour (V31), the others outlined. */
+/* Buttons (V29b): 28 px; the main action in the primary colour (V31: the koi's blue since V42, its
+   top edge lit), the others outlined. */
 .button {
   display: inline-flex;
   align-items: center;
@@ -262,6 +263,7 @@ input[type='radio']:focus-visible {
   border: 1px solid transparent;
   border-radius: 8px;
   background: var(--primary);
+  box-shadow: var(--primary-shine);
   color: var(--primary-text);
   font-size: var(--size-small);
   font-weight: 500;
@@ -274,7 +276,7 @@ input[type='radio']:focus-visible {
 }
 
 .button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--primary) 90%, transparent);
+  background: var(--primary-hover);
 }
 
 .button:disabled {
@@ -285,6 +287,7 @@ input[type='radio']:focus-visible {
 /* Backing out stays quiet (Cancel, Clear, Discard, Keep it): a ghost button, no colour. */
 .button.ghost {
   background: transparent;
+  box-shadow: none;
   color: var(--muted);
 }
 
@@ -330,6 +333,7 @@ input[type='radio']:focus-visible {
 }
 
 .link:hover:not(:disabled) {
+  color: var(--accent);
   text-decoration: underline;
 }
 

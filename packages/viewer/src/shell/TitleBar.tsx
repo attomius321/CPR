@@ -12,7 +12,7 @@ import { desktop, paintTitleBar } from './desktop.js';
 import {
   BackIcon,
   CloseIcon,
-  SymbioteIcon,
+  KoiMark,
   ForwardIcon,
   MaximizeIcon,
   MinimizeIcon,
@@ -157,7 +157,7 @@ export function TitleBar({
           href={HISTORY_PAGE}
           title={repo ? `Symbiote · ${repo}` : 'Symbiote'}
         >
-          <SymbioteIcon />
+          <KoiMark />
           <span className="titlebar-name">
             Symbiote{repo && <span className="titlebar-repo"> · {repo}</span>}
           </span>

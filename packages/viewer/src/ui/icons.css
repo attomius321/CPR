@@ -22,6 +22,21 @@
   transform: rotate(90deg);
 }
 
+/* The koi S (V42): an image, its tile's corners transparent. */
+.koi-mark {
+  flex: none;
+  display: block;
+  width: 24px;
+  height: 24px;
+  user-select: none;
+}
+
+/* In the window's 38 px title bar, beside its 13 px name. */
+.titlebar .koi-mark {
+  width: 20px;
+  height: 20px;
+}
+
 .icon-button {
   flex: none;
   display: inline-flex;
@@ -51,5 +66,5 @@
 
 .icon-button[aria-current='page'] {
   background: var(--selected);
-  color: var(--text);
+  color: var(--accent);
 }

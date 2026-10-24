@@ -10,8 +10,9 @@
   border-radius: 8px;
 }
 
+/* Selected, in the accent (V42): an outline, which takes no room (the layout never moves). */
 .symbol.selected {
-  outline: 2px solid var(--text);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 

@@ -14,7 +14,7 @@ import type { MergeEntry } from '@symbiote/core';
 import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import { relativeDate } from '../history/commits.js';
 import {
-  SymbioteIcon,
+  KoiMark,
   HistoryIcon,
   MenuIcon,
   PlusIcon,
@@ -134,7 +134,7 @@ export function Sidenav({
           href={HISTORY_PAGE}
           title={repo ? `Symbiote · ${repo}` : 'Symbiote'}
         >
-          <SymbioteIcon />
+          <KoiMark />
           <span className="sidenav-label">
             Symbiote{repo && <span className="sidenav-repo"> · {repo}</span>}
           </span>

@@ -17,7 +17,7 @@ test.afterEach(() => {
 });
 
 const POLL = { timeout: 12_000 };
-const DARK = 'rgb(10, 10, 10)';
+const DARK = 'rgb(5, 8, 15)';
 const LIGHT = 'rgb(255, 255, 255)';
 const background = (page: Page) =>
   page.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -115,12 +115,12 @@ test('the chrome is lifted above the content: the sidenav and the status bar', a
       .first()
       .evaluate((e) => getComputedStyle(e).backgroundColor);
   expect(await background(page)).toBe(DARK);
-  expect(await colour('.sidenav')).toBe('rgb(23, 23, 23)');
-  expect(await colour('.statusbar')).toBe('rgb(23, 23, 23)');
-  // The current page is a neutral wash, not a colour.
+  expect(await colour('.sidenav')).toBe('rgb(15, 22, 38)');
+  expect(await colour('.statusbar')).toBe('rgb(15, 22, 38)');
+  // The current page is a wash of the accent, the koi's blue light (V42).
   const current = page.getByRole('link', { name: 'History' });
   expect(await current.evaluate((e) => getComputedStyle(e).backgroundColor)).toMatch(
-    /^(rgba?\(250, 250, 250|color\(srgb 0\.98)/,
+    /^(rgba?\(122, 158, 232|color\(srgb 0\.478)/,
   );
 });
 
@@ -289,7 +289,7 @@ test('text fields: a quiet edge, a stronger one on hover, a ring on focus, one h
   await expect(title).toBeVisible();
   const style = (field: typeof title, property: string) =>
     field.evaluate((e, p) => getComputedStyle(e).getPropertyValue(p), property);
-  const EDGE = 'rgb(115, 115, 115)';
+  const EDGE = 'rgb(95, 108, 140)';
   await page.mouse.move(0, 0);
   expect(await style(goal, 'border-top-color')).not.toBe(EDGE);
   await goal.hover();
@@ -395,7 +395,7 @@ test("a workspace's views: the picked one a wash on the chrome, readable in ligh
   const strip = await page
     .getByRole('tablist', { name: 'Talk to the agent' })
     .evaluate((e) => getComputedStyle(e).backgroundColor);
-  expect(strip).toBe('rgb(250, 250, 250)');
+  expect(strip).toBe('rgb(246, 248, 252)');
   const [color, under] = await tab.evaluate((element) => {
     const style = getComputedStyle(element);
     return [style.color, style.backgroundColor];

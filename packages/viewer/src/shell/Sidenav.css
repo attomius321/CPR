@@ -181,8 +181,9 @@ button.workspace-about {
   color: var(--text);
 }
 
+/* The current page's icon in the accent (V42). */
 .sidenav-pages a[aria-current='page'] .icon {
-  color: var(--text);
+  color: var(--accent);
   stroke-width: 1.8;
 }
 

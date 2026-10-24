@@ -1,69 +1,93 @@
 # Tokens
 
-Symbiote's tokens (`packages/viewer/src/ui/base.css`), their roles and values in both themes. Ratios:
-the lowest over the backgrounds `test/tokens.test.ts` checks (WCAG 2), from `palette-check.mjs`.
+Symbiote's tokens (`packages/viewer/src/ui/base.css`), their roles and values in both themes: the
+koi's colours since V42. Ratios: the lowest over the backgrounds `test/tokens.test.ts` checks
+(WCAG 2), from `palette-check.mjs`.
+
+## Where the colours come from (V42)
+
+Sampled from the intro's koi (`packages/viewer/src/intro/*.webp`, the app's icon): the tile's
+water — its centre `#05080f`, its body `#081828`, its lit rim `#334781`; the black koi's glow
+`#3060b8`–`#4c82d2`; the white koi's halo `#a8c0e8`, shade `#c8d1e1` and body `#e8e8f8`. The
+chrome is the water, the text the white koi, the primary and the accent the blue light. A new
+colour starts from these, not from a neutral grey.
 
 ## Surfaces, text, lines (tested; `#rrggbb`)
 
 | Token | Role | Dark | Light | Lowest ratio dark / light |
 |---|---|---|---|---|
-| `--bg` | Canvas: graph, History's rows, page content | `#0a0a0a` | `#ffffff` | — |
-| `--side` | Sidenav, toolbars, status bar | `#171717` | `#fafafa` | — |
-| `--panel` | Panels beside the canvas, file boxes, cards | `#171717` | `#fafafa` | — |
-| `--raised` | Chips, counts, segmented track | `#262626` | `#f0f0f0` | — |
-| `--line` | Region hairlines | `#2a2a2a` | `#e5e5e5` | 1.25 / 1.21 (≥ 1.2) |
-| `--edge` | A field's edge on hover; a checkbox's edge | `#737373` | `#8a8a8a` | 3.78 / 3.31 (≥ 3) |
-| `--text` | Text | `#fafafa` | `#0a0a0a` | 14.50 / 17.37 |
-| `--muted` | Secondary text, idle nav, placeholders | `#a1a1a1` | `#666666` | 5.86 / 5.04 (≥ 4.5) |
-| `--faint` | Idle icons, captions on hover rows | `#7c7c7c` | `#8a8a8a` | 3.63 / 3.03 (≥ 3) |
-| `--focus` | Focus ring | `#a1a1a1` | `#737373` | 5.86 / 4.16 (≥ 3) |
+| `--bg` | Canvas: graph, History's rows, page content | `#05080f` | `#ffffff` | — |
+| `--side` | Sidenav, toolbars, status bar | `#0f1626` | `#f6f8fc` | 1.11 over `--bg` (V31's step) |
+| `--panel` | Panels beside the canvas, file boxes, cards | `#0f1626` | `#f6f8fc` | — |
+| `--raised` | Chips, counts, segmented track | `#1c2539` | `#e9eef7` | — |
+| `--line` | Region hairlines | `#232d43` | `#dce3ef` | 1.31 / 1.21 (≥ 1.2) |
+| `--edge` | A field's edge on hover; a checkbox's edge | `#5f6c8c` | `#7f8aa3` | 3.45 / 3.26 (≥ 3) |
+| `--text` | Text | `#eaeef7` | `#0b1220` | 13.16 / 16.08 |
+| `--muted` | Secondary text, idle nav, placeholders | `#9aa5be` | `#56627a` | 6.19 / 5.27 (≥ 4.5) |
+| `--accent` | The secondary colour: current page, selection, links on hover | `#7a9ee8` | `#2f62cc` | 5.74 / 4.82 (≥ 4.5) |
+| `--faint` | Idle icons, captions on hover rows | `#717d99` | `#78839c` | 3.71 / 3.26 (≥ 3) |
+| `--focus` | Focus ring (the accent) | `#7a9ee8` | `#2f62cc` | 5.74 / 4.82 (≥ 3) |
 
-A light grey near white (`#f5f5f5`) is 1.09:1 on white: a hover or a cursor drawn with it
-vanishes. Hence `--raised` `#f0f0f0` and the mixes below for hover and selection.
+A light blue-grey near white (`#f5f7fb`) is about 1.07:1 on white: a hover or a cursor drawn
+with it vanishes. Hence `--raised` `#e9eef7` and the mixes below for hover and selection.
+
+## The primary and the accent (V42, decisions 279–280)
+
+| Token | Dark | Light | |
+|---|---|---|---|
+| `--primary` | `#3c6fd6` | `#2f62cc` | The one affirmative action; checked boxes, the stepper's thumb |
+| `--primary-text` | `#ffffff` | `#ffffff` | 4.73 / 5.62 on the primary (≥ 4.5, tested) |
+| `--primary-hover` | `#3466cc` | `#2856b8` | A step darker: any lighter blue takes white under 4.5:1 (`#4375dc` is 4.36) |
+| `--accent` | `#7a9ee8` | `#2f62cc` | Its roles only (a guard in `tokens.test.ts`): `aria-current`, selected, checked, focus, a link under the pointer, `::selection` |
 
 ## States (tested, ≥ 3:1 on the four backgrounds)
 
 | Token | Dark | Light | Lowest dark / light |
 |---|---|---|---|
-| `--added` | `#81b88b` | `#587c0c` | 6.60 / 4.28 |
-| `--removed` | `#c74e39` | `#ad0707` | 3.30 / 6.56 |
-| `--modified` | `#e2c08d` | `#895503` | 8.76 / 5.48 |
-| `--moved` | `#4493f8` | `#0969da` | 4.88 / 4.56 |
-| `--context` | `#7c7c7c` | `#8a8a8a` | 3.63 / 3.03 |
-| `--error` | `#ff6568` | `#e40014` | 5.27 / 4.28 |
-| `--warning` | `#eab308` | `#9a6700` | 7.89 / 4.27 |
-| `--info` | `#4493f8` | `#0969da` | 4.88 / 4.56 |
+| `--added` | `#81b88b` | `#587c0c` | 6.67 / 4.19 |
+| `--removed` | `#c74e39` | `#ad0707` | 3.33 / 6.42 |
+| `--modified` | `#e2c08d` | `#895503` | 8.85 / 5.36 |
+| `--moved` | `#3fc5d6` | `#0a7d8c` | 7.41 / 4.17 |
+| `--context` | `#717d99` | `#78839c` | 3.71 / 3.26 |
+| `--error` | `#ff6568` | `#e40014` | 5.33 / 4.19 |
+| `--warning` | `#eab308` | `#9a6700` | 7.97 / 4.18 |
+| `--info` | `#3fc5d6` | `#0a7d8c` | 7.41 / 4.17 |
+
+Moved and info are cyan since V42 (decision 281): the koi's blue is 6° of hue from V31's
+`#4493f8`, and a moved node would have read as selected. What shares their hue goes with them: an
+agent working, "since", History's current lane.
 
 History's lanes, ≥ 3:1 on `--bg` and `--raised`. Dark: `--lane-1 #b66dff`, `--lane-2 #40b0a6`,
-`--lane-3 #ffb000`, `--lane-4 #dc267f`, `--lane-5 #ce9178`, `--lane-6 #8ccf3e` (lowest 3.33,
+`--lane-3 #ffb000`, `--lane-4 #dc267f`, `--lane-5 #ce9178`, `--lane-6 #8ccf3e` (lowest 3.37,
 `--lane-4` on `--raised`). Light: `#8250df #0a7f6f #bc4c00 #bf3989 #4d7a00 #9a6700`.
 
 ## Other tokens (not in the contrast test; may be translucent)
 
 Each is in the dark block, the light block and the system-light block (the test checks that light
-and system-light are equal and that both themes have the same names).
+and system-light are equal and that both themes have the same names). The translucent ones are
+tinted with the white koi's `rgb(170 195 240)` in dark and the navy text's `rgb(11 18 32)` in
+light, not pure white or black.
 
 ```css
 /* dark */
---hover: color-mix(in srgb, var(--text) 5%, transparent);        /* 3 points under the selection (V37) */
---selected: color-mix(in srgb, var(--text) 10%, transparent);
---selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
---primary: #e5e5e5;                                              /* the one affirmative action */
---primary-text: #171717;
---input-bg: rgb(255 255 255 / 4.5%);
+--hover: color-mix(in srgb, var(--text) 5%, transparent);        /* a wash of the text */
+--selected: color-mix(in srgb, var(--accent) 16%, transparent);   /* a wash of the accent (V42) */
+--selected-line: color-mix(in srgb, var(--accent) 40%, var(--line));
+--input-bg: rgb(170 195 240 / 4.5%);
 --field-line: color-mix(in srgb, var(--text) 15%, transparent);  /* a field at rest, ~1.5:1 (decision 246) */
 --ring: color-mix(in srgb, var(--focus) 30%, transparent);       /* a focused field's 3 px ring */
---lifted: rgb(255 255 255 / 7%);                                 /* the choice in a segmented control */
---shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
---shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
---menu-bg: rgb(0 0 0 / 72%);
---menu-line: rgb(255 255 255 / 14%);
---menu-hover: rgb(255 255 255 / 14%);
---menu-shadow: 0 16px 34px rgb(0 0 0 / 40%), inset 0 1px 0 rgb(255 255 255 / 4%);
---dialog-bg: rgb(23 23 23 / 96%);
---dialog-shadow: 0 24px 72px rgb(0 0 0 / 55%), inset 0 1px 0 rgb(255 255 255 / 6%);
---overlay: rgb(0 0 0 / 55%);
---chevron: url("data:image/svg+xml,…stroke='%23a1a1a1'…");      /* a select's arrow, in --muted */
+--lifted: rgb(170 195 240 / 9%);                                 /* the choice in a segmented control */
+--shadow-lift: 0 1px 2px rgb(0 0 0 / 20%);
+--shadow-floating: 0 12px 28px rgb(1 4 10 / 40%);
+--primary-shine: inset 0 1px 0 rgb(255 255 255 / 16%);           /* the primary's lit top edge */
+--menu-bg: rgb(8 12 22 / 78%);
+--menu-line: rgb(170 195 240 / 14%);
+--menu-hover: rgb(170 195 240 / 13%);
+--menu-shadow: 0 16px 34px rgb(1 4 10 / 50%), inset 0 1px 0 rgb(170 195 240 / 6%);
+--dialog-bg: rgb(15 22 38 / 96%);
+--dialog-shadow: 0 24px 72px rgb(1 4 10 / 60%), inset 0 1px 0 rgb(170 195 240 / 8%);
+--overlay: rgb(2 5 12 / 62%);
+--chevron: url("data:image/svg+xml,…stroke='%239aa5be'…");      /* a select's arrow, in --muted */
 --added-ground: color-mix(in srgb, var(--added) 16%, transparent);
 --added-gutter: color-mix(in srgb, var(--added) 30%, transparent);
 --removed-ground: color-mix(in srgb, var(--removed) 18%, transparent);
@@ -71,32 +95,42 @@ and system-light are equal and that both themes have the same names).
 
 /* light */
 --hover: color-mix(in srgb, var(--text) 5%, transparent);
---selected: color-mix(in srgb, var(--text) 8%, transparent);
---selected-line: color-mix(in srgb, var(--text) 18%, var(--line));
---primary: #171717;
---primary-text: #fafafa;
+--selected: color-mix(in srgb, var(--accent) 12%, transparent);
+--selected-line: color-mix(in srgb, var(--accent) 35%, var(--line));
 --input-bg: transparent;
 --field-line: color-mix(in srgb, var(--text) 16%, transparent);
---ring: color-mix(in srgb, var(--focus) 30%, transparent);
+--ring: color-mix(in srgb, var(--focus) 25%, transparent);
 --lifted: #ffffff;
---shadow-lift: 0 1px 2px rgb(0 0 0 / 5%);
---shadow-floating: 0 10px 24px rgb(0 0 0 / 18%);
+--shadow-lift: 0 1px 2px rgb(11 18 32 / 6%);
+--shadow-floating: 0 10px 24px rgb(11 18 32 / 16%);
+--primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);
 --menu-bg: rgb(255 255 255 / 82%);
---menu-line: rgb(0 0 0 / 14%);
---menu-hover: rgb(0 0 0 / 8%);
---menu-shadow: 0 12px 28px rgb(0 0 0 / 22%), inset 0 1px 0 rgb(255 255 255 / 14%);
+--menu-line: rgb(11 18 32 / 13%);
+--menu-hover: rgb(11 18 32 / 7%);
+--menu-shadow: 0 12px 28px rgb(11 18 32 / 20%), inset 0 1px 0 rgb(255 255 255 / 14%);
 --dialog-bg: rgb(255 255 255 / 96%);
---dialog-shadow: 0 20px 60px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(255 255 255 / 8%);
---overlay: rgb(0 0 0 / 55%);
---chevron: url("data:image/svg+xml,…stroke='%23666666'…");
+--dialog-shadow: 0 20px 60px rgb(11 18 32 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
+--overlay: rgb(11 18 32 / 45%);
+--chevron: url("data:image/svg+xml,…stroke='%2356627a'…");
 --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
 --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
 --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
 --removed-gutter: color-mix(in srgb, var(--removed) 22%, transparent);
 ```
 
+The test keeps the selection further from its ground than the hover on `--bg` and `--side`
+(composited, by contrast), in both themes: hover 5 % of the text, selection 16 % (12 % light) of
+the accent.
+
 A state tint is mixed from its state, never a new hex: `color-mix(in srgb, var(--added) 10%,
 transparent)` for a fill, `25%` for its edge.
+
+## Outside the tokens
+
+Kept in step by hand, each with a comment pointing here: the terminal's theme
+(`workspaces/terminal.ts`, `#02040a`, the koi's deepest water, and `AgentTerminal.css`); the
+app's window background and title bar (`packages/desktop/src/frame.ts`, `test/frame.test.ts`);
+the app's start page (`packages/desktop/start/start.css`, its own copy of the tokens).
 
 ## Type scale (V32; on `:root`, both themes)
 

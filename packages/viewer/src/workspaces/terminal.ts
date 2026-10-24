@@ -363,27 +363,28 @@ export function linkHint(target: LinkTarget, mac: boolean): { what: string; keys
 
 /**
  * Dark in both of the page's themes: Claude Code keeps its own theme whatever the terminal's
- * background, and on white its marks vanished (V21 spike). Black, as the reference's (V29b).
+ * background, and on white its marks vanished (V21 spike). Black, as the reference's (V29b); since
+ * V42 the koi's deepest water, under the canvas (`#05080f`), its greys and blues the palette's.
  */
 export const TERMINAL_THEME: ITheme = {
-  background: '#000000',
-  foreground: '#e6e6e9',
-  cursor: '#e6e6e9',
-  cursorAccent: '#000000',
-  selectionBackground: '#3a3a42',
-  black: '#1f1f23',
+  background: '#02040a',
+  foreground: '#e3e8f2',
+  cursor: '#e3e8f2',
+  cursorAccent: '#02040a',
+  selectionBackground: '#22355e',
+  black: '#1a2133',
   red: '#f85149',
   green: '#3fb950',
   yellow: '#d29922',
-  blue: '#58a6ff',
+  blue: '#6f9cf0',
   magenta: '#a371f7',
   cyan: '#39c5bb',
-  white: '#e6e6e9',
-  brightBlack: '#6e6e76',
+  white: '#e3e8f2',
+  brightBlack: '#6c7894',
   brightRed: '#ff7b72',
   brightGreen: '#56d364',
   brightYellow: '#e3b341',
-  brightBlue: '#79c0ff',
+  brightBlue: '#9dbaf5',
   brightMagenta: '#bc8cff',
   brightCyan: '#56d4dd',
   brightWhite: '#ffffff',
