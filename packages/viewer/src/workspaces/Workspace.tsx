@@ -523,6 +523,21 @@ function WorkspacePanel({
   /** A shell closed or exited: its tab goes. Twice is once: a close is followed by its exit. */
   const forgetShell = (id: string) =>
     setShells((now) => now?.filter((shell) => shell.id !== id) ?? now);
+  // The picked tab in sight when the strip scrolls (many shells, a narrow window): when it is
+  // picked, and when the strip narrows.
+  const strip = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = strip.current;
+    if (!element) return;
+    const reveal = () =>
+      element
+        .querySelector('[role="tab"][aria-selected="true"]')
+        ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    reveal();
+    const observer = new ResizeObserver(reveal);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [view, shellNumber, shells?.length]);
   // What is drawn for a shell that went is its neighbour's tab: the address says so too.
   useEffect(() => {
     if (chosen !== 'shell' || shells === null || shellNumber === shellShown) return;
@@ -816,7 +831,16 @@ function WorkspacePanel({
       >
         <div className="workspace-main">
           <InTitleBar>
-            <div className="workspace-views" role="tablist" aria-label="Talk to the agent">
+            <div
+              ref={strip}
+              className="workspace-views"
+              role="tablist"
+              aria-label="Talk to the agent"
+              onWheel={(event) => {
+                // Many shells scroll the strip sideways: the wheel too, not only a trackpad.
+                if (event.deltaX === 0) event.currentTarget.scrollLeft += event.deltaY;
+              }}
+            >
               {views.map((name) => (
                 <button
                   key={name}
@@ -860,20 +884,22 @@ function WorkspacePanel({
                       </span>
                     );
                   })}
-                  <button
-                    type="button"
-                    className="icon-button shell-new"
-                    aria-label="New shell"
-                    title={
-                      (shells?.length ?? 0) >= MAX_SHELLS
-                        ? `${MAX_SHELLS} shells are open: close one first`
-                        : 'A new shell in the worktree: it runs until you close it or Symbiote quits'
-                    }
-                    disabled={shells === null || shells.length >= MAX_SHELLS}
-                    onClick={() => void openShell()}
-                  >
-                    <PlusIcon />
-                  </button>
+                  <span className="shell-new-end">
+                    <button
+                      type="button"
+                      className="icon-button shell-new"
+                      aria-label="New shell"
+                      title={
+                        (shells?.length ?? 0) >= MAX_SHELLS
+                          ? `${MAX_SHELLS} shells are open: close one first`
+                          : 'A new shell in the worktree: it runs until you close it or Symbiote quits'
+                      }
+                      disabled={shells === null || shells.length >= MAX_SHELLS}
+                      onClick={() => void openShell()}
+                    >
+                      <PlusIcon />
+                    </button>
+                  </span>
                 </>
               )}
             </div>

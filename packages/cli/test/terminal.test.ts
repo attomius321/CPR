@@ -264,6 +264,11 @@ describe('terminals', () => {
     expect(t.running(id)).toBe('sleep');
     made.process = '/usr/local/bin/node';
     expect(t.running(id)).toBe('node');
+    // A program that set its title: Linux reads the title as its name (npx, measured).
+    made.process = 'npm exec vitest --watch packages/viewer/test/shells.test.ts';
+    expect(t.running(id)).toBe('npm');
+    made.process = 'node (vitest 1)';
+    expect(t.running(id)).toBe('node');
     made.process = undefined;
     expect(t.running(id)).toBeNull();
     expect(t.running('nope')).toBeUndefined();

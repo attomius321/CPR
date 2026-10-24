@@ -1003,6 +1003,12 @@ test("a workspace's shells: each its own, kept across tabs and a reload, closed 
     'title',
     '8 shells are open: close one first',
   );
+  // Narrower, the strip scrolls: the picked tab and + stay in sight.
+  await page.setViewportSize({ width: 900, height: 900 });
+  await expect(shellTab(page, branch, 8)).toBeInViewport({ ratio: 1 });
+  await expect(here.getByRole('button', { name: 'New shell' })).toBeInViewport({ ratio: 1 });
+  await shellTab(page, branch, 1).click();
+  await expect(shellTab(page, branch, 1)).toBeInViewport({ ratio: 1 });
 });
 
 test('without terminals, the panel keeps Talk in its menu, and no Terminal tab', async ({

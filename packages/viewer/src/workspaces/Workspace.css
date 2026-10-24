@@ -168,6 +168,8 @@
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+  /* The picked tab scrolls into sight clear of the + over the strip's end. */
+  scroll-padding-inline-end: 36px;
 }
 
 .workspace-views > * {
@@ -221,6 +223,15 @@
 .shell-tab > [role='tab'].selected + .shell-close,
 .workspace-views .shell-close:focus-visible {
   opacity: 1;
+}
+
+/* + stays at the strip's end when the tabs scroll under it. */
+.shell-new-end {
+  position: sticky;
+  right: 0;
+  display: flex;
+  padding-left: 4px;
+  background: var(--side);
 }
 
 .workspace-views .shell-new {

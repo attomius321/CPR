@@ -412,7 +412,10 @@ export function terminals({
     running(id) {
       const terminal = open.get(id);
       if (!terminal) return undefined;
-      const now = terminal.pty.process;
+      // A program that set its title is named by it on Linux (`npm exec vitest --watch a/b.ts`,
+      // measured): its first word. Windows names the program alone, spaces and all.
+      const now =
+        platform === 'win32' ? terminal.pty.process : terminal.pty.process?.split(/\s/)[0];
       if (!now) return null;
       const name = nameOf(now);
       return name === terminal.program ? null : name;
