@@ -65,6 +65,10 @@ export interface OpenedTerminal {
   focus(): void;
 }
 
+/** The size the last terminal drawn was fitted to: a new shell opens at it (V45). */
+let lastSize = { cols: 80, rows: 24 };
+export const lastTerminalSize = (): { cols: number; rows: number } => lastSize;
+
 /**
  * A workspace's agent session as its agent draws it: `claude attach` (V21), or Codex's TUI joined
  * to its app server (V27b), on the server in a pseudo-terminal, drawn by xterm.js (its own chunk,
@@ -75,17 +79,21 @@ export interface OpenedTerminal {
  * pasted (Ctrl+V too, off macOS) or dropped is saved by the server and its path pasted, which the
  * agent attaches to the message being typed (V36). A path it prints to a file in its folder, a web
  * address and its own links (OSC 8) are links: Ctrl+click (⌘ on macOS) opens the file in VS Code
- * at the line printed, or the address in a new tab (V38).
+ * at the line printed, or the address in a new tab (V38). `id`: a terminal already open, read and
+ * typed into as it is (a workspace's shell, V45): leaving does not close it, and the list is not
+ * read more often for it.
  */
 export function AgentTerminal({
   branch,
   url = '/api/workspaces/terminal',
-  onOpened,
+  id: kept,
+  onOpened = () => {},
   onEnded,
 }: {
   branch?: string;
   url?: string;
-  onOpened: (opened: OpenedTerminal | null) => void;
+  id?: string;
+  onOpened?: (opened: OpenedTerminal | null) => void;
   onEnded: (why: string) => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
@@ -99,7 +107,7 @@ export function AgentTerminal({
   told.current = { onOpened, onEnded };
 
   useEffect(() => {
-    const release = holdReads();
+    const release = kept === undefined ? holdReads() : () => {};
     let gone = false;
     let id: string | null = null;
     let events: EventSource | null = null;
@@ -135,15 +143,23 @@ export function AgentTerminal({
       term.loadAddon(fit);
       term.open(element);
       fit.fit();
-      const opened = await postJson<WorkspaceTerminalOpened>(url, {
-        ...(branch === undefined ? {} : { branch }),
-        cols: term.cols,
-        rows: term.rows,
-      });
+      lastSize = { cols: term.cols, rows: term.rows };
+      const opened: WorkspaceTerminalOpened =
+        kept === undefined
+          ? await postJson<WorkspaceTerminalOpened>(url, {
+              ...(branch === undefined ? {} : { branch }),
+              cols: term.cols,
+              rows: term.rows,
+            })
+          : { id: kept };
       setTrust(opened.trusted === false);
       if (gone) {
-        void toTerminal(opened.id, 'close', {}).catch(() => {});
+        if (kept === undefined) void toTerminal(opened.id, 'close', {}).catch(() => {});
         return;
+      }
+      // An open terminal was sized by whoever read it last: this box's size, then what it prints.
+      if (kept !== undefined) {
+        void toTerminal(kept, 'resize', { cols: term.cols, rows: term.rows }).catch(() => {});
       }
       const shown = term;
       const terminal = (id = opened.id);
@@ -367,6 +383,7 @@ export function AgentTerminal({
         clearTimeout(hinting);
       };
       shown.onResize(({ cols, rows }) => {
+        lastSize = { cols, rows };
         clearTimeout(resizing);
         resizing = setTimeout(() => {
           toTerminal(terminal, 'resize', { cols, rows }).catch(() => {});
@@ -386,10 +403,10 @@ export function AgentTerminal({
       observer?.disconnect();
       events?.close();
       term?.dispose();
-      if (id) void toTerminal(id, 'close', {}).catch(() => {});
+      if (id && kept === undefined) void toTerminal(id, 'close', {}).catch(() => {});
       told.current.onOpened(null);
     };
-  }, [branch, url]);
+  }, [branch, url, kept]);
 
   return (
     <div ref={root} className="agent-terminal">

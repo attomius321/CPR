@@ -161,6 +161,79 @@
   color: var(--text);
 }
 
+/* V45: the shells' tabs after the agent's, a hairline between, + at the end. Many scroll the
+   strip sideways rather than wrap it. */
+.workspace-views {
+  align-items: center;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.workspace-views > * {
+  flex: none;
+}
+
+.views-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 6px;
+  background: var(--line);
+}
+
+/* A shell's tab: its × inside the tab's right padding, shown on hover, focus and when picked
+   (its place kept, so nothing moves). */
+.shell-tab {
+  position: relative;
+  display: flex;
+}
+
+.workspace-views .shell-tab > [role='tab'] {
+  padding-right: 30px;
+}
+
+.shell-tab:hover > [role='tab'] {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.shell-tab:hover > [role='tab'].selected {
+  background: var(--selected);
+}
+
+.workspace-views .shell-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 4px;
+  opacity: 0;
+}
+
+.workspace-views .shell-close .icon {
+  width: 12px;
+  height: 12px;
+}
+
+.shell-tab:hover > .shell-close,
+.shell-tab > [role='tab'].selected + .shell-close,
+.workspace-views .shell-close:focus-visible {
+  opacity: 1;
+}
+
+.workspace-views .shell-new {
+  width: 28px;
+  padding: 0;
+}
+
+.workspace-views .shell-new:disabled {
+  background: none;
+  color: var(--faint);
+  cursor: default;
+}
+
 /* The tab's content takes the rest of the main area's height (V29a). */
 .workspace-body {
   flex: 1;

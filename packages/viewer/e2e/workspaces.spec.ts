@@ -898,6 +898,110 @@ test('paths and web addresses the agent prints open with Ctrl+click: files of it
   expect(symbiote.opened()).toHaveLength(2);
 });
 
+// A workspace's shells (V45): the person's shell in its worktree, in tabs after the agent's, kept
+// by the server until closed.
+const shellTab = (page: Page, branch: string, n: number) =>
+  panel(page, branch).getByRole('tab', { name: `Shell ${n}`, exact: true });
+/** The `sleep 4711`s running: one started in a shell. */
+const sleeps = () => {
+  try {
+    return execFileSync('pgrep', ['-f', '^sleep 4711$'], { encoding: 'utf8' }).trim().split('\n')
+      .length;
+  } catch {
+    return 0; // pgrep exits 1 when none matches
+  }
+};
+/** Types a line into the terminal shown and presses Enter. */
+const typeLine = async (page: Page, line: string) => {
+  await page.keyboard.type(line);
+  await page.keyboard.press('Enter');
+};
+
+test("a workspace's shells: each its own, kept across tabs and a reload, closed by × or exit", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const here = panel(page, branch);
+  await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
+  // The agent's tabs as they were, the shells after them.
+  await expect(here.getByRole('tab')).toHaveText(['Terminal', 'Thread', 'Brief']);
+  await here.getByRole('button', { name: 'New shell' }).click();
+  await expect(shellTab(page, branch, 1)).toHaveAttribute('aria-selected', 'true');
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function&shell=1`);
+  await expect(screen(page, branch)).toContainText('shell$', POLL);
+  // In the worktree.
+  await typeLine(page, 'pwd');
+  await expect(screen(page, branch)).toContainText(symbiote.folder(branch));
+  await typeLine(page, 'echo one-$((1+1))');
+  await expect(screen(page, branch)).toContainText('one-2');
+
+  await here.getByRole('button', { name: 'New shell' }).click();
+  await expect(shellTab(page, branch, 2)).toHaveAttribute('aria-selected', 'true');
+  await expect(screen(page, branch)).toContainText('shell$', POLL);
+  await expect(screen(page, branch)).not.toContainText('one-2');
+  await typeLine(page, 'echo two-$((2+2))');
+  await expect(screen(page, branch)).toContainText('two-4');
+  await expect(here.getByRole('tab')).toHaveText([
+    'Terminal',
+    'Thread',
+    'Brief',
+    'Shell 1',
+    'Shell 2',
+  ]);
+
+  // Shell 1 kept its own; what it runs goes on while another tab is shown, and through a reload.
+  await shellTab(page, branch, 1).click();
+  await expect(screen(page, branch)).toContainText('one-2', POLL);
+  await expect(screen(page, branch)).not.toContainText('two-4');
+  await typeLine(page, 'sleep 4711');
+  await expect.poll(sleeps).toBe(1);
+  await here.getByRole('tab', { name: 'Thread' }).click();
+  await here.getByRole('tab', { name: 'Terminal' }).click();
+  await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
+  await shellTab(page, branch, 1).click();
+  await page.reload();
+  await expect(shellTab(page, branch, 1)).toHaveAttribute('aria-selected', 'true', POLL);
+  await expect(screen(page, branch)).toContainText('one-2', POLL);
+  expect(sleeps()).toBe(1);
+
+  // × asks first while a program runs in it, naming it.
+  await here.getByRole('button', { name: 'Close Shell 1' }).click();
+  await expect(here).toContainText('sleep is running in Shell 1: closing the shell ends it.');
+  await here.getByRole('button', { name: 'Cancel' }).click();
+  await expect(shellTab(page, branch, 1)).toBeVisible();
+  expect(sleeps()).toBe(1);
+  await here.getByRole('button', { name: 'Close Shell 1' }).click();
+  await here.getByRole('button', { name: 'Close it' }).click();
+  await expect(shellTab(page, branch, 1)).toHaveCount(0);
+  await expect.poll(sleeps).toBe(0);
+  // Its neighbour shows.
+  await expect(shellTab(page, branch, 2)).toHaveAttribute('aria-selected', 'true');
+  await expect(screen(page, branch)).toContainText('two-4', POLL);
+
+  // `exit` closes its tab; with no shell left, the agent's terminal shows.
+  await typeLine(page, 'exit');
+  await expect(shellTab(page, branch, 2)).toHaveCount(0, POLL);
+  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);
+
+  // Numbered from 1 again, and at most 8.
+  for (let n = 1; n <= 8; n += 1) {
+    await here.getByRole('button', { name: 'New shell' }).click();
+    await expect(shellTab(page, branch, n)).toHaveAttribute('aria-selected', 'true');
+  }
+  await expect(here.getByRole('button', { name: 'New shell' })).toBeDisabled();
+  await expect(here.getByRole('button', { name: 'New shell' })).toHaveAttribute(
+    'title',
+    '8 shells are open: close one first',
+  );
+});
+
 test('without terminals, the panel keeps Talk in its menu, and no Terminal tab', async ({
   page,
 }) => {
@@ -906,6 +1010,8 @@ test('without terminals, the panel keeps Talk in its menu, and no Terminal tab',
   await startFrom(page, 'Add a half function');
   const here = panel(page, 'feature/add-a-half-function');
   await expect(here.getByRole('tab')).toHaveText(['Thread', 'Brief']);
+  // No shells either (V45).
+  await expect(here.getByRole('button', { name: 'New shell' })).toHaveCount(0);
   await here.getByRole('button', { name: 'More actions' }).click();
   await expect(here.getByRole('menuitem', { name: 'Talk' })).toHaveAttribute(
     'title',

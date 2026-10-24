@@ -1035,6 +1035,9 @@ export async function serveWorkspaces({
     SYMBIOTE_CODEX: codex ? fakeCodex(fake) : join(fake, 'no-codex'),
     SYMBIOTE_CODE: code,
     CLAUDE_CONFIG_DIR: claudeConfig,
+    // V45: a workspace's shells are /bin/sh with a plain prompt, never the person's own shell.
+    SHELL: '/bin/sh',
+    PS1: 'shell$ ',
     // V21: terminals turned off, as where node-pty cannot run.
     ...(terminal ? {} : { SYMBIOTE_TERMINAL: 'off' }),
     ...(usageEndpoint?.env ?? {}),
