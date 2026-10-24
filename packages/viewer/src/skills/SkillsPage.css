@@ -31,8 +31,10 @@
   color: var(--added);
 }
 
+/* In place of the skills' groups: where the next group's heading would be, not in from it as an
+   entry. */
 .skills-none {
-  margin: 0;
+  margin: 16px 0 0;
   padding: 0 8px;
 }
 
