@@ -99,6 +99,8 @@ export interface TextState {
   runs: number;
   /** What the merger agent was streaming last (V46b): its thinking or its text. */
   streaming?: 'think' | 'say';
+  /** The characters of its JSON answer so far, while it streams one. */
+  answer?: number;
 }
 
 export const NO_TEXT: TextState = { open: false, any: false, steps: 0, runs: 1 };
@@ -160,7 +162,9 @@ export function logText(
 /**
  * The merger agent's event as its terminal is given it (V46b): its start and Symbiote's notes dim,
  * its thinking dim and italic after `∴`, a tool `● Read src/a.ts` and its result `⎿ 42 lines`
- * under it, its text as written. Pieces of one stream go on the same line.
+ * under it, its text as written. Pieces of one stream go on the same line. Its JSON answer is
+ * counted on one line rewritten in place: its regions are on Files, and its 20K tokens of escaped
+ * text would bury the rest.
  */
 function agentText(
   event: MergeAgentEvent,
@@ -172,17 +176,29 @@ function agentText(
     text: `${close}${text}\n`,
     state: { ...settled, open: false, any: true },
   });
-  if ('think' in event || 'say' in event) {
-    const kind = 'think' in event ? 'think' : 'say';
-    const piece = 'think' in event ? event.think : event.say;
-    const same = state.streaming === kind;
-    const text =
-      kind === 'think'
-        ? `${same ? '' : close}${THOUGHT}${same ? '' : '∴ '}${piece}${RESET}`
-        : `${same ? '' : close}${piece}`;
+  if ('say' in event) {
+    const piece = event.say;
+    const going = state.streaming === 'say';
+    // Its answer is JSON for Symbiote, shown on Files region by region: counted on one line.
+    const answer = going ? state.answer : /^\s*[{`]/.test(piece) ? 0 : undefined;
+    if (answer !== undefined) {
+      const n = answer + piece.length;
+      return {
+        text: `${going ? '' : close}\r\x1b[2K${DIM}Writing its answer: ${n.toLocaleString('en-US')} characters${RESET}`,
+        state: { ...settled, open: true, any: true, streaming: 'say', answer: n },
+      };
+    }
     return {
-      text,
-      state: { ...state, open: !piece.endsWith('\n'), any: true, streaming: kind },
+      text: `${going ? '' : close}${piece}`,
+      state: { ...settled, open: !piece.endsWith('\n'), any: true, streaming: 'say' },
+    };
+  }
+  if ('think' in event) {
+    const piece = event.think;
+    const going = state.streaming === 'think';
+    return {
+      text: `${going ? '' : close}${THOUGHT}${going ? '' : '∴ '}${piece}${RESET}`,
+      state: { ...settled, open: !piece.endsWith('\n'), any: true, streaming: 'think' },
     };
   }
   if ('tool' in event) return line(`${CYAN}●${RESET} ${event.tool} ${DIM}${event.input}${RESET}`);

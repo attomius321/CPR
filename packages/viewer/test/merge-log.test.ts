@@ -211,6 +211,9 @@ describe("the merger agent's process in the terminal (V46b)", () => {
         agent({ tool: 'Read', input: 'src/math.ts' }),
         agent({ result: '42 lines' }),
         agent({ think: 'Keep both.' }),
+        agent({ say: 'Reading it.' }),
+        agent({ tool: 'Read', input: 'src/app.ts' }),
+        agent({ result: '9 lines' }),
         agent({ say: '{"regions":' }),
         agent({ say: '{"1":"x"}}' }),
         out('Answered in 4.0 s\n'),
@@ -223,7 +226,12 @@ describe("the merger agent's process in the terminal (V46b)", () => {
         '\x1b[36m●\x1b[0m Read \x1b[2msrc/math.ts\x1b[0m\n' +
         '\x1b[2m  ⎿ 42 lines\x1b[0m\n' +
         '\x1b[2;3m∴ Keep both.\x1b[0m\n' +
-        '{"regions":{"1":"x"}}\n' +
+        'Reading it.\n' +
+        '\x1b[36m●\x1b[0m Read \x1b[2msrc/app.ts\x1b[0m\n' +
+        '\x1b[2m  ⎿ 9 lines\x1b[0m\n' +
+        // Its JSON answer, on Files region by region, is counted on one line as it is written.
+        '\r\x1b[2K\x1b[2mWriting its answer: 11 characters\x1b[0m' +
+        '\r\x1b[2K\x1b[2mWriting its answer: 21 characters\x1b[0m\n' +
         'Answered in 4.0 s\n',
     );
   });

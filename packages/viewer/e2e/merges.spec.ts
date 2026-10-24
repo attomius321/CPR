@@ -241,7 +241,9 @@ test("the merger agent's thinking and the files it reads, while it works (V46b)"
 
   writeFileSync(flag, '');
   await expect(log).toContainText('Answered in');
-  await expect(log).toContainText('kept both: main first');
+  // Its JSON answer counted on one line: its regions are on Files.
+  await expect(log).toContainText(/Writing its answer: [\d,]+ characters/);
+  await expect(log).not.toContainText('"regions"');
   await expect(steps.getByRole('button', { name: /^Merger agent: passed, / })).toBeVisible();
   await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
   expect(symbiote.mergerArgs()[0]).toEqual(expect.arrayContaining(['--effort', 'high']));
