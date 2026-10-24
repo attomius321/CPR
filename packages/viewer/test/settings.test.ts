@@ -5,6 +5,7 @@ import {
   gitNote,
   insertAt,
   isEdited,
+  markOf,
   promptGroups,
   promptOfUrl,
   sizeOf,
@@ -27,21 +28,64 @@ const prompt = (fields: Partial<PromptSetting>): PromptSetting => ({
 });
 
 describe('promptGroups', () => {
+  const entries = (prompts: PromptSetting[]) =>
+    promptGroups(prompts).map(({ group, entries: of }) => [
+      group,
+      of.map((e) => [e.key, e.name, e.prompts.map((p) => p.key), e.agent]),
+    ]);
+
   it('keeps the groups and their prompts in the order the server gives them', () => {
     const prompts = [
       prompt({ key: 'start.feature', title: 'Feature' }),
       prompt({ key: 'start.fix' }),
       prompt({ key: 'reviews', group: 'Reviews', title: 'symbiote/AGENTS.md' }),
       prompt({ key: 'plan.first', title: 'Plan first' }),
-      prompt({ key: 'merger', group: 'Merger', title: 'Instructions' }),
     ];
-    expect(
-      promptGroups(prompts).map(({ group, prompts: of }) => [group, of.map((p) => p.key)]),
-    ).toEqual([
-      ['Workspaces', ['start.feature', 'start.fix', 'plan.first']],
-      ['Reviews', ['reviews']],
-      ['Merger', ['merger']],
+    expect(entries(prompts)).toEqual([
+      [
+        'Workspaces',
+        [
+          ['start.feature', 'Feature', ['start.feature'], undefined],
+          ['start.fix', 'Fix', ['start.fix'], undefined],
+          ['plan.first', 'Plan first', ['plan.first'], undefined],
+        ],
+      ],
+      ['Reviews', [['reviews', 'symbiote/AGENTS.md', ['reviews'], undefined]]],
     ]);
+  });
+
+  it('lists each prebuilt agent once, by its name, under Prebuilt agents: one page for its settings', () => {
+    const prompts = [
+      prompt({ key: 'start.fix' }),
+      prompt({ key: 'reviews', group: 'Reviews', title: 'symbiote/AGENTS.md' }),
+      prompt({ key: 'merger', group: 'Merger', title: 'Instructions' }),
+      prompt({ key: 'scout', group: 'Scout', title: 'Instructions' }),
+      prompt({ key: 'scribe', group: 'Scribe', title: 'Instructions' }),
+    ];
+    expect(entries(prompts)).toEqual([
+      ['Workspaces', [['start.fix', 'Fix', ['start.fix'], undefined]]],
+      ['Reviews', [['reviews', 'symbiote/AGENTS.md', ['reviews'], undefined]]],
+      [
+        'Prebuilt agents',
+        [
+          ['merger', 'Merger', ['merger'], 'Merger'],
+          ['scout', 'Scout', ['scout'], 'Scout'],
+          ['scribe', 'Scribe', ['scribe'], 'Scribe'],
+        ],
+      ],
+    ]);
+  });
+});
+
+describe('markOf', () => {
+  it('says not saved before not used before changed, for any of the entry’s prompts', () => {
+    const fix = prompt({});
+    const changed = prompt({ key: 'start.chore', changed: true });
+    const unused = prompt({ key: 'start.spike', warning: 'Not used: no {brief}.' });
+    expect(markOf([fix], [])).toBeNull();
+    expect(markOf([fix, changed], [])).toBe('changed');
+    expect(markOf([changed, unused], [])).toBe('warning');
+    expect(markOf([changed, unused], ['start.chore'])).toBe('unsaved');
   });
 });
 

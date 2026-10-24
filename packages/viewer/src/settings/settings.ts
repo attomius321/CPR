@@ -2,17 +2,65 @@
 // says. The prompts and Symbiote's texts come from `symbiote view` (`/api/settings/prompts`).
 import type { PromptKey, PromptSetting, PromptSettings } from '@symbiote/core';
 
-/** The prompts by group (Workspaces, Reviews, Merger), in the server's order. */
+/**
+ * The agents Symbiote brings, by their prompts' group: each one entry under "Prebuilt agents" and
+ * one page for its settings — its model, its effort, its prompt (fix/scout-merger-scribe-settings).
+ */
+export const PREBUILT_AGENTS = ['Merger', 'Scout', 'Scribe'] as const;
+export type PrebuiltAgent = (typeof PREBUILT_AGENTS)[number];
+export const PREBUILT_GROUP = 'Prebuilt agents';
+
+const prebuilt = (group: string): group is PrebuiltAgent =>
+  (PREBUILT_AGENTS as readonly string[]).includes(group);
+
+/** An entry of Settings' list, and the page it opens. */
+export interface SettingsEntry {
+  /** The page's key in `?prompt=`: its prompt's, an agent's first prompt's. */
+  key: PromptKey;
+  /** Its name in the list: the prompt's title, or the agent's name. */
+  name: string;
+  /** The prompts on its page. */
+  prompts: PromptSetting[];
+  /** The prebuilt agent whose page it is. */
+  agent?: PrebuiltAgent;
+}
+
+/**
+ * The list by group, in the server's order: a prompt an entry (Workspaces, Reviews), a prebuilt
+ * agent one entry for all its prompts, under "Prebuilt agents" where the first of them comes.
+ */
 export function promptGroups(
   prompts: readonly PromptSetting[],
-): { group: string; prompts: PromptSetting[] }[] {
-  const groups = new Map<string, PromptSetting[]>();
+): { group: string; entries: SettingsEntry[] }[] {
+  const groups = new Map<string, SettingsEntry[]>();
+  const agents = new Map<PrebuiltAgent, SettingsEntry>();
   for (const prompt of prompts) {
-    const group = groups.get(prompt.group);
-    if (group) group.push(prompt);
-    else groups.set(prompt.group, [prompt]);
+    const agent = prebuilt(prompt.group) ? prompt.group : undefined;
+    const group = agent ? PREBUILT_GROUP : prompt.group;
+    const entries = groups.get(group) ?? [];
+    groups.set(group, entries);
+    const known = agent && agents.get(agent);
+    if (known) {
+      known.prompts.push(prompt);
+    } else if (agent) {
+      const entry = { key: prompt.key, name: agent, prompts: [prompt], agent };
+      agents.set(agent, entry);
+      entries.push(entry);
+    } else {
+      entries.push({ key: prompt.key, name: prompt.title, prompts: [prompt] });
+    }
   }
-  return [...groups].map(([group, of]) => ({ group, prompts: of }));
+  return [...groups].map(([group, entries]) => ({ group, entries }));
+}
+
+/** The entry's mark in the list, for any of its prompts: not saved, not used, then changed. */
+export function markOf(
+  prompts: readonly PromptSetting[],
+  edited: readonly PromptKey[],
+): 'unsaved' | 'warning' | 'changed' | null {
+  if (prompts.some((p) => edited.includes(p.key))) return 'unsaved';
+  if (prompts.some((p) => p.warning)) return 'warning';
+  return prompts.some((p) => p.changed) ? 'changed' : null;
 }
 
 /** Line ends as `\n`, no blank end: as the server keeps a prompt. */
