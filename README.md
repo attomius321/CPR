@@ -175,7 +175,11 @@ as `--browser` does.
 - **Remembered** for the next window: its size and place, the zoom, and the viewer's own choices
   (theme, folded sidenav, panel widths), kept in `$XDG_CONFIG_HOME/symbiote/app/` (`~/.config/symbiote/app/`).
 - **Where it runs**: Linux, and Windows through WSL (its window comes through WSLg). macOS runs the
-  same code but is not tested yet. On Ubuntu 24.04 and later, AppArmor may refuse Chromium's
+  same code but is not tested yet. On WSL a file dragged from Windows never reaches the window, and
+  neither does one copied there: WSLg carries no drag and drop between Windows and Linux windows
+  ([microsoft/wslg#84](https://github.com/microsoft/wslg/issues/84)). Pick files instead: Add files
+  on Start a workspace, Attach images beside a workspace's terminal (Windows' files are under
+  `/mnt/c`). On Ubuntu 24.04 and later, AppArmor may refuse Chromium's
   sandbox to an Electron that no package installed: `symbiote view` then says so and opens the browser
   ([Chromium on this restriction](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md)).
 
@@ -470,9 +474,11 @@ questions, Esc, slash commands), so you answer it without leaving Symbiote.
 - **Send the verdict:** after you finish a review of the workspace's branch, this (or "Send to the
   agent" in the Review tab) types the verdict's first line and where the review is into the
   agent's input, for you to send with Enter.
-- **Images:** paste a screenshot (Ctrl+V, Ctrl+Shift+V or ⌘V) or drop image files (PNG, JPEG,
-  GIF or WebP, 20 MB at most) on the terminal, and the agent attaches them to the message you
-  are typing, as `[Image #1]`, sent with Enter. Claude Code and Codex alike, and in Scout's terminal.
+- **Images:** paste a screenshot (Ctrl+V, Ctrl+Shift+V or ⌘V), drop image files (PNG, JPEG,
+  GIF or WebP, 20 MB at most) on the terminal, or pick them with Attach images (the image button in
+  the workspace's head), and the agent attaches them to the message you are typing, as
+  `[Image #1]`, sent with Enter. Claude Code and Codex alike; Scout's terminal takes a paste or a
+  drop too.
   Symbiote saves each image in its cache (`~/.cache/symbiote/images` on Linux, readable by you only) and
   pastes its path, which the agent reads; images older than a day are removed. Text in the
   clipboard pastes as text. On Linux and Windows, Ctrl+V is the page's paste: it no longer sends
