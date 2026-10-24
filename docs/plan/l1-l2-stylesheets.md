@@ -367,3 +367,23 @@ finding; the viewer, CLI and docs last.
 | 329 | A rule's signature | **None of its own: rules, custom properties and keyframes hash a constant signature; a new selector is a move** | Selector lists gaining a member read as breaking signature changes with "users not updated" (Symbiote `b5f0dad`, `d2335ca`) |
 | 330 | When a mention reaches a rule | **Only when the mention's file renders every class one of the rule's selectors needs; certain when its symbol renders them all** | `.merge-row-actions .button` had 13 users, 12 wrong (Symbiote `042112a`) |
 | 331 | A file box too dense for dagre | **Over 1,000 edges inside: columns, about square, no dagre** | 2,186 edges took dagre 60–70 s (Symbiote `3fff617`); TypeScript's densest boxes seen hold under 100 (Bitwarden `737ee3f`: 57) |
+
+**Results** (final build `a13a31e`; the viewer's dense-box layout `06724c8` changes no analysis):
+
+| Check | Result |
+|---|---|
+| Unit tests | 1,427 pass (`pnpm check`); new: `adapters`, `css`, `markup` (core), `styles` (Angular, Qwik), `flow` dense box |
+| e2e | `e2e/stylesheets.spec.ts` (a rule's and a token's diff, users, a comment to the stylesheet's line); the suite: 221 pass before the dense-box change |
+| Prettier reformat of every stylesheet | 0 changed symbols: Symbiote 1,249, Bitwarden 1,746, Qwik 1,523 |
+| `r1` (29) against `main` | identical, 859 edges, no finding changed; time +0.8 % (two interleaved runs: 21.9 → 22.1 s) |
+| `bitwarden` (10) | TypeScript identical; +50 stylesheet edges (45 from templates), +3 symbols, no finding changed; time ×1.04 |
+| `qwik-docs` (30) | TypeScript identical; +830 stylesheet edges (569 from markup), +290 symbols, no finding changed; time ×0.93 |
+| `stylesheets` (Symbiote, 110) | no error, TypeScript identical; +3,707 symbols (per commit median 8, p90 58), +24,620 edges (8,659 from markup, 498 possible); 3 new findings, all right (removed classes still rendered); time +5 % (warm, back to back) |
+| `stylesheets-bitwarden` (31) | TypeScript identical; +1,522 symbols, +3,499 edges (2,650 from templates); no new finding; time ×1.24 in a loaded run, CSS-only commits now load the program |
+| `stylesheets-qwik` (39) | TypeScript identical; +1,276 symbols, +2,465 edges (1,730 from markup); 12 new warnings on `f2b5479d7`, all right (tokens and `.tutorial-lesson-picker` rules removed while still used); time +4 % on the 33 commits `main` analyzed, the 6 CSS-only ones 0.1 → 24 s |
+| Viewer, first paint | `3fff617` 48–73 s → 0.53–0.58 s; `11139e6` (1,247 nodes) 1.05 s, `9220e20` 0.9 s, Bitwarden `737ee3f` (TypeScript, 1,288 symbols) 0.40 s, back to back under load |
+
+**Not verified**: Less, indented Sass and CSS-in-JS (not read); Vue and Svelte; SCSS through
+`includePaths` (load paths other than the file's folder and the repository root resolve as
+packages); a published SCSS library's API; timings on an idle machine for the Bitwarden
+stylesheet set.

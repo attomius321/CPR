@@ -112,4 +112,15 @@ nothing now, is a warning. Decisions 306–312, 330.
 
 **Verification**: tests first (`markup.test.ts`: the `markup` fixture, the 13-users case, the
 `:not()` and rename case, `selectorClasses`; plugin fixtures `styles` (Angular) and
-`qwik-styles`, each also without the plugin), `e2e/stylesheets.spec.ts`.
+`qwik-styles`, each also without the plugin; `flow.test.ts` dense box), `e2e/stylesheets.spec.ts`
+and the full e2e suite. Against `main` on the final build (`a13a31e`): `r1` identical (859 edges)
+at +0.8 % time; `bitwarden` and `qwik-docs` TypeScript identical, +50 and +830 stylesheet edges,
+no finding changed. The stylesheet sets: TypeScript identical everywhere; 15 new findings (3 on
+Symbiote, 12 on Qwik's `f2b5479d7`), each read in the source and right; time +5 % (Symbiote) and
++4 % (Qwik's commits `main` analyzed), CSS-only commits now costing a program load (Qwik's six:
+0.1 → 24 s). First paint of the largest stylesheet graphs 0.5–1.05 s (Bitwarden's TypeScript
+reference 0.4 s, same load).
+
+Not verified: Less, indented Sass, CSS-in-JS, Vue and Svelte styles (not read); SCSS load paths
+from build configs; idle-machine timings for the Bitwarden stylesheet set (×1.24 in a loaded
+run).
