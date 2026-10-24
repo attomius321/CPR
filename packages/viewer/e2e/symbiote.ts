@@ -211,6 +211,8 @@ export async function serveAgentBranch(
       fake,
       `#!/usr/bin/env node
 const fs = require('node:fs');
+// Its models (V47), for the merger's in Settings.
+${answersModels(cache)}
 // Its effort levels, as the real one's --help lists them (V46d: the merger's effort).
 if (process.argv.includes('--help')) {
   process.stdout.write('Options:\\n  --effort <level>  Effort level for the current session (low, medium, high, xhigh, max)\\n  -h, --help  Display help\\n');
@@ -582,6 +584,8 @@ export interface RunningWorkspaces extends Running {
   shas: string[];
   /** What the fake Claude Code started. */
   calls(): FakeClaudeCall[];
+  /** How many times the fake Claude Code was asked for its models (V47). */
+  modelReads(): number;
   /** The sessions the fake stopped, by ID. */
   stops(): string[];
   /** From now on the fake refuses to start, with Claude Code's trust message. */
@@ -647,6 +651,53 @@ export interface RunningWorkspaces extends Running {
  * a stopped session under its ID and copies a live one (without its settings), and `rm` removes
  * one. Its state lives in `dir`.
  */
+/**
+ * Claude Code's answer to `initialize` (V47), as 2.1.310 gave it: its own default first (Symbiote
+ * leaves it out), then four of its models — Haiku 4.5 takes no level, Opus 4.6 no `xhigh`.
+ */
+const FAKE_CLAUDE_MODELS = (() => {
+  const all = ['low', 'medium', 'high', 'xhigh', 'max'];
+  const model = (value: string, displayName: string, description: string, levels?: string[]) => ({
+    value,
+    displayName,
+    description,
+    ...(levels ? { supportsEffort: true, supportedEffortLevels: levels } : {}),
+  });
+  return JSON.stringify({
+    type: 'control_response',
+    response: {
+      subtype: 'success',
+      request_id: 'symbiote-models',
+      response: {
+        models: [
+          model(
+            'default',
+            'Default (recommended)',
+            'Opus 5.5 · Best for everyday, complex tasks',
+            all,
+          ),
+          model('opus', 'Opus 5.5', 'For complex work and everyday tasks', all),
+          model('sonnet', 'Sonnet 5.5', 'Most efficient for simpler tasks', all),
+          model('claude-haiku-4-5-20251001', 'Haiku 4.5', 'Fastest for quick answers'),
+          model('claude-opus-4-6', 'Opus 4.6', 'Best for everyday, complex tasks', [
+            'low',
+            'medium',
+            'high',
+            'max',
+          ]),
+        ],
+      },
+    },
+  });
+})();
+
+/** A fake's lines that answer Symbiote's models request (V47), counting each in `dir`. */
+const answersModels = (dir: string) => `if (process.argv.includes('--input-format')) {
+  require('node:fs').appendFileSync(${JSON.stringify(join(dir, 'models-asked.txt'))}, 'asked\\n');
+  process.stdout.write(${JSON.stringify(FAKE_CLAUDE_MODELS)} + '\\n');
+  process.exit(0);
+}`;
+
 function fakeClaude(dir: string): string {
   const script = join(dir, 'claude');
   writeFileSync(
@@ -660,6 +711,8 @@ const sessions = join(dir, 'sessions.json');
 const list = () => (existsSync(sessions) ? JSON.parse(readFileSync(sessions, 'utf8')) : []);
 const save = (all) => writeFileSync(sessions, JSON.stringify(all));
 const args = process.argv.slice(2);
+// Its models (V47): its answer to the SDK's initialize request.
+${answersModels(dir)}
 // A session's hooks for one event, as Claude Code runs them: each command in a shell, the event on
 // stdin.
 const hooks = (session, input) => {
@@ -1170,6 +1223,7 @@ export async function serveWorkspaces({
       git(folder(branch), 'commit', '-q', '-m', subject);
       return git(folder(branch), 'rev-parse', 'HEAD');
     },
+    modelReads: () => lines('models-asked.txt').length,
     calls() {
       const file = join(fake, 'calls.jsonl');
       return readFileSync(file, { encoding: 'utf8', flag: 'a+' })

@@ -1218,7 +1218,7 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
   await expect(part(page, 'What happens')).toHaveValue('');
 });
 
-test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, start from, branch and effort with their help, permission, documents (V24c, V30, V33, V37, V40)', async ({
+test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, start from, branch, model and effort with their help, permission, documents (V24c, V30, V33, V37, V40, V47)', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -1247,6 +1247,9 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
     // V37: a field's help is a button before it, in the Tab order.
     startPage(page).getByRole('button', { name: 'Where its worktree goes' }),
     branch(page),
+    // V47: the model, under the agent.
+    startPage(page).getByRole('button', { name: 'About the model' }),
+    startPage(page).getByLabel('Model', { exact: true }),
     startPage(page).getByRole('button', { name: 'About the effort' }),
     startPage(page).getByLabel('Effort', { exact: true }),
     startPage(page).getByLabel('Permission'),
