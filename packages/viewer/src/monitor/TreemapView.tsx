@@ -1,22 +1,25 @@
 import { useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { percent, type CodeNode } from './codemap.js';
+import { heatOf, percent, type CodeNode, type Colour } from './codemap.js';
 import { layoutTreemap, type Tile } from './treemap.js';
 
 const count = (value: number) => value.toLocaleString('en-US');
 
 /**
- * The folder in view as a squarified treemap, two levels deep (RM1, decision 324): area is lines
- * of code, colour the file's kind. Laid out again when the folder or the box's size changes,
- * never on hover or selection (the viewer's rule): those only change classes.
+ * The folder in view as a squarified treemap (RM1, decision 324): area is lines of code, colour
+ * a file's length past 250 lines (RM2, decision 332) or only its kind. The section under the
+ * pointer is outlined. Laid out again when the folder or the box's size changes, never on hover,
+ * selection or colour (the viewer's rule): those only change classes.
  */
-export function Treemap({
+export function TreemapView({
   node,
+  colour,
   hovered,
   selected,
   onHover,
   onPick,
 }: {
   node: CodeNode;
+  colour: Colour;
   /** The tile or row under the pointer, by id. */
   hovered: string | null;
   /** The file picked, by path. */
@@ -39,6 +42,7 @@ export function Treemap({
   }, []);
   const tiles = useMemo(() => layoutTreemap(node, size.w, size.h), [node, size.w, size.h]);
   const byId = useMemo(() => new Map(tiles.map((tile) => [tile.id, tile])), [tiles]);
+  const lit = hovered ? byId.get(hovered)?.section : undefined;
 
   // One listener for every tile: the tile is the element's `data-id`.
   const tileAt = (event: MouseEvent) =>
@@ -63,7 +67,12 @@ export function Treemap({
           className={[
             'monitor-tile',
             `type-${tile.type}`,
+            tile.depth === 1 ? 'level-1' : '',
             tile.kind ? `kind-${tile.kind}` : '',
+            tile.kind && colour === 'lines' && heatOf(tile.lines)
+              ? `heat-${heatOf(tile.lines)}`
+              : '',
+            tile.type === 'frame' && tile.id === lit ? 'lit' : '',
             tile.id === hovered ? 'hovered' : '',
             tile.type === 'file' && tile.path === selected ? 'selected' : '',
           ]

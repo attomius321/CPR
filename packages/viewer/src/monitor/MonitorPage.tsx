@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useState,
   type CSSProperties,
@@ -9,6 +10,7 @@ import {
 import type { CodeFile, CodeMap, FileKind } from '@symbiote/monitor';
 import { Help } from '../ui/Help.js';
 import { getJson, postJson, serverWords } from '../ui/http.js';
+import { BackIcon } from '../ui/icons.js';
 import { keyIsTaken } from '../ui/keys.js';
 import { Resizer } from '../ui/Resizer.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
@@ -18,12 +20,14 @@ import {
   codeTree,
   concentration,
   crumbs,
+  HEAT,
   headline,
   KINDS,
   percent,
   type CodeNode,
+  type Colour,
 } from './codemap.js';
-import { Treemap } from './Treemap.js';
+import { TreemapView } from './TreemapView.js';
 import type { Tile } from './treemap.js';
 
 const API = '/api/monitor';
@@ -41,6 +45,18 @@ interface Spot {
 }
 
 const count = (value: number) => value.toLocaleString('en-US');
+
+/** The headline's words, its numbers in the text's colour (RM2): the figures stand out. */
+const figures = (words: string) =>
+  words.split(/(\d[\d,]*(?:\u00a0%)?)/).map((part, i) =>
+    i % 2 ? (
+      <span key={i} className="monitor-figure">
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
 
 /** Why a file is set aside, in words. */
 const ASIDE: Record<NonNullable<CodeFile['aside']>, string> = {
@@ -64,8 +80,9 @@ const spotOfNode = (node: CodeNode): Spot => ({
 });
 
 /**
- * The Monitor page (RM1): where the checked-out commit's code is. The concentration in words, a
- * treemap of the folder in view (zoomed by click, back by the breadcrumbs or Backspace), and the
+ * The Monitor page (RM1): where the checked-out commit's code is. The folder in view as the
+ * heading with Back before it (RM2), the concentration in words, a treemap of the folder (zoomed
+ * by click; back by Back, the breadcrumbs, Backspace or Escape), long files in heat, and the
  * ranked list beside it; the folder is in the address (`?path=`).
  */
 export function MonitorPage({ path = '' }: { path?: string | undefined }) {
@@ -73,12 +90,14 @@ export function MonitorPage({ path = '' }: { path?: string | undefined }) {
   const [map, setMap] = useState<CodeMap | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [kinds, setKinds] = useState<ReadonlySet<FileKind>>(() => new Set(['source']));
+  const [colour, setColour] = useState<Colour>('lines');
   const [tab, setTab] = useState<ListTab>('children');
   const [hovered, setHovered] = useState<Spot | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [opened, setOpened] = useState<{ text: string; error?: boolean } | null>(null);
   const [width, setWidth] = useState(() => loadWidths().monitor);
   const [resizing, setResizing] = useState(false);
+  const colourLabel = useId();
 
   useEffect(() => {
     let live = true;
@@ -121,13 +140,13 @@ export function MonitorPage({ path = '' }: { path?: string | undefined }) {
     [shell],
   );
 
-  // Backspace goes up a folder; Escape lets go of the file picked.
+  // Backspace goes up a folder; Escape lets go of the file picked, else goes up (RM2).
   const up = trail.at(-2);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (keyIsTaken(event)) return;
-      if (event.key === 'Backspace' && up) go(up.path);
-      else if (event.key === 'Escape' && selected) setSelected(null);
+      if (event.key === 'Escape' && selected) setSelected(null);
+      else if ((event.key === 'Backspace' || event.key === 'Escape') && up) go(up.path);
       else return;
       event.preventDefault();
     };
@@ -198,8 +217,13 @@ export function MonitorPage({ path = '' }: { path?: string | undefined }) {
             the picture its lines of code — lines that are not blank and not only a comment.
           </p>
           <p>
-            Click a folder to go in; Backspace or the path above the picture goes back. The list
-            ranks the same numbers; the line in it is where half of the code is reached.
+            Click a folder to go in; Back, Backspace or Escape goes up a folder, the path to any
+            folder above. The list ranks the same numbers; the line in it is where half of the code
+            is reached.
+          </p>
+          <p>
+            A file&apos;s colour is its length: yellow from 250 lines of code, orange from 500, red
+            from 1,000. Colour: Kind gives each kind of file its own colour instead.
           </p>
         </Help>
         {map && (
@@ -218,46 +242,102 @@ export function MonitorPage({ path = '' }: { path?: string | undefined }) {
       {map && tree && node && (
         <>
           <div className="monitor-head">
-            <div className="monitor-kinds" role="group" aria-label="What counts">
-              {KINDS.map(({ kind, label }) => (
-                <button
-                  key={kind}
-                  type="button"
-                  className="monitor-kind"
-                  aria-pressed={kinds.has(kind)}
-                  onClick={() => toggle(kind)}
-                >
-                  <span className={`monitor-swatch kind-${kind}`} aria-hidden="true" />
-                  {label}
-                  <span className="monitor-kind-lines">{count(totals.get(kind) ?? 0)}</span>
-                </button>
-              ))}
-            </div>
-            <nav className="monitor-crumbs" aria-label="Folder in view">
-              {trail.map((folder, i) =>
-                i === trail.length - 1 ? (
-                  <span key={folder.path} aria-current="page">
-                    {folder.name || 'All files'}
-                  </span>
-                ) : (
-                  <span key={folder.path}>
-                    <button type="button" className="link" onClick={() => go(folder.path)}>
-                      {folder.name || 'All files'}
+            <div className="monitor-tools">
+              <div className="monitor-kinds" role="group" aria-label="What counts">
+                {KINDS.map(({ kind, label }) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    className="monitor-kind"
+                    aria-pressed={kinds.has(kind)}
+                    onClick={() => toggle(kind)}
+                  >
+                    <span className={`monitor-swatch kind-${kind}`} aria-hidden="true" />
+                    {label}
+                    <span className="monitor-kind-lines">{count(totals.get(kind) ?? 0)}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="monitor-colour">
+                <span className="monitor-tools-label" id={colourLabel}>
+                  Colour
+                </span>
+                <span className="scopes" role="group" aria-labelledby={colourLabel}>
+                  {(
+                    [
+                      ['lines', 'Lines'],
+                      ['kind', 'Kind'],
+                    ] as const
+                  ).map(([choice, label]) => (
+                    <button
+                      key={choice}
+                      type="button"
+                      className={colour === choice ? 'scope active' : 'scope'}
+                      aria-pressed={colour === choice}
+                      onClick={() => setColour(choice)}
+                    >
+                      {label}
                     </button>
-                    <span className="monitor-crumb-sep" aria-hidden="true">
-                      /
+                  ))}
+                </span>
+              </div>
+            </div>
+            <div className="monitor-place">
+              <button
+                type="button"
+                className="icon-button monitor-back"
+                aria-label={up ? `Back to ${up.name || 'All files'}` : 'Back'}
+                title={up ? `Back to ${up.name || 'All files'} (Backspace)` : 'Back (Backspace)'}
+                disabled={!up}
+                onClick={() => up && go(up.path)}
+              >
+                <BackIcon />
+              </button>
+              <nav className="monitor-crumbs" aria-label="Folder in view">
+                {trail.map((folder, i) =>
+                  i === trail.length - 1 ? (
+                    <span key={folder.path} aria-current="page">
+                      {folder.name || 'All files'}
                     </span>
+                  ) : (
+                    <span key={folder.path}>
+                      <button type="button" className="link" onClick={() => go(folder.path)}>
+                        {folder.name || 'All files'}
+                      </button>
+                      <span className="monitor-crumb-sep" aria-hidden="true">
+                        /
+                      </span>
+                    </span>
+                  ),
+                )}
+              </nav>
+              {colour === 'lines' && (
+                <div className="monitor-legend" role="group" aria-label="Lines in a file">
+                  <span className="monitor-tools-label">Lines in a file</span>
+                  <span className="monitor-legend-step">
+                    <span className="monitor-swatch kind-source" aria-hidden="true" />
+                    under {count(HEAT[0])}
                   </span>
-                ),
+                  {HEAT.map((bound, i) => (
+                    <span key={bound} className="monitor-legend-step">
+                      <span className={`monitor-swatch heat-${i + 1}`} aria-hidden="true" />
+                      {count(bound)}
+                      {i === HEAT.length - 1 ? '+' : ''}
+                    </span>
+                  ))}
+                </div>
               )}
-            </nav>
+            </div>
             <p className="monitor-headline">
-              {words.length > 0 ? words.join(' ') : 'No lines of the kinds turned on here.'}
+              {words.length > 0
+                ? figures(words.join(' '))
+                : 'No lines of the kinds turned on here.'}
             </p>
           </div>
           <div className="monitor-body">
-            <Treemap
+            <TreemapView
               node={node}
+              colour={colour}
               hovered={hovered?.id ?? null}
               selected={selected}
               onHover={hoverTile}
@@ -275,6 +355,7 @@ export function MonitorPage({ path = '' }: { path?: string | undefined }) {
             <aside className="monitor-side">
               <CodeList
                 node={node}
+                colour={colour}
                 tab={tab}
                 onTab={setTab}
                 hovered={hovered?.id ?? null}

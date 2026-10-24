@@ -111,6 +111,18 @@ describe('layoutTreemap', () => {
     );
   });
 
+  // RM2 (decision 334): a section, a child of the folder in view, lights up under the pointer.
+  it('gives each tile the section holding it: the level-1 tile, itself at level 1', () => {
+    const sections = new Map(tiles.map((t) => [t.id, t.section]));
+    expect(sections.get('app')).toBe('app');
+    expect(sections.get('x.ts')).toBe('x.ts');
+    expect(sections.get('app/a.ts')).toBe('app');
+    expect(sections.get('app/small')).toBe('app');
+    expect(sections.get('app/small/…')).toBe('app');
+    expect(sections.get('lib/d.ts')).toBe('lib');
+    for (const t of tiles) expect(byId.get(t.section)?.depth, t.id).toBe(1);
+  });
+
   it('merges the files too small to draw into one tile per folder', () => {
     expect(byId.get('app/…')).toMatchObject({ type: 'more', path: 'app', files: 30, lines: 30 });
     for (const t of tiles)

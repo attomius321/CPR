@@ -280,8 +280,9 @@ then the pure tree and layout, then the page.
 
 **Not in RM1 (later)**:
 
-- **Hotspots** (RM2): colour by how often each file changed in the last months, Tornhill's and
-  CodeScene's "size × change frequency" — where the code is *and* where the work is.
+- **Hotspots** (RM3; RM2 became the Monitor's look): colour by how often each file changed in
+  the last months, Tornhill's and CodeScene's "size × change frequency" — where the code is *and*
+  where the work is.
 - **Over time**: how the concentration moved between two commits or releases (History's row menu
   could open the page at a commit: `scanCodebase` already takes the commit to read).
 - Uncommitted changes, ownership (who wrote what), symbols per file from the analysis, a

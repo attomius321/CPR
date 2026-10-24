@@ -5,7 +5,9 @@ import {
   codeTree,
   concentration,
   crumbs,
+  HEAT,
   headline,
+  heatOf,
   largestFiles,
   nodeAt,
 } from '../src/monitor/codemap.js';
@@ -138,6 +140,16 @@ describe('the list', () => {
       ['src/a.ts', 0.6, true],
       ['src/b.ts', 0.3, false],
       ['src/deep/only/c.ts', 0.05, false],
+    ]);
+  });
+});
+
+describe('heatOf', () => {
+  // RM2 (decision 332): a file's colour by its own lines of code, the same steps at every folder.
+  it('gives a file its step by its lines: under 250, 250, 500, 1,000 and more', () => {
+    expect(HEAT).toEqual([250, 500, 1000]);
+    expect([0, 1, 249, 250, 499, 500, 999, 1000, 7968].map(heatOf)).toEqual([
+      0, 0, 0, 1, 1, 2, 2, 3, 3,
     ]);
   });
 });
