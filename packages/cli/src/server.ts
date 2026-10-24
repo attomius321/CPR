@@ -27,6 +27,7 @@ import {
   type RepoStatus,
   type ScoutAsk,
   type ScoutEffortChange,
+  type ScoutModelChange,
   type ScoutTerminalRequest,
   type WorkKind,
 } from '@symbiote/core';
@@ -395,6 +396,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
             answer(res, () => scout.setEffort(change)),
           );
         }
+        // Its model in the project's config (V47), set in Settings.
+        if (url.pathname === '/api/scout/model') {
+          return written(req, res, parseModelChange, (change) =>
+            answer(res, () => scout.setModel(change)),
+          );
+        }
       }
       const { scribe } = repository;
       if (scribe) {
@@ -419,6 +426,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           );
         }
         if (url.pathname === '/api/scribe/efforts') return read(req, res, () => scribe.efforts());
+        if (url.pathname === '/api/scribe/model') {
+          return written(req, res, parseModelChange, (change) =>
+            answer(res, () => scribe.setModel(change)),
+          );
+        }
       }
       const { skills } = repository;
       if (skills) {
@@ -474,6 +486,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         if (url.pathname === '/api/merges/effort') {
           return written(req, res, parseScoutEffort, (change) =>
             answer(res, () => merges.setEffort(change)),
+          );
+        }
+        if (url.pathname === '/api/merges/model') {
+          return written(req, res, parseModelChange, (change) =>
+            answer(res, () => merges.setModel(change)),
           );
         }
         if (url.pathname === '/api/merges/approve') {
@@ -1530,6 +1547,16 @@ function parseScoutEffort(text: string): ScoutEffortChange {
     throw new Error("effort: a level, as high, or null for each agent's own");
   }
   return { effort };
+}
+
+/** `{ model }` (V47): a model's ID, or null for the default; Scout's, Scribe's, the merger's. */
+function parseModelChange(text: string): ScoutModelChange {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  const model = value?.model;
+  if (model !== null && typeof model !== 'string') {
+    throw new Error('model: its ID, as sonnet, or null for the default');
+  }
+  return { model };
 }
 
 /** `{ cols, rows }`: a terminal on Scout's session (V35). */

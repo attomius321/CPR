@@ -1653,6 +1653,13 @@ describe('symbiote view: merges (V26a)', () => {
         ? Promise.reject(new MergeRefused('Claude Code takes low or high: ultra', 400))
         : Promise.resolve({ agents: [], file: 'symbiote/config.json' });
     },
+    // Its model (V47): one its agent lists, set or refused.
+    setModel: ({ model }) => {
+      asked.push(`model ${String(model)}`);
+      return model === 'gpt-6-luna'
+        ? Promise.reject(new MergeRefused('Claude Code lists no model gpt-6-luna', 400))
+        : Promise.resolve({ agents: [], file: 'symbiote/config.json' });
+    },
     // A log whose offsets are its lines' indexes; `logGone` once its entry is removed (V46a).
     log: (id, from = 0) =>
       Promise.resolve(
@@ -1773,6 +1780,17 @@ describe('symbiote view: merges (V26a)', () => {
     );
     expect((await post('/api/merges/efforts', {})).status).toBe(405);
     expect(asked.splice(-3)).toEqual(['effort high', 'effort null', 'effort ultra']);
+  });
+
+  it('sets or removes merge.model (V47)', async () => {
+    expect((await post('/api/merges/model', { model: 'sonnet' })).status).toBe(200);
+    expect((await post('/api/merges/model', { model: null })).status).toBe(200);
+    const refused = await post('/api/merges/model', { model: 'gpt-6-luna' });
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({ error: 'Claude Code lists no model gpt-6-luna' });
+    expect((await post('/api/merges/model', { model: 3 })).status).toBe(400);
+    expect((await post('/api/merges/model', {})).status).toBe(400);
+    expect(asked.splice(-3)).toEqual(['model sonnet', 'model null', 'model gpt-6-luna']);
   });
 
   it("streams a merge's log: its lines so far, then each line appended, until its entry goes (V46a)", async () => {

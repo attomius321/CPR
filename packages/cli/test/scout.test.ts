@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openRepo, type ScoutAsk } from '@symbiote/core';
+import { openRepo, type AgentModel, type ScoutAsk } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { codexServer } from '../src/app-server.js';
@@ -710,6 +710,155 @@ describe("Scout's effort (fix/scout-effort-level)", () => {
       status: 409,
       message: 'Scout needs Claude Code or Codex: neither is installed',
     });
+  });
+});
+
+describe("Scout's and Scribe's model (V47)", () => {
+  const LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
+  /** Some of Claude Code 2.1.310's models: Haiku 4.5 takes no level, Opus 4.6 no xhigh. */
+  const MODELS: AgentModel[] = [
+    { id: 'opus', name: 'Opus 5.5', efforts: { levels: LEVELS } },
+    { id: 'sonnet', name: 'Sonnet 5.5', efforts: { levels: LEVELS } },
+    { id: 'claude-haiku-4-5-20251001', name: 'Haiku 4.5' },
+    {
+      id: 'claude-opus-4-6',
+      name: 'Opus 4.6',
+      efforts: { levels: ['low', 'medium', 'high', 'max'] },
+    },
+  ];
+  const config = (repo: TestRepo) => join(repo.root, 'symbiote', 'config.json');
+  /** Claude Code with its levels and its models. */
+  const listing = (repo: TestRepo) => {
+    const fake = fakeClaude(repo.root);
+    fake.claude.efforts = () => Promise.resolve(LEVELS);
+    fake.claude.models = () => Promise.resolve(structuredClone(MODELS));
+    return fake;
+  };
+
+  it("lists each agent's models and the model it runs on without the project's; the levels on the model it would start on", async () => {
+    const repo = fresh();
+    const { claude } = listing(repo);
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    codex.efforts = () => Promise.resolve({ levels: ['low', 'medium', 'high'], default: 'medium' });
+    codex.models = () => codexServer(server.address).models(repo.root);
+    const s = await service(repo, { claude, codex });
+    const read = await s.efforts();
+    expect(read.agents[0]).toEqual({ kind: 'claude', efforts: { levels: LEVELS }, models: MODELS });
+    expect(read.agents[1]).toMatchObject({
+      kind: 'codex',
+      defaultModel: { id: 'gpt-6-luna', by: 'agent' },
+    });
+    expect(read.agents[1]?.models?.map((m) => m.id)).toEqual([
+      'gpt-6-luna',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
+    ]);
+    expect(read).not.toHaveProperty('model');
+    // scout.model: said, and the levels its model takes; the project's agent.model is the default.
+    repo.write({
+      'symbiote/config.json':
+        '{ "agent": { "model": "sonnet" }, "scout": { "model": "claude-opus-4-6" } }\n',
+    });
+    const set = await s.efforts();
+    expect(set.model).toBe('claude-opus-4-6');
+    expect(set.agents[0]).toMatchObject({
+      defaultModel: { id: 'sonnet', by: 'project' },
+      efforts: { levels: ['low', 'medium', 'high', 'max'] },
+    });
+    // Not a model's ID: none.
+    repo.write({ 'symbiote/config.json': '{ "scout": { "model": "--yolo" } }\n' });
+    expect(await s.efforts()).not.toHaveProperty('model');
+  });
+
+  it('starts a conversation on scout.model when its agent lists it, records and says it; the other agent on its own', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = listing(repo);
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    codex.models = () => codexServer(server.address).models(repo.root);
+    const s = await service(repo, { claude, codex });
+    repo.write({ 'symbiote/config.json': '{ "scout": { "model": "sonnet" } }\n' });
+    const state = await s.ask({ text: 'Q' });
+    expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ model: 'sonnet' });
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({ model: 'sonnet' });
+    expect(state.conversation).toMatchObject({ kind: 'claude', model: 'sonnet' });
+    await s.renew();
+    // Codex lists no sonnet: its own model, nothing recorded.
+    const other = await s.ask({ text: 'Q', agent: 'codex' });
+    expect(server.calls.find((c) => c.method === 'thread/start')?.params).not.toHaveProperty(
+      'model',
+    );
+    expect(other.conversation).not.toHaveProperty('model');
+    await s.renew();
+    repo.write({ 'symbiote/config.json': '{ "scout": { "model": "gpt-5.6-luna" } }\n' });
+    await s.ask({ text: 'Q', agent: 'codex' });
+    expect(server.calls.filter((c) => c.method === 'thread/start')[1]?.params).toMatchObject({
+      model: 'gpt-5.6-luna',
+    });
+  });
+
+  it("checks a level against the project's model: none for Haiku 4.5", async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = listing(repo);
+    const s = await service(repo, { claude });
+    repo.write({
+      'symbiote/config.json': '{ "scout": { "model": "claude-haiku-4-5-20251001" } }\n',
+    });
+    expect((await s.efforts()).agents[0]).not.toHaveProperty('efforts');
+    await expect(s.ask({ text: 'Q', effort: 'high' })).rejects.toMatchObject({
+      status: 400,
+      message: 'Haiku 4.5 takes no effort level: start it at its default',
+    });
+    expect(startPageAgent).not.toHaveBeenCalled();
+  });
+
+  it("saves the project's model in its config, one its default agent lists; null removes it", async () => {
+    const repo = fresh();
+    const { claude } = listing(repo);
+    const s = await service(repo, { claude });
+    repo.write({ 'symbiote/config.json': '{\n  "scout": { "effort": "high" }\n}\n' });
+    expect(await s.setModel({ model: 'sonnet' })).toMatchObject({ model: 'sonnet' });
+    expect(JSON.parse(readFileSync(config(repo), 'utf8'))).toEqual({
+      scout: { effort: 'high', model: 'sonnet' },
+    });
+    expect(await s.setModel({ model: null })).not.toHaveProperty('model');
+    expect(JSON.parse(readFileSync(config(repo), 'utf8'))).toEqual({ scout: { effort: 'high' } });
+    await expect(s.setModel({ model: 'gpt-6-luna' })).rejects.toMatchObject({
+      status: 400,
+      message: 'Claude Code lists no model gpt-6-luna: pick one it lists',
+    });
+    await expect(s.setModel({ model: '--yolo' })).rejects.toMatchObject({ status: 400 });
+    claude.models = () => Promise.resolve(null);
+    await expect(s.setModel({ model: 'sonnet' })).rejects.toMatchObject({
+      status: 400,
+      message: "Symbiote cannot read Claude Code's models: start it on its default",
+    });
+    await expect((await service(fresh())).setModel({ model: 'sonnet' })).rejects.toMatchObject({
+      status: 409,
+    });
+  });
+
+  it('gives Scribe its own: scribe.model', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = listing(repo);
+    const s = scribe(await openRepo(repo.root), cache, {
+      claude: () => Promise.resolve(claude),
+      now: () => NOW,
+      env: { PATH: '/usr/bin' },
+      gate: '/opt/symbiote/dist/scribe-hook.js',
+      node: '/usr/bin/node',
+    });
+    expect(await s.setModel({ model: 'claude-opus-4-6' })).toMatchObject({
+      model: 'claude-opus-4-6',
+    });
+    expect(JSON.parse(readFileSync(config(repo), 'utf8'))).toEqual({
+      scribe: { model: 'claude-opus-4-6' },
+    });
+    await s.ask({ text: 'A skill' });
+    expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ model: 'claude-opus-4-6' });
+    // Scout's is not Scribe's.
+    expect(await (await service(repo, { claude })).efforts()).not.toHaveProperty('model');
   });
 });
 

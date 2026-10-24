@@ -664,6 +664,24 @@ export function modelProblem(
 }
 
 /**
+ * Why the agent `name` cannot start at `effort` on `model` (V47), or null: the model's own levels
+ * when the agent lists it — none for a model that takes none —, else `fallback`, its default
+ * model's.
+ */
+export function effortOnProblem(
+  effort: string,
+  name: string,
+  models: readonly AgentModel[] | null | undefined,
+  model: string | undefined,
+  fallback: AgentEfforts | null,
+): string | null {
+  const listed = model ? models?.find((m) => m.id === model) : undefined;
+  if (listed && !listed.efforts)
+    return `${listed.name} takes no effort level: start it at its default`;
+  return effortProblem(effort, listed?.name ?? name, (listed?.efforts ?? fallback)?.levels);
+}
+
+/**
  * The levels an agent takes on `model` (V47): the model's own when the agent lists it (none for a
  * model that takes none), else `fallback`, its default model's (Claude Code's `--help`).
  */
@@ -1206,13 +1224,17 @@ export interface WorkspaceConfig {
   model?: string;
   /** Scout's effort level (`scout.effort`): a word; absent, each agent's own. */
   scoutEffort?: string;
+  /** Scout's and Scribe's models (`scout.model`, `scribe.model`, V47): IDs; absent, the default. */
+  scoutModel?: string;
+  scribeModel?: string;
 }
 
 /**
  * `features.branchPrefixes` sets a kind's prefix (V24), each kind its own by default (`fix/`);
  * `features.branchPrefix`, from before V24, sets the Feature's unless `branchPrefixes` does.
  * `agent.kind` names the agent offered first (V20a); `agent.permissionMode` and `agent.model`
- * are Claude Code's. `scout.effort` is the level Scout's conversations start at.
+ * are Claude Code's. `scout.effort` is the level Scout's conversations start at; `scout.model`
+ * and `scribe.model` the models Scout's and Scribe's start on (V47).
  */
 export function readWorkspaceConfig(root: string): WorkspaceConfig {
   const branchPrefixes = Object.fromEntries(WORK_KINDS.map((k) => [k, `${k}/`])) as Record<
@@ -1234,7 +1256,8 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
     /** The section's name before V25, still read when `workspaces` is not there. */
     features?: Section;
     agent?: unknown;
-    scout?: { effort?: unknown } | null;
+    scout?: { effort?: unknown; model?: unknown } | null;
+    scribe?: { model?: unknown } | null;
   };
   const section = v.workspaces ?? v.features;
   if (typeof section?.branchPrefix === 'string') {
@@ -1262,6 +1285,12 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
   if (typeof agent.model === 'string' && agent.model !== '') config.model = agent.model;
   const effort = v.scout?.effort;
   if (typeof effort === 'string' && EFFORT_LEVEL.test(effort)) config.scoutEffort = effort;
+  const id = (value: unknown) =>
+    typeof value === 'string' && MODEL_ID.test(value) ? value : undefined;
+  const scoutModel = id(v.scout?.model);
+  if (scoutModel) config.scoutModel = scoutModel;
+  const scribeModel = id(v.scribe?.model);
+  if (scribeModel) config.scribeModel = scribeModel;
   return config;
 }
 
@@ -1968,15 +1997,13 @@ export function workspaces(
     }
     if (!agent) throw new WorkspaceRefused('an effort level needs an agent to start', 400);
     const on = model ?? (agent.kind === 'claude' ? config().model : undefined);
-    const listed = on ? (await modelsOf(agent))?.models.find((m) => m.id === on) : undefined;
-    if (listed && !listed.efforts) {
-      throw new WorkspaceRefused(
-        `${listed.name} takes no effort level: start it at its default`,
-        400,
-      );
-    }
-    const levels = listed?.efforts?.levels ?? (await effortsOf(agent))?.levels;
-    const problem = effortProblem(effort, listed?.name ?? AGENT_NAMES[agent.kind], levels);
+    const problem = effortOnProblem(
+      effort,
+      AGENT_NAMES[agent.kind],
+      on ? (await modelsOf(agent))?.models : undefined,
+      on,
+      await effortsOf(agent),
+    );
     if (problem) throw new WorkspaceRefused(problem, 400);
     return effort;
   }

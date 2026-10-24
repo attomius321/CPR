@@ -34,6 +34,7 @@ import {
   type ChangedLines,
   type Graph,
   type AgentEfforts,
+  type AgentModels,
   type AgentKind,
   type MergeEntry,
   type Severity,
@@ -684,6 +685,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       merges: merger(repo, cacheDir, {
         mergerAgent: mergerFinder(repo.root, ctx.env),
         levels: levelsFinder(claudeOf, codexOf),
+        models: modelsFinder(claudeOf, codexOf),
       }),
       settings: promptSettingsService(repo),
       scout: scout(repo, cacheDir, {
@@ -1015,6 +1017,18 @@ function levelsFinder(
     if (kind === 'codex') return (await (await codexOf())?.efforts()) ?? null;
     const levels = (await (await claude())?.efforts()) ?? null;
     return levels ? { levels } : null;
+  };
+}
+
+/** An agent's models (V47), for the merger's in Settings: Claude Code's kept list, Codex's. */
+function modelsFinder(
+  claude: () => Promise<ClaudeCode | null>,
+  codexOf: () => Promise<Codex | null>,
+): (kind: AgentKind) => Promise<AgentModels | null> {
+  return async (kind) => {
+    if (kind === 'codex') return (await (await codexOf())?.models()) ?? null;
+    const models = (await (await claude())?.models()) ?? null;
+    return models ? { models } : null;
   };
 }
 
