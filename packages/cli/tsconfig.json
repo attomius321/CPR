@@ -4,7 +4,8 @@
     "noEmit": true,
     "paths": {
       "@symbiote/core": ["../core/src/index.ts"],
-      "@symbiote/forge": ["../forge/src/index.ts"]
+      "@symbiote/forge": ["../forge/src/index.ts"],
+      "@symbiote/monitor": ["../monitor/src/index.ts"]
     }
   },
   "include": ["src", "test"],

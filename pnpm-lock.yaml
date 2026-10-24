@@ -211,6 +211,9 @@ importers:
       '@symbiote/forge':
         specifier: workspace:*
         version: link:../forge
+      '@symbiote/monitor':
+        specifier: workspace:*
+        version: link:../monitor
       '@symbiote/viewer':
         specifier: workspace:*
         version: link:../viewer
