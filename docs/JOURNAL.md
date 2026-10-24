@@ -5591,3 +5591,12 @@ plan Max. `pnpm check`: 1,384 tests in 100 files; build; e2e 218 of 218; after a
 (no change in behaviour), `usage`, `workspaces` and `codex` specs again: 41 of 41.
 
 Not verified: macOS and Windows (the profile is read from the file the status bar reads there).
+
+Merged into main (2026-10-24). Symbiote's first merge failed its checks on `shell.spec`'s keys
+test (217 of 218): the race V44 fixed on `main` at the same time (`b447ce3`, ArrowDown before the
+second card was listed). Measured here before that fix: 15 of 64 runs on 8 workers failed at
+ArrowDown; a probe found 1 card listed at the key in 21 of 64. With the wait, a second, rarer
+cause, **not fixed**: a workspace's terminal takes the focus once it has opened
+(`AgentTerminal.tsx`, `shown.focus()` at the end of its setup), even after a click elsewhere, so
+the next key goes to the agent. 1 of 64 runs lost its `h` at line 154 that way; a variant of the
+test without `h`, `s`, `h` before `w` lost its `w` in 20 of 256, the terminal focused each time.
