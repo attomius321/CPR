@@ -151,6 +151,7 @@ hosted.
 | Fix | Merge into names no branch; the dropdown does | ✅ | | [journal](journal/fix-merge-into-main-button.md) |
 | Chore | the merge page remake, built | ✅ | | [journal](journal/chore-lost-feature.md) |
 | Fix | a resolution's failed check is said, not taken for a wrong one; Check again | ✅ | | [journal](journal/fix-merger.md) |
+| [V46](plan/v46-merger-logs.md) | Merger logs: steps, the check's output and the agent's thinking live; a resolution's files | planned | 313–318 | [journal](journal/v46-merger-logs.md) |
 
 ### Shell and look
 
