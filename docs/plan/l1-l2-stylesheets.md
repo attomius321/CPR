@@ -5,7 +5,8 @@
 **Status:** planned (2026-10-24), on branch `feature/expand-graph-with-css-scss` (a workspace
 started in Symbiote, from `main` at `c4ff77a`). The person's OK on the first plan, with three
 answers: L1 **and** L2 on this branch, stylesheets read **by default**, and the workspace's own
-branch (not `milestone/l1-…`) — "this is how we will work from now on". Not started.
+branch (not `milestone/l1-…`) — "this is how we will work from now on". Built (2026-10-24):
+ready for review; "As built" and results at the end.
 
 **Problem** (asked: "The graph should also know how to interpret CSS/SCSS"). Symbiote's only
 adapter is TypeScript/JavaScript (design §2). A stylesheet is listed among the changed files and
@@ -304,13 +305,13 @@ finding; the viewer, CLI and docs last.
 | 299 | Where stylesheets are read | **A second language adapter in core, joined to TypeScript's by `combineAdapters`**; not a plugin | Design §4: languages behind `LanguageAdapter`, frameworks as plugins; plugin hooks are TypeScript programs and nodes |
 | 300 | On by default? | **Yes**, like JavaScript; `.symbioteignore` turns files off (the person's answer) | A language, not a framework: Symbiote's own history is 24 % stylesheet commits that show nothing today |
 | 301 | What a symbol is | **A rule (selector and its own declarations), a custom property definition, keyframes; SCSS top-level variables, mixins, functions, placeholders** | What a reviewer decides about: a rule's look, a token's value, a mixin's contract. A class has no single definition (it is in many rules) |
-| 302 | Their IDs | **CSS's own notation** (`.a .b`, `--x`, `$x`, `@mixin x`, `%x`, `@keyframes x`), **contexts joined by ` › `**, nested rules by their resolved selector, a repeat ` (2)` | Readable as CSS; no selector contains ` › `; repeats are 0.5 % of rules |
+| 302 | Their IDs (signatures: 313) | **CSS's own notation** (`.a .b`, `--x`, `$x`, `@mixin x`, `%x`, `@keyframes x`), **contexts joined by ` › `**, nested rules by their resolved selector, a repeat ` (2)` | Readable as CSS; no selector contains ` › `; repeats are 0.5 % of rules |
 | 303 | Scope of names inside stylesheets | **Custom properties and keyframes: global over the revision's stylesheets; SCSS members: Sass's rules (`@use`, `@forward`, `@import` order); two candidates or none → `unknown`** | The cascade is global; Sass is not. Precise beats complete |
 | 304 | Findings inside stylesheets | **Removed SCSS member still used: error; removed token or keyframes still used: warning; orphans only for mixins, functions, placeholders** | Sass fails on the first, the browser falls back silently on the second; rules and tokens are used where Symbiote does not fully see |
 | 305 | Parser | **postcss 8.5 + postcss-scss 4.0 + postcss-value-parser 4.2**, pinned | 0 errors on 169 real stylesheets, 18–32 ms a revision, positions included; no SCSS syntax tree elsewhere |
 | 306 | Markup → stylesheets | **L2, on this branch with L1** (the person's answer) | Without it a rule's change reaches no component: the reviewer's "who is affected?" |
 | 307 | What names a class in markup | **Static strings and object keys inside a `class`/`className` attribute; `classList` arguments; CSS modules' `styles.x`; Angular templates' `class`, `[class.x]`, `[ngClass]`, `[class]`**; not other strings, not tokens touching `${}` | 68 % (Symbiote) and 21 % (Bitwarden) of classes are named so; a string elsewhere or a built name is a guess |
-| 308 | Which rules a mention reaches | **Global stylesheets' rules with the class; a scoped sheet (Angular component styles, Qwik `useStylesScoped$`) only from its component; a CSS module only through its import; `possible` when the class is not in the rule's last compound** | How the browser and the frameworks apply them; an ancestor class does not style the element |
+| 308 | Which rules a mention reaches (revised by 314) | **Global stylesheets' rules with the class; a scoped sheet (Angular component styles, Qwik `useStylesScoped$`) only from its component; a CSS module only through its import; `possible` when the class is not in the rule's last compound** | How the browser and the frameworks apply them; an ancestor class does not style the element |
 | 309 | A removed class | **Warning, when the class's rules in reach were removed, none is left, and markup still names it** | Its element silently loses its look; Tailwind's names never had rules, so they are never reported |
 | 310 | Custom properties from script | **`style` keys and `setProperty` set; `var()` in strings and `getPropertyValue` use**; a token set by script is not dangling | Symbiote's viewer sets 7 from script (6 JSX `style` keys such as `'--sidebar-width'`, `setProperty('--symbiote-zoom')`) and reads 2 (`getPropertyValue('--side')`) |
 | 311 | Plugin API | **Optional hooks `mentions` and `styleScopes`; API version stays 1** | Adding an optional hook is compatible (core `CLAUDE.md`) |
@@ -321,3 +322,44 @@ finding; the viewer, CLI and docs last.
   the five repos; CSS-in-JS; Vue and Svelte `<style>` blocks; Tailwind's `@apply`, `theme()` and
   utility classes as edges; a published stylesheet API; `querySelector` selectors and Playwright
   locators as uses.
+
+## As built (L1–L2)
+
+- **Order**: as planned (L1a–L1d, L2a–L2b, docs), with L2c (the removed class, tokens set by
+  script) built inside L2a, and the exposure that keeps rules and tokens from being orphans moved
+  up to L1b: the first real run (`042112a`) showed an orphan warning for every new rule.
+- **SCSS extraction came with L1b's walk**: L1c's symbol tests passed when written; L1c's real
+  work was name resolution (`scope.ts`), built with L1d's references.
+- **A selector change is a move** (decision 313): rules, custom properties and keyframes have a
+  constant signature hash. Planned: the selector as signature. On Symbiote's history that made
+  `signature-changed` warnings for selector lists gaining a member (`b5f0dad`: "10 of 12 users
+  not updated") — noise; a rename's real risk is caught by the removed-class finding on the old
+  declaration. Mixins, functions and `$variables` keep their signatures.
+- **A rule reaches markup only from files rendering all its classes** (decision 314). Planned:
+  any mention of a class in the rule's subject. On `042112a`, `.merge-row-actions .button` got 13
+  users — every `button` renderer; one renders `merge-row-actions`. `possible` now means another
+  symbol of the file supplies the rule's other classes. Given up: rules whose classes are rendered
+  in different files (a theme class on a container) have no markup users.
+- **A class named only in `:not()` is still styled**: `3fff617` replaced
+  `.button.primary` with `.button:not(.primary)`, which read as "nothing styles `primary`".
+- **Prettier stability needed one more case**: postcss-value-parser keeps `url($path + "a.svg")`
+  as one word, quotes included; such `url()`s are re-read as values.
+- **A finding's users are joined with `; `** when a name holds a comma (a selector list), as on
+  Qwik's `f2b5479d7`.
+- **Mentions through a word index** built once per revision: each name query had re-read every
+  unmatched file (11139e6: 6.1–6.6 s → 4.5 s; `main` 3.8 s, reading no stylesheets).
+- **Unresolved SCSS names** are `unknown:$x`, `unknown:v.$x`, `unknown:@include m`; an
+  ambiguous one is an edge to each candidate with `resolution: "unknown"`.
+- **The viewer needed no change**: it is kind- and language-agnostic; an e2e spec
+  (`e2e/stylesheets.spec.ts`) covers a rule's and a token's diff, users and a comment.
+- **A CSS-only commit now loads the TypeScript program** (markup's mentions): Bitwarden's
+  `c1cfaabfb1` went from 26 ms (nothing analyzed on `main`) to 9 s.
+- **Regression sets** `stylesheets` (Symbiote, 110 commits, the `symbiote` repo by its SSH
+  remote), `stylesheets-bitwarden` (31, angular), `stylesheets-qwik` (39, qwik).
+
+**Decisions added while building**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 313 | A rule's signature | **None of its own: rules, custom properties and keyframes hash a constant signature; a new selector is a move** | Selector lists gaining a member read as breaking signature changes with "users not updated" (Symbiote `b5f0dad`, `d2335ca`) |
+| 314 | When a mention reaches a rule | **Only when the mention's file renders every class one of the rule's selectors needs; certain when its symbol renders them all** | `.merge-row-actions .button` had 13 users, 12 wrong (Symbiote `042112a`) |

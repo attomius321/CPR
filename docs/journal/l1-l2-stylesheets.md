@@ -42,3 +42,69 @@ one matches the class names in selectors against class attributes and strings in
 - **Selectors in IDs**: every split of an ID in core, CLI and viewer takes the first `#`, so
   `src/a.css##root` and `.a .b` survive; the posted-finding marker already URI-encodes symbols.
   `detectors.ts` and `diff.ts` count dots for depth, which a selector's dots would mislead.
+
+## L1 — stylesheets as a language (2026-10-24, branch `feature/expand-graph-with-css-scss`)
+
+A second language adapter (`packages/core/src/lang/css/`), joined to TypeScript's by
+`combineAdapters`: rules, custom properties, keyframes and SCSS's variables, mixins, functions
+and placeholders as symbols named as CSS writes them; hashes from postcss-value-parser tokens;
+names between stylesheets resolved as the cascade and Sass do; findings for removals that leave
+uses. Schema 0.7.0. Decisions 299–305, 313.
+
+**Learned**:
+- **Prettier changes more than whitespace**: it lowercases hex colours, units and property
+  names, adds leading zeros and drops trailing ones, respaces selectors (`2n+1` → `2n + 1`) and
+  media queries, and switches quotes by its config. All of it is normalized; a reformat of every
+  stylesheet of Symbiote (1,249 symbols), Bitwarden (1,746) and Qwik (1,523) changes none —
+  after one more case: postcss-value-parser keeps `url($path + "a.svg")` as one word, quotes
+  and all.
+- **Bitwarden's SCSS resolves only through importer order**: `header.scss` imports nothing yet
+  uses `$themes` and `@include themify`, which `styles.scss` imported before it. 355 variable,
+  18 mixin and 11 function edges on its 31 stylesheet commits; no unknown, no package.
+- **Rules need no signature**: as planned, a selector change was a signature change, and
+  selector lists gaining a member became "10 of 12 users not updated" warnings once markup had
+  users (L2). A rename is a move now (decision 313).
+- **zod's `r1` commits live only in GitHub's pull-request refs**: the regression clone needed
+  `git fetch origin '+refs/pull/*/head:refs/remotes/pull/*'`.
+- The first L1b commit (`2bb0013`) went in with the `css` golden failing (the orphans the
+  exposure removes); `e221422` fixed it. Commits have been gated on `pnpm check` since.
+
+**Verification**: tests first in `css.test.ts` (fixtures `css`, `css-refs`, `css-removed`),
+red for the right reason; L1a against `main`: `r1` 29 comparisons identical (859 edges),
+`bitwarden` 10 identical (4,862), `qwik-docs` 30 identical (5,530). L1 (`fb82036`) on the new
+stylesheet sets against `main`: no error, no TypeScript edge or finding changed; Symbiote's 110
+commits +3,731 stylesheet symbols (per commit median 8, p90 58), +16,122 edges, +4 % time;
+Bitwarden's 31 +1,522 symbols, +849 edges, +6 %; Qwik's 39 +1,305 symbols, +752 edges, +11 %
+(CSS-only commits now load the TypeScript program), and 10 new warnings, all on `f2b5479d7`,
+read in the source: that commit removed `--repl-docs-*` and `--tutorial-*` definitions that
+`repl.css` and `tutorial.css` still read, and nothing in head defines them.
+
+## L2 — markup uses stylesheets (2026-10-24, branch `feature/expand-graph-with-css-scss`)
+
+Adapters can name what another language defines (`mentions`) and scope stylesheets
+(`styleScopes`); the stylesheet adapter turns mentions into edges (`mentioned`) and asks its
+peers for a rule's users. JSX class names, `classList`, CSS modules and custom properties from
+script in core; Angular templates, host classes and `styleUrls` scopes in the Angular plugin;
+`useStylesScoped$` in the Qwik plugin. A removed rule whose class markup still renders, styled by
+nothing now, is a warning. Decisions 306–312, 314.
+
+**Learned**:
+- **A class in a rule's subject is not a use**: `.merge-row-actions .button` (`042112a`) had 13
+  users, every `button` renderer; one renders `merge-row-actions`. A file must render all of a
+  selector's classes (decision 314) — at the price of rules split across files (a theme class
+  on a container), which get no markup users.
+- **`:not(.primary)` still styles `primary`**: `3fff617` replaced `.button.primary` with
+  `.button:not(.primary)`; reading only the classes a rule reaches said nothing styles
+  `primary` any more. The still-styled check reads every class a selector names.
+- **Removed classes still rendered are real**: on Symbiote's history `e619d17`
+  (`.commits-help`), `92c5276` (`.conflicts`) and `d175ee5` (`.commit-this`) removed a class's
+  last rule while its component still renders it — two kept as e2e locators, one left over.
+- **Name queries must not read every file**: one query per changed rule re-read the text of
+  each file that had not matched yet (11139e6: 6.1–6.6 s); a word index once per revision:
+  4.5 s (`main`, reading no stylesheets: 3.8 s).
+- **The viewer is kind-agnostic**: rules, tokens and their users needed no viewer change; the
+  e2e spec passed on its first run.
+
+**Verification**: tests first (`markup.test.ts`: the `markup` fixture, the 13-users case, the
+`:not()` and rename case, `selectorClasses`; plugin fixtures `styles` (Angular) and
+`qwik-styles`, each also without the plugin), `e2e/stylesheets.spec.ts`.
