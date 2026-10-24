@@ -6,7 +6,7 @@ description: Adds or changes a Symbiote framework plugin (@symbiote/plugin-*, a 
 # Framework plugins
 
 Framework knowledge lives in plugins so the TypeScript analysis stays the same for every repo
-(`docs/PLAN.md`, section X1). A plugin implements `TsPlugin` from
+(`docs/plan/x1-plugins.md`). A plugin implements `TsPlugin` from
 `packages/core/src/lang/typescript/plugins.ts`; `packages/core/test/helpers/tpl-plugin.ts` uses
 every hook on a made-up framework; the Angular and Qwik plugins are the real examples.
 
@@ -47,7 +47,7 @@ throwing plugin is disabled with a warning instead of failing the run.
 - [ ] Per project, not per repo: a monorepo can hold several apps and versions (W1); find the
       nearest package.json / config per file
 - [ ] CLI hint: add the framework to FRAMEWORKS in packages/cli/src/plugins.ts, with a test
-- [ ] README plugin paragraph; PLAN section with "As built"; JOURNAL entry
+- [ ] README plugin paragraph; plan file with "As built" and its index row; journal entry
 - [ ] regression-check: the plugin's real-repo set with --no-plugins vs with it (every finding
       gone must be a framework use; inspect every new one); time +5 % at most
 - [ ] Viewer: an e2e spec if the plugin adds symbol kinds or files (packages/viewer/e2e/qwik.spec.ts)

@@ -909,7 +909,7 @@ or `.symbioteignore`.
   an adapter of their own.
 - Static analysis: no runtime or data-flow analysis.
 - Workspaces start Claude Code or Codex. Any configured agent command is planned (V20c in the
-  [plan](docs/PLAN.md)).
+  [plan](docs/plan/v20-other-agents.md)).
 
 ## Development
 
@@ -938,6 +938,8 @@ builds and compares edges, findings and time; `scripts/viewer/measure.mjs` times
 graph in Chromium. `CLAUDE.md` (and one per package) and `.claude/skills/` hold the working rules
 for Claude Code in this repository.
 
-- [Plan](docs/PLAN.md): the design, every milestone and every decision.
-- [Journal](docs/JOURNAL.md): what each milestone learned and measured.
+- [Plan](docs/PLAN.md): the North Star and an index of every milestone; each milestone's plan
+  (design, decisions, results) in [`docs/plan/`](docs/plan/).
+- [Journal](docs/JOURNAL.md): every entry by date; what each milestone learned and measured in
+  [`docs/journal/`](docs/journal/), under its plan's name.
 - [Graph schema](docs/graph-schema.md): the graph JSON contract.

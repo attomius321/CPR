@@ -30,7 +30,7 @@ Copy and track:
 - [ ] 3. Build this checkout
 - [ ] 4. Run each set on both, compare
 - [ ] 5. Explain every difference; fix and repeat until each one is intended
-- [ ] 6. Record the result (JOURNAL entry, commit message)
+- [ ] 6. Record the result (journal entry, commit message)
 - [ ] 7. Remove the baseline worktree
 ```
 
@@ -79,11 +79,11 @@ findings `-`/`+`, errors), then totals and the time ratio after/before.
 - An `ERROR` line is a crash: reproduce it with a fixture test first (red), then fix.
 - Time: plugins have a budget of +5 % on their set; core changes should not slow `r1`. The first
   run on new clones also creates Symbiote's worktrees (`r1`: 159 s, then 92 s): time only warm runs.
-- The clones have no `node_modules`, so totals differ from JOURNAL figures measured on installed
+- The clones have no `node_modules`, so totals differ from journal figures measured on installed
   clones (`r1`: 927 edges here, 932 in W1's notes). Compare only runs made on the same clones.
   Library-typing features (Angular A3) need `npm ci` in the clone to show their effect.
 
-**6. Record** the totals in the JOURNAL entry's "Verification" (e.g. "29 comparisons identical:
+**6. Record** the totals in the journal entry's "Verification" (e.g. "29 comparisons identical:
 932 edges, no finding changed; Bitwarden 10 identical") and in the commit message.
 
 **7. Clean up**: `git worktree remove --force /tmp/symbiote-base`.
