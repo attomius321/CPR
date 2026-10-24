@@ -1,4 +1,4 @@
-# Symbiote Graph Schema (draft v0.6.0)
+# Symbiote Graph Schema (draft v0.7.0)
 
 The graph JSON is the contract between the engine (`@symbiote/core`) and every consumer
 (viewer, CLI summary, GitHub Action). It is **language-neutral**: nothing in it is
@@ -21,7 +21,8 @@ add symbols and edges of the same shapes; the graph names the plugins it was mad
 | New optional field, new enum value consumers can ignore | minor |
 | Removed/renamed field, changed meaning | major |
 
-History: `0.6.0` added top-level `projects` (the apps and libraries of a monorepo change; absent
+History: `0.7.0` added the node kinds `rule`, `mixin` and `keyframes` and the `language` values
+`css` and `scss` (stylesheets, L1); `0.6.0` added top-level `projects` (the apps and libraries of a monorepo change; absent
 when there is one); `0.5.0` added top-level `plugins` and the node kind `template` (both from plugins;
 without plugins a graph only changes its version); `0.4.0` added the `overrides` edge kind and the edge flag `possible`; `0.3.0` added the `exported-api-changed` rule and test-user counts in
 `signature-changed` data; `0.2.0` added `since` (top level and on nodes); `changeRequest` arrived in 0.1.0
@@ -36,7 +37,7 @@ every golden graph against it.
 
 ```jsonc
 {
-  "schemaVersion": "0.6.0",
+  "schemaVersion": "0.7.0",
   "generator": { "name": "symbiote", "version": "0.1.0" },
   "plugins": [{ "name": "angular", "version": "0.1.0" }],   // only when plugins ran
   "changeRequest": {             // only from `symbiote pr`
@@ -156,7 +157,8 @@ One per symbol in the graph: every changed symbol, plus unchanged **context** sy
 
 | Field | Type | Notes |
 |---|---|---|
-| `kind` | enum | `function` `class` `method` `constructor` `accessor` `property` `interface` `type` `enum` `variable` `namespace` `template` `module` `external` `unknown` |
+| `kind` | enum | `function` `class` `method` `constructor` `accessor` `property` `interface` `type` `enum` `variable` `namespace` `template` `rule` `mixin` `keyframes` `module` `external` `unknown` |
+| `language` | string | `typescript` (TypeScript and JavaScript, and plugin templates), `css` or `scss`. A package or dynamic node takes the language of the code referencing it. |
 | `status` | enum | `added` `removed` `modified` `unchanged` |
 | `delta` | object \| absent | Present only when `status` is `modified`. At least one flag is `true`. |
 | `base` / `head` | object \| null | `base` is null for `added`, `head` is null for `removed`. |
@@ -179,6 +181,17 @@ members. The Angular plugin names an external template by its file
 (`src/app/foo.component.html#(template)`) and an inline one by its class
 (`src/app/foo.component.ts#FooComponent.(template)`, contained by the class). It is diffed and drawn like any symbol; its
 edges' sites point into the template file, which need not be TypeScript.
+
+**Stylesheet** nodes (`language` `css` or `scss`) name their symbol as CSS writes it. A context
+(an at-rule, the rule a custom property is defined in) is joined to what it holds by ` › `; a
+name repeated in one file gets ` (2)`, ` (3)`:
+
+| Kind | ID | What |
+|---|---|---|
+| `rule` | `src/ui/controls.css#.button:hover`, `src/shell/Sidenav.css#@media (max-width: 900px) › .sidenav`, `#%button-base`, `#@font-face` | A selector and its own declarations. A nested SCSS or CSS rule is named by its resolved selector (`.card { &:hover {} }` → `#.card:hover`) and contained by its parent. Selectors are canonical: single spaces, ` > `, `, `, attribute values in double quotes. |
+| `variable` | `src/ui/base.css#:root › --accent`, `src/scss/_variables.scss#$primary` | A custom property definition, contained by its rule; a top-level SCSS variable. |
+| `mixin`, `function` | `#@mixin themify`, `#@function rem` | SCSS mixins and functions; their signature is their parameters. |
+| `keyframes` | `#@keyframes spin` | CSS keyframes. |
 
 ## Edge
 

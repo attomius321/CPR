@@ -61,17 +61,20 @@ export function diffSymbols({ base, head, renames = new Map() }: DiffInput): Sym
     const target = newFile && added.get(`${newFile}#${qualified(symbol.id)}`);
     if (target && target.kind === symbol.kind) pair(symbol, target);
   }
-  followContainers(removed, added, pairs, pair);
+  followContainers(removed, added, pairs, pair, baseById);
 
   // 2. Same name, same declaration, other file (moved unchanged, including types).
+  // Keys hold the language: a stylesheet's symbol never pairs with a script's.
   matchUnique(removed, added, pair, (s) =>
-    [s.kind, s.name, s.hashes.signature, s.hashes.body].join('\0'),
+    [s.language ?? '', s.kind, s.name, s.hashes.signature, s.hashes.body].join('\0'),
   );
   // 3. Same non-trivial body (renamed and/or moved, maybe with a new signature).
   matchUnique(removed, added, pair, (s) =>
-    s.bodySize >= MIN_MOVE_BODY_SIZE ? [s.kind, s.hashes.body].join('\0') : undefined,
+    s.bodySize >= MIN_MOVE_BODY_SIZE
+      ? [s.language ?? '', s.kind, s.hashes.body].join('\0')
+      : undefined,
   );
-  followContainers(removed, added, pairs, pair);
+  followContainers(removed, added, pairs, pair, baseById);
 
   const changes: SymbolChange[] = [];
   for (const [fromId, to] of pairs) {
@@ -134,9 +137,16 @@ function followContainers(
   added: Map<SymbolId, SymbolDecl>,
   pairs: Map<SymbolId, SymbolDecl>,
   pair: (from: SymbolDecl, to: SymbolDecl) => void,
+  base: ReadonlyMap<SymbolId, SymbolDecl>,
 ): void {
+  // How deep a symbol is, by its containers (a selector's dots are not nesting).
+  const depth = (symbol: SymbolDecl) => {
+    let n = 1;
+    for (let c = symbol.container; c !== null && n < 100; c = base.get(c)?.container ?? null) n++;
+    return n;
+  };
   // Shallow members first, so nested containers are paired before their own members.
-  const pending = [...removed.values()].sort((a, b) => depth(a.id) - depth(b.id));
+  const pending = [...removed.values()].sort((a, b) => depth(a) - depth(b));
   for (const symbol of pending) {
     if (!symbol.container) continue;
     const container = pairs.get(symbol.container);
@@ -160,10 +170,6 @@ function groupBy<T>(items: Iterable<T>, key: (item: T) => string | undefined): M
 
 function qualified(id: SymbolId): string {
   return id.slice(id.indexOf('#') + 1);
-}
-
-function depth(id: SymbolId): number {
-  return qualified(id).split('.').length;
 }
 
 function byLocation(a: SymbolChange, b: SymbolChange): number {

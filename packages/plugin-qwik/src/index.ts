@@ -4,6 +4,7 @@ import { isLoaderOrAction, routerFiles, routerUses, type RouterUses } from './ex
 import { mdxNodes, mdxRoutes, mdxSymbol, type MdxRoutes } from './mdx-routes.js';
 import { shimPath } from './mdx-shim.js';
 import { dependencies, QWIK_PACKAGES, qwikProjects, type Projects } from './projects.js';
+import { scopedStyles } from './styles.js';
 
 const VERSION = '0.1.0';
 
@@ -67,6 +68,9 @@ const qwik: TsPlugin = {
     }
     return undefined;
   },
+
+  // `useStylesScoped$` styles reach only the component calling it (L2).
+  styleScopes: (revision) => scopedStyles(revision),
 
   warnings: (revision) => [...projectsOf(revision).warnings, ...mdxOf(revision).warnings],
 };

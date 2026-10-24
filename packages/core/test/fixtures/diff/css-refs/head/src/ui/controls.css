@@ -1,0 +1,15 @@
+.button {
+  color: var(--accent);
+  animation: spin 1s linear;
+}
+.link {
+  color: var(--accent, red);
+}
+@keyframes spin {
+  from {
+    opacity: 0;
+  }
+  to {
+    transform: rotate(1turn);
+  }
+}

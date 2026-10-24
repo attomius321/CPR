@@ -190,3 +190,6 @@ merge commit.
 - 2026-10-24 [RM1 spike — how concentrated real repositories' code is, and what a picture of it can show](journal/rm1-code-concentration.md)
 - 2026-10-24 [RM1a — @symbiote/monitor: a commit's files, their kinds and lines of code](journal/rm1-code-concentration.md)
 - 2026-10-24 [RM1b — the Monitor page](journal/rm1-code-concentration.md)
+- 2026-10-24 [L1 spike — what real stylesheets hold, and what a commit changes in them](journal/l1-l2-stylesheets.md)
+- 2026-10-24 [L1 — stylesheets as a language](journal/l1-l2-stylesheets.md)
+- 2026-10-24 [L2 — markup uses stylesheets](journal/l1-l2-stylesheets.md)

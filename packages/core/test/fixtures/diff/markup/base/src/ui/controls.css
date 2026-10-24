@@ -1,0 +1,12 @@
+.row {
+  display: flex;
+}
+.list .row:hover {
+  background: var(--hover);
+}
+.selected .icon {
+  color: var(--accent);
+}
+.badge-new {
+  color: green;
+}

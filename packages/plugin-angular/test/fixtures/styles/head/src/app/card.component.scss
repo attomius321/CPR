@@ -1,0 +1,17 @@
+@import 'shared';
+
+.title {
+  font-weight: 700;
+}
+.active {
+  color: crimson;
+}
+.badge {
+  padding: 3px;
+}
+.muted {
+  opacity: 0.5;
+}
+.open {
+  display: flex;
+}

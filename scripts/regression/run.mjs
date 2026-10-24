@@ -31,7 +31,10 @@ if (!set || !values.out) {
 }
 const symbiote = resolve(values.symbiote);
 const load = (path) => import(pathToFileURL(join(symbiote, path)).href);
-const { analyzeGit, createTypescriptAdapter } = await load('packages/core/dist/index.js');
+const core = await load('packages/core/dist/index.js');
+const { analyzeGit } = core;
+// The adapter the CLI analyzes with; builds before L1 have only TypeScript's.
+const createAdapter = core.createAdapter ?? core.createTypescriptAdapter;
 const pluginNames = values['no-plugins']
   ? []
   : values.plugins !== undefined
@@ -40,7 +43,7 @@ const pluginNames = values['no-plugins']
 const plugins = await Promise.all(
   pluginNames.map(async (name) => (await load(`packages/plugin-${name}/dist/index.js`)).default),
 );
-const adapter = createTypescriptAdapter({ plugins });
+const adapter = createAdapter({ plugins });
 
 const runs = [];
 for (const [repo, ...revs] of set.comparisons) {

@@ -16,6 +16,8 @@ Fixtures prove what you thought of; these comparisons catch what you did not (a 
 | `bitwarden` | 10 template-touching commits | angular | references, Angular plugin, anything big-repo |
 | `bitwarden-projects` | 8 commits spanning 3+ projects | angular | multi-project work (W1, V7) |
 | `qwik-docs` | 30 commits of Qwik's monorepo | qwik | Qwik plugin, TSX/props logic |
+| `stylesheets` | Symbiote's own 110 stylesheet commits (repo `symbiote`: its own remote) | none | stylesheets, markup → rules (L1–L2) |
+| `stylesheets-bitwarden`, `stylesheets-qwik` | 31 and 39 stylesheet commits | angular, qwik | SCSS resolution, component styles |
 
 One run (4 cores): `r1` ≈ 3 min, `bitwarden` ≈ 7 min, `qwik-docs` ≈ 6 min; a comparison needs
 two. Run them in the background and keep working.

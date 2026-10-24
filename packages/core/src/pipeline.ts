@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import type { LanguageAdapter, LoadOptions } from './adapter.js';
+import { defaultAdapter } from './adapters.js';
 import { linkNodeModules } from './deps.js';
 import { runDetectors } from './detectors.js';
 import { changeFingerprint, diffSymbols, type SymbolChange } from './diff.js';
@@ -9,7 +10,6 @@ import { openRepo } from './git/repo.js';
 import { resolveRevisions } from './git/revisions.js';
 import { checkoutRevision } from './git/worktree.js';
 import { loadIgnores } from './ignore.js';
-import { typescriptAdapter } from './lang/typescript/index.js';
 import { changeProjects, type Project } from './projects.js';
 import type { GitRepo } from './git/repo.js';
 import type {
@@ -36,6 +36,11 @@ export interface ContextSymbol {
   kind: SymbolKind | 'module' | 'external' | 'unknown';
   /** The declaration, for repo symbols (from head when it exists there). */
   decl: SymbolDecl | null;
+  /**
+   * The language of a node without a declaration, when it is not TypeScript: its file's, or for
+   * a package export or a dynamic call, that of the code referencing it.
+   */
+  language?: string;
 }
 
 /** How a symbol's change compares with an earlier version of the same change. */
@@ -77,7 +82,7 @@ export type AnalysisPhase =
   'checkout' | 'loadBase' | 'loadHead' | 'extract' | 'references' | 'findings';
 
 export interface AnalyzeOptions extends Omit<LoadOptions, 'files'> {
-  /** Default: the TypeScript adapter. */
+  /** Default: TypeScript and JavaScript, and stylesheets (`defaultAdapter`). */
   adapter?: LanguageAdapter;
   /** Hops of unchanged context around changed symbols. Default: 1. */
   depth?: number;
@@ -118,7 +123,7 @@ export async function analyzeGit(gitOptions: AnalyzeGitOptions): Promise<Analysi
     ...(options.mergeBase === undefined ? {} : { mergeBase: options.mergeBase }),
   });
   const files = await listChangedFiles(repo, revisions.from, revisions.head.sha);
-  const relevant = files.some((file) => isRelevant(file, options.adapter ?? typescriptAdapter));
+  const relevant = files.some((file) => isRelevant(file, options.adapter ?? defaultAdapter));
   if (relevant) options.onPhase?.('checkout');
   const analysis: Analysis = relevant
     ? {
@@ -179,7 +184,7 @@ async function compareSince(
 ): Promise<SinceInfo> {
   const earlier = await resolveRevisions(repo, options.base, since, { mergeBase: true });
   const files = await listChangedFiles(repo, earlier.from, earlier.head.sha);
-  const changes = files.some((file) => isRelevant(file, options.adapter ?? typescriptAdapter))
+  const changes = files.some((file) => isRelevant(file, options.adapter ?? defaultAdapter))
     ? await withCheckouts(repo, earlier.from, earlier.head.sha, options, async (base, head) => {
         // The phases reported are the analysis's own, not this extra extraction's.
         const extracted = await extractChanges(base, head, files, {
@@ -257,7 +262,7 @@ async function extractChanges(
   base: RevisionSource,
   head: RevisionSource,
   files: readonly ChangedFile[],
-  { adapter = typescriptAdapter, onPhase, ...load }: AnalyzeOptions,
+  { adapter = defaultAdapter, onPhase, ...load }: AnalyzeOptions,
 ): Promise<Extracted | { ignored: string[]; changes?: undefined }> {
   const isIgnored = load.ignore ?? loadIgnores(head.root);
   const ignored = files
@@ -366,12 +371,21 @@ async function analyzeSources(
     [...baseRefs, ...refs.head].flatMap((r) => (r.target ? [[r.to, r.target] as const] : [])),
   );
   const headIds = new Set(refs.head.flatMap((r) => [r.from, r.to]));
+  // Nodes without a declaration: a file's top-level code is in its file's language, a package
+  // export or a dynamic call in that of the first code found referencing it.
+  const referrers = new Map<SymbolId, SymbolId>();
+  for (const ref of [...baseRefs, ...refs.head])
+    if (!referrers.has(ref.to)) referrers.set(ref.to, ref.from);
+  const special = (id: SymbolId, kind: 'module' | 'external' | 'unknown', of: SymbolId) => {
+    const language = adapter.languageOf?.(of.slice(0, of.indexOf('#')));
+    return { id, kind, decl: null, ...(language ? { language } : {}) };
+  };
   const context: ContextSymbol[] = [];
   for (const id of new Set(edges.flatMap((e) => [e.from, e.to]))) {
     if (changedIds.has(id)) continue;
     const target = targets.get(id);
-    if (target) context.push({ id, kind: target, decl: null });
-    else if (id.endsWith('#(module)')) context.push({ id, kind: 'module', decl: null });
+    if (target) context.push(special(id, target, referrers.get(id) ?? id));
+    else if (id.endsWith('#(module)')) context.push(special(id, 'module', id));
     else {
       const decl = resolver.decl(id, headIds.has(id) ? 'head' : 'base');
       context.push({ id, kind: decl?.kind ?? 'unknown', decl: decl ?? null });

@@ -14,7 +14,13 @@ export type SymbolKind =
   | 'variable'
   | 'namespace'
   /** A framework template (from a plugin), e.g. an Angular component's HTML. */
-  | 'template';
+  | 'template'
+  /** A stylesheet rule: a selector and its own declarations (or `@font-face`, `%placeholder`). */
+  | 'rule'
+  /** A SCSS mixin. */
+  | 'mixin'
+  /** CSS `@keyframes`. */
+  | 'keyframes';
 
 /** 1-based line and column. */
 export interface Position {
@@ -46,6 +52,8 @@ export interface SymbolDecl {
   bodySize: number;
   /** Pieces of the contract, to judge whether a signature change is backward compatible. */
   shape?: Shape;
+  /** Its language when it is not the analysis's default (TypeScript): `css`, `scss`. */
+  language?: string;
 }
 
 /** Normalized type texts; equal text means equal type. */
@@ -151,3 +159,40 @@ export interface Dangling {
  * framework uses it (a template, a lifecycle hook…).
  */
 export type Exposure = 'entry-export' | 'override' | 'default-export' | 'framework';
+
+/**
+ * Where code names something another language defines (L2): a class markup renders, or a custom
+ * property a script sets or reads.
+ */
+export interface Mention {
+  /** The symbol it is in, named as extraction names it, or `<file>#(module)`. */
+  from: SymbolId;
+  kind: 'class' | 'property';
+  /** `row`, `--accent`. */
+  name: string;
+  site: Site;
+  /** A custom property set here (`style={{ '--x': … }}`, `setProperty('--x', …)`), not read. */
+  sets?: true;
+  /** For a CSS module's `styles.row`: the module's repo-relative path; its rules only. */
+  module?: string;
+}
+
+/** Which mentions to find: of some names, of one kind, in one symbol or one file. */
+export interface MentionQuery {
+  names?: ReadonlySet<string>;
+  kind?: Mention['kind'];
+  from?: SymbolId;
+  /** Repo-relative file the mentions are in. */
+  file?: string;
+}
+
+/**
+ * A stylesheet that styles only some markup (L2): a component's own styles (Angular's
+ * `styleUrls`, Qwik's `useStylesScoped$`). Any other stylesheet is global.
+ */
+export interface StyleScope {
+  /** Repo-relative path of the stylesheet. */
+  stylesheet: string;
+  /** The symbols whose markup it styles (and their members): a component's class, its template. */
+  owners: SymbolId[];
+}

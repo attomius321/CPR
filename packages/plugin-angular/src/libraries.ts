@@ -244,6 +244,7 @@ function libraryClass(
     kind: meta.kind,
     exported: 'named',
     typeParameters: cls.typeParameters?.length ?? 0,
+    styleUrls: [],
     host: [],
     hostMembers: new Set(),
     ...(meta.selector !== undefined ? { selector: meta.selector } : {}),

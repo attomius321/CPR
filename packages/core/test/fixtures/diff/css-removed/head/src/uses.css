@@ -1,0 +1,7 @@
+.x {
+  margin: var(--old);
+  padding: var(--kept);
+}
+.y {
+  animation: fade 1s;
+}

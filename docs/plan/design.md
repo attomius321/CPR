@@ -14,7 +14,8 @@ at the risky parts. It runs locally and needs no server.
 ## 2. Scope
 
 **v1 does**
-- TypeScript and JavaScript (`.ts .tsx .js .jsx .mts .cts .mjs .cjs`)
+- TypeScript and JavaScript (`.ts .tsx .js .jsx .mts .cts .mjs .cjs`); since L1–L2 also CSS and
+  SCSS (`.css .scss`) and the markup that uses them ([plan](l1-l2-stylesheets.md))
 - Compare two git revisions in one repository
 - Output a versioned graph JSON and a list of findings
 - Run as a CLI (`symbiote diff`) on macOS and Linux, Node ≥ 22.12
@@ -76,7 +77,9 @@ interface LanguageAdapter {
 }
 ```
 
-Diffing, move detection, detectors and graph output are shared code. Framework knowledge
+Diffing, move detection, detectors and graph output are shared code. Since L1–L2 two adapters
+(TypeScript, stylesheets) are joined by `combineAdapters`, and a language can name what another
+defines (`mentions`: markup's classes, a stylesheet's rules). Framework knowledge
 (Angular templates first) is not part of an adapter: it comes as **plugins** of the TypeScript
 adapter that the CLI loads on request (X1), so the TS/JS analysis is the same for every project.
 

@@ -1,7 +1,9 @@
 # @symbiote/core
 
-The engine. Language-neutral pipeline; everything TypeScript-specific sits behind
-`LanguageAdapter` (`src/adapter.ts`) in `src/lang/typescript/`.
+The engine. Language-neutral pipeline; everything language-specific sits behind
+`LanguageAdapter` (`src/adapter.ts`): TypeScript in `src/lang/typescript/`, CSS and SCSS in
+`src/lang/css/` (L1–L2). `combineAdapters` (`src/adapters.ts`) makes them the one adapter the
+pipeline is given: each file and symbol goes to its own language's adapter.
 
 ## How a run flows (`src/pipeline.ts`)
 
@@ -18,6 +20,10 @@ The engine. Language-neutral pipeline; everything TypeScript-specific sits behin
    context widened by `depth` hops, merged into edges per side.
 5. Exposure, public API, dangling uses (`detect.ts`), then detectors (`src/detectors.ts`,
    compatibility in `src/compat.ts`).
+   Stylesheets (`lang/css/`): every stylesheet of a revision is parsed and indexed the first time
+   a reference is asked for (`scope.ts`: names, `@use`/`@import` resolution); markup reaches
+   rules through mentions (`mentions` from the TypeScript adapter and plugins, `mentioned` and
+   `markup.ts` on the stylesheet side, scopes from `styleScopes`).
 6. Projects (`src/projects.ts`, V7): the app or library of each file the graph names — declared
    (workspace globs in `src/workspace.ts`, Nx, `adapter.projects` from plugins), packages,
    tsconfig folders, the root — read from head, base for base-only files. Then the graph
@@ -27,9 +33,11 @@ The engine. Language-neutral pipeline; everything TypeScript-specific sits behin
 
 - **IDs** are `<repo-relative path>#<qualified name>`; top-level code is `file#(module)`; plugin
   templates are `…#(template)`. IDs must not depend on anything but the code at that place.
-- **Hashes** (`extract.ts`, `tokens.ts`) ignore formatting and comments: build them from tokens,
-  never from raw text. Never hash `checker.typeToString` output when a declared type node exists —
-  it orders union members by type creation, which differs between the base and head programs.
+- **Hashes** (`extract.ts`, `tokens.ts`, `lang/css/tokens.ts`) ignore formatting and comments:
+  build them from tokens, never from raw text; for stylesheets, also what Prettier changes (the
+  `css.test.ts` reformat cases). Never hash `checker.typeToString` output when a declared type
+  node exists — it orders union members by type creation, which differs between the base and
+  head programs.
 - **Inference** only for symbols that need it (`infer(id)`); placeholders keep the syntactic pass
   cheap. Anything checker-based that must be seen in pass 1 (a plugin contract) has to be cheap.
 - **References**: `findReferences` returns nodes without a parent for `{@link …}` in JSDoc — guard

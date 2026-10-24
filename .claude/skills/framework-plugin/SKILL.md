@@ -22,6 +22,8 @@ every hook on a made-up framework; the Angular and Qwik plugins are the real exa
 | `contract(revision, declaration)` | What a framework-made value is to its users (component props) |
 | `dangling` | Uses of removed symbols TypeScript cannot see by name (selectors, pipe names) |
 | `exposure` | Why an unreferenced symbol is used (`framework`: lifecycle hooks, router exports) |
+| `mentions(revision)` | Classes and custom properties the framework's templates name (`class="a"`, `[class.a]`), owned by template symbols: their edges to stylesheet rules (L2) |
+| `styleScopes(revision)` | Stylesheets that style one component's markup only (`styleUrls`, `useStylesScoped$`), by owners or by the calls that load them |
 | `warnings` | Problems the user should know about |
 
 A new optional hook in core keeps `PLUGIN_API_VERSION` at 1. Run hooks through `runHook` so a

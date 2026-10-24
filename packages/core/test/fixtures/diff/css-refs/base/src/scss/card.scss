@@ -1,0 +1,10 @@
+@use 'sass:math';
+@use '@angular/material' as mat;
+@use 'variables' as v;
+
+.card {
+  color: v.$primary;
+  padding: math.div(16px, 2);
+  @include v.themify;
+  @include mat.core();
+}

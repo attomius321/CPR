@@ -49,6 +49,7 @@ hosted.
 | [W1](plan/w1-multi-project.md) | Repositories with several projects | ✅ | 26–28 | [journal](journal/w1-multi-project.md) |
 | Fix | a doc-comment reference crashed the analysis | ✅ | | [journal](journal/fix-jsdoc-reference-crash.md) |
 | [E1](plan/e1-explained-changes.md) | Decisions and their ripples | measured | | [journal](journal/e1-explained-changes.md) |
+| [L1–L2](plan/l1-l2-stylesheets.md) | Stylesheets in the graph (CSS and SCSS), and the markup that uses them | ready for review | 299–312, 329–331 | [journal](journal/l1-l2-stylesheets.md) |
 
 ### Framework plugins
 

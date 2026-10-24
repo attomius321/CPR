@@ -1,0 +1,9 @@
+:root {
+  --old: 1px;
+  --kept: 2px;
+}
+@keyframes fade {
+  to {
+    opacity: 0;
+  }
+}

@@ -41,6 +41,10 @@ export interface NgClass {
   /** Number of type parameters (`Table<T>` → 1). */
   typeParameters: number;
   template?: TemplateSource;
+  /** `styleUrls`/`styleUrl`: its stylesheets, repo-relative. */
+  styleUrls: string[];
+  /** `encapsulation: ViewEncapsulation.None` makes its styles global. */
+  encapsulation?: string;
   /** `host: { '(click)': 'onClick()' }` entries. */
   host: { key: string; value: SourceString }[];
   /** Members decorated with `@HostListener` or `@HostBinding`. */
@@ -186,6 +190,7 @@ export function angularClasses(tsApi: TS, file: string, sf: ts.SourceFile): NgCl
             ? 'named'
             : undefined,
       typeParameters: statement.typeParameters?.length ?? 0,
+      styleUrls: [],
       host: [],
       hostMembers: new Set(),
       inputs: new Map(),
@@ -209,6 +214,15 @@ export function angularClasses(tsApi: TS, file: string, sf: ts.SourceFile): NgCl
           kind: 'external',
           path: posix.normalize(posix.join(posix.dirname(file), value.text)),
         };
+      } else if (kind === 'Component' && (key === 'styleUrls' || key === 'styleUrl')) {
+        const urls = tsApi.isArrayLiteralExpression(value) ? value.elements : [value];
+        for (const url of urls) {
+          if (tsApi.isStringLiteralLike(url)) {
+            ngClass.styleUrls.push(posix.normalize(posix.join(posix.dirname(file), url.text)));
+          }
+        }
+      } else if (kind === 'Component' && key === 'encapsulation') {
+        if (tsApi.isPropertyAccessExpression(value)) ngClass.encapsulation = value.name.text;
       } else if (kind === 'Component' && key === 'template') {
         const literal = sourceString(tsApi, value, sf);
         if (literal) ngClass.template = { kind: 'inline', literal };

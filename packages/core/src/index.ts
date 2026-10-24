@@ -31,17 +31,27 @@ export type {
   EdgeRef,
   Exposure,
   Finding,
+  Mention,
+  MentionQuery,
   RuleId,
   Severity,
   Shape,
   Position,
   Range,
   Site,
+  StyleScope,
   SymbolDecl,
   SymbolId,
   SymbolKind,
 } from './model.js';
-export type { LanguageAdapter, LoadOptions } from './adapter.js';
+export type { LanguageAdapter, LoadOptions, Peers } from './adapter.js';
+export {
+  combineAdapters,
+  createAdapter,
+  defaultAdapter,
+  type CombinedRevision,
+} from './adapters.js';
+export { stylesheetAdapter, type CssRevision } from './lang/css/index.js';
 export {
   createTypescriptAdapter,
   typescriptAdapter,
@@ -58,6 +68,7 @@ export {
   type PluginContext,
   type PluginProject,
   type PluginRevision,
+  type PluginStyleScope,
   type PluginSymbol,
   type TsPlugin,
   type VirtualFile,

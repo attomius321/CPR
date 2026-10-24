@@ -353,6 +353,9 @@
             "variable",
             "namespace",
             "template",
+            "rule",
+            "mixin",
+            "keyframes",
             "module",
             "external",
             "unknown"

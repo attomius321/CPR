@@ -1,0 +1,10 @@
+.row {
+  display: flex;
+  gap: 4px;
+}
+.list .row:hover {
+  background: var(--hover);
+}
+.selected .icon {
+  color: var(--accent-strong, var(--accent));
+}

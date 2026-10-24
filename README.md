@@ -18,6 +18,7 @@ were not updated. The aim is to review decisions, not lines.
 [Workspaces and agents](#workspaces-and-agents) ·
 [Pull and merge requests](#pull-and-merge-requests) ·
 [CI](#ci) ·
+[Stylesheets](#stylesheets) ·
 [Plugins](#framework-plugins) ·
 [Configuration](#configuration) ·
 [Development](#development)
@@ -36,6 +37,8 @@ were not updated. The aim is to review decisions, not lines.
   the graph and post your comments as one review.
 - **Runs in CI.** A GitHub Action and a GitLab CI template post the findings on the lines they
   are about.
+- **Reads stylesheets.** CSS and SCSS rules, custom properties, keyframes, mixins and variables
+  are symbols too, linked to each other and to the components that render their classes.
 - **Knows frameworks through plugins.** Angular templates and Qwik routes are code that plain
   TypeScript analysis cannot see; the `angular` and `qwik` plugins add it.
 
@@ -55,7 +58,7 @@ alias symbiote="node $PWD/packages/cli/dist/bin.js"   # add this line to your sh
 On Linux, `pnpm install` also compiles `node-pty` for [the agent's terminal](#workspaces-and-agents)
 when python3, make and a C++ compiler are there. Without them it is skipped, and the rest works.
 
-Then, in any git repository with TypeScript or JavaScript:
+Then, in any git repository with TypeScript, JavaScript, CSS or SCSS:
 
 ```sh
 symbiote view          # History and your workspaces: every branch, to check out, review or compare
@@ -120,8 +123,8 @@ lists the options of each command.
 
 | Rule | Reported when | Severity |
 |---|---|---|
-| `removed-still-referenced` | A removed symbol's name is still used in head, by code that used it before or imports from its file. | Error; a warning when only untyped code (JavaScript, `any`) still uses it. |
-| `orphan-added` | Nothing references an added symbol. | Warning; info when the package's entry exports it, or it is a default export. |
+| `removed-still-referenced` | A removed symbol's name is still used in head, by code that used it before or imports from its file. In stylesheets: a removed SCSS variable, mixin, function or placeholder still used; a custom property or keyframes no stylesheet or script defines any more, still named; a rule removed while markup still renders a class nothing styles now. | Error; a warning when only untyped code (JavaScript, `any`) still uses it, and for custom properties, keyframes and classes (the page falls back silently). |
+| `orphan-added` | Nothing references an added symbol. Never for rules, custom properties, SCSS variables and keyframes, which markup, scripts and libraries use where Symbiote does not fully see. | Warning; info when the package's entry exports it, or it is a default export. |
 | `signature-changed` | A changed symbol's signature changed and it has users. | Warning when the change may break a user that was not updated, in another file and outside tests; otherwise info. |
 | `exported-api-changed` | A published package's exported symbol is removed, no longer exported, or its signature breaks. | Warning. |
 
@@ -756,6 +759,33 @@ request's Code Quality widget. Add a masked `GITLAB_TOKEN` variable (api scope) 
 as comments on their lines. Override `SYMBIOTE_POST_FINDINGS`, `SYMBIOTE_FAIL_ON`, `SYMBIOTE_PLUGINS` or
 `SYMBIOTE_VERSION` in your own `symbiote:` job.
 
+## Stylesheets
+
+`.css` and `.scss` files are read like code (not `*.min.css`; `.symbioteignore` can leave others
+out). A reformat is no change.
+
+- **Symbols**, named as CSS writes them: a rule is its selector and its own declarations
+  (`controls.css#.button:hover`, `#@media (max-width: 900px) › .sidenav`; a nested SCSS rule by
+  its resolved selector, inside its parent); a custom property definition is a variable inside
+  its rule (`base.css#:root › --accent`); keyframes (`#@keyframes spin`), and SCSS's top-level
+  `$variables`, `@mixin`s, `@function`s and `%placeholders`. A selector renamed with the same
+  declarations, or a rule moved to another file, is a move.
+- **Between stylesheets**: `var(--accent)` uses every definition of `--accent` (the dark and the
+  light one), `animation` its keyframes; SCSS names resolve as Sass resolves them, through
+  `@use` namespaces and `@forward`, or `@import` (what the file and the files importing it
+  imported). A name with two candidates is an unresolved use of each, one with none an unknown
+  target; after `@use '@angular/material' as mat`, `@include mat.core()` uses the package's mixin.
+- **From markup**: static class names in JSX `class`/`className` (strings, template text, object
+  keys; `tone-${kind}` names none), `classList` calls and a CSS module's `styles.title` are uses
+  of the rules that style them, when the file renders every class a selector needs
+  (`.list .row` from a file rendering both). Custom properties a script sets
+  (`style={{ '--x': … }}`, `setProperty`) or reads (`var(--x)` in a string,
+  `getPropertyValue`) count too. So a rule's or a token's users include the components affected.
+- A CSS module (`*.module.css`) reaches only its importers' `styles.x`. With `--plugin angular`, a
+  component's `styleUrls` reach its own template and host only (unless its encapsulation is
+  `None`), and templates' `class`, `[class.x]` and `[ngClass]` are uses; with `--plugin qwik`,
+  `useStylesScoped$` styles reach the component calling it.
+
 ## Framework plugins
 
 Framework knowledge comes as plugins, so the TypeScript and JavaScript analysis stays the same
@@ -791,6 +821,9 @@ counts as a use.
   before Symbiote runs.
 - In the viewer, a template opens with its own diff, and comments on its lines go to the `.html`
   file.
+- A template's `class="a b"`, `[class.a]`, `[ngClass]` and a component's host classes are uses of
+  the rules that style them; a component's `styleUrls` style its own template only (see
+  [Stylesheets](#stylesheets)).
 
 Repositories with several apps work at any depth, with nothing at the root. Each file's imports
 resolve with its own project's `paths` and `baseUrl`, each template is read with its app's
@@ -815,6 +848,8 @@ own file rules, in the routes folder its Vite config names.
   edits are no change. A component removed while a page still renders it is an error at that
   line, a required prop a page does not pass is a warning, and a component only pages use is not
   an orphan (components the MDX provider gives included).
+- Styles a component loads with `useStylesScoped$` reach that component's markup only;
+  `useStyles$` styles are global (see [Stylesheets](#stylesheets)).
 
 ### Your own
 
@@ -951,8 +986,11 @@ or `.symbioteignore`.
 
 ## Limits
 
-- TypeScript and JavaScript only (`.ts .tsx .js .jsx .mts .cts .mjs .cjs`). Other languages need
-  an adapter of their own.
+- TypeScript and JavaScript (`.ts .tsx .js .jsx .mts .cts .mjs .cjs`), CSS and SCSS (`.css
+  .scss`). Less, indented Sass, CSS-in-JS and `<style>` blocks are not read; other languages
+  need an adapter of their own.
+- A class rendered in one file and needed with another rendered elsewhere (`.theme-dark .card`,
+  the theme set on a container) links no markup to the rule; Tailwind utilities link nothing.
 - Static analysis: no runtime or data-flow analysis.
 - Workspaces start Claude Code or Codex. Any configured agent command is planned (V20c in the
   [plan](docs/plan/v20-other-agents.md)).

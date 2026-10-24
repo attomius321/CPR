@@ -1,0 +1,14 @@
+.button {
+  color: var(--accent);
+  padding: 0 12px;
+}
+.button:hover { color: var( --text ) }
+.chip {
+  display: inline-block;
+  font-size: var(--size-12);
+  line-height: 16px;
+  margin: 0 4px;
+}
+.new-thing {
+  gap: 4px;
+}
