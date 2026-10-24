@@ -108,7 +108,7 @@ async function make(
 
 /** A merger agent that answers `answers` in turn; what it was asked. */
 function fakeAgent(...answers: string[]) {
-  const asked: { cwd: string; prompt: string; model?: string; instructions?: string }[] = [];
+  const asked: Parameters<MergerAgent['run']>[0][] = [];
   const agent: MergerAgent = {
     kind: 'claude',
     run: (request) => {
@@ -1222,5 +1222,98 @@ describe("a merge's log (V46a)", () => {
     const { id } = await m.enqueue({ branch: 'topic', into: 'main' }, { start: false });
     expect(await m.log(id)).toEqual({ lines: [], next: 0 });
     expect(await m.log('nowhere')).toBeNull();
+  });
+});
+
+describe("the merger's effort (V46d)", () => {
+  /** An agent that lists `levels` (null: none Symbiote can read), and what it was asked. */
+  function leveled(levels: string[] | null) {
+    const agent = fakeAgent(BOTH);
+    return {
+      ...agent,
+      levels: () => Promise.resolve(levels ? { levels } : null),
+    };
+  }
+
+  it('reads merge.effort, a word', () => {
+    const { repo } = setup();
+    config(repo, { effort: 'high' });
+    expect(readMergeConfig(repo.root)).toEqual({ push: false, effort: 'high' });
+    config(repo, { effort: '--model opus' });
+    expect(readMergeConfig(repo.root)).toEqual({ push: false });
+  });
+
+  it('asks the agent at merge.effort when it lists that level, and says so in the log', async () => {
+    const { repo } = conflicting();
+    config(repo, { effort: 'high' });
+    const agent = leveled(['low', 'medium', 'high']);
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find, levels: agent.levels });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    expect(agent.asked[0]?.effort).toBe('high');
+    expect(shortLog(await logOf(m, id))).toContain('out Effort: high (merge.effort)');
+  });
+
+  it("asks at the agent's own level when it does not list merge.effort, or its levels cannot be read", async () => {
+    for (const [levels, said] of [
+      [
+        ['low', 'high'],
+        'out merge.effort is ultra, which Claude Code does not list: its own level',
+      ],
+      [null, "out Symbiote cannot read Claude Code's effort levels: its own level"],
+    ] as const) {
+      const { repo } = conflicting();
+      config(repo, { effort: 'ultra' });
+      const agent = leveled(levels === null ? null : [...levels]);
+      const m = await make(repo, fakeChecks().run, {
+        mergerAgent: agent.find,
+        levels: agent.levels,
+      });
+      const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+      await m.idle();
+      expect(agent.asked[0]?.effort).toBeUndefined();
+      expect(shortLog(await logOf(m, id))).toContain(said);
+    }
+  });
+
+  it('passes no level, and says none, without merge.effort', async () => {
+    const { repo } = conflicting();
+    const agent = leveled(['low', 'high']);
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find, levels: agent.levels });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    expect(agent.asked[0]?.effort).toBeUndefined();
+    expect(shortLog(await logOf(m, id)).some((l) => /effort/i.test(l))).toBe(false);
+  });
+
+  it("lists the merger's agent's levels and merge.effort; sets it in the config, or removes it", async () => {
+    const { repo } = setup();
+    config(repo, { checks: ['ok'] });
+    const agent = leveled(['low', 'medium', 'high']);
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find, levels: agent.levels });
+    expect(await m.efforts()).toEqual({
+      agents: [{ kind: 'claude', efforts: { levels: ['low', 'medium', 'high'] } }],
+      file: 'symbiote/config.json',
+    });
+    expect(await m.setEffort({ effort: 'high' })).toMatchObject({ effort: 'high' });
+    const written = () =>
+      JSON.parse(readFileSync(join(repo.root, 'symbiote', 'config.json'), 'utf8')) as {
+        merge: Record<string, unknown>;
+      };
+    expect(written().merge).toEqual({ checks: ['ok'], effort: 'high' });
+    await expect(m.setEffort({ effort: 'ultra' })).rejects.toThrow(
+      'Claude Code takes low, medium or high: ultra',
+    );
+    await expect(m.setEffort({ effort: '--model opus' })).rejects.toThrow(/a word/);
+    const removed = await m.setEffort({ effort: null });
+    expect(removed.effort).toBeUndefined();
+    expect(written().merge).toEqual({ checks: ['ok'] });
+  });
+
+  it('lists no agent when none is installed, and refuses a level then', async () => {
+    const { repo } = setup();
+    const m = await make(repo);
+    expect(await m.efforts()).toEqual({ agents: [], file: 'symbiote/config.json' });
+    await expect(m.setEffort({ effort: 'high' })).rejects.toThrow(/needs Claude Code or Codex/);
   });
 });

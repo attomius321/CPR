@@ -1634,6 +1634,19 @@ describe('symbiote view: merges (V26a)', () => {
         : Promise.reject(new MergeRefused(`no merge ${id}`, 404));
     },
     idle: () => Promise.resolve(),
+    // The merger's effort (V46d): its agent's levels, and a level set or refused.
+    efforts: () =>
+      Promise.resolve({
+        agents: [{ kind: 'claude', efforts: { levels: ['low', 'high'] } }],
+        effort: 'high',
+        file: 'symbiote/config.json',
+      }),
+    setEffort: ({ effort }) => {
+      asked.push(`effort ${String(effort)}`);
+      return effort === 'ultra'
+        ? Promise.reject(new MergeRefused('Claude Code takes low or high: ultra', 400))
+        : Promise.resolve({ agents: [], file: 'symbiote/config.json' });
+    },
     // A log whose offsets are its lines' indexes; `logGone` once its entry is removed (V46a).
     log: (id, from = 0) =>
       Promise.resolve(
@@ -1735,6 +1748,25 @@ describe('symbiote view: merges (V26a)', () => {
       'remove m1',
       'remove m2',
     ]);
+  });
+
+  it("reads the merger's effort levels, and sets or removes merge.effort (V46d)", async () => {
+    expect(await (await get('/api/merges/efforts')).json()).toEqual({
+      agents: [{ kind: 'claude', efforts: { levels: ['low', 'high'] } }],
+      effort: 'high',
+      file: 'symbiote/config.json',
+    });
+    expect((await post('/api/merges/effort', { effort: 'high' })).status).toBe(200);
+    expect((await post('/api/merges/effort', { effort: null })).status).toBe(200);
+    const refused = await post('/api/merges/effort', { effort: 'ultra' });
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({ error: 'Claude Code takes low or high: ultra' });
+    expect((await post('/api/merges/effort', { effort: 3 })).status).toBe(400);
+    expect((await post('/api/merges/effort', { effort: 'low' }, { 'x-symbiote': '' })).status).toBe(
+      403,
+    );
+    expect((await post('/api/merges/efforts', {})).status).toBe(405);
+    expect(asked.splice(-3)).toEqual(['effort high', 'effort null', 'effort ultra']);
   });
 
   it("streams a merge's log: its lines so far, then each line appended, until its entry goes (V46a)", async () => {

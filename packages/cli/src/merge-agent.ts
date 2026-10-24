@@ -220,6 +220,8 @@ export interface MergerAgent {
     prompt: string;
     model?: string;
     instructions?: string;
+    /** Its effort level (`merge.effort`, V46d), one it lists. */
+    effort?: string;
     onEvent?: (event: MergeAgentEvent) => void;
   }): Promise<MergerRun>;
 }
@@ -408,7 +410,7 @@ export function claudeMerger(
 ): MergerAgent {
   return {
     kind: 'claude',
-    async run({ cwd, prompt, model, instructions = MERGER_INSTRUCTIONS, onEvent }) {
+    async run({ cwd, prompt, model, instructions = MERGER_INSTRUCTIONS, effort, onEvent }) {
       const argsOf = (thinking: boolean) => [
         '-p',
         '--output-format',
@@ -421,6 +423,7 @@ export function claudeMerger(
         '--strict-mcp-config',
         '--no-session-persistence',
         ...(model ? ['--model', model] : []),
+        ...(effort ? ['--effort', effort] : []),
         '--system-prompt',
         instructions,
       ];
@@ -493,13 +496,14 @@ export function codexMerger(
 ): MergerAgent {
   return {
     kind: 'codex',
-    async run({ cwd, prompt, model, instructions = MERGER_INSTRUCTIONS, onEvent }) {
+    async run({ cwd, prompt, model, instructions = MERGER_INSTRUCTIONS, effort, onEvent }) {
       const args = [
         'exec',
         '--json',
         '--sandbox',
         'read-only',
         '--ephemeral',
+        ...(effort ? ['-c', `model_reasoning_effort=${JSON.stringify(effort)}`] : []),
         ...(model ? ['--model', model] : []),
         '--cd',
         cwd,

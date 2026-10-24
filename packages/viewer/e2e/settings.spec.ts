@@ -46,8 +46,8 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   await expect(page.locator('.settings-git')).toHaveText(
     "No prompt changed: every agent is told Symbiote's text.",
   );
-  // 16 prompts (Documents since V40, Scribe's since V41) and Scout's effort.
-  await expect(list(page).getByRole('button')).toHaveCount(17);
+  // 16 prompts (Documents since V40, Scribe's since V41), Scout's effort and the merger's (V46d).
+  await expect(list(page).getByRole('button')).toHaveCount(18);
   await expect(entry(page, 'Documents')).toBeVisible();
   // The first is open; each group in its order (Scout's since V35).
   await expect(entry(page, 'Feature')).toHaveAttribute('aria-current', 'true');
@@ -252,6 +252,54 @@ test("Scout's effort: a stepper of Claude Code's levels, saved in symbiote/confi
   await editor(page).getByRole('slider', { name: 'Effort' }).press('Home');
   await expect.poll(scout).toBeUndefined();
   expect(prompts()).toEqual({ scout: 'Answer briefly. {question}' });
+});
+
+// The merger's effort (V46d): `merge.effort`, the level each merger agent's run is asked at, on
+// the same stepper as Scout's, in the Merger group.
+test("the merger's effort: a stepper of its agent's levels, saved as merge.effort when let go", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  mkdirSync(join(symbiote.repo, 'symbiote'), { recursive: true });
+  writeFileSync(config(), '{ "merge": { "checks": ["pnpm check"] } }\n');
+  // Null while the server writes it.
+  const merge = () => {
+    try {
+      return (JSON.parse(readFileSync(config(), 'utf8')) as { merge?: Record<string, unknown> })
+        .merge;
+    } catch {
+      return null;
+    }
+  };
+  await page.goto(`${symbiote.url}settings`);
+  const group = list(page).getByRole('region', { name: 'Merger' });
+  await expect(group.getByRole('button')).toHaveText(['Instructions', 'Effort']);
+  await group.getByRole('button', { name: 'Effort' }).click();
+  await expect(page).toHaveURL(`${symbiote.url}settings?prompt=merge.effort`);
+  await expect(editor(page).getByRole('heading')).toHaveText('Merger: Effort');
+  const effort = editor(page).getByRole('slider', { name: 'Effort' });
+  await expect(effort).toHaveAttribute('aria-valuetext', "Claude Code's default");
+  await expect(stops(effort)).toHaveText(['Default', 'low', 'medium', 'high', 'xhigh', 'max']);
+  await dragTo(page, effort, 3);
+  await expect(effort).toHaveAttribute('aria-valuetext', 'high');
+  await expect(editor(page).getByRole('status')).toHaveText(
+    "Saved. The merger agent's next run is asked at high.",
+  );
+  // Beside the merge's other settings, which stay.
+  await expect.poll(merge).toEqual({ checks: ['pnpm check'], effort: 'high' });
+  await page.reload();
+  await expect(editor(page).getByRole('slider', { name: 'Effort' })).toHaveAttribute(
+    'aria-valuetext',
+    'high',
+  );
+  await editor(page).getByRole('slider', { name: 'Effort' }).press('Home');
+  await expect.poll(merge).toEqual({ checks: ['pnpm check'] });
+  // A level its agent does not list is said.
+  writeFileSync(config(), '{ "merge": { "effort": "ultra" } }\n');
+  await page.reload();
+  await expect(editor(page).getByRole('alert')).toHaveText(
+    'merge.effort is ultra, which Claude Code does not list: the merger runs it at its default.',
+  );
 });
 
 test("Scout's effort: a level its agent does not list is said, and Scout starts at the agent's default", async ({

@@ -145,7 +145,12 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
  * fix/fix-merger: main adds a function where the agent added its own, the merger agent keeps
  * both, and the project's check is `checks`. Approved and merged; the merge's page opened.
  */
-async function resolvedConflict(page: Page, checks: string[], env: Record<string, string> = {}) {
+async function resolvedConflict(
+  page: Page,
+  checks: string[],
+  env: Record<string, string> = {},
+  more: Record<string, unknown> = {},
+) {
   page.on('pageerror', (error) => errors.push(error.message));
   symbiote = await serveAgentBranch(env, {
     merger: [
@@ -161,7 +166,7 @@ async function resolvedConflict(page: Page, checks: string[], env: Record<string
   mkdirSync(join(symbiote.repo, 'symbiote'), { recursive: true });
   writeFileSync(
     join(symbiote.repo, 'symbiote', 'config.json'),
-    JSON.stringify({ merge: { checks } }),
+    JSON.stringify({ merge: { checks, ...more } }),
   );
   const main = git('rev-parse', 'main');
   await approve(page);
@@ -217,12 +222,17 @@ test("the merger agent's thinking and the files it reads, while it works (V46b)"
 }) => {
   // The fake agent thinks and reads, then answers once the test makes a file.
   const flag = join(mkdtempSync(join(tmpdir(), 'symbiote-e2e-flag-')), 'answer');
-  const { entry } = await resolvedConflict(page, ['test -f src/math.ts'], {
-    E2E_AGENT_FLAG: flag,
-  });
+  // At the merger's effort (V46d), a level its agent lists.
+  const { entry } = await resolvedConflict(
+    page,
+    ['test -f src/math.ts'],
+    { E2E_AGENT_FLAG: flag },
+    { effort: 'high' },
+  );
   const steps = entry.getByRole('list', { name: 'Its steps' });
   const log = entry.getByRole('log', { name: 'What it wrote' }).locator('.xterm-rows');
   await expect(steps.getByRole('button', { name: /^Merger agent: running, / })).toBeVisible();
+  await expect(log).toContainText('Effort: high (merge.effort)');
   await expect(log).toContainText('Claude Code 9.9.9 · claude-fake');
   await expect(log).toContainText('∴ Both sides add a function here.');
   await expect(log).toContainText('● Read src/math.ts');
@@ -234,6 +244,7 @@ test("the merger agent's thinking and the files it reads, while it works (V46b)"
   await expect(log).toContainText('kept both: main first');
   await expect(steps.getByRole('button', { name: /^Merger agent: passed, / })).toBeVisible();
   await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
+  expect(symbiote.mergerArgs()[0]).toEqual(expect.arrayContaining(['--effort', 'high']));
 });
 
 // A resolution whose check failed (a flaky e2e, in the real case) is the person's to judge: the

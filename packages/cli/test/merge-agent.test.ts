@@ -287,6 +287,14 @@ describe('running the merger agent (V26c)', () => {
     // The project's instructions (V28), as merges.ts makes them.
     await agent.run({ cwd: '/wt', prompt: 'P', instructions: 'Keep both.' });
     expect(calls[1]?.args.at(-1)).toBe('Keep both.');
+    // At the merger's effort (V46d).
+    await agent.run({ cwd: '/wt', prompt: 'P', effort: 'high' });
+    expect(calls[2]?.args.slice(-4)).toEqual([
+      '--effort',
+      'high',
+      '--system-prompt',
+      MERGER_INSTRUCTIONS,
+    ]);
   });
 
   it('says why when Claude Code fails', async () => {
@@ -335,6 +343,17 @@ describe('running the merger agent (V26c)', () => {
       instructions: 'Keep both.',
     });
     expect(calls[1]?.input).toBe('Keep both.\n\n---\n\nP');
+    // At the merger's effort (V46d), as a workspace's turn is started (codex.ts).
+    await codexMerger('/bin/codex', { run }).run({ cwd: '/wt', prompt: 'P', effort: 'high' });
+    expect(calls[2]?.args.slice(0, 7)).toEqual([
+      'exec',
+      '--json',
+      '--sandbox',
+      'read-only',
+      '--ephemeral',
+      '-c',
+      'model_reasoning_effort="high"',
+    ]);
   });
 });
 

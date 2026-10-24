@@ -158,6 +158,8 @@ export interface RunningAgent extends Running {
    * file read (V46b; with `E2E_AGENT_FLAG`, once that file exists); what it was asked, newest last.
    */
   mergerPrompts(): string[];
+  /** The arguments of each of its runs (V46d), newest last. */
+  mergerArgs(): string[][];
   /** The bare repository `origin` points at (V16: Approve pushes there). */
   origin: string;
   /** main's commit (the fork point), then the agent's commits, oldest first. */
@@ -209,8 +211,15 @@ export async function serveAgentBranch(
       fake,
       `#!/usr/bin/env node
 const fs = require('node:fs');
+// Its effort levels, as the real one's --help lists them (V46d: the merger's effort).
+if (process.argv.includes('--help')) {
+  process.stdout.write('Options:\\n  --effort <level>  Effort level for the current session (low, medium, high, xhigh, max)\\n  -h, --help  Display help\\n');
+  process.exit(0);
+}
 const input = fs.readFileSync(0, 'utf8');
 fs.appendFileSync(${JSON.stringify(prompts)}, JSON.stringify(input) + '\\n');
+// What it was asked at (V46d), for a test to read.
+fs.appendFileSync(${JSON.stringify(prompts)} + '.args', JSON.stringify(process.argv.slice(2)) + '\\n');
 const answers = JSON.parse(fs.readFileSync(${JSON.stringify(join(cache, 'merger-answers.json'))}, 'utf8'));
 const n = fs.readFileSync(${JSON.stringify(prompts)}, 'utf8').split('\\n').filter(Boolean).length;
 const result = answers[Math.min(n, answers.length) - 1];
@@ -243,6 +252,13 @@ say({ type: 'result', subtype: 'success', result, is_error: false, usage: { inpu
             .split('\n')
             .filter((line) => line !== '')
             .map((line) => JSON.parse(line) as string)
+        : [],
+    mergerArgs: () =>
+      existsSync(`${prompts}.args`)
+        ? readFileSync(`${prompts}.args`, 'utf8')
+            .split('\n')
+            .filter((line) => line !== '')
+            .map((line) => JSON.parse(line) as string[])
         : [],
     origin,
     shas,

@@ -458,6 +458,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           return ofBranch(req, res, url, (branch) => merges.targets(branch));
         }
         if (url.pathname === '/api/merges/log') return mergeLog(req, res, url, merges);
+        // The merger's effort (V46d), read and set where Settings' stepper shows it, as Scout's.
+        if (url.pathname === '/api/merges/efforts') return read(req, res, () => merges.efforts());
+        if (url.pathname === '/api/merges/effort') {
+          return written(req, res, parseScoutEffort, (change) =>
+            answer(res, () => merges.setEffort(change)),
+          );
+        }
         if (url.pathname === '/api/merges/approve') {
           return written(req, res, parseMergeId, (id) => answer(res, () => merges.approve(id)));
         }
