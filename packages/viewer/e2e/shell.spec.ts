@@ -134,10 +134,13 @@ test('keys: h and s go to the pages, w to the workspaces and the arrows between 
   await expect(page).toHaveURL(`${symbiote.url}settings`);
   await page.keyboard.press('h');
   await expect(page).toHaveURL(`${symbiote.url}history`);
+  // Both cards listed before the keys, as in the card-focus test below: ArrowDown on the only
+  // card stays there (on 8 workers, 2 of 32 runs failed on main; 0 of 64 once it waits).
+  const buttons = sidenav(page).locator('.workspace-row .workspace-about');
+  await expect(buttons).toHaveCount(2, POLL);
 
   // w: the first workspace's card takes the focus; the arrows move it; Enter opens it.
   await page.keyboard.press('w');
-  const buttons = sidenav(page).locator('.workspace-row .workspace-about');
   await expect(buttons.first()).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(buttons.nth(1)).toBeFocused();
