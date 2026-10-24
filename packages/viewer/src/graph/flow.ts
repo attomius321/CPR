@@ -160,6 +160,12 @@ const FRAME_PAD = { top: 46, side: 20, bottom: 20 };
 const LIGHT_FRAME_PAD = { top: 34, side: 16, bottom: 16 };
 /** Symbols with no edge inside their box are stacked in columns of at most this many. */
 const WRAP_ROWS = 6;
+/**
+ * Edges inside one box past which it is laid out in columns, not by dagre: a stylesheet's rules
+ * and the tokens they use took dagre 70 s to order (Symbiote 3fff617: 2,186 edges in
+ * `styles.css`); TypeScript's densest boxes seen hold under 100.
+ */
+export const MAX_BOX_EDGES = 1000;
 const WRAP_GAP = { x: 16, y: 12 };
 /** Space between separate clusters of boxes, and the page shape they are packed into. */
 const CLUSTER_GAP = 80;
@@ -649,7 +655,8 @@ function layoutBox(
   internal: readonly { from: string; to: string }[],
 ): { positions: Map<string, { x: number; y: number }>; width: number; height: number } {
   const positions = new Map<string, { x: number; y: number }>();
-  const linked = new Set(internal.flatMap((l) => [l.from, l.to]));
+  const dense = internal.length > MAX_BOX_EDGES;
+  const linked = new Set(dense ? [] : internal.flatMap((l) => [l.from, l.to]));
   let width = 0;
   let height = 0;
 
@@ -677,8 +684,10 @@ function layoutBox(
     .filter((m) => !linked.has(m.id))
     .sort((a, b) => Number(b.changed) - Number(a.changed));
   let x = layered.length > 0 ? width + 2 * WRAP_GAP.x : 0;
-  for (let start = 0; start < loose.length; start += WRAP_ROWS) {
-    const column = loose.slice(start, start + WRAP_ROWS);
+  // A dense box is all columns: about square (symbols are some four times wider than tall).
+  const rows = dense ? Math.max(WRAP_ROWS, Math.ceil(Math.sqrt(loose.length * 4))) : WRAP_ROWS;
+  for (let start = 0; start < loose.length; start += rows) {
+    const column = loose.slice(start, start + rows);
     column.forEach((m, row) => positions.set(m.id, { x, y: row * (NODE_HEIGHT + WRAP_GAP.y) }));
     const columnWidth = Math.max(...column.map((m) => m.width));
     width = Math.max(width, x + columnWidth);

@@ -661,3 +661,15 @@ describe('edgesToDraw', () => {
     expect(edgesToDraw(large, { map: true, moving: true, selected: A0 })).toEqual(map);
   });
 });
+
+describe('a box too dense for dagre', () => {
+  it("is laid out in about square columns: a stylesheet's rules and tokens (Symbiote 3fff617)", () => {
+    const rules = Array.from({ length: 60 }, (_, i) => `src/a.css#.rule${i}!`);
+    const tokens = Array.from({ length: 20 }, (_, i) => `src/a.css#--token${i}!`);
+    const edges = rules.flatMap((r) => tokens.map((t) => `${r.slice(0, -1)}>${t.slice(0, -1)}`));
+    const { nodes } = layoutFlow(synthetic([...rules, ...tokens], edges));
+    const columns = new Set(nodes.filter((n) => n.type === 'symbol').map((n) => n.position.x));
+    // √(4 × 80) ≈ 18 rows: symbols are about four times wider than tall.
+    expect(columns.size).toBe(Math.ceil(80 / 18));
+  });
+});
