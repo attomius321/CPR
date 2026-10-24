@@ -7,6 +7,7 @@ import {
   cellRange,
   droppedFiles,
   followsLink,
+  IMAGE_ACCEPT,
   isPasteKey,
   keySender,
   lineText,
@@ -57,10 +58,14 @@ export async function toTerminal(id: string, action: string, body: unknown): Pro
   if (!response.ok) throw new Error(await response.text());
 }
 
-/** An open terminal: its ID, to type into it, and a way to give it the keys again. */
+/**
+ * An open terminal: its ID, to type into it, a way to give it the keys again, and files to attach
+ * as a drop does (the images; anything else is said), the keys given back after.
+ */
 export interface OpenedTerminal {
   id: string;
   focus(): void;
+  attach(files: File[]): void;
 }
 
 /** The size the last terminal drawn was fitted to: a new shell opens at it (V45). */
@@ -74,8 +79,8 @@ export const lastTerminalSize = (): { cols: number; rows: number } => lastSize;
  * closing this hangs up only the client. While it is open the list is read every 5 s, since what
  * is typed here may start a turn. `onOpened` gives the open terminal (to type into it), `onEnded`
  * says it ended. `url`: where it is opened — a workspace's (`branch`), or Scout's (V35). An image
- * pasted (Ctrl+V too, off macOS) or dropped is saved by the server and its path pasted, which the
- * agent attaches to the message being typed (V36). A path it prints to a file in its folder, a web
+ * pasted (Ctrl+V too, off macOS), dropped or given to `attach` (`AttachImages`) is saved by the
+ * server and its path pasted, which the agent attaches to the message being typed (V36). A path it prints to a file in its folder, a web
  * address and its own links (OSC 8) are links: Ctrl+click (⌘ on macOS) opens the file in VS Code
  * at the line printed, or the address in a new tab (V38). `id`: a terminal already open, read and
  * typed into as it is (a workspace's shell, V45): leaving does not close it, and the list is not
@@ -161,7 +166,6 @@ export function AgentTerminal({
       }
       const shown = term;
       const terminal = (id = opened.id);
-      told.current.onOpened({ id: terminal, focus: () => shown.focus() });
       events = new EventSource(`/api/terminals/${terminal}`);
       let connected = false;
       // A dropped stream reconnects and gets what was printed again: drawn anew.
@@ -207,6 +211,20 @@ export function AgentTerminal({
             if (!gone) setError((failed as Error).message);
           });
       };
+      // A drop's files, or a picker's: the images attached, anything else said.
+      const give = (files: ArrayLike<File>) => {
+        const { images, others } = droppedFiles(files);
+        if (images.length > 0) attach(images, others.length > 0 ? ONLY_IMAGES : null);
+        else setError(ONLY_IMAGES);
+      };
+      told.current.onOpened({
+        id: terminal,
+        focus: () => shown.focus(),
+        attach: (files) => {
+          give(files);
+          shown.focus();
+        },
+      });
       // Ctrl+V left to the browser: its paste comes next, with the clipboard the page sees.
       shown.attachCustomKeyEventHandler((event) => !isPasteKey(event, MAC));
       // Before xterm.js's own, which pastes the clipboard's text: empty, for a screenshot.
@@ -243,9 +261,7 @@ export function AgentTerminal({
         event.preventDefault();
         over = 0;
         setDropping(false);
-        const { images, others } = droppedFiles(event.dataTransfer?.files ?? []);
-        if (images.length > 0) attach(images, others.length > 0 ? ONLY_IMAGES : null);
-        else setError(ONLY_IMAGES);
+        give(event.dataTransfer?.files ?? []);
       };
       area.addEventListener('paste', onPaste, true);
       area.addEventListener('dragenter', onDragEnter);
@@ -437,5 +453,40 @@ export function AgentTerminal({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Images for an open terminal's agent from the system's file picker, as a drop gives them. On WSL
+ * no drop from Windows reaches Symbiote's window (WSLg has no drag and drop, microsoft/wslg#84),
+ * and no file copied there: the picker reaches Windows' files under `/mnt`.
+ */
+export function AttachImages({ into }: { into: OpenedTerminal }) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <button
+        type="button"
+        className="icon-button"
+        aria-label="Attach images"
+        title="Attach images to the message: PNG, JPEG, GIF or WebP"
+        onClick={() => input.current?.click()}
+      >
+        <ImageIcon />
+      </button>
+      <input
+        ref={input}
+        type="file"
+        accept={IMAGE_ACCEPT}
+        multiple
+        hidden
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          if (files.length > 0) into.attach(files);
+          // The same file picked again is a change.
+          event.target.value = '';
+        }}
+      />
+    </>
   );
 }
