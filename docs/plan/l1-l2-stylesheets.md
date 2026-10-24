@@ -373,7 +373,7 @@ finding; the viewer, CLI and docs last.
 | Check | Result |
 |---|---|
 | Unit tests | 1,427 pass (`pnpm check`); new: `adapters`, `css`, `markup` (core), `styles` (Angular, Qwik), `flow` dense box |
-| e2e | `e2e/stylesheets.spec.ts` (a rule's and a token's diff, users, a comment to the stylesheet's line); the suite: 221 pass before the dense-box change |
+| e2e | `e2e/stylesheets.spec.ts` (a rule's and a token's diff, users, a comment to the stylesheet's line); the full suite: 221 pass on the final build (`f470134`) |
 | Prettier reformat of every stylesheet | 0 changed symbols: Symbiote 1,249, Bitwarden 1,746, Qwik 1,523 |
 | `r1` (29) against `main` | identical, 859 edges, no finding changed; time +0.8 % (two interleaved runs: 21.9 → 22.1 s) |
 | `bitwarden` (10) | TypeScript identical; +50 stylesheet edges (45 from templates), +3 symbols, no finding changed; time ×1.04 |
