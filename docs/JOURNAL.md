@@ -193,3 +193,4 @@ merge commit.
 - 2026-10-24 [L1 spike — what real stylesheets hold, and what a commit changes in them](journal/l1-l2-stylesheets.md)
 - 2026-10-24 [L1 — stylesheets as a language](journal/l1-l2-stylesheets.md)
 - 2026-10-24 [L2 — markup uses stylesheets](journal/l1-l2-stylesheets.md)
+- 2026-10-24 [V47 spike — what each agent lists, and how it takes a model](journal/v47-agent-model.md)
