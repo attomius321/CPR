@@ -5,7 +5,7 @@ import type { Analysis, ContextSymbol, SinceStatus } from './pipeline.js';
 import type { Project } from './projects.js';
 
 /** Version of the graph JSON contract. See docs/graph-schema.md. */
-export const SCHEMA_VERSION = '0.6.0';
+export const SCHEMA_VERSION = '0.7.0';
 
 export interface GraphSide {
   file: string;

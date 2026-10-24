@@ -28,7 +28,7 @@ async function graphOf(name: string): Promise<Graph> {
 }
 
 describe('buildGraph', () => {
-  it.each(['service', 'callers', 'detectors', 'projects'])(
+  it.each(['service', 'callers', 'detectors', 'projects', 'css'])(
     'builds a valid graph for %s',
     async (name) => {
       const graph = await graphOf(name);

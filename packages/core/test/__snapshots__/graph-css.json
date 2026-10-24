@@ -1,0 +1,393 @@
+{
+  "schemaVersion": "0.7.0",
+  "generator": {
+    "name": "symbiote",
+    "version": "test"
+  },
+  "revisions": {
+    "base": {
+      "ref": "base",
+      "sha": null,
+      "mergeBase": null
+    },
+    "head": {
+      "ref": "head",
+      "sha": null
+    },
+    "from": null
+  },
+  "files": [
+    {
+      "status": "added",
+      "path": "src/ui/badge.css"
+    },
+    {
+      "status": "modified",
+      "path": "src/ui/controls.css"
+    },
+    {
+      "status": "modified",
+      "path": "src/ui/tokens.css"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "src/ui/badge.css#.badge",
+      "kind": "rule",
+      "name": ".badge",
+      "container": null,
+      "language": "css",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": false,
+        "body": false,
+        "moved": true
+      },
+      "previousId": "src/ui/controls.css#.badge",
+      "base": {
+        "file": "src/ui/controls.css",
+        "range": {
+          "start": {
+            "line": 11,
+            "col": 1
+          },
+          "end": {
+            "line": 16,
+            "col": 2
+          }
+        },
+        "signature": "{ display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 4px }",
+        "hashes": {
+          "signature": "57a402e9a5869173",
+          "body": "fc6f03f761ec8a32"
+        }
+      },
+      "head": {
+        "file": "src/ui/badge.css",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 6,
+            "col": 2
+          }
+        },
+        "signature": "{ display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 4px }",
+        "hashes": {
+          "signature": "57a402e9a5869173",
+          "body": "fc6f03f761ec8a32"
+        }
+      }
+    },
+    {
+      "id": "src/ui/controls.css#.button",
+      "kind": "rule",
+      "name": ".button",
+      "container": null,
+      "language": "css",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": false,
+        "body": true,
+        "moved": false
+      },
+      "previousId": null,
+      "base": {
+        "file": "src/ui/controls.css",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 4,
+            "col": 2
+          }
+        },
+        "signature": "{ color: var(--accent); padding: 0 8px }",
+        "hashes": {
+          "signature": "ab5c47f074a14e29",
+          "body": "a4fd2edef2f0519f"
+        }
+      },
+      "head": {
+        "file": "src/ui/controls.css",
+        "range": {
+          "start": {
+            "line": 1,
+            "col": 1
+          },
+          "end": {
+            "line": 4,
+            "col": 2
+          }
+        },
+        "signature": "{ color: var(--accent); padding: 0 12px }",
+        "hashes": {
+          "signature": "ab5c47f074a14e29",
+          "body": "ae15c9b23e605275"
+        }
+      }
+    },
+    {
+      "id": "src/ui/controls.css#.chip",
+      "kind": "rule",
+      "name": ".chip",
+      "container": null,
+      "language": "css",
+      "exported": true,
+      "status": "modified",
+      "delta": {
+        "signature": true,
+        "body": false,
+        "moved": true
+      },
+      "previousId": "src/ui/controls.css#.chip-old",
+      "base": {
+        "file": "src/ui/controls.css",
+        "range": {
+          "start": {
+            "line": 17,
+            "col": 1
+          },
+          "end": {
+            "line": 22,
+            "col": 2
+          }
+        },
+        "signature": "{ display: inline-block; font-size: var(--size-12); line-height: 16px; … }",
+        "hashes": {
+          "signature": "5382416e8c394915",
+          "body": "a47426d44a61cee7"
+        }
+      },
+      "head": {
+        "file": "src/ui/controls.css",
+        "range": {
+          "start": {
+            "line": 6,
+            "col": 1
+          },
+          "end": {
+            "line": 11,
+            "col": 2
+          }
+        },
+        "signature": "{ display: inline-block; font-size: var(--size-12); line-height: 16px; … }",
+        "hashes": {
+          "signature": "b3240c79277950c9",
+          "body": "a47426d44a61cee7"
+        }
+      }
+    },
+    {
+      "id": "src/ui/controls.css#.legacy",
+      "kind": "rule",
+      "name": ".legacy",
+      "container": null,
+      "language": "css",
+      "exported": true,
+      "status": "removed",
+      "previousId": null,
+      "base": {
+        "file": "src/ui/controls.css",
+        "range": {
+          "start": {
+            "line": 8,
+            "col": 1
+          },
+          "end": {
+            "line": 10,
+            "col": 2
+          }
+        },
+        "signature": "{ display: none }",
+        "hashes": {
+          "signature": "abec17f7919651f1",
+          "body": "05c9d15f848c051b"
+        }
+      },
+      "head": null
+    },
+    {
+      "id": "src/ui/controls.css#.new-thing",
+      "kind": "rule",
+      "name": ".new-thing",
+      "container": null,
+      "language": "css",
+      "exported": true,
+      "status": "added",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/ui/controls.css",
+        "range": {
+          "start": {
+            "line": 12,
+            "col": 1
+          },
+          "end": {
+            "line": 14,
+            "col": 2
+          }
+        },
+        "signature": "{ gap: 4px }",
+        "hashes": {
+          "signature": "b3c0bcf5e62e1039",
+          "body": "85b93092c4a13453"
+        }
+      }
+    },
+    {
+      "id": "src/ui/tokens.css#:root › --accent",
+      "kind": "variable",
+      "name": "--accent",
+      "container": "src/ui/tokens.css#:root",
+      "language": "css",
+      "exported": false,
+      "status": "modified",
+      "delta": {
+        "signature": false,
+        "body": true,
+        "moved": false
+      },
+      "previousId": null,
+      "base": {
+        "file": "src/ui/tokens.css",
+        "range": {
+          "start": {
+            "line": 2,
+            "col": 3
+          },
+          "end": {
+            "line": 2,
+            "col": 21
+          }
+        },
+        "signature": "--accent: #3b82f6",
+        "hashes": {
+          "signature": "655809f021242c93",
+          "body": "b51de63d0eac0534"
+        }
+      },
+      "head": {
+        "file": "src/ui/tokens.css",
+        "range": {
+          "start": {
+            "line": 2,
+            "col": 3
+          },
+          "end": {
+            "line": 2,
+            "col": 21
+          }
+        },
+        "signature": "--accent: #60a5fa",
+        "hashes": {
+          "signature": "655809f021242c93",
+          "body": "8940f2c623d01f01"
+        }
+      }
+    },
+    {
+      "id": "src/ui/tokens.css#:root › --old",
+      "kind": "variable",
+      "name": "--old",
+      "container": "src/ui/tokens.css#:root",
+      "language": "css",
+      "exported": false,
+      "status": "removed",
+      "previousId": null,
+      "base": {
+        "file": "src/ui/tokens.css",
+        "range": {
+          "start": {
+            "line": 3,
+            "col": 3
+          },
+          "end": {
+            "line": 3,
+            "col": 14
+          }
+        },
+        "signature": "--old: 1px",
+        "hashes": {
+          "signature": "0b18bc2cd4ac93bf",
+          "body": "93e20626bf9c355d"
+        }
+      },
+      "head": null
+    },
+    {
+      "id": "src/ui/tokens.css#:root › --new",
+      "kind": "variable",
+      "name": "--new",
+      "container": "src/ui/tokens.css#:root",
+      "language": "css",
+      "exported": false,
+      "status": "added",
+      "previousId": null,
+      "base": null,
+      "head": {
+        "file": "src/ui/tokens.css",
+        "range": {
+          "start": {
+            "line": 4,
+            "col": 3
+          },
+          "end": {
+            "line": 4,
+            "col": 14
+          }
+        },
+        "signature": "--new: 2px",
+        "hashes": {
+          "signature": "22aaa1cebb90d0e2",
+          "body": "747614001f0119ba"
+        }
+      }
+    }
+  ],
+  "edges": [],
+  "findings": [
+    {
+      "rule": "orphan-added",
+      "severity": "warning",
+      "symbol": "src/ui/controls.css#.new-thing",
+      "related": [],
+      "message": ".new-thing is new and nothing references it",
+      "data": {
+        "exportedFromEntry": false,
+        "exposure": null
+      },
+      "id": "f1"
+    },
+    {
+      "rule": "orphan-added",
+      "severity": "warning",
+      "symbol": "src/ui/tokens.css#:root › --new",
+      "related": [],
+      "message": ":root › --new is new and nothing references it",
+      "data": {
+        "exportedFromEntry": false,
+        "exposure": null
+      },
+      "id": "f2"
+    }
+  ],
+  "stats": {
+    "filesChanged": 3,
+    "symbols": {
+      "added": 2,
+      "removed": 2,
+      "modified": 4,
+      "context": 0
+    },
+    "edges": 0
+  },
+  "warnings": []
+}

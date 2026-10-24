@@ -14,7 +14,13 @@ export type SymbolKind =
   | 'variable'
   | 'namespace'
   /** A framework template (from a plugin), e.g. an Angular component's HTML. */
-  | 'template';
+  | 'template'
+  /** A stylesheet rule: a selector and its own declarations (or `@font-face`, `%placeholder`). */
+  | 'rule'
+  /** A SCSS mixin. */
+  | 'mixin'
+  /** CSS `@keyframes`. */
+  | 'keyframes';
 
 /** 1-based line and column. */
 export interface Position {
