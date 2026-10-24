@@ -38,11 +38,32 @@
   --kind-fill: color-mix(in srgb, var(--context) 22%, var(--panel));
 }
 
+/* A long file (RM2, decision 332), over its kind's fill: from 250 lines of code, 500, 1,000. */
+.heat-1 {
+  --kind-fill: var(--heat-1);
+}
+
+.heat-2 {
+  --kind-fill: var(--heat-2);
+}
+
+.heat-3 {
+  --kind-fill: var(--heat-3);
+}
+
 .monitor-head {
   display: grid;
   gap: 8px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--line);
+}
+
+/* The kinds and the colour, in one row; the colour at its end. */
+.monitor-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
 }
 
 /* The kinds: toggles, each its swatch, name and lines; the legend too. */
@@ -98,16 +119,64 @@
   font-variant-numeric: tabular-nums;
 }
 
+.monitor-colour {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.monitor-tools-label {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+/* Under Lines, at the heading's end: what each step of a file's colour means. */
+.monitor-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  font-size: var(--size-small);
+}
+
+.monitor-legend-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Where one is (RM2, decision 334): Back, the folders above as links, the folder's name. */
+.monitor-place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.monitor-back:disabled {
+  color: var(--faint);
+  background: none;
+  cursor: default;
+}
+
 .monitor-crumbs {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 4px;
+  min-width: 0;
   font-weight: 500;
 }
 
 .monitor-crumbs [aria-current='page'] {
   color: var(--text);
+  font-size: var(--size-title);
+  font-weight: 600;
 }
 
 .monitor-crumbs .link {
@@ -121,7 +190,14 @@
 
 .monitor-headline {
   margin: 0;
+  /* Under the folder's name, past Back. */
+  padding-left: 36px;
   color: var(--muted);
+}
+
+.monitor-figure {
+  color: var(--text);
+  font-weight: 500;
 }
 
 .monitor-body {
@@ -189,6 +265,41 @@
   border-color: var(--edge);
 }
 
+/* A section, a child of the folder in view (RM2, decision 334): 3 px of the canvas around it
+   and 1 px around each file inside, so sections stand apart. The padding gives back the border's
+   2 px: the labels keep the room `labelOf` counts on. */
+.monitor-tile.level-1 {
+  border-width: 3px;
+  border-color: var(--bg);
+  padding: 2px 4px;
+}
+
+.monitor-tile.type-frame.level-1 {
+  padding: 0;
+}
+
+.monitor-tile.level-1 > .monitor-band {
+  height: 21px;
+  padding: 0 6px;
+}
+
+/* A folder drawn whole at level 1: its dashes just inside the gap. */
+.monitor-tile.type-folder.level-1 {
+  border-style: solid;
+  outline: 1px dashed var(--edge);
+  outline-offset: -4px;
+}
+
+/* The section under the pointer, outlined in the gap. */
+.monitor-tile.lit {
+  outline: 2px solid var(--edge);
+  outline-offset: -2px;
+}
+
+.monitor-tile.lit > .monitor-band {
+  background: var(--hover);
+}
+
 /* A folder's smaller files, together. */
 .monitor-tile.type-more {
   background: repeating-linear-gradient(
@@ -231,6 +342,11 @@
 .monitor-tile-lines {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* On a long file's fill the lines are text: the muted grey left light orange and red pale. */
+.monitor-tile:is(.heat-1, .heat-2, .heat-3) .monitor-tile-lines {
+  color: var(--text);
 }
 
 .monitor-band .monitor-tile-lines {
