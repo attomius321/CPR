@@ -1,6 +1,6 @@
-# Journal: L1 — Stylesheets in the graph (CSS and SCSS)
+# Journal: L1–L2 — Stylesheets in the graph (CSS and SCSS)
 
-[Index](../JOURNAL.md) · [Plan](../plan/l1-stylesheets.md)
+[Index](../JOURNAL.md) · [Plan](../plan/l1-l2-stylesheets.md)
 
 ## L1 spike — what real stylesheets hold, and what a commit changes in them (2026-10-24, branch `feature/expand-graph-with-css-scss`)
 
