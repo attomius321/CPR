@@ -426,6 +426,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           );
         }
         if (url.pathname === '/api/scribe/efforts') return read(req, res, () => scribe.efforts());
+        if (url.pathname === '/api/scribe/effort') {
+          return written(req, res, parseScoutEffort, (change) =>
+            answer(res, () => scribe.setEffort(change)),
+          );
+        }
         if (url.pathname === '/api/scribe/model') {
           return written(req, res, parseModelChange, (change) =>
             answer(res, () => scribe.setModel(change)),
@@ -1539,7 +1544,7 @@ function parseScoutAsk(text: string): ScoutAsk {
   };
 }
 
-/** `{ effort }`: Scout's level in the project's config, or null for each agent's own. */
+/** `{ effort }`: Scout's, Scribe's or the merger's level in the project's config, null for none. */
 function parseScoutEffort(text: string): ScoutEffortChange {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   const effort = value?.effort;

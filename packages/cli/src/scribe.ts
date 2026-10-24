@@ -37,6 +37,7 @@ const SCRIBE: PageAgentSpec = {
   prepare: async (root) => {
     await mkdir(skillsOf(root), { recursive: true });
   },
+  effort: { read: (root) => readWorkspaceConfig(root).scribeEffort, key: ['scribe', 'effort'] },
   model: { read: (root) => readWorkspaceConfig(root).scribeModel, key: ['scribe', 'model'] },
 };
 

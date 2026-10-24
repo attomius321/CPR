@@ -280,6 +280,27 @@ test('Scribe: a request starts Claude Code writing skills only, and what it writ
   await expect(skillsLink).not.toHaveAttribute('data-state');
 });
 
+// Scribe's effort (fix/scribe-effort-level): the box starts at the project's `scribe.effort`.
+test("Effort: Scribe's box starts at the project's level, which reaches Claude Code", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  commit({
+    'symbiote/config.json': '{ "scout": { "effort": "low" }, "scribe": { "effort": "medium" } }\n',
+  });
+  await page.goto(`${symbiote.url}skills?scribe`);
+  const effort = scribePane(page).getByRole('slider', { name: 'Effort' });
+  await expect(effort).toHaveAttribute('aria-valuetext', 'medium');
+  await request(page).fill('A skill for releases');
+  await request(page).press('Enter');
+  await expect.poll(() => scribeCalls().length, POLL).toBe(1);
+  const args = scribeCalls()[0]?.args ?? [];
+  expect(args[args.indexOf('--effort') + 1]).toBe('medium');
+  await expect(scribePane(page).locator('.scout-about')).toContainText(
+    'with Claude Code at medium effort',
+  );
+});
+
 test('Improve with Scribe: its box takes the skill to change', async ({ page }) => {
   symbiote = await serveWorkspaces();
   commit({ '.claude/skills/review/SKILL.md': REVIEW });

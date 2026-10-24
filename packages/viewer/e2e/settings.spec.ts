@@ -428,7 +428,9 @@ test("the merger's model: Symbiote's sonnet named as its default; merge.model sa
   );
 });
 
-test("Scribe's page: its Model and Instructions, no Effort; the model saved as scribe.model", async ({
+// Scribe's effort (fix/scribe-effort-level): `scribe.effort`, the level each of its conversations
+// starts at, as Scout's.
+test("Scribe's page: its Model, Effort and Instructions; saved as scribe.model and scribe.effort", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -439,8 +441,31 @@ test("Scribe's page: its Model and Instructions, no Effort; the model saved as s
   await expect(editor(page).getByRole('heading')).toHaveText([
     'Scribe',
     'Model',
+    'Effort',
     "InstructionsSymbiote's",
   ]);
   await modelSelect(page).selectOption({ label: 'Sonnet 5.5' });
   await expect.poll(scribe).toEqual({ model: 'sonnet' });
+  const effort = part(page, 'Effort').getByRole('slider', { name: 'Effort' });
+  await expect(effort).toHaveAttribute('aria-valuetext', "Claude Code's default");
+  await expect(stops(effort)).toHaveText(['Default', 'low', 'medium', 'high', 'xhigh', 'max']);
+  await dragTo(page, effort, 3);
+  await expect(part(page, 'Effort').getByRole('status')).toHaveText(
+    "Saved. Scribe's next conversation starts at high.",
+  );
+  await expect.poll(scribe).toEqual({ model: 'sonnet', effort: 'high' });
+  // Scout's is not Scribe's.
+  await expect.poll(section('scout')).toBeUndefined();
+  await page.reload();
+  await expect(effort).toHaveAttribute('aria-valuetext', 'high');
+  // Home: the agent's own, and the key goes.
+  await effort.press('Home');
+  await expect.poll(scribe).toEqual({ model: 'sonnet' });
+  // One its agent does not list: said, and Scribe starts at the agent's default.
+  writeFileSync(config(), '{ "scribe": { "effort": "ultra" } }\n');
+  await page.reload();
+  await expect(part(page, 'Effort').getByRole('alert')).toHaveText(
+    'scribe.effort is ultra, which Claude Code does not list: Scribe starts it at its default.',
+  );
+  await expect(effort).toHaveAttribute('aria-valuetext', "Claude Code's default");
 });

@@ -964,15 +964,40 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
     });
   });
 
-  it('speaks of itself, and has no level in the project’s config', async () => {
+  it('speaks of itself', async () => {
     const repo = fresh();
     await expect((await scribeService(repo)).ask({ text: 'Q' })).rejects.toThrow(
       'Scribe needs Claude Code or Codex: neither is installed',
     );
-    await expect(
-      (await scribeService(repo, { claude: fakeClaude(repo.root).claude })).setEffort({
-        effort: null,
-      }),
-    ).rejects.toThrow("Scribe has no level in the project's config");
+    await expect((await scribeService(repo)).setEffort({ effort: 'low' })).rejects.toThrow(
+      'Scribe needs Claude Code or Codex: neither is installed',
+    );
+  });
+
+  it('starts at its own level, scribe.effort, saved in the config; null removes it (fix/scribe-effort-level)', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    claude.efforts = () => Promise.resolve(['low', 'medium', 'high', 'xhigh', 'max']);
+    const s = await scribeService(repo, { claude });
+    const config = join(repo.root, 'symbiote', 'config.json');
+    repo.write({ 'symbiote/config.json': '{ "scout": { "effort": "low" } }\n' });
+    // Scout's is not Scribe's.
+    expect(await s.efforts()).not.toHaveProperty('effort');
+    expect(await s.setEffort({ effort: 'high' })).toMatchObject({ effort: 'high' });
+    expect(JSON.parse(readFileSync(config, 'utf8'))).toEqual({
+      scout: { effort: 'low' },
+      scribe: { effort: 'high' },
+    });
+    expect(await (await service(repo, { claude })).efforts()).toMatchObject({ effort: 'low' });
+    const state = await s.ask({ text: 'A skill' });
+    expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ effort: 'high' });
+    expect(JSON.parse(readFileSync(scribeRecord(repo), 'utf8'))).toMatchObject({ effort: 'high' });
+    expect(state.conversation).toMatchObject({ kind: 'claude', effort: 'high' });
+    // Null: the next conversation at the agent's own, and the file as it was.
+    await s.renew();
+    expect(await s.setEffort({ effort: null })).not.toHaveProperty('effort');
+    expect(JSON.parse(readFileSync(config, 'utf8'))).toEqual({ scout: { effort: 'low' } });
+    await s.ask({ text: 'A skill' });
+    expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('effort');
   });
 });

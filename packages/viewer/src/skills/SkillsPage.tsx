@@ -79,7 +79,7 @@ const scribeAgent = (
     'A skill for adding a prompt to Settings: where the texts live, the tests to write first, how the page lists it.',
   submit: 'Write',
   noun: 'request',
-  effortHelp: "The level this conversation starts at: the agent's own unless you pick one.",
+  effortHelp: 'The level this conversation starts at; Settings sets the one each starts at.',
   ...(draft ? { draft } : {}),
 });
 
