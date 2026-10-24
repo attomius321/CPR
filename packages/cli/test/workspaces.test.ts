@@ -523,6 +523,17 @@ describe('parseSessions and parseAccount', () => {
     expect(parseAccount(JSON.stringify({ loggedIn: false }))).toBe('not logged in');
     expect(parseAccount('nope')).toBeUndefined();
   });
+
+  it("names the plan of Claude Code's profile, not the one its token kept from login", () => {
+    // `auth status` as it read after an upgrade from Pro to Max: the token's plan, from login.
+    const status = { loggedIn: true, authMethod: 'claude.ai', subscriptionType: 'pro' };
+    expect(parseAccount(JSON.stringify(status), 'Max')).toBe('your Max subscription');
+    // A profile's plan names a subscription only: not an API key's or a signed-out login.
+    expect(parseAccount(JSON.stringify({ loggedIn: true, authMethod: 'api_key' }), 'Max')).toBe(
+      'an API key',
+    );
+    expect(parseAccount(JSON.stringify({ loggedIn: false }), 'Max')).toBe('not logged in');
+  });
 });
 
 describe('agentState', () => {
@@ -2672,6 +2683,31 @@ describe('claudeCode', () => {
     expect(await claude.efforts()).toEqual(['low', 'medium', 'high']);
     expect(await claude.efforts()).toEqual(['low', 'medium', 'high']);
     expect(asked).toEqual([['--help']]);
+  });
+
+  it("names the plan the status bar names: its profile's, else its token's", async () => {
+    const run: Run = () =>
+      Promise.resolve({
+        code: 0,
+        stdout: JSON.stringify({
+          loggedIn: true,
+          authMethod: 'claude.ai',
+          subscriptionType: 'pro',
+        }),
+        stderr: '',
+      });
+    const upgraded = claudeCode('/usr/bin/claude', {
+      run,
+      cwd: '/repo',
+      plan: () => Promise.resolve('Max'),
+    });
+    expect(await upgraded.account()).toBe('your Max subscription');
+    const noPlan = claudeCode('/usr/bin/claude', {
+      run,
+      cwd: '/repo',
+      plan: () => Promise.resolve(undefined),
+    });
+    expect(await noPlan.account()).toBe('your Pro subscription');
   });
 });
 

@@ -4915,6 +4915,9 @@ nothing (decision 82). Without a feature started, nothing changes: the commits p
   handles credentials and never passes `--bare` (it takes an API key only). The dialog says which,
   from `claude auth status` ("Claude Code · your Pro subscription"), and warns when
   `ANTHROPIC_API_KEY` is set in `symbiote view`'s environment, where the agent may use it instead.
+  A subscription's plan is its profile's, as the status bar reads it (V29c: `oauthAccount`'s
+  `organizationType` in `.claude.json`), else `subscriptionType`: that one is its token's, kept
+  from login, and said Pro after an upgrade to Max (Fix, 2026-10-24).
   Agents share the subscription's usage limits with the person's other sessions; one that hits
   them stops and is resumed later.
 - **Permission mode**: Claude Code's own default unless the person picks "Accept edits" or "Auto"

@@ -121,6 +121,38 @@ export function claudeWindows(answer: unknown): UsageWindow[] {
   return windows;
 }
 
+/** Claude Code's account as its config keeps it (`oauthAccount`). */
+export interface ClaudeProfile {
+  /** Its `accountUuid`: whose read Symbiote kept. */
+  account: string | null;
+  /** The plan's name: Pro, Max… */
+  plan?: string;
+}
+
+/**
+ * Claude Code's account from its config (`.claude.json` beside its folder when CLAUDE_CONFIG_DIR
+ * is set, else in `home`): the plan the status bar and the start page name. Claude Code refreshes
+ * it; `claude auth status`'s `subscriptionType` is its token's, kept from login (it said Pro after
+ * an upgrade to Max).
+ */
+export async function readClaudeProfile({
+  env,
+  home,
+}: {
+  env: Env;
+  home: string;
+}): Promise<ClaudeProfile> {
+  // Claude Code keeps its files in CLAUDE_CONFIG_DIR when set, its config beside them.
+  const custom = env.CLAUDE_CONFIG_DIR?.trim();
+  const config = await jsonFile(join(custom || home, '.claude.json'));
+  const oauth = isObject(config) && isObject(config.oauthAccount) ? config.oauthAccount : {};
+  const plan = planName(oauth.organizationType);
+  return {
+    account: typeof oauth.accountUuid === 'string' ? oauth.accountUuid : null,
+    ...(plan ? { plan } : {}),
+  };
+}
+
 /** The token Claude Code stored: its file, or on macOS its Keychain entry. */
 async function claudeToken(
   dir: string,
@@ -218,13 +250,8 @@ export async function readClaudeUsage({
   now?: () => number;
 }): Promise<UsageRead> {
   if (!(await installed())) return { subscription: null };
-  // Claude Code keeps its files in CLAUDE_CONFIG_DIR when set, its config beside them.
-  const custom = env.CLAUDE_CONFIG_DIR?.trim();
-  const dir = custom || join(home, '.claude');
-  const config = await jsonFile(custom ? join(dir, '.claude.json') : join(home, '.claude.json'));
-  const account = isObject(config) && isObject(config.oauthAccount) ? config.oauthAccount : {};
-  const accountId = typeof account.accountUuid === 'string' ? account.accountUuid : null;
-  const plan = planName(account.organizationType);
+  const dir = env.CLAUDE_CONFIG_DIR?.trim() || join(home, '.claude');
+  const { account: accountId, plan } = await readClaudeProfile({ env, home });
 
   /** A read that failed: Symbiote's last for this account, without reset windows, and why. */
   const failed = async (note: string, backoff = false): Promise<UsageRead> => {

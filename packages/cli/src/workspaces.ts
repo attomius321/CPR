@@ -644,8 +644,12 @@ export function parseEffortLevels(help: string): string[] | null {
   return levels.every((level) => EFFORT_LEVEL.test(level)) ? levels : null;
 }
 
-/** Whose account Claude Code runs on, from `claude auth status`; undefined when unknown. */
-export function parseAccount(text: string): string | undefined {
+/**
+ * Whose account Claude Code runs on, from `claude auth status`; undefined when unknown. A
+ * subscription's plan is `plan`, its profile's (`readClaudeProfile`), when known: the status
+ * says its token's, kept from login.
+ */
+export function parseAccount(text: string, plan?: string): string | undefined {
   let value: unknown;
   try {
     value = JSON.parse(text);
@@ -656,10 +660,9 @@ export function parseAccount(text: string): string | undefined {
   const v = value as { loggedIn?: unknown; authMethod?: unknown; subscriptionType?: unknown };
   if (v.loggedIn === false) return 'not logged in';
   if (v.authMethod === 'claude.ai') {
-    const plan = typeof v.subscriptionType === 'string' ? v.subscriptionType : '';
-    return plan
-      ? `your ${plan.charAt(0).toUpperCase()}${plan.slice(1)} subscription`
-      : 'your Claude subscription';
+    const kept = typeof v.subscriptionType === 'string' ? v.subscriptionType : '';
+    const name = plan ?? (kept ? `${kept.charAt(0).toUpperCase()}${kept.slice(1)}` : '');
+    return name ? `your ${name} subscription` : 'your Claude subscription';
   }
   if (v.authMethod === 'api_key' || v.authMethod === 'api_key_helper') return 'an API key';
   if (v.authMethod === 'oauth_token') return 'a long-lived token';
@@ -836,11 +839,17 @@ export interface ClaudeCode {
 
 /**
  * Claude Code at `command`. Sessions are asked for at most every 2 s (`claude agents --json`
- * takes 150 ms), the account every minute, its effort levels once (`--help`, 70–90 ms).
+ * takes 150 ms), the account every minute, with `plan`, its profile's, when given; its effort
+ * levels once (`--help`, 70–90 ms).
  */
 export function claudeCode(
   command: string,
-  { run = runProgram, cwd, model }: { run?: Run; cwd: string; model?: string },
+  {
+    run = runProgram,
+    cwd,
+    model,
+    plan,
+  }: { run?: Run; cwd: string; model?: string; plan?: () => Promise<string | undefined> },
 ): ClaudeCode {
   let sessions: { at: number; list: Promise<AgentSession[] | null> } | null = null;
   let account: { at: number; text: Promise<string | undefined> } | null = null;
@@ -930,9 +939,10 @@ export function claudeCode(
     },
     account() {
       if (!account || Date.now() - account.at > 60_000) {
-        const text = run(command, ['auth', 'status'], { cwd, timeoutMs: 20_000 }).then((result) =>
-          parseAccount(result.stdout),
-        );
+        const text = Promise.all([
+          run(command, ['auth', 'status'], { cwd, timeoutMs: 20_000 }),
+          plan?.(),
+        ]).then(([result, name]) => parseAccount(result.stdout, name));
         account = { at: Date.now(), text };
       }
       return account.text;
