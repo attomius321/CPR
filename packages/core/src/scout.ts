@@ -62,7 +62,8 @@ export interface ScoutAsk {
   agent?: AgentKind;
   /**
    * The effort level to start at (a new conversation only), one the agent lists; null: the agent's
-   * own. Absent: the project's (`scout.effort`) when the agent lists it, else the agent's own.
+   * own. Absent: the project's (`scout.effort`, `scribe.effort`) when the agent lists it, else the
+   * agent's own.
    */
   effort?: string | null;
 }
@@ -83,7 +84,7 @@ export interface ScoutEfforts {
     models?: AgentModel[];
     defaultModel?: DefaultModel;
   }[];
-  /** `scout.effort` in the project's config: the level a conversation starts at. */
+  /** `scout.effort` (`scribe.effort`, `merge.effort`) in the project's config: the level used. */
   effort?: string;
   /** `scout.model` (`scribe.model`, `merge.model`) in the project's config (V47). */
   model?: string;
@@ -91,7 +92,10 @@ export interface ScoutEfforts {
   file: string;
 }
 
-/** `POST /api/scout/effort`: Scout's level in the project's config; null removes it. */
+/**
+ * `POST /api/scout/effort`: Scout's level in the project's config (Scribe's, the merger's); null
+ * removes it.
+ */
 export interface ScoutEffortChange {
   effort: string | null;
 }

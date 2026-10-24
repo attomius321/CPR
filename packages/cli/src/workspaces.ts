@@ -1222,8 +1222,9 @@ export interface WorkspaceConfig {
   /** Claude Code's permission mode and model. */
   permissionMode: PermissionMode;
   model?: string;
-  /** Scout's effort level (`scout.effort`): a word; absent, each agent's own. */
+  /** Scout's and Scribe's levels (`scout.effort`, `scribe.effort`): words; absent, the agent's. */
   scoutEffort?: string;
+  scribeEffort?: string;
   /** Scout's and Scribe's models (`scout.model`, `scribe.model`, V47): IDs; absent, the default. */
   scoutModel?: string;
   scribeModel?: string;
@@ -1233,8 +1234,8 @@ export interface WorkspaceConfig {
  * `features.branchPrefixes` sets a kind's prefix (V24), each kind its own by default (`fix/`);
  * `features.branchPrefix`, from before V24, sets the Feature's unless `branchPrefixes` does.
  * `agent.kind` names the agent offered first (V20a); `agent.permissionMode` and `agent.model`
- * are Claude Code's. `scout.effort` is the level Scout's conversations start at; `scout.model`
- * and `scribe.model` the models Scout's and Scribe's start on (V47).
+ * are Claude Code's. `scout.effort` and `scribe.effort` are the levels Scout's and Scribe's
+ * conversations start at; `scout.model` and `scribe.model` the models they start on (V47).
  */
 export function readWorkspaceConfig(root: string): WorkspaceConfig {
   const branchPrefixes = Object.fromEntries(WORK_KINDS.map((k) => [k, `${k}/`])) as Record<
@@ -1257,7 +1258,7 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
     features?: Section;
     agent?: unknown;
     scout?: { effort?: unknown; model?: unknown } | null;
-    scribe?: { model?: unknown } | null;
+    scribe?: { effort?: unknown; model?: unknown } | null;
   };
   const section = v.workspaces ?? v.features;
   if (typeof section?.branchPrefix === 'string') {
@@ -1283,8 +1284,12 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
   const mode = PERMISSION_MODES.find((m) => m === agent.permissionMode);
   if (mode) config.permissionMode = mode;
   if (typeof agent.model === 'string' && agent.model !== '') config.model = agent.model;
-  const effort = v.scout?.effort;
-  if (typeof effort === 'string' && EFFORT_LEVEL.test(effort)) config.scoutEffort = effort;
+  const level = (value: unknown) =>
+    typeof value === 'string' && EFFORT_LEVEL.test(value) ? value : undefined;
+  const scoutEffort = level(v.scout?.effort);
+  if (scoutEffort) config.scoutEffort = scoutEffort;
+  const scribeEffort = level(v.scribe?.effort);
+  if (scribeEffort) config.scribeEffort = scribeEffort;
   const id = (value: unknown) =>
     typeof value === 'string' && MODEL_ID.test(value) ? value : undefined;
   const scoutModel = id(v.scout?.model);

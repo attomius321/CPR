@@ -145,6 +145,7 @@ hosted.
 | [V41](plan/v41-skills-and-scribe.md) | Skills, and Scribe | ✅ | 271–278 | [journal](journal/v41-skills-and-scribe.md) |
 | Fix | Attach images beside a workspace's terminal: no drop reaches the window on WSL | ready for review | | [journal](journal/fix-drop-file-in-workspace.md) |
 | Fix | one Settings page per prebuilt agent (Merger, Scout, Scribe), under Prebuilt agents | ready for review | | [journal](journal/fix-scout-merger-scribe-settings.md) |
+| Fix | Scribe starts at the project's effort level (`scribe.effort`), set in Settings | ready for review | | [journal](journal/fix-scribe-effort-level.md) |
 
 ### The merger
 

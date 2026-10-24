@@ -48,11 +48,11 @@ interface ModelSetting {
 }
 
 /**
- * A prebuilt agent's effort in the project's config: Scout's (fix/scout-effort-level) and the
- * merger's (V46d).
+ * A prebuilt agent's effort in the project's config: Scout's (fix/scout-effort-level), the
+ * merger's (V46d) and Scribe's (fix/scribe-effort-level).
  */
 interface EffortSetting {
-  key: 'scout.effort' | 'merge.effort';
+  key: 'scout.effort' | 'scribe.effort' | 'merge.effort';
   /** What the level is for, before "from <agent>'s levels". */
   about: string;
   /** Where else it changes, when it does. */
@@ -71,8 +71,7 @@ interface AgentSettings {
   who: string;
   whose: string;
   model: ModelSetting;
-  /** Its effort, when Settings sets one (Scribe's is picked in its box). */
-  effort?: EffortSetting;
+  effort: EffortSetting;
 }
 
 const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
@@ -128,6 +127,18 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
       about: "The model each of Scribe's conversations starts on",
       saved: (model) => `Saved. Scribe's next conversation starts on ${model}.`,
       unlisted: 'Scribe starts on the default',
+    },
+    effort: {
+      key: 'scribe.effort',
+      about: "The level each of Scribe's conversations starts at",
+      also: (
+        <>
+          Scribe&apos;s box on the Skills page can start one conversation at another;{' '}
+          <code>/effort</code> in its terminal changes it after.
+        </>
+      ),
+      atDefault: 'Scribe starts it at its default',
+      saved: (level) => `Saved. Scribe's next conversation starts at ${level}.`,
     },
   },
 };
@@ -351,9 +362,9 @@ function BackToList({ onBack }: { onBack: () => void }) {
 }
 
 /**
- * A prebuilt agent's page (fix/scout-merger-scribe-settings): its Model, its Effort when Settings
- * sets one, then its prompts (`children`). The agent's models and levels are read once for both:
- * a model saved answers with its own levels, and the Effort follows it.
+ * A prebuilt agent's page (fix/scout-merger-scribe-settings): its Model, its Effort, then its
+ * prompts (`children`). The agent's models and levels are read once for both: a model saved
+ * answers with its own levels, and the Effort follows it.
  */
 function AgentPage({
   name,
@@ -378,8 +389,9 @@ function AgentPage({
       })
       .catch((failed: unknown) => {
         if (current) {
-          const what = settings.effort ? 'models and levels' : 'models';
-          setError(`${settings.whose} ${what} could not be read: ${(failed as Error).message}`);
+          setError(
+            `${settings.whose} models and levels could not be read: ${(failed as Error).message}`,
+          );
         }
       });
     return () => {
@@ -408,16 +420,13 @@ function AgentPage({
         </p>
       )}
       <AgentModel settings={settings} read={read} onSaved={saved} />
-      {settings.effort && (
+      <AgentEffort
         // Drawn again on another model: its levels, and the level kept on them, are that model's.
-        <AgentEffort
-          key={read ? `on ${read.model ?? ''}` : 'reading'}
-          settings={settings}
-          setting={settings.effort}
-          read={read}
-          onSaved={saved}
-        />
-      )}
+        key={read ? `on ${read.model ?? ''}` : 'reading'}
+        settings={settings}
+        read={read}
+        onSaved={saved}
+      />
       {children}
     </section>
   );
@@ -425,21 +434,21 @@ function AgentPage({
 
 /**
  * A prebuilt agent's effort in the project's config, on a stepper of its agent's levels, saved
- * when the handle is let go: `scout.effort`, the level each Scout conversation starts at
- * (fix/scout-effort-level); `merge.effort`, the level each merger agent's run is asked at (V46d).
+ * when the handle is let go: `scout.effort` and `scribe.effort`, the level each of their
+ * conversations starts at (fix/scout-effort-level, fix/scribe-effort-level); `merge.effort`, the
+ * level each merger agent's run is asked at (V46d).
  */
 function AgentEffort({
   settings,
-  setting,
   read,
   onSaved,
 }: {
   settings: AgentSettings;
-  setting: EffortSetting;
   /** The agent's models and levels, null while they are read. */
   read: ScoutEfforts | null;
   onSaved: (answer: ScoutEfforts) => void;
 }) {
+  const { effort: setting } = settings;
   const agent = read?.agents[0];
   const [level, setLevel] = useState(() =>
     read && agent ? (keptEffort(read.effort, agent) ?? '') : '',
@@ -560,11 +569,8 @@ function AgentModel({
             first entry says which it is.
           </p>
           <p>
-            {settings.effort && (
-              <>The Effort below follows it: its levels are this model&apos;s. </>
-            )}
-            Saved in {read?.file ?? 'symbiote/config.json'} (<code>{setting.key}</code>) when you
-            pick one.
+            The Effort below follows it: its levels are this model&apos;s. Saved in{' '}
+            {read?.file ?? 'symbiote/config.json'} (<code>{setting.key}</code>) when you pick one.
           </p>
         </Help>
       </h3>

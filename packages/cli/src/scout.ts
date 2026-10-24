@@ -80,8 +80,8 @@ export interface PageAgentSpec {
   codex(root: string): { cwd: string; writes: boolean };
   /** Made before a start: Scribe's skills folder. */
   prepare?(root: string): Promise<void>;
-  /** The project's level in its config (`scout.effort`), and where it is set. */
-  effort?: { read(root: string): string | undefined; key: readonly string[] };
+  /** The project's level in its config (`scout.effort`, `scribe.effort`) and where it is set. */
+  effort: { read(root: string): string | undefined; key: readonly string[] };
   /** The project's model in its config (`scout.model`, `scribe.model`, V47), and where it is set. */
   model: { read(root: string): string | undefined; key: readonly string[] };
 }
@@ -443,8 +443,8 @@ export function pageAgent(
 
   /**
    * The level a new conversation starts at: the one asked, if the agent lists it; none for null;
-   * else the project's (`scout.effort`) when the agent lists it, its own otherwise — the project's
-   * file may name another agent's level, or an older one's.
+   * else the project's (`scout.effort`, `scribe.effort`) when the agent lists it, its own
+   * otherwise — the project's file may name another agent's level, or an older one's.
    */
   async function levelFor(
     agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
@@ -452,7 +452,7 @@ export function pageAgent(
   ): Promise<string | undefined> {
     if (effort === null) return undefined;
     if (effort === undefined) {
-      const project = spec.effort?.read(root);
+      const project = spec.effort.read(root);
       if (!project) return undefined;
       return (await levelsOf(agent))?.levels.includes(project) ? project : undefined;
     }
@@ -477,7 +477,7 @@ export function pageAgent(
         };
       }),
     );
-    const effort = spec.effort?.read(root);
+    const effort = spec.effort.read(root);
     const model = spec.model.read(root);
     return {
       agents,
@@ -738,7 +738,6 @@ export function pageAgent(
         const problem = await levelProblem(agent, effort);
         if (problem) throw new ScoutRefused(problem, 400);
       }
-      if (!spec.effort) throw new ScoutRefused(`${name} has no level in the project's config`, 400);
       try {
         await writeConfig(root, spec.effort.key, effort ?? undefined);
       } catch (error) {
