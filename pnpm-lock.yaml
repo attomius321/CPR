@@ -166,18 +166,18 @@ importers:
 
   .:
     devDependencies:
-      '@symbiote/plugin-angular':
-        specifier: workspace:*
-        version: link:packages/plugin-angular
-      '@symbiote/plugin-qwik':
-        specifier: workspace:*
-        version: link:packages/plugin-qwik
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.11.0)
       '@playwright/test':
         specifier: ^1.63.0
         version: 1.63.0
+      '@symbiote/plugin-angular':
+        specifier: workspace:*
+        version: link:packages/plugin-angular
+      '@symbiote/plugin-qwik':
+        specifier: workspace:*
+        version: link:packages/plugin-qwik
       '@types/node':
         specifier: ^22.20.4
         version: 22.20.4
@@ -242,6 +242,12 @@ importers:
         version: 44.9.0
 
   packages/forge:
+    dependencies:
+      '@symbiote/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/monitor:
     dependencies:
       '@symbiote/core':
         specifier: workspace:*

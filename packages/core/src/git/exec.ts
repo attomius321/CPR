@@ -122,3 +122,31 @@ export function gitStream(
     );
   });
 }
+
+/**
+ * Runs git in `cwd` with `input` on its stdin and returns stdout as bytes: the batch commands
+ * (`cat-file --batch`, `check-attr --stdin`) that read many objects or paths in one process (RM1).
+ */
+export function gitInput(cwd: string, args: readonly string[], input: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('git', args, { cwd, env: gitEnv(), stdio: ['pipe', 'pipe', 'pipe'] });
+    const chunks: Buffer[] = [];
+    let stderr = '';
+    child.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
+    child.stderr.setEncoding('utf8');
+    child.stderr.on('data', (chunk: string) => (stderr += chunk));
+    // git may exit before reading all of its input (a bad argument): its exit code says why.
+    child.stdin.on('error', () => {});
+    child.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.code !== 'ENOENT') return reject(error);
+      if (!existsSync(cwd)) reject(new Error(`directory does not exist: ${cwd}`, { cause: error }));
+      else reject(new SymbioteError('git is not installed or not on PATH', { cause: error }));
+    });
+    child.on('close', (code) =>
+      code === 0
+        ? resolve(Buffer.concat(chunks))
+        : reject(new GitError(args, code, stderr || 'git failed')),
+    );
+    child.stdin.end(input);
+  });
+}
