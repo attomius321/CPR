@@ -37,6 +37,7 @@
 @import './ui/markdown.css';
 @import './workspaces/AgentTerminal.css';
 @import './workspaces/Merge.css';
+@import './workspaces/MergeLog.css';
 @import './workspaces/MergeControl.css';
 @import './workspaces/ChangesPanel.css';
 @import './scout/ScoutPage.css';

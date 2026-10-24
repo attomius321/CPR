@@ -13,6 +13,7 @@ import {
   type MergeAction,
   type SideKept,
 } from './merges.js';
+import { MergeLog } from './MergeLog.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 
@@ -34,8 +35,8 @@ export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | 
 /**
  * A merge in Symbiote's queue (V26a), in the shell's main area (V29a; a row of the Workspaces
  * page's Merging section before): its branch, target and state, the merger agent's resolution to
- * review region by region, what a failed check ran and the end of its output, and Land, Approve,
- * Request changes or Check again, with Retry and Remove under "⋯".
+ * review region by region, what a failed check ran, its log (V46a: each step and what it wrote,
+ * as it goes), and Land, Approve, Request changes or Check again, with Retry and Remove under "⋯".
  */
 export function MergeView({ branch }: { branch: string }) {
   const { merges } = useWorkspaces();
@@ -66,6 +67,8 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
   const [output, setOutput] = useState(false);
   const [changing, setChanging] = useState(false);
   const [comments, setComments] = useState('');
+  // Its log has the check's whole output (V46a): the entry's last lines only without one.
+  const [logged, setLogged] = useState(false);
   const { text, tone } = mergeState(entry);
   const post = (path: string, body: Record<string, string>) => {
     setBusy(true);
@@ -90,7 +93,7 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
     .filter((a) => a === 'retry' || a === 'remove')
     .map((a) => ({ label: ACTION_NAMES[a], disabled: busy, onSelect: () => act(a) }));
   const regions = toReview(entry) ? (entry.resolution?.regions ?? []) : [];
-  const shown = entry.check?.output && entry.check.ok === false;
+  const shown = !logged && entry.check?.output && entry.check.ok === false;
   const ran = entry.check ? failedCheck(entry.check) : null;
   // Approve lands a resolution whatever its check said: the button says so when it failed.
   const approveTitle =
@@ -176,6 +179,7 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
         </p>
       )}
       {shown && output && <pre className="merge-output">{entry.check?.output}</pre>}
+      <MergeLog entry={entry} onLogged={() => setLogged(true)} />
       {error && (
         <p className="error small" role="alert">
           {error}

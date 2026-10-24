@@ -172,6 +172,44 @@ async function resolvedConflict(page: Page, checks: string[], env: Record<string
   return { main, math, card, entry: page.getByRole('region', { name: 'Merge of agent' }) };
 }
 
+test('the log: each step and what it writes, while it runs (V46a)', async ({ page }) => {
+  // The second command writes, then waits for a file the test makes, then writes again.
+  const flag = join(mkdtempSync(join(tmpdir(), 'symbiote-e2e-flag-')), 'go');
+  // Its output is not its command's text, which heads its step: `$((40 + 2))` prints 42.
+  const slow =
+    'echo "first $((40 + 2))"; while [ ! -f "$E2E_FLAG" ]; do sleep 0.1; done; echo "then $((40 + 3))"';
+  const { entry } = await resolvedConflict(page, ['test -f src/math.ts', slow], {
+    E2E_FLAG: flag,
+  });
+  const steps = entry.getByRole('list', { name: 'Its steps' });
+  const log = entry.getByRole('log', { name: 'What it wrote' }).locator('.xterm-rows');
+  // It runs: its first line is in the log, its step running; the steps before it passed.
+  await expect(steps.getByRole('button', { name: /^echo "first.*: running, / })).toBeVisible();
+  await expect(log).toContainText('first 42');
+  await expect(log).not.toContainText('then 43');
+  await expect(steps.locator('.merge-step-name')).toHaveText([
+    'Merge',
+    'Merger agent',
+    'test -f src/math.ts',
+    slow,
+  ]);
+  await expect(
+    steps.getByRole('button', { name: /^Merger agent: passed, \d+\.\d s$/ }),
+  ).toBeVisible();
+  // What each step did, under its heading: the conflict, then the agent's answer.
+  await expect(log).toContainText('── Merge agent into main');
+  await expect(log).toContainText('1 file conflicts: src/math.ts');
+  await expect(log).toContainText('Wrote 1 region in 1 file; committed the merge');
+
+  writeFileSync(flag, '');
+  await expect(log).toContainText('then 43');
+  await expect(steps.getByRole('button', { name: /^echo "first.*: passed, / })).toBeVisible();
+  await expect(entry.locator('.merge-row-state')).toHaveText(/· checked in \d+\.\d s: review it$/);
+  // A step scrolls the log to its heading; the merge's own stays where it is.
+  await steps.getByRole('button', { name: /^Merge: passed/ }).click();
+  await expect(log).toContainText('── Merge agent into main');
+});
+
 // A resolution whose check failed (a flaky e2e, in the real case) is the person's to judge: the
 // row says what passed and what failed, and Approve lands it.
 test('a resolution whose check failed: what ran is said, and Approve lands it', async ({
@@ -192,8 +230,13 @@ test('a resolution whose check failed: what ran is said, and Approve lands it', 
   await expect(entry.locator('.merge-run')).toContainText(
     /^test -f src\/math\.ts passed; ls e2e\.passed failed after \d+\.\d s/,
   );
-  await entry.getByRole('button', { name: 'Its output' }).click();
-  await expect(entry.locator('.merge-output')).toContainText('e2e.passed');
+  // Its whole output is in the log (V46a), the failed command's step marked so.
+  await expect(entry.getByRole('button', { name: 'Its output' })).toHaveCount(0);
+  const steps = entry.getByRole('list', { name: 'Its steps' });
+  await expect(steps.getByRole('button', { name: /^ls e2e\.passed: failed, / })).toBeVisible();
+  await expect(
+    entry.getByRole('log', { name: 'What it wrote' }).locator('.xterm-rows'),
+  ).toContainText('e2e.passed');
   expect(git('rev-parse', 'main')).toBe(main);
 
   const approveIt = entry.getByRole('button', { name: 'Approve' });
