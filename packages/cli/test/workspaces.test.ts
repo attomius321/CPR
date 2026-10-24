@@ -1673,6 +1673,12 @@ describe('workspaces', () => {
     expect(await open({ path: 'src/b.ts' })).toEqual([
       diff(path, copy(shas.B, 'src/b.ts'), copy('empty', 'src/b.ts')),
     ]);
+    // Written again, not tracked: still the branch's deletion, not the worktree's new file.
+    writeFileSync(join(path, 'src', 'b.ts'), 'export const b = 3;\n');
+    expect(await open({ path: 'src/b.ts' })).toEqual([
+      diff(path, copy(shas.B, 'src/b.ts'), copy('empty', 'src/b.ts')),
+    ]);
+    rmSync(join(path, 'src', 'b.ts'));
     expect(await open({ path: 'src/a.ts', uncommitted: true })).toEqual([
       diff(path, copy(last, 'src/a.ts'), copy('empty', 'src/a.ts')),
     ]);
