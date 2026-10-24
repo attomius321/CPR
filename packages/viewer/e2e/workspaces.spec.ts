@@ -902,11 +902,14 @@ test('paths and web addresses the agent prints open with Ctrl+click: files of it
 // by the server until closed.
 const shellTab = (page: Page, branch: string, n: number) =>
   panel(page, branch).getByRole('tab', { name: `Shell ${n}`, exact: true });
-/** The `sleep 4711`s running: one started in a shell. */
+/** A sleep this worker's shells run: its length is the worker's, as workers run side by side. */
+const NAP = `sleep ${10_000 + (process.pid % 50_000)}`;
+/** The NAPs running: one started in a shell. */
 const sleeps = () => {
   try {
-    return execFileSync('pgrep', ['-f', '^sleep 4711$'], { encoding: 'utf8' }).trim().split('\n')
-      .length;
+    return execFileSync('pgrep', ['-f', `^${NAP}$`], { encoding: 'utf8' })
+      .trim()
+      .split('\n').length;
   } catch {
     return 0; // pgrep exits 1 when none matches
   }
@@ -956,7 +959,7 @@ test("a workspace's shells: each its own, kept across tabs and a reload, closed 
   await shellTab(page, branch, 1).click();
   await expect(screen(page, branch)).toContainText('one-2', POLL);
   await expect(screen(page, branch)).not.toContainText('two-4');
-  await typeLine(page, 'sleep 4711');
+  await typeLine(page, NAP);
   await expect.poll(sleeps).toBe(1);
   await here.getByRole('tab', { name: 'Thread' }).click();
   await here.getByRole('tab', { name: 'Terminal' }).click();

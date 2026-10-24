@@ -981,6 +981,7 @@ export async function serveWorkspaces({
   appServer = false,
   plan = 'claude_pro',
   usage,
+  shell = '/bin/sh',
 }: {
   agent?: boolean;
   terminal?: boolean;
@@ -997,6 +998,8 @@ export async function serveWorkspaces({
    * `last`: Symbiote's last read of Claude's usage, as an earlier run kept it in the test's cache.
    */
   usage?: { claude: unknown; status?: number; last?: unknown };
+  /** The shell workspaces' shells run (V45): /bin/sh with a plain prompt unless another is given. */
+  shell?: string;
 } = {}): Promise<RunningWorkspaces> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', '-B', 'main');
@@ -1035,9 +1038,9 @@ export async function serveWorkspaces({
     SYMBIOTE_CODEX: codex ? fakeCodex(fake) : join(fake, 'no-codex'),
     SYMBIOTE_CODE: code,
     CLAUDE_CONFIG_DIR: claudeConfig,
-    // V45: a workspace's shells are /bin/sh with a plain prompt, never the person's own shell.
-    SHELL: '/bin/sh',
-    PS1: 'shell$ ',
+    // V45: a workspace's shells are /bin/sh with a plain prompt, not the person's own shell.
+    SHELL: shell,
+    ...(shell === '/bin/sh' ? { PS1: 'shell$ ' } : {}),
     // V21: terminals turned off, as where node-pty cannot run.
     ...(terminal ? {} : { SYMBIOTE_TERMINAL: 'off' }),
     ...(usageEndpoint?.env ?? {}),

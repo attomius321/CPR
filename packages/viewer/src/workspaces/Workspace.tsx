@@ -440,15 +440,18 @@ function WorkspacePanel({
   const [closing, setClosing] = useState<{ shell: WorkspaceShell; question: string } | null>(null);
   const [chosen, setChosen] = useState(viewOfUrl);
   const fallback: AgentView = terminals ? 'terminal' : 'thread';
-  // A shell picked that is not open (closed, or `symbiote view` started again): the default.
-  const shellGone =
-    chosen === 'shell' &&
-    (!shellsCan || (shells !== null && !shells.some((shell) => shell.number === shellShown)));
+  // The shell picked; once it went (closed, exited), its neighbour, the one before first; none
+  // left, or `symbiote view` started again: the agent's tab.
+  const shellNumber =
+    shellShown === null || shells === null || shells.some((shell) => shell.number === shellShown)
+      ? shellShown
+      : shellAfter(shells, shellShown);
+  const shellGone = chosen === 'shell' && (!shellsCan || (shells !== null && shellNumber === null));
   const view: View =
     chosen === 'terminal' && !terminals ? 'thread' : shellGone ? fallback : (chosen ?? fallback);
   const showTerminal = terminals && view === 'terminal';
   const shownShell =
-    view === 'shell' ? shells?.find((shell) => shell.number === shellShown) : undefined;
+    view === 'shell' ? shells?.find((shell) => shell.number === shellNumber) : undefined;
   const [opened, setOpened] = useState<OpenedTerminal | null>(null);
   const [ended, setEnded] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -517,15 +520,15 @@ function WorkspacePanel({
       },
       (e: unknown) => setSaid((e as Error).message),
     );
-  /** A shell closed or exited: its tab goes, and its neighbour's shows if it was shown. */
-  const forgetShell = (number: number) => {
-    const now = shells ?? [];
-    setShells(now.filter((shell) => shell.number !== number));
-    if (view !== 'shell' || shellShown !== number) return;
-    const next = shellAfter(now, number);
-    if (next === null) show(fallback);
-    else showShell(next);
-  };
+  /** A shell closed or exited: its tab goes. Twice is once: a close is followed by its exit. */
+  const forgetShell = (id: string) =>
+    setShells((now) => now?.filter((shell) => shell.id !== id) ?? now);
+  // What is drawn for a shell that went is its neighbour's tab: the address says so too.
+  useEffect(() => {
+    if (chosen !== 'shell' || shells === null || shellNumber === shellShown) return;
+    if (shellNumber === null) show(fallback);
+    else showShell(shellNumber);
+  });
   /** Closes a shell; with a program running in it, asked first (decision 298). */
   const closeShell = async (shell: WorkspaceShell, asked = false) => {
     if (!asked) {
@@ -540,7 +543,7 @@ function WorkspacePanel({
     setClosing(null);
     // Already gone (it exited meanwhile): closed all the same.
     await toTerminal(shell.id, 'close', {}).catch(() => {});
-    forgetShell(shell.number);
+    forgetShell(shell.id);
   };
   /** Types the verdict's line into the open terminal, without Enter (decision 114). */
   const typeVerdict = (into: OpenedTerminal, text: string) =>
@@ -832,7 +835,7 @@ function WorkspacePanel({
                   <span className="views-divider" aria-hidden="true" />
                   {(shells ?? []).map((shell) => {
                     const name = shellName(shell.number);
-                    const selected = view === 'shell' && shellShown === shell.number;
+                    const selected = view === 'shell' && shellNumber === shell.number;
                     return (
                       <span key={shell.id} className="shell-tab">
                         <button
@@ -928,7 +931,7 @@ function WorkspacePanel({
                 <AgentTerminal
                   key={shownShell.id}
                   id={shownShell.id}
-                  onEnded={() => forgetShell(shownShell.number)}
+                  onEnded={() => forgetShell(shownShell.id)}
                 />
               </div>
             )}
