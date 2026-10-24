@@ -290,7 +290,7 @@ command on the machine where `symbiote` runs, so WSL, Remote SSH and containers 
 | h, s | History, Settings | |
 | a | [Scout](#scout); on Scout, its question box or its terminal | |
 | i | [Skills](#skills) | |
-| m | [Monitor](#monitor); on it, Backspace goes up a folder | |
+| m | [Monitor](#monitor); on it, Backspace goes up a folder, Escape too when no file is picked | |
 | w | The workspaces in the sidenav: ↑ and ↓ move, Enter opens | |
 | [ | Fold the sidenav to a rail, or open it | Open the sidenav, or fold it |
 | ] | | In a workspace: hide or show its branch's changes |
@@ -669,8 +669,13 @@ unevenly. Its engine is the `@symbiote/monitor` package.
   in 39 files (14 %); the largest 10 % of files (28) hold 42 %. packages holds 96 %."
 - **The treemap** draws each file as a rectangle whose area is its lines of code, inside a frame
   per folder, as deep as there is room (six levels at most). A click on a folder goes in, and
-  the address keeps it (`/monitor?path=packages/viewer`); the path above the picture, Backspace
-  and the browser's Back go back. Files too small to draw are one "N smaller files" tile.
+  the address keeps it (`/monitor?path=packages/viewer`); the folder in view is the page's
+  heading, and **Back** before it, Backspace, Escape (once no file is picked), the path above
+  the picture and the browser's Back go back. Files too small to draw are one "N smaller files"
+  tile; the section under the pointer is outlined.
+- **Colour**: **Lines** (at first) colours a long file yellow from 250 lines of code, orange
+  from 500 and red from 1,000, in the treemap and in the list; shorter files keep their kind's
+  colour. **Kind** gives each kind of file its own colour instead.
 - **The list** beside it ranks the same numbers: the folder's children (**In this folder**) or
   every file under it (**Largest files**), with a dashed line where half of the code is reached.
   Pointing at a tile or a row shows its numbers; a file clicked keeps them, with **Open in VS

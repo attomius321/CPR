@@ -2,10 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/rm2-monitor-styling.md)
 
-**Status:** planned (2026-10-24), on branch `feature/monitor-styling` (a workspace started in
-Symbiote, from `main` at `f6e5408`); the plan OK'd by the person with one change: "COlour: by nr
-of lines, per file.. the file should have different colors..like normal (current) -> yellow ->
-orange -> red. The rest is ok".
+**Status:** ready for review (2026-10-24), on branch `feature/monitor-styling` (a workspace
+started in Symbiote, from `main` at `f6e5408`); the plan OK'd by the person with one change:
+"COlour: by nr of lines, per file.. the file should have different colors..like normal (current)
+-> yellow -> orange -> red. The rest is ok". As built and results under "As built (RM2)" below.
 
 **Problem** (asked: "current monitor lacks the centric element. needs some styling so it would be
 easier to go through the elements..color the section of files based on their number of files,
@@ -141,3 +141,39 @@ heading and Back.
 
 **Not in RM2 (later)**: hotspots (colour by how often a file changed, RM3); remembering the
 colour choice; tiles as keyboard stops (the list stays the keyboard's way).
+
+## As built (RM2)
+
+- **The dark heat is darkened hue, not a wash into the panel**: mixed into the navy, the yellow
+  step came out olive (`#443c1f`). Each hue is darkened to a set luminance instead: `#453806`,
+  `#5c3616`, `#7c2b2b` (light: `#fde68a`, `#fdbe8a`, `#fa9999`). `tokens.test.ts` holds `--text`
+  at 4.5:1 or more on each (8.08–15.03 measured) and each step's contrast with `--raised` above
+  the last's (dark 1.33, 1.45, 1.63; light 1.07, 1.40, 1.79). RGB distance was tried first for
+  that guard and ranked light red under orange.
+- **The legend sits at the heading's end**, not beside the chips: there the chips, the legend and
+  the Colour control wrapped to a row of their own at 1440 px. The Colour control ends the chips'
+  row.
+- **Section gaps by border**: a level-1 tile has a 3 px border of the canvas and 2 px less
+  padding (a frame's band 21 px high), so `labelOf`'s room is unchanged; a folder drawn whole at
+  level 1 keeps its dashes as an outline just inside the gap. The section under the pointer is a
+  2 px `--edge` outline in that gap.
+- **`Treemap.tsx` is now `TreemapView.tsx`** (its own commit, `14dfbbe`): beside `treemap.ts` it
+  is one name on a case-insensitive file system, and `test/files.test.ts` had failed on `main`
+  since RM1 merged.
+- **The headline's figures** are in `--text`, weight 500 (`monitor-figure`), its words muted.
+
+**Results.**
+
+- Unit tests: `heatOf`'s steps, each tile's `section`, the heat's contrast; red before (no
+  `HEAT`, no `section`, no tokens), then green. `pnpm check`: 1,543 tests.
+- `e2e/monitor.spec.ts`: 6 tests (2 new: the heat, its legend, the list's bars and Kind; Back,
+  Escape, Backspace and the outlined section), red before on the missing legend and Back. The
+  whole e2e suite: 232 of 232.
+- Screenshots at 1440 × 900 and 820 × 900, scale 1, both themes: Symbiote's root and
+  `packages/viewer/src`, Bitwarden's root and `libs/common/src`, a section outlined with a red
+  file picked, Kind, the head at 3× (no uneven letter gaps); History, Settings, Skills and Scout
+  once. Red on Bitwarden's `libs/common/src` among others: `wordlist.ts` (7,778),
+  `api.service.ts` (1,575) and `cipher.service.ts` (1,559).
+- One layout at 1000 × 640, 200 runs each, `main`'s `treemap.ts` against this one: Symbiote
+  0.13 / 0.14 ms, Bitwarden 0.27 / 0.27 ms, Qwik 0.25 / 0.26 ms.
+- The bundle: CSS 119.91 → 121.38 kB, JS 725.91 → 727.98 kB.

@@ -194,3 +194,4 @@ merge commit.
 - 2026-10-24 [L1 — stylesheets as a language](journal/l1-l2-stylesheets.md)
 - 2026-10-24 [L2 — markup uses stylesheets](journal/l1-l2-stylesheets.md)
 - 2026-10-24 [RM2 spike — what the Monitor shows, and how long files are](journal/rm2-monitor-styling.md)
+- 2026-10-24 [RM2 — long files in heat, the folder in view as the heading, a way back](journal/rm2-monitor-styling.md)
