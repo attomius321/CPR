@@ -11,15 +11,25 @@ const CSS_MODULE = /\.module\.s?css$/;
 const VAR = /var\(\s*(--[\w-]+)/g;
 const CLASS_NAME = /^-?[_a-zA-Z][\w-]*$/;
 
-/** Mentions found per file, and plugins' (templates), computed once per revision. */
-const cache = new WeakMap<TsRevision, { files: Map<string, Mention[]>; plugins?: Mention[] }>();
+/** What separates the words of a file's text that could be a class or a custom property. */
+const SEPARATORS = /[\s"'`{}()[\],;=<>.!?|&+*/\\]+/;
+
+/** Mentions per file, the files each word is in, and plugins' mentions by name: once per revision. */
+interface Cached {
+  files: Map<string, Mention[]>;
+  words?: Map<string, string[]>;
+  plugins?: Map<string, Mention[]>;
+}
+
+const cache = new WeakMap<TsRevision, Cached>();
 
 /**
  * Where the revision's code names a class or a custom property (L2): static class names in a
  * JSX `class`/`className` (strings and object keys inside it; a token touching `${…}` names
  * none), `classList` calls, a CSS module's `styles.x`; custom properties set by a `'--x'` key
  * or `setProperty`, read by `var(--x)` in a string or `getPropertyValue`. Plugins add theirs
- * (templates). Files are read only when their text holds a name asked for.
+ * (templates). A file is walked only when its text holds a name asked for (a word index, built
+ * the first time names are asked for).
  */
 export function mentionsTs(revision: TsRevision, query: MentionQuery): Mention[] {
   let cached = cache.get(revision);
@@ -28,29 +38,41 @@ export function mentionsTs(revision: TsRevision, query: MentionQuery): Mention[]
     cache.set(revision, cached);
   }
   const fromFile = query.from?.slice(0, query.from.indexOf('#')) ?? query.file;
-  const paths = fromFile !== undefined ? [fromFile] : revision.context.sourceFiles();
-  const names = query.names && [...query.names];
+  let paths: Iterable<string>;
+  if (fromFile !== undefined) paths = [fromFile];
+  else if (query.names) {
+    const words = (cached.words ??= wordIndex(revision));
+    const found = new Set<string>();
+    for (const name of query.names) for (const path of words.get(name) ?? []) found.add(path);
+    paths = found;
+  } else paths = revision.context.sourceFiles();
+
   const found: Mention[] = [];
   for (const path of paths) {
     let mentions = cached.files.get(path);
     if (!mentions) {
       const sf = revision.context.syntax(path);
       if (!sf) continue;
-      if (names && !names.some((name) => sf.text.includes(name))) continue;
       mentions = fileMentions(sf, path);
       cached.files.set(path, mentions);
     }
     found.push(...mentions);
   }
-  cached.plugins ??= revision.plugins.flatMap((active) => {
-    const hook = active.plugin.mentions;
-    return hook
-      ? runHook(active, 'mentions', revision.warnings, [] as Mention[], () =>
-          hook(pluginRevision(revision, active)),
-        )
-      : [];
-  });
-  found.push(...cached.plugins);
+  cached.plugins ??= byName(
+    revision.plugins.flatMap((active) => {
+      const hook = active.plugin.mentions;
+      return hook
+        ? runHook(active, 'mentions', revision.warnings, [] as Mention[], () =>
+            hook(pluginRevision(revision, active)),
+          )
+        : [];
+    }),
+  );
+  if (query.names) {
+    for (const name of query.names) found.push(...(cached.plugins.get(name) ?? []));
+  } else {
+    for (const mentions of cached.plugins.values()) found.push(...mentions);
+  }
   return found.filter(
     (m) =>
       (!query.from || m.from === query.from) &&
@@ -58,6 +80,27 @@ export function mentionsTs(revision: TsRevision, query: MentionQuery): Mention[]
       (!query.kind || m.kind === query.kind) &&
       (!query.names || query.names.has(m.name)),
   );
+}
+
+/** The source files each word of their text is in. */
+function wordIndex(revision: TsRevision): Map<string, string[]> {
+  const words = new Map<string, string[]>();
+  for (const path of revision.context.sourceFiles()) {
+    const text = revision.context.syntax(path)?.text;
+    if (!text) continue;
+    for (const word of new Set(text.split(SEPARATORS))) {
+      const files = words.get(word);
+      if (files) files.push(path);
+      else words.set(word, [path]);
+    }
+  }
+  return words;
+}
+
+function byName(mentions: readonly Mention[]): Map<string, Mention[]> {
+  const found = new Map<string, Mention[]>();
+  for (const m of mentions) found.set(m.name, [...(found.get(m.name) ?? []), m]);
+  return found;
 }
 
 /** Stylesheets plugins say style only some markup, their owners named as extraction names them. */
