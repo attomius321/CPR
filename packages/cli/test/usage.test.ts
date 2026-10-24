@@ -7,6 +7,7 @@ import { codexServer } from '../src/app-server.js';
 import type { Codex } from '../src/codex.js';
 import {
   CLAUDE_USAGE_URL,
+  readClaudeProfile,
   readClaudeUsage,
   readCodexUsage,
   usageService,
@@ -142,6 +143,29 @@ const CLAUDE_CODE_COPY = {
   fetchedAtMs: NOW - HOUR,
   utilization: { five_hour: { utilization: 40, resets_at: '2026-10-20T18:00:00Z' } },
 };
+
+describe('readClaudeProfile', () => {
+  it("reads the account and plan from Claude Code's config, in CLAUDE_CONFIG_DIR when set", async () => {
+    // Its token says `pro` (`claudeFiles`): kept from login; the profile is Claude Code's own.
+    claudeFiles({ organizationType: 'claude_max' });
+    expect(await readClaudeProfile({ env: {}, home })).toEqual({
+      account: 'account-a',
+      plan: 'Max',
+    });
+    const dir = join(home, 'elsewhere');
+    claudeFiles({ dir, config: join(dir, '.claude.json'), accountUuid: 'account-b' });
+    expect(await readClaudeProfile({ env: { CLAUDE_CONFIG_DIR: dir }, home })).toEqual({
+      account: 'account-b',
+      plan: 'Pro',
+    });
+  });
+
+  it('reads nothing from a missing config or one without an account', async () => {
+    expect(await readClaudeProfile({ env: {}, home })).toEqual({ account: null });
+    writeFileSync(join(home, '.claude.json'), JSON.stringify({ numStartups: 3 }));
+    expect(await readClaudeProfile({ env: {}, home })).toEqual({ account: null });
+  });
+});
 
 describe('readClaudeUsage', () => {
   it('reads the live windows from the endpoint /usage reads, with the stored token', async () => {

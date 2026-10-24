@@ -914,17 +914,30 @@ const wait = setInterval(() => {
 }
 
 /**
+ * Claude Code's config folder for a test (CLAUDE_CONFIG_DIR), never the person's: its profile with
+ * the plan `organizationType` (the start page and the status bar name it).
+ */
+function fakeClaudeConfig(dir: string, organizationType: string): string {
+  const config = join(dir, 'claude-config');
+  mkdirSync(config);
+  writeFileSync(
+    join(config, '.claude.json'),
+    JSON.stringify({ oauthAccount: { organizationType } }),
+  );
+  return config;
+}
+
+/**
  * A fake of Claude's usage endpoint (V29c) answering `claude` with `status`, and Claude Code's
- * files in a CLAUDE_CONFIG_DIR of the test's: a token good for an hour, a Pro plan. Never the
- * person's own; each request's Authorization goes in `requests`.
+ * token in its `config` folder, good for an hour. Never the person's own; each request's
+ * Authorization goes in `requests`.
  */
 async function fakeUsage(
   dir: string,
+  config: string,
   { claude, status = 200 }: { claude: unknown; status?: number },
   requests: string[],
 ): Promise<{ env: Record<string, string>; server: Server }> {
-  const config = join(dir, 'claude-config');
-  mkdirSync(config);
   writeFileSync(
     join(config, '.credentials.json'),
     JSON.stringify({
@@ -934,10 +947,6 @@ async function fakeUsage(
         expiresAt: Date.now() + 3_600_000,
       },
     }),
-  );
-  writeFileSync(
-    join(config, '.claude.json'),
-    JSON.stringify({ oauthAccount: { organizationType: 'claude_pro' } }),
   );
   const server = createServer((req, res) => {
     requests.push(String(req.headers.authorization));
@@ -949,7 +958,6 @@ async function fakeUsage(
   return {
     env: {
       SYMBIOTE_USAGE: 'on',
-      CLAUDE_CONFIG_DIR: config,
       // Codex's sessions, read when its app server does not answer: the test's, empty.
       CODEX_HOME: join(dir, 'codex-home'),
       SYMBIOTE_CLAUDE_USAGE_URL: `http://127.0.0.1:${port}/api/oauth/usage`,
@@ -971,6 +979,7 @@ export async function serveWorkspaces({
   terminal = true,
   codex = false,
   appServer = false,
+  plan = 'claude_pro',
   usage,
 }: {
   agent?: boolean;
@@ -978,8 +987,13 @@ export async function serveWorkspaces({
   codex?: boolean;
   appServer?: boolean;
   /**
+   * The plan of Claude Code's profile (`organizationType`), in a CLAUDE_CONFIG_DIR of the test's;
+   * the fake's `auth status` says `pro` whatever it is, as a token kept from login does.
+   */
+  plan?: string;
+  /**
    * V29c: usage read, from a fake of Claude's usage endpoint answering `claude` (with `status`),
-   * with fake credentials in a CLAUDE_CONFIG_DIR of the test's; Codex's from its fake app server.
+   * with fake credentials in the test's CLAUDE_CONFIG_DIR; Codex's from its fake app server.
    * `last`: Symbiote's last read of Claude's usage, as an earlier run kept it in the test's cache.
    */
   usage?: { claude: unknown; status?: number; last?: unknown };
@@ -1006,7 +1020,8 @@ export async function serveWorkspaces({
     writeFileSync(join(fake, 'app-server-socket'), daemonStartOutput(codexServer.path));
   }
   const usageRequests: string[] = [];
-  const usageEndpoint = usage ? await fakeUsage(fake, usage, usageRequests) : null;
+  const claudeConfig = fakeClaudeConfig(fake, plan);
+  const usageEndpoint = usage ? await fakeUsage(fake, claudeConfig, usage, usageRequests) : null;
   // A fake VS Code: records what it is asked to open.
   const code = join(fake, 'code');
   writeFileSync(
@@ -1019,6 +1034,7 @@ export async function serveWorkspaces({
     SYMBIOTE_CLAUDE: claude,
     SYMBIOTE_CODEX: codex ? fakeCodex(fake) : join(fake, 'no-codex'),
     SYMBIOTE_CODE: code,
+    CLAUDE_CONFIG_DIR: claudeConfig,
     // V21: terminals turned off, as where node-pty cannot run.
     ...(terminal ? {} : { SYMBIOTE_TERMINAL: 'off' }),
     ...(usageEndpoint?.env ?? {}),

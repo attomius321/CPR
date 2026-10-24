@@ -110,6 +110,27 @@ test('a window at its limit is red, the bar and its number', async ({ page }) =>
   expect(await filledWith(claude.locator('.usage-window.tone-ok'), '--added')).toBe(true);
 });
 
+test('the start page names the plan the status bar names, not the one the token kept from login', async ({
+  page,
+}) => {
+  // Upgraded to Max: Claude Code's profile says so; `auth status` still says Pro, its token's.
+  symbiote = await serveWorkspaces({
+    plan: 'claude_max',
+    usage: {
+      claude: {
+        limits: [
+          { kind: 'session', group: 'session', percent: 12, resets_at: in3h(), scope: null },
+        ],
+      },
+    },
+  });
+  await page.goto(`${symbiote.url}history`);
+  await expect(usage(page).getByRole('listitem')).toHaveText(['ClaudeMax5h12%'], POLL);
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
+  const start = page.getByRole('region', { name: 'Start a workspace' });
+  await expect(start.locator('.start-account')).toHaveText('your Max subscription');
+});
+
 test("Claude's endpoint failing before Symbiote read it: Claude left out, the rest as it is", async ({
   page,
 }) => {

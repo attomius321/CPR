@@ -67,7 +67,7 @@ import { promptSettingsService } from './prompts.js';
 import { scout } from './scout.js';
 import { scribe } from './scribe.js';
 import { skillsService } from './skills.js';
-import { readClaudeUsage, readCodexUsage, usageService } from './usage.js';
+import { readClaudeProfile, readClaudeUsage, readCodexUsage, usageService } from './usage.js';
 import { codex, findCodex, type Codex } from './codex.js';
 import {
   claudeCode,
@@ -940,7 +940,12 @@ function agentFinder(
     const command = await findClaude(env);
     if (!command) return null;
     const { model } = readWorkspaceConfig(root);
-    found = claudeCode(command, { cwd: root, ...(model ? { model } : {}) });
+    found = claudeCode(command, {
+      cwd: root,
+      ...(model ? { model } : {}),
+      // The plan the status bar names (V29c), not the one its token kept from login.
+      plan: async () => (await readClaudeProfile({ env, home: homedir() })).plan,
+    });
     return found;
   };
 }
