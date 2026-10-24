@@ -13,6 +13,7 @@ import {
   type WorkspaceSummary,
   type Graph,
   type MergeEntry,
+  type MergeLogLine,
   type PromptChange,
   type PromptSettings,
   type SkillChange,
@@ -1633,7 +1634,14 @@ describe('symbiote view: merges (V26a)', () => {
         : Promise.reject(new MergeRefused(`no merge ${id}`, 404));
     },
     idle: () => Promise.resolve(),
+    // A log whose offsets are its lines' indexes; `logGone` once its entry is removed (V46a).
+    log: (id, from = 0) =>
+      Promise.resolve(
+        id === 'm1' && !logGone ? { lines: logLines.slice(from), next: logLines.length } : null,
+      ),
   };
+  const logLines: MergeLogLine[] = [];
+  let logGone = false;
   let server: ViewServer;
   beforeAll(async () => {
     writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
@@ -1727,6 +1735,59 @@ describe('symbiote view: merges (V26a)', () => {
       'remove m1',
       'remove m2',
     ]);
+  });
+
+  it("streams a merge's log: its lines so far, then each line appended, until its entry goes (V46a)", async () => {
+    logLines.push({ at: 1, step: 'check', title: 'pnpm check' }, { at: 2, out: 'one\n' });
+    const response = await get('/api/merges/log?id=m1');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('text/event-stream');
+    const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+    const decoder = new TextDecoder();
+    let text = '';
+    /** The next event: its name and data. */
+    const next = async (): Promise<{ event: string; data: unknown }> => {
+      for (;;) {
+        const end = text.indexOf('\n\n');
+        if (end >= 0) {
+          const block = text.slice(0, end);
+          text = text.slice(end + 2);
+          const data = /^data: (.*)$/m.exec(block)?.[1];
+          if (data === undefined) continue;
+          return {
+            event: /^event: (.*)$/m.exec(block)?.[1] ?? 'message',
+            data: JSON.parse(data) as unknown,
+          };
+        }
+        const { done, value } = await reader.read();
+        if (done) return { event: 'end', data: null };
+        text += decoder.decode(value, { stream: true });
+      }
+    };
+    expect(await next()).toEqual({
+      event: 'lines',
+      data: { lines: logLines.slice(0, 2), next: 2 },
+    });
+    logLines.push({ at: 3, out: 'two\n' }, { at: 4, end: { ok: true, ms: 3 } });
+    expect(await next()).toEqual({ event: 'lines', data: { lines: logLines.slice(2), next: 4 } });
+    logGone = true;
+    expect(await next()).toEqual({ event: 'gone', data: {} });
+    expect(await next()).toEqual({ event: 'end', data: null });
+    logGone = false;
+
+    // From an offset: a page that reconnects reads on from where it was.
+    const again = await get('/api/merges/log?id=m1&from=3');
+    const first = decoder.decode(
+      (await (again.body as ReadableStream<Uint8Array>).getReader().read()).value,
+    );
+    expect(first).toBe(
+      `event: lines\ndata: ${JSON.stringify({ lines: logLines.slice(3), next: 4 })}\n\n`,
+    );
+    await again.body?.cancel().catch(() => undefined);
+    expect((await get('/api/merges/log?id=m2')).status).toBe(404);
+    expect((await get('/api/merges/log')).status).toBe(400);
+    expect((await get('/api/merges/log?id=m1&from=-1')).status).toBe(400);
+    expect((await post('/api/merges/log?id=m1', {})).status).toBe(405);
   });
 });
 

@@ -174,6 +174,8 @@ const REVIEW_PATH = /^\/review\/([^/]+)(\/.*)?$/;
 const TERMINAL_PATH = /^\/api\/terminals\/([0-9a-z]+)(?:\/(in|resize|close|image|paths|open))?$/;
 /** Most a terminal is sent at once: keys typed, or a line Symbiote types (V21). */
 const MAX_TERMINAL_INPUT = 64 * 1024;
+/** How often an open merge log's stream looks for new lines (V46a). */
+const LOG_POLL_MS = 250;
 /** Most paths a terminal is asked about at once, and their length (V38): a row's worth. */
 const MAX_TERMINAL_PATHS = 50;
 const MAX_TERMINAL_PATH = 1024;
@@ -455,6 +457,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         if (url.pathname === '/api/merges/targets') {
           return ofBranch(req, res, url, (branch) => merges.targets(branch));
         }
+        if (url.pathname === '/api/merges/log') return mergeLog(req, res, url, merges);
         if (url.pathname === '/api/merges/approve') {
           return written(req, res, parseMergeId, (id) => answer(res, () => merges.approve(id)));
         }
@@ -760,6 +763,66 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     await intro.markSeen();
     res.writeHead(204, { 'cache-control': 'no-store' });
     res.end();
+  }
+
+  /**
+   * `GET /api/merges/log?id=<id>&from=<byte>`: a merge's log as server-sent events (V46a,
+   * decision 314). `lines` with the lines from `from` and the offset to read on from, then each
+   * time the log grows, read every 250 ms: whichever process merges writes it. `gone` when its
+   * entry is removed. Refused from another site, as a terminal's stream: a check prints the code.
+   */
+  async function mergeLog(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    merges: Merger,
+  ): Promise<void> {
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    if (!sameSite(req)) return send(res, 403, 'forbidden');
+    const id = url.searchParams.get('id');
+    const from = Number(url.searchParams.get('from') ?? '0');
+    if (!id || !Number.isSafeInteger(from) || from < 0) {
+      return send(res, 400, 'id: a queued merge; from: an offset in its log');
+    }
+    const first = await merges.log(id, from);
+    if (!first) return send(res, 404, `no merge ${id}`);
+    res.writeHead(200, {
+      'content-type': 'text/event-stream',
+      'cache-control': 'no-store',
+      connection: 'keep-alive',
+    });
+    const event = (name: string, data: unknown) =>
+      res.write(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (first.lines.length > 0) event('lines', first);
+    else res.flushHeaders();
+    streams.add(res);
+    let next = first.next;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const done = () => {
+      clearTimeout(timer);
+      streams.delete(res);
+    };
+    req.on('close', done);
+    const poll = () => {
+      timer = setTimeout(() => {
+        merges
+          .log(id, next)
+          .then((read) => {
+            if (!streams.has(res)) return;
+            if (!read) {
+              event('gone', {});
+              done();
+              res.end();
+              return;
+            }
+            if (read.lines.length > 0) event('lines', read);
+            next = read.next;
+            poll();
+          })
+          .catch(() => poll());
+      }, LOG_POLL_MS);
+    };
+    poll();
   }
 
   /** A GET answered with a value of the repository. */

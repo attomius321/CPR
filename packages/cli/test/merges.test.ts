@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { openRepo, type Verdict } from '@symbiote/core';
+import { openRepo, type MergeLogLine, type Verdict } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { run } from '../src/main.js';
@@ -910,5 +910,279 @@ describe("the agents' instructions (V26a)", () => {
   it('no longer tell an agent to merge an approval: Symbiote merges it', () => {
     expect(AGENTS).not.toMatch(/git merge --no-ff/);
     expect(AGENTS).toMatch(/Symbiote\n {2}merges it/);
+  });
+});
+
+/** A log's lines in short: `step <kind> <title>`, `out <text>`, `end ok|failed`, `run <why>`. */
+function shortLog(lines: readonly MergeLogLine[]): string[] {
+  return lines.map((line) =>
+    'step' in line
+      ? `step ${line.step} ${line.title}`
+      : 'end' in line
+        ? `end ${line.end.ok ? 'ok' : 'failed'}`
+        : 'run' in line
+          ? `run ${line.run}`
+          : 'out' in line
+            ? `out ${line.out.trimEnd()}`
+            : 'agent',
+  );
+}
+
+async function logOf(m: Awaited<ReturnType<typeof make>>, id: string): Promise<MergeLogLine[]> {
+  return (await m.log(id))?.lines ?? [];
+}
+
+describe("a merge's log (V46a)", () => {
+  it('logs each step of a clean merge in order: the merge, each check command and its output, the landing', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: ['pnpm install', 'pnpm check'] });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    const merge = entry?.merge?.slice(0, 7) ?? '';
+
+    const lines = await logOf(m, id);
+    expect(shortLog(lines)).toEqual([
+      'step merge Merge topic into main',
+      `out Symbiote's merge worktree at main (${shas.M.slice(0, 7)})`,
+      `out Merged ${shas.T.slice(0, 7)}: ${merge}`,
+      'end ok',
+      'step check pnpm install',
+      'out ok',
+      'end ok',
+      'step check pnpm check',
+      'out ok',
+      'end ok',
+      'step land Land in main',
+      `out main fast-forwarded to ${merge} in ${repo.root}`,
+      'end ok',
+    ]);
+    for (const line of lines) expect(typeof line.at).toBe('number');
+    for (const line of lines) if ('end' in line) expect(line.end.ms).toBeGreaterThanOrEqual(0);
+  });
+
+  it('logs a failed check up to its failed command: the commands after it have no step', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: ['first', 'then fail', 'never'] });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const steps = shortLog(await logOf(m, id)).filter((l) => /^(step|end)/.test(l));
+    expect(steps).toEqual([
+      'step merge Merge topic into main',
+      'end ok',
+      'step check first',
+      'end ok',
+      'step check then fail',
+      'end failed',
+    ]);
+    // All of its output, not only the 60 lines the entry keeps.
+    const out = shortLog(await logOf(m, id)).filter((l) => l.startsWith('out line '));
+    expect(out).toEqual([
+      `out ${Array.from({ length: 80 }, (_, i) => `line ${i + 1}`).join('\n')}`,
+    ]);
+  });
+
+  it("has a check's output in the log while the command still runs", async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'slow' });
+    let finish = () => {};
+    let started = () => {};
+    const halfway = new Promise<void>((done) => (started = done));
+    const runCheck: RunCheck = (_command, _cwd, onOutput) =>
+      new Promise((done) => {
+        onOutput?.('first half\n');
+        started();
+        finish = () => {
+          onOutput?.('second half\n');
+          done({ code: 0, output: 'first half\nsecond half\n' });
+        };
+      });
+    const m = await make(repo, runCheck);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await halfway;
+
+    const running = shortLog(await logOf(m, id));
+    expect(running.slice(-2)).toEqual(['step check slow', 'out first half']);
+    const read = await m.log(id);
+    finish();
+    await m.idle();
+    // Read on from where the last read stopped: only what came since.
+    const next = await m.log(id, read?.next);
+    expect(shortLog(next?.lines ?? []).slice(0, 2)).toEqual(['out second half', 'end ok']);
+  });
+
+  it("logs the merger agent's step between the merge and the check", async () => {
+    const { repo } = conflicting();
+    config(repo, { checks: 'ok' });
+    const m = await make(repo, fakeChecks().run, { mergerAgent: fakeAgent(BOTH).find });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    const log = shortLog(await logOf(m, id));
+    expect(log).toEqual([
+      'step merge Merge topic into main',
+      expect.stringMatching(/^out Symbiote's merge worktree at main/),
+      'out 1 file conflicts: src/a.ts',
+      'end ok',
+      'step resolve Merger agent',
+      expect.stringMatching(/^out Symbols both sides changed in src\/a\.ts: \d+ \(\d+\.\d s\)$/),
+      expect.stringMatching(
+        /^out Asking Claude Code \(sonnet\): 1 region in 1 file, [\d,]+ characters$/,
+      ),
+      'out Answered in 4.0 s · 1.2K tokens in, 80 out',
+      `out Wrote 1 region in 1 file; committed the merge ${entry?.merge?.slice(0, 7) ?? ''}`,
+      'end ok',
+      'step check ok',
+      'out ok',
+      'end ok',
+    ]);
+  });
+
+  it('ends the agent step failed when the agent says the person must decide', async () => {
+    const { repo } = conflicting();
+    const m = await make(repo, fakeChecks().run, {
+      mergerAgent: fakeAgent(JSON.stringify({ needsYou: 'both renamed it' })).find,
+    });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    expect(shortLog(await logOf(m, id)).slice(-2)).toEqual([
+      'out It says you must decide: both renamed it',
+      'end failed',
+    ]);
+  });
+
+  it('keeps the earlier runs when a merge runs again, each again after a line saying why', async () => {
+    const { repo } = conflicting();
+    config(repo, { checks: ['ok', 'flaky'] });
+    let runs = 0;
+    const runCheck: RunCheck = (command) => {
+      const failed = command === 'flaky' && ++runs === 1;
+      return Promise.resolve({ code: failed ? 1 : 0, output: failed ? '1 failed\n' : 'ok\n' });
+    };
+    const m = await make(repo, runCheck, { mergerAgent: fakeAgent(BOTH, BOTH).find });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    await m.recheck(id);
+    await m.idle();
+    await m.requestChanges(id, 'keep main first');
+    await m.idle();
+    await m.retry(id);
+    await m.idle();
+
+    const log = shortLog(await logOf(m, id));
+    const runs_ = log.filter((l) => l.startsWith('run '));
+    expect(runs_).toEqual(['run Check again', 'run Request changes: keep main first', 'run Retry']);
+    // Each run's steps after its line; the first run's steps before any.
+    const at = (line: string) => log.indexOf(line);
+    expect(log.slice(0, at('run Check again')).filter((l) => l.startsWith('step '))).toEqual([
+      'step merge Merge topic into main',
+      'step resolve Merger agent',
+      'step check ok',
+      'step check flaky',
+    ]);
+    expect(
+      log
+        .slice(at('run Check again'), at('run Request changes: keep main first'))
+        .filter((l) => l.startsWith('step ')),
+    ).toEqual(['step check ok', 'step check flaky']);
+  });
+
+  it('logs a refused landing with git’s words, then the landing that worked', async () => {
+    const { repo } = setup();
+    repo.git('switch', '--quiet', 'topic');
+    repo.write({ 'src/a.ts': 'export const a = 2;\n' });
+    const T2 = repo.commit('T2: change a');
+    repo.git('switch', '--quiet', 'main');
+    review(repo, 'topic', { head: T2, into: 'main' });
+    repo.write({ 'src/a.ts': 'export const a = 3; // mine\n' });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    await m.land(id);
+    repo.git('checkout', '--', 'src/a.ts');
+    await m.land(id);
+
+    const log = shortLog(await logOf(m, id));
+    const lands = log.slice(log.indexOf('step land Land in main'));
+    expect(lands[0]).toBe('step land Land in main');
+    expect(lands[1]).toMatch(/^out main was not moved in .*: .*local changes/s);
+    expect(lands.slice(2)).toEqual([
+      'end failed',
+      'step land Land in main',
+      expect.stringMatching(/^out main fast-forwarded to [0-9a-f]{7} in /),
+      'end ok',
+    ]);
+    // Without a check the merge waits at ready: the log says so, outside any step.
+    expect(log).toContain(
+      'out No check to run: set merge.checks in symbiote/config.json, or Land once you have checked it',
+    );
+  });
+
+  it('logs a landing given up because the target moved, then the merge again on its tip', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    repo.write({ 'src/n.ts': 'export const n = 1;\n' });
+    const N = repo.commit('N');
+    await m.land(id);
+    await m.idle();
+    const log = shortLog(await logOf(m, id));
+    const from = log.indexOf('step land Land in main');
+    expect(log.slice(from, from + 5)).toEqual([
+      'step land Land in main',
+      `out main moved since the merge (now ${N.slice(0, 7)})`,
+      'end failed',
+      "run Merging again on main's tip",
+      'step merge Merge topic into main',
+    ]);
+  });
+
+  it('logs the push as part of the landing', async () => {
+    const { repo, shas } = setup();
+    const remote = tempDir();
+    folders.push(remote);
+    repo.git('init', '--quiet', '--bare', remote);
+    repo.git('remote', 'add', 'origin', remote);
+    repo.git('push', '--quiet', '-u', 'origin', 'main');
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'ok', push: true });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    expect(shortLog(await logOf(m, id)).slice(-2)).toEqual(['out Pushed to origin', 'end ok']);
+  });
+
+  it('removes the log with its entry; a log left without an entry goes at the next drain', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'ok' });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const logs = join(cache, 'state', (await openRepo(repo.root)).id, 'merges');
+    expect(existsSync(join(logs, `${id}.jsonl`))).toBe(true);
+    writeFileSync(join(logs, 'gone.jsonl'), '{}\n');
+
+    await m.remove(id);
+    await m.idle();
+    expect(await m.log(id)).toBeNull();
+    expect(existsSync(join(logs, `${id}.jsonl`))).toBe(false);
+    expect(existsSync(join(logs, 'gone.jsonl'))).toBe(false);
+  });
+
+  it('answers an entry that has no log yet with no lines', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' }, { start: false });
+    expect(await m.log(id)).toEqual({ lines: [], next: 0 });
+    expect(await m.log('nowhere')).toBeNull();
   });
 });

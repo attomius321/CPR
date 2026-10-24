@@ -124,6 +124,44 @@ export interface MergeTargets {
   entry?: MergeEntry;
 }
 
+/**
+ * A step of a merge as its log names it (V46a): the merge, the merger agent, one check command,
+ * the landing.
+ */
+export type MergeStep = 'merge' | 'resolve' | 'check' | 'land';
+
+/** One of the merger agent's events as a merge's log keeps it (V46b). */
+export type MergeAgentEvent =
+  /** It started: the agent's version and model, when it says. */
+  | { start: string }
+  /** A piece of its thinking's summary, as it comes. */
+  | { think: string }
+  /** A piece of what it writes. */
+  | { say: string }
+  /** A tool it called, with its main input: a path, a pattern, a command. */
+  | { tool: string; input: string }
+  /** What the tool gave back, by its size. */
+  | { result: string };
+
+/**
+ * A line of a merge's log (V46a, decision 313), in `state/<repo>/merges/<id>.jsonl`: a step
+ * starts, what it writes, an agent's event, the step ends, or the entry runs again and why. `at`
+ * is when, in ms.
+ */
+export type MergeLogLine = { at: number } & (
+  | { step: MergeStep; title: string }
+  | { out: string }
+  | { agent: MergeAgentEvent }
+  | { end: { ok: boolean; ms: number } }
+  | { run: string }
+);
+
+/** Lines of a merge's log from a byte offset, and the offset to read on from. */
+export interface MergeLogRead {
+  lines: MergeLogLine[];
+  next: number;
+}
+
 /** `POST /api/merges`. */
 export interface MergeRequest {
   branch: string;
