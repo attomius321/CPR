@@ -183,3 +183,4 @@ merge commit.
 - 2026-10-24 [V43 — a changed file opens as its diff](journal/v43-changed-file-diff.md)
 - 2026-10-24 [Refactor spike — what the plan and the journal cost to read](journal/refactor-plan-journal-folders.md)
 - 2026-10-24 [Refactor — the plan and the journal in folders, read through an index](journal/refactor-plan-journal-folders.md)
+- 2026-10-24 [V45 spike — a shell in a pseudo-terminal, and what V21's rules would do to it](journal/v45-workspace-terminals.md)
