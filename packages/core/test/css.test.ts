@@ -440,6 +440,22 @@ describe('SCSS names that do not resolve to one declaration', () => {
     }
   }
 
+  it('name a selector list among users without its commas running into the list', async () => {
+    const analysis = await analyzeStyles(
+      {
+        'a.css': ':root { --gap: 1px; }',
+        'b.css': '.x { margin: var(--gap); }\n.y a:hover, .y a.on { gap: var(--gap); }',
+      },
+      {
+        'a.css': ':root { --other: 1px; }',
+        'b.css': '.x { margin: var(--gap); }\n.y a:hover, .y a.on { gap: var(--gap); }',
+      },
+    );
+    expect(analysis.findings.map((f) => f.message)).toEqual([
+      ':root › --gap was removed but is still used by 2 symbols: .x; .y a:hover, .y a.on',
+    ]);
+  });
+
   it('are ambiguous when entry files give a partial two, unknown when nothing defines them', async () => {
     const shared = {
       '_a.scss': '$c: red;',

@@ -334,9 +334,10 @@ function name(id: SymbolId): string {
   return qualified;
 }
 
-/** `a, b, c, d, e and 3 more`. */
+/** `a, b, c, d, e and 3 more`; with `; ` when a name holds a comma (a selector list). */
 function list(ids: SymbolId[], max = 5): string {
-  const names = ids.slice(0, max).map(name).join(', ');
+  const shown = ids.slice(0, max).map(name);
+  const names = shown.join(shown.some((n) => n.includes(', ')) ? '; ' : ', ');
   return ids.length > max ? `${names} and ${ids.length - max} more` : names;
 }
 
