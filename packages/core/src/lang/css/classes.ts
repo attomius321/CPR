@@ -10,6 +10,12 @@ export interface SelectorClass {
 const COMBINATOR = /[\s>+~]/;
 const NAME_START = /[-_a-zA-Z\u00a0-\uffff\\]/;
 
+/** What one selector of a list needs: every class it names, and those on its subject. */
+export interface SelectorPart {
+  classes: string[];
+  subject: string[];
+}
+
 /**
  * The classes of a canonical selector list, each once (on the subject if any selector puts it
  * there). A class inside `:not()` is not named (the element must lack it); inside `:has()` it is
@@ -18,8 +24,21 @@ const NAME_START = /[-_a-zA-Z\u00a0-\uffff\\]/;
  */
 export function selectorClasses(selectors: string): SelectorClass[] {
   const found = new Map<string, boolean>();
+  for (const part of selectorParts(selectors)) {
+    for (const name of part.classes) {
+      found.set(name, (found.get(name) ?? false) || part.subject.includes(name));
+    }
+  }
+  return [...found].map(([name, subject]) => ({ name, subject }));
+}
+
+/** Each selector of a list with the classes it needs (see `selectorClasses`). */
+export function selectorParts(selectors: string): SelectorPart[] {
+  const parts: SelectorPart[] = [];
   for (const selector of splitTopLevel(selectors, ',')) {
     if (selector.includes('#{')) continue;
+    const classes = new Set<string>();
+    const subjects = new Set<string>();
     const subjectStart = lastCompound(selector);
     const pseudo: string[] = [];
     for (let i = 0; i < selector.length; i++) {
@@ -39,14 +58,15 @@ export function selectorClasses(selectors: string): SelectorClass[] {
           else break;
         }
         if (!pseudo.includes('not')) {
-          const subject = i >= subjectStart && !pseudo.includes('has');
-          found.set(name, (found.get(name) ?? false) || subject);
+          classes.add(name);
+          if (i >= subjectStart && !pseudo.includes('has')) subjects.add(name);
         }
         i = j - 1;
       }
     }
+    if (classes.size > 0) parts.push({ classes: [...classes], subject: [...subjects] });
   }
-  return [...found].map(([name, subject]) => ({ name, subject }));
+  return parts;
 }
 
 /** Where a selector's last compound starts: after its last combinator outside brackets. */

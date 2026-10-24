@@ -1,6 +1,6 @@
 import type { Peers } from '../../adapter.js';
 import type { Dangling, EdgeRef, Mention, SymbolDecl, SymbolId } from '../../model.js';
-import { selectorClasses } from './classes.js';
+import { selectorClasses, selectorParts } from './classes.js';
 import type { StylesheetIndex } from './scope.js';
 
 /**
@@ -64,6 +64,51 @@ function within(mention: Mention, reach: Reach): boolean {
   return false;
 }
 
+/** The classes some mentions render, by file and by symbol (CSS modules' apart). */
+class Rendered {
+  private readonly files = new Map<string, Set<string>>();
+  private readonly symbols = new Map<string, Set<string>>();
+
+  add(mentions: readonly Mention[]): this {
+    for (const m of mentions) {
+      if (m.kind !== 'class') continue;
+      const file = this.files.get(key(m.site.file, m)) ?? new Set();
+      this.files.set(key(m.site.file, m), file.add(m.name));
+      const symbol = this.symbols.get(key(m.from, m)) ?? new Set();
+      this.symbols.set(key(m.from, m), symbol.add(m.name));
+    }
+    return this;
+  }
+
+  inFile(m: Mention): ReadonlySet<string> {
+    return this.files.get(key(m.site.file, m)) ?? new Set();
+  }
+
+  bySymbol(m: Mention): ReadonlySet<string> {
+    return this.symbols.get(key(m.from, m)) ?? new Set();
+  }
+}
+
+const key = (place: string, m: Mention) => `${place}\0${m.module ?? ''}`;
+
+/**
+ * How a class mention reaches a rule naming it: only when the mention's file renders every class
+ * one of the rule's selectors needs (`.merge-row-actions .button` is no use of every button);
+ * certainly when the mentioning symbol renders them all itself, else possibly.
+ */
+function reachRule(rule: SymbolDecl, mention: Mention, rendered: Rendered): EdgeRef | undefined {
+  let possible = false;
+  for (const part of selectorParts(rule.name)) {
+    if (!part.classes.includes(mention.name)) continue;
+    const file = rendered.inFile(mention);
+    if (!part.classes.every((c) => file.has(c))) continue;
+    const own = rendered.bySymbol(mention);
+    if (part.classes.every((c) => own.has(c))) return edge(mention, rule.id, true);
+    possible = true;
+  }
+  return possible ? edge(mention, rule.id, false) : undefined;
+}
+
 /** Edges from mentions in markup and scripts to the rules and custom properties they reach. */
 export function mentionedCss(
   index: StylesheetIndex,
@@ -71,11 +116,19 @@ export function mentionedCss(
   mentions: readonly Mention[],
 ): EdgeRef[] {
   const refs: EdgeRef[] = [];
+  // What each file renders besides these mentions: a rule's other classes may be its siblings'.
+  const rendered = new Rendered();
+  for (const file of new Set(mentions.map((m) => m.site.file))) {
+    rendered.add(
+      peers?.mentions({ file, kind: 'class' }) ?? mentions.filter((m) => m.site.file === file),
+    );
+  }
   for (const mention of mentions) {
     if (mention.kind === 'class') {
-      for (const { rule, subject } of index.classes.get(mention.name) ?? []) {
-        if (within(mention, reachOf(index, peers, rule.file)))
-          refs.push(edge(mention, rule.id, subject));
+      for (const { rule } of index.classes.get(mention.name) ?? []) {
+        if (!within(mention, reachOf(index, peers, rule.file))) continue;
+        const ref = reachRule(rule, mention, rendered);
+        if (ref) refs.push(ref);
       }
     } else if (!mention.sets) {
       for (const definition of index.byKey.get(`property:${mention.name}`) ?? []) {
@@ -94,14 +147,12 @@ export function incomingMarkup(
 ): EdgeRef[] {
   if (!peers) return [];
   if (symbol.kind === 'rule' && !/^[%@]/.test(symbol.name)) {
-    const classes = selectorClasses(symbol.name);
-    if (classes.length === 0) return [];
+    const names = new Set(selectorClasses(symbol.name).map((c) => c.name));
+    if (names.size === 0) return [];
     const reach = reachOf(index, peers, symbol.file);
-    const subject = new Map(classes.map((c) => [c.name, c.subject]));
-    return peers
-      .mentions({ names: new Set(subject.keys()), kind: 'class' })
-      .filter((m) => within(m, reach))
-      .map((m) => edge(m, symbol.id, subject.get(m.name) ?? false));
+    const mentions = peers.mentions({ names, kind: 'class' }).filter((m) => within(m, reach));
+    const rendered = new Rendered().add(mentions);
+    return mentions.flatMap((m) => reachRule(symbol, m, rendered) ?? []);
   }
   if (symbol.kind === 'variable' && symbol.name.startsWith('--')) {
     return peers

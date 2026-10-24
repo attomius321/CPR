@@ -27,7 +27,7 @@ export function mentionsTs(revision: TsRevision, query: MentionQuery): Mention[]
     cached = { files: new Map() };
     cache.set(revision, cached);
   }
-  const fromFile = query.from?.slice(0, query.from.indexOf('#'));
+  const fromFile = query.from?.slice(0, query.from.indexOf('#')) ?? query.file;
   const paths = fromFile !== undefined ? [fromFile] : revision.context.sourceFiles();
   const names = query.names && [...query.names];
   const found: Mention[] = [];
@@ -54,6 +54,7 @@ export function mentionsTs(revision: TsRevision, query: MentionQuery): Mention[]
   return found.filter(
     (m) =>
       (!query.from || m.from === query.from) &&
+      (!query.file || m.site.file === query.file) &&
       (!query.kind || m.kind === query.kind) &&
       (!query.names || query.names.has(m.name)),
   );

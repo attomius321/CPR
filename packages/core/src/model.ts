@@ -177,11 +177,13 @@ export interface Mention {
   module?: string;
 }
 
-/** Which mentions to find: of some names, of one kind, or in one symbol. */
+/** Which mentions to find: of some names, of one kind, in one symbol or one file. */
 export interface MentionQuery {
   names?: ReadonlySet<string>;
   kind?: Mention['kind'];
   from?: SymbolId;
+  /** Repo-relative file the mentions are in. */
+  file?: string;
 }
 
 /**
