@@ -4,6 +4,8 @@ import * as ng from '@angular/compiler';
 import type {
   ArgumentRoles,
   Dangling,
+  Mention,
+  PluginStyleScope,
   PluginContext,
   PluginProject,
   PluginRevision,
@@ -23,6 +25,7 @@ import {
 import { directiveSite, isMeta, registry, type Meta, type Registry } from './directives.js';
 import { libraryClasses } from './libraries.js';
 import { ShimBuilder, typeOf, writeHost, writeTemplate } from './shim.js';
+import { classMentions, hostClasses, templateClasses } from './styles.js';
 import {
   bindTemplate,
   parseTemplate,
@@ -175,6 +178,44 @@ const angular: TsPlugin = {
     if (cls.kind === 'Pipe' && symbol.name === 'transform') return 'framework';
     return undefined;
   },
+
+  // The classes templates and `host` set, for the rules they reach (L2).
+  mentions: (revision) => {
+    const state = revisionOf(revision);
+    const found = new Map<string, Mention>();
+    for (const cls of state.classes) {
+      const parsed = cls.template && templateOf(revision, state, cls);
+      const file = cls.template?.kind === 'external' ? cls.template.path : cls.file;
+      const text = parsed && revision.readFile(file);
+      const mentions = [
+        ...(parsed && text !== undefined
+          ? classMentions(templateId(cls), file, text, templateClasses(parsed))
+          : []),
+        ...(cls.host.length > 0
+          ? classMentions(
+              cls.id,
+              cls.file,
+              revision.readFile(cls.file) ?? '',
+              hostClasses(cls.host),
+            )
+          : []),
+      ];
+      // A template shared by several components is one symbol: its classes once.
+      for (const m of mentions) found.set(`${m.from}\0${m.name}\0${m.site.line}:${m.site.col}`, m);
+    }
+    return [...found.values()];
+  },
+
+  // A component's styles style its own template and host only, unless it turns encapsulation off.
+  styleScopes: (revision) =>
+    revisionOf(revision).classes.flatMap((cls): PluginStyleScope[] =>
+      cls.encapsulation === 'None'
+        ? []
+        : cls.styleUrls.map((stylesheet) => ({
+            stylesheet,
+            owners: [cls.id, ...(cls.template ? [templateId(cls)] : [])],
+          })),
+    ),
 
   warnings: (revision) => warningsByRoot.get(revision.root) ?? revisionOf(revision).warnings,
 };
