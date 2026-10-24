@@ -222,6 +222,7 @@
 }
 
 .monitor-tile-name {
+  flex: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -406,8 +407,17 @@
 
   .monitor-side {
     width: auto;
+    min-height: auto;
     border-left: 0;
     border-top: 1px solid var(--line);
+  }
+
+  .monitor-list {
+    flex: none;
+  }
+
+  .monitor-rows {
+    overflow: visible;
   }
 
   .monitor-body > .resizer {

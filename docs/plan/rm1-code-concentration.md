@@ -2,8 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/rm1-code-concentration.md)
 
-**Status:** planned (2026-10-24), on branch `feature/repo-monitoring` (a workspace started in
-Symbiote, from `main` at `561826d`); waiting for the person's OK. Not started.
+**Status:** ready for review (2026-10-24), on branch `feature/repo-monitoring` (a workspace
+started in Symbiote, from `main` at `561826d`); the plan and its three choices OK'd by the person
+("1. Yes 2. current checkout ed HEAD 3. Good .. at the end, for RM2, i will create another feature
+that continue it. OK"). As built and results under "As built (RM1)" below.
 
 **Problem** (asked: "I need a new feature from where i can see each files from the repo, by code
 concentration. I need a good way to visualize this, do some research on how we can represent it
@@ -284,3 +286,50 @@ then the pure tree and layout, then the page.
   could open the page at a commit: `scanCodebase` already takes the commit to read).
 - Uncommitted changes, ownership (who wrote what), symbols per file from the analysis, a
   `symbiote monitor` command for CI.
+
+## As built (RM1)
+
+- **Frames nest while they have room, six levels at most** (decision 324 changed): two levels, as
+  planned, drew Symbiote's own root as one `packages` frame (96 % of the code) holding seven
+  empty folder boxes. Four levels left Bitwarden's `apps/web/src/app` (82,475 lines) an empty box;
+  a 64 × 56 px frame made the edges busy with unlabeled tiles. A folder becomes a frame from
+  96 × 72 px (`MIN_FRAME_W`, `MIN_FRAME_H` in `treemap.ts`), else it is drawn whole, dashed, and a
+  click goes in. Six levels (`MAX_DEPTH`) are reached only in large views.
+- **Labels by the room they need**: a name and its lines need 44 px of height, a name 26 px. With
+  36 px, flexbox squeezed a 37 px tile's name to 9 px (found zooming at 3×). A share is written
+  with a no-break space (`96 %`): an 820 px page wrapped the sign from its number.
+- **Colours** (decision 326): Source tiles take the chrome's `--raised`; Tests, Docs and Data a
+  30 % wash of a History lane's hue (`--lane-2`, `--lane-3`, `--lane-1`) into the panel; Other and
+  Set aside `--context`'s. The accent marks only the picked file (its `.selected` role).
+- **Core** gains `gitInput` (git with stdin, for `cat-file --batch` and `check-attr --stdin`) and
+  exports its runner (`git`, `GitError`); nothing in the analysis changes, so `regression-check`
+  was not run.
+- **Counting** follows cloc in two places the plan did not say: a shebang is code, and JSON
+  allows comments (tsconfig files have them). A set-aside reason is `ignored` for
+  `.symbioteignore`, not `symbioteignore`.
+- **Not built as planned**: no hover card near the pointer; the details sit under the list
+  (pointing shows them, a click keeps a file's). The treemap's tiles are not keyboard stops; the
+  list is the keyboard's way (arrows, Enter).
+
+**Results.**
+
+| | Symbiote | vite | Qwik | Bitwarden |
+|---|---|---|---|---|
+| Map, first read / again | 277 ms / 10 ms | 313 ms / 10 ms | 376 ms / 10 ms | 1.32–1.49 s / 13–34 ms |
+| Map's JSON | 165 KB | 435 KB | 708 KB | 1,499 KB |
+| Tree of the Source files / one layout at 1000 × 640 | 2.0 / 2.4 ms | 1.3 / 0.4 ms | 5.3 / 1.4 ms | 8.4 / 1.1 ms |
+| Tiles at the root / labeled | 218 / 133 | 130 / 103 | 232 / 130 | 239 / 125 |
+
+- **Counts against cloc 2.10**, per file: identical for every Markdown, JSON, CSS, HTML, YAML, MDX
+  and shell file of Symbiote (`0e81ebb`) and every CSS, HTML, Markdown, SVG, SCSS, YAML, TSX,
+  Less, Stylus, Svelte, Sass and TOML file of vite; TypeScript 450 of 457 and 542 of 569 files
+  identical, JavaScript 22/23 and 882/885. Every difference read is cloc's: a `/*` inside a
+  string or glob opens a comment for it (Symbiote's `workspaces.test.ts`, `'fix/*'`: cloc 534
+  comment lines, ours 141; vite's `importMetaGlob.ts`: 395 against 14), `//` in a regex literal
+  (`/^\/\//`), JSON comments, Vue's `<script>` comments, a JSX `*/}` line, `//` inside a template
+  literal (the intro's shaders), patches read as diffs. The comparison found two of ours, fixed
+  with tests: a shebang is code, and a line that only opens a template literal is code.
+- The first counter took 2.4 s on Bitwarden (a `startsWith` per character); jumping between a
+  syntax's special characters with one sticky regex, and `indexOf` for closers, 1.3–1.5 s.
+- `pnpm check`: 1,451 tests (monitor 26, the CLI's routes 3, the viewer's tree and layout 20).
+  E2E: `monitor.spec.ts`, 4 tests; the whole suite in the journal.

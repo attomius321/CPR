@@ -186,3 +186,5 @@ merge commit.
 - 2026-10-24 [V45 spike — a shell in a pseudo-terminal, and what V21's rules would do to it](journal/v45-workspace-terminals.md)
 - 2026-10-24 [V45 — shells in a workspace's worktree](journal/v45-workspace-terminals.md)
 - 2026-10-24 [RM1 spike — how concentrated real repositories' code is, and what a picture of it can show](journal/rm1-code-concentration.md)
+- 2026-10-24 [RM1a — @symbiote/monitor: a commit's files, their kinds and lines of code](journal/rm1-code-concentration.md)
+- 2026-10-24 [RM1b — the Monitor page](journal/rm1-code-concentration.md)

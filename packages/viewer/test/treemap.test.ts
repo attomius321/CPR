@@ -175,6 +175,11 @@ describe('layoutTreemap', () => {
 
   it('labels only what fits: the name and lines, the name, or nothing', () => {
     expect(byId.get('app/a.ts')!.label).toBe('full');
+    // Two lines need 44 px, one 26: a shorter tile would squeeze its name.
+    for (const t of tiles) {
+      if (t.label === 'full') expect(t.h, t.id).toBeGreaterThanOrEqual(44);
+      if (t.label === 'name') expect(t.h, t.id).toBeGreaterThanOrEqual(26);
+    }
     const small = layoutTreemap(codeTree([file('a.ts', 1000), file('b.ts', 3)], SOURCE), 400, 300);
     expect(small.find((t) => t.id === 'b.ts')?.label ?? 'merged').not.toBe('full');
   });

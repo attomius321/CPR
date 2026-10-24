@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from 'react';
-import { childRows, largestFiles, type CodeNode, type ListRow } from './codemap.js';
+import { childRows, largestFiles, percent, type CodeNode, type ListRow } from './codemap.js';
 
 export type ListTab = 'children' | 'files';
 
@@ -91,7 +91,7 @@ export function CodeList({
                 />
               </span>
               <span className="monitor-row-lines">{count(row.node.lines)}</span>
-              <span className="monitor-row-share">{Math.round(row.share * 100)} %</span>
+              <span className="monitor-row-share">{percent(row.share)}</span>
             </button>
             {row.half && (
               <p className="monitor-half" aria-label="Half of the code is above this line">

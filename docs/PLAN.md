@@ -180,7 +180,7 @@ hosted.
 
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
-| [RM1](plan/rm1-code-concentration.md) | Code concentration: where a repository's code is | planned | 320–328 | [journal](journal/rm1-code-concentration.md) |
+| [RM1](plan/rm1-code-concentration.md) | Code concentration: where a repository's code is | ready for review | 320–328 | [journal](journal/rm1-code-concentration.md) |
 
 ### Docs and the repository
 

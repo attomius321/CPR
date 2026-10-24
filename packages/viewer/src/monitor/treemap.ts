@@ -146,9 +146,13 @@ function withSmallerMerged(folder: CodeNode, area: Rect): Item[] {
   ];
 }
 
+/**
+ * What fits in a tile: a line is 16 px, the two 2 px apart, inside 4 px of padding and a 1 px
+ * border — 44 px for the name and the lines, 26 for the name.
+ */
 function labelOf(r: Rect): Tile['label'] {
-  if (r.w >= 56 && r.h >= 36) return 'full';
-  if (r.w >= 32 && r.h >= 18) return 'name';
+  if (r.w >= 56 && r.h >= 44) return 'full';
+  if (r.w >= 32 && r.h >= 26) return 'name';
   return 'none';
 }
 

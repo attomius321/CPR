@@ -40,3 +40,74 @@ what code-analysis tools draw (CodeScene, GitHub Next's repo-visualizer).
 
 Not verified: the counts were taken with the rough rule above, not yet against `cloc`; the
 clones were at each project's current `HEAD`, not pinned commits.
+
+## RM1a — @symbiote/monitor: a commit's files, their kinds and lines of code (2026-10-24, branch `feature/repo-monitoring`)
+
+The plan OK'd ("1. Yes 2. current checkout ed HEAD 3. Good .. at the end, for RM2, i will create
+another feature that continue it. OK"). A package of its own, `packages/monitor` (decision 320):
+`scanCodebase` lists the commit's tree, reads every blob through `git cat-file --batch` in 16 MB
+batches, asks `git check-attr` once for `linguist-generated`/`linguist-vendored`, and gives each
+file a kind and its blank, comment and code lines; `codeMaps` keeps the last four commits.
+`GET /api/monitor` serves the checkout's map, `POST /api/monitor/open` opens one of its files in
+VS Code. Core gains `gitInput` (git with stdin) and exports its runner. Decisions 320–323.
+
+**Learned**:
+- **cloc is not the truth for TypeScript**: it opens a block comment at a `/*` inside a string or
+  a glob and keeps it open to the next `*/`. Symbiote's `packages/cli/test/workspaces.test.ts`
+  holds `'fix/*'`: cloc counts 534 comment lines, ours 141; vite's `importMetaGlob.ts` 395 against
+  14, `optimizer/scan.ts` 492 against 77. The comparison was still worth it: every file of the
+  languages without that trap matched exactly, and it found two bugs of ours.
+- **Two bugs the comparison found**: a shebang counted as a comment (cloc counts it as code: it
+  says how the file runs), and a line holding only the backtick that opens a template literal
+  counted as a comment (the string's lines after it were code). vite's `entry-worker.jsx` and
+  `matrixTestResultPlugin.ts` showed the second. Both have tests now.
+- **A counter per character is slow on data**: Bitwarden's 2,285,516 JSON lines took the first
+  counter to 2.4 s (a `startsWith` and a closure per character). Jumping from one of the syntax's
+  special characters to the next with one sticky regex, and `indexOf` for a string's or
+  comment's end, brought it to 1.3–1.5 s. The batch size does not matter: 16, 8, 4 and 1 MB gave
+  1.3–2.4 s and a peak of 276–350 MB, which follows the garbage collector more than the batch.
+- **`npm install` in a folder without `package.json` walks up**: in the job's scratch folder it
+  installed cloc into `~/.claude/node_modules` (that folder has a `package.json`). Install into
+  a folder with its own `package.json`.
+
+**Verification**: tests first, run red on assertions (stubs returning zeros), then green:
+`count.test.ts` (15, a case per trap), `kinds.test.ts` (4), `scan.test.ts` (7, real repositories:
+the commit not the working tree, symlinks and a submodule left out, binary, `.gitattributes` and
+`.symbioteignore`, Latin-1, a detached `HEAD`, the cache); the CLI's three route tests red (404,
+405) then green. Counts against cloc 2.10 on Symbiote (`0e81ebb`) and vite: identical for every
+Markdown, JSON, CSS, HTML, YAML, MDX, SVG, SCSS, Less, Stylus, Svelte, Sass, TOML and shell file;
+TypeScript 450/457 and 542/569, JavaScript 22/23 and 882/885, each difference read and cloc's.
+Cost, first read / again: Symbiote 277 / 10 ms, vite 313 / 10, Qwik 376 / 10, Bitwarden
+1.32–1.49 s / 13–34 ms; Bitwarden's map 1,499 KB.
+
+Not verified: repositories over 10,000 files (cost measured linear up to Bitwarden's 9,583);
+Windows; a repository with LFS pointers (counted as the pointer's text).
+
+## RM1b — the Monitor page (2026-10-24, branch `feature/repo-monitoring`)
+
+A page of the shell at `/monitor` (m, after Skills in the sidenav): the concentration in words,
+a squarified treemap of the folder in view (area = lines of code, colour = kind), the ranked list
+beside it with a "half of the code" line, kind chips that are the legend, details on hover or for
+a picked file, Open in VS Code. `codemap.ts` and `treemap.ts` are pure. Decisions 324–328.
+
+**Learned**:
+- **Two levels are too few** (decision 324 changed): Symbiote's root drew as one `packages`
+  frame (96 %) of seven empty folder boxes. Frames now nest while a folder has 96 × 72 px, six
+  levels at most: four left Bitwarden's `apps/web/src/app` (82,475 lines) an empty box, and a
+  64 × 56 px minimum filled the edges with unlabeled tiles. At the root the four repositories
+  draw 130–239 tiles, 103–133 labeled.
+- **A label needs its height, not more**: with a 36 px threshold, flexbox squeezed a 37 px tile's
+  name to 9 px (found zooming at 3× on `core/src/pipeline.ts`). Two lines need 44 px, one 26.
+- **"96 %" wrapped at 820 px** between the number and its sign: shares carry a no-break space.
+  At that width the list also collapsed to one row (a flex child with `min-height: 0` in a
+  column that scrolls): narrow, it takes its own height under the treemap.
+
+**Verification**: the route, widths, tree and layout tests (`pages`, `widths`, `codemap`,
+`treemap`: 21 new cases); the layout's tests were written before the modules but first run
+against them, and the nesting change was made test first (red: the fixture's folder drawn whole).
+`e2e/monitor.spec.ts`, 4 tests: m opens it, the words, tiles, list and hover linked both ways; a
+folder gone into and back by click, breadcrumbs, Backspace and the browser; Tests and Source
+toggled; a picked file kept, ranked by keyboard, opened in a stand-in VS Code at line 1.
+`pnpm check` (1,451 tests). Screenshots at 1440 × 900 and 820 × 900, scale 1, both themes: the
+Monitor on Symbiote and Bitwarden, a picked file, Tests on with a row hovered, History's sidenav
+with the new link. Layout 0.4–2.4 ms, the tree 1.3–8.4 ms on the four repositories.

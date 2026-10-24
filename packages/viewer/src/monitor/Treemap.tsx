@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import type { CodeNode } from './codemap.js';
+import { percent, type CodeNode } from './codemap.js';
 import { layoutTreemap, type Tile } from './treemap.js';
 
 const count = (value: number) => value.toLocaleString('en-US');
@@ -75,9 +75,7 @@ export function Treemap({
             tile.label !== 'none' && (
               <div className="monitor-band">
                 <span className="monitor-tile-name">{tile.name}</span>
-                <span className="monitor-tile-lines">
-                  {Math.round((tile.lines / node.lines) * 100)} %
-                </span>
+                <span className="monitor-tile-lines">{percent(tile.lines / node.lines)}</span>
               </div>
             )
           ) : (

@@ -168,7 +168,8 @@ export function concentration(node: CodeNode): Concentration {
 }
 
 const count = (value: number) => value.toLocaleString('en-US');
-const percent = (share: number) => `${Math.round(share * 100)} %`;
+/** A share as "96 %", with a no-break space: a narrow page never wraps the number from its sign. */
+export const percent = (share: number) => `${Math.round(share * 100)}\u00a0%`;
 const plural = (n: number, one: string, many: string) => `${count(n)} ${n === 1 ? one : many}`;
 
 /**
@@ -185,7 +186,7 @@ export function headline(c: Concentration, unit: string): string[] {
   words.push(
     c.tenth === 1
       ? `the largest file holds ${percent(c.tenthShare)}.`
-      : `the largest 10 % of files (${count(c.tenth)}) hold ${percent(c.tenthShare)}.`,
+      : `the largest 10\u00a0% of files (${count(c.tenth)}) hold ${percent(c.tenthShare)}.`,
   );
   if (c.leader) words.push(`${c.leader.name} holds ${percent(c.leader.share)}.`);
   return words;

@@ -14,7 +14,15 @@ import { Resizer } from '../ui/Resizer.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 import { useShell } from '../shell/shell-context.js';
 import { CodeList, type ListTab } from './CodeList.js';
-import { codeTree, concentration, crumbs, headline, KINDS, type CodeNode } from './codemap.js';
+import {
+  codeTree,
+  concentration,
+  crumbs,
+  headline,
+  KINDS,
+  percent,
+  type CodeNode,
+} from './codemap.js';
 import { Treemap } from './Treemap.js';
 import type { Tile } from './treemap.js';
 
@@ -33,7 +41,6 @@ interface Spot {
 }
 
 const count = (value: number) => value.toLocaleString('en-US');
-const percent = (share: number) => `${Math.round(share * 100)} %`;
 
 /** Why a file is set aside, in words. */
 const ASIDE: Record<NonNullable<CodeFile['aside']>, string> = {

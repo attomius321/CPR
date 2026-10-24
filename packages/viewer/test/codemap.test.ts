@@ -100,12 +100,13 @@ describe('concentration and headline', () => {
     expect(concentration(nodeAt(root, 'lib'))).toMatchObject({ half: 1, leader: { name: 'd.ts' } });
   });
 
+  // A no-break space before each %: a narrow page never wraps "96" from its "%".
   it('says it in words', () => {
     expect(headline(concentration(root), 'lines of code')).toEqual([
       '1,000 lines of code in 5 files.',
-      'Half of it is in 1 file (20 %);',
-      'the largest file holds 60 %.',
-      'src holds 95 %.',
+      'Half of it is in 1 file (20\u00a0%);',
+      'the largest file holds 60\u00a0%.',
+      'src holds 95\u00a0%.',
     ]);
     const many = codeTree(
       Array.from({ length: 20 }, (_, i) => file(`f${String(i).padStart(2, '0')}.ts`, i + 1)),
@@ -113,9 +114,9 @@ describe('concentration and headline', () => {
     );
     expect(headline(concentration(many), 'lines')).toEqual([
       '210 lines in 20 files.',
-      'Half of it is in 6 files (30 %);',
-      'the largest 10 % of files (2) hold 19 %.',
-      'f19.ts holds 10 %.',
+      'Half of it is in 6 files (30\u00a0%);',
+      'the largest 10\u00a0% of files (2) hold 19\u00a0%.',
+      'f19.ts holds 10\u00a0%.',
     ]);
     const one = codeTree([file('a.ts', 1)], SOURCE);
     expect(headline(concentration(one), 'lines of code')).toEqual(['1 line of code in 1 file.']);

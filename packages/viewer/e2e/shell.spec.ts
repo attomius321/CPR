@@ -56,11 +56,12 @@ test('symbiote view opens History in the shell: the pages, then the workspaces, 
   // A title bar is Symbiote's window's only (N1c): none in a browser.
   await expect(page.locator('.titlebar')).toHaveCount(0);
   const links = pages(page).getByRole('link');
-  await expect(links).toHaveCount(4);
+  await expect(links).toHaveCount(5);
   await expect(links.nth(0)).toHaveAccessibleName('History');
   await expect(links.nth(1)).toHaveAccessibleName('Scout');
   await expect(links.nth(2)).toHaveAccessibleName('Skills');
-  await expect(links.nth(3)).toHaveAccessibleName('Settings');
+  await expect(links.nth(3)).toHaveAccessibleName('Monitor');
+  await expect(links.nth(4)).toHaveAccessibleName('Settings');
   await expect(pages(page).getByRole('link', { name: 'History' })).toHaveAttribute(
     'aria-current',
     'page',
