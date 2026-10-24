@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/refactor-plan-journal-folders.md)
 
-**Status:** planned (2026-10-24), on branch `refactor/journal-and-plan` (a workspace started in
-Symbiote, from `main` at `ab9e352`; `main` at `86d9530` merged in).
+**Status:** ready for review (2026-10-24), on branch `refactor/journal-and-plan` (a workspace
+started in Symbiote, from `main` at `ab9e352`; `main` at `86d9530` merged in). As built and
+results under "As built (the plan and the journal)" below.
 
 **Problem** (the brief: "JOURNAL.md and PLAN.md should be breaked in folders, with each
 version/feature, and with references"; then "a structured way of plan and journal, so it
@@ -89,3 +90,58 @@ assert, every decision's number and row, every entry's text.
 | 291 | Where an entry without a plan goes | **A file of its own, named after its branch (`fix-<slug>.md`)**, unless it was made on a milestone's branch | CLAUDE.md's unit is "one entry per milestone or fix"; filing a fix under the milestone it touches is a call each writer would make differently. The index puts it in its area. |
 | 292 | What is read first | **`PLAN.md`: the North Star and the index by area**; then the files of the area; a decision or a term by grep | The index is read whole; every row gives its area, status, decisions and both files. |
 | 293 | "Proposed next" | **Kept as written in `plan/roadmap.md`; new work gets an index row** | Its rows tell each milestone's problem again; the plan file holds it. |
+
+## As built (the plan and the journal)
+
+- **137 files**: in `docs/plan/`, 50 milestone plans, `design.md` and `roadmap.md`; in
+  `docs/journal/`, 87 files: 50 under a plan's name, 5 for the phases of 2026-10-01, 4 more
+  without a plan section (D1, P1, V22, the Angular 11 trial), 21 fixes and 7 others (4 chores,
+  2 features, the rename).
+- **Filed by judgment** (each visible in both indexes): the Angular 11 trial in a file of its
+  own; "Plan revised: Angular as a plugin" with X1; "Merged: X1, A1–A2", the Angular templates
+  spike with A1–A2; the Qwik spike with Q1–Q2; "Phase 3 kickoff" with phase 3; V26b (dropped)
+  with V26; V42's card-focus fix, made on V42's branch, with V42.
+- **The index's status is git's**: V39–V44 and the viewer refactor are ✅ there, merged into
+  `main`, while their plans still say "ready for review" as written.
+- **Rows in the order built**: by each file's first journal entry, so V10c comes before V10b
+  and V44 before V43 within their areas, as they were merged.
+- **The scripts were not committed**: the split, the rebuild check and the link check ran from
+  the job's folder. The rebuild compares with the files before the split, a check made once;
+  the index's upkeep is the milestone skill's (a row, its status), as the "Proposed next" row
+  was.
+- **The templates**: `plan-template.md` writes a plan file (its title `#`, its parts `##`, the
+  reference line) and its index row; `journal-template.md` is new. The skill's branch-wide greps
+  for the next decision number and a taken ID read `PLAN.md` and `docs/plan/` alike, so they
+  work on branches made before the split.
+
+**Results**:
+
+- **Nothing lost**: both files rebuilt from the new ones (titles and reference lines out,
+  headings back, links resolved to repository paths) equal the files before the split, but for
+  the two intro passages rewritten (PLAN.md's status quote, 2 lines into 3; JOURNAL.md's
+  "Newest milestone last", 1 line into 2) and 7 blank lines: 2 sections had none before the
+  next heading (V34, V41) and gain one, 5 double blank lines between journal entries become
+  single. 295 decision rows (291 numbers, 242 and 243 twice, 290–293 this refactor's) and 172
+  entries, each once.
+- **References**: 638 relative links in 160 Markdown files, 0 broken, anchors included (before:
+  65 links in the 20 files then, 0 broken). README's `#x1--plugins` and graph-schema's
+  `#62-stable-ids` re-pointed at the new files.
+- **What is read** (tokens taken as bytes / 4):
+
+| Read | Before | After |
+|---|---|---|
+| `PLAN.md` | 882,633 bytes; a plain read returns its first 2,000 lines, 173,536 bytes (≈43K tokens), up to V7 | 13,713 bytes (≈3.4K), whole: the North Star and 88 index rows |
+| `JOURNAL.md` | 406,960 bytes; a plain read returns 134,615 (≈34K), up to 2026-10-14 | 15,738 (≈3.9K), whole: 172 entries by date |
+| Starting on V42: the index, its plan, its journal | the two files, found by grep and read in windows | 33,856 (≈8.5K) |
+| The largest pair: V18's plan and journal, with the index | | 92,832 (≈23K) |
+
+A plan file's median is 14 KB (3.3–62 KB), a journal file's 3.6 KB (0.6–20 KB). All of it,
+indexes included, is 1,338,335 bytes, 3.2 % more than the two files just before the split
+(1,297,445): the indexes (29 KB) and each file's title and reference line.
+
+- **Nothing else changed**: `git diff main` is Markdown only (no code, no test). `pnpm check`:
+  1,387 tests in 100 files; `pnpm build` passes. No e2e: no viewer change.
+
+Not verified: the anchors as GitHub renders them (checked with GitHub's rules for slugs, by a
+script, not on github.com); how much an agent saves in practice, beyond the bytes above; the
+merge of `milestone/v20-other-agents`, which predates the split and appends to both old files.

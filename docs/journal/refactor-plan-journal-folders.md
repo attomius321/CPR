@@ -20,3 +20,30 @@ Measured at `86d9530` before moving anything, tokens taken as bytes / 4.
 - **Decision numbers are not unique**: 242 and 243 are each a V26 fix's and V36's, from two
   branches built side by side. `merges.ts` cites V26's 242, so neither is renumbered.
 - Across `main` and every branch, the highest decision is 289: this refactor takes 290–293.
+
+## Refactor — the plan and the journal in folders, read through an index (2026-10-24, branch `refactor/journal-and-plan`)
+
+`docs/PLAN.md` is the North Star and an index of 88 rows by area (13.7 KB); `docs/JOURNAL.md`
+lists 172 entries by date (15.7 KB). Each milestone has its plan in `docs/plan/` and its journal
+in `docs/journal/` under one name; a fix on its own branch has a journal file only. Text moved
+word for word. Decisions 290–293.
+
+**Learned**:
+- **A plain read of the old files never reached recent work**: it stops at 2,000 lines, 174 KB of
+  PLAN.md (up to V7) and 135 KB of JOURNAL.md (up to 2026-10-14). The indexes come back whole.
+- **Two sections had no blank line before the next heading** and 5 journal entries a double one:
+  a rebuild that wants byte equality has to allow for them, or it reports whitespace as loss.
+- **Heading levels inside code fences** (V24's brief format, `# <Kind>: <title>`) must not move
+  with the plan's headings: the split tracks fences, indented ones included.
+- **The merger's own test case is a conflict in `docs/JOURNAL.md`**, two entries appended at the
+  end: after the split, two branches still both add an index line there, but no longer a section.
+
+**Verification**: both files rebuilt from the new ones equal the originals but for the 2
+rewritten intro passages and 7 blank lines; 295 decision rows and 172 entries, each once; 638
+relative links in 160 Markdown files, 0 broken; `git diff main` is Markdown only; `pnpm check`
+1,387 tests, `pnpm build` passes. The skill's greps for the next decision (293) and a taken ID
+run on every branch, old layout and new.
+
+Not verified: the anchors on github.com (GitHub's slug rules, by a script); the savings in an
+agent's real session; the merge of `milestone/v20-other-agents`, which still appends to the old
+files.

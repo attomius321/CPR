@@ -183,4 +183,4 @@ hosted.
 | Chore | README rewrite | ✅ | | [journal](journal/chore-update-readme.md) |
 | [V22](plan/roadmap.md) | Fixes: stale text outside the README | ✅ | | [journal](journal/v22-stale-text.md) |
 | Rename | Rename to Symbiote | ✅ | | [journal](journal/rename-to-symbiote.md) |
-| [Refactor](plan/refactor-plan-journal-folders.md) | The plan and the journal in folders | building | 290–293 | [journal](journal/refactor-plan-journal-folders.md) |
+| [Refactor](plan/refactor-plan-journal-folders.md) | The plan and the journal in folders | ready for review | 290–293 | [journal](journal/refactor-plan-journal-folders.md) |
