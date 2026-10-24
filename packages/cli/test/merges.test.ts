@@ -1215,6 +1215,22 @@ describe("a merge's log (V46a)", () => {
     expect(existsSync(join(logs, 'gone.jsonl'))).toBe(false);
   });
 
+  it('ends the step that threw with what it said', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'ok' });
+    const runCheck: RunCheck = () => Promise.reject(new Error('the shell is gone'));
+    const m = await make(repo, runCheck);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    expect((await m.list()).merges[0]).toMatchObject({ state: 'failed' });
+    expect(shortLog(await logOf(m, id)).slice(-3)).toEqual([
+      'step check ok',
+      'out the shell is gone',
+      'end failed',
+    ]);
+  });
+
   it('answers an entry that has no log yet with no lines', async () => {
     const { repo, shas } = setup();
     review(repo, 'topic', { head: shas.T, into: 'main' });

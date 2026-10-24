@@ -81,6 +81,14 @@ describe("a merge's log file (V46a)", () => {
     expect(outs((await all.read('a', 0)).lines).at(-1)).toBe('quiet\n');
   });
 
+  it('ends only a step it started: an end without one writes nothing', async () => {
+    const { logs: all } = logs();
+    const log = all.of('a');
+    log.out('before any step\n');
+    log.end(false);
+    expect((await all.read('a', 0)).lines).toMatchObject([{ out: 'before any step\n' }]);
+  });
+
   it('removes a log, and every log but those kept', async () => {
     const { logs: all } = logs();
     all.of('a').out('a\n');

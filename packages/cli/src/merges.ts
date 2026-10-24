@@ -862,10 +862,12 @@ export function merger(
         try {
           await mergeOne(next);
         } catch (error) {
-          await set(next.id, {
-            state: 'failed',
-            message: error instanceof Error ? error.message : String(error),
-          });
+          const message = error instanceof Error ? error.message : String(error);
+          // The step that threw ends with what it said.
+          const log = logs.of(next.id);
+          log.out(`${message}\n`);
+          log.end(false);
+          await set(next.id, { state: 'failed', message });
         }
       }
     } finally {

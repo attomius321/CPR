@@ -16,7 +16,7 @@ export interface MergeLog {
   step(step: MergeStep, title: string): void;
   out(text: string): void;
   agent(event: MergeAgentEvent): void;
-  /** The step ends: how it went, and how long it took since `step`. */
+  /** The step ends: how it went, and how long it took since `step`. None open: nothing. */
   end(ok: boolean): void;
   /** The entry runs again, and why. */
   run(why: string): void;
@@ -75,12 +75,12 @@ export function mergeLogs(dir: string): MergeLogs {
         },
         end(ok) {
           const current = steps.get(id);
+          // Only a step this process started: another's, or none, has nothing to end.
+          if (!current) return;
           steps.delete(id);
-          if (current && current.left > 0) {
-            add({ out: `\n… ${size(current.left)} of output not kept …\n` });
-          }
-          if (current && current.tail !== '') add({ out: current.tail });
-          add({ end: { ok, ms: current ? Date.now() - current.started : 0 } });
+          if (current.left > 0) add({ out: `\n… ${size(current.left)} of output not kept …\n` });
+          if (current.tail !== '') add({ out: current.tail });
+          add({ end: { ok, ms: Date.now() - current.started } });
         },
         run(why) {
           add({ run: why });
