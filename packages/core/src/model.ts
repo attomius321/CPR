@@ -159,3 +159,38 @@ export interface Dangling {
  * framework uses it (a template, a lifecycle hook…).
  */
 export type Exposure = 'entry-export' | 'override' | 'default-export' | 'framework';
+
+/**
+ * Where code names something another language defines (L2): a class markup renders, or a custom
+ * property a script sets or reads.
+ */
+export interface Mention {
+  /** The symbol it is in, named as extraction names it, or `<file>#(module)`. */
+  from: SymbolId;
+  kind: 'class' | 'property';
+  /** `row`, `--accent`. */
+  name: string;
+  site: Site;
+  /** A custom property set here (`style={{ '--x': … }}`, `setProperty('--x', …)`), not read. */
+  sets?: true;
+  /** For a CSS module's `styles.row`: the module's repo-relative path; its rules only. */
+  module?: string;
+}
+
+/** Which mentions to find: of some names, of one kind, or in one symbol. */
+export interface MentionQuery {
+  names?: ReadonlySet<string>;
+  kind?: Mention['kind'];
+  from?: SymbolId;
+}
+
+/**
+ * A stylesheet that styles only some markup (L2): a component's own styles (Angular's
+ * `styleUrls`, Qwik's `useStylesScoped$`). Any other stylesheet is global.
+ */
+export interface StyleScope {
+  /** Repo-relative path of the stylesheet. */
+  stylesheet: string;
+  /** The symbols whose markup it styles (and their members): a component's class, its template. */
+  owners: SymbolId[];
+}

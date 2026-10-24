@@ -5,6 +5,7 @@ import type { DeclaredProject } from '../../projects.js';
 import { danglingTs, exposureTs, publicApiTs } from './detect.js';
 import { extractTs } from './extract.js';
 import { isTsSource } from './files.js';
+import { mentionsTs, styleScopesTs } from './mentions.js';
 import { PLUGIN_API_VERSION, runHook, type PluginProject, type TsPlugin } from './plugins.js';
 import { loadTsProject, pluginRevision, type TsRevision } from './project.js';
 import { incomingTs, outgoingTs } from './references.js';
@@ -80,6 +81,8 @@ export function createTypescriptAdapter({
       return own;
     },
     publicApi: publicApiTs,
+    mentions: mentionsTs,
+    styleScopes: styleScopesTs,
     projects: (revision) => {
       const found: DeclaredProject[] = [];
       for (const active of revision.plugins) {

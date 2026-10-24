@@ -1,4 +1,13 @@
-import type { Dangling, EdgeRef, Exposure, SymbolDecl, SymbolId } from './model.js';
+import type {
+  Dangling,
+  EdgeRef,
+  Exposure,
+  Mention,
+  MentionQuery,
+  StyleScope,
+  SymbolDecl,
+  SymbolId,
+} from './model.js';
 import type { IgnoreMatcher } from './ignore.js';
 import type { DeclaredProject } from './projects.js';
 import type { RevisionSource } from './revision.js';
@@ -13,6 +22,17 @@ export interface LoadOptions {
    * plus the `.symbioteignore` at the revision's root.
    */
   ignore?: IgnoreMatcher;
+  /**
+   * What the other languages of the analysis name of this one (markup's classes, for
+   * stylesheets): given by `combineAdapters`, usable once every language has loaded.
+   */
+  peers?: Peers;
+}
+
+/** The other languages' mentions and style scopes, for the language that defines the names. */
+export interface Peers {
+  mentions(query: MentionQuery): Mention[];
+  styleScopes(): StyleScope[];
 }
 
 export interface ExtractOptions {
@@ -59,6 +79,15 @@ export interface LanguageAdapter<L = unknown> {
    * (TypeScript); for nodes without a declaration, such as a file's top-level code.
    */
   languageOf?(path: string): string | undefined;
+  /** Where this language's code names what another defines: classes, custom properties. */
+  mentions?(revision: L, query: MentionQuery): Mention[];
+  /** Stylesheets this language's code applies to only some markup (a component's own). */
+  styleScopes?(revision: L): StyleScope[];
+  /**
+   * Edges from another language's mentions to this one's symbols: a rendered class to the rules
+   * that style it. Needs `LoadOptions.peers` for the scopes.
+   */
+  mentioned?(revision: L, mentions: readonly Mention[]): EdgeRef[];
   /** Problems worth telling the user about (configs that failed to load, skipped files). */
   warnings(revision: L): string[];
 }

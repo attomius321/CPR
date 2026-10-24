@@ -1,4 +1,4 @@
-import type { LanguageAdapter } from './adapter.js';
+import type { LanguageAdapter, Peers } from './adapter.js';
 import { stylesheetAdapter } from './lang/css/index.js';
 import { createTypescriptAdapter, type TypescriptAdapterOptions } from './lang/typescript/index.js';
 import type { Dangling, EdgeRef, SymbolDecl } from './model.js';
@@ -43,9 +43,16 @@ export function combineAdapters(
     load: async (source, options = {}) => {
       const files = options.files && byOwner(options.files, (file) => file);
       const parts: unknown[] = [];
+      // What every language names of the others, once all have loaded (asked lazily).
+      const peers: Peers = {
+        mentions: (query) =>
+          adapters.flatMap((adapter, i) => adapter.mentions?.(parts[i], query) ?? []),
+        styleScopes: () => adapters.flatMap((adapter, i) => adapter.styleScopes?.(parts[i]) ?? []),
+      };
       // One after the other: a TypeScript program is large, and its load is mostly synchronous.
       for (const [i, adapter] of adapters.entries()) {
-        parts.push(await adapter.load(source, files ? { ...options, files: files[i] } : options));
+        const own = files ? { ...options, files: files[i] } : options;
+        parts.push(await adapter.load(source, { ...own, peers }));
       }
       return { parts };
     },
@@ -61,7 +68,17 @@ export function combineAdapters(
     },
     outgoing: (revision, symbol): EdgeRef[] => {
       const found = of(revision, symbol);
-      return found ? found.adapter.outgoing(found.part, symbol) : [];
+      if (!found) return [];
+      const refs = found.adapter.outgoing(found.part, symbol);
+      // What it names of another language: the rules its classes reach.
+      const mentions = found.adapter.mentions?.(found.part, { from: symbol.id }) ?? [];
+      if (mentions.length === 0) return refs;
+      for (const [i, adapter] of adapters.entries()) {
+        if (adapter !== found.adapter && adapter.mentioned) {
+          refs.push(...adapter.mentioned(revision.parts[i], mentions));
+        }
+      }
+      return refs;
     },
     dangling: (revision, removed, base) =>
       byOwner(removed, (symbol) => symbol.file).flatMap((own, i): Dangling[] =>

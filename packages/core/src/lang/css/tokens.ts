@@ -200,7 +200,8 @@ export function closing(text: string, start: number, open: string, close: string
   return text.length - 1;
 }
 
-function stringEnd(text: string, start: number): number {
+/** The index of the quote closing the string that starts at `start`. */
+export function stringEnd(text: string, start: number): number {
   const quote = text[start];
   for (let i = start + 1; i < text.length; i++) {
     if (text[i] === '\\') i++;

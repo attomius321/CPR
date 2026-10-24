@@ -1,6 +1,7 @@
 import { readdirSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import type { SymbolDecl } from '../../model.js';
+import { selectorClasses } from './classes.js';
 import type { StylesheetFacts } from './extract.js';
 import { isStylesheet } from './files.js';
 import type { StyleImport, StyleUse, UseKind } from './uses.js';
@@ -19,6 +20,10 @@ export interface StylesheetIndex {
   imports: ReadonlyMap<string, { import: StyleImport; target: Target }[]>;
   /** The files that `@import` each file. */
   importers: ReadonlyMap<string, string[]>;
+  /** The files that `@import`, `@use` or `@forward` each file. */
+  includedBy: ReadonlyMap<string, string[]>;
+  /** Rules by the classes their selectors name, with whether the class is the subject's. */
+  classes: ReadonlyMap<string, { rule: SymbolDecl; subject: boolean }[]>;
 }
 
 /** What an import's URL names: a stylesheet of the revision, a package, or Sass's own. */
@@ -104,10 +109,17 @@ export function buildIndex(files: ReadonlyMap<string, StylesheetFacts>): Stylesh
   const uses = new Map<string, StyleUse[]>();
   const imports = new Map<string, { import: StyleImport; target: Target }[]>();
   const importers = new Map<string, string[]>();
+  const includedBy = new Map<string, string[]>();
+  const classes = new Map<string, { rule: SymbolDecl; subject: boolean }[]>();
   for (const [file, facts] of files) {
     for (const symbol of facts.symbols) {
       const key = memberKey(symbol);
       if (key) byKey.set(key, [...(byKey.get(key) ?? []), symbol]);
+      if (symbol.kind === 'rule' && !/^[%@]/.test(symbol.name)) {
+        for (const { name, subject } of selectorClasses(symbol.name)) {
+          classes.set(name, [...(classes.get(name) ?? []), { rule: symbol, subject }]);
+        }
+      }
     }
     for (const use of facts.uses) uses.set(useKey(use), [...(uses.get(useKey(use)) ?? []), use]);
     const resolved = facts.imports.map((i) => ({
@@ -116,12 +128,13 @@ export function buildIndex(files: ReadonlyMap<string, StylesheetFacts>): Stylesh
     }));
     imports.set(file, resolved);
     for (const { import: i, target } of resolved) {
-      if (i.rule === 'import' && 'file' in target) {
+      if (!('file' in target)) continue;
+      if (i.rule === 'import')
         importers.set(target.file, [...(importers.get(target.file) ?? []), file]);
-      }
+      includedBy.set(target.file, [...(includedBy.get(target.file) ?? []), file]);
     }
   }
-  return { files, byKey, uses, imports, importers };
+  return { files, byKey, uses, imports, importers, includedBy, classes };
 }
 
 /**

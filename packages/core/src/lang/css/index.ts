@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { LanguageAdapter } from '../../adapter.js';
+import type { LanguageAdapter, Peers } from '../../adapter.js';
 import { loadIgnores, type IgnoreMatcher } from '../../ignore.js';
 import { extractStylesheet, type StylesheetFacts } from './extract.js';
 import { isStylesheet, stylesheetLanguage } from './files.js';
+import { danglingMarkup, incomingMarkup, mentionedCss, setByScript } from './markup.js';
 import { parseStylesheet } from './parse.js';
 import { danglingCss, incomingCss, outgoingCss } from './references.js';
 import { buildIndex, listStylesheets, type StylesheetIndex } from './scope.js';
@@ -21,6 +22,8 @@ export interface CssRevision {
   /** What each stylesheet holds, by repo-relative path; null: missing or unreadable. */
   facts: Map<string, StylesheetFacts | null>;
   index?: StylesheetIndex;
+  /** The other languages' mentions of stylesheets' names (markup's classes), and scopes. */
+  peers?: Peers;
   warnings: string[];
 }
 
@@ -67,12 +70,26 @@ export const stylesheetAdapter: LanguageAdapter<CssRevision> = {
       ignore: options.ignore ?? loadIgnores(source.root),
       files: options.files ?? [],
       facts: new Map(),
+      ...(options.peers ? { peers: options.peers } : {}),
       warnings: [],
     }),
   extract: (revision, files) => files.flatMap((file) => factsOf(revision, file)?.symbols ?? []),
-  incoming: (revision, symbol) => incomingCss(indexOf(revision), symbol),
+  incoming: (revision, symbol) => [
+    ...incomingCss(indexOf(revision), symbol),
+    ...incomingMarkup(indexOf(revision), revision.peers, symbol),
+  ],
   outgoing: (revision, symbol) => outgoingCss(indexOf(revision), symbol),
-  dangling: (revision, removed) => danglingCss(indexOf(revision), removed),
+  dangling: (revision, removed, base) => {
+    const head = { index: indexOf(revision), peers: revision.peers };
+    // A custom property a script sets is defined, even with no stylesheet defining it.
+    const inStylesheets = danglingCss(head.index, removed).filter((d) => {
+      const name = removed.find((s) => s.id === d.target)?.name ?? '';
+      return !(name.startsWith('--') && setByScript(revision.peers, name));
+    });
+    const inMarkup = danglingMarkup(head, { index: indexOf(base), peers: base.peers }, removed);
+    return [...inStylesheets, ...inMarkup];
+  },
+  mentioned: (revision, mentions) => mentionedCss(indexOf(revision), revision.peers, mentions),
   // Markup, scripts and libraries use rules, custom properties, variables and keyframes in
   // ways Symbiote does not fully see; only `@extend` uses a placeholder, `@include` a mixin.
   exposure: (_revision, symbol) =>

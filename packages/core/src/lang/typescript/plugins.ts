@@ -1,5 +1,5 @@
 import type { ts } from 'ts-morph';
-import type { Dangling, Exposure, Site, SymbolDecl, SymbolId } from '../../model.js';
+import type { Dangling, Exposure, Mention, Site, SymbolDecl, SymbolId } from '../../model.js';
 import type { ProjectKind } from '../../projects.js';
 
 /** The plugin contract this version of Symbiote implements. */
@@ -65,8 +65,25 @@ export interface TsPlugin {
    * count before packages and tsconfig folders when Symbiote tells which project a file is in.
    */
   projects?: (revision: PluginContext) => PluginProject[];
+  /**
+   * Where the framework's templates name classes and custom properties (`class="a b"`,
+   * `[class.a]`), owned by the template symbols: for the stylesheets' rules they reach.
+   */
+  mentions?: (revision: PluginRevision) => Mention[];
+  /** Stylesheets the framework applies to one component's markup only (Angular's `styleUrls`). */
+  styleScopes?: (revision: PluginRevision) => PluginStyleScope[];
   /** Problems worth telling the user about. */
   warnings?: (revision: PluginRevision) => string[];
+}
+
+/** A stylesheet that styles only some markup, by its owners or the calls that load it. */
+export interface PluginStyleScope {
+  /** Repo-relative path of the stylesheet. */
+  stylesheet: string;
+  /** Symbols whose markup it styles (a component's class, its template). */
+  owners?: SymbolId[];
+  /** Calls that apply it (`useStylesScoped$(styles)`): their enclosing symbols are the owners. */
+  calls?: { file: string; position: number }[];
 }
 
 /** A project a plugin declares. */
