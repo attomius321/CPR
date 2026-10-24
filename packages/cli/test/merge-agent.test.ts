@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import type { MergeAgentEvent } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   applyAnswer,
@@ -215,16 +218,28 @@ describe('mergerPrompt (V26c)', () => {
   });
 });
 
-describe('running the merger agent (V26c)', () => {
-  function fakeRun(stdout: string, code = 0) {
-    const calls: { command: string; args: string[]; cwd: string; input: string }[] = [];
-    const run: RunWithInput = (command, args, { cwd, input }) => {
-      calls.push({ command, args, cwd, input });
-      return Promise.resolve({ code, stdout, stderr: code === 0 ? '' : 'it broke' });
-    };
-    return { calls, run };
-  }
+/** A run that writes `stdout` line by line, as a program would, then exits with `code`. */
+function fakeRun(stdout: string, code = 0, stderr = code === 0 ? '' : 'it broke') {
+  return fakeRuns([{ stdout, code, stderr }]);
+}
 
+/** Runs that answer in turn, the last again after the others. */
+function fakeRuns(answers: { stdout: string; code: number; stderr: string }[]) {
+  const calls: { command: string; args: string[]; cwd: string; input: string }[] = [];
+  const run: RunWithInput = (command, args, { cwd, input, onLine }) => {
+    calls.push({ command, args, cwd, input });
+    const { stdout, code, stderr } = answers[calls.length - 1] ?? answers.at(-1) ?? answers[0]!;
+    for (const line of stdout.split('\n')) if (line !== '') onLine?.(line);
+    return Promise.resolve({ code, stdout, stderr });
+  };
+  return { calls, run };
+}
+
+/** A Claude Code `stream-json` stream ending with `result`. */
+const streamOf = (result: Record<string, unknown>) =>
+  JSON.stringify({ type: 'result', subtype: 'success', ...result });
+
+describe('running the merger agent (V26c)', () => {
   it('runs claude -p once: read-only tools, no MCP, Symbiote’s system prompt, the prompt on stdin', async () => {
     const answer = {
       result: '{"regions":{"1":"a"}}',
@@ -236,7 +251,7 @@ describe('running the merger agent (V26c)', () => {
         output_tokens: 40,
       },
     };
-    const { calls, run } = fakeRun(JSON.stringify(answer));
+    const { calls, run } = fakeRun(streamOf(answer));
     const agent = claudeMerger('/bin/claude', { run });
     const result = await agent.run({ cwd: '/wt', prompt: 'P', model: 'sonnet' });
     expect(result).toMatchObject({
@@ -250,7 +265,11 @@ describe('running the merger agent (V26c)', () => {
         args: [
           '-p',
           '--output-format',
-          'json',
+          'stream-json',
+          '--verbose',
+          '--include-partial-messages',
+          '--thinking-display',
+          'summarized',
           '--tools',
           'Read,Grep,Glob',
           '--strict-mcp-config',
@@ -277,7 +296,7 @@ describe('running the merger agent (V26c)', () => {
     });
     expect(failed).toEqual({ ok: false, error: 'it broke' });
     const refused = await claudeMerger('/bin/claude', {
-      run: fakeRun(JSON.stringify({ result: 'Not logged in', is_error: true })).run,
+      run: fakeRun(streamOf({ result: 'Not logged in', is_error: true })).run,
     }).run({ cwd: '/wt', prompt: 'P' });
     expect(refused).toEqual({ ok: false, error: 'Not logged in' });
   });
@@ -316,5 +335,118 @@ describe('running the merger agent (V26c)', () => {
       instructions: 'Keep both.',
     });
     expect(calls[1]?.input).toBe('Keep both.\n\n---\n\nP');
+  });
+});
+
+describe("the merger agent's process, as it works (V46b)", () => {
+  const recorded = readFileSync(
+    join(import.meta.dirname, 'fixtures', 'merger', 'claude-stream.jsonl'),
+    'utf8',
+  );
+
+  it("gives Claude Code's thinking summary, tool calls and their results, and its text as they come", async () => {
+    const events: MergeAgentEvent[] = [];
+    const agent = claudeMerger('/bin/claude', { run: fakeRun(recorded).run });
+    const result = await agent.run({
+      cwd: '/wt',
+      prompt: 'P',
+      model: 'sonnet',
+      onEvent: (event) => events.push(event),
+    });
+    // The answer and its usage as `--output-format json` gave them.
+    const final = recorded
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line) as { type?: string; result?: string })
+      .find((e) => e.type === 'result');
+    expect(result).toMatchObject({
+      ok: true,
+      text: final?.result,
+      usage: { input: 3625, output: 516 },
+    });
+
+    expect(events[0]).toEqual({ start: 'Claude Code 2.1.310 · claude-sonnet-5-5' });
+    const kinds = events.map((e) => Object.keys(e)[0]);
+    // Its thinking first, then the file it read and what it gave, then its answer.
+    const firstTool = kinds.indexOf('tool');
+    expect(kinds.slice(1, firstTool).every((k) => k === 'think')).toBe(true);
+    expect(events.slice(firstTool, firstTool + 2)).toEqual([
+      { tool: 'Read', input: 'notes.txt' },
+      { result: '8 lines' },
+    ]);
+    expect(kinds.slice(firstTool + 2).every((k) => k === 'say')).toBe(true);
+    const thought = events.flatMap((e) => ('think' in e ? [e.think] : [])).join('');
+    expect(thought).toMatch(/^I'm merging the two changes by renaming the loop variable/);
+    const said = events.flatMap((e) => ('say' in e ? [e.say] : [])).join('');
+    expect(said).toBe(final?.result);
+  });
+
+  it('runs again at once without --thinking-display when this Claude Code does not know it', async () => {
+    const events: MergeAgentEvent[] = [];
+    const { calls, run } = fakeRuns([
+      { stdout: '', code: 1, stderr: "error: unknown option '--thinking-display'\n" },
+      { stdout: recorded, code: 0, stderr: '' },
+    ]);
+    const result = await claudeMerger('/bin/claude', { run }).run({
+      cwd: '/wt',
+      prompt: 'P',
+      onEvent: (event) => events.push(event),
+    });
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.args).toContain('--thinking-display');
+    expect(calls[1]?.args).not.toContain('--thinking-display');
+    expect(calls[1]?.args).not.toContain('summarized');
+    expect(events[0]).toEqual({
+      note: 'This Claude Code has no --thinking-display: its thinking is not shown',
+    });
+  });
+
+  it("gives Codex's reasoning, the commands it ran and their exit, and its message", async () => {
+    const lines = [
+      { type: 'thread.started', thread_id: 't1' },
+      { type: 'turn.started' },
+      {
+        type: 'item.completed',
+        item: { id: 'i0', type: 'reasoning', text: 'Both add a function.' },
+      },
+      {
+        type: 'item.started',
+        item: {
+          id: 'i1',
+          type: 'command_execution',
+          command: 'rg -n double src',
+          status: 'in_progress',
+        },
+      },
+      {
+        type: 'item.completed',
+        item: {
+          id: 'i1',
+          type: 'command_execution',
+          command: 'rg -n double src',
+          aggregated_output: 'a\nb\nc\n',
+          exit_code: 0,
+          status: 'completed',
+        },
+      },
+      {
+        type: 'item.completed',
+        item: { id: 'i2', type: 'agent_message', text: '{"needsYou":"no"}' },
+      },
+      { type: 'turn.completed', usage: { input_tokens: 9000, output_tokens: 70 } },
+    ];
+    const events: MergeAgentEvent[] = [];
+    const result = await codexMerger('/bin/codex', {
+      run: fakeRun(lines.map((e) => JSON.stringify(e)).join('\n')).run,
+    }).run({ cwd: '/wt', prompt: 'P', model: 'o9', onEvent: (event) => events.push(event) });
+    expect(result).toMatchObject({ ok: true, text: '{"needsYou":"no"}' });
+    expect(events).toEqual([
+      { start: 'Codex · o9' },
+      { think: 'Both add a function.\n' },
+      { tool: '$', input: 'rg -n double src' },
+      { result: 'exit 0 · 3 lines' },
+      { say: '{"needsYou":"no"}' },
+    ]);
   });
 });

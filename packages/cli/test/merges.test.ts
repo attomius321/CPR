@@ -1043,6 +1043,42 @@ describe("a merge's log (V46a)", () => {
     ]);
   });
 
+  it("keeps the merger agent's events in its step, between the question and the answer (V46b)", async () => {
+    const { repo } = conflicting();
+    const agent: MergerAgent = {
+      kind: 'claude',
+      run: ({ onEvent }) => {
+        onEvent?.({ start: 'Claude Code 2.1.310 · sonnet' });
+        onEvent?.({ think: 'Both sides changed a.' });
+        onEvent?.({ tool: 'Read', input: 'src/a.ts' });
+        onEvent?.({ result: '1 line' });
+        onEvent?.({ say: BOTH });
+        return Promise.resolve({ ok: true, text: BOTH, ms: 1000 });
+      },
+    };
+    const m = await make(repo, fakeChecks().run, { mergerAgent: () => Promise.resolve(agent) });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const lines = await logOf(m, id);
+    const log = shortLog(lines);
+    const asked = log.findIndex((l) => l.startsWith('out Asking Claude Code'));
+    expect(log.slice(asked + 1, asked + 7)).toEqual([
+      'agent',
+      'agent',
+      'agent',
+      'agent',
+      'agent',
+      'out Answered in 1.0 s',
+    ]);
+    expect(lines.flatMap((l) => ('agent' in l ? [l.agent] : []))).toEqual([
+      { start: 'Claude Code 2.1.310 · sonnet' },
+      { think: 'Both sides changed a.' },
+      { tool: 'Read', input: 'src/a.ts' },
+      { result: '1 line' },
+      { say: BOTH },
+    ]);
+  });
+
   it('ends the agent step failed when the agent says the person must decide', async () => {
     const { repo } = conflicting();
     const m = await make(repo, fakeChecks().run, {

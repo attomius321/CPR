@@ -154,7 +154,8 @@ export interface RunningAgent extends Running {
   repo: string;
   /**
    * With `merger`, a fake Claude Code for Symbiote's merger agent (V26c): each `-p` run answers the
-   * next of `answers` (the last again when none is left); what it was asked, newest last.
+   * next of `answers` (the last again when none is left), in `stream-json` after a thought and a
+   * file read (V46b; with `E2E_AGENT_FLAG`, once that file exists); what it was asked, newest last.
    */
   mergerPrompts(): string[];
   /** The bare repository `origin` points at (V16: Approve pushes there). */
@@ -213,7 +214,18 @@ fs.appendFileSync(${JSON.stringify(prompts)}, JSON.stringify(input) + '\\n');
 const answers = JSON.parse(fs.readFileSync(${JSON.stringify(join(cache, 'merger-answers.json'))}, 'utf8'));
 const n = fs.readFileSync(${JSON.stringify(prompts)}, 'utf8').split('\\n').filter(Boolean).length;
 const result = answers[Math.min(n, answers.length) - 1];
-process.stdout.write(JSON.stringify({ result, is_error: false, usage: { input_tokens: Math.ceil(input.length / 4), output_tokens: Math.ceil(result.length / 4) } }));
+// Claude Code's stream-json (V46b): its start, a thought, a file read, then its answer.
+const say = (event) => fs.writeSync(1, JSON.stringify(event) + '\\n');
+say({ type: 'system', subtype: 'init', model: 'claude-fake', claude_code_version: '9.9.9' });
+say({ type: 'stream_event', event: { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Both sides add a function here.' } } });
+say({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 't1', name: 'Read', input: { file_path: process.cwd() + '/src/math.ts' } }] } });
+say({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 't1', content: fs.readFileSync('src/math.ts', 'utf8') }] } });
+// With E2E_AGENT_FLAG, it answers once that file is there: a test sees it at work first.
+while (process.env.E2E_AGENT_FLAG && !fs.existsSync(process.env.E2E_AGENT_FLAG)) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+}
+say({ type: 'stream_event', event: { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: result } } });
+say({ type: 'result', subtype: 'success', result, is_error: false, usage: { input_tokens: Math.ceil(input.length / 4), output_tokens: Math.ceil(result.length / 4) } });
 `,
       { mode: 0o755 },
     );

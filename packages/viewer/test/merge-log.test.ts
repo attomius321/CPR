@@ -1,4 +1,4 @@
-import type { MergeEntry, MergeLogLine } from '@symbiote/core';
+import type { MergeAgentEvent, MergeEntry, MergeLogLine } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   logRuns,
@@ -194,5 +194,43 @@ describe("a merge's log in its terminal (V46a)", () => {
       state = logText(line, state).state;
     }
     expect(state.steps).toBe(2);
+  });
+});
+
+const agent = (event: MergeAgentEvent): MergeLogLine => ({ at: (at += 10), agent: event });
+
+describe("the merger agent's process in the terminal (V46b)", () => {
+  it('draws its start dim, its thinking dim and italic after ∴, its tools and their results, its text', () => {
+    expect(
+      textOf([
+        step('resolve', 'Merger agent'),
+        out('Asking Claude Code (sonnet): 1 region in 1 file, 900 characters\n'),
+        agent({ start: 'Claude Code 2.1.310 · claude-sonnet-5-5' }),
+        agent({ think: 'Both sides ' }),
+        agent({ think: 'add a function.' }),
+        agent({ tool: 'Read', input: 'src/math.ts' }),
+        agent({ result: '42 lines' }),
+        agent({ think: 'Keep both.' }),
+        agent({ say: '{"regions":' }),
+        agent({ say: '{"1":"x"}}' }),
+        out('Answered in 4.0 s\n'),
+      ]),
+    ).toBe(
+      '\x1b[1m── Merger agent\x1b[0m\n' +
+        'Asking Claude Code (sonnet): 1 region in 1 file, 900 characters\n' +
+        '\x1b[2mClaude Code 2.1.310 · claude-sonnet-5-5\x1b[0m\n' +
+        '\x1b[2;3m∴ Both sides \x1b[0m\x1b[2;3madd a function.\x1b[0m\n' +
+        '\x1b[36m●\x1b[0m Read \x1b[2msrc/math.ts\x1b[0m\n' +
+        '\x1b[2m  ⎿ 42 lines\x1b[0m\n' +
+        '\x1b[2;3m∴ Keep both.\x1b[0m\n' +
+        '{"regions":{"1":"x"}}\n' +
+        'Answered in 4.0 s\n',
+    );
+  });
+
+  it('draws a note of Symbiote’s on the run dim, as its start', () => {
+    expect(textOf([agent({ note: 'its thinking is not shown' })])).toBe(
+      '\x1b[2mits thinking is not shown\x1b[0m\n',
+    );
   });
 });

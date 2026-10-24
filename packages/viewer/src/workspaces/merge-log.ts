@@ -1,6 +1,6 @@
 // A merge's log on its page (V46a): its steps, each with its mark and time, and the text its
 // read-only terminal is given. Pure.
-import type { MergeEntry, MergeLogLine, MergeStep } from '@symbiote/core';
+import type { MergeAgentEvent, MergeEntry, MergeLogLine, MergeStep } from '@symbiote/core';
 import { duration } from './merges.js';
 
 /** How a step went: it runs, passed or failed; waits its turn; did not run; or never ended. */
@@ -97,14 +97,21 @@ export interface TextState {
   steps: number;
   /** Runs, the first counted. */
   runs: number;
+  /** What the merger agent was streaming last (V46b): its thinking or its text. */
+  streaming?: 'think' | 'say';
 }
 
 export const NO_TEXT: TextState = { open: false, any: false, steps: 0, runs: 1 };
+
+/** The state with no stream of the agent's open. */
+const settle = ({ open, any, steps, runs }: TextState): TextState => ({ open, any, steps, runs });
 
 const BOLD = '\x1b[1m';
 const DIM = '\x1b[2m';
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
+const CYAN = '\x1b[36m';
+const THOUGHT = '\x1b[2;3m';
 const RESET = '\x1b[0m';
 
 /**
@@ -118,16 +125,19 @@ export function logText(
   state: TextState,
 ): { text: string; state: TextState; heading?: true } {
   const close = state.open ? '\n' : '';
+  const settled = settle(state);
   if ('out' in line) {
     return {
-      text: line.out,
-      state: { ...state, open: !line.out.endsWith('\n'), any: true },
+      // An open line of the agent's ends first; a command's own output goes on as it came.
+      text: `${state.streaming ? close : ''}${line.out}`,
+      state: { ...settled, open: !line.out.endsWith('\n'), any: true },
     };
   }
+  if ('agent' in line) return agentText(line.agent, state, close);
   if ('step' in line) {
     return {
       text: `${close}${state.any ? '\n' : ''}${BOLD}── ${line.title}${RESET}\n`,
-      state: { ...state, open: false, any: true, steps: state.steps + 1 },
+      state: { ...settled, open: false, any: true, steps: state.steps + 1 },
       heading: true,
     };
   }
@@ -135,14 +145,47 @@ export function logText(
     const how = line.end.ok
       ? `${GREEN}✓ passed${RESET} ${DIM}in ${duration(line.end.ms)}${RESET}`
       : `${RED}✗ failed${RESET} ${DIM}after ${duration(line.end.ms)}${RESET}`;
-    return { text: `${close}${how}\n`, state: { ...state, open: false, any: true } };
+    return { text: `${close}${how}\n`, state: { ...settled, open: false, any: true } };
   }
   if ('run' in line) {
     const runs = state.runs + 1;
     return {
       text: `${close}\n${BOLD}▸ Run ${runs} · ${line.run}${RESET}\n`,
-      state: { ...state, open: false, any: true, runs },
+      state: { ...settled, open: false, any: true, runs },
     };
   }
   return { text: '', state };
+}
+
+/**
+ * The merger agent's event as its terminal is given it (V46b): its start and Symbiote's notes dim,
+ * its thinking dim and italic after `∴`, a tool `● Read src/a.ts` and its result `⎿ 42 lines`
+ * under it, its text as written. Pieces of one stream go on the same line.
+ */
+function agentText(
+  event: MergeAgentEvent,
+  state: TextState,
+  close: string,
+): { text: string; state: TextState } {
+  const settled = settle(state);
+  const line = (text: string) => ({
+    text: `${close}${text}\n`,
+    state: { ...settled, open: false, any: true },
+  });
+  if ('think' in event || 'say' in event) {
+    const kind = 'think' in event ? 'think' : 'say';
+    const piece = 'think' in event ? event.think : event.say;
+    const same = state.streaming === kind;
+    const text =
+      kind === 'think'
+        ? `${same ? '' : close}${THOUGHT}${same ? '' : '∴ '}${piece}${RESET}`
+        : `${same ? '' : close}${piece}`;
+    return {
+      text,
+      state: { ...state, open: !piece.endsWith('\n'), any: true, streaming: kind },
+    };
+  }
+  if ('tool' in event) return line(`${CYAN}●${RESET} ${event.tool} ${DIM}${event.input}${RESET}`);
+  if ('result' in event) return line(`${DIM}  ⎿ ${event.result}${RESET}`);
+  return line(`${DIM}${'start' in event ? event.start : event.note}${RESET}`);
 }

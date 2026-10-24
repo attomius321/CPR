@@ -141,7 +141,9 @@ export type MergeAgentEvent =
   /** A tool it called, with its main input: a path, a pattern, a command. */
   | { tool: string; input: string }
   /** What the tool gave back, by its size. */
-  | { result: string };
+  | { result: string }
+  /** A line of Symbiote's on the run, such as why its thinking is not shown. */
+  | { note: string };
 
 /**
  * A line of a merge's log (V46a, decision 313), in `state/<repo>/merges/<id>.jsonl`: a step

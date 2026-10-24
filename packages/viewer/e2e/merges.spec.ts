@@ -210,6 +210,30 @@ test('the log: each step and what it writes, while it runs (V46a)', async ({ pag
   await expect(log).toContainText('── Merge agent into main');
 });
 
+test("the merger agent's thinking and the files it reads, while it works (V46b)", async ({
+  page,
+}) => {
+  // The fake agent thinks and reads, then answers once the test makes a file.
+  const flag = join(mkdtempSync(join(tmpdir(), 'symbiote-e2e-flag-')), 'answer');
+  const { entry } = await resolvedConflict(page, ['test -f src/math.ts'], {
+    E2E_AGENT_FLAG: flag,
+  });
+  const steps = entry.getByRole('list', { name: 'Its steps' });
+  const log = entry.getByRole('log', { name: 'What it wrote' }).locator('.xterm-rows');
+  await expect(steps.getByRole('button', { name: /^Merger agent: running, / })).toBeVisible();
+  await expect(log).toContainText('Claude Code 9.9.9 · claude-fake');
+  await expect(log).toContainText('∴ Both sides add a function here.');
+  await expect(log).toContainText('● Read src/math.ts');
+  await expect(log).toContainText(/⎿ \d+ lines/);
+  await expect(log).not.toContainText('Answered in');
+
+  writeFileSync(flag, '');
+  await expect(log).toContainText('Answered in');
+  await expect(log).toContainText('kept both: main first');
+  await expect(steps.getByRole('button', { name: /^Merger agent: passed, / })).toBeVisible();
+  await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
+});
+
 // A resolution whose check failed (a flaky e2e, in the real case) is the person's to judge: the
 // row says what passed and what failed, and Approve lands it.
 test('a resolution whose check failed: what ran is said, and Approve lands it', async ({

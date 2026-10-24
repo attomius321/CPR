@@ -610,6 +610,8 @@ export function merger(
       prompt,
       ...(model ? { model } : {}),
       instructions: mergerInstructions(readPrompts(root).text.merger),
+      // What it does as it works (V46b), in its step.
+      onEvent: (event) => log.agent(event),
     });
     if (!run.ok) return stop(`the merger agent did not answer: ${run.error}`);
     log.out(
