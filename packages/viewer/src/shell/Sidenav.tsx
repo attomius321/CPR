@@ -14,14 +14,18 @@ import type { MergeEntry } from '@symbiote/core';
 import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import { relativeDate } from '../history/commits.js';
 import {
+  DoneIcon,
   KoiMark,
   HistoryIcon,
   MenuIcon,
+  MergingIcon,
+  NeedsYouIcon,
   PlusIcon,
   ScoutIcon,
   SettingsIcon,
   SidenavIcon,
   SkillsIcon,
+  WorkingIcon,
 } from '../ui/icons.js';
 import { mergeState } from '../workspaces/merges.js';
 import { Help } from '../ui/Help.js';
@@ -41,10 +45,11 @@ import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from '../workspace
 import { workspaceGroups, workspaceName, type WorkspaceRow } from '../workspaces/workspaces.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 
+/** The workspaces' groups, each with its icon (V43): only the group has one, a card its dot. */
 const GROUPS = [
-  ['needsYou', 'Needs you'],
-  ['working', 'Working'],
-  ['done', 'Done'],
+  ['needsYou', 'Needs you', NeedsYouIcon],
+  ['working', 'Working', WorkingIcon],
+  ['done', 'Done', DoneIcon],
 ] as const;
 
 /** The cards' buttons, in order: what `w` focuses and the arrows move between. */
@@ -254,7 +259,8 @@ export function Sidenav({
         >
           {queued.length > 0 && (
             <section className="workspace-group merging" aria-label="Merging">
-              <h3>
+              <h3 title="Merging">
+                <MergingIcon />
                 <span className="sidenav-label">Merging</span>{' '}
                 <span className="branches-count">{queued.length}</span>
               </h3>
@@ -270,10 +276,12 @@ export function Sidenav({
               </ul>
             </section>
           )}
-          {GROUPS.map(([key, title]) =>
+          {GROUPS.map(([key, title, Icon]) =>
             groups[key].length === 0 ? null : (
               <section key={key} className={`workspace-group group-${key}`} aria-label={title}>
-                <h3>
+                {/* Its title names it in the rail, where only the icon shows. */}
+                <h3 title={title}>
+                  <Icon />
                   <span className="sidenav-label">{title}</span>{' '}
                   <span className="branches-count">{groups[key].length}</span>
                 </h3>
