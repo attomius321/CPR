@@ -19,6 +19,7 @@ import type {
 } from '@symbiote/core';
 import {
   AgentTerminal,
+  AttachImages,
   lastTerminalSize,
   toTerminal,
   type OpenedTerminal,
@@ -723,6 +724,7 @@ function WorkspacePanel({
               {said}
             </span>
           )}
+          {opened && showTerminal && <AttachImages into={opened} />}
           {verdict && opened && showTerminal && (
             <button
               type="button"

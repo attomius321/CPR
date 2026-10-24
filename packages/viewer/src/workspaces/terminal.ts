@@ -44,6 +44,8 @@ export function keySender(
 
 /** The kinds of image Claude Code and Codex attach from a pasted path (V36). */
 const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+/** The same kinds, as a file picker's `accept`. */
+export const IMAGE_ACCEPT = [...IMAGE_TYPES].join(',');
 
 /**
  * Most an image for the agent may weigh: the server's limit (`MAX_IMAGE_BYTES` in the CLI's
@@ -67,7 +69,7 @@ export function pastedImages(clipboard: Clipboard | null): File[] {
   return Array.from(clipboard.files).filter((file) => IMAGE_TYPES.has(file.type));
 }
 
-/** A drop's files (V36): the images to attach, in their order, and the others. */
+/** A drop's files (V36), or a picker's: the images to attach, in their order, and the others. */
 export function droppedFiles(files: ArrayLike<File>): { images: File[]; others: File[] } {
   const all = Array.from(files);
   return {
