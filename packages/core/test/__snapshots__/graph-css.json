@@ -353,32 +353,7 @@
     }
   ],
   "edges": [],
-  "findings": [
-    {
-      "rule": "orphan-added",
-      "severity": "warning",
-      "symbol": "src/ui/controls.css#.new-thing",
-      "related": [],
-      "message": ".new-thing is new and nothing references it",
-      "data": {
-        "exportedFromEntry": false,
-        "exposure": null
-      },
-      "id": "f1"
-    },
-    {
-      "rule": "orphan-added",
-      "severity": "warning",
-      "symbol": "src/ui/tokens.css#:root › --new",
-      "related": [],
-      "message": ":root › --new is new and nothing references it",
-      "data": {
-        "exportedFromEntry": false,
-        "exposure": null
-      },
-      "id": "f2"
-    }
-  ],
+  "findings": [],
   "stats": {
     "filesChanged": 3,
     "symbols": {
