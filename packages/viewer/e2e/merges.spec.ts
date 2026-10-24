@@ -35,11 +35,11 @@ const git = (...args: string[]) =>
     },
   }).trim();
 
-/** Reviews `agent` from History and approves it. */
-async function approve(page: Page) {
+/** Reviews `agent` from History and approves it, at its tip `subject`. */
+async function approve(page: Page, subject = 'Agent: add cube') {
   await page.goto(`${symbiote.url}history`);
   const tip = page.locator('.commit', {
-    has: page.locator('.commit-subject', { hasText: 'Agent: add cube' }),
+    has: page.locator('.commit-subject', { hasText: subject }),
   });
   await tip.click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Review', exact: true }).hover();
@@ -205,6 +205,8 @@ test('the log: each step and what it writes, while it runs (V46a)', async ({ pag
   await expect(log).toContainText('then 43');
   await expect(steps.getByRole('button', { name: /^echo "first.*: passed, / })).toBeVisible();
   await expect(entry.locator('.merge-row-state')).toHaveText(/· checked in \d+\.\d s: review it$/);
+  // Resolved: its files come first (V46c), the log a tab away.
+  await entry.getByRole('tab', { name: 'Log' }).click();
   // A step scrolls the log to its heading; the merge's own stays where it is.
   await steps.getByRole('button', { name: /^Merge: passed/ }).click();
   await expect(log).toContainText('── Merge agent into main');
@@ -256,6 +258,7 @@ test('a resolution whose check failed: what ran is said, and Approve lands it', 
   );
   // Its whole output is in the log (V46a), the failed command's step marked so.
   await expect(entry.getByRole('button', { name: 'Its output' })).toHaveCount(0);
+  await entry.getByRole('tab', { name: 'Log' }).click();
   const steps = entry.getByRole('list', { name: 'Its steps' });
   await expect(steps.getByRole('button', { name: /^ls e2e\.passed: failed, / })).toBeVisible();
   await expect(
@@ -329,6 +332,77 @@ test('the merger agent says you must decide: nothing is merged', async ({ page }
     'The merger agent: region 1: double or square first?',
   );
   await expect(entry.getByRole('button', { name: 'Approve' })).toHaveCount(0);
-  await expect(entry.locator('.merge-files li')).toHaveText(['src/math.ts']);
+  // Its file, not resolved (V46c); the log, with why, shown first.
+  await expect(entry.getByRole('tab', { name: 'Log' })).toHaveAttribute('aria-selected', 'true');
+  await entry.getByRole('tab', { name: /^Files/ }).click();
+  await expect(entry.getByRole('list', { name: 'Its files' }).getByRole('button')).toHaveText([
+    /^math\.ts src.*Not resolved$/,
+  ]);
   expect(git('rev-parse', 'main')).toBe(main);
+});
+
+test('a resolution of two files: each listed with what it did, the one that loses lines first (V46c)', async ({
+  page,
+}) => {
+  page.on('pageerror', (error) => errors.push(error.message));
+  const APP_MAIN = 'export const mainNote = 1;';
+  const APP_AGENT = 'export const agentNote = 2;';
+  symbiote = await serveAgentBranch(
+    {},
+    {
+      merger: [
+        JSON.stringify({
+          // Region 1 in src/app.ts keeps both; region 2 in src/math.ts drops the agent's.
+          regions: { '1': `${APP_MAIN}\n${APP_AGENT}`, '2': DOUBLE },
+          notes: { '1': 'kept both', '2': "kept main's" },
+        }),
+      ],
+    },
+  );
+  const app = join(symbiote.repo, 'src/app.ts');
+  const math = join(symbiote.repo, 'src/math.ts');
+  git('checkout', '-q', 'agent');
+  writeFileSync(app, `${readFileSync(app, 'utf8')}\n${APP_AGENT}\n`);
+  git('commit', '-q', '-am', 'Agent: note in app');
+  git('checkout', '-q', 'main');
+  writeFileSync(app, `${readFileSync(app, 'utf8')}\n${APP_MAIN}\n`);
+  writeFileSync(math, `${readFileSync(math, 'utf8')}\n${DOUBLE}\n`);
+  git('commit', '-q', '-am', 'Main: add double and a note');
+  await approve(page, 'Agent: note in app');
+  await page.getByRole('button', { name: 'Merge into', exact: true }).click();
+  await page.goto(`${symbiote.url}history`);
+  await page.locator('.sidenav [data-merge="agent"]').getByRole('link').click();
+  const entry = page.getByRole('region', { name: 'Merge of agent' });
+  await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
+
+  // Files first, once resolved: each file, its regions and what they did.
+  await expect(entry.getByRole('tab', { name: /^Files/ })).toHaveAttribute('aria-selected', 'true');
+  const files = entry.getByRole('list', { name: 'Its files' }).getByRole('button');
+  await expect(files).toHaveText([
+    /^app\.ts src1 regionKeeps every line of both sides, nothing new$/,
+    /^math\.ts src1 regionDrops all 6 lines from agent$/,
+  ]);
+  // The file that loses lines is shown first, only its own regions.
+  await expect(files.nth(1)).toHaveAttribute('aria-current', 'true');
+  const regions = entry.getByRole('list', { name: 'Its resolution' }).getByRole('listitem');
+  await expect(regions).toHaveCount(1);
+  await expect(regions.locator('.merge-region-where')).toContainText('src/math.ts:');
+  await files.nth(0).click();
+  await expect(files.nth(0)).toHaveAttribute('aria-current', 'true');
+  await expect(regions.locator('.merge-region-where')).toContainText('src/app.ts:');
+  await expect(regions.locator('.merge-resolved .merge-line-text')).toHaveText([
+    APP_MAIN,
+    APP_AGENT,
+  ]);
+
+  // The log a tab away, the files hidden meanwhile.
+  await entry.getByRole('tab', { name: 'Log' }).click();
+  const log = entry.getByRole('log', { name: 'What it wrote' });
+  await expect(log.locator('.xterm-rows')).toContainText(
+    '2 files conflict: src/app.ts, src/math.ts',
+  );
+  await expect(entry.getByRole('list', { name: 'Its files' })).toBeHidden();
+  await entry.getByRole('tab', { name: /^Files/ }).click();
+  await expect(log).toBeHidden();
+  await expect(files.nth(0)).toHaveAttribute('aria-current', 'true');
 });

@@ -317,6 +317,7 @@ export function merger(
     base: undefined,
     merge: undefined,
     conflicts: undefined,
+    unresolvable: undefined,
     resolution: undefined,
     check: undefined,
     message: undefined,
@@ -570,6 +571,9 @@ export function merger(
       };
       return stop(
         `${kept.map(([path, kind]) => `${path} ${words[kind as keyof typeof words]}`).join('; ')}: not given to the merger agent. Merge ${entry.into} into ${entry.branch}, resolve it there, and review it again`,
+        {
+          unresolvable: kept.map(([path, kind]) => ({ path, kind: kind as keyof typeof words })),
+        },
       );
     }
     const config = readMergeConfig(root);

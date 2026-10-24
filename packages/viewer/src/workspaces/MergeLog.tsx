@@ -35,7 +35,16 @@ const WORDS: Record<StepMark, string> = {
  * `/api/merges/log` as they are written, whichever Symbiote merges; `onLogged` says the first
  * arrived. Nothing is drawn for a merge with no log once it no longer runs (one made before V46).
  */
-export function MergeLog({ entry, onLogged }: { entry: MergeEntry; onLogged?: () => void }) {
+export function MergeLog({
+  entry,
+  hidden = false,
+  onLogged,
+}: {
+  entry: MergeEntry;
+  /** Kept, streaming, while another view is shown (V46c). */
+  hidden?: boolean;
+  onLogged?: () => void;
+}) {
   const [lines, setLines] = useState<MergeLogLine[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const box = useRef<HTMLDivElement>(null);
@@ -156,7 +165,7 @@ export function MergeLog({ entry, onLogged }: { entry: MergeEntry; onLogged?: ()
 
   const empty = lines.length === 0 && !mergeLive([entry]);
   return (
-    <section className={`merge-log${empty ? ' empty' : ''}`} aria-label="Its log">
+    <section className={`merge-log${empty ? ' empty' : ''}`} aria-label="Its log" hidden={hidden}>
       <ol className="merge-steps" aria-label="Its steps">
         {runs.flatMap((run, r) => [
           ...(runs.length > 1

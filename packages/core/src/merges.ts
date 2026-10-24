@@ -88,6 +88,8 @@ export interface MergeEntry {
   merge?: string;
   /** Conflicting paths. */
   conflicts?: string[];
+  /** Conflicting files the merger agent was not given, and why (V46c). */
+  unresolvable?: { path: string; kind: 'deleted' | 'submodule' | 'binary' }[];
   /** The merger agent's resolution (V26c): reviewed before the merge lands. */
   resolution?: MergeResolution;
   /** The person's words on an earlier resolution, for the next run, and that run's texts. */

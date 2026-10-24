@@ -2,11 +2,13 @@ import type { MergeEntry } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   failedCheck,
+  firstFile,
   mergeActions,
   mergeLabel,
   mergeLive,
   mergeState,
   regionFlags,
+  resolutionFiles,
   reviewRegion,
 } from '../src/workspaces/merges.js';
 
@@ -325,5 +327,93 @@ describe('mergeLabel (the merge page remake)', () => {
     expect(mergeLabel(entry({ state: 'ready' }))).toBe('Ready to land');
     expect(mergeLabel(entry({ state: 'landed' }))).toBe('Landed');
     expect(mergeLabel(entry({ state: 'failed' }))).toBe('Failed');
+  });
+});
+
+describe("a resolution's files (V46c)", () => {
+  /** A region of `path` whose resolution is `text`; both sides added, nothing before. */
+  const region = (path: string, line: number, ours: string[], theirs: string[], text: string) => ({
+    path,
+    line,
+    ours,
+    base: [],
+    theirs,
+    text,
+  });
+  const resolved = (regions: ReturnType<typeof region>[], conflicts?: string[]) =>
+    entry({
+      state: 'needs-you',
+      merge: M,
+      conflicts: conflicts ?? [...new Set(regions.map((r) => r.path))],
+      resolution: { agent: 'claude', model: 'sonnet', regions, ms: 4000 },
+    });
+
+  it('lists each conflicting file once, with its regions in order and what they did together', () => {
+    const files = resolutionFiles(
+      resolved([
+        region('docs/JOURNAL.md', 10, ['main entry'], ['csv entry'], 'main entry\ncsv entry'),
+        region('docs/PLAN.md', 4, ['| V1 | main |'], ['| V2 | csv |'], '| V1 | main |'),
+        region('docs/PLAN.md', 30, ['a', 'b'], ['c'], 'a\nb\nc\nnew line'),
+      ]),
+    );
+    expect(files.map((f) => [f.path, f.regions.map((r) => r.line)])).toEqual([
+      ['docs/JOURNAL.md', [10]],
+      ['docs/PLAN.md', [4, 30]],
+    ]);
+    expect(files[0]).toMatchObject({
+      tone: 'ok',
+      flags: [{ tone: 'ok', text: 'Keeps every line of both sides, nothing new' }],
+    });
+    // Both regions' flags put together: one dropped line, one written.
+    expect(files[1]).toMatchObject({
+      tone: 'bad',
+      flags: [
+        { tone: 'bad', text: 'Drops 1 of 2 lines from feature/csv' },
+        { tone: 'new', text: '1 line written by the agent' },
+      ],
+    });
+  });
+
+  it('shows first the first file that loses or doubles lines, else the first', () => {
+    const files = resolutionFiles(
+      resolved([
+        region('a.ts', 1, ['x'], ['y'], 'x\ny'),
+        region('b.ts', 1, ['x'], ['y'], 'x'),
+        region('c.ts', 1, ['x'], ['y'], 'x'),
+      ]),
+    );
+    expect(firstFile(files)?.path).toBe('b.ts');
+    expect(firstFile(files.slice(0, 1))?.path).toBe('a.ts');
+    expect(firstFile([])).toBeUndefined();
+  });
+
+  it('lists the files nobody resolved, and why one was not given to the agent', () => {
+    const files = resolutionFiles(
+      entry({
+        state: 'needs-you',
+        conflicts: ['README.md', 'jslib', 'logo.png', 'src/gone.ts'],
+        unresolvable: [
+          { path: 'jslib', kind: 'submodule' },
+          { path: 'logo.png', kind: 'binary' },
+          { path: 'src/gone.ts', kind: 'deleted' },
+        ],
+      }),
+    );
+    expect(files.map((f) => [f.path, f.regions.length, f.tone, f.why])).toEqual([
+      ['README.md', 0, 'none', 'Not resolved'],
+      ['jslib', 0, 'none', 'A submodule: not given to the merger agent'],
+      ['logo.png', 0, 'none', 'Binary: not given to the merger agent'],
+      ['src/gone.ts', 0, 'none', 'Deleted on one side: not given to the merger agent'],
+    ]);
+    expect(firstFile(files)?.path).toBe('README.md');
+  });
+
+  it('says a file is being resolved while the agent works', () => {
+    const [file] = resolutionFiles(entry({ state: 'resolving', conflicts: ['src/a.ts'] }));
+    expect(file).toMatchObject({ path: 'src/a.ts', regions: [], tone: 'none', why: 'Resolving…' });
+  });
+
+  it('has no files without a conflict', () => {
+    expect(resolutionFiles(entry({ state: 'landed', merge: M }))).toEqual([]);
   });
 });

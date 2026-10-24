@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import type { MergeEntry, MergeList, MergeRegion } from '@symbiote/core';
 import { postJson } from '../ui/http.js';
+import { splitPath } from './changes.js';
 import {
   failedCheck,
+  firstFile,
   mergeActions,
   mergeLabel,
+  mergeLive,
   mergeState,
   regionFlags,
+  resolutionFiles,
   reviewRegion,
-  toReview,
   type LineFrom,
   type MergeAction,
+  type ResolutionFile,
   type SideKept,
 } from './merges.js';
 import { MergeLog } from './MergeLog.js';
@@ -34,9 +38,10 @@ export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | 
 
 /**
  * A merge in Symbiote's queue (V26a), in the shell's main area (V29a; a row of the Workspaces
- * page's Merging section before): its branch, target and state, the merger agent's resolution to
- * review region by region, what a failed check ran, its log (V46a: each step and what it wrote,
- * as it goes), and Land, Approve, Request changes or Check again, with Retry and Remove under "⋯".
+ * page's Merging section before): its branch, target and state, what a failed check ran, and Land,
+ * Approve, Request changes or Check again, with Retry and Remove under "⋯". Below, its log (V46a:
+ * each step and what it wrote, as it goes) and, when it conflicted, its files (V46c), each with its
+ * resolution to review region by region.
  */
 export function MergeView({ branch }: { branch: string }) {
   const { merges } = useWorkspaces();
@@ -69,6 +74,8 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
   const [comments, setComments] = useState('');
   // Its log has the check's whole output (V46a): the entry's last lines only without one.
   const [logged, setLogged] = useState(false);
+  // Files or Log (V46c): the person's pick, else Files once a resolution is there to read.
+  const [picked, setPicked] = useState<Tab | null>(null);
   const { text, tone } = mergeState(entry);
   const post = (path: string, body: Record<string, string>) => {
     setBusy(true);
@@ -92,7 +99,9 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
   const more: MenuAction[] = actions
     .filter((a) => a === 'retry' || a === 'remove')
     .map((a) => ({ label: ACTION_NAMES[a], disabled: busy, onSelect: () => act(a) }));
-  const regions = toReview(entry) ? (entry.resolution?.regions ?? []) : [];
+  const files = resolutionFiles(entry);
+  const resolved = files.some((f) => f.regions.length > 0) && !mergeLive([entry]);
+  const tab: Tab = files.length === 0 ? 'log' : (picked ?? (resolved ? 'files' : 'log'));
   const shown = !logged && entry.check?.output && entry.check.ok === false;
   const ran = entry.check ? failedCheck(entry.check) : null;
   // Approve lands a resolution whatever its check said: the button says so when it failed.
@@ -131,13 +140,6 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
       </div>
       <p className="merge-row-state">{text}</p>
       <p className="merge-title hint">{entry.title}</p>
-      {regions.length > 0 && (
-        <ol className="merge-regions" aria-label="Its resolution">
-          {regions.map((region, i) => (
-            <MergeRegionView key={i} region={region} into={entry.into} branch={entry.branch} />
-          ))}
-        </ol>
-      )}
       {changing && (
         <form
           className="merge-change"
@@ -158,13 +160,6 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
           </button>
         </form>
       )}
-      {regions.length === 0 && entry.conflicts && (
-        <ul className="merge-files small">
-          {entry.conflicts.map((path) => (
-            <li key={path}>{path}</li>
-          ))}
-        </ul>
-      )}
       {entry.state === 'needs-you' && entry.message && !entry.resolution?.needsYou && (
         <p className="hint small">{entry.message}</p>
       )}
@@ -179,13 +174,107 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
         </p>
       )}
       {shown && output && <pre className="merge-output">{entry.check?.output}</pre>}
-      <MergeLog entry={entry} onLogged={() => setLogged(true)} />
+      {files.length > 0 && (
+        <div className="merge-tabs" role="tablist" aria-label="The merge">
+          {(['files', 'log'] as const).map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="tab"
+              aria-selected={tab === name}
+              className={tab === name ? 'selected' : ''}
+              onClick={() => setPicked(name)}
+            >
+              {name === 'files' ? 'Files' : 'Log'}
+              {name === 'files' && <span className="count">{files.length}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+      {files.length > 0 && <MergeFiles entry={entry} files={files} hidden={tab !== 'files'} />}
+      <MergeLog entry={entry} hidden={tab !== 'log'} onLogged={() => setLogged(true)} />
       {error && (
         <p className="error small" role="alert">
           {error}
         </p>
       )}
     </section>
+  );
+}
+
+/** A merge's two views, when it had conflicts (V46c). */
+type Tab = 'files' | 'log';
+
+/** Each file's tone, as a step's dot draws it. */
+const FILE_TONES: Record<ResolutionFile['tone'], string> = {
+  bad: 'merge-tone-bad',
+  new: 'merge-tone-new',
+  ok: 'merge-tone-done',
+  none: '',
+};
+
+/**
+ * A merge's conflicting files (V46c, decision 317): each with its regions' count and what its
+ * resolution did in a few words — or why nobody resolved it — and the picked file's regions
+ * beside the list. The first shown is the first that loses or doubles lines.
+ */
+function MergeFiles({
+  entry,
+  files,
+  hidden,
+}: {
+  entry: MergeEntry;
+  files: ResolutionFile[];
+  hidden: boolean;
+}) {
+  const [picked, setPicked] = useState<string | null>(null);
+  const file = files.find((f) => f.path === picked) ?? firstFile(files);
+  return (
+    <div className="merge-fileview" hidden={hidden}>
+      <ul className="merge-filelist" aria-label="Its files">
+        {files.map((f) => {
+          const { name, folder } = splitPath(f.path);
+          const what = f.why ?? f.flags.map((flag) => flag.text).join(' · ');
+          return (
+            <li key={f.path}>
+              <button
+                type="button"
+                className={`merge-filerow ${FILE_TONES[f.tone]}${f.tone === 'none' ? ' unresolved' : ''}`}
+                aria-current={f === file ? 'true' : undefined}
+                title={f.path}
+                onClick={() => setPicked(f.path)}
+              >
+                <span className="merge-step-dot" aria-hidden="true" />
+                <span className="merge-filerow-name">
+                  {name}
+                  {folder && <span className="merge-filerow-folder"> {folder}</span>}
+                </span>
+                {f.regions.length > 0 && (
+                  <span className="merge-filerow-count">
+                    {f.regions.length} region{f.regions.length === 1 ? '' : 's'}
+                  </span>
+                )}
+                <span className="merge-filerow-what">{what}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {file && file.regions.length > 0 ? (
+        <ol className="merge-regions" aria-label="Its resolution">
+          {file.regions.map((region, i) => (
+            <MergeRegionView
+              key={`${file.path} ${i}`}
+              region={region}
+              into={entry.into}
+              branch={entry.branch}
+            />
+          ))}
+        </ol>
+      ) : (
+        file && <p className="merge-fileview-why hint">{file.why}</p>
+      )}
+    </div>
   );
 }
 

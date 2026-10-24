@@ -671,6 +671,8 @@ describe('the merger agent (V26c)', () => {
     const [entry] = (await m.list()).merges;
     expect(entry).toMatchObject({ state: 'needs-you', conflicts: ['src/a.ts'] });
     expect(entry?.message).toMatch(/src\/a\.ts is deleted on one side/);
+    // Each file not given to the agent, and why: the merge page lists them (V46c).
+    expect(entry?.unresolvable).toEqual([{ path: 'src/a.ts', kind: 'deleted' }]);
     expect(agent.asked).toEqual([]);
     expect(shas.M).not.toBe(repo.git('rev-parse', 'main'));
   });
