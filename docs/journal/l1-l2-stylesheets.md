@@ -49,7 +49,7 @@ A second language adapter (`packages/core/src/lang/css/`), joined to TypeScript'
 `combineAdapters`: rules, custom properties, keyframes and SCSS's variables, mixins, functions
 and placeholders as symbols named as CSS writes them; hashes from postcss-value-parser tokens;
 names between stylesheets resolved as the cascade and Sass do; findings for removals that leave
-uses. Schema 0.7.0. Decisions 299–305, 313.
+uses. Schema 0.7.0. Decisions 299–305, 329.
 
 **Learned**:
 - **Prettier changes more than whitespace**: it lowercases hex colours, units and property
@@ -63,7 +63,7 @@ uses. Schema 0.7.0. Decisions 299–305, 313.
   18 mixin and 11 function edges on its 31 stylesheet commits; no unknown, no package.
 - **Rules need no signature**: as planned, a selector change was a signature change, and
   selector lists gaining a member became "10 of 12 users not updated" warnings once markup had
-  users (L2). A rename is a move now (decision 313).
+  users (L2). A rename is a move now (decision 329).
 - **zod's `r1` commits live only in GitHub's pull-request refs**: the regression clone needed
   `git fetch origin '+refs/pull/*/head:refs/remotes/pull/*'`.
 - The first L1b commit (`2bb0013`) went in with the `css` golden failing (the orphans the
@@ -86,12 +86,12 @@ Adapters can name what another language defines (`mentions`) and scope styleshee
 peers for a rule's users. JSX class names, `classList`, CSS modules and custom properties from
 script in core; Angular templates, host classes and `styleUrls` scopes in the Angular plugin;
 `useStylesScoped$` in the Qwik plugin. A removed rule whose class markup still renders, styled by
-nothing now, is a warning. Decisions 306–312, 314.
+nothing now, is a warning. Decisions 306–312, 330.
 
 **Learned**:
 - **A class in a rule's subject is not a use**: `.merge-row-actions .button` (`042112a`) had 13
   users, every `button` renderer; one renders `merge-row-actions`. A file must render all of a
-  selector's classes (decision 314) — at the price of rules split across files (a theme class
+  selector's classes (decision 330) — at the price of rules split across files (a theme class
   on a container), which get no markup users.
 - **`:not(.primary)` still styles `primary`**: `3fff617` replaced `.button.primary` with
   `.button:not(.primary)`; reading only the classes a rule reaches said nothing styles
@@ -102,6 +102,8 @@ nothing now, is a warning. Decisions 306–312, 314.
 - **Name queries must not read every file**: one query per changed rule re-read the text of
   each file that had not matched yet (11139e6: 6.1–6.6 s); a word index once per revision:
   4.5 s (`main`, reading no stylesheets: 3.8 s).
+- **Decision numbers collide across workspaces**: `feature/merger-logs` took 313–314 while this
+  branch was built; this branch's two are 329–330 (the highest elsewhere was 328).
 - **The viewer is kind-agnostic**: rules, tokens and their users needed no viewer change; the
   e2e spec passed on its first run.
 
