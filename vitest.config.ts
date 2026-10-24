@@ -7,6 +7,9 @@ export default defineConfig({
     alias: {
       '@symbiote/core': fileURLToPath(new URL('./packages/core/src/index.ts', import.meta.url)),
       '@symbiote/forge': fileURLToPath(new URL('./packages/forge/src/index.ts', import.meta.url)),
+      '@symbiote/monitor': fileURLToPath(
+        new URL('./packages/monitor/src/index.ts', import.meta.url),
+      ),
     },
   },
   test: {

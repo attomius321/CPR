@@ -3,11 +3,14 @@ import { readWidths, withWidth } from '../src/ui/widths.js';
 
 describe('readWidths', () => {
   it('reads every panel the reviewer gave a width', () => {
-    expect(readWidths('{"sidebar":400,"panel":670,"sidenav":320,"changes":300}')).toEqual({
+    expect(
+      readWidths('{"sidebar":400,"panel":670,"sidenav":320,"changes":300,"monitor":360}'),
+    ).toEqual({
       sidebar: 400,
       panel: 670,
       sidenav: 320,
       changes: 300,
+      monitor: 360,
     });
   });
 

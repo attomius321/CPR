@@ -5,6 +5,7 @@ import { keyIsTaken } from '../ui/keys.js';
 import { MergeView } from '../workspaces/Merge.js';
 import {
   HISTORY_PAGE,
+  MONITOR_PAGE,
   SCOUT_PAGE,
   SETTINGS_PAGE,
   SKILLS_PAGE,
@@ -17,6 +18,7 @@ import {
 import { ScoutPage } from '../scout/ScoutPage.js';
 import { SettingsPage } from '../settings/SettingsPage.js';
 import { SkillsPage } from '../skills/SkillsPage.js';
+import { MonitorPage } from '../monitor/MonitorPage.js';
 import { StartPage } from '../workspaces/StartPage.js';
 import { ConfirmDialog } from '../ui/ConfirmDialog.js';
 import { desktop } from './desktop.js';
@@ -193,7 +195,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   }, [go]);
 
   // h and s go to the pages, a to Scout (V35; on its page, to its question or its terminal), i to
-  // Skills (V41), w to
+  // Skills (V41), m to the Monitor (RM1), w to
   // the workspaces (the arrows between them), n starts one (on its page, back to its title), [
   // folds the sidenav. Attached before the first paint, as History's keys are: a key pressed as
   // soon as the page shows is not lost.
@@ -203,6 +205,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
       if (event.key === 'h') go(HISTORY_PAGE);
       else if (event.key === 's') go(SETTINGS_PAGE);
       else if (event.key === 'i') go(SKILLS_PAGE);
+      else if (event.key === 'm') go(MONITOR_PAGE);
       else if (event.key === 'a') {
         const box = document.querySelector<HTMLElement>('.scout-page textarea');
         if (box) box.focus();
@@ -247,11 +250,13 @@ export function Shell({ repo }: { repo?: string | undefined }) {
                   ? 'Scout'
                   : route.page === 'skills'
                     ? 'Skills'
-                    : route.page === 'merge'
-                      ? `Merge ${route.branch}`
-                      : route.page === 'start'
-                        ? 'Start a workspace'
-                        : undefined
+                    : route.page === 'monitor'
+                      ? 'Monitor'
+                      : route.page === 'merge'
+                        ? `Merge ${route.branch}`
+                        : route.page === 'start'
+                          ? 'Start a workspace'
+                          : undefined
             }
             onSlots={setSlots}
           />
@@ -264,6 +269,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
             {route.page === 'history' && <HistoryPage key={visit} />}
             {route.page === 'scout' && <ScoutPage />}
             {route.page === 'skills' && <SkillsPage />}
+            {route.page === 'monitor' && <MonitorPage path={route.path} />}
             {route.page === 'settings' && <SettingsPage />}
             {route.page === 'workspace' && (
               <WorkspaceView key={route.branch} branch={route.branch} />

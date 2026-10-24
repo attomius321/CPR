@@ -19,8 +19,10 @@ import {
   type SkillChange,
   type SkillsState,
   type UsageReport,
+  SymbioteError,
 } from '@symbiote/core';
 import type { Review } from '@symbiote/forge';
+import type { CodeMap } from '@symbiote/monitor';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import {
@@ -1981,6 +1983,100 @@ describe('symbiote view: skills (V41)', () => {
       { action: 'new', name: 'a', description: 'Does a.' },
       { action: 'delete', path: '.claude/skills/a/SKILL.md', version: 'v0' },
     ]);
+  });
+});
+
+describe('symbiote view: the Monitor page (RM1)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const map: CodeMap = {
+    version: 1,
+    commit: C,
+    branch: 'main',
+    files: [
+      {
+        path: 'src/a.ts',
+        kind: 'source',
+        language: 'TypeScript',
+        lines: 3,
+        code: 2,
+        comments: 0,
+        blank: 1,
+      },
+    ],
+  };
+  let read: () => Promise<CodeMap> = () => Promise.resolve(map);
+  const opened: OpenRequest[] = [];
+  let server: ViewServer;
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        monitor: { map: () => read() },
+      },
+      open: (request) => {
+        opened.push(request);
+        return Promise.resolve({ opened: true, line: 1, how: 'exact', moved: false });
+      },
+    });
+  });
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+  const open = (body: unknown, headers: Record<string, string> = {}) =>
+    fetch(new URL('/api/monitor/open', server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      body: JSON.stringify(body),
+    });
+
+  it("serves the page and the checkout's map", async () => {
+    expect(await (await fetch(new URL('/monitor', server.url))).text()).toContain('viewer');
+    const response = await fetch(new URL('/api/monitor', server.url));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(map);
+    const post = await fetch(new URL('/api/monitor', server.url), {
+      method: 'POST',
+      headers: { 'x-symbiote': '1' },
+    });
+    expect(post.status).toBe(405);
+  });
+
+  it('says why there is no map, in its words', async () => {
+    read = () =>
+      Promise.reject(new SymbioteError('no commit to read at HEAD: commit something first'));
+    try {
+      const response = await fetch(new URL('/api/monitor', server.url));
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: 'no commit to read at HEAD: commit something first',
+      });
+    } finally {
+      read = () => Promise.resolve(map);
+    }
+  });
+
+  it('opens a file of the map at the commit read, and nothing else', async () => {
+    expect((await open({ path: 'src/a.ts' })).status).toBe(200);
+    expect(opened).toEqual([{ sha: C, file: 'src/a.ts', line: 1, column: 1 }]);
+    expect((await open({ path: '../etc/passwd' })).status).toBe(400);
+    expect((await open({ path: 'src/b.ts' })).status).toBe(400);
+    expect((await open({ path: 'src/a.ts' }, { 'x-symbiote': '' })).status).toBe(403);
+    expect(opened).toHaveLength(1);
   });
 });
 

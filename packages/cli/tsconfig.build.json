@@ -13,6 +13,9 @@
     },
     {
       "path": "../forge/tsconfig.build.json"
+    },
+    {
+      "path": "../monitor/tsconfig.build.json"
     }
   ]
 }

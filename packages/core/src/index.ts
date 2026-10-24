@@ -109,6 +109,8 @@ export {
   type ProjectSource,
 } from './projects.js';
 export { fileForCheckout, listTreeAt, readFileAtRevision } from './git/show.js';
+// git's runner, for the packages that read a repository their own way (`@symbiote/monitor`, RM1).
+export { git, gitInput, GitError } from './git/exec.js';
 export { mapLine, workingLine, type LineHunk, type WorkingLine } from './git/working-line.js';
 export {
   commitDetails,

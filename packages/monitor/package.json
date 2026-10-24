@@ -1,0 +1,22 @@
+{
+  "name": "@symbiote/monitor",
+  "version": "0.0.0",
+  "description": "Symbiote repository monitoring: where a repository's code is, file by file (RM1).",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@symbiote/core": "workspace:*"
+  }
+}

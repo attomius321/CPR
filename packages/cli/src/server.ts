@@ -5,6 +5,7 @@ import { extname, join, normalize, sep } from 'node:path';
 import {
   CheckoutRefused,
   HISTORY_SCOPES,
+  SymbioteError,
   UnknownCheckoutTarget,
   type BranchReviewInfo,
   type CheckoutResult,
@@ -30,6 +31,7 @@ import {
   type WorkKind,
 } from '@symbiote/core';
 import type { Review, ReviewComment, ReviewEvent } from '@symbiote/forge';
+import type { CodeMap } from '@symbiote/monitor';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
 import type { OpenRequest, OpenResult } from './editor.js';
 import { MAX_DOCUMENT_BYTES, WorkspaceRefused, type Workspaces } from './workspaces.js';
@@ -97,6 +99,8 @@ export interface RepositoryOptions {
   skills?: SkillsService;
   /** Scribe, the Skills page's agent that writes skills (V41): `/api/scribe…`. */
   scribe?: Scout;
+  /** Where the checkout's code is, by file (RM1): `/monitor`, `/api/monitor…`. */
+  monitor?: { map(): Promise<CodeMap> };
   /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 5-min copy. */
   usage?: UsageService;
 }
@@ -431,6 +435,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
             MAX_SKILL * 6 + 4096,
           );
         }
+      }
+      const { monitor } = repository;
+      if (monitor) {
+        // The Monitor page (RM1), a page of the shell's.
+        if (url.pathname === '/monitor') return serveSite(req, res, url, '/', undefined);
+        if (url.pathname === '/api/monitor') return monitorMap(req, res, monitor);
+        if (url.pathname === '/api/monitor/open') return monitorOpen(req, res, monitor);
       }
       const { settings, usage } = repository;
       // Each subscription's windows of use (V29c): read only, the tokens stay in this process.
@@ -1187,6 +1198,54 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       // The forge's own words: no access, a line outside the diff, approving one's own PR…
       return send(res, 502, JSON.stringify({ error: (error as Error).message }), TYPES['.json']);
     }
+  }
+
+  /** The checkout's map (RM1), or why there is none (no commit yet): 409 with its words. */
+  async function monitorMap(
+    req: IncomingMessage,
+    res: ServerResponse,
+    monitor: NonNullable<RepositoryOptions['monitor']>,
+  ): Promise<void> {
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    try {
+      return json(res, 200, await monitor.map());
+    } catch (error) {
+      if (error instanceof SymbioteError) return json(res, 409, { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Opens a file of the Monitor's map in VS Code (RM1): `POST { path }`, a path of the map read,
+   * at its commit's first line where that is in the working copy now. Nothing outside the map.
+   */
+  async function monitorOpen(
+    req: IncomingMessage,
+    res: ServerResponse,
+    monitor: NonNullable<RepositoryOptions['monitor']>,
+  ): Promise<void> {
+    const { open } = options;
+    if (!open) return send(res, 404, 'files open from symbiote view');
+    return written(
+      req,
+      res,
+      (text) => {
+        const value = JSON.parse(text) as { path?: unknown } | null;
+        if (typeof value?.path !== 'string') throw new Error("path: a file of the map's commit");
+        return value.path;
+      },
+      async (path) => {
+        const map = await monitor.map();
+        if (!map.files.some((file) => file.path === path)) {
+          return send(res, 400, `${path} is not a file of ${map.commit.slice(0, 7)}`);
+        }
+        const result = await open({ sha: map.commit, file: path, line: 1, column: 1 });
+        if (!result.opened) {
+          return json(res, result.reason === 'missing' ? 404 : 502, { error: result.message });
+        }
+        return json(res, 200, { line: result.line, how: result.how, moved: result.moved });
+      },
+    );
   }
 
   /** Opens a file of the change in VS Code, where that line is in the working copy now. */

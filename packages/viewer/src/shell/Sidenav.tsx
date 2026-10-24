@@ -19,6 +19,7 @@ import {
   HistoryIcon,
   MenuIcon,
   MergingIcon,
+  MonitorIcon,
   NeedsYouIcon,
   PlusIcon,
   ScoutIcon,
@@ -32,6 +33,7 @@ import { Help } from '../ui/Help.js';
 import {
   HISTORY_PAGE,
   hrefOf,
+  MONITOR_PAGE,
   SCOUT_PAGE,
   SETTINGS_PAGE,
   SKILLS_PAGE,
@@ -208,6 +210,15 @@ export function Sidenav({
             />
           )}
           <kbd aria-hidden="true">i</kbd>
+        </a>
+        <a
+          href={MONITOR_PAGE}
+          title="Monitor: where this checkout's code is (m)"
+          aria-current={route?.page === 'monitor' ? 'page' : undefined}
+        >
+          <MonitorIcon />
+          <span className="sidenav-label">Monitor</span>
+          <kbd aria-hidden="true">m</kbd>
         </a>
         <a
           href={SETTINGS_PAGE}

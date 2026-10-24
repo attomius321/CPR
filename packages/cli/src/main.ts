@@ -40,6 +40,7 @@ import {
   type TsPlugin,
 } from '@symbiote/core';
 import { detectForge, type ChangeRequest, type Forge } from '@symbiote/forge';
+import { codeMaps } from '@symbiote/monitor';
 import {
   findApp,
   installApp,
@@ -691,6 +692,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         terminals,
       }),
       skills: skillsService(repo, { codexInstalled: async () => (await codexOf()) !== null }),
+      // The Monitor page (RM1): where the checked-out commit's code is.
+      monitor: codeMaps(repo.root),
       scribe: scribe(repo, cacheDir, {
         claude: claudeOf,
         codex: codexOf,

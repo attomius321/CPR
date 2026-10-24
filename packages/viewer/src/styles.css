@@ -44,6 +44,7 @@
 @import './settings/SettingsPage.css';
 /* After SettingsPage.css: the Skills page draws its list and editor with Settings' rules. */
 @import './skills/SkillsPage.css';
+@import './monitor/MonitorPage.css';
 @import './shell/Sidenav.css';
 /* After Sidenav.css: under 900 px the shell hides the sidenav, a flex column otherwise. */
 @import './shell/Shell.css';

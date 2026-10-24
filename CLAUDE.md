@@ -24,6 +24,8 @@ finding costs more trust than a missing one), explainable beats clever, local an
   extraction, diff, references, detectors, graph JSON and its JSON Schema. See its `CLAUDE.md`.
 - `packages/cli` — `symbiote diff|view|pr`, output formats, plugin loading and framework hints.
 - `packages/forge` — GitHub and GitLab APIs (pull/merge requests, comments).
+- `packages/monitor` — repository monitoring (RM1): a commit's files, their kinds and lines of
+  code, for the viewer's Monitor page (`/api/monitor`). See its `CLAUDE.md`.
 - `packages/viewer` — React + React Flow app that `symbiote view` serves. See its `CLAUDE.md`.
 - `packages/plugin-angular`, `packages/plugin-qwik` — framework plugins (`--plugin angular|qwik`).
   Each has a `CLAUDE.md`.

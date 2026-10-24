@@ -211,7 +211,7 @@ they are linked to elsewhere.
 `symbiote view` without revisions opens on **History** (`/history`, or h): the repository's history,
 every branch, local and remote, drawn as a graph beside the commits, the current branch the
 straight line on the left. The sidenav on the left lists the pages (History, [Scout](#scout),
-[Skills](#skills), Settings) and, under
+[Skills](#skills), [Monitor](#monitor), Settings) and, under
 them, your [workspaces](#workspaces-and-agents); a click opens one beside it, without loading the
 page again. Drag the sidenav's edge to widen or narrow it (180–480 px), or focus the edge and use
 the arrow keys; a double-click restores it. A workspace's changes, at the right of its terminal,
@@ -287,6 +287,7 @@ command on the machine where `symbiote` runs, so WSL, Remote SSH and containers 
 | h, s | History, Settings | |
 | a | [Scout](#scout); on Scout, its question box or its terminal | |
 | i | [Skills](#skills) | |
+| m | [Monitor](#monitor); on it, Backspace goes up a folder | |
 | w | The workspaces in the sidenav: ↑ and ↓ move, Enter opens | |
 | [ | Fold the sidenav to a rail, or open it | Open the sidenav, or fold it |
 | ] | | In a workspace: hide or show its branch's changes |
@@ -295,7 +296,7 @@ command on the machine where `symbiote` runs, so WSL, Remote SSH and containers 
 | o | | Open in VS Code |
 | Esc | Leave compare mode | Close the detail panel |
 
-n, h, a, i, s, w and [ work on Settings, on Scout, on Skills and in a workspace too. In a comment box, Start a workspace, a workspace's
+n, h, a, i, m, s, w and [ work on Settings, on Scout, on Skills, on the Monitor and in a workspace too. In a comment box, Start a workspace, a workspace's
 reply box or a prompt in Settings, Ctrl+Enter (Cmd+Enter on macOS) saves, starts or sends.
 
 ## Reviewing a branch
@@ -655,6 +656,32 @@ While it writes, the list is read again every 5 s, and the sidenav marks Skills.
   writable folder, with approvals `never`: a write elsewhere fails, nobody is asked.
 - Its record is `symbiote/scribe.json`, its prompt `prompts.scribe` ([Agents' prompts](#agents-prompts)).
 
+## Monitor
+
+**Monitor** (m, or the sidenav's pages: `/monitor`) shows where the code of the checkout's commit
+is (`HEAD`; uncommitted changes are not counted): which folders and files hold it, and how
+unevenly. Its engine is the `@symbiote/monitor` package.
+
+- **The words** say it for the folder in view: "48,263 lines of code in 276 files. Half of it is
+  in 39 files (14 %); the largest 10 % of files (28) hold 42 %. packages holds 96 %."
+- **The treemap** draws each file as a rectangle whose area is its lines of code, inside a frame
+  per folder, as deep as there is room (six levels at most). A click on a folder goes in, and
+  the address keeps it (`/monitor?path=packages/viewer`); the path above the picture, Backspace
+  and the browser's Back go back. Files too small to draw are one "N smaller files" tile.
+- **The list** beside it ranks the same numbers: the folder's children (**In this folder**) or
+  every file under it (**Largest files**), with a dashed line where half of the code is reached.
+  Pointing at a tile or a row shows its numbers; a file clicked keeps them, with **Open in VS
+  Code**.
+- **What counts**: a line of code is one that is not blank and not only a comment (cloc's rule),
+  counted per language with its strings followed, so `'src/**/*.ts'` opens no comment. Each file
+  has a kind, and the chips turn kinds on: **Source** (on at first), **Tests** (`*.test.*`,
+  `*.spec.*`, or under a `test`, `tests`, `__tests__`, `e2e` or `spec` folder), **Docs**, **Data**
+  (JSON, YAML…), **Other**, and **Set aside**: binary files, lockfiles, files `.gitattributes`
+  marks `linguist-generated` or `linguist-vendored`, files [`.symbioteignore`](#symbioteignore)
+  leaves out, and `*.min.*`. Mark a vendored folder in `.gitattributes` to set it aside.
+- A commit is read once from git's objects (Bitwarden's 9,583 files in about 1.5 s) and kept
+  until `HEAD` moves.
+
 ## Pull and merge requests
 
 `symbiote pr 123` works with GitHub (and GitHub Enterprise) and GitLab (gitlab.com and self-managed).
@@ -885,6 +912,8 @@ interfaces/
 # but keep this one
 !apps/web/interfaces/public.ts
 ```
+
+The [Monitor](#monitor) sets the same files aside.
 
 ### Projects in a monorepo
 

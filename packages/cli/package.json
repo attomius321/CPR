@@ -17,6 +17,7 @@
     "@symbiote/core": "workspace:*",
     "@symbiote/desktop": "workspace:*",
     "@symbiote/forge": "workspace:*",
+    "@symbiote/monitor": "workspace:*",
     "@symbiote/viewer": "workspace:*",
     "jsonc-parser": "3.3.1"
   },

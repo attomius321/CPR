@@ -41,6 +41,16 @@ export const SkillsIcon = () => (
   </Icon>
 );
 
+/** The Monitor (RM1): unequal blocks, a treemap, after lucide's layout-dashboard (ISC). */
+export const MonitorIcon = () => (
+  <Icon>
+    <rect x="2" y="2" width="4.7" height="6" rx="0.7" />
+    <rect x="9.3" y="2" width="4.7" height="3.3" rx="0.7" />
+    <rect x="9.3" y="8" width="4.7" height="6" rx="0.7" />
+    <rect x="2" y="10.7" width="4.7" height="3.3" rx="0.7" />
+  </Icon>
+);
+
 export const SettingsIcon = () => (
   <Icon>
     <circle cx="8" cy="8" r="2" />

@@ -177,6 +177,12 @@ hosted.
 | [N1d](plan/n1d-rounded-window.md) | Rounded window corners | ✅ | 218–225 | [journal](journal/n1d-rounded-window.md) |
 | Fix | Symbiote's window opening maximized on WSLg took no clicks | ✅ | | [journal](journal/fix-wslg-open-maximized.md) |
 
+### Repository monitoring
+
+| ID | What | Status | Decisions | Journal |
+|---|---|---|---|---|
+| [RM1](plan/rm1-code-concentration.md) | Code concentration: where a repository's code is | ready for review | 320–328 | [journal](journal/rm1-code-concentration.md) |
+
 ### Docs and the repository
 
 | ID | What | Status | Decisions | Journal |
