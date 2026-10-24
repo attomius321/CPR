@@ -212,6 +212,15 @@ describe('the tokens (V29b)', () => {
         expect(under(theme, LANES, ['--bg', '--raised'], 3)).toEqual([]);
       });
 
+      // RM2 (decision 332): the Monitor's long files, yellow, orange, red; their lines are
+      // written in the text colour, each step standing further from a file's usual fill.
+      it("writes text at 4.5:1 on the Monitor's heat, each step further from the usual fill", () => {
+        const HEAT = ['--heat-1', '--heat-2', '--heat-3'];
+        expect(under(theme, ['--text'], HEAT, 4.5)).toEqual([]);
+        const apart = HEAT.map((t) => contrast(theme.get(t)!, theme.get('--raised')!));
+        expect(apart).toEqual([...apart].sort((a, b) => a - b));
+      });
+
       it('separates regions with lines that show', () => {
         expect(under(theme, ['--line'], ['--bg', '--side', '--panel'], 1.2)).toEqual([]);
       });

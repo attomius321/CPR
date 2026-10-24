@@ -808,6 +808,55 @@ test('images pasted, dropped or Ctrl+V-ed into the terminal attach to the messag
   );
 });
 
+// Symbiote's window on WSL gets no drop from Windows (WSLg has no drag and drop): a picker instead.
+test('images chosen with Attach images attach to the message, as dropped ones do', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
+  const attach = panel(page, branch).getByRole('button', { name: 'Attach images' });
+  const choose = async (files: Given[]) => {
+    const chosen = page.waitForEvent('filechooser');
+    await attach.click();
+    const chooser = await chosen;
+    expect(chooser.isMultiple()).toBe(true);
+    expect(await chooser.element().getAttribute('accept')).toBe(
+      'image/png,image/jpeg,image/gif,image/webp',
+    );
+    await chooser.setFiles(
+      files.map((file) => ({
+        name: file.name,
+        mimeType: file.type,
+        buffer: Buffer.from(file.data, 'base64'),
+      })),
+    );
+  };
+
+  // Two chosen: both, in order, and the keys are the terminal's again.
+  await choose([
+    { name: 'a.gif', type: 'image/gif', data: GIF },
+    { name: 'b.png', type: 'image/png', data: PNG },
+  ]);
+  await expect(screen(page, branch)).toContainText('[Image #1] [Image #2]');
+  expect(symbiote.images().map((image) => image.data)).toEqual([GIF, PNG]);
+  await page.keyboard.press('Enter');
+  await expect(screen(page, branch)).toContainText('got: [Image #1] [Image #2]');
+
+  // A file that is not an image, if the system's picker lets one through: said, nothing pasted.
+  await choose([{ name: 'notes.txt', type: 'text/plain', data: btoa('hi') }]);
+  await expect(terminal(page, branch).getByRole('alert')).toHaveText(
+    'Only images can be attached: PNG, JPEG, GIF or WebP.',
+  );
+  expect(symbiote.images()).toHaveLength(2);
+
+  // Only beside the agent's terminal.
+  await panel(page, branch).getByRole('tab', { name: 'Thread' }).click();
+  await expect(attach).toBeHidden();
+});
+
 test('paths and web addresses the agent prints open with Ctrl+click: files of its worktree only (V38)', async ({
   page,
   context,

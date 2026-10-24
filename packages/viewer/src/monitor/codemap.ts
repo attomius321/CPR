@@ -10,6 +10,19 @@ export const KINDS: readonly { kind: FileKind; label: string }[] = [
   { kind: 'aside', label: 'Set aside' },
 ];
 
+/**
+ * Where a file's colour steps up (RM2, decision 332): from 250 lines of code yellow, from 500
+ * orange, from 1,000 red. Fixed, so a file keeps its colour in every folder: measured on
+ * Symbiote, Bitwarden and Qwik, 6–20 % of the files are 250 lines or more, 0.4–1.7 % 1,000.
+ */
+export const HEAT = [250, 500, 1000] as const;
+
+/** A file's step by its lines: 0 under `HEAT[0]`, then 1, 2 and 3. */
+export const heatOf = (lines: number) => HEAT.filter((bound) => lines >= bound).length;
+
+/** What a file's colour says (RM2, decision 333): its lines (`heatOf`), or only its kind (RM1). */
+export type Colour = 'lines' | 'kind';
+
 /** A folder or a file, with the lines of the kinds turned on. */
 export interface CodeNode {
   /** A file's name, a folder's, or a chain of single folders' (`src/main/java`); '' the root. */

@@ -6,8 +6,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { serveCommits, type RunningCommits } from './symbiote.js';
 
 // The Monitor (RM1): where the checkout's code is. The commits page's repository with a few more
-// files committed: `app` holds most of the source, `lib` a little, tests and docs beside them.
-// `SYMBIOTE_CODE` is a stand-in for VS Code that writes what it was given.
+// files committed: `app` holds most of the source, `lib` a little, tests and docs beside them;
+// `notes` two long docs for the heat (RM2). `SYMBIOTE_CODE` is a stand-in for VS Code that
+// writes what it was given.
 let symbiote: RunningCommits;
 const dir = mkdtempSync(join(tmpdir(), 'symbiote-e2e-monitor-'));
 const log = join(dir, 'opened.jsonl');
@@ -17,6 +18,8 @@ const errors: string[] = [];
 /** `n` lines of code, each a statement. */
 const code = (n: number) =>
   Array.from({ length: n }, (_, i) => `export const v${i} = ${i};`).join('\n') + '\n';
+/** `n` lines of Markdown, each an item. */
+const items = (n: number) => Array.from({ length: n }, (_, i) => `- item ${i}`).join('\n') + '\n';
 
 test.beforeAll(async () => {
   writeFileSync(
@@ -35,6 +38,8 @@ test.beforeAll(async () => {
     'lib/util.ts': code(40),
     'app/big.test.ts': code(200),
     'README.md': '# Notes\n\nText.\n',
+    'notes/long.md': items(520),
+    'notes/huge.md': items(1000),
   };
   for (const [path, text] of Object.entries(files)) {
     mkdirSync(dirname(join(symbiote.repo, path)), { recursive: true });
@@ -172,4 +177,70 @@ test('a file picked keeps its numbers, ranks by keyboard, and opens in VS Code',
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/monitor\?path=app%2Fui$/);
   await page.keyboard.press('Escape');
+});
+
+// RM2 (decision 332): a file's colour by its own lines of code, the same steps at every folder.
+test('colours a file by its lines: yellow from 250, orange from 500, red from 1,000', async ({
+  page,
+}) => {
+  await page.goto(`${symbiote.url}monitor?path=app`);
+  const legend = page.getByRole('group', { name: 'Lines in a file' });
+  await expect(legend).toHaveText(/under 250.*250.*500.*1,000\+/);
+  await expect(tile(page, 'app/big.ts')).toHaveClass(/\bheat-1\b/);
+  await expect(tile(page, 'app/mid.ts')).not.toHaveClass(/\bheat-/);
+  await expect(tile(page, 'app/mid.ts')).toHaveClass(/kind-source/);
+
+  // Docs on: the long notes are orange and red, here and in the list's bars.
+  await page.goto(`${symbiote.url}monitor?path=notes`);
+  await page
+    .getByRole('group', { name: 'What counts' })
+    .getByRole('button', { name: /^Docs/ })
+    .click();
+  await expect(tile(page, 'notes/long.md')).toHaveClass(/\bheat-2\b/);
+  await expect(tile(page, 'notes/huge.md')).toHaveClass(/\bheat-3\b/);
+  await expect(row(page, 'huge.md').locator('.monitor-row-bar > span')).toHaveClass(/\bheat-3\b/);
+
+  // Kind gives RM1's picture back: the kinds' fills, no heat, no legend.
+  const colour = page.getByRole('group', { name: 'Colour' });
+  await expect(colour.getByRole('button', { name: 'Lines' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await colour.getByRole('button', { name: 'Kind' }).click();
+  await expect(tile(page, 'notes/huge.md')).toHaveClass(/kind-docs/);
+  await expect(tile(page, 'notes/huge.md')).not.toHaveClass(/\bheat-/);
+  await expect(legend).toHaveCount(0);
+});
+
+// RM2 (decisions 334, 335): the folder in view is the heading, with Back before it; a section
+// lights up under the pointer.
+test('goes back up: the Back button, Escape once nothing is picked, and Backspace', async ({
+  page,
+}) => {
+  await page.goto(`${symbiote.url}monitor`);
+  await expect(page.locator('.monitor').getByRole('button', { name: /^Back/ })).toBeDisabled();
+  await tile(page, 'app/big.ts').hover();
+  await expect(tile(page, 'app')).toHaveClass(/\blit\b/);
+  await expect(tile(page, 'lib')).not.toHaveClass(/\blit\b/);
+
+  await page.goto(`${symbiote.url}monitor?path=app%2Fui`);
+  const back = page.getByRole('button', { name: 'Back to app' });
+  await expect(back).toHaveAttribute('title', 'Back to app (Backspace)');
+  await back.click();
+  await expect(page).toHaveURL(/\/monitor\?path=app$/);
+  await expect(page.getByRole('button', { name: 'Back to All files' })).toBeEnabled();
+
+  // Escape lets go of the file picked first, then goes up.
+  await tile(page, 'app/mid.ts').click();
+  await expect(tile(page, 'app/mid.ts')).toHaveClass(/selected/);
+  await page.keyboard.press('Escape');
+  await expect(tile(page, 'app/mid.ts')).not.toHaveClass(/selected/);
+  await expect(page).toHaveURL(/\/monitor\?path=app$/);
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/\/monitor$/);
+
+  await page.goto(`${symbiote.url}monitor?path=app%2Fui`);
+  await expect(page.locator('.monitor-crumbs [aria-current="page"]')).toHaveText('ui');
+  await page.keyboard.press('Backspace');
+  await expect(page).toHaveURL(/\/monitor\?path=app$/);
 });

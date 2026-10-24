@@ -59,6 +59,11 @@
   --lane-4: #dc267f;
   --lane-5: #ce9178;
   --lane-6: #8ccf3e;
+  /* The Monitor's long files (RM2, decision 332): 250, 500 and 1,000 lines of code; yellow,
+     orange and red darkened, each lighter than the last (mixed into the navy, yellow went olive). */
+  --heat-1: #453806;
+  --heat-2: #5c3616;
+  --heat-3: #7c2b2b;
   --shadow: rgb(0 0 0 / 50%);
   /* States every control shares (V31): the hover a wash of the text, the selection one of the
      accent (V42), further from its ground than the hover (V37, decision 250). */
@@ -124,6 +129,9 @@
   --lane-4: #bf3989;
   --lane-5: #4d7a00;
   --lane-6: #9a6700;
+  --heat-1: #fde68a;
+  --heat-2: #fdbe8a;
+  --heat-3: #fa9999;
   --shadow: rgb(11 18 32 / 14%);
   --hover: color-mix(in srgb, var(--text) 5%, transparent);
   --selected: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -180,6 +188,9 @@
     --lane-4: #bf3989;
     --lane-5: #4d7a00;
     --lane-6: #9a6700;
+    --heat-1: #fde68a;
+    --heat-2: #fdbe8a;
+    --heat-3: #fa9999;
     --shadow: rgb(11 18 32 / 14%);
     --hover: color-mix(in srgb, var(--text) 5%, transparent);
     --selected: color-mix(in srgb, var(--accent) 12%, transparent);

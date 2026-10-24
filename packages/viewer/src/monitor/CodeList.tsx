@@ -1,5 +1,13 @@
 import type { KeyboardEvent } from 'react';
-import { childRows, largestFiles, percent, type CodeNode, type ListRow } from './codemap.js';
+import {
+  childRows,
+  heatOf,
+  largestFiles,
+  percent,
+  type CodeNode,
+  type Colour,
+  type ListRow,
+} from './codemap.js';
 
 export type ListTab = 'children' | 'files';
 
@@ -12,6 +20,7 @@ const count = (value: number) => value.toLocaleString('en-US');
  */
 export function CodeList({
   node,
+  colour,
   tab,
   onTab,
   hovered,
@@ -20,6 +29,8 @@ export function CodeList({
   onPick,
 }: {
   node: CodeNode;
+  /** A file's bar takes its tile's colour (RM2). */
+  colour: Colour;
   tab: ListTab;
   onTab: (tab: ListTab) => void;
   hovered: string | null;
@@ -29,6 +40,11 @@ export function CodeList({
 }) {
   const rows: ListRow[] = tab === 'children' ? childRows(node) : largestFiles(node);
   const widest = rows[0]?.share ?? 1;
+  const fill = (row: CodeNode) => {
+    if (!row.file) return 'kind-folder';
+    const heat = colour === 'lines' ? heatOf(row.lines) : 0;
+    return heat ? `kind-${row.file.kind} heat-${heat}` : `kind-${row.file.kind}`;
+  };
 
   /** The arrows move between the rows; Enter or Space picks one (they are buttons). */
   const onKeyDown = (event: KeyboardEvent<HTMLOListElement>) => {
@@ -86,7 +102,7 @@ export function CodeList({
               </span>
               <span className="monitor-row-bar" aria-hidden="true">
                 <span
-                  className={row.node.file ? `kind-${row.node.file.kind}` : 'kind-folder'}
+                  className={fill(row.node)}
                   style={{ width: `${(row.share / widest) * 100}%` }}
                 />
               </span>

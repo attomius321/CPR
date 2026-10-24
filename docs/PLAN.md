@@ -143,6 +143,7 @@ hosted.
 | [V36](plan/v36-terminal-images.md) | Images in an agent's terminal | ✅ | 242–245 | [journal](journal/v36-terminal-images.md) |
 | [V38](plan/v38-terminal-links.md) | Paths and links in an agent's terminal | ✅ | 251–256 | [journal](journal/v38-terminal-links.md) |
 | [V41](plan/v41-skills-and-scribe.md) | Skills, and Scribe | ✅ | 271–278 | [journal](journal/v41-skills-and-scribe.md) |
+| Fix | Attach images beside a workspace's terminal: no drop reaches the window on WSL | ready for review | | [journal](journal/fix-drop-file-in-workspace.md) |
 
 ### The merger
 
@@ -184,6 +185,7 @@ hosted.
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
 | [RM1](plan/rm1-code-concentration.md) | Code concentration: where a repository's code is | ready for review | 320–328 | [journal](journal/rm1-code-concentration.md) |
+| [RM2](plan/rm2-monitor-styling.md) | The Monitor's look: long files in heat, the folder in view as the heading, a way back | ready for review | 332–335 | [journal](journal/rm2-monitor-styling.md) |
 
 ### Docs and the repository
 

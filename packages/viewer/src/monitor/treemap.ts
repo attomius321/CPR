@@ -41,6 +41,8 @@ export interface Tile extends Rect {
   depth: number;
   /** The frame holding it, below level 1. */
   parent?: string;
+  /** The level-1 tile holding it, its own id at level 1: a section of the picture (RM2). */
+  section: string;
   /** A file's kind: its colour. */
   kind?: FileKind;
   /** What fits: the name and the lines, the name, or nothing. */
@@ -156,13 +158,21 @@ function labelOf(r: Rect): Tile['label'] {
   return 'none';
 }
 
-function tileOf(item: Item, r: Rect, depth: number, parent?: string): Tile {
+/** A tile for `item` in `r`; at level 1 (no `section` given) it is its own section. */
+function tileOf(item: Item, r: Rect, depth: number, section?: string, parent?: string): Tile {
   const { node, more } = item;
-  const base = { ...r, depth, label: labelOf(r), ...(parent ? { parent } : {}) };
+  const id = more ? (more.path ? `${more.path}/…` : '…') : node.path;
+  const base = {
+    ...r,
+    id,
+    depth,
+    section: section ?? id,
+    label: labelOf(r),
+    ...(parent ? { parent } : {}),
+  };
   if (more) {
     return {
       ...base,
-      id: more.path ? `${more.path}/…` : '…',
       path: more.path,
       name: `${more.files.toLocaleString('en-US')} smaller files`,
       lines: more.lines,
@@ -172,7 +182,6 @@ function tileOf(item: Item, r: Rect, depth: number, parent?: string): Tile {
   }
   return {
     ...base,
-    id: node.path,
     path: node.path,
     name: node.name,
     lines: node.lines,
@@ -193,16 +202,20 @@ export function layoutTreemap(folder: CodeNode, width: number, height: number): 
   const area = { x: 0, y: 0, w: Math.floor(width), h: Math.floor(height) };
   if (folder.lines === 0 || area.w <= 0 || area.h <= 0) return [];
   const tiles: Tile[] = [];
-  fill(folder, area, 1, undefined, tiles);
+  fill(folder, area, 1, undefined, undefined, tiles);
   return tiles;
 }
 
-/** Lays `folder`'s children out in `area` at `depth`, frames' contents after each frame. */
+/**
+ * Lays `folder`'s children out in `area` at `depth`, frames' contents after each frame; below
+ * level 1 they are in `section`.
+ */
 function fill(
   folder: CodeNode,
   area: Rect,
   depth: number,
   parent: string | undefined,
+  section: string | undefined,
   tiles: Tile[],
 ): void {
   const items = withSmallerMerged(folder, area);
@@ -212,7 +225,7 @@ function fill(
   ).map(snap);
   items.forEach((item, i) => {
     const r = rects[i]!;
-    const tile = tileOf(item, r, depth, parent);
+    const tile = tileOf(item, r, depth, section, parent);
     const node = item.node;
     const room = r.w >= MIN_FRAME_W && r.h >= MIN_FRAME_H;
     if (item.more || !node.children || !room || depth >= MAX_DEPTH) {
@@ -221,6 +234,6 @@ function fill(
     }
     tiles.push({ ...tile, type: 'frame', label: r.w >= 40 ? 'name' : 'none' });
     const inner = { x: r.x + PAD, y: r.y + BAND, w: r.w - 2 * PAD, h: r.h - BAND - PAD };
-    fill(node, inner, depth + 1, node.path, tiles);
+    fill(node, inner, depth + 1, node.path, tile.section, tiles);
   });
 }

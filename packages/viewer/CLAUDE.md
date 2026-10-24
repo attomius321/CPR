@@ -27,7 +27,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 | `ui/` | Shared: the tokens and controls' CSS, `Help`, `Resizer`, icons, menus, Markdown, HTTP |
 | `scout/`, `settings/` | Scout, Settings; `scout/Conversation.tsx` is a page agent's conversation, Scout's page and Scribe's pane (V41) |
 | `skills/` | Skills (V41): the checkout's skills, their checks (`skills.ts`, pure), Scribe's pane |
-| `monitor/` | The Monitor (RM1): the folder tree and concentration (`codemap.ts`), the treemap layout (`treemap.ts`), both pure |
+| `monitor/` | The Monitor (RM1, RM2): the folder tree, concentration and heat (`codemap.ts`), the treemap layout (`treemap.ts`), both pure; the picture `TreemapView.tsx` |
 | `intro/` | The first-time intro (V39): the koi engine, its rig and images, the overlay |
 
 - `src/graph/flow.ts` — **pure** layout: `layoutFlow` (what is drawn and where: summaries for big
@@ -59,11 +59,13 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   (`.settings-list`, `.settings-editor`): `SkillsPage.css` comes after `SettingsPage.css`.
 - `src/monitor/` — the Monitor (RM1), at `/monitor` (absolute `/api/monitor`, the `CodeMap` of
   `@symbiote/monitor`, whose **types** only it imports). `codemap.ts` builds the folder tree of the
-  kinds turned on and says the concentration in words; `treemap.ts` lays a folder out (squarified,
-  frames nested while they have room, six levels at most, small files merged). Both pure, tested
-  in `test/codemap.test.ts` and `test/treemap.test.ts`; a layout costs 0.4–2.4 ms on real
-  repositories, so it runs on the main thread (unlike the graph's), again on resize, never on hover
-  or selection.
+  kinds turned on, says the concentration in words and gives a file's heat step by its lines
+  (`HEAT`, `heatOf`, RM2); `treemap.ts` lays a folder out (squarified, frames nested while they
+  have room, six levels at most, small files merged, each tile's level-1 `section`). Both pure,
+  tested in `test/codemap.test.ts` and `test/treemap.test.ts`; a layout costs 0.4–2.4 ms on real
+  repositories, so it runs on the main thread (unlike the graph's), again on resize, never on
+  hover, selection or colour (those are classes). The component is `TreemapView.tsx`: never
+  `Treemap.tsx` beside `treemap.ts` (one name on macOS; `test/files.test.ts`).
 - `src/intro/` — the first-time intro (V39). `intro.ts` (main bundle): `askIntro` asks `/api/intro`
   (absolute, like `/api/history`) during `main.tsx`'s font wait, never on a `?graph=` page;
   `startIntro` puts `.intro` on `document.body` before the first render. `play.ts` and the engine
