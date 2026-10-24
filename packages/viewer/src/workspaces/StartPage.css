@@ -103,6 +103,8 @@
 .start-run .dialog-note {
   margin: 4px 0 0;
   font-size: var(--size-small);
+  /* Inside a field (the model's, V47) too, where the label's weight would carry. */
+  font-weight: normal;
   overflow-wrap: anywhere;
 }
 

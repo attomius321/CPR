@@ -361,8 +361,9 @@ what git did, the check's output, and the merger agent at work. A click on a ste
 to it; a merge that runs again (Retry, Request changes, Check again) keeps the earlier runs above.
 Without a check, a merge waits for **Land**.
 
-A conflict goes to a merger agent (Claude Code or Codex, `merge.agent`; `merge.model`, else
-`sonnet` for Claude Code; `merge.effort`, else the agent's own level), which answers each
+A conflict goes to a merger agent (Claude Code or Codex, `merge.agent`; `merge.model`, set in
+**Settings** from the agent's own list, else `sonnet` for Claude Code; `merge.effort`, else the
+agent's own level, when the model takes it), which answers each
 conflicting region. Its log shows what it does: a summary of its thinking, each file it reads and
 its answer as it writes it. Symbiote writes the answers, commits the merge and runs the check.
 Nothing lands until you have reviewed the resolution: **Files** lists the conflicting files, each
@@ -436,13 +437,17 @@ Prettier and ESLint read only the root's ignore files, so in your main checkout 
 The page offers the agents installed, Claude Code first unless `agent.kind` in
 [`symbiote/config.json`](#configuration) says `codex`. Claude Code runs on your own Claude Code login
 (the page says which: your subscription or an API key), in the permission mode you pick: Claude
-Code's default, Accept edits, or Auto. Symbiote never grants it more. **Effort** is the level the agent's
-session starts at, on a stepper: its own default (the first stop), or one it lists (Claude Code's
-`--help`; for Codex, its configured model's levels, read from its app server); drag the handle, step
-with the arrow keys, or click a level's word. The session keeps it, Start again uses it
-again, and the Brief tab says it ("Started with Claude Code at high effort."); change it later
-in the agent's own terminal (Claude Code: `/effort`). The next workspace starts at the default
-again. If Claude Code does not start, the branch and worktree are kept and the page
+Code's default, Accept edits, or Auto. Symbiote never grants it more. **Model** is the model the
+session starts on: the agent's default (Codex's configured model is named; with `agent.model`, the
+project's), or one from the agent's own list — Claude Code's as it answers its SDK's `initialize`
+request (read in the background, kept in Symbiote's cache and read again once a day), Codex's from
+its app server's `model/list`; the picked model's description is under it. **Effort** is the level
+the session starts at, on a stepper: its own default (the first stop), or one the picked model takes
+(Claude Code's `--help` for its default model; Opus 4.6 has no `xhigh`, Haiku 4.5 no level at
+all); drag the handle, step with the arrow keys, or click a level's word. The session keeps both,
+Start again uses them again, and the Brief tab says them ("Started with Claude Code on sonnet at
+high effort."); change them later in the agent's own terminal (Claude Code: `/model`, `/effort`).
+The next workspace starts on the defaults again. If Claude Code does not start, the branch and worktree are kept and the page
 offers the prompt to copy. Claude Code has to trust the folder, so run `claude` there once and
 accept. It is found as `claude` on your `PATH`, or set `SYMBIOTE_CLAUDE`.
 
@@ -542,7 +547,8 @@ the worktree has files not committed.
 Pick **Codex** when you start a workspace (it is found as `codex` on your `PATH`, or set `SYMBIOTE_CODEX`).
 It runs on your own Codex login (`codex login`: your ChatGPT account or an API key); if it is not
 logged in, the workspace is kept and says so. Its model and reasoning effort are your Codex
-configuration's (`~/.codex/config.toml`).
+configuration's (`~/.codex/config.toml`) unless you pick others when you start it: on its app server
+the model goes on the thread's start, by `exec` with `-m` on every run.
 
 - **On your Codex app server** (Codex 0.163 and later): Symbiote starts the workspace's thread on your
   app-server daemon, the one `codex agents` browses, and starts the daemon when it does not run
@@ -598,6 +604,10 @@ goes through a workspace you start.
   the agent lists it, else the agent's own default. Move it before the first question for that
   conversation only; the page's head names it ("with Claude Code at low effort"). The session keeps
   it through follow-ups; `/effort` in its terminal changes it.
+- **Its model** is the project's (`scout.model`, set in **Settings**, Scout's Model) when the
+  conversation's agent lists it, else `agent.model` for Claude Code, else the agent's own; the
+  page's head names it ("with Claude Code on sonnet at low effort"), and the levels on the stepper
+  are that model's.
 - **Claude Code** runs with `--tools Read,Grep,Glob,Bash --permission-mode dontAsk
   --strict-mcp-config` and Symbiote's settings file, `symbiote/scout-settings.json`, whose
   PreToolUse hook decides first: Read, Grep and Glob go on to Claude Code's own rules; Bash runs
@@ -651,7 +661,8 @@ when to load it, and the rest how to do the work in this repository. Claude Code
 **Scribe** writes a new skill, or changes one, from what you ask (**Improve with Scribe** on a
 skill starts the request for it). It runs in the checkout, as Scout does: one conversation per
 repository, in its own terminal on the page, **New conversation** to start over, its agent and
-effort chosen in its box. It reads the repository's instructions and skills first, writes only in
+effort chosen in its box, its model in **Settings** (`scribe.model`). It reads the repository's
+instructions and skills first, writes only in
 `.claude/skills/`, and never commits: you read what it wrote on the page, change it, and commit it.
 While it writes, the list is read again every 5 s, and the sidenav marks Skills.
 
@@ -893,9 +904,11 @@ At the repository root (`symbiote.config.json`, the older place, still works). E
 | `agent.permissionMode` | `default` | The permission mode Start a workspace suggests for Claude Code: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's | The model Claude Code starts with (Codex's is its own configuration's). |
 | `scout.effort` | the agent's | The effort level each [Scout](#scout) conversation starts at, when Scout's agent lists it (Settings sets it). |
+| `scout.model`, `scribe.model` | `agent.model`, else the agent's | The model each Scout or Scribe conversation starts on, when its agent lists it (Settings sets it). |
 | `merge.checks` | guessed | The check a merge runs before it lands ([Merging](#merging)): a command, or a list run in order through the shell in Symbiote's merge worktree. Add an install first when the check needs dependencies, e.g. `["pnpm install --frozen-lockfile", "pnpm check"]`. |
 | `merge.push` | `false` | Push the target branch after a merge lands. |
-| `merge.effort` | the agent's | The effort level each merger agent's run is asked at, when the merger's agent lists it (Settings sets it). |
+| `merge.model` | `sonnet` for Claude Code, else the agent's | The model each merger agent's run is asked on, passed as written (Settings sets one from the agent's list). |
+| `merge.effort` | the agent's | The effort level each merger agent's run is asked at, when the merger's agent lists it on its model (Settings sets it). |
 | `prompts` | Symbiote's | What Symbiote tells its agents, each prompt whole ([below](#agents-prompts)). |
 
 Before V25 the `workspaces` section was called `features`; that name is still read when `workspaces` is not there.
@@ -905,7 +918,9 @@ Before V25 the `workspaces` section was called `features`; that name is still re
 Every text Symbiote gives its agents can be replaced under `prompts`. **Settings** in `symbiote view` (s)
 lists them by agent, each with Symbiote's text until you change it, its placeholders (click one to
 insert it), Save and Reset to Symbiote's; it writes only `prompts` and leaves the rest of the file as
-it is. Scout's group also holds its Effort (`scout.effort`), saved when you let go of the stepper. A missing key is Symbiote's text, so the file keeps only the prompts you change. A prompt is a
+it is. Scout's group also holds its Model (`scout.model`) and Effort (`scout.effort`), Scribe's its
+Model, the Merger's its Model and Effort: a model is saved when you pick it, from the agent's own
+list, a level when you let go of the stepper. A missing key is Symbiote's text, so the file keeps only the prompts you change. A prompt is a
 string or a list of lines, and `{name}` is filled in where the prompt allows it (any other brace
 is text). Commit `symbiote/config.json` to share them: the page says whether it is committed. It is
 read at each use, so a change applies to the next agent started.
