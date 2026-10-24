@@ -457,7 +457,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V40 | Documents for a workspace's agent | The start page takes text only: a screenshot or a PDF is put somewhere by hand and its path typed into the brief. Measured: a folder in the worktree is out of git by its own `.gitignore`, but Prettier and ESLint still check it (4 of 6 sample files, 2 errors); Codex's sandbox reads outside its worktree, yet its model did not try until told it could. Built: files chosen, dropped or pasted on the start page, uploaded as added, put in `symbiote/documents/<branch>/` beside the record at the start (never the worktree), each named in the agent's first prompt; real Claude Code and Codex each read a PNG and a PDF from there (14 and 18 s), no permission asked. Ready for review (2026-10-23). See below. |
 | V41 | Skills, and Scribe | A skill (a folder with a `SKILL.md`) tells an agent how a project does something; this repository has 6 in `.claude/skills/`, and Symbiote shows none and writes none. Codex reads `.agents/skills/` and lists none of the 6 (6 of 6 with a link). Claude Code protects `.claude`: `dontAsk` denies every Write, its prompt asks in the other modes; Codex's sandbox started in `.claude/skills` writes only there. Ready for review (2026-10-24, `feature/skill-creator`): V41a a Skills page (`/skills`, key `i`) listing, editing, adding and deleting the checkout's skills with the standard's checks and Link for Codex; V41b Scribe, an agent there that writes skills into `.claude/skills/` only, for the person to read and commit. With the real Claude Code it wrote a 79-line skill this repository's checks pass and a fresh session loads for a matching task; its README edit was refused by the gate; Codex's sandbox refused a write outside. See below. |
 | V42 | Koi: colours from the intro | Since V31 the chrome is neutral grey and colour is for state only; V39 gave Symbiote a koi mark on deep water, and none of the app's colours come from it. Asked: "change the color palette … the colors from the intro video with the fishes … primary, secondary … make it look modern". Sampled from the intro's images: the water `#05080f`–`#081828`, the koi's glow `#3060b8`–`#4c82d2`, the white koi `#a8c0e8`–`#e8e8f8`. Ready for review (2026-10-24, `feature/ui-improvements-v2`): the palette in both themes (canvas `#05080f`, chrome `#0f1626`, primary `#3c6fd6`, accent `#7a9ee8`), one accent in named roles, moved and info in cyan, the koi S as the mark, the diff's tabs segmented; every contrast rule passes, timings as `main`'s. See below. |
-| V43 | An icon for each group of workspaces | The sidenav's groups (Merging, Needs you, Working, Done) are told apart by a 6 px dot in their state's colour: the shape of every card's dot, and Merging's and Working's are the same cyan. Folded, a group is a 1 px line. Asked: "Workspaces statuses should be represented through some icons. Only the category should have that icon. Eg. Working should have a clock icon". Planned (2026-10-24, `feature/workspaces-list-upgrades`): a lucide icon per group in its colour, the cards' dots kept; an hourglass for Working, not the clock History's page already has. See below. |
+| V44 | An icon for each group of workspaces | The sidenav's groups (Merging, Needs you, Working, Done) are told apart by a 6 px dot in their state's colour: the shape of every card's dot, and Merging's and Working's are the same cyan. Folded, a group is a 1 px line. Asked: "Workspaces statuses should be represented through some icons. Only the category should have that icon. Eg. Working should have a clock icon". Ready for review (2026-10-24, `feature/workspaces-list-upgrades`): a lucide icon per group in its colour (git-merge, bell, hourglass, circle-check), the cards' dots kept, the icon over the dots and the name over the cards' names; folded, the icons stand for the groups. An hourglass for Working, not the clock History's page already has. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -10774,11 +10774,11 @@ Not verified: Bitwarden's graph (no clone here; this repository's largest range 
 person's own window (Electron on WSLg at their scale); macOS and Windows rendering; a real agent's
 colours in the restyled terminal.
 
-### V43 — An icon for each group of workspaces
+### V44 — An icon for each group of workspaces
 
-**Status:** planned (2026-10-24), on branch `feature/workspaces-list-upgrades` (a workspace
-started in Symbiote, from `main` at `ab9e352`); the plan and its two choices OK'd by the person
-("Ok").
+**Status:** ready for review (2026-10-24), on branch `feature/workspaces-list-upgrades` (a
+workspace started in Symbiote, from `main` at `ab9e352`); the plan and its two choices OK'd by the
+person ("Ok"). As built and results under "As built (V44)" below.
 
 **Problem** (asked: "Workspaces statuses should be represented thorugh some icons. Only the category
 should have that icon. Eg. Working should have a clock icon. This is just an example, if you find a
@@ -10839,7 +10839,40 @@ pages' icons, the colours.
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 285 | How a group of workspaces is marked | **A lucide icon per group in its state's colour** (Merging `git-merge`, Needs you `bell`, Working `hourglass`, Done `circle-check`); the cards keep their dots; folded, the icon in place of the line | Asked for icons on the categories only; an hourglass for Working because the clock is History's icon (the person: "Ok") |
+| 289 | How a group of workspaces is marked | **A lucide icon per group in its state's colour** (Merging `git-merge`, Needs you `bell`, Working `hourglass`, Done `circle-check`); the cards keep their dots; folded, the icon in place of the line | Asked for icons on the categories only; an hourglass for Working because the clock is History's icon (the person: "Ok") |
+
+#### As built (V44)
+
+- **The heading moved to line up with the cards**: with the dot's 6 px gap, the 14 px icon put
+  the group's name 5 px right of the cards' names (36 against 31 px) and its centre 2.5 px right
+  of their dots (23 against 20.5). The heading starts 2 px further left (6 px) with a 3 px gap
+  after the icon, and the count keeps its 6 px (3 px gap, 3 px margin): the icon's centre at
+  21 px, the name at 31, measured in the DOM at 1440×900. The dot's heading had them at 19 and 28.
+- **The rail**: the icon 10 px under the card above and 4 px over its own cards, so a picked
+  card's wash does not touch it.
+- **A flaky test fixed on the way**: `shell.spec`'s keys test failed once in the e2e run, the
+  card-focus test's race (`a6e53c7`): ArrowDown pressed before the second card was listed. On
+  `main`'s build 2 of 32 runs failed on 8 workers, as on this branch; it now waits for both
+  cards, 0 of 64.
+- **Renumbered V44 and decision 289** before review: `feature/agentic-terminal-view`, another
+  workspace from the same `main`, planned V43 with decisions 285–288 six minutes after this
+  branch's plan; neither is merged. This branch's first two commits say V43 and decision 285.
+
+**Results.**
+
+| What | Measured |
+|---|---|
+| Test first | `shell.spec`'s V44 test red on the missing icon, then green; 32 of 32 on 8 workers |
+| `pnpm check` | 1,380 tests in 100 files, green |
+| e2e | 218 of 218 (after the keys test's fix; before it 217 of 218) |
+| Alignment, at 1440×900 | Icon centre 21 px over the cards' dots at 20.5; name at 31 px as theirs (before: dot 19, name 28) |
+| `/history` of this repository, 16 rounds alternated with `main`'s build | first contentful paint median 64 / 64 ms, first rows 127 / 127 ms (the sidenav lists no workspaces there) |
+| Size | JS +903 bytes, CSS −84 bytes |
+| Screenshots | The sidenav open and folded with the four groups, dark and light, 1440×900 at device scale 1 and 2, before and after |
+
+Not verified: the person's own repository and its workspaces (Symbiote was not run in their
+checkout: its merger acts on the queue); the app's window (Electron on WSLg at their scale);
+macOS and Windows rendering.
 
 ### Phase 1 milestones
 

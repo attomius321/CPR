@@ -245,6 +245,9 @@ One recipe for every list: the sidenav, the change list, branches, findings, men
 
 Section header (sidenav "Workspaces", a group "In progress 17"): 32 px, 13 px weight 600 in
 `--muted`, a count after it; its actions (add, filter) as 24 px ghost icon buttons on the right.
+A group of workspaces (V44) starts with its icon, 14 px in its state's colour (`--group-tone`),
+the icon over the cards' dots and the name over their names; folded, the icon alone, its name in
+`title`. Only the group has an icon: a card keeps its dot.
 
 Workspace card: 10 px radius, 8 × 10 px padding; hover `--hover` and current `--selected`, as
 every row (V37: a hover of `--raised` at 40 % vanished in light, and a border and shadow made the

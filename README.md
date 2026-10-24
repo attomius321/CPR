@@ -433,7 +433,9 @@ accept. It is found as `claude` on your `PATH`, or set `SYMBIOTE_CLAUDE`.
 
 The sidenav lists your workspaces under the pages, by what each needs from you (a plan to read, a
 permission to give, a branch to review, changes to send back), then those working, then those
-merged. Its Workspaces heading counts the ones that need you, and + starts one (n). Each card
+merged, each group under its icon: a bell for those that need you, an hourglass for those working,
+a check for those merged, and merge arrows for the merges Symbiote is making. Folded to a rail,
+the icons stand for the groups. Its Workspaces heading counts the ones that need you, and + starts one (n). Each card
 shows the workspace's title (a fix, refactor, chore or spike marked so), what is next, its
 commits, files not committed yet, whether it merges cleanly, and its branch. A click opens it
 beside the sidenav (`/?branch=<branch>`), with these actions:
