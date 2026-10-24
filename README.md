@@ -660,8 +660,10 @@ when to load it, and the rest how to do the work in this repository. Claude Code
 
 **Scribe** writes a new skill, or changes one, from what you ask (**Improve with Scribe** on a
 skill starts the request for it). It runs in the checkout, as Scout does: one conversation per
-repository, in its own terminal on the page, **New conversation** to start over, its agent and
-effort chosen in its box, its model in **Settings** (`scribe.model`). It reads the repository's
+repository, in its own terminal on the page, **New conversation** to start over, its agent chosen
+in its box. Its effort is the project's (`scribe.effort`, set in **Settings**, on Scribe's page)
+when the agent lists it, else the agent's own; the box's stepper changes it for one conversation.
+Its model is set on the same page (`scribe.model`). It reads the repository's
 instructions and skills first, writes only in
 `.claude/skills/`, and never commits: you read what it wrote on the page, change it, and commit it.
 While it writes, the list is read again every 5 s, and the sidenav marks Skills.
@@ -903,7 +905,7 @@ At the repository root (`symbiote.config.json`, the older place, still works). E
 | `agent.kind` | `claude` | The agent Start a workspace offers first, when installed: `claude` or `codex`. |
 | `agent.permissionMode` | `default` | The permission mode Start a workspace suggests for Claude Code: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's | The model Claude Code starts with (Codex's is its own configuration's). |
-| `scout.effort` | the agent's | The effort level each [Scout](#scout) conversation starts at, when Scout's agent lists it (Settings sets it). |
+| `scout.effort`, `scribe.effort` | the agent's | The effort level each [Scout](#scout) or [Scribe](#scribe) conversation starts at, when its agent lists it (Settings sets it). |
 | `scout.model`, `scribe.model` | `agent.model`, else the agent's | The model each Scout or Scribe conversation starts on, when its agent lists it (Settings sets it). |
 | `merge.checks` | guessed | The check a merge runs before it lands ([Merging](#merging)): a command, or a list run in order through the shell in Symbiote's merge worktree. Add an install first when the check needs dependencies, e.g. `["pnpm install --frozen-lockfile", "pnpm check"]`. |
 | `merge.push` | `false` | Push the target branch after a merge lands. |
@@ -919,8 +921,8 @@ Every text Symbiote gives its agents can be replaced under `prompts`. **Settings
 lists them by agent, each with Symbiote's text until you change it, its placeholders (click one to
 insert it), Save and Reset to Symbiote's; it writes only `prompts` and leaves the rest of the file as
 it is. Under **Prebuilt agents**, the Merger, Scout and Scribe each have one page: its Model
-(`merge.model`, `scout.model`, `scribe.model`), its Effort (`merge.effort`, `scout.effort`; Scribe's
-is picked in its box) and its Instructions. A model is saved when you pick it, from the agent's own
+(`merge.model`, `scout.model`, `scribe.model`), its Effort (`merge.effort`, `scout.effort`,
+`scribe.effort`) and its Instructions. A model is saved when you pick it, from the agent's own
 list, a level when you let go of the stepper; the Effort follows the model picked. A missing key is Symbiote's text, so the file keeps only the prompts you change. A prompt is a
 string or a list of lines, and `{name}` is filled in where the prompt allows it (any other brace
 is text). Commit `symbiote/config.json` to share them: the page says whether it is committed. It is
