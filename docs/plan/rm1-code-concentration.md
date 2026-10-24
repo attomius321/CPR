@@ -332,4 +332,7 @@ then the pure tree and layout, then the page.
 - The first counter took 2.4 s on Bitwarden (a `startsWith` per character); jumping between a
   syntax's special characters with one sticky regex, and `indexOf` for closers, 1.3–1.5 s.
 - `pnpm check`: 1,451 tests (monitor 26, the CLI's routes 3, the viewer's tree and layout 20).
-  E2E: `monitor.spec.ts`, 4 tests; the whole suite in the journal.
+  E2E: `monitor.spec.ts`, 4 tests; the whole suite 223 of 225 at first (`shell.spec.ts` counted
+  four pages, fixed; `intro.spec.ts`'s reduced-motion test timed out under load and passes alone).
+- History's first rows, `main`'s build against this one on this repository, alternated, 6 rounds
+  each: median 221 ms and 205 ms; the main bundle 701,812 → 716,817 bytes (+2.1 %).

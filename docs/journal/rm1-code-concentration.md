@@ -110,4 +110,12 @@ folder gone into and back by click, breadcrumbs, Backspace and the browser; Test
 toggled; a picked file kept, ranked by keyboard, opened in a stand-in VS Code at line 1.
 `pnpm check` (1,451 tests). Screenshots at 1440 × 900 and 820 × 900, scale 1, both themes: the
 Monitor on Symbiote and Bitwarden, a picked file, Tests on with a row hovered, History's sidenav
-with the new link. Layout 0.4–2.4 ms, the tree 1.3–8.4 ms on the four repositories.
+with the new link. Layout 0.4–2.4 ms, the tree 1.3–8.4 ms on the four repositories. The whole
+e2e suite: 223 of 225 at first; `shell.spec.ts` counted four sidenav pages (now five, fixed), and
+`intro.spec.ts`'s reduced-motion test timed out (1.5 s, the intro still loading) under the run's
+load, untouched code, and passes alone. History's first rows against `main`'s build, alternated,
+6 rounds each: median 221 ms on `main`, 205 ms here; the main bundle +15 KB (+2.1 %).
+
+Not verified: the page in Symbiote's desktop window (the same viewer; not opened there); a
+screen reader (the treemap's tiles are not keyboard stops: the list is the way in); Windows and
+macOS.
