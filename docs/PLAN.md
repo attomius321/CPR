@@ -126,7 +126,7 @@ hosted.
 | Fix | the start page named the plan Claude Code's token kept from login | ✅ | | [journal](journal/fix-workspace-start.md) |
 | [V43](plan/v43-changed-file-diff.md) | A changed file opens as its diff | ✅ | 285–288 | [journal](journal/v43-changed-file-diff.md) |
 | [V45](plan/v45-workspace-terminals.md) | More terminals in a workspace: shells in its worktree | ready for review | 294–298 | [journal](journal/v45-workspace-terminals.md) |
-| [V47](plan/v47-agent-model.md) | A model for a workspace's agent, from the agent's own list; Scout's, Scribe's and the merger's in Settings | in progress | 336–343 | [journal](journal/v47-agent-model.md) |
+| [V47](plan/v47-agent-model.md) | A model for a workspace's agent, from the agent's own list; Scout's, Scribe's and the merger's in Settings | ready for review | 336–343 | [journal](journal/v47-agent-model.md) |
 
 ### Agents
 

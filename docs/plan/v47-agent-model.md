@@ -2,12 +2,13 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v47-agent-model.md)
 
-**Status:** planned (2026-10-24), on branch `feature/workspace-agent-model` (a workspace started
-in Symbiote, from `main` at `f6e5408`). The plan OK'd by the person with its three questions
-answered: "1. Yes, should be set from the Settings. 2. Should run in the background maybe
-...every 24 hours or so..idk 3. Yes. Ok" — Scout, Scribe and the merger get a model in Settings
-(V47c, decisions 342–343); Claude Code's list is kept on disk and read again in the background
-once a day (decision 340, changed); its "Default (recommended)" left out (337, confirmed).
+**Status:** ready for review (2026-10-24), on branch `feature/workspace-agent-model` (a
+workspace started in Symbiote, from `main` at `f6e5408`; `main` merged in at `8dfdc6d`). The plan
+OK'd by the person with its three questions answered: "1. Yes, should be set from the Settings. 2.
+Should run in the background maybe ...every 24 hours or so..idk 3. Yes. Ok" — Scout, Scribe and
+the merger get a model in Settings (V47c, decisions 342–343); Claude Code's list is kept on disk
+and read again in the background once a day (decision 340, changed); its "Default (recommended)"
+left out (337, confirmed). V47a–c built; "As built" and results at the end.
 
 **Problem** (asked: "At the moment there is no way to choose a model per agent. There should be a
 selector with the model. The model should be queried from available models, respective to Claude
@@ -262,3 +263,68 @@ V47b (the select, effort following it, the draft, the Brief tab line, e2e, look)
 asked); a project default for workspaces picked in Settings (`agent.model` stays a file setting);
 the model of a running session read back or changed from Symbiote; Codex's model without its
 daemon offered (no list to read).
+
+## As built (V47)
+
+- **Codex takes the model on `thread/start`** (decision 339), decided before building: a real
+  thread started on `gpt-5.6-luna` (the configured model is `gpt-6-luna`) ran its two turns on it,
+  and a third after `thread/resume` in a new app-server process; each turn's `turn_context.model`
+  in its rollout. The thread was archived.
+- **Claude Code's list is kept per program** in `<cache>/agents/claude-models-<hash>.json` (`read`,
+  `models`), checked when read back as Claude Code's own answer is. No read is begun by the first
+  workspaces request, as the plan had it: with the list on disk, only the first view on a machine
+  waits for it (1.3 s), once.
+- **Codex's models are a call of their own** (`CodexServer.models`, every page of `model/list`),
+  beside `efforts`, which is unchanged: the options read opens one more connection to the app server
+  (1–3 ms warm, below).
+- **`POST /api/workspaces`'s parser** (`server.ts`) dropped fields it did not know: `model` is
+  passed through and checked as a string; found before the V47a commit, with its test.
+- **One check of a level on a model** (`effortOnProblem`) for the workspaces, Scout and Scribe, and
+  the merger: "Haiku 4.5 takes no effort level: start it at its default", "Opus 4.6 takes low,
+  medium, high or max: xhigh". The merger's log: "merge.effort is high, which Haiku 4.5 does not
+  take: its own level".
+- **Defaults named in Settings**: Scout's and Scribe's is `agent.model` when set (Claude Code), else
+  Codex's configured model; the merger's Claude Code default is "Symbiote's default (sonnet)". A
+  `defaultModel` is given only with a list Symbiote could read.
+- **A `merge.model` its agent does not list** is said in Settings ("…: the merger asks on it as
+  written"), and still passed (decision 343); a `scout.model` or `scribe.model` it does not list,
+  "…: Scout starts on the default".
+- **The model's note was bold**: inside its field the label's weight carried. Seen in the
+  screenshots; the run column's notes are regular now.
+- **`main` merged in** before finishing (RM2, two fixes, among them the `Treemap.tsx`/`treemap.ts`
+  name clash that failed `files.test.ts` on this branch's base); only `docs/JOURNAL.md` conflicted
+  (both appended). V47 and decisions 336–343 are used on no other branch.
+
+## Results (V47)
+
+**Tests.** Written first and seen red for the right reason: 15 CLI tests (V47a: no `models`, no
+`parseClaudeModels`, no `-m`, no `model` on `thread/start`), 1 server parser test, 5 viewer unit
+tests and 3 e2e tests (V47b: no Model select on the old page), 8 CLI tests and 3 e2e tests (V47c:
+no `setModel`, no Model item in Settings). After `main` merged in: `pnpm check` (format, lint,
+typecheck, 1,569 unit tests in 113 files), build, e2e 239 of 239.
+
+**With the real agents** (Claude Code 2.1.310, Codex 0.163, this machine):
+
+| What | Result |
+|---|---|
+| Symbiote's read of Claude Code's models (`claudeCode().models()`, built) | 12 models, its "Default (recommended)" left out; Haiku 4.5 without levels, Opus 4.6 and Sonnet 4.6 without `xhigh`; 1,415 ms; another view reads them from the file in 0.1 ms |
+| A Claude Code session started through Symbiote's start on `haiku` at `low`, in a detached worktree of this repository | First turn `claude-haiku-5-5` at `low` (the person's default is Opus at `xhigh`); after Symbiote's reply (stop, `--resume` without flags) the same; session removed, worktree deleted |
+| A Codex thread on `gpt-5.6-luna` (`thread/start`'s `model`) | Three turns on it, the third after a resume in a new server; archived |
+
+**Cost**: `GET /api/workspaces/options` in a scratch repository, both agents installed, `main`'s
+build against the branch's, two runs each:
+
+| Build | First read | Warm (3 reads) |
+|---|---|---|
+| `main` | 243–244 ms | 13–17 ms |
+| Branch, no list kept (the first view on a machine) | 1,275–1,307 ms | 15–17 ms |
+| Branch, list kept | 246–250 ms | 16–19 ms |
+
+**Look**: the start page (Claude Code's default, Opus 4.6, Haiku 4.5 without Effort, Codex) and
+Settings' Scout and Merger Model at 1280, 1440 and 390 px, dark and light.
+
+Not verified: a Codex workspace started through Symbiote's endpoint (it would leave a trust entry
+for a throwaway folder in the person's Codex configuration; the thread's start was measured
+directly, and the e2e checks Symbiote sends `model`); Codex `exec` with `-m` beyond unit tests;
+Scout, Scribe and the merger on a picked model with the real agents (unit and e2e with the fakes);
+Claude Code's list on an API key, Bedrock or Vertex login; the Electron window; macOS and Windows.
