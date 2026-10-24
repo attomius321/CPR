@@ -3,7 +3,8 @@
 `--plugin angular`: templates become symbols that use their component's members; decorator
 configuration is not contract; lifecycle hooks and host listeners are not orphans; templates see
 the repo's and installed libraries' components, directives and pipes. Design and history:
-`docs/PLAN.md` sections X1, A1–A2, A3, W1, V7.
+`docs/plan/` and `docs/journal/`, files `x1-plugins`, `a1-a2-angular-templates`,
+`a3-angular-libraries`, `w1-multi-project`, `v7-app-boundaries`.
 
 ## Where things are
 

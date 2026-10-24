@@ -4,9 +4,15 @@ Symbiote reviews a change as a **graph of changed symbols** (functions, classes,
 framework templates) and the calls between them, with findings on the risky parts. A local CLI
 (`symbiote diff`, `symbiote view`, `symbiote pr`) and a browser viewer; GitHub and GitLab; framework plugins.
 
-- North Star, design and every decision: `docs/PLAN.md` (milestone sections, §14 decisions).
-- What each milestone learned and measured: `docs/JOURNAL.md`. Read the entries for the area you
-  touch before changing it — most traps there were found the hard way.
+- North Star and the index of every milestone, fix and chore by area: `docs/PLAN.md`. Each
+  milestone's plan (design, decisions, "As built", results): `docs/plan/<id>-<slug>.md`; the v1
+  design and decisions 1–19: `docs/plan/design.md`.
+- What each milestone learned and measured: `docs/journal/`, under its plan's name (by date:
+  `docs/JOURNAL.md`). Read the journal files of the area you touch before changing it — most
+  traps there were found the hard way.
+- Read the index, then only your area's files; find a decision or a term by grep
+  (`grep -rn '^| 246 |' docs/plan`, `grep -rln <term> docs/plan docs/journal`), not by reading
+  the folders.
 - Graph JSON contract: `docs/graph-schema.md`.
 
 **North Star: review decisions, not lines.** When trading off: precise beats complete (a wrong
@@ -50,7 +56,7 @@ node packages/cli/dist/bin.js view [<base> [head]]    # opens the viewer (no rev
   *why* is not obvious; no comments that restate the code.
 - Leave absent optional fields absent (`...(x ? { x } : {})`), as the codebase does.
 - Plugins and the viewer import only **types** from `@symbiote/core` (core pulls ts-morph; the viewer is
-  a browser bundle). New runtime dependencies need a reason recorded in `docs/PLAN.md`.
+  a browser bundle). New runtime dependencies need a reason recorded in the milestone's plan.
 - Paths in the analysis and the graph are repo-relative POSIX; positions are 1-based.
 
 ## Tests
@@ -83,9 +89,9 @@ unless the change says otherwise — prove it with the comparisons.
 
 ## Workflow
 
-- Work is organized in **milestones** listed in `docs/PLAN.md` (IDs like W1, Q2, V7). Use the
-  `milestone` skill: measure on real data, plan in PLAN.md, branch, failing tests first, implement,
-  verify, record in JOURNAL.md.
+- Work is organized in **milestones** listed in `docs/PLAN.md`'s index (IDs like W1, Q2, V7). Use
+  the `milestone` skill: measure on real data, plan in `docs/plan/`, branch, failing tests first,
+  implement, verify, record in `docs/journal/`.
 - One branch per milestone: `milestone/<id>-<slug>` (e.g. `milestone/v7-app-boundaries`); fixes on
   `fix/<slug>` from `main`; docs and tooling on `chore/<slug>`. Never commit to `main` directly.
 - IMPORTANT: **ask the user before merging into `main`.** An Approve in Symbiote, when the user asks
@@ -100,11 +106,12 @@ unless the change says otherwise — prove it with the comparisons.
 
 ## Docs to keep current
 
-- `docs/PLAN.md`: the milestone's section (status, problem with numbers, goal, design,
+- `docs/plan/<id>-<slug>.md`: the milestone's plan (status, problem with numbers, goal, design,
   verification, risks, milestones, decisions), then "As built" (what differs from the plan and why)
-  and results; the "Proposed next" table near §12.
-- `docs/JOURNAL.md`: one entry per milestone or fix — what was learned, how it was verified, and
-  "Merged into main (date)".
+  and results; its row in `docs/PLAN.md`'s index (area, status, decisions).
+- `docs/journal/<id>-<slug>.md` (a fix on its own branch: `fix-<slug>.md`): one entry per
+  milestone part or fix — what was learned, how it was verified, and "Merged into main (date)";
+  each entry a line in `docs/JOURNAL.md`. Templates: the `milestone` skill.
 - `README.md` for user-visible behavior (commands, flags, plugins).
 - Write like the existing docs: short sentences, measured numbers, no hype.
 

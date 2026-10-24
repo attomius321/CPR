@@ -17,7 +17,7 @@ catching clicks, a group opened off screen) were found there, not in unit tests.
 - [ ] 3. New behavior → a spec in packages/viewer/e2e (fixture served by e2e/symbiote.ts), asserting
          no page errors
 - [ ] 4. Real graphs: measure before (baseline build) and after; screenshot; look at them
-- [ ] 5. Record numbers in JOURNAL "Verification"; send screenshots to the user when they show the change
+- [ ] 5. Record numbers in the journal entry's "Verification"; send screenshots to the user when they show the change
 ```
 
 ## Real graphs

@@ -3,7 +3,7 @@
 `--plugin qwik`: what Qwik's router calls by name is not an orphan; a `component$`'s props are its
 contract (core's `contract` hook), compared from the callers' side; `.mdx` routes are templates.
 No runtime dependency besides `@symbiote/core` types. Design, measurements and "as built":
-`docs/PLAN.md` section Q1–Q2.
+`docs/plan/q1-q2-qwik.md` (journal: `docs/journal/q1-q2-qwik.md`).
 
 ## Where things are
 
@@ -25,7 +25,7 @@ No runtime dependency besides `@symbiote/core` types. Design, measurements and "
 - Keep the fake typings in fixtures shaped like the real ones (`Loader` is declared `Loader_2`,
   `Component<P>` is an alias) and check them with `tsc` against the real packages when changing.
 - When changing `mdx.ts`, compare with `@mdx-js/mdx` on Qwik's docs site (243 routes): ESM blocks,
-  component elements and expressions must match (see JOURNAL Q2).
+  component elements and expressions must match (see the Q2 entry in `docs/journal/q1-q2-qwik.md`).
 
 ## Tests
 

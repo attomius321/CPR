@@ -47,7 +47,8 @@ light for the primary and one accent.
 
 ## Constraints the style keeps
 
-Decisions recorded in `docs/PLAN.md`/`JOURNAL.md`; a new look must keep them.
+Decisions recorded in `docs/plan/` and `docs/journal/` (the index in `docs/PLAN.md`, area Shell and
+look); a new look must keep them.
 
 - **Fonts**: `'Geist Variable', monospace` and `'Geist Mono Variable', monospace`, nothing else
   (V29a/V29b: a family name the system lacks cost 283–900 ms on Linux). No system font stack.
@@ -61,7 +62,7 @@ Decisions recorded in `docs/PLAN.md`/`JOURNAL.md`; a new look must keep them.
   its label names it, and hover and focus bring the 3:1 edge and the ring.
 - **Letter-spacing 0** but uppercase labels (V37): fractional tracking rounds into uneven gaps
   between letters at 1× on Linux.
-- **No new runtime dependency** without a reason in PLAN.md: no CSS framework, component kit or
+- **No new runtime dependency** without a reason in the milestone's plan: no CSS framework, component kit or
   icon package. Write rules in the part beside the component (a shared control's in
   `src/ui/controls.css`); draw icons in `src/ui/icons.tsx` from lucide's paths (ISC; keep a
   one-line credit there).
@@ -150,11 +151,12 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
 
 ## Workflow
 
-A restyle is a milestone: plan it with the `milestone` skill (PLAN section, branch, tests first,
-JOURNAL). Use this checklist inside it.
+A restyle is a milestone: plan it with the `milestone` skill (plan file, branch, tests first,
+journal). Use this checklist inside it.
 
 ```
-- [ ] 1. Read JOURNAL's V29b and V31 entries and the viewer CLAUDE.md
+- [ ] 1. Read the journal's V29b and V31 entries (`docs/journal/v29-workbench.md`,
+         `v31-symbiote-style.md`) and the viewer CLAUDE.md
 - [ ] 2. Screenshot before: the pages you touch, 1440×900, dark and light: shots.mjs on
          `symbiote view [<base> <head>] --no-open --port <n>` (a diff is served at the
          `/diff/<base>..<head>/` its log prints); measure.mjs --shot for real graphs
@@ -166,7 +168,7 @@ JOURNAL). Use this checklist inside it.
 - [ ] 6. viewer-check on Bitwarden 737ee3f: first paint, select, mark reviewed, pan fps against
          main's build, alternated; /history first rows
 - [ ] 7. Screenshots after, same views; send them to the user beside the before ones
-- [ ] 8. JOURNAL: what changed, numbers, what was not verified; README screenshots if retaken
+- [ ] 8. Journal: what changed, numbers, what was not verified; README screenshots if retaken
 ```
 
 When this skill is silent: match Symbiote's adjacent control and the six rules; if that does not

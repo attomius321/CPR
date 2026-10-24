@@ -36,7 +36,8 @@ The engine. Language-neutral pipeline; everything TypeScript-specific sits behin
   every walk up the tree. Class members: only code that could run on an instance counts (R1,
   `FamilyFilter`).
 - **Detectors**: a finding needs a message a reviewer can act on, `related` symbols and `data`
-  sites. Prefer silence to a guess; severities follow `docs/PLAN.md` §8 and decisions in §14.
+  sites. Prefer silence to a guess; severities follow `docs/plan/design.md` §8, its decisions (§14)
+  and the milestones' plans.
 - **Plugins** (`lang/typescript/plugins.ts`): `PLUGIN_API_VERSION` 1; adding an *optional* hook is
   compatible, changing one is not. Every call goes through `runHook`: a throwing hook disables the
   plugin for that revision with a warning. Without plugins the adapter must behave exactly as
