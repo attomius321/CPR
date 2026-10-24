@@ -48,7 +48,7 @@ export const SettingsIcon = () => (
   </Icon>
 );
 
-/** The sidenav's Merging group (V43): two branches joining, after lucide's git-merge (ISC). */
+/** The sidenav's Merging group (V44): two branches joining, after lucide's git-merge (ISC). */
 export const MergingIcon = () => (
   <Icon>
     <circle cx="12" cy="12" r="2" />
@@ -57,7 +57,7 @@ export const MergingIcon = () => (
   </Icon>
 );
 
-/** The sidenav's Needs you group (V43): the person's turn, after lucide's bell (ISC). */
+/** The sidenav's Needs you group (V44): the person's turn, after lucide's bell (ISC). */
 export const NeedsYouIcon = () => (
   <Icon>
     <path d="M6.85 14a1.33 1.33 0 0 0 2.3 0" />
@@ -66,7 +66,7 @@ export const NeedsYouIcon = () => (
 );
 
 /**
- * The sidenav's Working group (V43): busy, after lucide's hourglass (ISC). Not a clock: that is
+ * The sidenav's Working group (V44): busy, after lucide's hourglass (ISC). Not a clock: that is
  * History's icon, two rows above.
  */
 export const WorkingIcon = () => (
@@ -77,7 +77,7 @@ export const WorkingIcon = () => (
   </Icon>
 );
 
-/** The sidenav's Done group (V43): merged, after lucide's circle-check (ISC). */
+/** The sidenav's Done group (V44): merged, after lucide's circle-check (ISC). */
 export const DoneIcon = () => (
   <Icon>
     <circle cx="8" cy="8" r="6" />

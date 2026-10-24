@@ -45,7 +45,7 @@ import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from '../workspace
 import { workspaceGroups, workspaceName, type WorkspaceRow } from '../workspaces/workspaces.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 
-/** The workspaces' groups, each with its icon (V43): only the group has one, a card its dot. */
+/** The workspaces' groups, each with its icon (V44): only the group has one, a card its dot. */
 const GROUPS = [
   ['needsYou', 'Needs you', NeedsYouIcon],
   ['working', 'Working', WorkingIcon],

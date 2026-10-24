@@ -260,7 +260,7 @@ button.workspace-about {
   padding: 0 8px 12px;
 }
 
-/* A group: its icon in its state's colour (V43), its name and how many. The icon stands over the
+/* A group: its icon in its state's colour (V44), its name and how many. The icon stands over the
    cards' dots and the name over their names; the count keeps 6 px. */
 .sidenav .workspace-group h3 {
   display: flex;
@@ -472,7 +472,7 @@ button.workspace-about {
     padding: 0 6px 12px;
   }
 
-  /* A group's icon stands for it where its name was (V43). */
+  /* A group's icon stands for it where its name was (V44). */
   .sidenav.rail .workspace-group h3 {
     justify-content: center;
     margin: 10px 4px 4px;

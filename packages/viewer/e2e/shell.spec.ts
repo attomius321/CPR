@@ -209,7 +209,7 @@ const tokenColour = (page: Page, token: string) =>
     return colour;
   }, token);
 
-test('each group of workspaces has its icon, in its colour; the cards keep their dots (V43)', async ({
+test('each group of workspaces has its icon, in its colour; the cards keep their dots (V44)', async ({
   page,
 }) => {
   const symbiote = await serve();
