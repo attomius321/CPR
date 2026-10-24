@@ -121,9 +121,11 @@
   padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 8px);
 }
 
-/* The page's tabs, moved up: the same buttons, without the strip. */
+/* The page's tabs, moved up: the same buttons, without the strip. Its 4 px keep a focus ring
+   inside the strip, which scrolls (V45); the margin keeps the tabs where they were. */
 .titlebar .workspace-views {
-  padding: 0;
+  margin: 0 -4px;
+  padding: 4px;
   border: 0;
   background: none;
 }

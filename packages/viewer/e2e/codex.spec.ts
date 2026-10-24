@@ -98,6 +98,8 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
   await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
   await expect(workspaceRow(page)).toContainText('Working', POLL);
   await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveCount(0);
+  // A shell in its worktree all the same (V45): shells need no agent's session.
+  await expect(here.getByRole('button', { name: 'New shell' })).toBeEnabled();
 
   // The turn ends with a plan: drawn in the thread, "plan ready".
   symbiote.codexTurn(BRANCH, { text: 'Plan\n1. Add half(a) to src/half.ts\n2. Test it' });

@@ -484,6 +484,13 @@ test.describe('the title bar', () => {
       await expect(bar.getByRole('button', { name: 'Changes' })).toBeVisible();
       await bar.getByRole('tab', { name: 'Brief' }).click();
       await expect(page.locator('.workspace-brief')).toBeVisible();
+      // Its shells too (V45): their tabs and + in the bar.
+      await bar.getByRole('button', { name: 'New shell' }).click();
+      await expect(bar.getByRole('tab', { name: 'Shell 1' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      await expect(page.locator('.agent-terminal .xterm-rows')).toContainText('shell$');
     } finally {
       served.stop();
     }

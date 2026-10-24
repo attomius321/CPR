@@ -68,6 +68,8 @@ import {
   type WorkspaceReplied,
   type WorkspaceReply,
   type WorkspaceRequest,
+  type WorkspaceShell,
+  type WorkspaceShells,
   type WorkspaceStart,
   type WorkspaceSummary,
   type WorkspaceTerminalOpened,
@@ -100,7 +102,7 @@ import {
   type Codex,
 } from './codex.js';
 import { localHost, onPath, type FolderAt } from './editor.js';
-import { TerminalRefused, type Terminals } from './terminal.js';
+import { shellOf, TerminalRefused, type Terminals } from './terminal.js';
 import { CONFIG_FILES } from './plugins.js';
 import {
   prepareSymbioteFolder,
@@ -1156,12 +1158,22 @@ export interface Workspaces {
    */
   terminal(request: WorkspaceTerminalRequest): Promise<WorkspaceTerminalOpened>;
   /**
+   * Opens a shell in its worktree (V45): the person's shell in a kept terminal, `Shell <n>` by the
+   * lowest number free; at most `MAX_SHELLS`. Its ID and number.
+   */
+  shell(request: WorkspaceTerminalRequest): Promise<Omit<WorkspaceShell, 'running'>>;
+  /** Its shells still open (V45), by number, each with what runs in it. */
+  shells(branch: string): Promise<WorkspaceShells>;
+  /**
    * Cleans it up (V18c): its agent's sessions, its worktree and, once merged, its branch; the
    * record stays, `finished`. Unmerged only when asked (`unmerged`); never with work not
    * committed.
    */
   clean(request: { branch: string; unmerged?: boolean }): Promise<{ finished: string }>;
 }
+
+/** Most shells a workspace has open at once (V45): 9 MB each, measured. */
+export const MAX_SHELLS = 8;
 
 /** The hooks Symbiote passes to every workspace's agent (V18c): each event, recorded by
  * `agent-hook.js`. */
@@ -1572,6 +1584,18 @@ export function workspaces(
   }
 
   const draftFile = join(cacheDir, 'state', repo.id, 'start-draft.json');
+
+  /** Each workspace's shells (V45), by branch: they live as long as `symbiote view`. */
+  const shellsByBranch = new Map<string, { id: string; number: number }[]>();
+  /** A workspace's shells still open, by number: one that exited or was closed is forgotten. */
+  const openShells = (branch: string) => {
+    const open = (shellsByBranch.get(branch) ?? []).filter(
+      (shell) => terminals?.running(shell.id) !== undefined,
+    );
+    if (open.length > 0) shellsByBranch.set(branch, open);
+    else shellsByBranch.delete(branch);
+    return open;
+  };
 
   /** Merge checks by the default branch's tip and the workspace's: they take seconds on some. */
   const merges = new Map<string, Promise<BranchMerge>>();
@@ -2501,6 +2525,56 @@ export function workspaces(
       }
     },
 
+    async shell({ branch, cols, rows }) {
+      const workspace = await recorded(await place(), branch);
+      if (!terminals) throw new WorkspaceRefused('no terminals here', 409);
+      const can = await terminals.available();
+      if (!can.available) throw new WorkspaceRefused(can.reason, 409);
+      if (!existsSync(workspace.worktree)) {
+        throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
+      }
+      if (openShells(branch).length >= MAX_SHELLS) {
+        throw new WorkspaceRefused(
+          `${MAX_SHELLS} shells are open in ${branch}: close one first`,
+          409,
+        );
+      }
+      let id: string;
+      try {
+        id = await terminals.open({
+          command: shellOf(env),
+          args: [],
+          cwd: workspace.worktree,
+          cols,
+          rows,
+          env,
+          kept: true,
+        });
+      } catch (error) {
+        if (error instanceof TerminalRefused) throw new WorkspaceRefused(error.message, 409);
+        throw error;
+      }
+      // Numbered once it is open, with no wait between: two opened at once get two numbers.
+      const open = openShells(branch);
+      let number = 1;
+      while (open.some((shell) => shell.number === number)) number += 1;
+      shellsByBranch.set(
+        branch,
+        [...open, { id, number }].sort((a, b) => a.number - b.number),
+      );
+      return { id, number };
+    },
+
+    async shells(branch) {
+      await recorded(await place(), branch);
+      return {
+        shells: openShells(branch).map(({ id, number }) => {
+          const running = terminals?.running(id);
+          return { id, number, ...(running ? { running } : {}) };
+        }),
+      };
+    },
+
     async reply({ branch, text, stop }) {
       if (text.trim() === '') throw new WorkspaceRefused('a message cannot be empty', 400);
       if (text.length > MAX_BRIEF) {
@@ -2604,6 +2678,9 @@ export function workspaces(
           if (!removed.ok) throw new WorkspaceRefused(removed.error, 409);
         }
       }
+      // Its shells run in the worktree that goes (V45).
+      for (const shell of openShells(branch)) terminals?.close(shell.id);
+      shellsByBranch.delete(branch);
       try {
         if (exists) await removeWorktree(repo, workspace.worktree);
         if (merged) await deleteMergedBranch(repo, workspace.branch);

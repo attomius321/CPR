@@ -2,7 +2,8 @@
 // streamed to the page and the person's keys written back. Claude Code keeps hosting the
 // session; a terminal is only a client of it, and hanging one up leaves the session running.
 // Images pasted or dropped into one are saved for its agent to attach (V36); files it prints are
-// opened in the editor (V38).
+// opened in the editor (V38). A workspace's shells are kept terminals (V45): a hang-up ends what
+// they run.
 import { randomBytes } from 'node:crypto';
 import { mkdir, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -17,6 +18,8 @@ export interface Pty {
   write(data: string): void;
   resize(cols: number, rows: number): void;
   kill(signal?: string): void;
+  /** The program in its foreground, as node-pty names it (V45). */
+  readonly process?: string | undefined;
 }
 
 export type SpawnPty = (
@@ -48,6 +51,23 @@ export async function loadPty(
     }
     return { error: `node-pty did not load: ${(message ?? String(error)).split('\n')[0]}` };
   }
+}
+
+/**
+ * The shell a workspace's new terminal runs (V45): the person's (`$SHELL`), else `/bin/sh`. On
+ * Windows `%COMSPEC%` (cmd.exe), whatever `SHELL` Git Bash set: node-pty runs Windows programs
+ * there.
+ */
+export function shellOf(
+  env: Readonly<Record<string, string | undefined>>,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  if (platform === 'win32') {
+    // Windows names it ComSpec; a copy of the environment keeps the name's case.
+    const comspec = Object.entries(env).find(([name]) => name.toUpperCase() === 'COMSPEC')?.[1];
+    return comspec || 'cmd.exe';
+  }
+  return env.SHELL || '/bin/sh';
 }
 
 /** Why a terminal was not opened; the server answers with `status`. */
@@ -141,7 +161,11 @@ export interface TerminalListener {
 export interface Terminals {
   /** Whether terminals can run here, else why not. */
   available(): Promise<{ available: true } | { available: false; reason: string }>;
-  /** Runs `command args` in `cwd` in a new terminal; its ID. Rejects with `TerminalRefused`. */
+  /**
+   * Runs `command args` in `cwd` in a new terminal; its ID. Rejects with `TerminalRefused`.
+   * `kept` (a shell, V45): never hung up for having no reader nor to make room for another, and
+   * not counted in the limit.
+   */
   open(request: {
     command: string;
     args: string[];
@@ -149,6 +173,7 @@ export interface Terminals {
     cols: number;
     rows: number;
     env: Readonly<Record<string, string | undefined>>;
+    kept?: boolean;
   }): Promise<string>;
   /**
    * Reads a terminal: what it printed so far, then what it prints, then its end. The way to stop
@@ -158,6 +183,12 @@ export interface Terminals {
   /** Each false when there is no such terminal. */
   write(id: string, data: string): boolean;
   resize(id: string, cols: number, rows: number): boolean;
+  /**
+   * The program in its foreground when it is not the one the terminal started (V45): `node` in a
+   * shell that runs a server, null at the shell's prompt or when unknown; undefined when there is
+   * no such terminal.
+   */
+  running(id: string): string | null | undefined;
   /**
    * Saves an image for the terminal's agent to attach (V36): where, and the text to paste for it.
    * Undefined when there is no such terminal.
@@ -183,6 +214,10 @@ export interface Terminals {
 interface Open {
   id: string;
   pty: Pty;
+  /** The program it started, by name: what `running` does not count. */
+  program: string;
+  /** A shell's (V45): never hung up for having no reader, nor to make room. */
+  kept: boolean;
   /** The folder it runs in: where the paths it prints are read from (V38). */
   cwd: string;
   opened: number;
@@ -197,7 +232,8 @@ interface Open {
 /**
  * Terminals, at most `limit` at once (each `claude attach` is a Claude Code process, about 140
  * MB): a new one hangs up the oldest nobody reads, else is refused. One nobody reads for
- * `graceMs` is hung up (a reload reads it again within that). Their images go in `images`, for
+ * `graceMs` is hung up (a reload reads it again within that). Kept terminals (shells, 9 MB, V45)
+ * are outside both rules. Their images go in `images`, for
  * the person only, and are removed `keepImagesMs` later: Codex reads one when its message is
  * sent, not when it is pasted (V36 spike). Files they print open with `openFolder` (V38).
  */
@@ -230,9 +266,14 @@ export function terminals({
   const open = new Map<string, Open>();
   let count = 0;
 
+  /** A program's name as node-pty gives it: `/bin/bash`, `-bash` (a login shell), `CMD.EXE`. */
+  const nameOf = (path: string) => {
+    const name = (platform === 'win32' ? win32 : posix).basename(path).replace(/^-/, '');
+    return platform === 'win32' ? name.toLowerCase().replace(/\.exe$/, '') : name;
+  };
   const watch = (terminal: Open) => {
     clearTimeout(terminal.idle);
-    if (terminal.listeners.size === 0) {
+    if (!terminal.kept && terminal.listeners.size === 0) {
       terminal.idle = setTimeout(() => hangUp(terminal), graceMs);
     }
   };
@@ -287,11 +328,12 @@ export function terminals({
       return 'error' in result ? { available: false, reason: result.error } : { available: true };
     },
 
-    async open({ command, args, cwd, cols, rows, env }) {
+    async open({ command, args, cwd, cols, rows, env, kept = false }) {
       const result = await load();
       if ('error' in result) throw new TerminalRefused(result.error);
-      if (open.size >= limit) {
-        const unread = [...open.values()]
+      const counted = [...open.values()].filter((t) => !t.kept);
+      if (!kept && counted.length >= limit) {
+        const unread = counted
           .filter((t) => t.listeners.size === 0)
           .sort((a, b) => a.opened - b.opened)[0];
         if (!unread) {
@@ -315,6 +357,8 @@ export function terminals({
             COLORTERM: 'truecolor',
           },
         }),
+        program: nameOf(command),
+        kept,
         cwd,
         opened: count++,
         output: [],
@@ -363,6 +407,18 @@ export function terminals({
       const terminal = open.get(id);
       terminal?.pty.resize(cols, rows);
       return terminal !== undefined;
+    },
+
+    running(id) {
+      const terminal = open.get(id);
+      if (!terminal) return undefined;
+      // A program that set its title is named by it on Linux (`npm exec vitest --watch a/b.ts`,
+      // measured): its first word. Windows names the program alone, spaces and all.
+      const now =
+        platform === 'win32' ? terminal.pty.process : terminal.pty.process?.split(/\s/)[0];
+      if (!now) return null;
+      const name = nameOf(now);
+      return name === terminal.program ? null : name;
     },
 
     async image(id, bytes, kind) {

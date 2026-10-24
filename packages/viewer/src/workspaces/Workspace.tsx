@@ -10,22 +10,29 @@ import {
 import type {
   BranchMerge,
   WorkspaceReplied,
+  WorkspaceShell,
+  WorkspaceShells,
   WorkspaceStart,
   WorkspaceSummary,
   WorkspaceThread,
   TerminalAvailability,
 } from '@symbiote/core';
-import { AgentTerminal, toTerminal, type OpenedTerminal } from './AgentTerminal.js';
+import {
+  AgentTerminal,
+  lastTerminalSize,
+  toTerminal,
+  type OpenedTerminal,
+} from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import { ChangesPanel } from './ChangesPanel.js';
-import { ChangesIcon, FileIcon, ImageIcon } from '../ui/icons.js';
+import { ChangesIcon, CloseIcon, FileIcon, ImageIcon, PlusIcon } from '../ui/icons.js';
 import { isImageName } from './documents.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { InTitleBar } from '../shell/TitleBar.js';
 import { keyIsTaken } from '../ui/keys.js';
 import { markdownNodes, useMarkdown } from '../ui/markdown.js';
 import { MergeControl } from './MergeControl.js';
-import { postJson } from '../ui/http.js';
+import { postJson, serverWords } from '../ui/http.js';
 import { Resizer } from '../ui/Resizer.js';
 import {
   workspaceGroups,
@@ -45,17 +52,27 @@ import {
 import { HISTORY_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
 import { verdictLine } from './terminal.js';
+import {
+  closeQuestion,
+  MAX_SHELLS,
+  shellAfter,
+  shellName,
+  shellOfUrl,
+  withShell,
+} from './shells.js';
 import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 
 /** `?send=verdict`: from the Review tab, the box filled with the review's verdict (V18c). */
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
 
-type View = 'terminal' | 'thread' | 'brief';
+type View = 'terminal' | 'thread' | 'brief' | 'shell';
+/** The agent's own tabs: a shell's is picked by its number. */
+type AgentView = Exclude<View, 'shell'>;
 
 /**
- * `&thread`, `&terminal` or `&brief`: the tab picked (V21; the brief since V29a); without one, the
- * terminal where one can run, else the thread.
+ * `&thread`, `&terminal`, `&brief` or `&shell=<n>`: the tab picked (V21; the brief since V29a, a
+ * shell since V45); without one, the terminal where one can run, else the thread.
  */
 const viewOfUrl = (): View | null => {
   const params = new URLSearchParams(window.location.search);
@@ -65,8 +82,20 @@ const viewOfUrl = (): View | null => {
       ? 'terminal'
       : params.has('brief')
         ? 'brief'
-        : null;
+        : shellOfUrl(window.location.search) !== null
+          ? 'shell'
+          : null;
 };
+
+/** A workspace's shells (V45): its terminals' IDs, so read with the page's header. */
+async function readShells(branch: string): Promise<WorkspaceShell[]> {
+  const response = await fetch(`/api/workspaces/shells?branch=${encodeURIComponent(branch)}`, {
+    headers: { 'x-symbiote': '1' },
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(serverWords(text));
+  return (JSON.parse(text) as WorkspaceShells).shells;
+}
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -403,12 +432,26 @@ function WorkspacePanel({
   // in a terminal would not reach its thread (decision 133).
   const terminals = opensTerminal(agent, terminal);
   const talk = talkCommand(agent, workspace.worktree.path);
+  // V45: shells in its worktree, in tabs after the agent's, whatever its agent; kept by the server
+  // until closed, so read when the panel opens (a reload, another window).
+  const shellsCan = terminal?.available === true && workspace.worktree.exists;
+  const [shells, setShells] = useState<WorkspaceShell[] | null>(null);
+  const [shellShown, setShellShown] = useState(() => shellOfUrl(window.location.search));
+  const [closing, setClosing] = useState<{ shell: WorkspaceShell; question: string } | null>(null);
   const [chosen, setChosen] = useState(viewOfUrl);
+  const fallback: AgentView = terminals ? 'terminal' : 'thread';
+  // The shell picked; once it went (closed, exited), its neighbour, the one before first; none
+  // left, or `symbiote view` started again: the agent's tab.
+  const shellNumber =
+    shellShown === null || shells === null || shells.some((shell) => shell.number === shellShown)
+      ? shellShown
+      : shellAfter(shells, shellShown);
+  const shellGone = chosen === 'shell' && (!shellsCan || (shells !== null && shellNumber === null));
   const view: View =
-    chosen === 'terminal' && !terminals
-      ? 'thread'
-      : (chosen ?? (terminals ? 'terminal' : 'thread'));
+    chosen === 'terminal' && !terminals ? 'thread' : shellGone ? fallback : (chosen ?? fallback);
   const showTerminal = terminals && view === 'terminal';
+  const shownShell =
+    view === 'shell' ? shells?.find((shell) => shell.number === shellNumber) : undefined;
   const [opened, setOpened] = useState<OpenedTerminal | null>(null);
   const [ended, setEnded] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -433,6 +476,21 @@ function WorkspacePanel({
     [],
   );
   useEffect(() => {
+    if (!shellsCan) return;
+    let gone = false;
+    readShells(branch).then(
+      (read) => !gone && setShells(read),
+      (e: unknown) => {
+        if (gone) return;
+        setShells([]);
+        setSaid((e as Error).message);
+      },
+    );
+    return () => {
+      gone = true;
+    };
+  }, [branch, shellsCan]);
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== ']' || keyIsTaken(event)) return;
       event.preventDefault();
@@ -441,12 +499,66 @@ function WorkspacePanel({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [toggleChanges]);
-  const show = (next: View) => {
+  const show = (next: AgentView) => {
     setChosen(next);
     setEnded(null);
     setAsking(asksBeforeOpening(agent));
     const href = workspaceHref(branch);
     window.history.replaceState(null, '', next === 'terminal' ? href : `${href}&${next}`);
+  };
+  const showShell = (number: number) => {
+    setChosen('shell');
+    setShellShown(number);
+    window.history.replaceState(null, '', `${workspaceHref(branch)}&shell=${number}`);
+  };
+  /** Opens a shell at the size the last terminal was drawn at; it is fitted once shown. */
+  const openShell = () =>
+    postJson<WorkspaceShell>('/api/workspaces/shell', { branch, ...lastTerminalSize() }).then(
+      (opened) => {
+        setShells((now) => withShell(now ?? [], opened));
+        showShell(opened.number);
+      },
+      (e: unknown) => setSaid((e as Error).message),
+    );
+  /** A shell closed or exited: its tab goes. Twice is once: a close is followed by its exit. */
+  const forgetShell = (id: string) =>
+    setShells((now) => now?.filter((shell) => shell.id !== id) ?? now);
+  // The picked tab in sight when the strip scrolls (many shells, a narrow window): when it is
+  // picked, and when the strip narrows.
+  const strip = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = strip.current;
+    if (!element) return;
+    const reveal = () =>
+      element
+        .querySelector('[role="tab"][aria-selected="true"]')
+        ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    reveal();
+    const observer = new ResizeObserver(reveal);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [view, shellNumber, shells?.length]);
+  // What is drawn for a shell that went is its neighbour's tab: the address says so too.
+  useEffect(() => {
+    if (chosen !== 'shell' || shells === null || shellNumber === shellShown) return;
+    if (shellNumber === null) show(fallback);
+    else showShell(shellNumber);
+  });
+  /** Closes a shell; with a program running in it, asked first (decision 298). */
+  const closeShell = async (shell: WorkspaceShell, asked = false) => {
+    if (!asked) {
+      const read = await readShells(branch).catch(() => null);
+      const now = read?.find((other) => other.id === shell.id) ?? shell;
+      const question = closeQuestion(now);
+      if (question) {
+        setClosing({ shell: now, question });
+        return;
+      }
+    }
+    setClosing(null);
+    // Already gone (it exited meanwhile): closed all the same.
+    await toTerminal(shell.id, 'close', {}).catch(() => {});
+    forgetShell(shell.id);
   };
   /** Types the verdict's line into the open terminal, without Enter (decision 114). */
   const typeVerdict = (into: OpenedTerminal, text: string) =>
@@ -585,8 +697,12 @@ function WorkspacePanel({
       : []),
   ];
 
-  const views: View[] = [...(terminals ? (['terminal'] as const) : []), 'thread', 'brief'];
-  const tabName: Record<View, string> = { terminal: 'Terminal', thread: 'Thread', brief: 'Brief' };
+  const views: AgentView[] = [...(terminals ? (['terminal'] as const) : []), 'thread', 'brief'];
+  const tabName: Record<AgentView, string> = {
+    terminal: 'Terminal',
+    thread: 'Thread',
+    brief: 'Brief',
+  };
 
   return (
     <section className="workspace" aria-label={`Workspace ${branch}`}>
@@ -680,6 +796,21 @@ function WorkspacePanel({
         </div>
         <WorkspaceState row={row} />
       </header>
+      {closing && (
+        <p className="workspace-confirm">
+          {closing.question}{' '}
+          <button
+            type="button"
+            className="button"
+            onClick={() => void closeShell(closing.shell, true)}
+          >
+            Close it
+          </button>{' '}
+          <button type="button" className="button ghost" onClick={() => setClosing(null)}>
+            Cancel
+          </button>
+        </p>
+      )}
       {confirming === 'clean' && (
         <p className="workspace-confirm">
           {branch} is not merged: Clean up removes its worktree and keeps the branch and its
@@ -700,7 +831,16 @@ function WorkspacePanel({
       >
         <div className="workspace-main">
           <InTitleBar>
-            <div className="workspace-views" role="tablist" aria-label="Talk to the agent">
+            <div
+              ref={strip}
+              className="workspace-views"
+              role="tablist"
+              aria-label="Talk to the agent"
+              onWheel={(event) => {
+                // Many shells scroll the strip sideways: the wheel too, not only a trackpad.
+                if (event.deltaX === 0) event.currentTarget.scrollLeft += event.deltaY;
+              }}
+            >
               {views.map((name) => (
                 <button
                   key={name}
@@ -714,6 +854,54 @@ function WorkspacePanel({
                   {tabName[name]}
                 </button>
               ))}
+              {shellsCan && (
+                <>
+                  <span className="views-divider" aria-hidden="true" />
+                  {(shells ?? []).map((shell) => {
+                    const name = shellName(shell.number);
+                    const selected = view === 'shell' && shellNumber === shell.number;
+                    return (
+                      <span key={shell.id} className="shell-tab">
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={selected}
+                          className={selected ? 'selected' : ''}
+                          title="A shell in the worktree"
+                          onClick={() => showShell(shell.number)}
+                        >
+                          {name}
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button shell-close"
+                          aria-label={`Close ${name}`}
+                          title={`Close ${name}`}
+                          onClick={() => void closeShell(shell)}
+                        >
+                          <CloseIcon />
+                        </button>
+                      </span>
+                    );
+                  })}
+                  <span className="shell-new-end">
+                    <button
+                      type="button"
+                      className="icon-button shell-new"
+                      aria-label="New shell"
+                      title={
+                        (shells?.length ?? 0) >= MAX_SHELLS
+                          ? `${MAX_SHELLS} shells are open: close one first`
+                          : 'A new shell in the worktree: it runs until you close it or Symbiote quits'
+                      }
+                      disabled={shells === null || shells.length >= MAX_SHELLS}
+                      onClick={() => void openShell()}
+                    >
+                      <PlusIcon />
+                    </button>
+                  </span>
+                </>
+              )}
             </div>
           </InTitleBar>
           <div className="workspace-body">
@@ -762,6 +950,15 @@ function WorkspacePanel({
                     </button>
                   </p>
                 )}
+              </div>
+            )}
+            {shownShell && (
+              <div className="workspace-terminal">
+                <AgentTerminal
+                  key={shownShell.id}
+                  id={shownShell.id}
+                  onEnded={() => forgetShell(shownShell.id)}
+                />
               </div>
             )}
             {view === 'thread' && (

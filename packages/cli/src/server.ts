@@ -345,6 +345,18 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
             answer(res, () => workspaces.terminal(request)),
           );
         }
+        if (url.pathname === '/api/workspaces/shell') {
+          return written(req, res, parseWorkspaceTerminal, (request) =>
+            answer(res, () => workspaces.shell(request)),
+          );
+        }
+        if (url.pathname === '/api/workspaces/shells') {
+          // It hands out terminals' IDs, which read and drive them: for the page only (V45).
+          if (req.headers['x-symbiote'] !== '1' || !sameSite(req)) {
+            return send(res, 403, 'forbidden');
+          }
+          return ofBranch(req, res, url, (branch) => workspaces.shells(branch));
+        }
       }
       const { scout } = repository;
       if (scout) {
@@ -1351,7 +1363,7 @@ function parseTerminalFile(text: string): FileAt {
   };
 }
 
-/** `{ branch, cols, rows }`: a terminal on a workspace's agent session (V21). */
+/** `{ branch, cols, rows }`: a terminal on a workspace's agent session (V21), or a shell (V45). */
 function parseWorkspaceTerminal(text: string): WorkspaceTerminalRequest {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
