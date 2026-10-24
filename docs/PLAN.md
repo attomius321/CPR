@@ -183,6 +183,7 @@ hosted.
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
 | [RM1](plan/rm1-code-concentration.md) | Code concentration: where a repository's code is | ready for review | 320–328 | [journal](journal/rm1-code-concentration.md) |
+| [RM2](plan/rm2-monitor-styling.md) | The Monitor's look: long files in heat, the folder in view as the heading, a way back | planned | 332–335 | [journal](journal/rm2-monitor-styling.md) |
 
 ### Docs and the repository
 
