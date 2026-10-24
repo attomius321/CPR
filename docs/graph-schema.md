@@ -9,7 +9,7 @@ add symbols and edges of the same shapes; the graph names the plugins it was mad
 
 - **Paths** are repo-relative, POSIX-style (`src/user/service.ts`).
 - **Positions** are 1-based `line` and `col`. Ranges are start-inclusive, end-exclusive.
-- **IDs** for symbols: `<path>#<qualified name>` (see [PLAN.md §6.2](./PLAN.md#62-stable-ids)).
+- **IDs** for symbols: `<path>#<qualified name>` (see [the design, §6.2](./plan/design.md#62-stable-ids)).
 - Fields not listed here may appear. Consumers **must ignore unknown fields**.
 
 ## Versioning

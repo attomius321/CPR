@@ -776,7 +776,7 @@ own file rules, in the routes folder its Vite config names.
 ### Your own
 
 A plugin implements the `TsPlugin` interface exported by `@symbiote/core`. The
-[plan](docs/PLAN.md#x1--plugins) describes the hooks, and
+[plan](docs/plan/x1-plugins.md) describes the hooks, and
 [`tpl-plugin.ts`](packages/core/test/helpers/tpl-plugin.ts) is a complete example.
 
 ## Configuration
