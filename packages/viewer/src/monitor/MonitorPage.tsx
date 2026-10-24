@@ -23,7 +23,7 @@ import {
   percent,
   type CodeNode,
 } from './codemap.js';
-import { Treemap } from './Treemap.js';
+import { TreemapView } from './TreemapView.js';
 import type { Tile } from './treemap.js';
 
 const API = '/api/monitor';
@@ -256,7 +256,7 @@ export function MonitorPage({ path = '' }: { path?: string | undefined }) {
             </p>
           </div>
           <div className="monitor-body">
-            <Treemap
+            <TreemapView
               node={node}
               hovered={hovered?.id ?? null}
               selected={selected}

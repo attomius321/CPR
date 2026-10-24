@@ -9,7 +9,7 @@ const count = (value: number) => value.toLocaleString('en-US');
  * of code, colour the file's kind. Laid out again when the folder or the box's size changes,
  * never on hover or selection (the viewer's rule): those only change classes.
  */
-export function Treemap({
+export function TreemapView({
   node,
   hovered,
   selected,
