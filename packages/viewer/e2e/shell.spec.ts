@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
 import { serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
@@ -133,10 +134,13 @@ test('keys: h and s go to the pages, w to the workspaces and the arrows between 
   await expect(page).toHaveURL(`${symbiote.url}settings`);
   await page.keyboard.press('h');
   await expect(page).toHaveURL(`${symbiote.url}history`);
+  // Both cards listed before the keys, as in the card-focus test below: ArrowDown on the only
+  // card stays there (on 8 workers, 2 of 32 runs failed on main; 0 of 64 once it waits).
+  const buttons = sidenav(page).locator('.workspace-row .workspace-about');
+  await expect(buttons).toHaveCount(2, POLL);
 
   // w: the first workspace's card takes the focus; the arrows move it; Enter opens it.
   await page.keyboard.press('w');
-  const buttons = sidenav(page).locator('.workspace-row .workspace-about');
   await expect(buttons.first()).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(buttons.nth(1)).toBeFocused();
@@ -192,6 +196,89 @@ test('a card keeps the focus when its workspace moves to another group', async (
   await page.keyboard.press('ArrowDown');
   await expect(card(page, branch as string).locator('.workspace-about')).not.toBeFocused();
   await expect(buttons.nth(1)).toBeFocused();
+});
+
+/** A colour token as the page computes it (`rgb(…)`), to compare with a computed style. */
+const tokenColour = (page: Page, token: string) =>
+  page.evaluate((name) => {
+    const probe = document.createElement('i');
+    probe.style.color = `var(${name})`;
+    document.body.append(probe);
+    const colour = getComputedStyle(probe).color;
+    probe.remove();
+    return colour;
+  }, token);
+
+test('each group of workspaces has its icon, in its colour; the cards keep their dots (V44)', async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  // A merge in the queue, for the Merging group.
+  await page.route('**/api/merges', (route) =>
+    route.fulfill({
+      json: {
+        merges: [
+          {
+            id: 'm1',
+            branch: 'feature/tidy-the-readme',
+            head: symbiote.shas[1],
+            into: 'main',
+            title: 'Merge feature/tidy-the-readme: Tidy the README',
+            state: 'checking',
+            queued: new Date().toISOString(),
+            updated: new Date().toISOString(),
+            check: { commands: ['pnpm check'], source: 'package.json' },
+          },
+        ],
+      },
+    }),
+  );
+  await page.goto(`${symbiote.url}history`);
+  await start(page, 'Add a half function');
+  await start(page, 'Add clamp');
+  await start(page, 'Add a double function');
+  const rows = sidenav(page).locator('.workspace-row[data-branch]');
+  await expect(rows).toHaveCount(3, POLL);
+  const branches = await rows.evaluateAll((all) =>
+    all.map((row) => (row as HTMLElement).dataset.branch ?? ''),
+  );
+  const [waiting, merged] = branches.sort();
+  // One waits for the person; one is merged into main; the third works.
+  symbiote.report(waiting!, 'The plan');
+  symbiote.commit(merged!, 'double.ts', 'export const double = (a: number) => a * 2;\n', 'Double');
+  execFileSync('git', ['-C', symbiote.repo, 'merge', '-q', '--no-ff', '-m', 'Merge', merged!]);
+
+  const tones = [
+    ['Merging', '--moved'],
+    ['Needs you', '--warning'],
+    ['Working', '--moved'],
+    ['Done', '--added'],
+  ] as const;
+  const drawings = new Set<string>();
+  for (const [name, tone] of tones) {
+    const icon = group(page, name).locator('h3 > svg.icon');
+    await expect(icon).toBeVisible(POLL);
+    await expect(icon).toHaveCSS('color', await tokenColour(page, tone));
+    drawings.add(await icon.innerHTML());
+    // Only the group has the icon: its cards keep their state's dot.
+    await expect(group(page, name).locator('.workspace-row .icon')).toHaveCount(0);
+    await expect(group(page, name).locator('.workspace-row .state-dot')).toBeVisible();
+  }
+  // Four drawings, none of them History's clock.
+  drawings.add(await pages(page).getByRole('link', { name: 'History' }).locator('svg').innerHTML());
+  expect(drawings.size).toBe(5);
+
+  // Folded to the rail: each icon stands for its group, named in its tooltip; the merge shows
+  // only its dot, as a workspace does.
+  await sidenav(page).getByRole('button', { name: 'Fold the sidenav' }).click();
+  await expect(sidenav(page)).toHaveClass(/rail/);
+  for (const [name] of tones) {
+    const heading = group(page, name).locator('h3');
+    await expect(heading.locator('> svg.icon')).toBeVisible();
+    await expect(heading.locator('.sidenav-label')).toBeHidden();
+    await expect(heading).toHaveAttribute('title', name);
+  }
+  await expect(group(page, 'Merging').locator('.workspace-state')).toBeHidden();
 });
 
 test('the terminal fills the main area, down to the status bar', async ({ page }) => {

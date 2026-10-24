@@ -260,24 +260,22 @@ button.workspace-about {
   padding: 0 8px 12px;
 }
 
-/* A group: its state's dot, its name and how many. */
+/* A group: its icon in its state's colour (V44), its name and how many. The icon stands over the
+   cards' dots and the name over their names; the count keeps 6 px. */
 .sidenav .workspace-group h3 {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 12px 8px 4px;
+  gap: 3px;
+  margin: 12px 8px 4px 6px;
   color: var(--muted);
   font-size: var(--size-small);
   font-weight: 500;
 }
 
-.sidenav .workspace-group h3::before {
-  content: '';
-  flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--group-tone, var(--faint));
+.sidenav .workspace-group h3 .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--group-tone, var(--faint));
 }
 
 .sidenav .group-needsYou {
@@ -295,7 +293,7 @@ button.workspace-about {
 
 .sidenav .workspace-group .branches-count {
   min-width: 18px;
-  margin: 0;
+  margin: 0 0 0 3px;
   padding: 0 5px;
   border-radius: 9999px;
   background: var(--raised);
@@ -439,7 +437,8 @@ button.workspace-about {
   .sidenav.rail .workspace-branch,
   .sidenav.rail .workspaces-empty,
   .sidenav.rail .workspaces-note,
-  .sidenav.rail .sidenav-hint {
+  .sidenav.rail .sidenav-hint,
+  .sidenav.rail .workspace-state {
     display: none;
   }
 
@@ -473,15 +472,10 @@ button.workspace-about {
     padding: 0 6px 12px;
   }
 
+  /* A group's icon stands for it where its name was (V44). */
   .sidenav.rail .workspace-group h3 {
-    height: 0;
-    margin: 6px 4px;
-    overflow: hidden;
-    border-top: 1px solid var(--line);
-  }
-
-  .sidenav.rail .workspace-group h3::before {
-    display: none;
+    justify-content: center;
+    margin: 10px 4px 4px;
   }
 
   .sidenav.rail .workspace-row {
