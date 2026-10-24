@@ -5515,3 +5515,25 @@ on the detached node: React's handler on the list never sees it.
 
 **Verification**: the test waits for both cards before its keys. On 8 workers: 4 of 64 failed
 before, 0 of 64 after.
+
+## V43 spike — what a changed file can open as (2026-10-24, branch `feature/agentic-terminal-view`)
+
+Asked: "The list on the right with changes. When i click on it, it should open in the diff so i
+can see the actual changes, not the current state of the file". Read on `main` (`ab9e352`): the
+changes panel (V29d) and its `POST /api/workspaces/open`, Review's graph, VS Code 1.143.1's
+command line as installed here (its `mainImpl.js`), and the last seven merges' files.
+
+**Learned**:
+- **A click opens the file, not its change**: `code <worktree> --goto <file>:<first change>:1`
+  (decision 188). A deleted file is not a button.
+- **Symbiote's own diff could not show most of it**: Review is a graph of symbols. Of the 311 files
+  the last seven merges changed, 107 (34 %) are CSS, Markdown, JSON or images, with no symbol; a
+  file not committed is in no commit. The person chose VS Code's diff editor.
+- **`code <folder> --diff <a> <b>` opens in that folder's window**: VS Code sorts what it is given
+  into folders and files before `--diff` takes the first two files, as `--goto` relies on. It takes
+  files only, no `git:` address: a commit's side must be a file on disk.
+- **A commit's side as a checkout writes it**: `git cat-file --filters <sha>:<path>` applies the
+  worktree's line endings and smudge filters (LFS), so a diff against the worktree's file shows
+  only the change. `git show`, which `readFileAtRevision` uses, gives the blob decoded as UTF-8:
+  not byte-exact for a binary file.
+- **Cheap**: a file at a commit 2 ms, a file against the tip (`git diff --quiet`) 1–2 ms, warm.

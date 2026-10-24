@@ -457,6 +457,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V40 | Documents for a workspace's agent | The start page takes text only: a screenshot or a PDF is put somewhere by hand and its path typed into the brief. Measured: a folder in the worktree is out of git by its own `.gitignore`, but Prettier and ESLint still check it (4 of 6 sample files, 2 errors); Codex's sandbox reads outside its worktree, yet its model did not try until told it could. Built: files chosen, dropped or pasted on the start page, uploaded as added, put in `symbiote/documents/<branch>/` beside the record at the start (never the worktree), each named in the agent's first prompt; real Claude Code and Codex each read a PNG and a PDF from there (14 and 18 s), no permission asked. Ready for review (2026-10-23). See below. |
 | V41 | Skills, and Scribe | A skill (a folder with a `SKILL.md`) tells an agent how a project does something; this repository has 6 in `.claude/skills/`, and Symbiote shows none and writes none. Codex reads `.agents/skills/` and lists none of the 6 (6 of 6 with a link). Claude Code protects `.claude`: `dontAsk` denies every Write, its prompt asks in the other modes; Codex's sandbox started in `.claude/skills` writes only there. Ready for review (2026-10-24, `feature/skill-creator`): V41a a Skills page (`/skills`, key `i`) listing, editing, adding and deleting the checkout's skills with the standard's checks and Link for Codex; V41b Scribe, an agent there that writes skills into `.claude/skills/` only, for the person to read and commit. With the real Claude Code it wrote a 79-line skill this repository's checks pass and a fresh session loads for a matching task; its README edit was refused by the gate; Codex's sandbox refused a write outside. See below. |
 | V42 | Koi: colours from the intro | Since V31 the chrome is neutral grey and colour is for state only; V39 gave Symbiote a koi mark on deep water, and none of the app's colours come from it. Asked: "change the color palette … the colors from the intro video with the fishes … primary, secondary … make it look modern". Sampled from the intro's images: the water `#05080f`–`#081828`, the koi's glow `#3060b8`–`#4c82d2`, the white koi `#a8c0e8`–`#e8e8f8`. Ready for review (2026-10-24, `feature/ui-improvements-v2`): the palette in both themes (canvas `#05080f`, chrome `#0f1626`, primary `#3c6fd6`, accent `#7a9ee8`), one accent in named roles, moved and info in cyan, the koi S as the mark, the diff's tabs segmented; every contrast rule passes, timings as `main`'s. See below. |
+| V43 | A changed file opens as its diff | A file in a workspace's changes panel opens in VS Code as it is now, at its first change; what changed is not shown, and a deleted file is not a button. Asked: "it should open in the diff so i can see the actual changes, not the current state of the file". 107 of the 311 files the last seven branches merged changed (34 %) have no symbol, so Symbiote's own diff would not show them. Planned (2026-10-24, `feature/agentic-terminal-view`): `code <worktree> --diff`, the fork point (or `HEAD`, for a file not committed) against the worktree's file, a commit's side a read-only copy in the cache. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -10772,6 +10773,123 @@ restyles old).
 Not verified: Bitwarden's graph (no clone here; this repository's largest range instead); the
 person's own window (Electron on WSLg at their scale); macOS and Windows rendering; a real agent's
 colours in the restyled terminal.
+
+### V43 — A changed file opens as its diff
+
+**Status:** planned (2026-10-24), on branch `feature/agentic-terminal-view` (a workspace started
+in Symbiote, from `main` at `ab9e352`); the plan OK'd by the person ("Ok"), with VS Code's diff
+editor as what a click opens (their choice between it and a diff in Symbiote).
+
+**Problem** (asked: "The list on the right with changes. When i click on it, it should open in the
+diff so i can see the actual changes, not the current state of the file"). A workspace's changes
+panel (V29d) lists the files its branch changes and those its worktree has not committed. A click
+on one runs `code <worktree> --goto <file>:<line>:1` (decision 188): the file as it is now, at
+its first change. What changed in it — the lines removed, what a line was before — is not shown,
+and a deleted file is not a button at all. Measured on `main` (`ab9e352`):
+
+| What | Measured |
+|---|---|
+| What a click opens | The worktree's file at its first change (`--goto`); a deleted file: nothing |
+| The files of the last seven branches merged (five features, a fix, a refactor; `git diff --name-status -M` of each merge) | 311 files: 204 `.ts`/`.tsx`, **107 others (34 %)** — CSS, Markdown, JSON, images; 76 added, 1 deleted |
+| What Review (Symbiote's own diff) shows of them | Symbols only: none of the 107, and nothing a worktree has not committed |
+| VS Code 1.143.1's command line (`mainImpl.js`, read here) | A folder goes to the folders to open, the files to open; with `--diff` the first two files become a diff editor, in that folder's window — as `--goto` does today |
+| A file at a commit (`git cat-file blob`, 31 KB) · a file against a commit (`git diff --quiet`) | 2 ms · 1–2 ms, warm |
+
+**Goal**: a click on a file in the changes panel opens VS Code's diff editor of that file, the
+change on one side and what was there before on the other, in the worktree's window. The diff
+shows exactly what the row counts. **Unchanged**: the panel's lists and look, the head's Open in
+VS Code (the worktree's folder), the terminal's paths (V38, at the line printed), Review.
+
+#### What each row compares
+
+| Row | Left | Right |
+|---|---|---|
+| Files (the branch's, committed) | The file at the fork point (`changesBase`, as the panel's list); its path before a rename | The worktree's own file when it is what the tip has; else the file at the tip |
+| Not committed | The file at the worktree's `HEAD`; its path before a staged rename | The worktree's file |
+| A new file (added, untracked) | Empty | As above |
+| A deleted file | As above | Empty |
+
+- A side from a commit is a copy in Symbiote's cache, `state/<repo>/revisions/<sha>/<path>`: its
+  own name and extension (VS Code colours it), read-only, written once per commit and path
+  (written to a temporary name, then renamed). The bytes a checkout writes:
+  `git cat-file --filters <sha>:<path>` in the worktree (its line endings, its LFS smudge), so the
+  diff against the worktree's file shows no line-ending noise. A submodule as `git diff` shows
+  it, `Subproject commit <sha>`. An empty side is an empty file at `revisions/empty/<path>`.
+- The worktree's own file is the right side of a Files row when `git diff --quiet <tip> -- <path>`
+  finds no difference (the usual case): it is editable there, with VS Code's language features.
+  When it also has changes not committed, the right side is the tip's copy: those changes are the
+  Not committed row's.
+- The fork point and tip are read at the click, not from the list (up to 5 s old).
+- Without a worktree (cleaned up), a Files row opens from the commits alone, in the repository's
+  window; a Not committed row is refused (409, "its worktree is gone").
+
+#### Server (`packages/core/src/git/`, `packages/cli/src/workspaces.ts`, `editor.ts`, `server.ts`)
+
+- Core: `gitBytes` (git's stdout as bytes) beside `git`; `fileForCheckout(repo, sha, path)`
+  (`git ls-tree`, then `cat-file --filters`; null when the commit has no file there).
+- `POST /api/workspaces/diff { branch, file, previousPath?, uncommitted? }` → `{}` once VS Code
+  has it. Paths outside the worktree 400 (as `…/open`); a branch gone 409; a file in neither side
+  409; VS Code failing 502 with its words; no editor 409.
+- `vsCodeFolder`'s `at` gains `{ left, right }`: `code <folder> --diff <left> <right>`
+  (`diffArgs`).
+- `POST /api/workspaces/open` keeps opening the worktree's folder; its `file` (V29d's first
+  change) goes, and core's `firstChangedLine` with it: nothing else calls them.
+
+#### Viewer (`packages/viewer/src/workspaces/ChangesPanel.tsx`, `changes.ts`)
+
+- Every file row is a button, a deleted one too: "Open the changes to `<path>` in VS Code"; its
+  hover's last words "Opens its changes in VS Code"; the head's status "Opened the changes to
+  `<path>` in VS Code". A Not committed row sends `uncommitted: true`.
+- Nothing else changes in the panel: its CSS, its rows' layout, its commits (still read only).
+
+#### Verification
+
+1. **Tests first** (red before): core — `fileForCheckout` (a file, its bytes exactly, a binary
+   file, none there, a folder, a submodule); CLI `workspaces.test.ts` — the two sides for each row
+   of the table (a committed change; one with changes not committed too, the tip's copy; not
+   committed; untracked; added; deleted, committed and not; renamed), a copy written once and
+   read-only, a worktree gone, paths outside refused; `editor.test.ts` — `diffArgs` and
+   `vsCodeFolder` with `{ left, right }`; `server.test.ts` — the route (405, 400, the answer);
+   the viewer's `changes.test.ts` — the rows' words, a deleted file opening.
+2. **e2e** (`changes.spec.ts`): a click on a Files row gives the fake VS Code
+   `[worktree, --diff, <copy at the fork point>, <worktree>/half.ts]`, the copy with the fork
+   point's content (empty for a new file); a Not committed row, `HEAD` against the worktree's
+   file; a deleted file is a button and opens against an empty side; the status's words.
+3. **Real VS Code**, once, on this machine (1.143.1 through WSL): a Files row and a Not committed
+   row open as diffs in the worktree's window.
+4. `pnpm check`, `pnpm build`, `pnpm test:e2e`; the panel's screenshot in both themes
+   (`viewer-check`). No analysis change (core gains a git reader only): no `regression-check`.
+
+**Risks**
+
+| Risk | Mitigation |
+|---|---|
+| A copy edited and saved, taken for the file | Read-only, in the cache; the right side is the worktree's own file whenever it can be |
+| Copies pile up in the cache | Only for files clicked, a few KB each, once per commit and path; said in the results, not pruned |
+| A smudge filter that fetches (LFS) on a click | What a checkout of that commit would do; only for the file clicked |
+| VS Code titles both sides with one name (`a.ts ↔ a.ts`) | The hover gives each side's path; looked at with the real VS Code |
+| macOS and Windows | `code --diff` is the same command line there; unit-tested only |
+
+**Order**: core's reader; the endpoint and its sides; the editor's arguments; the panel; e2e;
+the real VS Code; docs.
+
+#### Milestones
+
+| # | Milestone | Output |
+|---|---|---|
+| V43 | A changed file opens as its diff | `fileForCheckout`, `POST /api/workspaces/diff` and its copies, `code --diff`, the panel's rows, e2e, README |
+
+**Proposed decisions** (285 the person's):
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 285 | Where a changed file opens (revises 188) | **VS Code's diff editor, in the worktree's window** | The person's choice. A third of the files the last seven merges changed (107 of 311) have no symbol, and files not committed no commit: Symbiote's own diff would show neither |
+| 286 | What the two sides are | **Exactly what the row counts: a Files row from the fork point to the tip, a Not committed row from `HEAD` to the worktree; a side with no file an empty one** | Precise beats complete: the `+a −r` beside the name is what opens |
+| 287 | The right side of a Files row | **The worktree's own file when it is the tip's; else a read-only copy of the tip's** | Editable, with VS Code's features, in the usual case; never a change the row does not count |
+| 288 | Where a commit's side is kept | **A read-only copy in Symbiote's cache, `state/<repo>/revisions/<sha>/<path>`, as a checkout writes it (`cat-file --filters`); not pruned** | `code --diff` takes files only; a commit's file never changes, so one copy serves every click |
+
+**Not in V43 (later)**: a commit's own diff from its row; a diff inside Symbiote (the workspace's
+page) for a machine without VS Code; another editor; pruning the cache's copies.
 
 ### Phase 1 milestones
 
