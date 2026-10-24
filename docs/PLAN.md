@@ -457,7 +457,7 @@ Tests run against local mock APIs for both forges (no network, no tokens).
 | V40 | Documents for a workspace's agent | The start page takes text only: a screenshot or a PDF is put somewhere by hand and its path typed into the brief. Measured: a folder in the worktree is out of git by its own `.gitignore`, but Prettier and ESLint still check it (4 of 6 sample files, 2 errors); Codex's sandbox reads outside its worktree, yet its model did not try until told it could. Built: files chosen, dropped or pasted on the start page, uploaded as added, put in `symbiote/documents/<branch>/` beside the record at the start (never the worktree), each named in the agent's first prompt; real Claude Code and Codex each read a PNG and a PDF from there (14 and 18 s), no permission asked. Ready for review (2026-10-23). See below. |
 | V41 | Skills, and Scribe | A skill (a folder with a `SKILL.md`) tells an agent how a project does something; this repository has 6 in `.claude/skills/`, and Symbiote shows none and writes none. Codex reads `.agents/skills/` and lists none of the 6 (6 of 6 with a link). Claude Code protects `.claude`: `dontAsk` denies every Write, its prompt asks in the other modes; Codex's sandbox started in `.claude/skills` writes only there. Ready for review (2026-10-24, `feature/skill-creator`): V41a a Skills page (`/skills`, key `i`) listing, editing, adding and deleting the checkout's skills with the standard's checks and Link for Codex; V41b Scribe, an agent there that writes skills into `.claude/skills/` only, for the person to read and commit. With the real Claude Code it wrote a 79-line skill this repository's checks pass and a fresh session loads for a matching task; its README edit was refused by the gate; Codex's sandbox refused a write outside. See below. |
 | V42 | Koi: colours from the intro | Since V31 the chrome is neutral grey and colour is for state only; V39 gave Symbiote a koi mark on deep water, and none of the app's colours come from it. Asked: "change the color palette … the colors from the intro video with the fishes … primary, secondary … make it look modern". Sampled from the intro's images: the water `#05080f`–`#081828`, the koi's glow `#3060b8`–`#4c82d2`, the white koi `#a8c0e8`–`#e8e8f8`. Ready for review (2026-10-24, `feature/ui-improvements-v2`): the palette in both themes (canvas `#05080f`, chrome `#0f1626`, primary `#3c6fd6`, accent `#7a9ee8`), one accent in named roles, moved and info in cyan, the koi S as the mark, the diff's tabs segmented; every contrast rule passes, timings as `main`'s. See below. |
-| V43 | A changed file opens as its diff | A file in a workspace's changes panel opens in VS Code as it is now, at its first change; what changed is not shown, and a deleted file is not a button. Asked: "it should open in the diff so i can see the actual changes, not the current state of the file". 107 of the 311 files the last seven branches merged changed (34 %) have no symbol, so Symbiote's own diff would not show them. Planned (2026-10-24, `feature/agentic-terminal-view`): `code <worktree> --diff`, the fork point (or `HEAD`, for a file not committed) against the worktree's file, a commit's side a read-only copy in the cache. See below. |
+| V43 | A changed file opens as its diff | A file in a workspace's changes panel opened in VS Code as it is now, at its first change; what changed was not shown, and a deleted file was not a button. Asked: "it should open in the diff so i can see the actual changes, not the current state of the file". 107 of the 311 files the last seven branches merged changed (34 %) have no symbol, so Symbiote's own diff would not show them. Ready for review (2026-10-24, `feature/agentic-terminal-view`): `code <worktree> --diff`, exactly what the row counts — the fork point (or `HEAD`, for a file not committed) against the worktree's file, a commit's side a read-only copy in the cache, a deleted file against an empty side; seen in the real VS Code 1.143.1. See below. |
 
 ### R1 — Receiver-aware references ✅
 
@@ -7738,7 +7738,7 @@ plan's 172–179; 176 supersedes V25's 136):
 | 185 | What a start shows (made in V29a) | **The new workspace, in the main area** | Its agent plans and asks first: the terminal is what to look at next. One starter for the shell, wherever it opens from |
 | 186 | The right panel's width and when it shows (V29d) | **256 px, where the workspace's area is at least 1,200 px; `]` hides it, kept per browser** | At 1440 a 280 px panel leaves the terminal 54.5 % of the window, under the plan's 55 %; 256 px leaves 56 % and 116 columns. Tied to the area, not the window: the rail makes room at 1280 |
 | 187 | Where the panel's commits start (V29d) | **The fork point with the default branch, as Review computes it; the recorded base once merged** | The panel shows what Review will show. A branch rebased onto a newer `main` would list `main`'s commits from its recorded base |
-| 188 | Where a file opens (V29d) | **In the worktree, at its first change against the fork point (working copy included); a new file at line 1** | One `git diff -U0` at the click; line 1 of a long file is rarely where the change is |
+| 188 | Where a file opens (V29d; revised by 285, V43: its diff) | **In the worktree, at its first change against the fork point (working copy included); a new file at line 1** | One `git diff -U0` at the click; line 1 of a long file is rarely where the change is |
 | 189 | How fresh (V29d) | **With every read of the list, as the thread; commits and files kept per (base, tip)** | The list is read when it can change (focus, every 5 s while an agent works or waits); uncommitted files change without a commit. A read costs ~20 ms of git once cached |
 
 **Not in V29 (later)**: two terminals side by side (the reference splits Claude Code and Codex);
@@ -10776,9 +10776,10 @@ colours in the restyled terminal.
 
 ### V43 — A changed file opens as its diff
 
-**Status:** planned (2026-10-24), on branch `feature/agentic-terminal-view` (a workspace started
-in Symbiote, from `main` at `ab9e352`); the plan OK'd by the person ("Ok"), with VS Code's diff
-editor as what a click opens (their choice between it and a diff in Symbiote).
+**Status:** ready for review (2026-10-24), on branch `feature/agentic-terminal-view` (a workspace
+started in Symbiote, from `main` at `ab9e352`); the plan OK'd by the person ("Ok"), with VS Code's
+diff editor as what a click opens (their choice between it and a diff in Symbiote). As built and
+results under "As built (V43)" below.
 
 **Problem** (asked: "The list on the right with changes. When i click on it, it should open in the
 diff so i can see the actual changes, not the current state of the file"). A workspace's changes
@@ -10890,6 +10891,46 @@ the real VS Code; docs.
 
 **Not in V43 (later)**: a commit's own diff from its row; a diff inside Symbiote (the workspace's
 page) for a machine without VS Code; another editor; pruning the cache's copies.
+
+#### As built (V43)
+
+- **The tip's copy is written for every Files row**, even when the worktree's own file is the
+  right side: it is how the server knows the tip has the file at all. Without it, an untracked file
+  of the same name in the worktree (a deleted file written again) passes `git diff --quiet`, which
+  ignores untracked files, and would be taken for the tip's. A click writes at most two copies.
+- **`git`'s error handling is shared** by `git` and the new `gitBytes` (`failure` in `exec.ts`);
+  `git show`, which `readFileAtRevision` uses, is unchanged.
+- **`FolderAt`** (`editor.ts`) is what `vsCodeFolder` takes: a file at a line, or `{ left, right }`.
+  The terminal's and the workspace service's `OpenFolder` use it.
+- **What went**: `/api/workspaces/open`'s `file` and core's `firstChangedLine` (V29d's first
+  change), nothing else calling them; `opensInEditor` in the viewer (every row opens).
+- **VS Code draws the diff inline in a narrow editor**: in the real window the editor was about
+  790 px beside its chat panel, and VS Code chose its inline view
+  (`diffEditor.useInlineViewWhenSpaceIsLimited`). Its tab reads `a.ts ↔ a.ts`, with the left
+  side's path in the cache beside it.
+
+**Results.** Tests first, red for the right reason: core 3 (`fileForCheckout` and
+`fileChangedSince` missing), CLI 3 (`openDiff` and `diffArgs` missing, the route a 405), viewer 1
+(the hover's words); the new e2e test and the changed one, run with this spec on the plan's commit
+(`c8416bc`), failed as they should (the rows' new names not found, a deleted row not a button).
+The guard for a deleted file written again fails when the tip's check is dropped. `pnpm check`
+1,383 tests. e2e 217 of 218: `shell.spec`'s keys test failed once and passed 6 of 6 alone, the race
+`feature/workspaces-list-upgrades` fixes (`b447ce3`, 2 of 32 runs on `main`'s build too).
+
+| What | Measured |
+|---|---|
+| The real VS Code 1.143.1 through WSL, `vsCodeFolder` from this build, a throwaway repository | A new window for the folder; its tab `a.ts ↔ a.ts`, the cache copy's path beside it, the added line marked, TypeScript colours on both sides; the window closed after |
+| `code` through WSL | 1.8 s, as `--goto` |
+| A click's git reads (`listRefs`, the fork point, two `cat-file --filters`, `diff --quiet`; a 100 KB file of this repository) | 19–22 ms, four rounds |
+| The panel at 1440×900, dark and light | As before; the deleted row takes the others' hover; no page errors |
+
+Graph JSON, layouts and the analysis are untouched: core gained git readers only (`flow.ts`, the
+goldens and `symbiote diff` unchanged), so no `regression-check`.
+
+Not verified: a click through the page with the real VS Code (the page to `code` is the e2e's,
+with a fake `code`; `code` to VS Code was run directly); macOS and Windows (`code --diff` is the
+same command line there; unit-tested only); an LFS repository's smudge; a real agent's workspace
+(the fake agent only); VS Code's side-by-side view (the real window, being narrow, drew it inline).
 
 ### Phase 1 milestones
 
