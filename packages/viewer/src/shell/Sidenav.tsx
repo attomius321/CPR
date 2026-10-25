@@ -43,7 +43,12 @@ import { Resizer } from '../ui/Resizer.js';
 import { nextScoutMark, type ScoutMark } from '../scout/scout.js';
 import { useShell } from './shell-context.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
-import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from '../workspaces/Workspace.js';
+import {
+  KindTag,
+  StateDot,
+  WorkspaceBranch,
+  WorkspaceState,
+} from '../workspaces/WorkspaceFacts.js';
 import { workspaceGroups, workspaceName, type WorkspaceRow } from '../workspaces/workspaces.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 
