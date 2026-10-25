@@ -636,6 +636,49 @@ button.workspace-about {
   --dot: var(--merge-tone);
 }
 
+/* A done workspace's or a landed merge's bin (V55): at the card's end, over its kind and its time,
+   which give way while it shows; nothing else moves. Its glyph ends where the chip does. */
+.sidenav .workspace-row.removable {
+  position: relative;
+}
+
+.sidenav .card-remove {
+  position: absolute;
+  top: 10px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+}
+
+.sidenav .card-remove:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* A merge card has no chip or time there: its lines keep the bin's room. */
+.sidenav .merge-card.removable {
+  padding-right: 32px;
+}
+
+/* Without hover (a touch screen) the bin always shows: the kind and the time give way for good. */
+.sidenav .removable .workspace-head .kind-tag,
+.sidenav .removable .workspace-line .commit-date {
+  visibility: hidden;
+}
+
+/* With hover, on the card's hover or its keyboard focus only: transparent, not hidden, so it keeps
+   its name for screen readers and its place in the Tab order. */
+@media (hover: hover) {
+  .sidenav .removable:not(:hover, :has(:focus-visible)) .card-remove {
+    opacity: 0;
+  }
+
+  .sidenav .removable:not(:hover, :has(:focus-visible)) .workspace-head .kind-tag,
+  .sidenav .removable:not(:hover, :has(:focus-visible)) .workspace-line .commit-date {
+    visibility: visible;
+  }
+}
+
 /* Folded (wide windows only): a rail of icons and each workspace's mark. */
 @media (min-width: 900px) {
   .sidenav.rail .sidenav-label,
@@ -650,7 +693,8 @@ button.workspace-about {
   .sidenav.rail .workspaces-note,
   .sidenav.rail .sidenav-hint,
   .sidenav.rail .workspace-state,
-  .sidenav.rail .workspace-head .kind-tag {
+  .sidenav.rail .workspace-head .kind-tag,
+  .sidenav.rail .card-remove {
     display: none;
   }
 

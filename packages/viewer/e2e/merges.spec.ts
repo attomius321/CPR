@@ -111,8 +111,10 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
   );
   await expect(region.locator('.merge-side figcaption')).toHaveText(['main', 'agent']);
   await region.getByRole('button', { name: /Hide the conflict/ }).click();
-  // Retry and Remove wait in the ⋯ menu.
+  // Retry and Remove wait in the ⋯ menu; not landed, its card has no icon to remove it (V55).
   await expect(entry.getByRole('button', { name: 'Remove' })).toHaveCount(0);
+  await page.locator('.sidenav [data-merge="agent"]').hover();
+  await expect(page.locator('.sidenav [data-merge="agent"]').getByRole('button')).toHaveCount(0);
   await entry.getByRole('button', { name: 'More actions' }).click();
   await expect(page.getByRole('menuitem')).toHaveText(['Retry', 'Remove']);
   await page.keyboard.press('Escape');
@@ -147,6 +149,16 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
   expect(merged).not.toMatch(/^(<<<<<<<|=======|>>>>>>>)/m);
   expect(git('log', '-1', '--format=%s', 'main')).toBe('Merge agent: Agent: add cube');
   expect(git('status', '--porcelain', '--untracked-files=no')).toBe('');
+
+  // Landed (V55): Remove, the head's primary button, takes it from the queue; History shows.
+  await expect(entry.getByRole('button', { name: 'More actions' })).toHaveCount(0);
+  await entry.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await expect(page.locator('.sidenav [data-merge="agent"]')).toHaveCount(0);
+  await expect(page.getByRole('contentinfo', { name: 'Status bar' })).toContainText(
+    'Removed the merge of agent from the queue.',
+  );
+  expect(git('log', '-1', '--format=%s', 'main')).toBe('Merge agent: Agent: add cube');
 });
 
 /**

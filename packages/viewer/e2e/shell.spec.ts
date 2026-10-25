@@ -277,8 +277,11 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
     await expect(icon).toBeVisible(POLL);
     await expect(icon).toHaveCSS('color', await tokenColour(page, tone));
     drawings.add(await icon.innerHTML());
-    // Only the group has the icon: its cards keep their state's dot.
-    await expect(group(page, name).locator('.workspace-row .icon')).toHaveCount(0);
+    // Only the group has the icon: its cards keep their state's dot. A done card's bin (V55) is
+    // an action, not its state.
+    await expect(
+      group(page, name).locator('.workspace-row .icon:not(.card-remove .icon)'),
+    ).toHaveCount(0);
     await expect(group(page, name).locator('.workspace-row .state-dot')).toBeVisible();
   }
   // The merges first, above Waiting for you, whatever waits (fix/merging-status); one at work spins

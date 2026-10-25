@@ -459,6 +459,9 @@ export function workspaceGroups(
   return groups;
 }
 
+/** Whether a workspace's card offers Clean up (V55): once it is merged, the Done group's. */
+export const cleanableOnCard = (row: WorkspaceRow): boolean => row.next.group === 'done';
+
 /** Every row of the groups, the person's first (as History's badges and V23 order them). */
 export const allRows = (groups: WorkspaceGroups): WorkspaceRow[] => [
   ...groups.waiting,
