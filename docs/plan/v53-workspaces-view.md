@@ -1,12 +1,14 @@
-# V51 — A working agent's spinner, its mark, and every workspace's kind
+# V53 — A working agent's spinner, its mark, and every workspace's kind
 
-[Index](../PLAN.md) · [Journal](../journal/v51-workspaces-view.md)
+[Index](../PLAN.md) · [Journal](../journal/v53-workspaces-view.md)
 
-**Status:** in progress (2026-10-25), on branch `feature/workspaces-view-improvements` (a
+**Status:** ready for review (2026-10-25), on branch `feature/workspaces-view-improvements` (a
 workspace started in Symbiote, from `main` at `c136ee3`). The person OK'd the plan with their
 answers: "1. Recommended 2. The vendors colours 3. Recommended. OK" — read by the plan's three
 parts: the spinner as planned, the agents' marks in their vendors' colours, the kind chip as
-recommended (the name's line, neutral).
+recommended (the name's line, neutral). Planned as V51 with decisions 386–388; renumbered (other
+workspaces took them meanwhile). Built as planned, with three changes; "As built" and results at
+the end.
 
 **Problem** (asked: "The pulse at the moment is way to subtle, maybe is better to put a loading
 spinner. Also, before agent action from workspace card (eg. "Thinking") Put the icon of the agent,
@@ -103,15 +105,45 @@ card's height (64 px at most), the status bar's vendor names (decision 181), wha
 
 | # | Milestone | Output |
 |---|---|---|
-| V51 | The spinner, the agent's mark, the kind chip | e2e, CSS, two icons, docs |
+| V53 | The spinner, the agent's mark, the kind chip | e2e, CSS, two icons, docs |
 
 **Decisions**:
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 386 | A working agent's indicator | **A spinner: a ¾ arc turning once a second around the dot's place; starting the same; still under reduced motion** (replaces decision 370's breathing halo for working) | The person found the pulse too subtle and asked for a spinner |
-| 387 | Which agent works | **Its mark before its words while it works, in its vendor's colours; none on Symbiote's own words** (decision 181 stays for the status bar) | The person asked for Claude's and Codex's icons, and their colours |
-| 388 | A workspace's kind | **A neutral chip on every card with a recorded kind, Feature included, at the end of the name's line** (V24c's "none for a Feature" dropped) | The person asked to tell kinds apart; a column is read at a glance; colour stays for state |
+| 394 | A working agent's indicator | **A spinner: a ¾ arc turning once a second around the dot's place; starting the same; still under reduced motion** (replaces decision 370's breathing halo for working) | The person found the pulse too subtle and asked for a spinner |
+| 395 | Which agent works | **Its mark before its words while it works, in its vendor's colours; none on Symbiote's own words** (decision 181 stays for the status bar) | The person asked for Claude's and Codex's icons, and their colours |
+| 396 | A workspace's kind | **A neutral chip on every card with a recorded kind, Feature included, at the end of the name's line** (V24c's "none for a Feature" dropped) | The person asked to tell kinds apart; a column is read at a glance; colour stays for state |
 
-**Not in V51 (later)**: a mark on a waiting card's ask; the marks in the status bar or History's
+**Not in V53 (later)**: a mark on a waiting card's ask; the marks in the status bar or History's
 badges; a tint per kind.
+
+## As built (V53)
+
+- **The still arc is turned −45°**: under reduced motion its gap sat at the right and the arc read
+  as a "C" before the name at 1×; turned, the gap is at the top right, as `Loader2` draws it. The
+  arc ends 5 px from the name (the dot ended 7 px from it): kept, the head's gap unchanged.
+- **The line's title names the agent**: "Claude Code: Thinking · no commits yet" while it works,
+  besides the mark's own label.
+- **The waiting card's time takes its own width**: it kept History's 8.5 em `.commit-date` column
+  and ended 2 px past its line (the state line had reset it, the Respond row had not), so its chip
+  could not sit over it. Fixed with the chip; an e2e checks both ends meet.
+- **The rail hides the chip**: it hides a card's lines, and the chip is now on the dot's line.
+- **Cost**: four working dots idle for 10 s (headless Chromium, three rounds, the halo put back by
+  an injected style in the same page): still 0 style recalculations, 11–14 ms of main thread; V48's
+  halo 24, 25–26 ms; the spinner 53–54, 44–66 ms; no layout from either. About twice the halo,
+  under 0.7 % of a core.
+- **Renumbered**: V51 and decisions 386–388 were free at plan time; `feature/settings-style` (V51,
+  386–390) and `feature/scout-view-settings` (V52, 391–393) took them while this was built. The
+  plan's commit, already pushed, says V51.
+
+**Results.** Tests first, red for the right reason (6), then green: `workspaces.spec.ts` (the
+spinner and its still arc, the starting card's spinner, Claude's mark and none on Symbiote's words,
+the chip on every card, over its time, hidden in the rail, a fix's chip; the waiting card's chip
+over its time), `codex.spec.ts` (Codex's mark, two marks with gradients of their own). `pnpm check`
+(1,739 tests), `pnpm build`, `pnpm test:e2e`: 257 of 258 (`merges.spec.ts:187`, a merge log's
+second line, failed once under the full run's load and passed 3 of 3 alone; that page draws no
+card or working dot). Screenshots at 1×, both themes, every card
+state, the heading and Scout's link: each card's chip, time and line end at one x; cards stay 64
+px. Not verified: the desktop app on WSLg; real Claude Code and Codex sessions (the fakes set the
+same `agent.kind`).
