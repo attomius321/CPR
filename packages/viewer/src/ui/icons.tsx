@@ -212,6 +212,19 @@ export const CloseIcon = () => (
   </Icon>
 );
 
+/**
+ * Removes a done workspace or a landed merge from its card (V55): a bin, after lucide's trash-2
+ * (ISC). Clean up deletes a worktree and a branch: an × would read as hiding the card.
+ */
+export const TrashIcon = () => (
+  <Icon>
+    <path d="M2.5 4h11" />
+    <path d="M12.5 4v9a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 13V4" />
+    <path d="M5.5 4V3A1.5 1.5 0 0 1 7 1.5h2A1.5 1.5 0 0 1 10.5 3v1" />
+    <path d="M6.5 7v4.5M9.5 7v4.5" />
+  </Icon>
+);
+
 /** The window's own buttons, where Symbiote draws them (N1d). */
 export const MinimizeIcon = () => (
   <Icon>

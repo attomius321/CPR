@@ -227,4 +227,7 @@ merge commit.
 - 2026-10-25 [V52 spike — what a choice in Scout's head starts](journal/v52-scout-next-conversation.md)
 - 2026-10-25 [V52 — Scout's head picks the next conversation: a choice starts nothing until New conversation](journal/v52-scout-next-conversation.md)
 - 2026-10-25 [V53 — the spinner, the agent's mark, the kind chip](journal/v53-workspaces-view.md)
+- 2026-10-25 [Fix — a merge at work spins; the spinner a comet; Merging first](journal/fix-merging-status.md)
+- 2026-10-25 [Fix — the merger's check: report.spec.ts raced under load](journal/fix-merging-status.md)
+- 2026-10-25 [V55 — the cards' bin, the heads' Clean up and Remove](journal/v55-done-workspace-cleanup.md)
 - 2026-10-25 [V54 spike — what the viewer's tooltips are](journal/v54-tooltips.md)

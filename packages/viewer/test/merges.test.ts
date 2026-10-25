@@ -6,10 +6,12 @@ import {
   firstFile,
   gutterChars,
   mergeActions,
+  mergeButtons,
   mergeLabel,
   mergeLive,
   mergeState,
   regionFlags,
+  removableOnCard,
   resolutionFiles,
   reviewRegion,
 } from '../src/workspaces/merges.js';
@@ -200,6 +202,42 @@ describe('mergeActions (V26a)', () => {
   it('reads the queue again while a merge is queued, merging or checking', () => {
     expect(mergeLive([entry({ state: 'landed' }), entry({ state: 'ready' })])).toBe(false);
     expect(mergeLive([entry({ state: 'landed' }), entry({ state: 'checking' })])).toBe(true);
+  });
+});
+
+describe('mergeButtons and removableOnCard (V55)', () => {
+  it("draws a landed merge's Remove in its head; Retry and Remove of any other under ⋯", () => {
+    expect(mergeButtons(entry({ state: 'landed' }))).toEqual({ buttons: ['remove'], more: [] });
+    expect(mergeButtons(entry({}))).toEqual({ buttons: [], more: ['remove'] });
+    expect(mergeButtons(entry({ state: 'ready' }))).toEqual({
+      buttons: ['land'],
+      more: ['remove'],
+    });
+    expect(mergeButtons(entry({ state: 'failed' }))).toEqual({
+      buttons: [],
+      more: ['retry', 'remove'],
+    });
+    const region = { path: 'src/a.ts', line: 1, ours: ['a'], base: null, theirs: ['b'], text: 'c' };
+    const resolution = { agent: 'claude' as const, model: 'sonnet', regions: [region], ms: 4000 };
+    expect(mergeButtons(entry({ state: 'needs-you', merge: M, resolution }))).toEqual({
+      buttons: ['approve', 'change'],
+      more: ['retry', 'remove'],
+    });
+    expect(mergeButtons(entry({ state: 'checking' }))).toEqual({ buttons: [], more: [] });
+  });
+
+  it('offers Remove on a card only once its merge landed: any other is removed from its page', () => {
+    const states = [
+      'queued',
+      'merging',
+      'resolving',
+      'checking',
+      'needs-you',
+      'ready',
+      'landed',
+      'failed',
+    ] as const;
+    expect(states.filter((state) => removableOnCard(entry({ state })))).toEqual(['landed']);
   });
 });
 

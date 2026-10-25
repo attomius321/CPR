@@ -1,13 +1,15 @@
 import { useState, type CSSProperties } from 'react';
 import type { MergeConflict, MergeEntry, MergeList, MergeRegion } from '@symbiote/core';
+import { useShell } from '../shell/shell-context.js';
 import { postJson } from '../ui/http.js';
 import { splitPath } from './changes.js';
+import { removeMerge } from './cleanup.js';
 import {
   askedRegions,
   failedCheck,
   firstFile,
   gutterChars,
-  mergeActions,
+  mergeButtons,
   mergeLabel,
   mergeLive,
   mergeState,
@@ -32,6 +34,9 @@ const ACTION_NAMES: Record<MergeAction, string> = {
   retry: 'Retry',
   remove: 'Remove',
 };
+
+/** The head's primary buttons; Remove is a button only once its merge landed (V55). */
+const PRIMARY: ReadonlySet<MergeAction> = new Set(['approve', 'land', 'remove']);
 
 /** The queue's entry for a branch: the one still in progress, else its last. */
 export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | undefined {
@@ -71,6 +76,7 @@ export function MergeView({ branch }: { branch: string }) {
 }
 
 function MergeEntryView({ entry }: { entry: MergeEntry }) {
+  const shell = useShell();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState(false);
@@ -93,16 +99,32 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
       .catch((e: unknown) => setError((e as Error).message))
       .finally(() => setBusy(false));
   };
+  /** Removed, the merge's page gives way to History (V55), the status bar saying so. */
+  const remove = () => {
+    setBusy(true);
+    setError(null);
+    removeMerge(entry)
+      .then((notice) => {
+        shell?.notify(notice);
+        shell?.navigate({ page: 'history' });
+        return reloadWorkspaces();
+      })
+      .catch((e: unknown) => setError((e as Error).message))
+      .finally(() => setBusy(false));
+  };
   const act = (action: MergeAction) => {
     if (action === 'change') setChanging((open) => !open);
+    else if (action === 'remove') remove();
     else post(`/api/merges/${action}`, {});
   };
-  const actions = mergeActions(entry);
-  // The frequent actions as buttons; Retry and Remove, rarer, in the "⋯" menu.
-  const shownActions = actions.filter((a) => a !== 'retry' && a !== 'remove');
-  const more: MenuAction[] = actions
-    .filter((a) => a === 'retry' || a === 'remove')
-    .map((a) => ({ label: ACTION_NAMES[a], disabled: busy, onSelect: () => act(a) }));
+  // The frequent actions as buttons; Retry and Remove, rarer, in the "⋯" menu; a landed merge's
+  // Remove, its last, its primary button (V55).
+  const { buttons: shownActions, more: rarer } = mergeButtons(entry);
+  const more: MenuAction[] = rarer.map((a) => ({
+    label: ACTION_NAMES[a],
+    disabled: busy,
+    onSelect: () => act(a),
+  }));
   const files = resolutionFiles(entry);
   // Files first once there is a resolution to read, or a question to answer.
   const resolved =
@@ -134,7 +156,7 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
             <button
               key={action}
               type="button"
-              className={action === 'approve' || action === 'land' ? 'button primary' : 'button'}
+              className={PRIMARY.has(action) ? 'button primary' : 'button'}
               {...tip(action === 'approve' ? approveTitle : undefined, { tone: 'warn' })}
               disabled={busy}
               onClick={() => act(action)}

@@ -178,6 +178,20 @@ export function mergeActions(entry: MergeEntry): MergeAction[] {
   ];
 }
 
+/**
+ * Where a merge's head draws its actions (V55): the frequent ones as buttons, Retry and Remove
+ * under "⋯"; a landed merge's Remove, all it has left, as a button.
+ */
+export function mergeButtons(entry: MergeEntry): { buttons: MergeAction[]; more: MergeAction[] } {
+  const actions = mergeActions(entry);
+  if (entry.state === 'landed') return { buttons: actions, more: [] };
+  const rare = (action: MergeAction) => action === 'retry' || action === 'remove';
+  return { buttons: actions.filter((a) => !rare(a)), more: actions.filter(rare) };
+}
+
+/** Whether a merge's card offers Remove (V55): once it landed; any other from its own page. */
+export const removableOnCard = (entry: MergeEntry): boolean => entry.state === 'landed';
+
 /** Whether the queue is to be read again soon: something in it runs or waits its turn. */
 export function mergeLive(merges: readonly MergeEntry[]): boolean {
   return merges.some((e) => ['queued', 'merging', 'resolving', 'checking'].includes(e.state));

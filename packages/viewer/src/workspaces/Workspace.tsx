@@ -21,6 +21,7 @@ import { useChangesPanel } from './useChangesPanel.js';
 import { ReplyForm } from './ReplyForm.js';
 import { WorkspaceTabs, type AgentView, type View } from './WorkspaceTabs.js';
 import { ChangesIcon } from '../ui/icons.js';
+import { cleanUp } from './cleanup.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { InTitleBar } from '../shell/TitleBar.js';
 import { MergeControl } from './MergeControl.js';
@@ -377,13 +378,11 @@ function WorkspacePanel({
   const clean = (unmerged: boolean) => {
     setConfirming(null);
     act(() =>
-      postJson('/api/workspaces/clean', { branch, ...(unmerged ? { unmerged: true } : {}) }).then(
-        () => {
-          onNotice({ text: `Cleaned up ${branch}: its worktree is removed.` });
-          onGone();
-          return null;
-        },
-      ),
+      cleanUp(branch, unmerged).then((notice) => {
+        onNotice(notice);
+        onGone();
+        return null;
+      }),
     );
   };
 
@@ -428,15 +427,14 @@ function WorkspacePanel({
           return copy(prompt, 'the prompt');
         }),
     },
-    ...(workspace.merged || !live
+    // Merged, Clean up is the head's primary button (V55).
+    ...(!workspace.merged && !live
       ? [
           {
-            label: workspace.merged ? 'Clean up' : 'Clean up…',
+            label: 'Clean up…',
             disabled: busy,
-            title: workspace.merged
-              ? 'Remove its sessions, its worktree and its merged branch'
-              : 'Not merged: remove its worktree, keep the branch',
-            onSelect: () => (workspace.merged ? clean(false) : setConfirming('clean')),
+            title: 'Not merged: remove its worktree, keep the branch',
+            onSelect: () => setConfirming('clean'),
           },
         ]
       : []),
@@ -531,7 +529,7 @@ function WorkspacePanel({
           {workspace.ahead > 0 && workspace.tip !== null && (
             <button
               type="button"
-              className="button primary"
+              className={workspace.merged ? 'button' : 'button primary'}
               disabled={busy}
               onClick={() =>
                 act(async () => {
@@ -542,6 +540,17 @@ function WorkspacePanel({
               }
             >
               Review
+            </button>
+          )}
+          {workspace.merged && (
+            <button
+              type="button"
+              className="button primary"
+              disabled={busy}
+              {...tip('Remove its sessions, its worktree and its merged branch')}
+              onClick={() => clean(false)}
+            >
+              Clean up
             </button>
           )}
         </div>

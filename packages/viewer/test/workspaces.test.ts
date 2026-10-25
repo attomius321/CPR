@@ -10,6 +10,7 @@ import type {
 import { describe, expect, it } from 'vitest';
 import {
   branchProblem,
+  cleanableOnCard,
   effortChoices,
   keptEffort,
   keptModel,
@@ -17,6 +18,7 @@ import {
   readRun,
   startedWith,
   activityText,
+  allRows,
   workspaceChips,
   workspaceGroups,
   workspaceName,
@@ -676,6 +678,30 @@ describe('workspaceGroups', () => {
     expect(named(groups.stopped)).toEqual(['feature/e']);
     expect(named(groups.working)).toEqual(['feature/a']);
     expect(named(groups.done)).toEqual(['feature/c']);
+  });
+});
+
+describe('cleanableOnCard (V55)', () => {
+  it("offers Clean up on a card only once its workspace is merged: the Done group's", () => {
+    const groups = workspaceGroups(
+      [
+        summary({ branch: 'feature/a' }),
+        summary({ branch: 'feature/b', agent: { state: 'plan-ready', kind: 'claude' } }),
+        summary({ branch: 'feature/c', ahead: 1, merged: true }),
+        summary({ branch: 'feature/d', ahead: 2, agent: { state: 'ready', kind: 'claude' } }),
+        summary({ branch: 'feature/e', agent: { state: 'stopped', kind: 'claude' } }),
+        // Merged while its agent still works: done all the same.
+        summary({ branch: 'feature/f', ahead: 1, merged: true }),
+        // Its branch is gone: not merged, nothing to say it is done.
+        summary({ branch: 'feature/g', tip: null }),
+      ],
+      null,
+    );
+    expect(
+      allRows(groups)
+        .filter(cleanableOnCard)
+        .map((r) => r.workspace.branch),
+    ).toEqual(['feature/c', 'feature/f']);
   });
 });
 

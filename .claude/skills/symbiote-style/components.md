@@ -250,11 +250,12 @@ Section header (sidenav "Workspaces", a group "In progress 17"): 32 px, 13 px we
 `--muted`, a count after it; its actions (add, filter) as 24 px ghost icon buttons on the right.
 A group of workspaces (V44) starts with its icon, 14 px in its state's colour (`--group-tone`),
 the icon over the cards' dots and the name over their names; folded, the icon alone, its name in
-`title`. Only the group has an icon: a card keeps its dot. V53: a working or starting dot is a spinner (a ¾
-arc, 11 px around the dot's 7 px place, so nothing moves); a working card's line starts with its
-agent's mark, 14 px, in its vendor's colours (the one place a non-state colour is on a card, the
-person's choice); every card's kind is a neutral `.chip` at the end of its name's line, over its
-time.
+`title`. Only the group has an icon: a card keeps its dot. V53: a working or starting dot is a
+spinner, and a merge's at work (fix/merging-status): a comet, a 2 px ring whose tail fades in to a
+round head, 11 px around the dot's 7 px place, so nothing moves (until then a plain ¾ arc); a
+working card's line starts with its agent's mark, 14 px, in its vendor's colours (the one place a
+non-state colour is on a card, the person's choice); every card's kind is a neutral `.chip` at the
+end of its name's line, over its time.
 
 Workspace card: 10 px radius, 8 × 10 px padding; hover `--hover` and current `--selected`, as
 every row (V37: a hover of `--raised` at 40 % vanished in light, and a border and shadow made the

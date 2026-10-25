@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { spinner } from './spinner.js';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 import { textAt } from './terminal.js';
 
@@ -359,24 +360,6 @@ test('a working agent says what it runs, from its tools, and since when; thinkin
   await expect(row.locator('.workspace-state strong')).toHaveText('Thinking', POLL);
 });
 
-/**
- * A dot's spinner (V53), as its `::after` draws it: its animation, its size across, and whether it
- * is a ¾ arc (one side of its ring clear, the others the state's colour).
- */
-const spinner = (dot: Locator) =>
-  dot.evaluate((element) => {
-    const arc = getComputedStyle(element, '::after');
-    const clear = 'rgba(0, 0, 0, 0)';
-    const across = ['width', 'borderLeftWidth', 'borderRightWidth'] as const;
-    return {
-      animation: `${arc.animationName} ${arc.animationDuration}`,
-      across: across.reduce((sum, side) => sum + Number.parseFloat(arc[side]), 0),
-      arc:
-        arc.borderRightColor === clear &&
-        [arc.borderTopColor, arc.borderBottomColor, arc.borderLeftColor].every((c) => c !== clear),
-    };
-  });
-
 test("a working agent's dot is a spinner, a turn a second; without motion it holds still (V53)", async ({
   page,
 }) => {
@@ -388,10 +371,10 @@ test("a working agent's dot is a spinner, a turn a second; without motion it hol
   // Wider than the 7 px dot, drawn around its place: the name does not move.
   await expect
     .poll(() => spinner(dot))
-    .toEqual({ animation: 'state-spin 1s', across: 11, arc: true });
+    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
   // Without motion: the arc, still — its own shape beside a waiting dot's halo.
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect.poll(() => spinner(dot)).toEqual({ animation: 'none 0s', across: 11, arc: true });
+  await expect.poll(() => spinner(dot)).toEqual({ animation: 'none 0s', across: 11, comet: true });
 });
 
 test('a working card names its agent by its mark, in its colour, before what it does; none on Symbiote’s words (V53)', async ({
@@ -581,7 +564,7 @@ test('while a workspace is made, its card says it starts; its own card takes its
   // The working agent's spinner (V53): busy is busy, its words say which.
   await expect
     .poll(() => spinner(starting.locator('.state-dot')))
-    .toEqual({ animation: 'state-spin 1s', across: 11, arc: true });
+    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
   // A card's height, as every card's (look.spec.ts).
   expect((await starting.boundingBox())?.height ?? 0).toBeLessThanOrEqual(64);
   await expect(starting).toHaveCount(0, POLL);
@@ -942,11 +925,109 @@ test('Clean up: once merged, its sessions, worktree and branch go, and so does t
   git('merge', '--quiet', '--ff-only', branch);
   await page.reload();
   await expect(workspaceRow(page, branch)).toContainText('Merged', POLL);
-  await more(page, branch, 'Clean up');
+  // V55: the head's primary button, no longer under ⋯; Review a plain one beside it.
+  const head = panel(page, branch).locator('.workspace-top');
+  const cleanUp = head.getByRole('button', { name: 'Clean up', exact: true });
+  await expect(cleanUp).toHaveClass(/\bprimary\b/);
+  await expect(head.getByRole('button', { name: 'Review', exact: true })).not.toHaveClass(
+    /\bprimary\b/,
+  );
+  await panel(page, branch).getByRole('button', { name: 'More actions' }).click();
+  await expect(panel(page, branch).getByRole('menuitem', { name: /^Clean up/ })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await cleanUp.click();
   await expect(workspaceRow(page, branch)).toHaveCount(0, POLL);
   expect(symbiote.removed()).toEqual(['fake0']);
   expect(existsSync(symbiote.folder(branch))).toBe(false);
   expect(git('branch', '--list', branch)).toBe('');
+  await expect(page.getByText('No workspaces yet')).toBeVisible();
+  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await expect(page.getByRole('contentinfo', { name: 'Status bar' })).toContainText(
+    `Cleaned up ${branch}: its worktree is removed.`,
+  );
+});
+
+test("a done card's icon cleans it up from the sidenav: on hover or focus, without opening it (V55)", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  symbiote.session(branch, { state: 'done' });
+  await startFrom(page, 'Add a double function');
+  const other = 'feature/add-a-double-function';
+  symbiote.commit(other, 'src/double.ts', 'export const double = (a: number) => a * 2;\n', 'Add');
+  symbiote.session(other, { state: 'done' });
+  git('merge', '--quiet', '--ff-only', branch);
+  const card = workspaceRow(page, branch);
+  await expect(card).toContainText('Merged', POLL);
+  await expect(workspaceRow(page, other)).toContainText('Ready for review', POLL);
+  const icon = card.getByRole('button', { name: 'Clean up Add a half function' });
+  await expect(icon).toHaveAttribute(
+    'data-tip',
+    /Remove its sessions, its worktree and its merged/,
+  );
+  // Only a done card has it.
+  await expect(workspaceRow(page, other).getByRole('button', { name: /^Clean up/ })).toHaveCount(0);
+
+  // At rest it is transparent (named all the same); on hover it shows where the kind and the time
+  // were, and nothing moves.
+  await page.mouse.move(800, 600);
+  await expect(icon).toHaveCSS('opacity', '0');
+  await expect(card.locator('.kind-tag')).toBeVisible();
+  const name = await card.locator('.workspace-about').boundingBox();
+  await card.hover();
+  await expect(icon).toHaveCSS('opacity', '1');
+  await expect(card.locator('.kind-tag')).toBeHidden();
+  await expect(card.locator('.workspace-line .commit-date')).toBeHidden();
+  expect(await card.locator('.workspace-about').boundingBox()).toEqual(name);
+  const box = await icon.boundingBox();
+  const row = await card.boundingBox();
+  expect(box!.width).toBe(24);
+  expect(Math.round(row!.x + row!.width - (box!.x + box!.width))).toBeLessThanOrEqual(8);
+  // From the keyboard: Tab from the card's name reaches it, and it shows.
+  await page.mouse.move(800, 600);
+  await card.locator('.workspace-about').focus();
+  await page.keyboard.press('Tab');
+  await expect(icon).toBeFocused();
+  await expect(icon).toHaveCSS('opacity', '1');
+
+  // A file not committed: refused, the error in the status bar, the card kept.
+  writeFileSync(join(symbiote.folder(branch), 'notes.md'), 'todo\n');
+  await icon.click();
+  await expect(page.getByRole('alert')).toContainText('1 file not committed');
+  await expect(card).toBeVisible();
+  rmSync(join(symbiote.folder(branch), 'notes.md'));
+
+  // Folded to the rail: no icon, even on hover.
+  await page.getByRole('button', { name: 'Fold the sidenav' }).click();
+  await card.hover();
+  await expect(icon).toBeHidden();
+  await page.getByRole('button', { name: 'Open the sidenav' }).click();
+
+  // A click cleans it up and opens nothing: the workspace shown stays.
+  await expect(panel(page, other)).toBeVisible();
+  await card.hover();
+  await icon.click();
+  await expect(card).toHaveCount(0, POLL);
+  await expect(panel(page, other)).toBeVisible();
+  await expect(page.getByRole('contentinfo', { name: 'Status bar' })).toContainText(
+    `Cleaned up ${branch}: its worktree is removed.`,
+  );
+  expect(existsSync(symbiote.folder(branch))).toBe(false);
+  expect(git('branch', '--list', branch)).toBe('');
+
+  // The one shown, cleaned up from its card: History takes its place.
+  git('merge', '--quiet', '--no-ff', '-m', `Merge ${other}`, other);
+  await expect(workspaceRow(page, other)).toContainText('Merged', POLL);
+  await workspaceRow(page, other).hover();
+  await workspaceRow(page, other)
+    .getByRole('button', { name: 'Clean up Add a double function' })
+    .click();
+  await expect(workspaceRow(page, other)).toHaveCount(0, POLL);
+  await expect(page).toHaveURL(`${symbiote.url}history`);
   await expect(page.getByText('No workspaces yet')).toBeVisible();
 });
 
@@ -1815,12 +1896,31 @@ test('Merge on an approved workspace: Symbiote merges it in its own worktree, La
     `${main} ${tip}\nMerge ${branch}: Add a half function`,
   );
   expect(existsSync(join(symbiote.repo, 'src', 'half.ts'))).toBe(true);
-  // Merged: the workspace offers Clean up, and no Merge.
+  // Landed (V55): Remove is the head's primary button, and ⋯ is gone with it.
+  const remove = entry.getByRole('button', { name: 'Remove', exact: true });
+  await expect(remove).toHaveClass(/\bprimary\b/);
+  await expect(entry.getByRole('button', { name: 'More actions' })).toHaveCount(0);
+  // Merged: the workspace offers Clean up in its head (V55), and no Merge.
   await expect(workspaceRow(page, branch)).toContainText('Merged', POLL);
-  await workspaceRow(page, branch).getByRole('button', { name: 'Add a half function' }).click();
-  await here.getByRole('button', { name: 'More actions' }).click();
-  await expect(here.getByRole('menuitem', { name: 'Clean up', exact: true })).toBeVisible();
+  await workspaceRow(page, branch)
+    .getByRole('button', { name: 'Add a half function', exact: true })
+    .click();
+  await expect(here.getByRole('button', { name: 'Clean up', exact: true })).toHaveClass(
+    /\bprimary\b/,
+  );
   await expect(here.getByRole('button', { name: /^Merge into/ })).toHaveCount(0);
+  // The landed merge's card has the icon (V55): it removes the merge from the queue, and the
+  // workspace shown stays.
+  await card.hover();
+  const icon = card.getByRole('button', { name: `Remove the merge of ${branch}` });
+  await expect(icon).toHaveAttribute('data-tip', /Remove it from the queue/);
+  await icon.click();
+  await expect(merging).toHaveCount(0, POLL);
+  await expect(here).toBeVisible();
+  await expect(page.getByRole('contentinfo', { name: 'Status bar' })).toContainText(
+    `Removed the merge of ${branch} from the queue.`,
+  );
+  expect(git('log', '-1', '--format=%s', 'main')).toBe(`Merge ${branch}: Add a half function`);
 });
 
 test('Merge into merges into the branch picked in its dropdown, not main', async ({ page }) => {

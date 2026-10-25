@@ -357,13 +357,14 @@ worktree of its own in its cache. Your checkout and the agent's worktree are not
    tries again. A target checked out nowhere has its ref moved, only if it has not moved since.
 3. With `merge.push: true` it pushes the target. This is off by default.
 
-Merges go one at a time, each on the result of the last. The sidenav's Merging group shows each
-one, and a click opens it (`/?merge=<branch>`): queued, merging, checking, ready to land, landed or
-failed. Under that, its steps (the merge, the merger agent, each check command, the landing), each
-with its time, beside a log of everything they write as they write it, in a read-only terminal:
-what git did, the check's output, and the merger agent at work. A click on a step scrolls the log
-to it; a merge that runs again (Retry, Request changes, Check again) keeps the earlier runs above.
-Without a check, a merge waits for **Land**.
+Merges go one at a time, each on the result of the last. The sidenav's Merging group, at the top
+of its list, shows each one (its dot spins while Symbiote works on it), and a click opens it
+(`/?merge=<branch>`): queued, merging, checking, ready to land, landed or failed. Under that, its
+steps (the merge, the merger agent, each check command, the landing), each with its time, beside a
+log of everything they write as they write it, in a read-only terminal: what git did, the check's
+output, and the merger agent at work. A click on a step scrolls the log to it; a merge that runs
+again (Retry, Request changes, Check again) keeps the earlier runs above. Without a check, a merge
+waits for **Land**.
 
 A conflict goes to a merger agent (Claude Code or Codex, `merge.agent`; `merge.model`, set in
 **Settings** from the agent's own list, else `sonnet` for Claude Code; `merge.effort`, else the
@@ -391,6 +392,10 @@ Approve away: the page says which commands passed and which failed, the log has 
 **Check again** runs the check again on the same merge without asking the agent. A file deleted on
 one side, a binary file or a submodule is given to no one: resolve it on the branch, review it
 again, then Retry. A target that moved before landing is merged again on its new tip.
+
+A landed merge has **Remove** as its page's button, and a bin on its card in the sidenav (shown on
+hover or keyboard focus): either takes it out of the queue with its log, and the target keeps the
+merge. A merge that has not landed is removed from its own page, under **⋯**.
 
 The queue is kept in Symbiote's cache. `symbiote merge <branch>` does the same from a terminal and prints
 each step.
@@ -475,33 +480,35 @@ accept. It is found as `claude` on your `PATH`, or set `SYMBIOTE_CLAUDE`.
 The sidenav lists your workspaces under the pages, by what each needs from you, each group under
 its icon:
 
-- **Waiting for you** (a bell), first, in a band of its own: agents stopped mid-task on you — a
+- **Merging** (merge arrows), first: the merges Symbiote is making.
+- **Waiting for you** (a bell), in a band of its own: agents stopped mid-task on you — a
   permission to give, a question to answer, a plan to read, an interrupted turn. Each card says
   what it asks ("Permission to run pnpm test", "Asks: Which store? — Redis · SQLite"), how long it
   has waited, and has **Respond**, which opens the workspace on its terminal, focused. The
   Workspaces heading counts them, and so does the window's title: "(2) History · repo".
-- **Merging** (merge arrows): the merges Symbiote is making.
 - **To review** (an eye): finished work — a branch to review, changes to send back, an approval to
   merge, or a report without commits.
 - **Not running** (a paused circle): failed (in red, with its words), stopped, or not started.
 - **Working** (an hourglass): which agent works, by its mark (Claude Code's spark or Codex's), and
   what it runs right now, when Symbiote records its tools ("Running pnpm test", "Editing
   src/auth.ts", "Thinking" between them), and for how long.
-- **Done** (a check): merged.
+- **Done** (a check): merged. A bin on the card, on hover, cleans it up.
 
 A dot tells each state by its shape as well as its colour: a working (or starting) agent's is a
-spinner, a waiting one's halo holds still, a stopped one is a ring (with reduced motion, nothing
-moves). Folded to a rail, the icons stand for the groups and the bell carries the count; + starts
-one (n). Each card shows the workspace's title and its kind (feature, fix, refactor, chore or
-spike) in a chip, what is next, its commits, files not committed yet, whether it merges cleanly,
-how long its state has lasted, and its branch.
+spinner, as is a merge's while Symbiote makes it; a waiting one's halo holds still, a stopped one
+is a ring (with reduced motion, nothing moves). Folded to a rail, the icons stand for the groups
+and the bell carries the count; + starts one (n). Each card shows the workspace's title and its
+kind (feature, fix, refactor, chore or spike) in a chip, what is next, its commits, files not
+committed yet, whether it merges cleanly, how long its state has lasted, and its branch.
 When an agent starts waiting, finishes or fails while you are on another page, the status bar says
 so once, with **Open**. A click opens it beside the sidenav (`/?branch=<branch>`), with these
 actions:
 
 - **Review** its branch;
 - **Stop** or **Start** the agent;
-- under **⋯**: **Open in VS Code** (its worktree), **Copy the prompt**, **Clean up**, and **Talk**,
+- **Clean up**, once it is merged: the head's main button;
+- under **⋯**: **Open in VS Code** (its worktree), **Copy the prompt**, **Clean up…** (not merged),
+  and **Talk**,
   which copies `claude attach <id>` (Codex: `codex resume <thread> --remote <its app server> -C
   <worktree>`) for a terminal of your own (only when Symbiote cannot open the agent's terminal; its
   tooltip says why).
@@ -589,7 +596,8 @@ The terminal needs `node-pty`, an optional dependency: on Linux `pnpm install` c
 
 A workspace's branch carries its agent's mark in History, and each leads to the other.
 Once a workspace is merged, Clean up removes its agent's sessions, its worktree, its documents
-(their names stay in the record) and its branch. An
+(their names stay in the record) and its branch: from its head, or from the bin on its card in
+Done, which shows on hover or keyboard focus. An
 unmerged one is cleaned up only after you confirm, and keeps its branch. Neither happens while
 the worktree has files not committed.
 
