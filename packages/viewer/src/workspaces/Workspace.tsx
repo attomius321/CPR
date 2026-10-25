@@ -161,6 +161,8 @@ function WorkspacePanel({
   const [thread, reloadThread] = useThread(branch, version);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Its stop asked, until the server answers (V48): the button says so.
+  const [stopping, setStopping] = useState(false);
   const [text, setText] = useState('');
   const [confirming, setConfirming] = useState<'send' | 'clean' | null>(null);
   const filled = useRef(false);
@@ -480,12 +482,17 @@ function WorkspacePanel({
               type="button"
               className="button"
               disabled={busy}
-              onClick={() =>
+              onClick={() => {
+                setStopping(true);
                 // The head's state says Stopped: no word of its own beside the buttons (V37).
-                act(() => postJson('/api/workspaces/stop', { branch }).then(() => null))
-              }
+                act(() =>
+                  postJson('/api/workspaces/stop', { branch })
+                    .then(() => null)
+                    .finally(() => setStopping(false)),
+                );
+              }}
             >
-              Stop the agent
+              {stopping ? 'Stopping…' : 'Stop the agent'}
             </button>
           )}
           {restartable && workspace.worktree.exists && (

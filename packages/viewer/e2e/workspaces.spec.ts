@@ -425,6 +425,89 @@ test('the Activity tab: what happened, in order, from its records; a new event a
   await expect(activity.locator('.activity-detail.markdown strong')).toHaveText('half');
 });
 
+test('an agent that starts waiting while you are elsewhere: one line in the status bar, and Open (V48)', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  await page.getByRole('link', { name: 'History' }).first().click();
+  const bar = page.getByRole('contentinfo', { name: 'Status bar' });
+  symbiote.hook(branch, {
+    hook_event_name: 'PermissionRequest',
+    tool_name: 'Bash',
+    tool_input: { command: 'pnpm test' },
+  });
+  symbiote.session(branch, { state: 'blocked', waitingFor: 'permission prompt' });
+  await expect(bar).toContainText(
+    'Add a half function waits for you: Permission to run pnpm test',
+    POLL,
+  );
+  await bar.getByRole('link', { name: 'Open' }).click();
+  await expect(panel(page, branch)).toBeVisible();
+});
+
+test('Symbiote not answering: what was read stays, said to be old, and comes back by itself (V48)', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const row = workspaceRow(page, 'feature/add-a-half-function');
+  await expect(row).toBeVisible();
+  await page.route('**/api/workspaces', (route) => route.abort());
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  const stale = page.locator('.sidenav .workspaces-stale');
+  await expect(stale).toContainText(/^Not updated since .+: Symbiote does not answer/, POLL);
+  await expect(row).toBeVisible();
+  await page.unroute('**/api/workspaces');
+  await expect(stale).toHaveCount(0, POLL);
+});
+
+test('while a workspace is made, its card says it starts; its own card takes its place (V48)', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  // The list's first read held: its cards' outlines show meanwhile.
+  let held = true;
+  await page.route('**/api/workspaces', async (route) => {
+    if (held && route.request().method() === 'GET') await new Promise((r) => setTimeout(r, 800));
+    await route.continue();
+  });
+  await page.goto(`${symbiote.url}`);
+  await expect(page.getByRole('status', { name: 'Listing workspaces' })).toBeVisible();
+  await expect(page.getByText('No workspaces yet')).toBeVisible(POLL);
+  held = false;
+  // The start held: its card, starting.
+  await page.route('**/api/workspaces', async (route) => {
+    if (route.request().method() === 'POST') await new Promise((r) => setTimeout(r, 1_500));
+    await route.continue();
+  });
+  await page.getByRole('link', { name: 'Start a workspace' }).click();
+  await fillWork(page, 'Add a half function');
+  await goal(page).press('Control+Enter');
+  const starting = page.locator('.sidenav .workspace-row.starting');
+  await expect(starting).toContainText('Starting · its worktree, then Claude Code');
+  await expect(starting.locator('.state-dot')).toHaveClass(/tone-starting/);
+  await expect(starting).toHaveCount(0, POLL);
+  await expect(workspaceRow(page, 'feature/add-a-half-function')).toBeVisible();
+});
+
+test('Stop the agent says it stops until Symbiote answers (V48)', async ({ page }) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const here = panel(page, 'feature/add-a-half-function');
+  await page.route('**/api/workspaces/stop', async (route) => {
+    await new Promise((r) => setTimeout(r, 800));
+    await route.continue();
+  });
+  await here.getByRole('button', { name: 'Stop the agent' }).click();
+  await expect(here.getByRole('button', { name: 'Stopping…' })).toBeDisabled();
+  await expect(here.locator('.workspace-top')).toContainText('Stopped', POLL);
+});
+
 test('a workspace and its branch lead to each other', async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}history`);

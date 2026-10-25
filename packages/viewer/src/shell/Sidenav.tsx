@@ -54,6 +54,8 @@ import {
   WorkspaceState,
 } from '../workspaces/WorkspaceFacts.js';
 import { respondTo } from '../workspaces/respond.js';
+import { useStarts, type StartUnderWay } from '../workspaces/starting.js';
+import { useCardMoves } from '../workspaces/useCardMoves.js';
 import {
   workspaceGroups,
   workspaceName,
@@ -94,13 +96,18 @@ export function Sidenav({
   flashed: string | null;
 }) {
   const shell = useShell();
-  const { list, reviews, merges, scout, scribe } = useWorkspaces();
+  const { list, reviews, merges, scout, scribe, failing, readAt } = useWorkspaces();
+  // Workspaces being made (V48), until the list has them.
+  const starts = useStarts().filter(
+    (start) => !list?.workspaces.some((workspace) => workspace.branch === start.branch),
+  );
   const groups = useMemo(() => workspaceGroups(list?.workspaces ?? [], reviews), [list, reviews]);
   const marks = useMemo(() => reviewMarks(reviews).marks, [reviews]);
   const route = shell?.route;
   const queued = merges?.merges ?? [];
   const needs = groups.waiting.length;
-  const empty = list !== null && list.workspaces.length === 0 && queued.length === 0;
+  const empty =
+    list !== null && list.workspaces.length === 0 && queued.length === 0 && starts.length === 0;
   // Scout's mark (V35): working while it answers; answered when it did while you were elsewhere.
   const scoutState = scout?.conversation?.state;
   const onScout = route?.page === 'scout';
@@ -122,6 +129,7 @@ export function Sidenav({
   // the focus would fall to the page: it follows the card. Only the card the focus was on, and
   // only when nothing else took the focus (a blur, the person's own move, forgets it).
   const cardList = useRef<HTMLDivElement>(null);
+  useCardMoves(cardList);
   const focused = useRef<HTMLElement | null>(null);
   const onFocus = (event: FocusEvent<HTMLDivElement>) => {
     focused.current = event.target.matches(CARD) ? event.target : null;
@@ -285,7 +293,27 @@ export function Sidenav({
         </h2>
         {/* Why they are kept where they are (Symbiote's cache), or a folder left from before (V25). */}
         {list?.note && <p className="hint workspaces-note">{list.note}</p>}
-        {!list && <p className="hint sidenav-hint">Listing workspaces…</p>}
+        {/* Before the first read: cards' outlines, shown after 150 ms so a fast read draws none. */}
+        {!list && (
+          <div className="workspace-skeleton" role="status" aria-label="Listing workspaces">
+            {[0, 1, 2].map((n) => (
+              <div key={n} className="skeleton-card">
+                <span />
+                <span />
+                <span />
+              </div>
+            ))}
+          </div>
+        )}
+        {/* What was read stays; that it is not new is said (V48). */}
+        {failing && (
+          <p className="hint workspaces-stale" role="status">
+            {readAt
+              ? `Not updated since ${new Date(readAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+              : 'Not read'}
+            : Symbiote does not answer. Trying again.
+          </p>
+        )}
         {empty && (
           <p className="hint workspaces-empty">
             No workspaces yet.
@@ -330,18 +358,20 @@ export function Sidenav({
               </ul>
             </section>
           )}
-          {GROUPS.map(([key, title, Icon]) =>
-            groups[key].length === 0 ? null : (
+          {GROUPS.map(([key, title, Icon]) => {
+            const making = key === 'working' ? starts : [];
+            return groups[key].length + making.length === 0 ? null : (
               <WorkspaceGroupSection
                 key={key}
                 group={key}
                 title={title}
                 Icon={Icon}
                 rows={groups[key]}
+                starts={making}
                 {...cards}
               />
-            ),
-          )}
+            );
+          })}
         </div>
       </section>
     </aside>
@@ -419,6 +449,7 @@ function WorkspaceGroupSection({
   title,
   Icon,
   rows,
+  starts = [],
   marks,
   picked,
   flashed,
@@ -429,6 +460,8 @@ function WorkspaceGroupSection({
   title: string;
   Icon: () => ReactNode;
   rows: WorkspaceRow[];
+  /** Workspaces being made (V48): their cards after the group's. */
+  starts?: readonly StartUnderWay[];
   marks: Map<string, ReviewMark>;
   /** The workspace shown in the main area. */
   picked: string | null;
@@ -442,7 +475,7 @@ function WorkspaceGroupSection({
       <h3 title={title}>
         <Icon />
         <span className="sidenav-label">{title}</span>{' '}
-        <span className="branches-count">{rows.length}</span>
+        <span className="branches-count">{rows.length + starts.length}</span>
       </h3>
       <ul className="workspace-list">
         {rows.map((row) => (
@@ -456,8 +489,34 @@ function WorkspaceGroupSection({
             onRespond={() => onRespond(row.workspace.branch)}
           />
         ))}
+        {starts.map((start) => (
+          <StartingCard key={start.branch} start={start} />
+        ))}
       </ul>
     </section>
+  );
+}
+
+/**
+ * A workspace being made (V48): its card while Symbiote makes its branch and worktree and starts
+ * its agent (~1 s); its own card takes its place once listed.
+ */
+function StartingCard({ start }: { start: StartUnderWay }) {
+  return (
+    <li className="workspace-row starting" data-branch={start.branch} aria-busy="true">
+      <div className="workspace-head">
+        <span className="state-dot tone-starting" aria-hidden="true" />
+        <span className="workspace-about">{start.name}</span>
+      </div>
+      <div className="workspace-line">
+        <p className="workspace-state">
+          <strong>Starting</strong> · its worktree, then {start.agent ?? 'the branch'}
+        </p>
+      </div>
+      <div className="workspace-branch">
+        <span className="ref ref-branch">{start.branch}</span>
+      </div>
+    </li>
   );
 }
 

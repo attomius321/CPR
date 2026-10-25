@@ -34,7 +34,14 @@ import { AskBar } from './AskBar.js';
 import { TitleBar, TitleBarSlotsProvider, type TitleBarSlots } from './TitleBar.js';
 import { WorkspaceView } from '../workspaces/Workspace.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
-import { startedNotice, workspaceGroups, workspaceName } from '../workspaces/workspaces.js';
+import { transitionNotice } from '../workspaces/transitions.js';
+import {
+  allRows,
+  startedNotice,
+  workspaceGroups,
+  workspaceName,
+  type WorkspaceRow,
+} from '../workspaces/workspaces.js';
 
 const FOLD_KEY = 'symbiote.viewer.sidenav';
 /** Under this width the sidenav is a drawer over the page (styles.css says the same). */
@@ -284,6 +291,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
         <StatusBar notice={notice} />
         <AskBar />
         <WindowTitle route={route} repo={repo} />
+        <TransitionNotices route={route} notify={notify} />
         {asking && (
           <ConfirmDialog
             question={asking.guard.question}
@@ -302,6 +310,33 @@ export function Shell({ repo }: { repo?: string | undefined }) {
       </div>
     </ShellContext.Provider>
   );
+}
+
+/**
+ * The status bar's line when an agent moves on while the person looks elsewhere (V48): newly
+ * waiting, finished or failed, with a link to it; never a dialog. Its own component: a read of
+ * the workspaces renders it alone.
+ */
+function TransitionNotices({
+  route,
+  notify,
+}: {
+  route: Route;
+  notify: (notice: Notice | null) => void;
+}) {
+  const { list, reviews } = useWorkspaces();
+  const before = useRef<WorkspaceRow[] | null>(null);
+  // The workspace on screen, as of now: its own changes are in front of the person.
+  const shown = useRef<string | null>(null);
+  shown.current = route.page === 'workspace' ? route.branch : null;
+  useEffect(() => {
+    if (!list) return;
+    const after = allRows(workspaceGroups(list.workspaces, reviews));
+    const notice = transitionNotice(before.current, after, shown.current);
+    before.current = after;
+    if (notice) notify(notice);
+  }, [list, reviews, notify]);
+  return null;
 }
 
 /**

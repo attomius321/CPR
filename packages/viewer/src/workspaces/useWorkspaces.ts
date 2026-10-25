@@ -16,6 +16,10 @@ export interface WorkspacesState {
   scout: ScoutState | null;
   /** Null where there is no Scribe (no repository). */
   scribe: ScoutState | null;
+  /** When they were last read (V48), by the page's clock; absent before the first. */
+  readAt?: number;
+  /** The last read failed (V48): Symbiote did not answer. What was read stays. */
+  failing?: true;
 }
 
 /** While an agent works or waits, how often its state is read again. */
@@ -50,11 +54,12 @@ let terminalsOpen = 0;
 
 /**
  * How long until the next read: 1.5 s while a merge runs; 5 s while an agent works or waits, Scout
- * answers, Scribe writes, or a terminal is open (`open`); none otherwise.
+ * answers, Scribe writes, a terminal is open (`open`), or the last read failed (V48: until one
+ * answers); none otherwise.
  */
 export function readEvery(state: WorkspacesState, open: number): number | null {
   if (merging(state)) return MERGE_POLL_MS;
-  return live(state) || open > 0 ? POLL_MS : null;
+  return live(state) || open > 0 || state.failing ? POLL_MS : null;
 }
 
 /** Holds the reads on while an agent's terminal is open; the way to let go. */
@@ -83,10 +88,15 @@ function refresh(): Promise<void> {
     read<ScoutState>('/api/scribe'),
   ])
     .then(([list, reviews, merges, scout, scribe]) => {
-      current = { list, reviews, merges, scout, scribe };
+      current = { list, reviews, merges, scout, scribe, readAt: Date.now() };
       for (const listener of listeners) listener(current);
     })
-    .catch(() => {})
+    .catch(() => {
+      // Symbiote did not answer (V48): what was read stays, said to be from then.
+      if (current.failing) return;
+      current = { ...current, failing: true };
+      for (const listener of listeners) listener(current);
+    })
     .finally(() => {
       loading = null;
       schedule();

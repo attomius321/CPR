@@ -35,6 +35,15 @@ function NoticeLine({ notice }: { notice: Notice }) {
     >
       {notice.text}
       {notice.warning && <span className="warning"> · {notice.warning}</span>}
+      {notice.href && (
+        <>
+          {' '}
+          {/* In the shell: the shell opens it in place (V48). */}
+          <a className="link" href={notice.href}>
+            Open
+          </a>
+        </>
+      )}
       {notice.copy !== undefined && (
         <>
           {' '}

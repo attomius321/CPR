@@ -18,6 +18,11 @@ const state = (...agents: WorkspaceSummary['agent'][]): WorkspacesState => ({
 });
 
 describe('readEvery', () => {
+  it('reads again every 5 s after a read failed, until one answers (V48)', () => {
+    expect(readEvery({ ...state({ state: 'ready' }), failing: true }, 0)).toBe(5_000);
+    expect(readEvery(state({ state: 'ready' }), 0)).toBeNull();
+  });
+
   it('reads the list again while an agent works or waits, and not once all are done', () => {
     expect(readEvery(state({ state: 'working' }, { state: 'ready' }), 0)).toBe(5_000);
     expect(readEvery(state({ state: 'needs-you' }), 0)).toBe(5_000);
