@@ -299,31 +299,6 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
     expect(calls[1]?.slice(-3)).toEqual(['--append-system-prompt', 'You are Scout.', 'Q']);
   });
 
-  it('continues a session as a copy on the options given, its conversation kept (V50, decision 384)', async () => {
-    const calls: string[][] = [];
-    const run: Run = (_command, args) => {
-      calls.push(args);
-      return Promise.resolve({ code: 0, stdout: '', stderr: '' });
-    };
-    const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
-    await claude.startPageAgent({
-      cwd: '/repo',
-      name: 'Scout',
-      settings: '/s',
-      ...READ_ONLY,
-      from: 'session-9',
-      model: 'sonnet',
-      instructions: 'You are Scout.',
-    });
-    expect(calls[0]?.slice(0, 5)).toEqual(['--bg', '--resume', 'session-9', '--name', 'Scout']);
-    expect(calls[0]?.slice(-4)).toEqual([
-      '--model',
-      'sonnet',
-      '--append-system-prompt',
-      'You are Scout.',
-    ]);
-  });
-
   it("says Claude Code's words when it does not start", async () => {
     const run: Run = () =>
       Promise.resolve({ code: 1, stdout: '', stderr: 'Workspace not trusted. Run `claude`…\n' });
@@ -735,24 +710,6 @@ describe('Scout is a terminal (V50)', () => {
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).not.toHaveProperty('fresh');
   });
 
-  it("keeps a conversation's freshness through a move: a copy reads as a new session does", async () => {
-    const repo = fresh();
-    const { claude, set } = listing(repo);
-    const s = await service(repo, { claude });
-    await s.open({});
-    // Moved before any question: still ready.
-    expect((await s.switch({ model: 'sonnet', effort: null })).conversation).toMatchObject({
-      state: 'ready',
-    });
-    set('s10', { state: 'working', status: 'busy' });
-    await s.state();
-    set('s10', { state: 'done', status: 'idle' });
-    // Moved after a turn: its copy, idle and asked nothing, is a conversation that answered.
-    const moved = await s.switch({ model: 'opus', effort: null });
-    expect(moved.conversation).toMatchObject({ id: 's11', state: 'answered' });
-    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).not.toHaveProperty('fresh');
-  });
-
   it("opens on the model and at the level asked, else the project's; refuses what the agent does not list", async () => {
     const repo = fresh();
     const { claude, startPageAgent } = listing(repo);
@@ -790,76 +747,7 @@ describe('Scout is a terminal (V50)', () => {
     expect(existsSync(record(repo))).toBe(false);
   });
 
-  it('moves the conversation to another model and level: a copy of its session, the original removed (decision 384)', async () => {
-    const repo = fresh();
-    const { claude, startPageAgent, stop, remove, set, listed } = listing(repo);
-    const s = await service(repo, { claude });
-    await s.open({});
-    set('s9', { state: 'done', status: 'idle' });
-    const state = await s.switch({ model: 'sonnet', effort: 'low' });
-    // Stopped first: Claude Code copies a running session and leaves it running (V50 spike).
-    expect(stop).toHaveBeenCalledWith('s9');
-    const copy = startPageAgent.mock.lastCall?.[0];
-    expect(copy).toMatchObject({
-      cwd: repo.root,
-      name: 'Scout',
-      ...READ_ONLY,
-      ...files(repo),
-      instructions: DEFAULT_PROMPTS.scout,
-      from: 'session-9',
-      model: 'sonnet',
-      effort: 'low',
-    });
-    expect(copy).not.toHaveProperty('prompt');
-    expect(remove).toHaveBeenCalledWith('s9');
-    expect(listed.map((x) => x.id)).not.toContain('s9');
-    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({
-      id: 's10',
-      sessionId: 'session-10',
-      model: 'sonnet',
-      effort: 'low',
-      started: NOW.toISOString(),
-    });
-    expect(state.conversation).toMatchObject({ id: 's10', model: 'sonnet', effort: 'low' });
-    // Back to the agent's own: no flag.
-    const back = await s.switch({ model: null, effort: null });
-    expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ from: 'session-10' });
-    expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('model');
-    expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('effort');
-    expect(back.conversation).toMatchObject({ id: 's11' });
-    expect(back.conversation).not.toHaveProperty('model');
-    expect(back.conversation).not.toHaveProperty('effort');
-  });
-
-  it('refuses a move while Scout answers or asks, without a conversation, or to a level the model lacks', async () => {
-    const repo = fresh();
-    const { claude, startPageAgent, set } = listing(repo);
-    const s = await service(repo, { claude });
-    await expect(s.switch({ model: 'sonnet', effort: null })).rejects.toMatchObject({
-      status: 409,
-      message: 'Scout has no conversation: open it first',
-    });
-    await s.open({});
-    set('s9', { state: 'working', status: 'busy' });
-    const answering = {
-      status: 409,
-      message: 'Scout is answering: change its model or level after its answer',
-    };
-    await expect(s.switch({ model: 'sonnet', effort: null })).rejects.toMatchObject(answering);
-    set('s9', { state: 'blocked', status: 'waiting', waitingFor: 'permission prompt' });
-    await expect(s.switch({ model: 'sonnet', effort: null })).rejects.toMatchObject(answering);
-    set('s9', { state: 'done', status: 'idle' });
-    await expect(
-      s.switch({ model: 'claude-haiku-4-5-20251001', effort: 'high' }),
-    ).rejects.toMatchObject({
-      status: 400,
-      message: 'Haiku 4.5 takes no effort level: start it at its default',
-    });
-    expect(startPageAgent).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({ id: 's9' });
-  });
-
-  it("opens Codex's thread with no turn, Scout's instructions its developer instructions; a move forks it", async () => {
+  it("opens Codex's thread with no turn, Scout's instructions its developer instructions", async () => {
     const repo = fresh();
     const server = await appServer();
     const { codex } = fakeCodex(server);
@@ -879,21 +767,6 @@ describe('Scout is a terminal (V50)', () => {
       state: 'ready',
       id: 'thread-1',
       effort: 'low',
-    });
-    const moved = await s.switch({ model: null, effort: 'high' });
-    expect(server.calls.find((c) => c.method === 'thread/fork')?.params).toMatchObject({
-      threadId: 'thread-1',
-      sandbox: 'read-only',
-      approvalPolicy: 'never',
-      developerInstructions: DEFAULT_PROMPTS.scout,
-      config: { model_reasoning_effort: 'high' },
-    });
-    expect(server.thread('thread-1')).toMatchObject({ archived: true });
-    expect(moved.conversation).toMatchObject({ kind: 'codex', id: 'thread-2', effort: 'high' });
-    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({
-      agent: 'codex',
-      thread: 'thread-2',
-      effort: 'high',
     });
   });
 

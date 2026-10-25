@@ -13,7 +13,6 @@ import {
   type PermissionMode,
   type ScoutAsk,
   type ScoutOpen,
-  type ScoutSwitch,
   type ScoutEffortChange,
   type ScoutModelChange,
   type ScoutTerminalRequest,
@@ -275,20 +274,6 @@ export function parseScoutOpen(text: string): ScoutOpen {
     ...(model === undefined ? {} : { model }),
     ...(effort === undefined ? {} : { effort }),
   };
-}
-
-/** `{ model, effort }` (V50): the conversation moved to them, null for each the agent's own. */
-export function parseScoutSwitch(text: string): ScoutSwitch {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  const model = value?.model;
-  const effort = value?.effort;
-  if (model !== null && typeof model !== 'string') {
-    throw new Error('model: its ID, as sonnet, or null for the default');
-  }
-  if (effort !== null && typeof effort !== 'string') {
-    throw new Error("effort: a level, as high, or null for the agent's own");
-  }
-  return { model, effort };
 }
 
 /** `{ effort }`: Scout's, Scribe's or the merger's level in the project's config, null for none. */

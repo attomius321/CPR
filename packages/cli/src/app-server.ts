@@ -237,21 +237,6 @@ export interface CodexServer {
     config?: Record<string, unknown>;
   }): Promise<string>;
   /**
-   * A new thread with `thread`'s turns (`thread/fork`, V50, decision 384), on `model` and at
-   * `effort` when given, read-only or confined as a start makes it, named `name`; its ID. The
-   * original stays as it was.
-   */
-  fork(request: {
-    thread: string;
-    name: string;
-    instructions?: string;
-    effort?: string;
-    model?: string;
-    readOnly?: true;
-    confined?: true;
-    config?: Record<string, unknown>;
-  }): Promise<string>;
-  /**
    * The effort levels of the model a thread in `cwd` would use (V30b): the configured model's
    * (`config/read`), else the default model's (`model/list`), and the configured level, else the
    * model's default. Null when they cannot be read: these methods are `[experimental]`.
@@ -599,27 +584,6 @@ export function codexServer(
           .request('thread/name/set', { threadId: thread, name })
           .catch(() => undefined);
         return thread;
-      }),
-    fork: ({ thread, name, instructions, effort, model, readOnly, confined, config }) =>
-      using(async (connection) => {
-        const configured = effort ? { ...config, model_reasoning_effort: effort } : config;
-        const forked = await connection.request<{ thread?: { id?: unknown } }>('thread/fork', {
-          threadId: thread,
-          ...(readOnly
-            ? { sandbox: 'read-only', approvalPolicy: 'never' }
-            : confined
-              ? { sandbox: 'workspace-write', approvalPolicy: 'never' }
-              : {}),
-          ...(instructions ? { developerInstructions: instructions } : {}),
-          ...(model ? { model } : {}),
-          ...(configured ? { config: configured } : {}),
-        });
-        const copy = text(forked.thread?.id);
-        if (!copy) throw new AppServerError('Codex forked no thread');
-        await connection
-          .request('thread/name/set', { threadId: copy, name })
-          .catch(() => undefined);
-        return copy;
       }),
     send: ({ thread, text: words, config }) =>
       using(async (connection) => {
