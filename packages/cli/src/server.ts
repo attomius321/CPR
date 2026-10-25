@@ -391,14 +391,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   ): Promise<void> {
     if (url.pathname === '/api/mcp/asks') return read(req, res, () => Promise.resolve(mcp.asks()));
     if (url.pathname === '/api/mcp/answer') {
-      return written(req, res, parseMcpAnswer, (answer) => {
+      return written(req, res, parseMcpAnswer, async (answer) => {
         try {
-          json(res, 200, mcp.answer(answer));
+          json(res, 200, await mcp.answer(answer));
         } catch (error) {
           if (!(error instanceof McpRefused)) throw error;
           json(res, error.status, { error: error.message });
         }
-        return Promise.resolve();
       });
     }
     if (url.pathname !== '/api/mcp') return send(res, 404, 'not found');

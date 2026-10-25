@@ -382,6 +382,7 @@ export function branchReviews(
                   comments: verdict.comments.length,
                   ...(verdict.into ? { into: verdict.into } : {}),
                   merged: await mergedInto(refs, verdict),
+                  ...(verdict.via ? { via: verdict.via } : {}),
                 },
               }
             : {}),

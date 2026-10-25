@@ -72,7 +72,8 @@ test('opens from the sidenav and by its key; a question starts a read-only agent
   const [call] = scoutCalls();
   expect(call?.cwd).toBe(symbiote.repo);
   const args = call?.args ?? [];
-  expect(args.slice(0, 9)).toEqual([
+  // Symbiote's MCP server and no other (MC1), then the gate's settings.
+  expect(args.slice(0, 12)).toEqual([
     '--bg',
     '--name',
     'Scout',
@@ -81,9 +82,11 @@ test('opens from the sidenav and by its key; a question starts a read-only agent
     '--permission-mode',
     'dontAsk',
     '--strict-mcp-config',
+    '--mcp-config',
+    join(symbiote.repo, 'symbiote', 'scout-mcp.json'),
     '--settings',
+    join(symbiote.repo, 'symbiote', 'scout-settings.json'),
   ]);
-  expect(args[9]).toBe(join(symbiote.repo, 'symbiote', 'scout-settings.json'));
   expect(args.at(-1)).toContain("Where is the merger's prompt defined?");
 
   // Its answer, in its own terminal.

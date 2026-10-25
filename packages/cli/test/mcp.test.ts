@@ -667,7 +667,9 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
       },
     ]);
     expect(calls.some((c) => c[0] === 'enqueue')).toBe(false);
-    mcp.answer({ id, yes: true });
+    // The person's answer is answered once it is done: the page reads what changed then.
+    expect(await mcp.answer({ id, yes: true })).toEqual({ asks: [] });
+    expect(calls).toContainEqual(['enqueue', { branch: 'fix/a', into: 'main' }]);
     const done = await pending;
     expect(done.isError).toBe(false);
     expect(done.value).toMatchObject({ branch: 'fix/a', into: 'main', state: 'queued' });
@@ -679,7 +681,7 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
     const { services, calls } = fakes({ merges: [entry()] });
     const mcp = server(services, { askMs: 40 });
     const declined = call(mcp, 'land_merge', { id: 'm1' });
-    mcp.answer({ id: await askOf(mcp), yes: false });
+    await mcp.answer({ id: await askOf(mcp), yes: false });
     expect(await declined).toMatchObject({
       isError: true,
       text: expect.stringContaining('The person declined') as unknown,
@@ -709,10 +711,10 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
     controller.abort();
     await expect(hung).rejects.toThrow();
     expect(mcp.asks().asks.map((a) => a.by)).toEqual([other]);
-    mcp.answer({ id: mcp.asks().asks[0]?.id ?? '', yes: true });
+    await mcp.answer({ id: mcp.asks().asks[0]?.id ?? '', yes: true });
     expect((await theirs).isError).toBe(false);
     expect(calls.filter((c) => c[0] === 'remove')).toEqual([['remove', 'm1']]);
-    expect(() => mcp.answer({ id: 'none', yes: true })).toThrow('no ask none');
+    await expect(mcp.answer({ id: 'none', yes: true })).rejects.toThrow('no ask none');
   });
 
   it('checks an asked call before asking: the person is asked only what can be done', async () => {
@@ -759,7 +761,7 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
     expect(mcp.asks().asks[0]?.words).toBe(
       `Approve fix/a at ${HEAD.slice(0, 7)}: it is to be merged into main (1 comment)`,
     );
-    mcp.answer({ id, yes: true });
+    await mcp.answer({ id, yes: true });
     expect((await pending).isError).toBe(false);
     const finish = calls.find((c) => c[0] === 'finish');
     expect(finish?.[1]).toBe('fix/a');
@@ -797,7 +799,7 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
     expect(mcp.asks().asks[0]?.words).toBe(
       'Start fix/the-button, "The button", with Codex, plan first',
     );
-    mcp.answer({ id, yes: true });
+    await mcp.answer({ id, yes: true });
     expect((await pending).value).toMatchObject({ workspace: { branch: 'fix/the-button' } });
     expect(calls).toContainEqual(['start', { ...request, via: 'scout' }]);
 
@@ -807,7 +809,7 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
       { ...request, branch: 'fix/two' },
       { via: 'mcp', client: 'codex' },
     );
-    mcp.answer({ id: await askOf(mcp), yes: true });
+    await mcp.answer({ id: await askOf(mcp), yes: true });
     await other;
     expect(calls).toContainEqual(['start', { ...request, branch: 'fix/two', via: 'mcp' }]);
   });
@@ -820,21 +822,21 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
     expect(mcp.asks().asks[0]?.words).toBe(
       "Clean up fix/a: its agent's sessions and its worktree, and its branch once merged",
     );
-    mcp.answer({ id: mcp.asks().asks[0]?.id ?? '', yes: false });
+    await mcp.answer({ id: mcp.asks().asks[0]?.id ?? '', yes: false });
     await merged;
     const unmerged = call(mcp, 'clean_workspace', { branch: 'fix/a', unmerged: true });
     await askOf(mcp);
     expect(mcp.asks().asks[0]?.words).toBe(
       "Clean up fix/a: its agent's sessions and its worktree; its branch stays, not merged",
     );
-    mcp.answer({ id: mcp.asks().asks[0]?.id ?? '', yes: false });
+    await mcp.answer({ id: mcp.asks().asks[0]?.id ?? '', yes: false });
     await unmerged;
   });
 
   it('runs a merge action the service refuses as an error, after the yes', async () => {
     const mcp = server(fakes({ merges: [entry({ id: 'busy', state: 'merging' })] }).services);
     const pending = call(mcp, 'remove_merge', { id: 'busy' });
-    mcp.answer({ id: await askOf(mcp), yes: true });
+    await mcp.answer({ id: await askOf(mcp), yes: true });
     expect(await pending).toMatchObject({ isError: true, text: 'it is merging' });
   });
 

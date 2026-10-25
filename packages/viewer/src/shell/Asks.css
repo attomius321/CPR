@@ -1,0 +1,76 @@
+/* An agent's ask through Symbiote's MCP (MC1, Asks.tsx): a popover over every page, above the
+   status bar at the right, where it covers the least of a page's own controls. */
+
+.ask-card {
+  position: fixed;
+  right: 16px;
+  bottom: 36px;
+  z-index: 28;
+  display: grid;
+  gap: 8px;
+  width: min(400px, 100% - 32px);
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow-floating);
+  animation: ask-in 150ms ease-out;
+}
+
+.ask-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.ask-who .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--warning);
+}
+
+.ask-left {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.ask-words {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--size-body);
+  overflow-wrap: anywhere;
+}
+
+.ask-error {
+  margin: 0;
+  font-size: var(--size-small);
+}
+
+.ask-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ask-more {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+@keyframes ask-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-card {
+    animation: none;
+  }
+}

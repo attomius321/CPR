@@ -38,6 +38,8 @@ const ANALYSIS_MS = 60_000;
 const POLL_MS = 2_000;
 /** Most `wait` waits, in minutes. */
 const MAX_WAIT = 10;
+/** How long the person's answer waits for what they confirmed to be done, before it is answered. */
+const ANSWER_MS = 30_000;
 
 /** What the tools are given: `symbiote view`'s services (`RepositoryOptions`). */
 export interface McpServices {
@@ -560,6 +562,8 @@ interface Prepared {
 interface Held {
   ask: McpAsk;
   settle(answer: 'yes' | 'no' | 'expired' | 'gone'): void;
+  /** Once what it asked is done, or not done: the person's answer is answered then. */
+  finished: Promise<void>;
 }
 
 const callerKey = (c: McpCaller) =>
@@ -570,8 +574,11 @@ export interface SymbioteMcp {
   handle(message: unknown, caller: McpCaller, signal?: AbortSignal): Promise<McpResponse | null>;
   /** The asks waiting for the person, oldest first. */
   asks(): McpAsks;
-  /** The person's answer to an ask; rejects with `McpRefused` (404) for one not held. */
-  answer(answer: McpAnswer): McpAsks;
+  /**
+   * The person's answer to an ask, given once what it asked is done (30 s at most); rejects with
+   * `McpRefused` (404) for one not held.
+   */
+  answer(answer: McpAnswer): Promise<McpAsks>;
   /** Ends every held call and wait: the server closes. */
   close(): void;
 }
@@ -612,7 +619,10 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
     return found;
   }
 
-  /** Waits for the person's answer to `words`, for `caller`. */
+  /**
+   * Holds `words` for the person, for `caller`: their answer, and `done` to call once the call
+   * that asked is over.
+   */
   function ask(tool: string, words: string, caller: McpCaller, signal: AbortSignal) {
     const key = callerKey(caller);
     if ([...held.values()].some((h) => callerKey(h.ask.by) === key)) {
@@ -629,7 +639,9 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       at: at.toISOString(),
       until: new Date(at.getTime() + askMs).toISOString(),
     };
-    return new Promise<'yes' | 'no' | 'expired' | 'gone'>((resolve) => {
+    let done = () => {};
+    const finished = new Promise<void>((resolve) => (done = resolve));
+    const answer = new Promise<'yes' | 'no' | 'expired' | 'gone'>((resolve) => {
       const timer = setTimeout(() => settle('expired'), askMs);
       const gone = () => settle('gone');
       function settle(answer: 'yes' | 'no' | 'expired' | 'gone') {
@@ -640,8 +652,9 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       }
       if (signal.aborted) return settle('gone');
       signal.addEventListener('abort', gone);
-      held.set(ask.id, { ask, settle });
+      held.set(ask.id, { ask, settle, finished });
     });
+    return { answer, done };
   }
 
   async function workspaceOf(branch: string): Promise<WorkspaceSummary> {
@@ -1157,18 +1170,23 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       const prepare = asking[name];
       if (!prepare) throw new ToolProblem(`unknown tool: ${name}`);
       const { words: said, act } = await prepare(args, caller, signal);
-      const answer = await ask(name, said, caller, signal);
-      if (answer === 'gone') return null;
-      if (answer === 'no') {
-        return { text: `The person declined: ${said}. Nothing was done.`, isError: true };
+      const { answer: answered, done } = ask(name, said, caller, signal);
+      try {
+        const answer = await answered;
+        if (answer === 'gone') return null;
+        if (answer === 'no') {
+          return { text: `The person declined: ${said}. Nothing was done.`, isError: true };
+        }
+        if (answer === 'expired') {
+          return {
+            text: `No answer from the person to: ${said}. Nothing was done; ask them, then call again.`,
+            isError: true,
+          };
+        }
+        return { text: JSON.stringify(await act()) };
+      } finally {
+        done();
       }
-      if (answer === 'expired') {
-        return {
-          text: `No answer from the person to: ${said}. Nothing was done; ask them, then call again.`,
-          isError: true,
-        };
-      }
-      return { text: JSON.stringify(await act()) };
     } catch (error) {
       if (signal.aborted) return null;
       const message = (error as Error).message;
@@ -1243,10 +1261,17 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
 
     asks: () => ({ asks: [...held.values()].map((h) => h.ask) }),
 
-    answer({ id, yes }) {
+    async answer({ id, yes }) {
       const found = held.get(id);
       if (!found) throw new McpRefused(`no ask ${id}`, 404);
       found.settle(yes ? 'yes' : 'no');
+      // Answered once it is done (30 s at most): the page reads what it changed then.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([
+        found.finished,
+        new Promise<void>((resolve) => (timer = setTimeout(resolve, ANSWER_MS))),
+      ]);
+      clearTimeout(timer);
       return { asks: [...held.values()].map((h) => h.ask) };
     },
 

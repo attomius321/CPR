@@ -86,6 +86,8 @@ export interface BranchReviewSummary {
     comments: number;
     into?: string;
     merged: boolean;
+    /** Recorded through Symbiote's tools (MC1). */
+    via?: McpVia;
   };
 }
 
