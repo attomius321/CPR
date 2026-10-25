@@ -231,3 +231,4 @@ merge commit.
 - 2026-10-25 [Fix — the merger's check: report.spec.ts raced under load](journal/fix-merging-status.md)
 - 2026-10-25 [V55 — the cards' bin, the heads' Clean up and Remove](journal/v55-done-workspace-cleanup.md)
 - 2026-10-25 [V54 spike — what the viewer's tooltips are](journal/v54-tooltips.md)
+- 2026-10-25 [V54 — tooltips drawn by Symbiote](journal/v54-tooltips.md)

@@ -48,3 +48,16 @@ Decisions 397–402.
   an SVG): their tips (why it is disabled) work through the window's listener.
 - **An agent's terminal scrolls all the time**: hiding the tip on any `scroll` would have hidden it
   everywhere while an agent printed; only a scroll of what holds the tip's element hides it.
+
+**Verification**: tests first, seen red for the right reason (placement and `tip` missing, the
+tokens absent, the e2e spec finding no tip and 22 `title`s on History), then green: `pnpm check`
+(the viewer's 476 unit tests after the merge), `pnpm test:e2e` (268 before the merge: 267 passed,
+the one left reading an SVG `<title>` fixed and passed). Bitwarden `737ee3f` (1,419 nodes), five
+alternated runs of `interactions.mjs` against `main`'s build: medians equal within 4 ms (open 310 /
+312, select 61 / 63, mark reviewed 9 / 9, pan 520 / 520). Screenshots of every context, dark and
+light, at 1×. `main` (V55, fix/merging-status) merged in; V55's two new `title`s moved to tips;
+then `pnpm check` (1,762 tests) and `pnpm test:e2e` (270 of 270) on the merged branch.
+
+Not verified: Symbiote's own window (Electron on WSLg): its title bar's tips and drag regions were
+seen only in a browser; screen readers (only the `aria-*` attributes are checked); touch, which
+shows no tips by design.

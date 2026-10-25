@@ -2,10 +2,11 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v54-tooltips.md)
 
-**Status:** in progress (2026-10-25), on branch `feature/tooltips-revamp` (a workspace started in
-Symbiote, from `main` at `da991b5`). The person OK'd the plan with "1. Yes 2. Yes 3. As you
-recommend": the style's inverted tip as previewed, a cut text's tip only when it is cut, and the
-state dots kept.
+**Status:** ready for review (2026-10-25), on branch `feature/tooltips-revamp` (a workspace started
+in Symbiote, from `main` at `da991b5`; `main` merged in at `e4da160`, with V55's two new `title`s
+moved over). The person OK'd the plan with "1. Yes 2. Yes 3. As you recommend": the style's
+inverted tip as previewed, a cut text's tip only when it is cut, and the state dots kept. Built
+as planned, with the changes under "As built".
 
 **Problem** (asked: "All tooltips look like rubbish atm. Each tooltip represent something, make it
 at the current standards of UI, with rounder corners, nice font size, colors, etc. These should be
@@ -161,3 +162,22 @@ readout (a panel, not a tip).
   `briefTip`: the first line as the head, then one paragraph of at most 240 characters, without
   Markdown's marks.
 - **A finding's badge** said "2 error"; it says "2 errors" (and "1 info").
+
+**Results.**
+
+- **No `title` left**: 125 `tip()` call sites in 44 components (122 `title`s, 2 SVG `<title>`s,
+  spread titles, React Flow's own); V55's 2 moved in the merge. The guard
+  (`test/tooltips.test.ts`, TypeScript's parser) and the e2e sweep (no `[title]` or `svg title`
+  on History, Start, Scout, Skills, the Monitor, Settings, a workspace and a diff) both pass.
+- **Tests**: `tips.test.ts` +11 (placement), `tooltips.test.ts` 7 (guard, `tip`, `longDate`,
+  `briefTip`), `tokens.test.ts` +2 per theme (the tip's contrast, its ground pinned);
+  `e2e/tooltips.spec.ts` 6; 36 e2e checks that read a `title` read `data-tip`.
+- **Bitwarden `737ee3f`** (Angular plugin, 1,419 nodes), `scripts/viewer/interactions.mjs`,
+  medians of 5 runs alternated with `main`'s build (main / branch, ms): open 310 / 312, open a
+  group 110 / 114, select a change 61 / 63, pan zoomed in 520 / 520, mark reviewed 9 / 9, context
+  on 79 / 80, next project 29 / 30; no frame blocked by the change. Page elements 3,147 / 3,146
+  (the minimap's `<title>` gone).
+- **Screenshots**, 1440 × 900 at 1×, dark and light: the sidenav (open and folded, a page and a
+  card), a toolbar's keys, Start with Ctrl Enter, a cut path, a review mark, a date, the usage, a
+  symbol's id, a finding, the canvas's buttons, Help (keys, kinds, Settings), the terminal's link
+  hint; History, a workspace, a diff and Settings whole.
