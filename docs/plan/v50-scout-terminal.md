@@ -2,9 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v50-scout-terminal.md)
 
-**Status:** planned (2026-10-25), on branch `feature/scout-should-be-a-terminal` (a workspace
-started in Symbiote, from `main` at `94e1feb`). The person OK'd starting once the plan was written
-("After you plan, you have my blessing to start working").
+**Status:** ready for review (2026-10-25), on branch `feature/scout-should-be-a-terminal` (a
+workspace started in Symbiote, from `main` at `94e1feb`). The person OK'd starting once the plan was
+written ("After you plan, you have my blessing to start working"). Built as planned, with three
+changes found on the way; "As built" and results at the end.
 
 **Problem** (asked: "Scout should always be a terminal when going to that page, with options in
 header to change the model, new conversation, etc...the first settings page is unnecessary").
@@ -148,3 +149,65 @@ question box where no terminal runs (no `node-pty`, `SYMBIOTE_TERMINAL=off`).
 
 **Not in V50 (later)**: Scribe as a terminal first; the model `/model` set in the terminal shown
 in the head (Claude Code does not list a session's model).
+
+## As built
+
+- **`ready` comes from Scout's record, not from Claude Code alone.** The real run found Claude Code
+  2.1.310 reading a turn that ended on a tool the gate refused as `blocked` and idle, as it reads a
+  session started with no prompt; a copy after a move reads the same. The head said "Ready" after
+  an answer, and the sidenav would not have marked it answered. The record keeps `fresh` from an
+  open with no question until a turn is seen (`working`, or `done` between two reads), a move
+  keeps it, and `ready` needs both; `scoutState` reads `blocked` and idle as answered, as in V35.
+  A turn shorter than the 5 s between reads that ends on a refused tool still reads "Ready".
+- **Reads go on 5 s after a terminal closes** (`useWorkspaces.ts`). The sidenav's e2e test found
+  it: a question typed just before leaving Scout starts its turn after, and the next page's read
+  came before the server's list (kept 2 s) said so; with nothing working and no terminal open, no
+  read followed, and the sidenav never marked Scout working. One read more per terminal closed,
+  a workspace's too.
+- **`ask` takes a model**: where no terminal runs, the box's first question starts on the head's
+  model, as on its level.
+- **The head's lines follow its own width** (a container query at 1,290 px, measured: two agents,
+  Codex's model name and "Answered" take 1,170 px of parts), not the viewport's: at 1,440 px with
+  the sidenav open it is two lines, title, state and New conversation over the choices; one line
+  from about 1,530 px. With two agents the Agent names it, and what it reads says only the
+  checkout. The stepper keeps 300 px: at 260 its first two words met.
+- **A fork to the agent's own model or level names it** (Codex keeps the original's otherwise):
+  the default model and level Codex lists are passed.
+- `Conversation.tsx` is Scribe's again, and exports its terminal block and words to Scout's page.
+  The e2e fake Claude Code learns a start without a prompt and a resume with options as a copy,
+  and numbers a session past an ID in use (a second copy reused `fake1`).
+
+**Results.** Tests first, red for the right reason: `scout.test.ts` (10 new, then 2 for `fresh`),
+`app-server.test.ts` (2), `prompts.test.ts` (3 changed), viewer `scout.test.ts` (3), and
+`e2e/scout.spec.ts`, 7 of 8 failing on the page before V50 (no terminal, no Model; the eighth,
+without agents, says the same on both). `pnpm check`: 121 files, 1,690 unit tests. E2E 245 of 245
+(the Scout, look, settings, skills, shell and MCP specs 48 of 48 after the last change).
+Screenshots at 1,600, 1,440, 1,100 and 390 px, dark and light, one and two agents, ready and
+answering, and the box without terminals: nothing wider than the window.
+
+The real run, through the page in a browser (`symbiote view` of this branch in a throwaway clone of
+this repository at `c215113`; Claude Code 2.1.310 on the person's default, Opus 5.5 at xhigh;
+Codex CLI 0.163 on its 0.164 app server):
+
+| Step | Time | What happened |
+|---|---|---|
+| Open Scout | 1.4 s to its terminal | Claude Code's own screen, "Ready"; no turn ran |
+| "Where is the merger's prompt defined?" | 20.9 s | `packages/cli/src/prompts.ts:147` (`MERGER`), with `merge-agent.ts:127` and `:178` |
+| Model: Sonnet 5.5 | 4.2 s | A copy; its terminal joined it |
+| "What did I ask you first, and which model are you?" | 12.6 s | "You first asked where the merger's prompt is defined (answer: packages/cli/src/prompts.ts:147), and I'm Sonnet 5.5" |
+| "Call Bash with exactly `ls packages`" | 15.6 s | Refused by the gate in the copy, its rule quoted |
+| New conversation | 2.8 s to "Ready" | The old session stopped and removed |
+| Agent: Codex | 1.8 s to its terminal | A thread with no turn; then an answer in 9.8 s (`merge-agent.ts`) |
+| Effort: max | | "Thread forked from Scout", "GPT-6-Luna max"; it answered what was asked first |
+
+An earlier run, before `fresh`: open 2.0 s, the first answer 14.9 s, the move 2.8 s, and the gate's
+turn left the head at "Ready". `git status` in the clone was empty after both. Cleaned up: the
+sessions removed and their transcripts deleted, the Codex threads archived, the clone deleted, the
+scratch folder's trust entry taken out of Codex's `config.toml` (Claude Code's in `~/.claude.json`
+left: Claude Code rewrites that file while it runs).
+
+Not verified: Codex on a 0.163 app server (it refuses to name an empty thread; its terminal on
+one not tried); a fork to Codex's own model or level with the real Codex (only `max`); macOS and
+Windows; `viewer-check`'s graph timings (no graph, layout or History code changed; a baseline
+build would need a second worktree, which this workspace does not make); `regression-check` (no
+analysis code changed).
