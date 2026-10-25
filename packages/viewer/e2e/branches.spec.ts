@@ -55,14 +55,14 @@ test('lists local branches and remote ones by folder, folders closed', async ({ 
     'origin/6',
   ]);
   await expect(entry(page, 'wip').first().locator('.branches-track')).toHaveAttribute(
-    'title',
+    'data-tip',
     '2 commits not pushed to origin/wip, 1 not pulled',
   );
   await expect(entry(page, 'old').locator('.branches-track')).toHaveAttribute(
-    'title',
+    'data-tip',
     'origin/old was deleted',
   );
-  await expect(entry(page, 'topic')).toHaveAttribute('title', 'origin/topic');
+  await expect(entry(page, 'topic')).toHaveAttribute('data-tip', 'origin/topic');
   // The rows keep their width's end in view: no sideways scroll.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -160,7 +160,7 @@ test('rows keep their date in view beside the panel: long badges shrink first', 
     // The long badge is cut, and named in full on hover.
     const badge = page.locator('.ref', { hasText: 'origin/a-branch-whose' });
     await expect(badge).toHaveAttribute(
-      'title',
+      'data-tip',
       'origin/a-branch-whose-name-runs-on-long-enough-to-crowd-its-row',
     );
   }

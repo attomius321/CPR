@@ -214,7 +214,7 @@ test('checks out a remote branch as a local one from the keyboard, and a tag det
   // Detached: HEAD's badge alone, and the title says where it is.
   await expect(row(page, 'Add cube').locator('.ref')).toHaveText(['HEAD', 'v1']);
   await expect(row(page, 'Add cube').locator('.ref-head')).toHaveAttribute(
-    'title',
+    'data-tip',
     'HEAD, detached: no branch is checked out',
   );
   await expect(

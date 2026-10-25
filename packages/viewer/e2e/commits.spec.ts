@@ -57,7 +57,7 @@ test('lists every branch as a graph, the current branch on the left', async ({ p
   await expect(refs).toHaveCount(3);
   await expect(refs.last()).toHaveText('+2');
   const shown = await refs.evaluateAll((badges) => badges.slice(0, 2).map((b) => b.textContent));
-  const folded = (await refs.last().getAttribute('title'))?.split('\n') ?? [];
+  const folded = (await refs.last().getAttribute('data-tip'))?.split('\n') ?? [];
   expect([...shown, ...folded].sort()).toEqual(['r1', 'r2', 'r3', 'r4']);
   // main is lane 0, the straight line on the left; the cursor starts on HEAD.
   for (const subject of ['Add half', 'Add cube', 'Add square', 'head', 'base']) {

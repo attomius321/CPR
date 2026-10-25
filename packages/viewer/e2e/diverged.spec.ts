@@ -98,8 +98,8 @@ test.describe('with the branch checked out', () => {
       `${short(fork)} → ${short(topic)} · 2 commits · diverged from ${short(main)}: its 2 commits since the fork are not in this diff`,
     );
     await expect(page.locator('.compare-diverged')).toHaveAttribute(
-      'title',
-      `${short(main)} is on main: this diff shows what ${short(topic)} adds since they forked at ${short(fork)}. Swap compares ${short(main)} instead.`,
+      'data-tip',
+      `${short(main)} is on main\nThis diff shows what ${short(topic)} adds since they forked at ${short(fork)}. Swap compares ${short(main)} instead.`,
     );
   });
 });

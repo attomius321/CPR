@@ -1,12 +1,13 @@
 // A row of History's list: its graph cell, SHA, subject, badges, author and date (V10).
 import type { ReactNode } from 'react';
 import type { Commit } from '@symbiote/core';
-import type { ReviewMark } from './branchReviews.js';
-import { relativeDate, rowBadges, shortSha } from './commits.js';
+import { reviewTip, type ReviewMark } from './branchReviews.js';
+import { longDate, relativeDate, rowBadges, shortSha } from './commits.js';
 import { ROW_HEIGHT } from './GraphCell.js';
 import type { AgentChip } from '../workspaces/workspaces.js';
 import { WorkspaceMark } from '../workspaces/WorkspaceMark.js';
 import { MoreIcon } from '../ui/icons.js';
+import { tip } from '../ui/tip.js';
 
 export function CommitRow({
   row,
@@ -84,10 +85,10 @@ export function CommitRow({
           className="review-new"
           role="img"
           aria-label={`new since your review of ${added.join(', ')}`}
-          title={`New since your review of ${added.join(', ')}`}
+          {...tip(`New since your review of ${added.join(', ')}`, { tone: 'info' })}
         />
       )}
-      <span className="commit-subject" title={commit.subject}>
+      <span className="commit-subject" {...tip(commit.subject)}>
         {commit.subject}
       </span>
       {rowBadges(commit.refs, branch, reviewed, agents).map((badge) => (
@@ -95,14 +96,14 @@ export function CommitRow({
           key={`${badge.kind}:${badge.label}`}
           className={`ref ref-${badge.kind}`}
           // A badge cut short (a narrow window, a long name) is named in full on hover.
-          title={badge.title ?? badge.label}
+          {...tip(badge.title ?? badge.label)}
         >
           {badge.agent && <WorkspaceMark chip={badge.agent} />}
           {badge.label}
           {badge.review && (
             <span
               className={`ref-review ref-review-${badge.review.tone}`}
-              title={badge.review.title}
+              {...reviewTip(badge.review)}
             >
               {badge.review.mark}
             </span>
@@ -110,17 +111,13 @@ export function CommitRow({
         </span>
       ))}
       <span className="commit-author">{commit.author}</span>
-      <time
-        className="commit-date"
-        dateTime={commit.date}
-        title={new Date(commit.date).toLocaleString()}
-      >
+      <time className="commit-date" dateTime={commit.date} {...tip(longDate(commit.date))}>
         {relativeDate(commit.date, now)}
       </time>
       <button
         type="button"
         className="link commit-menu"
-        title="Check out… (c)"
+        {...tip('Check out…', { keys: 'c' })}
         aria-label="Check out…"
         onClick={(event) => {
           event.stopPropagation();

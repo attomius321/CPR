@@ -45,6 +45,7 @@ import { InTitleBar } from '../shell/TitleBar.js';
 import { laneSpacing, layoutLanes } from './lanes.js';
 import { HISTORY_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
+import { tip } from '../ui/tip.js';
 
 /** Rows drawn beyond the view, above and below. */
 const OVERSCAN = 10;
@@ -671,7 +672,7 @@ function History({
               type="button"
               className="branches-toggle"
               aria-expanded={panelOpen}
-              title="Branches (/)"
+              {...tip('Branches', { keys: '/' })}
               onClick={() => setPanelOpen((o) => !o)}
             >
               Branches
@@ -700,7 +701,7 @@ function History({
               <button
                 type="button"
                 className="head-chip"
-                title="Go to HEAD"
+                {...tip('Go to HEAD')}
                 onClick={() => jump(headRow)}
               >
                 HEAD → {first.branch ?? `${shortSha(first.head)} (detached)`}
@@ -721,7 +722,9 @@ function History({
                   type="button"
                   className="compare-mode"
                   aria-pressed={comparing}
-                  title={comparing ? 'Leave compare mode (Esc)' : 'Pick commits to compare (x)'}
+                  {...tip(comparing ? 'Leave compare mode' : 'Pick commits to compare', {
+                    keys: comparing ? 'Esc' : 'x',
+                  })}
                   onClick={() => (comparing ? stopComparing() : onComparing(true))}
                 >
                   Compare mode

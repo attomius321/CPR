@@ -1,6 +1,7 @@
 // Compare mode's bar (V13): what Compare will analyze, then Swap (diverged picks, V10c), Clear and
 // Compare.
 import { shortSha, type Comparison, type Pair } from './commits.js';
+import { tip } from '../ui/tip.js';
 
 /** The bar under History's rows while compare mode is on. */
 export function CompareBar({
@@ -42,7 +43,7 @@ export function CompareBar({
         <button
           type="button"
           className="button ghost"
-          title="Compare the other pick from the fork point"
+          {...tip('Compare the other pick from the fork point')}
           onClick={onSwap}
         >
           Swap
@@ -105,7 +106,7 @@ function CompareLabel({
         <button
           type="button"
           className="link fork-sha"
-          title="Their fork point: go to its row"
+          {...tip('Their fork point\nGo to its row')}
           onClick={() => onJump(diverged.forkRow)}
         >
           {fork}
@@ -114,7 +115,9 @@ function CompareLabel({
       </span>
       <span
         className="compare-diverged"
-        title={`${why}: this diff shows what ${head} adds since they forked at ${fork}. Swap compares ${other} instead.`}
+        {...tip(
+          `${why}\nThis diff shows what ${head} adds since they forked at ${fork}. Swap compares ${other} instead.`,
+        )}
       >
         {' '}
         · diverged from {other}: its {diverged.otherCommits} commit
