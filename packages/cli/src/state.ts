@@ -2,7 +2,16 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Graph } from '@symbiote/core';
-import type { StateName, StateStore } from './server.js';
+
+/** What the viewer keeps between sessions: reviewed marks and draft comments. */
+export type StateName = 'review' | 'drafts';
+export const STATE_NAMES: readonly StateName[] = ['review', 'drafts'];
+
+export interface StateStore {
+  /** The saved value, or null. */
+  read(name: StateName): Promise<unknown>;
+  write(name: StateName, value: unknown): Promise<void>;
+}
 
 /**
  * Where the viewer's review state (reviewed marks, draft comments) lives on disk: per repo, and

@@ -30,7 +30,7 @@ import {
 import type { Pair } from './diffs.js';
 import { FORMER_NAME, moveInto } from './former-name.js';
 import { DEFAULT_PROMPTS, fillPrompt, readPrompts } from './prompts.js';
-import type { StateName, StateStore } from './server.js';
+import type { StateName, StateStore } from './state.js';
 
 /** A branch review on disk: `symbiote/reviews/<branch>/<reviewer>.json` (V15). */
 export interface BranchReviewFile {
