@@ -386,8 +386,11 @@ export async function readThreadEnd(
   return parseThread(await fileEnd(threadPath(symbiote, branch), bytes));
 }
 
-/** How much of the recorded tools the list reads (V48f): ~300 lines, many turns' worth. */
-export const ACTIVITY_END = 64 * 1024;
+/**
+ * How much of the recorded tools the list reads (V48f): ~80 lines. What runs is among the newest:
+ * while one tool runs, only tools beside it write. 64 KB cost 0.8 ms a working workspace.
+ */
+export const ACTIVITY_END = 16 * 1024;
 
 /** Whether a line is a recorded tool's start or end (V48f). */
 function isActivity(value: unknown): value is ActivityEntry {
