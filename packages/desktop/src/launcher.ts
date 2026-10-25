@@ -50,13 +50,14 @@ export function serverError(stderr: string, code: number | null): string {
 /**
  * Starts `symbiote view` in `repo` with what `symbiote app install` recorded: its address once it
  * serves, or why it did not. It reads its stdin: when the app ends, even killed, the pipe closes
- * and the server stops (`SYMBIOTE_STDIN_STOPS`).
+ * and the server stops (`SYMBIOTE_STDIN_STOPS`). `stderr` is the end of what it wrote, 8 KB,
+ * kept after it serves too: the app's line when it dies says it (LG1).
  */
 export function startServer(
   repo: string,
   recorded: Recorded,
   env: NodeJS.ProcessEnv,
-): Promise<{ url: string; child: ChildProcess } | { error: string }> {
+): Promise<{ url: string; child: ChildProcess; stderr: () => string } | { error: string }> {
   if (!existsSync(repo)) return Promise.resolve({ error: `no such folder: ${repo}` });
   const child = spawn(recorded.node, [recorded.cli, 'view', '--no-open'], {
     cwd: repo,
@@ -74,7 +75,7 @@ export function startServer(
     child.stdout.on('data', (data: Buffer) => {
       out = (out + data.toString()).slice(-4096);
       const url = readyUrl(out);
-      if (url) resolve({ url, child });
+      if (url) resolve({ url, child, stderr: () => err });
     });
     child.stderr.on('data', (data: Buffer) => (err = (err + data.toString()).slice(-8192)));
     child.once('error', (error) => resolve({ error: error.message }));

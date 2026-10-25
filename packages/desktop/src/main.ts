@@ -15,6 +15,7 @@ import {
   type MenuItemConstructorOptions,
   type WebContents,
 } from 'electron';
+import { openLog, watchUncaught } from '@symbiote/log';
 import { moveFormerConfig } from './former-name.js';
 import { frameOf, frameOptions } from './frame.js';
 import { hardwareGlFails } from './gpu.js';
@@ -46,6 +47,19 @@ const startUrl = pathToFileURL(startPage).href;
  * running app takes it.
  */
 const fromLauncher = args.url === undefined;
+// Symbiote's logs (LG1): the app's lines and its uncaught errors, beside the servers' own. A server
+// that dies without a word is said here.
+const opened = openLog({ process: 'app', env: process.env });
+watchUncaught(opened);
+const { log } = opened;
+log.info(
+  {
+    version: app.getVersion(),
+    electron: process.versions.electron,
+    from: fromLauncher ? 'desktop' : 'symbiote view',
+  },
+  'app started',
+);
 if (fromLauncher) {
   app.setPath('userData', join(config, 'launcher'));
 } else {
@@ -108,6 +122,13 @@ else {
 app.on('window-all-closed', () => app.quit());
 app.on('will-quit', () => {
   for (const { server } of windows.values()) server?.kill('SIGTERM');
+  log.info('app quit');
+});
+// Chromium's own processes: the GPU's falling back on WSLg (V39), a utility's crash.
+app.on('child-process-gone', (_event, details) => {
+  if (details.reason === 'clean-exit') return;
+  const { type, reason, exitCode } = details;
+  log.warn({ type, reason, exitCode }, 'a process of the app ended');
 });
 // Ctrl+C on the `symbiote view` that started it reaches the app too: close as the window would.
 for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => app.quit());
@@ -124,6 +145,7 @@ function openServer(url: string, title: string): void {
   });
   contents.on('did-fail-load', (_event, code, description, failed, isMainFrame) => {
     if (shown || !isMainFrame) return;
+    log.error({ url: failed, code, description }, 'page did not load');
     process.stderr.write(`symbiote app: could not load ${failed}: ${description} (${code})\n`);
     app.exit(1);
   });
@@ -165,10 +187,14 @@ function openRepo(repo: string, into?: BrowserWindow): void {
       return;
     }
     entry.server = started.child;
-    started.child.once('exit', (code) => {
+    log.info({ repo, url: started.url, pid: started.child.pid }, 'server started');
+    started.child.once('exit', (code, signal) => {
       if (window.isDestroyed() || entry.server !== started.child) return;
       delete entry.server;
       delete entry.repo;
+      // Its own line may be missing: killed, or out of memory. The end of its stderr says why.
+      const tail = started.stderr().trim().split('\n').slice(-20).join('\n');
+      log.error({ repo, code, signal, stderr: tail }, 'server ended');
       showStart(window, { error: `symbiote view stopped (${code ?? 'a signal'})`, repo });
     });
     const state = readState(stateFile);
@@ -246,6 +272,13 @@ function createWindow(title: string): BrowserWindow {
   const hold = holding ? holdMaximize(window, tell, workAreas) : undefined;
   windows.set(contents, { window, home: startUrl, ...(hold ? { hold } : {}) });
   const home = () => windows.get(contents)?.home ?? startUrl;
+  // The page's own process (LG1): its errors reach the server's lines, its death only these.
+  contents.on('render-process-gone', (_event, { reason, exitCode }) => {
+    log.error({ url: contents.getURL(), reason, exitCode }, 'page process gone');
+  });
+  contents.on('unresponsive', () => log.warn({ url: contents.getURL() }, 'page unresponsive'));
+  contents.on('responsive', () => log.info({ url: contents.getURL() }, 'page responsive again'));
+  contents.on('preload-error', (_event, path, err) => log.error({ path, err }, 'preload failed'));
 
   window.once('ready-to-show', () => {
     if (place.maximized && hold) {

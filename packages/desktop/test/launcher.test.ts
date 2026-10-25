@@ -98,6 +98,23 @@ process.stdin.resume();`,
     expect(await ended).toBe(0);
   });
 
+  it('keeps the end of what a server wrote after it served, for its line when it dies (LG1)', async () => {
+    const cli = fakeCli(
+      'crashes',
+      `process.stdout.write('Symbiote viewer: http://127.0.0.1:4321/  (Ctrl+C to stop)\\n');
+setTimeout(() => {
+  process.stderr.write('x'.repeat(9000) + '\\nFATAL ERROR: JavaScript heap out of memory\\n');
+  process.exit(134);
+}, 50);`,
+    );
+    const started = await startServer(repo, { node: process.execPath, cli }, {});
+    if (!('child' in started)) throw new Error('it should serve');
+    await new Promise((resolve) => started.child.once('close', resolve));
+    const tail = started.stderr();
+    expect(tail).toContain('FATAL ERROR: JavaScript heap out of memory');
+    expect(tail.length).toBeLessThanOrEqual(8192);
+  });
+
   it("gives symbiote view's own words when it does not serve", async () => {
     const cli = fakeCli(
       'refuses',
