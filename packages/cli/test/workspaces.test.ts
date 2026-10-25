@@ -25,9 +25,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import {
-  agentState,
   briefOf,
-  claudeCode,
   documentName,
   MAX_DOCUMENT_BYTES,
   workspaceBase,
@@ -35,20 +33,24 @@ import {
   workspacePrompt,
   workspaces,
   WorkspaceRefused,
-  parseAccount,
-  parseClaudeModels,
-  parseEffortLevels,
-  parseSessions,
   readWorkspace,
   readWorkspaceConfig,
   serializeWorkspace,
   startBranches,
   workKinds,
   worktreeFolder,
-  type AgentSession,
-  type ClaudeCode,
   type WorkspaceFile,
 } from '../src/workspaces.js';
+import {
+  agentState,
+  claudeCode,
+  parseAccount,
+  parseClaudeModels,
+  parseEffortLevels,
+  parseSessions,
+  type AgentSession,
+  type ClaudeCode,
+} from '../src/claude-code.js';
 import { runProgram, type Run, type RunWithInput } from '../src/programs.js';
 import { reviewPlace } from '../src/reviews.js';
 import { DEFAULT_PROMPTS } from '../src/prompts.js';

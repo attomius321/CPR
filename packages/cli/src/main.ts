@@ -72,14 +72,8 @@ import { scribe } from './scribe.js';
 import { skillsService } from './skills.js';
 import { readClaudeProfile, readClaudeUsage, readCodexUsage, usageService } from './usage.js';
 import { codex, findCodex, type Codex } from './codex.js';
-import {
-  claudeCode,
-  claudeModelsFile,
-  workspaces,
-  findClaude,
-  readWorkspaceConfig,
-  type ClaudeCode,
-} from './workspaces.js';
+import { workspaces, readWorkspaceConfig } from './workspaces.js';
+import { claudeCode, claudeModelsFile, findClaude, type ClaudeCode } from './claude-code.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };

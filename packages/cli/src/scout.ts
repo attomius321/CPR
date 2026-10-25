@@ -33,17 +33,15 @@ import { asksTrust, type Codex } from './codex.js';
 import { fillPrompt, PromptRefused, readPrompts, writeConfig } from './prompts.js';
 import { prepareSymbioteFolder, reviewPlace, type ReviewPlace } from './reviews.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
+import { readWorkspaceConfig } from './workspaces.js';
+import { shellWord, type AgentSession, type ClaudeCode } from './claude-code.js';
 import {
   effortOnProblem,
   effortWordProblem,
   levelsOn,
   modelProblem,
   modelWordProblem,
-  readWorkspaceConfig,
-  shellWord,
-  type AgentSession,
-  type ClaudeCode,
-} from './workspaces.js';
+} from './agent-levels.js';
 
 /** The name Scout's session and thread are given: how a new one is told from the person's. */
 export const SCOUT_NAME = 'Scout';

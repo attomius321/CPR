@@ -44,16 +44,14 @@ import {
 import { guessCheck, treeAt } from './check.js';
 import { CONFIG_FILES } from './plugins.js';
 import { readReview, reviewPath, reviewPlace } from './reviews.js';
+import { readWorkspace, workspacePath, type WorkspaceFile } from './workspaces.js';
 import {
   effortOnProblem,
   effortWordProblem,
   levelsOn,
   modelProblem,
   modelWordProblem,
-  readWorkspace,
-  workspacePath,
-  type WorkspaceFile,
-} from './workspaces.js';
+} from './agent-levels.js';
 import {
   applyAnswer,
   conflictRegions,
