@@ -506,7 +506,8 @@ function StartingCard({ start }: { start: StartUnderWay }) {
     <li className="workspace-row starting" data-branch={start.branch} aria-busy="true">
       <div className="workspace-head">
         <span className="state-dot tone-starting" aria-hidden="true" />
-        <span className="workspace-about">{start.name}</span>
+        {/* Not a card's button (`.workspace-about`): the arrows and the focus skip it. */}
+        <span className="starting-name">{start.name}</span>
       </div>
       <div className="workspace-line">
         <p className="workspace-state">

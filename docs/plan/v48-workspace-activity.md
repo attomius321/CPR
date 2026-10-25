@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v48-workspace-activity.md)
 
-**Status:** planned (2026-10-25), on branch `feature/dynamic-agent-workspace-activity-status` (a
-workspace started in Symbiote, from `main` at `94e1feb`); OK'd by the person with their answers
+**Status:** ready for review (2026-10-25), on branch `feature/dynamic-agent-workspace-activity-status`
+(a workspace started in Symbiote, from `main` at `94e1feb`); as built and results under "As built
+(V48)" below. The plan OK'd by the person with their answers
 ("1. Yes, the suggested groups by you 2. A slow pulse 3. Yes 4. Yes 5. Add now. OK"): the first
 of each open choice, and tool-level activity in V48 as V48f (designed below, after a spike).
 
@@ -335,3 +336,49 @@ stream fed by the threads' files and the sessions' list, as the terminals and me
 progress bars or percentages (no agent reports progress); desktop or sound notifications;
 Scout's and Scribe's dots beyond sharing the indicator's classes; History's badges (`WorkspaceMark`)
 beyond their tones.
+
+## As built (V48)
+
+- **Groups**: as planned, except that a finished agent without commits keeps its words, "Finished
+  without commits", in To review's amber (the plan said "Finished: read its report"; with no
+  report recorded that would not be true). A plan ready says "Plan ready: read it and answer"
+  and nothing more: its first line was a heading ("# Plan") in the e2e and in real plans, so it
+  is not the card's ask. A Codex agent waiting on its app server shows what it said as it began
+  to wait, read from its running turn in full (a `summary` read leaves that message out).
+- **The dot**: kept as `StateDot` with its props (no new component): its shapes are CSS on the
+  tones it already had, so History's badges, Scout's and Scribe's dots get them too. The halo is
+  a pseudo-element; `will-change` and a real child element were tried and changed nothing (601
+  style recalculations in 10 s either way), so neither is there.
+- **Working says what runs**: a working card's line is the tool or "Thinking", not "Working";
+  the group says Working and the dot's tone is `working`. The older e2e specs that read
+  "Working" on a card now check the dot's tone.
+- **Respond**: an event (`symbiote:respond`) the open panel takes; a workspace opened anew
+  focuses its terminal as it opens, as before. Ready for review keeps the primary in the
+  heading: the strip's Respond is then a secondary button.
+- **Activity tab**: it reads the branch's commits with the changes panel's own hook
+  (`useChanges`, now exported). Rows that open use the shared `<summary>` chevron (controls.css,
+  V37); rows without one keep its width, so every row's text starts at one place. Git keeps a
+  commit's time in whole seconds: a commit in the same second as a tool line sorts before it.
+- **Tools**: the list reads the last 16 KB of a working agent's tools, not 64 KB (measured
+  below). The thread's read gives the last 256 KB of them to the Activity tab, or the app
+  server's turns it already reads in full.
+- **Skeleton**: `aria-busy` with its label, no `status` role: a diff page's progress is a status,
+  and two of them broke `commits.spec`'s check.
+- **Not done**: CPU of the pulse in the desktop app on WSLg (the window opens on the person's
+  desktop: not run unasked); a real Claude Code session with the new settings file (a real run
+  spends the person's quota and writes in their `symbiote/`): the schema of 2.1.310 accepts
+  `async`, an older Claude Code that refuses an unknown key would drop the file's hooks.
+
+**Results.** `pnpm check`: format, lint, typecheck; 1,723 unit tests in 126 files (`main`:
+1,674 in 121). e2e: 253 of 253 after five fixes two full runs found (the skeleton's role, a starting card
+64.00003 px high under load, two tab lists without Activity; then a starting card's name taken
+for a card's button by the arrows), 8 of them new for
+V48 and the V44 icons test grown to six groups.
+`/history` against `main`'s build, 16 rounds alternated, this repository: first contentful paint
+median 58 / 60 ms (ranges 48–68 / 52–68), first rows 103 / 102 ms. The bundle: JS +15,247 bytes
+(745,128 → 760,375), CSS +6,313. Four working dots idle for 10 s: 0 layouts, 601 style
+recalculations (one a frame), main-thread time 188 against 86 ms with reduced motion, where it
+stops (≈1 % of a core while an agent works). The list on 50 workspaces, all working, full threads
+and 2,000 tool lines each: reading the tools 17.9 ms for the 50 (0.36 ms each; 64 KB took 27.6
+ms), deriving the activity 0.8 ms; ~315 bytes more a workspace in the answer. A hook run 29.8 ms,
+in the background.

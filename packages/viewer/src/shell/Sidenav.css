@@ -631,10 +631,17 @@ button.workspace-about {
   cursor: default;
 }
 
-/* Its name laid out as a card's button is, so the card keeps a card's height. */
-.sidenav .workspace-row.starting .workspace-about {
+/* Its name as a card's is drawn, in a block so the card keeps a card's height; not a button. */
+.sidenav .starting-name {
   display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--size-body);
+  font-weight: 500;
   line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .merge-card .state-dot {

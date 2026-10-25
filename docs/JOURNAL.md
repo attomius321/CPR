@@ -217,3 +217,4 @@ merge commit.
 - 2026-10-25 [LG1b — the viewer: Grafana, Loki and Alloy, and real crashes read back](journal/lg1-logs.md)
 - 2026-10-25 [V48 spike — where an agent's state comes from, and what the page makes of it](journal/v48-workspace-activity.md)
 - 2026-10-25 [V48f spike — what Claude Code's and Codex's tools can tell](journal/v48-workspace-activity.md)
+- 2026-10-25 [V48a–V48f — the groups, what runs, Waiting for you, the Activity tab, the small things](journal/v48-workspace-activity.md)
