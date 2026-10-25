@@ -6,6 +6,12 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* The last of the run's rows (V49), after StartPage.css: its name, the files, then where more
+   are added, a drop area with Add files in it. */
+.start-run > .start-documents-field {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .start-documents {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -78,7 +84,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  padding: 8px;
+  border: 1px dashed var(--field-line);
+  border-radius: 8px;
   font-weight: normal;
 }
 

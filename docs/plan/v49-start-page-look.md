@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v49-start-page-look.md)
 
-**Status:** planned (2026-10-25), on branch `feature/improve-start-workspace-ui` (the workspace's);
-the plan confirmed by the person ("Yes"), Start kept in the head as proposed.
+**Status:** ready for review (2026-10-25), on branch `feature/improve-start-workspace-ui` (the
+workspace's); the plan confirmed by the person ("Yes"), Start kept in the head as proposed. "As
+built" and results at the end.
 
 **Problem** (asked: "Start workspace needs improvements. There is too much empty space. And the
 UI feels old. Find current standards that look like this, and follow them", with a screenshot of
@@ -124,3 +125,40 @@ the check guess, the field style (decision 246), the tokens, every other page.
 
 **Not in V49 (later)**: Scout's and Settings' pages, left-aligned the same way; a composer with
 the run as pills under the goal (the effort stepper does not fit a pill).
+
+## As built (V49)
+
+- **Documents**: a row of its own under its name, the files then a dashed drop area (`--field-line`)
+  with Add files in it, not the name and Add files on one line: at 380 px "or drop or paste them"
+  wrapped under the button, and the name sat between the two lines.
+- **Start from and Permission** are a `<label htmlFor>` and their select, as Agent's and Model's
+  now are: a row's name must be an element of its own to be styled and measured; bare text in a
+  wrapping `<label>` was neither. Their accessible names are unchanged.
+- **The cards' height on a tall window**: 40 % of the height over 900 px, 240 px at most (a media
+  query on the window: 940 px and up), not a fixed 48 px. At 2560×1440 the cards stand 216 px under
+  the head with 578 px under them; with 48 px they had 160 above and 634 below. Decision 382's
+  "main area ≥ 1,000 px high" is a window ≥ 1,024 px high (the status bar and the head under it).
+- **The switch's "on"** is the checked checkbox's `--primary`, not the `--text` components.md gave
+  (written before V42 made "what is checked" the accent's): the recipe says so now. Its own
+  `:checked` rule: `[type][role]` and `[type]:checked` weigh the same, and the later track rule won.
+- **The account** is in the Agent row, under its value; the words without an agent and the
+  warning about `ANTHROPIC_API_KEY` are rows of words, with the rows' hairline.
+- **The style skill** (`components.md`) has the page's recipe ("A page that makes something")
+  and the switch's.
+
+**Results.** Measured as the problem was (Chromium, `serveWorkspaces`, the form empty, More
+closed), now the cards' boxes:
+
+| Window | Main area | The cards | Left | Right | Above | Below | Area used |
+|---|---|---|---|---|---|---|---|
+| 1280×720 | 1040×696 | 1008×482 | 16 px | 16 px | 16 px | 154 px | 72 % |
+| 1440×900 | 1200×876 | 1164×482 | 18 | 18 | 16 | 334 | 56 % |
+| 1920×1080 | 1680×1056 | 1164×578 | 258 | 258 | 72 | 362 | 40 % |
+| 2560×1440 | 2320×1416 | 1164×578 | 578 | 578 | 216 | 578 | 21 % |
+
+The share of the area barely moves at 2560 (18 → 21 %): a form wider than 1,164 px would make the
+brief's lines run past ~100 characters. What changes is where the room is: around the cards, the
+same on both sides, instead of all of it on the right and below. The run is 448 px of choices
+against 524, with the drop area added. More open with two documents at 1440×900: nothing scrolls,
+dark and light. e2e: `start.spec.ts` 16 of 16 (2 new, red first); the whole suite 247 of 247;
+`pnpm check` 1,674 unit tests.
