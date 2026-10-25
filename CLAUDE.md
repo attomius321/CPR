@@ -28,10 +28,14 @@ finding costs more trust than a missing one), explainable beats clever, local an
 - `packages/forge` — GitHub and GitLab APIs (pull/merge requests, comments).
 - `packages/monitor` — repository monitoring (RM1): a commit's files, their kinds and lines of
   code, for the viewer's Monitor page (`/api/monitor`). See its `CLAUDE.md`.
+- `packages/log` — Symbiote's logs (LG1): every process's lines, one JSON object a line, in
+  `<cache>/logs/<day>.jsonl`; uncaught errors written before a process ends. See its `CLAUDE.md`.
 - `packages/viewer` — React + React Flow app that `symbiote view` serves. See its `CLAUDE.md`.
 - `packages/plugin-angular`, `packages/plugin-qwik` — framework plugins (`--plugin angular|qwik`).
   Each has a `CLAUDE.md`.
 - `action.yml`, `action/` — the GitHub Action; `ci/gitlab/symbiote.yml` — the GitLab CI template.
+- `ops/logs/` — the app that reads Symbiote's logs, in Docker (Loki, Alloy, Grafana and its
+  dashboard): `pnpm logs:up`, `logs:down`, `logs:check` (needs Docker; not in `pnpm check`).
 - `scripts/` — `dogfood.mjs`, `regression/` (real-repo comparisons), `viewer/measure.mjs`.
 - `spikes/` — throwaway experiments, not linted or tested.
 

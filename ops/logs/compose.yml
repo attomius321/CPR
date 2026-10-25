@@ -38,6 +38,9 @@ services:
       GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
       GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: 'false'
       GF_NEWS_NEWS_FEED_ENABLED: 'false'
+      # Grafana downloads its preinstalled plugins at its first start (Logs Drilldown among them:
+      # the internet once) and by default updates them at every start: kept as installed.
+      GF_PLUGINS_PREINSTALL_AUTO_UPDATE: 'false'
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/etc/grafana/dashboards:ro

@@ -18,6 +18,8 @@ were not updated. The aim is to review decisions, not lines.
 [Workspaces and agents](#workspaces-and-agents) ·
 [Pull and merge requests](#pull-and-merge-requests) ·
 [CI](#ci) ·
+[Monitor](#monitor) ·
+[Logs](#symbiotes-logs) ·
 [Stylesheets](#stylesheets) ·
 [Plugins](#framework-plugins) ·
 [Configuration](#configuration) ·
@@ -709,6 +711,47 @@ unevenly. Its engine is the `@symbiote/monitor` package.
 - A commit is read once from git's objects (Bitwarden's 9,583 files in about 1.5 s) and kept
   until `HEAD` moves.
 
+## Symbiote's logs
+
+Every Symbiote process writes its lines into one folder on this machine, `~/.cache/symbiote/logs/`
+(`$XDG_CACHE_HOME/symbiote/logs`, `~/Library/Caches/symbiote/logs` on macOS): the server of
+`symbiote view` (`view`), the analyses it starts (`analysis`), the desktop app (`app`), the pages
+(`viewer`) and the other commands (`diff`, `pr`, `merge`). One file a day, `2026-10-25.jsonl`,
+one JSON object a line; 14 days are kept.
+
+- **Uncaught errors** are written with their stack (`fatal`) before the process ends; it ends as
+  it would without them. A process that dies without a word (killed, out of memory) is written by
+  the one that started it, with the end of its error output: an analysis by the server, the
+  server by the app.
+- **Also written**: a request that fails (`500`, with its stack), every write (`info`), every
+  read at `debug`; an analysis started, done or failed; a terminal's program starting and ending;
+  a merge's states; the app's pages that do not load or whose process is gone. Never a request's
+  body, a prompt, what a terminal shows, a file's contents or a token.
+- `SYMBIOTE_LOG_LEVEL=debug` writes the reads too (a few a second while the window is open);
+  `SYMBIOTE_LOG=off` writes nothing.
+
+**Reading them, even when Symbiote has crashed**: another app does, in Docker (Grafana, Loki and
+Alloy: `ops/logs/`). Start it once; it starts again with Docker:
+
+```sh
+pnpm build && pnpm logs:up     # then open http://localhost:3300
+pnpm logs:down                 # stops it; what it read is kept (30 days)
+pnpm logs:check                # a copy on a temporary folder: lines in, read back, removed
+```
+
+It needs about 3 GB of images and 420 MB of memory, and the internet once (Grafana fetches its
+Logs Drilldown at its first start). It listens on `127.0.0.1` only, and opens without signing in,
+as a viewer. Lines show in it a second or two after they are written; when it starts after a
+while stopped, it reads the files it missed (in about a minute).
+
+- **The Symbiote dashboard** (its home page): crashes, errors and warnings in the time chosen,
+  errors and warnings over time by process, every error with its stack, every line; filters by
+  process, level and text.
+- **Drilldown → Logs**: the lines by level and process without a query; a click on a field filters
+  by it. **Explore**: any LogQL, `{service_name="symbiote", level="error"} | json`, and live tail.
+- Without Docker: `lnav ~/.cache/symbiote/logs/` or
+  `jq -c 'select(.level == "error" or .level == "fatal")' ~/.cache/symbiote/logs/*.jsonl`.
+
 ## Pull and merge requests
 
 `symbiote pr 123` works with GitHub (and GitHub Enterprise) and GitLab (gitlab.com and self-managed).
@@ -1002,6 +1045,9 @@ its packages and the folders with their own `tsconfig.json` are the projects.
 | `SYMBIOTE_INTRO` | `off`: no [first-time intro](#the-first-time), and nothing recorded of it. |
 | `SYMBIOTE_APP` | `off`: `symbiote view` and `symbiote pr` open the browser, never [Symbiote's window](#symbiotes-window). A path: the program to run as the app instead. |
 | `SYMBIOTE_CACHE_DIR` | Where Symbiote keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/symbiote`, else `~/Library/Caches/symbiote` on macOS and `~/.cache/symbiote` elsewhere. |
+| `SYMBIOTE_LOG` | `off`: no [logs](#symbiotes-logs) are written. |
+| `SYMBIOTE_LOG_LEVEL` | `debug`, `info` (default), `warn` or `error`: the least a line must be to be written. |
+| `SYMBIOTE_LOG_DIR` | Where the logs are written. Default: `logs` in the cache folder. |
 
 ### Moving from the former name
 
