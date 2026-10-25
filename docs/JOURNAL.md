@@ -223,3 +223,4 @@ merge commit.
 - 2026-10-25 [V50 spike — what a Scout with no question takes](journal/v50-scout-terminal.md)
 - 2026-10-25 [V50 — Scout is a terminal: opened with no question; the agent, model and effort in its head](journal/v50-scout-terminal.md)
 - 2026-10-25 [V52 spike — what a choice in Scout's head starts](journal/v52-scout-next-conversation.md)
+- 2026-10-25 [V52 — Scout's head picks the next conversation: a choice starts nothing until New conversation](journal/v52-scout-next-conversation.md)

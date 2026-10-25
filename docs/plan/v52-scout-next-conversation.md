@@ -2,9 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v52-scout-next-conversation.md)
 
-**Status:** planned (2026-10-25), on branch `feature/scout-view-settings` (a workspace started in
-Symbiote, from `main` at `c136ee3`); in progress. The person OK'd it on the plan: decision 392 as
-proposed, and for 393 "Remove it now".
+**Status:** ready for review (2026-10-25), on branch `feature/scout-view-settings` (a workspace
+started in Symbiote, from `main` at `c136ee3`). The person OK'd the plan: decision 392 as
+proposed, and for 393 "Remove it now". Built as planned, with Settings' words changed too; "As
+built" and results at the end.
 
 **Problem** (asked: "A change from Scout page of a setting should only trigger a new session on
 click new conversation, not on every change"). Since V50 each choice in Scout's head acts at once
@@ -107,7 +108,7 @@ on the head's choices.
 | Risk | Mitigation |
 |---|---|
 | The person believes a pick moved this conversation | New conversation turns primary and its title names both; the Help says so |
-| A Settings change no longer reaches New conversation (the head shows this conversation's) | Said in the Help and README; Settings still sets what Scout opens on. The other rule is open choice 1 |
+| A Settings change no longer reaches New conversation (the head shows this conversation's) | Said in the Help, Settings' own words and the README; Settings still sets what Scout opens on. The person chose this over the other rule |
 | Picks lost on leaving the page | They only wait for New conversation; the head shows the running conversation's again |
 | The open effect and New conversation race (two opens) | One task at a time as today (`busy`); the effect runs only with no conversation |
 | A caller of `switch` outside the page | None: the viewer's head was its only caller (`grep`); Symbiote's MCP tools never had it |
@@ -132,3 +133,40 @@ unused.
 
 **Not in V52 (later)**: applying a choice to the running conversation (it would bring back
 V50's copy and fork); keeping picks across pages.
+
+## As built
+
+- **Settings' Scout model and effort say what they now set** (not in the plan). Their saved
+  messages said "Scout's next conversation starts on …", true while New conversation started on
+  the project's (385); with 392 they hold only when Scout opens with no conversation. Now: "The
+  model Scout starts on when it opens with no conversation", "Saved. Scout starts on Opus 4.6 when
+  it next opens with no conversation.", and the Effort's help says the head of Scout's page picks
+  New conversation's after that. `settings.spec.ts` checks the new message.
+- **`headChoices` works out the level of a model picked** (V50 did it in the model's handler):
+  the level shown when the picked model takes it, else the agent's own; a level picked comes back
+  with a model that takes it. The page keeps only what was changed (`picked`).
+- **The picks outlive New conversation's two steps**: they are set to what the head shows before
+  `/new`, sent by the open that follows, and dropped when a conversation with a new ID runs.
+- **Model and Effort are disabled only while a write is in flight** (`busy`), as Agent already
+  was: a pick made while a start is under way would be dropped when that conversation runs.
+- **The title's words**: "Ends this conversation (on Opus 5.5 at medium; its session is stopped and
+  removed) and starts another on Sonnet 5.5 at high, as picked here"; another agent: "(Claude
+  Code's; …) and starts another with Codex, on …"; nothing changed: "… on this one's agent, model
+  and effort".
+- The terminal's `quiet` prop (`Conversation.tsx`), there only for a move, went with it.
+
+**Results.** Tests first, red for the right reason on `main`'s page: viewer `scout.test.ts` 5 of
+5 new failing (picks ignored, `newConversation` missing); `e2e/scout.spec.ts` 4 of 9 failing (the
+stepper locked during a move, Agent ending the conversation at once, Model locked while Scout
+answers), the other 5 passing. Then 12 of 12 and 9 of 9. The removal: 372 lines out of
+`packages/cli` and `packages/core`, 8 in; 5 tests went, which covered only the move (4 in
+`cli/test/scout.test.ts`, 1 in `app-server.test.ts`). `pnpm check`: 126 files, 1,739 unit tests. E2E: 256 of 256 at
+`0df9ee3`; the Settings, Scout, look and Skills specs 37 of 37 after Settings' words changed;
+the final source 255 of 256: the sidenav's card height measured 64.00003 px against `look.spec.ts`'s 64 under the full suite's load, 5 of 5 alone (nothing here touches the sidenav). Screenshots of Scout's head, one and two agents, at 1,440×900 and 390×844, dark and
+light, with New conversation plain and primary (`#3c6fd6` dark, `#2f62cc` light), and Settings'
+Scout page: nothing wider than the window, no page error.
+
+Not verified: real agents (the server's `open` is unchanged; a real Scout run from this worktree
+writes into the main checkout's `symbiote/`); Codex's terminal after New conversation beyond the
+fake; macOS and Windows; `viewer-check`'s graph timings (no graph code changed); `regression-check`
+(no analysis code changed).
