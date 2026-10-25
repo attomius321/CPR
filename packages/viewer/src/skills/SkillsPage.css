@@ -1,7 +1,8 @@
 /* ---- skills: the checkout's skills (V41) --------------------------------------------- */
 
-/* The list and the editor are Settings' (`.settings-body`, `.settings-list`, `.settings-editor`):
-   the two pages are drawn alike. What follows is the Skills page's own. */
+/* The list and the editor are Settings' (`.settings-body`, `.settings-list`, `.settings-editor`,
+   `.settings-card`): the two pages are drawn alike, centred since V51. What follows is the Skills
+   page's own. */
 
 .skills .settings-bar .skills-new-button {
   margin-left: auto;
@@ -14,7 +15,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 6px;
-  margin: 12px 16px 0;
+  margin: 12px var(--settings-side) 0;
 }
 
 .skills > .settings-git.error {
@@ -25,17 +26,16 @@
   color: var(--added);
 }
 
-/* A new skill's chip, as the list marks it. */
+/* A new skill's badge, as the list marks it. */
 .settings-state.added {
-  border-color: var(--added);
-  color: var(--added);
+  --badge: var(--added);
 }
 
 /* In place of the skills' groups: where the next group's heading would be, not in from it as an
    entry. */
 .skills-none {
   margin: 16px 0 0;
-  padding: 0 8px;
+  padding: 0;
 }
 
 .skills-where {
@@ -110,7 +110,7 @@
   display: grid;
   gap: 4px;
   margin: 12px 0 0;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .skills-field input,
@@ -129,8 +129,8 @@
   font-weight: normal;
 }
 
-/* Scribe (V41b): Scout's conversation (`ScoutPage.css`'s parts) in the editor's place, framed, as
-   tall as the window allows: its terminal needs a height of its own. */
+/* Scribe (V41b): Scout's conversation (`ScoutPage.css`'s parts) in the editor's place, framed as
+   a card (V51), as tall as the window allows: its terminal needs a height of its own. */
 .skills-scribe {
   min-width: 0;
 }
@@ -145,7 +145,9 @@
   height: max(420px, calc(100dvh - 190px));
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-lift);
 }
 
 .scribe-pane .scout-top h2 {

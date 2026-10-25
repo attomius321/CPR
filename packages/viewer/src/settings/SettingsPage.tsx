@@ -143,6 +143,11 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
   },
 };
 
+/** This browser's settings (V51, decision 388): an entry of their own at the list's end. */
+const APPEARANCE = 'appearance';
+const BROWSER_GROUP = 'This browser';
+type EntryKey = PromptKey | typeof APPEARANCE;
+
 /** The list's mark for an entry, by `markOf`. */
 const MARKS = { unsaved: 'not saved', warning: 'not used', changed: 'changed' } as const;
 
@@ -163,12 +168,13 @@ interface Notice {
  * Settings (V28b): every agent's prompts, Symbiote's until the project changes them. A change is
  * saved in `symbiote/config.json` (`prompts`); unsaved drafts are kept while another prompt is
  * open, and leaving the page with one asks first. A prebuilt agent is one entry, whose page holds
- * its model, its effort and its prompt (fix/scout-merger-scribe-settings).
+ * its model, its effort and its prompt (fix/scout-merger-scribe-settings). This browser's
+ * Appearance is the last entry (V51), listed even when the prompts cannot be read.
  */
 export function SettingsPage() {
   const [settings, setSettings] = useState<PromptSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<PromptKey | null>(null);
+  const [open, setOpen] = useState<EntryKey | null>(null);
   /** On a narrow screen, a prompt picked takes the page (`?prompt=` in the address). */
   const [picked, setPicked] = useState(() =>
     new URLSearchParams(window.location.search).has('prompt'),
@@ -190,10 +196,10 @@ export function SettingsPage() {
   }, []);
   useEffect(() => {
     void load().then((read) => {
-      if (read) {
-        const keys = promptGroups(read.prompts).flatMap((g) => g.entries.map((e) => e.key));
-        setOpen(promptOfUrl(window.location.search, keys));
-      }
+      const keys = read
+        ? promptGroups(read.prompts).flatMap((g) => g.entries.map((e) => e.key))
+        : [];
+      setOpen(promptOfUrl<EntryKey>(window.location.search, [...keys, APPEARANCE]));
     });
   }, [load]);
 
@@ -219,7 +225,7 @@ export function SettingsPage() {
     };
   }, [edited.length, setLeaveGuard]);
 
-  const show = (key: PromptKey) => {
+  const show = (key: EntryKey) => {
     setOpen(key);
     setPicked(true);
     setNotice((current) => (current?.key === key ? current : null));
@@ -282,15 +288,6 @@ export function SettingsPage() {
           What Symbiote tells each agent · Symbiote&apos;s text until you change it · saved in{' '}
           {settings?.file ?? 'symbiote/config.json'}, for everyone once committed
         </Help>
-        <Appearance />
-        {/* The first-time intro again (V39), as often as one likes: nothing is recorded. */}
-        <button
-          type="button"
-          className="button secondary"
-          onClick={() => startIntro({ record: false })}
-        >
-          Play the intro
-        </button>
       </div>
       {error && (
         <p className="commits-error error" role="alert">
@@ -303,8 +300,8 @@ export function SettingsPage() {
         </p>
       )}
       {settings && <p className="settings-git">{gitNote(settings)}</p>}
-      {!settings ? (
-        !error && <p className="hint">Reading the prompts…</p>
+      {!settings && !error ? (
+        <p className="hint">Reading the prompts…</p>
       ) : (
         <div className={`settings-body${picked ? ' picked' : ''}`}>
           <nav className="settings-list" aria-label="Settings">
@@ -330,8 +327,24 @@ export function SettingsPage() {
                 </ul>
               </section>
             ))}
+            <section aria-label={BROWSER_GROUP}>
+              <h2>{BROWSER_GROUP}</h2>
+              <ul>
+                <li>
+                  <button
+                    type="button"
+                    aria-current={open === APPEARANCE ? 'true' : undefined}
+                    onClick={() => show(APPEARANCE)}
+                  >
+                    <span className="settings-name">Appearance</span>
+                  </button>
+                </li>
+              </ul>
+            </section>
           </nav>
-          {current?.agent ? (
+          {open === APPEARANCE ? (
+            <AppearancePage onBack={back} />
+          ) : current?.agent ? (
             // A save changes the file: the prompts' version is read again, or their next save
             // would be refused as changed since.
             <AgentPage
@@ -362,9 +375,9 @@ function BackToList({ onBack }: { onBack: () => void }) {
 }
 
 /**
- * A prebuilt agent's page (fix/scout-merger-scribe-settings): its Model, its Effort, then its
- * prompts (`children`). The agent's models and levels are read once for both: a model saved
- * answers with its own levels, and the Effort follows it.
+ * A prebuilt agent's page (fix/scout-merger-scribe-settings): its Model and its Effort, rows of
+ * one card (V51), then its prompts (`children`), a card each. The agent's models and levels are
+ * read once for both: a model saved answers with its own levels, and the Effort follows it.
  */
 function AgentPage({
   name,
@@ -419,14 +432,16 @@ function AgentPage({
           {settings.who} needs Claude Code or Codex: neither is installed here.
         </p>
       )}
-      <AgentModel settings={settings} read={read} onSaved={saved} />
-      <AgentEffort
-        // Drawn again on another model: its levels, and the level kept on them, are that model's.
-        key={read ? `on ${read.model ?? ''}` : 'reading'}
-        settings={settings}
-        read={read}
-        onSaved={saved}
-      />
+      <div className="settings-card settings-rows">
+        <AgentModel settings={settings} read={read} onSaved={saved} />
+        <AgentEffort
+          // Drawn again on another model: its levels, and the level kept on them, are that model's.
+          key={read ? `on ${read.model ?? ''}` : 'reading'}
+          settings={settings}
+          read={read}
+          onSaved={saved}
+        />
+      </div>
       {children}
     </section>
   );
@@ -475,7 +490,7 @@ function AgentEffort({
   };
 
   return (
-    <section className="settings-part" aria-label="Effort">
+    <section className="settings-part settings-effort" aria-label="Effort">
       <h3>
         Effort
         <Help label={`About ${settings.whose} effort`}>
@@ -574,6 +589,22 @@ function AgentModel({
           </p>
         </Help>
       </h3>
+      {/* A row (V51): the select beside the name, what it says under it. */}
+      {choices.length > 0 && (
+        <select
+          aria-label="Model"
+          value={value}
+          disabled={saving}
+          onChange={(event) => void pick(event.target.value)}
+        >
+          {choices.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      )}
+      {picked?.description && <p className="settings-row-note">{picked.description}</p>}
       {agent && !agent.models && (
         <p className="settings-warning" role="alert">
           Symbiote cannot read {name}&apos;s models: none can be picked here.
@@ -583,23 +614,6 @@ function AgentModel({
         <p className="settings-warning" role="alert">
           {setting.key} is {unlisted}, which {name} does not list: {setting.unlisted}.
         </p>
-      )}
-      {choices.length > 0 && (
-        <div className="settings-model">
-          <select
-            aria-label="Model"
-            value={value}
-            disabled={saving}
-            onChange={(event) => void pick(event.target.value)}
-          >
-            {choices.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-          {picked?.description && <p className="settings-model-note">{picked.description}</p>}
-        </div>
       )}
       {notice && (
         <p className={`settings-notice${notice.error ? ' error' : ''}`} role="status">
@@ -616,34 +630,53 @@ const THEMES: { theme: Theme; label: string }[] = [
   { theme: 'system', label: 'System' },
 ];
 
-/** The page's theme for this browser (V29b, decision 179): dark unless chosen. */
-function Appearance() {
+/**
+ * This browser's Appearance (V51, decision 388; in the head before): the page's theme (V29b,
+ * decision 179), dark unless chosen, and the first-time intro again (V39), as often as one likes.
+ */
+function AppearancePage({ onBack }: { onBack: () => void }) {
   const theme = useTheme();
   return (
-    <span className="appearance">
-      <span className="appearance-label" id="appearance-label">
-        Appearance <span className="field-optional">(this browser)</span>
-      </span>
-      <span className="scopes" role="group" aria-labelledby="appearance-label">
-        {THEMES.map((choice) => (
+    <section className="settings-editor" aria-label="Appearance">
+      <BackToList onBack={onBack} />
+      <h2>Appearance</h2>
+      <div className="settings-card settings-rows">
+        <section className="settings-part" aria-label="Theme">
+          <h3 id="settings-theme">Theme</h3>
+          <span className="scopes" role="group" aria-labelledby="settings-theme">
+            {THEMES.map((choice) => (
+              <button
+                key={choice.theme}
+                type="button"
+                className={theme === choice.theme ? 'scope active' : 'scope'}
+                aria-pressed={theme === choice.theme}
+                onClick={() => setTheme(choice.theme)}
+              >
+                {choice.label}
+              </button>
+            ))}
+          </span>
+          <p className="settings-row-note">Kept in this browser.</p>
+        </section>
+        <section className="settings-part" aria-label="Intro">
+          <h3>Intro</h3>
           <button
-            key={choice.theme}
             type="button"
-            className={theme === choice.theme ? 'scope active' : 'scope'}
-            aria-pressed={theme === choice.theme}
-            onClick={() => setTheme(choice.theme)}
+            className="button secondary"
+            onClick={() => startIntro({ record: false })}
           >
-            {choice.label}
+            Play the intro
           </button>
-        ))}
-      </span>
-    </span>
+          <p className="settings-row-note">The first-time intro again; nothing is recorded.</p>
+        </section>
+      </div>
+    </section>
   );
 }
 
 /**
- * One prompt: its text to change, its placeholders, Save and Reset. Its own page, or a part of its
- * agent's (`part`), under its title alone.
+ * One prompt: its text to change, its placeholders, Save and Reset. Its own page, its heading over
+ * a card, or a part of its agent's (`part`), a card under its title alone (V51).
  */
 function PromptEditor({
   prompt,
@@ -696,26 +729,24 @@ function PromptEditor({
   };
 
   const Heading = part ? 'h3' : 'h2';
-  return (
-    <section
-      className={part ? 'settings-part' : 'settings-editor'}
-      aria-label={part ? prompt.title : `${prompt.group}: ${prompt.title}`}
-    >
-      {!part && <BackToList onBack={onBack} />}
-      <Heading>
-        {part ? prompt.title : `${prompt.group}: ${prompt.title}`}
-        <span className={`settings-state${prompt.changed ? ' changed' : ''}`}>
-          {prompt.changed ? "The project's" : "Symbiote's"}
-        </span>
-        <Help label={`About ${prompt.group}: ${prompt.title}`}>
-          <p>{prompt.about}</p>
-          {prompt.placeholders.length > 0 && (
-            <p>
-              Its placeholders are filled in when it is used; click one to insert it at the cursor.
-            </p>
-          )}
-        </Help>
-      </Heading>
+  const heading = (
+    <Heading>
+      {part ? prompt.title : `${prompt.group}: ${prompt.title}`}
+      <span className={`settings-state${prompt.changed ? ' changed' : ''}`}>
+        {prompt.changed ? "The project's" : "Symbiote's"}
+      </span>
+      <Help label={`About ${prompt.group}: ${prompt.title}`}>
+        <p>{prompt.about}</p>
+        {prompt.placeholders.length > 0 && (
+          <p>
+            Its placeholders are filled in when it is used; click one to insert it at the cursor.
+          </p>
+        )}
+      </Help>
+    </Heading>
+  );
+  const body = (
+    <>
       {prompt.warning && (
         <p className="settings-warning" role="alert">
           {prompt.warning}
@@ -831,6 +862,18 @@ function PromptEditor({
           <pre>{prompt.default}</pre>
         </details>
       )}
+    </>
+  );
+  return part ? (
+    <section className="settings-part settings-card" aria-label={prompt.title}>
+      {heading}
+      {body}
+    </section>
+  ) : (
+    <section className="settings-editor" aria-label={`${prompt.group}: ${prompt.title}`}>
+      <BackToList onBack={onBack} />
+      {heading}
+      <div className="settings-card">{body}</div>
     </section>
   );
 }

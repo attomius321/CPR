@@ -185,6 +185,7 @@ hosted.
 | Fix | the intro's koi on a lost WebGL context: a blank tile for 5 s | ✅ | | [journal](journal/fix-intro-lost-context.md) |
 | [V42](plan/v42-koi.md) | Koi: colours from the intro | ✅ | 279–284 | [journal](journal/v42-koi.md) |
 | [V49](plan/v49-start-page-look.md) | Start a workspace: a centred page in two cards | ready for review | 378–382 | [journal](journal/v49-start-page-look.md) |
+| [V51](plan/v51-settings-look.md) | Settings and Skills: centred, in cards | ready for review | 386–390 | [journal](journal/v51-settings-look.md) |
 
 ### Native window
 

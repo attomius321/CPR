@@ -222,3 +222,5 @@ merge commit.
 - 2026-10-25 [V48a–V48f — the groups, what runs, Waiting for you, the Activity tab, the small things](journal/v48-workspace-activity.md)
 - 2026-10-25 [V50 spike — what a Scout with no question takes](journal/v50-scout-terminal.md)
 - 2026-10-25 [V50 — Scout is a terminal: opened with no question; the agent, model and effort in its head](journal/v50-scout-terminal.md)
+- 2026-10-25 [V51 spike — Settings' width beside the start page's](journal/v51-settings-look.md)
+- 2026-10-25 [V51 — Settings and Skills centred in cards; Appearance an entry](journal/v51-settings-look.md)
