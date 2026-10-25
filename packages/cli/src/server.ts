@@ -204,6 +204,8 @@ const PAGE_ERRORS_A_MINUTE = 60;
  * terminal and its size, a review's marks and drafts as they are saved.
  */
 const CHATTY = /^\/api\/terminals\/[0-9a-z]+\/(?:in|resize)$|\/api\/state\//;
+/** A terminal's ID in a request's path: what keeps other sites out of it, so written short. */
+const TERMINAL_ID = /^(\/api\/terminals\/[0-9a-z]{8})[0-9a-z]+/;
 
 /** A file a terminal could not open (V38): its status by why. */
 const FILE_REFUSED = { terminal: 404, outside: 400, missing: 409, editor: 502 } as const;
@@ -284,7 +286,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     const refusal = status >= 400 ? answers.get(res) : undefined;
     const fields = {
       method: req.method,
-      path: url.pathname,
+      path: url.pathname.replace(TERMINAL_ID, '$1…'),
       ...(url.search ? { query: url.search.slice(0, 300) } : {}),
       status,
       ms: Math.round(ms),

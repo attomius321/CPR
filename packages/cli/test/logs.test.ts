@@ -144,6 +144,14 @@ describe("the view server's lines", () => {
     ).not.toContain('BODY-SECRET-123');
   });
 
+  it("writes no terminal's whole ID: it keeps other sites out of the terminal", async () => {
+    const id = '0123456789abcdef0123456789abcdef';
+    await fetch(url(`/api/terminals/${id}`));
+    const line = await lineFor((l) => String(l.path).startsWith('/api/terminals/'));
+    expect(line.path).toBe('/api/terminals/01234567…');
+    expect(JSON.stringify(lines(dir))).not.toContain(id);
+  });
+
   it("writes a page's error as a viewer line", async () => {
     const error = {
       level: 'error',

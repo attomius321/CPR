@@ -37,12 +37,22 @@ export function nextDay(date: Date): number {
 
 const DAY_FILE = /^\d{4}-\d{2}-\d{2}\.jsonl$/;
 
-/** Removes the day files older than `keep` days (today is one); answers the names removed. */
+/**
+ * Removes the day files older than `keep` days (today is one); answers the names removed. Never
+ * fails: one it may not remove is left.
+ */
 export async function pruneLogs(dir: string, now: Date, keep = KEEP_DAYS): Promise<string[]> {
   const oldest = dayOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (keep - 1)));
   const names = await readdir(dir).catch(() => [] as string[]);
   // `YYYY-MM-DD` names sort as their days do.
-  const removed = names.filter((name) => DAY_FILE.test(name) && name.slice(0, 10) < oldest);
-  await Promise.all(removed.map((name) => rm(join(dir, name), { force: true })));
-  return removed;
+  const old = names.filter((name) => DAY_FILE.test(name) && name.slice(0, 10) < oldest);
+  const removed = await Promise.all(
+    old.map((name) =>
+      rm(join(dir, name), { force: true }).then(
+        () => name,
+        () => null,
+      ),
+    ),
+  );
+  return removed.filter((name): name is string => name !== null);
 }

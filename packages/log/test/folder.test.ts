@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -48,6 +48,16 @@ describe('pruneLogs', () => {
       'notes.jsonl',
       'seen.json',
     ]);
+  });
+
+  it('never fails: a file it may not remove is left', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'symbiote-logs-'));
+    // A folder named as a day file: rm without recursive refuses it.
+    mkdirSync(join(dir, '2026-01-01.jsonl'));
+    writeFileSync(join(dir, '2026-01-02.jsonl'), '');
+    const removed = await pruneLogs(dir, new Date(2026, 9, 25));
+    expect(removed).toEqual(['2026-01-02.jsonl']);
+    expect(readdirSync(dir)).toEqual(['2026-01-01.jsonl']);
   });
 
   it('does nothing when the folder is missing', async () => {
