@@ -204,3 +204,4 @@ merge commit.
 - 2026-10-24 [Fix — Scribe starts at the project's effort level, set in Settings](journal/fix-scribe-effort-level.md)
 - 2026-10-25 [Refactor plan — where the length is](journal/refactor-readability.md)
 - 2026-10-25 [Refactor — the CLI's services and the viewer's pages in modules](journal/refactor-readability.md)
+- 2026-10-25 [Fix — a new file in a workspace's changes opens as it is, not as a diff](journal/fix-workspaces-new-files.md)

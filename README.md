@@ -515,9 +515,10 @@ and the files they change with their lines (what Review will show), then the fil
 not committed. They are read again with the workspace list (every 5 s while the agent works). A
 click on a file opens its diff in VS Code, in the worktree's window: one of the branch's from where
 it left the default branch to its last commit, one not committed from the worktree's last commit to
-the file on disk; a new or deleted file against an empty side. When the file on disk is the last
-commit's, it is the right side, to edit there; the other sides are read-only copies in Symbiote's
-cache. `]` or the button beside ⋯ hides them, remembered in the browser.
+the file on disk; a deleted file against an empty side. A new file has nothing to compare with: it
+opens alone, as it is. When the file on disk is the last commit's, it is the one opened, to edit
+there; the other sides are read-only copies in Symbiote's cache. `]` or the button beside ⋯ hides
+them, remembered in the browser.
 
 The **Brief** tab is what the agent was asked (`&brief`), drawn from its Markdown, with the
 documents given with it and where they are. The **Thread** tab is the workspace's

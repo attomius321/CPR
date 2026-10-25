@@ -86,13 +86,9 @@ test("lists the branch's commits and files and what is not committed; a file ope
   await expect(workspace(page).getByRole('status')).toHaveText(
     'Opened the changes to half.ts in VS Code',
   );
-  // A new file: from nothing to the worktree's (V43).
+  // A new file: nothing to compare it with, so the worktree's file alone, as it is.
   const folder = symbiote.folder(BRANCH);
-  const [args] = symbiote.opened();
-  expect(args?.slice(0, 2)).toEqual([folder, '--diff']);
-  expect(args?.[2]).toMatch(new RegExp(`\\${sep}revisions\\${sep}empty\\${sep}half\\.ts$`));
-  expect(readFileSync(args?.[2] ?? '', 'utf8')).toBe('');
-  expect(args?.[3]).toBe(join(folder, 'half.ts'));
+  expect(symbiote.opened()).toEqual([[folder, join(folder, 'half.ts')]]);
 
   // Beside it the terminal keeps more than half the window (decision 186).
   await expect.poll(async () => (await lastSize(page)).columns, POLL).toBeGreaterThan(0);
