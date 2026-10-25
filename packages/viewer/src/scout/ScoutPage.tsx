@@ -16,6 +16,7 @@ import {
   toneOf,
 } from './Conversation.js';
 import { headChoices, newConversation, scoutStateText } from './scout.js';
+import { tip } from '../ui/tip.js';
 
 const API = '/api/scout';
 
@@ -168,7 +169,7 @@ export function ScoutPage() {
           </Help>
         </span>
         {read && (
-          <p className="scout-about" title={read.checkout}>
+          <p className="scout-about" {...tip(read.checkout, { code: true })}>
             In {folderName(read.checkout)}
             {/* With two agents, the Agent beside it names it. */}
             {kind && agents.length < 2 ? `, with ${AGENT_NAMES[kind]}` : ''}
@@ -179,7 +180,7 @@ export function ScoutPage() {
             {agents.length > 1 && (
               <select
                 aria-label="Agent"
-                title="The agent New conversation starts"
+                {...tip('The agent New conversation starts')}
                 value={kind}
                 disabled={busy}
                 onChange={(event) => {
@@ -197,7 +198,7 @@ export function ScoutPage() {
             {head.models.length > 0 && (
               <select
                 aria-label="Model"
-                title="The model New conversation starts on"
+                {...tip('The model New conversation starts on')}
                 value={head.model}
                 disabled={busy}
                 onChange={(event) => {
@@ -241,10 +242,10 @@ export function ScoutPage() {
               type="button"
               className={renewal?.differs ? 'button' : 'button secondary'}
               disabled={busy}
-              title={
+              {...tip(
                 renewal?.title ??
-                "Ends this conversation and starts another on the head's agent, model and effort"
-              }
+                  "Ends this conversation and starts another on the head's agent, model and effort",
+              )}
               onClick={() => {
                 // The next on what the head shows (decision 392), kept until it runs.
                 setPicked({

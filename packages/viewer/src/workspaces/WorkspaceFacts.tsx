@@ -3,12 +3,13 @@
 // state has lasted (V48).
 import { useEffect, useState } from 'react';
 import type { BranchMerge, WorkspaceSummary } from '@symbiote/core';
-import type { ReviewMark } from '../history/branchReviews.js';
+import { reviewTip, type ReviewMark } from '../history/branchReviews.js';
 import { relativeDate } from '../history/commits.js';
 import { HISTORY_PAGE } from '../shell/pages.js';
 import { ClaudeMark, CodexMark } from '../ui/icons.js';
 import { longAge, useNow } from './clock.js';
 import { AGENT_NAMES, shortAge, type WorkspaceRow } from './workspaces.js';
+import { tip } from '../ui/tip.js';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -58,7 +59,7 @@ export function WorkspaceState({ row: { workspace, next } }: { row: WorkspaceRow
   ].filter((fact): fact is string => fact !== null);
   const text = [said, ...facts].join(' · ');
   return (
-    <p className="workspace-state" title={agent ? `${AGENT_NAMES[agent]}: ${text}` : text}>
+    <p className="workspace-state" {...tip(agent ? `${AGENT_NAMES[agent]}\n${text}` : text)}>
       {agent === 'codex' ? <CodexMark /> : agent && <ClaudeMark />}
       <strong>{said}</strong>
       {facts.map((fact) => (
@@ -97,7 +98,7 @@ export function StateAge({ workspace }: { workspace: WorkspaceSummary }) {
     );
   }
   return (
-    <time className="commit-date state-age" dateTime={since} title={`For ${longAge(since, now)}`}>
+    <time className="commit-date state-age" dateTime={since} {...tip(`For ${longAge(since, now)}`)}>
       {shortAge(since, now)}
     </time>
   );
@@ -134,14 +135,14 @@ export function WorkspaceBranch({
         <a
           className="ref ref-branch"
           href={`${HISTORY_PAGE}?branch=${encodeURIComponent(branch)}`}
-          title={`${branch}: its commits`}
+          {...tip(`${branch}\nIts commits in History`)}
           onClick={(event) => event.stopPropagation()}
         >
           {branch}
         </a>
       )}
       {mark && (
-        <span className={`ref-review ref-review-${mark.tone}`} title={mark.title}>
+        <span className={`ref-review ref-review-${mark.tone}`} {...reviewTip(mark)}>
           {mark.mark}
         </span>
       )}

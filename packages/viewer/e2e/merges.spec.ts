@@ -288,7 +288,7 @@ test('a resolution whose check failed: what ran is said, and Approve lands it', 
 
   const approveIt = entry.getByRole('button', { name: 'Approve' });
   await expect(approveIt).toHaveAttribute(
-    'title',
+    'data-tip',
     'Land the merge, though its check failed (ls e2e.passed)',
   );
   await approveIt.click();
@@ -324,7 +324,7 @@ test('Check again: only the check runs again on the same resolution, then Approv
   expect(git('rev-parse', 'main')).toBe(main);
 
   const approveIt = entry.getByRole('button', { name: 'Approve' });
-  expect(await approveIt.getAttribute('title')).toBeNull();
+  expect(await approveIt.getAttribute('data-tip')).toBeNull();
   await approveIt.click();
   await expect(entry.locator('.merge-row-state')).toHaveText(
     /^Landed: main is at [0-9a-f]{7} · checked in \d+\.\d s$/,

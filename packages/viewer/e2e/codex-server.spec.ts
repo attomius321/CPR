@@ -78,7 +78,7 @@ test('Codex on its app server, without terminals: its thread from there, a turn 
   await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
   await here.getByRole('button', { name: 'More actions' }).click();
   const talk = here.getByRole('menuitem', { name: 'Talk' });
-  await expect(talk).not.toHaveAttribute('title', /not recorded/);
+  await expect(talk).not.toHaveAttribute('data-tip', /not recorded/);
   await talk.click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     `codex resume ${id} --remote ${server.address} -C ${folder}`,
@@ -174,7 +174,7 @@ test("Codex's own terminal in its panel: the trust it asks for, a turn typed the
   await expect(box(page)).toBeHidden();
   await expect(here.getByRole('menuitem', { name: 'Talk' })).toHaveCount(0);
   await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
-    'title',
+    'data-tip',
     /\? in an empty prompt lists Codex's keys/,
   );
   // Codex asks to trust the worktree first: the panel says so, and the answer is the person's.

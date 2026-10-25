@@ -2,6 +2,7 @@
 // a waiting agent's question and the way to answer it, or a failure and where to read it.
 import { WaitingIcon } from '../ui/icons.js';
 import { AGENT_NAMES, type WorkspaceRow } from './workspaces.js';
+import { tip } from '../ui/tip.js';
 
 export function WorkspaceStrip({
   row: { workspace, next },
@@ -22,7 +23,7 @@ export function WorkspaceStrip({
     return (
       <section className="workspace-strip strip-waiting" aria-label="Waiting for you">
         <WaitingIcon />
-        <p className="workspace-strip-text" title={next.blocked ?? next.text}>
+        <p className="workspace-strip-text" {...tip(next.blocked ?? next.text)}>
           {next.blocked ?? next.text}
         </p>
         {/* The page's one primary: Review's, when the branch has commits. */}
@@ -37,7 +38,7 @@ export function WorkspaceStrip({
           <button
             type="button"
             className="button ghost"
-            title={`${after}: ${waiting.length} other${waiting.length === 1 ? '' : 's'} waiting`}
+            {...tip(`${after}\n${waiting.length} other${waiting.length === 1 ? '' : 's'} waiting`)}
             onClick={() => onNext(after)}
           >
             Next waiting ({waiting.length})
@@ -56,7 +57,7 @@ export function WorkspaceStrip({
         : `${agent} says its session failed. Its thread has its last report and how it ended.`);
     return (
       <section className="workspace-strip strip-failed" aria-label="Its agent failed">
-        <p className="workspace-strip-text" title={why}>
+        <p className="workspace-strip-text" {...tip(why)}>
           {why}
         </p>
         <button type="button" className="button ghost" onClick={onThread}>

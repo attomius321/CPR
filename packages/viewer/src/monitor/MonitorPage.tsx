@@ -29,6 +29,7 @@ import {
 } from './codemap.js';
 import { TreemapView } from './TreemapView.js';
 import type { Tile } from './treemap.js';
+import { tip } from '../ui/tip.js';
 
 const API = '/api/monitor';
 
@@ -227,7 +228,7 @@ export function MonitorPage({ path = '' }: { path?: string | undefined }) {
           </p>
         </Help>
         {map && (
-          <span className="chip monitor-commit" title={map.commit}>
+          <span className="chip monitor-commit" {...tip(map.commit, { code: true })}>
             {map.branch ? `${map.branch} · ` : ''}
             {map.commit.slice(0, 7)}
           </span>
@@ -287,7 +288,7 @@ export function MonitorPage({ path = '' }: { path?: string | undefined }) {
                 type="button"
                 className="icon-button monitor-back"
                 aria-label={up ? `Back to ${up.name || 'All files'}` : 'Back'}
-                title={up ? `Back to ${up.name || 'All files'} (Backspace)` : 'Back (Backspace)'}
+                {...tip(up ? `Back to ${up.name || 'All files'}` : 'Back', { keys: 'Backspace' })}
                 disabled={!up}
                 onClick={() => up && go(up.path)}
               >

@@ -6,6 +6,8 @@ import type { WorkspaceSummary, WorkspaceThread } from '@symbiote/core';
 import { markdownNodes, useMarkdown, type Lexer } from '../ui/markdown.js';
 import { useChanges } from './ChangesPanel.js';
 import { timelineItems, type TimelineItem } from './timeline.js';
+import { tip } from '../ui/tip.js';
+import { longDate } from '../history/commits.js';
 
 const timeOf = (at: string) =>
   new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
@@ -84,11 +86,11 @@ const ActivityRow = memo(
     return (
       <li className={`activity-row kind-${kind}${failed ? ' failed' : ''}${fresh ? ' fresh' : ''}`}>
         {at ? (
-          <time className="activity-time" dateTime={at} title={new Date(at).toLocaleString()}>
+          <time className="activity-time" dateTime={at} {...tip(longDate(at))}>
             {timeOf(at)}
           </time>
         ) : (
-          <span className="activity-time" title="Codex gives no time for this" />
+          <span className="activity-time" {...tip('Codex gives no time for this')} />
         )}
         <span className="activity-mark" aria-hidden="true" />
         {body ? (
@@ -99,7 +101,7 @@ const ActivityRow = memo(
             {body}
           </details>
         ) : (
-          <span className="activity-text" title={text}>
+          <span className="activity-text" {...tip(text)}>
             {text}
           </span>
         )}

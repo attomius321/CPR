@@ -51,6 +51,7 @@ import {
 import { StartAgent } from './StartAgent.js';
 import { StartDocuments } from './StartDocuments.js';
 import { StartKinds } from './StartKinds.js';
+import { tip } from '../ui/tip.js';
 
 /** How long typing pauses before the draft is saved. */
 const SAVE_AFTER_MS = 400;
@@ -415,7 +416,7 @@ function StartForm({
             type="button"
             className="button ghost"
             disabled={running}
-            title="Empty the form; the kind stays"
+            {...tip('Empty the form\nThe kind stays')}
             onClick={() => {
               edit(newForm(spec, guess));
               listDocuments([]);
@@ -427,7 +428,9 @@ function StartForm({
             type="button"
             className="button primary"
             disabled={!ready}
-            title={waiting ?? 'Ctrl+Enter'}
+            {...tip(waiting ?? (running ? undefined : agent ? 'Start' : 'Make the branch'), {
+              keys: waiting ? undefined : 'Ctrl+Enter',
+            })}
             onClick={() => void start()}
           >
             {running ? 'Starting…' : agent ? 'Start' : 'Make the branch'}

@@ -2,6 +2,7 @@
 // agent that works, or waits on a prompt, ends its turn, so that is asked first (decision 82).
 import type { WorkspaceThread } from '@symbiote/core';
 import type { replyMode } from './workspaces.js';
+import { tip } from '../ui/tip.js';
 
 /** The box under the Thread tab, with Send the verdict and Send (or Stop and send). */
 export function ReplyForm({
@@ -59,7 +60,9 @@ export function ReplyForm({
           <button
             type="button"
             className="link"
-            title={`Your ${verdict.event === 'approve' ? 'approval' : 'review'} at ${verdict.head.slice(0, 7)}, in words for the agent`}
+            {...tip(
+              `Your ${verdict.event === 'approve' ? 'approval' : 'review'} at ${verdict.head.slice(0, 7)}\nIn words for the agent`,
+            )}
             onClick={() => onText(verdict.text)}
           >
             Send the verdict
@@ -84,7 +87,7 @@ export function ReplyForm({
             type="submit"
             className="button"
             disabled={busy || mode === 'none' || text.trim() === ''}
-            title="Ctrl+Enter"
+            {...tip(mode === 'stop-and-send' ? 'Stop and send' : 'Send', { keys: 'Ctrl+Enter' })}
           >
             {mode === 'stop-and-send' ? 'Stop and send' : 'Send'}
           </button>

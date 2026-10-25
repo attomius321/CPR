@@ -22,6 +22,7 @@ import {
 import { MergeLog } from './MergeLog.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
+import { tip } from '../ui/tip.js';
 
 const ACTION_NAMES: Record<MergeAction, string> = {
   land: 'Land',
@@ -118,13 +119,13 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
   return (
     <section className={`merge-row merge-tone-${tone}`} aria-label={`Merge of ${entry.branch}`}>
       <div className="merge-row-head">
-        <span className="ref ref-branch merge-ref-theirs" title={entry.branch}>
+        <span className="ref ref-branch merge-ref-theirs" {...tip(entry.branch)}>
           {entry.branch}
         </span>
         <span className="merge-arrow" aria-hidden="true">
           →
         </span>
-        <span className="ref ref-branch merge-ref-ours" title={entry.into}>
+        <span className="ref ref-branch merge-ref-ours" {...tip(entry.into)}>
           {entry.into}
         </span>
         <span className="merge-label">{mergeLabel(entry)}</span>
@@ -134,7 +135,7 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
               key={action}
               type="button"
               className={action === 'approve' || action === 'land' ? 'button primary' : 'button'}
-              title={action === 'approve' ? approveTitle : undefined}
+              {...tip(action === 'approve' ? approveTitle : undefined, { tone: 'warn' })}
               disabled={busy}
               onClick={() => act(action)}
             >
@@ -283,7 +284,7 @@ function MergeFiles({
                 type="button"
                 className={`merge-filerow ${FILE_TONES[f.tone]}${f.tone === 'none' ? ' unresolved' : ''}`}
                 aria-current={f === file ? 'true' : undefined}
-                title={f.path}
+                {...tip(f.path, { code: true })}
                 onClick={() => setPicked(f.path)}
               >
                 <span className="merge-step-dot" aria-hidden="true" />
@@ -579,7 +580,7 @@ function MergeLine({
 }) {
   return (
     <div className={`merge-line from-${from}${twice || repeats ? ' merge-twice' : ''}`}>
-      <span className="merge-line-from" title={name}>
+      <span className="merge-line-from" {...tip(name)}>
         {name}
       </span>
       <code className="merge-line-text">{text}</code>

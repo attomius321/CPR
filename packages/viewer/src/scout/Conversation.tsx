@@ -8,6 +8,7 @@ import { getJson, postJson } from '../ui/http.js';
 import { scoutStateText } from './scout.js';
 import { readWorkspacesAgain, reloadWorkspaces } from '../workspaces/useWorkspaces.js';
 import { effortChoices } from '../workspaces/workspaces.js';
+import { tip } from '../ui/tip.js';
 
 export const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
@@ -163,7 +164,7 @@ export function Conversation({ agent: own }: { agent: ConversationAgent }) {
       <header className="scout-top">
         <Heading id={id}>{name}</Heading>
         {read && (
-          <p className="scout-about" title={read.checkout}>
+          <p className="scout-about" {...tip(read.checkout, { code: true })}>
             {own.doing} {folderName(read.checkout)}
             {agent ? `, with ${AGENT_NAMES[agent]}` : ''}
             {conversation?.model ? ` on ${conversation.model}` : ''}
@@ -182,7 +183,7 @@ export function Conversation({ agent: own }: { agent: ConversationAgent }) {
               type="button"
               className="button secondary"
               disabled={busy}
-              title="Ends this conversation: its session is stopped and removed"
+              {...tip('Ends this conversation\nIts session is stopped and removed')}
               onClick={() => act(() => postJson<ScoutState>(`${api}/new`, {}))}
             >
               New conversation

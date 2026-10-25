@@ -33,6 +33,7 @@ import {
   keptModel,
   modelChoices,
 } from '../workspaces/workspaces.js';
+import { tip } from '../ui/tip.js';
 
 const API = '/api/settings/prompts';
 
@@ -784,7 +785,7 @@ function PromptEditor({
                 <button
                   type="button"
                   className="link"
-                  title="Insert it at the cursor"
+                  {...tip('Insert it at the cursor')}
                   onClick={() => insert(p.name)}
                 >
                   {`{${p.name}}`}
@@ -850,7 +851,7 @@ function PromptEditor({
           type="button"
           className="button"
           disabled={!canSave}
-          title="Save it in the project's config (Ctrl+S)"
+          {...tip("Save it in the project's config", { keys: 'Ctrl+S' })}
           onClick={() => onSave(text)}
         >
           Save

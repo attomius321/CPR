@@ -1,4 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { tip } from './tip.js';
 
 /** The canvas keeps at least this width (unless `room` says otherwise); also its flex basis in
  * styles.css. */
@@ -144,7 +145,7 @@ export function Resizer({
       aria-valuemin={range?.min}
       aria-valuemax={range?.max}
       tabIndex={0}
-      title="Drag to resize · double-click to restore"
+      {...tip('Drag to resize\nDouble-click to restore', { side: 'right' })}
       onFocus={() => setRange(measure())}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

@@ -3,6 +3,7 @@
 import type { WorkKindSpec } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
 import { KIND_ABOUT } from './brief.js';
+import { tip } from '../ui/tip.js';
 
 /** The kinds of work, `current` checked; `onPick` with the kind picked. */
 export function StartKinds({
@@ -46,7 +47,7 @@ export function StartKinds({
             aria-checked={kind.kind === current.kind}
             tabIndex={kind.kind === current.kind ? 0 : -1}
             className={kind.kind === current.kind ? 'kind active' : 'kind'}
-            title={`${kind.name} (${i + 1})`}
+            {...tip(kind.name, { keys: `${i + 1}` })}
             onClick={() => onPick(kind)}
           >
             {kind.name}
