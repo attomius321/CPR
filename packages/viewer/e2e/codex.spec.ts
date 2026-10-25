@@ -145,6 +145,49 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
   await expect(workspaceRow(page)).toContainText('Ready for review', POLL);
 });
 
+test('a working Codex card shows Codex’s mark in its gradient, each drawn with a gradient of its own (V53)', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces({ codex: true });
+  await page.goto(`${symbiote.url}history`);
+  await startWithCodex(page);
+  await page.goto(`${symbiote.url}?branch=${encodeURIComponent(BRANCH)}`);
+  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
+  const state = workspaceRow(page).locator('.workspace-state');
+  const mark = state.getByRole('img', { name: 'Codex' });
+  await expect(mark).toBeVisible();
+  await expect(state.getByRole('img', { name: 'Claude Code' })).toHaveCount(0);
+  await expect(state.locator('> :first-child')).toHaveClass(/agent-mark/);
+  // The card's and the heading's: two marks, each filled by a gradient it holds, of Codex's colours.
+  await expect(
+    panel(page).locator('.workspace-state').getByRole('img', { name: 'Codex' }),
+  ).toBeVisible();
+  const fills = await page.locator('.agent-mark.codex').evaluateAll((marks) =>
+    marks.map((svg) => {
+      const fill = getComputedStyle(svg.querySelector('path')!).fill;
+      const id = /url\("#(.+)"\)/.exec(fill)?.[1] ?? '';
+      const gradient = svg.querySelector(`linearGradient[id="${id}"]`);
+      return {
+        id,
+        stops: [...(gradient?.querySelectorAll('stop') ?? [])].map(
+          (stop) => getComputedStyle(stop).stopColor,
+        ),
+      };
+    }),
+  );
+  expect(fills).toHaveLength(2);
+  expect(new Set(fills.map((fill) => fill.id)).size).toBe(2);
+  for (const { stops } of fills) {
+    expect(stops).toEqual(['rgb(177, 167, 255)', 'rgb(122, 157, 255)', 'rgb(57, 65, 255)']);
+  }
+
+  // It reports with a commit: ready for review, no mark.
+  symbiote.commit(BRANCH, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  symbiote.codexTurn(BRANCH, { text: 'Added half, committed.' });
+  await expect(workspaceRow(page)).toContainText('Ready for review', POLL);
+  await expect(page.locator('.agent-mark')).toHaveCount(0);
+});
+
 test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean up archives its thread", async ({
   page,
 }) => {

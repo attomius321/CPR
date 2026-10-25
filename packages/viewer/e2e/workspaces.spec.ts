@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 import { textAt } from './terminal.js';
 
@@ -286,6 +286,14 @@ test('the agents that wait for you: first, what each asks, Respond, the count in
   );
   await expect(page.locator('.sidenav .page-count')).toHaveText('1');
   await expect(page).toHaveTitle(/^\(1\) /);
+  // Its kind ends over its time, as on every card (V53).
+  const card = waiting.locator(workspaceRow(page, tests));
+  const [kind, age] = await Promise.all(
+    [card.locator('.kind-tag'), card.locator('.workspace-respond .commit-date')].map((part) =>
+      part.boundingBox(),
+    ),
+  );
+  expect(Math.abs(kind!.x + kind!.width - (age!.x + age!.width))).toBeLessThanOrEqual(1);
 
   // Respond: its workspace, on its terminal, focused.
   await page.goto(`${symbiote.url}history`);
@@ -351,22 +359,102 @@ test('a working agent says what it runs, from its tools, and since when; thinkin
   await expect(row.locator('.workspace-state strong')).toHaveText('Thinking', POLL);
 });
 
-test("a working agent's dot pulses, slowly; without motion it holds still (V48)", async ({
+/**
+ * A dot's spinner (V53), as its `::after` draws it: its animation, its size across, and whether it
+ * is a ¾ arc (one side of its ring clear, the others the state's colour).
+ */
+const spinner = (dot: Locator) =>
+  dot.evaluate((element) => {
+    const arc = getComputedStyle(element, '::after');
+    const clear = 'rgba(0, 0, 0, 0)';
+    const across = ['width', 'borderLeftWidth', 'borderRightWidth'] as const;
+    return {
+      animation: `${arc.animationName} ${arc.animationDuration}`,
+      across: across.reduce((sum, side) => sum + Number.parseFloat(arc[side]), 0),
+      arc:
+        arc.borderRightColor === clear &&
+        [arc.borderTopColor, arc.borderBottomColor, arc.borderLeftColor].every((c) => c !== clear),
+    };
+  });
+
+test("a working agent's dot is a spinner, a turn a second; without motion it holds still (V53)", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const dot = workspaceRow(page, 'feature/add-a-half-function').locator('.state-dot');
-  const pulse = () =>
-    dot.evaluate((element) => {
-      const halo = getComputedStyle(element, '::after');
-      return [halo.animationName, halo.animationDuration, halo.opacity];
-    });
-  await expect.poll(pulse).toEqual(['state-pulse', '2.4s', expect.any(String)]);
-  // Without motion: a still halo, its own shape beside a waiting dot's ring.
+  await expect(dot).toHaveClass(/tone-working/);
+  // Wider than the 7 px dot, drawn around its place: the name does not move.
+  await expect
+    .poll(() => spinner(dot))
+    .toEqual({ animation: 'state-spin 1s', across: 11, arc: true });
+  // Without motion: the arc, still — its own shape beside a waiting dot's halo.
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect.poll(pulse).toEqual(['none', '0s', '0.25']);
+  await expect.poll(() => spinner(dot)).toEqual({ animation: 'none 0s', across: 11, arc: true });
+});
+
+test('a working card names its agent by its mark, in its colour, before what it does; none on Symbiote’s words (V53)', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const row = workspaceRow(page, branch);
+  const state = row.locator('.workspace-state');
+  await expect(state.locator('strong')).toHaveText('Thinking');
+  // Claude's spark, first on the line, named; in Claude's terracotta.
+  const mark = state.getByRole('img', { name: 'Claude Code' });
+  await expect(mark).toBeVisible();
+  await expect(state.locator('> :first-child')).toHaveClass(/agent-mark/);
+  expect(await mark.evaluate((svg) => getComputedStyle(svg).fill)).toBe('rgb(217, 119, 87)');
+  expect(await mark.boundingBox()).toMatchObject({ width: 14, height: 14 });
+  // Its heading's line too.
+  await expect(
+    panel(page, branch).locator('.workspace-state').getByRole('img', { name: 'Claude Code' }),
+  ).toBeVisible();
+
+  // Finished with a commit: what is next is Symbiote's to say, not the agent's doing.
+  symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  symbiote.session(branch, { state: 'done' });
+  await expect(state.locator('strong')).toHaveText('Ready for review', POLL);
+  await expect(row.locator('.agent-mark')).toHaveCount(0);
+});
+
+test('every card says its kind in a chip at the end of its name’s line, Feature too (V53)', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const row = workspaceRow(page, 'feature/add-a-half-function');
+  const chip = row.locator('.workspace-head .kind-tag');
+  await expect(chip).toHaveText('feature');
+  await expect(row.locator('.workspace-branch .kind-tag')).toHaveCount(0);
+  // At the line's end, over its time: the kinds make a column down the list.
+  const [name, tag, time] = await Promise.all(
+    [row.locator('.workspace-about'), chip, row.locator('.workspace-line .commit-date')].map(
+      (part) => part.boundingBox(),
+    ),
+  );
+  expect(tag!.x).toBeGreaterThan(name!.x + name!.width);
+  expect(Math.abs(tag!.x + tag!.width - (time!.x + time!.width))).toBeLessThanOrEqual(1);
+  // The style's metadata chip: raised, no edge.
+  expect(
+    await chip.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [style.borderTopWidth, style.height];
+    }),
+  ).toEqual(['0px', '18px']);
+  // The heading: its kind before its name, as before.
+  await expect(
+    panel(page, 'feature/add-a-half-function').locator('.workspace-title h1 .kind-tag'),
+  ).toHaveText('feature');
+  // Folded to the rail: the card is its dot alone.
+  await page.getByRole('button', { name: 'Fold the sidenav' }).click();
+  await expect(row.locator('.state-dot')).toBeVisible();
+  await expect(chip).toBeHidden();
 });
 
 test('the Activity tab: what happened, in order, from its records; a new event added as it comes (V48c)', async ({
@@ -490,6 +578,10 @@ test('while a workspace is made, its card says it starts; its own card takes its
   const starting = page.locator('.sidenav .workspace-row.starting');
   await expect(starting).toContainText('Starting · its worktree, then Claude Code');
   await expect(starting.locator('.state-dot')).toHaveClass(/tone-starting/);
+  // The working agent's spinner (V53): busy is busy, its words say which.
+  await expect
+    .poll(() => spinner(starting.locator('.state-dot')))
+    .toEqual({ animation: 'state-spin 1s', across: 11, arc: true });
   // A card's height, as every card's (look.spec.ts).
   expect((await starting.boundingBox())?.height ?? 0).toBeLessThanOrEqual(64);
   await expect(starting).toHaveCount(0, POLL);
@@ -1419,11 +1511,11 @@ test('each kind starts a workspace: its brief, its line, its branch, its tag (V2
     "## Done when\nA test that fails today passes, and the project's checks pass.\n",
   );
 
-  // The list names each by its title, its kind before its branch (V29b).
+  // The list names each by its title, its kind in a chip on its name's line (V53).
   await page.goto(`${symbiote.url}`);
   const fix = workspaceRow(page, 'fix/fix-the-totals');
   await expect(fix.locator('.workspace-about')).toHaveText('Fix the totals');
-  await expect(fix.locator('.workspace-branch .kind-tag')).toHaveText('fix');
+  await expect(fix.locator('.workspace-head .kind-tag')).toHaveText('fix');
 });
 
 test('Done when names the check guessed at the start commit; switching kinds keeps every text (V24c)', async ({

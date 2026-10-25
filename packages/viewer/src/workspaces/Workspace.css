@@ -1,17 +1,24 @@
 /* A workspace in the main area (Workspace.tsx): its head, its tabs, its brief and thread. */
 
-/* A workspace's kind before its name in the list and its panel (V24c). */
+/* A workspace's kind (V24c), on its card and before its name in its panel: the style's metadata
+   chip (V53), neutral, as colour on a card is its state's. */
 .kind-tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
   margin-right: 6px;
-  padding: 0 4px;
-  border: 1px solid var(--line);
+  padding: 0 6px;
   border-radius: 4px;
+  background: var(--raised);
   color: var(--muted);
-  font-size: var(--size-caption);
-  font-weight: normal;
-  line-height: 15px;
+  font: 500 var(--size-caption)/18px var(--sans);
   vertical-align: 1px;
+}
+
+/* The agent's mark before what it does (V53), on the card's line and the heading's. */
+.workspace-state .agent-mark {
+  margin-right: 5px;
+  vertical-align: -2px;
 }
 
 .workspace-brief {
