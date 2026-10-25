@@ -90,6 +90,11 @@
   --merge-side: var(--modified);
 }
 
+/* The lines just above and below a region, which stay in the file: dim, untinted. */
+.merge-row .from-around {
+  --merge-side: var(--faint);
+}
+
 .merge-ref-ours,
 .merge-ref-theirs {
   color: var(--merge-side);
@@ -144,8 +149,18 @@
   border-top: 1px solid var(--line);
 }
 
+/* Its number, as the merger agent's prompt gave it (its question names it), then where it is. */
 .merge-region-where {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
   margin: 0 0 8px;
+}
+
+.merge-region-number {
+  font-size: var(--size-small);
+  font-weight: 600;
 }
 
 .merge-file {
@@ -190,6 +205,11 @@
   --merge-flag: var(--modified);
 }
 
+/* The region the merger agent's question names: the person's turn. */
+.merge-flag-you {
+  --merge-flag: var(--warning);
+}
+
 .merge-counts {
   display: flex;
   flex-wrap: wrap;
@@ -217,7 +237,10 @@
   font-weight: 600;
 }
 
+/* The gutter fits the longest side name, `--merge-gutter` characters (at most 24). */
 .merge-code {
+  --merge-gutter-width: max(88px, calc(var(--merge-gutter, 0) * 1ch + 16px));
+
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -227,23 +250,31 @@
 
 .merge-line {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) auto;
+  grid-template-columns: var(--merge-gutter-width) minmax(0, 1fr) auto;
   min-height: 20px;
   background: color-mix(in srgb, var(--merge-side, transparent) 10%, transparent);
 }
 
-.merge-line.from-blank {
+.merge-line.from-blank,
+.merge-line.from-around {
   background: none;
 }
 
+.merge-line.from-around .merge-line-text {
+  color: var(--muted);
+}
+
+/* A name too long for it is cut at its start: a branch's last part tells it apart. */
 .merge-line-from {
   overflow: hidden;
   padding: 1px 8px;
   color: var(--merge-side, var(--muted));
   font-size: var(--size-caption);
   font-weight: 600;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+  direction: rtl;
 }
 
 .merge-line-text {
@@ -282,9 +313,18 @@
   font-weight: 500;
 }
 
+/* A side's lines rewritten into lines the agent wrote, every word kept: nothing lost. */
+.merge-sub-rewritten {
+  color: var(--muted);
+}
+
+.merge-rewritten .merge-line-text {
+  color: var(--muted);
+}
+
 .merge-more {
   margin: 0;
-  padding: 2px 8px 2px 96px;
+  padding: 2px 8px 2px calc(var(--merge-gutter-width) + 8px);
   color: var(--muted);
 }
 
@@ -327,12 +367,11 @@
 }
 
 @media (max-width: 640px) {
-  .merge-line {
-    grid-template-columns: 64px minmax(0, 1fr) auto;
-  }
-
-  .merge-more {
-    padding-left: 72px;
+  .merge-code {
+    --merge-gutter-width: max(
+      64px,
+      min(calc(var(--merge-gutter, 0) * 1ch + 16px), calc(12ch + 16px))
+    );
   }
 
   .merge-counts {
@@ -517,6 +556,11 @@
   color: var(--muted);
   font-size: var(--size-small);
   overflow-wrap: anywhere;
+}
+
+/* What a file lost or doubled reads in its tone: apart from a file that lost nothing. */
+.merge-filerow.merge-tone-bad .merge-filerow-what {
+  color: var(--merge-tone);
 }
 
 .merge-fileview .merge-regions {

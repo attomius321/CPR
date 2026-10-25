@@ -1,5 +1,5 @@
 // Symbiote's merger on the page (V26a): what a queued merge's row says and offers. Pure.
-import type { MergeCheckRun, MergeEntry, MergeRegion } from '@symbiote/core';
+import type { MergeCheckRun, MergeConflict, MergeEntry, MergeRegion } from '@symbiote/core';
 
 /** How a row is marked: waiting, the person's turn, done, or something went wrong. */
 export type MergeTone = 'wait' | 'you' | 'done' | 'bad';
@@ -112,10 +112,11 @@ export function mergeState(entry: MergeEntry): { text: string; tone: MergeTone }
           tone: 'you',
         };
       }
+      // The agent asked: the person's turn, to answer it (fix/merge-viewer-on-conflict).
       if (entry.resolution?.needsYou && entry.message) {
         return {
           text: `${entry.message.charAt(0).toUpperCase()}${entry.message.slice(1)}`,
-          tone: 'bad',
+          tone: 'you',
         };
       }
       return entry.conflicts
@@ -508,10 +509,15 @@ export interface ResolutionFile {
   path: string;
   /** Its regions in the resolution, in order; none when nobody resolved it. */
   regions: MergeRegion[];
+  /** Its regions the merger agent asked the person about, in order (fix/merge-viewer-on-conflict). */
+  asked: MergeConflict[];
   /** Its regions' flags put together: what it lost, kept twice, repeated or had written. */
   flags: RegionFlag[];
-  /** `bad` when it loses, doubles or repeats lines; `new` when the agent wrote some; `none` unresolved. */
-  tone: RegionFlag['tone'] | 'none';
+  /**
+   * `bad` when it loses, doubles or repeats lines; `new` when the agent wrote some; `asked` when
+   * the agent asks the person about it; `none` unresolved.
+   */
+  tone: RegionFlag['tone'] | 'asked' | 'none';
   /** Why it has no resolution. */
   why?: string;
 }
@@ -528,21 +534,32 @@ const UNRESOLVABLE = {
  */
 export function resolutionFiles(entry: MergeEntry): ResolutionFile[] {
   const regions = entry.resolution?.regions ?? [];
-  const paths = [...new Set([...(entry.conflicts ?? []), ...regions.map((r) => r.path)])];
+  const asked = entry.resolution?.needsYou ? (entry.resolution.asked ?? []) : [];
+  const paths = [
+    ...new Set([
+      ...(entry.conflicts ?? []),
+      ...regions.map((r) => r.path),
+      ...asked.map((r) => r.path),
+    ]),
+  ];
   return paths.map((path) => {
     const own = regions.filter((r) => r.path === path);
     if (own.length === 0) {
       const kind = entry.unresolvable?.find((u) => u.path === path)?.kind;
+      const its = asked.filter((r) => r.path === path);
       return {
         path,
         regions: [],
+        asked: its,
         flags: [],
-        tone: 'none',
+        tone: its.length > 0 ? 'asked' : 'none',
         why: kind
           ? `${UNRESOLVABLE[kind]}: not given to the merger agent`
-          : entry.state === 'resolving' || entry.state === 'merging'
+          : mergeLive([entry])
             ? 'Resolving…'
-            : 'Not resolved',
+            : its.length > 0
+              ? 'Waiting for your answer'
+              : 'Not resolved',
       };
     }
     const reviews = own.map(reviewRegion);
@@ -572,13 +589,45 @@ export function resolutionFiles(entry: MergeEntry): ResolutionFile[] {
       : flags.some((f) => f.tone === 'new')
         ? 'new'
         : 'ok';
-    return { path, regions: own, flags, tone };
+    return { path, regions: own, asked: [], flags, tone };
   });
 }
 
 /**
- * The file a resolution's page shows first: the first that loses or doubles lines, else the first
- * the agent wrote in, else the first.
+ * The regions a question of the merger agent names, by the numbers its prompt gave them: `Region
+ * 4`, `regions 1 and 2`.
  */
-export const firstFile = (files: readonly ResolutionFile[]): ResolutionFile | undefined =>
-  files.find((f) => f.tone === 'bad') ?? files.find((f) => f.tone === 'new') ?? files[0];
+export function askedRegions(question: string): number[] {
+  const numbers = [
+    ...question.matchAll(/\bregions?\s+(\d+)((?:\s*(?:,|and|&|–|-)\s*\d+)*)/gi),
+  ].flatMap((match) => [match[1], ...(match[2]?.match(/\d+/g) ?? [])].map(Number));
+  return [...new Set(numbers)];
+}
+
+/**
+ * The file a merge's page shows first (fix/merge-viewer-on-conflict): when the agent asked, the one
+ * holding the first region its question names; else the first that loses, doubles or repeats
+ * lines, then the first the agent wrote in, then the first.
+ */
+export function firstFile(
+  files: readonly ResolutionFile[],
+  entry?: MergeEntry,
+): ResolutionFile | undefined {
+  const asked = entry?.resolution?.needsYou ? (entry.resolution.asked ?? []) : [];
+  const [named] = entry?.resolution?.needsYou ? askedRegions(entry.resolution.needsYou) : [];
+  const region = named === undefined ? undefined : asked[named - 1];
+  return (
+    (region &&
+      files.find((f) => f.asked.some((r) => r.path === region.path && r.line === region.line))) ??
+    files.find((f) => f.tone === 'bad') ??
+    files.find((f) => f.tone === 'new') ??
+    files[0]
+  );
+}
+
+/** A gutter of side names is as wide as the longest, at most this many characters. */
+const GUTTER_MOST = 24;
+
+/** The characters a region's gutter takes for `names` (fix/merge-viewer-on-conflict). */
+export const gutterChars = (names: readonly string[]) =>
+  Math.min(GUTTER_MOST, Math.max(0, ...names.map((name) => name.length)));

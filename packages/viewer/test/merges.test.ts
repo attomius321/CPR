@@ -1,8 +1,10 @@
 import type { MergeEntry } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
+  askedRegions,
   failedCheck,
   firstFile,
+  gutterChars,
   mergeActions,
   mergeLabel,
   mergeLive,
@@ -108,7 +110,7 @@ describe('a resolution to review (V26c)', () => {
           message: 'the merger agent: a: two values',
         }),
       ),
-    ).toEqual({ text: 'The merger agent: a: two values', tone: 'bad' });
+    ).toEqual({ text: 'The merger agent: a: two values', tone: 'you' });
   });
 
   it('offers Approve and Request changes on a resolution, and Check again when its check failed', () => {
@@ -579,5 +581,73 @@ describe('red for what is lost or doubled, amber for what the agent wrote (fix/m
     expect(regionFlags(review, 'main', 'b')).toEqual([
       { tone: 'ok', text: 'Keeps every line of both sides, nothing new' },
     ]);
+  });
+});
+
+describe('the merger agent asks you (fix/merge-viewer-on-conflict)', () => {
+  const conflict = (path: string, line: number) => ({
+    path,
+    line,
+    ours: ['a = 1'],
+    base: ['a = 0'],
+    theirs: ['a = 2'],
+    around: { before: ['// above'], after: ['// below'] },
+  });
+  const asking = (needsYou: string) =>
+    entry({
+      state: 'needs-you',
+      conflicts: ['README.md', 'src/pricing.ts'],
+      message: `the merger agent: ${needsYou}`,
+      resolution: {
+        agent: 'claude',
+        regions: [],
+        needsYou,
+        asked: [conflict('README.md', 3), conflict('README.md', 20), conflict('src/pricing.ts', 8)],
+        ms: 11_000,
+      },
+    });
+
+  it("is the person's turn: they answer it", () => {
+    expect(mergeState(asking('Region 3: which discount?'))).toEqual({
+      text: 'The merger agent: Region 3: which discount?',
+      tone: 'you',
+    });
+    expect(mergeLabel(asking('Region 3: which discount?'))).toBe('Needs you');
+  });
+
+  it('lists each file with the regions it asked about, and opens the one the question names', () => {
+    const files = resolutionFiles(asking('Region 3: keep the discount or the rounding?'));
+    expect(files.map((f) => [f.path, f.asked.map((r) => r.line), f.tone, f.why])).toEqual([
+      ['README.md', [3, 20], 'asked', 'Waiting for your answer'],
+      ['src/pricing.ts', [8], 'asked', 'Waiting for your answer'],
+    ]);
+    expect(askedRegions('Region 3: keep the discount or the rounding?')).toEqual([3]);
+    expect(askedRegions('Regions 1 and 2 disagree; region 4 too')).toEqual([1, 2, 4]);
+    expect(askedRegions('Both values differ')).toEqual([]);
+    const entryAsking = asking('Region 3: keep the discount or the rounding?');
+    expect(firstFile(files, entryAsking)?.path).toBe('src/pricing.ts');
+    expect(firstFile(files, asking('Which one?'))?.path).toBe('README.md');
+  });
+
+  it('keeps the files listed while it is asked again', () => {
+    const again = entry({
+      state: 'merging',
+      conflicts: ['README.md'],
+      again: { comments: 'Both.', previous: [], asked: 'Region 1?' },
+    });
+    expect(resolutionFiles(again).map((f) => [f.path, f.why])).toEqual([
+      ['README.md', 'Resolving…'],
+    ]);
+    expect(resolutionFiles({ ...again, state: 'queued' }).map((f) => [f.path, f.why])).toEqual([
+      ['README.md', 'Resolving…'],
+    ]);
+  });
+});
+
+describe("the sides' names in the gutter (fix/merge-viewer-on-conflict)", () => {
+  it('is as wide as the longest name, at most 24 characters', () => {
+    expect(gutterChars(['main', 'feature/discounts'])).toBe(17);
+    expect(gutterChars(['main', 'agent'])).toBe(5);
+    expect(gutterChars(['main', 'feature/a-very-long-branch-name-indeed'])).toBe(24);
   });
 });

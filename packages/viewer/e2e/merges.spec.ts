@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
@@ -88,8 +88,15 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
   await expect(region.locator('.merge-region-where')).toContainText('src/math.ts:');
   await expect(region.locator('.merge-region-where')).toContainText("kept main's");
   // The resolution first, each line marked by its side; what it lost said in words, then shown.
-  await expect(region.locator('.merge-resolved .merge-line-text')).toHaveText([DOUBLE]);
-  await expect(region.locator('.merge-resolved .merge-line-from')).toHaveText(['main']);
+  // Between the lines around it, dim (fix/merge-viewer-on-conflict).
+  const resolved = region.locator('.merge-resolved .merge-line:not(.from-around)');
+  await expect(resolved.locator('.merge-line-text')).toHaveText([DOUBLE]);
+  await expect(resolved.locator('.merge-line-from')).toHaveText(['main']);
+  await expect(region.locator('.merge-resolved .from-around .merge-line-from')).toHaveText([
+    'above',
+    'above',
+    'above',
+  ]);
   await expect(region.locator('.merge-flag')).toHaveText(['Drops all 6 lines from agent']);
   await expect(region.locator('.merge-dropped .merge-line-text')).toHaveText([
     ...SQUARE.split('\n'),
@@ -121,7 +128,7 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
   await entry.getByRole('button', { name: 'Request changes' }).click();
   await entry.getByLabel('What to change in the resolution').fill("Keep the agent's functions.");
   await entry.getByRole('button', { name: 'Ask again' }).click();
-  await expect(region.locator('.merge-resolved .merge-line-text')).toHaveText(
+  await expect(resolved.locator('.merge-line-text')).toHaveText(
     `${DOUBLE}\n\n${SQUARE}\n\n${CUBE}`.split('\n'),
   );
   await expect(region.locator('.merge-flag')).toHaveText([
@@ -324,11 +331,18 @@ test('Check again: only the check runs again on the same resolution, then Approv
   );
 });
 
-test('the merger agent says you must decide: nothing is merged', async ({ page }) => {
+test('the merger agent asks you: its regions numbered, their conflict shown, and you answer it there', async ({
+  page,
+}) => {
   page.on('pageerror', (error) => errors.push(error.message));
   symbiote = await serveAgentBranch(
     {},
-    { merger: [JSON.stringify({ needsYou: 'region 1: double or square first?' })] },
+    {
+      merger: [
+        JSON.stringify({ needsYou: 'Region 1: double or square first?' }),
+        JSON.stringify({ regions: { '1': `${DOUBLE}\n\n${SQUARE}\n\n${CUBE}` } }),
+      ],
+    },
   );
   const math = join(symbiote.repo, 'src/math.ts');
   writeFileSync(math, `${readFileSync(math, 'utf8')}\n${DOUBLE}\n`);
@@ -342,16 +356,186 @@ test('the merger agent says you must decide: nothing is merged', async ({ page }
   await expect(page).toHaveURL(`${symbiote.url}?merge=agent`);
   const entry = page.getByRole('region', { name: 'Merge of agent' });
   await expect(entry.locator('.merge-row-state')).toHaveText(
-    'The merger agent: region 1: double or square first?',
+    'The merger agent: Region 1: double or square first?',
   );
   await expect(entry.getByRole('button', { name: 'Approve' })).toHaveCount(0);
-  // Its file, not resolved (V46c); the log, with why, shown first.
-  await expect(entry.getByRole('tab', { name: 'Log' })).toHaveAttribute('aria-selected', 'true');
-  await entry.getByRole('tab', { name: /^Files/ }).click();
-  await expect(entry.getByRole('list', { name: 'Its files' }).getByRole('button')).toHaveText([
-    /^math\.ts src.*Not resolved$/,
-  ]);
   expect(git('rev-parse', 'main')).toBe(main);
+  // Files first: its file, the region the question names, numbered, with the lines around it
+  // and its sides (fix/merge-viewer-on-conflict).
+  await expect(entry.getByRole('tab', { name: /^Files/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(entry.getByRole('list', { name: 'Its files' }).getByRole('button')).toHaveText([
+    /^math\.ts src1 regionWaiting for your answer$/,
+  ]);
+  const region = entry.getByRole('list', { name: 'What it asks about' }).getByRole('listitem');
+  await expect(region.locator('.merge-region-where')).toContainText('Region 1src/math.ts:');
+  await expect(region.locator('.merge-flag')).toHaveText('Asked about');
+  await expect(region.locator('.merge-side figcaption')).toHaveText(['main', 'agent']);
+  await expect(region.locator('.merge-side').nth(1)).toContainText('export function square');
+  await expect(region.locator('.from-around .merge-line-from').first()).toHaveText('above');
+
+  // Answered on the page: it runs again with the question and the answer.
+  await entry.getByLabel('Your answer to the merger agent').fill('Double first, then both.');
+  await entry.getByRole('button', { name: 'Answer', exact: true }).click();
+  await expect(entry.locator('.merge-row-state')).toHaveText(
+    /^Resolved 1 region \(sonnet, [\d.K]+ tokens\): review it$/,
+  );
+  expect(symbiote.mergerPrompts()[1]).toContain(
+    'You asked: Region 1: double or square first?\nThe person answered: Double first, then both.',
+  );
+  await expect(
+    entry.getByRole('list', { name: 'Its resolution' }).locator('.merge-flag'),
+  ).toHaveText(['Keeps every line of both sides, nothing new']);
+  expect(git('rev-parse', 'main')).toBe(main);
+});
+
+test('Ask again: the files stay listed, and the log goes to the new run (fix/merge-viewer-on-conflict)', async ({
+  page,
+}) => {
+  page.on('pageerror', (error) => errors.push(error.message));
+  const flag = join(mkdtempSync(join(tmpdir(), 'symbiote-e2e-flag-')), 'answer');
+  writeFileSync(flag, '');
+  const { entry } = await resolvedConflict(
+    page,
+    // A check of 120 lines and the merge it ran on: each run's end is its own.
+    [
+      'for i in $(seq 1 120); do echo "line $i"; done; echo "checked $(git rev-parse --short HEAD)"',
+    ],
+    { E2E_AGENT_FLAG: flag },
+  );
+  await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
+  const log = entry.locator('.merge-terminal');
+  // Scrolled up in run 1's log.
+  await entry.getByRole('tab', { name: 'Log' }).click();
+  await log.hover();
+  await page.mouse.wheel(0, -2000);
+  await expect(log.locator('.xterm-rows')).not.toContainText('checked');
+  await entry.getByRole('tab', { name: /^Files/ }).click();
+
+  rmSync(flag);
+  await entry.getByRole('button', { name: 'Request changes' }).click();
+  await entry.getByLabel('What to change in the resolution').fill('Keep them.');
+  await entry.getByRole('button', { name: 'Ask again' }).click();
+  // Its file stays listed while the merge runs again: looked at until the agent works.
+  const seen: string[] = [];
+  for (
+    const until = Date.now() + 15_000;
+    Date.now() < until && seen.at(-1) !== 'Resolving: Files';
+  ) {
+    const label = (await entry.locator('.merge-label').textContent()) ?? '';
+    const tab = await entry.getByRole('tab', { name: /^Files/ }).count();
+    const now = `${label}: ${tab > 0 ? 'Files' : 'no Files'}`;
+    if (seen.at(-1) !== now) seen.push(now);
+  }
+  expect(seen.filter((s) => s.endsWith('no Files'))).toEqual([]);
+  expect(seen.at(-1)).toBe('Resolving: Files');
+  await expect(entry.getByRole('list', { name: 'Its files' }).getByRole('button')).toHaveText([
+    /^math\.ts src.*Resolving…$/,
+  ]);
+  writeFileSync(flag, '');
+  await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
+  // The log is at run 2's end, not on run 1's lines it was scrolled to.
+  await entry.getByRole('tab', { name: 'Log' }).click();
+  await expect(log.locator('.xterm-rows')).toContainText('line 120checked');
+  await expect(log.locator('.xterm-rows')).not.toContainText('line 80');
+});
+
+test("a merge like the person's: the line copied from above it in red and shown first, a rewrite in amber, closing lines kept (fix/merge-viewer-on-conflict)", async ({
+  page,
+}) => {
+  page.on('pageerror', (error) => errors.push(error.message));
+  const test1 = (name: string, value: string) =>
+    `  it('${name}', () => {\n    expect(${value}).toBe(true);\n  });\n`;
+  const tests = (more: string) => `describe('total', () => {\n${test1('adds', 'true')}${more}});\n`;
+  const readme = (paragraph: string) => `# Shop\n\n${paragraph}\n\n## Install\n\nnpm i\n`;
+  const changelog = (entries: string) =>
+    `# Changelog\n\n## Unreleased\n${entries}\n## 1.0.0\n- First release.\n`;
+  const MAIN_TESTS = test1('rounds', 'round()') + test1('rounds halves', 'half()');
+  const AGENT_TESTS = test1('applies a code', 'code()') + test1('ignores a code', 'none()');
+  symbiote = await serveAgentBranch(
+    {},
+    {
+      merger: [
+        JSON.stringify({
+          regions: {
+            // CHANGELOG.md, README.md, src/total.test.ts: git's order.
+            '1': '## Unreleased\n- Totals are rounded to cents.\n- Discount codes at checkout.',
+            '2': 'Totals are the sum of the prices, less any\ndiscount code, rounded to cents.',
+            '3': `${MAIN_TESTS}${AGENT_TESTS}`.trimEnd(),
+          },
+        }),
+      ],
+    },
+  );
+  const write = (files: Record<string, string>) => {
+    for (const [path, text] of Object.entries(files))
+      writeFileSync(join(symbiote.repo, path), text);
+  };
+  write({
+    'CHANGELOG.md': changelog(''),
+    'README.md': readme('Totals are the sum of the prices.'),
+    'src/total.test.ts': tests(''),
+  });
+  git('add', '.');
+  git('commit', '-q', '-m', 'Main: docs and tests');
+  git('checkout', '-q', 'agent');
+  git('merge', '-q', '--no-edit', 'main');
+  write({
+    'CHANGELOG.md': changelog('- Discount codes at checkout.\n'),
+    'README.md': readme('Totals are the sum of the prices, less any\ndiscount code.'),
+    'src/total.test.ts': tests(AGENT_TESTS),
+  });
+  git('commit', '-q', '-am', 'Agent: discount codes');
+  git('checkout', '-q', 'main');
+  write({
+    'CHANGELOG.md': changelog('- Totals are rounded to cents.\n'),
+    'README.md': readme('Totals are the sum of the prices, rounded\nto cents.'),
+    'src/total.test.ts': tests(MAIN_TESTS),
+  });
+  git('commit', '-q', '-am', 'Main: rounding');
+  await approve(page, 'Agent: discount codes');
+  await page.getByRole('button', { name: 'Merge into', exact: true }).click();
+  await page.goto(`${symbiote.url}?merge=agent`);
+  const entry = page.getByRole('region', { name: 'Merge of agent' });
+  await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
+
+  const files = entry.getByRole('list', { name: 'Its files' }).getByRole('button');
+  await expect(files).toHaveText([
+    /^CHANGELOG\.md1 regionRepeats “## Unreleased” from just above it$/,
+    /^README\.md1 region1 line written by the agent, with every word of the 3 it replaces$/,
+    /^total\.test\.ts src1 regionKeeps every line of both sides, nothing new$/,
+  ]);
+  await expect(files.nth(0)).toHaveClass(/merge-tone-bad/);
+  await expect(files.nth(1)).toHaveClass(/merge-tone-new/);
+  await expect(files.nth(2)).toHaveClass(/merge-tone-done/);
+  // The copy is the file shown first, between the lines around it.
+  await expect(files.nth(0)).toHaveAttribute('aria-current', 'true');
+  const region = entry.getByRole('list', { name: 'Its resolution' }).getByRole('listitem');
+  await expect(region.locator('.merge-region-where')).toContainText('Region 1CHANGELOG.md:');
+  const resolved = region.locator('.merge-resolved .merge-line');
+  await expect(resolved.locator('.merge-line-from')).toHaveText([
+    'above',
+    'above',
+    'above',
+    'new',
+    'main',
+    'agent',
+    'below',
+    'below',
+    'below',
+  ]);
+  await expect(resolved.nth(3)).toContainText('also just above');
+  // README: main's lines rewritten, every word kept: listed, not struck out.
+  await files.nth(1).click();
+  await expect(region.locator('.merge-region-where')).toContainText('Region 2README.md:');
+  await expect(region.locator('.merge-sub')).toHaveText([
+    'Rewritten from main, every word kept',
+    'Rewritten from agent, every word kept',
+  ]);
+  await expect(region.locator('.merge-rewritten .merge-line-text')).toHaveText([
+    'Totals are the sum of the prices, rounded',
+    'to cents.',
+    'discount code.',
+  ]);
 });
 
 test('a resolution of two files: each listed with what it did, the one that loses lines first (V46c)', async ({
@@ -403,10 +587,9 @@ test('a resolution of two files: each listed with what it did, the one that lose
   await files.nth(0).click();
   await expect(files.nth(0)).toHaveAttribute('aria-current', 'true');
   await expect(regions.locator('.merge-region-where')).toContainText('src/app.ts:');
-  await expect(regions.locator('.merge-resolved .merge-line-text')).toHaveText([
-    APP_MAIN,
-    APP_AGENT,
-  ]);
+  await expect(
+    regions.locator('.merge-resolved .merge-line:not(.from-around) .merge-line-text'),
+  ).toHaveText([APP_MAIN, APP_AGENT]);
 
   // The log a tab away, the files hidden meanwhile.
   await entry.getByRole('tab', { name: 'Log' }).click();

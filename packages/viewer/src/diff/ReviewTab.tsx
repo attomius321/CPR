@@ -149,7 +149,7 @@ export function ReviewTab({
             </label>
           ))}
         </fieldset>
-        {local && into && <MergeCheck branch={review.local?.branch ?? ''} canOpen={canOpen} />}
+        {local && into && <MergeCheck canOpen={canOpen} />}
         {forge === 'gitlab' && event === 'request-changes' && (
           <p className="muted small">
             GitLab gets a note marked “Changes requested”, and your approval is withdrawn.
@@ -205,9 +205,10 @@ export function ReviewTab({
 /**
  * Whether the branch merges cleanly into the default branch (V17), checked in the background:
  * nothing while git works (seconds on a long-lived branch), then clean, or each conflicting file
- * on its line — its name, its folder, and a button that opens it in VS Code.
+ * on its line — its name, its folder, and a button that opens it in VS Code. Merge into gives the
+ * conflicts to the merger agent (V26c, decision 142): the sentence says so.
  */
-function MergeCheck({ branch, canOpen }: { branch: string; canOpen: boolean }) {
+function MergeCheck({ canOpen }: { canOpen: boolean }) {
   const [merge, setMerge] = useState<BranchMerge | { failed: string } | null>(null);
   const [note, setNote] = useState<{ text: string; error: boolean } | null>(null);
   useEffect(() => {
@@ -242,8 +243,8 @@ function MergeCheck({ branch, canOpen }: { branch: string; canOpen: boolean }) {
   return (
     <div className="merge-check conflicts small">
       <p className="merge-check-head">
-        Conflicts with {merge.into} in {count} file{count === 1 ? '' : 's'}; the agent resolves them
-        on {branch} first:
+        Conflicts with {merge.into} in {count} file{count === 1 ? '' : 's'}: Merge into gives them
+        to the merger agent, and you review its resolution before it lands:
       </p>
       <ul className="merge-files">
         {merge.conflicts.map((path) => {
