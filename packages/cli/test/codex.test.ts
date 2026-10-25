@@ -101,16 +101,18 @@ const TURN = [
   { type: 'turn.completed', usage: { input_tokens: 30853, output_tokens: 181 } },
 ];
 
+const activity = () => join(dir, 'symbiote', 'activity', 'feature', 'csv.jsonl');
 const run = (source: 'startup' | 'resume', prompt = 'Build it') =>
   runCodex(
     {
       thread: thread(),
+      activity: activity(),
       source,
       run: 'r1',
       command: process.execPath,
       args: [join(dir, 'codex.js'), 'exec', '--json', '--', prompt],
     },
-    { now: () => AT },
+    { now: () => AT, worktree: '/w/feature-csv' },
   );
 
 describe('runCodex (V20a)', () => {
@@ -123,6 +125,55 @@ describe('runCodex (V20a)', () => {
       { at: AT, session: T, run: 'r1', kind: 'report', text: '1. Plan.' },
       { at: AT, session: T, run: 'r1', kind: 'end', reason: 'completed' },
     ]);
+  });
+
+  it("writes what Codex runs and changes to the workspace's activity, not its thread (V48f)", async () => {
+    fakeCodex({
+      events: [
+        { type: 'thread.started', thread_id: T },
+        { type: 'turn.started' },
+        {
+          type: 'item.started',
+          item: {
+            id: 'c1',
+            type: 'command_execution',
+            command: 'cargo test\n--all',
+            status: 'in_progress',
+          },
+        },
+        {
+          type: 'item.completed',
+          item: { id: 'c1', type: 'command_execution', command: 'cargo test', exit_code: 101 },
+        },
+        {
+          type: 'item.completed',
+          item: {
+            id: 'f1',
+            type: 'file_change',
+            changes: [{ path: '/w/feature-csv/src/lib.rs', kind: 'update' }],
+            status: 'completed',
+          },
+        },
+        { type: 'item.completed', item: { id: 'r1', type: 'reasoning', text: 'Thinking' } },
+        { type: 'item.completed', item: { id: 'm', type: 'agent_message', text: 'Done.' } },
+        { type: 'turn.completed' },
+      ],
+    });
+    expect(await run('startup').done).toBe(0);
+    const lines = readFileSync(activity(), 'utf8')
+      .split('\n')
+      .filter((line) => line !== '')
+      .map((line) => JSON.parse(line) as unknown);
+    const head = { at: AT, session: T, run: 'r1' };
+    const command = { ...head, id: 'c1', tool: 'command', subject: 'cargo test' };
+    const change = { ...head, id: 'f1', tool: 'fileChange', subject: 'src/lib.rs' };
+    expect(lines).toEqual([
+      { ...command, phase: 'start' },
+      { ...command, phase: 'end', failed: true },
+      { ...change, phase: 'start' },
+      { ...change, phase: 'end' },
+    ]);
+    expect(entries().map((e) => e.kind)).toEqual(['start', 'prompt', 'report', 'end']);
   });
 
   it('appends a resumed turn to the thread, as resumed', async () => {
@@ -257,6 +308,7 @@ describe('runCodex (V20a)', () => {
       [
         RUNNER,
         thread(),
+        activity(),
         'startup',
         'r1',
         process.execPath,
@@ -363,6 +415,7 @@ describe('codex (V20a)', () => {
       await agent.start({
         cwd: '/w/x',
         thread: '/r/symbiote/threads/x.jsonl',
+        activity: '/r/symbiote/activity/x.jsonl',
         run: 'r1',
         writable: ['/g'],
         prompt: 'P',
@@ -373,6 +426,7 @@ describe('codex (V20a)', () => {
       [
         '/opt/symbiote/dist/codex-run.js',
         '/r/symbiote/threads/x.jsonl',
+        '/r/symbiote/activity/x.jsonl',
         'startup',
         'r1',
         '/usr/bin/codex',
@@ -383,17 +437,19 @@ describe('codex (V20a)', () => {
     await agent.resume({
       cwd: '/w/x',
       thread: '/r/symbiote/threads/x.jsonl',
+      activity: '/r/symbiote/activity/x.jsonl',
       run: 'r2',
       writable: ['/g'],
       sessionId: T,
       text: 'Go',
     });
-    expect(detached.mock.lastCall?.[1].slice(1, 4)).toEqual([
+    expect(detached.mock.lastCall?.[1].slice(1, 5)).toEqual([
       '/r/symbiote/threads/x.jsonl',
+      '/r/symbiote/activity/x.jsonl',
       'resume',
       'r2',
     ]);
-    expect(detached.mock.lastCall?.[1].slice(5)).toEqual(
+    expect(detached.mock.lastCall?.[1].slice(6)).toEqual(
       codexArgs({ writable: ['/g'], sessionId: T, prompt: 'Go' }),
     );
     const failing = codex('/usr/bin/codex', {
@@ -401,7 +457,14 @@ describe('codex (V20a)', () => {
       detach: () => Promise.reject(new Error('spawn EACCES')),
     });
     expect(
-      await failing.start({ cwd: '/w/x', thread: '/t', run: 'r1', writable: [], prompt: 'P' }),
+      await failing.start({
+        cwd: '/w/x',
+        thread: '/t',
+        activity: '/a',
+        run: 'r1',
+        writable: [],
+        prompt: 'P',
+      }),
     ).toEqual({
       ok: false,
       error: 'spawn EACCES',

@@ -126,6 +126,7 @@ import {
 } from './reviews.js';
 import {
   lastAction,
+  readActivityEnd,
   readThread,
   readThreadEnd,
   THREAD_LIMIT,
@@ -436,7 +437,12 @@ export function workspaces(
         workspace.agent?.kind === 'codex'
           ? codexState(workspace, thread, await viaCodex.alive(workspace), ahead)
           : agentState(workspace, sessions, ahead, real, ended);
-      activity = activityOf(thread, agent);
+      // Its tools (V48f), read only while it works and when they are recorded.
+      const tools =
+        agent.state === 'working' && workspace.agent?.activity
+          ? await readActivityEnd(symbioteFolder(where), workspace.branch)
+          : null;
+      activity = activityOf(thread, agent, tools);
     }
     if (workspace.agent?.effort) agent = { ...agent, effort: workspace.agent.effort };
     if (workspace.agent?.model) agent = { ...agent, model: workspace.agent.model };
@@ -653,7 +659,14 @@ export function workspaces(
         ...level,
       });
       workspace.agent = result.ok
-        ? { kind: 'claude', permissionMode, ...level, started: now().toISOString(), hooks: true }
+        ? {
+            kind: 'claude',
+            permissionMode,
+            ...level,
+            started: now().toISOString(),
+            hooks: true,
+            activity: true,
+          }
         : { kind: 'claude', permissionMode, ...level, error: result.error };
     }
     await writeRecord(where, workspace);

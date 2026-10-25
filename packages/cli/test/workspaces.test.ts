@@ -888,6 +888,8 @@ describe('workspaces', () => {
       agent: { state: 'working', kind: 'claude', id: 's1' },
       // Nothing reported yet: when its agent started (V23).
       lastAction: NOW.toISOString(),
+      // Its tools recorded, none running yet (V48f).
+      activity: { doing: { thinking: true } },
     });
     expect(repo.git('rev-parse', 'feature/csv')).toBe(shas.B);
     expect(repo.git('branch', '--show-current')).toBe('main');
@@ -911,7 +913,13 @@ describe('workspaces', () => {
       by: 'ada@example.com',
       planFirst: true,
       worktree: folder,
-      agent: { kind: 'claude', permissionMode: 'auto', started: NOW.toISOString(), hooks: true },
+      agent: {
+        kind: 'claude',
+        permissionMode: 'auto',
+        started: NOW.toISOString(),
+        hooks: true,
+        activity: true,
+      },
     });
     // The agents' instructions and the folder's .gitignore, as for reviews.
     expect(existsSync(join(repo.root, 'symbiote', 'AGENTS.md'))).toBe(true);
@@ -2116,6 +2124,8 @@ describe('workspaces', () => {
     expect(Object.keys(written.hooks).sort()).toEqual([
       'Notification',
       'PermissionRequest',
+      'PostToolUse',
+      'PostToolUseFailure',
       'PreToolUse',
       'SessionEnd',
       'SessionStart',
@@ -2123,13 +2133,23 @@ describe('workspaces', () => {
       'UserPromptSubmit',
     ]);
     const command = `'/usr/bin/node' '${HOOK}' '${join(repo.root, 'symbiote')}'`;
+    // V48f: every tool's start and end, in the background (the agent does not wait on them).
+    const tools = {
+      matcher: '*',
+      hooks: [{ type: 'command', command: `${command} activity`, timeout: 30, async: true }],
+    };
     for (const [event, entries] of Object.entries(written.hooks)) {
-      expect(entries).toEqual([
-        {
-          ...(event === 'PreToolUse' ? { matcher: 'AskUserQuestion' } : {}),
-          hooks: [{ type: 'command', command, timeout: 30 }],
-        },
-      ]);
+      const thread = {
+        ...(event === 'PreToolUse' ? { matcher: 'AskUserQuestion' } : {}),
+        hooks: [{ type: 'command', command, timeout: 30 }],
+      };
+      expect(entries).toEqual(
+        event === 'PreToolUse'
+          ? [thread, tools]
+          : event.startsWith('PostToolUse')
+            ? [tools]
+            : [thread],
+      );
     }
     // Symbiote installed elsewhere: the next look rewrites it, so older sessions find the hook.
     await (await service(repo, fakeClaude().claude, '/new/symbiote/agent-hook.js')).list();
@@ -2371,7 +2391,10 @@ describe('workspaces', () => {
       { hook_event_name: 'UserPromptSubmit', prompt: 'Start' },
       '2026-10-15T09:00:00.000Z',
     );
-    expect(await activity()).toEqual({ since: '2026-10-15T09:00:00.000Z' });
+    expect(await activity()).toEqual({
+      since: '2026-10-15T09:00:00.000Z',
+      doing: { thinking: true },
+    });
     // It asks to run a command: since then, and the ask.
     await event(
       {
@@ -2408,6 +2431,52 @@ describe('workspaces', () => {
       since: '2026-10-15T09:05:00.000Z',
       report: { at: '2026-10-15T09:05:00.000Z', text: '# The plan' },
     });
+  });
+
+  it('lists what a working agent runs, from its recorded tools; thinking between them (V48f)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { recordActivity, recordEvent } = await import('../src/thread.js');
+    const symbiote = join(repo.root, 'symbiote');
+    const cwd = workspace.worktree.path;
+    const doing = async () => (await s.list()).workspaces[0]?.activity?.doing;
+    const tool = (event: string, id: string, at: string) =>
+      recordActivity(
+        symbiote,
+        {
+          hook_event_name: event,
+          session_id: 'session-1',
+          cwd,
+          tool_name: 'Edit',
+          tool_input: { file_path: join(cwd, 'src/a.ts') },
+          tool_use_id: id,
+        },
+        at,
+      );
+    await recordEvent(
+      symbiote,
+      { hook_event_name: 'UserPromptSubmit', session_id: 'session-1', cwd, prompt: 'Go' },
+      '2026-10-15T09:00:00.000Z',
+    );
+    expect(await doing()).toEqual({ thinking: true });
+    await tool('PreToolUse', 't1', '2026-10-15T09:00:05.000Z');
+    expect(await doing()).toEqual({ tool: 'Edit', subject: 'src/a.ts' });
+    await tool('PostToolUse', 't1', '2026-10-15T09:00:06.000Z');
+    expect(await doing()).toEqual({ thinking: true });
+  });
+
+  it('says nothing of what runs for an agent started before its tools were recorded (V48f)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const record = join(repo.root, 'symbiote', 'workspaces', 'feature', 'one.json');
+    const saved = JSON.parse(readFileSync(record, 'utf8')) as WorkspaceFile;
+    delete saved.agent?.activity;
+    writeFileSync(record, JSON.stringify(saved));
+    expect((await s.list()).workspaces[0]?.activity?.doing).toBeUndefined();
   });
 
   it('lists no last action for a workspace whose agent was never found (V23)', async () => {
@@ -2587,6 +2656,7 @@ describe('workspaces', () => {
     expect(start).toHaveBeenCalledWith({
       cwd: folder,
       thread: join(repo.root, 'symbiote', 'threads', 'feature', 'csv.jsonl'),
+      activity: join(repo.root, 'symbiote', 'activity', 'feature', 'csv.jsonl'),
       run: expect.stringMatching(/^[0-9a-f-]{36}$/) as string,
       writable: await commitFolders(folder, 'feature/csv'),
       prompt,
@@ -2604,6 +2674,7 @@ describe('workspaces', () => {
       started: NOW.toISOString(),
       run: start.mock.lastCall?.[0].run,
       pid: 4242,
+      activity: true,
     });
     // Codex's words in the thread: a turn ended with a plan.
     recordRun(repo, 'feature/csv', [
@@ -2691,6 +2762,7 @@ describe('workspaces', () => {
     expect(resume).toHaveBeenCalledWith({
       cwd: workspace.worktree.path,
       thread: join(repo.root, 'symbiote', 'threads', 'feature', 'one.jsonl'),
+      activity: join(repo.root, 'symbiote', 'activity', 'feature', 'one.jsonl'),
       run: expect.stringMatching(/^[0-9a-f-]{36}$/) as string,
       writable: await commitFolders(workspace.worktree.path, 'feature/one'),
       sessionId: THREAD_ID,

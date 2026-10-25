@@ -14,7 +14,7 @@ import {
   type FileHandle,
 } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
-import type { ThreadEntry, ThreadQuestion } from '@symbiote/core';
+import type { ActivityEntry, ThreadEntry, ThreadQuestion } from '@symbiote/core';
 
 /** Longest tool input kept: an `Edit` or a `Write` can carry a whole file. */
 export const MAX_INPUT = 4096;
@@ -54,6 +54,16 @@ export async function workspacesFolder(symbiote: string): Promise<{ dir: string;
 /** Where a workspace's thread is kept: `<symbiote>/threads/<branch>.jsonl`. */
 export function threadPath(symbiote: string, branch: string): string {
   const path = branchFile(join(symbiote, 'threads'), branch, '.jsonl');
+  if (!path) throw new Error(`not a branch name: ${branch}`);
+  return path;
+}
+
+/**
+ * Where a workspace's recorded tools are kept (V48f): `<symbiote>/activity/<branch>.jsonl`, a file
+ * of their own, so the thread's last entries stay its messages.
+ */
+export function activityPath(symbiote: string, branch: string): string {
+  const path = branchFile(join(symbiote, 'activity'), branch, '.jsonl');
   if (!path) throw new Error(`not a branch name: ${branch}`);
   return path;
 }
@@ -133,6 +143,76 @@ export function threadEntry(input: unknown, at: string): ThreadEntry | null {
   }
 }
 
+/** Longest subject kept of a tool call (V48f): enough for a command's line or a long path. */
+export const MAX_SUBJECT = 160;
+
+/** The tools' inputs whose field says what they work on (V48f); `path` marks a file's path. */
+const SUBJECTS: Record<string, { field: string; path?: true }> = {
+  Bash: { field: 'command' },
+  Read: { field: 'file_path', path: true },
+  Edit: { field: 'file_path', path: true },
+  MultiEdit: { field: 'file_path', path: true },
+  Write: { field: 'file_path', path: true },
+  NotebookEdit: { field: 'notebook_path', path: true },
+  Grep: { field: 'pattern' },
+  Glob: { field: 'pattern' },
+  WebFetch: { field: 'url' },
+  WebSearch: { field: 'query' },
+  Task: { field: 'description' },
+  Agent: { field: 'description' },
+};
+
+/**
+ * What a tool works on (V48f): its input's one field that says so — a command's first line, a
+ * file's path (from the worktree when inside it), a pattern, a URL, a query, a subagent's
+ * description —, cut at 160 characters; nothing else of its input is kept.
+ */
+function subjectOf(tool: string, input: unknown, worktree: string): string | undefined {
+  const spec = SUBJECTS[tool];
+  const value = spec ? text((input as Record<string, unknown> | null)?.[spec.field]) : null;
+  if (!spec || !value) return undefined;
+  let words =
+    value
+      .split('\n')
+      .find((line) => line.trim() !== '')
+      ?.trim() ?? '';
+  if (spec.path) {
+    const inside = [`${worktree}/`, `${worktree}\\`].find((p) => words.startsWith(p));
+    if (inside) words = words.slice(inside.length);
+  }
+  return words === '' ? undefined : words.slice(0, MAX_SUBJECT);
+}
+
+/**
+ * The activity line for one tool hook's input (V48f): `PreToolUse` a start, `PostToolUse` an end,
+ * `PostToolUseFailure` a failed end; null for any other event, or without a session, a tool or
+ * the call's ID (which pairs a start with its end).
+ */
+export function activityEntry(input: unknown, at: string, worktree: string): ActivityEntry | null {
+  if (!input || typeof input !== 'object') return null;
+  const v = input as Record<string, unknown>;
+  const session = text(v.session_id);
+  const tool = text(v.tool_name);
+  const id = text(v.tool_use_id);
+  const phase =
+    v.hook_event_name === 'PreToolUse'
+      ? 'start'
+      : v.hook_event_name === 'PostToolUse' || v.hook_event_name === 'PostToolUseFailure'
+        ? 'end'
+        : null;
+  if (!session || !tool || !id || !phase) return null;
+  const subject = subjectOf(tool, v.tool_input, worktree);
+  return {
+    at,
+    session,
+    id,
+    tool,
+    ...(subject ? { subject } : {}),
+    phase,
+    ...(v.hook_event_name === 'PostToolUseFailure' ? { failed: true as const } : {}),
+  };
+}
+
 /** A path's real path; the path as given when it cannot be resolved. */
 export const real = (path: string) => {
   try {
@@ -142,9 +222,12 @@ export const real = (path: string) => {
   }
 };
 
-/** The branch of the workspace whose worktree holds `cwd`, from the records in
+/** The workspace whose worktree holds `cwd` (its branch and worktree), from the records in
  * `<symbiote>/workspaces/`. */
-async function workspaceAt(symbiote: string, cwd: string): Promise<string | null> {
+async function workspaceAt(
+  symbiote: string,
+  cwd: string,
+): Promise<{ branch: string; worktree: string } | null> {
   const { dir } = await workspacesFolder(symbiote);
   const files = await readdir(dir, { recursive: true }).catch(() => [] as string[]);
   const here = real(cwd);
@@ -163,7 +246,7 @@ async function workspaceAt(symbiote: string, cwd: string): Promise<string | null
     const own = branchFile(dir, branch, '.json');
     if (!own || relative(dir, own) !== file) continue;
     const folder = real(worktree);
-    if (here === folder || here.startsWith(folder + sep)) return branch;
+    if (here === folder || here.startsWith(folder + sep)) return { branch, worktree };
   }
   return null;
 }
@@ -180,9 +263,28 @@ export async function recordEvent(
   const entry = threadEntry(input, at);
   const cwd = text((input as { cwd?: unknown } | null)?.cwd);
   if (!entry || !cwd) return null;
-  const branch = await workspaceAt(symbiote, cwd);
+  const branch = (await workspaceAt(symbiote, cwd))?.branch;
   if (!branch) return null;
   const path = threadPath(symbiote, branch);
+  await mkdir(dirname(path), { recursive: true });
+  await appendFile(path, `${JSON.stringify(entry)}\n`);
+  return path;
+}
+
+/**
+ * Records one tool hook's input in the activity of the workspace whose worktree holds its `cwd`
+ * (V48f); the file's path, or null when there is nothing to record or no workspace there.
+ */
+export async function recordActivity(
+  symbiote: string,
+  input: unknown,
+  at: string,
+): Promise<string | null> {
+  const cwd = text((input as { cwd?: unknown } | null)?.cwd);
+  const found = cwd ? await workspaceAt(symbiote, cwd) : null;
+  const entry = found ? activityEntry(input, at, found.worktree) : null;
+  if (!found || !entry) return null;
+  const path = activityPath(symbiote, found.branch);
   await mkdir(dirname(path), { recursive: true });
   await appendFile(path, `${JSON.stringify(entry)}\n`);
   return path;
@@ -200,15 +302,20 @@ export async function appendThread(
   await appendFile(path, `${JSON.stringify(entry)}\n`);
 }
 
-/** The hook's work (`agent-hook.ts`): never throws, whatever it is given; decides nothing. */
+/**
+ * The hook's work (`agent-hook.ts`): never throws, whatever it is given; decides nothing. In its
+ * `activity` mode (V48f, the tools' hooks) it records a tool's start or end, else a thread entry.
+ */
 export async function hookMain(
   stdin: string,
   symbiote: string | undefined,
   at: string,
+  mode?: string,
 ): Promise<void> {
   if (!symbiote) return;
   try {
-    await recordEvent(symbiote, JSON.parse(stdin) as unknown, at);
+    const input = JSON.parse(stdin) as unknown;
+    await (mode === 'activity' ? recordActivity : recordEvent)(symbiote, input, at);
   } catch {
     // Nothing the hook can do about it, and nothing Claude Code should see.
   }
@@ -243,6 +350,30 @@ export async function readThread(
 export const THREAD_END = 256 * 1024;
 
 /**
+ * A file's last `bytes`, from the first whole line in them ('' when there is none, or no file):
+ * what the workspaces list needs at a cost that does not grow with the file.
+ */
+async function fileEnd(path: string, bytes: number): Promise<string> {
+  let file: FileHandle;
+  try {
+    file = await open(path, 'r');
+  } catch {
+    return '';
+  }
+  try {
+    const { size } = await file.stat();
+    // One byte before the cut: a newline there means the cut is at a line's start.
+    const start = Math.max(0, size - bytes - 1);
+    const buffer = Buffer.alloc(size - start);
+    await file.read(buffer, 0, buffer.length, start);
+    const from = start === 0 ? 0 : buffer.indexOf(0x0a) + 1;
+    return from === 0 && start > 0 ? '' : buffer.subarray(from).toString('utf8');
+  } finally {
+    await file.close();
+  }
+}
+
+/**
  * A thread's last entries, from its file's last `bytes`, the line cut there dropped: what the
  * workspaces list needs (the newest report, prompt and question) at a cost that does not grow with
  * the thread (V23: reading 5,000 entries whole took 9.6 ms, for each workspace on every read).
@@ -252,23 +383,40 @@ export async function readThreadEnd(
   branch: string,
   bytes = THREAD_END,
 ): Promise<ThreadEntry[]> {
-  let file: FileHandle;
-  try {
-    file = await open(threadPath(symbiote, branch), 'r');
-  } catch {
-    return [];
-  }
-  try {
-    const { size } = await file.stat();
-    // One byte before the cut: a newline there means the cut is at a line's start.
-    const start = Math.max(0, size - bytes - 1);
-    const buffer = Buffer.alloc(size - start);
-    await file.read(buffer, 0, buffer.length, start);
-    const from = start === 0 ? 0 : buffer.indexOf(0x0a) + 1;
-    return from === 0 && start > 0 ? [] : parseThread(buffer.subarray(from).toString('utf8'));
-  } finally {
-    await file.close();
-  }
+  return parseThread(await fileEnd(threadPath(symbiote, branch), bytes));
+}
+
+/** How much of the recorded tools the list reads (V48f): ~300 lines, many turns' worth. */
+export const ACTIVITY_END = 64 * 1024;
+
+/** Whether a line is a recorded tool's start or end (V48f). */
+function isActivity(value: unknown): value is ActivityEntry {
+  const v = value as Partial<Record<string, unknown>> | null;
+  return (
+    !!v &&
+    typeof v.at === 'string' &&
+    typeof v.session === 'string' &&
+    typeof v.id === 'string' &&
+    typeof v.tool === 'string' &&
+    (v.phase === 'start' || v.phase === 'end')
+  );
+}
+
+/** A workspace's recorded tools (V48f), from its file's last `bytes`; broken lines skipped. */
+export async function readActivityEnd(
+  symbiote: string,
+  branch: string,
+  bytes = ACTIVITY_END,
+): Promise<ActivityEntry[]> {
+  const lines = (await fileEnd(activityPath(symbiote, branch), bytes)).split('\n');
+  return lines.flatMap((line) => {
+    try {
+      const value = JSON.parse(line) as unknown;
+      return isActivity(value) ? [value] : [];
+    } catch {
+      return [];
+    }
+  });
 }
 
 /** A thread file's entries, as `readThread` describes them. */

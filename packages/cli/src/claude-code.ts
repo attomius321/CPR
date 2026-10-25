@@ -557,10 +557,14 @@ export function shellWord(path: string, platform: NodeJS.Platform): string {
   return platform === 'win32' ? `"${path}"` : `'${path.replaceAll("'", "'\\''")}'`;
 }
 
+/** The tools' events (V48f): every tool's start, its end, its failure. */
+const TOOL_EVENTS = ['PreToolUse', 'PostToolUse', 'PostToolUseFailure'] as const;
+
 /**
  * Symbiote's settings file for its agents (V18c), `<symbiote>/claude-settings.json`: every event
- * runs
- * `agent-hook.js` with the `symbiote/` folder; `PreToolUse` only for questions. It decides nothing.
+ * runs `agent-hook.js` with the `symbiote/` folder; `PreToolUse` only for questions. With V48f,
+ * every tool's start, end and failure run it in its `activity` mode, in the background (`async`:
+ * a run costs ~30 ms, the tool does not wait for it). It decides nothing.
  */
 export function agentSettings(
   where: { node: string; hook: string; symbiote: string },
@@ -569,7 +573,11 @@ export function agentSettings(
   const command = [where.node, where.hook, where.symbiote]
     .map((p) => shellWord(p, platform))
     .join(' ');
-  const hooks = Object.fromEntries(
+  const tools = {
+    matcher: '*',
+    hooks: [{ type: 'command', command: `${command} activity`, timeout: 30, async: true }],
+  };
+  const hooks: Record<string, unknown[]> = Object.fromEntries(
     HOOKED_EVENTS.map((event) => [
       event,
       [
@@ -580,5 +588,6 @@ export function agentSettings(
       ],
     ]),
   );
+  for (const event of TOOL_EVENTS) hooks[event] = [...(hooks[event] ?? []), tools];
   return `${JSON.stringify({ hooks }, null, 2)}\n`;
 }
