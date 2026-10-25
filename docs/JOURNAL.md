@@ -235,3 +235,4 @@ merge commit.
 - 2026-10-25 [V54 spike — what the viewer's tooltips are](journal/v54-tooltips.md)
 - 2026-10-25 [V54 — tooltips drawn by Symbiote](journal/v54-tooltips.md)
 - 2026-10-25 [V57 spike — how long a card shows as before](journal/v57-cleaning-up-card.md)
+- 2026-10-25 [V57 — a card disabled while it is cleaned up or removed](journal/v57-cleaning-up-card.md)
