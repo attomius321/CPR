@@ -69,3 +69,47 @@ app-server generate-json-schema`.
 
 **Not tested**: the daemon's threads (start, resume, Codex's terminal) with the server; a
 10-minute call; elicitation.
+
+## MC1 — Symbiote's tools, Scout on both agents, the person's Confirm on every page (2026-10-25, branch `feature/symbiote-mcp`)
+
+Built what the replanned MC1 says: `POST /api/mcp` with 23 tools over `symbiote view`'s services
+(MC1a), the stdio bridge (`dist/mcp-stdio.js`, `symbiote mcp`) finding the view by a record in the
+cache, Scout started with Symbiote's server on Claude Code and on Codex (MC1b), and the asks as a
+bar on every page (MC1c); decisions 358–365. Then the whole flow for real with Scout on Codex in a
+trial repository (MC1d).
+
+**Learned**:
+- **Codex takes a thread's MCP server from any resume**: a thread started without it got it from a
+  `thread/resume` with `config` ("symbiote: starting → ready"), and its tool ran; a resume without
+  `config` kept it. So Symbiote gives it at the start, with each message and before Codex's
+  terminal joins (`load`), and never needs the person's `config.toml`.
+- **Waiting is free on Claude Code, not on Codex**: a 10-minute `wait` took Claude Code two model
+  requests (17.6K tokens); Codex checked the running call about every 30 s (four messages of
+  "still waiting" among them), about 430K input tokens, 95 % cached. Codex's 0.163 timeout did
+  not cut a 75 s call, and with `tool_timeout_sec` 660 not a 604 s one.
+- **The person's answer must wait for the action**: answered at once, the page read the merges
+  before the merge was queued, and the sidenav never showed it (nothing else was running to read
+  again). Answering once the action is done, then reading again, fixed it.
+- **A floating card covers what pages put at the bottom right**, and at 390 px the status bar's
+  second line: the bar in its own grid row covers nothing.
+- **Headless Chromium drew no frame with `WAYLAND_DISPLAY` set** on this machine today: every
+  click waited for "stable" and timed out, in a new spec and in `shell.spec` alike; a blank page
+  in a fresh `chromium.launch()` gave no `requestAnimationFrame`, with or without `--disable-gpu`.
+  Unsetting `WAYLAND_DISPLAY` alone gave frames back. Not Symbiote's; every e2e run here unset it.
+- **Restarting the person's Codex daemon to see a forgotten thread was refused** by the session's
+  classifier (other work could run there); `load` makes it unneeded.
+- **A real Codex Scout keeps to its prompt**: it asked for the start, the approval, the merge and
+  the clean-up and nothing else; it sent the OK unasked, as decided; its answers were three lines.
+
+**Verification**: tests first, red for the right reason (the plan's Results list them); `pnpm
+check` 1,619 tests; e2e `mcp.spec.ts` 2 of 2, the full suite 240 of 242 before the last changes
+(Scout's help text, fixed; `changes.spec`, passing alone). Real Codex flow in the trial repository:
+four Scout turns of 5–13 s, four Confirms, the fix landed on `main` with its check, `via: "scout"`
+on the verdict and the record, the checkout clean; 312.6K input tokens for Scout's thread (91 %
+cached). Screenshots of the bar on History and Scout at 1440×900 and 390×844, dark and light.
+
+Not verified: Scout on Claude Code with the real agent in the trial (it needs the folder trusted);
+a woken Claude Code session's new bridge; Codex's own terminal joining after `load`; macOS and
+Windows; `regression-check` (no analysis code). Cleaned up: the spike threads and Scout's trial
+conversation archived, the trial's `symbiote view` stopped (its record removed); the trial
+repository kept for the person to try Scout there.

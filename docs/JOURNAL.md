@@ -206,3 +206,4 @@ merge commit.
 - 2026-10-25 [Refactor — the CLI's services and the viewer's pages in modules](journal/refactor-readability.md)
 - 2026-10-25 [MC1 spike — what Scout's start takes of an MCP server, and what its gate can do there](journal/mc1-symbiote-mcp.md)
 - 2026-10-25 [MC1 replan — the person's answers; what Codex does with an MCP server](journal/mc1-symbiote-mcp.md)
+- 2026-10-25 [MC1 — Symbiote's tools, Scout on both agents, the person's Confirm on every page](journal/mc1-symbiote-mcp.md)

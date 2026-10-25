@@ -2,9 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/mc1-symbiote-mcp.md)
 
-**Status:** planned (2026-10-25), on branch `feature/symbiote-mcp` (a workspace started in
-Symbiote); replanned the same day with the person's answers (what asks: as proposed; Codex now,
-"this app Symbiote will firstly be used with Codex"; `symbiote mcp` included). Not started.
+**Status:** ready for review (2026-10-25), on branch `feature/symbiote-mcp` (a workspace started
+in Symbiote); planned and replanned the same day with the person's answers (what asks: as
+proposed; Codex now, "this app Symbiote will firstly be used with Codex"; `symbiote mcp`
+included). Its "As built" and results below.
 
 **Problem** (asked: "We need an MCP for symbiote, because i would like the Scout to be an
 orchestrator like of workspaces flow from dev to merge. Should have access to all the logical
@@ -265,3 +266,67 @@ Scout's words (MC1c); the real flow; docs.
 telling Scout of a change by itself; Settings to choose which tools ask; keys for Confirm and
 Decline; Codex's own approval and elicitation requests (`mcpServer/elicitation/request`) as
 another way to ask.
+
+## As built (MC1)
+
+- **The asks are a bar in the shell's own grid row** (`asks`, between its top and the page, in all
+  four templates: wide, narrow and the desktop window's two), as the plan said. A floating card
+  was tried first: at 390 px it covered the status bar's second line, and it would cover a page's
+  own bottom-right controls (a workspace's Send). Without an ask the row is empty and 0 high.
+- **The asks are read on their own**, every 2 s while a page shows (`useAsks`), not with the
+  workspaces: an agent through `symbiote mcp` may ask while nothing Symbiote reads is working, and
+  the workspaces' read stops then.
+- **The person's answer is answered once what they confirmed is done** (30 s at most), and the
+  page then reads the workspaces, reviews and merges again: in the e2e a merge queued through the
+  tools did not show in the sidenav until then.
+- **One ask at a time per caller**: a second one while the first waits is refused in words; a
+  call whose caller hangs up drops its ask; `symbiote view` closing ends every held call with a
+  503 the bridge passes on.
+- **Codex's server is given at every resume Symbiote makes, and before its terminal joins**
+  (`codexServer.load`): measured, a thread started without the server got it from a resume with
+  `config`, and its tool ran; a resume without `config` kept it while the daemon held the thread.
+  Restarting the person's daemon to see a thread it forgot was not done (the session's
+  classifier refused it: other work could run there).
+- **A wait costs tokens on Codex, not on Claude Code**: a 10-minute `wait` returned after 603 s on
+  Claude Code with two model requests (17.6K tokens in all); on Codex after 604 s, with Codex
+  checking the running call about every 30 s, about 430K input tokens (95 % cached). README says
+  so; the prompt already has Scout wait only when asked.
+- **`via` is shown** on History's mark ("Approved through Scout") and a workspace's Brief tab
+  ("Started through Scout"), not on the review page's own verdict (the page's own Finish never
+  goes through the tools).
+- **`Asks.tsx` became `AskBar.tsx`**: beside `asks.ts` it was one name on macOS (`files.test.ts`).
+- **Tokens of the tools**: Claude Code's first request read 8,015 tokens without Symbiote's server
+  and 11,774 with its 23 tools (+3,759, under the planned 5K): the tools were kept as they are.
+
+**Results.** Tests first, red for the right reason: `mcp.test.ts` (23), `mcp-bridge.test.ts` (7),
+the server's MCP routes (4), `symbiote view`'s record and `symbiote mcp` (1), the gate (2), Codex's
+per-thread configuration (1), Scout on both agents (4), `via` on verdicts and records (2), the
+prompts, the viewer's asks (3) and `via` words (2). `pnpm check` 1,619 tests. e2e: `mcp.spec.ts`
+2 of 2 (the spec as the MCP client: Scout reviews, approves and queues a merge on Confirms, a
+decline does nothing, a restarted view on another port is found; an agent through `symbiote mcp`
+starts a workspace); the full suite 240 of 242 before the last changes, its two failures fixed
+or passing alone (`look.spec`'s Scout help text; `changes.spec` passed alone, 26 of 26 with
+`mcp`, `look` and `shell`). Every e2e run with `WAYLAND_DISPLAY` unset: on this machine headless
+Chromium drew no frame with it set, on every spec. Real runs in a trial repository made for MC1
+(`/home/anton/projects/symbiote-trial`, a TypeScript cart with a bug, no remote), this branch's
+`symbiote view`, Scout on Codex 0.163 (app server 0.164):
+
+| Asked Scout | Its turn | What it did | Asks confirmed |
+|---|---|---|---|
+| What waits for me? Then start a fix with Codex, plan first, for this bug | 13 s | `overview`, `start_options`, `start_workspace` | the start |
+| Show me its plan in three lines; if it tests first, tell it OK | 7 s | `thread`, `reply` (unasked) | none |
+| It is ready: review it, tell me what changed; if nothing is risky, approve and queue its merge | 12 s | `review` (no findings), `finish_review`, `queue_merge` | the approval, the merge |
+| It landed: clean it up | 5 s | `clean_workspace` | the clean-up |
+
+The workspace's Codex agent planned at once and committed the fix with its test in 15 s after
+the OK; the merge was checked (`npm test`, 157 ms) and landed on `main`. The verdict and the
+workspace's record carry `via: "scout"`; the trial checkout's `git status` stayed empty. Scout's
+thread over the four turns: 312.6K input tokens (284.5K cached, 91 %), 1,333 out, 14 model
+requests. A declined start did nothing and the agent was told so.
+
+Not verified: Scout on Claude Code with the real agent (its background sessions need the trial
+folder trusted, which is the person's to do; its start's arguments are under test, and `claude
+-p` with the same flags loaded the 23 tools and ran one, held 10 minutes); a woken Claude Code
+session's new bridge reaching a restarted view (the bridge's re-read is under e2e); Codex's own
+terminal joining Scout's thread after `load` with the real Codex; macOS and Windows;
+`regression-check` (no analysis code changed: core gained types only).
