@@ -742,7 +742,7 @@ pnpm logs:check                # a copy on a temporary folder: lines in, read ba
 It needs about 3 GB of images and 420 MB of memory, and the internet once (Grafana fetches its
 Logs Drilldown at its first start). It listens on `127.0.0.1` only, and opens without signing in,
 as a viewer. Lines show in it a second or two after they are written; when it starts after a
-while stopped, it reads the files it missed (in about a minute).
+while stopped, it reads the files it missed (in about a minute and a half).
 
 - **The Symbiote dashboard** (its home page): crashes, errors and warnings in the time chosen,
   errors and warnings over time by process, every error with its stack, every line; filters by

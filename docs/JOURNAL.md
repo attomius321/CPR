@@ -207,3 +207,5 @@ merge commit.
 - 2026-10-25 [LG1 spike — what Symbiote keeps when it breaks, and pino's cost](journal/lg1-logs.md)
 - 2026-10-25 [LG1 replan — the logs read by another app](journal/lg1-logs.md)
 - 2026-10-25 [LG1 spike — Grafana, Loki and Alloy on this machine](journal/lg1-logs.md)
+- 2026-10-25 [LG1a — the lines: @symbiote/log, the CLI, the server, the app and the pages](journal/lg1-logs.md)
+- 2026-10-25 [LG1b — the viewer: Grafana, Loki and Alloy, and real crashes read back](journal/lg1-logs.md)

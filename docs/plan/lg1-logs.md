@@ -2,13 +2,13 @@
 
 [Index](../PLAN.md) · [Journal](../journal/lg1-logs.md)
 
-**Status:** in progress (2026-10-25), on branch `feature/logging-system` (a workspace started in
+**Status:** ready for review (2026-10-25), on branch `feature/logging-system` (a workspace started in
 Symbiote, from `main` at `278b3e7`). Replanned after the person's answer to the first plan: "So i
 want the logs t o be seen from another app, in case of Symbiote crashes, that is the whole point."
 The first plan's Logs page inside Symbiote is dropped: the logs are read by an app that runs on
 its own. This plan OK'd by the person ("1. Recommended 2. Yes 3. Yes. OK"): Grafana + Loki +
 Alloy; the images pulled and run here for the spike; the hooks and the Codex runner left out, 14
-days of files.
+days of files. As built and results under "As built (LG1)" below.
 
 **Problem** (asked: "This application needs a logging system, and a way to see the logs. For the
 moment, i need to log Symbiote only logs, in order to debugg easier and catch uncatched errors.
@@ -224,9 +224,71 @@ committed and pushed.
 | 355 | Where does the code live? | **a package, `@symbiote/log`** | the CLI and the app both write and neither can import the other's code |
 | 356 | What is never logged? | **bodies, prompts, briefs, terminal input and output, file contents, environment, tokens** | the folder is local, but a line is pasted to agents and into issues |
 | 357 | How is the viewer kept? | **`ops/logs/` in this repository: a Compose file, pinned images, `127.0.0.1` only, `restart: unless-stopped`, Loki 30 days** | set up once with `pnpm logs:up`, then always there, Symbiote running or not; its config reviewed with the code that writes the files |
+| 366 | How is a line written? (as built) | **synchronously, one `write` a line, on a descriptor opened to append** | 2.6–3.1 µs a line (measured); on disk when the call returns, so a crash loses nothing in flight and nothing needs flushing; whole lines however many processes append. 365 and below were taken by another workspace meanwhile |
 
 **Not in LG1 (later)**: a Logs page inside Symbiote (useful while it runs; the person's point is
 the other app); a boundary that keeps the sidenav when a page throws; Grafana alerts on a `fatal`;
 the hooks and the Codex runner; a level switch in Settings; sending lines off the machine; the
 agents' and the analyzed repository's logs; traces (OpenTelemetry); a pass over the set-aside
 `catch` blocks.
+
+## As built (LG1)
+
+- **Synchronous writes** (decision 366), not pino's asynchronous destination: a line costs
+  2.6–3.1 µs, nothing is in flight at a crash, and `watchUncaught` only logs (no flush). The
+  spike's trap (`flushSync()` throws until an async-opened file is open) is gone with it.
+- **The line's shape** as planned (ISO time, level as a word), written by pino with its own
+  `timestamp` and `formatters.level`; `Log.as(name)` writes another program's lines into the same
+  file: the server writes the pages' errors as `viewer`. pino's `err` serializer takes any object
+  with a `message` for an Error and writes its constructor's name (`Object`) as `type`: the
+  pages' errors go through a logger that writes `err` as sent.
+- **Program names**: `analysis` for a `symbiote diff` that `symbiote view` started (it has an IPC
+  channel), `diff` from a terminal; `view`, `pr`, `merge`, `app`, `viewer`, `cli`.
+- **Uncaught errors**: thrown at an ES module's top level, an error arrives as
+  `unhandledRejection` (the module's evaluation rejects): `bin.ts`'s `await run(…)` is such a
+  place, so a command that throws is written as an unhandled rejection. In a callback it is an
+  `uncaughtException`.
+- **Requests**: writes at `info` except the chatty ones (`/api/terminals/<id>/in|resize`,
+  `…/api/state/…`, at `debug` with the reads); a refusal's or failure's words (`answer`, 500
+  characters). A terminal's ID is written short (8 characters): it keeps other sites out of the
+  terminal while the server runs. `view started` is written before the address is printed.
+- **A command's refusal** (`SymbioteError`) is a `warn` line, `refused`, with the command.
+- **Terminals** write a program starting and ending (its name, never what it runs); **merges**
+  their states through the merger's existing `onChange`; the **app** also writes Chromium's own
+  processes ending badly (`child-process-gone`), and the launcher keeps a server's last 8 KB of
+  stderr after it serves, for its `server ended` line.
+- **The pages**: `ui/report.ts` hands an error React reports on to `window.reportError` after
+  sending it, so the console and the e2e checks see it as before.
+- **Loki**: lines read late were taken but found by no query until flushed (30 min of quiet by
+  default); `query_ingesters_within: 0` changed nothing on 3.7.9. `ingester.chunk_idle_period: 1m`
+  does: the 13-day-old lines show 66–82 s after `up` (Loki itself is ready after 30 s).
+- **Grafana**: on port 3300 (3000 is a common default). Grafana 13 signs in anonymously only as a
+  viewer, and sent the viewer from Explore and Logs Drilldown back to the home page although its
+  API grants it `datasources:explore`: `viewers_can_edit` lets both open (it saves nothing, the
+  dashboard is provisioned). It downloads its preinstalled plugins (Drilldown among them) at its
+  first start and updated them at every start: updates are off.
+- **The dashboard's rows** say how a process ended and the pair analyzed ("analysis ended
+  cd1dba0..b28ba90 (SIGKILL)", "server ended (SIGKILL)"), a page error's message once.
+- **`logs:check`** starts from nothing: Alloy keys its read positions by the path in the
+  container, the same for every check's folder.
+
+**Results.**
+
+- Tests: 1,609 unit tests, 37 of them new (1,572 on `main`): the package 16 (two of them crash
+  a child process), the CLI 14 (the server and the folder 10, the runner 3, the terminals 1), the
+  launcher 1, the reporter 6. `pnpm check` green.
+  `e2e/report.spec.ts` new; the whole e2e suite 241/241 on Chromium 147 (see the journal: this
+  machine's Chromium 153 draws no frames, on `main` too).
+- Nothing else changes: `symbiote diff` on 12 pairs (ky's 6 of `r1`, zod's 6 latest source
+  commits: `r1`'s zod commits are reachable from no branch any more), `main`'s build against the
+  branch's: graph (timing and version aside), stderr and exit code identical, 12/12.
+- Real crashes, then every Symbiote process gone, read back from Loki and seen in Grafana: a
+  page's error (`viewer`, its page and stack), an analysis killed (`analysis ended`, `SIGKILL`), a
+  server whose port was taken (`fatal`, `listen EADDRINUSE` and its stack), the desktop app's
+  server killed (`server ended`, `SIGKILL`, written by the app).
+- The viewer: a line in Loki 1.3 s after it is written, a new day's file 5.3 s; Loki ready 30 s
+  after `up`; Alloy 40 MiB, Loki 89–109 MiB, Grafana 267–289 MiB at rest; 2.9 GB of images.
+- Cost: `symbiote --version` 228 → 237 ms and 238 → 245 ms, `symbiote view` until it serves 232
+  → 243 ms and 230 → 245 ms (medians, two runs of the comparison): +7 to +15 ms, pino's import. A
+  successful `symbiote diff` writes no line; a `view` start and stop two.
+

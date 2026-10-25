@@ -80,3 +80,93 @@ a stack and a line that is not JSON. Docker Desktop 29, Compose 2.40.3, WSL2.
   only viewer role is supported"). A viewer has `datasources:explore`, `datasources:query` and
   `dashboards:read`: enough to read. Logs Drilldown (`grafana-lokiexplore-app` 3.0.0) comes
   installed.
+
+## LG1a — the lines: @symbiote/log, the CLI, the server, the app and the pages (2026-10-25, branch `feature/logging-system`)
+
+`@symbiote/log` (pino 10.4, MIT) writes every Symbiote process's lines into
+`<cache>/logs/<YYYY-MM-DD>.jsonl`, synchronously, one `write` a line; `watchUncaught` records
+uncaught errors as `fatal`. `bin.ts` opens it for every command, the server writes a line per
+request and takes the pages' errors at `POST /api/logs`, the runner writes each analysis and how a
+child that died ended, terminals and merges their programs and states, the desktop app its own
+lines and the end of a server it started, `ui/report.ts` the pages' errors. Decisions 349–357 and
+366.
+
+**Learned**:
+- **Write synchronously**: 2.6–3.1 µs a line with pino on a descriptor opened to append, against
+  2.0–2.3 µs asynchronously. At Symbiote's few lines a second the difference is nothing, and it
+  buys what logging is for here: a line is on disk when the call returns, so a crash loses
+  nothing in flight (the async destination's `flushSync()` threw "sonic boom is not ready yet"
+  until its file was open, the spike's trap), and lines from several processes stay whole.
+- **A top-level throw is a rejection**: in an ES module, an error thrown at the top level reaches
+  `uncaughtExceptionMonitor` with origin `unhandledRejection`, since the module's evaluation
+  rejects. `bin.ts` awaits `run(…)` at its top level: a command that throws is written as an
+  unhandled rejection (the real crash run's `listen EADDRINUSE` is one).
+- **pino's `err` serializer** takes any object with a `message` for an Error and writes its
+  constructor's name as `type`: a page's `{ name: 'TypeError', … }` became `type: "Object"`. The
+  pages' errors go through a child logger whose `err` is written as sent.
+- **A repeated `process` key**: a pino child logger adds its bindings after the parent's, so
+  `log.child({ process: 'viewer' })` would write `"process":"view",…,"process":"viewer"`.
+  `Log.as(name)` makes a second logger on the same file instead.
+- **What a path carries**: a request line's path held a terminal's whole ID
+  (`/api/terminals/<32 hex>/in`), the capability that keeps other sites out of it; written short
+  now. Found reviewing the diff, with `pruneLogs` rejecting on a file it may not remove (EISDIR in
+  the test), which `view` did not catch: an unhandled rejection would have ended the server.
+- **Order with the ready line**: a Ctrl+C sent the moment `view` printed its address lost the
+  `view started` line (written after it, and `view`'s Ctrl+C handler is set later still). It is
+  written first now; `view stopped` still needs `view` to have set its handler, as before.
+
+**Verification**: tests first, each red for its reason (not a function, no line, 405, the whole
+ID written, EISDIR), then green; 1,609 unit tests (37 new). `e2e/report.spec.ts` (written after the
+reporter, so not seen red): an error thrown and a promise rejected in History are `viewer` lines
+beside the server's `view started`. `symbiote diff` on 12 ky and zod pairs, `main`'s build against
+the branch's: graph, stderr and exit code identical, 12/12. Start cost +7 to +15 ms.
+
+Not verified: React's `onUncaughtError` path in a browser (no page throws while it renders on
+purpose; the reporter's rules are unit-tested, the wiring is not); the hooks and the Codex runner
+write nothing (left out, as planned).
+
+## LG1b — the viewer: Grafana, Loki and Alloy, and real crashes read back (2026-10-25, branch `feature/logging-system`)
+
+`ops/logs/`: the Compose file, Alloy's pipeline, Loki's config, Grafana's data source and the
+Symbiote dashboard; `pnpm logs:up`, `logs:down`, `logs:check`; the README's "Symbiote's logs".
+Then real crashes with everything of its own (a Compose project, a log folder, a cache, a config
+folder for the app's record, an Xvfb display), read back with no Symbiote process left.
+
+**Learned**:
+- **Grafana 13 and the anonymous viewer**: it may only be a viewer, and the viewer was sent from
+  Explore and Logs Drilldown back to the home page although `/api/access-control/user/permissions`
+  lists `datasources:explore`. `GF_USERS_VIEWERS_CAN_EDIT=true` lets both open; nothing can be
+  saved (the dashboard is provisioned).
+- **Grafana fetches and updates its plugins**: its preinstalled plugins (Logs Drilldown 3.0.0
+  among them) are downloaded at its first start, about 14 s after it answers, and were updated at
+  every start (tempo 13.2.4 → 13.3.0): `GF_PLUGINS_PREINSTALL_AUTO_UPDATE=false`. So the viewer
+  needs the internet once.
+- **A provisioned dashboard is read again every ~10 s**: a screenshot taken at once showed the old
+  rows while the API already served the new expression.
+- **Alloy keys its read positions by the path in the container**: a second check on a new folder,
+  with the volume of a first one that had stopped, skipped the new file's first bytes and found
+  nothing. `logs:check` starts from nothing; a person's viewer never meets it (the files only
+  grow, under one folder).
+- **`process.exit` skips `finally`**: the first `logs:check` failed with its stack left running.
+  Its failures throw now, and the stack is removed whatever happens.
+- **This machine's Chromium 153 draws no frames headless**: `requestAnimationFrame` never ran (0
+  frames in 2.5 s with every flag tried: `--disable-gpu`, SwiftShader, no GPU compositing), so
+  Playwright's clicks waited for "stable" forever: 38 failures in the first 73 e2e tests, on `main`
+  as on the branch. The cached headless shell of Chromium 147 draws 62 frames a second: the suite
+  ran on it through a configuration outside the repository (241/241 on the branch; `main` 239/240,
+  the intro's WebGL flaky under load: 84/84 on both when the intro and app specs ran alone, three
+  times each).
+- **`r1`'s zod commits are gone**: none of its six is reachable from any branch of zod now, and a
+  short SHA cannot be fetched; `setup.mjs` would stop on them. The comparison took zod's six latest
+  source commits instead. The set needs new zod commits (not done here).
+
+**Verification**: `pnpm logs:check` (a second stack on a temporary folder: today's lines in Loki as
+soon as it is ready, 30 s after `up`; a 13-day-old line 40–52 s later; the crashes panel's rows
+with their stacks; Grafana with Loki, the dashboard and Drilldown). Real crashes, read back from
+Loki with every Symbiote process gone and seen on the dashboard (dark and light) and in Drilldown:
+a page's error, an analysis killed (`kill -9`, 15 ms in), a second `symbiote view` on a taken port
+(`fatal`, `listen EADDRINUSE` with its stack), the desktop app's server killed (`server ended`,
+`SIGKILL`). At rest: Alloy 40 MiB, Loki 89–109 MiB, Grafana 267–289 MiB.
+
+Not verified: the viewer after a reboot (`restart: unless-stopped` with Docker Desktop starting
+at login); a day's file of real use (only test runs were written here).
