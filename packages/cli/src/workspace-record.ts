@@ -1,7 +1,7 @@
 // A workspace's record on disk (V18): `symbiote/workspaces/<branch>.json`, how it is written and
 // read back, and the refusal every workspace request answers with.
 import { readFile } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { dirname, extname, join } from 'node:path';
 import {
   AGENT_KINDS,
   EFFORT_LEVEL,
@@ -13,7 +13,7 @@ import {
   type PermissionMode,
   type WorkKind,
 } from '@symbiote/core';
-import { sortKeys } from './reviews.js';
+import { sortKeys, type ReviewPlace } from './reviews.js';
 import { BRIEF_PARTS } from './workspace-brief.js';
 
 /** A workspace on disk: `symbiote/workspaces/<branch>.json` (V18; `symbiote/features/` before V25),
@@ -216,3 +216,9 @@ function asAgent(value: unknown): WorkspaceAgentRecord | null {
     ...(v.hooks === true ? { hooks: true } : {}),
   };
 }
+
+/** The folder holding `symbiote/` (or its stand-in in the cache): the agent may read it. */
+export const symbioteFolder = (where: ReviewPlace) => dirname(where.dir);
+
+/** Where the records are: `workspaces/` beside the reviews. */
+export const workspacesDir = (where: ReviewPlace) => join(symbioteFolder(where), 'workspaces');

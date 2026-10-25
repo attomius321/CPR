@@ -24,7 +24,8 @@ import {
 } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
-import { MAX_DOCUMENT_BYTES, workspaces, readWorkspaceConfig } from '../src/workspaces.js';
+import { workspaces, readWorkspaceConfig } from '../src/workspaces.js';
+import { MAX_DOCUMENT_BYTES } from '../src/workspace-documents.js';
 import {
   workspaceBase,
   workspacePrompt,

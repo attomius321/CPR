@@ -1,17 +1,7 @@
-import { randomBytes, randomUUID } from 'node:crypto';
-import { constants as fsConstants, existsSync, readFileSync, realpathSync } from 'node:fs';
-import {
-  copyFile,
-  mkdir,
-  readdir,
-  readFile,
-  rename,
-  rm,
-  rmdir,
-  stat,
-  writeFile,
-} from 'node:fs/promises';
-import { basename, dirname, extname, isAbsolute, join, posix, relative, sep } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { dirname, isAbsolute, join, posix, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   addWorktree,
@@ -19,17 +9,13 @@ import {
   branchNameProblem,
   checkMerge,
   commitFolders,
-  commitDetails,
   commitsBetween,
   defaultBranch,
   deleteMergedBranch,
   fileChangedSince,
-  fileForCheckout,
   forkPoint,
   isAncestor,
   isCommit,
-  listChangedFiles,
-  listLineCounts,
   listRefs,
   EFFORT_LEVEL,
   MODEL_ID,
@@ -38,7 +24,6 @@ import {
   resolveCommit,
   uncommittedFiles,
   userEmail,
-  worktreeStatus,
   WorktreeRefused,
   WORK_KINDS,
   type AgentEfforts,
@@ -50,7 +35,6 @@ import {
   type WorkspaceAgentState,
   type WorkspaceChanges,
   type WorkspaceDocument,
-  type WorkspaceFileChange,
   type WorkspaceList,
   type WorkspaceOptions,
   type WorkspaceReplied,
@@ -104,11 +88,29 @@ import {
 } from './claude-code.js';
 import { MAX_BRIEF, workKinds } from './workspace-brief.js';
 import {
-  documentName,
+  emptyFile,
+  isFile,
+  keptFile,
+  readBranchChanges,
+  worktreeChanges,
+} from './workspace-changes.js';
+import {
+  documentsDir,
+  MAX_DOCUMENT_BYTES,
+  MAX_DOCUMENTS,
+  MAX_DOCUMENTS_BYTES,
+  placeDocuments,
+  removeDocuments,
+  saveUpload,
+  uploadsOf,
+} from './workspace-documents.js';
+import {
   readWorkspace,
   serializeWorkspace,
   startedAs,
   workspacePath,
+  symbioteFolder,
+  workspacesDir,
   WorkspaceRefused,
   type StartedAs,
   type WorkspaceAgentRecord,
@@ -142,25 +144,6 @@ import {
   turnEnded,
   workspacesFolder,
 } from './thread.js';
-
-/** Most files given with a brief (V40), the most one may weigh (V36's image limit), and all. */
-export const MAX_DOCUMENTS = 20;
-export const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
-export const MAX_DOCUMENTS_BYTES = 100 * 1024 * 1024;
-/** Uploads not started with within a week are removed when the next one is saved (V40). */
-const UPLOADS_KEPT_MS = 7 * 24 * 3600 * 1000;
-/** The names Symbiote gives the uploads it keeps: only those are ever removed. */
-const UPLOAD = /^[0-9a-f]{32}$/;
-
-/** `name`, or `name (2).ext`, `name (3).ext`… : the first not in `taken`, which then holds it. */
-function freeName(name: string, taken: Set<string>): string {
-  const ext = extname(name);
-  const stem = name.slice(0, name.length - ext.length);
-  let free = name;
-  for (let n = 2; taken.has(free); n++) free = `${stem} (${n})${ext}`;
-  taken.add(free);
-  return free;
-}
 
 const FULL_SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 
@@ -333,18 +316,6 @@ export const MAX_SHELLS = 8;
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-/** How many commits, and files, a workspace's changes list (V29d). */
-const MAX_LISTED_COMMITS = 100;
-const MAX_LISTED_FILES = 300;
-
-/** A file's lines as the changes list them: none for a binary file. */
-const linesOf = (count: { added: number | null; removed: number | null } | undefined) =>
-  count === undefined
-    ? {}
-    : count.added === null || count.removed === null
-      ? { binary: true as const }
-      : { added: count.added, removed: count.removed };
-
 /** Workspaces of `repo`, kept beside its reviews (`symbiote/workspaces/`, else Symbiote's cache).
  * */
 export function workspaces(
@@ -394,141 +365,15 @@ export function workspaces(
       return path;
     }
   };
-  /** The folder holding `symbiote/` (or its stand-in in the cache): the agent may read it. */
-  const symbioteFolder = (where: ReviewPlace) => dirname(where.dir);
-  const workspacesDir = (where: ReviewPlace) => join(symbioteFolder(where), 'workspaces');
+
   /** `workspaces.worktrees` is relative to the checkout that holds `symbiote/`. */
   const mainRoot = (where: ReviewPlace) =>
     where.place === 'repository' ? dirname(symbioteFolder(where)) : repo.root;
-  /** Where a workspace's documents go (V40): beside its record, the branch's slashes as folders. */
-  const documentsDir = (where: ReviewPlace, branch: string) =>
-    join(symbioteFolder(where), 'documents', ...branch.split('/'));
+
   /** Files uploaded for a workspace about to start (V40), each by its ID. */
   const uploads = join(cacheDir, 'state', repo.id, 'uploads');
   /** Commits' files as VS Code's diffs are given them (V43, decision 288), by commit and path. */
   const revisions = join(cacheDir, 'state', repo.id, 'revisions');
-
-  /**
-   * A commit's file kept for a diff (V43): written the first time, as a checkout in `checkout`
-   * writes it, and read-only; null when the commit has no file there.
-   */
-  async function keptFile(checkout: GitRepo, sha: string, path: string): Promise<string | null> {
-    const file = join(revisions, sha, ...path.split('/'));
-    if (existsSync(file)) return file;
-    const bytes = await fileForCheckout(checkout, sha, path);
-    return bytes && keep(file, bytes);
-  }
-
-  const isFile = (path: string) =>
-    stat(path).then(
-      (s) => s.isFile(),
-      () => false,
-    );
-
-  /** An empty file by that name: the side of a diff with no file. */
-  const emptyFile = (path: string) =>
-    keep(join(revisions, 'empty', ...path.split('/')), new Uint8Array());
-
-  /** Writes a read-only file once: to a name of its own, then renamed (two clicks at once). */
-  async function keep(file: string, bytes: Uint8Array): Promise<string> {
-    if (existsSync(file)) return file;
-    await mkdir(dirname(file), { recursive: true });
-    const temporary = `${file}.${randomBytes(4).toString('hex')}`;
-    await writeFile(temporary, bytes, { mode: 0o444 });
-    try {
-      await rename(temporary, file);
-    } catch (error) {
-      // Windows does not rename onto a file: the other click's copy is the same.
-      await rm(temporary, { force: true });
-      if (!existsSync(file)) throw error;
-    }
-    return file;
-  }
-
-  /** Removes the uploads older than a week; only files Symbiote named. */
-  async function sweepUploads(): Promise<void> {
-    const oldest = now().getTime() - UPLOADS_KEPT_MS;
-    for (const name of await readdir(uploads).catch(() => [] as string[])) {
-      if (!UPLOAD.test(name)) continue;
-      const file = join(uploads, name);
-      const info = await stat(file).catch(() => null);
-      if (info && info.mtimeMs < oldest) await rm(file, { force: true });
-    }
-  }
-
-  /**
-   * A start's documents, checked before anything is made (V40): every upload still kept, none
-   * twice, at most 20 and 100 MB in all; each with the name it will have.
-   */
-  async function uploadsOf(
-    asked: WorkspaceRequest['documents'],
-  ): Promise<{ from: string; name: string }[]> {
-    if (!asked || asked.length === 0) return [];
-    if (asked.length > MAX_DOCUMENTS) {
-      throw new WorkspaceRefused(`at most ${MAX_DOCUMENTS} files with a brief`, 400);
-    }
-    const seen = new Set<string>();
-    const kept: { from: string; name: string }[] = [];
-    let total = 0;
-    for (const { id, name } of asked) {
-      if (!UPLOAD.test(id)) throw new WorkspaceRefused(`not a document: ${id}`, 400);
-      const named = documentName(name);
-      if (seen.has(id)) throw new WorkspaceRefused(`${named} is given twice`, 400);
-      seen.add(id);
-      const from = join(uploads, id);
-      const info = await stat(from).catch(() => null);
-      if (!info?.isFile()) {
-        throw new WorkspaceRefused(`${named} is no longer kept: add it again`, 400);
-      }
-      total += info.size;
-      kept.push({ from, name: named });
-    }
-    if (total > MAX_DOCUMENTS_BYTES) {
-      throw new WorkspaceRefused(
-        `at most ${MAX_DOCUMENTS_BYTES / 2 ** 20} MB of files with a brief`,
-        400,
-      );
-    }
-    return kept;
-  }
-
-  /** Moves a start's uploads into `folder` under their names, a taken one numbered; the names. */
-  async function placeDocuments(
-    folder: string,
-    files: { from: string; name: string }[],
-  ): Promise<string[]> {
-    await mkdir(folder, { recursive: true });
-    const taken = new Set<string>();
-    const names: string[] = [];
-    for (const { from, name } of files) {
-      const to = join(folder, freeName(name, taken));
-      try {
-        await rename(from, to);
-      } catch (error) {
-        // The cache on another file system than the repository.
-        if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error;
-        await copyFile(from, to, fsConstants.COPYFILE_EXCL);
-        await rm(from, { force: true });
-      }
-      names.push(basename(to));
-    }
-    return names;
-  }
-
-  /** Removes a workspace's documents, and the folders left empty above them up to `documents/`. */
-  async function removeDocuments(where: ReviewPlace, branch: string): Promise<void> {
-    const top = join(symbioteFolder(where), 'documents');
-    let folder = documentsDir(where, branch);
-    await rm(folder, { recursive: true, force: true });
-    while (folder !== top && folder.startsWith(top)) {
-      folder = dirname(folder);
-      const removed = await rmdir(folder).then(
-        () => true,
-        () => false,
-      );
-      if (!removed) break;
-    }
-  }
 
   /**
    * Symbiote's settings file, written when its text differs (Symbiote moved) or it is gone: a
@@ -728,64 +573,6 @@ export function workspaces(
     if (fork && main && (fork !== tip || fork === workspace.base))
       return { base: fork, since: main };
     return { base: workspace.base };
-  }
-
-  /** A branch's commits from `base` to `tip`, and the files they change with their lines. */
-  async function readBranchChanges(
-    base: string,
-    tip: string,
-  ): Promise<Pick<WorkspaceChanges, 'commits' | 'files'>> {
-    const [between, changed, counts] = await Promise.all([
-      commitsBetween(repo, base, tip, MAX_LISTED_COMMITS),
-      listChangedFiles(repo, base, tip),
-      listLineCounts(repo, base, tip),
-    ]);
-    const commits = await commitDetails(repo, between.shas);
-    const lines = new Map(counts.map((count) => [count.path, count]));
-    let added = 0;
-    let removed = 0;
-    for (const count of counts) {
-      added += count.added ?? 0;
-      removed += count.removed ?? 0;
-    }
-    return {
-      commits: {
-        count: between.count,
-        listed: commits.map(({ sha, subject, author, date }) => ({ sha, subject, author, date })),
-      },
-      files: {
-        count: changed.length,
-        added,
-        removed,
-        listed: changed
-          .slice(0, MAX_LISTED_FILES)
-          .map(({ status, path, previousPath }): WorkspaceFileChange => ({
-            status,
-            path,
-            ...(previousPath ? { previousPath } : {}),
-            ...linesOf(lines.get(path)),
-          })),
-      },
-    };
-  }
-
-  /** The files a worktree has not committed, with the lines of those git tracks. */
-  async function worktreeChanges(folder: string): Promise<WorkspaceChanges['uncommitted']> {
-    const worktree = { ...repo, root: folder };
-    const [files, counts] = await Promise.all([
-      worktreeStatus(folder),
-      listLineCounts(worktree, 'HEAD').catch(() => []),
-    ]);
-    const lines = new Map(counts.map((count) => [count.path, count]));
-    return {
-      count: files.length,
-      listed: files.slice(0, MAX_LISTED_FILES).map(({ status, path, previousPath }) => ({
-        status,
-        path,
-        ...(previousPath ? { previousPath } : {}),
-        ...(status === 'untracked' ? {} : linesOf(lines.get(path))),
-      })),
-    };
   }
 
   /** The agent of `kind`, when it is installed. */
@@ -1317,7 +1104,7 @@ export function workspaces(
       }
       const model = await modelFor(agent, request.model);
       const effort = await effortFor(agent, request.effort, model);
-      const documents = await uploadsOf(request.documents);
+      const documents = await uploadsOf(uploads, request.documents);
       const refs = await listRefs(repo);
       const problem = await branchNameProblem(repo, request.branch, refs);
       if (problem) {
@@ -1432,15 +1219,8 @@ export function workspaces(
       await rename(temp, draftFile);
     },
 
-    async saveDocument(name, bytes) {
-      if (bytes.length > MAX_DOCUMENT_BYTES) {
-        throw new WorkspaceRefused(`a document of at most ${MAX_DOCUMENT_BYTES / 2 ** 20} MB`, 413);
-      }
-      await mkdir(uploads, { recursive: true, mode: 0o700 });
-      await sweepUploads();
-      const id = randomBytes(16).toString('hex');
-      await writeFile(join(uploads, id), bytes, { mode: 0o600, flag: 'wx' });
-      return { id, name: documentName(name), size: bytes.length };
+    saveDocument(name, bytes) {
+      return saveUpload(uploads, name, bytes, now);
     },
 
     async check(at) {
@@ -1522,15 +1302,15 @@ export function workspaces(
         if (!worktree) {
           throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
         }
-        left = await keptFile(worktree, await resolveCommit(worktree, 'HEAD'), before);
+        left = await keptFile(revisions, worktree, await resolveCommit(worktree, 'HEAD'), before);
         right = (await isFile(own)) ? own : null;
       } else {
         const refs = await listRefs(repo);
         const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha;
         if (!tip) throw new WorkspaceRefused(`its branch ${workspace.branch} is gone`, 409);
         const { base } = await changesBase(workspace, refs, tip);
-        left = await keptFile(worktree ?? repo, base, before);
-        right = await keptFile(worktree ?? repo, tip, file.path);
+        left = await keptFile(revisions, worktree ?? repo, base, before);
+        right = await keptFile(revisions, worktree ?? repo, tip, file.path);
         // The worktree's own file when it is the tip's (decision 287): editable, with VS Code's
         // language features.
         if (
@@ -1544,8 +1324,8 @@ export function workspaces(
       if (!left && !right) throw new WorkspaceRefused(`${file.path} is in neither side`, 409);
       if (!openFolder) throw new WorkspaceRefused('no editor to open it in', 409);
       const result = await openFolder(worktree ? workspace.worktree : repo.root, {
-        left: left ?? (await emptyFile(before)),
-        right: right ?? (await emptyFile(file.path)),
+        left: left ?? (await emptyFile(revisions, before)),
+        right: right ?? (await emptyFile(revisions, file.path)),
       });
       if (!result.opened) throw new WorkspaceRefused(result.message, 502);
     },
@@ -1555,7 +1335,7 @@ export function workspaces(
       const refs = await listRefs(repo);
       const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha ?? null;
       const uncommitted = existsSync(workspace.worktree)
-        ? await worktreeChanges(workspace.worktree)
+        ? await worktreeChanges(repo, workspace.worktree)
         : null;
       const none = {
         commits: { count: 0, listed: [] },
@@ -1568,7 +1348,7 @@ export function workspaces(
       const key = `${where.base}:${tip}`;
       let kept = branchChanges.get(branch);
       if (kept?.key !== key) {
-        kept = { key, read: readBranchChanges(where.base, tip) };
+        kept = { key, read: readBranchChanges(repo, where.base, tip) };
         branchChanges.set(branch, kept);
         kept.read.catch(() => branchChanges.delete(branch));
       }

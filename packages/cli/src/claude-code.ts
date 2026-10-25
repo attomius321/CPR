@@ -145,7 +145,6 @@ const MODEL_ARGS = [
   '--tools',
   '',
 ];
-
 const INITIALIZE = `${JSON.stringify({
   type: 'control_request',
   request_id: 'symbiote-models',
