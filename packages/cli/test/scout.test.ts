@@ -16,6 +16,7 @@ import {
   scoutState,
 } from '../src/scout.js';
 import { scribe } from '../src/scribe.js';
+import { viewFile } from '../src/mcp-bridge.js';
 import type { Terminals } from '../src/terminal.js';
 import { claudeCode, type AgentSession, type ClaudeCode } from '../src/claude-code.js';
 import type { Run } from '../src/programs.js';
@@ -51,6 +52,8 @@ function fresh(): TestRepo {
 const NOW = new Date('2026-10-22T09:00:00Z');
 /** Where Symbiote's gate would be installed. */
 const GATE = '/opt/symbiote/dist/scout-hook.js';
+/** Where Symbiote's MCP bridge would be installed (MC1). */
+const BRIDGE = '/opt/symbiote/dist/mcp-stdio.js';
 
 /**
  * A fake Claude Code: the person's own interactive session in the checkout, newer than anything
@@ -192,6 +195,7 @@ const service = async (
     now: () => NOW,
     env: { PATH: '/usr/bin' },
     gate: GATE,
+    bridge: BRIDGE,
     node: '/usr/bin/node',
     ...(terminals ? { terminals } : {}),
   });
@@ -252,6 +256,25 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
     await claude.startPageAgent(request);
     expect(calls[0]?.slice(-3)).toEqual(['--effort', 'low', 'Q']);
     expect(calls[1]).not.toContain('--effort');
+  });
+
+  it("gives Symbiote's MCP server, and no other, when asked (MC1)", async () => {
+    const calls: string[][] = [];
+    const run: Run = (_command, args) => {
+      calls.push(args);
+      return Promise.resolve({ code: 0, stdout: '', stderr: '' });
+    };
+    const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
+    const request = { cwd: '/repo', name: 'Scout', prompt: 'Q', settings: '/s', ...READ_ONLY };
+    await claude.startPageAgent({ ...request, mcpConfig: '/repo/symbiote/scout-mcp.json' });
+    const at = calls[0]?.indexOf('--strict-mcp-config') ?? -1;
+    expect(calls[0]?.slice(at, at + 3)).toEqual([
+      '--strict-mcp-config',
+      '--mcp-config',
+      '/repo/symbiote/scout-mcp.json',
+    ]);
+    await claude.startPageAgent(request);
+    expect(calls[1]).not.toContain('--mcp-config');
   });
 
   it("says Claude Code's words when it does not start", async () => {
@@ -538,7 +561,7 @@ describe('scout (V35)', () => {
     const s = await service(repo, { codex, terminals });
     const state = await s.ask({ text: 'Where is it?' });
     const start = server.calls.find((c) => c.method === 'thread/start');
-    expect(start?.params).toEqual({
+    expect(start?.params).toMatchObject({
       cwd: repo.root,
       sandbox: 'read-only',
       approvalPolicy: 'never',
@@ -1000,5 +1023,116 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
     expect(JSON.parse(readFileSync(config, 'utf8'))).toEqual({ scout: { effort: 'low' } });
     await s.ask({ text: 'A skill' });
     expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('effort');
+  });
+});
+
+describe("Scout with Symbiote's tools (MC1, decisions 358, 365)", () => {
+  const viewOf = async (repo: TestRepo) => viewFile(cache, (await openRepo(repo.root)).commonDir);
+  const mcpFile = (repo: TestRepo) => join(repo.root, 'symbiote', 'scout-mcp.json');
+
+  it("starts Claude Code with Symbiote's server and no other, its file written before each wake", async () => {
+    const repo = fresh();
+    const { claude, startPageAgent, set } = fakeClaude(repo.root);
+    const { terminals } = fakeTerminals();
+    const s = await service(repo, { claude, terminals });
+    await s.ask({ text: 'What needs me?' });
+    expect(startPageAgent.mock.calls[0]?.[0]).toMatchObject({
+      ...READ_ONLY,
+      mcpConfig: mcpFile(repo),
+    });
+    const expected = {
+      mcpServers: {
+        symbiote: {
+          type: 'stdio',
+          command: '/usr/bin/node',
+          args: [BRIDGE, '--as', 'scout', '--view', await viewOf(repo)],
+        },
+      },
+    };
+    expect(JSON.parse(readFileSync(mcpFile(repo), 'utf8'))).toEqual(expected);
+    // A session that wakes reads it again: a reply and a terminal write it first.
+    rmSync(mcpFile(repo));
+    set('s9', { state: 'done', status: 'idle' });
+    await s.ask({ text: 'And now?' });
+    expect(JSON.parse(readFileSync(mcpFile(repo), 'utf8'))).toEqual(expected);
+    rmSync(mcpFile(repo));
+    await s.terminal({ cols: 80, rows: 24 });
+    expect(existsSync(mcpFile(repo))).toBe(true);
+    expect(repo.git('status', '--porcelain')).toBe('');
+  });
+
+  it("starts Codex's thread with Symbiote's server, approved, waiting long; each message and its terminal carry it", async () => {
+    const repo = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    const { terminals, opening } = fakeTerminals();
+    const s = await service(repo, { codex, terminals });
+    await s.ask({ text: 'What needs me?' });
+    const config = {
+      mcp_servers: {
+        symbiote: {
+          command: '/usr/bin/node',
+          args: [BRIDGE, '--as', 'scout', '--view', await viewOf(repo)],
+          default_tools_approval_mode: 'approve',
+          tool_timeout_sec: 660,
+        },
+      },
+    };
+    expect(server.calls.find((c) => c.method === 'thread/start')?.params).toEqual({
+      cwd: repo.root,
+      sandbox: 'read-only',
+      approvalPolicy: 'never',
+      config,
+    });
+    server.reply('thread-1', 'Nothing.');
+    await s.ask({ text: 'And now?' });
+    expect(server.calls.findLast((c) => c.method === 'thread/resume')?.params).toEqual({
+      threadId: 'thread-1',
+      excludeTurns: true,
+      config,
+    });
+    server.reply('thread-1', 'Still nothing.');
+    const resumes = server.calls.filter((c) => c.method === 'thread/resume').length;
+    await s.terminal({ cols: 100, rows: 30 });
+    // Loaded with the server before Codex's terminal joins the thread.
+    const loads = server.calls.filter((c) => c.method === 'thread/resume');
+    expect(loads).toHaveLength(resumes + 1);
+    expect(loads.at(-1)?.params).toEqual({ threadId: 'thread-1', excludeTurns: true, config });
+    expect(opening[0]?.args).toEqual([
+      'resume',
+      'thread-1',
+      '--remote',
+      server.address,
+      '-C',
+      repo.root,
+    ]);
+  });
+
+  it('gives Scribe none of it', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    const s = scribe(await openRepo(repo.root), cache, {
+      claude: () => Promise.resolve(claude),
+      now: () => NOW,
+      env: { PATH: '/usr/bin' },
+      gate: GATE,
+      bridge: BRIDGE,
+      node: '/usr/bin/node',
+    });
+    await s.ask({ text: 'A skill for releases' });
+    expect(startPageAgent.mock.calls[0]?.[0]).not.toHaveProperty('mcpConfig');
+    expect(existsSync(join(repo.root, 'symbiote', 'scribe-mcp.json'))).toBe(false);
+    const server = await appServer();
+    const codexScribe = scribe(await openRepo(repo.root), cache, {
+      claude: () => Promise.resolve(null),
+      codex: () => Promise.resolve(fakeCodex(server).codex),
+      now: () => NOW,
+      bridge: BRIDGE,
+    });
+    await codexScribe.renew();
+    await codexScribe.ask({ text: 'A skill' });
+    expect(server.calls.find((c) => c.method === 'thread/start')?.params).not.toHaveProperty(
+      'config.mcp_servers',
+    );
   });
 });

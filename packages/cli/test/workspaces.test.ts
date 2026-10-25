@@ -900,6 +900,29 @@ describe('workspaces', () => {
     expect(existsSync(join(repo.root, 'symbiote', '.gitignore'))).toBe(true);
   });
 
+  it('says a workspace was started through Scout or symbiote mcp: in its record and the list (MC1)', async () => {
+    const { repo } = fresh();
+    const service_ = await service(repo, fakeClaude().claude);
+    const { workspace } = await service_.start({
+      brief: 'Fix the discount',
+      branch: 'fix/discount',
+      planFirst: true,
+      via: 'scout',
+    });
+    expect(workspace.via).toBe('scout');
+    const saved = JSON.parse(
+      readFileSync(join(repo.root, 'symbiote', 'workspaces', 'fix', 'discount.json'), 'utf8'),
+    ) as WorkspaceFile;
+    expect(saved).toMatchObject({ via: 'scout', by: 'ada@example.com' });
+    expect((await service_.list()).workspaces[0]?.via).toBe('scout');
+    const { workspace: own } = await service_.start({
+      brief: 'Another',
+      branch: 'fix/another',
+      planFirst: false,
+    });
+    expect(own).not.toHaveProperty('via');
+  });
+
   /** Where a repository's uploads wait for their workspace (V40). */
   const uploadsOf = async (repo: TestRepo) =>
     join(cache, 'state', (await openRepo(repo.root)).id, 'uploads');

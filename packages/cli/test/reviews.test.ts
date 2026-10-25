@@ -519,6 +519,25 @@ describe('finishing a branch review (V16, V17)', () => {
     );
   });
 
+  it("says a verdict was finished through Scout or symbiote mcp, on the person's Confirm (MC1)", async () => {
+    const { repo } = pushedRepo();
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    const { info } = await reviews.resolve('agent');
+    const { verdict } = await reviews.finish(
+      info,
+      { ...APPROVE, via: 'scout' },
+      reader(repo.root, info),
+    );
+    expect(verdict.via).toBe('scout');
+    const file = JSON.parse(
+      readFileSync(join(repo.root, 'symbiote', 'reviews', 'agent', 'ada@example.com.json'), 'utf8'),
+    ) as { verdicts: { via?: string }[] };
+    expect(file.verdicts.at(-1)?.via).toBe('scout');
+    // The page's own verdict says nothing of it.
+    const { verdict: own } = await reviews.finish(info, APPROVE, reader(repo.root, info));
+    expect(own).not.toHaveProperty('via');
+  });
+
   it('records an approval of the reviewed commit and where it merges; pushes nothing (V17)', async () => {
     const { repo, shas, remote } = pushedRepo();
     const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
