@@ -10,6 +10,7 @@ import {
   usageTone,
   windowLabel,
 } from './usage.js';
+import { tip } from '../ui/tip.js';
 
 /**
  * The shell's status bar (V29a): on the left the last thing said (a start, a checkout, an
@@ -31,7 +32,7 @@ function NoticeLine({ notice }: { notice: Notice }) {
     <p
       className={`statusbar-notice${notice.error ? ' error' : ''}`}
       role={notice.error ? 'alert' : 'status'}
-      title={said}
+      {...tip(said)}
     >
       {notice.text}
       {notice.warning && <span className="warning"> · {notice.warning}</span>}
@@ -118,7 +119,7 @@ function Usage() {
           <li
             key={subscription.agent}
             className={`usage-subscription${showsAge(subscription) ? ' cached' : ''}`}
-            title={title}
+            {...tip(title)}
             aria-label={title.replaceAll('\n', '. ')}
             tabIndex={0}
           >
