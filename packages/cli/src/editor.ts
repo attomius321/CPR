@@ -280,9 +280,14 @@ export function vsCodeOpener(
   };
 }
 
-/** Where in a folder VS Code opens: a file at a line (V29d, V38), or two files side by side (V43). */
+/**
+ * Where in a folder VS Code opens: a file at a line (V29d, V38), two files side by side (V43), or
+ * one file by its own path, as it is (a new file: nothing to compare it with).
+ */
 export type FolderAt =
-  { file: string; line: number; column?: number } | { left: string; right: string };
+  | { file: string; line: number; column?: number }
+  | { left: string; right: string }
+  | { path: string };
 
 /**
  * Opens a folder in the editor, or a file in it at a line (V29d) and column (V38); why not when it
@@ -295,7 +300,8 @@ export type OpenFolder = (
 
 /**
  * Opens a folder in VS Code (a workspace's worktree, V18b): its window, else a new one; with `at`,
- * a file in it at a line (V29d) and column (V38), or two files as a diff (V43).
+ * a file in it at a line (V29d) and column (V38), two files as a diff (V43), or one file as it is
+ * (`code <folder> <path>`: the folder's window, as with `--goto`).
  */
 export function vsCodeFolder(
   env: Readonly<Record<string, string | undefined>>,
@@ -310,7 +316,9 @@ export function vsCodeFolder(
         ? [where]
         : 'left' in at
           ? diffArgs(where, at.left, at.right)
-          : openArgs(where, at.file, at.line, at.column ?? 1);
+          : 'path' in at
+            ? [where, at.path]
+            : openArgs(where, at.file, at.line, at.column ?? 1);
       await runVsCode(invocation(code, args, env));
       return { opened: true };
     } catch (error) {

@@ -347,6 +347,13 @@ describe('vsCodeFolder', () => {
       '/cache/revisions/abc/src/a b.ts',
       '/work/app.worktrees/x/src/a b.ts',
     ]);
+    // One file as it is (a new one: nothing to compare), in the folder's window.
+    const path = { path: '/cache/revisions/abc/src/new.ts' };
+    await vsCodeFolder({ SYMBIOTE_CODE: fake, PATH: '' })('/work/app.worktrees/x', path);
+    expect(JSON.parse(readFileSync(log, 'utf8'))).toEqual([
+      '/work/app.worktrees/x',
+      '/cache/revisions/abc/src/new.ts',
+    ]);
     const nowhere = await vsCodeFolder({ PATH: '' }, host('linux', { PATH: '' }))('/w');
     expect(nowhere).toMatchObject({ opened: false });
     expect(!nowhere.opened && nowhere.message).toMatch(/not found.*SYMBIOTE_CODE/);

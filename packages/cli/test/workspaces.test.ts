@@ -768,7 +768,9 @@ describe('workspaces', () => {
               ? folder
               : 'left' in at
                 ? `${folder} --diff ${at.left} ${at.right}`
-                : `${folder} ${at.file}:${at.line}`,
+                : 'path' in at
+                  ? `${folder} ${at.path}`
+                  : `${folder} ${at.file}:${at.line}`,
           );
           return Promise.resolve({ opened: true });
         },
@@ -1892,10 +1894,11 @@ describe('workspaces', () => {
       return opened;
     };
 
-    // Committed: a.ts changed, c.ts added, b.ts renamed to d.ts; then c.ts changed again, not
-    // committed, and notes.md new.
+    // Committed: a.ts changed, c.ts and e.ts added, b.ts renamed to d.ts; then c.ts changed
+    // again, not committed, and notes.md new.
     await commitIn(path, 'src/a.ts', 'export const a = 1;\nexport const a2 = 2;\n');
     await commitIn(path, 'src/c.ts', 'export const c = 1;\n');
+    await commitIn(path, 'src/e.ts', 'export const e = 1;\n');
     await gitIn(path, 'mv', 'src/b.ts', 'src/d.ts');
     await gitIn(path, 'commit', '--quiet', '-m', 'Rename');
     const tip = await gitIn(path, 'rev-parse', 'HEAD');
@@ -1913,12 +1916,12 @@ describe('workspaces', () => {
     const written = statSync(left).mtimeMs;
     await open({ path: 'src/a.ts' });
     expect(statSync(left).mtimeMs).toBe(written);
-    // Added, and changed since without a commit: from nothing to the tip's, not the worktree's.
-    expect(await open({ path: 'src/c.ts' })).toEqual([
-      diff(path, copy('empty', 'src/c.ts'), copy(tip, 'src/c.ts')),
-    ]);
-    expect(readFileSync(copy('empty', 'src/c.ts'), 'utf8')).toBe('');
+    // Added: nothing to compare it with, so the file alone, as it is — the worktree's own.
+    expect(await open({ path: 'src/e.ts' })).toEqual([`${path} ${join(path, 'src', 'e.ts')}`]);
+    // Added, and changed since without a commit: the tip's, not the worktree's.
+    expect(await open({ path: 'src/c.ts' })).toEqual([`${path} ${copy(tip, 'src/c.ts')}`]);
     expect(readFileSync(copy(tip, 'src/c.ts'), 'utf8')).toBe('export const c = 1;\n');
+    expect(existsSync(copy('empty', 'src/c.ts'))).toBe(false);
     // Renamed: from its path before.
     expect(await open({ path: 'src/d.ts', previousPath: 'src/b.ts' })).toEqual([
       diff(path, copy(shas.B, 'src/b.ts'), join(path, 'src', 'd.ts')),
@@ -1928,8 +1931,14 @@ describe('workspaces', () => {
     expect(await open({ path: 'src/c.ts', uncommitted: true })).toEqual([
       diff(path, copy(tip, 'src/c.ts'), join(path, 'src', 'c.ts')),
     ]);
+    // New, untracked or staged: the worktree's file alone.
     expect(await open({ path: 'notes.md', uncommitted: true })).toEqual([
-      diff(path, copy('empty', 'notes.md'), join(path, 'notes.md')),
+      `${path} ${join(path, 'notes.md')}`,
+    ]);
+    writeFileSync(join(path, 'src', 'g.ts'), 'export const g = 1;\n');
+    await gitIn(path, 'add', 'src/g.ts');
+    expect(await open({ path: 'src/g.ts', uncommitted: true })).toEqual([
+      `${path} ${join(path, 'src', 'g.ts')}`,
     ]);
 
     // Deleted, committed (d.ts, which was b.ts) and not (a.ts); a rename staged (c.ts to f.ts).
