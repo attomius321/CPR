@@ -5,9 +5,8 @@ import { answerAsk, useAsks } from './useAsks.js';
 
 /**
  * What an agent asks the person to confirm through Symbiote's MCP (MC1, decision 361): Scout's
- * start of a workspace, a verdict, a merge, a clean-up; on every page, above the status bar. The
- * oldest first; Confirm does it, Decline does not, and after 10 minutes the agent is told nothing
- * was done.
+ * start of a workspace, a verdict, a merge, a clean-up; a bar over every page, the oldest first.
+ * Confirm does it, Decline does not, and after 10 minutes the agent is told nothing was done.
  */
 export function Asks() {
   const asks = useAsks();
@@ -17,6 +16,7 @@ export function Asks() {
   const ask = asks[0];
   useEffect(() => {
     if (!ask) return;
+    setNow(Date.now());
     const tick = setInterval(() => setNow(Date.now()), 15_000);
     return () => clearInterval(tick);
   }, [ask]);
@@ -30,16 +30,14 @@ export function Asks() {
   };
   const more = asks.length - 1;
   return (
-    <section className="ask-card" aria-label={`${askedBy(ask)} asks`} aria-live="polite">
-      <p className="ask-who">
-        <NeedsYouIcon />
-        <span>{askedBy(ask)} asks</span>
-        <span className="ask-left">{askLeft(ask, now)}</span>
+    <section className="ask-bar" aria-label={`${askedBy(ask)} asks`} aria-live="polite">
+      <NeedsYouIcon />
+      <p className="ask-words">
+        <span className="ask-who">{askedBy(ask)} asks:</span> {ask.words}
       </p>
-      <p className="ask-words">{ask.words}</p>
-      {error && <p className="ask-error error">{error}</p>}
+      <span className="ask-left">{askLeft(ask, now)}</span>
+      {more > 0 && <span className="ask-more">{more} more after it</span>}
       <div className="ask-actions">
-        {more > 0 && <span className="ask-more">{more} more after it</span>}
         <button
           type="button"
           className="button ghost"
@@ -57,6 +55,7 @@ export function Asks() {
           Confirm
         </button>
       </div>
+      {error && <p className="ask-error error">{error}</p>}
     </section>
   );
 }

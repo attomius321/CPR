@@ -9,9 +9,10 @@
 }
 
 :root[data-app] .shell {
-  grid-template-rows: 38px minmax(0, 1fr) auto;
+  grid-template-rows: 38px auto minmax(0, 1fr) auto;
   grid-template-areas:
     'title title'
+    'side asks'
     'side main'
     'status status';
 }
@@ -156,9 +157,10 @@
 @media (max-width: 899px) {
   :root[data-app] .shell {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 38px minmax(0, 1fr) auto;
+    grid-template-rows: 38px auto minmax(0, 1fr) auto;
     grid-template-areas:
       'title'
+      'asks'
       'main'
       'status';
   }

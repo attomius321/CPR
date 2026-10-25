@@ -5,8 +5,10 @@
   --sidenav-width: min(var(--sidenav-open, 240px), max(180px, calc(100vw - 480px)));
   display: grid;
   grid-template-columns: var(--sidenav-width) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
+  /* `asks` (MC1): an agent's ask over the page, empty and 0 high without one. */
+  grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
+    'side asks'
     'side main'
     'status status';
   height: 100%;
@@ -57,9 +59,10 @@
 @media (max-width: 899px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
     grid-template-areas:
       'top'
+      'asks'
       'main'
       'status';
   }

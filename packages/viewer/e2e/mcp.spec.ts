@@ -111,7 +111,7 @@ test("Scout reviews a branch, approves it and queues its merge, each on the pers
   await expect(ask(page)).toBeVisible(POLL);
   await expect(ask(page)).toHaveAccessibleName('Scout asks');
   await expect(ask(page).locator('.ask-words')).toHaveText(
-    `Approve agent at ${head.slice(0, 7)}: it is to be merged into main`,
+    `Scout asks: Approve agent at ${head.slice(0, 7)}: it is to be merged into main`,
   );
   await expect(ask(page).locator('.ask-left')).toHaveText('10 min left');
   await expect(scoutLink(page)).toHaveAttribute('title', 'Scout: waits for you (a)');
@@ -136,7 +136,7 @@ test("Scout reviews a branch, approves it and queues its merge, each on the pers
   // Its merge: declined, nothing is queued; confirmed, it is.
   const declined = scout.call('queue_merge', { branch: 'agent' });
   await expect(ask(page).locator('.ask-words')).toHaveText(
-    `Merge agent at ${head.slice(0, 7)} into main`,
+    `Scout asks: Merge agent at ${head.slice(0, 7)} into main`,
     POLL,
   );
   await ask(page).getByRole('button', { name: 'Decline' }).click();
@@ -173,7 +173,7 @@ test("an agent of the person's starts a workspace through symbiote mcp, on their
   const folder = running.repo.split('/').at(-1) ?? '';
   await expect(ask(page)).toHaveAccessibleName(`e2e-agent in ${folder} asks`, POLL);
   await expect(ask(page).locator('.ask-words')).toHaveText(
-    'Start fix/discount, "The discount", with Claude Code, plan first',
+    `e2e-agent in ${folder} asks: Start fix/discount, "The discount", with Claude Code, plan first`,
   );
   // Not Scout's: its mark stays.
   await expect(scoutLink(page)).not.toHaveAttribute('title', 'Scout: waits for you (a)');
