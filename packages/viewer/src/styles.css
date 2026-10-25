@@ -32,8 +32,9 @@
 @import './workspaces/EffortStepper.css';
 @import './workspaces/WorkspaceMark.css';
 @import './workspaces/Workspace.css';
-/* After Workspace.css: a thread's report is `.thread-text.markdown`, and `.markdown` sets its
-   white-space. */
+@import './workspaces/ActivityTab.css';
+/* After Workspace.css and ActivityTab.css: a thread's report is `.thread-text.markdown`, an
+   activity's `.activity-detail.markdown`, and `.markdown` sets their white-space. */
 @import './ui/markdown.css';
 @import './workspaces/AgentTerminal.css';
 @import './workspaces/Merge.css';

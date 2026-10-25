@@ -30,6 +30,7 @@ import {
   type AgentOption,
   type BranchMerge,
   type CheckGuess,
+  type ActivityEntry,
   type WorkspaceActivity,
   type WorkspaceAgentState,
   type WorkspaceChanges,
@@ -54,7 +55,14 @@ import {
 } from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
 import { readPrompts } from './prompts.js';
-import { codexState, serverEntries, serverLastAction, serverState, type Codex } from './codex.js';
+import {
+  codexState,
+  serverEntries,
+  serverLastAction,
+  serverState,
+  serverTools,
+  type Codex,
+} from './codex.js';
 import type { FolderAt, OpenFolder } from './editor.js';
 import {
   AGENT_NAMES,
@@ -316,6 +324,9 @@ export const MAX_SHELLS = 8;
 
 /** Turns a thread panel reads from the server: about 200 entries' worth. */
 const PANEL_TURNS = 50;
+
+/** How much of the recorded tools the Activity tab reads (V48c): ~1,000 lines. */
+const TIMELINE_TOOLS = 256 * 1024;
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -1067,6 +1078,7 @@ export function workspaces(
       const where = await place();
       const workspace = await readRecord(where, branch);
       let entries: ThreadEntry[];
+      let tools: ActivityEntry[] | null = null;
       if (onServer(workspace)) {
         // From the server (decision 155); none when it cannot be read: the state says why.
         const { read } = await viaCodex.readServer(workspace, {
@@ -1077,7 +1089,16 @@ export function workspaces(
           read instanceof Error
             ? []
             : serverEntries(read, { first: read.turns.length < PANEL_TURNS }).slice(-THREAD_LIMIT);
-      } else entries = await readThread(symbioteFolder(where), branch);
+        // Its turns' items, read in full already (V48c).
+        if (!(read instanceof Error)) {
+          tools = read.turns.flatMap((turn) => serverTools(turn, read.id, workspace.worktree));
+        }
+      } else {
+        entries = await readThread(symbioteFolder(where), branch);
+        if (workspace.agent?.activity) {
+          tools = await readActivityEnd(symbioteFolder(where), branch, TIMELINE_TOOLS);
+        }
+      }
       const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
       const verdict = review?.verdicts.at(-1);
       const shown = (path: string) =>
@@ -1087,6 +1108,7 @@ export function workspaces(
         // Claude Code's hooks record it (V18c); Symbiote's runner records Codex's (V20a), or
         // Codex's app server keeps it (V27a).
         recorded: workspace.agent?.hooks === true || workspace.agent?.kind === 'codex',
+        ...(tools ? { tools } : {}),
         ...(review && verdict
           ? {
               verdict: {

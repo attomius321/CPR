@@ -128,7 +128,7 @@ function link(key: number, href: string, children: ReactNode): ReactNode {
     : h(Fragment, { key }, children);
 }
 
-type Lexer = (text: string) => Token[];
+export type Lexer = (text: string) => Token[];
 let lexer: Lexer | null = null;
 let loading: Promise<Lexer> | null = null;
 

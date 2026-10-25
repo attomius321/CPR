@@ -2274,6 +2274,8 @@ describe('workspaces', () => {
         { at: '2026-10-15T09:00:02.000Z', session: 'session-1', kind: 'report', text: 'The plan' },
       ],
       recorded: true,
+      // Its tools recorded (V48f), none run yet.
+      tools: [],
     });
 
     // A verdict on the branch: its text for the agent, as "Copy for the agent" has it.
@@ -2465,6 +2467,12 @@ describe('workspaces', () => {
     expect(await doing()).toEqual({ tool: 'Edit', subject: 'src/a.ts' });
     await tool('PostToolUse', 't1', '2026-10-15T09:00:06.000Z');
     expect(await doing()).toEqual({ thinking: true });
+    // The thread gives them too, for the Activity tab's timeline (V48c).
+    const head = { session: 'session-1', id: 't1', tool: 'Edit', subject: 'src/a.ts' };
+    expect((await s.thread('feature/one')).tools).toEqual([
+      { at: '2026-10-15T09:00:05.000Z', ...head, phase: 'start' },
+      { at: '2026-10-15T09:00:06.000Z', ...head, phase: 'end' },
+    ]);
   });
 
   it('says nothing of what runs for an agent started before its tools were recorded (V48f)', async () => {
@@ -2477,6 +2485,7 @@ describe('workspaces', () => {
     delete saved.agent?.activity;
     writeFileSync(record, JSON.stringify(saved));
     expect((await s.list()).workspaces[0]?.activity?.doing).toBeUndefined();
+    expect(await s.thread('feature/one')).not.toHaveProperty('tools');
   });
 
   it('lists no last action for a workspace whose agent was never found (V23)', async () => {
@@ -2907,6 +2916,18 @@ describe('workspaces', () => {
       tool: 'command',
       subject: 'cargo test',
     });
+    // Its thread's turns read in full give what it ran, untimed, for the timeline (V48c).
+    expect((await s.thread('feature/csv')).tools).toEqual([
+      {
+        at: expect.any(String) as string,
+        session: id,
+        untimed: true,
+        id: expect.any(String) as string,
+        tool: 'command',
+        subject: 'cargo test',
+        phase: 'start',
+      },
+    ]);
   });
 
   it('gives Codex a message: a new turn once one finished, joined to the turn that runs, a wait stopped only when asked (V27a)', async () => {

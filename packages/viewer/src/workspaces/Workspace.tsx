@@ -14,6 +14,7 @@ import {
   type OpenedTerminal,
 } from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
+import { ActivityTab } from './ActivityTab.js';
 import { BriefTab } from './BriefTab.js';
 import { ChangesPanel } from './ChangesPanel.js';
 import { useChangesPanel } from './useChangesPanel.js';
@@ -53,8 +54,9 @@ import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorks
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
 
 /**
- * `&thread`, `&terminal`, `&brief` or `&shell=<n>`: the tab picked (V21; the brief since V29a, a
- * shell since V45); without one, the terminal where one can run, else the thread.
+ * `&thread`, `&terminal`, `&activity`, `&brief` or `&shell=<n>`: the tab picked (V21; the brief
+ * since V29a, a shell since V45, the activity since V48); without one, the terminal where one can
+ * run, else the thread.
  */
 const viewOfUrl = (): View | null => {
   const params = new URLSearchParams(window.location.search);
@@ -62,11 +64,13 @@ const viewOfUrl = (): View | null => {
     ? 'thread'
     : params.has('terminal')
       ? 'terminal'
-      : params.has('brief')
-        ? 'brief'
-        : shellOfUrl(window.location.search) !== null
-          ? 'shell'
-          : null;
+      : params.has('activity')
+        ? 'activity'
+        : params.has('brief')
+          ? 'brief'
+          : shellOfUrl(window.location.search) !== null
+            ? 'shell'
+            : null;
 };
 
 /** A workspace's shells (V45): its terminals' IDs, so read with the page's header. */
@@ -434,7 +438,12 @@ function WorkspacePanel({
       : []),
   ];
 
-  const views: AgentView[] = [...(terminals ? (['terminal'] as const) : []), 'thread', 'brief'];
+  const views: AgentView[] = [
+    ...(terminals ? (['terminal'] as const) : []),
+    'thread',
+    'activity',
+    'brief',
+  ];
 
   return (
     <section className="workspace" aria-label={`Workspace ${branch}`}>
@@ -587,6 +596,11 @@ function WorkspacePanel({
             onOpenShell={() => void openShell()}
           />
           <div className="workspace-body">
+            {view === 'activity' && (
+              <div className="workspace-activity">
+                <ActivityTab workspace={workspace} thread={thread} version={version} />
+              </div>
+            )}
             {view === 'brief' && (
               <BriefTab
                 text={workspace.brief}

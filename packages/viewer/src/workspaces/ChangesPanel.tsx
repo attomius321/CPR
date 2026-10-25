@@ -16,7 +16,7 @@ import { shortAge } from './workspaces.js';
  * A workspace's changes (V29d), read when it is picked and with every read of the list (on focus,
  * every 5 s while an agent works or waits): the last answer stays drawn while the next is read.
  */
-function useChanges(branch: string, version: unknown): WorkspaceChanges | string | null {
+export function useChanges(branch: string, version: unknown): WorkspaceChanges | string | null {
   const [changes, setChanges] = useState<WorkspaceChanges | string | null>(null);
   useEffect(() => {
     let live = true;

@@ -1,5 +1,5 @@
-// A workspace's tabs (V21, V29a, V45): the agent's (its terminal, its thread, its brief), then its
-// shells, each with a close button, and a new shell's button.
+// A workspace's tabs (V21, V29a, V45): the agent's (its terminal, its thread, its activity since
+// V48, its brief), then its shells, each with a close button, and a new shell's button.
 import type { RefObject } from 'react';
 import type { WorkspaceAgentState, WorkspaceShell } from '@symbiote/core';
 import { InTitleBar } from '../shell/TitleBar.js';
@@ -7,13 +7,14 @@ import { CloseIcon, PlusIcon } from '../ui/icons.js';
 import { MAX_SHELLS, shellName } from './shells.js';
 import { terminalHint } from './workspaces.js';
 
-export type View = 'terminal' | 'thread' | 'brief' | 'shell';
+export type View = 'terminal' | 'thread' | 'activity' | 'brief' | 'shell';
 /** The agent's own tabs: a shell's is picked by its number. */
 export type AgentView = Exclude<View, 'shell'>;
 
 const TAB_NAMES: Record<AgentView, string> = {
   terminal: 'Terminal',
   thread: 'Thread',
+  activity: 'Activity',
   brief: 'Brief',
 };
 

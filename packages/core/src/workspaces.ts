@@ -468,6 +468,11 @@ export interface WorkspaceThread {
   /** The agent was started with Symbiote's hooks: its messages are recorded (workspaces since
    * V18c). */
   recorded: boolean;
+  /**
+   * Its tools' starts and ends (V48f), the newest, oldest first, for the Activity tab's timeline;
+   * absent when they are not recorded.
+   */
+  tools?: ActivityEntry[];
   /** The branch review's last verdict and its text for the agent (V16's "Copy for the agent"). */
   verdict?: { at: string; event: VerdictEvent; head: string; text: string };
 }
