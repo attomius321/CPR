@@ -264,11 +264,19 @@ export function timelineItems(
       ...(row.counts ? { counts: { ...row.counts } } : {}),
     });
   }
-  return folded.map(({ time: _time, order: _order, paths, counts, ...item }) => ({
-    ...item,
-    ...(item.kind === 'edits'
-      ? { text: paths && paths.length > 0 ? `Edited ${files(paths)}` : 'Edited files' }
-      : {}),
-    ...(item.kind === 'reads' && counts ? { text: readsText(counts) } : {}),
+  return folded.map(({ key, kind, at, text, detail, failed, paths, counts }) => ({
+    key,
+    kind,
+    ...(at ? { at } : {}),
+    text:
+      kind === 'edits'
+        ? paths && paths.length > 0
+          ? `Edited ${files(paths)}`
+          : 'Edited files'
+        : kind === 'reads' && counts
+          ? readsText(counts)
+          : text,
+    ...(detail !== undefined ? { detail } : {}),
+    ...(failed ? { failed } : {}),
   }));
 }
