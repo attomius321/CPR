@@ -134,6 +134,7 @@ hosted.
 | Fix | a workspace's agent is told its worktree and branch are ready, and to make no other | ready for review | | [journal](journal/fix-initial-workspace-bug.md) |
 | [V48](plan/v48-workspace-activity.md) | Workspaces that show what their agents are doing, and which wait for you | ready for review | 367–377 | [journal](journal/v48-workspace-activity.md) |
 | [V53](plan/v53-workspaces-view.md) | A working agent's spinner, its mark before what it does, every workspace's kind | ready for review | 394–396 | [journal](journal/v53-workspaces-view.md) |
+| Fix | a merge at work spins; the spinner a comet; Merging first in the sidenav | ready for review | | [journal](journal/fix-merging-status.md) |
 
 ### Agents
 
