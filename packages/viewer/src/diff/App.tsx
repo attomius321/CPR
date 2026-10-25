@@ -14,7 +14,7 @@ import { Canvas } from './Canvas.js';
 import { useDiffGraph } from './useDiffGraph.js';
 import { useReview } from './useReview.js';
 import { diffTitle, revisionsLabel } from '../shell/pages.js';
-import { workspaceHref, workspaceName } from '../workspaces/workspaces.js';
+import { briefTip, workspaceHref, workspaceName } from '../workspaces/workspaces.js';
 import { DiffShell } from './DiffShell.js';
 import { Shell } from '../shell/Shell.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
@@ -38,6 +38,7 @@ import { browserStore } from './store.js';
 import { WindowButtons } from '../shell/TitleBar.js';
 import { useLayout } from '../graph/useLayout.js';
 import { loadWidths, saveWidth, withWidth, type Widths } from '../ui/widths.js';
+import { tip } from '../ui/tip.js';
 
 export function App() {
   const { state, setState, inView, retry } = useDiffGraph();
@@ -236,7 +237,7 @@ export function App() {
             {state.graph.since && (
               <label
                 className="toggle"
-                title="Leave out symbols changed the same way as in the earlier version"
+                {...tip('Leave out symbols changed the same way as in the earlier version')}
               >
                 <input
                   type="checkbox"
@@ -246,7 +247,10 @@ export function App() {
                 Only changes since {state.graph.since.sha.slice(0, 7)}
               </label>
             )}
-            <label className="toggle" title="Show only the selected symbol and its neighbours (f)">
+            <label
+              className="toggle"
+              {...tip('Show only the selected symbol and its neighbours', { keys: 'f' })}
+            >
               <input type="checkbox" checked={focus} onChange={(e) => setFocus(e.target.checked)} />
               Focus
             </label>
@@ -423,12 +427,16 @@ function ReviewOf({ review }: { review: BranchReviewInfo }) {
         ? 'no commits since your last review'
         : `${since} commit${since === 1 ? '' : 's'} since your last review`;
   return (
-    <span className="review-of" {...(note ? { title: note } : {})}>
+    <span className="review-of" {...tip(note)}>
       Review of <strong>{branch}</strong> · {after}
       {workspace && (
         <>
           {' · '}
-          <a className="review-workspace" href={workspaceHref(branch)} title={workspace.brief}>
+          <a
+            className="review-workspace"
+            href={workspaceHref(branch)}
+            {...tip(briefTip(workspace.brief))}
+          >
             Workspace: {workspaceName(workspace)}
           </a>
         </>
@@ -481,11 +489,11 @@ function SinceChip({ graph }: { graph: Graph }) {
   return (
     <span
       className="chip chip-since"
-      title={
+      {...tip(
         since.dropped.length
-          ? `No longer changed: ${since.dropped.join(', ')}`
-          : `Compared with ${since.ref}`
-      }
+          ? `No longer changed\n${since.dropped.join(', ')}`
+          : `Compared with ${since.ref}`,
+      )}
     >
       since {since.sha.slice(0, 7)}: {parts.map(([word, n]) => `${n} ${word}`).join(' · ')}
     </span>

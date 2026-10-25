@@ -1,6 +1,7 @@
 import type { Node, NodeProps } from '@xyflow/react';
 import type { CSSProperties } from 'react';
 import type { ProjectData } from './flow.js';
+import { tip } from '../ui/tip.js';
 
 /**
  * A frame around one app's or library's files. Only its name band takes the pointer, and only
@@ -16,7 +17,7 @@ export function ProjectNode({ data, width }: NodeProps<Node<ProjectData, 'projec
       // it scales a transform).
       style={{ '--frame-width': width ?? 0, '--name-length': name.length } as CSSProperties}
     >
-      <div className="project-band" title={`${name} — ${where}`}>
+      <div className="project-band" {...tip(`${name}\n${where}`)}>
         <span className="project-name">{name}</span>
         {kind && <span className="project-kind">{kind === 'application' ? 'app' : 'lib'}</span>}
         {where !== name && <span className="project-folder">{where}</span>}

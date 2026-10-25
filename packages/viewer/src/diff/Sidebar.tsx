@@ -5,6 +5,7 @@ import { pathInProject, projectOf } from '../graph/projects.js';
 import { byProject, type FileChanges } from './review.js';
 import { ReviewTab, type ReviewProps } from './ReviewTab.js';
 import { ChevronIcon, CloseIcon } from '../ui/icons.js';
+import { tip } from '../ui/tip.js';
 
 const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 } as const;
 
@@ -94,7 +95,7 @@ export function Sidebar({
   const fileList = (files: FileChanges[], of?: Project) =>
     files.map(({ file, symbols }) => (
       <div key={file} className="list-file">
-        <div className="list-file-name" title={file}>
+        <div className="list-file-name" {...tip(file)}>
           {of ? pathInProject(file, of) : file}
         </div>
         {symbols.map((node) => (
@@ -198,7 +199,9 @@ export function Sidebar({
                           className="list-project-toggle"
                           aria-expanded={!folded}
                           onClick={() => onCollapse(of.folder)}
-                          title={of.folder === '' ? 'repository root' : of.folder}
+                          {...tip(of.folder === '' ? 'Repository root' : of.folder, {
+                            code: of.folder !== '',
+                          })}
                         >
                           <span className="list-project-caret" aria-hidden="true">
                             <ChevronIcon open={!folded} />
@@ -210,18 +213,24 @@ export function Sidebar({
                             </span>
                           )}
                         </button>
-                        <span className="list-project-progress" title={`${ok} of ${all} reviewed`}>
+                        <span
+                          className="list-project-progress"
+                          {...tip(`${ok} of ${all} reviewed`, {
+                            tone: ok === all ? 'ok' : undefined,
+                          })}
+                        >
                           {ok}/{all}
                         </span>
                         <button
                           className="list-project-only"
                           aria-pressed={project === of.folder}
                           onClick={() => onProject(project === of.folder ? null : of.folder)}
-                          title={
+                          {...tip(
                             project === of.folder
-                              ? 'Show all projects (p)'
-                              : `Show only ${of.name} and what it is linked to (p)`
-                          }
+                              ? 'Show all projects'
+                              : `Show only ${of.name} and what it is linked to`,
+                            { keys: 'p' },
+                          )}
                         >
                           only
                         </button>
@@ -332,12 +341,17 @@ function ChangeItem({
         {label(node)}
       </button>
       {stale && (
-        <span className="stale-mark" title="Changed since you reviewed it">
+        <span
+          className="stale-mark"
+          role="img"
+          aria-label="Changed since you reviewed it"
+          {...tip('Changed since you reviewed it', { tone: 'warn' })}
+        >
           ↻
         </span>
       )}
       {comments !== undefined && (
-        <span className="commented" title="Comments on this symbol">
+        <span className="commented" {...tip('Comments on this symbol')}>
           💬 {comments}
         </span>
       )}

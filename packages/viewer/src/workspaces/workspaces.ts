@@ -474,6 +474,29 @@ export function workspaceName(workspace: WorkspaceSummary): string {
   return workspace.title ?? (first || workspace.branch);
 }
 
+/** How much of a brief's words its tooltip says, after its first line. */
+const BRIEF_TIP = 240;
+
+/**
+ * A brief as its tooltip says it (V54): its first line as the head, then its words as one
+ * paragraph, cut at `BRIEF_TIP` characters; without Markdown's marks (headings, emphasis, code).
+ */
+export function briefTip(brief: string): string {
+  const lines = brief
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const plain = (line: string) => line.replace(/^#{1,6}\s+/, '').replace(/\*\*|__|`/g, '');
+  const [first = '', ...rest] = lines;
+  // Section headings ("## Goal") say nothing inside one paragraph.
+  const words = rest
+    .filter((line) => !/^#{1,6}\s/.test(line))
+    .map(plain)
+    .join(' ');
+  const said = words.length > BRIEF_TIP ? `${words.slice(0, BRIEF_TIP).trimEnd()}…` : words;
+  return said ? `${plain(first)}\n${said}` : plain(first);
+}
+
 /** A link to a workspace's row in the workspaces view. */
 export const workspaceHref = (branch: string) => `/?branch=${encodeURIComponent(branch)}`;
 
