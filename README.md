@@ -747,6 +747,9 @@ while stopped, it reads the files it missed (in about a minute).
 - **The Symbiote dashboard** (its home page): crashes, errors and warnings in the time chosen,
   errors and warnings over time by process, every error with its stack, every line; filters by
   process, level and text.
+
+  ![The Symbiote dashboard in Grafana: a crash, three errors, each error on one line with its stack](docs/images/logs-dashboard.png)
+
 - **Drilldown → Logs**: the lines by level and process without a query; a click on a field filters
   by it. **Explore**: any LogQL, `{service_name="symbiote", level="error"} | json`, and live tail.
 - Without Docker: `lnav ~/.cache/symbiote/logs/` or

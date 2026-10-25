@@ -764,12 +764,13 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     }
     ctx.stdout(`${statsLine(graph)}\n`);
   }
-  ctx.stdout(`Symbiote viewer: ${url}  (Ctrl+C to stop)\n`);
-  for (const warning of first?.analysis.warnings ?? []) ctx.stderr(`warning: ${warning}\n`);
+  // Written before the address is printed: what waits for that line finds it written.
   log.log.info(
     { version, repo: repo.root, url, node: process.version, platform: process.platform },
     'view started',
   );
+  ctx.stdout(`Symbiote viewer: ${url}  (Ctrl+C to stop)\n`);
+  for (const warning of first?.analysis.warnings ?? []) ctx.stderr(`warning: ${warning}\n`);
 
   await showUntilExit(url, basename(repo.root), values, ctx);
   diffs.close();

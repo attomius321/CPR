@@ -29,10 +29,12 @@ services:
   grafana:
     image: grafana/grafana:13.2.4
     environment:
-      # Read without signing in, as a viewer (Grafana 13's only role for it): Explore, Logs
-      # Drilldown and the dashboard. It listens on this machine only. Sign in as admin to edit.
+      # Read without signing in, as a viewer (Grafana 13's only role for it). A viewer is sent
+      # back to the home page from Explore and Logs Drilldown unless viewers may edit, which
+      # saves nothing (the dashboard is provisioned). It listens on this machine only.
       GF_AUTH_ANONYMOUS_ENABLED: 'true'
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_VIEWERS_CAN_EDIT: 'true'
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/symbiote.json
       GF_ANALYTICS_REPORTING_ENABLED: 'false'
       GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'

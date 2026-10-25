@@ -296,7 +296,7 @@
             "type": "loki",
             "uid": "symbiote-loki"
           },
-          "expr": "{service_name=\"symbiote\", process=~\"$process\", level=~\"error|fatal\"} |~ \"(?i)$search\" | json | line_format \"{{.process}} · {{.msg}}{{if .err_message}} — {{.err_message}}{{end}}{{if .path}} ({{.method}} {{.path}} {{.status}}){{end}}{{if .err_stack}}\\n{{.err_stack}}{{end}}{{if .componentStack}}\\n{{.componentStack}}{{end}}{{if .stderr}}\\n{{.stderr}}{{end}}\"",
+          "expr": "{service_name=\"symbiote\", process=~\"$process\", level=~\"error|fatal\"} |~ \"(?i)$search\" | json | line_format \"{{.process}} · {{.msg}}{{if .pair}} {{.pair}}{{end}}{{if .signal}} ({{.signal}}){{else if .code}} (exit {{.code}}){{end}}{{if and .err_message (ne .err_message .msg)}} — {{.err_message}}{{end}}{{if .path}} ({{.method}} {{.path}} {{.status}}){{end}}{{if .err_stack}}\\n{{.err_stack}}{{end}}{{if .componentStack}}\\n{{.componentStack}}{{end}}{{if .stderr}}\\n{{.stderr}}{{end}}\"",
           "queryType": "range"
         }
       ],
@@ -333,7 +333,7 @@
             "type": "loki",
             "uid": "symbiote-loki"
           },
-          "expr": "{service_name=\"symbiote\", process=~\"$process\", level=~\"$level\"} |~ \"(?i)$search\" | json | line_format \"{{.process}} · {{.msg}}{{if .path}} {{.method}} {{.path}} {{.status}} {{.ms}} ms{{end}}{{if .err_message}} — {{.err_message}}{{end}}\"",
+          "expr": "{service_name=\"symbiote\", process=~\"$process\", level=~\"$level\"} |~ \"(?i)$search\" | json | line_format \"{{.process}} · {{.msg}}{{if .pair}} {{.pair}}{{end}}{{if .signal}} ({{.signal}}){{else if .code}} (exit {{.code}}){{end}}{{if and .err_message (ne .err_message .msg)}} — {{.err_message}}{{end}}{{if .path}} {{.method}} {{.path}} {{.status}} {{.ms}} ms{{end}}\"",
           "queryType": "range"
         }
       ],
