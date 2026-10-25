@@ -26,10 +26,12 @@ import {
   SidenavIcon,
   SkillsIcon,
   StoppedIcon,
+  TrashIcon,
   WaitingIcon,
   WorkingIcon,
 } from '../ui/icons.js';
-import { mergeState } from '../workspaces/merges.js';
+import { cleanUp, removeMerge } from '../workspaces/cleanup.js';
+import { mergeState, removableOnCard } from '../workspaces/merges.js';
 import { Help } from '../ui/Help.js';
 import {
   HISTORY_PAGE,
@@ -44,8 +46,8 @@ import { Resizer } from '../ui/Resizer.js';
 import { nextScoutMark, type ScoutMark } from '../scout/scout.js';
 import { asksBy } from './asks.js';
 import { useAsks } from './useAsks.js';
-import { useShell } from './shell-context.js';
-import { useWorkspaces } from '../workspaces/useWorkspaces.js';
+import { useShell, type Notice } from './shell-context.js';
+import { reloadWorkspaces, useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
   KindTag,
   StateAge,
@@ -57,6 +59,7 @@ import { respondTo } from '../workspaces/respond.js';
 import { useStarts, type StartUnderWay } from '../workspaces/starting.js';
 import { useCardMoves } from '../workspaces/useCardMoves.js';
 import {
+  cleanableOnCard,
   workspaceGroups,
   workspaceName,
   type WorkspaceGroup,
@@ -542,6 +545,7 @@ function WorkspaceCard({
   const [flash, setFlash] = useState(false);
   const { workspace } = row;
   const name = workspaceName(workspace);
+  const cleanable = cleanableOnCard(row);
 
   // Picked from elsewhere (a link, a start): in view.
   useLayoutEffect(() => {
@@ -558,7 +562,7 @@ function WorkspaceCard({
   return (
     <li
       ref={item}
-      className={`workspace-row${picked ? ' picked' : ''}${flash ? ' flash' : ''}`}
+      className={`workspace-row${picked ? ' picked' : ''}${flash ? ' flash' : ''}${cleanable ? ' removable' : ''}`}
       data-branch={workspace.branch}
       title={`${name} — ${row.next.doing ?? row.next.text}${row.next.blocked ? `: ${row.next.blocked}` : ''}`}
       onClick={onPick}
@@ -578,6 +582,15 @@ function WorkspaceCard({
         </button>
         <KindTag workspace={workspace} />
       </div>
+      {/* After the name in the Tab order, before the branch's link: where it is drawn. */}
+      {cleanable && (
+        <CardRemove
+          label={`Clean up ${name}`}
+          title="Clean up: remove its sessions, its worktree and its merged branch"
+          shown={picked}
+          run={() => cleanUp(workspace.branch)}
+        />
+      )}
       {row.next.group === 'waiting' ? (
         // What it asks, and the way to answer it (V48): the card's own action, and how long.
         <>
@@ -623,9 +636,10 @@ function MergeCard({
   onPick: () => void;
 }) {
   const { text, tone } = mergeState(entry);
+  const removable = removableOnCard(entry);
   return (
     <li
-      className={`workspace-row merge-card merge-tone-${tone}${picked ? ' picked' : ''}`}
+      className={`workspace-row merge-card merge-tone-${tone}${picked ? ' picked' : ''}${removable ? ' removable' : ''}`}
       data-merge={entry.branch}
       title={`${entry.branch} → ${entry.into}: ${text}`}
       onClick={onPick}
@@ -641,7 +655,63 @@ function MergeCard({
           {entry.branch} → {entry.into}
         </a>
       </div>
+      {removable && (
+        <CardRemove
+          label={`Remove the merge of ${entry.branch}`}
+          title={`Remove it from the queue, with its log: ${entry.into} keeps the merge`}
+          shown={picked}
+          run={() => removeMerge(entry)}
+        />
+      )}
       <p className="workspace-state">{text}</p>
     </li>
+  );
+}
+
+/**
+ * A done workspace's or a landed merge's way out of the sidenav (V55): a bin at the card's end, on
+ * its hover or focus. It runs at once, as the action does on its page; the card goes with the
+ * list's next read, the status bar saying so, or why not. The one shown gives way to History.
+ */
+function CardRemove({
+  label,
+  title,
+  shown,
+  run,
+}: {
+  label: string;
+  title: string;
+  /** Its card is the one in the main area. */
+  shown: boolean;
+  run: () => Promise<Notice>;
+}) {
+  const shell = useShell();
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      className="icon-button card-remove"
+      aria-label={label}
+      title={title}
+      disabled={busy}
+      onClick={(event) => {
+        event.stopPropagation();
+        setBusy(true);
+        run()
+          .then(
+            (notice) => {
+              shell?.notify(notice);
+              if (shown) shell?.navigate({ page: 'history' });
+            },
+            (e: unknown) => shell?.notify({ text: (e as Error).message, error: true }),
+          )
+          .finally(() => {
+            setBusy(false);
+            void reloadWorkspaces();
+          });
+      }}
+    >
+      <TrashIcon />
+    </button>
   );
 }
