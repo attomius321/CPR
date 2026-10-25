@@ -10,6 +10,8 @@ import type {
 
 /** What Scout's agent is doing, as its page and the sidenav say it. */
 export type ScoutStateName =
+  /** Started with no question (V50): its terminal takes the first. */
+  | 'ready'
   | 'working'
   | 'answered'
   /** Its turn waits on the person: a dialog in its terminal. */
@@ -51,7 +53,10 @@ export interface ScoutState {
   /** The agents installed, the one Scout runs unless another is picked first. */
   agents: ScoutAgent[];
   conversation: ScoutConversation | null;
-  /** Whether its terminal can run (V21); absent until there is a conversation. */
+  /**
+   * Whether its terminal can run (V21), with no conversation too (V50): the page shows it, or the
+   * question box. Absent where Symbiote runs no terminals.
+   */
   terminal?: TerminalAvailability;
 }
 
@@ -66,6 +71,28 @@ export interface ScoutAsk {
    * agent's own.
    */
   effort?: string | null;
+}
+
+/**
+ * `POST /api/scout/open` (V50): a conversation with no question, its terminal taking the first;
+ * the one there is when it runs.
+ */
+export interface ScoutOpen {
+  /** The agent to start; the default one when absent. */
+  agent?: AgentKind;
+  /** Its model, one the agent lists; null: its default. Absent: the project's (`scout.model`). */
+  model?: string | null;
+  /** Its level on that model; null: the agent's own. Absent: the project's (`scout.effort`). */
+  effort?: string | null;
+}
+
+/**
+ * `POST /api/scout/switch` (V50, decision 384): the conversation goes on on another model, at
+ * another level, its turns kept; null for each is the agent's own.
+ */
+export interface ScoutSwitch {
+  model: string | null;
+  effort: string | null;
 }
 
 /**

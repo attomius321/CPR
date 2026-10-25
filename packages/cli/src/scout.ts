@@ -4,8 +4,10 @@
 // Since MC1 both have Symbiote's MCP server (`mcp-bridge.ts`), its only way to act: workspaces,
 // reviews, merges, the asked ones on the person's Confirm. Its record is `symbiote/scout.json`: the
 // session's ID, by which it is found (never by its folder, where the person's own sessions run too,
-// decision 239). Scribe (V41, `scribe.ts`) is the same conversation with its own name, tools, gate
-// and prompt (`pageAgent`), and no MCP server.
+// decision 239). Since V50 Scout's conversation starts with no question, its instructions its
+// system prompt and its terminal taking the first; a model or a level picked on its page moves it
+// to a copy, its turns kept. Scribe (V41, `scribe.ts`) is the same conversation with its own name,
+// tools, gate and prompt (`pageAgent`), no MCP server, and a request to start it.
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,8 +26,10 @@ import {
   type ScoutEffortChange,
   type ScoutEfforts,
   type ScoutModelChange,
+  type ScoutOpen,
   type ScoutState,
   type ScoutStateName,
+  type ScoutSwitch,
   type ScoutTerminalRequest,
   type WorkspaceTerminalOpened,
 } from '@symbiote/core';
@@ -73,8 +77,14 @@ export interface PageAgentSpec {
   gateArgs(root: string): string[];
   /** Claude Code's settings besides the gate (Scribe: its edits in the checkout). */
   claudeSettings?: Readonly<Record<string, unknown>>;
-  /** Its first prompt: the project's text, the person's words in it. */
+  /** Its first prompt: the person's words; in the project's text when it has no `instructions`. */
   prompt(root: string, text: string): string;
+  /**
+   * Its system prompt (Scout, V50, decision 383): Claude Code's appended one, Codex's developer
+   * instructions. With it a conversation starts with no question (`open`), its terminal taking
+   * the first; without it (Scribe) a conversation starts with what the person asks.
+   */
+  instructions?(root: string): string;
   /**
    * Where Codex's thread runs: in the checkout read-only (Scout), or writing in that folder and
    * nowhere else (Scribe, its skills; decision 275).
@@ -102,7 +112,9 @@ const SCOUT: PageAgentSpec = {
   tools: ['Read', 'Grep', 'Glob', 'Bash'],
   permissionMode: 'dontAsk',
   gateArgs: () => [],
-  prompt: (root, text) => fillPrompt(readPrompts(root).text.scout, { question: text }),
+  prompt: (_root, text) => text,
+  // A project's text from before V50 may still hold {question}: filled with nothing.
+  instructions: (root) => fillPrompt(readPrompts(root).text.scout, { question: '' }).trimEnd(),
   codex: (root) => ({ cwd: root, writes: false }),
   effort: { read: (root) => readWorkspaceConfig(root).scoutEffort, key: ['scout', 'effort'] },
   model: { read: (root) => readWorkspaceConfig(root).scoutModel, key: ['scout', 'model'] },
@@ -141,6 +153,16 @@ export interface Scout {
   state(): Promise<ScoutState>;
   /** Starts a conversation with the question, or continues the one there is. */
   ask(request: ScoutAsk): Promise<ScoutState>;
+  /**
+   * Starts a conversation with no question (V50), its terminal taking the first; the one there is
+   * when it runs. Scout's only: Scribe starts with a request.
+   */
+  open(request: ScoutOpen): Promise<ScoutState>;
+  /**
+   * Moves the conversation to another model and level (V50, decision 384), its turns kept: a copy
+   * of Claude Code's session, a fork of Codex's thread; the original removed, archived.
+   */
+  switch(request: ScoutSwitch): Promise<ScoutState>;
   /** Ends the conversation: its session stopped and removed (Codex: archived), the record gone. */
   renew(): Promise<ScoutState>;
   /** Opens the conversation in a terminal (V21): `claude attach`, or Codex's TUI on its thread. */
@@ -221,14 +243,16 @@ export function scoutState(session: AgentSession | undefined): ScoutStateName {
   if (state === 'working') {
     return status === 'idle' ? 'interrupted' : status === undefined ? 'stopped' : 'working';
   }
+  // Started with no prompt, it waits for its first (V50 spike: `blocked`, nothing named).
+  if (state === 'blocked' && status === 'idle' && !waitingFor) return 'ready';
   return waitingFor ? 'needs-you' : 'answered';
 }
 
-/** Codex's thread in Scout's words. */
-function threadState(status: string, waiting: string | undefined): ScoutStateName {
+/** Codex's thread in Scout's words: one with no turn was opened and asked nothing yet (V50). */
+function threadState(status: string, waiting: string | undefined, turns: number): ScoutStateName {
   if (status === 'active') return waiting ? 'needs-you' : 'working';
   if (status === 'systemError') return 'failed';
-  return 'answered';
+  return turns === 0 ? 'ready' : 'answered';
 }
 
 /** An effort level's word (V30b): what a request may name, before the agent's list is read. */
@@ -446,15 +470,19 @@ export function pageAgent(
   }
 
   /**
-   * The model an agent's new conversation runs on (V47) — the project's when it lists it, else
-   * Claude Code's `agent.model` — and the levels it takes there; the default's without one.
+   * The model an agent's new conversation runs on (V47) — `asked` (V50; null: none), else the
+   * project's when it lists it; without one, Claude Code's `agent.model` — and the levels it takes
+   * there; the default's without one.
    */
-  async function onModel(agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex }): Promise<{
+  async function onModel(
+    agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
+    asked?: string | null,
+  ): Promise<{
     model: string | undefined;
     models: AgentModels | null;
     fallback: AgentEfforts | null;
   }> {
-    const picked = await modelFor(agent);
+    const picked = asked === undefined ? await modelFor(agent) : (asked ?? undefined);
     const model = picked ?? (agent.kind === 'claude' ? readWorkspaceConfig(root).model : undefined);
     return {
       model,
@@ -463,22 +491,25 @@ export function pageAgent(
     };
   }
 
-  /** The levels an agent takes on the model its new conversation would start on (V30b, V47). */
-  async function levelsOf(agent: {
-    kind: AgentKind;
-    claude?: ClaudeCode;
-    codex?: Codex;
-  }): Promise<AgentEfforts | null> {
-    const { model, models, fallback } = await onModel(agent);
+  /**
+   * The levels an agent takes on the model its new conversation would start on (V30b, V47), or on
+   * the one asked (V50).
+   */
+  async function levelsOf(
+    agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
+    asked?: string | null,
+  ): Promise<AgentEfforts | null> {
+    const { model, models, fallback } = await onModel(agent, asked);
     return levelsOn(models?.models, model, fallback);
   }
 
-  /** Why `effort` cannot start a conversation of `agent`'s, on its model, or null. */
+  /** Why `effort` cannot start a conversation of `agent`'s, on its model (or `asked`), or null. */
   async function levelProblem(
     agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
     effort: string,
+    asked?: string | null,
   ): Promise<string | null> {
-    const { model, models, fallback } = await onModel(agent);
+    const { model, models, fallback } = await onModel(agent, asked);
     return effortOnProblem(effort, AGENT_NAMES[agent.kind], models?.models, model, fallback);
   }
 
@@ -490,16 +521,27 @@ export function pageAgent(
   async function levelFor(
     agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
     effort: string | null | undefined,
+    asked?: string | null,
   ): Promise<string | undefined> {
     if (effort === null) return undefined;
     if (effort === undefined) {
       const project = spec.effort.read(root);
       if (!project) return undefined;
-      return (await levelsOf(agent))?.levels.includes(project) ? project : undefined;
+      return (await levelsOf(agent, asked))?.levels.includes(project) ? project : undefined;
     }
-    const problem = await levelProblem(agent, effort);
+    const problem = await levelProblem(agent, effort, asked);
     if (problem) throw new ScoutRefused(problem, 400);
     return effort;
+  }
+
+  /** The model asked for (V50): checked against the agent's list; null and absent pass. */
+  async function checkModel(
+    agent: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex },
+    asked: string | null | undefined,
+  ): Promise<void> {
+    if (!asked) return;
+    const problem = modelProblem(asked, AGENT_NAMES[agent.kind], (await modelsOf(agent))?.models);
+    if (problem) throw new ScoutRefused(problem, 400);
   }
 
   async function efforts(): Promise<ScoutEfforts> {
@@ -565,7 +607,11 @@ export function pageAgent(
         turns: 1,
         items: 'summary',
       });
-      return { ...head, state: threadState(read.status, read.waiting), id: thread };
+      return {
+        ...head,
+        state: threadState(read.status, read.waiting, read.turns.length),
+        id: thread,
+      };
     } catch (error) {
       return unknown((error as Error).message);
     }
@@ -578,18 +624,60 @@ export function pageAgent(
       kind: a.kind,
       command: commandOf(a),
     }));
-    if (!record) return { checkout: root, agents, conversation: null };
-    const conversation = await conversationOf(record);
     const terminal = await terminals?.available();
+    const conversation = record ? await conversationOf(record) : null;
     return { checkout: root, agents, conversation, ...(terminal ? { terminal } : {}) };
   }
 
-  /** Starts a conversation with `text` as the question, at the level asked (`levelFor`). */
+  /**
+   * Starts Claude Code's session for a start or a move (`from`), and finds the one it made: the
+   * new background session named `name` in the checkout (decision 239).
+   */
+  async function claudeStart(
+    where: ReviewPlace,
+    agent: ClaudeCode,
+    request: { prompt?: string; from?: string; effort?: string; model?: string },
+  ): Promise<AgentSession & { id: string }> {
+    // Copied: what Claude Code lists after the start is told from what it listed before.
+    const before = [...((await agent.sessions()) ?? [])];
+    const settings = await settingsFile(where);
+    const mcpConfig = await mcpFile(where);
+    const instructions = spec.instructions?.(root);
+    const result = await agent.startPageAgent({
+      cwd: root,
+      name,
+      ...request,
+      ...(instructions ? { instructions } : {}),
+      settings,
+      ...(mcpConfig ? { mcpConfig } : {}),
+      tools: spec.tools,
+      permissionMode: spec.permissionMode,
+    });
+    if (!result.ok) throw new ScoutRefused(result.error, 502);
+    const session = newScoutSession(before, (await agent.sessions()) ?? [], root, real, name);
+    if (!session?.id) {
+      throw new ScoutRefused(
+        `Claude Code started no session Symbiote can find: \`claude agents\` lists none named ${name} in ${root}`,
+        502,
+      );
+    }
+    return { ...session, id: session.id };
+  }
+
+  /** How Codex's thread is sandboxed: read-only (Scout), or writing in its folder (Scribe). */
+  const codexSandbox = () =>
+    codexAt.writes ? { confined: true as const } : { readOnly: true as const };
+
+  /**
+   * Starts a conversation with `text` as the question (none: it waits for one, V50), at the level
+   * asked (`levelFor`), on the model asked (`asked`; absent: the project's).
+   */
   async function start(
     where: ReviewPlace,
-    text: string,
+    text: string | undefined,
     kind: AgentKind | undefined,
     effort: string | null | undefined,
+    asked?: string | null,
   ) {
     const agents = await installed();
     const agent = kind ? agents.find((a) => a.kind === kind) : agents[0];
@@ -601,41 +689,16 @@ export function pageAgent(
         409,
       );
     }
-    const level = await levelFor(agent, effort);
-    const model = await modelFor(agent);
+    await checkModel(agent, asked);
+    const level = await levelFor(agent, effort, asked);
+    const model = asked === undefined ? await modelFor(agent) : (asked ?? undefined);
     const at = { ...(level ? { effort: level } : {}), ...(model ? { model } : {}) };
-    const prompt = spec.prompt(root, text);
+    const first = text === undefined ? {} : { prompt: spec.prompt(root, text) };
+    const instructions = spec.instructions?.(root);
     const started = now().toISOString();
     await spec.prepare?.(root);
     if (agent.claude) {
-      // Copied: what Claude Code lists after the start is told from what it listed before.
-      const before = [...((await agent.claude.sessions()) ?? [])];
-      const settings = await settingsFile(where);
-      const mcpConfig = await mcpFile(where);
-      const result = await agent.claude.startPageAgent({
-        cwd: root,
-        name,
-        prompt,
-        settings,
-        ...(mcpConfig ? { mcpConfig } : {}),
-        tools: spec.tools,
-        permissionMode: spec.permissionMode,
-        ...at,
-      });
-      if (!result.ok) throw new ScoutRefused(result.error, 502);
-      const session = newScoutSession(
-        before,
-        (await agent.claude.sessions()) ?? [],
-        root,
-        real,
-        name,
-      );
-      if (!session?.id) {
-        throw new ScoutRefused(
-          `Claude Code started no session Symbiote can find: \`claude agents\` lists none named ${name} in ${root}`,
-          502,
-        );
-      }
+      const session = await claudeStart(where, agent.claude, { ...first, ...at });
       const record: ScoutRecord = {
         about: spec.about,
         agent: 'claude',
@@ -659,8 +722,9 @@ export function pageAgent(
         cwd: codexAt.cwd,
         writable: [],
         name,
-        prompt,
-        ...(codexAt.writes ? { confined: true as const } : { readOnly: true as const }),
+        ...first,
+        ...(instructions ? { instructions } : {}),
+        ...codexSandbox(),
         ...(codexTools ? { config: codexTools } : {}),
         ...at,
       });
@@ -748,6 +812,111 @@ export function pageAgent(
       return state();
     },
 
+    async open({ agent, model, effort }) {
+      if (!spec.instructions) throw new ScoutRefused(`${name} starts with what you ask it`, 409);
+      if (agent !== undefined && !AGENT_KINDS.includes(agent)) {
+        throw new ScoutRefused(`unknown agent: ${String(agent)}`, 400);
+      }
+      if (effort !== undefined && effort !== null && !isLevel(effort)) {
+        throw new ScoutRefused(effortWordProblem(effort), 400);
+      }
+      if (model !== undefined && model !== null && !MODEL_ID.test(model)) {
+        throw new ScoutRefused(modelWordProblem(model), 400);
+      }
+      const where = await place();
+      const record = await readRecord(where);
+      // One that runs is kept: two pages opening Scout share it.
+      const gone = record ? (await conversationOf(record)).state === 'gone' : false;
+      if (!record || gone) await start(where, undefined, agent, effort, model);
+      return state();
+    },
+
+    async switch({ model, effort }) {
+      if (effort !== null && !isLevel(effort)) {
+        throw new ScoutRefused(effortWordProblem(effort), 400);
+      }
+      if (model !== null && !MODEL_ID.test(model)) {
+        throw new ScoutRefused(modelWordProblem(model), 400);
+      }
+      const where = await place();
+      const record = await readRecord(where);
+      if (!record) throw new ScoutRefused(`${name} has no conversation: open it first`, 409);
+      const now = (await conversationOf(record)).state;
+      if (now === 'gone') {
+        throw new ScoutRefused(`${name}'s session is gone: start a new conversation`, 409);
+      }
+      // A copy made mid-turn would cut it, or leave the original running (V50 spike).
+      if (now === 'working' || now === 'needs-you') {
+        throw new ScoutRefused(
+          `${name} is answering: change its model or level after its answer`,
+          409,
+        );
+      }
+      const agent = (await installed()).find((a) => a.kind === record.agent);
+      if (!agent) throw new ScoutRefused(`${AGENT_NAMES[record.agent]} is not installed`, 409);
+      await checkModel(agent, model);
+      const level = await levelFor(agent, effort, model);
+      const at = {
+        ...(level ? { effort: level } : {}),
+        ...(model ? { model } : {}),
+      };
+      if (agent.claude) {
+        const sessions = (await agent.claude.sessions()) ?? [];
+        const session = findScoutSession(record, sessions);
+        const from = record.sessionId ?? session?.sessionId;
+        if (!session?.id || !from) {
+          throw new ScoutRefused(`${name}'s session is gone: start a new conversation`, 409);
+        }
+        if (session.status !== undefined) {
+          const stopped = await agent.claude.stop(session.id);
+          if (!stopped.ok) throw new ScoutRefused(stopped.error, 409);
+        }
+        const copy = await claudeStart(where, agent.claude, { from, ...at });
+        const moved: ScoutRecord = {
+          about: spec.about,
+          agent: 'claude',
+          id: copy.id,
+          ...(copy.sessionId ? { sessionId: copy.sessionId } : {}),
+          ...at,
+          started: record.started,
+        };
+        await put(where, recordPath(where), `${JSON.stringify(moved, null, 2)}\n`);
+        // Out of Claude Code's list; its transcript stays. A failure leaves it listed, stopped.
+        await agent.claude.remove(session.id);
+        return state();
+      }
+      const server = await serverOf(agent.codex ?? null);
+      // A fork keeps its original's model and level unless told: null is the agent's own, named.
+      const ownLevel = effort === null ? (await levelsOf(agent, model))?.default : undefined;
+      const ownModel = model === null ? (await modelsOf(agent))?.default : undefined;
+      const instructions = spec.instructions?.(root);
+      let thread: string;
+      try {
+        thread = await server.fork({
+          thread: record.thread ?? '',
+          name,
+          ...(instructions ? { instructions } : {}),
+          ...codexSandbox(),
+          ...(codexTools ? { config: codexTools } : {}),
+          ...(ownLevel ? { effort: ownLevel } : {}),
+          ...(ownModel ? { model: ownModel } : {}),
+          ...at,
+        });
+      } catch (error) {
+        throw new ScoutRefused(`Codex's app server: ${(error as Error).message}`, 502);
+      }
+      const moved: ScoutRecord = {
+        about: spec.about,
+        agent: 'codex',
+        thread,
+        ...at,
+        started: record.started,
+      };
+      await put(where, recordPath(where), `${JSON.stringify(moved, null, 2)}\n`);
+      await server.archive(record.thread ?? '').catch(() => undefined);
+      return state();
+    },
+
     async renew() {
       const where = await place();
       const record = await readRecord(where);
@@ -829,8 +998,7 @@ export function pageAgent(
     async terminal({ cols, rows }) {
       const where = await place();
       const record = await readRecord(where);
-      if (!record)
-        throw new ScoutRefused(`${name} has no conversation: ask it something first`, 409);
+      if (!record) throw new ScoutRefused(`${name} has no conversation: open it first`, 409);
       if (!terminals) throw new ScoutRefused('no terminals here', 409);
       const can = await terminals.available();
       if (!can.available) throw new ScoutRefused(can.reason, 409);

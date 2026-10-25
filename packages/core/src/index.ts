@@ -189,8 +189,10 @@ export {
   type ScoutEffortChange,
   type ScoutEfforts,
   type ScoutModelChange,
+  type ScoutOpen,
   type ScoutState,
   type ScoutStateName,
+  type ScoutSwitch,
   type ScoutTerminalRequest,
 } from './scout.js';
 export type { McpAnswer, McpAsk, McpAsks, McpCaller, McpVia } from './mcp.js';

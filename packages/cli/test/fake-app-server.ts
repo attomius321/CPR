@@ -514,6 +514,36 @@ export async function fakeAppServer(
           sandbox: sandboxOf(thread),
         };
       },
+      // V50 spike: a new thread with the original's turns, on the options given.
+      'thread/fork': (params, socket) => {
+        const original = find(params.threadId);
+        const thread: FakeThread = {
+          ...original,
+          id: id('thread'),
+          name: null,
+          createdAt: now(),
+          updatedAt: now(),
+          sandbox: typeof params.sandbox === 'string' ? params.sandbox : original.sandbox,
+          approvalPolicy:
+            typeof params.approvalPolicy === 'string'
+              ? params.approvalPolicy
+              : original.approvalPolicy,
+          loaded: true,
+          archived: false,
+          flags: [],
+          turns: structuredClone(original.turns),
+          terminals: [],
+        };
+        threads.push(thread);
+        clients.get(socket)?.add(thread.id);
+        notify(thread.id, 'thread/started', { thread: threadOf(thread) });
+        return {
+          thread: threadOf(thread),
+          cwd: thread.cwd,
+          approvalPolicy: thread.approvalPolicy,
+          sandbox: sandboxOf(thread),
+        };
+      },
       'thread/name/set': (params) => {
         const thread = find(params.threadId);
         // Codex 0.163 names a thread only once its rollout has an item (V27a's real run).

@@ -198,18 +198,36 @@ export interface CodexServer {
    * `read-only` sandbox instead, nothing writable, approvals `never`: a command the sandbox refuses
    * fails, nobody is asked. `confined` (Scribe, V41): `workspace-write` with `cwd` its only writable
    * folder, approvals `never`: a write elsewhere fails (decision 275). On `model` when given (V47):
-   * the thread's own, kept for its turns and through a resume (V47's real run).
+   * the thread's own, kept for its turns and through a resume (V47's real run). Without `prompt`
+   * (V50): no turn, its level in its configuration, the first message typed in Codex's terminal.
    */
   start(request: {
     cwd: string;
     writable: string[];
     name: string;
-    prompt: string;
+    prompt?: string;
+    /** Its developer instructions (V50, decision 383): Scout's, before any turn. */
+    instructions?: string;
     effort?: string;
     model?: string;
     readOnly?: true;
     confined?: true;
     /** The thread's own configuration (MC1: Scout's, Symbiote's MCP server), beside Symbiote's. */
+    config?: Record<string, unknown>;
+  }): Promise<string>;
+  /**
+   * A new thread with `thread`'s turns (`thread/fork`, V50, decision 384), on `model` and at
+   * `effort` when given, read-only or confined as a start makes it, named `name`; its ID. The
+   * original stays as it was.
+   */
+  fork(request: {
+    thread: string;
+    name: string;
+    instructions?: string;
+    effort?: string;
+    model?: string;
+    readOnly?: true;
+    confined?: true;
     config?: Record<string, unknown>;
   }): Promise<string>;
   /**
@@ -449,26 +467,50 @@ export function codexServer(
 
   return {
     address,
-    start: ({ cwd, writable, name, prompt, effort, model, readOnly, confined, config }) =>
+    start: ({
+      cwd,
+      writable,
+      name,
+      prompt,
+      instructions,
+      effort,
+      model,
+      readOnly,
+      confined,
+      config,
+    }) =>
       using(async (connection) => {
-        const on = model ? { model } : {};
-        const own = config ? { config } : {};
+        // With no turn, the level is the thread's own (V50 spike: Codex's terminal showed it).
+        const configured =
+          prompt === undefined && effort ? { ...config, model_reasoning_effort: effort } : config;
+        const on = {
+          ...(model ? { model } : {}),
+          ...(instructions ? { developerInstructions: instructions } : {}),
+        };
+        const own = configured ? { config: configured } : {};
         const started = await connection.request<{ thread?: { id?: unknown } }>(
           'thread/start',
           readOnly
-            ? { cwd, ...on, sandbox: 'read-only', approvalPolicy: 'never', ...own }
+            ? { cwd, sandbox: 'read-only', approvalPolicy: 'never', ...on, ...own }
             : confined
-              ? { cwd, ...on, sandbox: 'workspace-write', approvalPolicy: 'never', ...own }
+              ? { cwd, sandbox: 'workspace-write', approvalPolicy: 'never', ...on, ...own }
               : {
                   cwd,
                   ...on,
                   sandbox: 'workspace-write',
                   approvalPolicy: 'on-request',
-                  config: { sandbox_workspace_write: { writable_roots: writable }, ...config },
+                  config: { sandbox_workspace_write: { writable_roots: writable }, ...configured },
                 },
         );
         const thread = text(started.thread?.id);
         if (!thread) throw new AppServerError('Codex started no thread');
+        if (prompt === undefined) {
+          // Codex 0.164 names an empty thread; 0.163 refuses until a message is in it.
+          await connection
+            .request('thread/name/set', { threadId: thread, name })
+            .catch(() => undefined);
+          return thread;
+        }
         const prompted = messageIn(connection, thread);
         try {
           await connection.request('turn/start', {
@@ -486,6 +528,27 @@ export function codexServer(
           .request('thread/name/set', { threadId: thread, name })
           .catch(() => undefined);
         return thread;
+      }),
+    fork: ({ thread, name, instructions, effort, model, readOnly, confined, config }) =>
+      using(async (connection) => {
+        const configured = effort ? { ...config, model_reasoning_effort: effort } : config;
+        const forked = await connection.request<{ thread?: { id?: unknown } }>('thread/fork', {
+          threadId: thread,
+          ...(readOnly
+            ? { sandbox: 'read-only', approvalPolicy: 'never' }
+            : confined
+              ? { sandbox: 'workspace-write', approvalPolicy: 'never' }
+              : {}),
+          ...(instructions ? { developerInstructions: instructions } : {}),
+          ...(model ? { model } : {}),
+          ...(configured ? { config: configured } : {}),
+        });
+        const copy = text(forked.thread?.id);
+        if (!copy) throw new AppServerError('Codex forked no thread');
+        await connection
+          .request('thread/name/set', { threadId: copy, name })
+          .catch(() => undefined);
+        return copy;
       }),
     send: ({ thread, text: words, config }) =>
       using(async (connection) => {
