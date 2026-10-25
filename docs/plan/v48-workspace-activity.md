@@ -3,8 +3,9 @@
 [Index](../PLAN.md) · [Journal](../journal/v48-workspace-activity.md)
 
 **Status:** planned (2026-10-25), on branch `feature/dynamic-agent-workspace-activity-status` (a
-workspace started in Symbiote, from `main` at `94e1feb`); waiting for the person's OK and their
-answers to the open choices at the end. Not started.
+workspace started in Symbiote, from `main` at `94e1feb`); OK'd by the person with their answers
+("1. Yes, the suggested groups by you 2. A slow pulse 3. Yes 4. Yes 5. Add now. OK"): the first
+of each open choice, and tool-level activity in V48 as V48f (designed below, after a spike).
 
 **Problem** (asked: "Ensure the interface clearly distinguishes between states such as
 Initializing, Running, Thinking, Working, Waiting for response, Review required, Completed,
@@ -53,7 +54,7 @@ lifecycle state is added for either agent.
 |---|---|---|---|---|
 | Initializing | No such state: `claude --bg` returns once started (the person's last start: 926 ms) | No such state | No such state | **Starting…** only while the page's own start request runs (decision 367) |
 | Running / Working | `working` + `busy` | runner alive, no `end` | thread `active`, nothing awaited | **Working** · time since its turn began |
-| Thinking | Not reported: the list has `state`, `status`, `waitingFor`; no hook records tool use | Not kept (`exec --json` has reasoning items; the runner drops them) | Not read (items read as `summary`) | Not shown; a follow-up names what it needs (below) |
+| Thinking | Not reported today: the list has `state`, `status`, `waitingFor`; no hook records tool use. V48f records each tool's start and end | Not kept today (`exec --json` has reasoning items; the runner drops them); V48f keeps them | Not read today (items read as `summary`); V48f reads the running turn in full | **Thinking** while it works with no tool running, **Running pnpm test**, **Editing src/auth.ts** while one runs (V48f) |
 | Waiting for response | `blocked`/`waiting` with `waitingFor`; `idle` + `working` (interrupted, a fix of 2026-10-18); a plan with "plan first" | Never: `exec` does not ask | `active` waiting on an approval or input | **Waiting for you** · what it asks · how long |
 | Review required | Finished with commits (`ready`), the review's verdicts; finished without commits (`done`) | the same | the same | **To review** |
 | Completed | Merged into the default branch | the same | the same | **Done** |
@@ -158,7 +159,53 @@ as the Thread tab follows (decision 372). From real records only:
   the others; a row opens with the style's 150 ms height transition (`interpolate-size`, Electron
   44's Chromium has it; without it, it opens at once).
 
-Not on it: tool calls, commands, files edited — Symbiote records none (the follow-up below).
+With V48f it also lists the agent's commands and the files it edited (below): a command a row
+("Ran pnpm test", marked when it failed), edits of files one after another one row ("Edited
+src/auth.ts, src/session.ts"), reads and searches between them one quiet row ("Read 6 files ·
+searched 3 times"), so hundreds of reads do not bury the messages.
+
+## V48f — what an agent is doing: its tools (asked: "5. Add now")
+
+The spike (journal): Claude Code 2.1.310's command hooks take `async: true` ("runs in background
+without blocking"), and its tool events carry `tool_name`, `tool_input` and `tool_use_id`
+(`PostToolUseFailure` also `error`, `is_interrupt`, `duration_ms`). Symbiote's hook takes a median
+29.8 ms a run here (bare Node 15.5 ms): run before and after every tool, synchronous, it would add
+~60 ms a tool call; async, nothing. Codex's app server gives a turn's items only in its `full`
+view (`commandExecution` with its command and status, `fileChange` with paths, `reasoning`,
+`mcpToolCall`, `webSearch`…): 4.6 KB and 4 ms for a short turn against 1.5 KB in `summary`.
+Codex's `exec --json` streams the same items as `item.started`/`item.completed`.
+
+- **What is kept** (decision 375): one line a tool's start or end in
+  `symbiote/activity/<branch>.jsonl`, beside `threads/` (ignored by git like the rest of
+  `symbiote/`), never in the thread: its 200-entry window keeps the messages.
+  `{ at, session, run?, id, tool, phase: 'start' | 'end', subject?, failed? }`, where `subject` is
+  what the tool works on, cut at 160 characters: a Bash command's first line, a file's path inside
+  the worktree, a search's pattern, a URL, a subagent's description; nothing else of its input.
+- **Claude Code**: `claude-settings.json` gains `PreToolUse`, `PostToolUse` and
+  `PostToolUseFailure` on every tool (`matcher: '*'`), `async: true`, running `agent-hook.js
+  <symbiote> activity`: that mode writes activity lines only, so the question hook
+  (`AskUserQuestion`, synchronous) and the thread stay as they are. The record says
+  `activity: true` for an agent started with them (as `hooks: true` says the thread is kept).
+- **Codex through Symbiote's runner**: `codex-run.ts` writes the lines from `item.started` and
+  `item.completed` (commands, file changes, MCP calls, web searches; reasoning as `thinking`).
+- **Codex on its app server**: while its thread is active, the list's read of its last turn uses
+  `full` instead of `summary` (only then); the thread panel already reads 50 turns in `full`, and
+  their items become activity lines for the timeline. Nothing is written.
+- **What the list says** (`activity.doing` on `WorkspaceActivity`): while the agent works, the
+  newest tool started this turn and not ended — paired by `id`, so an end written before its
+  start (two async hooks) still closes it — as `{ tool, subject?, since }`; none running: `{
+  thinking: true, since }` (since the last tool's end, else the turn's start). Only for an agent
+  whose tools are recorded (`activity: true`, a Codex run that wrote lines, the app server):
+  otherwise "Working" as before. Never while it waits, has finished or stopped.
+- **What the page says** (`activityText` in `workspaces.ts`): Bash "Running pnpm test", Edit
+  and MultiEdit "Editing src/auth.ts", Write "Writing src/x.ts", Read "Reading src/x.ts", Grep
+  "Searching for parseToken", Glob "Finding files: src/**/*.ts", WebFetch "Fetching docs.rs",
+  WebSearch "Searching the web: …", Task/Agent "Running a subagent: …", any other "Using <tool>";
+  Codex's commands, file changes and MCP calls in the same words; "Thinking" with no tool
+  running. On the working card's line ("Running pnpm test · 2m") and in the header. No
+  "tests started" read into a command: the command is shown as it is (decision 376).
+- **Cost**: the list reads the activity file's last 64 KB per working workspace only;
+  measured with 50 workspaces as the rest of the list.
 
 ## Motion and the small things
 
@@ -225,15 +272,20 @@ median 2.1 min for the person, against a 5 s read. Added:
 
 | Risk | Mitigation |
 |---|---|
-| A looping halo keeps the compositor busy; on WSLg the app composites in software | Measured (5.); above the budget the halo beats once after each read instead (open choice 2) |
-| Renaming the groups undoes the person's habit and V44's headings | Open choice 1; History's badges and colours unchanged |
+| A looping halo keeps the compositor busy; on WSLg the app composites in software | Measured (5.); only opacity of a pseudo-element animates; reported with the number |
+| Renaming the groups undoes the person's habit and V44's headings | The person chose the groups; History's badges and colours unchanged |
+| A Claude Code that does not know `async` rejects `claude-settings.json`, and with it the thread's hooks | 2.1.310's schema has it; checked by a real session at the end, with the person's OK (a real run spends their quota and writes in `symbiote/`) |
+| Two async hooks of one tool land out of order | Paired by `tool_use_id`; times from the hooks, entries sorted on read |
+| A tool's end never comes (a turn interrupted, a session killed) | Only the current turn's tools count, and only while the agent works |
+| `full` reads of a long Codex turn are large (commands' output) | Only while the thread is active, one turn; measured on the person's threads |
 | `fix/needs-you-workspaces-fix` changes the same tone rules (Sidenav.css, Workspace.css, WorkspaceMark.css, tokens.test.ts) | Merge `main` in once it lands; its rule (ready in amber) kept |
 | `since` absent for threads without hooks (before V18c) or an interrupted turn | No time shown then; never a guess |
 | Notices become noise with many agents | Once per transition, only three kinds, never the open workspace; open choice 4 |
 | A taller Waiting card pushes the others down | Only waiting cards grow; two lines at most |
 
-**Order**: V48a first (the model and the field, which the rest reads), then V48b, V48c, V48d;
-screenshots and measurements after each.
+**Order**: V48a first (the model and the field, which the rest reads), then V48f's recording and
+`activity.doing` (the CLI's side, beside V48a's), then V48b, V48c, V48d; screenshots and
+measurements after each.
 
 ## Milestones
 
@@ -243,22 +295,26 @@ screenshots and measurements after each.
 | V48b | The indicators and Waiting for you | `StatusDot`, the Waiting section, Respond, the count in the heading, title and rail, the cards' times, the header's strips, Next waiting, `useNow` |
 | V48c | The Activity tab | The timeline from the thread, the commits and the verdict |
 | V48d | Motion and the small things | FLIP and entry, skeletons, notices, Starting… and Stopping…, stale reads, reduced motion |
+| V48f | Its tools | The activity file and its hooks, the runner's items, the app server's running turn; `activity.doing`; "Running…", "Editing…", "Thinking"; the timeline's commands and edits |
 | V48e | Verified and written | e2e, screenshots of every page, the costs, README, the journal |
 
-**Proposed decisions**:
+**Decisions** (the person's answers taken):
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 367 | Which states | **Only those the agents report; "Starting…" only while the page's own start request runs; no Thinking** | Neither agent reports a starting or a thinking state Symbiote reads; the brief forbids inventing one |
-| 368 | The groups | **Waiting for you, Merging, To review, Not running, Working, Done** (open choice 1) | The brief's states, each its own; an agent blocked mid-task apart from work to look at |
+| 367 | Which states | **Only those the agents report; "Starting…" only while the page's own start request runs; Thinking only from recorded tools (376)** | Neither agent reports a starting state; the brief forbids inventing one |
+| 368 | The groups | **Waiting for you, Merging, To review, Not running, Working, Done** (the person's choice 1) | The brief's states, each its own; an agent blocked mid-task apart from work to look at |
 | 369 | Where the moment comes from | **`WorkspaceSummary.activity` from what the list reads already** | The thread knows what an agent asks and when its turn began; no new read or channel |
 | 370 | How states are drawn | **Dots of different shapes and halos, the words beside them; waiting's prominence steady, working's halo breathing; nothing loops under reduced motion** | Colour alone fails colour-blind eyes and the person's own fix makes review amber; attention must not depend on motion |
 | 371 | Elapsed time | **From `since` only, in minutes, one 30 s clock while the page is shown, re-rendering only the times** | Reliable timestamps only; a tick must not render the sidenav |
-| 372 | The timeline | **An Activity tab: the thread's entries, the branch's commits and the verdict, in time order** | The real events Symbiote has; tool calls are not among them |
+| 372 | The timeline | **An Activity tab: the thread's entries, the branch's commits, the verdict and (V48f) the agent's commands and edits, in time order; reads and searches folded** | The real events Symbiote has |
 | 373 | Notifications | **A status-bar line once per transition into waiting, finished or failed, with Open; a "(n)" in the window's title** | Seen from other windows and pages, never a dialog |
 | 374 | Real time | **Polling as it is; a failed read keeps the data, says since when, and retries every 5 s** | A median 2.1 min wait against a 5 s read; the brief asks to reuse what exists |
+| 375 | Where tool calls are kept | **`symbiote/activity/<branch>.jsonl`, a line a tool's start or end with what it works on; Claude Code's hooks async, in a mode of their own; Codex's runner writes them; the app server's are read, not kept** | Async hooks add nothing to a tool call (sync: ~60 ms); the thread's window keeps its messages |
+| 376 | What "Thinking" means | **Working with no recorded tool running this turn, for an agent whose tools are recorded; a command shown as it is, never read as "tests"** | Real events only: a tool's start and end bound it; no guess at what a command is |
+| 377 | Which tool events count | **Start and end (and failure), paired by the tool's ID; the newest still running is "doing"** | Async hooks can land out of order; parallel tools (Claude Code reads several at once) end in any order |
 
-**Open choices for the person** (the plan above takes the first of each):
+**The person's answers to the open choices** (all the first, and 5 as V48f):
 
 1. **The groups.** (a) Waiting for you · Merging · To review · Not running · Working · Done, each
    with its icon; or (b) only Waiting for you split out, Needs you kept for the rest (review,
@@ -274,7 +330,7 @@ screenshots and measurements after each.
    messages; for Codex on its app server, the running turn's items read in full (or its
    `item/started` notifications kept); for Codex's runner, `exec --json`'s items kept.
 
-**Not in V48 (later)**: tool-level activity (choice 5); a push channel for workspaces (an SSE
+**Not in V48 (later)**: a push channel for workspaces (an SSE
 stream fed by the threads' files and the sessions' list, as the terminals and merge logs have);
 progress bars or percentages (no agent reports progress); desktop or sound notifications;
 Scout's and Scribe's dots beyond sharing the indicator's classes; History's badges (`WorkspaceMark`)

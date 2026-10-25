@@ -41,3 +41,27 @@ person's 52 threads in `symbiote/threads/` (read only) and today's log's request
 
 Not measured yet: the list's read time with 50 workspaces, the halo's cost in the app on WSLg; both
 are in the plan's verification.
+
+## V48f spike — what Claude Code's and Codex's tools can tell (2026-10-25, branch `feature/dynamic-agent-workspace-activity-status`)
+
+The person asked for tool-level activity in V48 ("5. Add now"). Read: Claude Code 2.1.310's own
+hook schema (in its binary), Codex 0.163's app-server protocol (`codex app-server generate-ts`),
+`codex-run.ts` and `merge-agent.ts`'s reading of `exec --json`. Timed: `dist/agent-hook.js` on
+a copy of the person's 35 workspace records, 20 runs; the person's two Codex app-server threads
+read in `summary` and `full` (read only, no turn started).
+
+**Learned**:
+- **Claude Code's hooks can run in the background**: its command hooks take `async: true` ("If
+  true, hook runs in background without blocking"). `PreToolUse` carries `tool_name`,
+  `tool_input`, `tool_use_id`; `PostToolUseFailure` (it exists in 2.1.310) adds `error`,
+  `is_interrupt` and `duration_ms`.
+- **A hook run costs 29.8 ms** (median of 20; 25.5–34.8; a bare `node -e 0` 15.5 ms): Node's start
+  and reading every record to find the workspace. Before and after every tool, synchronous, that
+  is ~60 ms a call; async, the agent does not wait.
+- **Codex's app server says what runs only in `full`**: `summary` holds the user's and the agent's
+  messages; `full` adds `commandExecution` (command, status, exit code, output), `fileChange`
+  (paths), `reasoning`, `mcpToolCall`, `webSearch` and more. On the two threads here: 1,525 against
+  4,571 bytes, 25 and 4 ms; 803 and 800 bytes for a turn with no command. A long turn's `full`
+  read was not measured: no such thread here.
+- **Async hooks can land out of order**: two processes per tool, each taking its own time; the
+  plan pairs a start and its end by `tool_use_id` rather than by order.
