@@ -227,3 +227,4 @@ merge commit.
 - 2026-10-25 [V52 spike — what a choice in Scout's head starts](journal/v52-scout-next-conversation.md)
 - 2026-10-25 [V52 — Scout's head picks the next conversation: a choice starts nothing until New conversation](journal/v52-scout-next-conversation.md)
 - 2026-10-25 [V53 — the spinner, the agent's mark, the kind chip](journal/v53-workspaces-view.md)
+- 2026-10-25 [Fix — a merge at work spins; the spinner a comet; Merging first](journal/fix-merging-status.md)

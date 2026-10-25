@@ -357,13 +357,14 @@ worktree of its own in its cache. Your checkout and the agent's worktree are not
    tries again. A target checked out nowhere has its ref moved, only if it has not moved since.
 3. With `merge.push: true` it pushes the target. This is off by default.
 
-Merges go one at a time, each on the result of the last. The sidenav's Merging group shows each
-one, and a click opens it (`/?merge=<branch>`): queued, merging, checking, ready to land, landed or
-failed. Under that, its steps (the merge, the merger agent, each check command, the landing), each
-with its time, beside a log of everything they write as they write it, in a read-only terminal:
-what git did, the check's output, and the merger agent at work. A click on a step scrolls the log
-to it; a merge that runs again (Retry, Request changes, Check again) keeps the earlier runs above.
-Without a check, a merge waits for **Land**.
+Merges go one at a time, each on the result of the last. The sidenav's Merging group, at the top
+of its list, shows each one (its dot spins while Symbiote works on it), and a click opens it
+(`/?merge=<branch>`): queued, merging, checking, ready to land, landed or failed. Under that, its
+steps (the merge, the merger agent, each check command, the landing), each with its time, beside a
+log of everything they write as they write it, in a read-only terminal: what git did, the check's
+output, and the merger agent at work. A click on a step scrolls the log to it; a merge that runs
+again (Retry, Request changes, Check again) keeps the earlier runs above. Without a check, a merge
+waits for **Land**.
 
 A conflict goes to a merger agent (Claude Code or Codex, `merge.agent`; `merge.model`, set in
 **Settings** from the agent's own list, else `sonnet` for Claude Code; `merge.effort`, else the
@@ -475,12 +476,12 @@ accept. It is found as `claude` on your `PATH`, or set `SYMBIOTE_CLAUDE`.
 The sidenav lists your workspaces under the pages, by what each needs from you, each group under
 its icon:
 
-- **Waiting for you** (a bell), first, in a band of its own: agents stopped mid-task on you — a
+- **Merging** (merge arrows), first: the merges Symbiote is making.
+- **Waiting for you** (a bell), in a band of its own: agents stopped mid-task on you — a
   permission to give, a question to answer, a plan to read, an interrupted turn. Each card says
   what it asks ("Permission to run pnpm test", "Asks: Which store? — Redis · SQLite"), how long it
   has waited, and has **Respond**, which opens the workspace on its terminal, focused. The
   Workspaces heading counts them, and so does the window's title: "(2) History · repo".
-- **Merging** (merge arrows): the merges Symbiote is making.
 - **To review** (an eye): finished work — a branch to review, changes to send back, an approval to
   merge, or a report without commits.
 - **Not running** (a paused circle): failed (in red, with its words), stopped, or not started.
@@ -490,11 +491,11 @@ its icon:
 - **Done** (a check): merged.
 
 A dot tells each state by its shape as well as its colour: a working (or starting) agent's is a
-spinner, a waiting one's halo holds still, a stopped one is a ring (with reduced motion, nothing
-moves). Folded to a rail, the icons stand for the groups and the bell carries the count; + starts
-one (n). Each card shows the workspace's title and its kind (feature, fix, refactor, chore or
-spike) in a chip, what is next, its commits, files not committed yet, whether it merges cleanly,
-how long its state has lasted, and its branch.
+spinner, as is a merge's while Symbiote makes it; a waiting one's halo holds still, a stopped one
+is a ring (with reduced motion, nothing moves). Folded to a rail, the icons stand for the groups
+and the bell carries the count; + starts one (n). Each card shows the workspace's title and its
+kind (feature, fix, refactor, chore or spike) in a chip, what is next, its commits, files not
+committed yet, whether it merges cleanly, how long its state has lasted, and its branch.
 When an agent starts waiting, finishes or fails while you are on another page, the status bar says
 so once, with **Open**. A click opens it beside the sidenav (`/?branch=<branch>`), with these
 actions:
