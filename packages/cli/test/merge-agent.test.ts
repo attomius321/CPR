@@ -4,6 +4,7 @@ import type { MergeAgentEvent } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   applyAnswer,
+  aroundOf,
   claudeMerger,
   codexMerger,
   conflictRegions,
@@ -58,6 +59,31 @@ describe('conflictRegions (V26c)', () => {
       { start: 0, end: 4, ours: ['a'], base: null, theirs: ['b'] },
     ]);
     expect(conflictRegions('<<<<<<< HEAD\na\n')).toEqual([]);
+  });
+});
+
+describe('aroundOf (fix/merge-viewer-on-conflict)', () => {
+  it("gives the 3 lines around a region; in the file, those up to another region's markers", () => {
+    const text = [
+      'a',
+      '<<<<<<< HEAD',
+      'x',
+      '=======',
+      'y',
+      '>>>>>>> b',
+      'c',
+      '<<<<<<< HEAD',
+      'p',
+      '=======',
+      'q',
+      '>>>>>>> b',
+      'd',
+      '',
+    ].join('\n');
+    const [first, second] = conflictRegions(text);
+    expect(aroundOf(text, second!)).toEqual({ before: ['y', '>>>>>>> b', 'c'], after: ['d'] });
+    expect(aroundOf(text, first!, { inFile: true })).toEqual({ before: ['a'], after: ['c'] });
+    expect(aroundOf(text, second!, { inFile: true })).toEqual({ before: ['c'], after: ['d'] });
   });
 });
 

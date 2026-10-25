@@ -345,7 +345,7 @@ const DROPPED_SHOWN = 8;
  * One region of a resolution to review, numbered as the agent's prompt numbered it: what it says in
  * words (lines dropped, kept twice, repeated from just around it, written by the agent, or every
  * line kept), the resolution with each line marked by its side between the lines around it (dim:
- * they stay in the file), each side's dropped lines and those rewritten with every word kept, and
+ * they stay in the file), each side's dropped lines and those rewritten with their changes kept, and
  * the raw conflict folded under "Show the conflict".
  */
 function MergeRegionView({
@@ -420,7 +420,7 @@ function MergeRegionView({
       ))}
       {sides(review.rewritten).map((d) => (
         <div key={d.side}>
-          <p className="merge-sub merge-sub-rewritten">Rewritten from {d.name}, every word kept</p>
+          <p className="merge-sub merge-sub-rewritten">Rewritten from {d.name}, its changes kept</p>
           <div className="merge-code merge-rewritten">
             {d.lines.slice(0, DROPPED_SHOWN).map((text, i) => (
               <MergeLine key={i} from={d.side} name={d.name} text={text} />

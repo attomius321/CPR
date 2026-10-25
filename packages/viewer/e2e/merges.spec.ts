@@ -501,7 +501,7 @@ test("a merge like the person's: the line copied from above it in red and shown 
   const files = entry.getByRole('list', { name: 'Its files' }).getByRole('button');
   await expect(files).toHaveText([
     /^CHANGELOG\.md1 regionRepeats “## Unreleased” from just above it$/,
-    /^README\.md1 region1 line written by the agent, with every word of the 3 it replaces$/,
+    /^README\.md1 region1 line written by the agent, with the changes of the 3 it replaces$/,
     /^total\.test\.ts src1 regionKeeps every line of both sides, nothing new$/,
   ]);
   await expect(files.nth(0)).toHaveClass(/merge-tone-bad/);
@@ -524,12 +524,12 @@ test("a merge like the person's: the line copied from above it in red and shown 
     'below',
   ]);
   await expect(resolved.nth(3)).toContainText('also just above');
-  // README: main's lines rewritten, every word kept: listed, not struck out.
+  // README: both sides' lines rewritten, their changes kept: listed, not struck out.
   await files.nth(1).click();
   await expect(region.locator('.merge-region-where')).toContainText('Region 2README.md:');
   await expect(region.locator('.merge-sub')).toHaveText([
-    'Rewritten from main, every word kept',
-    'Rewritten from agent, every word kept',
+    'Rewritten from main, its changes kept',
+    'Rewritten from agent, its changes kept',
   ]);
   await expect(region.locator('.merge-rewritten .merge-line-text')).toHaveText([
     'Totals are the sum of the prices, rounded',

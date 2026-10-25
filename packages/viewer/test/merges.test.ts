@@ -506,12 +506,16 @@ describe('red for what is lost or doubled, amber for what the agent wrote (fix/m
   it('reads a correct merge without red, and the line copied from above the region in red', () => {
     const list = files([readme, tests, comment, changelog]);
     expect(verdicts(list)).toEqual([
-      ['README.md', 'new', ['2 lines written by the agent, with every word of the 3 they replace']],
+      [
+        'README.md',
+        'new',
+        ['2 lines written by the agent, with the changes of the 3 they replace'],
+      ],
       ['src/pricing.test.ts', 'ok', ['Keeps every line of both sides, nothing new']],
       [
         'src/pricing.ts',
         'new',
-        ['1 line written by the agent, with every word of the 2 it replaces'],
+        ['1 line written by the agent, with the changes of the 2 it replaces'],
       ],
       ['CHANGELOG.md', 'bad', ['Repeats “## Unreleased” from just above it']],
     ]);
@@ -542,7 +546,11 @@ describe('red for what is lost or doubled, amber for what the agent wrote (fix/m
       text: '  return Math.round(sum * (1 - discountOf(code)) * 100) / 100;',
     };
     expect(verdicts(files([readme, wrong]))).toEqual([
-      ['README.md', 'new', ['2 lines written by the agent, with every word of the 3 they replace']],
+      [
+        'README.md',
+        'new',
+        ['2 lines written by the agent, with the changes of the 3 they replace'],
+      ],
       ['src/pricing.ts', 'bad', ['Drops the line from feature/discounts']],
     ]);
     expect(firstFile(files([readme, wrong]))?.path).toBe('src/pricing.ts');
@@ -550,10 +558,57 @@ describe('red for what is lost or doubled, amber for what the agent wrote (fix/m
       [
         'src/pricing.ts',
         'new',
-        ['1 line written by the agent, with every word of the 2 it replaces'],
+        ['1 line written by the agent, with the changes of the 2 it replaces'],
       ],
     ]);
     expect(firstFile(files([tests, readme]))?.path).toBe('README.md');
+  });
+
+  it("reads what each side changed, not its line word for word: a real merger agent's resolution", () => {
+    // Claude Code (sonnet) on this merge: the discount applied in a variable, then rounded.
+    const signature = region(
+      'src/pricing.ts',
+      [
+        '/** The total of the prices, rounded to cents. */',
+        'export function total(prices: number[]): number {',
+      ],
+      ['/** The total of the prices. */', 'export function total(prices: number[]): number {'],
+      [
+        'const CODES: Record<string, number> = { TEN: 0.1 };',
+        '',
+        '/** The total of the prices, less the discount code. */',
+        'export function total(prices: number[], code?: string): number {',
+      ],
+      [
+        'const CODES: Record<string, number> = { TEN: 0.1 };',
+        '',
+        '/** The total of the prices, less the discount code, rounded to cents. */',
+        'export function total(prices: number[], code?: string): number {',
+      ],
+    );
+    const body = region(
+      'src/pricing.ts',
+      ['  return Math.round(sum * 100) / 100;'],
+      ['  return sum;'],
+      ['  return sum * (1 - (code ? (CODES[code] ?? 0) : 0));'],
+      [
+        '  const discounted = sum * (1 - (code ? (CODES[code] ?? 0) : 0));',
+        '  return Math.round(discounted * 100) / 100;',
+      ],
+    );
+    expect(verdicts(files([signature, body]))).toEqual([
+      [
+        'src/pricing.ts',
+        'new',
+        ['3 lines written by the agent, with the changes of the 4 they replace'],
+      ],
+    ]);
+    // Without the discount, the branch's change is lost: red.
+    const lost = {
+      ...body,
+      text: '  const rounded = Math.round(sum * 100) / 100;\n  return rounded;',
+    };
+    expect(verdicts(files([lost]))[0]?.[1]).toBe('bad');
   });
 
   it('keeps code strict: a changed operator is a dropped line, not a rewritten one', () => {
@@ -563,7 +618,10 @@ describe('red for what is lost or doubled, amber for what the agent wrote (fix/m
     expect(review.dropped).toEqual({ ours: [], theirs: ['x = a - b;'] });
     expect(regionFlags(review, 'main', 'b')).toEqual([
       { tone: 'bad', text: 'Drops the line from b' },
-      { tone: 'new', text: '1 line written by the agent, with every word of the line it replaces' },
+      {
+        tone: 'new',
+        text: '1 line written by the agent, with the changes of the line it replaces',
+      },
     ]);
   });
 

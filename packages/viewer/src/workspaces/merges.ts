@@ -211,8 +211,9 @@ export interface RegionReview {
   /** Each side's own lines the resolution has neither as they were nor in lines the agent wrote. */
   dropped: { ours: string[]; theirs: string[] };
   /**
-   * Each side's own lines not kept as they were, every word of which is in lines the agent wrote,
-   * in order: wrapped again, or merged with the other side's (fix/merge-viewer-on-conflict).
+   * Each side's own lines not kept as they were whose change (their words and symbols the
+   * ancestor lacks) is in lines the agent wrote, in order: wrapped again, or merged with the other
+   * side's (fix/merge-viewer-on-conflict).
    */
   rewritten: { ours: string[]; theirs: string[] };
   /** Copies of a side's lines past the ones it has. */
@@ -240,11 +241,15 @@ const PAIR_CELLS = 4_000_000;
 
 /**
  * Which of `a`'s lines and of `b`'s are paired with an equal line of the other (blank ones never):
- * in order first, a longest common subsequence with each pair as early in `a` as it can be, then
- * the rest by text, for lines moved. Read in order, the `});` that closes a block of one side is
+ * in order first, a longest common subsequence with each pair as early in `a` as it can be, then,
+ * with `moved`, the rest by text. Read in order, the `});` that closes a block of one side is
  * that block's, not a copy of the other side's (fix/merge-viewer-on-conflict).
  */
-function pair(a: readonly string[], b: readonly string[]): { inA: boolean[]; inB: boolean[] } {
+function pair(
+  a: readonly string[],
+  b: readonly string[],
+  moved = true,
+): { inA: boolean[]; inB: boolean[] } {
   const inA = a.map(() => false);
   const inB = b.map(() => false);
   const x = a.flatMap((key, i) => (key === '' ? [] : [i]));
@@ -286,6 +291,7 @@ function pair(a: readonly string[], b: readonly string[]): { inA: boolean[]; inB
       }
     }
   }
+  if (!moved) return { inA, inB };
   // Lines moved: the rest paired by text, each with the first left.
   const left = new Map<string, number[]>();
   for (const i of x) {
@@ -311,6 +317,24 @@ const tokensOf = (line: string, words: boolean) => {
   return words ? tokens.filter((token) => WORD.test(token)) : tokens;
 };
 
+/**
+ * What a side changed in each of its lines: its tokens not paired in order with the ancestor's.
+ * A line of tokens the ancestor all has (moved, or with some taken out) is its tokens.
+ */
+function changesOf(side: readonly string[], base: readonly string[], words: boolean): string[][] {
+  const lines = side.map((line) => tokensOf(line, words));
+  const { inA } = pair(
+    lines.flat(),
+    base.flatMap((line) => tokensOf(line, words)),
+    false,
+  );
+  let k = 0;
+  return lines.map((tokens) => {
+    const changed = tokens.filter(() => !inA[k++]);
+    return changed.length > 0 ? changed : tokens;
+  });
+}
+
 /** A rewrite keeps a line's tokens within twice as many, and a few the other side added. */
 const reach = (tokens: number) => 2 * tokens + 8;
 
@@ -324,10 +348,10 @@ interface Stream {
 }
 
 /**
- * Where `tokens` end in `stream`, found in order from `from` within `reach` of their first and in
- * a line the agent wrote at least in part: the index after the last, or -1.
+ * Where `tokens` end in `stream`, found in order from `from` within `span` of their first and in a
+ * line the agent wrote at least in part: the index after the last, or -1.
  */
-function foundIn(stream: Stream, tokens: readonly string[], from: number): number {
+function foundIn(stream: Stream, tokens: readonly string[], from: number, span: number): number {
   const [first] = tokens;
   if (first === undefined) return -1;
   const all = stream.tokens;
@@ -336,7 +360,7 @@ function foundIn(stream: Stream, tokens: readonly string[], from: number): numbe
     let k = 1;
     let end = s + 1;
     let wrote = stream.wrote[s] === true;
-    for (let i = s + 1; i < all.length && k < tokens.length && i - s < reach(tokens.length); i++) {
+    for (let i = s + 1; i < all.length && k < tokens.length && i - s < span; i++) {
       if (all[i] === tokens[k]) {
         k++;
         end = i + 1;
@@ -350,9 +374,10 @@ function foundIn(stream: Stream, tokens: readonly string[], from: number): numbe
 
 /**
  * Reads a region's resolution against its sides: each line marked by where it came from, read in
- * order; each side's own lines kept, rewritten into lines the agent wrote (every word kept, in
- * order: in code, every symbol too) or dropped; copies past a side's own; lines the agent wrote,
- * and those of them that repeat a line just around the region (fix/merge-viewer-on-conflict). Pure.
+ * order; each side's own lines kept, rewritten into lines the agent wrote (what the side changed
+ * kept, in order: in code, its symbols too) or dropped; copies past a side's own; lines the agent
+ * wrote, and those of them that repeat a line just around the region
+ * (fix/merge-viewer-on-conflict). Pure.
  */
 export function reviewRegion(region: MergeRegion): RegionReview {
   const text = region.text.split('\n');
@@ -404,17 +429,24 @@ export function reviewRegion(region: MergeRegion): RegionReview {
   const read = (side: readonly string[], paired: readonly boolean[]) => {
     const inBase = pair(side.map(norm), baseKeys).inA;
     const own = side.filter((line, j) => norm(line) !== '' && !inBase[j]);
-    const missed = side.filter((line, j) => norm(line) !== '' && !inBase[j] && !paired[j]);
+    const missed = side.flatMap((line, j) =>
+      norm(line) !== '' && !inBase[j] && !paired[j] ? [j] : [],
+    );
     const affordable = streams && missed.length * streams.all.tokens.length <= REWRITE_WORK;
     const dropped: string[] = [];
     const rewritten: string[] = [];
+    // What the side changed, each line's, read only when a line is to be looked for.
+    const changes = { words: null as string[][] | null, all: null as string[][] | null };
     // Each side's lines are looked for in order, from where its last one was found.
     const at = { words: 0, all: 0 };
-    for (const line of missed) {
+    for (const j of missed) {
+      const line = side[j]!;
       const mode = prose || COMMENT.test(norm(line)) ? 'words' : 'all';
-      const tokens = tokensOf(line, mode === 'words');
-      let end = affordable ? foundIn(streams[mode], tokens, at[mode]) : -1;
-      if (affordable && end < 0 && at[mode] > 0) end = foundIn(streams[mode], tokens, 0);
+      const words = mode === 'words';
+      const tokens = affordable ? (changes[mode] ??= changesOf(side, base, words))[j]! : [];
+      const span = reach(tokensOf(line, words).length);
+      let end = affordable ? foundIn(streams[mode], tokens, at[mode], span) : -1;
+      if (affordable && end < 0 && at[mode] > 0) end = foundIn(streams[mode], tokens, 0, span);
       if (end < 0) {
         dropped.push(line);
       } else {
@@ -452,8 +484,8 @@ const quoted = (line: string) => {
 
 /**
  * What a region's review says in words: in red what was dropped, kept twice or repeated from
- * just around it; in amber what the agent wrote, and whether it keeps every word of the lines it
- * replaces (fix/merge-viewer-on-conflict).
+ * just around it; in amber what the agent wrote, and whether it keeps the changes of the lines
+ * it replaces (fix/merge-viewer-on-conflict).
  */
 export function regionFlags(review: RegionReview, into: string, branch: string): RegionFlag[] {
   const drops = (side: SideKept, name: string): RegionFlag[] => {
@@ -475,7 +507,7 @@ export function regionFlags(review: RegionReview, into: string, branch: string):
   const replaced =
     rewritten === 0
       ? ''
-      : `, with every word of ${rewritten === 1 ? 'the line' : `the ${rewritten}`} ${written === 1 ? 'it replaces' : 'they replace'}`;
+      : `, with the changes of ${rewritten === 1 ? 'the line' : `the ${rewritten}`} ${written === 1 ? 'it replaces' : 'they replace'}`;
   const flags: RegionFlag[] = [
     ...drops(review.kept.ours, into),
     ...drops(review.kept.theirs, branch),

@@ -154,16 +154,23 @@ const AROUND = 3;
 
 /**
  * The lines a region's prompt shows above and below it, which stay in the file: the merge page
- * reads a line the agent wrote again from them (fix/merge-viewer-on-conflict).
+ * reads a line the agent wrote again from them (fix/merge-viewer-on-conflict). With `inFile`, they
+ * stop at another region's markers, which its answer replaces.
  */
 export function aroundOf(
   text: string,
   region: ConflictRegion,
+  { inFile = false }: { inFile?: boolean } = {},
 ): { before: string[]; after: string[] } {
   const lines = linesOf(text);
+  const before = lines.slice(Math.max(0, region.start - AROUND), region.start);
+  const after = lines.slice(region.end + 1, region.end + 1 + AROUND);
+  if (!inFile) return { before, after };
+  const marker = (line: string) => MARKER.test(line);
+  const first = after.findIndex(marker);
   return {
-    before: lines.slice(Math.max(0, region.start - AROUND), region.start),
-    after: lines.slice(region.end + 1, region.end + 1 + AROUND),
+    before: before.slice(before.findLastIndex(marker) + 1),
+    after: first < 0 ? after : after.slice(0, first),
   };
 }
 

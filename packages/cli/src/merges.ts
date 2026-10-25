@@ -238,7 +238,7 @@ function conflictsOf(
       ours: region.ours,
       base: region.base,
       theirs: region.theirs,
-      around: aroundOf(file.text, region),
+      around: aroundOf(file.text, region, { inFile: true }),
     })),
   );
 }
