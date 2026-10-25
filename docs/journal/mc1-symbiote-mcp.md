@@ -34,3 +34,38 @@ MCP server offering `status` and `merge`, and a PreToolUse gate allowing `status
 trusts, and `claude agents` would list a spike session in this worktree, where Symbiote looks for
 this workspace's agent. A woken session's MCP server; Claude Code's MCP timeout on a long call;
 Codex.
+
+## MC1 replan — the person's answers; what Codex does with an MCP server (2026-10-25, branch `feature/symbiote-mcp`)
+
+The person on the plan: the asks as proposed; Codex "should be resolved now, this app Symbiote
+will firstly be used with Codex"; `symbiote mcp` included. Codex 0.163 measured with `codex
+exec` in the scratch folder (the read-only sandbox and approvals `never`, as Scout's thread runs),
+the toy server given by `-c mcp_servers.symbiote…`, and the app server's protocol from `codex
+app-server generate-json-schema`.
+
+**Learned**:
+- **Codex refuses MCP calls under approvals `never`**: both tools failed with "MCP tool call
+  requires approval, but approval policy is never", and the agent reported the refusal. MC1 as
+  first planned would have given Codex's Scout tools it could never run.
+- **One server can be approved alone**: `default_tools_approval_mode = "approve"` on
+  `mcp_servers.symbiote` (Codex's `RawMcpServerConfig`; also `tools.<name>.approval_mode`,
+  `enabled_tools`, `tool_timeout_sec`) ran both calls, in the read-only sandbox, approvals still
+  `never`.
+- **The server runs outside Codex's sandbox**: it read `http://127.0.0.1:<port>/` (a toy page)
+  while the thread was read-only with no network; `CODEX_SANDBOX` was unset in its environment.
+  The bridge can reach `symbiote view`.
+- **A 75-second call came back** with no `tool_timeout_sec` set (84 s for the turn): the limit,
+  if any, is above that; MC1 sets it to 11 minutes and measures 10.
+- **A thread's configuration is given at its start and again at each resume**: `thread/start`
+  and `thread/resume` both take `config`. Whether the daemon keeps a thread's MCP server when
+  Codex's terminal resumes it was not measured: it needs this branch built.
+- **So Symbiote asks, not the agents** (decision 361): Codex's own asking for MCP calls is
+  either "approve" or a request to whichever client holds the turn (`mcpServer/elicitation/
+  request`), and Claude Code's `ask` was a denial in `-p`. A Confirm in Symbiote's pages works for
+  both, and for `symbiote mcp`'s callers.
+- **What a turn reads on Codex**: 45.6K input tokens (41.3K cached) over a turn with two
+  refused calls, 89.5K (84.9K cached) with two that ran, two tools defined. The 23 tools' cost
+  is measured on both agents (spike d).
+
+**Not tested**: the daemon's threads (start, resume, Codex's terminal) with the server; a
+10-minute call; elicitation.
