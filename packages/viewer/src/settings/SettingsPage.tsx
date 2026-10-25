@@ -101,21 +101,21 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
     whose: "Scout's",
     model: {
       key: 'scout.model',
-      about: "The model each of Scout's conversations starts on",
-      saved: (model) => `Saved. Scout's next conversation starts on ${model}.`,
+      about: 'The model Scout starts on when it opens with no conversation',
+      saved: (model) => `Saved. Scout starts on ${model} when it next opens with no conversation.`,
       unlisted: 'Scout starts on the default',
     },
     effort: {
       key: 'scout.effort',
-      about: "The level each of Scout's conversations starts at",
+      about: 'The level Scout starts at when it opens with no conversation',
       also: (
         <>
-          Scout&apos;s page can start one conversation at another; <code>/effort</code> in its
-          terminal changes it after.
+          After that, the head of Scout&apos;s page says what New conversation starts on;{' '}
+          <code>/effort</code> in its terminal changes a running one.
         </>
       ),
       atDefault: 'Scout starts it at its default',
-      saved: (level) => `Saved. Scout's next conversation starts at ${level}.`,
+      saved: (level) => `Saved. Scout starts at ${level} when it next opens with no conversation.`,
     },
   },
   Scribe: {
