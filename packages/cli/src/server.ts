@@ -240,302 +240,320 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (!hosts.has(req.headers.host ?? '')) return send(res, 421, 'unknown host');
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname === '/api/intro' && options.intro) return introApi(req, res, options.intro);
-    if (repository) {
-      const diff = DIFF_PATH.exec(url.pathname);
-      if (diff) {
-        const [, base = '', head = '', rest] = diff;
-        // Relative URLs in the viewer need the trailing slash.
-        if (rest === undefined) return redirect(res, `${url.pathname}/${url.search}`);
-        return serveDiff(req, res, url, rest, repository, { base, head });
+    if (repository) return repositoryRoute(req, res, url, repository);
+    return serveSite(req, res, url, url.pathname, root);
+  }
+
+  /**
+   * `symbiote view`'s addresses: a diff's and a branch review's pages, History and the
+   * repository's state, the shell's pages, then each service's API (`/api/workspaces…`,
+   * `/api/scout…`, `/api/merges…`); any other, as without a repository.
+   */
+  async function repositoryRoute(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    repository: RepositoryOptions,
+  ): Promise<void> {
+    const diff = DIFF_PATH.exec(url.pathname);
+    if (diff) {
+      const [, base = '', head = '', rest] = diff;
+      // Relative URLs in the viewer need the trailing slash.
+      if (rest === undefined) return redirect(res, `${url.pathname}/${url.search}`);
+      return serveDiff(req, res, url, rest, repository, { base, head });
+    }
+    const review = repository.reviews ? REVIEW_PATH.exec(url.pathname) : null;
+    if (review && repository.reviews) {
+      const [, encoded = '', rest] = review;
+      let branch: string;
+      try {
+        branch = decodeURIComponent(encoded);
+      } catch {
+        return send(res, 400, 'not a branch name');
       }
-      const review = repository.reviews ? REVIEW_PATH.exec(url.pathname) : null;
-      if (review && repository.reviews) {
-        const [, encoded = '', rest] = review;
-        let branch: string;
-        try {
-          branch = decodeURIComponent(encoded);
-        } catch {
-          return send(res, 400, 'not a branch name');
-        }
-        if (rest === undefined) return redirect(res, `${url.pathname}/${url.search}`);
-        return serveReview(req, res, url, rest, repository, repository.reviews, branch);
-      }
-      if (url.pathname === '/api/reviews' && repository.reviews) {
-        return reviewsApi(req, res, repository, repository.reviews);
-      }
-      // The history page (V25; at `/` before, which is now the workspaces view).
-      if (url.pathname === '/history') return serveSite(req, res, url, '/', undefined);
-      if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
-      if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
-      if (url.pathname === '/api/history/refs') return historyRefs(req, res, url, repository);
-      if (url.pathname === '/api/status') return read(req, res, () => repository.status());
-      if (url.pathname === '/api/refs') return read(req, res, () => repository.refs());
-      if (url.pathname === '/api/checkout') return checkoutTarget(req, res, repository);
-      if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
-      if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
-      const { workspaces } = repository;
-      if (workspaces) {
-        // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves
-        // them to `/`.
-        if (url.pathname === '/workspaces' || url.pathname === '/features')
-          return serveSite(req, res, url, '/', undefined);
-        // Start a workspace, a page of the shell's (V30a).
-        if (url.pathname === '/start') return serveSite(req, res, url, '/', undefined);
-        if (url.pathname === '/api/workspaces') return workspacesApi(req, res, workspaces);
-        if (url.pathname === '/api/workspaces/options')
-          return read(req, res, () => workspaces.options());
-        if (url.pathname === '/api/workspaces/draft') {
-          if (req.method === 'GET') return json(res, 200, await workspaces.draft());
-          return written(req, res, parseDraft, (draft) =>
-            answer(res, () => workspaces.saveDraft(draft).then(() => ({}))),
-          );
-        }
-        if (url.pathname === '/api/workspaces/documents') {
-          // A file for the start (V40), refused before it is read: the page checks the size first.
-          if (Number(req.headers['content-length']) > MAX_DOCUMENT_BODY) {
-            req.resume();
-            return send(res, 413, DOCUMENT_TOO_LARGE);
-          }
-          return written(
-            req,
-            res,
-            parseDocument,
-            ({ name, bytes }) => answer(res, () => workspaces.saveDocument(name, bytes)),
-            MAX_DOCUMENT_BODY,
-          );
-        }
-        if (url.pathname === '/api/workspaces/check') {
-          if (req.method !== 'GET') return send(res, 405, 'method not allowed');
-          const at = url.searchParams.get('at');
-          if (!at) return send(res, 400, 'at: the commit a workspace starts from');
-          return answer(res, () => workspaces.check(at).then((guess) => guess ?? {}));
-        }
-        if (url.pathname === '/api/workspaces/start') {
-          return onBranch(req, res, (branch) =>
-            startingOne(res, () => workspaces.startAgent(branch)),
-          );
-        }
-        if (url.pathname === '/api/workspaces/stop') {
-          return onBranch(req, res, (branch) => answer(res, () => workspaces.stopAgent(branch)));
-        }
-        if (url.pathname === '/api/workspaces/open') {
-          return written(req, res, parseWorkspaceOpen, ({ branch }) =>
-            answer(res, () => workspaces.openWorktree(branch).then(() => ({}))),
-          );
-        }
-        if (url.pathname === '/api/workspaces/diff') {
-          return written(req, res, parseWorkspaceDiff, ({ branch, file }) =>
-            answer(res, () => workspaces.openDiff(branch, file).then(() => ({}))),
-          );
-        }
-        if (url.pathname === '/api/workspaces/changes') {
-          return ofBranch(req, res, url, (branch) => workspaces.changes(branch));
-        }
-        if (url.pathname === '/api/workspaces/prompt') {
-          return ofBranch(req, res, url, (branch) =>
-            workspaces.prompt(branch).then((prompt) => ({ prompt })),
-          );
-        }
-        if (url.pathname === '/api/workspaces/merge') {
-          return ofBranch(req, res, url, (branch) => workspaces.merge(branch));
-        }
-        if (url.pathname === '/api/workspaces/thread') {
-          return ofBranch(req, res, url, (branch) => workspaces.thread(branch));
-        }
-        if (url.pathname === '/api/workspaces/reply') {
-          return written(req, res, parseWorkspaceReply, (request) =>
-            oneAtATime(res, 'a message is being sent', () => workspaces.reply(request)),
-          );
-        }
-        if (url.pathname === '/api/workspaces/clean') {
-          return written(req, res, parseWorkspaceClean, (request) =>
-            answer(res, () => workspaces.clean(request)),
-          );
-        }
-        if (url.pathname === '/api/workspaces/terminal') {
-          return written(req, res, parseWorkspaceTerminal, (request) =>
-            answer(res, () => workspaces.terminal(request)),
-          );
-        }
-        if (url.pathname === '/api/workspaces/shell') {
-          return written(req, res, parseWorkspaceTerminal, (request) =>
-            answer(res, () => workspaces.shell(request)),
-          );
-        }
-        if (url.pathname === '/api/workspaces/shells') {
-          // It hands out terminals' IDs, which read and drive them: for the page only (V45).
-          if (req.headers['x-symbiote'] !== '1' || !sameSite(req)) {
-            return send(res, 403, 'forbidden');
-          }
-          return ofBranch(req, res, url, (branch) => workspaces.shells(branch));
-        }
-      }
-      const { scout } = repository;
-      if (scout) {
-        // Scout's page, a page of the shell's (V35).
-        if (url.pathname === '/scout') return serveSite(req, res, url, '/', undefined);
-        if (url.pathname === '/api/scout') return read(req, res, () => scout.state());
-        // One question or new conversation at a time: each starts or stops an agent.
-        if (url.pathname === '/api/scout/ask') {
-          return written(req, res, parseScoutAsk, (request) =>
-            oneAtATime(res, 'Scout is being asked', () => scout.ask(request)),
-          );
-        }
-        if (url.pathname === '/api/scout/new') {
-          return written(
-            req,
-            res,
-            () => ({}),
-            () => oneAtATime(res, 'Scout is being asked', () => scout.renew()),
-          );
-        }
-        if (url.pathname === '/api/scout/terminal') {
-          return written(req, res, parseScoutTerminal, (request) =>
-            answer(res, () => scout.terminal(request)),
-          );
-        }
-        // The levels, read where a stepper shows them (Codex's start its daemon); the project's.
-        if (url.pathname === '/api/scout/efforts') return read(req, res, () => scout.efforts());
-        if (url.pathname === '/api/scout/effort') {
-          return written(req, res, parseScoutEffort, (change) =>
-            answer(res, () => scout.setEffort(change)),
-          );
-        }
-        // Its model in the project's config (V47), set in Settings.
-        if (url.pathname === '/api/scout/model') {
-          return written(req, res, parseModelChange, (change) =>
-            answer(res, () => scout.setModel(change)),
-          );
-        }
-      }
-      const { scribe } = repository;
-      if (scribe) {
-        // Scribe (V41), on the Skills page: Scout's conversation, its own agent.
-        if (url.pathname === '/api/scribe') return read(req, res, () => scribe.state());
-        if (url.pathname === '/api/scribe/ask') {
-          return written(req, res, parseScoutAsk, (request) =>
-            oneAtATime(res, 'Scribe is being asked', () => scribe.ask(request)),
-          );
-        }
-        if (url.pathname === '/api/scribe/new') {
-          return written(
-            req,
-            res,
-            () => ({}),
-            () => oneAtATime(res, 'Scribe is being asked', () => scribe.renew()),
-          );
-        }
-        if (url.pathname === '/api/scribe/terminal') {
-          return written(req, res, parseScoutTerminal, (request) =>
-            answer(res, () => scribe.terminal(request)),
-          );
-        }
-        if (url.pathname === '/api/scribe/efforts') return read(req, res, () => scribe.efforts());
-        if (url.pathname === '/api/scribe/effort') {
-          return written(req, res, parseScoutEffort, (change) =>
-            answer(res, () => scribe.setEffort(change)),
-          );
-        }
-        if (url.pathname === '/api/scribe/model') {
-          return written(req, res, parseModelChange, (change) =>
-            answer(res, () => scribe.setModel(change)),
-          );
-        }
-      }
-      const { skills } = repository;
-      if (skills) {
-        // The Skills page (V41), a page of the shell's.
-        if (url.pathname === '/skills') return serveSite(req, res, url, '/', undefined);
-        if (url.pathname === '/api/skills') {
-          if (req.method === 'GET') return answer(res, () => skills.state());
-          return written(
-            req,
-            res,
-            parseSkillChange,
-            (change) => answer(res, () => skills.change(change)),
-            // A skill's text, as JSON escapes it.
-            MAX_SKILL * 6 + 4096,
-          );
-        }
-      }
-      const { monitor } = repository;
-      if (monitor) {
-        // The Monitor page (RM1), a page of the shell's.
-        if (url.pathname === '/monitor') return serveSite(req, res, url, '/', undefined);
-        if (url.pathname === '/api/monitor') return monitorMap(req, res, monitor);
-        if (url.pathname === '/api/monitor/open') return monitorOpen(req, res, monitor);
-      }
-      const { settings, usage } = repository;
-      // Each subscription's windows of use (V29c): read only, the tokens stay in this process.
-      if (usage && url.pathname === '/api/usage') {
-        if (req.method !== 'GET') return send(res, 405, 'method not allowed');
-        return answer(res, () => usage.report());
-      }
-      // Every agent's prompts (V28b).
-      if (settings && url.pathname === '/settings') return serveSite(req, res, url, '/', undefined);
-      if (settings && url.pathname === '/api/settings/prompts') {
-        if (req.method === 'GET') return answer(res, () => settings.prompts());
-        return written(req, res, parsePromptChange, (change) =>
-          answer(res, () => settings.setPrompt(change)),
+      if (rest === undefined) return redirect(res, `${url.pathname}/${url.search}`);
+      return serveReview(req, res, url, rest, repository, repository.reviews, branch);
+    }
+    if (url.pathname === '/api/reviews' && repository.reviews) {
+      return reviewsApi(req, res, repository, repository.reviews);
+    }
+    // The history page (V25; at `/` before, which is now the workspaces view).
+    if (url.pathname === '/history') return serveSite(req, res, url, '/', undefined);
+    if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
+    if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
+    if (url.pathname === '/api/history/refs') return historyRefs(req, res, url, repository);
+    if (url.pathname === '/api/status') return read(req, res, () => repository.status());
+    if (url.pathname === '/api/refs') return read(req, res, () => repository.refs());
+    if (url.pathname === '/api/checkout') return checkoutTarget(req, res, repository);
+    if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
+    if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
+    const { workspaces, scout, scribe, skills, monitor, settings, usage, merges } = repository;
+    if (workspaces) {
+      // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves
+      // them to `/`.
+      if (url.pathname === '/workspaces' || url.pathname === '/features')
+        return serveSite(req, res, url, '/', undefined);
+      // Start a workspace, a page of the shell's (V30a).
+      if (url.pathname === '/start') return serveSite(req, res, url, '/', undefined);
+      if (url.pathname.startsWith('/api/workspaces'))
+        return workspacesRoute(req, res, url, workspaces);
+    }
+    // Scout's page, a page of the shell's (V35).
+    if (scout && url.pathname === '/scout') return serveSite(req, res, url, '/', undefined);
+    if (scout && url.pathname.startsWith('/api/scout')) {
+      return pageAgentRoute(req, res, url, scout, {
+        api: '/api/scout',
+        busy: 'Scout is being asked',
+      });
+    }
+    // Scribe (V41), on the Skills page: Scout's conversation, its own agent.
+    if (scribe && url.pathname.startsWith('/api/scribe')) {
+      return pageAgentRoute(req, res, url, scribe, {
+        api: '/api/scribe',
+        busy: 'Scribe is being asked',
+      });
+    }
+    if (skills) {
+      // The Skills page (V41), a page of the shell's.
+      if (url.pathname === '/skills') return serveSite(req, res, url, '/', undefined);
+      if (url.pathname === '/api/skills') {
+        if (req.method === 'GET') return answer(res, () => skills.state());
+        return written(
+          req,
+          res,
+          parseSkillChange,
+          (change) => answer(res, () => skills.change(change)),
+          // A skill's text, as JSON escapes it.
+          MAX_SKILL * 6 + 4096,
         );
       }
-      const { merges } = repository;
-      if (merges) {
-        if (url.pathname === '/api/merges') {
-          if (req.method === 'GET') return answer(res, () => merges.list());
-          return written(req, res, parseMergeRequest, (request) =>
-            answer(res, () => merges.enqueue(request)),
-          );
-        }
-        if (url.pathname === '/api/merges/targets') {
-          return ofBranch(req, res, url, (branch) => merges.targets(branch));
-        }
-        if (url.pathname === '/api/merges/log') return mergeLog(req, res, url, merges);
-        // The merger's effort (V46d), read and set where Settings' stepper shows it, as Scout's.
-        if (url.pathname === '/api/merges/efforts') return read(req, res, () => merges.efforts());
-        if (url.pathname === '/api/merges/effort') {
-          return written(req, res, parseScoutEffort, (change) =>
-            answer(res, () => merges.setEffort(change)),
-          );
-        }
-        if (url.pathname === '/api/merges/model') {
-          return written(req, res, parseModelChange, (change) =>
-            answer(res, () => merges.setModel(change)),
-          );
-        }
-        if (url.pathname === '/api/merges/approve') {
-          return written(req, res, parseMergeId, (id) => answer(res, () => merges.approve(id)));
-        }
-        if (url.pathname === '/api/merges/recheck') {
-          return written(req, res, parseMergeId, (id) => answer(res, () => merges.recheck(id)));
-        }
-        if (url.pathname === '/api/merges/request-changes') {
-          return written(req, res, parseMergeChanges, ({ id, comments }) =>
-            answer(res, () => merges.requestChanges(id, comments)),
-          );
-        }
-        const action = /^\/api\/merges\/(land|retry|remove)$/.exec(url.pathname)?.[1];
-        if (action) {
-          return written(req, res, parseMergeId, (id) =>
-            answer(res, () =>
-              action === 'land'
-                ? merges.land(id)
-                : action === 'retry'
-                  ? merges.retry(id)
-                  : merges.remove(id).then(() => ({})),
-            ),
-          );
-        }
-      }
-      const terminal = repository.terminals ? TERMINAL_PATH.exec(url.pathname) : null;
-      if (terminal && repository.terminals) {
-        const [, id = '', action] = terminal;
-        return terminalApi(req, res, repository.terminals, id, action);
-      }
+    }
+    if (monitor) {
+      // The Monitor page (RM1), a page of the shell's.
+      if (url.pathname === '/monitor') return serveSite(req, res, url, '/', undefined);
+      if (url.pathname === '/api/monitor') return monitorMap(req, res, monitor);
+      if (url.pathname === '/api/monitor/open') return monitorOpen(req, res, monitor);
+    }
+    // Each subscription's windows of use (V29c): read only, the tokens stay in this process.
+    if (usage && url.pathname === '/api/usage') {
+      if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+      return answer(res, () => usage.report());
+    }
+    // Every agent's prompts (V28b).
+    if (settings && url.pathname === '/settings') return serveSite(req, res, url, '/', undefined);
+    if (settings && url.pathname === '/api/settings/prompts') {
+      if (req.method === 'GET') return answer(res, () => settings.prompts());
+      return written(req, res, parsePromptChange, (change) =>
+        answer(res, () => settings.setPrompt(change)),
+      );
+    }
+    if (merges && url.pathname.startsWith('/api/merges')) {
+      return mergesRoute(req, res, url, merges);
+    }
+    const terminal = repository.terminals ? TERMINAL_PATH.exec(url.pathname) : null;
+    if (terminal && repository.terminals) {
+      const [, id = '', action] = terminal;
+      return terminalApi(req, res, repository.terminals, id, action);
     }
     return serveSite(req, res, url, url.pathname, root);
   }
 
+  /** `/api/workspaces…` (V18): the list and a start, each workspace's reads and writes. */
+  async function workspacesRoute(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    workspaces: Workspaces,
+  ): Promise<void> {
+    if (url.pathname === '/api/workspaces') return workspacesApi(req, res, workspaces);
+    if (url.pathname === '/api/workspaces/options')
+      return read(req, res, () => workspaces.options());
+    if (url.pathname === '/api/workspaces/draft') {
+      if (req.method === 'GET') return json(res, 200, await workspaces.draft());
+      return written(req, res, parseDraft, (draft) =>
+        answer(res, () => workspaces.saveDraft(draft).then(() => ({}))),
+      );
+    }
+    if (url.pathname === '/api/workspaces/documents') {
+      // A file for the start (V40), refused before it is read: the page checks the size first.
+      if (Number(req.headers['content-length']) > MAX_DOCUMENT_BODY) {
+        req.resume();
+        return send(res, 413, DOCUMENT_TOO_LARGE);
+      }
+      return written(
+        req,
+        res,
+        parseDocument,
+        ({ name, bytes }) => answer(res, () => workspaces.saveDocument(name, bytes)),
+        MAX_DOCUMENT_BODY,
+      );
+    }
+    if (url.pathname === '/api/workspaces/check') {
+      if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+      const at = url.searchParams.get('at');
+      if (!at) return send(res, 400, 'at: the commit a workspace starts from');
+      return answer(res, () => workspaces.check(at).then((guess) => guess ?? {}));
+    }
+    if (url.pathname === '/api/workspaces/start') {
+      return onBranch(req, res, (branch) => startingOne(res, () => workspaces.startAgent(branch)));
+    }
+    if (url.pathname === '/api/workspaces/stop') {
+      return onBranch(req, res, (branch) => answer(res, () => workspaces.stopAgent(branch)));
+    }
+    if (url.pathname === '/api/workspaces/open') {
+      return written(req, res, parseWorkspaceOpen, ({ branch }) =>
+        answer(res, () => workspaces.openWorktree(branch).then(() => ({}))),
+      );
+    }
+    if (url.pathname === '/api/workspaces/diff') {
+      return written(req, res, parseWorkspaceDiff, ({ branch, file }) =>
+        answer(res, () => workspaces.openDiff(branch, file).then(() => ({}))),
+      );
+    }
+    if (url.pathname === '/api/workspaces/changes') {
+      return ofBranch(req, res, url, (branch) => workspaces.changes(branch));
+    }
+    if (url.pathname === '/api/workspaces/prompt') {
+      return ofBranch(req, res, url, (branch) =>
+        workspaces.prompt(branch).then((prompt) => ({ prompt })),
+      );
+    }
+    if (url.pathname === '/api/workspaces/merge') {
+      return ofBranch(req, res, url, (branch) => workspaces.merge(branch));
+    }
+    if (url.pathname === '/api/workspaces/thread') {
+      return ofBranch(req, res, url, (branch) => workspaces.thread(branch));
+    }
+    if (url.pathname === '/api/workspaces/reply') {
+      return written(req, res, parseWorkspaceReply, (request) =>
+        oneAtATime(res, 'a message is being sent', () => workspaces.reply(request)),
+      );
+    }
+    if (url.pathname === '/api/workspaces/clean') {
+      return written(req, res, parseWorkspaceClean, (request) =>
+        answer(res, () => workspaces.clean(request)),
+      );
+    }
+    if (url.pathname === '/api/workspaces/terminal') {
+      return written(req, res, parseWorkspaceTerminal, (request) =>
+        answer(res, () => workspaces.terminal(request)),
+      );
+    }
+    if (url.pathname === '/api/workspaces/shell') {
+      return written(req, res, parseWorkspaceTerminal, (request) =>
+        answer(res, () => workspaces.shell(request)),
+      );
+    }
+    if (url.pathname === '/api/workspaces/shells') {
+      // It hands out terminals' IDs, which read and drive them: for the page only (V45).
+      if (req.headers['x-symbiote'] !== '1' || !sameSite(req)) {
+        return send(res, 403, 'forbidden');
+      }
+      return ofBranch(req, res, url, (branch) => workspaces.shells(branch));
+    }
+    return serveSite(req, res, url, url.pathname, root);
+  }
+
+  /**
+   * A page agent's API under `api` (Scout's, V35; Scribe's, V41): its state; a question or a new
+   * conversation, one at a time (each starts or stops an agent), refused meanwhile with `busy`;
+   * its terminal; the levels, read where a stepper shows them (Codex's start its daemon), and its
+   * level and model (V47) in the project's config, set in Settings.
+   */
+  async function pageAgentRoute(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    agent: Scout,
+    { api, busy }: { api: string; busy: string },
+  ): Promise<void> {
+    if (url.pathname === api) return read(req, res, () => agent.state());
+    if (url.pathname === `${api}/ask`) {
+      return written(req, res, parseScoutAsk, (request) =>
+        oneAtATime(res, busy, () => agent.ask(request)),
+      );
+    }
+    if (url.pathname === `${api}/new`) {
+      return written(
+        req,
+        res,
+        () => ({}),
+        () => oneAtATime(res, busy, () => agent.renew()),
+      );
+    }
+    if (url.pathname === `${api}/terminal`) {
+      return written(req, res, parseScoutTerminal, (request) =>
+        answer(res, () => agent.terminal(request)),
+      );
+    }
+    if (url.pathname === `${api}/efforts`) return read(req, res, () => agent.efforts());
+    if (url.pathname === `${api}/effort`) {
+      return written(req, res, parseScoutEffort, (change) =>
+        answer(res, () => agent.setEffort(change)),
+      );
+    }
+    if (url.pathname === `${api}/model`) {
+      return written(req, res, parseModelChange, (change) =>
+        answer(res, () => agent.setModel(change)),
+      );
+    }
+    return serveSite(req, res, url, url.pathname, root);
+  }
+
+  /** `/api/merges…` (V26): the queue and a merge's entry, log, actions, effort and model. */
+  async function mergesRoute(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    merges: Merger,
+  ): Promise<void> {
+    if (url.pathname === '/api/merges') {
+      if (req.method === 'GET') return answer(res, () => merges.list());
+      return written(req, res, parseMergeRequest, (request) =>
+        answer(res, () => merges.enqueue(request)),
+      );
+    }
+    if (url.pathname === '/api/merges/targets') {
+      return ofBranch(req, res, url, (branch) => merges.targets(branch));
+    }
+    if (url.pathname === '/api/merges/log') return mergeLog(req, res, url, merges);
+    // The merger's effort (V46d), read and set where Settings' stepper shows it, as Scout's.
+    if (url.pathname === '/api/merges/efforts') return read(req, res, () => merges.efforts());
+    if (url.pathname === '/api/merges/effort') {
+      return written(req, res, parseScoutEffort, (change) =>
+        answer(res, () => merges.setEffort(change)),
+      );
+    }
+    if (url.pathname === '/api/merges/model') {
+      return written(req, res, parseModelChange, (change) =>
+        answer(res, () => merges.setModel(change)),
+      );
+    }
+    if (url.pathname === '/api/merges/approve') {
+      return written(req, res, parseMergeId, (id) => answer(res, () => merges.approve(id)));
+    }
+    if (url.pathname === '/api/merges/recheck') {
+      return written(req, res, parseMergeId, (id) => answer(res, () => merges.recheck(id)));
+    }
+    if (url.pathname === '/api/merges/request-changes') {
+      return written(req, res, parseMergeChanges, ({ id, comments }) =>
+        answer(res, () => merges.requestChanges(id, comments)),
+      );
+    }
+    const action = /^\/api\/merges\/(land|retry|remove)$/.exec(url.pathname)?.[1];
+    if (action) {
+      return written(req, res, parseMergeId, (id) =>
+        answer(res, () =>
+          action === 'land'
+            ? merges.land(id)
+            : action === 'retry'
+              ? merges.retry(id)
+              : merges.remove(id).then(() => ({})),
+        ),
+      );
+    }
+    return serveSite(req, res, url, url.pathname, root);
+  }
   /** The viewer and its API for one graph (or none: the commits page). */
   async function serveSite(
     req: IncomingMessage,
