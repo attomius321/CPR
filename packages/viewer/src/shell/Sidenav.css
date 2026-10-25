@@ -410,11 +410,12 @@ button.workspace-about {
   --dot: var(--moved);
 }
 
-.state-dot.tone-waiting {
+/* Commits to review need the person as a question does: Needs you's amber. Green is Done's. */
+.state-dot.tone-waiting,
+.state-dot.tone-ready {
   --dot: var(--warning);
 }
 
-.state-dot.tone-ready,
 .state-dot.tone-done {
   --dot: var(--added);
 }

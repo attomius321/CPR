@@ -282,6 +282,35 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
   await expect(group(page, 'Merging').locator('.workspace-state')).toBeHidden();
 });
 
+test("a workspace ready for review is drawn in Needs you's colour, not Done's", async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}history`);
+  await start(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  // It commits and finishes: its commits wait for the person's review.
+  symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  symbiote.session(branch, { state: 'done' });
+  const row = group(page, 'Needs you').locator(`[data-branch="${branch}"]`);
+  // Claude Code's sessions are read at most every 2 s: the page's next look sees it.
+  await expect(row).toContainText('Ready for review', POLL);
+
+  const needsYou = await tokenColour(page, '--warning');
+  expect(await tokenColour(page, '--added')).not.toBe(needsYou);
+  await expect(group(page, 'Needs you').locator('h3 > svg.icon')).toHaveCSS('color', needsYou);
+  // Its card's dot, its panel's state and its mark on History's badge.
+  await expect(row.locator('.state-dot')).toHaveCSS('background-color', needsYou);
+  await expect(workspace(page, branch).locator('.workspace-state strong')).toHaveCSS(
+    'color',
+    needsYou,
+  );
+  await pages(page).getByRole('link', { name: 'History' }).click();
+  const mark = page.locator('.commit .ref', { hasText: branch }).locator('.workspace-mark');
+  await expect(mark).toHaveText('●', POLL);
+  await expect(mark).toHaveCSS('color', needsYou);
+});
+
 test('the terminal fills the main area, down to the status bar', async ({ page }) => {
   const symbiote = await serve();
   await page.goto(`${symbiote.url}history`);

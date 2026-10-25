@@ -275,6 +275,23 @@ describe('colour is for state (V31, decision 214)', () => {
       rules.filter((rule) => rule.body.includes('accent-color')).map((r) => r.selector),
     ).toEqual([]);
   });
+
+  /** The tokens the rules for `selector` (alone or in a list) set. */
+  const tonesOf = (selector: string) =>
+    rules
+      .filter((rule) => rule.selector.split(',').some((s) => s.trim() === selector))
+      .map((rule) => /var\((--[\w-]+)\)/.exec(rule.body)?.[1]);
+
+  // A workspace with commits to review needs the person: in Needs you, drawn in its amber. In
+  // Done's green its card read as merged. Failed (red) and idle (grey) keep their own colours.
+  it("draws a workspace ready for review in Needs you's colour, never Done's", () => {
+    const needsYou = tonesOf('.sidenav .group-needsYou');
+    const done = tonesOf('.sidenav .group-done');
+    const drawings = ['.state-dot.tone-', '.workspace-top.tone-', '.workspace-mark-'];
+    expect(drawings.map((d) => [d, tonesOf(`${d}ready`), tonesOf(`${d}done`)])).toEqual(
+      drawings.map((d) => [d, needsYou, done]),
+    );
+  });
 });
 
 describe('the geometry is the style’s (V31c)', () => {

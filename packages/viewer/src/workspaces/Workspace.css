@@ -386,11 +386,12 @@
   --state-tone: var(--moved);
 }
 
-.workspace-top.tone-waiting {
+/* As the sidenav's dot: ready for review in Needs you's amber, green only once merged. */
+.workspace-top.tone-waiting,
+.workspace-top.tone-ready {
   --state-tone: var(--warning);
 }
 
-.workspace-top.tone-ready,
 .workspace-top.tone-done {
   --state-tone: var(--added);
 }

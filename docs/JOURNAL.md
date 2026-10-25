@@ -204,3 +204,4 @@ merge commit.
 - 2026-10-24 [Fix — Scribe starts at the project's effort level, set in Settings](journal/fix-scribe-effort-level.md)
 - 2026-10-25 [Refactor plan — where the length is](journal/refactor-readability.md)
 - 2026-10-25 [Refactor — the CLI's services and the viewer's pages in modules](journal/refactor-readability.md)
+- 2026-10-25 [Fix — a workspace ready for review in Needs you's amber, not Done's green](journal/fix-needs-you-workspaces-fix.md)
