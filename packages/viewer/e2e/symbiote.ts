@@ -85,6 +85,8 @@ async function startSymbiote(
       SYMBIOTE_USAGE: 'off',
       // No first-time intro over the page, and never your record of it (V39): intro.spec's own.
       SYMBIOTE_INTRO: 'off',
+      // Lines in the server's own cache folder (LG1), never yours: none without one.
+      ...(extraEnv.SYMBIOTE_CACHE_DIR || extraEnv.SYMBIOTE_LOG_DIR ? {} : { SYMBIOTE_LOG: 'off' }),
       ...extraEnv,
     },
   });
