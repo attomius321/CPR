@@ -9,6 +9,14 @@
   overflow: hidden;
 }
 
+/* The head strip is History's (V56: it borrowed Settings' `.settings-bar`, whose padding is
+   defined only on Settings' page). */
+.monitor-bar h1 {
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
 .monitor-commit {
   margin-left: auto;
   font-family: var(--mono);

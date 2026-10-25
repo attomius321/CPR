@@ -244,3 +244,16 @@ test('goes back up: the Back button, Escape once nothing is picked, and Backspac
   await page.keyboard.press('Backspace');
   await expect(page).toHaveURL(/\/monitor\?path=app$/);
 });
+
+// V56: the head is History's strip, its title 16 px in and its commit 12 px from the right (it
+// borrowed `.settings-bar`, whose padding is defined only on Settings' page: 0 px).
+test("the head's title and commit inside the strip's padding, as History's", async ({ page }) => {
+  await page.goto(`${symbiote.url}monitor`);
+  await expect(headline(page)).toContainText('lines of code in');
+  const main = await page.locator('.shell-main').boundingBox();
+  const title = await page.getByRole('heading', { name: 'Monitor', exact: true }).boundingBox();
+  const commit = await page.locator('.monitor-commit').boundingBox();
+  if (!main || !title || !commit) throw new Error('no box');
+  expect(Math.round(title.x - main.x)).toBe(16);
+  expect(Math.round(main.x + main.width - (commit.x + commit.width))).toBe(12);
+});

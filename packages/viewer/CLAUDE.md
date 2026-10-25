@@ -56,9 +56,9 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   and block text; a value YAML refuses is `invalid`, an anchor or a tag `unknown`) and the checks
   the page shows as one types (V41, decision 274): only what the open standard, Anthropic's API or
   an agent refuses, or a limit passed. `test/skills.test.ts` runs them on this repository's own
-  skills: no error. `SkillsPage.tsx` draws its list and editor with Settings' rules
-  (`.settings-list`, `.settings-editor`, `.settings-card`; both centred since V51): `SkillsPage.css`
-  comes after `SettingsPage.css`.
+  skills: no error. `SkillsPage.tsx` draws with its own rules (`SkillsPage.css`, V56): no
+  `settings-*` class (an e2e test refuses one), the whole main area, the list at its left edge and
+  the open pane (a skill, New skill, Scribe's terminal) to its right and bottom edges.
 - `src/monitor/` — the Monitor (RM1), at `/monitor` (absolute `/api/monitor`, the `CodeMap` of
   `@symbiote/monitor`, whose **types** only it imports). `codemap.ts` builds the folder tree of the
   kinds turned on, says the concentration in words and gives a file's heat step by its lines

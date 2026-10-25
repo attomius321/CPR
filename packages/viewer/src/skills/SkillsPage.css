@@ -1,34 +1,128 @@
 /* ---- skills: the checkout's skills (V41) --------------------------------------------- */
 
-/* The list and the editor are Settings' (`.settings-body`, `.settings-list`, `.settings-editor`,
-   `.settings-card`): the two pages are drawn alike, centred since V51. What follows is the Skills
-   page's own. */
+/* The page's own rules since V56 (decision 407), not Settings': the whole main area (decision
+   408), its head strip as History's, then the list at its left edge and the open pane to its right
+   and bottom edges. No cards: the pane is the frame. */
+.skills {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
 
-.skills .settings-bar .skills-new-button {
+.skills-bar h1 {
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+.skills-bar .skills-new-button {
   margin-left: auto;
   gap: 6px;
 }
 
-.skills > .skills-codex,
-.skills > .settings-git {
+/* Under the head, over the list and the pane: the Codex note, what Link did, an error. */
+.skills-note {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 6px;
-  margin: 12px var(--settings-side) 0;
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--size-small);
 }
 
-.skills > .settings-git.error {
+.skills-note.error {
   color: var(--error);
 }
 
-.settings-mark.added {
-  color: var(--added);
+.skills > .hint {
+  margin: 12px 16px 0;
 }
 
-/* A new skill's badge, as the list marks it. */
-.settings-state.added {
-  --badge: var(--added);
+.skills-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+/* The list: a column with its own scroll, its groups' headings in line with the head's title. */
+.skills-list {
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 12px 16px 16px;
+  border-right: 1px solid var(--line);
+}
+
+.skills-list section h2 {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+}
+
+.skills-list section + section h2 {
+  margin-top: 16px;
+}
+
+/* A group's entries a little in from its heading: their words 12 px in, their wash 4. */
+.skills-list ul {
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+}
+
+.skills-list li + li {
+  margin-top: 1px;
+}
+
+.skills-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font-size: var(--size-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.skills-list button:hover {
+  background: var(--hover);
+}
+
+.skills-list button[aria-current='true'] {
+  background: var(--selected);
+}
+
+.skills-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skills-mark {
+  flex: none;
+  font-size: var(--size-caption);
+}
+
+.skills-mark.changed,
+.skills-mark.unsaved {
+  color: var(--modified);
+}
+
+.skills-mark.added {
+  color: var(--added);
 }
 
 /* In place of the skills' groups: where the next group's heading would be, not in from it as an
@@ -36,6 +130,61 @@
 .skills-none {
   margin: 16px 0 0;
   padding: 0;
+}
+
+/* The open pane: a skill, New skill or Scribe, as tall and wide as the main area leaves it. */
+.skills-pane {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.skills-editor,
+.skills-new {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  container: skills-pane / inline-size;
+}
+
+.skills-pane h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0 0 4px;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+/* A skill's git state: Committed a quiet chip, New and Changed a badge of the change (V51). */
+.skills-state {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+}
+
+.skills-state.changed {
+  --badge: var(--modified);
+}
+
+.skills-state.added {
+  --badge: var(--added);
+}
+
+.skills-state.changed,
+.skills-state.added {
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--badge) 25%, transparent);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--badge) 10%, transparent);
+  color: var(--badge);
 }
 
 .skills-where {
@@ -50,9 +199,58 @@
   font-size: var(--size-small);
 }
 
+.skills-warning {
+  margin: 0 0 12px;
+  color: var(--warning);
+  font-size: var(--size-small);
+}
+
+/* The text and, beside it where the pane has room, its checks and other files (decision 409):
+   the checks stay in view as one types. The text takes what the pane's height leaves. */
+.skills-work {
+  flex: 1;
+  min-height: 240px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+@container skills-pane (min-width: 880px) {
+  .skills-work {
+    grid-template-columns: minmax(0, 1fr) 280px;
+    grid-template-rows: minmax(0, 1fr);
+    column-gap: 24px;
+  }
+}
+
+.skills-editor textarea {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 8px 10px;
+  line-height: 1.45;
+  resize: none;
+}
+
+.skills-side {
+  min-width: 0;
+}
+
+.skills-side h3 {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+}
+
+.skills-side h3 ~ h3 {
+  margin-top: 16px;
+}
+
 /* Each check a line with its level's dot: colour for the state only. */
 .skills-checks {
-  margin: 12px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
   font-size: var(--size-body);
@@ -83,27 +281,60 @@
   background: var(--warning);
 }
 
+/* Its "?" after the last word, where the column wraps the line. */
 .skills-checks-none {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin: 12px 0 0;
+  margin: 0;
   color: var(--muted);
   font-size: var(--size-small);
 }
 
-.skills-files p {
-  margin: 12px 0 4px;
-  color: var(--muted);
-  font-size: var(--size-small);
+.skills-checks-none .help-button {
+  margin: -4px 0;
 }
 
-.skills-files ul {
+.skills-files {
   margin: 0;
   padding: 0;
   list-style: none;
   color: var(--muted);
   font: var(--size-small) / 1.6 var(--mono);
+  overflow-wrap: anywhere;
+}
+
+/* Under the text: its size at the left, then what a change did and the actions at the right. */
+.skills-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 14px;
+  margin-top: 12px;
+  font-size: var(--size-body);
+}
+
+.skills-size {
+  margin: 0 auto 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.skills-size.error {
+  color: var(--error);
+}
+
+.skills-notice {
+  flex: 1 1 240px;
+  color: var(--muted);
+}
+
+.skills-notice.error {
+  color: var(--error);
+}
+
+/* New skill: a form of two fields, left in the pane, the start page's brief width. */
+.skills-new > .skills-field,
+.skills-new > .skills-actions {
+  max-width: 760px;
 }
 
 .skills-field {
@@ -111,6 +342,10 @@
   gap: 4px;
   margin: 12px 0 0;
   font-weight: 500;
+}
+
+.skills-new > .skills-where + .skills-field {
+  margin-top: 0;
 }
 
 .skills-field input,
@@ -125,29 +360,32 @@
   padding: 0 10px;
 }
 
-.skills-field .settings-size {
+.skills-field .skills-size {
+  margin: 0;
   font-weight: normal;
 }
 
-/* Scribe (V41b): Scout's conversation (`ScoutPage.css`'s parts) in the editor's place, framed as
-   a card (V51), as tall as the window allows: its terminal needs a height of its own. */
+/* Scribe (V41b): Scout's conversation (`ScoutPage.css`'s parts) filling the pane (decision 410):
+   its head strip, then its terminal to the right and bottom edges, as Scout's page and a
+   workspace's terminal are. */
 .skills-scribe {
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .skills-scribe-note {
-  margin: 0 0 8px;
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--size-small);
 }
 
 .scribe-pane {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  height: max(420px, calc(100dvh - 190px));
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--panel);
-  box-shadow: var(--shadow-lift);
 }
 
 .scribe-pane .scout-top h2 {
@@ -157,8 +395,40 @@
   font-weight: 600;
 }
 
+.skills-back {
+  display: none;
+  margin-bottom: 8px;
+}
+
 @media (max-width: 899px) {
-  .scribe-pane {
-    height: max(420px, calc(100dvh - 160px));
+  .skills-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .skills-list {
+    border-right: 0;
+  }
+
+  .skills-body.picked .skills-list,
+  .skills-body:not(.picked) .skills-pane {
+    display: none;
+  }
+
+  /* Its arrow in line with the page's heading (V51). */
+  .skills-back {
+    display: inline-flex;
+    align-self: flex-start;
+    margin-left: -12px;
+  }
+
+  .skills-scribe > .skills-back {
+    margin: 8px 0 8px 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .skills-editor,
+  .skills-new {
+    padding: 12px 16px;
   }
 }

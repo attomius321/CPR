@@ -209,7 +209,7 @@ export function MonitorPage({ path = '' }: { path?: string | undefined }) {
       className={`monitor${resizing ? ' resizing' : ''}`}
       style={width ? ({ '--monitor-width': `${width}px` } as CSSProperties) : undefined}
     >
-      <div className="commits-title settings-bar">
+      <div className="commits-title monitor-bar">
         <h1>Monitor</h1>
         <Help label="About the Monitor">
           <p>

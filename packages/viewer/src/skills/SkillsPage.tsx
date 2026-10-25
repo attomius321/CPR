@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Skill, SkillChange, SkillsState } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
 import { getJson, postJson } from '../ui/http.js';
@@ -250,8 +250,8 @@ export function SkillsPage() {
   const groups = state ? skillGroups(state) : [];
   const codex = state?.codex;
   return (
-    <div className="settings skills">
-      <div className="commits-title settings-bar">
+    <div className="skills">
+      <div className="commits-title skills-bar">
         <h1>Skills</h1>
         <Help label="About Skills">
           <p>
@@ -274,12 +274,12 @@ export function SkillsPage() {
         </button>
       </div>
       {error && (
-        <p className="commits-error error" role="alert">
+        <p className="skills-note error" role="alert">
           {error}
         </p>
       )}
       {codex?.installed && codex.link === 'none' && (
-        <p className="settings-git skills-codex">
+        <p className="skills-note skills-codex">
           Codex reads .agents/skills, not .claude/skills: it sees none of these skills.{' '}
           {codex.canLink ? (
             <button type="button" className="link" disabled={busy} onClick={link}>
@@ -295,15 +295,15 @@ export function SkillsPage() {
         </p>
       )}
       {notice?.at === 'codex' && (
-        <p className={`settings-git${notice.error ? ' error' : ''}`} role="status">
+        <p className={`skills-note${notice.error ? ' error' : ''}`} role="status">
           {notice.text}
         </p>
       )}
       {!state ? (
         !error && <p className="hint">Reading the skills…</p>
       ) : (
-        <div className={`settings-body${picked ? ' picked' : ''}`}>
-          <nav className="settings-list" aria-label="Skills">
+        <div className={`skills-body${picked ? ' picked' : ''}`}>
+          <nav className="skills-list" aria-label="Skills">
             <section aria-label="Scribe">
               <h2>Agent</h2>
               <ul>
@@ -314,7 +314,7 @@ export function SkillsPage() {
                     title={scribe?.conversation ? scoutStateText(scribe.conversation) : undefined}
                     onClick={() => show(SCRIBE)}
                   >
-                    <span className="settings-name">Scribe</span>
+                    <span className="skills-name">Scribe</span>
                     {scribe?.conversation && (
                       // A flex item, as in the sidenav: an inline dot has no size.
                       <span
@@ -340,14 +340,14 @@ export function SkillsPage() {
                         aria-current={skill.path === open ? 'true' : undefined}
                         onClick={() => show(skill.path)}
                       >
-                        <span className="settings-name">{skill.name}</span>
+                        <span className="skills-name">{skill.name}</span>
                         {edited.includes(skill.path) ? (
-                          <span className="settings-mark unsaved">not saved</span>
+                          <span className="skills-mark unsaved">not saved</span>
                         ) : skill.git === 'new' ? (
-                          <span className="settings-mark added">new</span>
+                          <span className="skills-mark added">new</span>
                         ) : (
                           skill.git === 'changed' && (
-                            <span className="settings-mark changed">changed</span>
+                            <span className="skills-mark changed">changed</span>
                           )
                         )}
                       </button>
@@ -358,12 +358,12 @@ export function SkillsPage() {
             ))}
           </nav>
           {open === SCRIBE && (
-            <div className="skills-scribe">
-              <button type="button" className="button ghost settings-back" onClick={back}>
+            <div className="skills-pane skills-scribe">
+              <button type="button" className="button ghost skills-back" onClick={back}>
                 <BackIcon /> All skills
               </button>
               {asking && scribe?.conversation && scribe.conversation.state !== 'gone' && (
-                <p className="settings-git skills-scribe-note">
+                <p className="skills-scribe-note">
                   Its conversation goes on: tell it in its terminal, or start a new one, which takes
                   &ldquo;{asking.text.trim()}&rdquo;.
                 </p>
@@ -410,8 +410,8 @@ const readers = (skill: Skill) =>
   skill.agents.map((a) => (a === 'claude' ? 'Claude Code' : 'Codex')).join(' and ');
 
 /**
- * One skill: its `SKILL.md` to change, its checks and files, Save and Delete; a card under its
- * name and where it is, as a prompt in Settings (V51).
+ * One skill: its name and where it is, its `SKILL.md` as tall as the pane, its checks and other
+ * files beside it (under it in a narrow pane), then Save and Delete (V56).
  */
 function SkillEditor({
   skill,
@@ -442,25 +442,17 @@ function SkillEditor({
   const edited = isSkillEdited(skill, draft);
   const checks = useMemo(() => skillChecks(skill, text), [skill, text]);
   const [deleting, setDeleting] = useState(false);
-  const area = useRef<HTMLTextAreaElement>(null);
   const canSave = edited && !busy && !skill.tooLarge;
-  // As tall as its text, up to 70 % of the window (its CSS max-height), as Settings' editor.
-  useLayoutEffect(() => {
-    const field = area.current;
-    if (!field) return;
-    field.style.height = 'auto';
-    field.style.height = `${field.scrollHeight + 2}px`;
-  }, [text]);
 
   return (
-    <section className="settings-editor skills-editor" aria-label={`Skill: ${skill.name}`}>
-      <button type="button" className="button ghost settings-back" onClick={onBack}>
+    <section className="skills-pane skills-editor" aria-label={`Skill: ${skill.name}`}>
+      <button type="button" className="button ghost skills-back" onClick={onBack}>
         <BackIcon /> All skills
       </button>
       <h2>
         {skill.name}
         <span
-          className={`settings-state${skill.git === 'new' ? ' added' : skill.git === 'committed' ? '' : ' changed'}`}
+          className={`skills-state${skill.git === 'new' ? ' added' : skill.git === 'committed' ? '' : ' changed'}`}
         >
           {skill.git === 'new' ? 'New' : skill.git === 'changed' ? 'Changed' : 'Committed'}
         </span>
@@ -468,128 +460,130 @@ function SkillEditor({
       <p className="skills-where">
         <code>{skill.path}</code> · read by {readers(skill)} · {skillGitNote(skill.git)}
       </p>
-      <div className="settings-card">
-        {skill.tooLarge ? (
-          <p className="settings-warning" role="alert">
-            Its SKILL.md is too large to edit here (over 256 KB): open it in an editor.
-          </p>
-        ) : (
-          <>
-            <textarea
-              ref={area}
-              aria-label={`${skill.name} SKILL.md`}
-              value={text}
-              spellCheck={false}
-              rows={7}
-              onChange={(event) => onDraft(event.target.value)}
-              onKeyDown={(event) => {
-                const saving = event.key === 's' && (event.ctrlKey || event.metaKey);
-                if (!saving) return;
-                event.preventDefault();
-                if (canSave) onSave(text);
-              }}
-            />
-            <p className="settings-size">{skillSize(text)}</p>
-            {checks.length > 0 ? (
-              <ul className="skills-checks" aria-label="Checks">
-                {checks.map((check) => (
-                  <li key={check.text} className={check.level}>
-                    {check.text}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="skills-checks-none">
-                Nothing the standard or the agents would refuse.
-                <Help label="About the checks">
-                  The checks are the open standard&apos;s (agentskills.io) and what Claude Code,
-                  Codex and Anthropic&apos;s API refuse or cut. Whether it says the right thing is
-                  yours to read.
-                </Help>
-              </p>
-            )}
-          </>
+      {skill.tooLarge && (
+        <p className="skills-warning" role="alert">
+          Its SKILL.md is too large to edit here (over 256 KB): open it in an editor.
+        </p>
+      )}
+      <div className="skills-work">
+        {!skill.tooLarge && (
+          <textarea
+            aria-label={`${skill.name} SKILL.md`}
+            value={text}
+            spellCheck={false}
+            onChange={(event) => onDraft(event.target.value)}
+            onKeyDown={(event) => {
+              const saving = event.key === 's' && (event.ctrlKey || event.metaKey);
+              if (!saving) return;
+              event.preventDefault();
+              if (canSave) onSave(text);
+            }}
+          />
         )}
-        {skill.files.length > 0 && (
-          <div className="skills-files">
-            <p>Its other files</p>
-            <ul>
-              {skill.files.map((file) => (
-                <li key={file}>{file}</li>
-              ))}
-              {skill.moreFiles && <li className="hint">and more</li>}
-            </ul>
-          </div>
-        )}
-        <div className="settings-actions">
-          {notice && (
-            <span className={`settings-notice${notice.error ? ' error' : ''}`} role="status">
-              {notice.text}
-              {notice.stale && (
-                <>
-                  {' '}
-                  <button type="button" className="link" onClick={onLoad}>
-                    Read it again
-                  </button>
-                </>
+        <div className="skills-side">
+          {!skill.tooLarge && (
+            <>
+              <h3>Checks</h3>
+              {checks.length > 0 ? (
+                <ul className="skills-checks" aria-label="Checks">
+                  {checks.map((check) => (
+                    <li key={check.text} className={check.level}>
+                      {check.text}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="skills-checks-none">
+                  Nothing the standard or the agents would refuse.{' '}
+                  <Help label="About the checks">
+                    The checks are the open standard&apos;s (agentskills.io) and what Claude Code,
+                    Codex and Anthropic&apos;s API refuse or cut. Whether it says the right thing is
+                    yours to read.
+                  </Help>
+                </p>
               )}
-            </span>
+            </>
           )}
-          {deleting ? (
-            <span className="workspace-confirm">
-              Deletes {skill.folder}/{skill.name}
-              {skill.files.length > 0 ? ` and its ${skill.files.length} other files` : ''}
-              {skill.git === 'new'
-                ? ', not committed: it is gone for good.'
-                : ': git keeps it.'}{' '}
-              <button
-                type="button"
-                className="button"
-                disabled={busy}
-                onClick={() => {
-                  setDeleting(false);
-                  onDelete();
-                }}
-              >
-                Delete
-              </button>{' '}
-              <button type="button" className="button ghost" onClick={() => setDeleting(false)}>
-                Keep it
-              </button>
-            </span>
-          ) : (
+          {skill.files.length > 0 && (
+            <>
+              <h3>Its other files</h3>
+              <ul className="skills-files">
+                {skill.files.map((file) => (
+                  <li key={file}>{file}</li>
+                ))}
+                {skill.moreFiles && <li className="hint">and more</li>}
+              </ul>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="skills-actions">
+        {!skill.tooLarge && <span className="skills-size">{skillSize(text)}</span>}
+        {notice && (
+          <span className={`skills-notice${notice.error ? ' error' : ''}`} role="status">
+            {notice.text}
+            {notice.stale && (
+              <>
+                {' '}
+                <button type="button" className="link" onClick={onLoad}>
+                  Read it again
+                </button>
+              </>
+            )}
+          </span>
+        )}
+        {deleting ? (
+          <span className="workspace-confirm">
+            Deletes {skill.folder}/{skill.name}
+            {skill.files.length > 0 ? ` and its ${skill.files.length} other files` : ''}
+            {skill.git === 'new' ? ', not committed: it is gone for good.' : ': git keeps it.'}{' '}
             <button
               type="button"
-              className="button ghost"
+              className="button"
               disabled={busy}
-              onClick={() => setDeleting(true)}
+              onClick={() => {
+                setDeleting(false);
+                onDelete();
+              }}
             >
-              Delete…
+              Delete
+            </button>{' '}
+            <button type="button" className="button ghost" onClick={() => setDeleting(false)}>
+              Keep it
             </button>
-          )}
+          </span>
+        ) : (
           <button
             type="button"
             className="button ghost"
-            title="Ask Scribe to change this skill"
-            onClick={onImprove}
+            disabled={busy}
+            onClick={() => setDeleting(true)}
           >
-            Improve with Scribe
+            Delete…
           </button>
-          {edited && (
-            <button type="button" className="button ghost" disabled={busy} onClick={onDiscard}>
-              Discard changes
-            </button>
-          )}
-          <button
-            type="button"
-            className="button"
-            disabled={!canSave}
-            title="Save it in this checkout (Ctrl+S)"
-            onClick={() => onSave(text)}
-          >
-            Save
+        )}
+        <button
+          type="button"
+          className="button ghost"
+          title="Ask Scribe to change this skill"
+          onClick={onImprove}
+        >
+          Improve with Scribe
+        </button>
+        {edited && (
+          <button type="button" className="button ghost" disabled={busy} onClick={onDiscard}>
+            Discard changes
           </button>
-        </div>
+        )}
+        <button
+          type="button"
+          className="button"
+          disabled={!canSave}
+          title="Save it in this checkout (Ctrl+S)"
+          onClick={() => onSave(text)}
+        >
+          Save
+        </button>
       </div>
     </section>
   );
@@ -618,7 +612,7 @@ function NewSkill({
   const shown = name === '' && description === '' ? null : problem;
   return (
     <form
-      className="settings-editor skills-new"
+      className="skills-pane skills-new"
       aria-label="New skill"
       onSubmit={(event) => {
         event.preventDefault();
@@ -631,7 +625,7 @@ function NewSkill({
         });
       }}
     >
-      <button type="button" className="button ghost settings-back" onClick={onBack}>
+      <button type="button" className="button ghost skills-back" onClick={onBack}>
         <BackIcon /> All skills
       </button>
       <h2>New skill</h2>
@@ -642,54 +636,52 @@ function NewSkill({
         </button>
         .
       </p>
-      <div className="settings-card">
-        <div className="skills-field">
-          <span className="field-label">
-            <label htmlFor="skill-name">Name</label>
-            <Help label="About the name">
-              Lowercase letters, digits and hyphens, 64 at most: the folder&apos;s name in
-              .claude/skills, and the /command in Claude Code. Say the activity: release-notes,
-              reviewing-migrations.
-            </Help>
+      <div className="skills-field">
+        <span className="field-label">
+          <label htmlFor="skill-name">Name</label>
+          <Help label="About the name">
+            Lowercase letters, digits and hyphens, 64 at most: the folder&apos;s name in
+            .claude/skills, and the /command in Claude Code. Say the activity: release-notes,
+            reviewing-migrations.
+          </Help>
+        </span>
+        <input
+          id="skill-name"
+          value={name}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="release-notes"
+          onChange={(event) => setName(event.target.value)}
+        />
+      </div>
+      <div className="skills-field">
+        <span className="field-label">
+          <label htmlFor="skill-description">Description</label>
+          <Help label="About the description">
+            What it does and when to use it, in the third person, the main use first: an agent reads
+            only this before loading the skill. &quot;Writes release notes from merged branches. Use
+            when asked for release notes or a changelog.&quot;
+          </Help>
+        </span>
+        <textarea
+          id="skill-description"
+          rows={4}
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+        />
+        <p className={`skills-size${shown ? ' error' : ''}`}>
+          {shown ?? `${description.length.toLocaleString('en-US')} of 1,024 characters`}
+        </p>
+      </div>
+      <div className="skills-actions">
+        {notice && (
+          <span className={`skills-notice${notice.error ? ' error' : ''}`} role="status">
+            {notice.text}
           </span>
-          <input
-            id="skill-name"
-            value={name}
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="release-notes"
-            onChange={(event) => setName(event.target.value)}
-          />
-        </div>
-        <div className="skills-field">
-          <span className="field-label">
-            <label htmlFor="skill-description">Description</label>
-            <Help label="About the description">
-              What it does and when to use it, in the third person, the main use first: an agent
-              reads only this before loading the skill. &quot;Writes release notes from merged
-              branches. Use when asked for release notes or a changelog.&quot;
-            </Help>
-          </span>
-          <textarea
-            id="skill-description"
-            rows={4}
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-          />
-          <p className={`settings-size${shown ? ' error' : ''}`}>
-            {shown ?? `${description.length.toLocaleString('en-US')} of 1,024 characters`}
-          </p>
-        </div>
-        <div className="settings-actions">
-          {notice && (
-            <span className={`settings-notice${notice.error ? ' error' : ''}`} role="status">
-              {notice.text}
-            </span>
-          )}
-          <button type="submit" className="button" disabled={busy || problem !== null}>
-            Create
-          </button>
-        </div>
+        )}
+        <button type="submit" className="button" disabled={busy || problem !== null}>
+          Create
+        </button>
       </div>
     </form>
   );
