@@ -94,7 +94,7 @@ test('lists the skills, checks one as it is typed, saves it, and refuses a save 
   const changed = `${STYLE}\nKeep 8 px radii.\n`;
   await text(page, 'style').fill(changed);
   await text(page, 'style').press('Control+s');
-  await expect(editor(page).locator('.settings-notice')).toHaveText(
+  await expect(editor(page).locator('.skills-notice')).toHaveText(
     'Saved. Changes not committed: commit them to share them.',
   );
   expect(file('.claude/skills/style/SKILL.md')).toBe(changed);
@@ -105,13 +105,13 @@ test('lists the skills, checks one as it is typed, saves it, and refuses a save 
   writeFileSync(join(symbiote.repo, '.claude/skills/style/SKILL.md'), `${changed}Elsewhere.\n`);
   await text(page, 'style').fill(`${changed}Here.\n`);
   await editor(page).getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(editor(page).locator('.settings-notice')).toContainText(
+  await expect(editor(page).locator('.skills-notice')).toContainText(
     '.claude/skills/style/SKILL.md changed since you opened it',
   );
   await editor(page).getByRole('button', { name: 'Read it again' }).click();
   await expect(text(page, 'style')).toHaveValue(`${changed}Here.\n`);
   await editor(page).getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(editor(page).locator('.settings-notice')).toContainText('Saved.');
+  await expect(editor(page).locator('.skills-notice')).toContainText('Saved.');
   expect(file('.claude/skills/style/SKILL.md')).toBe(`${changed}Here.\n`);
 
   // Leaving with a draft asks first.
@@ -133,14 +133,14 @@ test('makes a new skill from its name and description, then deletes it', async (
   const create = form.getByRole('button', { name: 'Create' });
   await expect(create).toBeDisabled();
   await form.getByRole('textbox', { name: 'Name' }).fill('Release');
-  await expect(form.locator('.settings-size')).toHaveText(
+  await expect(form.locator('.skills-size')).toHaveText(
     'a name holds only lowercase letters, digits and hyphens',
   );
   await form.getByRole('textbox', { name: 'Name' }).fill('release-notes');
   await form
     .getByRole('textbox', { name: 'Description' })
     .fill('Writes release notes from merged branches: use when asked for release notes.');
-  await expect(form.locator('.settings-size')).toHaveText('76 of 1,024 characters');
+  await expect(form.locator('.skills-size')).toHaveText('76 of 1,024 characters');
   await create.click();
 
   await expect(entry(page, 'release-notes')).toHaveAttribute('aria-current', 'true');
@@ -148,7 +148,7 @@ test('makes a new skill from its name and description, then deletes it', async (
   expect(file('.claude/skills/release-notes/SKILL.md')).toBe(
     '---\nname: release-notes\ndescription: "Writes release notes from merged branches: use when asked for release notes."\n---\n',
   );
-  await expect(editor(page).locator('.settings-notice')).toHaveText(
+  await expect(editor(page).locator('.skills-notice')).toHaveText(
     'Made .claude/skills/release-notes/SKILL.md. Write its instructions under the frontmatter, then save.',
   );
   await expect(editor(page).locator('.skills-checks li')).toHaveText([
@@ -175,7 +175,7 @@ test('links .agents/skills to .claude/skills for Codex, which then reads them', 
     'Codex reads .agents/skills, not .claude/skills: it sees none of these skills.',
   );
   await page.getByRole('button', { name: 'Link for Codex', exact: true }).click();
-  await expect(page.locator('.skills > .settings-git[role="status"]')).toHaveText(
+  await expect(page.locator('.skills > .skills-note[role="status"]')).toHaveText(
     'Linked: Codex reads .agents/skills, now .claude/skills. The link is not committed: commit it to share it.',
   );
   await expect(page.locator('.skills-codex')).toHaveCount(0);
@@ -214,42 +214,56 @@ test('on a phone, the list first; a skill takes the page, and goes back to the l
   await expect(list(page)).toBeVisible();
 });
 
-// V51 (decision 390): Skills follows Settings, drawn as the start page: centred, the head's
-// contents in its width, the skill in a card.
-test('centred in a wide main area, the head over the list and the editor; the skill in a card', async ({
+// V56 (decisions 407–409): Skills is drawn with rules of its own (not Settings') over the whole
+// main area: the list at its left edge, the skill to its right and bottom edges, no card; its
+// checks beside the text where the pane is 880 px wide, under it on a narrower one.
+test('uses the whole main area: the list at its left edge, the skill to its right and bottom', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  commit({ '.claude/skills/review/SKILL.md': REVIEW });
+  commit({
+    '.claude/skills/review/SKILL.md': REVIEW,
+    '.claude/skills/style/SKILL.md': STYLE,
+    '.claude/skills/style/tokens.md': '# Tokens\n',
+  });
   for (const [width, height] of [
+    [1280, 720],
+    [1440, 900],
     [1920, 1080],
     [2560, 1440],
   ] as const) {
     await page.setViewportSize({ width, height });
-    await page.goto(`${symbiote.url}skills`);
-    await entry(page, 'review').click();
-    await expect(text(page, 'review')).toBeVisible();
-    const area = await page.locator('.skills').evaluate((el) => {
-      const box = el.getBoundingClientRect();
-      return { x: box.x, width: el.clientWidth };
-    });
+    await page.goto(`${symbiote.url}skills?skill=.claude%2Fskills%2Fstyle%2FSKILL.md`);
+    await expect(text(page, 'style')).toBeVisible();
+    const main = await page.locator('.shell-main').boundingBox();
     const l = await list(page).boundingBox();
     const e = await editor(page).boundingBox();
-    if (!l || !e) throw new Error('no box');
-    const left = l.x - area.x;
-    const right = area.x + area.width - (e.x + e.width);
-    expect(left).toBeGreaterThan(100);
-    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
-    expect(e.width).toBeLessThanOrEqual(760);
-    // The title over the list, New skill over the editor's right edge.
+    const area = await text(page, 'style').boundingBox();
+    const checks = await editor(page).getByText('Nothing the standard').boundingBox();
     const heading = await page.getByRole('heading', { name: 'Skills', exact: true }).boundingBox();
     const add = await page.getByRole('button', { name: 'New skill' }).boundingBox();
-    expect(Math.abs((heading?.x ?? 0) - l.x)).toBeLessThanOrEqual(1);
-    expect(Math.abs((add?.x ?? 0) + (add?.width ?? 0) - (e.x + e.width))).toBeLessThanOrEqual(1);
+    if (!main || !l || !e || !area || !checks || !heading || !add) throw new Error('no box');
+    expect(Math.abs(l.x - main.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(e.x + e.width - (main.x + main.width))).toBeLessThanOrEqual(1);
+    expect(Math.abs(e.y + e.height - (main.y + main.height))).toBeLessThanOrEqual(1);
+    // The head as History's: its title 16 px in, New skill 12 px from the right.
+    expect(Math.round(heading.x - main.x)).toBe(16);
+    expect(Math.round(main.x + main.width - (add.x + add.width))).toBe(12);
+    // The text as tall as the pane allows: only the line of actions under it and, in a pane under
+    // 880 px, the checks and files.
+    const side = await editor(page).locator('.skills-side').boundingBox();
+    if (!side) throw new Error('no box');
+    const under = width === 1280 ? side : area;
+    expect(main.y + main.height - (under.y + under.height)).toBeLessThan(80);
+    if (width === 1280) expect(checks.y).toBeGreaterThanOrEqual(area.y + area.height);
+    else expect(checks.x).toBeGreaterThanOrEqual(area.x + area.width);
   }
-  const card = editor(page).locator('.settings-card');
-  await expect(card).toHaveCSS('border-top-left-radius', '14px');
-  await expect(card.getByRole('textbox', { name: 'review SKILL.md' })).toBeVisible();
+  // None of Settings' rules, no card.
+  await expect(page.locator('.skills[class*="settings"], .skills [class*="settings"]')).toHaveCount(
+    0,
+  );
+  await expect(editor(page)).toHaveCSS('box-shadow', 'none');
+  await expect(editor(page).getByRole('textbox')).toHaveCount(1);
 });
 
 /** Lists are read every 5 s while an agent works (V18b). */
@@ -316,6 +330,31 @@ test('Scribe: a request starts Claude Code writing skills only, and what it writ
   await expect(skillsLink).toHaveAttribute('data-state', 'answered', POLL);
   await skillsLink.click();
   await expect(skillsLink).not.toHaveAttribute('data-state');
+});
+
+// V56 (decision 410): Scribe's terminal edge to edge in the pane, as Scout's and a workspace's.
+test("Scribe's terminal fills the pane: to the main area's right and bottom edges", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}skills?scribe`);
+  await request(page).fill('A skill for releases');
+  await request(page).press('Enter');
+  const terminal = page.locator('.scribe-pane .agent-terminal');
+  await expect(terminal.locator('.xterm-rows')).toContainText('Fake Claude Code', POLL);
+  for (const [width, height] of [
+    [1440, 900],
+    [1920, 1080],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    const main = await page.locator('.shell-main').boundingBox();
+    const l = await list(page).boundingBox();
+    const box = await terminal.boundingBox();
+    if (!main || !l || !box) throw new Error('no box');
+    expect(Math.abs(box.x + box.width - (main.x + main.width))).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.y + box.height - (main.y + main.height))).toBeLessThanOrEqual(1);
+    expect(box.width).toBeGreaterThanOrEqual(main.width - l.width - 2);
+  }
 });
 
 // Scribe's effort (fix/scribe-effort-level): the box starts at the project's `scribe.effort`.

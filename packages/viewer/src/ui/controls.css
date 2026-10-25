@@ -13,6 +13,8 @@
 .reply textarea,
 .scout-ask textarea,
 .settings-editor textarea,
+.skills-editor textarea,
+.skills-field textarea,
 .merge-change textarea,
 select {
   border: 1px solid var(--field-line);
@@ -34,6 +36,8 @@ select {
 .reply textarea:hover:not(:focus, :disabled),
 .scout-ask textarea:hover:not(:focus, :disabled),
 .settings-editor textarea:hover:not(:focus, :disabled),
+.skills-editor textarea:hover:not(:focus, :disabled),
+.skills-field textarea:hover:not(:focus, :disabled),
 .merge-change textarea:hover:not(:focus, :disabled),
 select:hover:not(:focus, :disabled) {
   border-color: var(--edge);
@@ -48,6 +52,8 @@ select:hover:not(:focus, :disabled) {
 .reply textarea:focus-visible,
 .scout-ask textarea:focus-visible,
 .settings-editor textarea:focus-visible,
+.skills-editor textarea:focus-visible,
+.skills-field textarea:focus-visible,
 .merge-change textarea:focus-visible,
 select:focus-visible {
   outline: none;
@@ -62,6 +68,7 @@ select:focus-visible {
 .reply textarea,
 .scout-ask textarea,
 .settings-editor textarea,
+.skills-field textarea,
 .merge-change textarea {
   padding: 8px 10px;
   line-height: 1.45;

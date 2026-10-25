@@ -2,7 +2,7 @@
 
 /* Drawn as Start a workspace (V51, V49's recipe): the list and the page centred in the main area,
    the head's contents and the notes under it in their width; the page's parts as cards, a
-   prebuilt agent's settings as rows. Skills draws its page with the same rules. */
+   prebuilt agent's settings as rows. Skills has rules of its own since V56. */
 .settings {
   /* The list (240 px), the gap and the page (760 px, the start page's brief). */
   --settings-width: 1024px;
@@ -155,8 +155,7 @@
   --badge: var(--modified);
 }
 
-.settings-state.changed,
-.settings-state.added {
+.settings-state.changed {
   padding: 0 8px;
   border: 1px solid color-mix(in srgb, var(--badge) 25%, transparent);
   border-radius: 9999px;

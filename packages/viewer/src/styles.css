@@ -43,7 +43,6 @@
 @import './workspaces/ChangesPanel.css';
 @import './scout/ScoutPage.css';
 @import './settings/SettingsPage.css';
-/* After SettingsPage.css: the Skills page draws its list and editor with Settings' rules. */
 @import './skills/SkillsPage.css';
 @import './monitor/MonitorPage.css';
 @import './shell/Sidenav.css';
