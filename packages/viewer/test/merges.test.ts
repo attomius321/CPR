@@ -1,8 +1,10 @@
 import type { MergeEntry } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
+  askedRegions,
   failedCheck,
   firstFile,
+  gutterChars,
   mergeActions,
   mergeLabel,
   mergeLive,
@@ -108,7 +110,7 @@ describe('a resolution to review (V26c)', () => {
           message: 'the merger agent: a: two values',
         }),
       ),
-    ).toEqual({ text: 'The merger agent: a: two values', tone: 'bad' });
+    ).toEqual({ text: 'The merger agent: a: two values', tone: 'you' });
   });
 
   it('offers Approve and Request changes on a resolution, and Check again when its check failed', () => {
@@ -261,10 +263,11 @@ describe('a resolution, line by line (the merge page remake)', () => {
         '| V27 | Codex |',
       ].join('\n'),
     });
+    // Lines are read in order (fix/merge-viewer-on-conflict): only the second copy is the extra one.
     expect(review.lines).toEqual([
       { text: '| V25 | Workspaces |', from: 'ours' },
       { text: '| V26 | A merger | merged |', from: 'new' },
-      { text: '| V27 | Codex |', from: 'both', twice: true },
+      { text: '| V27 | Codex |', from: 'both' },
       { text: '| V27 | Codex |', from: 'both', twice: true },
     ]);
     // The ancestor's line is no side's own: neither side added it.
@@ -415,5 +418,294 @@ describe("a resolution's files (V46c)", () => {
 
   it('has no files without a conflict', () => {
     expect(resolutionFiles(entry({ state: 'landed', merge: M }))).toEqual([]);
+  });
+});
+
+describe('red for what is lost or doubled, amber for what the agent wrote (fix/merge-viewer-on-conflict)', () => {
+  // A merge of feature/discounts (discount codes) into main (rounding), as the person's: four
+  // files, each resolved the way the agent did.
+  const region = (
+    path: string,
+    ours: string[],
+    base: string[],
+    theirs: string[],
+    text: string[],
+    around?: { before: string[]; after: string[] },
+  ) => ({
+    path,
+    line: 3,
+    ours,
+    base,
+    theirs,
+    text: text.join('\n'),
+    ...(around ? { around } : {}),
+  });
+  const files = (regions: ReturnType<typeof region>[]) =>
+    resolutionFiles(
+      entry({
+        branch: 'feature/discounts',
+        state: 'needs-you',
+        merge: M,
+        conflicts: [...new Set(regions.map((r) => r.path))],
+        resolution: { agent: 'claude', model: 'sonnet', regions, ms: 11_000 },
+      }),
+    );
+  const verdicts = (list: ReturnType<typeof resolutionFiles>) =>
+    list.map((f) => [f.path, f.tone, f.flags.map((flag) => flag.text)]);
+
+  // Both sides change one paragraph; the agent keeps both sides' words, wrapped again.
+  const readme = region(
+    'README.md',
+    ['Totals are the sum of the item prices, rounded to', 'cents at the end.'],
+    ['Totals are the sum of the item prices.'],
+    ['Totals are the sum of the item prices, less any', 'discount code given at checkout.'],
+    [
+      'Totals are the sum of the item prices, less any',
+      'discount code given at checkout, rounded to cents at',
+      'the end.',
+    ],
+  );
+  // Both sides add two tests at the end: each closed by its own `});`.
+  const test1 = (name: string, body: string) => [`  it('${name}', () => {`, `    ${body}`, '  });'];
+  const tests = region(
+    'src/pricing.test.ts',
+    [
+      ...test1('rounds to cents', 'expect(total([0.1, 0.2])).toBe(0.3);'),
+      ...test1('rounds halves up', 'expect(total([0.005])).toBe(0.01);'),
+    ],
+    [],
+    [
+      ...test1('applies a code', "expect(total([10], 'TEN')).toBe(9);"),
+      ...test1('ignores an unknown code', "expect(total([10], 'NOPE')).toBe(10);"),
+    ],
+    [
+      ...test1('rounds to cents', 'expect(total([0.1, 0.2])).toBe(0.3);'),
+      ...test1('rounds halves up', 'expect(total([0.005])).toBe(0.01);'),
+      ...test1('applies a code', "expect(total([10], 'TEN')).toBe(9);"),
+      ...test1('ignores an unknown code', "expect(total([10], 'NOPE')).toBe(10);"),
+    ],
+  );
+  // The doc comment both sides changed, merged into one.
+  const comment = region(
+    'src/pricing.ts',
+    ['/** The total of the prices, rounded to cents. */'],
+    ['/** The total of the prices. */'],
+    ['/** The total of the prices, less the discount code. */'],
+    ['/** The total of the prices, less the discount code, rounded to cents. */'],
+  );
+  // Both add an entry under "## Unreleased", just above the region: the agent writes it again.
+  const changelog = region(
+    'CHANGELOG.md',
+    ['- Totals are rounded to cents.'],
+    [],
+    ['- Discount codes at checkout.'],
+    ['## Unreleased', '- Totals are rounded to cents.', '- Discount codes at checkout.'],
+    { before: ['# Changelog', '', '## Unreleased'], after: ['', '## 1.0.0', '- First release.'] },
+  );
+
+  it('reads a correct merge without red, and the line copied from above the region in red', () => {
+    const list = files([readme, tests, comment, changelog]);
+    expect(verdicts(list)).toEqual([
+      [
+        'README.md',
+        'new',
+        ['2 lines written by the agent, with the changes of the 3 they replace'],
+      ],
+      ['src/pricing.test.ts', 'ok', ['Keeps every line of both sides, nothing new']],
+      [
+        'src/pricing.ts',
+        'new',
+        ['1 line written by the agent, with the changes of the 2 it replaces'],
+      ],
+      ['CHANGELOG.md', 'bad', ['Repeats “## Unreleased” from just above it']],
+    ]);
+    expect(firstFile(list)?.path).toBe('CHANGELOG.md');
+  });
+
+  it('marks the copied line, and the lines rewritten from each side', () => {
+    const copied = reviewRegion(changelog);
+    expect(copied.lines[0]).toEqual({ text: '## Unreleased', from: 'new', repeats: 'above' });
+    expect(copied.written).toBe(0);
+    const merged = reviewRegion(comment);
+    expect(merged.kept).toEqual({ ours: { kept: 1, of: 1 }, theirs: { kept: 1, of: 1 } });
+    expect(merged.dropped).toEqual({ ours: [], theirs: [] });
+    expect(merged.rewritten).toEqual({ ours: comment.ours, theirs: comment.theirs });
+  });
+
+  it('reads a wrong merge in red, apart from a right one, and shows it first', () => {
+    // The discount lost: main's line kept as it was, the branch's dropped.
+    const wrong = region(
+      'src/pricing.ts',
+      ['  return Math.round(sum * 100) / 100;'],
+      ['  return sum;'],
+      ['  return sum * (1 - discountOf(code));'],
+      ['  return Math.round(sum * 100) / 100;'],
+    );
+    const right = {
+      ...wrong,
+      text: '  return Math.round(sum * (1 - discountOf(code)) * 100) / 100;',
+    };
+    expect(verdicts(files([readme, wrong]))).toEqual([
+      [
+        'README.md',
+        'new',
+        ['2 lines written by the agent, with the changes of the 3 they replace'],
+      ],
+      ['src/pricing.ts', 'bad', ['Drops the line from feature/discounts']],
+    ]);
+    expect(firstFile(files([readme, wrong]))?.path).toBe('src/pricing.ts');
+    expect(verdicts(files([right]))).toEqual([
+      [
+        'src/pricing.ts',
+        'new',
+        ['1 line written by the agent, with the changes of the 2 it replaces'],
+      ],
+    ]);
+    expect(firstFile(files([tests, readme]))?.path).toBe('README.md');
+  });
+
+  it("reads what each side changed, not its line word for word: a real merger agent's resolution", () => {
+    // Claude Code (sonnet) on this merge: the discount applied in a variable, then rounded.
+    const signature = region(
+      'src/pricing.ts',
+      [
+        '/** The total of the prices, rounded to cents. */',
+        'export function total(prices: number[]): number {',
+      ],
+      ['/** The total of the prices. */', 'export function total(prices: number[]): number {'],
+      [
+        'const CODES: Record<string, number> = { TEN: 0.1 };',
+        '',
+        '/** The total of the prices, less the discount code. */',
+        'export function total(prices: number[], code?: string): number {',
+      ],
+      [
+        'const CODES: Record<string, number> = { TEN: 0.1 };',
+        '',
+        '/** The total of the prices, less the discount code, rounded to cents. */',
+        'export function total(prices: number[], code?: string): number {',
+      ],
+    );
+    const body = region(
+      'src/pricing.ts',
+      ['  return Math.round(sum * 100) / 100;'],
+      ['  return sum;'],
+      ['  return sum * (1 - (code ? (CODES[code] ?? 0) : 0));'],
+      [
+        '  const discounted = sum * (1 - (code ? (CODES[code] ?? 0) : 0));',
+        '  return Math.round(discounted * 100) / 100;',
+      ],
+    );
+    expect(verdicts(files([signature, body]))).toEqual([
+      [
+        'src/pricing.ts',
+        'new',
+        ['3 lines written by the agent, with the changes of the 4 they replace'],
+      ],
+    ]);
+    // Without the discount, the branch's change is lost: red.
+    const lost = {
+      ...body,
+      text: '  const rounded = Math.round(sum * 100) / 100;\n  return rounded;',
+    };
+    expect(verdicts(files([lost]))[0]?.[1]).toBe('bad');
+  });
+
+  it('keeps code strict: a changed operator is a dropped line, not a rewritten one', () => {
+    const review = reviewRegion(
+      region('a.ts', ['x = a + 1;'], ['x = a;'], ['x = a - b;'], ['x = a + b + 1;']),
+    );
+    expect(review.dropped).toEqual({ ours: [], theirs: ['x = a - b;'] });
+    expect(regionFlags(review, 'main', 'b')).toEqual([
+      { tone: 'bad', text: 'Drops the line from b' },
+      {
+        tone: 'new',
+        text: '1 line written by the agent, with the changes of the line it replaces',
+      },
+    ]);
+  });
+
+  it('reads lines a resolution moved as kept, not dropped and kept twice', () => {
+    const review = reviewRegion(
+      region(
+        'a.ts',
+        ['import { a } from "a";', 'import { b } from "b";'],
+        [],
+        ['c();'],
+        ['import { b } from "b";', 'import { a } from "a";', 'c();'],
+      ),
+    );
+    expect(review.twice).toBe(0);
+    expect(regionFlags(review, 'main', 'b')).toEqual([
+      { tone: 'ok', text: 'Keeps every line of both sides, nothing new' },
+    ]);
+  });
+});
+
+describe('the merger agent asks you (fix/merge-viewer-on-conflict)', () => {
+  const conflict = (path: string, line: number) => ({
+    path,
+    line,
+    ours: ['a = 1'],
+    base: ['a = 0'],
+    theirs: ['a = 2'],
+    around: { before: ['// above'], after: ['// below'] },
+  });
+  const asking = (needsYou: string) =>
+    entry({
+      state: 'needs-you',
+      conflicts: ['README.md', 'src/pricing.ts'],
+      message: `the merger agent: ${needsYou}`,
+      resolution: {
+        agent: 'claude',
+        regions: [],
+        needsYou,
+        asked: [conflict('README.md', 3), conflict('README.md', 20), conflict('src/pricing.ts', 8)],
+        ms: 11_000,
+      },
+    });
+
+  it("is the person's turn: they answer it", () => {
+    expect(mergeState(asking('Region 3: which discount?'))).toEqual({
+      text: 'The merger agent: Region 3: which discount?',
+      tone: 'you',
+    });
+    expect(mergeLabel(asking('Region 3: which discount?'))).toBe('Needs you');
+  });
+
+  it('lists each file with the regions it asked about, and opens the one the question names', () => {
+    const files = resolutionFiles(asking('Region 3: keep the discount or the rounding?'));
+    expect(files.map((f) => [f.path, f.asked.map((r) => r.line), f.tone, f.why])).toEqual([
+      ['README.md', [3, 20], 'asked', 'Waiting for your answer'],
+      ['src/pricing.ts', [8], 'asked', 'Waiting for your answer'],
+    ]);
+    expect(askedRegions('Region 3: keep the discount or the rounding?')).toEqual([3]);
+    expect(askedRegions('Regions 1 and 2 disagree; region 4 too')).toEqual([1, 2, 4]);
+    expect(askedRegions('Both values differ')).toEqual([]);
+    const entryAsking = asking('Region 3: keep the discount or the rounding?');
+    expect(firstFile(files, entryAsking)?.path).toBe('src/pricing.ts');
+    expect(firstFile(files, asking('Which one?'))?.path).toBe('README.md');
+  });
+
+  it('keeps the files listed while it is asked again', () => {
+    const again = entry({
+      state: 'merging',
+      conflicts: ['README.md'],
+      again: { comments: 'Both.', previous: [], asked: 'Region 1?' },
+    });
+    expect(resolutionFiles(again).map((f) => [f.path, f.why])).toEqual([
+      ['README.md', 'Resolving…'],
+    ]);
+    expect(resolutionFiles({ ...again, state: 'queued' }).map((f) => [f.path, f.why])).toEqual([
+      ['README.md', 'Resolving…'],
+    ]);
+  });
+});
+
+describe("the sides' names in the gutter (fix/merge-viewer-on-conflict)", () => {
+  it('is as wide as the longest name, at most 24 characters', () => {
+    expect(gutterChars(['main', 'feature/discounts'])).toBe(17);
+    expect(gutterChars(['main', 'agent'])).toBe(5);
+    expect(gutterChars(['main', 'feature/a-very-long-branch-name-indeed'])).toBe(24);
   });
 });

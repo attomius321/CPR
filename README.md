@@ -322,7 +322,8 @@ text.
 ![Review tab: two comments on symbols, a summary, and Request changes picked, ready to finish](docs/images/viewer-review.png)
 
 Before you approve, the Review tab says whether the branch merges cleanly or which files conflict;
-on a conflict, the agent resolves it on its branch and you review that. The default branch
+on a conflict, **Merge into** gives them to the merger agent, and you review its resolution before
+it lands ([Merging](#merging)). The default branch
 (`main`) can be reviewed too, for its unpushed commits; an approval there says they may be pushed.
 
 A branch's badge shows how its review stands: `✓` approved, `✗` changes requested, `+2` for its
@@ -368,9 +369,22 @@ agent's own level, when the model takes it), which answers each
 conflicting region. Its log shows what it does: a summary of its thinking, each file it reads and
 its answer as it writes it. Symbiote writes the answers, commits the merge and runs the check.
 Nothing lands until you have reviewed the resolution: **Files** lists the conflicting files, each
-with what its resolution did ("Drops 3 lines from main", "Keeps every line of both sides"), the
-first that loses lines first, and a click shows a file's regions. **Approve** lands it,
-**Request changes** asks the agent again with your words. A check that failed does not take
+with what its resolution did, and a click shows a file's regions, numbered as the agent's prompt
+numbers them, each between the 3 lines above and below it (dim: they stay in the file):
+
+- Red: a side's change lost ("Drops 3 lines from main"), a line kept twice, or a line written again
+  from just around the region ("Repeats “## Unreleased” from just above it").
+- Amber: lines the agent wrote, and whether they keep the changes of the lines they replace
+  ("2 lines written by the agent, with the changes of the 3 they replace": prose wrapped again,
+  two doc comments made one). Those lines are listed under "Rewritten from main".
+- Green: "Keeps every line of both sides, nothing new".
+
+The first file shown is the first in red, else the first in amber. Lines are read in order, so
+the `});` that closes each side's test is that test's. A change is read by its words (and, in
+code, its symbols): a number both sides counted up (14 → 15, merged as 16) reads as dropped.
+**Approve** lands it, **Request changes** asks the agent again with your words. When the agent
+asks you instead, its question is on the page with the regions it asks about, the one it names
+marked, and **Answer** sends your answer back with its question. A check that failed does not take
 Approve away: the page says which commands passed and which failed, the log has the output, and
 **Check again** runs the check again on the same merge without asking the agent. A file deleted on
 one side, a binary file or a submodule is given to no one: resolve it on the branch, review it

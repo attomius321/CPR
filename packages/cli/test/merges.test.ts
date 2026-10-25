@@ -517,6 +517,7 @@ describe('the merger agent (V26c)', () => {
           ours: ['export const a = "main";'],
           base: ['export const a = 1;'],
           theirs: ['export const a = "topic";'],
+          around: { before: [], after: [] },
           text: 'export const a = "main" + "topic";',
           note: 'kept both values',
         },
@@ -583,6 +584,87 @@ describe('the merger agent (V26c)', () => {
     const worktree = join(cache, 'worktrees', (await openRepo(repo.root)).id, 'merge');
     expect(repo.git('-C', worktree, 'status', '--porcelain')).toBe('');
     expect(repo.git('rev-parse', 'main')).toBe(shas.M2);
+  });
+
+  it('keeps the regions it asked about, numbered as its prompt numbers them (fix/merge-viewer-on-conflict)', async () => {
+    const { repo } = conflicting();
+    const agent = fakeAgent('{"needsYou": "region 1: main and topic set a to different values"}');
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find });
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry?.resolution?.asked).toEqual([
+      {
+        path: 'src/a.ts',
+        line: 1,
+        ours: ['export const a = "main";'],
+        base: ['export const a = 1;'],
+        theirs: ['export const a = "topic";'],
+        around: { before: [], after: [] },
+      },
+    ]);
+  });
+
+  it("answers the agent's question: it runs again with it, and keeps the files meanwhile", async () => {
+    const { repo } = conflicting();
+    const agent = fakeAgent('{"needsYou": "region 1: which value?"}', BOTH);
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const queued = await m.requestChanges(id, 'Both: main first.');
+    // The files it asked about stay listed while it runs again.
+    expect(queued).toMatchObject({ state: 'queued', conflicts: ['src/a.ts'] });
+    await m.idle();
+    const prompt = agent.asked[1]?.prompt ?? '';
+    expect(prompt).toContain(
+      'You asked: region 1: which value?\nThe person answered: Both: main first.',
+    );
+    expect(prompt).not.toContain('Your earlier answer was reviewed');
+    const [entry] = (await m.list()).merges;
+    expect(entry?.resolution?.regions[0]?.text).toBe('export const a = "main" + "topic";');
+    expect(entry?.resolution?.needsYou).toBeUndefined();
+  });
+
+  it('keeps the files while it asks again, and none once the merge is clean', async () => {
+    const { repo } = conflicting();
+    const m = await make(repo, fakeChecks().run, { mergerAgent: fakeAgent(BOTH).find });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const queued = await m.requestChanges(id, "Keep main's value.");
+    expect(queued).toMatchObject({ state: 'queued', conflicts: ['src/a.ts'] });
+    // main takes topic's value meanwhile: asked again, the merge no longer conflicts.
+    repo.write({ 'src/a.ts': 'export const a = "topic";\n' });
+    repo.commit('M3: a is topic');
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry?.conflicts).toBeUndefined();
+    expect(entry?.resolution).toBeUndefined();
+  });
+
+  it('keeps the 3 lines around each region its prompt showed, which stay in the file', async () => {
+    const { repo } = setup();
+    const lines = (middle: string) =>
+      ['one', 'two', 'three', 'four', middle, 'six', 'seven', 'eight', 'nine', ''].join('\n');
+    repo.write({ 'src/n.ts': lines('five') });
+    repo.commit('n');
+    repo.git('switch', '--quiet', 'topic');
+    repo.git('merge', '--quiet', 'main');
+    repo.write({ 'src/n.ts': lines('FIVE') });
+    const T2 = repo.commit('T2: shout');
+    repo.git('switch', '--quiet', 'main');
+    repo.write({ 'src/n.ts': lines('5') });
+    repo.commit('M2: count');
+    review(repo, 'topic', { head: T2, into: 'main' });
+    const agent = fakeAgent(JSON.stringify({ regions: { '1': '5' } }));
+    const m = await make(repo, fakeChecks().run, { mergerAgent: agent.find });
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry?.resolution?.regions[0]?.around).toEqual({
+      before: ['two', 'three', 'four'],
+      after: ['six', 'seven', 'eight'],
+    });
+    expect(agent.asked[0]?.prompt).toContain('two\nthree\nfour\n<<<<<<< main');
   });
 
   it('takes no answer that leaves a region out', async () => {
@@ -838,19 +920,62 @@ describe('into which branch (V26a)', () => {
 });
 
 describe('symbiote merge (V26a)', () => {
-  async function symbioteMerge(repo: TestRepo, ...args: string[]) {
+  /** `env`: more of the environment, as `{ env }` before the arguments. */
+  async function symbioteMerge(repo: TestRepo, ...args: (string | { env: NodeJS.ProcessEnv })[]) {
     let stdout = '';
     let stderr = '';
-    const code = await run(['merge', ...args], {
+    const env = args.find((a) => typeof a !== 'string')?.env ?? {};
+    const code = await run(['merge', ...args.filter((a) => typeof a === 'string')], {
       cwd: repo.root,
       stdout: (text) => (stdout += text),
       stderr: (text) => (stderr += text),
       openUrl: () => undefined,
       waitForExit: () => Promise.resolve(),
-      env: { ...process.env, SYMBIOTE_CACHE_DIR: cache },
+      env: { ...process.env, SYMBIOTE_CACHE_DIR: cache, ...env },
     });
     return { code, stdout, stderr };
   }
+
+  /** A fake Claude Code whose `-p` runs answer `answers` in turn, as `stream-json`'s result. */
+  function fakeClaude(...answers: string[]): string {
+    const folder = tempDir();
+    folders.push(folder);
+    const script = join(folder, 'claude');
+    writeFileSync(
+      script,
+      `#!/usr/bin/env node
+const fs = require('node:fs');
+if (!process.argv.includes('-p')) process.exit(0);
+fs.readFileSync(0, 'utf8');
+const count = ${JSON.stringify(join(folder, 'runs'))};
+const n = fs.existsSync(count) ? Number(fs.readFileSync(count, 'utf8')) : 0;
+fs.writeFileSync(count, String(n + 1));
+const answers = ${JSON.stringify(answers)};
+const result = answers[Math.min(n, answers.length - 1)];
+process.stdout.write(JSON.stringify({ type: 'result', result, is_error: false }) + '\\n');
+`,
+      { mode: 0o755 },
+    );
+    return script;
+  }
+
+  it('prints what the agent asked with the regions it asked about, and answers it with --again (fix/merge-viewer-on-conflict)', async () => {
+    const { repo } = conflicting();
+    const env = { SYMBIOTE_CLAUDE: fakeClaude('{"needsYou": "Region 1: which value?"}', BOTH) };
+    let result = await symbioteMerge(repo, { env }, 'topic');
+    expect(result.code).toBe(1);
+    expect(result.stdout).toContain(
+      [
+        'needs you: the merger agent: Region 1: which value?',
+        '  Region 1 · src/a.ts:1',
+        '    main | export const a = "main";',
+        '    topic | export const a = "topic";',
+        '  then --again "<your answer>"',
+      ].join('\n'),
+    );
+    result = await symbioteMerge(repo, { env }, 'topic', '--again', 'Both: main first.');
+    expect(result.stdout).toMatch(/^needs you: review the resolution/m);
+  });
 
   it('merges, checks and lands, printing each state', async () => {
     const { repo, shas } = setup();

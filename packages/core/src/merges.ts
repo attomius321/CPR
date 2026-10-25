@@ -41,8 +41,8 @@ export interface MergeCheckRun {
   output?: string;
 }
 
-/** A conflict region and what the merger agent answered for it (V26c). */
-export interface MergeRegion {
+/** A conflict region as the merger agent was given it (V26c). */
+export interface MergeConflict {
   path: string;
   /** Its first line in the conflicted file, 1-based. */
   line: number;
@@ -50,6 +50,15 @@ export interface MergeRegion {
   ours: string[];
   base: string[] | null;
   theirs: string[];
+  /**
+   * The lines its prompt showed above and below it, which stay in the file
+   * (fix/merge-viewer-on-conflict). Absent on a merge resolved before.
+   */
+  around?: { before: string[]; after: string[] };
+}
+
+/** A conflict region and what the merger agent answered for it (V26c). */
+export interface MergeRegion extends MergeConflict {
   /** The text written in its place. */
   text: string;
   /** The agent's line on what it kept. */
@@ -63,6 +72,11 @@ export interface MergeResolution {
   /** Empty when it said the person must decide (`needsYou`). */
   regions: MergeRegion[];
   needsYou?: string;
+  /**
+   * The regions it was given when it asked (`needsYou`), in its prompt's order: the person reads
+   * them to answer (fix/merge-viewer-on-conflict).
+   */
+  asked?: MergeConflict[];
   /** Its run: tokens in and out, when the agent says, and how long it took. */
   usage?: { input: number; output: number };
   ms: number;
@@ -92,8 +106,11 @@ export interface MergeEntry {
   unresolvable?: { path: string; kind: 'deleted' | 'submodule' | 'binary' }[];
   /** The merger agent's resolution (V26c): reviewed before the merge lands. */
   resolution?: MergeResolution;
-  /** The person's words on an earlier resolution, for the next run, and that run's texts. */
-  again?: { comments: string; previous: string[] };
+  /**
+   * The person's words on an earlier resolution, for the next run, and that run's texts; or their
+   * answer to what the agent `asked` (fix/merge-viewer-on-conflict).
+   */
+  again?: { comments: string; previous: string[]; asked?: string };
   /** Queued to run its failed check again on `merge`, its resolution kept (fix/fix-merger). */
   recheck?: true;
   /** Absent: none was found or set, and the merge waits for Land. */

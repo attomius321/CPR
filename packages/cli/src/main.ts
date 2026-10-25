@@ -296,6 +296,7 @@ Options:
   --land               Land the branch's merge that waits for it
   --approve            Approve the merger agent's resolution of a conflict: it lands
   --again <words>      Ask the merger agent again, with what to change in its resolution
+                       or your answer to what it asked
   -h, --help           Show this help
 `;
 
@@ -827,6 +828,18 @@ function mergeLine(entry: MergeEntry): string {
             `  ${r.path}:${r.line}${r.note ? ` — ${r.note}` : ''}\n${r.text.replace(/^/gm, '    | ')}`,
         );
         return `needs you: review the resolution (${by}${tokens})${checked}\n${lines.join('\n')}\n  then --approve, or --again "<what to change>"`;
+      }
+      // What the agent asked about, each region numbered as its prompt numbered it.
+      const asked = entry.resolution?.needsYou ? (entry.resolution.asked ?? []) : [];
+      if (asked.length > 0) {
+        const sides = asked.map((r, i) =>
+          [
+            `  Region ${i + 1} · ${r.path}:${r.line}`,
+            ...r.ours.map((line) => `    ${entry.into} | ${line}`),
+            ...r.theirs.map((line) => `    ${entry.branch} | ${line}`),
+          ].join('\n'),
+        );
+        return `needs you: ${entry.message ?? ''}\n${sides.join('\n')}\n  then --again "<your answer>"`;
       }
       return `needs you: ${entry.message ?? ''}${entry.conflicts ? `\n  ${entry.conflicts.join('\n  ')}` : ''}`;
     }

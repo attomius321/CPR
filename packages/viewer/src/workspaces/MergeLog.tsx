@@ -31,7 +31,8 @@ const WORDS: Record<StepMark, string> = {
  * A merge's log (V46a, decisions 314 and 316): its steps — the merge, the merger agent, each check
  * command, the landing — with their marks and times, and beside them everything they wrote, in a
  * read-only terminal (xterm.js, the agent terminal's chunk and colours) that follows the end
- * unless scrolled up. A click on a step scrolls to its heading. The lines come from
+ * unless scrolled up; a new run (Retry, Request changes, an answer) brings it back to the end
+ * (fix/merge-viewer-on-conflict). A click on a step scrolls to its heading. The lines come from
  * `/api/merges/log` as they are written, whichever Symbiote merges; `onLogged` says the first
  * arrived. Nothing is drawn for a merge with no log once it no longer runs (one made before V46).
  */
@@ -76,6 +77,8 @@ export function MergeLog({
         heading ? () => shown.current.markers.push(term.registerMarker(-1)) : undefined,
       );
     };
+    // Lines came before: a run among the lines after them is a new one.
+    let begun = false;
     const connect = () => {
       source = new EventSource(`/api/merges/log?id=${encodeURIComponent(entry.id)}&from=${next}`);
       source.addEventListener('lines', (event) => {
@@ -85,8 +88,13 @@ export function MergeLog({
           const made = logText(line, state);
           state = made.state;
           if (made.text !== '') write(made.text, made.heading === true);
+          // Scrolled up in the last run, the person would not see this one start.
+          if (begun && 'run' in line) {
+            shown.current.term?.write('', () => shown.current.term?.scrollToBottom());
+          }
         }
         if (read.lines.length > 0) {
+          begun = true;
           setLines((all) => [...all, ...read.lines]);
           told.current?.();
         }
