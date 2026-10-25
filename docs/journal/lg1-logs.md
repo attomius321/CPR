@@ -28,3 +28,25 @@ that throws or rejects right after it opens its log (5 runs each).
   process still exited 1, as with no listener.
 - **Volume**: the shell polls every 1.5–5 s while something is live (`useWorkspaces.ts`) and the
   usage every 60 s, so a request line each would be thousands a day; requests belong at `debug`.
+
+## LG1 replan — the logs read by another app (2026-10-25, branch `feature/logging-system`)
+
+The person's answer to the first plan: "So i want the logs t o be seen from another app, in case
+of Symbiote crashes, that is the whole point." The Logs page inside Symbiote is dropped: a crash
+is when Symbiote's pages are gone. The viewers that read a folder of JSON lines on their own were
+compared from Docker Hub and GitHub on 2026-10-25, nothing pulled or run yet.
+
+**Learned**:
+- **The machine already runs a Docker stack**: Docker 29.0.1 (Docker Desktop, Compose 2.40.3),
+  several self-hosted services up for 42 hours, 31 GB of memory, ports 3000 and 3100 free.
+- **Sizes**: Grafana 13.2.4 483 MB, Loki 3.7.9 48 MB, Alloy 1.21.2 224 MB (compressed, amd64);
+  VictoriaLogs 1.53.0 14 MB and vlagent 12 MB. Licences: Grafana and Loki AGPL-3.0, Alloy and
+  VictoriaLogs Apache-2.0, lnav BSD-2-Clause. Logdy's last push is 2025-08-25.
+- **vlagent reads pino's lines with no setup**: `-fileCollector.glob`, checkpoints across
+  restarts, `msg` and `time` found by itself; it loses lines with `copytruncate` rotation, one
+  more reason to never rename or truncate a file.
+- **The format changes for readers outside Symbiote**: ISO time and the level as a word (pino's
+  `timestamp` and `formatters.level`), so Loki's level detection, lnav and a person reading the raw
+  file need no mapping from `30`/`50` and epoch milliseconds.
+- **A death without a word**: a process killed or out of memory runs no handler, so its parent
+  has to record how it ended (the server for an analysis child, the app for its server).
