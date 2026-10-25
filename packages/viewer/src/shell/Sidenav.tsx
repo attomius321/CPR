@@ -179,6 +179,8 @@ export function Sidenav({
         <a
           className="sidenav-brand"
           href={HISTORY_PAGE}
+          // Named in the rail too, where its words are hidden (a `title` named it before V54).
+          aria-label={repo ? `Symbiote · ${repo}` : 'Symbiote'}
           {...tip(repo ? `Symbiote · ${repo}` : 'Symbiote', { side: 'right' })}
         >
           <KoiMark />
@@ -200,6 +202,7 @@ export function Sidenav({
       <nav className="sidenav-pages" aria-label="Pages">
         <a
           href={HISTORY_PAGE}
+          aria-label="History"
           {...tip("History\nEvery branch's commits", { keys: 'h', side: 'right' })}
           aria-current={route?.page === 'history' ? 'page' : undefined}
         >
@@ -209,6 +212,7 @@ export function Sidenav({
         </a>
         <a
           href={SCOUT_PAGE}
+          aria-label="Scout"
           {...tip(
             scoutWaits
               ? 'Scout\nWaits for you'
@@ -246,6 +250,7 @@ export function Sidenav({
         </a>
         <a
           href={SKILLS_PAGE}
+          aria-label="Skills"
           {...tip(
             scribeMark === 'working'
               ? 'Skills\nScribe is writing'
@@ -274,6 +279,7 @@ export function Sidenav({
         </a>
         <a
           href={MONITOR_PAGE}
+          aria-label="Monitor"
           {...tip("Monitor\nWhere this checkout's code is", { keys: 'm', side: 'right' })}
           aria-current={route?.page === 'monitor' ? 'page' : undefined}
         >
@@ -283,6 +289,7 @@ export function Sidenav({
         </a>
         <a
           href={SETTINGS_PAGE}
+          aria-label="Settings"
           {...tip("Settings\nEvery agent's prompts", { keys: 's', side: 'right' })}
           aria-current={route?.page === 'settings' ? 'page' : undefined}
         >

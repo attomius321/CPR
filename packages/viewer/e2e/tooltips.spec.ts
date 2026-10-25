@@ -147,6 +147,15 @@ test('a symbol’s tip is its id, in mono; the canvas moving hides it', async ({
   await expect(tooltip(page)).toHaveText(id);
   const font = await tooltip(page).evaluate((tip) => getComputedStyle(tip).fontFamily);
   expect(font).toContain('Geist Mono');
+  // In the tip's colours: a global `.code` (the diff's) once painted it the page's black.
+  const [ground, own] = await tooltip(page).evaluate((tip) => {
+    const probe = document.body.appendChild(document.createElement('div'));
+    probe.style.background = 'var(--tip-bg)';
+    const want = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return [getComputedStyle(tip).backgroundColor, want];
+  });
+  expect(ground).toBe(own);
   await page.mouse.wheel(0, 120);
   await expect(tooltip(page)).toHaveCount(0);
 });

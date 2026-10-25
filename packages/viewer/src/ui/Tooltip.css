@@ -1,5 +1,5 @@
 /* A tooltip (V54, decision 397): what an element names with `tip()`, drawn by `Tooltips` on the
-   page's body. The style's inverted tip (decision 398): light in the dark theme, navy in the
+   page's body. Its modifiers are prefixed: class names are global (the diff's `.code`). The style's inverted tip (decision 398): light in the dark theme, navy in the
    light one; 8 px, 13 px, a head in weight 500, its other lines muted, keys as caps after it. */
 .tooltip {
   position: fixed;
@@ -24,18 +24,18 @@
 }
 
 /* Along a toolbar, the next tip without a fade: it reads as the same tip moving. */
-.tooltip.warm {
+.tooltip-warm {
   animation: none;
 }
 
 /* A cut text's whole text, in its own font (set by `Tooltips`), and code: wider, not bold. */
-.tooltip.cut,
-.tooltip.code {
+.tooltip-cut,
+.tooltip-code {
   max-width: min(480px, calc(100vw - 16px));
   font-weight: normal;
 }
 
-.tooltip.code {
+.tooltip-code {
   font-family: var(--mono);
 }
 

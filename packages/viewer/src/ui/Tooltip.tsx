@@ -277,7 +277,7 @@ export function Tooltips() {
       ref={tip}
       id={TOOLTIP_ID}
       role="tooltip"
-      className={`tooltip${shown.cut ? ' cut' : ''}${shown.code ? ' code' : ''}${shown.warm ? ' warm' : ''}`}
+      className={`tooltip${shown.cut ? ' tooltip-cut' : ''}${shown.code ? ' tooltip-code' : ''}${shown.warm ? ' tooltip-warm' : ''}`}
       data-side={at?.side}
       style={at ? { left: at.left, top: at.top, ...font } : { visibility: 'hidden', ...font }}
     >
