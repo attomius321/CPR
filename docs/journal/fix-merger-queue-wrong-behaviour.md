@@ -48,7 +48,13 @@ order, the second on the first's merge; Remove starts the second on main; Approv
 on the resolution; Check again on a moved main merges again (its parents the new tip and the
 branch, the agent asked a second time, the log's line). The merger's 67 tests pass, the existing
 "holds … while one waits to land", "merges one at a time" and "runs a failed check again on the
-same merge" among them.
+same merge" among them. `pnpm check` (1,766 tests, with the entry below), `pnpm build`, `pnpm
+test:e2e`: 271 of 272, every merge spec among them. The one failure, `changes.spec.ts:100` (`]`
+shows a workspace's Changes), fails 1 of 64 runs under 16 workers and 0 of 10 alone; nothing on
+its path changed here. Not measured on `main`.
+
+Not verified: a real queue of two merges in a running `symbiote view` (the tests run the merger
+on real git repositories with a fake check and agent).
 
 ## The Skills page's Save: a `title` the merge of V54 brought back (2026-10-25, same branch)
 
