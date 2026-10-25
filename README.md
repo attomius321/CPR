@@ -1,1221 +1,317 @@
 # Symbiote
 
-Start a workspace with a coding agent, review what it changed as a graph of the symbols it
-touched, and send back a verdict. Everything runs on your machine.
+Symbiote runs coding agents on your machine and keeps you in charge of what they ship. Each task
+gets a *workspace*: a branch, a folder and an agent of its own, Claude Code or Codex. You read the
+agent's plan, answer its questions, review its branch and approve it. Symbiote then merges the
+commit you approved, once your project's check passes on the merge.
 
-Symbiote turns a change into a graph of the functions, classes, methods and types it added, removed
-or modified, and the calls between them. Findings point at the risky parts: a symbol removed
-while code still uses it, new code that nothing calls, a signature changed under callers that
-were not updated. The aim is to review decisions, not lines.
+![A workspace in Symbiote: the sidenav lists the workspaces by what they need from you, and the open workspace shows its agent's plan in the agent's terminal](docs/images/workspace.png)
 
-![A branch review in Symbiote: changed symbols of one package, coloured by what changed, with signature changes and findings marked](docs/images/viewer.png)
+Several agents can work at once, each on its own branch, while your own checkout stays as it is.
+Everything runs locally: Symbiote is a command, `symbiote`, and an app that the command opens in a
+window of its own or in your browser.
 
-[Quick start](#quick-start) ·
-[Commands](#commands) ·
-[Findings](#findings) ·
-[The viewer](#the-viewer) ·
-[Reviewing a branch](#reviewing-a-branch) ·
-[Workspaces and agents](#workspaces-and-agents) ·
-[Pull and merge requests](#pull-and-merge-requests) ·
-[CI](#ci) ·
-[Monitor](#monitor) ·
-[Logs](#symbiotes-logs) ·
-[Stylesheets](#stylesheets) ·
-[Plugins](#framework-plugins) ·
-[Configuration](#configuration) ·
+[Install](#install) · [Quick start](#quick-start-your-first-workspace) ·
+[Workspaces](#workspaces) · [Other pages](#the-other-pages) ·
+[Review without an agent](#review-without-an-agent) ·
+[Files and network](#what-symbiote-writes-and-sends) · [Limits](#limits) ·
 [Development](#development)
 
-## What it does
+## Requirements
 
-- **Shows a change as a graph.** One box per file, symbols coloured by what changed, findings as
-  badges, removed edges dashed. Click a symbol to see its own diff, its old and new signature,
-  and who uses it.
-- **Reviews any branch.** Mark symbols reviewed as you go. After new commits, only what is new or
-  changed since is left to look at.
-- **Works with agents.** Describe the work, and Symbiote makes its branch and worktree and starts
-  Claude Code or Codex there. You read its plan, answer it, review its branch, and approve. Symbiote then
-  merges the commit you approved, runs your check on the merge, and moves the branch.
-- **Reads pull and merge requests.** Review a GitHub pull request or a GitLab merge request from
-  the graph and post your comments as one review.
-- **Runs in CI.** A GitHub Action and a GitLab CI template post the findings on the lines they
-  are about.
-- **Reads stylesheets.** CSS and SCSS rules, custom properties, keyframes, mixins and variables
-  are symbols too, linked to each other and to the components that render their classes.
-- **Knows frameworks through plugins.** Angular templates and Qwik routes are code that plain
-  TypeScript analysis cannot see; the `angular` and `qwik` plugins add it.
+- Linux, or Windows through WSL. macOS runs the same code but is not tested yet.
+- git, Node 22.12 or newer, and pnpm 12.
+- Claude Code or Codex, installed and logged in. Symbiote starts them with your own login, so
+  their work counts against your own subscription or API key.
+- On Linux, python3, make and a C++ compiler, to build the agent's terminal. Without them,
+  everything else works, and you answer the agent in a text box instead of its terminal.
 
-## Quick start
+## Install
 
-You need git, Node 22.12 or newer and pnpm 12, on macOS or Linux (WSL included).
+Run these commands once:
 
 ```sh
 git clone https://github.com/attomius321/Symbiote.git
 cd Symbiote
 pnpm install
 pnpm build
-pnpm app:setup    # optional: Symbiote's own window (Electron, ~100 MB); without it, the browser
 alias symbiote="node $PWD/packages/cli/dist/bin.js"   # add this line to your shell profile
 ```
 
-On Linux, `pnpm install` also compiles `node-pty` for [the agent's terminal](#workspaces-and-agents)
-when python3, make and a C++ compiler are there. Without them it is skipped, and the rest works.
-
-Then, in any git repository with TypeScript, JavaScript, CSS or SCSS:
-
-```sh
-symbiote view          # History and your workspaces: every branch, to check out, review or compare
-symbiote view main     # this branch against main, in Symbiote's window (or the browser)
-symbiote diff main     # the same, in the terminal
-```
-
-## Commands
-
-| Command | What it does |
-|---|---|
-| `symbiote diff <base> [head]` | Compares `head` (default `HEAD`) with where it left `base`, as a pull request does, and prints the changed symbols and the findings. |
-| `symbiote view [<base> [head]]` | Opens the viewer: in [Symbiote's window](#symbiotes-window) once the desktop app is set up, else in the browser. Without revisions it opens on the repository's History, with your workspaces in the sidenav; with them, on that comparison. Runs until Ctrl+C, or until its window is closed. |
-| `symbiote pr [<number>]` | Reviews a GitHub pull request or a GitLab merge request (`symbiote mr` is the same command). In a CI job for one, the number comes from the job. |
-| `symbiote app install` | Adds [Symbiote's window](#symbiotes-window) to your desktop's apps, so it opens without a terminal; `symbiote app uninstall` removes it. Linux, WSL included. |
-| `symbiote merge <branch>` | Merges the commit your review of `branch` approved, as Merge does in the viewer ([Merging](#merging)): `--into <branch>` picks the target, `--land` lands a merge that waits for you. |
-| `symbiote mcp` | An MCP server on stdin and stdout with [Symbiote's tools](#symbiotes-tools-mcp) for an agent of yours, through the `symbiote view` running for the repository. |
-
-`symbiote diff` in a repository where one function was added, one removed and one changed:
-
-```
-main (9b269bf) → HEAD (f3d543d), merge-base 9b269bf
-1 file changed · 3 symbols changed: 1 added, 1 removed, 1 modified
-
-Findings
-  ✖ removed-still-referenced  src/math.ts#legacy
-      legacy was removed but is still used by 1 symbol: old
-  ⚠ orphan-added              src/math.ts#triple
-      triple is new and nothing references it
-  ℹ signature-changed         src/math.ts#add
-      add changed its signature compatibly; existing users keep working (2 users, 1 untouched)
-
-M  src/math.ts
-     ~ function    add  (signature, body)  · used by 2
-     - function    legacy  · used by 1
-     + function    triple
-```
-
-### Options
-
-| Option | For | What it does |
-|---|---|---|
-| `--json` | diff, pr | Print the graph JSON instead of the summary ([graph schema](docs/graph-schema.md)). |
-| `--out <file>` | diff, pr | Also write the graph JSON to a file. The viewer opens such a file too (drag and drop). |
-| `--codequality <file>` | diff, pr | Also write the findings as a GitLab Code Quality report. |
-| `--fail-on <level>` | diff, pr | Exit 1 when a finding is at least `error`, `warning` or `info`. |
-| `--since <rev>` | all | Mark each changed symbol new, updated or the same as in an earlier head of the change (before a push or a rebase). |
-| `--project <path>` | all | The tsconfig to load, relative to the repository root (default `tsconfig.json`). |
-| `--depth <n>` | all | Hops of unchanged callers and callees to include (default 1). |
-| `--plugin <name\|path>` | all | Analyze with a plugin, such as `angular` or `qwik`. Repeatable. |
-| `--no-merge-base` | diff, view | Compare with `base` itself, not with where `head` left it. |
-| `--port <n>` | view, pr | The viewer's port (default: any free one). |
-| `--browser`, `--no-open` | view, pr | Open the browser instead of [Symbiote's window](#symbiotes-window); open neither. |
-| `--summary` | pr | Print the summary instead of opening the viewer. |
-| `--post-findings <level>` | pr | Post new findings at or above the level as comments on their lines, instead of opening the viewer. |
-| `--forge github\|gitlab` | pr | For hosts whose name does not say which forge they are. |
-| `--remote <name>` | pr | The remote to read and fetch from (default `origin`). |
-
-Exit codes: `0` ok, `1` a failure or a `--fail-on` hit, `2` a usage error. `symbiote <command> --help`
-lists the options of each command.
-
-## Findings
-
-| Rule | Reported when | Severity |
-|---|---|---|
-| `removed-still-referenced` | A removed symbol's name is still used in head, by code that used it before or imports from its file. In stylesheets: a removed SCSS variable, mixin, function or placeholder still used; a custom property or keyframes no stylesheet or script defines any more, still named; a rule removed while markup still renders a class nothing styles now. | Error; a warning when only untyped code (JavaScript, `any`) still uses it, and for custom properties, keyframes and classes (the page falls back silently). |
-| `orphan-added` | Nothing references an added symbol. Never for rules, custom properties, SCSS variables and keyframes, which markup, scripts and libraries use where Symbiote does not fully see. | Warning; info when the package's entry exports it, or it is a default export. |
-| `signature-changed` | A changed symbol's signature changed and it has users. | Warning when the change may break a user that was not updated, in another file and outside tests; otherwise info. |
-| `exported-api-changed` | A published package's exported symbol is removed, no longer exported, or its signature breaks. | Warning. |
-
-Tests (`*.test.*`, `*.spec.*`, `test/`, `tests/`, `e2e/`, `__tests__/`, `__mocks__/`) are told
-apart from production code by their path. Symbiote prefers missing a finding to reporting a wrong
-one, and every finding links to its symbol and the symbols involved.
-
-## The viewer
-
-### The first time
-
-The first time you open Symbiote on a repository, in its window or a browser, two koi rise out of
-deep water and form its S, with the sound of the water and a drop as the S locks (about 5 s). Any
-key or a click ends it at once. It plays once for you, whichever repository: `symbiote view`
-records it in Symbiote's config folder (`~/.config/symbiote/intro.json` on Linux). Settings plays it
-again (**This browser → Appearance**, **Play the intro**). With reduced motion the S is shown formed; without WebGL there is no
-intro. In a browser the sound plays only where the page may play audio before a click.
+To check the install, run `symbiote --help`. It lists the commands.
 
 ### Symbiote's window
 
-With the desktop app set up (`pnpm app:setup`, once: it fetches Electron, ~100 MB), `symbiote view` and
-`symbiote pr` open the viewer in a window of their own, not in a browser tab: its own icon and taskbar
-entry (the S the intro's koi form), no tabs or address bar, the page's name as its title. Without it they open the browser,
-as `--browser` does.
-
-- **Closing the window stops `symbiote view`**, as Ctrl+C does; Ctrl+C closes the window. Agents in
-  workspaces keep running either way.
-- **From your desktop's apps**: `symbiote app install`, once, in a terminal where `symbiote` works, adds Symbiote
-  to them for this user (`~/.local/share/applications/symbiote.desktop` and its icon). Opened from
-  there, Symbiote shows the last repository it showed, else a start page: open a repository, or one
-  of the recent ones. Each repository gets its own window and its own `symbiote view`, which stops
-  with the window, and with the app even if it crashes. Opened again, the running Symbiote comes to
-  the front. A desktop's apps do not read your shell's profile, so `symbiote app install` records the
-  node, the CLI and the `PATH` (`~/.config/symbiote/app.json`) that `symbiote view` will need to find git
-  and your agents; each `symbiote view` that opens Symbiote's window records them again.
-- **Its own title bar**: Symbiote and the repository, the sidenav's fold and back and
-  forward over the sidenav; the page's tabs beside them (a workspace's Terminal, Thread, Activity and Brief,
-  its shells, History's All branches and This branch); the panel's toggle and the window's buttons at the
-  end, in Symbiote's colours, light or dark as the theme is (on Linux Symbiote draws them, and the
-  window's rounded corners). Drag its free space to move the window.
-- **Links that leave Symbiote** (a pull request, a link in a thread) open in your default browser.
-- **Leaving with something not saved** (a prompt in Settings) asks first, in Symbiote's own dialog
-  inside the page and in your system's when the window closes.
-- **Keys**: Ctrl+= and Ctrl+− zoom, Ctrl+0 back to 100 %; Alt+← and Alt+→ (and the mouse's side
-  buttons) go back and forward; Ctrl+R or F5 reloads; Ctrl+Shift+I opens the inspector. On macOS,
-  ⌘ instead of Ctrl, and ⌘[ ⌘] for back and forward. Where the agent's terminal has the focus, it
-  keeps Ctrl+R and Alt+arrows.
-- **Remembered** for the next window: its size and place, the zoom, and the viewer's own choices
-  (theme, folded sidenav, panel widths), kept in `$XDG_CONFIG_HOME/symbiote/app/` (`~/.config/symbiote/app/`).
-- **Where it runs**: Linux, and Windows through WSL (its window comes through WSLg). macOS runs the
-  same code but is not tested yet. On WSL a file dragged from Windows never reaches the window, and
-  neither does one copied there: WSLg carries no drag and drop between Windows and Linux windows
-  ([microsoft/wslg#84](https://github.com/microsoft/wslg/issues/84)). Pick files instead: Add files
-  on Start a workspace, Attach images beside a workspace's terminal (Windows' files are under
-  `/mnt/c`). On Ubuntu 24.04 and later, AppArmor may refuse Chromium's
-  sandbox to an Electron that no package installed: `symbiote view` then says so and opens the browser
-  ([Chromium on this restriction](https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md)).
-
-### Reading a change
-
-The canvas draws one box per file, and in it the symbols that changed: green added, red removed,
-orange modified, blue moved. Grey symbols are their unchanged callers and callees, for context.
-A symbol's chips say what changed in it (`signature`, `body`), its badge counts its findings, and
-dashed red edges are calls and references that went away.
-
-Click a symbol, use the change list, or press j and k, and the detail panel opens beside the
-canvas: the findings, the old and new signature, a line diff of just that symbol, and who uses
-it and what it uses. Selecting or marking a symbol never rearranges the graph.
-
-![Detail panel of an interface: a signature-changed warning, its signature, a line diff of just this symbol, and its users](docs/images/viewer-detail.png)
-
-Large changes stay navigable:
-
-- A changed symbol with more than 8 unchanged users or uses shows them as one node ("390 users
-  in 220 files"), which opens on click.
-- Zoomed out, the canvas is a map of file names. Click one to zoom in. Each pair of linked files
-  has one edge, heavier the more calls it stands for.
-- The change list has a search (`/`): it keeps the symbols whose path and name hold every word
-  you type, Enter opens the first, and j and k walk only the matches.
-- Layouts are made in the background. The change list and findings show at once, and a view you
-  have seen before comes back at once.
-
-In a monorepo, when the change spans two or more apps or libraries, each is a frame around its
-files, with its name, kind and folder. Frames are ordered so that callers come before what they
-call, and edges between projects are drawn heavier. The change list is then grouped by project.
-"only" on a project, or p (P goes back), shows one project at a time: its changes and everything
-they are linked to elsewhere.
-
-### History
-
-`symbiote view` without revisions opens on **History** (`/history`, or h): the repository's history,
-every branch, local and remote, drawn as a graph beside the commits, the current branch the
-straight line on the left. The sidenav on the left lists the pages (History, [Scout](#scout),
-[Skills](#skills), [Monitor](#monitor), Settings) and, under
-them, your [workspaces](#workspaces-and-agents); a click opens one beside it, without loading the
-page again. Drag the sidenav's edge to widen or narrow it (180–480 px), or focus the edge and use
-the arrow keys; a double-click restores it. A workspace's changes, at the right of its terminal,
-resize the same way. The widths are kept in this browser. The status bar along the bottom says what the last action did. The whole
-history scrolls, and commits load as they come into view; its keys are behind the "?" in its
-toolbar.
-
-The pages are dark. **Appearance** in Settings (under **This browser**, the list's last entry)
-makes them light, or follows your system, in this browser. They are set in Geist and Geist Mono, which `symbiote view` serves itself: nothing is fetched
-from elsewhere.
-
-**Usage.** The status bar's right side shows the subscription of each agent Symbiote can start and
-how much of each window is used, as its vendor counts it: `Claude Pro · 5h 59% · wk 66%`,
-`Codex Go · 30d 0%`. Amber from 80 % (or when Claude warns), red at the limit; a hover says
-when each window resets and how old the numbers are. `symbiote view` reads them at most every 5
-minutes, while a page asks:
-
-- **Claude Code**: from the endpoint Claude Code's own `/usage` reads, with the token Claude
-  Code stored (`~/.claude/.credentials.json`, or the Keychain on macOS). Symbiote only reads it: it
-  never renews it, never gives it to the page, and sends it to `api.anthropic.com` only. When the
-  token has expired or a request fails, the bar shows the last numbers Symbiote read, with their age
-  and why. Symbiote keeps them in its cache (`~/.cache/symbiote/usage/claude.json` on Linux, or
-  `$SYMBIOTE_CACHE_DIR/usage/claude.json`), for the account they were read for, so the next run and
-  every `symbiote view` on the machine have them; before Symbiote's first read, Claude is not shown.
-- **Codex**: from its app server (`account/rateLimits/read`); without one, from your newest
-  Codex session. An API-key login has no windows and is not shown.
-
-`SYMBIOTE_USAGE=off` reads none of it.
-
-![History: the branches panel with its milestone folder open, and the history drawn as a graph with branch badges](docs/images/history.png)
-
-- **Branches panel.** Local branches, with `↑2 ↓1` against their upstream, and remote ones by
-  folder. Filter it with `/`. A click selects the branch's newest commit, however deep in the
-  history it is. Workspaces you started come first: those waiting for you, the one whose agent
-  last reported or asked something on top, then those whose agent is working, each with how
-  long ago its agent acted (`4m`, `2h`).
-- **Check out** (right-click a commit, or c): one of its branches, a remote branch as a local
-  one, a tag or the commit itself. Symbiote asks first and uses `git switch`, never forced: your local
-  changes come along, or git refuses and nothing changes. A checkout made in a terminal shows
-  when the page is back in focus.
-- **Review** (r): the branch from where it left the default branch to its tip. See
-  [Reviewing a branch](#reviewing-a-branch).
-- **Compare** (x, or "Compare mode"): click two commits, the older is the base, then Compare or
-  Enter. One commit alone is compared with its parent. Two commits on diverged branches are
-  compared from where they forked, as a pull request is, and Swap compares the other side.
-- **Start a workspace** (n): see [Workspaces and agents](#workspaces-and-agents).
-
-Each comparison is analyzed in the background with the same `--plugin`, `--project` and `--depth`,
-and has its own address (`/diff/<base>..<head>/`), so it can be reloaded or bookmarked. The last 8
-stay ready while `symbiote view` runs. Its ← link goes back where it was opened: History, or the
-workspace for its review. A comparison has the sidenav too, folded to a rail of icons and
-workspace marks so the graph keeps its width; [ opens it.
-
-### Open in VS Code
-
-Under `symbiote view` and `symbiote pr`, "Open in VS Code" (or o) opens the selected symbol in the window
-that has the repository open, else in a new one. Ctrl+click a line (Cmd+click on macOS), or click
-its number, to open that line. Symbiote finds where the line is in your working copy now: after a
-checkout or an edit it opens at the line's new place, and says so. It runs VS Code's `code`
-command on the machine where `symbiote` runs, so WSL, Remote SSH and containers work too. Set
-`SYMBIOTE_CODE` to use another editor command (Insiders, VSCodium, Cursor).
-
-### Keys
-
-| Key | In History | In a change |
-|---|---|---|
-| j, k | Next, previous commit | Next, previous changed symbol |
-| / | Find a branch | Search the change list |
-| c | Check out | Comment on the selected symbol (in a review) |
-| r | Review the branch | Mark the selected symbol reviewed |
-| x | Compare mode | |
-| n | Start a workspace | |
-| h, s | History, Settings | |
-| a | [Scout](#scout); on Scout, its terminal (or its question box) | |
-| i | [Skills](#skills) | |
-| m | [Monitor](#monitor); on it, Backspace goes up a folder, Escape too when no file is picked | |
-| w | The workspaces in the sidenav: ↑ and ↓ move, Enter opens | |
-| [ | Fold the sidenav to a rail, or open it | Open the sidenav, or fold it |
-| ] | | In a workspace: hide or show its branch's changes |
-| f | | Focus: only the selected symbol and its neighbours |
-| p, P | | Next, previous project |
-| o | | Open in VS Code |
-| Esc | Leave compare mode | Close the detail panel |
-
-n, h, a, i, m, s, w and [ work on Settings, on Scout, on Skills, on the Monitor and in a workspace too. In a comment box, Start a workspace, a workspace's
-reply box or a prompt in Settings, Ctrl+Enter (Cmd+Enter on macOS) saves, starts or sends.
-
-## Reviewing a branch
-
-Pick "Review" in a commit's menu, or press r, and Symbiote compares the branch from where it left the
-default branch to its tip. Mark symbols reviewed as you go (r). After new commits, review it
-again: only what is new or changed since is left, and marks stay on the symbols that did not
-change.
-
-Comment on a symbol or one of its lines (select it, press c), then finish in the Review tab with
-**Request changes**, **Comment** or **Approve**. Your verdict and comments are written to the
-review's file, where the agent reads them; "Copy for the agent" puts them on the clipboard as
-text.
-
-![Review tab: two comments on symbols, a summary, and Request changes picked, ready to finish](docs/images/viewer-review.png)
-
-Before you approve, the Review tab says whether the branch merges cleanly or which files conflict;
-on a conflict, **Merge into** gives them to the merger agent, and you review its resolution before
-it lands ([Merging](#merging)). The default branch
-(`main`) can be reviewed too, for its unpushed commits; an approval there says they may be pushed.
-
-A branch's badge shows how its review stands: `✓` approved, `✗` changes requested, `+2` for its
-own commits since your review, `…` while reviewing. Commits added since get a dot.
-
-Where reviews live:
-
-- `symbiote/reviews/<branch>/<your git email>.json`, in the repository.
-- The first review writes `symbiote/.gitignore`, which keeps them out of git. Delete it to commit and
-  share them. `git clean -fdx` deletes ignored files, reviews with them.
-- `symbiote/AGENTS.md` tells any agent what to do with a review, and every review file's first line
-  points there. Claude Code loads it when it reads a review.
-
-### Merging
-
-An approved branch gets **Merge into** in its Review tab and in its workspace's panel. The target
-is preselected: the branch the workspace started from, else the one the approval names, else the
-default branch (`main`, or `master` in older projects). Pick any other branch in the list.
-
-Symbiote merges the commit you approved (that one, not newer ones) with `git merge --no-ff`, in a
-worktree of its own in its cache. Your checkout and the agent's worktree are not used. Then:
-
-1. It runs the check on the merge: `merge.checks` in `symbiote/config.json`, else the command it guesses
-   from the target's files (a `check` or `test` script after its package manager's install, a
-   Makefile target, `cargo test`, …).
-2. When the check passes, it moves the target by fast-forward. If the target is checked out
-   (usually in your main checkout), the fast-forward runs there, so the files move with the
-   branch. git refuses when your local changes would be overwritten. Then nothing changes and Land
-   tries again. A target checked out nowhere has its ref moved, only if it has not moved since.
-3. With `merge.push: true` it pushes the target. This is off by default.
-
-Merges go one at a time, each on the result of the last. The sidenav's Merging group, at the top
-of its list, shows each one (its dot spins while Symbiote works on it), and a click opens it
-(`/?merge=<branch>`): queued, merging, checking, ready to land, landed or failed. Under that, its
-steps (the merge, the merger agent, each check command, the landing), each with its time, beside a
-log of everything they write as they write it, in a read-only terminal: what git did, the check's
-output, and the merger agent at work. A click on a step scrolls the log to it; a merge that runs
-again (Retry, Request changes, Check again) keeps the earlier runs above. Without a check, a merge
-waits for **Land**.
-
-A conflict goes to a merger agent (Claude Code or Codex, `merge.agent`; `merge.model`, set in
-**Settings** from the agent's own list, else `sonnet` for Claude Code; `merge.effort`, else the
-agent's own level, when the model takes it), which answers each
-conflicting region. Its log shows what it does: a summary of its thinking, each file it reads and
-its answer as it writes it. Symbiote writes the answers, commits the merge and runs the check.
-Nothing lands until you have reviewed the resolution: **Files** lists the conflicting files, each
-with what its resolution did, and a click shows a file's regions, numbered as the agent's prompt
-numbers them, each between the 3 lines above and below it (dim: they stay in the file):
-
-- Red: a side's change lost ("Drops 3 lines from main"), a line kept twice, or a line written again
-  from just around the region ("Repeats “## Unreleased” from just above it").
-- Amber: lines the agent wrote, and whether they keep the changes of the lines they replace
-  ("2 lines written by the agent, with the changes of the 3 they replace": prose wrapped again,
-  two doc comments made one). Those lines are listed under "Rewritten from main".
-- Green: "Keeps every line of both sides, nothing new".
-
-The first file shown is the first in red, else the first in amber. Lines are read in order, so
-the `});` that closes each side's test is that test's. A change is read by its words (and, in
-code, its symbols): a number both sides counted up (14 → 15, merged as 16) reads as dropped.
-**Approve** lands it, **Request changes** asks the agent again with your words. When the agent
-asks you instead, its question is on the page with the regions it asks about, the one it names
-marked, and **Answer** sends your answer back with its question. A check that failed does not take
-Approve away: the page says which commands passed and which failed, the log has the output, and
-**Check again** runs the check again on the same merge without asking the agent. A file deleted on
-one side, a binary file or a submodule is given to no one: resolve it on the branch, review it
-again, then Retry. A target that moved before landing is merged again on its new tip.
-
-A landed merge has **Remove** as its page's button, and a bin on its card in the sidenav (shown on
-hover or keyboard focus): either takes it out of the queue with its log, and the target keeps the
-merge. A merge that has not landed is removed from its own page, under **⋯**.
-
-The queue is kept in Symbiote's cache. `symbiote merge <branch>` does the same from a terminal and prints
-each step.
-
-## Workspaces and agents
-
-"Start a workspace" (n, the sidenav's +, or "Start a workspace here" in a commit's menu) is a page
-beside the sidenav, at `/start` (`/start?at=<commit>` from a commit), centred: what the work is in
-one card, and beside it (under it in a narrow window) a card of the run's choices, one a row: where
-it starts, the branch, the agent and its options, Plan first, the documents. It asks what the work
-is in a few parts:
-
-| Kind | It asks for | Done when, filled in | Branch |
-|---|---|---|---|
-| Feature | Goal: what it should do, and why | (empty) | `feature/` |
-| Fix | What happens, and what should | A test that fails today passes, and the check passes. | `fix/` |
-| Refactor | What to restructure, and why | Behaviour is unchanged: existing tests pass without changing what they assert, and the check passes. | `refactor/` |
-| Chore | What to change, and why now | Nothing else changes, and the check passes. | `chore/` |
-| Spike | The question, and what the answer will decide | A written answer: what was tried, what was measured, and a recommendation. | `spike/` |
-
-Every kind takes a title (the workspace's name and its branch's), and under **More** where to look,
-notes, and what is out of scope or how to reproduce. Done when is optional; it names the check
-command Symbiote guesses from the start commit's root files (`package.json`'s `check` or `test` script
-with its package manager, a Makefile's `check` or `test` target, `scripts/test.sh`, `cargo test`,
-`go test ./...`, `pytest`), and says where it found it. The ⓘ after the kinds says what each is
-for. The kind is picked with `1`–`5` too, and
-the form is kept as a draft (in Symbiote's cache, so it outlives a new `symbiote view`) until the workspace
-starts, so leaving the page loses nothing; Clear empties it.
-
-**Documents** (optional) are files for the agent: screenshots, PDFs, notes, samples. Add files,
-drop them anywhere on the page, or paste one (a screenshot) when the clipboard holds no text. Each
-is uploaded as you add it, listed with its size, and kept in Symbiote's cache until the workspace
-starts (one never started is removed after a week); up to 20 files, 20 MB each, 100 MB in all.
-The draft keeps them. Start waits while one is on its way, or while one too large is listed.
-
-Cancel or Esc goes back to the page you came from; Start (Ctrl+Enter) opens the new workspace in
-the page's place. Symbiote then:
-
-1. makes the agent's brief from the parts, under fixed headings (`# Fix: <title>`, `## What
-   happens`, …, `## Done when` last), and adds one line for the kind: a fix is reproduced with a
-   failing test first, a refactor and a chore change no behaviour, a spike answers in its report
-   and commits nothing unless asked (the kind's start prompt: a project can change it in
-   [Settings](#agents-prompts));
-2. names a branch after the title (edit it if you like) and creates it where **Start from** says:
-   the default branch's tip unless you pick another branch (local, or only on a remote: its newest
-   tip, the local one's or a remote's), or the commit you picked in History;
-3. gives the branch its own worktree beside your checkout, `../<repo>.worktrees/<branch>` (the
-   branch's slashes become dashes), so your checkout and `symbiote view` are untouched and several
-   workspaces can run at once;
-4. records the brief, and the parts it was made of, in `symbiote/workspaces/<branch>.json` (`symbiote/features/` before V25, moved there the first time);
-5. puts the documents beside that record, in `symbiote/documents/<branch>/` (the branch's slashes
-   as folders; out of git with the rest of `symbiote/`), never in the worktree, where the
-   project's checks would see them; a name taken twice becomes `name (2).ext`;
-6. starts the agent you picked there in the background with the brief: Claude Code (`claude
-   --bg`) or [Codex](#codex). With "Plan first and wait for my OK" (on by default), the agent
-   stops after its plan. Its first prompt says it is already in that worktree, on its branch, and
-   makes no other branch or worktree, even where the project's own workflow or the agent's tools
-   say new work gets one. It names the documents' folder and each file, and says it may read them
-   there (the Documents prompt in [Settings](#agents-prompts)).
-
-Prettier and ESLint read only the root's ignore files, so in your main checkout they check a
-`.json` or `.js` given as a document: add `symbiote/documents` to `.prettierignore` and ESLint's
-`ignores`, as this repository does.
-
-The page offers the agents installed, Claude Code first unless `agent.kind` in
-[`symbiote/config.json`](#configuration) says `codex`. Claude Code runs on your own Claude Code login
-(the page says which: your subscription or an API key), in the permission mode you pick: Claude
-Code's default, Accept edits, or Auto. Symbiote never grants it more. **Model** is the model the
-session starts on: the agent's default (Codex's configured model is named; with `agent.model`, the
-project's), or one from the agent's own list — Claude Code's as it answers its SDK's `initialize`
-request (read in the background, kept in Symbiote's cache and read again once a day), Codex's from
-its app server's `model/list`; the picked model's description is under it. **Effort** is the level
-the session starts at, on a stepper: its own default (the first stop), or one the picked model takes
-(Claude Code's `--help` for its default model; Opus 4.6 has no `xhigh`, Haiku 4.5 no level at
-all); drag the handle, step with the arrow keys, or click a level's word. The session keeps both,
-Start again uses them again, and the Brief tab says them ("Started with Claude Code on sonnet at
-high effort."); change them later in the agent's own terminal (Claude Code: `/model`, `/effort`).
-The next workspace starts on the defaults again. If Claude Code does not start, the branch and worktree are kept and the page
-offers the prompt to copy. Claude Code has to trust the folder, so run `claude` there once and
-accept. It is found as `claude` on your `PATH`, or set `SYMBIOTE_CLAUDE`.
-
-The sidenav lists your workspaces under the pages, by what each needs from you, each group under
-its icon:
-
-- **Merging** (merge arrows), first: the merges Symbiote is making.
-- **Waiting for you** (a bell), in a band of its own: agents stopped mid-task on you — a
-  permission to give, a question to answer, a plan to read, an interrupted turn. Each card says
-  what it asks ("Permission to run pnpm test", "Asks: Which store? — Redis · SQLite"), how long it
-  has waited, and has **Respond**, which opens the workspace on its terminal, focused. The
-  Workspaces heading counts them, and so does the window's title: "(2) History · repo".
-- **To review** (an eye): finished work — a branch to review, changes to send back, an approval to
-  merge, or a report without commits.
-- **Not running** (a paused circle): failed (in red, with its words), stopped, or not started.
-- **Working** (an hourglass): which agent works, by its mark (Claude Code's spark or Codex's), and
-  what it runs right now, when Symbiote records its tools ("Running pnpm test", "Editing
-  src/auth.ts", "Thinking" between them), and for how long.
-- **Done** (a check): merged. A bin on the card, on hover, cleans it up.
-
-A dot tells each state by its shape as well as its colour: a working (or starting) agent's is a
-spinner, as is a merge's while Symbiote makes it; a waiting one's halo holds still, a stopped one
-is a ring (with reduced motion, nothing moves). Folded to a rail, the icons stand for the groups
-and the bell carries the count; + starts one (n). Each card shows the workspace's title and its
-kind (feature, fix, refactor, chore or spike) in a chip, what is next, its commits, files not
-committed yet, whether it merges cleanly, how long its state has lasted, and its branch.
-When an agent starts waiting, finishes or fails while you are on another page, the status bar says
-so once, with **Open**. A click opens it beside the sidenav (`/?branch=<branch>`), with these
-actions:
-
-- **Review** its branch;
-- **Stop** or **Start** the agent;
-- **Clean up**, once it is merged: the head's main button;
-- under **⋯**: **Open in VS Code** (its worktree), **Copy the prompt**, **Clean up…** (not merged),
-  and **Talk**,
-  which copies `claude attach <id>` (Codex: `codex resume <thread> --remote <its app server> -C
-  <worktree>`) for a terminal of your own (only when Symbiote cannot open the agent's terminal; its
-  tooltip says why).
-
-![Workspaces: three agents by what they need from you, and the picked one's Claude Code session in the Terminal tab, its plan waiting for your OK](docs/images/features.png)
-
-A workspace opens, where it can, on the agent's **Terminal**, down to the status bar: its session
-as Claude Code draws it (the conversation, tool calls, permission prompts and
-questions, Esc, slash commands), so you answer it without leaving Symbiote.
-
-- It is `claude attach <id>`, run by `symbiote view` in the workspace's worktree. Claude Code keeps
-  hosting the session: leaving the tab or the page only hangs up that client, and the agent goes
-  on.
-- **Send the verdict:** after you finish a review of the workspace's branch, this (or "Send to the
-  agent" in the Review tab) types the verdict's first line and where the review is into the
-  agent's input, for you to send with Enter.
-- **Images:** paste a screenshot (Ctrl+V, Ctrl+Shift+V or ⌘V), drop image files (PNG, JPEG,
-  GIF or WebP, 20 MB at most) on the terminal, or pick them with Attach images (the image button in
-  the workspace's head), and the agent attaches them to the message you are typing, as
-  `[Image #1]`, sent with Enter. Claude Code and Codex alike; Scout's terminal takes a paste or a
-  drop too.
-  Symbiote saves each image in its cache (`~/.cache/symbiote/images` on Linux, readable by you only) and
-  pastes its path, which the agent reads; images older than a day are removed. Text in the
-  clipboard pastes as text. On Linux and Windows, Ctrl+V is the page's paste: it no longer sends
-  ^V for the agent to read its own machine's clipboard.
-- **Paths and links:** a path the agent prints to a file of its worktree (`src/a.ts:12:5`,
-  `Update(src/a.ts)`, an absolute path, a compiler's `src/a.ts(12,5)`) is underlined under the
-  pointer, and Ctrl+click (⌘+click on macOS) opens it in VS Code at that line, in the worktree's
-  window. A web address opens in a new tab (Symbiote's window: your browser). The agent's own
-  links (OSC 8) open the same way, a file's in VS Code. Symbiote's server says which paths are
-  files, so a word that only looks like one is not a link; a path outside the worktree is not one
-  either. A plain click stays the terminal's. In Scout's terminal too, for files of the checkout.
-- ← in an empty prompt opens Claude Code's list of all your agents, where you can switch away
-  from this one.
-- At most four terminals are open at once (each is a Claude Code process, about 140 MB, or a
-  Codex one, about 315 MB). Shells are not counted.
-
-**Shells:** the **+** after the Brief tab opens a shell in the workspace's worktree, in a tab of
-its own (`Shell 1`, `Shell 2`, …; `&shell=<n>` in the address), for tests, a dev server or git
-beside the agent. It is your shell (`$SHELL`, else `/bin/sh`; `%COMSPEC%` on Windows) with
-`symbiote view`'s environment, and every workspace has its own, at most eight. A shell keeps running
-while you look at another tab or workspace, or reload the page: its tab draws what it printed
-again (its last 1 MB). It ends when you close its tab (×, which asks first when a program runs
-in it, and names it), type `exit`, clean the workspace up, or quit Symbiote. Paths it prints and
-images you paste work as in the agent's terminal.
-
-At the terminal's right, where the window has room (1440 px wide with the sidenav open, about 1,250
-with it folded), the workspace's **Changes**: its branch's commits since it left the default branch
-and the files they change with their lines (what Review will show), then the files its worktree has
-not committed. They are read again with the workspace list (every 5 s while the agent works). A
-click on a file opens its diff in VS Code, in the worktree's window: one of the branch's from where
-it left the default branch to its last commit, one not committed from the worktree's last commit to
-the file on disk; a deleted file against an empty side. A new file has nothing to compare with: it
-opens alone, as it is. When the file on disk is the last commit's, it is the one opened, to edit
-there; the other sides are read-only copies in Symbiote's cache. `]` or the button beside ⋯ hides
-them, remembered in the browser.
-
-The **Brief** tab is what the agent was asked (`&brief`), drawn from its Markdown, with the
-documents given with it and where they are. The **Thread** tab is the workspace's
-history, read only (`&thread` in the address opens on it):
-the agent's plan and reports (drawn from their Markdown), your messages, and what it waited on
-(a permission to run a command, or a question and its options). The thread comes from hooks Symbiote
-gives each agent it starts (`symbiote/claude-settings.json`, recorded in `symbiote/threads/`, out of git).
-They only record, so permissions and questions are answered in the session itself.
-
-The **Activity** tab (`&activity`) is what happened, one line each, in time order: the workspace
-made, each session's start and end, the prompt and your messages, what the agent asked and
-reported (a report opens in place), the commands it ran (a failed one in red), the files it edited,
-its reads and searches folded into one line, the branch's commits and your review's verdict. New
-lines come as they happen. Commands and edits come from more of those hooks: every tool's start
-and end, run in the background so the agent never waits on them (`symbiote/activity/`, the tool,
-and only what it works on — a command's first line, a file's path), or from Codex itself. Agents
-started before Symbiote kept them show the rest. When a workspace waits, a strip under its heading
-says what it asks, with **Respond** and **Next waiting**; when its agent failed, its words and a
-way to its thread.
-
-The terminal needs `node-pty`, an optional dependency: on Linux `pnpm install` compiles it
-(python3, make and a C++ compiler), and macOS and Windows get a prebuilt one. Without it, or with
-`SYMBIOTE_TERMINAL=off`, the panel shows the thread with a box to answer in:
-
-- **The reply box:** Send continues the agent's own session with your words. Symbiote stops a session
-  that is still alive first, then resumes it. While the agent works, "Stop and send" asks before
-  ending its turn.
-- **Send the verdict** fills the box with what you decided. Nothing is sent until you press Send.
-
-A workspace's branch carries its agent's mark in History, and each leads to the other.
-Once a workspace is merged, Clean up removes its agent's sessions, its worktree, its documents
-(their names stay in the record) and its branch: from its head, or from the bin on its card in
-Done, which shows on hover or keyboard focus. An
-unmerged one is cleaned up only after you confirm, and keeps its branch. Neither happens while
-the worktree has files not committed.
-
-### Codex
-
-Pick **Codex** when you start a workspace (it is found as `codex` on your `PATH`, or set `SYMBIOTE_CODEX`).
-It runs on your own Codex login (`codex login`: your ChatGPT account or an API key); if it is not
-logged in, the workspace is kept and says so. Its model and reasoning effort are your Codex
-configuration's (`~/.codex/config.toml`) unless you pick others when you start it: on its app server
-the model goes on the thread's start, by `exec` with `-m` on every run.
-
-- **On your Codex app server** (Codex 0.163 and later): Symbiote starts the workspace's thread on your
-  app-server daemon, the one `codex agents` browses, and starts the daemon when it does not run
-  (`codex app-server daemon start`). The daemon is yours: the thread goes on when `symbiote view`
-  closes, and is named after the branch. Symbiote reads the thread from there: its prompt, your
-  messages (from the panel or from Codex's own terminal), Codex's final answer of each turn, and
-  how a turn ended. Nothing is written in `symbiote/threads/`.
-- **Sandbox:** Codex's `workspace-write`, so it writes only in its worktree. A worktree's git data
-  lives in your checkout's `.git`, which that sandbox keeps read-only, so Symbiote also lets it write
-  what a commit on its own branch needs: the worktree's git folder, git's objects, and the folders
-  of the branch's ref and its log. Other branches, git's config and hooks stay read-only. Network
-  access is whatever your Codex configuration allows. Symbiote never passes Codex's bypass flags.
-  Codex marks the repository trusted in your Codex configuration (`~/.codex/config.toml`) when a
-  workspace starts, as it does for any writable sandbox; Symbiote cannot start it otherwise.
-- **Its terminal:** the panel opens on Codex's own terminal, joined to the workspace's thread
-  (`codex resume <thread> --remote unix://<socket> -C <worktree>`, run by `symbiote view`), as Claude
-  Code's is: what you type there is in the thread, its approval prompts are answered there, and
-  leaving the tab only hangs up that client. The first time in a worktree, Codex asks whether you
-  trust it, and the panel says so first: the answer is yours, saved in your Codex configuration.
-  Ctrl+C on an empty prompt leaves; `?` lists Codex's keys.
-- **Approvals:** Codex asks before it runs what its sandbox refuses (`on-request`). The workspace
-  then says "Waiting: approval prompt", and its thread shows what Codex said before asking, if it
-  said anything. You answer in its terminal.
-- **Without terminals** (no `node-pty`, or `SYMBIOTE_TERMINAL=off`), the panel keeps the reply box: a
-  message while Codex works joins its turn (Send, nothing stopped); once the turn ended, it starts
-  the next; to a turn waiting on an approval, "Stop and send" asks first. Talk copies the command
-  above, for a terminal of your own.
-- Stop interrupts its turn and ends the commands it left running. Start starts a new thread.
-  Clean up also archives the workspace's threads (`codex unarchive` brings one back).
-- **Without an app server** (an older Codex, or a daemon that does not start), Symbiote runs `codex
-  exec --json` in the worktree through a small runner of its own, which writes what Codex does
-  into `symbiote/threads/`. Send then continues the thread with `codex exec resume`, "Stop and send"
-  asks first while it works, and Codex never stops to ask for a permission. Talk copies `codex
-  resume <thread> -C <worktree>`; what you do there is not in Symbiote's thread. A workspace started
-  this way keeps it until you start its agent again.
-
-## Scout
-
-**Scout** (a, or the sidenav's pages: `/scout`) is your assistant in the repository: ask it where
-something is decided, why it works this way, what touches it; and have it carry your workspaces
-from a start to a merge ("what waits for me?", "start a fix for X, plan first", "tell it OK",
-"review it", "approve and merge it", "clean it up"). It runs in the checkout `symbiote view` runs in,
-as it is now (no branch, no worktree). It reads and searches files and runs git's read commands,
-and never edits, commits, checks out or pushes: it acts only through
-[Symbiote's tools](#symbiotes-tools-mcp), and what changes a branch's fate waits for your
-Confirm.
-
-- **Ask:** the page is Scout's terminal. Opened with no conversation, it starts one with no
-  question, and you type the first one there (nothing runs, and no token is spent, until you do).
-  Its answers and your follow-ups are in that terminal. One conversation per repository is kept,
-  and opened again when you come back; **New conversation** stops and removes its session (Claude
-  Code keeps its transcript: `claude --resume` opens it) and opens the next at once, on what the
-  head shows.
-- **Its head** holds its choices: **Agent** when both Claude Code and Codex are installed,
-  **Model** (the agent's own list) and **Effort** (a stepper on the levels that model takes). They
-  show this conversation's. Changing one starts nothing and leaves this conversation as it is:
-  New conversation starts the next on them, and turns blue (the page's main action) while they
-  differ from this conversation's; its tooltip says what it ends and what it starts. With nothing
-  changed, the next starts on this one's choices.
-- **Its agent** is chosen as a workspace's: `agent.kind` in `symbiote/config.json`, else Claude
-  Code, else Codex.
-- **Its model and effort** when Scout opens with no conversation (the first time in a
-  repository, or after its session was removed outside Symbiote) are the project's (`scout.model`
-  and `scout.effort` in `symbiote/config.json`, set in **Settings**, on Scout's page) when the
-  agent lists them, else `agent.model` for Claude Code, else the agent's own. After that, the head
-  says what New conversation starts on.
-- **Its instructions** (`prompts.scout`) are its system prompt: appended to Claude Code's
-  (`--append-system-prompt`), Codex's developer instructions.
-- **Claude Code** runs with `--tools Read,Grep,Glob,Bash --permission-mode dontAsk
-  --strict-mcp-config --mcp-config symbiote/scout-mcp.json` (Symbiote's server, and no other) and
-  Symbiote's settings file, `symbiote/scout-settings.json`, whose PreToolUse hook decides first:
-  Read, Grep and Glob go on to Claude Code's own rules; Symbiote's tools (`mcp__symbiote__…`) run;
-  Bash runs only `git log`, `show`, `blame`, `diff`, `shortlog`, `grep`, `rev-parse`,
-  `merge-base`, `ls-files` and `ls-tree`, one command, with no option that writes a file or runs a
-  program (`--output`, `-O`, `--ext-diff`) and no shell operator but a pipe into `head`, `tail`,
-  `wc` or `grep`; every other command, tool and MCP server is refused, and Claude Code asks
-  nothing: Symbiote does. Claude Code's own permission rules cannot do this: `Bash(git log *)`
-  also matches `git log --output=<file>`.
-- **Codex** runs on its app server (Codex 0.163 and later), in its `read-only` sandbox with approvals
-  `never`: what the sandbox refuses fails, nobody is asked. Symbiote's server is given to Scout's
-  thread alone, in its own configuration (with `default_tools_approval_mode = "approve"` for that
-  server: Codex refuses every MCP call under approvals `never` otherwise), at its start, with each
-  message and before its terminal joins it; nothing is added to your `config.toml`, so a
-  workspace's Codex has none. MCP servers in your `config.toml` reach Scout's thread too (Codex has
-  no strict mode). Its terminal is Codex's own, joined to the thread; the first time in a folder,
-  Codex asks whether you trust it. Without the app server, Scout says so.
-- **Waiting** (`wait`, when you ask Scout to watch): Claude Code waits for nothing in tokens; Codex
-  checks the running call about every 30 s, measured at about 43K input tokens a minute (95 %
-  cached).
-- **The sidenav** marks Scout while it answers, when it answered while you were on another page
-  (until you open it), and while it waits for your Confirm.
-- Scout's session is found by the ID Symbiote recorded in `symbiote/scout.json` when it started it,
-  never by its folder: your own sessions in the checkout are left alone. Its prompt is
-  `prompts.scout` ([Agents' prompts](#agents-prompts)).
-- Without terminals (no `node-pty`, or `SYMBIOTE_TERMINAL=off`), a question box starts the
-  conversation on the head's choices (Enter asks, Shift+Enter starts a new line) and continues it;
-  its answers are read in a terminal of yours (`claude attach <id>`, which the page names).
-
-## Symbiote's tools (MCP)
-
-`symbiote view` answers the [Model Context Protocol](https://modelcontextprotocol.io) at
-`/api/mcp` with Symbiote's own services, the ones the pages use. Scout has them; so does an agent
-of yours through `symbiote mcp`, a stdio bridge that finds the `symbiote view` running for the
-repository by a record it keeps in Symbiote's cache while it runs (`views/<hash>.json`), read on
-every call: a restarted `symbiote view` on another port is found by the next one. Without one
-running, a call says so.
-
-| Tool | What it does | |
-|---|---|---|
-| `overview` | What needs you: workspaces whose plan or work is ready or that wait, merges that wait; the checkout, the queue | |
-| `workspaces`, `workspace`, `thread` | The workspaces; one with its brief, commits, files and merge check; its agent's thread | |
-| `start_options`, `start_workspace` | What a start takes here; a start (a kind, title, brief parts, branch, plan first, agent, level, model, a branch to start from) | asks |
-| `reply`, `stop_agent`, `restart_agent` | A message to a workspace's agent; stop it; start it again | the last asks |
-| `clean_workspace` | Its sessions, worktree and, once merged, branch | asks |
-| `review` | A branch's change as Symbiote's graph: symbols by kind, every finding in the detector's words, the most-used changed symbols, the review page | |
-| `finish_review` | A verdict at the reviewed tip: approve, request changes or comment, with comments on symbols or lines | asks |
-| `merges`, `merge_log` | The queue, a branch's targets; an entry's log | |
-| `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge` | As Merge into and the merge page's buttons | ask |
-| `usage`, `code_map` | Your subscriptions' windows of use; where the code is, by folder | |
-| `wait` | Waits until a workspace's agent or a merge changes state, 10 minutes at most | |
-
-**Asks.** A tool marked *asks* waits for you: a bar on every page of Symbiote says who asks
-(Scout, or an agent through `symbiote mcp` and its folder) and what it will do, with **Decline**
-and **Confirm**. Nothing is done before Confirm; Decline, or no answer in 10 minutes, tells the
-agent nothing was done. It is checked before it asks: you are asked only what can be done. What
-an agent made through the tools says so: `via: "scout"` (or `"mcp"`) on a verdict in
-`symbiote/reviews/` and on a workspace's record; History's mark reads "Approved through Scout", a
-workspace's Brief tab "Started through Scout". Never through the tools: checking out, Settings,
-terminals, Skills.
-
-**Your own agent:** `claude mcp add symbiote -- symbiote mcp`, or for Codex, in its
-`config.toml`, `[mcp_servers.symbiote]` with `command = "symbiote"` and `args = ["mcp"]`. Added to
-your global configuration, a workspace's agent has it too; its asks still wait for you. The asks
-guard against an agent's mistake or an instruction in another agent's report; they are not a
-lock against a program of yours, which can already write `symbiote/reviews/` itself.
-
-## Skills
-
-A skill is a folder with a `SKILL.md`: its frontmatter's `name` and `description` tell an agent
-when to load it, and the rest how to do the work in this repository. Claude Code reads
-`.claude/skills/<name>/`, Codex `.agents/skills/<name>/`. **Skills** (i, or the sidenav's pages:
-`/skills`) shows them for the checkout `symbiote view` runs in, and **Scribe** writes them.
-
-- **The list** has Scribe first, then the skills by folder, each folder named with the agents
-  that read it. A skill opens as its whole `SKILL.md`, frontmatter included, with its other files
-  listed and its git state ("Not committed: commit it to share it…").
-- **Checks**, as you type: only what the open standard ([agentskills.io](https://agentskills.io/specification)),
-  Anthropic's API or an agent would refuse, or a limit passed. Errors: no frontmatter, one not
-  closed, a value YAML cannot read (a plain `description:` holding `: `), which leaves Claude Code
-  with no description to match. Warnings: a name missing, unlike its folder, or not lowercase
-  letters, digits and hyphens (64 at most), or holding "claude" or "anthropic" (the API refuses
-  it); a description missing, over 1,024 characters (the standard) or 1,536 (Claude Code cuts it
-  in its list), or holding `<` or `>`; a body empty or over 500 lines; a link to a file the skill
-  does not have. Whether it says the right thing is yours to read.
-- **Save** (Ctrl+S) writes the file in place; commit it to share it. A save over a file written
-  since you opened it (by an editor, by Scribe) is refused, your draft kept: **Read it again**,
-  then save. Drafts are kept while you open another skill; leaving the page with one asks first.
-- **New skill** writes `.claude/skills/<name>/SKILL.md` from a name and a description; you write
-  its instructions next. **Delete** removes the skill's folder (it asks first, and says whether git
-  can bring it back).
-- **Link for Codex**, when Codex is installed and `.agents/skills` does not exist, makes it a link
-  to `../.claude/skills`: one copy of each skill, read by both agents (Codex 0.163 lists none of
-  `.claude/skills` without it). Commit the link to share it. Not offered on Windows.
-
-### Scribe
-
-**Scribe** writes a new skill, or changes one, from what you ask (**Improve with Scribe** on a
-skill starts the request for it). It runs in the checkout, as Scout does: one conversation per
-repository, in its own terminal on the page, **New conversation** to start over, its agent chosen
-in its box. Its effort is the project's (`scribe.effort`, set in **Settings**, on Scribe's page)
-when the agent lists it, else the agent's own; the box's stepper changes it for one conversation.
-Its model is set on the same page (`scribe.model`). It reads the repository's
-instructions and skills first, writes only in
-`.claude/skills/`, and never commits: you read what it wrote on the page, change it, and commit it.
-While it writes, the list is read again every 5 s, and the sidenav marks Skills.
-
-- **Claude Code** runs with `--tools Read,Grep,Glob,Bash,Write,Edit --permission-mode default
-  --strict-mcp-config` and `symbiote/scribe-settings.json`, whose PreToolUse hook decides first:
-  reads go on to Claude Code's rules, Bash runs only git's read commands (as Scout's), Write and
-  Edit only a file in a skill's folder of `.claude/skills/` (by its real path, no `..`), anything
-  else is refused. `.claude` is a folder Claude Code protects: it asks you in Scribe's terminal
-  before each write there; "allow … for this session" lets the rest of the conversation write.
-- **Codex** runs on its app server in `workspace-write`, started in `.claude/skills`, its only
-  writable folder, with approvals `never`: a write elsewhere fails, nobody is asked.
-- Its record is `symbiote/scribe.json`, its prompt `prompts.scribe` ([Agents' prompts](#agents-prompts)).
-
-## Monitor
-
-**Monitor** (m, or the sidenav's pages: `/monitor`) shows where the code of the checkout's commit
-is (`HEAD`; uncommitted changes are not counted): which folders and files hold it, and how
-unevenly. Its engine is the `@symbiote/monitor` package.
-
-- **The words** say it for the folder in view: "48,263 lines of code in 276 files. Half of it is
-  in 39 files (14 %); the largest 10 % of files (28) hold 42 %. packages holds 96 %."
-- **The treemap** draws each file as a rectangle whose area is its lines of code, inside a frame
-  per folder, as deep as there is room (six levels at most). A click on a folder goes in, and
-  the address keeps it (`/monitor?path=packages/viewer`); the folder in view is the page's
-  heading, and **Back** before it, Backspace, Escape (once no file is picked), the path above
-  the picture and the browser's Back go back. Files too small to draw are one "N smaller files"
-  tile; the section under the pointer is outlined.
-- **Colour**: **Lines** (at first) colours a long file yellow from 250 lines of code, orange
-  from 500 and red from 1,000, in the treemap and in the list; shorter files keep their kind's
-  colour. **Kind** gives each kind of file its own colour instead.
-- **The list** beside it ranks the same numbers: the folder's children (**In this folder**) or
-  every file under it (**Largest files**), with a dashed line where half of the code is reached.
-  Pointing at a tile or a row shows its numbers; a file clicked keeps them, with **Open in VS
-  Code**.
-- **What counts**: a line of code is one that is not blank and not only a comment (cloc's rule),
-  counted per language with its strings followed, so `'src/**/*.ts'` opens no comment. Each file
-  has a kind, and the chips turn kinds on: **Source** (on at first), **Tests** (`*.test.*`,
-  `*.spec.*`, or under a `test`, `tests`, `__tests__`, `e2e` or `spec` folder), **Docs**, **Data**
-  (JSON, YAML…), **Other**, and **Set aside**: binary files, lockfiles, files `.gitattributes`
-  marks `linguist-generated` or `linguist-vendored`, files [`.symbioteignore`](#symbioteignore)
-  leaves out, and `*.min.*`. Mark a vendored folder in `.gitattributes` to set it aside.
-- A commit is read once from git's objects (Bitwarden's 9,583 files in about 1.5 s) and kept
-  until `HEAD` moves.
-
-## Symbiote's logs
-
-Every Symbiote process writes its lines into one folder on this machine, `~/.cache/symbiote/logs/`
-(`$XDG_CACHE_HOME/symbiote/logs`, `~/Library/Caches/symbiote/logs` on macOS): the server of
-`symbiote view` (`view`), the analyses it starts (`analysis`), the desktop app (`app`), the pages
-(`viewer`) and the other commands (`diff`, `pr`, `merge`). One file a day, `2026-10-25.jsonl`,
-one JSON object a line; 14 days are kept.
-
-- **Uncaught errors** are written with their stack (`fatal`) before the process ends; it ends as
-  it would without them. A process that dies without a word (killed, out of memory) is written by
-  the one that started it, with the end of its error output: an analysis by the server, the
-  server by the app.
-- **Also written**: a request that fails (`500`, with its stack), every write (`info`), every
-  read at `debug`; an analysis started, done or failed; a terminal's program starting and ending;
-  a merge's states; the app's pages that do not load or whose process is gone. Never a request's
-  body, a prompt, what a terminal shows, a file's contents or a token.
-- `SYMBIOTE_LOG_LEVEL=debug` writes the reads too (a few a second while the window is open);
-  `SYMBIOTE_LOG=off` writes nothing.
-
-**Reading them, even when Symbiote has crashed**: another app does, in Docker (Grafana, Loki and
-Alloy: `ops/logs/`). Start it once; it starts again with Docker:
+If you skip this step, Symbiote opens in your browser. To give it a window of its own, run this
+in Symbiote's folder. It downloads Electron, about 100 MB:
 
 ```sh
-pnpm build && pnpm logs:up     # then open http://localhost:3300
-pnpm logs:down                 # stops it; what it read is kept (30 days)
-pnpm logs:check                # a copy on a temporary folder: lines in, read back, removed
+pnpm app:setup
 ```
 
-It needs about 3 GB of images and 420 MB of memory, and the internet once (Grafana fetches its
-Logs Drilldown at its first start). It listens on `127.0.0.1` only, and opens without signing in,
-as a viewer. Lines show in it a second or two after they are written; when it starts after a
-while stopped, it reads the files it missed (in about a minute and a half).
+After that, `symbiote view` opens Symbiote's window, and closing the window stops it. To use a
+browser tab anyway, add `--browser`. To start Symbiote from your desktop's app list instead of a
+terminal, run `symbiote app install` once (Linux and WSL).
 
-- **The Symbiote dashboard** (its home page): crashes, errors and warnings in the time chosen,
-  errors and warnings over time by process, every error with its stack, every line; filters by
-  process, level and text.
+Two limits apply to the window:
 
-  ![The Symbiote dashboard in Grafana: a crash, three errors, each error on one line with its stack](docs/images/logs-dashboard.png)
+- On Ubuntu 24.04 and later, AppArmor can refuse the sandbox that Electron needs. Symbiote then
+  says so and opens your browser instead.
+- On WSL, files dragged from Windows never reach the window. Use the **Add files** and **Attach
+  images** buttons instead. Windows' files are under `/mnt/c`.
 
-- **Drilldown → Logs**: the lines by level and process without a query; a click on a field filters
-  by it. **Explore**: any LogQL, `{service_name="symbiote", level="error"} | json`, and live tail.
-- Without Docker: `lnav ~/.cache/symbiote/logs/` or
-  `jq -c 'select(.level == "error" or .level == "fatal")' ~/.cache/symbiote/logs/*.jsonl`.
+## Quick start: your first workspace
 
-## Pull and merge requests
+This walks one task from start to merge. You need a git repository of your own, and Claude Code
+or Codex. Claude Code starts only in a repository you have trusted. If you have never run
+`claude` in this repository, run it there once and accept its trust prompt.
 
-`symbiote pr 123` works with GitHub (and GitHub Enterprise) and GitLab (gitlab.com and self-managed).
-It reads the forge from the `origin` remote, fetches the change's head and target branch, and
-analyzes the same diff the forge shows. Tokens come from `GITHUB_TOKEN` or `GH_TOKEN` (or
-`gh auth login`), and `GITLAB_TOKEN`.
+1. In the repository, run `symbiote view`. Symbiote opens on **History**, the repository's
+   commits and branches.
+2. Press `n`, or click **+** beside **Workspaces** in the sidenav. The **Start a workspace** page
+   opens.
+3. Leave **Feature** picked. Type a **Title**, such as "Add a discount code", and describe the
+   **Goal**: what it should do, and why. Leave **Plan first and wait for my OK** on.
+4. Click **Start**. Symbiote creates the branch and its own folder, starts the agent there, and
+   opens the workspace on the agent's terminal.
+5. Wait for the plan. The workspace moves to **Waiting for you** in the sidenav. Read the plan in
+   the terminal, then type your answer there: "OK", or what to change.
+6. When the agent has finished, the workspace moves to **To review**. Click **Review**. In the
+   **Review** tab, pick **Approve** and click **Finish review**.
+7. Click **Merge into**. Symbiote merges the commit you approved into the branch the workspace
+   started from, runs your project's check, and lands the merge if the check passes.
+8. The workspace moves to **Done**. Click **Clean up** to remove its folder, its branch and the
+   agent's session.
 
-- **Review from the graph.** Write comments on symbols (c; click a + or − line to choose where it
-  lands), then submit them from the Review tab as one review: comment, approve, or request
-  changes. They arrive as inline comments on those lines.
-- **Review again after a push.** Marks and drafts are kept per pull request. Run `symbiote pr` again:
-  symbols you reviewed that did not change stay reviewed, those that did are flagged `↻`, and
-  drafts follow their code to its new lines.
-- **See only what a push changed.** Compare with the head you saw last. A rebase that touched
-  nothing shows nothing:
+## Workspaces
 
-```sh
-symbiote pr 123 --since 3c2b1a0   # each changed symbol: new, updated, or the same as in 3c2b1a0
-```
+A workspace is one task for one agent. It has a branch and a *worktree*: a second working folder
+of the same repository, checked out on that branch. It also has the agent's session and a record
+of what you asked. Your own checkout is never touched, so you can keep working while agents work.
 
-## CI
+### Start a workspace
 
-In CI, Symbiote posts the findings instead of opening the viewer. Findings an earlier run already
-posted are not repeated. Inside a pull or merge request job, `symbiote pr` finds the number itself:
+The **Start a workspace** page (`n`) asks what the work is. Each kind of work asks its own
+question and names its branch with its own prefix:
 
-```sh
-symbiote pr --post-findings warning --fail-on error
-```
-
-### GitHub Action
-
-```yaml
-on: pull_request
-permissions: { contents: read, pull-requests: write }
-jobs:
-  symbiote:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with: { fetch-depth: 0 }
-      - uses: attomius321/Symbiote@main
-        with:
-          post-findings: warning   # empty: don't post
-          fail-on: error           # empty: never fail
-```
-
-| Input | Default | What it does |
+| Kind | It asks | Branch |
 |---|---|---|
-| `post-findings` | `warning` | Post new findings at or above this level. Empty: don't post. |
-| `fail-on` | `error` | Fail the job on a finding at least this level. Empty: never. |
-| `plugins` | | Plugins, comma-separated (`angular`), besides those in `symbiote/config.json`. |
-| `project`, `depth` | | As `--project` and `--depth`. |
-| `token` | `github.token` | Reads the pull request and posts comments (needs `pull-requests: write`). |
-| `pull-request` | the event's | The pull request number. |
-| `working-directory` | `.` | Where the repository is checked out. |
-| `setup-node` | `true` | Install Node 22 first. |
+| Feature | What should it do, and why? | `feature/` |
+| Fix | What happens, and what should happen? | `fix/` |
+| Refactor | What should be restructured, and why? | `refactor/` |
+| Chore | What should change, and why now? | `chore/` |
+| Spike | What is the question, and what will the answer decide? | `spike/` |
 
-The action builds Symbiote, runs it, writes the summary to the run's page, and outputs the graph
-JSON's path (`steps.<id>.outputs.graph`) for upload. Pull requests from forks get a read-only
-token, so review them without posting (this repository's own
-[workflow](.github/workflows/symbiote.yml) does that).
+Every kind also takes a title, an optional **Done when** (how you will know it works), and more
+notes under **More**. If Symbiote finds your project's check, such as `npm run test`, it names
+it under **Done when**. The form is kept as a draft until you start, so leaving the page loses
+nothing.
 
-### GitLab CI
+The card beside the form holds the run's choices:
 
-```yaml
-include:
-  - remote: https://raw.githubusercontent.com/attomius321/Symbiote/main/ci/gitlab/symbiote.yml
-```
+- **Start from**: the branch to start from. The default branch, unless you pick another.
+- **Branch**: the new branch's name, made from the title. You can edit it.
+- **Agent**, **Model** and **Effort**: the agent, and the model and effort level it starts with,
+  from the agent's own list.
+- **Permission** (Claude Code): Claude Code's own permission mode. Symbiote never grants the agent
+  more than the mode you pick.
+- **Plan first and wait for my OK**: the agent writes a plan and stops before it changes
+  anything. It is on by default.
+- **Documents**: files for the agent, such as screenshots, PDFs or samples. Up to 20 files, 20 MB
+  each.
 
-Its `symbiote` job runs on merge request pipelines. Without a token, findings appear in the merge
-request's Code Quality widget. Add a masked `GITLAB_TOKEN` variable (api scope) to also get them
-as comments on their lines. Override `SYMBIOTE_POST_FINDINGS`, `SYMBIOTE_FAIL_ON`, `SYMBIOTE_PLUGINS` or
-`SYMBIOTE_VERSION` in your own `symbiote:` job.
+When you click **Start** (or press Ctrl+Enter), Symbiote:
 
-## Stylesheets
+1. writes the agent's *brief* (the task in words) from your answers;
+2. creates the branch and its worktree next to your checkout, in `../<repo>.worktrees/`;
+3. records the workspace in `symbiote/workspaces/<branch>.json`;
+4. starts the agent in the worktree, in the background, with the brief.
 
-`.css` and `.scss` files are read like code (not `*.min.css`; `.symbioteignore` can leave others
-out). A reformat is no change.
+The agent keeps running when you close the page or Symbiote's window.
 
-- **Symbols**, named as CSS writes them: a rule is its selector and its own declarations
-  (`controls.css#.button:hover`, `#@media (max-width: 900px) › .sidenav`; a nested SCSS rule by
-  its resolved selector, inside its parent); a custom property definition is a variable inside
-  its rule (`base.css#:root › --accent`); keyframes (`#@keyframes spin`), and SCSS's top-level
-  `$variables`, `@mixin`s, `@function`s and `%placeholders`. A selector renamed with the same
-  declarations, or a rule moved to another file, is a move.
-- **Between stylesheets**: `var(--accent)` uses every definition of `--accent` (the dark and the
-  light one), `animation` its keyframes; SCSS names resolve as Sass resolves them, through
-  `@use` namespaces and `@forward`, or `@import` (what the file and the files importing it
-  imported). A name with two candidates is an unresolved use of each, one with none an unknown
-  target; after `@use '@angular/material' as mat`, `@include mat.core()` uses the package's mixin.
-- **From markup**: static class names in JSX `class`/`className` (strings, template text, object
-  keys; `tone-${kind}` names none), `classList` calls and a CSS module's `styles.title` are uses
-  of the rules that style them, when the file renders every class a selector needs
-  (`.list .row` from a file rendering both). Custom properties a script sets
-  (`style={{ '--x': … }}`, `setProperty`) or reads (`var(--x)` in a string,
-  `getPropertyValue`) count too. So a rule's or a token's users include the components affected.
-- A CSS module (`*.module.css`) reaches only its importers' `styles.x`. With `--plugin angular`, a
-  component's `styleUrls` reach its own template and host only (unless its encapsulation is
-  `None`), and templates' `class`, `[class.x]` and `[ngClass]` are uses; with `--plugin qwik`,
-  `useStylesScoped$` styles reach the component calling it.
+### See what needs you
 
-## Framework plugins
+The sidenav lists your workspaces in groups, by what each one needs from you:
 
-Framework knowledge comes as plugins, so the TypeScript and JavaScript analysis stays the same
-for every project. A plugin lets Symbiote see what plain TypeScript cannot: a template that calls a
-component's methods, a method the framework calls, decorator settings that are configuration
-rather than contract.
-
-```sh
-symbiote diff main --plugin angular          # Angular templates, decorators, lifecycle hooks
-symbiote diff main --plugin qwik             # Qwik routes, component$ props, MDX routes
-symbiote diff main --plugin ./tools/my-plugin.mjs
-```
-
-Or turn one on for the repository in `symbiote/config.json` (`{ "plugins": ["angular"] }`). In CI,
-use the action's `plugins` input or GitLab's `SYMBIOTE_PLUGINS` variable. A short name means
-`@symbiote/plugin-<name>`, found in your project first, then next to Symbiote; a path starts with `.` or
-`/`. A plugin that fails is skipped with a warning; it never fails the review.
-
-### Angular
-
-With `angular`, a template is code: its edits are changes (formatting aside), and what it calls
-counts as a use.
-
-- A method removed while its template still calls it is an error at the template line.
-- A method used only by a template, a lifecycle hook or a host listener is not an orphan.
-- Editing `@Component({ imports })` is not read as a new signature.
-- Templates see the repository's components, directives and pipes. A removed component still
-  placed, an input renamed while still bound, an output removed while still listened to, or a
-  pipe whose `transform` changed under a template that was not updated is reported.
-- With dependencies installed, templates also see Angular's and its libraries' components,
-  directives and pipes, read from their typings in `node_modules`. So `x$ | async` has a type,
-  and `(ngModelChange)="save($event)"` or `#f="ngForm"` are typed. In CI, install dependencies
-  before Symbiote runs.
-- In the viewer, a template opens with its own diff, and comments on its lines go to the `.html`
-  file.
-- A template's `class="a b"`, `[class.a]`, `[ngClass]` and a component's host classes are uses of
-  the rules that style them; a component's `styleUrls` style its own template only (see
-  [Stylesheets](#stylesheets)).
-
-Repositories with several apps work at any depth, with nothing at the root. Each file's imports
-resolve with its own project's `paths` and `baseUrl`, each template is read with its app's
-Angular version and installed libraries, and an app's templates only use components of its own
-Angular workspace and of shared code outside every workspace.
-
-### Qwik
-
-With `qwik`, Qwik 1.x (`@builder.io/qwik-city`) and 2.x (`@qwik.dev/router`) are read by Qwik's
-own file rules, in the routes folder its Vite config names.
-
-- What Qwik's router calls by name is not an orphan: `onGet`, `head`, `onRequest` and the other
-  route exports, `routeLoader$` and `routeAction$` values (also re-exported, also through a form
-  library's wrapper when Qwik is installed), server plugins' handlers, entries and error pages.
-  A helper a route module exports but nothing calls is still an orphan.
-- A `component$`'s props are its signature, shown as
-  `const Badge = component$<{ label: string; tone: string }>`. An optional prop added is
-  compatible; a required prop added or one removed is a warning that names the JSX not updated,
-  also when the props are a named type whose definition changed. This works without
-  `node_modules`.
-- `.mdx` routes are templates: their imports, components and `{expressions}` are code, and prose
-  edits are no change. A component removed while a page still renders it is an error at that
-  line, a required prop a page does not pass is a warning, and a component only pages use is not
-  an orphan (components the MDX provider gives included).
-- Styles a component loads with `useStylesScoped$` reach that component's markup only;
-  `useStyles$` styles are global (see [Stylesheets](#stylesheets)).
-
-### Your own
-
-A plugin implements the `TsPlugin` interface exported by `@symbiote/core`. The
-[plan](docs/plan/x1-plugins.md) describes the hooks, and
-[`tpl-plugin.ts`](packages/core/test/helpers/tpl-plugin.ts) is a complete example.
-
-## Configuration
-
-### `symbiote/config.json`
-
-At the repository root (`symbiote.config.json`, the older place, still works). Every key is optional.
-
-```jsonc
-{
-  "plugins": ["angular"],
-  "workspaces": { "branchPrefixes": { "fix": "bugfix/" }, "worktrees": "../{repo}.worktrees" },
-  "agent": { "kind": "claude", "permissionMode": "default", "model": "opus" },
-  "merge": { "checks": ["pnpm install --frozen-lockfile", "pnpm check"], "push": false }
-}
-```
-
-| Key | Default | What it does |
-|---|---|---|
-| `plugins` | none | Plugins every run uses, by name or path. |
-| `workspaces.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, per kind of work; an object with some kinds changes only those. |
-| `workspaces.branchPrefix` | `feature/` | The Feature prefix, as before kinds of work; `branchPrefixes.feature` wins over it. |
-| `workspaces.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout (`{repo}` is its folder name). |
-| `agent.kind` | `claude` | The agent Start a workspace offers first, when installed: `claude` or `codex`. |
-| `agent.permissionMode` | `default` | The permission mode Start a workspace suggests for Claude Code: `default`, `acceptEdits` or `auto`. |
-| `agent.model` | Claude Code's | The model Claude Code starts with (Codex's is its own configuration's). |
-| `scout.effort`, `scribe.effort` | the agent's | The effort level each [Scout](#scout) or [Scribe](#scribe) conversation starts at, when its agent lists it (Settings sets it). |
-| `scout.model`, `scribe.model` | `agent.model`, else the agent's | The model each Scout or Scribe conversation starts on, when its agent lists it (Settings sets it). |
-| `merge.checks` | guessed | The check a merge runs before it lands ([Merging](#merging)): a command, or a list run in order through the shell in Symbiote's merge worktree. Add an install first when the check needs dependencies, e.g. `["pnpm install --frozen-lockfile", "pnpm check"]`. |
-| `merge.push` | `false` | Push the target branch after a merge lands. |
-| `merge.model` | `sonnet` for Claude Code, else the agent's | The model each merger agent's run is asked on, passed as written (Settings sets one from the agent's list). |
-| `merge.effort` | the agent's | The effort level each merger agent's run is asked at, when the merger's agent lists it on its model (Settings sets it). |
-| `prompts` | Symbiote's | What Symbiote tells its agents, each prompt whole ([below](#agents-prompts)). |
-
-Before V25 the `workspaces` section was called `features`; that name is still read when `workspaces` is not there.
-
-### Agents' prompts
-
-Every text Symbiote gives its agents can be replaced under `prompts`. **Settings** in `symbiote view` (s)
-lists them by agent, each with Symbiote's text until you change it, its placeholders (click one to
-insert it), Save and Reset to Symbiote's; it writes only `prompts` and leaves the rest of the file as
-it is. Under **Prebuilt agents**, the Merger, Scout and Scribe each have one page: its Model
-(`merge.model`, `scout.model`, `scribe.model`), its Effort (`merge.effort`, `scout.effort`,
-`scribe.effort`) and its Instructions. A model is saved when you pick it, from the agent's own
-list, a level when you let go of the stepper; the Effort follows the model picked. A missing key is Symbiote's text, so the file keeps only the prompts you change. A prompt is a
-string or a list of lines, and `{name}` is filled in where the prompt allows it (any other brace
-is text). Commit `symbiote/config.json` to share them: the page says whether it is committed. It is
-read at each use, so a change applies to the next agent started.
-
-```json
-{
-  "prompts": {
-    "start": {
-      "spike": [
-        "You are starting a new spike on the branch {branch}, started from {start}.",
-        "",
-        "{brief}",
-        "",
-        "Commit what you try under spikes/, and push the branch."
-      ]
-    }
-  }
-}
-```
-
-| Key | What | Placeholders |
-|---|---|---|
-| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace's start prompt for that kind | `{branch}`, `{worktree}`, `{start}`, `{brief}` (required), `{documents}`, `{plan}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{symbiote}` |
-| `plan.first`, `plan.direct` | What `{plan}` becomes, with Plan first and without | none |
-| `documents` | What `{documents}` becomes when files were given with the brief (else its line goes); added after a start prompt without `{documents}` | `{folder}` (required), `{files}` |
-| `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The sentences of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`; `{reviewer}`, `{what}`; `{review}`, `{agents}` |
-| `reviews` | `symbiote/AGENTS.md`, how an agent acts on a review | none |
-| `merger` | The merger's instructions; Symbiote adds the answer format it reads | none |
-| `scout` | [Scout](#scout)'s system prompt; its tools stay as they are whatever it says, and Symbiote asks you before what changes a branch. A `{question}` left from before V50 becomes nothing | none |
-| `scribe` | [Scribe](#scribe)'s first prompt; it writes only in `.claude/skills/` whatever it says | `{request}` (required), `{skills}`, `{checkout}` |
-
-A value Symbiote cannot use (not text, a start prompt without `{brief}`, Documents without
-`{folder}`, Scribe's without `{request}`, or too long: 8,000 characters for a start prompt,
-Scout's or Scribe's, 1,000 for a sentence,
-20,000 otherwise) is ignored, and Symbiote's
-text is used.
-
-### `.symbioteignore`
-
-Symbols in `examples/`, `playground/`, `fixtures/`, `__fixtures__/`, `__snapshots__/` and
-`generated/` folders, and in `*.generated.*` files, are listed but not analyzed. A `.symbioteignore`
-at the repository root (gitignore syntax) changes that. It is read from your working folder, so
-it applies at once, even uncommitted, and to any commits you compare:
-
-```gitignore
-# every `interfaces` folder, at any depth
-interfaces/
-# only the top-level `tools` folder
-/tools/
-# but keep this one
-!apps/web/interfaces/public.ts
-```
-
-The [Monitor](#monitor) sets the same files aside.
-
-### Projects in a monorepo
-
-The graph JSON says which app or library each file belongs to (`projects`, see the
-[graph schema](docs/graph-schema.md#project)). Symbiote finds them from workspace members (npm, Yarn,
-pnpm), Nx projects and, with `--plugin angular`, `angular.json`. When a repository declares none,
-its packages and the folders with their own `tsconfig.json` are the projects.
-
-### Environment variables
-
-| Variable | What it does |
+| Group | What is in it |
 |---|---|
-| `GITHUB_TOKEN`, `GH_TOKEN` | GitHub token for `symbiote pr` (else `gh auth token`). |
-| `GITLAB_TOKEN` | GitLab token for `symbiote pr`. |
-| `GITHUB_API_URL`, `GITLAB_API_URL` | The forge's API, for self-hosted instances. |
-| `SYMBIOTE_FORGE` | `github` or `gitlab`, when the host name does not say (as `--forge`). |
-| `SYMBIOTE_CODE` | The editor command "Open in VS Code" runs (default: VS Code's `code`, from `PATH` or its usual install places). |
-| `SYMBIOTE_CLAUDE` | The Claude Code program workspaces start (default: `claude` on `PATH`). |
-| `SYMBIOTE_CODEX` | The Codex program workspaces start (default: `codex` on `PATH`). |
-| `SYMBIOTE_TERMINAL` | `off`: no agent's terminal in a workspace's panel; the panel keeps Talk and the reply box. |
-| `SYMBIOTE_USAGE` | `off`: no subscription usage is read, and the status bar shows none. |
-| `SYMBIOTE_INTRO` | `off`: no [first-time intro](#the-first-time), and nothing recorded of it. |
-| `SYMBIOTE_APP` | `off`: `symbiote view` and `symbiote pr` open the browser, never [Symbiote's window](#symbiotes-window). A path: the program to run as the app instead. |
-| `SYMBIOTE_CACHE_DIR` | Where Symbiote keeps its worktrees and review state. Default: `$XDG_CACHE_HOME/symbiote`, else `~/Library/Caches/symbiote` on macOS and `~/.cache/symbiote` elsewhere. |
-| `SYMBIOTE_LOG` | `off`: no [logs](#symbiotes-logs) are written. |
-| `SYMBIOTE_LOG_LEVEL` | `debug`, `info` (default), `warn` or `error`: the least a line must be to be written. |
-| `SYMBIOTE_LOG_DIR` | Where the logs are written. Default: `logs` in the cache folder. |
+| **Merging** | Merges Symbiote is making |
+| **Waiting for you** | Agents stopped on you: a plan to read, a question, a permission to give |
+| **To review** | Finished work: a branch to review, or an approval to merge |
+| **Not running** | Agents that failed, were stopped, or have not started |
+| **Working** | Agents at work, with what each one is doing right now |
+| **Done** | Merged workspaces, ready to clean up |
 
-### Moving from the former name
+Each card shows the workspace's title, its kind, its state, and how long it has been in that
+state. A waiting card has **Respond**, which opens the agent's terminal. The window's title counts
+the workspaces waiting for you.
 
-Symbiote had another name until 2026-10-21. It moves what it kept under that name once, on
-first use: the repository's folder into `symbiote/` (reviews, workspaces, threads, `config.json`;
-it writes its own `.gitignore` and `AGENTS.md` again), its cache's state but not its worktrees,
-and the app's settings and choices. `symbiote app install` replaces the old desktop entry. A
-folder of that name that holds the project's own tracked files is left alone, and a config or
-ignore file at the root under the former name is not read: rename it to `symbiote.config.json`
-or `.symbioteignore`.
+### Work with the agent
+
+Click a workspace to open it. Its page has four tabs:
+
+- **Terminal**: the agent's own terminal, as Claude Code or Codex draws it. Answer questions and
+  permission prompts here, as you would in your own terminal. Leaving the tab does not stop the
+  agent. To give the agent an image, paste it (Ctrl+V) or use **Attach images**.
+- **Thread**: the agent's plans and reports, your messages, and what it waited for.
+- **Activity**: what happened, one line each: the commands the agent ran, the files it edited,
+  its commits and your reviews.
+- **Brief**: what the agent was asked, with the documents you gave it.
+
+The **+** after the tabs opens a shell in the workspace's worktree, for tests, a dev server or git.
+Where the window is wide enough, the **Changes** panel on the right lists the branch's commits and
+changed files. Click a file to open its diff in VS Code.
+
+The head of the page has **Review**, **Stop** or **Start** for the agent, and, under **⋯**,
+**Open in VS Code** and **Copy the prompt**.
+
+### Review the branch and send your verdict
+
+**Review** shows the branch's changes as a graph. The graph draws a box for each changed file,
+and in it the *symbols* that changed: functions, classes, methods and types, coloured by what
+changed. Lines between symbols are calls and other uses. *Findings* mark the risky changes: a
+function removed while code still calls it, new code that nothing uses, or a signature changed
+under callers that were not updated. The [review guide](docs/guide/review-and-ci.md) explains
+the graph and the findings.
+
+![Review of a workspace's branch: the changed symbols as a graph, with the Review tab open](docs/images/review.png)
+
+To review:
+
+1. Click a symbol to see its diff and who uses it. Press `r` to mark it reviewed.
+2. To comment on a symbol or one of its lines, select it and press `c`.
+3. In the **Review** tab, pick **Approve**, **Request changes** or **Comment**, then click
+   **Finish review**.
+
+Symbiote writes your *verdict* (the decision and your comments) to
+`symbiote/reviews/<branch>/<your git email>.json`. To give it to the agent, click **Send to the
+agent**. Symbiote types the verdict and the review file's path into the agent's terminal, and you
+send it with Enter. The agent reads your comments from that file.
+
+After the agent adds commits, review the branch again. Only what is new or changed since your
+last review is left to look at.
+
+### Merge
+
+After you approve a branch, **Merge into** appears in the **Review** tab and on the workspace's
+page. The target is the branch the workspace started from, unless you pick another. Symbiote then:
+
+1. merges the commit you approved (not any later one) in a worktree of its own, so neither your
+   checkout nor the agent's worktree is used;
+2. runs your project's check on the merge. The check is `merge.checks` in
+   [`symbiote/config.json`](docs/reference/configuration.md), or a command Symbiote finds in the
+   project, such as a `test` script in `package.json`;
+3. lands the merge if the check passes: it moves the target branch forward to the merge commit.
+   If the target branch is checked out in your checkout, your files move with it.
+
+Symbiote does not push unless you set `merge.push` to `true`. Merges run one at a time. Click one
+under **Merging** to see its steps and their output as they run. If the check fails, nothing
+lands, and the merge page shows the check's output. If the project has no check, the merge waits
+for you to click **Land**.
+
+If the branch conflicts with the target, Symbiote gives the conflict to the *merger*, an agent
+that proposes a resolution for each conflicting part. Nothing lands until you review it: the
+merge page shows each resolved part and marks lines that were lost or written by the agent.
+**Approve** lands it, and **Request changes** asks the merger again with your words. If the
+resolution's check failed, **Check again** runs the check again without asking the merger.
+
+![A merge in Symbiote: its steps, and the log of the merge and the check](docs/images/merge.png)
+
+### Clean up
+
+When a workspace is merged, it moves to **Done**. **Clean up** removes the agent's sessions, the
+worktree, the documents and the branch. To remove a workspace that was not merged, use **Clean
+up…** under **⋯**. Symbiote asks first and keeps the branch. Neither happens while the worktree
+has changes that are not committed.
+
+## The other pages
+
+The sidenav also opens these pages. Each has a key.
+
+- **History** (`h`): the repository's commits and branches, drawn as a graph. Right-click a commit
+  to check it out, review its branch (`r`), or start a workspace from it. Press `x` to compare
+  two commits.
+- **Scout** (`a`): an agent you can ask about the repository: where something is decided, why it
+  works this way, or what waits for you. Scout can also act on your workspaces for you: start one,
+  answer an agent, review or merge a branch. Scout never edits files. A start, a verdict, a merge
+  and a clean-up each wait until you click **Confirm**.
+- **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of
+  task (`.claude/skills/<name>/SKILL.md`). Read and edit them with checks as you type. *Scribe*,
+  an agent on the same page, writes a new skill or improves one. Scribe only writes in
+  `.claude/skills/` and never commits.
+- **Monitor** (`m`): where the code is. A map of the files, each sized by its lines of code, with
+  long files marked.
+- **Settings** (`s`): the text Symbiote gives its agents, the model and effort of the merger,
+  Scout and Scribe, and **Appearance** (dark, light or your system's).
+
+The status bar at the bottom shows how much of your Claude and Codex subscriptions you have used
+in each of their usage windows.
+
+![History: the branches panel, and the commits drawn as a graph with branch labels](docs/images/history.png)
+
+## Review without an agent
+
+The graph works on any change, with or without a workspace:
+
+```sh
+symbiote view main     # this branch against main, as a graph
+symbiote diff main     # the same comparison, printed in the terminal
+symbiote pr 123        # a GitHub pull request or a GitLab merge request
+```
+
+`symbiote pr` posts your comments to the pull request as one review. A GitHub Action and a GitLab
+CI template post the findings on the lines they are about. The
+[review guide](docs/guide/review-and-ci.md) covers these, the framework plugins for Angular and
+Qwik, and stylesheets. Every command and option is in the
+[commands reference](docs/reference/commands.md).
+
+## What Symbiote writes and sends
+
+In your repository, Symbiote writes only in the `symbiote/` folder: workspace records, reviews,
+the agents' threads and activity, documents, and the settings of the agents it starts. It also
+writes `symbiote/AGENTS.md`, which tells any agent how to act on a review. Symbiote's own
+`symbiote/.gitignore` keeps everything there out of git, except two files. They are yours to
+commit and share: `config.json` holds your settings, and `merge.md` your rules for the merger.
+
+Outside the repository, Symbiote writes:
+
+- the workspaces' worktrees, next to your checkout, in `../<repo>.worktrees/`;
+- its cache, `~/.cache/symbiote` on Linux, with the worktrees it compares and merges in, the
+  merge queue, drafts, pasted images and its logs.
+
+Symbiote itself sends three things over the network:
+
+- Your Claude usage is read from `api.anthropic.com`, with the token Claude Code stored. Set
+  `SYMBIOTE_USAGE=off` to turn this off.
+- `symbiote pr` and the CI jobs call the GitHub or GitLab API, and fetch the pull request.
+- A merge is pushed only if you set `merge.push`.
+
+The agents talk to their own services, as they do when you run them yourself. Symbiote's fonts
+and pages are served by `symbiote view` itself.
+
+All settings are in the [configuration reference](docs/reference/configuration.md).
 
 ## Limits
 
-- TypeScript and JavaScript (`.ts .tsx .js .jsx .mts .cts .mjs .cjs`), CSS and SCSS (`.css
-  .scss`). Less, indented Sass, CSS-in-JS and `<style>` blocks are not read; other languages
-  need an adapter of their own.
-- A class rendered in one file and needed with another rendered elsewhere (`.theme-dark .card`,
-  the theme set on a container) links no markup to the rule; Tailwind utilities link nothing.
-- Static analysis: no runtime or data-flow analysis.
-- Workspaces start Claude Code or Codex. Any configured agent command is planned (V20c in the
-  [plan](docs/plan/v20-other-agents.md)).
+- Workspaces start Claude Code or Codex. Other agents are not supported yet.
+- The graph reads TypeScript, JavaScript, CSS and SCSS. Other languages show no graph, but
+  workspaces, reviews and merges work in any git repository.
+- The analysis is static: it reads code and does not run it.
+- Symbiote is tested on Linux and WSL. macOS is not tested yet. On Windows, use WSL.
 
 ## Development
 
 ```sh
 pnpm install
-pnpm check        # format, lint, typecheck, unit tests
-pnpm build        # compile the packages and bundle the viewer
-pnpm test:e2e     # viewer end-to-end tests (after pnpm build; the app's need pnpm app:setup and Xvfb)
-node packages/cli/dist/bin.js diff main
+pnpm check        # format, lint, typecheck and unit tests
+pnpm build        # compile the packages and bundle the app
+pnpm test:e2e     # the app's end-to-end tests, after pnpm build
 ```
 
-| Package | Role |
-|---|---|
-| `packages/core` | The engine: git, symbols, diff, references, detectors, graph JSON |
-| `packages/cli` | The `symbiote` command line and the viewer's local server |
-| `packages/forge` | GitHub and GitLab APIs |
-| `packages/viewer` | The browser app `symbiote view` and `symbiote pr` serve |
-| `packages/desktop` | Symbiote's window: an Electron app showing the viewer's server (`pnpm app:setup`) |
-| `packages/plugin-angular`, `packages/plugin-qwik` | Framework plugins |
-| `action.yml`, `ci/gitlab/symbiote.yml` | The GitHub Action and the GitLab CI template |
-| `spikes/` | Experiments outside the workspace |
+The code is in `packages/`. The main ones are `cli`, the `symbiote` command and its server;
+`viewer`, the app; `core`, the analysis; and `desktop`, Symbiote's window. `CLAUDE.md` holds the
+working rules for agents in this repository.
 
-Changes to the analysis are checked on real repositories, not only on fixtures:
-`scripts/regression/` runs pinned commits of ky, zod, vite, RealWorld, Bitwarden and Qwik on two
-builds and compares edges, findings and time; `scripts/viewer/measure.mjs` times the viewer on a
-graph in Chromium. `CLAUDE.md` (and one per package) and `.claude/skills/` hold the working rules
-for Claude Code in this repository.
-
-- [Plan](docs/PLAN.md): the North Star and an index of every milestone; each milestone's plan
-  (design, decisions, results) in [`docs/plan/`](docs/plan/).
-- [Journal](docs/JOURNAL.md): every entry by date; what each milestone learned and measured in
-  [`docs/journal/`](docs/journal/), under its plan's name.
-- [Graph schema](docs/graph-schema.md): the graph JSON contract.
+- [Plan](docs/PLAN.md): every milestone, with its design and results.
+- [Journal](docs/JOURNAL.md): what each change learned and measured.
+- [Graph schema](docs/graph-schema.md): the graph JSON that `symbiote diff --json` prints.
