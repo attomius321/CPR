@@ -66,9 +66,10 @@ describe('with no prompts set (V28)', () => {
   it('gives every start prompt main gave, but names a target when there is no default branch', () => {
     const text = readPrompts(folder()).text;
     expect(BEFORE.start).toHaveLength(48);
+    const worktree = '/repo.worktrees/x-one';
     for (const { workspace, where, prompt } of BEFORE.start) {
       // Decision 171: today's sentence stopped at "in Symbiote." when no default branch was known.
-      const expected =
+      const into =
         where.into === null
           ? prompt.replace(
               'the person reviews the branch in Symbiote.\n',
@@ -76,8 +77,15 @@ describe('with no prompts set (V28)', () => {
                 'branch the person picks.\n',
             )
           : prompt;
-      expect(workspacePrompt(workspace, where, text)).toBe(expected);
-      expect(workspacePrompt(workspace, where)).toBe(expected);
+      // Since fix/initial-workspace-bug, the opening says the worktree is ready and makes no other.
+      const expected = into.replace(
+        /^(You are starting a new \w+ in this repository), on the branch (\S+), started from (.+?)\. This folder is a git worktree of its own with that branch checked out: work only here\.\n/,
+        `$1. Symbiote has already made its branch and its worktree: you are in that worktree now, ${worktree}, with the branch $2 (started from $3) checked out. Work only here, on $2. Do not create another branch or worktree, and do not switch branches (no \`git checkout -b\`, \`git switch\`, \`git worktree add\` or EnterWorktree), even where the project's instructions or your tools say new work gets one: this branch is the one the person reviews and merges.\n`,
+      );
+      expect(expected).not.toBe(into);
+      const given = { ...workspace, worktree };
+      expect(workspacePrompt(given, where, text)).toBe(expected);
+      expect(workspacePrompt(given, where)).toBe(expected);
     }
   });
 
@@ -85,11 +93,17 @@ describe('with no prompts set (V28)', () => {
     const text = readPrompts(folder()).text;
     expect(MERGER_INSTRUCTIONS).toBe(BEFORE.merger);
     expect(mergerInstructions(text.merger)).toBe(BEFORE.merger);
-    // Since V40, one line on a workspace's documents; since MC1, one on a verdict's `via`.
+    const text = readPrompts(folder()).text;
+    expect(MERGER_INSTRUCTIONS).toBe(BEFORE.merger);
+    expect(mergerInstructions(text.merger)).toBe(BEFORE.merger);
+    // Since V40, one line on a workspace's documents; since MC1, one on a verdict's `via`; since
+    // fix/initial-workspace-bug, the worktree and branch are Symbiote's, and no other is made.
     const agents = BEFORE.agents
       .replace(
         '- Work only in its worktree, on its branch.\n',
-        '- Work only in its worktree, on its branch.\n' +
+        '- Work only in its worktree, on its branch: Symbiote made both for this work, and you start in\n' +
+          "  that worktree. Do not make another branch or worktree, even where the project's instructions\n" +
+          '  say new work gets one.\n' +
           '- `documents` in its record: files the person gave with the brief, in\n' +
           '  `symbiote/documents/<branch>/`. Read them as part of the brief; leave them as they are.\n',
       )
@@ -99,6 +113,9 @@ describe('with no prompts set (V28)', () => {
           '- `via` on a verdict (`"scout"`, or `"mcp"`): an agent of the person\'s wrote it through\n' +
           '  Symbiote, and the person confirmed it there. It is their verdict as any other.\n',
       );
+    expect(agents).not.toBe(BEFORE.agents);
+    expect(AGENTS).toBe(agents);
+    expect(agentsFile(text.reviews)).toBe(agents);
     expect(agents).not.toBe(BEFORE.agents);
     expect(AGENTS).toBe(agents);
     expect(agentsFile(text.reviews)).toBe(agents);

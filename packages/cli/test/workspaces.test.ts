@@ -365,6 +365,22 @@ describe('workspacePrompt', () => {
     expect(workspacePrompt(record({ planFirst: false }), where)).toMatch(/Commit your work/);
   });
 
+  it('says the agent is already in its worktree, on its branch, and makes no other', () => {
+    for (const kind of ['feature', 'fix', 'refactor', 'chore', 'spike'] as const) {
+      const text = workspacePrompt(record({ kind, title: 'T' }), where);
+      const opening = text.slice(0, text.indexOf("The person's brief:"));
+      expect(opening).toContain('Symbiote has already made its branch and its worktree');
+      expect(opening).toContain(
+        'you are in that worktree now, /work/app.worktrees/feature-csv, with the branch ' +
+          'feature/csv (started from main at aaaaaaa) checked out',
+      );
+      expect(opening).toMatch(/Do not create another branch or worktree, and do not switch/);
+      // Claude Code's background sessions are told to isolate themselves unless in .claude/worktrees.
+      expect(opening).toContain('EnterWorktree');
+      expect(opening).toMatch(/even where the project's instructions or your tools say/);
+    }
+  });
+
   it('adds one line per kind after the brief, and names the work by its kind (V24)', () => {
     const kinds = {
       fix: /Reproduce it first, with a failing test where the project has tests/,

@@ -32,14 +32,21 @@ const KIND_LINES: Partial<Record<WorkKind, string>> = {
     "keep experiments out of the project's code unless the brief says otherwise.",
 };
 
-/** A kind's start prompt as Symbiote writes it: what V18 to V27 gave, today's values as
- * placeholders. */
+/**
+ * A kind's start prompt as Symbiote writes it: what V18 to V27 gave, today's values as
+ * placeholders. Its opening says the worktree and branch are ready: Claude Code's background
+ * sessions are told to make a worktree unless in `.claude/worktrees/`, and a project's workflow
+ * may say each piece of work gets a branch of its own.
+ */
 function startPrompt(kind: WorkKind): string {
   const line = KIND_LINES[kind];
   return [
-    `You are starting a new ${kind} in this repository, on the branch {branch}, started from ` +
-      '{start}. This folder is a git worktree of its own with that branch checked out: work ' +
-      'only here.',
+    `You are starting a new ${kind} in this repository. Symbiote has already made its branch ` +
+      'and its worktree: you are in that worktree now, {worktree}, with the branch {branch} ' +
+      '(started from {start}) checked out. Work only here, on {branch}. Do not create another ' +
+      'branch or worktree, and do not switch branches (no `git checkout -b`, `git switch`, ' +
+      "`git worktree add` or EnterWorktree), even where the project's instructions or your " +
+      'tools say new work gets one: this branch is the one the person reviews and merges.',
     '',
     "The person's brief:",
     '',
@@ -111,7 +118,9 @@ A workspace started in Symbiote is a branch with a worktree of its own and a rec
 \`symbiote/workspaces/<branch>.json\`: the person's \`brief\`, the \`base\` it started from, and
 \`planFirst\`. If you were started on one:
 
-- Work only in its worktree, on its branch.
+- Work only in its worktree, on its branch: Symbiote made both for this work, and you start in
+  that worktree. Do not make another branch or worktree, even where the project's instructions
+  say new work gets one.
 - \`documents\` in its record: files the person gave with the brief, in
   \`symbiote/documents/<branch>/\`. Read them as part of the brief; leave them as they are.
 - With \`planFirst\`, write the plan (what you will change and how you will check it), then stop
@@ -232,6 +241,7 @@ interface PromptSpec {
 
 const START_PLACEHOLDERS: PromptPlaceholder[] = [
   { name: 'branch', about: "the workspace's branch" },
+  { name: 'worktree', about: "the workspace's worktree, the folder its agent starts in" },
   { name: 'start', about: 'where it starts: "main at abc1234", or "the commit abc1234"' },
   { name: 'brief', about: "the person's brief, as the start page made it", required: true },
   { name: 'plan', about: 'Plan first or Plan without, as the person chose' },
