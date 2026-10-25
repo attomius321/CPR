@@ -9,13 +9,13 @@ import { scoutStateText } from './scout.js';
 import { readWorkspacesAgain, reloadWorkspaces } from '../workspaces/useWorkspaces.js';
 import { effortChoices } from '../workspaces/workspaces.js';
 
-const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
+export const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
 /** The last part of a folder's path: the checkout's name. */
-const folderName = (path: string) => path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
+export const folderName = (path: string) => path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
 
 /** The state's tone, as the workspaces' dots draw it. */
-function toneOf(conversation: ScoutConversation): string {
+export function toneOf(conversation: ScoutConversation): string {
   switch (conversation.state) {
     case 'working':
       return 'tone-working';
@@ -23,6 +23,7 @@ function toneOf(conversation: ScoutConversation): string {
     case 'interrupted':
       return 'tone-waiting';
     case 'answered':
+    case 'ready':
       return 'tone-done';
     case 'failed':
     case 'gone':
@@ -33,7 +34,7 @@ function toneOf(conversation: ScoutConversation): string {
 }
 
 /** How to reach the conversation from a terminal of one's own, where Symbiote runs none. */
-const attachCommand = (conversation: ScoutConversation) =>
+export const attachCommand = (conversation: ScoutConversation) =>
   conversation.kind === 'claude'
     ? `claude attach ${conversation.id ?? ''}`
     : `codex resume ${conversation.id ?? ''}`;
@@ -73,8 +74,6 @@ export function Conversation({ agent: own }: { agent: ConversationAgent }) {
   const [picked, setPicked] = useState<AgentKind | ''>('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ended, setEnded] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
   // The levels and the project's, read for a new conversation; the level picked for it (null: none
   // picked, the project's).
   const [efforts, setEfforts] = useState<ScoutEfforts | null>(null);
@@ -121,7 +120,6 @@ export function Conversation({ agent: own }: { agent: ConversationAgent }) {
     task()
       .then(async () => {
         after?.();
-        setEnded(null);
         await readWorkspacesAgain();
       })
       .catch((e: unknown) => {
@@ -195,29 +193,7 @@ export function Conversation({ agent: own }: { agent: ConversationAgent }) {
         </p>
       )}
       {terminal ? (
-        <div className="scout-terminal workspace-terminal">
-          <AgentTerminal
-            key={attempt}
-            url={`${api}/terminal`}
-            onOpened={() => {}}
-            onEnded={setEnded}
-          />
-          {ended && (
-            <p className="workspace-confirm">
-              The terminal {ended === 'exited' ? 'ended' : 'lost its session'}.{' '}
-              <button
-                type="button"
-                className="button"
-                onClick={() => {
-                  setEnded(null);
-                  setAttempt((n) => n + 1);
-                }}
-              >
-                Open again
-              </button>
-            </p>
-          )}
-        </div>
+        <ConversationTerminal api={api} />
       ) : (
         <div className="scout-body">
           <form className="scout-ask" onSubmit={ask}>
@@ -296,5 +272,34 @@ export function Conversation({ agent: own }: { agent: ConversationAgent }) {
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * A page agent's terminal edge to edge (V35), opened on its session; "Open again" when it ends.
+ * `quiet`: an end not said, while the page itself ends the session (Scout's move, V50).
+ */
+export function ConversationTerminal({ api, quiet = false }: { api: string; quiet?: boolean }) {
+  const [ended, setEnded] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  return (
+    <div className="scout-terminal workspace-terminal">
+      <AgentTerminal key={attempt} url={`${api}/terminal`} onOpened={() => {}} onEnded={setEnded} />
+      {ended && !quiet && (
+        <p className="workspace-confirm">
+          The terminal {ended === 'exited' ? 'ended' : 'lost its session'}.{' '}
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              setEnded(null);
+              setAttempt((n) => n + 1);
+            }}
+          >
+            Open again
+          </button>
+        </p>
+      )}
+    </div>
   );
 }

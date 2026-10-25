@@ -651,12 +651,13 @@ export interface RunningWorkspaces extends Running {
 
 /**
  * A fake Claude Code (V18): `--bg` records its arguments and folder and lists a working session
- * there (or, distrusted, prints Claude Code's trust refusal and exits 1); `agents --json` lists
- * the sessions, `auth status` a Pro subscription. As the real one did in the V18c spike, a
- * session runs the hooks of the `--settings` file it started with (`SessionStart`,
- * `UserPromptSubmit`; `SessionEnd` when stopped), `--bg --resume <session> "<text>"` continues
- * a stopped session under its ID and copies a live one (without its settings), and `rm` removes
- * one. Its state lives in `dir`.
+ * there (or, distrusted, prints Claude Code's trust refusal and exits 1); with no prompt, one that
+ * waits for its first (`blocked` and idle, V50). `agents --json` lists the sessions, `auth status`
+ * a Pro subscription. As the real one did in the V18c spike, a session runs the hooks of the
+ * `--settings` file it started with (`SessionStart`, `UserPromptSubmit`; `SessionEnd` when
+ * stopped), `--bg --resume <session> "<text>"` continues a stopped session under its ID and
+ * copies a live one (without its settings); with options, it copies the session on them (V50
+ * spike). `rm` removes one. Its state lives in `dir`.
  */
 /**
  * Claude Code's answer to `initialize` (V47), as 2.1.310 gave it: its own default first (Symbiote
@@ -720,6 +721,17 @@ const save = (all) => writeFileSync(sessions, JSON.stringify(all));
 const args = process.argv.slice(2);
 // Its models (V47): its answer to the SDK's initialize request.
 ${answersModels(dir)}
+// The options that take a value, and what is left: the prompt (none: the session waits, V50).
+const VALUED = ['--name', '--tools', '--permission-mode', '--mcp-config', '--settings', '--model', '--effort', '--append-system-prompt', '--add-dir', '--resume'];
+const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
+const promptOf = (list) => {
+  for (let i = 0; i < list.length; i++) {
+    if (VALUED.includes(list[i])) i++;
+    else if (!list[i].startsWith('--')) return list[i];
+  }
+  return undefined;
+};
+const waiting = (prompt) => (prompt === undefined ? { state: 'blocked', status: 'idle' } : {});
 // A session's hooks for one event, as Claude Code runs them: each command in a shell, the event on
 // stdin.
 const hooks = (session, input) => {
@@ -732,7 +744,9 @@ const hooks = (session, input) => {
   }
 };
 const started = (fields) => {
-  const n = list().length;
+  // Numbered by the list's length, past an ID in use (V50: a copy after a removal).
+  let n = list().length;
+  while (list().some((s) => s.id === 'fake' + n)) n += 1;
   const session = { id: 'fake' + n, sessionId: 'session-' + n, kind: 'background', startedAt: Date.now() + n, state: 'working', status: 'busy', ...fields };
   save([...list(), session]);
   return session;
@@ -746,7 +760,15 @@ if (args[0] === '--bg' && args[1] === '--resume') {
     process.stderr.write('No conversation found with session ID: ' + id + '\\n');
     process.exit(1);
   }
-  if (session.status) {
+  if (args.slice(3).some((arg) => arg.startsWith('--'))) {
+    // Options given: a copy on them, the conversation kept, as Claude Code 2.1.310 does (V50).
+    const prompt = promptOf(args.slice(3));
+    const settings = option('--settings');
+    const copy = started({ cwd: process.cwd(), name: option('--name'), from: session.id, ...(settings ? { settings } : {}), ...waiting(prompt) });
+    hooks(copy, { hook_event_name: 'SessionStart', source: 'resume' });
+    if (prompt !== undefined) hooks(copy, { hook_event_name: 'UserPromptSubmit', prompt });
+    process.stdout.write('note: background session ' + session.id + ' keeps its own saved options, so the flags you passed started a copy as ' + copy.id + '.\\n');
+  } else if (session.status) {
     // Running: a copy, which keeps none of the original's options.
     const copy = started({ cwd: process.cwd(), name: session.name });
     process.stdout.write('note: session ' + session.id + ' is already running in the background, so this started a copy as ' + copy.id + '.\\n');
@@ -764,10 +786,11 @@ if (args[0] === '--bg' && args[1] === '--resume') {
     process.exit(1);
   }
   appendFileSync(join(dir, 'calls.jsonl'), JSON.stringify({ args, cwd: process.cwd() }) + '\\n');
-  const at = args.indexOf('--settings');
-  const session = started({ cwd: process.cwd(), name: args[2], ...(at >= 0 ? { settings: args[at + 1] } : {}) });
+  const settings = option('--settings');
+  const prompt = promptOf(args.slice(1));
+  const session = started({ cwd: process.cwd(), name: args[2], ...(settings ? { settings } : {}), ...waiting(prompt) });
   hooks(session, { hook_event_name: 'SessionStart', source: 'startup' });
-  hooks(session, { hook_event_name: 'UserPromptSubmit', prompt: args.at(-1) });
+  if (prompt !== undefined) hooks(session, { hook_event_name: 'UserPromptSubmit', prompt });
   process.stdout.write('backgrounded · ' + session.id + ' · ' + args[2] + '\\n');
 } else if (args[0] === 'agents') {
   process.stdout.write(JSON.stringify(list().map(({ settings, ...shown }) => shown)));

@@ -71,6 +71,11 @@ export interface ScoutAsk {
    * agent's own.
    */
   effort?: string | null;
+  /**
+   * The model to start on (a new conversation only, V50: Scout's head where no terminal runs), one
+   * the agent lists; null: its default. Absent: the project's (`scout.model`).
+   */
+  model?: string | null;
 }
 
 /**

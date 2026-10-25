@@ -47,6 +47,12 @@ const merging = (state: WorkspacesState) => mergeLive(state.merges?.merges ?? []
 
 /** Terminals open in panels: what is typed in one may start a turn (V27b, decision 161). */
 let terminalsOpen = 0;
+/**
+ * Until when the last terminal closed counts as open (V50): a question typed just before leaving
+ * Scout's starts its turn after, and a read on the next page may come before the server's list
+ * says so.
+ */
+let closedUntil = 0;
 
 /**
  * How long until the next read: 1.5 s while a merge runs; 5 s while an agent works or waits, Scout
@@ -63,7 +69,10 @@ export function holdReads(): () => void {
   schedule();
   let held = true;
   return () => {
-    if (held) terminalsOpen -= 1;
+    if (held) {
+      terminalsOpen -= 1;
+      closedUntil = Date.now() + POLL_MS;
+    }
     held = false;
   };
 }
@@ -123,7 +132,7 @@ export async function readWorkspacesAgain(): Promise<WorkspacesState> {
 function schedule(): void {
   clearTimeout(timer);
   if (listeners.size === 0) return;
-  const wait = readEvery(current, terminalsOpen);
+  const wait = readEvery(current, terminalsOpen + (Date.now() < closedUntil ? 1 : 0));
   if (wait === null) return;
   timer = setTimeout(() => {
     if (document.visibilityState === 'hidden') schedule();

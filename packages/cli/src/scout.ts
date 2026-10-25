@@ -778,7 +778,7 @@ export function pageAgent(
   return {
     state,
 
-    async ask({ text, agent, effort }) {
+    async ask({ text, agent, effort, model }) {
       if (text.trim() === '') throw new ScoutRefused('a question cannot be empty', 400);
       if (text.length > MAX_QUESTION) {
         throw new ScoutRefused(
@@ -792,11 +792,14 @@ export function pageAgent(
       if (effort !== undefined && effort !== null && !isLevel(effort)) {
         throw new ScoutRefused(effortWordProblem(effort), 400);
       }
+      if (model !== undefined && model !== null && !MODEL_ID.test(model)) {
+        throw new ScoutRefused(modelWordProblem(model), 400);
+      }
       const where = await place();
       const record = await readRecord(where);
       // A session removed outside Symbiote: the question starts a new conversation.
       const gone = record ? (await conversationOf(record)).state === 'gone' : false;
-      if (!record || gone) await start(where, text, agent, effort);
+      if (!record || gone) await start(where, text, agent, effort, model);
       else if (agent !== undefined && agent !== record.agent) {
         throw new ScoutRefused(
           `this conversation is ${AGENT_NAMES[record.agent]}'s: start a new one for ${AGENT_NAMES[agent]}`,
@@ -806,6 +809,11 @@ export function pageAgent(
         // Set at its start, kept by its session; `/effort` in its terminal changes it.
         throw new ScoutRefused(
           'this conversation started at its level: change it in its terminal',
+          409,
+        );
+      } else if (model !== undefined) {
+        throw new ScoutRefused(
+          'this conversation started on its model: change it in its terminal',
           409,
         );
       } else await reply(where, record, text);

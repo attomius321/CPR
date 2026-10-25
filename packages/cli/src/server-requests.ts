@@ -242,14 +242,18 @@ export function parseScoutAsk(text: string): ScoutAsk {
   if (value.agent !== undefined && value.agent !== 'claude' && value.agent !== 'codex') {
     throw new Error('agent: claude or codex');
   }
-  const { effort } = value;
+  const { effort, model } = value;
   if (effort !== undefined && effort !== null && typeof effort !== 'string') {
     throw new Error("effort: a level, as high, or null for the agent's own");
+  }
+  if (model !== undefined && model !== null && typeof model !== 'string') {
+    throw new Error('model: its ID, as sonnet, or null for the default');
   }
   return {
     text: value.text,
     ...(value.agent ? { agent: value.agent } : {}),
     ...(effort === undefined ? {} : { effort }),
+    ...(model === undefined ? {} : { model }),
   };
 }
 

@@ -1116,6 +1116,25 @@ describe("Scout's and Scribe's model (V47)", () => {
     expect(startPageAgent).not.toHaveBeenCalled();
   });
 
+  it('starts a question on the model asked where no terminal runs (V50); refused for one that runs', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent, set } = listing(repo);
+    const s = await service(repo, { claude });
+    repo.write({ 'symbiote/config.json': '{ "scout": { "model": "sonnet" } }\n' });
+    const state = await s.ask({ text: 'Q', model: 'opus', effort: 'max' });
+    expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ model: 'opus', effort: 'max' });
+    expect(state.conversation).toMatchObject({ model: 'opus', effort: 'max' });
+    set('s9', { state: 'done', status: 'idle' });
+    await expect(s.ask({ text: 'And?', model: 'sonnet' })).rejects.toMatchObject({
+      status: 409,
+      message: 'this conversation started on its model: change it in its terminal',
+    });
+    await s.renew();
+    expect((await s.ask({ text: 'Q', model: null })).conversation).not.toHaveProperty('model');
+    await s.renew();
+    await expect(s.ask({ text: 'Q', model: '--yolo' })).rejects.toMatchObject({ status: 400 });
+  });
+
   it("saves the project's model in its config, one its default agent lists; null removes it", async () => {
     const repo = fresh();
     const { claude } = listing(repo);
