@@ -1,20 +1,9 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type {
-  BranchMerge,
   WorkspaceReplied,
   WorkspaceShell,
   WorkspaceShells,
   WorkspaceStart,
-  WorkspaceSummary,
-  WorkspaceThread,
   TerminalAvailability,
 } from '@symbiote/core';
 import {
@@ -25,14 +14,17 @@ import {
   type OpenedTerminal,
 } from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
+import { BriefTab } from './BriefTab.js';
 import { ChangesPanel } from './ChangesPanel.js';
-import { ChangesIcon, CloseIcon, FileIcon, ImageIcon, PlusIcon } from '../ui/icons.js';
-import { isImageName } from './documents.js';
+import { useChangesPanel } from './useChangesPanel.js';
+import { ReplyForm } from './ReplyForm.js';
+import { WorkspaceTabs, type AgentView, type View } from './WorkspaceTabs.js';
+import { ChangesIcon } from '../ui/icons.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { InTitleBar } from '../shell/TitleBar.js';
-import { keyIsTaken } from '../ui/keys.js';
-import { markdownNodes, useMarkdown } from '../ui/markdown.js';
 import { MergeControl } from './MergeControl.js';
+import { ThreadTab, useThread } from './ThreadTab.js';
+import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from './WorkspaceFacts.js';
 import { postJson, serverWords } from '../ui/http.js';
 import { Resizer } from '../ui/Resizer.js';
 import {
@@ -42,34 +34,20 @@ import {
   replyMode,
   asksBeforeOpening,
   opensTerminal,
-  terminalHint,
   startedNotice,
   startedWith,
   talkCommand,
-  threadItems,
   verdictToSend,
   type WorkspaceRow,
 } from './workspaces.js';
 import { HISTORY_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
 import { verdictLine } from './terminal.js';
-import {
-  closeQuestion,
-  MAX_SHELLS,
-  shellAfter,
-  shellName,
-  shellOfUrl,
-  withShell,
-} from './shells.js';
+import { closeQuestion, shellAfter, shellOfUrl, withShell } from './shells.js';
 import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
-import { loadWidths, saveWidth } from '../ui/widths.js';
 
 /** `?send=verdict`: from the Review tab, the box filled with the review's verdict (V18c). */
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
-
-type View = 'terminal' | 'thread' | 'brief' | 'shell';
-/** The agent's own tabs: a shell's is picked by its number. */
-type AgentView = Exclude<View, 'shell'>;
 
 /**
  * `&thread`, `&terminal`, `&brief` or `&shell=<n>`: the tab picked (V21; the brief since V29a, a
@@ -96,27 +74,6 @@ async function readShells(branch: string): Promise<WorkspaceShell[]> {
   const text = await response.text();
   if (!response.ok) throw new Error(serverWords(text));
   return (JSON.parse(text) as WorkspaceShells).shells;
-}
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-
-const CHANGES_KEY = 'symbiote.viewer.changes';
-
-/** Whether the person hid the changes panel (V29d), kept in this browser; shown by default. */
-function loadChangesShown(): boolean {
-  try {
-    return window.localStorage.getItem(CHANGES_KEY) !== 'hidden';
-  } catch {
-    return true;
-  }
-}
-
-function saveChangesShown(shown: boolean): void {
-  try {
-    window.localStorage.setItem(CHANGES_KEY, shown ? 'shown' : 'hidden');
-  } catch {
-    // Storage blocked: the choice lasts until the page closes.
-  }
 }
 
 /**
@@ -159,234 +116,6 @@ export function WorkspaceView({ branch }: { branch: string }) {
       onNotice={notify}
       onGone={onGone}
     />
-  );
-}
-
-/** Whether a workspace with commits merges into the default branch (V17's check), read once. */
-function useMergeCheck(workspace: WorkspaceSummary): BranchMerge | null {
-  const [merge, setMerge] = useState<BranchMerge | null>(null);
-  const wanted = workspace.ahead > 0 && !workspace.merged && workspace.tip !== null;
-  useEffect(() => {
-    if (!wanted) return;
-    let live = true;
-    fetch(`/api/workspaces/merge?branch=${encodeURIComponent(workspace.branch)}`)
-      .then((response) => (response.ok ? (response.json() as Promise<BranchMerge>) : null))
-      .then((check) => live && setMerge(check))
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [wanted, workspace.branch, workspace.tip]);
-  return wanted ? merge : null;
-}
-
-function mergeText(merge: BranchMerge | null): string | null {
-  if (!merge) return null;
-  if ('clean' in merge) return `Merges cleanly into ${merge.into}`;
-  if ('conflicts' in merge) {
-    return `Conflicts with ${merge.into} in ${plural(merge.conflicts.length, 'file')}`;
-  }
-  return null;
-}
-
-/** What is next for a workspace, then its facts: commits, files not committed, the merge check. */
-export function WorkspaceState({ row: { workspace, next } }: { row: WorkspaceRow }) {
-  const merge = useMergeCheck(workspace);
-  const facts = [
-    workspace.ahead > 0 ? plural(workspace.ahead, 'commit') : 'no commits yet',
-    workspace.worktree.changed
-      ? `${plural(workspace.worktree.changed, 'file')} not committed yet`
-      : null,
-    workspace.worktree.exists ? null : 'its worktree is gone',
-    mergeText(merge),
-  ].filter((fact): fact is string => fact !== null);
-  const text = [next.text, ...facts].join(' · ');
-  return (
-    <p className="workspace-state" title={text}>
-      <strong>{next.text}</strong>
-      {facts.map((fact) => (
-        <span key={fact}> · {fact}</span>
-      ))}
-    </p>
-  );
-}
-
-/** A workspace's kind before its name (V24c): none for a Feature, the common case. */
-export function KindTag({ workspace }: { workspace: WorkspaceSummary }) {
-  if (!workspace.kind || workspace.kind === 'feature') return null;
-  return <span className="kind-tag">{workspace.kind}</span>;
-}
-
-/** A workspace's state as a dot (V29b): the colour of its mark on its branch's badges. */
-export function StateDot({ row: { next } }: { row: WorkspaceRow }) {
-  return <span className={`state-dot tone-${next.chip.tone}`} aria-hidden="true" />;
-}
-
-/** A workspace's branch (a link to its commits) and its review's mark. */
-export function WorkspaceBranch({
-  row: { workspace },
-  mark,
-}: {
-  row: WorkspaceRow;
-  mark?: ReviewMark | undefined;
-}) {
-  const { branch } = workspace;
-  return (
-    <>
-      {workspace.tip === null ? (
-        <span className="ref ref-branch">{branch}</span>
-      ) : (
-        <a
-          className="ref ref-branch"
-          href={`${HISTORY_PAGE}?branch=${encodeURIComponent(branch)}`}
-          title={`${branch}: its commits`}
-          onClick={(event) => event.stopPropagation()}
-        >
-          {branch}
-        </a>
-      )}
-      {mark && (
-        <span className={`ref-review ref-review-${mark.tone}`} title={mark.title}>
-          {mark.mark}
-        </span>
-      )}
-    </>
-  );
-}
-
-/**
- * A workspace's thread (V18c), read when it is picked and with every read of the list (on focus,
- * every 5 s while an agent works or waits).
- */
-function useThread(branch: string, version: unknown): [WorkspaceThread | null, () => void] {
-  const [thread, setThread] = useState<WorkspaceThread | null>(null);
-  const [asked, setAsked] = useState(0);
-  useEffect(() => {
-    let live = true;
-    fetch(`/api/workspaces/thread?branch=${encodeURIComponent(branch)}`)
-      .then((response) => (response.ok ? (response.json() as Promise<WorkspaceThread>) : null))
-      .then((read) => live && setThread(read))
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [branch, version, asked]);
-  return [thread, useCallback(() => setAsked((n) => n + 1), [])];
-}
-
-const timeOf = (at: string) =>
-  new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-
-/**
- * What the agent was told and reported, newest last; what it waits on as a line. It opens at its
- * end and follows new entries; a read with nothing new leaves it where the person scrolled. The
- * agent's reports are drawn as Markdown (plain text until the lexer is loaded); the person's
- * messages and Symbiote's prompt as written.
- */
-function Thread({ thread, worktree }: { thread: WorkspaceThread | null; worktree: string }) {
-  const list = useRef<HTMLOListElement>(null);
-  const items = thread ? threadItems(thread.entries, worktree) : [];
-  const lexer = useMarkdown();
-  useLayoutEffect(() => {
-    const box = list.current;
-    if (box) box.scrollTop = box.scrollHeight;
-  }, [items.length, lexer]);
-  if (!thread) return <p className="hint">Reading its messages…</p>;
-  return (
-    <>
-      {!thread.recorded && (
-        <p className="hint">
-          Symbiote keeps an agent's messages from V18c on: Talk shows this one's.
-        </p>
-      )}
-      {thread.recorded && items.length === 0 && (
-        <p className="hint">Nothing yet: the agent's reports and your messages show here.</p>
-      )}
-      {items.length > 0 && (
-        <ol ref={list} className="thread">
-          {items.map((item, i) => {
-            const key = `${i}:${item.at}`;
-            if (item.who === 'line' || item.who === 'waits') {
-              return (
-                <li key={key} className={`thread-${item.who}`} title={timeOf(item.at)}>
-                  {item.text}
-                </li>
-              );
-            }
-            if (item.who === 'symbiote') {
-              return (
-                <li key={key} className="thread-item thread-symbiote">
-                  <details>
-                    <summary>
-                      Symbiote's prompt · <time dateTime={item.at}>{timeOf(item.at)}</time>
-                    </summary>
-                    <div className="thread-text">{item.text}</div>
-                  </details>
-                </li>
-              );
-            }
-            return (
-              <li key={key} className={`thread-item thread-${item.who}`}>
-                <div className="thread-who">
-                  {item.who === 'agent' ? 'Agent' : 'You'} ·{' '}
-                  <time dateTime={item.at}>{timeOf(item.at)}</time>
-                </div>
-                {item.who === 'agent' && lexer ? (
-                  <div className="thread-text markdown">{markdownNodes(lexer(item.text))}</div>
-                ) : (
-                  <div className="thread-text">{item.text}</div>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      )}
-    </>
-  );
-}
-
-/**
- * What the agent was told — since V24 the kind and title as `#`, each part under `##` — drawn as
- * Markdown, as its reports are; as written until the lexer is loaded. Above it, how the agent was
- * started (V30b).
- */
-function Brief({
-  text,
-  started,
-  documents,
-}: {
-  text: string;
-  started: string | null;
-  /** The files given with it (V40). */
-  documents: WorkspaceSummary['documents'];
-}) {
-  const lexer = useMarkdown();
-  return (
-    <div className="workspace-brief">
-      {started && <p className="workspace-started">{started}</p>}
-      {lexer ? (
-        <div className="markdown">{markdownNodes(lexer(text))}</div>
-      ) : (
-        <div className="workspace-brief-text">{text}</div>
-      )}
-      {documents && (
-        <section className="workspace-documents" aria-label="Documents">
-          <h2>
-            Documents <span className="count">{documents.files.length}</span>
-          </h2>
-          <p className="workspace-documents-folder">
-            In <code>{documents.folder}</code>
-          </p>
-          <ul>
-            {documents.files.map((name) => (
-              <li key={name}>
-                {isImageName(name) ? <ImageIcon /> : <FileIcon />} {name}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-    </div>
   );
 }
 
@@ -459,23 +188,9 @@ function WorkspacePanel({
   // Attaching to a stopped session continues it (with no turn): asked when a terminal is to
   // open, not once it is open (a stop from the head leaves its last lines in view).
   const [asking, setAsking] = useState(() => asksBeforeOpening(agent));
-  // The branch's changes at the right (V29d): `]` or the head's button shows or hides them.
-  const [changesShown, setChangesShown] = useState(loadChangesShown);
-  // As wide as the person dragged them (V34), kept in this browser.
-  const [changesWidth, setChangesWidth] = useState(() => loadWidths().changes);
-  const [resizing, setResizing] = useState(false);
-  const resizeChanges = useCallback((width: number | null) => {
-    setChangesWidth(width ?? undefined);
-    saveWidth('changes', width);
-  }, []);
-  const toggleChanges = useCallback(
-    () =>
-      setChangesShown((shown) => {
-        saveChangesShown(!shown);
-        return !shown;
-      }),
-    [],
-  );
+  // The branch's changes at the right (V29d), shown or hidden, as wide as they were dragged.
+  const { changesShown, toggleChanges, changesWidth, resizeChanges, resizing, setResizing } =
+    useChangesPanel();
   useEffect(() => {
     if (!shellsCan) return;
     let gone = false;
@@ -491,15 +206,6 @@ function WorkspacePanel({
       gone = true;
     };
   }, [branch, shellsCan]);
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== ']' || keyIsTaken(event)) return;
-      event.preventDefault();
-      toggleChanges();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [toggleChanges]);
   const show = (next: AgentView) => {
     setChosen(next);
     setEnded(null);
@@ -699,11 +405,6 @@ function WorkspacePanel({
   ];
 
   const views: AgentView[] = [...(terminals ? (['terminal'] as const) : []), 'thread', 'brief'];
-  const tabName: Record<AgentView, string> = {
-    terminal: 'Terminal',
-    thread: 'Thread',
-    brief: 'Brief',
-  };
 
   return (
     <section className="workspace" aria-label={`Workspace ${branch}`}>
@@ -832,83 +533,22 @@ function WorkspacePanel({
         }
       >
         <div className="workspace-main">
-          <InTitleBar>
-            <div
-              ref={strip}
-              className="workspace-views"
-              role="tablist"
-              aria-label="Talk to the agent"
-              onWheel={(event) => {
-                // Many shells scroll the strip sideways: the wheel too, not only a trackpad.
-                if (event.deltaX === 0) event.currentTarget.scrollLeft += event.deltaY;
-              }}
-            >
-              {views.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  role="tab"
-                  aria-selected={view === name}
-                  className={view === name ? 'selected' : ''}
-                  {...(name === 'terminal' ? { title: terminalHint(agent) } : {})}
-                  onClick={() => show(name)}
-                >
-                  {tabName[name]}
-                </button>
-              ))}
-              {shellsCan && (
-                <>
-                  <span className="views-divider" aria-hidden="true" />
-                  {(shells ?? []).map((shell) => {
-                    const name = shellName(shell.number);
-                    const selected = view === 'shell' && shellNumber === shell.number;
-                    return (
-                      <span key={shell.id} className="shell-tab">
-                        <button
-                          type="button"
-                          role="tab"
-                          aria-selected={selected}
-                          className={selected ? 'selected' : ''}
-                          title="A shell in the worktree"
-                          onClick={() => showShell(shell.number)}
-                        >
-                          {name}
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-button shell-close"
-                          aria-label={`Close ${name}`}
-                          title={`Close ${name}`}
-                          onClick={() => void closeShell(shell)}
-                        >
-                          <CloseIcon />
-                        </button>
-                      </span>
-                    );
-                  })}
-                  <span className="shell-new-end">
-                    <button
-                      type="button"
-                      className="icon-button shell-new"
-                      aria-label="New shell"
-                      title={
-                        (shells?.length ?? 0) >= MAX_SHELLS
-                          ? `${MAX_SHELLS} shells are open: close one first`
-                          : 'A new shell in the worktree: it runs until you close it or Symbiote quits'
-                      }
-                      disabled={shells === null || shells.length >= MAX_SHELLS}
-                      onClick={() => void openShell()}
-                    >
-                      <PlusIcon />
-                    </button>
-                  </span>
-                </>
-              )}
-            </div>
-          </InTitleBar>
+          <WorkspaceTabs
+            stripRef={strip}
+            views={views}
+            view={view}
+            agent={agent}
+            shells={shells}
+            shellsCan={shellsCan}
+            shellNumber={shellNumber}
+            onShow={show}
+            onShowShell={showShell}
+            onCloseShell={(shell) => void closeShell(shell)}
+            onOpenShell={() => void openShell()}
+          />
           <div className="workspace-body">
             {view === 'brief' && (
-              <Brief
+              <BriefTab
                 text={workspace.brief}
                 started={startedWith(workspace.agent)}
                 documents={workspace.documents}
@@ -965,7 +605,7 @@ function WorkspacePanel({
             )}
             {view === 'thread' && (
               <div className="workspace-thread">
-                <Thread thread={thread} worktree={workspace.worktree.path} />
+                <ThreadTab thread={thread} worktree={workspace.worktree.path} />
                 {terminals && (
                   <p className="hint thread-readonly">
                     To answer,{' '}
@@ -978,74 +618,18 @@ function WorkspacePanel({
               </div>
             )}
           </div>
-          <form
+          <ReplyForm
             hidden={terminals || view !== 'thread'}
-            className="reply"
-            onSubmit={(event) => {
-              event.preventDefault();
-              send(false);
-            }}
-          >
-            <textarea
-              aria-label="Reply to the agent"
-              placeholder="Reply to the agent…"
-              value={text}
-              rows={3}
-              disabled={mode === 'none'}
-              onChange={(event) => setText(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-                  event.preventDefault();
-                  send(false);
-                }
-              }}
-            />
-            <div className="reply-actions">
-              {verdict && (
-                <button
-                  type="button"
-                  className="link"
-                  title={`Your ${verdict.event === 'approve' ? 'approval' : 'review'} at ${verdict.head.slice(0, 7)}, in words for the agent`}
-                  onClick={() => setText(verdict.text)}
-                >
-                  Send the verdict
-                </button>
-              )}
-              {mode === 'none' && (
-                <span className="hint">No session to continue: start the agent again.</span>
-              )}
-              {confirming === 'send' ? (
-                <span className="workspace-confirm">
-                  Sending stops the agent's turn
-                  {agent.waitingFor ? ` and what it waits on (${agent.waitingFor})` : ''}.{' '}
-                  <button
-                    type="button"
-                    className="button"
-                    disabled={busy}
-                    onClick={() => send(true)}
-                  >
-                    Stop it and send
-                  </button>{' '}
-                  <button
-                    type="button"
-                    className="button ghost"
-                    onClick={() => setConfirming(null)}
-                  >
-                    Cancel
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="submit"
-                  className="button"
-                  disabled={busy || mode === 'none' || text.trim() === ''}
-                  title="Ctrl+Enter"
-                >
-                  {mode === 'stop-and-send' ? 'Stop and send' : 'Send'}
-                </button>
-              )}
-            </div>
-          </form>
+            text={text}
+            mode={mode}
+            verdict={verdict}
+            confirming={confirming === 'send'}
+            busy={busy}
+            waitingFor={agent.waitingFor}
+            onText={setText}
+            onSend={send}
+            onCancel={() => setConfirming(null)}
+          />
         </div>
         {changesShown && (
           <Resizer

@@ -18,8 +18,8 @@ import {
   type DetachedRun,
 } from '../src/codex.js';
 import { runCodex } from '../src/codex-run.js';
-import type { WorkspaceFile } from '../src/workspaces.js';
-import type { Run } from '../src/workspaces.js';
+import type { WorkspaceFile } from '../src/workspace-record.js';
+import type { Run } from '../src/programs.js';
 import { daemonStartOutput, fakeAppServer } from './fake-app-server.js';
 
 const RUNNER = fileURLToPath(new URL('../src/codex-run.ts', import.meta.url));

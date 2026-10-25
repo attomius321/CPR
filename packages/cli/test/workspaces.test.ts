@@ -24,34 +24,34 @@ import {
 } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
+import { workspaces, readWorkspaceConfig } from '../src/workspaces.js';
+import { MAX_DOCUMENT_BYTES } from '../src/workspace-documents.js';
+import {
+  workspaceBase,
+  workspacePrompt,
+  startBranches,
+  worktreeFolder,
+} from '../src/workspace-start.js';
+import {
+  documentName,
+  workspacePath,
+  WorkspaceRefused,
+  readWorkspace,
+  serializeWorkspace,
+  type WorkspaceFile,
+} from '../src/workspace-record.js';
+import { briefOf, workKinds } from '../src/workspace-brief.js';
 import {
   agentState,
-  briefOf,
   claudeCode,
-  documentName,
-  MAX_DOCUMENT_BYTES,
-  workspaceBase,
-  workspacePath,
-  workspacePrompt,
-  workspaces,
-  WorkspaceRefused,
   parseAccount,
   parseClaudeModels,
   parseEffortLevels,
   parseSessions,
-  readWorkspace,
-  readWorkspaceConfig,
-  runProgram,
-  serializeWorkspace,
-  startBranches,
-  workKinds,
-  worktreeFolder,
   type AgentSession,
   type ClaudeCode,
-  type WorkspaceFile,
-  type Run,
-} from '../src/workspaces.js';
-import type { RunWithInput } from '../src/merge-agent.js';
+} from '../src/claude-code.js';
+import { runProgram, type Run, type RunWithInput } from '../src/programs.js';
 import { reviewPlace } from '../src/reviews.js';
 import { DEFAULT_PROMPTS } from '../src/prompts.js';
 import { shellOf, type Terminals } from '../src/terminal.js';

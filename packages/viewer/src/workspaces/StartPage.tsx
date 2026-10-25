@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import type {
-  AgentKind,
   CheckGuess,
   PermissionMode,
   RefList,
@@ -15,7 +14,6 @@ import {
   formParts,
   formReady,
   HINTS,
-  KIND_ABOUT,
   morePartsOf,
   newForm,
   readDraft,
@@ -26,13 +24,11 @@ import {
   type BriefForm,
 } from './brief.js';
 import {
-  AGENT_NAMES,
   branchProblem,
   effortChoices,
   keptEffort,
   keptModel,
   modelChoices,
-  PERMISSION_LABELS,
   proposeBranch,
   readRun,
   type RunChoices,
@@ -40,7 +36,6 @@ import {
 import { fileBase64, getJson, postJson } from '../ui/http.js';
 import { shortSha } from '../history/commits.js';
 import { ChevronIcon } from '../ui/icons.js';
-import { EffortStepper } from './EffortStepper.js';
 import { Help } from '../ui/Help.js';
 import { reloadWorkspaces } from './useWorkspaces.js';
 import {
@@ -51,7 +46,9 @@ import {
   readDocuments,
   type DocumentEntry,
 } from './documents.js';
+import { StartAgent } from './StartAgent.js';
 import { StartDocuments } from './StartDocuments.js';
+import { StartKinds } from './StartKinds.js';
 
 /** How long typing pauses before the draft is saved. */
 const SAVE_AFTER_MS = 400;
@@ -60,20 +57,6 @@ const SAVE_AFTER_MS = 400;
 let saving: Promise<unknown> = Promise.resolve();
 function saveDraft(value: object): void {
   saving = postJson('/api/workspaces/draft', value).catch(() => undefined);
-}
-
-/** The run's choices at `level`, or at the agent's own level without one. */
-function atLevel(run: RunChoices, level: string | undefined): RunChoices {
-  const next = { ...run };
-  delete next.effort;
-  return level ? { ...next, effort: level } : next;
-}
-
-/** The run's choices on `model` (V47), or on the agent's default without one. */
-function onModel(run: RunChoices, model: string | undefined): RunChoices {
-  const next = { ...run };
-  delete next.model;
-  return model ? { ...next, model } : next;
 }
 
 interface Loaded {
@@ -211,7 +194,6 @@ function StartForm({
   // The model picked (V47), while the agent lists it; the level and its choices are that model's.
   const model = agent ? keptModel(run.model, agent) : undefined;
   const models = agent ? modelChoices(agent) : [];
-  const described = models.find((m) => m.value === (model ?? ''))?.description;
   const effort = agent ? keptEffort(run.effort, agent, model) : undefined;
   const efforts = agent ? effortChoices(agent, model) : [];
   const [running, setRunning] = useState(false);
@@ -359,7 +341,6 @@ function StartForm({
     if (kind.kind !== form.kind) edit(withKind(form, spec, kind, guess));
   };
   const folder = options.worktrees.replace('<branch>', branch.replaceAll('/', '-'));
-  const kindIndex = kinds.indexOf(spec);
   return (
     <section
       className="start-page"
@@ -452,58 +433,7 @@ function StartForm({
       <div className="start-body">
         <div className="start-columns">
           <div className="start-brief">
-            <div className="kind-row">
-              <div
-                className="kind-picker"
-                role="radiogroup"
-                aria-label="Kind of work"
-                onKeyDown={(event) => {
-                  const n = Number(event.key);
-                  const to =
-                    n >= 1 && n <= kinds.length
-                      ? kinds[n - 1]
-                      : event.key === 'ArrowRight' || event.key === 'ArrowDown'
-                        ? kinds[(kindIndex + 1) % kinds.length]
-                        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
-                          ? kinds[(kindIndex - 1 + kinds.length) % kinds.length]
-                          : undefined;
-                  if (!to) return;
-                  event.preventDefault();
-                  pick(to);
-                  const radios =
-                    event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]');
-                  radios[kinds.indexOf(to)]?.focus();
-                }}
-              >
-                {kinds.map((kind, i) => (
-                  <button
-                    key={kind.kind}
-                    type="button"
-                    role="radio"
-                    aria-checked={kind.kind === form.kind}
-                    tabIndex={kind.kind === form.kind ? 0 : -1}
-                    className={kind.kind === form.kind ? 'kind active' : 'kind'}
-                    title={`${kind.name} (${i + 1})`}
-                    onClick={() => pick(kind)}
-                  >
-                    {kind.name}
-                  </button>
-                ))}
-              </div>
-              <Help label="About the kinds of work" id="kind-about">
-                <dl className="kind-about">
-                  {kinds.map((kind) => (
-                    <div
-                      key={kind.kind}
-                      className={kind.kind === form.kind ? 'current' : undefined}
-                    >
-                      <dt>{kind.name}</dt>
-                      <dd>{KIND_ABOUT[kind.kind]}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </Help>
-            </div>
+            <StartKinds kinds={kinds} current={spec} onPick={pick} />
             <label className="workspace-field">
               Title
               <input
@@ -621,121 +551,17 @@ function StartForm({
               />
             </div>
             {form.title.trim() !== '' && problem && <p className="error">{problem}</p>}
-            {agent ? (
-              <>
-                {options.agents.length > 1 ? (
-                  <label className="workspace-field">
-                    Agent
-                    <select
-                      value={agent.kind}
-                      title={agent.command}
-                      onChange={(event) => {
-                        const kind = event.target.value as AgentKind;
-                        const next = options.agents.find((a) => a.kind === kind);
-                        // A model is one agent's: the other starts on its default (V47). A level
-                        // its default model takes stays; else its default.
-                        const kept = next ? keptEffort(run.effort, next) : undefined;
-                        choose(atLevel(onModel({ ...run, agent: kind }, undefined), kept));
-                      }}
-                    >
-                      {options.agents.map((a) => (
-                        <option key={a.kind} value={a.kind}>
-                          {AGENT_NAMES[a.kind]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : (
-                  <div className="workspace-field">
-                    Agent
-                    <span className="start-value" title={agent.command}>
-                      {AGENT_NAMES[agent.kind]}
-                    </span>
-                  </div>
-                )}
-                {agent.account && <p className="dialog-note start-account">{agent.account}</p>}
-                {models.length > 0 && (
-                  <div className="workspace-field">
-                    <span className="field-label">
-                      <label htmlFor="start-model">Model</label>
-                      <Help label="About the model">
-                        The model its session starts on, from {AGENT_NAMES[agent.kind]}&apos;s own
-                        list; change it later in its terminal (<code>/model</code>).
-                      </Help>
-                    </span>
-                    <select
-                      id="start-model"
-                      value={model ?? ''}
-                      onChange={(event) => {
-                        const next = event.target.value || undefined;
-                        // A level the new model takes stays; else its default.
-                        const kept = keptEffort(run.effort, agent, next);
-                        choose(atLevel(onModel(run, next), kept));
-                      }}
-                    >
-                      {models.map((m) => (
-                        <option key={m.value} value={m.value}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-                    {described && <p className="dialog-note start-model-note">{described}</p>}
-                  </div>
-                )}
-                {efforts.length > 0 && (
-                  <div className="workspace-field">
-                    <span className="field-label">
-                      Effort
-                      <Help label="About the effort">
-                        The level its session starts at; change it later in its terminal.
-                      </Help>
-                    </span>
-                    <EffortStepper
-                      label="Effort"
-                      choices={efforts}
-                      value={effort ?? ''}
-                      onChange={(level) => choose(atLevel(run, level || undefined))}
-                    />
-                  </div>
-                )}
-                {agent.kind === 'claude' ? (
-                  <label className="workspace-field">
-                    Permission
-                    <select
-                      value={mode}
-                      onChange={(event) =>
-                        choose({ ...run, permissionMode: event.target.value as PermissionMode })
-                      }
-                    >
-                      {(Object.keys(PERMISSION_LABELS) as PermissionMode[]).map((m) => (
-                        <option key={m} value={m}>
-                          {PERMISSION_LABELS[m]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : (
-                  <div className="workspace-field">
-                    <span className="field-label">
-                      Sandbox
-                      <Help label="About Codex's sandbox">
-                        Codex&apos;s workspace-write sandbox: it writes in its worktree and may
-                        commit on its branch; nothing else in git. Codex then marks this repository
-                        trusted in your Codex configuration, as it does for any writable sandbox.
-                      </Help>
-                    </span>
-                    <span className="start-value">Its worktree and branch</span>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="dialog-note">
-                No agent found (Claude Code: <code>claude</code> on PATH, or{' '}
-                <code>SYMBIOTE_CLAUDE</code>; Codex: <code>codex</code> on PATH, or{' '}
-                <code>SYMBIOTE_CODEX</code>): the branch and its worktree are made, and you get the
-                prompt to give an agent.
-              </p>
-            )}
+            <StartAgent
+              agents={options.agents}
+              agent={agent}
+              run={run}
+              mode={mode}
+              model={model}
+              models={models}
+              effort={effort}
+              efforts={efforts}
+              onChoose={choose}
+            />
             <label className="workspace-check">
               <input
                 type="checkbox"

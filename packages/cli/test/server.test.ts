@@ -25,19 +25,15 @@ import type { Review } from '@symbiote/forge';
 import type { CodeMap } from '@symbiote/monitor';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
-import {
-  parseReview,
-  sourceFiles,
-  startViewServer,
-  type StateStore,
-  type ViewServer,
-} from '../src/server.js';
-import { fileStateStore, stateDir } from '../src/state.js';
+import { sourceFiles, startViewServer, type ViewServer } from '../src/server.js';
+import { parseReview } from '../src/server-requests.js';
+import { fileStateStore, stateDir, type StateStore } from '../src/state.js';
 import { Diffs, type Pair, type RunDiff } from '../src/diffs.js';
 import { Histories } from '../src/history.js';
 import type { OpenRequest, OpenResult } from '../src/editor.js';
 import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
-import { WorkspaceRefused, type Workspaces } from '../src/workspaces.js';
+import type { Workspaces } from '../src/workspaces.js';
+import { WorkspaceRefused } from '../src/workspace-record.js';
 import { MergeRefused, type Merger } from '../src/merges.js';
 import { PromptRefused, type PromptSettingsService } from '../src/prompts.js';
 import { SkillRefused, type SkillsService } from '../src/skills.js';

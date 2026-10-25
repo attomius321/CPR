@@ -1,9 +1,9 @@
 // The merger agent (V26c, decisions 150–152): a fresh Claude Code or Codex run, given only the
 // conflict, that answers each region's text. It writes no file: Symbiote writes its answer between
 // the markers, commits the merge, and the person reviews each region before it lands.
-import { spawn } from 'node:child_process';
 import { isAbsolute, relative } from 'node:path';
 import type { AgentKind, MergeAgentEvent } from '@symbiote/core';
+import { runWithInput, type RunWithInput } from './programs.js';
 import { DEFAULT_PROMPTS, MERGER_ANSWER } from './prompts.js';
 
 /** A conflict region, its lines 0-based in the file: `<<<<<<<` at `start`, `>>>>>>>` at `end`. */
@@ -225,44 +225,6 @@ export interface MergerAgent {
     onEvent?: (event: MergeAgentEvent) => void;
   }): Promise<MergerRun>;
 }
-
-/**
- * Runs a program with `input` on its stdin, without a shell; resolves when it exits. `onLine`:
- * each line of its stdout as it comes (V46b).
- */
-export type RunWithInput = (
-  command: string,
-  args: string[],
-  options: { cwd: string; input: string; timeoutMs: number; onLine?: (line: string) => void },
-) => Promise<{ code: number | null; stdout: string; stderr: string }>;
-
-export const runWithInput: RunWithInput = (command, args, { cwd, input, timeoutMs, onLine }) =>
-  new Promise((done) => {
-    let stdout = '';
-    let stderr = '';
-    let line = '';
-    const child = spawn(command, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
-    const timer = setTimeout(() => child.kill(), timeoutMs);
-    child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
-      stdout += chunk;
-      if (!onLine) return;
-      const lines = (line + chunk).split('\n');
-      line = lines.pop() ?? '';
-      for (const each of lines) onLine(each);
-    });
-    child.stderr.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
-    child.on('error', (error) => {
-      clearTimeout(timer);
-      done({ code: null, stdout, stderr: error.message });
-    });
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      if (line !== '') onLine?.(line);
-      done({ code, stdout, stderr });
-    });
-    child.stdin.on('error', () => undefined);
-    child.stdin.end(input);
-  });
 
 /** A run may think for a while on many regions. */
 const RUN_TIMEOUT_MS = 15 * 60_000;

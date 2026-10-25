@@ -1,47 +1,25 @@
-import {
-  Background,
-  Controls,
-  MiniMap,
-  Panel,
-  ReactFlow,
-  ReactFlowProvider,
-  useReactFlow,
-  useStore,
-  useStoreApi,
-  type Edge,
-  type Node,
-  type NodeMouseHandler,
-} from '@xyflow/react';
+import { ReactFlowProvider } from '@xyflow/react';
 import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type CSSProperties,
   type DragEvent,
-  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { flushSync } from 'react-dom';
 import type { BranchReviewInfo, Graph } from '@symbiote/core';
-import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
-import type { Loaded, Pair } from '../history/commits.js';
-import { BackLink, DiffProgress, fetchGraph, startDiff } from '../history/HistoryPage.js';
+import { BackLink, DiffProgress } from './DiffProgress.js';
+import { Canvas } from './Canvas.js';
+import { useDiffGraph } from './useDiffGraph.js';
+import { useReview } from './useReview.js';
 import { diffTitle, revisionsLabel } from '../shell/pages.js';
 import { workspaceHref, workspaceName } from '../workspaces/workspaces.js';
 import { DiffShell } from './DiffShell.js';
 import { Shell } from '../shell/Shell.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { DetailPanel } from './DetailPanel.js';
-import { FileNode } from '../graph/FileNode.js';
-import {
-  decorate,
-  edgesToDraw,
-  projectAt,
-  type FlowEdge,
-  type FlowNode,
-  type SymbolData,
-} from '../graph/flow.js';
+import { decorate } from '../graph/flow.js';
 import {
   changeList,
   filterChanges,
@@ -51,90 +29,18 @@ import {
   projectNeighbourhood,
   reviewStatus,
   stepChange,
-  toggleMark,
   withoutCollapsed,
-  type Marks,
 } from './review.js';
-import { ProjectNode } from '../graph/ProjectNode.js';
-import { MAP_ZOOM, mapZoomStyle } from '../graph/mapzoom.js';
 import { Resizer } from '../ui/Resizer.js';
 import { DiffKeys, Sidebar, type SidebarTab } from './Sidebar.js';
 import { Help } from '../ui/Help.js';
-import { asMarks, asReviewDraft, browserStore, serverStore, type Store } from './store.js';
-import { SummaryNode } from '../graph/SummaryNode.js';
-import { SymbolNode } from '../graph/SymbolNode.js';
+import { browserStore } from './store.js';
 import { WindowButtons } from '../shell/TitleBar.js';
 import { useLayout } from '../graph/useLayout.js';
-import { useTheme } from '../shell/theme.js';
 import { loadWidths, saveWidth, withWidth, type Widths } from '../ui/widths.js';
 
-const nodeTypes = {
-  symbol: SymbolNode,
-  file: FileNode,
-  summary: SummaryNode,
-  project: ProjectNode,
-};
-
-type State =
-  | { status: 'loading' }
-  | { status: 'empty'; error?: string }
-  /**
-   * `symbiote view` with no diff here: the shell (V29a) — the sidenav with the pages and the
-   * workspaces, and History, Settings, a workspace or a merge beside it.
-   */
-  | { status: 'shell'; repo?: string }
-  /** A diff's page while it is analyzed, or once it failed or was stopped. */
-  | { status: 'analyzing'; loaded: Exclude<Loaded, { kind: 'graph' }> }
-  /**
-   * `sources`: opened through `symbiote view`, so `/api/source` exists. `forge`: opened through
-   * `symbiote pr`, which posts reviews there. `commits`: a diff of `symbiote view`, which lists
-   * commits.
-   * `open`: the server opens files in VS Code (`/api/open`).
-   */
-  | {
-      status: 'ready';
-      graph: Graph;
-      sources: boolean;
-      forge: Forge | null;
-      store: Store;
-      commits: boolean;
-      open: boolean;
-      /** A branch's review (V15): what it covers, and what came since the last one. */
-      branchReview?: BranchReviewInfo;
-    };
-
-/** Where a review goes: a forge (`symbiote pr`), or the repository itself (a branch review, V16).
- * */
-type Forge = 'github' | 'gitlab' | 'local';
-
-interface Capabilities {
-  sources: boolean;
-  review: { forge: Forge } | null;
-  /** `/api/state` keeps reviewed marks and drafts in the CLI's cache. */
-  state?: boolean;
-  /** `symbiote view`: History, and diffs analyzed when picked. */
-  commits?: boolean;
-  /** `symbiote view`, `symbiote pr`: `/api/open` opens a file of the change in VS Code. */
-  open?: boolean;
-  /** `symbiote view`: this page is a branch's review (V15). */
-  branchReview?: BranchReviewInfo;
-  /** `symbiote view`: the repository's folder name (V29a). */
-  repo?: string;
-}
-
-/** How often a diff's page asks how its analysis is going. */
-const POLL_MS = 500;
-
-/** Where the graph comes from: `?graph=<url>`, else `symbiote view`'s API. */
-function graphUrl(): string {
-  return new URLSearchParams(window.location.search).get('graph') ?? './api/graph';
-}
-
 export function App() {
-  const [state, setState] = useState<State>({ status: 'loading' });
-  /** A diff of `symbiote view`: in the shell's sidenav and status bar (V29a), with the repository's
-   * name. */
-  const [inView, setInView] = useState<{ repo?: string } | null>(null);
+  const { state, setState, inView, retry } = useDiffGraph();
   const [typeReferences, setTypeReferences] = useState(false);
   const [context, setContext] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -143,7 +49,6 @@ export function App() {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   /** With `--since`: only what changed since the earlier version. */
   const [sinceOnly, setSinceOnly] = useState(true);
-  const [marks, setMarks] = useState<Marks>({});
   /** The sidebar tab picked; until then, the findings if there are any. */
   const [tab, setTab] = useState<SidebarTab | null>(null);
   /** Words the change list is narrowed to. */
@@ -152,7 +57,6 @@ export function App() {
   const [project, setProject] = useState<string | null>(null);
   /** Projects (by folder) folded in the change list. */
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-  const [draft, setDraft] = useState<ReviewDraft>({ drafts: [], body: '' });
   const [widths, setWidths] = useState<Widths>(loadWidths);
   /** A panel is being resized: the canvas waits for the drop to centre the selection again. */
   const [resizing, setResizing] = useState(false);
@@ -164,6 +68,10 @@ export function App() {
   const graph = state.status === 'ready' ? state.graph : undefined;
   const forge = state.status === 'ready' ? state.forge : null;
   const store = state.status === 'ready' ? state.store : undefined;
+  const { marks, draft, updateDraft, toggleReviewed, addDraft, removeDraft } = useReview(
+    graph,
+    store,
+  );
   const onlySince = sinceOnly && !!graph?.since;
   const changes = useMemo(
     () => (graph ? changeList(graph, { sinceOnly: onlySince }) : []),
@@ -202,47 +110,6 @@ export function App() {
     });
   }, []);
 
-  useEffect(() => {
-    if (!graph || !store) return;
-    let live = true;
-    setMarks({});
-    setDraft({ drafts: [], body: '' });
-    void Promise.all([store.load('review'), store.load('drafts')]).then(([marks, drafts]) => {
-      if (!live) return;
-      setMarks(asMarks(marks));
-      // Under `symbiote pr`, drafts may come from an earlier push of the change.
-      const saved = asReviewDraft(drafts);
-      setDraft({ ...saved, drafts: refreshDrafts(graph, saved.drafts) });
-    });
-    return () => {
-      live = false;
-    };
-  }, [graph, store]);
-
-  /** `delay`: typing a summary saves once it pauses. */
-  const updateDraft = useCallback(
-    (change: (current: ReviewDraft) => ReviewDraft, delay = 0) => {
-      setDraft((current) => {
-        const next = change(current);
-        store?.save('drafts', next, delay);
-        return next;
-      });
-    },
-    [store],
-  );
-
-  const toggleReviewed = useCallback(
-    (id: string) => {
-      if (!graph) return;
-      setMarks((current) => {
-        const next = toggleMark(graph, current, id);
-        store?.save('review', next);
-        return next;
-      });
-    },
-    [graph, store],
-  );
-
   // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, p (P) shows the next
   // (previous) project only, c comments, o opens in VS Code, / searches, Esc closes.
   useEffect(() => {
@@ -279,60 +146,6 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [changes, walked, selected, toggleReviewed]);
 
-  /** Bumped to load the page again: after "Analyze again". */
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    const url = graphUrl();
-    const served = url === './api/graph';
-    let live = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    void (async () => {
-      const capabilities = served ? await fetchCapabilities() : null;
-      if (live && capabilities?.commits) {
-        setInView(capabilities.repo ? { repo: capabilities.repo } : {});
-      }
-      let opened = attempt === 0;
-      const poll = async (): Promise<void> => {
-        const loaded = await fetchGraph(url);
-        if (!live) return;
-        if (loaded.kind === 'graph') {
-          const { graph } = loaded;
-          setState({
-            status: 'ready',
-            graph,
-            sources: served,
-            forge: capabilities?.review?.forge ?? null,
-            store: capabilities?.state ? serverStore() : browserStore(graph),
-            commits: !!capabilities?.commits,
-            open: !!capabilities?.open,
-            ...(capabilities?.branchReview ? { branchReview: capabilities.branchReview } : {}),
-          });
-        } else if (loaded.kind === 'progress' || loaded.kind === 'failed') {
-          setState({ status: 'analyzing', loaded });
-          if (loaded.kind === 'progress') timer = setTimeout(() => void poll(), POLL_MS);
-        } else if (loaded.pair && capabilities?.commits) {
-          // A diff's page opened anew (a bookmark, a restarted server): analyze it.
-          if (!opened) return setState({ status: 'analyzing', loaded });
-          opened = false;
-          await startDiff(loaded.pair).catch(() => undefined);
-          if (live) await poll();
-        } else if (!capabilities?.commits) setState({ status: 'empty' });
-        else
-          setState({ status: 'shell', ...(capabilities.repo ? { repo: capabilities.repo } : {}) });
-      };
-      await poll();
-    })();
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [attempt]);
-  const retry = useCallback((pair: Pair) => {
-    void startDiff(pair)
-      .catch(() => undefined)
-      .then(() => setAttempt((n) => n + 1));
-  }, []);
-
   const load = useCallback(async (file: File) => {
     try {
       const graph = JSON.parse(await file.text()) as Graph;
@@ -359,18 +172,6 @@ export function App() {
       if (file) void load(file);
     },
     [load],
-  );
-
-  const addDraft = useCallback(
-    (symbol: string, anchor: Anchor | null, body: string) => {
-      const node = graph?.nodes.find((n) => n.id === symbol);
-      if (node) updateDraft((d) => ({ ...d, drafts: [...d.drafts, newDraft(node, anchor, body)] }));
-    },
-    [graph, updateDraft],
-  );
-  const removeDraft = useCallback(
-    (id: string) => updateDraft((d) => ({ ...d, drafts: d.drafts.filter((x) => x.id !== id) })),
-    [updateDraft],
   );
 
   // Layout once per view; selecting and marking only decorate it, so nothing moves.
@@ -605,182 +406,6 @@ export function App() {
   // Only a diff: the shell's own pages are drawn by Shell, and while loading it is not known yet.
   const diff = state.status === 'ready' || state.status === 'analyzing';
   return inView && diff ? <DiffShell repo={inView.repo}>{page}</DiffShell> : page;
-}
-
-interface CanvasProps {
-  /** Decorated: reviewed marks and the selection. */
-  nodes: FlowNode[];
-  /** The layout's: the canvas picks and decorates those it draws (`edgesToDraw`). */
-  edges: FlowEdge[];
-  fileEdges: FlowEdge[];
-  /** The undecorated layout: it changes only when what is drawn changes. */
-  layoutNodes: FlowNode[];
-  /** A layout for a newer view is being made: this one stays until it arrives. */
-  pending: boolean;
-  selected: string | null;
-  /** In focus mode the whole (small) neighbourhood is fitted; otherwise the selection is centered.
-   * */
-  focus: boolean;
-  /** The one project shown (by folder), or null: a new one is fitted as a whole, once. */
-  scope: string | null;
-  /** A panel beside it is being dragged wider or narrower. */
-  resizing: boolean;
-  onSelect: (id: string | null) => void;
-  onToggleSummary: (id: string) => void;
-  /** Symbols to bring into view: a group just shown or hidden. */
-  reveal: string[] | null;
-}
-
-/** How long after React Flow's end of a move the edges come back, unless it moves again. */
-const MOVE_END_DELAY = 100;
-/** Nothing uses edge clicks or hovers: no invisible wide path beside each edge. */
-const EDGE_OPTIONS = { interactionWidth: 0 };
-const PRO_OPTIONS = { hideAttribution: true };
-/** Smaller than React Flow's 200 × 150 (V37): beside the detail panel it covered the nodes. */
-const MINIMAP_SIZE = { width: 160, height: 112 };
-
-/** The minimap draws every node: its class must not change identity with each render. */
-function minimapClass(n: Node): string {
-  if (n.type === 'symbol') return `minimap-${(n.data as SymbolData).tone}`;
-  if (n.type === 'summary') return 'minimap-summary';
-  return n.type === 'project' ? 'minimap-project' : 'minimap-file';
-}
-
-/** The graph; brings the selected symbol into view when it, or the layout, changes. */
-function Canvas({
-  nodes,
-  edges,
-  fileEdges,
-  layoutNodes,
-  pending,
-  selected,
-  focus,
-  scope,
-  resizing,
-  onSelect,
-  onToggleSummary,
-  reveal,
-}: CanvasProps) {
-  const { fitView, screenToFlowPosition } = useReactFlow();
-  // Zoomed out, the canvas is a map; labels scale with `--symbiote-zoom`, set without re-rendering
-  // and only where they read it.
-  const map = useStore((state) => state.transform[2] < MAP_ZOOM);
-  // The canvas narrows when the detail panel opens or a panel is resized: centre the selection
-  // again then (after the drop: following the drag would shake the canvas).
-  const size = useStore((state) => `${state.width}x${state.height}`);
-  const store = useStoreApi();
-  useEffect(() => {
-    const labels = mapZoomStyle(document);
-    labels.update(store.getState().transform[2]);
-    const unsubscribe = store.subscribe((state) => labels.update(state.transform[2]));
-    return () => {
-      unsubscribe();
-      labels.remove();
-    };
-  }, [store]);
-
-  // While the view moves, a large graph draws fewer edges. A move starts with the view's first
-  // change (React Flow's start comes with any press, a click included) and ends a little after
-  // React Flow says so: an animation interrupted by the next one ends after the next has started.
-  const [moving, setMoving] = useState(false);
-  const stop = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const move = useCallback(() => {
-    clearTimeout(stop.current);
-    setMoving(true);
-  }, []);
-  const moved = useCallback(() => {
-    clearTimeout(stop.current);
-    stop.current = setTimeout(() => setMoving(false), MOVE_END_DELAY);
-  }, []);
-  useEffect(() => () => clearTimeout(stop.current), []);
-  const drawn = useMemo(
-    () => edgesToDraw({ edges, fileEdges }, { map, moving, selected }),
-    [edges, fileEdges, map, moving, selected],
-  );
-
-  // Stable, as React Flow hands them to every node: a new one re-renders thousands of them.
-  const onNodeClick = useCallback<NodeMouseHandler>(
-    (_, node) => {
-      if (node.type === 'symbol') onSelect(node.id);
-      else if (node.type === 'summary') onToggleSummary(node.id);
-      // On the map, a file box is what is clicked: zoom into it.
-      else if (node.type === 'file' && map) {
-        void fitView({ nodes: [{ id: node.id }], duration: 300, maxZoom: 1.1 });
-      }
-    },
-    [map, fitView, onSelect, onToggleSummary],
-  );
-  const onPaneClick = useCallback(
-    (event: ReactMouseEvent) => {
-      // On the map, an empty part of a frame (frames never take the pointer there): zoom into
-      // the frame. Anywhere else, the canvas: deselect.
-      const frame = map
-        ? projectAt(layoutNodes, screenToFlowPosition({ x: event.clientX, y: event.clientY }))
-        : undefined;
-      if (frame) void fitView({ nodes: [{ id: frame }], duration: 300, maxZoom: 1.1 });
-      else onSelect(null);
-    },
-    [map, layoutNodes, fitView, screenToFlowPosition, onSelect],
-  );
-
-  // The project last fitted as a whole: walking its symbols then centres each, as without one.
-  const fitted = useRef(scope);
-  useEffect(() => {
-    // Fit once the layout asked for is drawn, not the one it replaces: the view moves once.
-    if (resizing || pending) return;
-    // Wait a frame so React Flow has measured nodes that just appeared.
-    const frame = requestAnimationFrame(() => {
-      const rescoped = fitted.current !== scope;
-      fitted.current = scope;
-      if (reveal)
-        void fitView({ nodes: reveal.map((id) => ({ id })), duration: 300, maxZoom: 1.1 });
-      else if (focus || rescoped) void fitView({ duration: 300, maxZoom: 1.1 });
-      else if (selected) void fitView({ nodes: [{ id: selected }], duration: 300, maxZoom: 1.1 });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [selected, focus, scope, layoutNodes, size, reveal, resizing, pending, fitView]);
-
-  const theme = useTheme();
-  return (
-    <ReactFlow<Node, Edge>
-      nodes={nodes}
-      edges={drawn}
-      nodeTypes={nodeTypes}
-      defaultEdgeOptions={EDGE_OPTIONS}
-      onMove={move}
-      onMoveEnd={moved}
-      fitView
-      onlyRenderVisibleElements
-      {...(map ? { className: 'map' } : {})}
-      colorMode={theme}
-      minZoom={0.05}
-      nodesConnectable={false}
-      // The layout is computed: a drag that starts on a box pans the canvas instead of moving it.
-      nodesDraggable={false}
-      onNodeClick={onNodeClick}
-      onPaneClick={onPaneClick}
-      proOptions={PRO_OPTIONS}
-    >
-      <Background gap={24} />
-      <Controls showInteractive={false} />
-      <MiniMap pannable zoomable nodeClassName={minimapClass} style={MINIMAP_SIZE} />
-      {pending && (
-        <Panel position="top-center" className="layout-pending" role="status">
-          Laying out…
-        </Panel>
-      )}
-    </ReactFlow>
-  );
-}
-
-/** What the server offers; `symbiote view` builds before this endpoint existed answer nothing. */
-async function fetchCapabilities(): Promise<Capabilities | null> {
-  try {
-    const response = await fetch('./api/capabilities');
-    return response.ok ? ((await response.json()) as Capabilities) : null;
-  } catch {
-    return null;
-  }
 }
 
 /**

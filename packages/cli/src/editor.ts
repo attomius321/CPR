@@ -285,16 +285,22 @@ export type FolderAt =
   { file: string; line: number; column?: number } | { left: string; right: string };
 
 /**
+ * Opens a folder in the editor, or a file in it at a line (V29d) and column (V38); why not when it
+ * cannot.
+ */
+export type OpenFolder = (
+  folder: string,
+  at?: FolderAt,
+) => Promise<{ opened: true } | { opened: false; message: string }>;
+
+/**
  * Opens a folder in VS Code (a workspace's worktree, V18b): its window, else a new one; with `at`,
  * a file in it at a line (V29d) and column (V38), or two files as a diff (V43).
  */
 export function vsCodeFolder(
   env: Readonly<Record<string, string | undefined>>,
   host: Host = localHost(env),
-): (
-  folder: string,
-  at?: FolderAt,
-) => Promise<{ opened: true } | { opened: false; message: string }> {
+): OpenFolder {
   return async (folder, at) => {
     const code = await findVsCode(host);
     if (!code) return { opened: false, message: notFound(env) };

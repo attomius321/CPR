@@ -133,7 +133,8 @@ export function threadEntry(input: unknown, at: string): ThreadEntry | null {
   }
 }
 
-const real = (path: string) => {
+/** A path's real path; the path as given when it cannot be resolved. */
+export const real = (path: string) => {
   try {
     return realpathSync(path);
   } catch {

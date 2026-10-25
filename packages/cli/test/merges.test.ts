@@ -5,17 +5,12 @@ import { openRepo, type AgentModel, type MergeLogLine, type Verdict } from '@sym
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { run } from '../src/main.js';
-import {
-  merger,
-  MergeRefused,
-  readMergeConfig,
-  type ChangedSymbols,
-  type RunCheck,
-} from '../src/merges.js';
+import { merger, MergeRefused, readMergeConfig, type ChangedSymbols } from '../src/merges.js';
+import type { RunCheck } from '../src/programs.js';
 import { MERGER_INSTRUCTIONS, type MergerAgent } from '../src/merge-agent.js';
 import { MERGER_ANSWER } from '../src/prompts.js';
 import { AGENTS, serializeReview } from '../src/reviews.js';
-import { serializeWorkspace, type WorkspaceFile } from '../src/workspaces.js';
+import { serializeWorkspace, type WorkspaceFile } from '../src/workspace-record.js';
 
 const NOW = new Date('2026-10-19T12:00:00.000Z');
 const EMAIL = 'ada@example.com';

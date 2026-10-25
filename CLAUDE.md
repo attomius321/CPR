@@ -23,6 +23,8 @@ finding costs more trust than a missing one), explainable beats clever, local an
 - `packages/core` — the engine: git revisions and worktrees, the TypeScript adapter (ts-morph),
   extraction, diff, references, detectors, graph JSON and its JSON Schema. See its `CLAUDE.md`.
 - `packages/cli` — `symbiote diff|view|pr`, output formats, plugin loading and framework hints.
+  One folder, files named area first (`workspace-record.ts`, `merge-queue.ts`, decision 344):
+  hooks and the Codex runner are found at run time beside their importers.
 - `packages/forge` — GitHub and GitLab APIs (pull/merge requests, comments).
 - `packages/monitor` — repository monitoring (RM1): a commit's files, their kinds and lines of
   code, for the viewer's Monitor page (`/api/monitor`). See its `CLAUDE.md`.

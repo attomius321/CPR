@@ -4,7 +4,6 @@ import type { AddressInfo } from 'node:net';
 import { extname, join, normalize, sep } from 'node:path';
 import {
   CheckoutRefused,
-  HISTORY_SCOPES,
   SymbioteError,
   UnknownCheckoutTarget,
   type BranchReviewInfo,
@@ -13,50 +12,59 @@ import {
   type FinishResult,
   type LocalReview,
   type CheckoutTarget,
-  type WorkspaceReply,
-  type BriefParts,
   type WorkspaceRequest,
-  type WorkspaceTerminalRequest,
-  type MergeRequest,
   type Graph,
-  type AgentKind,
-  type PermissionMode,
   type HistoryRefs,
-  type HistoryScope,
   type RefList,
   type RepoStatus,
-  type ScoutAsk,
-  type ScoutEffortChange,
-  type ScoutModelChange,
-  type ScoutTerminalRequest,
-  type WorkKind,
 } from '@symbiote/core';
-import type { Review, ReviewComment, ReviewEvent } from '@symbiote/forge';
+import type { Review } from '@symbiote/forge';
 import type { CodeMap } from '@symbiote/monitor';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
+import {
+  count,
+  historyScope,
+  parseCheckoutTarget,
+  parseDocument,
+  parseDraft,
+  parseLocalReview,
+  parseMergeChanges,
+  parseMergeId,
+  parseMergeRequest,
+  parseModelChange,
+  parseOpen,
+  parsePair,
+  parseRef,
+  parseReview,
+  parseScoutAsk,
+  parseScoutEffort,
+  parseScoutTerminal,
+  parseTerminalFile,
+  parseTerminalPaths,
+  parseWorkspaceClean,
+  parseWorkspaceDiff,
+  parseWorkspaceOpen,
+  parseWorkspaceReply,
+  parseWorkspaceRequest,
+  parseWorkspaceTerminal,
+  SHA,
+  terminalSize,
+  type Side,
+} from './server-requests.js';
 import type { OpenRequest, OpenResult } from './editor.js';
-import { MAX_DOCUMENT_BYTES, WorkspaceRefused, type Workspaces } from './workspaces.js';
+import type { Workspaces } from './workspaces.js';
+import { STATE_NAMES, type StateName, type StateStore } from './state.js';
+import { MAX_DOCUMENT_BYTES } from './workspace-documents.js';
+import { WorkspaceRefused } from './workspace-record.js';
 import { MergeRefused, type Merger } from './merges.js';
 import { parsePromptChange, PromptRefused, type PromptSettingsService } from './prompts.js';
 import type { UsageService } from './usage.js';
 import type { IntroRecord } from './intro.js';
 import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
-import { imageKind, MAX_IMAGE_BYTES, type FileAt, type Terminals } from './terminal.js';
+import { imageKind, MAX_IMAGE_BYTES, type Terminals } from './terminal.js';
 import { ScoutRefused, type Scout } from './scout.js';
 import { MAX_SKILL, parseSkillChange, SkillRefused, type SkillsService } from './skills.js';
-
-export type Side = 'base' | 'head';
-
-/** What the viewer keeps between sessions: reviewed marks and draft comments. */
-export type StateName = 'review' | 'drafts';
-const STATE_NAMES: readonly StateName[] = ['review', 'drafts'];
-
-export interface StateStore {
-  /** The saved value, or null. */
-  read(name: StateName): Promise<unknown>;
-  write(name: StateName, value: unknown): Promise<void>;
-}
 
 /** Posts reviews to the change request being viewed (`symbiote pr` only). */
 export interface ReviewTarget {
@@ -163,11 +171,10 @@ const TYPES: Record<string, string> = {
 
 /** Largest review or state the viewer may send. */
 const MAX_BODY_BYTES = 1 << 20;
-const EVENTS: readonly ReviewEvent[] = ['comment', 'approve', 'request-changes'];
+
 /** Rows of the history the viewer may ask for at once. */
 const MAX_HISTORY_ROWS = 500;
-const SHA = '[0-9a-f]{40}(?:[0-9a-f]{24})?';
-const FULL_SHA = new RegExp(`^${SHA}$`);
+
 /** `/diff/<base>..<head>` and what follows: the viewer's own files and API, for that diff. */
 const DIFF_PATH = new RegExp(`^/diff/(${SHA})\\.\\.(${SHA})(/.*)?$`);
 /** `/review/<branch, URL-encoded>` and what follows: a branch's review, as a diff's page. */
@@ -181,9 +188,7 @@ const TERMINAL_PATH = /^\/api\/terminals\/([0-9a-z]+)(?:\/(in|resize|close|image
 const MAX_TERMINAL_INPUT = 64 * 1024;
 /** How often an open merge log's stream looks for new lines (V46a). */
 const LOG_POLL_MS = 250;
-/** Most paths a terminal is asked about at once, and their length (V38): a row's worth. */
-const MAX_TERMINAL_PATHS = 50;
-const MAX_TERMINAL_PATH = 1024;
+
 /** A file a terminal could not open (V38): its status by why. */
 const FILE_REFUSED = { terminal: 404, outside: 400, missing: 409, editor: 502 } as const;
 /** Most an image's request may weigh (V36): the image as base64, in its JSON. */
@@ -235,302 +240,320 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (!hosts.has(req.headers.host ?? '')) return send(res, 421, 'unknown host');
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname === '/api/intro' && options.intro) return introApi(req, res, options.intro);
-    if (repository) {
-      const diff = DIFF_PATH.exec(url.pathname);
-      if (diff) {
-        const [, base = '', head = '', rest] = diff;
-        // Relative URLs in the viewer need the trailing slash.
-        if (rest === undefined) return redirect(res, `${url.pathname}/${url.search}`);
-        return serveDiff(req, res, url, rest, repository, { base, head });
+    if (repository) return repositoryRoute(req, res, url, repository);
+    return serveSite(req, res, url, url.pathname, root);
+  }
+
+  /**
+   * `symbiote view`'s addresses: a diff's and a branch review's pages, History and the
+   * repository's state, the shell's pages, then each service's API (`/api/workspaces…`,
+   * `/api/scout…`, `/api/merges…`); any other, as without a repository.
+   */
+  async function repositoryRoute(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    repository: RepositoryOptions,
+  ): Promise<void> {
+    const diff = DIFF_PATH.exec(url.pathname);
+    if (diff) {
+      const [, base = '', head = '', rest] = diff;
+      // Relative URLs in the viewer need the trailing slash.
+      if (rest === undefined) return redirect(res, `${url.pathname}/${url.search}`);
+      return serveDiff(req, res, url, rest, repository, { base, head });
+    }
+    const review = repository.reviews ? REVIEW_PATH.exec(url.pathname) : null;
+    if (review && repository.reviews) {
+      const [, encoded = '', rest] = review;
+      let branch: string;
+      try {
+        branch = decodeURIComponent(encoded);
+      } catch {
+        return send(res, 400, 'not a branch name');
       }
-      const review = repository.reviews ? REVIEW_PATH.exec(url.pathname) : null;
-      if (review && repository.reviews) {
-        const [, encoded = '', rest] = review;
-        let branch: string;
-        try {
-          branch = decodeURIComponent(encoded);
-        } catch {
-          return send(res, 400, 'not a branch name');
-        }
-        if (rest === undefined) return redirect(res, `${url.pathname}/${url.search}`);
-        return serveReview(req, res, url, rest, repository, repository.reviews, branch);
-      }
-      if (url.pathname === '/api/reviews' && repository.reviews) {
-        return reviewsApi(req, res, repository, repository.reviews);
-      }
-      // The history page (V25; at `/` before, which is now the workspaces view).
-      if (url.pathname === '/history') return serveSite(req, res, url, '/', undefined);
-      if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
-      if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
-      if (url.pathname === '/api/history/refs') return historyRefs(req, res, url, repository);
-      if (url.pathname === '/api/status') return read(req, res, () => repository.status());
-      if (url.pathname === '/api/refs') return read(req, res, () => repository.refs());
-      if (url.pathname === '/api/checkout') return checkoutTarget(req, res, repository);
-      if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
-      if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
-      const { workspaces } = repository;
-      if (workspaces) {
-        // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves
-        // them to `/`.
-        if (url.pathname === '/workspaces' || url.pathname === '/features')
-          return serveSite(req, res, url, '/', undefined);
-        // Start a workspace, a page of the shell's (V30a).
-        if (url.pathname === '/start') return serveSite(req, res, url, '/', undefined);
-        if (url.pathname === '/api/workspaces') return workspacesApi(req, res, workspaces);
-        if (url.pathname === '/api/workspaces/options')
-          return read(req, res, () => workspaces.options());
-        if (url.pathname === '/api/workspaces/draft') {
-          if (req.method === 'GET') return json(res, 200, await workspaces.draft());
-          return written(req, res, parseDraft, (draft) =>
-            answer(res, () => workspaces.saveDraft(draft).then(() => ({}))),
-          );
-        }
-        if (url.pathname === '/api/workspaces/documents') {
-          // A file for the start (V40), refused before it is read: the page checks the size first.
-          if (Number(req.headers['content-length']) > MAX_DOCUMENT_BODY) {
-            req.resume();
-            return send(res, 413, DOCUMENT_TOO_LARGE);
-          }
-          return written(
-            req,
-            res,
-            parseDocument,
-            ({ name, bytes }) => answer(res, () => workspaces.saveDocument(name, bytes)),
-            MAX_DOCUMENT_BODY,
-          );
-        }
-        if (url.pathname === '/api/workspaces/check') {
-          if (req.method !== 'GET') return send(res, 405, 'method not allowed');
-          const at = url.searchParams.get('at');
-          if (!at) return send(res, 400, 'at: the commit a workspace starts from');
-          return answer(res, () => workspaces.check(at).then((guess) => guess ?? {}));
-        }
-        if (url.pathname === '/api/workspaces/start') {
-          return onBranch(req, res, (branch) =>
-            startingOne(res, () => workspaces.startAgent(branch)),
-          );
-        }
-        if (url.pathname === '/api/workspaces/stop') {
-          return onBranch(req, res, (branch) => answer(res, () => workspaces.stopAgent(branch)));
-        }
-        if (url.pathname === '/api/workspaces/open') {
-          return written(req, res, parseWorkspaceOpen, ({ branch }) =>
-            answer(res, () => workspaces.openWorktree(branch).then(() => ({}))),
-          );
-        }
-        if (url.pathname === '/api/workspaces/diff') {
-          return written(req, res, parseWorkspaceDiff, ({ branch, file }) =>
-            answer(res, () => workspaces.openDiff(branch, file).then(() => ({}))),
-          );
-        }
-        if (url.pathname === '/api/workspaces/changes') {
-          return ofBranch(req, res, url, (branch) => workspaces.changes(branch));
-        }
-        if (url.pathname === '/api/workspaces/prompt') {
-          return ofBranch(req, res, url, (branch) =>
-            workspaces.prompt(branch).then((prompt) => ({ prompt })),
-          );
-        }
-        if (url.pathname === '/api/workspaces/merge') {
-          return ofBranch(req, res, url, (branch) => workspaces.merge(branch));
-        }
-        if (url.pathname === '/api/workspaces/thread') {
-          return ofBranch(req, res, url, (branch) => workspaces.thread(branch));
-        }
-        if (url.pathname === '/api/workspaces/reply') {
-          return written(req, res, parseWorkspaceReply, (request) =>
-            oneAtATime(res, 'a message is being sent', () => workspaces.reply(request)),
-          );
-        }
-        if (url.pathname === '/api/workspaces/clean') {
-          return written(req, res, parseWorkspaceClean, (request) =>
-            answer(res, () => workspaces.clean(request)),
-          );
-        }
-        if (url.pathname === '/api/workspaces/terminal') {
-          return written(req, res, parseWorkspaceTerminal, (request) =>
-            answer(res, () => workspaces.terminal(request)),
-          );
-        }
-        if (url.pathname === '/api/workspaces/shell') {
-          return written(req, res, parseWorkspaceTerminal, (request) =>
-            answer(res, () => workspaces.shell(request)),
-          );
-        }
-        if (url.pathname === '/api/workspaces/shells') {
-          // It hands out terminals' IDs, which read and drive them: for the page only (V45).
-          if (req.headers['x-symbiote'] !== '1' || !sameSite(req)) {
-            return send(res, 403, 'forbidden');
-          }
-          return ofBranch(req, res, url, (branch) => workspaces.shells(branch));
-        }
-      }
-      const { scout } = repository;
-      if (scout) {
-        // Scout's page, a page of the shell's (V35).
-        if (url.pathname === '/scout') return serveSite(req, res, url, '/', undefined);
-        if (url.pathname === '/api/scout') return read(req, res, () => scout.state());
-        // One question or new conversation at a time: each starts or stops an agent.
-        if (url.pathname === '/api/scout/ask') {
-          return written(req, res, parseScoutAsk, (request) =>
-            oneAtATime(res, 'Scout is being asked', () => scout.ask(request)),
-          );
-        }
-        if (url.pathname === '/api/scout/new') {
-          return written(
-            req,
-            res,
-            () => ({}),
-            () => oneAtATime(res, 'Scout is being asked', () => scout.renew()),
-          );
-        }
-        if (url.pathname === '/api/scout/terminal') {
-          return written(req, res, parseScoutTerminal, (request) =>
-            answer(res, () => scout.terminal(request)),
-          );
-        }
-        // The levels, read where a stepper shows them (Codex's start its daemon); the project's.
-        if (url.pathname === '/api/scout/efforts') return read(req, res, () => scout.efforts());
-        if (url.pathname === '/api/scout/effort') {
-          return written(req, res, parseScoutEffort, (change) =>
-            answer(res, () => scout.setEffort(change)),
-          );
-        }
-        // Its model in the project's config (V47), set in Settings.
-        if (url.pathname === '/api/scout/model') {
-          return written(req, res, parseModelChange, (change) =>
-            answer(res, () => scout.setModel(change)),
-          );
-        }
-      }
-      const { scribe } = repository;
-      if (scribe) {
-        // Scribe (V41), on the Skills page: Scout's conversation, its own agent.
-        if (url.pathname === '/api/scribe') return read(req, res, () => scribe.state());
-        if (url.pathname === '/api/scribe/ask') {
-          return written(req, res, parseScoutAsk, (request) =>
-            oneAtATime(res, 'Scribe is being asked', () => scribe.ask(request)),
-          );
-        }
-        if (url.pathname === '/api/scribe/new') {
-          return written(
-            req,
-            res,
-            () => ({}),
-            () => oneAtATime(res, 'Scribe is being asked', () => scribe.renew()),
-          );
-        }
-        if (url.pathname === '/api/scribe/terminal') {
-          return written(req, res, parseScoutTerminal, (request) =>
-            answer(res, () => scribe.terminal(request)),
-          );
-        }
-        if (url.pathname === '/api/scribe/efforts') return read(req, res, () => scribe.efforts());
-        if (url.pathname === '/api/scribe/effort') {
-          return written(req, res, parseScoutEffort, (change) =>
-            answer(res, () => scribe.setEffort(change)),
-          );
-        }
-        if (url.pathname === '/api/scribe/model') {
-          return written(req, res, parseModelChange, (change) =>
-            answer(res, () => scribe.setModel(change)),
-          );
-        }
-      }
-      const { skills } = repository;
-      if (skills) {
-        // The Skills page (V41), a page of the shell's.
-        if (url.pathname === '/skills') return serveSite(req, res, url, '/', undefined);
-        if (url.pathname === '/api/skills') {
-          if (req.method === 'GET') return answer(res, () => skills.state());
-          return written(
-            req,
-            res,
-            parseSkillChange,
-            (change) => answer(res, () => skills.change(change)),
-            // A skill's text, as JSON escapes it.
-            MAX_SKILL * 6 + 4096,
-          );
-        }
-      }
-      const { monitor } = repository;
-      if (monitor) {
-        // The Monitor page (RM1), a page of the shell's.
-        if (url.pathname === '/monitor') return serveSite(req, res, url, '/', undefined);
-        if (url.pathname === '/api/monitor') return monitorMap(req, res, monitor);
-        if (url.pathname === '/api/monitor/open') return monitorOpen(req, res, monitor);
-      }
-      const { settings, usage } = repository;
-      // Each subscription's windows of use (V29c): read only, the tokens stay in this process.
-      if (usage && url.pathname === '/api/usage') {
-        if (req.method !== 'GET') return send(res, 405, 'method not allowed');
-        return answer(res, () => usage.report());
-      }
-      // Every agent's prompts (V28b).
-      if (settings && url.pathname === '/settings') return serveSite(req, res, url, '/', undefined);
-      if (settings && url.pathname === '/api/settings/prompts') {
-        if (req.method === 'GET') return answer(res, () => settings.prompts());
-        return written(req, res, parsePromptChange, (change) =>
-          answer(res, () => settings.setPrompt(change)),
+      if (rest === undefined) return redirect(res, `${url.pathname}/${url.search}`);
+      return serveReview(req, res, url, rest, repository, repository.reviews, branch);
+    }
+    if (url.pathname === '/api/reviews' && repository.reviews) {
+      return reviewsApi(req, res, repository, repository.reviews);
+    }
+    // The history page (V25; at `/` before, which is now the workspaces view).
+    if (url.pathname === '/history') return serveSite(req, res, url, '/', undefined);
+    if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
+    if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
+    if (url.pathname === '/api/history/refs') return historyRefs(req, res, url, repository);
+    if (url.pathname === '/api/status') return read(req, res, () => repository.status());
+    if (url.pathname === '/api/refs') return read(req, res, () => repository.refs());
+    if (url.pathname === '/api/checkout') return checkoutTarget(req, res, repository);
+    if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
+    if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
+    const { workspaces, scout, scribe, skills, monitor, settings, usage, merges } = repository;
+    if (workspaces) {
+      // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves
+      // them to `/`.
+      if (url.pathname === '/workspaces' || url.pathname === '/features')
+        return serveSite(req, res, url, '/', undefined);
+      // Start a workspace, a page of the shell's (V30a).
+      if (url.pathname === '/start') return serveSite(req, res, url, '/', undefined);
+      if (url.pathname.startsWith('/api/workspaces'))
+        return workspacesRoute(req, res, url, workspaces);
+    }
+    // Scout's page, a page of the shell's (V35).
+    if (scout && url.pathname === '/scout') return serveSite(req, res, url, '/', undefined);
+    if (scout && url.pathname.startsWith('/api/scout')) {
+      return pageAgentRoute(req, res, url, scout, {
+        api: '/api/scout',
+        busy: 'Scout is being asked',
+      });
+    }
+    // Scribe (V41), on the Skills page: Scout's conversation, its own agent.
+    if (scribe && url.pathname.startsWith('/api/scribe')) {
+      return pageAgentRoute(req, res, url, scribe, {
+        api: '/api/scribe',
+        busy: 'Scribe is being asked',
+      });
+    }
+    if (skills) {
+      // The Skills page (V41), a page of the shell's.
+      if (url.pathname === '/skills') return serveSite(req, res, url, '/', undefined);
+      if (url.pathname === '/api/skills') {
+        if (req.method === 'GET') return answer(res, () => skills.state());
+        return written(
+          req,
+          res,
+          parseSkillChange,
+          (change) => answer(res, () => skills.change(change)),
+          // A skill's text, as JSON escapes it.
+          MAX_SKILL * 6 + 4096,
         );
       }
-      const { merges } = repository;
-      if (merges) {
-        if (url.pathname === '/api/merges') {
-          if (req.method === 'GET') return answer(res, () => merges.list());
-          return written(req, res, parseMergeRequest, (request) =>
-            answer(res, () => merges.enqueue(request)),
-          );
-        }
-        if (url.pathname === '/api/merges/targets') {
-          return ofBranch(req, res, url, (branch) => merges.targets(branch));
-        }
-        if (url.pathname === '/api/merges/log') return mergeLog(req, res, url, merges);
-        // The merger's effort (V46d), read and set where Settings' stepper shows it, as Scout's.
-        if (url.pathname === '/api/merges/efforts') return read(req, res, () => merges.efforts());
-        if (url.pathname === '/api/merges/effort') {
-          return written(req, res, parseScoutEffort, (change) =>
-            answer(res, () => merges.setEffort(change)),
-          );
-        }
-        if (url.pathname === '/api/merges/model') {
-          return written(req, res, parseModelChange, (change) =>
-            answer(res, () => merges.setModel(change)),
-          );
-        }
-        if (url.pathname === '/api/merges/approve') {
-          return written(req, res, parseMergeId, (id) => answer(res, () => merges.approve(id)));
-        }
-        if (url.pathname === '/api/merges/recheck') {
-          return written(req, res, parseMergeId, (id) => answer(res, () => merges.recheck(id)));
-        }
-        if (url.pathname === '/api/merges/request-changes') {
-          return written(req, res, parseMergeChanges, ({ id, comments }) =>
-            answer(res, () => merges.requestChanges(id, comments)),
-          );
-        }
-        const action = /^\/api\/merges\/(land|retry|remove)$/.exec(url.pathname)?.[1];
-        if (action) {
-          return written(req, res, parseMergeId, (id) =>
-            answer(res, () =>
-              action === 'land'
-                ? merges.land(id)
-                : action === 'retry'
-                  ? merges.retry(id)
-                  : merges.remove(id).then(() => ({})),
-            ),
-          );
-        }
-      }
-      const terminal = repository.terminals ? TERMINAL_PATH.exec(url.pathname) : null;
-      if (terminal && repository.terminals) {
-        const [, id = '', action] = terminal;
-        return terminalApi(req, res, repository.terminals, id, action);
-      }
+    }
+    if (monitor) {
+      // The Monitor page (RM1), a page of the shell's.
+      if (url.pathname === '/monitor') return serveSite(req, res, url, '/', undefined);
+      if (url.pathname === '/api/monitor') return monitorMap(req, res, monitor);
+      if (url.pathname === '/api/monitor/open') return monitorOpen(req, res, monitor);
+    }
+    // Each subscription's windows of use (V29c): read only, the tokens stay in this process.
+    if (usage && url.pathname === '/api/usage') {
+      if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+      return answer(res, () => usage.report());
+    }
+    // Every agent's prompts (V28b).
+    if (settings && url.pathname === '/settings') return serveSite(req, res, url, '/', undefined);
+    if (settings && url.pathname === '/api/settings/prompts') {
+      if (req.method === 'GET') return answer(res, () => settings.prompts());
+      return written(req, res, parsePromptChange, (change) =>
+        answer(res, () => settings.setPrompt(change)),
+      );
+    }
+    if (merges && url.pathname.startsWith('/api/merges')) {
+      return mergesRoute(req, res, url, merges);
+    }
+    const terminal = repository.terminals ? TERMINAL_PATH.exec(url.pathname) : null;
+    if (terminal && repository.terminals) {
+      const [, id = '', action] = terminal;
+      return terminalApi(req, res, repository.terminals, id, action);
     }
     return serveSite(req, res, url, url.pathname, root);
   }
 
+  /** `/api/workspaces…` (V18): the list and a start, each workspace's reads and writes. */
+  async function workspacesRoute(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    workspaces: Workspaces,
+  ): Promise<void> {
+    if (url.pathname === '/api/workspaces') return workspacesApi(req, res, workspaces);
+    if (url.pathname === '/api/workspaces/options')
+      return read(req, res, () => workspaces.options());
+    if (url.pathname === '/api/workspaces/draft') {
+      if (req.method === 'GET') return json(res, 200, await workspaces.draft());
+      return written(req, res, parseDraft, (draft) =>
+        answer(res, () => workspaces.saveDraft(draft).then(() => ({}))),
+      );
+    }
+    if (url.pathname === '/api/workspaces/documents') {
+      // A file for the start (V40), refused before it is read: the page checks the size first.
+      if (Number(req.headers['content-length']) > MAX_DOCUMENT_BODY) {
+        req.resume();
+        return send(res, 413, DOCUMENT_TOO_LARGE);
+      }
+      return written(
+        req,
+        res,
+        parseDocument,
+        ({ name, bytes }) => answer(res, () => workspaces.saveDocument(name, bytes)),
+        MAX_DOCUMENT_BODY,
+      );
+    }
+    if (url.pathname === '/api/workspaces/check') {
+      if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+      const at = url.searchParams.get('at');
+      if (!at) return send(res, 400, 'at: the commit a workspace starts from');
+      return answer(res, () => workspaces.check(at).then((guess) => guess ?? {}));
+    }
+    if (url.pathname === '/api/workspaces/start') {
+      return onBranch(req, res, (branch) => startingOne(res, () => workspaces.startAgent(branch)));
+    }
+    if (url.pathname === '/api/workspaces/stop') {
+      return onBranch(req, res, (branch) => answer(res, () => workspaces.stopAgent(branch)));
+    }
+    if (url.pathname === '/api/workspaces/open') {
+      return written(req, res, parseWorkspaceOpen, ({ branch }) =>
+        answer(res, () => workspaces.openWorktree(branch).then(() => ({}))),
+      );
+    }
+    if (url.pathname === '/api/workspaces/diff') {
+      return written(req, res, parseWorkspaceDiff, ({ branch, file }) =>
+        answer(res, () => workspaces.openDiff(branch, file).then(() => ({}))),
+      );
+    }
+    if (url.pathname === '/api/workspaces/changes') {
+      return ofBranch(req, res, url, (branch) => workspaces.changes(branch));
+    }
+    if (url.pathname === '/api/workspaces/prompt') {
+      return ofBranch(req, res, url, (branch) =>
+        workspaces.prompt(branch).then((prompt) => ({ prompt })),
+      );
+    }
+    if (url.pathname === '/api/workspaces/merge') {
+      return ofBranch(req, res, url, (branch) => workspaces.merge(branch));
+    }
+    if (url.pathname === '/api/workspaces/thread') {
+      return ofBranch(req, res, url, (branch) => workspaces.thread(branch));
+    }
+    if (url.pathname === '/api/workspaces/reply') {
+      return written(req, res, parseWorkspaceReply, (request) =>
+        oneAtATime(res, 'a message is being sent', () => workspaces.reply(request)),
+      );
+    }
+    if (url.pathname === '/api/workspaces/clean') {
+      return written(req, res, parseWorkspaceClean, (request) =>
+        answer(res, () => workspaces.clean(request)),
+      );
+    }
+    if (url.pathname === '/api/workspaces/terminal') {
+      return written(req, res, parseWorkspaceTerminal, (request) =>
+        answer(res, () => workspaces.terminal(request)),
+      );
+    }
+    if (url.pathname === '/api/workspaces/shell') {
+      return written(req, res, parseWorkspaceTerminal, (request) =>
+        answer(res, () => workspaces.shell(request)),
+      );
+    }
+    if (url.pathname === '/api/workspaces/shells') {
+      // It hands out terminals' IDs, which read and drive them: for the page only (V45).
+      if (req.headers['x-symbiote'] !== '1' || !sameSite(req)) {
+        return send(res, 403, 'forbidden');
+      }
+      return ofBranch(req, res, url, (branch) => workspaces.shells(branch));
+    }
+    return serveSite(req, res, url, url.pathname, root);
+  }
+
+  /**
+   * A page agent's API under `api` (Scout's, V35; Scribe's, V41): its state; a question or a new
+   * conversation, one at a time (each starts or stops an agent), refused meanwhile with `busy`;
+   * its terminal; the levels, read where a stepper shows them (Codex's start its daemon), and its
+   * level and model (V47) in the project's config, set in Settings.
+   */
+  async function pageAgentRoute(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    agent: Scout,
+    { api, busy }: { api: string; busy: string },
+  ): Promise<void> {
+    if (url.pathname === api) return read(req, res, () => agent.state());
+    if (url.pathname === `${api}/ask`) {
+      return written(req, res, parseScoutAsk, (request) =>
+        oneAtATime(res, busy, () => agent.ask(request)),
+      );
+    }
+    if (url.pathname === `${api}/new`) {
+      return written(
+        req,
+        res,
+        () => ({}),
+        () => oneAtATime(res, busy, () => agent.renew()),
+      );
+    }
+    if (url.pathname === `${api}/terminal`) {
+      return written(req, res, parseScoutTerminal, (request) =>
+        answer(res, () => agent.terminal(request)),
+      );
+    }
+    if (url.pathname === `${api}/efforts`) return read(req, res, () => agent.efforts());
+    if (url.pathname === `${api}/effort`) {
+      return written(req, res, parseScoutEffort, (change) =>
+        answer(res, () => agent.setEffort(change)),
+      );
+    }
+    if (url.pathname === `${api}/model`) {
+      return written(req, res, parseModelChange, (change) =>
+        answer(res, () => agent.setModel(change)),
+      );
+    }
+    return serveSite(req, res, url, url.pathname, root);
+  }
+
+  /** `/api/merges…` (V26): the queue and a merge's entry, log, actions, effort and model. */
+  async function mergesRoute(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    merges: Merger,
+  ): Promise<void> {
+    if (url.pathname === '/api/merges') {
+      if (req.method === 'GET') return answer(res, () => merges.list());
+      return written(req, res, parseMergeRequest, (request) =>
+        answer(res, () => merges.enqueue(request)),
+      );
+    }
+    if (url.pathname === '/api/merges/targets') {
+      return ofBranch(req, res, url, (branch) => merges.targets(branch));
+    }
+    if (url.pathname === '/api/merges/log') return mergeLog(req, res, url, merges);
+    // The merger's effort (V46d), read and set where Settings' stepper shows it, as Scout's.
+    if (url.pathname === '/api/merges/efforts') return read(req, res, () => merges.efforts());
+    if (url.pathname === '/api/merges/effort') {
+      return written(req, res, parseScoutEffort, (change) =>
+        answer(res, () => merges.setEffort(change)),
+      );
+    }
+    if (url.pathname === '/api/merges/model') {
+      return written(req, res, parseModelChange, (change) =>
+        answer(res, () => merges.setModel(change)),
+      );
+    }
+    if (url.pathname === '/api/merges/approve') {
+      return written(req, res, parseMergeId, (id) => answer(res, () => merges.approve(id)));
+    }
+    if (url.pathname === '/api/merges/recheck') {
+      return written(req, res, parseMergeId, (id) => answer(res, () => merges.recheck(id)));
+    }
+    if (url.pathname === '/api/merges/request-changes') {
+      return written(req, res, parseMergeChanges, ({ id, comments }) =>
+        answer(res, () => merges.requestChanges(id, comments)),
+      );
+    }
+    const action = /^\/api\/merges\/(land|retry|remove)$/.exec(url.pathname)?.[1];
+    if (action) {
+      return written(req, res, parseMergeId, (id) =>
+        answer(res, () =>
+          action === 'land'
+            ? merges.land(id)
+            : action === 'retry'
+              ? merges.retry(id)
+              : merges.remove(id).then(() => ({})),
+        ),
+      );
+    }
+    return serveSite(req, res, url, url.pathname, root);
+  }
   /** The viewer and its API for one graph (or none: the commits page). */
   async function serveSite(
     req: IncomingMessage,
@@ -1368,405 +1391,9 @@ function json(res: ServerResponse, status: number, value: unknown): void {
   send(res, status, JSON.stringify(value), TYPES['.json']);
 }
 
-/**
- * `{ kind, title, parts, branch, planFirst, base?, from?, agent?, permissionMode?, effort?,
- * model? }` (V24, V20a, V30b, V33, V47), or `brief` instead of the kind, title and parts, each of its type; what
- * they say is the workspaces' to check (V18).
- */
-function parseWorkspaceRequest(text: string): WorkspaceRequest {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('expected { kind, title, parts, branch, planFirst }');
-  }
-  const {
-    brief,
-    kind,
-    title,
-    parts,
-    branch,
-    planFirst,
-    base,
-    from,
-    agent,
-    permissionMode,
-    effort,
-    model,
-    documents,
-  } = value;
-  if (brief === undefined && kind === undefined) {
-    throw new Error('kind: feature, fix, refactor, chore or spike');
-  }
-  if (brief !== undefined && typeof brief !== 'string') throw new Error('brief: what to build');
-  if (kind !== undefined && typeof kind !== 'string') {
-    throw new Error('kind: feature, fix, refactor, chore or spike');
-  }
-  if (title !== undefined && typeof title !== 'string') throw new Error("title: the work's name");
-  const textOnly = (v: unknown) =>
-    v !== null &&
-    typeof v === 'object' &&
-    !Array.isArray(v) &&
-    Object.values(v).every((x) => typeof x === 'string');
-  if (parts !== undefined && !textOnly(parts)) throw new Error('parts: each a text');
-  if (typeof branch !== 'string') throw new Error("branch: the new branch's name");
-  if (typeof planFirst !== 'boolean') throw new Error('planFirst: true or false');
-  if (base !== undefined && typeof base !== 'string') throw new Error('base: a full SHA');
-  if (from !== undefined && typeof from !== 'string') throw new Error("from: a branch's name");
-  if (agent !== undefined && typeof agent !== 'string') throw new Error('agent: claude or codex');
-  if (permissionMode !== undefined && typeof permissionMode !== 'string') {
-    throw new Error('permissionMode: default, acceptEdits or auto');
-  }
-  if (effort !== undefined && typeof effort !== 'string')
-    throw new Error('effort: a level, as high');
-  if (model !== undefined && typeof model !== 'string') throw new Error('model: its ID, as sonnet');
-  const isDocument = (d: unknown): d is { id: string; name: string } =>
-    d !== null &&
-    typeof d === 'object' &&
-    typeof (d as { id?: unknown }).id === 'string' &&
-    typeof (d as { name?: unknown }).name === 'string';
-  if (documents !== undefined && !(Array.isArray(documents) && documents.every(isDocument))) {
-    throw new Error('documents: each { id, name }, as kept');
-  }
-  return {
-    ...(brief === undefined ? {} : { brief }),
-    ...(kind === undefined ? {} : { kind: kind as WorkKind }),
-    ...(title === undefined ? {} : { title }),
-    ...(parts === undefined ? {} : { parts: parts as BriefParts }),
-    branch,
-    planFirst,
-    ...(base === undefined ? {} : { base }),
-    ...(from === undefined ? {} : { from }),
-    ...(agent === undefined ? {} : { agent: agent as AgentKind }),
-    ...(permissionMode === undefined ? {} : { permissionMode: permissionMode as PermissionMode }),
-    ...(effort === undefined ? {} : { effort }),
-    ...(model === undefined ? {} : { model }),
-    ...(documents === undefined
-      ? {}
-      : { documents: documents.map(({ id, name }) => ({ id, name })) }),
-  };
-}
-
-/** A file for a workspace about to start (V40): `{ name, data }`, the file as base64. */
-function parseDocument(text: string): { name: string; bytes: Buffer } {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('expected { name, data }');
-  }
-  if (typeof value.name !== 'string') throw new Error("name: the file's name");
-  if (typeof value.data !== 'string') throw new Error('data: the file, as base64');
-  return { name: value.name, bytes: Buffer.from(value.data, 'base64') };
-}
-
-/** The start page's draft (V24c): any object; what it holds is the page's to read. */
-function parseDraft(text: string): Record<string, unknown> {
-  const value = JSON.parse(text) as unknown;
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('a draft is an object');
-  }
-  return value as Record<string, unknown>;
-}
-
-/** `{ branch, text, stop? }`: a message for a workspace's agent (V18c). */
-function parseWorkspaceReply(text: string): WorkspaceReply {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
-  if (typeof value.text !== 'string') throw new Error('text: the message');
-  if (value.stop !== undefined && typeof value.stop !== 'boolean') {
-    throw new Error('stop: true or false');
-  }
-  return { branch: value.branch, text: value.text, ...(value.stop ? { stop: true } : {}) };
-}
-
-/** `{ cols, rows }`: whole numbers from 2 to 1000; null otherwise. */
-function terminalSize(
-  value: Record<string, unknown> | null,
-): { cols: number; rows: number } | null {
-  const ok = (n: unknown): n is number =>
-    Number.isInteger(n) && (n as number) >= 2 && (n as number) <= 1000;
-  return ok(value?.cols) && ok(value.rows) ? { cols: value.cols, rows: value.rows } : null;
-}
-
-/** `{ paths }` (V38): the paths in a row of a terminal, each as the agent printed it. */
-function parseTerminalPaths(text: string): string[] {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  const paths = value?.paths;
-  if (
-    !Array.isArray(paths) ||
-    paths.length > MAX_TERMINAL_PATHS ||
-    !paths.every((path) => typeof path === 'string' && path.length <= MAX_TERMINAL_PATH)
-  ) {
-    throw new Error(
-      `paths: at most ${MAX_TERMINAL_PATHS}, each at most ${MAX_TERMINAL_PATH} characters`,
-    );
-  }
-  return paths as string[];
-}
-
-/** `{ path, line?, column? }` (V38): a path a terminal printed, and where in it, 1-based. */
-function parseTerminalFile(text: string): FileAt {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  const { path, line, column } = value ?? {};
-  if (typeof path !== 'string' || path === '' || path.length > MAX_TERMINAL_PATH) {
-    throw new Error('path: a path the terminal printed');
-  }
-  if (line !== undefined && !isPosition(line)) throw new Error('line: a positive integer');
-  if (column !== undefined && !isPosition(column)) throw new Error('column: a positive integer');
-  return {
-    path,
-    ...(line === undefined ? {} : { line }),
-    ...(column === undefined ? {} : { column }),
-  };
-}
-
-/** `{ branch, cols, rows }`: a terminal on a workspace's agent session (V21), or a shell (V45). */
-function parseWorkspaceTerminal(text: string): WorkspaceTerminalRequest {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
-  const size = terminalSize(value);
-  if (!size) throw new Error('cols, rows: whole numbers, 2 to 1000');
-  return { branch: value.branch, ...size };
-}
-
-/** `{ text, agent?, effort? }`: a question for Scout (V35). */
-function parseScoutAsk(text: string): ScoutAsk {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (typeof value?.text !== 'string') throw new Error('text: the question');
-  if (value.agent !== undefined && value.agent !== 'claude' && value.agent !== 'codex') {
-    throw new Error('agent: claude or codex');
-  }
-  const { effort } = value;
-  if (effort !== undefined && effort !== null && typeof effort !== 'string') {
-    throw new Error("effort: a level, as high, or null for the agent's own");
-  }
-  return {
-    text: value.text,
-    ...(value.agent ? { agent: value.agent } : {}),
-    ...(effort === undefined ? {} : { effort }),
-  };
-}
-
-/** `{ effort }`: Scout's, Scribe's or the merger's level in the project's config, null for none. */
-function parseScoutEffort(text: string): ScoutEffortChange {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  const effort = value?.effort;
-  if (effort !== null && typeof effort !== 'string') {
-    throw new Error("effort: a level, as high, or null for each agent's own");
-  }
-  return { effort };
-}
-
-/** `{ model }` (V47): a model's ID, or null for the default; Scout's, Scribe's, the merger's. */
-function parseModelChange(text: string): ScoutModelChange {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  const model = value?.model;
-  if (model !== null && typeof model !== 'string') {
-    throw new Error('model: its ID, as sonnet, or null for the default');
-  }
-  return { model };
-}
-
-/** `{ cols, rows }`: a terminal on Scout's session (V35). */
-function parseScoutTerminal(text: string): ScoutTerminalRequest {
-  const size = terminalSize(JSON.parse(text) as Record<string, unknown> | null);
-  if (!size) throw new Error('cols, rows: whole numbers, 2 to 1000');
-  return size;
-}
-
-/** `{ branch, unmerged? }`: a workspace to clean up (V18c). */
-function parseWorkspaceClean(text: string): { branch: string; unmerged?: boolean } {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
-  if (value.unmerged !== undefined && typeof value.unmerged !== 'boolean') {
-    throw new Error('unmerged: true or false');
-  }
-  return { branch: value.branch, ...(value.unmerged ? { unmerged: true } : {}) };
-}
-
-/** `{ branch }`: a workspace's worktree to open. */
-function parseWorkspaceOpen(text: string): { branch: string } {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
-  return { branch: value.branch };
-}
-
-/**
- * `{ branch, file, previousPath?, uncommitted? }` (V43): a file a workspace's changes list, to
- * open as its diff; for a renamed file, where it was; `uncommitted`, a file its worktree has not
- * committed.
- */
-function parseWorkspaceDiff(text: string): {
-  branch: string;
-  file: { path: string; previousPath?: string; uncommitted?: true };
-} {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
-  if (typeof value.file !== 'string' || value.file === '') {
-    throw new Error('file: a path in its worktree');
-  }
-  if (value.previousPath !== undefined && typeof value.previousPath !== 'string') {
-    throw new Error('previousPath: where a renamed file was');
-  }
-  if (value.uncommitted !== undefined && typeof value.uncommitted !== 'boolean') {
-    throw new Error('uncommitted: true for a file its worktree has not committed');
-  }
-  const { previousPath, uncommitted } = value;
-  return {
-    branch: value.branch,
-    file: {
-      path: value.file,
-      ...(previousPath ? { previousPath } : {}),
-      ...(uncommitted ? { uncommitted: true as const } : {}),
-    },
-  };
-}
-
-/** `{ branch, into }`: a branch to merge, and the branch to merge it into (V26). */
-function parseMergeRequest(text: string): MergeRequest {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (typeof value?.branch !== 'string' || value.branch === '') {
-    throw new Error('branch: the branch to merge');
-  }
-  if (typeof value.into !== 'string' || value.into === '') {
-    throw new Error('into: the branch to merge into');
-  }
-  return { branch: value.branch, into: value.into };
-}
-
-/** `{ id, comments }`: what to change in a merge's resolution (V26c). */
-function parseMergeChanges(text: string): { id: string; comments: string } {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (typeof value?.id !== 'string' || value.id === '') throw new Error('id: a queued merge');
-  if (typeof value.comments !== 'string') throw new Error('comments: what to change');
-  return { id: value.id, comments: value.comments };
-}
-
-/** `{ id }`: a queued merge. */
-function parseMergeId(text: string): string {
-  const value = JSON.parse(text) as Record<string, unknown> | null;
-  if (typeof value?.id !== 'string' || value.id === '') throw new Error('id: a queued merge');
-  return value.id;
-}
-
-const CHECKOUT_KINDS: readonly CheckoutTarget['kind'][] = ['branch', 'remote', 'tag', 'commit'];
-
-/** `{ kind, name }`, or `{ kind: 'commit', sha }` with a full SHA. */
-function parseCheckoutTarget(text: string): CheckoutTarget {
-  const value = JSON.parse(text) as { kind?: unknown; name?: unknown; sha?: unknown } | null;
-  const kind = value?.kind as CheckoutTarget['kind'];
-  if (!CHECKOUT_KINDS.includes(kind)) throw new Error('kind: branch, remote, tag or commit');
-  if (kind === 'commit') {
-    if (typeof value?.sha !== 'string' || !FULL_SHA.test(value.sha)) {
-      throw new Error('sha: not a full SHA');
-    }
-    return { kind, sha: value.sha };
-  }
-  const name = value?.name;
-  if (typeof name !== 'string' || name === '' || name.length > 255)
-    throw new Error('name: a ref name');
-  return { kind, name };
-}
-
-/** `{ side, file, line, column? }`: a file the graph mentions on that side, 1-based positions. */
-/** `POST ./api/open`'s body: a file of the change, or one of `conflicts` (head side). */
-function parseOpen(
-  text: string,
-  allowed: Record<Side, Set<string>>,
-  conflicts: ReadonlySet<string> = new Set(),
-): { side: Side; file: string; line: number; column: number } {
-  const value = JSON.parse(text) as Record<'side' | 'file' | 'line' | 'column', unknown> | null;
-  const { side, file, line, column = 1 } = value ?? {};
-  if (side !== 'base' && side !== 'head') throw new Error('side: base or head');
-  const known = (path: string) =>
-    allowed[side].has(path) || (side === 'head' && conflicts.has(path));
-  if (typeof file !== 'string' || !known(file)) {
-    throw new Error(`${String(file)} is not part of this change`);
-  }
-  if (!isPosition(line)) throw new Error('line: a positive integer');
-  if (!isPosition(column)) throw new Error('column: a positive integer');
-  return { side, file, line, column };
-}
-
-function isPosition(n: unknown): n is number {
-  return typeof n === 'number' && Number.isSafeInteger(n) && n >= 1;
-}
-
-/** `?scope=`: every branch when absent; null when unknown. */
-function historyScope(url: URL): HistoryScope | null {
-  const scope = url.searchParams.get('scope') ?? 'all';
-  return HISTORY_SCOPES.includes(scope as HistoryScope) ? (scope as HistoryScope) : null;
-}
-
-/** A non-negative integer, or null. */
-function count(text: string): number | null {
-  const n = Number(text);
-  return text !== '' && Number.isSafeInteger(n) && n >= 0 ? n : null;
-}
-
 function redirect(res: ServerResponse, location: string): void {
   res.writeHead(308, { location, 'cache-control': 'no-store' });
   res.end();
-}
-
-/**
- * A branch review's verdict from the viewer (V16): the event, the summary, and comments on lines
- * of the change (checked as for a forge) or about one of its symbols.
- */
-export function parseLocalReview(
-  text: string,
-  graph: Graph,
-  allowed: Record<Side, Set<string>>,
-): LocalReview {
-  const value = JSON.parse(text) as Partial<Record<keyof LocalReview, unknown>> | null;
-  if (!value || typeof value !== 'object') throw new Error('not a review');
-  const { event, body, comments } = value;
-  if (!EVENTS.includes(event as ReviewEvent)) throw new Error(`unknown event '${String(event)}'`);
-  if (typeof body !== 'string') throw new Error('body must be a string');
-  if (!Array.isArray(comments)) throw new Error('comments must be a list');
-  const symbols = new Set(graph.nodes.map((n) => n.id));
-  return {
-    event: event as ReviewEvent,
-    body,
-    comments: comments.map((raw: unknown, i) => {
-      const c = (raw ?? {}) as Record<string, unknown>;
-      const where = `comment ${i + 1}`;
-      if (typeof c.id !== 'string' || c.id === '' || c.id.length > 100)
-        throw new Error(`${where}: id`);
-      if (typeof c.symbol !== 'string' || !symbols.has(c.symbol)) {
-        throw new Error(`${where}: ${String(c.symbol)} is not part of this change`);
-      }
-      if (typeof c.body !== 'string' || c.body.trim() === '') throw new Error(`${where}: empty`);
-      const about = { id: c.id, symbol: c.symbol, body: c.body };
-      if (c.side === undefined) return about;
-      // Checked as a forge's comment would be; its errors name this comment.
-      let placed: ReviewComment | undefined;
-      try {
-        [placed] = parseReview(
-          JSON.stringify({ event, body: '', comments: [{ ...c, body: c.body }] }),
-          allowed,
-        ).comments;
-      } catch (error) {
-        throw new Error((error as Error).message.replace(/^comment 1/, where), { cause: error });
-      }
-      if (!placed) throw new Error(`${where}: line`);
-      const { side, path, otherPath, line } = placed;
-      return { ...about, side, path, otherPath, line };
-    }),
-  };
-}
-
-/** `{ ref }`: a branch or remote branch name. */
-function parseRef(text: string): string {
-  const ref = (JSON.parse(text) as { ref?: unknown } | null)?.ref;
-  if (typeof ref !== 'string' || ref === '' || ref.length > 255) throw new Error('ref: a branch');
-  return ref;
-}
-
-/** `{ base, head }`: two full SHAs. */
-function parsePair(text: string): Pair {
-  const value = JSON.parse(text) as Partial<Record<keyof Pair, unknown>> | null;
-  const { base, head } = value ?? {};
-  if (typeof base !== 'string' || !FULL_SHA.test(base)) throw new Error('base: not a full SHA');
-  if (typeof head !== 'string' || !FULL_SHA.test(head)) throw new Error('head: not a full SHA');
-  return { base, head };
 }
 
 function send(
@@ -1807,38 +1434,4 @@ function readBody(req: IncomingMessage, limit: number): Promise<string> {
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
-}
-
-/** Checks a review from the viewer: known event, comments only on files of this change. */
-export function parseReview(text: string, allowed: Record<Side, Set<string>>): Review {
-  const value = JSON.parse(text) as Partial<Record<keyof Review, unknown>>;
-  if (!value || typeof value !== 'object') throw new Error('not a review');
-  const { event, body, comments } = value;
-  if (!EVENTS.includes(event as ReviewEvent)) throw new Error(`unknown event '${String(event)}'`);
-  if (typeof body !== 'string') throw new Error('body must be a string');
-  if (!Array.isArray(comments)) throw new Error('comments must be a list');
-  return {
-    event: event as ReviewEvent,
-    body,
-    comments: comments.map((raw: unknown, i): ReviewComment => {
-      const c = (raw ?? {}) as Partial<Record<keyof ReviewComment, unknown>>;
-      const where = `comment ${i + 1}`;
-      if (c.side !== 'base' && c.side !== 'head') throw new Error(`${where}: side`);
-      const other = c.side === 'head' ? 'base' : 'head';
-      if (typeof c.path !== 'string' || !allowed[c.side].has(c.path)) {
-        throw new Error(`${where}: ${String(c.path)} is not part of this change`);
-      }
-      if (
-        typeof c.otherPath !== 'string' ||
-        !(c.otherPath === c.path || allowed[other].has(c.otherPath))
-      ) {
-        throw new Error(`${where}: otherPath`);
-      }
-      if (typeof c.line !== 'number' || !Number.isInteger(c.line) || c.line < 1) {
-        throw new Error(`${where}: line`);
-      }
-      if (typeof c.body !== 'string' || c.body.trim() === '') throw new Error(`${where}: empty`);
-      return { side: c.side, path: c.path, otherPath: c.otherPath, line: c.line, body: c.body };
-    }),
-  };
 }

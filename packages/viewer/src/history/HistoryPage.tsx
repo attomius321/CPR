@@ -1,16 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type {
-  BranchReviewList,
-  CheckoutResult,
-  CheckoutTarget,
   Commit,
   HistoryPage,
   HistoryRefs,
@@ -19,165 +8,46 @@ import type {
   RefList,
   RepoStatus,
 } from '@symbiote/core';
-import { BranchesPanel } from './BranchesPanel.js';
-import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
-import { reviewChoices, reviewMarks, type ReviewChoice, type ReviewMark } from './branchReviews.js';
-import { CheckoutDialog } from './CheckoutDialog.js';
 import {
-  workspaceChips,
-  workspaceHref,
-  workspacesFirst,
-  type AgentChip,
-} from '../workspaces/workspaces.js';
-import { WorkspaceMark } from '../workspaces/WorkspaceMark.js';
+  fetchBranches,
+  fetchJson,
+  fetchReviews,
+  fetchRows,
+  fetchShape,
+  postCheckout,
+  StaleHistory,
+  startDiff,
+  startReview,
+} from './api.js';
+import { BranchesPanel } from './BranchesPanel.js';
+import { CommitRow } from './CommitRow.js';
+import { CompareBar } from './CompareBar.js';
+import { useBranchReviews } from './useBranchReviews.js';
+import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
+import { reviewChoices, type ReviewChoice } from './branchReviews.js';
+import { CheckoutDialog } from './CheckoutDialog.js';
+import { workspaceChips, workspaceHref, workspacesFirst } from '../workspaces/workspaces.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { RowMenu, type RowMenuItem } from './RowMenu.js';
 import {
   BLOCK,
   blocksAround,
   comparison,
-  graphLoaded,
   parentRows,
   pick,
-  relativeDate,
-  rowBadges,
   shortSha,
-  type Comparison,
-  type Loaded,
   type Pair,
   type Picked,
 } from './commits.js';
 import { GraphCell, ROW_HEIGHT } from './GraphCell.js';
 import { Help } from '../ui/Help.js';
-import { BackIcon, MoreIcon } from '../ui/icons.js';
 import { InTitleBar } from '../shell/TitleBar.js';
 import { laneSpacing, layoutLanes } from './lanes.js';
-import { backLink, HISTORY_PAGE } from '../shell/pages.js';
+import { HISTORY_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
-
-/** History's API and the diffs it starts live at the server's root (`symbiote view`). */
-const API_ROOT = '/';
-
-const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
 
 /** Rows drawn beyond the view, above and below. */
 const OVERSCAN = 10;
-
-/** The history changed since the page listed it (a branch moved): it must list it again. */
-class StaleHistory extends Error {}
-
-async function fetchRows(
-  scope: HistoryScope,
-  from: number,
-  to: number,
-  version?: string,
-): Promise<HistoryPage> {
-  const query = new URLSearchParams({ scope, from: String(from), to: String(to) });
-  if (version) query.set('version', version);
-  const response = await fetch(`${API_ROOT}api/history?${query}`);
-  if (response.status === 409) throw new StaleHistory();
-  if (!response.ok) throw new Error(await response.text());
-  return (await response.json()) as HistoryPage;
-}
-
-async function fetchShape(scope: HistoryScope, version: string): Promise<HistoryShape> {
-  const query = new URLSearchParams({ scope, version });
-  const response = await fetch(`${API_ROOT}api/history/shape?${query}`);
-  if (response.status === 409) throw new StaleHistory();
-  if (!response.ok) throw new Error(await response.text());
-  return (await response.json()) as HistoryShape;
-}
-
-/** The branches with their tips' rows in this listing (V10b). */
-async function fetchBranches(scope: HistoryScope, version: string): Promise<HistoryRefs> {
-  const query = new URLSearchParams({ scope, version });
-  const response = await fetch(`${API_ROOT}api/history/refs?${query}`);
-  if (response.status === 409) throw new StaleHistory();
-  if (!response.ok) throw new Error(await response.text());
-  return (await response.json()) as HistoryRefs;
-}
-
-async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_ROOT}${path}`);
-  if (!response.ok) throw new Error(await response.text());
-  return (await response.json()) as T;
-}
-
-/** Checks out a target; resolves with where HEAD is, or rejects with git's (or Symbiote's) words.
- * */
-async function postCheckout(target: CheckoutTarget): Promise<CheckoutResult> {
-  const response = await fetch(`${API_ROOT}api/checkout`, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
-    body: JSON.stringify(target),
-  });
-  if (response.ok) return (await response.json()) as CheckoutResult;
-  const text = await response.text();
-  let message = text;
-  try {
-    message = (JSON.parse(text) as { error?: string }).error ?? text;
-  } catch {
-    // a plain-text refusal
-  }
-  throw new Error(message);
-}
-
-/** Starts analyzing a pair (or finds it analyzed); resolves with its page's URL. */
-export async function startDiff(pair: Pair): Promise<string> {
-  const response = await fetch(`${API_ROOT}api/diffs`, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
-    body: JSON.stringify(pair),
-  });
-  if (!response.ok) throw new Error(await response.text());
-  return ((await response.json()) as { url: string }).url;
-}
-
-/** Starts reviewing a branch (V15); resolves with its page's URL, or rejects with why not. */
-async function startReview(ref: string): Promise<string> {
-  const response = await fetch(`${API_ROOT}api/reviews`, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
-    body: JSON.stringify({ ref }),
-  });
-  if (!response.ok) throw new Error(await response.text());
-  return ((await response.json()) as { url: string }).url;
-}
-
-/** The reviewer's branch reviews (V15); null when the server keeps none. */
-async function fetchReviews(): Promise<BranchReviewList | null> {
-  const response = await fetch(`${API_ROOT}api/reviews`);
-  return response.ok ? ((await response.json()) as BranchReviewList) : null;
-}
-
-async function stopDiff(pair: Pair): Promise<void> {
-  await fetch(`${API_ROOT}api/diffs/stop`, {
-    method: 'POST',
-    headers: WRITE_HEADERS,
-    body: JSON.stringify(pair),
-  });
-}
-
-/** This page's graph, or how its analysis is going. */
-export async function fetchGraph(url: string): Promise<Loaded> {
-  try {
-    const response = await fetch(url);
-    const body: unknown = await response.json().catch(() => null);
-    return graphLoaded(response.status, body);
-  } catch {
-    return { kind: 'missing' };
-  }
-}
-
-/** "Back to History" or "Back to Workspaces", on a diff's page: where it was opened from (V25). */
-export function BackLink() {
-  const { href, label } = backLink(document.referrer, window.location.origin);
-  return (
-    <a className="back" href={href} aria-label={`Back to ${label}`}>
-      <BackIcon /> {label}
-    </a>
-  );
-}
 
 const scopeOfUrl = (): HistoryScope =>
   new URLSearchParams(window.location.search).get('scope') === 'current' ? 'current' : 'all';
@@ -336,27 +206,8 @@ function History({
   const [checkingOut, setCheckingOut] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
 
-  // Branch reviews (V15): marks on badges, dots on commits added since; read again when the
-  // page is back, since a review is made on another page.
-  const [reviews, setReviews] = useState<BranchReviewList | null>(null);
-  useEffect(() => {
-    let live = true;
-    const load = () => {
-      if (document.visibilityState === 'hidden') return;
-      fetchReviews()
-        .then((list) => live && setReviews(list))
-        .catch(() => {});
-    };
-    load();
-    window.addEventListener('focus', load);
-    document.addEventListener('visibilitychange', load);
-    return () => {
-      live = false;
-      window.removeEventListener('focus', load);
-      document.removeEventListener('visibilitychange', load);
-    };
-  }, []);
-  const marks = useMemo(() => reviewMarks(reviews), [reviews]);
+  // Branch reviews (V15): marks on badges, dots on commits added since.
+  const { marks, setReviews } = useBranchReviews();
 
   const failed = useCallback((e: unknown) => {
     if (e instanceof StaleHistory) setStale(true);
@@ -960,301 +811,22 @@ function History({
         />
       )}
       {comparing && (
-        <footer className="compare-bar">
-          <CompareLabel
-            current={current}
-            swapped={swapped}
-            defaultBranch={shape?.defaultBranch?.name ?? null}
-            onJump={jump}
-          />
-          {compareError && <span className="error">{compareError}</span>}
-          {current?.diverged && (
-            <button
-              type="button"
-              className="button ghost"
-              title="Compare the other pick from the fork point"
-              onClick={() => setSwapped((s) => !s)}
-            >
-              Swap
-            </button>
-          )}
-          {picks.length > 0 && (
-            <button
-              type="button"
-              className="button ghost"
-              onClick={() => {
-                setPicks([]);
-                setSwapped(false);
-              }}
-            >
-              Clear
-            </button>
-          )}
-          <button
-            type="button"
-            className="button compare"
-            disabled={!current?.pair || starting}
-            onClick={() => current?.pair && void compare(current.pair)}
-          >
-            {starting ? 'Starting…' : 'Compare'}
-          </button>
-        </footer>
-      )}
-    </div>
-  );
-}
-
-/**
- * What Compare will analyze. Diverged picks (V10c): the fork point's SHA goes to its row, and a
- * note names the other pick, whose commits since the fork are not in the diff.
- */
-function CompareLabel({
-  current,
-  swapped,
-  defaultBranch,
-  onJump,
-}: {
-  current: Comparison | null;
-  swapped: boolean;
-  /** The default branch's name, for why the other pick is the base's side. */
-  defaultBranch: string | null;
-  onJump: (row: number) => void;
-}) {
-  const plain = (label: string) => (
-    <span className="compare-label">
-      <span className="compare-pair">{label}</span>
-    </span>
-  );
-  if (!current) return plain('Pick two commits, or one to compare with its parent');
-  const { pair, diverged } = current;
-  if (!pair || !diverged) return plain(current.label);
-  const fork = shortSha(pair.base);
-  const other = shortSha(diverged.other);
-  const head = shortSha(pair.head);
-  const why = swapped
-    ? 'Swapped'
-    : {
-        default: `${other} is on ${defaultBranch ?? 'the default branch'}`,
-        head: `${other} is on the branch checked out`,
-        older: `${other} is the older pick`,
-      }[diverged.by];
-  return (
-    <span className="compare-label">
-      <span className="compare-pair">
-        <button
-          type="button"
-          className="link fork-sha"
-          title="Their fork point: go to its row"
-          onClick={() => onJump(diverged.forkRow)}
-        >
-          {fork}
-        </button>
-        {current.label.slice(fork.length)}
-      </span>
-      <span
-        className="compare-diverged"
-        title={`${why}: this diff shows what ${head} adds since they forked at ${fork}. Swap compares ${other} instead.`}
-      >
-        {' '}
-        · diverged from {other}: its {diverged.otherCommits} commit
-        {diverged.otherCommits === 1 ? '' : 's'} since the fork{' '}
-        {diverged.otherCommits === 1 ? 'is' : 'are'} not in this diff
-      </span>
-    </span>
-  );
-}
-
-function CommitRow({
-  row,
-  commit,
-  now,
-  comparing,
-  picked,
-  cursor,
-  flash,
-  onClick,
-  onMenu,
-  graph,
-  branch,
-  reviewed,
-  agents,
-  added,
-}: {
-  row: number;
-  /** Not loaded yet: the graph alone, and grey bars. */
-  commit: Commit | undefined;
-  now: number;
-  /** Compare mode: the row shows whether it is picked. */
-  comparing: boolean;
-  picked: boolean;
-  cursor: boolean;
-  /** Just gone to from the branches panel. */
-  flash: boolean;
-  onClick: () => void;
-  /** Opens the row's checkout menu at a point of the window. */
-  onMenu: (x: number, y: number) => void;
-  graph: ReactNode;
-  /** The branch checked out (null when HEAD is detached), for HEAD's badge. */
-  branch: string | null;
-  /** Each reviewed branch's mark, by ref name (V15, V16). */
-  reviewed: ReadonlyMap<string, ReviewMark>;
-  /** Each workspace's mark by ref name, a link to the workspace (V18b). */
-  agents: ReadonlyMap<string, AgentChip & { href: string }>;
-  /** The reviewed branches this commit was added to since their review. */
-  added?: string[];
-}) {
-  const style = { top: row * ROW_HEIGHT, height: ROW_HEIGHT };
-  if (!commit) {
-    return (
-      <li
-        className={`commit loading${cursor ? ' cursor' : ''}${flash ? ' flash' : ''}`}
-        style={style}
-      >
-        {graph}
-        {comparing && <span className="commit-pick" />}
-        <span className="loading-bar sha-bar" />
-        <span className="loading-bar subject-bar" />
-      </li>
-    );
-  }
-  const head = commit.refs.some((ref) => ref.kind === 'head');
-  return (
-    <li
-      className={`commit${head ? ' head' : ''}${picked ? ' picked' : ''}${cursor ? ' cursor' : ''}${flash ? ' flash' : ''}`}
-      style={style}
-      onClick={onClick}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        onMenu(event.clientX, event.clientY);
-      }}
-    >
-      {graph}
-      {comparing && (
-        <span className="commit-pick" role="img" aria-label={picked ? 'picked' : 'not picked'}>
-          {picked ? '●' : '○'}
-        </span>
-      )}
-      <code className="commit-sha">{shortSha(commit.sha)}</code>
-      {added && (
-        <span
-          className="review-new"
-          role="img"
-          aria-label={`new since your review of ${added.join(', ')}`}
-          title={`New since your review of ${added.join(', ')}`}
+        <CompareBar
+          current={current}
+          swapped={swapped}
+          defaultBranch={shape?.defaultBranch?.name ?? null}
+          error={compareError}
+          picked={picks.length > 0}
+          starting={starting}
+          onJump={jump}
+          onSwap={() => setSwapped((s) => !s)}
+          onClear={() => {
+            setPicks([]);
+            setSwapped(false);
+          }}
+          onCompare={(pair) => void compare(pair)}
         />
       )}
-      <span className="commit-subject" title={commit.subject}>
-        {commit.subject}
-      </span>
-      {rowBadges(commit.refs, branch, reviewed, agents).map((badge) => (
-        <span
-          key={`${badge.kind}:${badge.label}`}
-          className={`ref ref-${badge.kind}`}
-          // A badge cut short (a narrow window, a long name) is named in full on hover.
-          title={badge.title ?? badge.label}
-        >
-          {badge.agent && <WorkspaceMark chip={badge.agent} />}
-          {badge.label}
-          {badge.review && (
-            <span
-              className={`ref-review ref-review-${badge.review.tone}`}
-              title={badge.review.title}
-            >
-              {badge.review.mark}
-            </span>
-          )}
-        </span>
-      ))}
-      <span className="commit-author">{commit.author}</span>
-      <time
-        className="commit-date"
-        dateTime={commit.date}
-        title={new Date(commit.date).toLocaleString()}
-      >
-        {relativeDate(commit.date, now)}
-      </time>
-      <button
-        type="button"
-        className="link commit-menu"
-        title="Check out… (c)"
-        aria-label="Check out…"
-        onClick={(event) => {
-          event.stopPropagation();
-          const box = event.currentTarget.getBoundingClientRect();
-          onMenu(box.right - 8, box.bottom);
-        }}
-      >
-        <MoreIcon />
-      </button>
-    </li>
-  );
-}
-
-const PHASES: Record<string, string> = {
-  checkout: 'checking out',
-  loadBase: 'loading base',
-  loadHead: 'loading head',
-  extract: 'extracting symbols',
-  references: 'finding references',
-  findings: 'looking for findings',
-};
-
-const pairLabel = ({ base, head }: Pair) => `${shortSha(base)} → ${shortSha(head)}`;
-
-/** A diff being analyzed, failed or stopped: what is happening, and the ways out. */
-export function DiffProgress({
-  loaded,
-  onRetry,
-}: {
-  loaded: Exclude<Loaded, { kind: 'graph' }>;
-  onRetry: (pair: Pair) => void;
-}) {
-  const [stopping, setStopping] = useState(false);
-  const pair = loaded.pair;
-  if (!pair) return null;
-
-  if (loaded.kind === 'progress') {
-    const seconds = Math.round(loaded.elapsedMs / 1000);
-    const what =
-      loaded.queued > 0
-        ? `waiting for ${loaded.queued} other analysis${loaded.queued === 1 ? '' : 'es'}`
-        : (PHASES[loaded.phase ?? ''] ?? 'starting');
-    return (
-      <div className="diff-progress" role="status">
-        <p>
-          Analyzing {pairLabel(pair)} — <span className="diff-phase">{what}</span> · {seconds} s
-        </p>
-        <button
-          type="button"
-          className="button"
-          disabled={stopping}
-          onClick={() => {
-            setStopping(true);
-            void stopDiff(pair).finally(() =>
-              window.location.assign(backLink(document.referrer, window.location.origin).href),
-            );
-          }}
-        >
-          Stop
-        </button>{' '}
-        <BackLink />
-      </div>
-    );
-  }
-  return (
-    <div className="diff-progress">
-      {loaded.kind === 'failed' ? (
-        <>
-          <p>Analyzing {pairLabel(pair)} failed:</p>
-          <pre className="error">{loaded.error}</pre>
-        </>
-      ) : (
-        <p>{pairLabel(pair)} is not analyzed: its analysis was stopped.</p>
-      )}
-      <button type="button" className="button" onClick={() => onRetry(pair)}>
-        Analyze again
-      </button>{' '}
-      <BackLink />
     </div>
   );
 }

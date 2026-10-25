@@ -38,7 +38,8 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 - `src/graph/layouts.ts`, `layout-worker.ts`, `useLayout.ts` — layouts made in a worker
   (V8e): view keys, the cache of recent layouts, numbered requests, the main-thread fallback.
   The worker is `new URL('./layout-worker.ts', import.meta.url)`: the two files move together.
-- `src/diff/App.tsx` — state, the view to lay out, the canvas (map mode, reveal/fit), toolbar.
+- `src/diff/App.tsx` — state, the view to lay out, toolbar; `Canvas.tsx` the canvas (map mode,
+  reveal/fit); `useDiffGraph.ts` the graph's loading and polling, `useReview.ts` marks and drafts.
 - `src/diff/Sidebar.tsx` (change list with search, findings, review tab), `DetailPanel.tsx`
   (diff, comments, users/uses), `ReviewTab.tsx`.
 - `src/ui/Resizer.tsx` — the one drag handle for panels (the diff's sidebar and detail panel, the
@@ -49,7 +50,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   `comments.ts` (draft comments and anchors), `store.ts` (server or browser state).
 - `src/history/commits.ts` (**pure**: picking, which end is the base, diverged picks' fork point found from
   the shape (V10c; checked against git by `scripts/viewer/compare-check.mjs`), the label, reading `api/graph`'s
-  202/502/404 while a diff is analyzed), `HistoryPage.tsx` (History, a diff's progress; never `Commits.tsx` beside `commits.ts`: macOS file systems ignore case).
+  202/502/404 while a diff is analyzed), `HistoryPage.tsx` (History; never `Commits.tsx` beside `commits.ts`: macOS file systems ignore case), its calls in `api.ts` (the diff's page imports `startDiff` and `fetchGraph` from there), `CommitRow.tsx`, `CompareBar.tsx`. A diff's progress is `diff/DiffProgress.tsx`.
 - `src/graph/ProjectNode.tsx`, `FileNode.tsx`, `SymbolNode.tsx`, `SummaryNode.tsx`.
 - `src/skills/skills.ts` — **pure**: a small reader of a `SKILL.md`'s frontmatter (plain, quoted
   and block text; a value YAML refuses is `invalid`, an anchor or a tag `unknown`) and the checks

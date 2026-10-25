@@ -18,7 +18,8 @@ import {
   type CodexThread,
 } from './app-server.js';
 import { localHost, onPath } from './editor.js';
-import { runProgram, type WorkspaceFile, type Run } from './workspaces.js';
+import { runProgram, type Run } from './programs.js';
+import type { WorkspaceFile } from './workspace-record.js';
 
 /** Starts a program detached from `symbiote view` (its own process group), in `cwd`; its process
  * ID. */

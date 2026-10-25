@@ -202,3 +202,5 @@ merge commit.
 - 2026-10-24 [V47c — Scout's, Scribe's and the merger's model in Settings](journal/v47-agent-model.md)
 - 2026-10-24 [Fix — one Settings page per prebuilt agent, under Prebuilt agents](journal/fix-scout-merger-scribe-settings.md)
 - 2026-10-24 [Fix — Scribe starts at the project's effort level, set in Settings](journal/fix-scribe-effort-level.md)
+- 2026-10-25 [Refactor plan — where the length is](journal/refactor-readability.md)
+- 2026-10-25 [Refactor — the CLI's services and the viewer's pages in modules](journal/refactor-readability.md)
