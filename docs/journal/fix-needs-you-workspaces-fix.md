@@ -22,15 +22,24 @@ marks (● and ?), the text, the groups and History's urgency order are unchange
 - **One tone, three stylesheets**: each drawing maps the tones to tokens on its own, and all
   three had copied the same pairing. The unit test reads the three and holds each to the groups'
   own rules (`.sidenav .group-needsYou`, `.group-done`), so a change of a group's colour carries.
-- **Headless Chromium stops drawing under another session's e2e run**: with 16 headless shells
-  of a parallel `pnpm test:e2e` on the machine (load 5–9), `requestAnimationFrame` never fired in
-  60 s and every click waited for a stable element; tests that had passed minutes before timed
-  out at their first click. Rerun once the other run is done.
+- **Headless Chromium can stop drawing on WSL**: midway through, `requestAnimationFrame` stopped
+  firing (none in 60 s), so every click waited for a stable element and tests that had passed
+  minutes before timed out at their first click. It was not the load (other sessions' e2e runs,
+  load 5–9): it stayed once the load fell to 3. A probe page drew no frame with Playwright's
+  defaults, nor with only `--disable-gpu`, nor with SwiftShader's WebGL, but 61 a second with
+  `--disable-gpu --disable-gpu-compositing --disable-software-rasterizer`. Those flags take
+  WebGL away, so the intro's tests cannot pass with them.
 
 **Verification**: test first. `tokens.test.ts` ("draws a workspace ready for review in Needs
 you's colour, never Done's") red on all three drawings (`--added` where `--warning` was
 expected), then green. `shell.spec`'s new e2e (a workspace commits and finishes: its dot, its
 header's state and its ● on History's badge computed in the Needs you icon's colour) red on the
-dot (`rgb(129, 184, 139)` for `rgb(234, 179, 8)`), then green. Screenshots of the sidenav with
-Plan ready, Ready for review and Merged cards, dark and light, 1440×900 at device scale 1, before
-and after.
+dot (`rgb(129, 184, 139)` for `rgb(234, 179, 8)`), then green. `pnpm check` 1,573 tests in 113
+files. e2e, with the repository's config plus those three flags (the defaults drew nothing here):
+235 of 241. The 6 failures are all in `intro.spec`, whose koi need WebGL; it fails the same 6 on
+`main`'s stylesheets under the same flags. Screenshots of the sidenav with Plan ready, Ready for
+review and Merged cards, dark and light, 1440×900 at device scale 1, before and after; after, the
+workspace's header and its mark on History's badge in both themes, all amber.
+
+Not verified: the intro's 6 tests with WebGL (no headless WebGL on this machine during the fix);
+the app's window on WSLg; macOS and Windows rendering.
