@@ -450,7 +450,11 @@ export function AgentTerminal({
           style={{ top: hint.top, left: hint.left, right: hint.right }}
         >
           <span>{hint.what}</span>
-          <kbd>{hint.keys}</kbd>
+          <span className="terminal-link-hint-keys">
+            {hint.keys.split('+').map((key) => (
+              <kbd key={key}>{key}</kbd>
+            ))}
+          </span>
         </p>
       )}
     </div>

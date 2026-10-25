@@ -1251,7 +1251,7 @@ test('paths and web addresses the agent prints open with Ctrl+click: files of it
 
   // A file of its worktree: underlined, with a hint; a plain click is the terminal's.
   const math = await hover('src/math.ts:3');
-  await expect(hint).toHaveText(/^Open in VS Code\s*Ctrl\+click$/);
+  await expect(hint).toHaveText(/^Open in VS Code\s*Ctrl\s*click$/);
   await page.mouse.click(math.at.x, math.at.y);
   await ctrlClick(math.at);
   await expect
@@ -1280,7 +1280,7 @@ test('paths and web addresses the agent prints open with Ctrl+click: files of it
   // A web address, in a new tab, without the sentence's full stop.
   const web = await textAt(rows, 'example.com/pr/1');
   await page.mouse.move(web.x, web.y);
-  await expect(hint).toHaveText(/^Open https:\/\/example\.com\/pr\/1\s*Ctrl\+click$/);
+  await expect(hint).toHaveText(/^Open https:\/\/example\.com\/pr\/1\s*Ctrl\s*click$/);
   const tab = context.waitForEvent('page');
   await ctrlClick(web);
   expect((await tab).url()).toBe('https://example.com/pr/1');
