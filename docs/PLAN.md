@@ -198,3 +198,4 @@ hosted.
 | [V22](plan/roadmap.md) | Fixes: stale text outside the README | ✅ | | [journal](journal/v22-stale-text.md) |
 | Rename | Rename to Symbiote | ✅ | | [journal](journal/rename-to-symbiote.md) |
 | [Refactor](plan/refactor-plan-journal-folders.md) | The plan and the journal in folders | ready for review | 290–293 | [journal](journal/refactor-plan-journal-folders.md) |
+| [Refactor](plan/refactor-readability.md) | The CLI's services and the viewer's pages in modules one can read | in progress | 344–348 | [journal](journal/refactor-readability.md) |
