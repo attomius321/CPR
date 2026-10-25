@@ -1,6 +1,9 @@
 // Whether an agent can start at an effort level (V30b) and on a model (V47): the checks a
 // workspace's start, Scout, Scribe and the merger share, for Claude Code and Codex alike.
-import type { AgentEfforts, AgentModel } from '@symbiote/core';
+import type { AgentEfforts, AgentKind, AgentModel } from '@symbiote/core';
+
+/** Each agent's name, as messages say it. */
+export const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
 /** Why `effort` is not an effort level at all: a word, never an option or a sentence (V30b). */
 export const effortWordProblem = (effort: unknown): string =>

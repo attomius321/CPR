@@ -46,6 +46,7 @@ import { CONFIG_FILES } from './plugins.js';
 import { readReview, reviewPath, reviewPlace } from './reviews.js';
 import { readWorkspace, workspacePath, type WorkspaceFile } from './workspace-record.js';
 import {
+  AGENT_NAMES,
   effortOnProblem,
   effortWordProblem,
   levelsOn,
@@ -147,7 +148,6 @@ const seconds = (ms: number) => {
 };
 /** Tokens, short: `950`, `3.1K`. */
 const tokens = (n: number) => (n < 1000 ? String(n) : `${(n / 1000).toFixed(1)}K`);
-const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
 const lastLines = (text: string) =>
   text.replace(/\n+$/, '').split('\n').slice(-OUTPUT_LINES).join('\n');

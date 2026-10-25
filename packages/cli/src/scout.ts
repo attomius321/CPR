@@ -4,7 +4,6 @@
 // `symbiote/scout.json`: the session's ID, by which it is found (never by its folder, where the
 // person's own sessions run too, decision 239). Scribe (V41, `scribe.ts`) is the same conversation
 // with its own name, tools, gate and prompt (`pageAgent`).
-import { realpathSync } from 'node:fs';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,9 +32,11 @@ import { asksTrust, type Codex } from './codex.js';
 import { fillPrompt, PromptRefused, readPrompts, writeConfig } from './prompts.js';
 import { prepareSymbioteFolder, reviewPlace, type ReviewPlace } from './reviews.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
+import { real } from './thread.js';
 import { readWorkspaceConfig } from './workspaces.js';
 import { shellWord, type AgentSession, type ClaudeCode } from './claude-code.js';
 import {
+  AGENT_NAMES,
   effortOnProblem,
   effortWordProblem,
   levelsOn,
@@ -221,8 +222,6 @@ function threadState(status: string, waiting: string | undefined): ScoutStateNam
   return 'answered';
 }
 
-const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
-
 /** An effort level's word (V30b): what a request may name, before the agent's list is read. */
 const isLevel = (value: unknown): value is string =>
   typeof value === 'string' && EFFORT_LEVEL.test(value);
@@ -249,6 +248,26 @@ export function scout(repo: GitRepo, cacheDir: string, options: PageAgentOptions
   });
 }
 
+/** The models an agent lists (V47); null unread. */
+async function modelsOf(agent: {
+  claude?: ClaudeCode;
+  codex?: Codex;
+}): Promise<AgentModels | null> {
+  if (agent.codex) return agent.codex.models();
+  const models = (await agent.claude?.models()) ?? null;
+  return models ? { models } : null;
+}
+
+/** The levels an agent takes (V30b): Claude Code's `--help`, Codex's app server; null unread. */
+async function defaultLevelsOf(agent: {
+  claude?: ClaudeCode;
+  codex?: Codex;
+}): Promise<AgentEfforts | null> {
+  if (agent.codex) return agent.codex.efforts();
+  const levels = (await agent.claude?.efforts()) ?? null;
+  return levels ? { levels } : null;
+}
+
 /**
  * A page's agent (`spec`: Scout, Scribe) in `repo`'s checkout: one conversation, its record beside
  * the reviews (`symbiote/`, else Symbiote's cache).
@@ -270,13 +289,6 @@ export function pageAgent(
 ): Scout {
   const { name } = spec;
   const codexAt = spec.codex(root);
-  const real = (path: string) => {
-    try {
-      return realpathSync(path);
-    } catch {
-      return path;
-    }
-  };
   const place = () => reviewPlace(repo, cacheDir);
   const folder = (where: ReviewPlace) => dirname(where.dir);
   const recordPath = (where: ReviewPlace) => join(folder(where), spec.record);
@@ -355,16 +367,6 @@ export function pageAgent(
   const commandOf = (agent: { claude?: ClaudeCode; codex?: Codex }) =>
     agent.claude?.command ?? agent.codex?.command ?? '';
 
-  /** The models an agent lists (V47); null unread. */
-  async function modelsOf(agent: {
-    claude?: ClaudeCode;
-    codex?: Codex;
-  }): Promise<AgentModels | null> {
-    if (agent.codex) return agent.codex.models();
-    const models = (await agent.claude?.models()) ?? null;
-    return models ? { models } : null;
-  }
-
   /**
    * The model a new conversation starts on (V47): the project's (`scout.model`) when its agent
    * lists it — the box may pick the other agent, whose list will not have it —, else none passed
@@ -390,16 +392,6 @@ export function pageAgent(
     }
     const listed = await agent.codex?.models();
     return listed?.default ? { id: listed.default, by: 'agent' } : undefined;
-  }
-
-  /** The levels an agent takes (V30b): Claude Code's `--help`, Codex's app server; null unread. */
-  async function defaultLevelsOf(agent: {
-    claude?: ClaudeCode;
-    codex?: Codex;
-  }): Promise<AgentEfforts | null> {
-    if (agent.codex) return agent.codex.efforts();
-    const levels = (await agent.claude?.efforts()) ?? null;
-    return levels ? { levels } : null;
   }
 
   /**

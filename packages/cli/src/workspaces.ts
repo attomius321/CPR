@@ -56,6 +56,7 @@ import { readPrompts } from './prompts.js';
 import { codexState, serverEntries, serverLastAction, serverState, type Codex } from './codex.js';
 import type { OpenFolder } from './editor.js';
 import {
+  AGENT_NAMES,
   effortOnProblem,
   effortWordProblem,
   levelsOn,
@@ -218,9 +219,6 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
 
 /** An agent found for a workspace: Claude Code or Codex (V20a). */
 type FoundAgent = { kind: 'claude'; claude: ClaudeCode } | { kind: 'codex'; codex: Codex };
-
-/** Each agent's name, as messages say it. */
-const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
 /** The levels `agent` takes (V30b); null when Symbiote cannot read them. */
 async function effortsOf(agent: FoundAgent): Promise<AgentEfforts | null> {
