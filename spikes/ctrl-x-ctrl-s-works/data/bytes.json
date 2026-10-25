@@ -1,0 +1,220 @@
+{
+  "steps": [
+    {
+      "label": "ctrl+x, ctrl+s (each pressed and released, 150 ms apart)",
+      "reads": [
+        "18",
+        "13"
+      ],
+      "gapsMs": [
+        0,
+        156
+      ]
+    },
+    {
+      "label": "ctrl held, x then s tapped (100 ms apart)",
+      "reads": [
+        "18",
+        "13"
+      ],
+      "gapsMs": [
+        0,
+        104
+      ]
+    },
+    {
+      "label": "ctrl+x, ctrl+s with no wait",
+      "reads": [
+        "18",
+        "13"
+      ],
+      "gapsMs": [
+        0,
+        7
+      ]
+    },
+    {
+      "label": "ctrl+enter",
+      "reads": [
+        "0d"
+      ],
+      "gapsMs": [
+        0
+      ]
+    },
+    {
+      "label": "enter",
+      "reads": [
+        "0d"
+      ],
+      "gapsMs": [
+        0
+      ]
+    }
+  ],
+  "posts": [
+    {
+      "at": 1792958520899,
+      "body": "{\"data\":\"\\u0018\"}"
+    },
+    {
+      "at": 1792958521055,
+      "body": "{\"data\":\"\\u0013\"}"
+    },
+    {
+      "at": 1792958521861,
+      "body": "{\"data\":\"\\u0018\"}"
+    },
+    {
+      "at": 1792958521965,
+      "body": "{\"data\":\"\\u0013\"}"
+    },
+    {
+      "at": 1792958522772,
+      "body": "{\"data\":\"\\u0018\"}"
+    },
+    {
+      "at": 1792958522779,
+      "body": "{\"data\":\"\\u0013\"}"
+    },
+    {
+      "at": 1792958523584,
+      "body": "{\"data\":\"\\r\"}"
+    },
+    {
+      "at": 1792958524388,
+      "body": "{\"data\":\"\\r\"}"
+    }
+  ],
+  "pageEvents": [
+    {
+      "at": 570,
+      "type": "keydown",
+      "key": "Control",
+      "code": "ControlLeft",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": false
+    },
+    {
+      "at": 571,
+      "type": "keydown",
+      "key": "x",
+      "code": "KeyX",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": true
+    },
+    {
+      "at": 726,
+      "type": "keydown",
+      "key": "Control",
+      "code": "ControlLeft",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": false
+    },
+    {
+      "at": 727,
+      "type": "keydown",
+      "key": "s",
+      "code": "KeyS",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": true
+    },
+    {
+      "at": 1532,
+      "type": "keydown",
+      "key": "Control",
+      "code": "ControlLeft",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": false
+    },
+    {
+      "at": 1533,
+      "type": "keydown",
+      "key": "x",
+      "code": "KeyX",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": true
+    },
+    {
+      "at": 1637,
+      "type": "keydown",
+      "key": "s",
+      "code": "KeyS",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": true
+    },
+    {
+      "at": 2444,
+      "type": "keydown",
+      "key": "Control",
+      "code": "ControlLeft",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": false
+    },
+    {
+      "at": 2444,
+      "type": "keydown",
+      "key": "x",
+      "code": "KeyX",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": true
+    },
+    {
+      "at": 2447,
+      "type": "keydown",
+      "key": "Control",
+      "code": "ControlLeft",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": false
+    },
+    {
+      "at": 2448,
+      "type": "keydown",
+      "key": "s",
+      "code": "KeyS",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": true
+    },
+    {
+      "at": 3255,
+      "type": "keydown",
+      "key": "Control",
+      "code": "ControlLeft",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": false
+    },
+    {
+      "at": 3256,
+      "type": "keydown",
+      "key": "Enter",
+      "code": "Enter",
+      "ctrl": true,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": true
+    },
+    {
+      "at": 4060,
+      "type": "keydown",
+      "key": "Enter",
+      "code": "Enter",
+      "ctrl": false,
+      "target": "xterm-helper-textarea",
+      "defaultPrevented": true
+    }
+  ],
+  "sttyBefore": "speed 38400 baud; rows 43; columns 116; line = 0;\nintr = ^C; quit = ^\\; erase = ^?; kill = ^U; eof = ^D; eol = M-^?; eol2 = M-^?;\nswtch = <undef>; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W;\nlnext = ^V; discard = ^O; min = 1; time = 0;\n-parenb -parodd -cmspar cs8 hupcl -cstopb cread -clocal -crtscts\n-ignbrk brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl ixon -ixoff\n-iuclc ixany imaxbel iutf8\nopost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0\nisig icanon iexten echo echoe echok -echonl -noflsh -xcase -tostop -echoprt\nechoctl echoke -flusho -extproc\n",
+  "sttyRaw": "speed 38400 baud; rows 43; columns 116; line = 0;\nintr = ^C; quit = ^\\; erase = ^?; kill = ^U; eof = ^D; eol = M-^?; eol2 = M-^?;\nswtch = <undef>; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W;\nlnext = ^V; discard = ^O; min = 1; time = 0;\n-parenb -parodd -cmspar cs8 hupcl -cstopb cread -clocal -crtscts\n-ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr -icrnl -ixon -ixoff\n-iuclc ixany imaxbel iutf8\nopost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0\n-isig -icanon -iexten -echo echoe echok -echonl -noflsh -xcase -tostop -echoprt\nechoctl echoke -flusho -extproc\n",
+  "screen": "Byte logger fake0\n> [18][13][18][13][18][13][0d][0d] "
+}

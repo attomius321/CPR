@@ -1,0 +1,35 @@
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Accessingworkspace:
+
+/tmp/symbiote-sendnow-ui-SfvBki/repo
+
+Quicksafetycheck:Isthisaprojectyoucreatedoroneyoutrust?(Likeyourowncode,awell-knownopensource
+project,orworkfromyourteam).Ifnot,takeamomenttoreviewwhat'sinthisfolderfirst.
+
+ClaudeCode'llbeabletoread,edit,andexecutefileshere.
+
+⚠Thisfolderpre-approves1toolpermissionin.claude/settings.json:
+Bash(node-e:*)
+Thesewillapplywithoutasking.Onlyproceedifyoutrustthisconfiguration.
+
+Securityguide
+
+❯No,exit
+Yes,Itrustthisfolder
+
+Entertoconfirm·Esctocancel
+ No, exit❯Yes, I trust this folder
+
+
+ ▐▛███▛█ClaudeCodev2.1.310
+▝▜██████▀Opus5.5withxhigheffort·ClaudePro
+ ▝▝▝▝/tmp/symbiote-sendnow-ui-SfvBki/repo
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ Try"howdoIloganerror?"
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+⏵⏵automodeon (shift+tabtocycle)·←foragents◉xhigh·/effort
+⬆ /gsd-update │Opus 5.5 │repo                    
+⏵⏵automodeon (shift+tabtocycle)·←foragents

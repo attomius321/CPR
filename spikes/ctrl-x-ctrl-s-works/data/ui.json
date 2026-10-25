@@ -1,0 +1,21 @@
+{
+  "session": "79a2ef24",
+  "worktree": "/tmp/symbiote-sendnow-ui-SfvBki/repo.worktrees/feature-send-now-ui",
+  "hint": [
+    "ctrl+x ctrl+s to send now",
+    "❯ Press up to edit queued messages"
+  ],
+  "pressedMsAfterToolStarted": 5718,
+  "takenInMsAfterPress": 1049,
+  "takenInAs": "remove",
+  "answeredMsAfterPress": 2863,
+  "waitResultMsAfterPress": 1035,
+  "waitMovedToBackground": true,
+  "waitResult": "{\"parentUuid\":\"a865b2fa-b4a8-4eca-941d-8269dbbadf33\",\"isSidechain\":false,\"promptId\":\"bbbc3081-1c0d-4977-abac-f5f72ce67fa0\",\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"tool_use_id\":\"toolu_0131PMMtUm7HLKwSVyhx9hJX\",\"type\":\"tool_result\",\"content\":\"Command was moved to the background (ID: b9qnzexjl) so that a message that arrived while it was running can reach you; it was not interrupted. Outp",
+  "stty": {
+    "tty": "/dev/pts/27",
+    "ixon": "-ixon",
+    "icanon": "-icanon"
+  },
+  "pageErrors": []
+}

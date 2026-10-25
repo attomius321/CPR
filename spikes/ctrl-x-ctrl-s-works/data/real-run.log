@@ -1,0 +1,20 @@
+backgrounded · f8178075 · sendnow-mvo9dok6 (idle — send a prompt to start)
+  claude agents             list sessions
+  claude attach f8178075    open in this terminal
+  claude logs f8178075      show recent output
+  claude stop f8178075      stop this session
+session f8178075 f8178075-86d1-431c-a3a1-56ba93db4f8d
+/dev/pts/29 -ixon -icanon
+none → valid true ; taken in 24450 ms as remove ; answered 25586 ms; wait result 24439 ms, to background false ; interrupted false ; unavailable false
+one-write → valid true ; taken in 341 ms as remove ; answered 1819 ms; wait result 330 ms, to background true ; interrupted false ; unavailable false
+gap-10ms → valid true ; taken in 471 ms as remove ; answered 1582 ms; wait result 459 ms, to background true ; interrupted false ; unavailable false
+gap-150ms → valid true ; taken in 630 ms as remove ; answered 1669 ms; wait result 616 ms, to background true ; interrupted false ; unavailable false
+gap-1500ms → valid true ; taken in 2431 ms as remove ; answered 3624 ms; wait result 2420 ms, to background true ; interrupted false ; unavailable false
+ctrl+enter (\r) → valid true ; taken in 18582 ms as remove ; answered 19620 ms; wait result 18575 ms, to background false ; interrupted false ; unavailable false
+ctrl+enter (\r) → valid true ; taken in 18539 ms as remove ; answered 19513 ms; wait result 18531 ms, to background false ; interrupted false ; unavailable false
+gap-1500ms → valid true ; taken in 2535 ms as remove ; answered 3585 ms; wait result 2523 ms, to background true ; interrupted false ; unavailable false
+gap-150ms → valid true ; taken in 543 ms as remove ; answered 1735 ms; wait result 530 ms, to background true ; interrupted false ; unavailable false
+gap-10ms → valid true ; taken in 455 ms as remove ; answered 1484 ms; wait result 443 ms, to background true ; interrupted false ; unavailable false
+one-write → valid true ; taken in 457 ms as remove ; answered 1573 ms; wait result 443 ms, to background true ; interrupted false ; unavailable false
+none → valid true ; taken in 18539 ms as remove ; answered 19667 ms; wait result 18531 ms, to background false ; interrupted false ; unavailable false
+stopped f8178075
