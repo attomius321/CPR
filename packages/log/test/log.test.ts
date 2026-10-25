@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } fro
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { openLog } from '../src/index.js';
+import { openLog, silentLog } from '../src/index.js';
 
 const folder = () => mkdtempSync(join(tmpdir(), 'symbiote-log-'));
 
@@ -118,5 +118,20 @@ describe('openLog', () => {
     const text = readFileSync(join(dir, readdirSync(dir)[0] ?? ''), 'utf8');
     expect(text).not.toContain('secret');
     expect(text).toContain('[redacted]');
+  });
+
+  it("writes another program's lines into the same file with as()", () => {
+    const dir = folder();
+    const opened = openLog({ process: 'view', env: { SYMBIOTE_LOG_DIR: dir } });
+    opened.log.info('own');
+    opened.as('viewer').error({ page: '/history' }, 'page error');
+    const [own, page] = lines(dir);
+    expect(own).toMatchObject({ process: 'view', msg: 'own' });
+    expect(page).toMatchObject({ process: 'viewer', page: '/history', msg: 'page error' });
+    // One `process` key: the line has no other program's name in it.
+    expect(readFileSync(join(dir, readdirSync(dir)[0] ?? ''), 'utf8').split('\n')[1]).not.toContain(
+      '"view"',
+    );
+    expect(() => silentLog().as('viewer').error('nowhere')).not.toThrow();
   });
 });

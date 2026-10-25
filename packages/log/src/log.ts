@@ -12,6 +12,11 @@ export interface Log {
   log: Logger;
   /** The day's file written to; null when off, or when the folder could not be opened. */
   readonly file: string | null;
+  /**
+   * A logger for another program's lines, into the same file: the server writes the pages'
+   * errors as `viewer`. (A child logger would repeat the `process` key.)
+   */
+  as(process: string): Logger;
 }
 
 export interface OpenLogOptions {
@@ -32,7 +37,8 @@ const REDACT = ['token', '*.token', 'authorization', '*.authorization', '*.heade
 
 /** A logger that writes nothing: `SYMBIOTE_LOG=off`, tests, a folder that cannot be opened. */
 export function silentLog(): Log {
-  return { log: pino({ enabled: false }), file: null };
+  const log = pino({ enabled: false });
+  return { log, file: null, as: () => log };
 }
 
 /**
@@ -75,20 +81,27 @@ export function openLog(options: OpenLogOptions): Log {
     },
   };
   const level = LEVELS.has(env.SYMBIOTE_LOG_LEVEL ?? '') ? (env.SYMBIOTE_LOG_LEVEL ?? '') : 'info';
-  const log = pino(
-    {
-      level,
-      base: { pid: process.pid, process: options.process },
-      timestamp: () => `,"time":"${now().toISOString()}"`,
-      formatters: { level: (label) => ({ level: label }) },
-      redact: { paths: REDACT, censor: '[redacted]' },
-    },
-    destination,
-  );
+  const logger = (name: string) =>
+    pino(
+      {
+        level,
+        base: { pid: process.pid, process: name },
+        timestamp: () => `,"time":"${now().toISOString()}"`,
+        formatters: { level: (label) => ({ level: label }) },
+        redact: { paths: REDACT, censor: '[redacted]' },
+      },
+      destination,
+    );
+  const others = new Map<string, Logger>();
   return {
-    log,
+    log: logger(options.process),
     get file() {
       return day.file;
+    },
+    as(name) {
+      let other = others.get(name);
+      if (!other) others.set(name, (other = logger(name)));
+      return other;
     },
   };
 }

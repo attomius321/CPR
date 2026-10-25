@@ -19,6 +19,7 @@ import {
   type RepoStatus,
 } from '@symbiote/core';
 import type { Review } from '@symbiote/forge';
+import { silentLog, type Log } from '@symbiote/log';
 import type { CodeMap } from '@symbiote/monitor';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
 import {
@@ -27,6 +28,7 @@ import {
   parseCheckoutTarget,
   parseDocument,
   parseDraft,
+  parsePageError,
   parseLocalReview,
   parseMergeChanges,
   parseMergeId,
@@ -136,6 +138,11 @@ export interface ViewServerOptions {
   open?: (request: OpenRequest, worktree?: string) => Promise<OpenResult>;
   /** Enables `/api/intro` (V39): whether a person saw the first-time intro, for every page. */
   intro?: IntroRecord;
+  /**
+   * Symbiote's logs (LG1): a line per request, and the pages' errors at `POST /api/logs`;
+   * without it, nothing is written.
+   */
+  log?: Log;
 }
 
 /** A graph served with its sources, review state and reviews. */
@@ -189,6 +196,15 @@ const MAX_TERMINAL_INPUT = 64 * 1024;
 /** How often an open merge log's stream looks for new lines (V46a). */
 const LOG_POLL_MS = 250;
 
+/** Most a page's error may weigh (LG1), and how many the pages may send a minute. */
+const MAX_PAGE_ERROR = 32 * 1024;
+const PAGE_ERRORS_A_MINUTE = 60;
+/**
+ * Writes that come many times a minute, written at `debug` as reads are (LG1): keys typed in a
+ * terminal and its size, a review's marks and drafts as they are saved.
+ */
+const CHATTY = /^\/api\/terminals\/[0-9a-z]+\/(?:in|resize)$|\/api\/state\//;
+
 /** A file a terminal could not open (V38): its status by why. */
 const FILE_REFUSED = { terminal: 404, outside: 400, missing: 409, editor: 502 } as const;
 /** Most an image's request may weigh (V36): the image as base64, in its JSON. */
@@ -232,16 +248,83 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   const busy = new Set<string>();
   /** Terminals' output streams (V21), ended when the server closes. */
   const streams = new Set<ServerResponse>();
+  const log = options.log ?? silentLog();
+  // The pages' errors, as they sent them: `err` is theirs, not an Error for pino to read.
+  const pageLog = log.as('viewer').child({}, { serializers: { err: (err: unknown) => err } });
+  const pageErrors = { since: 0, count: 0 };
   const server = createServer((req, res) => {
-    handle(req, res).catch((error: unknown) => send(res, 500, String(error)));
+    const started = performance.now();
+    let failure: unknown;
+    res.once('close', () => requestLine(req, res, performance.now() - started, failure));
+    handle(req, res).catch((error: unknown) => {
+      failure = error;
+      send(res, 500, String(error));
+    });
   });
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!hosts.has(req.headers.host ?? '')) return send(res, 421, 'unknown host');
     const url = new URL(req.url ?? '/', 'http://localhost');
+    if (url.pathname === '/api/logs') return pageError(req, res);
     if (url.pathname === '/api/intro' && options.intro) return introApi(req, res, options.intro);
     if (repository) return repositoryRoute(req, res, url, repository);
     return serveSite(req, res, url, url.pathname, root);
+  }
+
+  /**
+   * A request's line (LG1, decision 354), once it has ended: its method, path, status and time.
+   * A `5xx` is an error, with the stack when the request threw; other writes are `info`, with
+   * a refusal's words; reads and the chatty writes are `debug`. What a request carried is never
+   * written (decision 356).
+   */
+  function requestLine(req: IncomingMessage, res: ServerResponse, ms: number, failure: unknown) {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    if (url.pathname === '/api/logs') return;
+    const status = res.statusCode;
+    const refusal = status >= 400 ? answers.get(res) : undefined;
+    const fields = {
+      method: req.method,
+      path: url.pathname,
+      ...(url.search ? { query: url.search.slice(0, 300) } : {}),
+      status,
+      ms: Math.round(ms),
+      ...(failure === undefined ? {} : { err: failure }),
+      ...(refusal === undefined ? {} : { answer: refusal }),
+    };
+    if (status >= 500) log.log.error(fields, 'request failed');
+    else if (req.method === 'GET' || req.method === 'HEAD' || CHATTY.test(url.pathname)) {
+      log.log.debug(fields, 'request');
+    } else log.log.info(fields, 'request');
+  }
+
+  /**
+   * `POST /api/logs` (LG1, decision 353): a page's error (`viewer/src/ui/report.ts`), written as
+   * a `viewer` line. From the pages only, as any write; 32 KB, and 60 a minute, at most.
+   */
+  async function pageError(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (Number(req.headers['content-length']) > MAX_PAGE_ERROR) {
+      req.resume();
+      return send(res, 413, `a page's error of at most ${MAX_PAGE_ERROR / 1024} KB`);
+    }
+    return written(
+      req,
+      res,
+      parsePageError,
+      ({ level, msg, ...fields }) => {
+        const now = Date.now();
+        if (now - pageErrors.since >= 60_000) Object.assign(pageErrors, { since: now, count: 0 });
+        if (pageErrors.count >= PAGE_ERRORS_A_MINUTE) {
+          send(res, 429, "too many of the pages' errors this minute");
+          return Promise.resolve();
+        }
+        pageErrors.count++;
+        pageLog[level](fields, msg);
+        res.writeHead(204, { 'cache-control': 'no-store' });
+        res.end();
+        return Promise.resolve();
+      },
+      MAX_PAGE_ERROR,
+    );
   }
 
   /**
@@ -1396,12 +1479,16 @@ function redirect(res: ServerResponse, location: string): void {
   res.end();
 }
 
+/** A refusal's or a failure's words, for its request's line (LG1): 500 characters at most. */
+const answers = new WeakMap<ServerResponse, string>();
+
 function send(
   res: ServerResponse,
   status: number,
   body: string | Buffer,
   type = 'text/plain',
 ): void {
+  if (status >= 400) answers.set(res, body.toString().slice(0, 500));
   res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' });
   res.end(body);
 }
