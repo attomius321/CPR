@@ -2,9 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v51-settings-look.md)
 
-**Status:** in progress (2026-10-25), on branch `feature/settings-style` (the workspace's); the plan
-confirmed by the person ("OK"), with three answers: Skills follows Settings, the list as I see fit,
-Appearance in a section of its own rather than the head.
+**Status:** ready for review (2026-10-25), on branch `feature/settings-style` (the workspace's);
+the plan confirmed by the person ("OK"), with three answers: Skills follows Settings, the list as I
+see fit, Appearance in a section of its own rather than the head. "As built" and results at the
+end.
 
 **Problem** (asked: "Make settings view styling like start new workspace page"). Measured on `main`
 (`5cd31ce`) in Chromium, `serveWorkspaces` with the fake Claude Code, Settings' first prompt open:
@@ -127,3 +128,43 @@ the narrow layout (the list, then a page with All settings), the tokens, every o
 | 390 | Skills | **Follows Settings, Scribe's pane in the page's width** | the person's answer; the two pages are drawn alike (V41) |
 
 **Not in V51 (later)**: Scout's page and History; a settings search.
+
+## As built (V51)
+
+- **The rows' markup**: Model's select and its note are the row's own children (the wrapper
+  `.settings-model` is gone), so the name centres on the select, not on the select and its note;
+  the warnings come after the select. The note is `.settings-row-note`, shared with Appearance's
+  rows.
+- **The list in line with the head**: its group headings start where the head's title and the git
+  note do (no 8 px inset); the entries' wash 4 px in, their words 12. On a phone the body's margin
+  is 16 px at the sides (12 before), so the cards line up with the title, and All settings' arrow
+  with the page's heading.
+- **Placeholders** wrap with a 12 px hanging indent: in the card's width the longer descriptions
+  ({documents}, {into}) take two lines, which ran back under the chip.
+- **Chips**: the style's chip and badge recipes (components.md), not the 12 %/30 % tint the plan
+  named: "Symbiote's" and "Committed" an 18 px `--raised` chip; "The project's", "Changed" and
+  "New" a round badge, 10 % fill and 25 % edge of `--modified` or `--added`.
+- **Appearance's words**: the theme's group is named by its row, "Theme" (it was "Appearance
+  (this browser)"); "Kept in this browser." under it, "The first-time intro again; nothing is
+  recorded." under Play the intro.
+- **Scribe's pane** takes the card's `--panel` fill as well as its radius and lift.
+
+**Results.** Measured as the problem was (Chromium, `serveWorkspaces`, the first prompt open):
+
+| Window | Main area | The list | The editor | Left and right of them | The head's title | Characters a line |
+|---|---|---|---|---|---|---|
+| 1280×720 | 1040×696 | 240 px | 744 px | 16 / 16 px | 16 px in | 109 |
+| 1440×900 | 1200×876 | 240 | 760 | 88 / 88 | 88 | 112 |
+| 1920×1080 | 1680×1056 | 240 | 760 | 328 / 328 | 328 | 112 |
+| 2560×1440 | 2320×1416 | 240 | 760 | 648 / 648 | 648 | 112 |
+
+A prompt's lines are 109–112 characters at every width (115–318 before); the head's title stands
+over the list's left edge. e2e: `settings.spec.ts` 12 of 12 and `skills.spec.ts`' new test (3
+new, red first: a 16 px margin, five buttons in the head); the whole suite 256 of 258 on the first
+run, the two failures this change's own (the list's 17 entries, the note's class renamed), then
+`settings.spec.ts` 12 of 12; a second whole run 255 of 258, its three failures timing ones outside
+Settings and Skills (the intro's 8 s, a merge, a sidenav card's 64.00003 px), each passing alone. `pnpm check` 1,723 unit tests (the tokens' contrast, radii, sizes and
+accent guards among them). Screenshots, dark and light, at 1280×720, 1440×900, 1920×1080,
+2560×1440 and 390×844: a prompt, a changed one (its badge, Symbiote's text), an unsaved draft,
+Scout, the merger (its fixed answer), Appearance, a skill, New skill, Scribe, and the start page
+unchanged; no letter-spacing but 0 in the page, text even at 3×.

@@ -143,7 +143,7 @@ The first time you open Symbiote on a repository, in its window or a browser, tw
 deep water and form its S, with the sound of the water and a drop as the S locks (about 5 s). Any
 key or a click ends it at once. It plays once for you, whichever repository: `symbiote view`
 records it in Symbiote's config folder (`~/.config/symbiote/intro.json` on Linux). Settings plays it
-again (**Play the intro**). With reduced motion the S is shown formed; without WebGL there is no
+again (**This browser → Appearance**, **Play the intro**). With reduced motion the S is shown formed; without WebGL there is no
 intro. In a browser the sound plays only where the page may play audio before a click.
 
 ### Symbiote's window
@@ -229,8 +229,8 @@ resize the same way. The widths are kept in this browser. The status bar along t
 history scrolls, and commits load as they come into view; its keys are behind the "?" in its
 toolbar.
 
-The pages are dark. **Appearance** in Settings makes them light, or follows your system, in this
-browser. They are set in Geist and Geist Mono, which `symbiote view` serves itself: nothing is fetched
+The pages are dark. **Appearance** in Settings (under **This browser**, the list's last entry)
+makes them light, or follows your system, in this browser. They are set in Geist and Geist Mono, which `symbiote view` serves itself: nothing is fetched
 from elsewhere.
 
 **Usage.** The status bar's right side shows the subscription of each agent Symbiote can start and

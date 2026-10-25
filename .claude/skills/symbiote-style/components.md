@@ -426,6 +426,13 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   dashed drop area (`--field-line`) with the button in it. A tall window gives its room to what
   is written most, and lowers the cards; it does not centre them (they would move as the form
   grows).
+- A page of settings (Settings and Skills, V51): the same head and centring, the list (240 px, a
+  plain column: navigation, not a card) and the page (up to 760 px) one grid of 1,024 px; the
+  list's group headings in line with the head's title. A page is its heading (with its chip and
+  "?") over its cards; a prompt or a skill one card, a prebuilt agent's settings a card of rows
+  (`.settings-rows`: the name an `h3` in `--muted` 500) then a card per prompt with its title
+  inside. A setting of this browser's (the theme, the intro) is an entry of the list, not a
+  control in the head. Not lowered on a tall window: a prompt's card is taller than the window.
 
 ## The graph
 

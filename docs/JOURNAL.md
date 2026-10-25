@@ -221,3 +221,4 @@ merge commit.
 - 2026-10-25 [V48f spike — what Claude Code's and Codex's tools can tell](journal/v48-workspace-activity.md)
 - 2026-10-25 [V48a–V48f — the groups, what runs, Waiting for you, the Activity tab, the small things](journal/v48-workspace-activity.md)
 - 2026-10-25 [V51 spike — Settings' width beside the start page's](journal/v51-settings-look.md)
+- 2026-10-25 [V51 — Settings and Skills centred in cards; Appearance an entry](journal/v51-settings-look.md)

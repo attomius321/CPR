@@ -50,8 +50,8 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
     "No prompt changed: every agent is told Symbiote's text.",
   );
   // 13 prompts (Documents since V40) and the three prebuilt agents, each one page of its
-  // settings (fix/scout-merger-scribe-settings).
-  await expect(list(page).getByRole('button')).toHaveCount(16);
+  // settings (fix/scout-merger-scribe-settings); this browser's Appearance last (V51).
+  await expect(list(page).getByRole('button')).toHaveCount(17);
   await expect(entry(page, 'Documents')).toBeVisible();
   // The first is open; each group in its order.
   await expect(entry(page, 'Feature')).toHaveAttribute('aria-current', 'true');
@@ -59,6 +59,7 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
     'Workspaces',
     'Reviews',
     'Prebuilt agents',
+    'This browser',
   ]);
   await expect(agents(page).getByRole('button')).toHaveText(['Merger', 'Scout', 'Scribe']);
   // A group's entries a little in from its heading.
@@ -459,7 +460,7 @@ test("Scout's model: Claude Code's own list, saved as scout.model when picked; t
     "Saved. Scout's next conversation starts on Opus 4.6.",
   );
   await expect.poll(scout).toEqual({ effort: 'xhigh', model: 'claude-opus-4-6' });
-  await expect(part(page, 'Model').locator('.settings-model-note')).toHaveText(
+  await expect(part(page, 'Model').locator('.settings-row-note')).toHaveText(
     'Best for everyday, complex tasks',
   );
   // The Effort beside it follows at once: Opus 4.6 has no xhigh, so Scout starts at the default.
