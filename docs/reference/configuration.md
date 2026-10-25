@@ -2,13 +2,15 @@
 
 This page lists every setting Symbiote reads: the project's settings file, the text Symbiote
 gives its agents, the files it skips, and its environment variables. All of them are optional.
-To install Symbiote, see the [README](../../README.md).
+To install Symbiote, see the [README](../../README.md). It also explains the terms this page
+uses: workspace, merger, verdict, Scout, Scribe and the others.
 
 ## The settings file, `symbiote/config.json`
 
-A project's settings are in `symbiote/config.json`, at the root of the repository. Commit it to
-share the settings with everyone who runs Symbiote there. **Settings** in the app writes some of
-these keys for you and leaves the rest of the file as it is.
+A project's settings are in `symbiote/config.json`, at the root of the repository. Symbiote reads
+the file in the checkout where `symbiote view` runs. Commit it to share the settings with everyone
+who runs Symbiote there. **Settings** in the app writes `prompts` and the model and effort keys of
+the merger, Scout and Scribe, and leaves the rest of the file as it is.
 
 ```jsonc
 {
@@ -30,7 +32,7 @@ these keys for you and leaves the rest of the file as it is.
 | `scout.model`, `scribe.model` | `agent.model`, else the agent's own | The model each Scout or Scribe conversation starts on, if the agent offers it. |
 | `scout.effort`, `scribe.effort` | the agent's own | The effort level each Scout or Scribe conversation starts at, if the agent offers it. |
 | `merge.checks` | a command Symbiote finds | The check a merge runs before it lands: one command, or a list run in order. Put an install first if the check needs dependencies. |
-| `merge.push` | `false` | If `true`, Symbiote pushes the target branch after a merge lands. |
+| `merge.push` | `false` | If `true`, Symbiote pushes the target branch after a merge lands: to its upstream, else to `origin`. |
 | `merge.agent` | `agent.kind`, else Claude Code, else Codex | The agent that resolves conflicts: `claude` or `codex`. |
 | `merge.model` | `sonnet` for Claude Code, else the agent's own | The model the merger runs on. |
 | `merge.effort` | the agent's own | The effort level the merger runs at, if its model takes one. |
@@ -91,20 +93,26 @@ and leaves any other brace as text:
 | `scout` | Scout's instructions | none |
 | `scribe` | Scribe's first prompt | `{request}` (required), `{skills}`, `{checkout}` |
 
-Settings lists what each placeholder stands for. Symbiote ignores a prompt it cannot use, and
-uses its own text instead. A prompt cannot be used if it is not text, if it lacks a required
-placeholder, or if it is too long. The limits are 8,000 characters for a start prompt and for
-Scout's and Scribe's prompts, 1,000 for a single line, and 20,000 for the others.
+Settings lists what each placeholder stands for. Symbiote ignores a prompt it cannot use, uses its
+own text instead, and marks the prompt "not used" in Settings. A prompt cannot be used in three
+cases:
 
-Whatever its prompt says, Scout cannot edit files, Scribe writes only in `.claude/skills/`, and
-Symbiote still asks you before any action that changes a branch.
+- It is neither text nor a list of lines.
+- It lacks a required placeholder.
+- It is too long. The limits are 8,000 characters for a start prompt and for Scout's and Scribe's,
+  1,000 for `plan.*`, `documents` and `verdict.*`, and 20,000 for `reviews` and `merger`.
+
+Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, Scout cannot edit
+files, Scribe writes only in `.claude/skills/`, and Scout's starts, verdicts, merges and clean-ups
+still wait for your **Confirm**.
 
 ## Files Symbiote skips, `.symbioteignore`
 
 Symbiote lists changed files in these folders but does not analyze them, so they show no symbols
 and no findings: `examples/`, `playground/`, `fixtures/`, `__fixtures__/`, `__snapshots__/` and
-`generated/`. It does the same for `*.generated.*` files. To change that, write a
-`.symbioteignore` file at the repository root, in the same syntax as `.gitignore`:
+`generated/`. It does the same for `*.generated.*` files. To add to that list, or to keep a path
+it holds with `!`, write a `.symbioteignore` file at the repository root, in the same syntax as
+`.gitignore`:
 
 ```gitignore
 # every `interfaces` folder, at any depth
@@ -115,8 +123,8 @@ interfaces/
 !apps/web/interfaces/public.ts
 ```
 
-Symbiote reads the file from your working folder, so a change applies at once, even before you
-commit it. The **Monitor** sets the same files aside.
+Symbiote reads the file from the checkout where it runs, not from the commits it compares. So a
+change applies at once, even before you commit it. The **Monitor** sets the same files aside.
 
 ## Environment variables
 
@@ -143,7 +151,8 @@ lists them.
 
 ## Logs
 
-Every Symbiote process writes its log lines into one folder: `~/.cache/symbiote/logs/` on Linux.
+Every Symbiote process writes its log lines into one folder, `logs` in the cache folder:
+`~/.cache/symbiote/logs/` on Linux, unless you set `SYMBIOTE_CACHE_DIR` or `SYMBIOTE_LOG_DIR`.
 There is one file a day, with one JSON object a line, and Symbiote keeps 14 days. A log line never
 holds a prompt, a file's contents, what a terminal shows, or a token.
 
@@ -154,5 +163,6 @@ files with `jq` or `lnav`.
 ## Older names
 
 Symbiote had another name until 2026-10-21. On first use, it moves what it kept under that name
-into `symbiote/`. It still reads `symbiote.config.json` at the repository root, and a `features`
-section in place of `workspaces`.
+into `symbiote/`. It also reads two older forms of the settings: a `symbiote.config.json` file at
+the repository root, if there is no `symbiote/config.json`, and a `features` section in place of
+`workspaces`.

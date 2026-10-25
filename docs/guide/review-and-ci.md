@@ -3,7 +3,8 @@
 Symbiote shows a change as a graph of the code it touched, so you can review what changed in
 behaviour before you read lines. This guide covers reading the graph, the findings, reviewing a
 branch or a pull request, and running Symbiote in CI. A workspace's **Review** button opens the
-same graph; the [README](../../README.md) covers workspaces.
+same graph. The [README](../../README.md) covers workspaces and explains the terms this guide
+uses.
 
 ## Open a change
 
@@ -11,8 +12,9 @@ Pick the way that matches what you want to review:
 
 - **Your branch against another**: run `symbiote view main` in the repository. To print the same
   comparison in the terminal, run `symbiote diff main`.
-- **Any branch**: on **History**, select a commit of the branch and press `r`. Symbiote compares
-  the branch from where it left the default branch to its last commit.
+- **Any branch**: on **History**, select one of the branch's commits, press `r`, and pick the
+  branch. Symbiote compares the branch's newest commit with the commit where the branch left the
+  default branch.
 - **Two commits**: on **History**, press `x`, click two commits, then click **Compare**. The older
   commit is the base.
 - **A pull request or a merge request**: run `symbiote pr <number>`. See
@@ -33,9 +35,11 @@ changed:
 |---|---|
 | Green | Added |
 | Red | Removed |
-| Orange | Modified |
-| Blue | Moved |
-| Grey | Not changed, but calls or uses a changed symbol, or is used by one |
+| Amber | Modified |
+| Cyan | Moved |
+| Grey | Not changed, but uses a changed symbol or is used by one |
+
+A legend under the graph repeats these colours.
 
 Lines between symbols are calls and other uses. A dashed red line is a use that the change
 removed. A symbol's chips say what changed in it, such as `signature` or `body`. Its badge counts
@@ -48,8 +52,8 @@ Ctrl+click it.
 
 Large changes stay readable in three ways:
 
-- A symbol with more than 8 unchanged users shows them as one box, such as "390 users in 220
-  files". Click it to open it.
+- If more than 8 unchanged symbols use a changed symbol, or are used by it, they are drawn as one
+  box, such as "390 users in 220 files". Click the box to open it.
 - Zoomed out, the graph becomes a map of file names. Click a name to zoom in.
 - The change list has a search (`/`). It keeps the symbols whose path and name hold every word you
   type.
@@ -74,12 +78,13 @@ symbols involved. Symbiote prefers to miss a finding rather than report a wrong 
 
 Each finding is an error, a warning or info:
 
-- `removed-still-referenced` is an error. It is a warning if only untyped code still uses the
-  symbol (JavaScript or `any`), and for CSS classes, custom properties and keyframes.
+- `removed-still-referenced` is an error, except in two cases where it is a warning: only untyped
+  code (JavaScript or `any`) still uses the symbol, or the symbol is a CSS class, a custom
+  property or keyframes.
 - `orphan-added` is a warning. It is info if the package's entry point exports the symbol, or if
   it is a default export.
-- `signature-changed` is a warning if the change may break a user that was not updated, in
-  another file and outside tests. Otherwise it is info.
+- `signature-changed` is a warning if the change may break code that uses the symbol and that the
+  change did not update, in another file that is not a test. Otherwise it is info.
 - `exported-api-changed` is a warning.
 
 Symbiote tells tests apart from product code by their path: `*.test.*`, `*.spec.*`, and files
@@ -98,17 +103,17 @@ To review a branch, open it with **Review** on its workspace, or with `r` on **H
 
 Symbiote writes the review to `symbiote/reviews/<branch>/<your git email>.json`, in the
 repository. Symbiote's `symbiote/.gitignore` keeps reviews out of git. To commit and share them,
-delete that file. To give a review to an agent that has no workspace, click **Copy for the
-agent** and paste the text into its chat. `symbiote/AGENTS.md` tells any agent how to act on a
-review.
+edit or delete that file: Symbiote leaves a `.gitignore` you changed as it is. To give a review
+to an agent that has no workspace, click **Copy for the agent** and paste the text into its chat.
+`symbiote/AGENTS.md` tells any agent how to act on a review.
 
 On **History**, each branch you reviewed carries a badge: `✓` approved, `✗` changes requested,
 `+2` for two commits added since your review. If you review the branch again after new commits,
 only what is new or changed since is left to look at. Your marks stay on the symbols that did
 not change.
 
-You can also review the default branch. Symbiote then shows its commits that are not pushed yet,
-and an approval says they may be pushed.
+You can also review the default branch. Symbiote then shows its commits that are not pushed yet.
+An approval tells an agent that it may push them. Symbiote does not push them itself.
 
 ## Review a pull or merge request
 
@@ -127,26 +132,31 @@ comments arrive on the pull request as one review, each on its line.
 
 Your marks and draft comments are kept for each pull request. After a push, run `symbiote pr`
 again. Symbols you reviewed that did not change stay reviewed, those that changed are marked
-`↻`, and drafts follow their code to its new lines. To see only what a push changed, give the
-head you saw last:
+`↻`, and drafts follow their code to its new lines.
+
+To see what a push changed, give the commit the pull request was at when you last reviewed it.
+The forge's list of pushes shows it:
 
 ```sh
 symbiote pr 123 --since 3c2b1a0   # each changed symbol: new, updated, or the same as in 3c2b1a0
 ```
 
-A rebase that changed nothing shows nothing.
+Symbiote dims the symbols that changed the same way as in that commit. After a rebase that
+changed nothing, every symbol is dimmed.
 
 ## Run in CI
 
-In CI, Symbiote posts the findings on the lines they are about, instead of opening the app. It
-does not post a finding that an earlier run already posted. Inside a pull or merge request job,
-`symbiote pr` finds the number itself:
+In CI, `symbiote pr --post-findings <level>` posts the findings on the lines they are about,
+instead of opening the app. It does not post a finding that an earlier run already posted. Inside
+a pull or merge request job, `symbiote pr` finds the number itself:
 
 ```sh
 symbiote pr --post-findings warning --fail-on error
 ```
 
 ### GitHub Action
+
+Add this workflow to your repository as `.github/workflows/symbiote.yml`:
 
 ```yaml
 on: pull_request
@@ -215,7 +225,8 @@ symbiote diff main --plugin ./tools/my-plugin.mjs
 
 To use a plugin on every run in a repository, add it to `symbiote/config.json`:
 `{ "plugins": ["angular"] }`. In CI, use the action's `plugins` input or GitLab's
-`SYMBIOTE_PLUGINS`. If a plugin fails, Symbiote skips it with a warning, and the review goes on.
+`SYMBIOTE_PLUGINS`. If a plugin fails, Symbiote skips it, says so in a warning, and goes on. The
+warning is not a finding, so `--fail-on` does not count it.
 
 With `angular`, Symbiote reads templates as code:
 

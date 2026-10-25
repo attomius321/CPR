@@ -1,7 +1,8 @@
 # Commands and keys
 
 This page lists the `symbiote` command's commands and options, and the keys of the app it opens.
-To install Symbiote and start a first workspace, see the [README](../../README.md).
+To install Symbiote and start a first workspace, see the [README](../../README.md). It also
+explains the terms this page uses: workspace, merger, verdict, Scout and the others.
 
 ## Commands
 
@@ -14,8 +15,9 @@ To install Symbiote and start a first workspace, see the [README](../../README.m
 | `symbiote mcp` | Gives an agent of yours Symbiote's tools. See [Symbiote's tools for your own agent](#symbiotes-tools-for-your-own-agent). |
 | `symbiote app install` | Adds Symbiote's window to your desktop's apps, on Linux and WSL. `symbiote app uninstall` removes it. |
 
-`symbiote diff` and `symbiote view` compare `head` with the commit where it left `base`, as a pull
-request does. To compare with `base` itself, add `--no-merge-base`.
+`symbiote diff` and `symbiote view` compare `head` with the *merge base*: the last commit that
+`head` and `base` share. A pull request is compared the same way. To compare with `base` itself,
+add `--no-merge-base`.
 
 In a GitHub Actions or GitLab CI job for a pull or merge request, `symbiote pr` takes the number
 from the job.
@@ -53,7 +55,7 @@ The [review guide](../guide/review-and-ci.md#findings) explains each finding.
 | `--json` | diff, pr | Prints the graph JSON instead of the summary. The [graph schema](../graph-schema.md) describes it. |
 | `--out <file>` | diff, pr | Also writes the graph JSON to a file. |
 | `--codequality <file>` | diff, pr | Also writes the findings as a GitLab Code Quality report. |
-| `--fail-on <level>` | diff, pr | Exits with 1 if a finding is at least `error`, `warning` or `info`. |
+| `--fail-on <level>` | diff, pr | Exits with 1 if a finding is at or above the level you give: `error`, `warning` or `info`. |
 | `--since <rev>` | diff, view, pr | Marks each changed symbol as new, updated or the same as in an earlier head of the change, for example before a push or a rebase. |
 | `--project <path>` | diff, view, pr | The tsconfig to load, relative to the repository root. Default: `tsconfig.json`. |
 | `--depth <n>` | diff, view, pr | How many steps of unchanged callers and callees to include. Default: 1. |
@@ -66,8 +68,8 @@ The [review guide](../guide/review-and-ci.md#findings) explains each finding.
 | `--post-findings <level>` | pr | Posts new findings at or above the level as comments on their lines, instead of opening the app. A finding posted by an earlier run is not posted again. |
 | `--forge <name>` | pr | `github` or `gitlab`, for a host whose name does not say which it is. |
 | `--remote <name>` | pr | The remote to read and fetch from. Default: `origin`. |
-| `--into <branch>` | merge | The branch to merge into. Default: the branch the workspace started from, else the branch the approval names, else the default branch. |
-| `--land` | merge | Lands a merge that waits for you. |
+| `--into <branch>` | merge | The branch to merge into. Default: the branch the workspace started from, else the target named in your approval, else the default branch. |
+| `--land` | merge | Lands a merge that waits for you: one with no check, or one that git refused to land. |
 | `--approve` | merge | Approves the merger's resolution of a conflict, which lands it. |
 | `--again <words>` | merge | Asks the merger again, with what to change or your answer to its question. |
 
@@ -83,7 +85,7 @@ toolbar.
 |---|---|---|
 | j, k | Next or previous commit | Next or previous changed symbol |
 | / | Find a branch | Search the change list |
-| c | Check out | Comment on the selected symbol |
+| c | Check out the commit or one of its branches (asks first) | Comment on the selected symbol |
 | r | Review the branch | Mark the selected symbol reviewed |
 | x | Compare mode: pick two commits | |
 | f | | Show only the selected symbol and its neighbours |
@@ -91,7 +93,8 @@ toolbar.
 | o | | Open the selected symbol in VS Code |
 | Esc | Leave compare mode | Close the detail panel |
 
-These keys work on every page of the app. In a change, only n and [ work.
+These keys work on History, Scout, Skills, Monitor, Settings and a workspace's page. In a
+change, only n and [ work.
 
 | Key | What it does |
 |---|---|
@@ -109,9 +112,10 @@ sends. On macOS, use Cmd instead of Ctrl.
 
 ## Symbiote's tools for your own agent
 
-`symbiote view` offers its services as tools over MCP, the Model Context Protocol. Scout uses
-them, and you can give them to your own agent. The agent reaches them through `symbiote mcp`,
-which needs a `symbiote view` running for the same repository.
+`symbiote view` offers what its pages do as tools over MCP, the Model Context Protocol: list the
+workspaces, start one, review a branch, merge it. Scout uses these tools, and you can give them to
+your own agent. The agent reaches them through `symbiote mcp`, which finds the `symbiote view`
+running for the repository the agent works in. If none is running, each tool says so.
 
 To add the tools to Claude Code:
 
