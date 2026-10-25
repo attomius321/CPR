@@ -11,6 +11,9 @@
       "path": "packages/monitor/tsconfig.build.json"
     },
     {
+      "path": "packages/log/tsconfig.build.json"
+    },
+    {
       "path": "packages/cli/tsconfig.build.json"
     },
     {
