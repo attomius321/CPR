@@ -512,14 +512,15 @@ test("a merge like the person's: the line copied from above it in red and shown 
   const region = entry.getByRole('list', { name: 'Its resolution' }).getByRole('listitem');
   await expect(region.locator('.merge-region-where')).toContainText('Region 1CHANGELOG.md:');
   const resolved = region.locator('.merge-resolved .merge-line');
+  // A blank line around it carries no name.
   await expect(resolved.locator('.merge-line-from')).toHaveText([
     'above',
-    'above',
+    '',
     'above',
     'new',
     'main',
     'agent',
-    'below',
+    '',
     'below',
     'below',
   ]);
