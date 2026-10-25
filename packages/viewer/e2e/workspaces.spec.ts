@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { spinner } from './spinner.js';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 import { textAt } from './terminal.js';
@@ -1031,6 +1031,183 @@ test("a done card's icon cleans it up from the sidenav: on hover or focus, witho
   await expect(page.getByText('No workspaces yet')).toBeVisible();
 });
 
+/** Holds the requests to `path` until `release()`: what the page shows while the server works. */
+const hold = async (page: Page, path: string) => {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(`**${path}`, async (route) => {
+    await held;
+    await route.continue();
+  });
+  return () => release();
+};
+/** A dot's colour (`--dot`) and the token it should be. */
+const dotIs = (dot: Locator, token: string) =>
+  dot.evaluate(
+    (element, name) => [
+      getComputedStyle(element).getPropertyValue('--dot').trim(),
+      getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
+    ],
+    token,
+  );
+
+test('a card being cleaned up is disabled until it goes: it says so, opens nothing, the arrows skip it (V57)', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  const half = 'feature/add-a-half-function';
+  const double = 'feature/add-a-double-function';
+  const triple = 'feature/add-a-triple-function';
+  for (const [what, branch] of [
+    ['Add a half function', half],
+    ['Add a double function', double],
+    ['Add a triple function', triple],
+  ] as const) {
+    await startFrom(page, what);
+    symbiote.commit(branch, `src/${branch.slice(14, -9)}.ts`, 'export {};\n', what);
+    symbiote.session(branch, { state: 'done' });
+  }
+  git('merge', '--quiet', '--no-ff', '-m', `Merge ${half}`, half);
+  git('merge', '--quiet', '--no-ff', '-m', `Merge ${double}`, double);
+  // To review, then Done: the one cleaned up is between two others.
+  const card = workspaceRow(page, half);
+  await expect(card).toContainText('Merged', POLL);
+  await expect(workspaceRow(page, double)).toContainText('Merged', POLL);
+  await expect(workspaceRow(page, triple)).toContainText('Ready for review', POLL);
+  await expect(panel(page, triple)).toBeVisible();
+  const before = page.url();
+
+  const release = await hold(page, '/api/workspaces/clean');
+  await card.hover();
+  await card.getByRole('button', { name: 'Clean up Add a half function' }).click();
+  // Disabled, saying what happens, its dot a grey comet; its name and branch dimmed, its line not.
+  await expect(card).toHaveAttribute('aria-busy', 'true');
+  await expect(card).toHaveAttribute('aria-disabled', 'true');
+  await expect(card.locator('.workspace-state')).toHaveText(
+    'Cleaning up · its worktree and its branch',
+  );
+  // Cut by a narrow sidenav: its tip says it whole.
+  await expect(card.locator('.workspace-state')).toHaveAttribute(
+    'data-tip',
+    'Cleaning up · its worktree and its branch',
+  );
+  await expect(card.locator('.commit-date')).toHaveCount(0);
+  const dot = card.locator('.state-dot');
+  await expect(dot).toHaveClass(/tone-cleaning/);
+  await expect
+    .poll(() => spinner(dot))
+    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
+  const [colour, faint] = await dotIs(dot, '--faint');
+  expect(colour).toBe(faint);
+  await expect(card.locator('.workspace-about')).toHaveCSS('opacity', '0.5');
+  await expect(card.locator('.workspace-branch')).toHaveCSS('opacity', '0.5');
+  await expect(card.locator('.workspace-line')).toHaveCSS('opacity', '1');
+  // Nothing to use: no bin, no hover, its name a disabled button; a click opens nothing.
+  await expect(card.locator('.workspace-about')).toBeDisabled();
+  await expect(card.getByRole('button', { name: /^Clean up/ })).toHaveCount(0);
+  await expect(card.locator('.kind-tag')).toBeVisible();
+  await card.hover();
+  // Past the wash's 150 ms transition, which starts from transparent too.
+  await page.waitForTimeout(200);
+  await expect(card).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(card).toHaveCSS('cursor', 'default');
+  expect((await card.boundingBox())?.height ?? 0).toBeLessThanOrEqual(64);
+  const box = (await card.locator('.workspace-state').boundingBox())!;
+  await page.mouse.click(box.x + 20, box.y + box.height / 2);
+  await expect(panel(page, triple)).toBeVisible();
+  expect(page.url()).toBe(before);
+  // The arrows go from the card before it to the one after it, and back.
+  await workspaceRow(page, triple).locator('.workspace-about').focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(workspaceRow(page, double).locator('.workspace-about')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(workspaceRow(page, triple).locator('.workspace-about')).toBeFocused();
+  // Folded: its dot, the comet; its tip says so.
+  await page.getByRole('button', { name: 'Fold the sidenav' }).click();
+  await expect(card).toHaveAttribute('data-tip', 'Add a half function\nCleaning up');
+  await expect(dot).toHaveClass(/tone-cleaning/);
+  await page.getByRole('button', { name: 'Open the sidenav' }).click();
+
+  // Done: the card goes, the status bar says so.
+  release();
+  await expect(card).toHaveCount(0, POLL);
+  await expect(page.getByRole('contentinfo', { name: 'Status bar' })).toContainText(
+    `Cleaned up ${half}: its worktree is removed.`,
+  );
+
+  // Refused (a file not committed): disabled while it is asked, then as it was.
+  writeFileSync(join(symbiote.folder(double), 'notes.md'), 'todo\n');
+  await page.unrouteAll();
+  const refuse = await hold(page, '/api/workspaces/clean');
+  const next = workspaceRow(page, double);
+  await next.hover();
+  await next.getByRole('button', { name: 'Clean up Add a double function' }).click();
+  await expect(next).toHaveAttribute('aria-busy', 'true');
+  refuse();
+  await expect(page.getByRole('alert')).toContainText('1 file not committed');
+  await expect(next).not.toHaveAttribute('aria-busy');
+  await expect(next).not.toHaveAttribute('aria-disabled');
+  await expect(next.locator('.workspace-about')).toBeEnabled();
+  await expect(next.locator('.workspace-state')).toContainText('Merged');
+  await next.hover();
+  await expect(next.getByRole('button', { name: 'Clean up Add a double function' })).toBeVisible();
+});
+
+test("Clean up from a workspace's head: Cleaning up…, and its card disabled until it goes; Clean up anyway says the branch stays (V57)", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  const half = 'feature/add-a-half-function';
+  const double = 'feature/add-a-double-function';
+  await startFrom(page, 'Add a half function');
+  symbiote.commit(half, 'src/half.ts', 'export {};\n', 'Add half');
+  symbiote.session(half, { state: 'done' });
+  await startFrom(page, 'Add a double function');
+  symbiote.commit(double, 'src/double.ts', 'export {};\n', 'Add double');
+  symbiote.session(double, { state: 'done' });
+  git('merge', '--quiet', '--no-ff', '-m', `Merge ${half}`, half);
+  await expect(workspaceRow(page, half)).toContainText('Merged', POLL);
+  await expect(workspaceRow(page, double)).toContainText('Ready for review', POLL);
+
+  // Not merged: Clean up anyway, from ⋯; its card says the branch stays.
+  const release = await hold(page, '/api/workspaces/clean');
+  await more(page, double, 'Clean up…');
+  await panel(page, double).getByRole('button', { name: 'Clean up anyway' }).click();
+  const unmerged = workspaceRow(page, double);
+  await expect(unmerged).toHaveAttribute('aria-disabled', 'true');
+  await expect(unmerged.locator('.workspace-state')).toHaveText(
+    'Cleaning up · its worktree; the branch stays',
+  );
+  // `w` focuses the first card's name: the first one there is, past the one going.
+  await page.keyboard.press('w');
+  await expect(workspaceRow(page, half).locator('.workspace-about')).toBeFocused();
+  release();
+  await expect(unmerged).toHaveCount(0, POLL);
+  expect(git('branch', '--list', double)).not.toBe('');
+
+  // Merged: the head's Clean up says it runs, its actions wait; its card is disabled.
+  await page.unrouteAll();
+  const go = await hold(page, '/api/workspaces/clean');
+  await workspaceRow(page, half)
+    .getByRole('button', { name: 'Add a half function', exact: true })
+    .click();
+  const head = panel(page, half).locator('.workspace-top');
+  await head.getByRole('button', { name: 'Clean up', exact: true }).click();
+  await expect(head.getByRole('button', { name: 'Cleaning up…' })).toBeDisabled();
+  await expect(head.getByRole('button', { name: 'Review', exact: true })).toBeDisabled();
+  const card = workspaceRow(page, half);
+  await expect(card).toHaveAttribute('aria-disabled', 'true');
+  await expect(card.locator('.workspace-state')).toHaveText(
+    'Cleaning up · its worktree and its branch',
+  );
+  go();
+  await expect(page).toHaveURL(`${symbiote.url}history`, POLL);
+  await expect(card).toHaveCount(0, POLL);
+  await expect(page.getByText('No workspaces yet')).toBeVisible();
+});
+
 // The agent's terminal (V21): Claude Code's own interface, `claude attach` on the server, in the
 // workspace's panel.
 const terminal = (page: Page, branch: string) => panel(page, branch).locator('.agent-terminal');
@@ -1914,7 +2091,21 @@ test('Merge on an approved workspace: Symbiote merges it in its own worktree, La
   await card.hover();
   const icon = card.getByRole('button', { name: `Remove the merge of ${branch}` });
   await expect(icon).toHaveAttribute('data-tip', /Remove it from the queue/);
+  // Held (V57): its card disabled and saying so, its link no longer one, until it goes.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/api/merges/remove', async (route) => {
+    await held;
+    await route.continue();
+  });
   await icon.click();
+  await expect(card).toHaveAttribute('aria-busy', 'true');
+  await expect(card).toHaveAttribute('aria-disabled', 'true');
+  await expect(card.locator('.workspace-state')).toHaveText('Removing it from the queue');
+  await expect(card.locator('.state-dot')).toHaveClass(/tone-cleaning/);
+  await expect(card.locator('.workspace-about')).not.toHaveAttribute('href');
+  await expect(icon).toHaveCount(0);
+  release();
   await expect(merging).toHaveCount(0, POLL);
   await expect(here).toBeVisible();
   await expect(page.getByRole('contentinfo', { name: 'Status bar' })).toContainText(

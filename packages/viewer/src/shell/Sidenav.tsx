@@ -32,6 +32,7 @@ import {
 } from '../ui/icons.js';
 import { cleanUp, removeMerge } from '../workspaces/cleanup.js';
 import { mergeState, removableOnCard } from '../workspaces/merges.js';
+import { mergeKey, useRemoving, workspaceKey } from '../workspaces/removing.js';
 import { Help } from '../ui/Help.js';
 import {
   HISTORY_PAGE,
@@ -47,7 +48,7 @@ import { nextScoutMark, type ScoutMark } from '../scout/scout.js';
 import { asksBy } from './asks.js';
 import { useAsks } from './useAsks.js';
 import { useShell, type Notice } from './shell-context.js';
-import { reloadWorkspaces, useWorkspaces } from '../workspaces/useWorkspaces.js';
+import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
   KindTag,
   StateAge,
@@ -79,8 +80,14 @@ const GROUPS = [
   ['done', 'Done', DoneIcon],
 ] as const;
 
-/** The cards' buttons, in order: what `w` focuses and the arrows move between. */
+/** The cards' buttons (a merge's, links), in order. */
 const CARD = '.workspace-about';
+
+/**
+ * What `w` focuses and the arrows move between: the cards' buttons but those of cards being
+ * cleaned up or removed (V57), which take no focus.
+ */
+export const CARD_NAMES = `${CARD}:not(:disabled, [aria-disabled='true'])`;
 
 /**
  * The shell's sidenav (V29a): Symbiote and the repository, the pages, then the workspaces by what
@@ -167,7 +174,7 @@ export function Sidenav({
   /** The arrows move between the cards; Enter opens one (it is a button). */
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-    const cards = [...event.currentTarget.querySelectorAll<HTMLElement>(CARD)];
+    const cards = [...event.currentTarget.querySelectorAll<HTMLElement>(CARD_NAMES)];
     const at = cards.indexOf(document.activeElement as HTMLElement);
     if (at < 0) return;
     event.preventDefault();
@@ -581,7 +588,10 @@ function WorkspaceCard({
   const [flash, setFlash] = useState(false);
   const { workspace } = row;
   const name = workspaceName(workspace);
-  const cleanable = cleanableOnCard(row);
+  // Being cleaned up (V57): disabled, saying so, until the list drops it.
+  const cleaning = useRemoving(workspaceKey(workspace.branch));
+  const cleanable = cleanableOnCard(row) && !cleaning;
+  const goes = workspace.merged ? 'its worktree and its branch' : 'its worktree; the branch stays';
 
   // Picked from elsewhere (a link, a start): in view.
   useLayoutEffect(() => {
@@ -598,22 +608,30 @@ function WorkspaceCard({
   return (
     <li
       ref={item}
-      className={`workspace-row${picked ? ' picked' : ''}${flash ? ' flash' : ''}${cleanable ? ' removable' : ''}`}
+      className={`workspace-row${picked ? ' picked' : ''}${flash ? ' flash' : ''}${cleanable ? ' removable' : ''}${cleaning ? ' removing' : ''}`}
       data-branch={workspace.branch}
+      {...(cleaning ? { 'aria-busy': true, 'aria-disabled': true } : {})}
       {...(folded
         ? tip(
-            `${name}\n${row.next.doing ?? row.next.text}${row.next.blocked ? `: ${row.next.blocked}` : ''}`,
+            cleaning
+              ? `${name}\nCleaning up`
+              : `${name}\n${row.next.doing ?? row.next.text}${row.next.blocked ? `: ${row.next.blocked}` : ''}`,
             { side: 'right' },
           )
         : {})}
-      onClick={onPick}
+      onClick={cleaning ? undefined : onPick}
     >
       <div className="workspace-head">
-        <StateDot row={row} />
+        {cleaning ? (
+          <span className="state-dot tone-cleaning" aria-hidden="true" />
+        ) : (
+          <StateDot row={row} />
+        )}
         <button
           type="button"
           className="workspace-about"
           aria-current={picked ? 'true' : undefined}
+          disabled={cleaning}
           onClick={(event) => {
             event.stopPropagation();
             onPick();
@@ -632,7 +650,15 @@ function WorkspaceCard({
           run={() => cleanUp(workspace.branch)}
         />
       )}
-      {row.next.group === 'waiting' ? (
+      {cleaning ? (
+        // What happens, in place of its state and its time, as a starting card says it (V48); its
+        // tip says it whole where the sidenav cuts it.
+        <div className="workspace-line">
+          <p className="workspace-state" {...tip(`Cleaning up · ${goes}`)}>
+            <strong>Cleaning up</strong> · {goes}
+          </p>
+        </div>
+      ) : row.next.group === 'waiting' ? (
         // What it asks, and the way to answer it (V48): the card's own action, and how long.
         <>
           <p className="workspace-blocked" {...tip(row.next.blocked ?? row.next.text)}>
@@ -679,19 +705,28 @@ function MergeCard({
   onPick: () => void;
 }) {
   const { text, tone } = mergeState(entry);
-  const removable = removableOnCard(entry);
+  // Being removed (V57): disabled, saying so, until the list drops it; its link no longer one.
+  const removing = useRemoving(mergeKey(entry.id));
+  const removable = removableOnCard(entry) && !removing;
+  const said = removing ? 'Removing it from the queue' : text;
   return (
     <li
-      className={`workspace-row merge-card merge-tone-${tone}${picked ? ' picked' : ''}${removable ? ' removable' : ''}`}
+      className={`workspace-row merge-card merge-tone-${tone}${picked ? ' picked' : ''}${removable ? ' removable' : ''}${removing ? ' removing' : ''}`}
       data-merge={entry.branch}
-      {...(folded ? tip(`${entry.branch} → ${entry.into}\n${text}`, { side: 'right' }) : {})}
-      onClick={onPick}
+      {...(removing ? { 'aria-busy': true, 'aria-disabled': true } : {})}
+      {...(folded ? tip(`${entry.branch} → ${entry.into}\n${said}`, { side: 'right' }) : {})}
+      onClick={removing ? undefined : onPick}
     >
       <div className="workspace-head">
-        <span className={`state-dot merge-tone-${tone}`} aria-hidden="true" />
+        <span
+          className={`state-dot ${removing ? 'tone-cleaning' : `merge-tone-${tone}`}`}
+          aria-hidden="true"
+        />
         <a
           className="workspace-about"
-          href={hrefOf({ page: 'merge', branch: entry.branch })}
+          {...(removing
+            ? { 'aria-disabled': true }
+            : { href: hrefOf({ page: 'merge', branch: entry.branch }) })}
           aria-current={picked ? 'true' : undefined}
           onClick={(event) => event.stopPropagation()}
         >
@@ -706,15 +741,22 @@ function MergeCard({
           run={() => removeMerge(entry)}
         />
       )}
-      <p className="workspace-state">{text}</p>
+      {removing ? (
+        <p className="workspace-state">
+          <strong>Removing</strong> it from the queue
+        </p>
+      ) : (
+        <p className="workspace-state">{text}</p>
+      )}
     </li>
   );
 }
 
 /**
  * A done workspace's or a landed merge's way out of the sidenav (V55): a bin at the card's end, on
- * its hover or focus. It runs at once, as the action does on its page; the card goes with the
- * list's next read, the status bar saying so, or why not. The one shown gives way to History.
+ * its hover or focus. It runs at once, as the action does on its page; meanwhile the card is
+ * disabled and the bin not drawn (V57). The card goes with the list's next read, the status bar
+ * saying so, or why not. The one shown gives way to History.
  */
 function CardRemove({
   label,
@@ -729,29 +771,21 @@ function CardRemove({
   run: () => Promise<Notice>;
 }) {
   const shell = useShell();
-  const [busy, setBusy] = useState(false);
   return (
     <button
       type="button"
       className="icon-button card-remove"
       aria-label={label}
       {...tip(title)}
-      disabled={busy}
       onClick={(event) => {
         event.stopPropagation();
-        setBusy(true);
-        run()
-          .then(
-            (notice) => {
-              shell?.notify(notice);
-              if (shown) shell?.navigate({ page: 'history' });
-            },
-            (e: unknown) => shell?.notify({ text: (e as Error).message, error: true }),
-          )
-          .finally(() => {
-            setBusy(false);
-            void reloadWorkspaces();
-          });
+        run().then(
+          (notice) => {
+            shell?.notify(notice);
+            if (shown) shell?.navigate({ page: 'history' });
+          },
+          (e: unknown) => shell?.notify({ text: (e as Error).message, error: true }),
+        );
       }}
     >
       <TrashIcon />
