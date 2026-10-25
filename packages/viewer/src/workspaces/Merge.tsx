@@ -531,7 +531,12 @@ function MergeSides({
 /** The lines just above or below a region, which stay in the file: dim, named in the gutter. */
 function MergeAround({ lines, where }: { lines: string[] | undefined; where: 'above' | 'below' }) {
   return (lines ?? []).map((text, i) => (
-    <MergeLine key={`${where} ${i}`} from="around" name={where} text={text} />
+    <MergeLine
+      key={`${where} ${i}`}
+      from="around"
+      name={text.trim() === '' ? '' : where}
+      text={text}
+    />
   ));
 }
 

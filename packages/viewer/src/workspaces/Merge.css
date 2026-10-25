@@ -237,9 +237,12 @@
   font-weight: 600;
 }
 
-/* The gutter fits the longest side name, `--merge-gutter` characters (at most 24). */
+/*
+ * The gutter fits the longest side name, `--merge-gutter` characters (at most 24): its caption
+ * size takes about 0.8 of the code's `ch`.
+ */
 .merge-code {
-  --merge-gutter-width: max(88px, calc(var(--merge-gutter, 0) * 1ch + 16px));
+  --merge-gutter-width: max(88px, calc(var(--merge-gutter, 0) * 0.8ch + 16px));
 
   overflow: hidden;
   border: 1px solid var(--line);
@@ -339,6 +342,11 @@
   margin-top: 8px;
 }
 
+/* A region asked about: the lines below it under its sides. */
+.merge-region-sides + .merge-code {
+  margin-top: 8px;
+}
+
 .merge-side {
   min-width: 0;
   margin: 0;
@@ -370,7 +378,7 @@
   .merge-code {
     --merge-gutter-width: max(
       64px,
-      min(calc(var(--merge-gutter, 0) * 1ch + 16px), calc(12ch + 16px))
+      min(calc(var(--merge-gutter, 0) * 0.8ch + 16px), calc(12ch + 16px))
     );
   }
 
