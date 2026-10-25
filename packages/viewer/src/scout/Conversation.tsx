@@ -278,17 +278,14 @@ export function Conversation({ agent: own }: { agent: ConversationAgent }) {
   );
 }
 
-/**
- * A page agent's terminal edge to edge (V35), opened on its session; "Open again" when it ends.
- * `quiet`: an end not said, while the page itself ends the session (Scout's move, V50).
- */
-export function ConversationTerminal({ api, quiet = false }: { api: string; quiet?: boolean }) {
+/** A page agent's terminal edge to edge (V35), opened on its session; "Open again" when it ends. */
+export function ConversationTerminal({ api }: { api: string }) {
   const [ended, setEnded] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   return (
     <div className="scout-terminal workspace-terminal">
       <AgentTerminal key={attempt} url={`${api}/terminal`} onOpened={() => {}} onEnded={setEnded} />
-      {ended && !quiet && (
+      {ended && (
         <p className="workspace-confirm">
           The terminal {ended === 'exited' ? 'ended' : 'lost its session'}.{' '}
           <button
