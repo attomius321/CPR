@@ -330,7 +330,7 @@ button.workspace-about {
   --group-tone: var(--warning);
 }
 
-/* Waiting for you (V48): first, in a band of its own amber; its cards say what they ask. */
+/* Waiting for you (V48): after the merges, in its own amber band; its cards say what they ask. */
 .sidenav .group-waiting {
   margin: 8px 0 4px;
   padding: 0 0 4px;
@@ -521,25 +521,39 @@ button.workspace-about {
     box-shadow 150ms;
 }
 
-/* Working and starting (V53): a spinner, lucide's Loader2 as a ring with one side clear, a turn a
-   second. 11 px drawn around the dot's place, past its 7 px box: every state keeps the box, so a
-   card does not move as its state changes. Only its transform moves: the compositor turns it,
-   nothing is laid out again. */
+/* Working and starting (V53), and a merge at work — queued, merging, resolving, checking
+   (fix/merging-status): a spinner, a comet — a 2 px ring whose tail fades in to a round head — a
+   turn a second, the head leading. 11 px drawn around the dot's place, past its 7 px box: every
+   state keeps the box, so a card does not move as its state changes. Only its transform moves:
+   the compositor turns it, nothing is laid out again. */
 .state-dot.tone-working,
 .state-dot.tone-starting {
   --dot: var(--moved);
+}
 
+.state-dot.tone-working,
+.state-dot.tone-starting,
+.state-dot.merge-tone-wait {
   background: transparent;
 }
 
 .state-dot.tone-working::after,
-.state-dot.tone-starting::after {
+.state-dot.tone-starting::after,
+.state-dot.merge-tone-wait::after {
   content: '';
   position: absolute;
   inset: -2px;
-  border: 2px solid var(--dot);
-  border-right-color: transparent;
   border-radius: 50%;
+  /* A round head at the ring's top; behind it the tail, full for 140°, then fading out. */
+  background:
+    radial-gradient(circle at 50% 1px, var(--dot) 0.95px, transparent 1.25px),
+    conic-gradient(
+      transparent,
+      color-mix(in srgb, var(--dot) 15%, transparent) 30deg,
+      var(--dot) 220deg
+    );
+  /* The ring: the 2 px inside its edge, its own edges soft by half a pixel. */
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.25px), #000 calc(100% - 1.75px));
   animation: state-spin 1s linear infinite;
 }
 
@@ -576,13 +590,14 @@ button.workspace-about {
   box-shadow: inset 0 0 0 1.5px var(--dot, var(--faint));
 }
 
-/* Without motion, the spinner holds still: an arc, its own shape beside waiting's halo and stopped's
-   ring; its gap at the top right, as Loader2's, not a "C" beside the name. */
+/* Without motion, the spinner holds still: a comet, its own shape beside waiting's halo and
+   stopped's ring; its head at the top right, as Loader2's gap, not a "C" beside the name. */
 @media (prefers-reduced-motion: reduce) {
   .state-dot.tone-working::after,
-  .state-dot.tone-starting::after {
+  .state-dot.tone-starting::after,
+  .state-dot.merge-tone-wait::after {
     animation: none;
-    transform: rotate(-45deg);
+    transform: rotate(45deg);
   }
 
   .workspace-skeleton {

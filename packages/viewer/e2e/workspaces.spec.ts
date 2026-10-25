@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { spinner } from './spinner.js';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 import { textAt } from './terminal.js';
 
@@ -359,24 +360,6 @@ test('a working agent says what it runs, from its tools, and since when; thinkin
   await expect(row.locator('.workspace-state strong')).toHaveText('Thinking', POLL);
 });
 
-/**
- * A dot's spinner (V53), as its `::after` draws it: its animation, its size across, and whether it
- * is a ¾ arc (one side of its ring clear, the others the state's colour).
- */
-const spinner = (dot: Locator) =>
-  dot.evaluate((element) => {
-    const arc = getComputedStyle(element, '::after');
-    const clear = 'rgba(0, 0, 0, 0)';
-    const across = ['width', 'borderLeftWidth', 'borderRightWidth'] as const;
-    return {
-      animation: `${arc.animationName} ${arc.animationDuration}`,
-      across: across.reduce((sum, side) => sum + Number.parseFloat(arc[side]), 0),
-      arc:
-        arc.borderRightColor === clear &&
-        [arc.borderTopColor, arc.borderBottomColor, arc.borderLeftColor].every((c) => c !== clear),
-    };
-  });
-
 test("a working agent's dot is a spinner, a turn a second; without motion it holds still (V53)", async ({
   page,
 }) => {
@@ -388,10 +371,10 @@ test("a working agent's dot is a spinner, a turn a second; without motion it hol
   // Wider than the 7 px dot, drawn around its place: the name does not move.
   await expect
     .poll(() => spinner(dot))
-    .toEqual({ animation: 'state-spin 1s', across: 11, arc: true });
+    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
   // Without motion: the arc, still — its own shape beside a waiting dot's halo.
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect.poll(() => spinner(dot)).toEqual({ animation: 'none 0s', across: 11, arc: true });
+  await expect.poll(() => spinner(dot)).toEqual({ animation: 'none 0s', across: 11, comet: true });
 });
 
 test('a working card names its agent by its mark, in its colour, before what it does; none on Symbiote’s words (V53)', async ({
@@ -581,7 +564,7 @@ test('while a workspace is made, its card says it starts; its own card takes its
   // The working agent's spinner (V53): busy is busy, its words say which.
   await expect
     .poll(() => spinner(starting.locator('.state-dot')))
-    .toEqual({ animation: 'state-spin 1s', across: 11, arc: true });
+    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
   // A card's height, as every card's (look.spec.ts).
   expect((await starting.boundingBox())?.height ?? 0).toBeLessThanOrEqual(64);
   await expect(starting).toHaveCount(0, POLL);
