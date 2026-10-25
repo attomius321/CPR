@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/refactor-readability.md)
 
-**Status:** in progress (2026-10-25), on branch `refactor/codebase-refactoring-readability` (a
-workspace started in Symbiote, from `main` at `c137455`).
+**Status:** ready for review (2026-10-25), on branch `refactor/codebase-refactoring-readability`
+(a workspace started in Symbiote, from `main` at `c137455`). As built and results under "As built
+(the CLI and the viewer)" below.
 
 **Problem** (the brief: "files with too many lines of code, mixed responsibilities, and logic
 that is difficult to follow … the goal is to reduce cognitive complexity", behaviour unchanged).
@@ -111,3 +112,68 @@ Then, where the same pattern applies cleanly: `SkillsPage`, `AgentTerminal`, `Mo
 real-repository comparisons); `koi-intro.ts` (the person's, kept as delivered); the CSS;
 `main.ts` (a function per command beside its help: its length is help and wiring, not mixed
 concerns); bugs found on the way (in the journal, not fixed).
+
+## As built (the CLI and the viewer)
+
+- **Three workspace modules where two were planned**: the record reads the brief's parts
+  (`BRIEF_PARTS`, `ORDER` before) and a start's checks throw the record's refusal, so a record and
+  a brief alone made a new cycle. `workspace-brief.ts` (pure) ← `workspace-record.ts` ←
+  `workspace-start.ts` (where it starts — `startPoint()`, 25 lines of `start()` before —, its
+  brief checked, its prompt).
+- **`workspace-codex.ts`** is `workspaceCodex({ codex, now, env })`: it needed no function of the
+  service once the record's write and reads moved to the record (`writeRecord`, `readRecord`,
+  `readRecords`). Codex's reply returns nothing; the service reads the summary after it, as both
+  Codex paths did at their end.
+- **The server's routes**: `handle()` is six lines; `repositoryRoute()` gives each service's API
+  prefix to its group (`workspacesRoute`, `pageAgentRoute` for Scout and Scribe, `mergesRoute`).
+  Each group ends in the `serveSite` fallback `handle()` reached, so an address under a prefix no
+  route takes answers as before (405 for a write, 404 for a read). Kept in `server.ts`: the groups
+  use the server's request helpers, which read its hosts and its one-at-a-time sets.
+- **The viewer's tabs and boxes**: `ThreadTab.tsx` and `BriefTab.tsx` (not `WorkspaceThread.tsx`:
+  `WorkspaceThread` is core's type), `WorkspaceTabs.tsx`, `ReplyForm.tsx`, `StartKinds.tsx`,
+  `StartAgent.tsx`, `CompareBar.tsx`; their JSX moved as it was, their state stayed with the page.
+- **Effects that run earlier**: `useChangesPanel`'s `]` listener (before the shells are read),
+  `useDiffGraph`'s polling (its first step only starts a fetch) and `useReview`'s read of the
+  store (before the title and the reset effects, which touch other state). No two of them read
+  what the other writes.
+- **Shared once**: `AGENT_NAMES` (three copies) in `agent-levels.ts`; `real()` (three) from
+  `thread.ts`.
+- **Not done** (the second pass's candidates): `SettingsPage.tsx` (837 lines, five components:
+  the prebuilt agents' page and the prompt editor could be files of their own), `SkillsPage.tsx`
+  (688: its editor and new-skill form), `AgentTerminal.tsx`, `MonitorPage.tsx`, `Sidenav.tsx`
+  (one cohesive component each), `reviews.ts`, `app-server.ts`. Left: the viewer's type-only cycle
+  (`history/commits → branchReviews → checkout`), `plural` defined in several files (one line
+  each).
+
+**Results** (main at `c137455` → the branch's 14 commits):
+
+| File | Lines before | After | Now beside it |
+|---|---|---|---|
+| `cli/src/workspaces.ts` | 3,003 | 1,263 | `claude-code.ts` 581, `agent-levels.ts` 76, `programs.ts` 132, `workspace-record.ts` 258, `workspace-start.ts` 235, `workspace-brief.ts` 111, `workspace-documents.ts` 141, `workspace-changes.ts` 134, `workspace-codex.ts` 343 |
+| `cli/src/server.ts` | 1,844 | 1,437 | `server-requests.ts` 467 |
+| `cli/src/merges.ts` | 1,133 | 1,055 | `merge-queue.ts` 67 |
+| `viewer/…/HistoryPage.tsx` | 1,260 | 832 | `api.ts` 123, `CommitRow.tsx` 135, `CompareBar.tsx` 126, `useBranchReviews.ts` 35, `diff/DiffProgress.tsx` 85 |
+| `viewer/…/Workspace.tsx` | 1,065 | 649 | `WorkspaceFacts.tsx` 101, `ThreadTab.tsx` 102, `BriefTab.tsx` 50, `WorkspaceTabs.tsx` 125, `ReplyForm.tsx` 95, `useChangesPanel.ts` 55 |
+| `viewer/…/StartPage.tsx` | 767 | 593 | `StartKinds.tsx` 68, `StartAgent.tsx` 170 |
+| `viewer/…/App.tsx` | 917 | 542 | `Canvas.tsx` 209, `useDiffGraph.ts` 139, `useReview.ts` 67 |
+
+- The closures: `workspaces()` 1,502 → about 940 lines (its state, `summary`, its 20 operations);
+  `startViewServer`'s `handle()` 300 → 6.
+- **Import cycles**: the CLI's three are gone; the viewer's one (types only) is left.
+- **Symbiote's own diff of the branch** (`symbiote diff main HEAD`, 9 s): 156 symbols moved, every
+  one with the same body hash; 43 of them with another signature (an `export` added, or renamed:
+  `ORDER` → `BRIEF_PARTS`, `Brief` → `BriefTab`, `Thread` → `ThreadTab`). 10 changed in place: the
+  eight closures and components restructured (`workspaces`, `startViewServer`, `merger`,
+  `pageAgent`, `History`, `WorkspacePanel`, `StartForm`, `App`), `vsCodeFolder` (returns
+  `OpenFolder`) and `real` (exported). 48 added (the helpers out of closures, the hooks, the new
+  components, `workspaceCodex`, `mergeQueue`, `startPoint`, `writeAnswer`), 13 removed (the
+  duplicates, and types re-declared beside what uses them).
+- **Tests**: `pnpm check` 1,572 tests in 113 files at each of the 13 code commits; 8 test files changed, a
+  script finding nothing in them but import declarations and `naming.test.ts`'s one path
+  (decision 348). e2e 240 of 240 after the CLI's routes, the History split (with the merger's
+  queue), the Workspace split, the Start and diff splits, and on the branch's last commit.
+- No dependency, `package.json`, core, forge, monitor, plugin or desktop file changed.
+
+Not verified: the desktop app's window beyond what its e2e specs show; screenshots against
+`main`'s (the class names and CSS are unchanged, and no element moved in the DOM); Codex and
+Claude Code themselves (the tests use fakes, as on `main`).
