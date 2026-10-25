@@ -2,11 +2,13 @@
 
 [Index](../PLAN.md) · [Journal](../journal/lg1-logs.md)
 
-**Status:** replanned (2026-10-25), on branch `feature/logging-system` (a workspace started in
-Symbiote, from `main` at `278b3e7`), after the person's answer to the first plan: "So i want the
-logs t o be seen from another app, in case of Symbiote crashes, that is the whole point." The
-first plan's Logs page inside Symbiote is dropped: the logs are read by an app that runs on its
-own. Waiting for the person's OK. Nothing is built yet.
+**Status:** in progress (2026-10-25), on branch `feature/logging-system` (a workspace started in
+Symbiote, from `main` at `278b3e7`). Replanned after the person's answer to the first plan: "So i
+want the logs t o be seen from another app, in case of Symbiote crashes, that is the whole point."
+The first plan's Logs page inside Symbiote is dropped: the logs are read by an app that runs on
+its own. This plan OK'd by the person ("1. Recommended 2. Yes 3. Yes. OK"): Grafana + Loki +
+Alloy; the images pulled and run here for the spike; the hooks and the Codex runner left out, 14
+days of files.
 
 **Problem** (asked: "This application needs a logging system, and a way to see the logs. For the
 moment, i need to log Symbiote only logs, in order to debugg easier and catch uncatched errors.
