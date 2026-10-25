@@ -134,6 +134,44 @@ export function parseDraft(text: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+/** A page's error for Symbiote's logs (LG1, decision 353), as `report.ts` in the viewer sends it. */
+export interface PageError {
+  level: 'error' | 'warn';
+  msg: string;
+  /** The page's path. */
+  page: string;
+  /** The error, in the shape pino writes one: its name as `type`. */
+  err?: { type: string; message: string; stack?: string };
+  /** React's component stack, for an error thrown while a page renders. */
+  componentStack?: string;
+  /** How many more times it came in the reporter's window, and how many errors it dropped. */
+  repeated?: number;
+  dropped?: number;
+}
+
+/** `{ level, msg, page, err?: { name, message, stack? }, componentStack?, repeated?, dropped? }`. */
+export function parsePageError(text: string): PageError {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (value?.level !== 'error' && value?.level !== 'warn') throw new Error('level: error or warn');
+  if (typeof value.msg !== 'string' || value.msg === '') throw new Error('msg: what went wrong');
+  if (typeof value.page !== 'string') throw new Error("page: the page's path");
+  const error: PageError = { level: value.level, msg: value.msg, page: value.page };
+  const err = value.err as Record<string, unknown> | null | undefined;
+  if (err && typeof err === 'object' && typeof err.message === 'string') {
+    error.err = {
+      type: typeof err.name === 'string' ? err.name : 'Error',
+      message: err.message,
+      ...(typeof err.stack === 'string' ? { stack: err.stack } : {}),
+    };
+  }
+  if (typeof value.componentStack === 'string') error.componentStack = value.componentStack;
+  for (const count of ['repeated', 'dropped'] as const) {
+    const n = value[count];
+    if (typeof n === 'number' && Number.isSafeInteger(n) && n > 0) error[count] = n;
+  }
+  return error;
+}
+
 /** `{ branch, text, stop? }`: a message for a workspace's agent (V18c). */
 export function parseWorkspaceReply(text: string): WorkspaceReply {
   const value = JSON.parse(text) as Record<string, unknown> | null;

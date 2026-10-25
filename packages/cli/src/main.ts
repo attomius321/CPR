@@ -42,6 +42,7 @@ import {
   type TsPlugin,
 } from '@symbiote/core';
 import { detectForge, type ChangeRequest, type Forge } from '@symbiote/forge';
+import { pruneLogs, silentLog, type Log, type Logger } from '@symbiote/log';
 import { codeMaps } from '@symbiote/monitor';
 import {
   findApp,
@@ -99,12 +100,27 @@ export interface CliContext {
   onPhase?: (phase: AnalysisPhase) => void;
   /** The process's own input and output, where `symbiote mcp` speaks MCP (MC1). */
   stdio?: { input: Readable; output: Writable };
+  /** Symbiote's logs (LG1); without it, nothing is written. */
+  log?: Log;
+}
+
+/**
+ * The program's name in its lines (LG1): its command, `pr` for `mr`, and `analysis` for a
+ * `symbiote diff` that `symbiote view` started (it has an IPC channel back); `cli` for the rest.
+ * Nothing is ever written on stdout, where `symbiote mcp` speaks MCP.
+ */
+export function logProcess(command: string | undefined, fromView: boolean): string {
+  if (command === 'diff') return fromView ? 'analysis' : 'diff';
+  if (command === 'mr') return 'pr';
+  if (['view', 'pr', 'merge', 'app', 'mcp'].includes(command ?? '')) return command ?? '';
+  return 'cli';
 }
 
 /** This CLI's script, which `symbiote view` runs to analyze a pair of commits. */
 const CLI_SCRIPT = fileURLToPath(new URL('./bin.js', import.meta.url));
 
-const processContext = (): CliContext => ({
+/** This process's context: its folder, output, environment and Ctrl+C. */
+export const processContext = (): CliContext => ({
   cwd: process.cwd(),
   stdout: (text) => process.stdout.write(text),
   stderr: (text) => process.stderr.write(text),
@@ -329,6 +345,7 @@ export async function run(
       return 2;
     }
     if (error instanceof SymbioteError) {
+      ctx.log?.log.warn({ command, err: error }, 'refused');
       ctx.stderr(`symbiote: ${error.message}\n`);
       return 1;
     }
@@ -570,7 +587,9 @@ async function serve(
     ...(review ? { review } : {}),
     open: vsCodeOpener(repo, ctx.env),
     intro: introOf(ctx),
+    ...(ctx.log ? { log: ctx.log } : {}),
   });
+  ctx.log?.log.info({ version, repo: repo.root, url: server.url }, 'serving one graph');
   ctx.stdout(`${statsLine(graph)}\nSymbiote viewer: ${server.url}  (Ctrl+C to stop)\n`);
   for (const warning of analysis.warnings) ctx.stderr(`warning: ${warning}\n`);
 
@@ -630,6 +649,13 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
 
   const repo = await openRepo(ctx.cwd);
   const cacheDir = defaultCacheDir(ctx.env);
+  const log = ctx.log ?? silentLog();
+  // The days past the 14 kept (LG1): removed by each `symbiote view` as it starts.
+  if (log.file) {
+    void pruneLogs(dirname(log.file), new Date()).then((removed) => {
+      if (removed.length > 0) log.log.info({ removed }, 'old logs removed');
+    });
+  }
   // Pairs picked in the viewer: the same analysis options, in a child process each.
   const diffs = new Diffs(
     childRunner({
@@ -643,6 +669,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         values.depth,
       ],
       stderr: ctx.stderr,
+      log: log.log,
     }),
   );
   let hinted = false;
@@ -654,6 +681,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   const terminals = agentTerminals({
     images: join(cacheDir, 'images'),
     openFolder,
+    log: log.log,
     ...(ctx.env.SYMBIOTE_TERMINAL === 'off'
       ? {
           pty: () => Promise.resolve({ error: 'terminals are turned off (SYMBIOTE_TERMINAL=off)' }),
@@ -701,6 +729,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       }),
       terminals,
       merges: merger(repo, cacheDir, {
+        onChange: mergeStates(log.log),
         mergerAgent: mergerFinder(repo.root, ctx.env),
         levels: levelsFinder(claudeOf, codexOf),
         models: modelsFinder(claudeOf, codexOf),
@@ -739,6 +768,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     },
     open: vsCodeOpener(repo, ctx.env),
     intro: introOf(ctx),
+    log,
     version,
   });
   // Where Symbiote's MCP bridge finds this server (MC1): Scout's, and `symbiote mcp`'s.
@@ -766,6 +796,11 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     }
     ctx.stdout(`${statsLine(graph)}\n`);
   }
+  // Written before the address is printed: what waits for that line finds it written.
+  log.log.info(
+    { version, repo: repo.root, url, node: process.version, platform: process.platform },
+    'view started',
+  );
   ctx.stdout(`Symbiote viewer: ${url}  (Ctrl+C to stop)\n`);
   for (const warning of first?.analysis.warnings ?? []) ctx.stderr(`warning: ${warning}\n`);
 
@@ -776,7 +811,25 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   }
   diffs.close();
   await server.close();
+  log.log.info({ repo: repo.root }, 'view stopped');
   return 0;
+}
+
+/** A merge's line each time its state changes (LG1): a failure as a warning, with its words. */
+function mergeStates(log: Logger): (entry: MergeEntry) => void {
+  const last = new Map<string, string>();
+  return (entry) => {
+    if (last.get(entry.id) === entry.state) return;
+    last.set(entry.id, entry.state);
+    const fields = {
+      branch: entry.branch,
+      into: entry.into,
+      state: entry.state,
+      ...(entry.message ? { message: entry.message } : {}),
+    };
+    if (entry.state === 'failed') log.warn(fields, 'merge failed');
+    else log.info(fields, `merge ${entry.state}`);
+  };
 }
 
 /** `symbiote mcp` (MC1): the bridge to the `symbiote view` of the repository it runs in. */

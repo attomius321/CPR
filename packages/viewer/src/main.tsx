@@ -8,6 +8,13 @@ import '@xyflow/react/dist/style.css';
 import './styles.css';
 import { App } from './diff/App.js';
 import { askIntro, startIntro } from './intro/intro.js';
+import { reportPageErrors } from './ui/report.js';
+
+// The page's errors go to Symbiote's logs (LG1), from its first script on; a `?graph=` page (a
+// graph file, the measure scripts) has no server to tell.
+const reportError = new URLSearchParams(window.location.search).has('graph')
+  ? undefined
+  : reportPageErrors();
 
 /**
  * The page draws once its fonts' Latin faces are in (from Symbiote's own server, in milliseconds),
@@ -31,7 +38,12 @@ void Promise.all([
   intro,
 ]).then(([, show]) => {
   if (show) startIntro({ record: true });
-  createRoot(shown).render(
+  createRoot(
+    shown,
+    reportError
+      ? { onUncaughtError: (error, info) => reportError(error, info.componentStack) }
+      : {},
+  ).render(
     <StrictMode>
       <App />
     </StrictMode>,

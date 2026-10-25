@@ -2,7 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "lib": ["ES2023", "DOM"]
+    "lib": ["ES2023", "DOM"],
+    "paths": {
+      "@symbiote/log": ["../log/src/index.ts"]
+    }
   },
   "include": ["src", "test"]
 }

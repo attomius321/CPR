@@ -9,6 +9,7 @@ import { mkdir, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os';
 import { join, posix, win32 } from 'node:path';
 import { defaultCacheDir } from '@symbiote/core';
+import type { Logger } from '@symbiote/log';
 import type { OpenFolder } from './editor.js';
 
 /** A pseudo-terminal's process, as node-pty gives one; tests pass a fake. */
@@ -248,6 +249,7 @@ export function terminals({
   now = Date.now,
   home = homedir(),
   openFolder,
+  log,
 }: {
   pty?: () => Promise<{ spawn: SpawnPty } | { error: string }>;
   limit?: number;
@@ -260,6 +262,8 @@ export function terminals({
   /** What `~/` in a printed path stands for. */
   home?: string;
   openFolder?: OpenFolder;
+  /** A line when a program starts and ends (LG1): its name, never what it runs or prints. */
+  log?: Logger;
 } = {}): Terminals {
   let loaded: Promise<{ spawn: SpawnPty } | { error: string }> | null = null;
   const load = () => (loaded ??= pty());
@@ -373,7 +377,14 @@ export function terminals({
         }
         for (const listener of terminal.listeners) listener.out(data);
       });
+      log?.info(
+        { terminal: terminal.id.slice(0, 8), program: terminal.program, kept },
+        'terminal opened',
+      );
       terminal.pty.onExit(({ exitCode }) => {
+        const ended = { terminal: terminal.id.slice(0, 8), program: terminal.program, exitCode };
+        if (exitCode === 0) log?.info(ended, 'terminal ended');
+        else log?.warn(ended, 'terminal ended');
         clearTimeout(terminal.idle);
         if (open.get(terminal.id) === terminal) open.delete(terminal.id);
         for (const listener of terminal.listeners) listener.exit(exitCode);

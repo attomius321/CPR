@@ -198,6 +198,12 @@ hosted.
 | [RM1](plan/rm1-code-concentration.md) | Code concentration: where a repository's code is | ready for review | 320–328 | [journal](journal/rm1-code-concentration.md) |
 | [RM2](plan/rm2-monitor-styling.md) | The Monitor's look: long files in heat, the folder in view as the heading, a way back | ready for review | 332–335 | [journal](journal/rm2-monitor-styling.md) |
 
+### Logs
+
+| ID | What | Status | Decisions | Journal |
+|---|---|---|---|---|
+| [LG1](plan/lg1-logs.md) | Symbiote's logs: lines from every Symbiote process, uncaught errors kept, read by another app (Grafana, Loki) | ready for review | 349–357, 366 | [journal](journal/lg1-logs.md) |
+
 ### Docs and the repository
 
 | ID | What | Status | Decisions | Journal |

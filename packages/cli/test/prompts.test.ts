@@ -93,9 +93,6 @@ describe('with no prompts set (V28)', () => {
     const text = readPrompts(folder()).text;
     expect(MERGER_INSTRUCTIONS).toBe(BEFORE.merger);
     expect(mergerInstructions(text.merger)).toBe(BEFORE.merger);
-    const text = readPrompts(folder()).text;
-    expect(MERGER_INSTRUCTIONS).toBe(BEFORE.merger);
-    expect(mergerInstructions(text.merger)).toBe(BEFORE.merger);
     // Since V40, one line on a workspace's documents; since MC1, one on a verdict's `via`; since
     // fix/initial-workspace-bug, the worktree and branch are Symbiote's, and no other is made.
     const agents = BEFORE.agents

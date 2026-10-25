@@ -13,6 +13,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { openLog } from '@symbiote/log';
 import type { FolderAt } from '../src/editor.js';
 import {
   imageKind,
@@ -631,4 +632,36 @@ describe('loadPty', () => {
       expect(t.running(id)).toBeUndefined();
     },
   );
+});
+
+describe("terminals' lines (LG1)", () => {
+  it('writes when a program starts in a terminal and when it ends, a failure as a warning', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'symbiote-terminal-log-'));
+    const fake = fakePty();
+    const open = terminals({
+      pty: fake.pty,
+      images: join(dir, 'images'),
+      log: openLog({ process: 'view', env: { SYMBIOTE_LOG_DIR: join(dir, 'logs') } }).log,
+    });
+    const at = { cwd: dir, cols: 80, rows: 24, env: {} };
+    await open.open({ command: '/usr/bin/claude', args: ['attach', 's1'], ...at });
+    await open.open({ command: '/bin/bash', args: [], kept: true, ...at });
+    fake.made[0]?.exit(0);
+    fake.made[1]?.exit(3);
+    const written = readdirSync(join(dir, 'logs')).flatMap((name) =>
+      readFileSync(join(dir, 'logs', name), 'utf8')
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line) as Record<string, unknown>),
+    );
+    expect(written).toMatchObject([
+      { level: 'info', msg: 'terminal opened', program: 'claude', kept: false },
+      { level: 'info', msg: 'terminal opened', program: 'bash', kept: true },
+      { level: 'info', msg: 'terminal ended', program: 'claude', exitCode: 0 },
+      { level: 'warn', msg: 'terminal ended', program: 'bash', exitCode: 3 },
+    ]);
+    // What a terminal runs or prints is never written: only its program's name.
+    expect(JSON.stringify(written)).not.toContain('attach');
+    open.closeAll();
+  });
 });

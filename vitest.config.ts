@@ -10,11 +10,14 @@ export default defineConfig({
       '@symbiote/monitor': fileURLToPath(
         new URL('./packages/monitor/src/index.ts', import.meta.url),
       ),
+      '@symbiote/log': fileURLToPath(new URL('./packages/log/src/index.ts', import.meta.url)),
     },
   },
   test: {
     include: ['packages/*/test/**/*.test.ts'],
     // Fixtures are code under analysis, test files included.
     exclude: [...configDefaults.exclude, 'packages/*/test/fixtures/**'],
+    // Tests never write into the person's log folder (LG1): one that logs gives its own.
+    env: { SYMBIOTE_LOG: 'off' },
   },
 });

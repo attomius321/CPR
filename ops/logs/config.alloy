@@ -1,0 +1,37 @@
+// Follows the day files Symbiote writes (LG1: `<cache>/logs/<day>.jsonl`, one JSON object a
+// line) and sends them to Loki. Each file is a stream of its own (`filename`): several processes
+// append to one file, and Loki takes a stream's lines only near their order.
+loki.source.file "symbiote" {
+  targets    = [{ "__path__" = "/symbiote-logs/*.jsonl", "service_name" = "symbiote" }]
+  forward_to = [loki.process.symbiote.receiver]
+
+  file_match {
+    enabled     = true
+    sync_period = "5s"
+  }
+}
+
+// The line's own time, not when Alloy read it; its process and level as labels, the rest stays
+// in the line for `| json` and Drilldown's fields.
+loki.process "symbiote" {
+  stage.json {
+    expressions = { time = "", level = "", process = "" }
+  }
+
+  stage.timestamp {
+    source = "time"
+    format = "RFC3339"
+  }
+
+  stage.labels {
+    values = { level = "", process = "" }
+  }
+
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

@@ -1,0 +1,55 @@
+# One Loki for one machine's Symbiote lines (LG1): a single process, files on its volume, 30 days.
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  log_level: warn
+
+common:
+  path_prefix: /loki
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+
+schema_config:
+  configs:
+    - from: 2026-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  retention_period: 720h
+  # Symbiote keeps 14 days of files: when this viewer starts for the first time, or after a
+  # while stopped, it reads them all. Loki's default refuses lines older than a week.
+  reject_old_samples: true
+  reject_old_samples_max_age: 720h
+  allow_structured_metadata: true
+  volume_enabled: true
+  discover_log_levels: true
+
+# Lines read late (the files since the viewer last ran, up to 14 days old) are found only once
+# flushed: a query over 3 h ago does not look in memory, even with `query_ingesters_within: 0`
+# (LG1 spike). A stream with no new line for a minute is flushed, so they show within ~1.5 min;
+# today's lines are read from memory at once.
+ingester:
+  chunk_idle_period: 1m
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+pattern_ingester:
+  enabled: true
+
+analytics:
+  reporting_enabled: false

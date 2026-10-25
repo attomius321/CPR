@@ -1,0 +1,353 @@
+{
+  "uid": "symbiote",
+  "title": "Symbiote",
+  "description": "Symbiote's own lines (LG1): every Symbiote process, read from ~/.cache/symbiote/logs by Alloy.",
+  "tags": ["symbiote"],
+  "editable": false,
+  "timezone": "browser",
+  "refresh": "10s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "schemaVersion": 41,
+  "version": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "process",
+        "label": "Process",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "symbiote-loki"
+        },
+        "query": {
+          "refId": "process",
+          "type": 1,
+          "label": "process",
+          "stream": "{service_name=\"symbiote\"}"
+        },
+        "definition": "label_values({service_name=\"symbiote\"}, process)",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": {
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "refresh": 2,
+        "sort": 1
+      },
+      {
+        "name": "level",
+        "label": "Level",
+        "type": "custom",
+        "query": "fatal,error,warn,info,debug",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": {
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "options": []
+      },
+      {
+        "name": "search",
+        "label": "Text",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Crashes",
+      "datasource": {
+        "type": "loki",
+        "uid": "symbiote-loki"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "symbiote-loki"
+          },
+          "expr": "sum(count_over_time({service_name=\"symbiote\", process=~\"$process\", level=~\"fatal\"} [$__range]))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Errors",
+      "datasource": {
+        "type": "loki",
+        "uid": "symbiote-loki"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "symbiote-loki"
+          },
+          "expr": "sum(count_over_time({service_name=\"symbiote\", process=~\"$process\", level=~\"error\"} [$__range]))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Warnings",
+      "datasource": {
+        "type": "loki",
+        "uid": "symbiote-loki"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "symbiote-loki"
+          },
+          "expr": "sum(count_over_time({service_name=\"symbiote\", process=~\"$process\", level=~\"warn\"} [$__range]))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "yellow"
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Errors and warnings by process",
+      "datasource": {
+        "type": "loki",
+        "uid": "symbiote-loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "symbiote-loki"
+          },
+          "expr": "sum by (process, level) (count_over_time({service_name=\"symbiote\", process=~\"$process\", level=~\"fatal|error|warn\"} [$__auto]))",
+          "legendFormat": "{{process}} {{level}}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 0
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Crashes are uncaught errors (`fatal`): the process ended. A line opened shows all its fields. **Explore** and **Drilldown → Logs** read the same lines: `{service_name=\"symbiote\"} | json`."
+      }
+    },
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "Errors and crashes, with their stacks",
+      "datasource": {
+        "type": "loki",
+        "uid": "symbiote-loki"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "symbiote-loki"
+          },
+          "expr": "{service_name=\"symbiote\", process=~\"$process\", level=~\"error|fatal\"} |~ \"(?i)$search\" | json | line_format \"{{.process}} · {{.msg}}{{if .pair}} {{.pair}}{{end}}{{if .signal}} ({{.signal}}){{else if .code}} (exit {{.code}}){{end}}{{if and .err_message (ne .err_message .msg)}} — {{.err_message}}{{end}}{{if .path}} ({{.method}} {{.path}} {{.status}}){{end}}{{if .err_stack}}\\n{{.err_stack}}{{end}}{{if .componentStack}}\\n{{.componentStack}}{{end}}{{if .stderr}}\\n{{.stderr}}{{end}}\"",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "enableInfiniteScrolling": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 7,
+      "type": "logs",
+      "title": "Every line",
+      "datasource": {
+        "type": "loki",
+        "uid": "symbiote-loki"
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "symbiote-loki"
+          },
+          "expr": "{service_name=\"symbiote\", process=~\"$process\", level=~\"$level\"} |~ \"(?i)$search\" | json | line_format \"{{.process}} · {{.msg}}{{if .pair}} {{.pair}}{{end}}{{if .signal}} ({{.signal}}){{else if .code}} (exit {{.code}}){{end}}{{if and .err_message (ne .err_message .msg)}} — {{.err_message}}{{end}}{{if .path}} {{.method}} {{.path}} {{.status}} {{.ms}} ms{{end}}\"",
+          "queryType": "range"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "enableInfiniteScrolling": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}

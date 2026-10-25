@@ -7,5 +7,6 @@
     "tsBuildInfoFile": "dist/.tsbuildinfo",
     "lib": ["ES2023", "DOM"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [{ "path": "../log/tsconfig.build.json" }]
 }
