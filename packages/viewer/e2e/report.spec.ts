@@ -56,6 +56,7 @@ test("a page's uncaught error and unhandled rejection are written as viewer line
   expect(written()).toEqual(
     expect.arrayContaining([expect.objectContaining({ process: 'view', msg: 'view started' })]),
   );
-  // The page still sees its error as without the reporter.
-  expect(errors).toContain('e2e: thrown in a page');
+  // The page still sees its error as without the reporter. Its event comes by its own way
+  // (fix/merging-status): under load it can come after the server wrote the line.
+  await expect.poll(() => errors).toContain('e2e: thrown in a page');
 });

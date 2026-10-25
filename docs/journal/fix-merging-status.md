@@ -47,3 +47,21 @@ comet).
 Not verified: the desktop app on WSLg (its window opens on the person's desktop: not run unasked);
 a real merge's queued state, which lasts while another merge runs (the e2e's routed queue and a
 real check cover `checking`; the rule is the tone's, as `mergeState`'s unit tests give it).
+
+## The merger's check: `report.spec.ts` raced under load (2026-10-25, same branch)
+
+Symbiote's merger merged `2f805d7` into `main` and its `pnpm test:e2e` failed: 262 passed, 1
+failed, `report.spec.ts:30` (LG1a), at its last line, `expect(errors).toContain('e2e: thrown in a
+page')` with `[]`. The merge of `spike/ctrl-x-ctrl-s-works`, without this branch's commits, failed
+the same test at the same line minutes later.
+
+**Learned**:
+- **Two ways, no order.** A page's error reaches the test twice: the viewer's reporter POSTs it to
+  the server, which writes the line the test polls for; Chromium sends it to Playwright as
+  `pageerror`. The test polled for the line, then read the events at once; under the merger's 16
+  workers the event can come second. Reproduced: `--repeat-each 64 --workers 16`, 10 of 64
+  failed with the merger's `[]` (alone, 5 of 5 passed, and the full suites here passed).
+- The test now polls the events too. Nothing in the reporter changed.
+
+**Verification**: red first (10 of 64 under 16 workers), then 64 of 64 three times (192); `pnpm
+check`; the full `pnpm test:e2e`.
