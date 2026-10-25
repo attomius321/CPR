@@ -252,6 +252,7 @@ export {
   MERGE_STATES,
   type MergeAgentEvent,
   type MergeCheckRun,
+  type MergeConflict,
   type MergeEntry,
   type MergeList,
   type MergeLogLine,

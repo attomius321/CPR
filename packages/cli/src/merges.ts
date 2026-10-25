@@ -32,6 +32,7 @@ import {
   type MergeEntry,
   type MergeList,
   type MergeLogRead,
+  type MergeConflict,
   type MergeRegion,
   type MergeRequest,
   type MergeTargets,
@@ -54,6 +55,7 @@ import {
   modelWordProblem,
 } from './agent-levels.js';
 import {
+  aroundOf,
   applyAnswer,
   conflictRegions,
   mergerInstructions,
@@ -209,26 +211,36 @@ async function writeAnswer(
   perFile: { path: string; text: string; regions: ConflictRegion[] }[],
   answer: Extract<MergerAnswer, { texts: string[] }>,
 ): Promise<MergeRegion[]> {
-  const regions: MergeRegion[] = [];
+  const regions = conflictsOf(perFile);
   let n = 0;
   for (const file of perFile) {
     const texts = file.regions.map((_, i) => answer.texts[n + i] ?? '');
-    file.regions.forEach((region, i) => {
-      const note = answer.notes[n + i];
-      regions.push({
-        path: file.path,
-        line: region.start + 1,
-        ours: region.ours,
-        base: region.base,
-        theirs: region.theirs,
-        text: texts[i] ?? '',
-        ...(note ? { note } : {}),
-      });
-    });
     n += file.regions.length;
     await writeFile(join(worktree, file.path), applyAnswer(file.text, file.regions, texts));
   }
-  return regions;
+  return regions.map((region, i) => {
+    const note = answer.notes[i];
+    return { ...region, text: answer.texts[i] ?? '', ...(note ? { note } : {}) };
+  });
+}
+
+/**
+ * The regions as the agent was given them, in its prompt's order: each with the lines around it,
+ * which stay in the file (fix/merge-viewer-on-conflict).
+ */
+function conflictsOf(
+  perFile: { path: string; text: string; regions: ConflictRegion[] }[],
+): MergeConflict[] {
+  return perFile.flatMap((file) =>
+    file.regions.map((region) => ({
+      path: file.path,
+      line: region.start + 1,
+      ours: region.ours,
+      base: region.base,
+      theirs: region.theirs,
+      around: aroundOf(file.text, region),
+    })),
+  );
 }
 
 /** What the server and `symbiote merge` need of the merger. */
@@ -426,7 +438,13 @@ export function merger(
       await set(id, { ...fresh, state: 'failed', message: `no branch ${entry.into}` });
       return;
     }
-    await set(id, { ...fresh, state: 'merging', base: tip.sha });
+    // Asked again, the files asked about stay listed until the merge says which conflict.
+    await set(id, {
+      ...fresh,
+      ...(entry.again ? { conflicts: entry.conflicts } : {}),
+      state: 'merging',
+      base: tip.sha,
+    });
     await resetMergeWorktree(repo, worktree, tip.sha);
     log.out(`Symbiote's merge worktree at ${entry.into} (${short(tip.sha)})\n`);
     const outcome = await mergeInWorktree(worktree, entry.head, entry.title, { keep: true });
@@ -443,7 +461,7 @@ export function merger(
     if ('error' in outcome) {
       log.out(`${outcome.error}\n`);
       log.end(false);
-      await set(id, { state: 'failed', message: outcome.error });
+      await set(id, { state: 'failed', message: outcome.error, conflicts: undefined });
       return;
     }
     if ('upToDate' in outcome) {
@@ -453,11 +471,14 @@ export function merger(
         state: 'landed',
         landed: now().toISOString(),
         message: `already in ${entry.into}`,
+        conflicts: undefined,
+        again: undefined,
       });
       return;
     }
     log.out(`Merged ${short(entry.head)}: ${short(outcome.merged)}\n`);
     log.end(true);
+    await set(id, { conflicts: undefined, again: undefined });
     await checkMerge(id, tip.sha, outcome.merged, false);
   }
 
@@ -638,9 +659,11 @@ export function merger(
     const count = perFile.reduce((n, f) => n + f.regions.length, 0);
     const answer = parseAnswer(run.text, count);
     if ('needsYou' in answer) {
+      // What it asked about is kept for the person to read and answer.
+      const asked = conflictsOf(perFile);
       return stop(
         `the merger agent: ${answer.needsYou}`,
-        { resolution: { ...about, regions: [], needsYou: answer.needsYou } },
+        { resolution: { ...about, regions: [], needsYou: answer.needsYou, asked } },
         `it says you must decide: ${answer.needsYou}`,
       );
     }
@@ -941,15 +964,22 @@ export function merger(
       if (comments.trim() === '') throw new MergeRefused('say what to change', 400);
       const entry = await entryOf(id);
       const regions = entry.resolution?.regions ?? [];
-      if (entry.state !== 'needs-you' || regions.length === 0) {
+      // A question the agent asked is answered the same way (fix/merge-viewer-on-conflict).
+      const asked = entry.resolution?.needsYou;
+      if (entry.state !== 'needs-you' || (regions.length === 0 && !asked)) {
         throw new MergeRefused(`${entry.branch} has no resolution to change`, 409);
       }
       const after = await set(id, {
         ...fresh,
+        // The files asked about stay listed while it runs again.
+        conflicts: entry.conflicts,
         state: 'queued',
-        again: { comments, previous: regions.map((r) => r.text) },
+        again:
+          regions.length === 0 && asked
+            ? { comments, previous: [], asked }
+            : { comments, previous: regions.map((r) => r.text) },
       });
-      logs.of(id).run(`Request changes: ${comments.trim()}`);
+      logs.of(id).run(`${regions.length === 0 ? 'Answer' : 'Request changes'}: ${comments.trim()}`);
       kick();
       return after;
     },

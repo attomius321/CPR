@@ -145,12 +145,27 @@ export interface MergerInput {
   symbols?: { path: string; name: string; kind: string; into: string; branch: string }[];
   /** `symbiote/merge.md`, the project's own rules. */
   rules?: string;
-  /** The person's words on an earlier answer, and that answer. */
-  again?: { comments: string; previous: string[] };
+  /** The person's words on an earlier answer, and that answer; or their answer to what it asked. */
+  again?: { comments: string; previous: string[]; asked?: string };
 }
 
 /** Lines shown around a region. */
 const AROUND = 3;
+
+/**
+ * The lines a region's prompt shows above and below it, which stay in the file: the merge page
+ * reads a line the agent wrote again from them (fix/merge-viewer-on-conflict).
+ */
+export function aroundOf(
+  text: string,
+  region: ConflictRegion,
+): { before: string[]; after: string[] } {
+  const lines = linesOf(text);
+  return {
+    before: lines.slice(Math.max(0, region.start - AROUND), region.start),
+    after: lines.slice(region.end + 1, region.end + 1 + AROUND),
+  };
+}
 
 /** The prompt: the merge, the sides, the symbols, each region with 3 lines around; nothing more. */
 export function mergerPrompt(input: MergerInput): string {
@@ -174,19 +189,23 @@ export function mergerPrompt(input: MergerInput): string {
   }
   let n = 0;
   for (const file of input.files) {
-    const lines = linesOf(file.text);
     out.push(`## ${file.path}`, '');
     for (const region of conflictRegions(file.text)) {
       n++;
-      out.push(`Region ${n} (lines ${region.start + 1}–${region.end + 1}):`, '```');
-      out.push(...lines.slice(Math.max(0, region.start - AROUND), region.start));
+      const { before, after } = aroundOf(file.text, region);
+      out.push(`Region ${n} (lines ${region.start + 1}–${region.end + 1}):`, '```', ...before);
       out.push(`<<<<<<< ${into}`, ...region.ours);
       if (region.base) out.push('||||||| ancestor', ...region.base);
-      out.push('=======', ...region.theirs, `>>>>>>> ${branch}`);
-      out.push(...lines.slice(region.end + 1, region.end + 1 + AROUND), '```', '');
+      out.push('=======', ...region.theirs, `>>>>>>> ${branch}`, ...after, '```', '');
     }
   }
-  if (input.again) {
+  if (input.again?.asked) {
+    out.push(
+      `You asked: ${input.again.asked.trim()}`,
+      `The person answered: ${input.again.comments.trim()}`,
+      '',
+    );
+  } else if (input.again) {
     const regions = Object.fromEntries(
       input.again.previous.map((text, i) => [String(i + 1), text]),
     );
@@ -199,7 +218,12 @@ export function mergerPrompt(input: MergerInput): string {
       '',
     );
   }
-  out.push(n === 1 ? 'Answer for region 1.' : `Answer for regions 1–${n}.`, '');
+  // The lines around a region were once written into it again (fix/merge-viewer-on-conflict).
+  out.push(
+    'The lines above <<<<<<< and below >>>>>>> stay in the file as they are: do not write them again.',
+    n === 1 ? 'Answer for region 1.' : `Answer for regions 1–${n}.`,
+    '',
+  );
   return out.join('\n');
 }
 

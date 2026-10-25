@@ -261,10 +261,11 @@ describe('a resolution, line by line (the merge page remake)', () => {
         '| V27 | Codex |',
       ].join('\n'),
     });
+    // Lines are read in order (fix/merge-viewer-on-conflict): only the second copy is the extra one.
     expect(review.lines).toEqual([
       { text: '| V25 | Workspaces |', from: 'ours' },
       { text: '| V26 | A merger | merged |', from: 'new' },
-      { text: '| V27 | Codex |', from: 'both', twice: true },
+      { text: '| V27 | Codex |', from: 'both' },
       { text: '| V27 | Codex |', from: 'both', twice: true },
     ]);
     // The ancestor's line is no side's own: neither side added it.
@@ -415,5 +416,168 @@ describe("a resolution's files (V46c)", () => {
 
   it('has no files without a conflict', () => {
     expect(resolutionFiles(entry({ state: 'landed', merge: M }))).toEqual([]);
+  });
+});
+
+describe('red for what is lost or doubled, amber for what the agent wrote (fix/merge-viewer-on-conflict)', () => {
+  // A merge of feature/discounts (discount codes) into main (rounding), as the person's: four
+  // files, each resolved the way the agent did.
+  const region = (
+    path: string,
+    ours: string[],
+    base: string[],
+    theirs: string[],
+    text: string[],
+    around?: { before: string[]; after: string[] },
+  ) => ({
+    path,
+    line: 3,
+    ours,
+    base,
+    theirs,
+    text: text.join('\n'),
+    ...(around ? { around } : {}),
+  });
+  const files = (regions: ReturnType<typeof region>[]) =>
+    resolutionFiles(
+      entry({
+        branch: 'feature/discounts',
+        state: 'needs-you',
+        merge: M,
+        conflicts: [...new Set(regions.map((r) => r.path))],
+        resolution: { agent: 'claude', model: 'sonnet', regions, ms: 11_000 },
+      }),
+    );
+  const verdicts = (list: ReturnType<typeof resolutionFiles>) =>
+    list.map((f) => [f.path, f.tone, f.flags.map((flag) => flag.text)]);
+
+  // Both sides change one paragraph; the agent keeps both sides' words, wrapped again.
+  const readme = region(
+    'README.md',
+    ['Totals are the sum of the item prices, rounded to', 'cents at the end.'],
+    ['Totals are the sum of the item prices.'],
+    ['Totals are the sum of the item prices, less any', 'discount code given at checkout.'],
+    [
+      'Totals are the sum of the item prices, less any',
+      'discount code given at checkout, rounded to cents at',
+      'the end.',
+    ],
+  );
+  // Both sides add two tests at the end: each closed by its own `});`.
+  const test1 = (name: string, body: string) => [`  it('${name}', () => {`, `    ${body}`, '  });'];
+  const tests = region(
+    'src/pricing.test.ts',
+    [
+      ...test1('rounds to cents', 'expect(total([0.1, 0.2])).toBe(0.3);'),
+      ...test1('rounds halves up', 'expect(total([0.005])).toBe(0.01);'),
+    ],
+    [],
+    [
+      ...test1('applies a code', "expect(total([10], 'TEN')).toBe(9);"),
+      ...test1('ignores an unknown code', "expect(total([10], 'NOPE')).toBe(10);"),
+    ],
+    [
+      ...test1('rounds to cents', 'expect(total([0.1, 0.2])).toBe(0.3);'),
+      ...test1('rounds halves up', 'expect(total([0.005])).toBe(0.01);'),
+      ...test1('applies a code', "expect(total([10], 'TEN')).toBe(9);"),
+      ...test1('ignores an unknown code', "expect(total([10], 'NOPE')).toBe(10);"),
+    ],
+  );
+  // The doc comment both sides changed, merged into one.
+  const comment = region(
+    'src/pricing.ts',
+    ['/** The total of the prices, rounded to cents. */'],
+    ['/** The total of the prices. */'],
+    ['/** The total of the prices, less the discount code. */'],
+    ['/** The total of the prices, less the discount code, rounded to cents. */'],
+  );
+  // Both add an entry under "## Unreleased", just above the region: the agent writes it again.
+  const changelog = region(
+    'CHANGELOG.md',
+    ['- Totals are rounded to cents.'],
+    [],
+    ['- Discount codes at checkout.'],
+    ['## Unreleased', '- Totals are rounded to cents.', '- Discount codes at checkout.'],
+    { before: ['# Changelog', '', '## Unreleased'], after: ['', '## 1.0.0', '- First release.'] },
+  );
+
+  it('reads a correct merge without red, and the line copied from above the region in red', () => {
+    const list = files([readme, tests, comment, changelog]);
+    expect(verdicts(list)).toEqual([
+      ['README.md', 'new', ['2 lines written by the agent, with every word of the 3 they replace']],
+      ['src/pricing.test.ts', 'ok', ['Keeps every line of both sides, nothing new']],
+      [
+        'src/pricing.ts',
+        'new',
+        ['1 line written by the agent, with every word of the 2 it replaces'],
+      ],
+      ['CHANGELOG.md', 'bad', ['Repeats “## Unreleased” from just above it']],
+    ]);
+    expect(firstFile(list)?.path).toBe('CHANGELOG.md');
+  });
+
+  it('marks the copied line, and the lines rewritten from each side', () => {
+    const copied = reviewRegion(changelog);
+    expect(copied.lines[0]).toEqual({ text: '## Unreleased', from: 'new', repeats: 'above' });
+    expect(copied.written).toBe(0);
+    const merged = reviewRegion(comment);
+    expect(merged.kept).toEqual({ ours: { kept: 1, of: 1 }, theirs: { kept: 1, of: 1 } });
+    expect(merged.dropped).toEqual({ ours: [], theirs: [] });
+    expect(merged.rewritten).toEqual({ ours: comment.ours, theirs: comment.theirs });
+  });
+
+  it('reads a wrong merge in red, apart from a right one, and shows it first', () => {
+    // The discount lost: main's line kept as it was, the branch's dropped.
+    const wrong = region(
+      'src/pricing.ts',
+      ['  return Math.round(sum * 100) / 100;'],
+      ['  return sum;'],
+      ['  return sum * (1 - discountOf(code));'],
+      ['  return Math.round(sum * 100) / 100;'],
+    );
+    const right = {
+      ...wrong,
+      text: '  return Math.round(sum * (1 - discountOf(code)) * 100) / 100;',
+    };
+    expect(verdicts(files([readme, wrong]))).toEqual([
+      ['README.md', 'new', ['2 lines written by the agent, with every word of the 3 they replace']],
+      ['src/pricing.ts', 'bad', ['Drops the line from feature/discounts']],
+    ]);
+    expect(firstFile(files([readme, wrong]))?.path).toBe('src/pricing.ts');
+    expect(verdicts(files([right]))).toEqual([
+      [
+        'src/pricing.ts',
+        'new',
+        ['1 line written by the agent, with every word of the 2 it replaces'],
+      ],
+    ]);
+    expect(firstFile(files([tests, readme]))?.path).toBe('README.md');
+  });
+
+  it('keeps code strict: a changed operator is a dropped line, not a rewritten one', () => {
+    const review = reviewRegion(
+      region('a.ts', ['x = a + 1;'], ['x = a;'], ['x = a - b;'], ['x = a + b + 1;']),
+    );
+    expect(review.dropped).toEqual({ ours: [], theirs: ['x = a - b;'] });
+    expect(regionFlags(review, 'main', 'b')).toEqual([
+      { tone: 'bad', text: 'Drops the line from b' },
+      { tone: 'new', text: '1 line written by the agent, with every word of the line it replaces' },
+    ]);
+  });
+
+  it('reads lines a resolution moved as kept, not dropped and kept twice', () => {
+    const review = reviewRegion(
+      region(
+        'a.ts',
+        ['import { a } from "a";', 'import { b } from "b";'],
+        [],
+        ['c();'],
+        ['import { b } from "b";', 'import { a } from "a";', 'c();'],
+      ),
+    );
+    expect(review.twice).toBe(0);
+    expect(regionFlags(review, 'main', 'b')).toEqual([
+      { tone: 'ok', text: 'Keeps every line of both sides, nothing new' },
+    ]);
   });
 });
