@@ -226,6 +226,88 @@ test('on a phone, the list first; a prompt or an agent takes the page, and comes
   await expect(list(page)).toBeVisible();
 });
 
+// V51: Settings drawn as the start page (V49): centred, the head's contents in its width, a page's
+// parts as cards, a prebuilt agent's settings as rows.
+test('centred in a wide main area, the head over the list; a page in cards, its settings as rows', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  for (const [width, height] of [
+    [1920, 1080],
+    [2560, 1440],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto(`${symbiote.url}settings`);
+    await expect(text(page, 'Feature')).toBeVisible();
+    // The main area without a scrollbar, should the page scroll.
+    const area = await page.locator('.settings').evaluate((el) => {
+      const box = el.getBoundingClientRect();
+      return { x: box.x, width: el.clientWidth };
+    });
+    const l = await list(page).boundingBox();
+    const e = await editor(page).boundingBox();
+    if (!l || !e) throw new Error('no box');
+    const left = l.x - area.x;
+    const right = area.x + area.width - (e.x + e.width);
+    expect(left).toBeGreaterThan(100);
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
+    // A prompt's lines no longer than the start page's brief.
+    expect(e.width).toBeLessThanOrEqual(760);
+    const heading = await page
+      .getByRole('heading', { name: 'Settings', exact: true })
+      .boundingBox();
+    expect(Math.abs((heading?.x ?? 0) - l.x)).toBeLessThanOrEqual(1);
+  }
+  // The prompt in a card: the style's 14 px.
+  const card = editor(page).locator('.settings-card');
+  await expect(card).toHaveCount(1);
+  await expect(card).toHaveCSS('border-top-left-radius', '14px');
+  await expect(card.getByRole('textbox', { name: 'Feature prompt' })).toBeVisible();
+
+  // An agent's page: its Model and Effort one card of rows, its Instructions another.
+  await agents(page).getByRole('button', { name: 'Scout' }).click();
+  await expect(editor(page).locator('.settings-card')).toHaveCount(2);
+  const name = await part(page, 'Model').getByRole('heading', { name: 'Model' }).boundingBox();
+  const field = await modelSelect(page).boundingBox();
+  if (!name || !field) throw new Error('no box');
+  expect(field.x).toBeGreaterThan(name.x + name.width);
+  expect(Math.abs(field.y + field.height / 2 - (name.y + name.height / 2))).toBeLessThanOrEqual(4);
+});
+
+// V51 (decision 388): the theme and the intro, a setting each, under an entry of their own; the
+// head keeps only its title.
+test('Appearance is an entry of its own: the theme and the intro; listed when the prompts cannot be read', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}settings`);
+  await expect(text(page, 'Feature')).toBeVisible();
+  const head = page.locator('.settings-bar');
+  await expect(head.getByRole('button')).toHaveCount(1);
+  await expect(head.getByRole('button', { name: 'About Settings' })).toBeVisible();
+  await list(page)
+    .getByRole('region', { name: 'This browser' })
+    .getByRole('button', { name: 'Appearance' })
+    .click();
+  await expect(page).toHaveURL(`${symbiote.url}settings?prompt=appearance`);
+  const theme = editor(page).getByRole('group', { name: 'Theme' });
+  await expect(theme.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'true');
+  await theme.getByRole('button', { name: 'Light' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(editor(page).getByRole('button', { name: 'Play the intro' })).toBeVisible();
+
+  // Without the prompts, Appearance is still there, and open.
+  await page.route('**/api/settings/prompts', (route) =>
+    route.fulfill({ status: 500, body: 'broken' }),
+  );
+  await page.goto(`${symbiote.url}settings`);
+  await expect(page.getByRole('alert')).toContainText('The prompts could not be read');
+  await expect(theme.getByRole('button', { name: 'Light' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+});
+
 // Scout's effort (fix/scout-effort-level): `scout.effort` in the project's config, the level each
 // conversation starts at, set on a stepper of Scout's agent's levels and saved when let go.
 test("Scout's page: its Model, Effort and Instructions; the effort a stepper of Claude Code's levels, saved in symbiote/config.json when let go", async ({

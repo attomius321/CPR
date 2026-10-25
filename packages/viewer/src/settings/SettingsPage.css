@@ -1,9 +1,21 @@
 /* ---- settings: every agent's prompts (V28b) ----------------------------------------- */
 
+/* Drawn as Start a workspace (V51, V49's recipe): the list and the page centred in the main area,
+   the head's contents and the notes under it in their width; the page's parts as cards, a
+   prebuilt agent's settings as rows. Skills draws its page with the same rules. */
 .settings {
+  /* The list (240 px), the gap and the page (760 px, the start page's brief). */
+  --settings-width: 1024px;
+  /* The space each side of them: the head's and the notes' (`100%` is the main area's width). */
+  --settings-side: max(16px, calc((100% - var(--settings-width)) / 2));
   flex: 1;
   min-width: 0;
   overflow: auto;
+}
+
+.settings-bar {
+  padding-right: var(--settings-side);
+  padding-left: var(--settings-side);
 }
 
 .settings-bar h1 {
@@ -12,25 +24,11 @@
   font-weight: 600;
 }
 
-/* The theme (V29b): at the toolbar's right, for this browser. */
-.appearance {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-  color: var(--muted);
-  font-size: var(--size-small);
-}
-
-.appearance .field-optional {
-  font-size: var(--size-small);
-}
-
 .settings > .settings-git,
 .settings > .settings-warning,
 .settings > .commits-error,
 .settings > .hint {
-  margin: 12px 16px 0;
+  margin: 12px var(--settings-side) 0;
   padding: 0;
 }
 
@@ -46,15 +44,16 @@
 
 .settings-body {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 760px);
+  justify-content: center;
   gap: 24px;
   align-items: start;
   margin: 16px;
 }
 
+/* The groups' headings in line with the head's title and the notes (V51). */
 .settings-list section h2 {
   margin: 0 0 4px;
-  padding: 0 8px;
   color: var(--muted);
   font-size: var(--size-caption);
   font-weight: 500;
@@ -64,10 +63,11 @@
   margin-top: 16px;
 }
 
-/* A group's entries a little in from its heading (fix/scout-merger-scribe-settings). */
+/* A group's entries a little in from its heading (fix/scout-merger-scribe-settings): their words
+   12 px in, their wash 4. */
 .settings-list ul {
   margin: 0;
-  padding: 0 0 0 12px;
+  padding: 0 0 0 4px;
   list-style: none;
 }
 
@@ -133,41 +133,60 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
-  margin: 0 0 8px;
+  margin: 0 0 12px;
   font-size: var(--size-title);
   font-weight: 600;
 }
 
+/* Whose text it is: Symbiote's a quiet chip, the project's a badge of the change (V51). */
 .settings-state {
-  padding: 0 5px;
-  border: 1px solid var(--line);
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
   border-radius: 4px;
+  background: var(--raised);
   color: var(--muted);
   font-size: var(--size-caption);
-  font-weight: normal;
+  font-weight: 500;
 }
 
 .settings-state.changed {
-  border-color: var(--modified);
-  color: var(--modified);
+  --badge: var(--modified);
+}
+
+.settings-state.changed,
+.settings-state.added {
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--badge) 25%, transparent);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--badge) 10%, transparent);
+  color: var(--badge);
 }
 
 .settings-editor .settings-warning {
   margin: 0 0 8px;
 }
 
-/* A prebuilt agent's page (fix/scout-merger-scribe-settings): its Model, Effort and
-   Instructions one under another, a hairline between them. */
-.settings-part {
+/* The style's card (V49): a page's parts, one under another. */
+.settings-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-lift);
+}
+
+.settings-card + .settings-card {
   margin-top: 16px;
 }
 
-.settings-part + .settings-part {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
+.settings-card > :first-child {
+  margin-top: 0;
 }
 
+/* A part's title in its card: a prompt of a prebuilt agent's (fix/scout-merger-scribe-settings). */
 .settings-part h3 {
   display: flex;
   flex-wrap: wrap;
@@ -182,21 +201,68 @@
   margin: 8px 0 0;
 }
 
-/* An agent's model (V47): its agent's list, as wide as the effort stepper beside it. */
-.settings-model {
-  max-width: 360px;
-  margin-bottom: 8px;
+/* Settings as rows (V51, the start page's run): the name and its "?" at the left in --muted, the
+   control beside it, what it says under the control, a hairline between rows. */
+.settings-rows > .settings-part {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 4px;
+  min-height: 32px;
+  margin: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
 }
 
-.settings-model select {
+.settings-rows > .settings-part:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.settings-rows > .settings-part:last-child {
+  padding-bottom: 0;
+}
+
+.settings-rows > .settings-part > h3 {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.settings-rows > .settings-part > :not(h3) {
+  grid-column: 2;
+  justify-self: start;
+  margin: 0;
+}
+
+/* The stepper wants the room of its six words: under its name, as on the start page. */
+.settings-rows > .settings-effort {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-rows > .settings-effort > :not(h3) {
+  grid-column: 1;
+  justify-self: stretch;
+}
+
+/* An agent's model (V47): its agent's list, as wide as the effort stepper. */
+.settings-rows select {
   box-sizing: border-box;
   width: 100%;
+  max-width: 360px;
+  min-width: 0;
+  text-overflow: ellipsis;
 }
 
-.settings-model-note {
-  margin: 4px 0 0;
+.settings-rows > .settings-part > select {
+  justify-self: stretch;
+}
+
+.settings-row-note {
   color: var(--muted);
   font-size: var(--size-small);
+  overflow-wrap: anywhere;
 }
 
 .settings-editor textarea {
@@ -245,8 +311,11 @@ p.settings-placeholders {
   font-size: var(--size-body);
 }
 
+/* A line that wraps goes on a little in from its chip (V51: the card's width wraps the longer). */
 .settings-placeholders li {
   margin: 2px 0;
+  padding-left: 12px;
+  text-indent: -12px;
 }
 
 /* Each a button that inserts it: a code chip (V31). */
@@ -302,7 +371,7 @@ p.settings-placeholders {
 @media (max-width: 899px) {
   .settings-body {
     display: block;
-    margin: 12px;
+    margin: 12px 16px 16px;
   }
 
   .settings-body.picked .settings-list,
@@ -310,8 +379,16 @@ p.settings-placeholders {
     display: none;
   }
 
+  /* Its arrow in line with the page's heading (V51). */
   .settings-back {
     display: inline-flex;
     justify-self: start;
+    margin-left: -12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .settings-card {
+    padding: 12px;
   }
 }

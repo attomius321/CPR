@@ -214,6 +214,44 @@ test('on a phone, the list first; a skill takes the page, and goes back to the l
   await expect(list(page)).toBeVisible();
 });
 
+// V51 (decision 390): Skills follows Settings, drawn as the start page: centred, the head's
+// contents in its width, the skill in a card.
+test('centred in a wide main area, the head over the list and the editor; the skill in a card', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  commit({ '.claude/skills/review/SKILL.md': REVIEW });
+  for (const [width, height] of [
+    [1920, 1080],
+    [2560, 1440],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto(`${symbiote.url}skills`);
+    await entry(page, 'review').click();
+    await expect(text(page, 'review')).toBeVisible();
+    const area = await page.locator('.skills').evaluate((el) => {
+      const box = el.getBoundingClientRect();
+      return { x: box.x, width: el.clientWidth };
+    });
+    const l = await list(page).boundingBox();
+    const e = await editor(page).boundingBox();
+    if (!l || !e) throw new Error('no box');
+    const left = l.x - area.x;
+    const right = area.x + area.width - (e.x + e.width);
+    expect(left).toBeGreaterThan(100);
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
+    expect(e.width).toBeLessThanOrEqual(760);
+    // The title over the list, New skill over the editor's right edge.
+    const heading = await page.getByRole('heading', { name: 'Skills', exact: true }).boundingBox();
+    const add = await page.getByRole('button', { name: 'New skill' }).boundingBox();
+    expect(Math.abs((heading?.x ?? 0) - l.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs((add?.x ?? 0) + (add?.width ?? 0) - (e.x + e.width))).toBeLessThanOrEqual(1);
+  }
+  const card = editor(page).locator('.settings-card');
+  await expect(card).toHaveCSS('border-top-left-radius', '14px');
+  await expect(card.getByRole('textbox', { name: 'review SKILL.md' })).toBeVisible();
+});
+
 /** Lists are read every 5 s while an agent works (V18b). */
 const POLL = { timeout: 15_000 };
 const scribePane = (page: Page) => page.getByRole('region', { name: 'Scribe' });

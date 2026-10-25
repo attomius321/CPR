@@ -104,14 +104,15 @@ test('a click ends it too', async ({ page }) => {
 
 test('Settings plays it again, and it keeps nothing when SYMBIOTE_INTRO=off', async ({ page }) => {
   symbiote = await serveCommits({ HOME: home, XDG_CONFIG_HOME: join(home, '.config') });
-  await page.goto(`${symbiote.url}settings`);
+  // V51: in Settings' Appearance.
+  await page.goto(`${symbiote.url}settings?prompt=appearance`);
   await expect(page.getByRole('button', { name: 'Play the intro' })).toBeVisible();
   await expect(intro(page)).toHaveCount(0);
   await page.getByRole('button', { name: 'Play the intro' }).click();
   await expect(intro(page).locator('canvas')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(intro(page)).toHaveCount(0, { timeout: 1_500 });
-  await expect(page).toHaveURL(`${symbiote.url}settings`);
+  await expect(page).toHaveURL(`${symbiote.url}settings?prompt=appearance`);
   expect(existsSync(record())).toBe(false);
 });
 

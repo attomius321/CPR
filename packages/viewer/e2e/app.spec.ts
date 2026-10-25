@@ -419,6 +419,8 @@ test.describe('the title bar', () => {
     const close = page.locator('.titlebar').getByRole('button', { name: 'Close', exact: true });
     const colour = () => close.evaluate((el) => getComputedStyle(el).color);
     await page.keyboard.press('s');
+    // V51: the theme is in Settings' Appearance.
+    await page.getByRole('button', { name: 'Appearance', exact: true }).click();
     await page.getByRole('button', { name: 'Light', exact: true }).click();
     // The text's colour, Symbiote's style since V31, in the koi's colours since V42.
     await expect.poll(colour).toBe('rgb(11, 18, 32)');

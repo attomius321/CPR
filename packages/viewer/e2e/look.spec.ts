@@ -21,7 +21,13 @@ const DARK = 'rgb(5, 8, 15)';
 const LIGHT = 'rgb(255, 255, 255)';
 const background = (page: Page) =>
   page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-const appearance = (page: Page) => page.getByRole('group', { name: 'Appearance (this browser)' });
+// Settings' Appearance (V51: an entry of its own, no longer in the head) and its Theme.
+const appearance = (page: Page) => page.getByRole('group', { name: 'Theme' });
+const openAppearance = (page: Page) =>
+  page
+    .getByRole('navigation', { name: 'Settings' })
+    .getByRole('button', { name: 'Appearance' })
+    .click();
 
 test('dark by default; Appearance in Settings makes it light, kept for this browser and its diffs', async ({
   page,
@@ -34,6 +40,7 @@ test('dark by default; Appearance in Settings makes it light, kept for this brow
   expect(await background(page)).toBe(DARK);
 
   await page.getByRole('link', { name: 'Settings' }).click();
+  await openAppearance(page);
   await expect(appearance(page).getByRole('button', { name: 'Dark' })).toHaveAttribute(
     'aria-pressed',
     'true',
@@ -64,7 +71,7 @@ test('dark by default; Appearance in Settings makes it light, kept for this brow
 
 test("System follows the system's scheme", async ({ page }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}settings`);
+  await page.goto(`${symbiote.url}settings?prompt=appearance`);
   await appearance(page).getByRole('button', { name: 'System' }).click();
   await page.emulateMedia({ colorScheme: 'light' });
   expect(await background(page)).toBe(LIGHT);
@@ -193,6 +200,7 @@ test('no text under 12 px on any page; the body and the terminal at 14 px', asyn
   await page.keyboard.press('Escape');
 
   await page.getByRole('link', { name: 'Settings' }).click();
+  await openAppearance(page);
   await expect(appearance(page)).toBeVisible();
   expect(await small()).toEqual([]);
 

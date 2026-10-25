@@ -409,7 +409,10 @@ export function SkillsPage() {
 const readers = (skill: Skill) =>
   skill.agents.map((a) => (a === 'claude' ? 'Claude Code' : 'Codex')).join(' and ');
 
-/** One skill: its `SKILL.md` to change, its checks and files, Save and Delete. */
+/**
+ * One skill: its `SKILL.md` to change, its checks and files, Save and Delete; a card under its
+ * name and where it is, as a prompt in Settings (V51).
+ */
 function SkillEditor({
   skill,
   draft,
@@ -465,124 +468,128 @@ function SkillEditor({
       <p className="skills-where">
         <code>{skill.path}</code> · read by {readers(skill)} · {skillGitNote(skill.git)}
       </p>
-      {skill.tooLarge ? (
-        <p className="settings-warning" role="alert">
-          Its SKILL.md is too large to edit here (over 256 KB): open it in an editor.
-        </p>
-      ) : (
-        <>
-          <textarea
-            ref={area}
-            aria-label={`${skill.name} SKILL.md`}
-            value={text}
-            spellCheck={false}
-            rows={7}
-            onChange={(event) => onDraft(event.target.value)}
-            onKeyDown={(event) => {
-              const saving = event.key === 's' && (event.ctrlKey || event.metaKey);
-              if (!saving) return;
-              event.preventDefault();
-              if (canSave) onSave(text);
-            }}
-          />
-          <p className="settings-size">{skillSize(text)}</p>
-          {checks.length > 0 ? (
-            <ul className="skills-checks" aria-label="Checks">
-              {checks.map((check) => (
-                <li key={check.text} className={check.level}>
-                  {check.text}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="skills-checks-none">
-              Nothing the standard or the agents would refuse.
-              <Help label="About the checks">
-                The checks are the open standard&apos;s (agentskills.io) and what Claude Code, Codex
-                and Anthropic&apos;s API refuse or cut. Whether it says the right thing is yours to
-                read.
-              </Help>
-            </p>
-          )}
-        </>
-      )}
-      {skill.files.length > 0 && (
-        <div className="skills-files">
-          <p>Its other files</p>
-          <ul>
-            {skill.files.map((file) => (
-              <li key={file}>{file}</li>
-            ))}
-            {skill.moreFiles && <li className="hint">and more</li>}
-          </ul>
-        </div>
-      )}
-      <div className="settings-actions">
-        {notice && (
-          <span className={`settings-notice${notice.error ? ' error' : ''}`} role="status">
-            {notice.text}
-            {notice.stale && (
-              <>
-                {' '}
-                <button type="button" className="link" onClick={onLoad}>
-                  Read it again
-                </button>
-              </>
+      <div className="settings-card">
+        {skill.tooLarge ? (
+          <p className="settings-warning" role="alert">
+            Its SKILL.md is too large to edit here (over 256 KB): open it in an editor.
+          </p>
+        ) : (
+          <>
+            <textarea
+              ref={area}
+              aria-label={`${skill.name} SKILL.md`}
+              value={text}
+              spellCheck={false}
+              rows={7}
+              onChange={(event) => onDraft(event.target.value)}
+              onKeyDown={(event) => {
+                const saving = event.key === 's' && (event.ctrlKey || event.metaKey);
+                if (!saving) return;
+                event.preventDefault();
+                if (canSave) onSave(text);
+              }}
+            />
+            <p className="settings-size">{skillSize(text)}</p>
+            {checks.length > 0 ? (
+              <ul className="skills-checks" aria-label="Checks">
+                {checks.map((check) => (
+                  <li key={check.text} className={check.level}>
+                    {check.text}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="skills-checks-none">
+                Nothing the standard or the agents would refuse.
+                <Help label="About the checks">
+                  The checks are the open standard&apos;s (agentskills.io) and what Claude Code,
+                  Codex and Anthropic&apos;s API refuse or cut. Whether it says the right thing is
+                  yours to read.
+                </Help>
+              </p>
             )}
-          </span>
+          </>
         )}
-        {deleting ? (
-          <span className="workspace-confirm">
-            Deletes {skill.folder}/{skill.name}
-            {skill.files.length > 0 ? ` and its ${skill.files.length} other files` : ''}
-            {skill.git === 'new' ? ', not committed: it is gone for good.' : ': git keeps it.'}{' '}
+        {skill.files.length > 0 && (
+          <div className="skills-files">
+            <p>Its other files</p>
+            <ul>
+              {skill.files.map((file) => (
+                <li key={file}>{file}</li>
+              ))}
+              {skill.moreFiles && <li className="hint">and more</li>}
+            </ul>
+          </div>
+        )}
+        <div className="settings-actions">
+          {notice && (
+            <span className={`settings-notice${notice.error ? ' error' : ''}`} role="status">
+              {notice.text}
+              {notice.stale && (
+                <>
+                  {' '}
+                  <button type="button" className="link" onClick={onLoad}>
+                    Read it again
+                  </button>
+                </>
+              )}
+            </span>
+          )}
+          {deleting ? (
+            <span className="workspace-confirm">
+              Deletes {skill.folder}/{skill.name}
+              {skill.files.length > 0 ? ` and its ${skill.files.length} other files` : ''}
+              {skill.git === 'new'
+                ? ', not committed: it is gone for good.'
+                : ': git keeps it.'}{' '}
+              <button
+                type="button"
+                className="button"
+                disabled={busy}
+                onClick={() => {
+                  setDeleting(false);
+                  onDelete();
+                }}
+              >
+                Delete
+              </button>{' '}
+              <button type="button" className="button ghost" onClick={() => setDeleting(false)}>
+                Keep it
+              </button>
+            </span>
+          ) : (
             <button
               type="button"
-              className="button"
+              className="button ghost"
               disabled={busy}
-              onClick={() => {
-                setDeleting(false);
-                onDelete();
-              }}
+              onClick={() => setDeleting(true)}
             >
-              Delete
-            </button>{' '}
-            <button type="button" className="button ghost" onClick={() => setDeleting(false)}>
-              Keep it
+              Delete…
             </button>
-          </span>
-        ) : (
+          )}
           <button
             type="button"
             className="button ghost"
-            disabled={busy}
-            onClick={() => setDeleting(true)}
+            title="Ask Scribe to change this skill"
+            onClick={onImprove}
           >
-            Delete…
+            Improve with Scribe
           </button>
-        )}
-        <button
-          type="button"
-          className="button ghost"
-          title="Ask Scribe to change this skill"
-          onClick={onImprove}
-        >
-          Improve with Scribe
-        </button>
-        {edited && (
-          <button type="button" className="button ghost" disabled={busy} onClick={onDiscard}>
-            Discard changes
+          {edited && (
+            <button type="button" className="button ghost" disabled={busy} onClick={onDiscard}>
+              Discard changes
+            </button>
+          )}
+          <button
+            type="button"
+            className="button"
+            disabled={!canSave}
+            title="Save it in this checkout (Ctrl+S)"
+            onClick={() => onSave(text)}
+          >
+            Save
           </button>
-        )}
-        <button
-          type="button"
-          className="button"
-          disabled={!canSave}
-          title="Save it in this checkout (Ctrl+S)"
-          onClick={() => onSave(text)}
-        >
-          Save
-        </button>
+        </div>
       </div>
     </section>
   );
@@ -635,52 +642,54 @@ function NewSkill({
         </button>
         .
       </p>
-      <div className="skills-field">
-        <span className="field-label">
-          <label htmlFor="skill-name">Name</label>
-          <Help label="About the name">
-            Lowercase letters, digits and hyphens, 64 at most: the folder&apos;s name in
-            .claude/skills, and the /command in Claude Code. Say the activity: release-notes,
-            reviewing-migrations.
-          </Help>
-        </span>
-        <input
-          id="skill-name"
-          value={name}
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="release-notes"
-          onChange={(event) => setName(event.target.value)}
-        />
-      </div>
-      <div className="skills-field">
-        <span className="field-label">
-          <label htmlFor="skill-description">Description</label>
-          <Help label="About the description">
-            What it does and when to use it, in the third person, the main use first: an agent reads
-            only this before loading the skill. &quot;Writes release notes from merged branches. Use
-            when asked for release notes or a changelog.&quot;
-          </Help>
-        </span>
-        <textarea
-          id="skill-description"
-          rows={4}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-        <p className={`settings-size${shown ? ' error' : ''}`}>
-          {shown ?? `${description.length.toLocaleString('en-US')} of 1,024 characters`}
-        </p>
-      </div>
-      <div className="settings-actions">
-        {notice && (
-          <span className={`settings-notice${notice.error ? ' error' : ''}`} role="status">
-            {notice.text}
+      <div className="settings-card">
+        <div className="skills-field">
+          <span className="field-label">
+            <label htmlFor="skill-name">Name</label>
+            <Help label="About the name">
+              Lowercase letters, digits and hyphens, 64 at most: the folder&apos;s name in
+              .claude/skills, and the /command in Claude Code. Say the activity: release-notes,
+              reviewing-migrations.
+            </Help>
           </span>
-        )}
-        <button type="submit" className="button" disabled={busy || problem !== null}>
-          Create
-        </button>
+          <input
+            id="skill-name"
+            value={name}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="release-notes"
+            onChange={(event) => setName(event.target.value)}
+          />
+        </div>
+        <div className="skills-field">
+          <span className="field-label">
+            <label htmlFor="skill-description">Description</label>
+            <Help label="About the description">
+              What it does and when to use it, in the third person, the main use first: an agent
+              reads only this before loading the skill. &quot;Writes release notes from merged
+              branches. Use when asked for release notes or a changelog.&quot;
+            </Help>
+          </span>
+          <textarea
+            id="skill-description"
+            rows={4}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+          <p className={`settings-size${shown ? ' error' : ''}`}>
+            {shown ?? `${description.length.toLocaleString('en-US')} of 1,024 characters`}
+          </p>
+        </div>
+        <div className="settings-actions">
+          {notice && (
+            <span className={`settings-notice${notice.error ? ' error' : ''}`} role="status">
+              {notice.text}
+            </span>
+          )}
+          <button type="submit" className="button" disabled={busy || problem !== null}>
+            Create
+          </button>
+        </div>
       </div>
     </form>
   );
