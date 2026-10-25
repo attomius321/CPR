@@ -3,7 +3,8 @@
 [Index](../PLAN.md) · [Journal](../journal/v52-scout-next-conversation.md)
 
 **Status:** planned (2026-10-25), on branch `feature/scout-view-settings` (a workspace started in
-Symbiote, from `main` at `c136ee3`); waiting for the person's OK before any change.
+Symbiote, from `main` at `c136ee3`); in progress. The person OK'd it on the plan: decision 392 as
+proposed, and for 393 "Remove it now".
 
 **Problem** (asked: "A change from Scout page of a setting should only trigger a new session on
 click new conversation, not on every change"). Since V50 each choice in Scout's head acts at once
@@ -19,10 +20,11 @@ A line half typed in the terminal is lost at each copy, and Model and Effort are
 Scout answers (a copy would cut its turn).
 
 **Goal**: a choice in the head (Agent, Model, Effort) starts nothing and stops nothing. New
-conversation ends this conversation and starts the next on the head's choices. **Unchanged**: the
-server and its API (`open` already takes the agent, model and level); opening Scout with no
-conversation, or a gone one, on Settings' model and level; Scribe; the question box where no
-terminal runs, which already starts on the head's choices.
+conversation ends this conversation and starts the next on the head's choices. The server's
+`switch`, which only the head called, goes. **Unchanged**: the rest of the server's API (`open`
+already takes the agent, model and level); opening Scout with no conversation, or a gone one, on
+Settings' model and level; Scribe; the question box where no terminal runs, which already starts
+on the head's choices.
 
 ## Viewer (`scout/ScoutPage.tsx`, `scout/scout.ts`)
 
@@ -55,10 +57,13 @@ terminal runs, which already starts on the head's choices.
 
 ## Server
 
-- **`POST /api/scout/switch` and `Scout.switch` stay** (decision 393), with their tests: no page
-  calls them after V52. Removing them (Claude Code's resume as a copy, Codex's fork, the fake's
-  copy) is a change of its own, for the person to ask for; a later "apply to this conversation"
-  would use them.
+- **`switch` goes** (decision 393): no page calls it after V52. Gone with it: the route and
+  `parseScoutSwitch` (`server.ts`, `server-requests.ts`), `Scout.switch` (`scout.ts`), the
+  `ScoutSwitch` type (`@symbiote/core`), a start's `from` (Claude Code's `--resume` with options,
+  `claude-code.ts`, and `claudeStart`'s), Codex's `fork` (`app-server.ts`, and its retry in
+  `codex.ts`), and their tests. The fakes lose what only a move used: the fake app server's
+  `thread/fork`, the e2e fake Claude Code's copy on options (its numbering past an ID in use
+  stays). A `POST /api/scout/switch` then gets what any unknown path under `/api/scout` gets.
 
 ## Docs
 
@@ -86,13 +91,16 @@ terminal runs, which already starts on the head's choices.
      turn).
    - Without terminals: after a question, Sonnet picked starts nothing; New conversation, then a
      question, starts on `--model sonnet`.
+   - The server: `switch`'s tests in `cli/test/scout.test.ts` and `fork`'s in `app-server.test.ts`
+     go with them; nothing else in those files changes.
 2. **Nothing else changes**: the other Scout specs (open, the person's session, the sidenav, VS
    Code links, no agents), Scribe's (`skills.spec.ts`), Settings'; `pnpm check`, `pnpm build`,
    `pnpm test:e2e` (run with `env -u WAYLAND_DISPLAY` on this machine).
 3. **Viewer**: `viewer-check` screenshots of Scout's head at 1440×900 and 390×844, dark and light,
    with New conversation plain and primary; `symbiote-style` for the primary button's use.
-4. **Real agents**: not planned. The server does not change, and a real Scout run from this
-   worktree writes into the main checkout's `symbiote/`; on the person's word, a throwaway clone.
+4. **Real agents**: not planned. The server's `open` does not change (only `switch` goes), and a
+   real Scout run from this worktree writes into the main checkout's `symbiote/`; on the person's
+   word, a throwaway clone.
 
 **Risks**
 
@@ -102,6 +110,7 @@ terminal runs, which already starts on the head's choices.
 | A Settings change no longer reaches New conversation (the head shows this conversation's) | Said in the Help and README; Settings still sets what Scout opens on. The other rule is open choice 1 |
 | Picks lost on leaving the page | They only wait for New conversation; the head shows the running conversation's again |
 | The open effect and New conversation race (two opens) | One task at a time as today (`busy`); the effect runs only with no conversation |
+| A caller of `switch` outside the page | None: the viewer's head was its only caller (`grep`); Symbiote's MCP tools never had it |
 
 ## Milestones
 
@@ -109,19 +118,17 @@ terminal runs, which already starts on the head's choices.
 |---|---|---|
 | V52 | Scout's head picks the next conversation | Agent, Model and Effort start nothing; New conversation starts the next on them |
 
-**Proposed decisions**:
+**Decisions**:
 
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 391 | What a choice in Scout's head does | **Nothing runs: it is what New conversation starts on**; the running conversation keeps its own. Replaces 384 on the page | The person's ask; a copy per change (5 for the stepper by keys) joined the terminal each time and dropped a typed line |
 | 392 | What New conversation starts on | **What the head shows**: this conversation's agent, model and level unless changed there. Replaces 385 | One place says what the next starts on; nothing changes behind what the head shows |
-| 393 | The server's `switch` | **Kept, unused by the page** | Working and tested; its removal is a change of its own |
+| 393 | The server's `switch` | **Removed**, with Codex's fork and a start's `from` | The person's choice ("Remove it now"): nothing calls it after 391 |
 
-**Open choices** (for the person):
+**Choices the person made on the plan**: 392 as proposed, not its alternative (with nothing
+changed, New conversation on Settings', and the head showing Settings'); 393 removed now, not kept
+unused.
 
-1. Decision 392's alternative: with nothing changed, New conversation starts on Settings' (as
-   V50), and the head shows Settings' rather than this conversation's.
-2. Decision 393's alternative: remove `switch`, its Codex fork and the fake's copy now.
-
-**Not in V52 (later)**: applying a choice to the running conversation (a button beside the
-choices, using `switch`); keeping picks across pages.
+**Not in V52 (later)**: applying a choice to the running conversation (it would bring back
+V50's copy and fork); keeping picks across pages.
