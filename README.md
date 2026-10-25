@@ -164,7 +164,7 @@ as `--browser` does.
   node, the CLI and the `PATH` (`~/.config/symbiote/app.json`) that `symbiote view` will need to find git
   and your agents; each `symbiote view` that opens Symbiote's window records them again.
 - **Its own title bar**: Symbiote and the repository, the sidenav's fold and back and
-  forward over the sidenav; the page's tabs beside them (a workspace's Terminal, Thread and Brief,
+  forward over the sidenav; the page's tabs beside them (a workspace's Terminal, Thread, Activity and Brief,
   its shells, History's All branches and This branch); the panel's toggle and the window's buttons at the
   end, in Symbiote's colours, light or dark as the theme is (on Linux Symbiote draws them, and the
   window's rounded corners). Drag its free space to move the window.
@@ -472,14 +472,30 @@ The next workspace starts on the defaults again. If Claude Code does not start, 
 offers the prompt to copy. Claude Code has to trust the folder, so run `claude` there once and
 accept. It is found as `claude` on your `PATH`, or set `SYMBIOTE_CLAUDE`.
 
-The sidenav lists your workspaces under the pages, by what each needs from you (a plan to read, a
-permission to give, a branch to review, changes to send back), then those working, then those
-merged, each group under its icon: a bell for those that need you, an hourglass for those working,
-a check for those merged, and merge arrows for the merges Symbiote is making. Folded to a rail,
-the icons stand for the groups. Its Workspaces heading counts the ones that need you, and + starts one (n). Each card
-shows the workspace's title (a fix, refactor, chore or spike marked so), what is next, its
-commits, files not committed yet, whether it merges cleanly, and its branch. A click opens it
-beside the sidenav (`/?branch=<branch>`), with these actions:
+The sidenav lists your workspaces under the pages, by what each needs from you, each group under
+its icon:
+
+- **Waiting for you** (a bell), first, in a band of its own: agents stopped mid-task on you — a
+  permission to give, a question to answer, a plan to read, an interrupted turn. Each card says
+  what it asks ("Permission to run pnpm test", "Asks: Which store? — Redis · SQLite"), how long it
+  has waited, and has **Respond**, which opens the workspace on its terminal, focused. The
+  Workspaces heading counts them, and so does the window's title: "(2) History · repo".
+- **Merging** (merge arrows): the merges Symbiote is making.
+- **To review** (an eye): finished work — a branch to review, changes to send back, an approval to
+  merge, or a report without commits.
+- **Not running** (a paused circle): failed (in red, with its words), stopped, or not started.
+- **Working** (an hourglass): what the agent runs right now, when Symbiote records its tools
+  ("Running pnpm test", "Editing src/auth.ts", "Thinking" between them), and for how long.
+- **Done** (a check): merged.
+
+A dot tells each state by its shape as well as its colour: a working agent's halo swells slowly, a
+waiting one's holds still, a stopped one is a ring (with reduced motion, nothing moves). Folded to
+a rail, the icons stand for the groups and the bell carries the count; + starts one (n). Each card
+shows the workspace's title (a fix, refactor, chore or spike marked so), what is next, its commits,
+files not committed yet, whether it merges cleanly, how long its state has lasted, and its branch.
+When an agent starts waiting, finishes or fails while you are on another page, the status bar says
+so once, with **Open**. A click opens it beside the sidenav (`/?branch=<branch>`), with these
+actions:
 
 - **Review** its branch;
 - **Stop** or **Start** the agent;
@@ -548,6 +564,17 @@ the agent's plan and reports (drawn from their Markdown), your messages, and wha
 (a permission to run a command, or a question and its options). The thread comes from hooks Symbiote
 gives each agent it starts (`symbiote/claude-settings.json`, recorded in `symbiote/threads/`, out of git).
 They only record, so permissions and questions are answered in the session itself.
+
+The **Activity** tab (`&activity`) is what happened, one line each, in time order: the workspace
+made, each session's start and end, the prompt and your messages, what the agent asked and
+reported (a report opens in place), the commands it ran (a failed one in red), the files it edited,
+its reads and searches folded into one line, the branch's commits and your review's verdict. New
+lines come as they happen. Commands and edits come from more of those hooks: every tool's start
+and end, run in the background so the agent never waits on them (`symbiote/activity/`, the tool,
+and only what it works on — a command's first line, a file's path), or from Codex itself. Agents
+started before Symbiote kept them show the rest. When a workspace waits, a strip under its heading
+says what it asks, with **Respond** and **Next waiting**; when its agent failed, its words and a
+way to its thread.
 
 The terminal needs `node-pty`, an optional dependency: on Linux `pnpm install` compiles it
 (python3, make and a C++ compiler), and macOS and Windows get a prebuilt one. Without it, or with

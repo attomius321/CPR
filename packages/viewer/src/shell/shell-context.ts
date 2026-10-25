@@ -9,6 +9,8 @@ export interface Notice {
   copy?: string;
   /** Said as an error (`role="alert"`). */
   error?: boolean;
+  /** Where it is about (V48): the status bar links to it, "Open". */
+  href?: string;
 }
 
 /** What the shell (V29a) gives the pages it shows, and a diff's page under `symbiote view`. */

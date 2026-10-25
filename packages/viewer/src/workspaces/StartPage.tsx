@@ -24,6 +24,7 @@ import {
   type BriefForm,
 } from './brief.js';
 import {
+  AGENT_NAMES,
   branchProblem,
   effortChoices,
   keptEffort,
@@ -38,6 +39,7 @@ import { shortSha } from '../history/commits.js';
 import { ChevronIcon } from '../ui/icons.js';
 import { Help } from '../ui/Help.js';
 import { reloadWorkspaces } from './useWorkspaces.js';
+import { beginStart, endStart } from './starting.js';
 import {
   addDocuments,
   documentsBlocking,
@@ -326,13 +328,20 @@ function StartForm({
     };
     setRunning(true);
     setError(null);
+    // Its card in the sidenav while it is made (V48), until the list has it.
+    beginStart({
+      branch,
+      name: form.title.trim() || branch,
+      ...(agent ? { agent: AGENT_NAMES[agent.kind] } : {}),
+    });
     try {
       const result = await postJson<WorkspaceStart>('/api/workspaces', request);
       started.current = true;
-      void reloadWorkspaces();
+      void reloadWorkspaces().finally(() => endStart(branch));
       onStarted(result);
     } catch (e) {
       // A start that failed stays on the page: leaving it keeps the draft.
+      endStart(branch);
       setError((e as Error).message);
       setRunning(false);
     }

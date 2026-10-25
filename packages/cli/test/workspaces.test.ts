@@ -888,6 +888,8 @@ describe('workspaces', () => {
       agent: { state: 'working', kind: 'claude', id: 's1' },
       // Nothing reported yet: when its agent started (V23).
       lastAction: NOW.toISOString(),
+      // Its tools recorded, none running yet (V48f).
+      activity: { doing: { thinking: true } },
     });
     expect(repo.git('rev-parse', 'feature/csv')).toBe(shas.B);
     expect(repo.git('branch', '--show-current')).toBe('main');
@@ -911,7 +913,13 @@ describe('workspaces', () => {
       by: 'ada@example.com',
       planFirst: true,
       worktree: folder,
-      agent: { kind: 'claude', permissionMode: 'auto', started: NOW.toISOString(), hooks: true },
+      agent: {
+        kind: 'claude',
+        permissionMode: 'auto',
+        started: NOW.toISOString(),
+        hooks: true,
+        activity: true,
+      },
     });
     // The agents' instructions and the folder's .gitignore, as for reviews.
     expect(existsSync(join(repo.root, 'symbiote', 'AGENTS.md'))).toBe(true);
@@ -2116,6 +2124,8 @@ describe('workspaces', () => {
     expect(Object.keys(written.hooks).sort()).toEqual([
       'Notification',
       'PermissionRequest',
+      'PostToolUse',
+      'PostToolUseFailure',
       'PreToolUse',
       'SessionEnd',
       'SessionStart',
@@ -2123,13 +2133,23 @@ describe('workspaces', () => {
       'UserPromptSubmit',
     ]);
     const command = `'/usr/bin/node' '${HOOK}' '${join(repo.root, 'symbiote')}'`;
+    // V48f: every tool's start and end, in the background (the agent does not wait on them).
+    const tools = {
+      matcher: '*',
+      hooks: [{ type: 'command', command: `${command} activity`, timeout: 30, async: true }],
+    };
     for (const [event, entries] of Object.entries(written.hooks)) {
-      expect(entries).toEqual([
-        {
-          ...(event === 'PreToolUse' ? { matcher: 'AskUserQuestion' } : {}),
-          hooks: [{ type: 'command', command, timeout: 30 }],
-        },
-      ]);
+      const thread = {
+        ...(event === 'PreToolUse' ? { matcher: 'AskUserQuestion' } : {}),
+        hooks: [{ type: 'command', command, timeout: 30 }],
+      };
+      expect(entries).toEqual(
+        event === 'PreToolUse'
+          ? [thread, tools]
+          : event.startsWith('PostToolUse')
+            ? [tools]
+            : [thread],
+      );
     }
     // Symbiote installed elsewhere: the next look rewrites it, so older sessions find the hook.
     await (await service(repo, fakeClaude().claude, '/new/symbiote/agent-hook.js')).list();
@@ -2254,6 +2274,8 @@ describe('workspaces', () => {
         { at: '2026-10-15T09:00:02.000Z', session: 'session-1', kind: 'report', text: 'The plan' },
       ],
       recorded: true,
+      // Its tools recorded (V48f), none run yet.
+      tools: [],
     });
 
     // A verdict on the branch: its text for the agent, as "Copy for the agent" has it.
@@ -2353,6 +2375,117 @@ describe('workspaces', () => {
       'feature/one': '2026-10-15T09:05:00.000Z',
       'feature/two': NOW.toISOString(),
     });
+  });
+
+  it('lists what each agent did and since when, from its thread: its turn, its ask, its report (V48)', async () => {
+    const { repo } = fresh();
+    const { claude, listed } = fakeClaude();
+    const s = await service(repo, claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { recordEvent } = await import('../src/thread.js');
+    const symbiote = join(repo.root, 'symbiote');
+    const cwd = workspace.worktree.path;
+    const event = (input: Record<string, unknown>, at: string) =>
+      recordEvent(symbiote, { session_id: 'session-1', cwd, ...input }, at);
+    const activity = async () => (await s.list()).workspaces[0]?.activity;
+    // Working since its prompt.
+    await event(
+      { hook_event_name: 'UserPromptSubmit', prompt: 'Start' },
+      '2026-10-15T09:00:00.000Z',
+    );
+    expect(await activity()).toEqual({
+      since: '2026-10-15T09:00:00.000Z',
+      doing: { thinking: true },
+    });
+    // It asks to run a command: since then, and the ask.
+    await event(
+      {
+        hook_event_name: 'PermissionRequest',
+        tool_name: 'Bash',
+        tool_input: { command: 'pnpm test' },
+      },
+      '2026-10-15T09:02:00.000Z',
+    );
+    Object.assign(listed[0] as AgentSession, {
+      state: 'blocked',
+      status: 'waiting',
+      waitingFor: 'permission prompt',
+    });
+    expect(await activity()).toEqual({
+      since: '2026-10-15T09:02:00.000Z',
+      asks: {
+        at: '2026-10-15T09:02:00.000Z',
+        session: 'session-1',
+        kind: 'asks',
+        tool: 'Bash',
+        input: '{"command":"pnpm test"}',
+      },
+    });
+    // Its plan: since its report, the report's first line.
+    await event(
+      { hook_event_name: 'Stop', last_assistant_message: '# The plan\n\n1. Tests' },
+      '2026-10-15T09:05:00.000Z',
+    );
+    Object.assign(listed[0] as AgentSession, { state: 'blocked', status: 'idle' });
+    delete (listed[0] as AgentSession).waitingFor;
+    expect((await s.list()).workspaces[0]?.agent.state).toBe('plan-ready');
+    expect(await activity()).toEqual({
+      since: '2026-10-15T09:05:00.000Z',
+      report: { at: '2026-10-15T09:05:00.000Z', text: '# The plan' },
+    });
+  });
+
+  it('lists what a working agent runs, from its recorded tools; thinking between them (V48f)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { recordActivity, recordEvent } = await import('../src/thread.js');
+    const symbiote = join(repo.root, 'symbiote');
+    const cwd = workspace.worktree.path;
+    const doing = async () => (await s.list()).workspaces[0]?.activity?.doing;
+    const tool = (event: string, id: string, at: string) =>
+      recordActivity(
+        symbiote,
+        {
+          hook_event_name: event,
+          session_id: 'session-1',
+          cwd,
+          tool_name: 'Edit',
+          tool_input: { file_path: join(cwd, 'src/a.ts') },
+          tool_use_id: id,
+        },
+        at,
+      );
+    await recordEvent(
+      symbiote,
+      { hook_event_name: 'UserPromptSubmit', session_id: 'session-1', cwd, prompt: 'Go' },
+      '2026-10-15T09:00:00.000Z',
+    );
+    expect(await doing()).toEqual({ thinking: true });
+    await tool('PreToolUse', 't1', '2026-10-15T09:00:05.000Z');
+    expect(await doing()).toEqual({ tool: 'Edit', subject: 'src/a.ts' });
+    await tool('PostToolUse', 't1', '2026-10-15T09:00:06.000Z');
+    expect(await doing()).toEqual({ thinking: true });
+    // The thread gives them too, for the Activity tab's timeline (V48c).
+    const head = { session: 'session-1', id: 't1', tool: 'Edit', subject: 'src/a.ts' };
+    expect((await s.thread('feature/one')).tools).toEqual([
+      { at: '2026-10-15T09:00:05.000Z', ...head, phase: 'start' },
+      { at: '2026-10-15T09:00:06.000Z', ...head, phase: 'end' },
+    ]);
+  });
+
+  it('says nothing of what runs for an agent started before its tools were recorded (V48f)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const record = join(repo.root, 'symbiote', 'workspaces', 'feature', 'one.json');
+    const saved = JSON.parse(readFileSync(record, 'utf8')) as WorkspaceFile;
+    delete saved.agent?.activity;
+    writeFileSync(record, JSON.stringify(saved));
+    expect((await s.list()).workspaces[0]?.activity?.doing).toBeUndefined();
+    expect(await s.thread('feature/one')).not.toHaveProperty('tools');
   });
 
   it('lists no last action for a workspace whose agent was never found (V23)', async () => {
@@ -2532,6 +2665,7 @@ describe('workspaces', () => {
     expect(start).toHaveBeenCalledWith({
       cwd: folder,
       thread: join(repo.root, 'symbiote', 'threads', 'feature', 'csv.jsonl'),
+      activity: join(repo.root, 'symbiote', 'activity', 'feature', 'csv.jsonl'),
       run: expect.stringMatching(/^[0-9a-f-]{36}$/) as string,
       writable: await commitFolders(folder, 'feature/csv'),
       prompt,
@@ -2549,6 +2683,7 @@ describe('workspaces', () => {
       started: NOW.toISOString(),
       run: start.mock.lastCall?.[0].run,
       pid: 4242,
+      activity: true,
     });
     // Codex's words in the thread: a turn ended with a plan.
     recordRun(repo, 'feature/csv', [
@@ -2636,6 +2771,7 @@ describe('workspaces', () => {
     expect(resume).toHaveBeenCalledWith({
       cwd: workspace.worktree.path,
       thread: join(repo.root, 'symbiote', 'threads', 'feature', 'one.jsonl'),
+      activity: join(repo.root, 'symbiote', 'activity', 'feature', 'one.jsonl'),
       run: expect.stringMatching(/^[0-9a-f-]{36}$/) as string,
       writable: await commitFolders(workspace.worktree.path, 'feature/one'),
       sessionId: THREAD_ID,
@@ -2751,12 +2887,20 @@ describe('workspaces', () => {
     const [waiting] = (await s.list()).workspaces;
     expect(waiting?.agent).toEqual({ state: 'needs-you', ...head, waitingFor: 'approval prompt' });
     expect(waiting?.lastAction).toBe(NOW.toISOString());
+    // What it said as it began to wait, and since when (V48).
+    expect(waiting?.activity).toMatchObject({
+      since: NOW.toISOString(),
+      report: { text: 'May I run pnpm install with the network?' },
+    });
     expect((await s.thread('feature/csv')).entries.at(-1)).toMatchObject({
       kind: 'report',
       text: 'May I run pnpm install with the network?',
     });
     server.reply(id, '1. Plan');
     expect((await s.list()).workspaces[0]?.agent).toEqual({ state: 'plan-ready', ...head });
+    expect((await s.list()).workspaces[0]?.activity).toMatchObject({
+      report: { text: '1. Plan' },
+    });
     // The person types in Codex's own terminal (`codex resume --remote`): Symbiote sees it.
     server.typed(id, 'Go ahead, from the terminal');
     await new Promise((resolve) => setTimeout(resolve, 30));
@@ -2765,6 +2909,25 @@ describe('workspaces', () => {
       kind: 'prompt',
       text: 'Go ahead, from the terminal',
     });
+    // What it runs, from its running turn read in full (V48f); thinking with nothing running.
+    expect((await s.list()).workspaces[0]?.activity?.doing).toEqual({ thinking: true });
+    server.command(id, 'cargo test');
+    expect((await s.list()).workspaces[0]?.activity?.doing).toEqual({
+      tool: 'command',
+      subject: 'cargo test',
+    });
+    // Its thread's turns read in full give what it ran, untimed, for the timeline (V48c).
+    expect((await s.thread('feature/csv')).tools).toEqual([
+      {
+        at: expect.any(String) as string,
+        session: id,
+        untimed: true,
+        id: expect.any(String) as string,
+        tool: 'command',
+        subject: 'cargo test',
+        phase: 'start',
+      },
+    ]);
   });
 
   it('gives Codex a message: a new turn once one finished, joined to the turn that runs, a wait stopped only when asked (V27a)', async () => {

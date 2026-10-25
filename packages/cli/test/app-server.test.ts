@@ -146,8 +146,23 @@ describe('codexServer', () => {
       createdAt: clock,
       updatedAt: clock,
       status: 'active',
-      turns: [{ id: 'turn-2', status: 'inProgress', startedAt: clock, prompts: ['Do it'] }],
+      turns: [
+        { id: 'turn-2', status: 'inProgress', startedAt: clock, prompts: ['Do it'], items: [] },
+      ],
     });
+    // A command it runs is an item of the turn read in full (V48f), not of a summary.
+    server.command(thread, 'pnpm test -- --run\nsecond line');
+    const [running] = (await codex.read(thread, { turns: 1, items: 'full' })).turns;
+    expect(running?.items).toEqual([
+      {
+        id: expect.any(String) as string,
+        kind: 'command',
+        subject: 'pnpm test -- --run',
+        status: 'inProgress',
+      },
+    ]);
+    const [summary] = (await codex.read(thread, { turns: 1, items: 'summary' })).turns;
+    expect(summary).not.toHaveProperty('items');
   });
 
   it('gives the thread an effort level on its first turn, which Codex keeps for the next (V30b)', async () => {
@@ -343,6 +358,7 @@ describe('codexServer', () => {
         prompts: ['Plan it'],
         report: '1. Plan',
         final: true,
+        items: [],
       },
       {
         id: expect.any(String) as string,
@@ -350,6 +366,7 @@ describe('codexServer', () => {
         startedAt: clock,
         prompts: ['Go ahead', 'And test it'],
         report: 'I need the network: may I run it outside the sandbox?',
+        items: [],
       },
     ]);
     server.fail(thread, 'unexpected status 401 Unauthorized');

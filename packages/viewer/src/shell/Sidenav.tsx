@@ -12,7 +12,6 @@ import {
 } from 'react';
 import type { MergeEntry } from '@symbiote/core';
 import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
-import { relativeDate } from '../history/commits.js';
 import {
   DoneIcon,
   KoiMark,
@@ -20,12 +19,14 @@ import {
   MenuIcon,
   MergingIcon,
   MonitorIcon,
-  NeedsYouIcon,
   PlusIcon,
+  ReviewIcon,
   ScoutIcon,
   SettingsIcon,
   SidenavIcon,
   SkillsIcon,
+  StoppedIcon,
+  WaitingIcon,
   WorkingIcon,
 } from '../ui/icons.js';
 import { mergeState } from '../workspaces/merges.js';
@@ -47,16 +48,29 @@ import { useShell } from './shell-context.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
   KindTag,
+  StateAge,
   StateDot,
   WorkspaceBranch,
   WorkspaceState,
 } from '../workspaces/WorkspaceFacts.js';
-import { workspaceGroups, workspaceName, type WorkspaceRow } from '../workspaces/workspaces.js';
+import { respondTo } from '../workspaces/respond.js';
+import { useStarts, type StartUnderWay } from '../workspaces/starting.js';
+import { useCardMoves } from '../workspaces/useCardMoves.js';
+import {
+  workspaceGroups,
+  workspaceName,
+  type WorkspaceGroup,
+  type WorkspaceRow,
+} from '../workspaces/workspaces.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 
-/** The workspaces' groups, each with its icon (V44): only the group has one, a card its dot. */
+/**
+ * The workspaces' groups after the merges, each with its icon (V44): only the group has one, a
+ * card its dot. Waiting for you comes first, above the merges (V48).
+ */
 const GROUPS = [
-  ['needsYou', 'Needs you', NeedsYouIcon],
+  ['review', 'To review', ReviewIcon],
+  ['stopped', 'Not running', StoppedIcon],
   ['working', 'Working', WorkingIcon],
   ['done', 'Done', DoneIcon],
 ] as const;
@@ -82,13 +96,18 @@ export function Sidenav({
   flashed: string | null;
 }) {
   const shell = useShell();
-  const { list, reviews, merges, scout, scribe } = useWorkspaces();
+  const { list, reviews, merges, scout, scribe, failing, readAt } = useWorkspaces();
+  // Workspaces being made (V48), until the list has them.
+  const starts = useStarts().filter(
+    (start) => !list?.workspaces.some((workspace) => workspace.branch === start.branch),
+  );
   const groups = useMemo(() => workspaceGroups(list?.workspaces ?? [], reviews), [list, reviews]);
   const marks = useMemo(() => reviewMarks(reviews).marks, [reviews]);
   const route = shell?.route;
   const queued = merges?.merges ?? [];
-  const needs = groups.needsYou.length;
-  const empty = list !== null && list.workspaces.length === 0 && queued.length === 0;
+  const needs = groups.waiting.length;
+  const empty =
+    list !== null && list.workspaces.length === 0 && queued.length === 0 && starts.length === 0;
   // Scout's mark (V35): working while it answers; answered when it did while you were elsewhere.
   const scoutState = scout?.conversation?.state;
   const onScout = route?.page === 'scout';
@@ -110,6 +129,7 @@ export function Sidenav({
   // the focus would fall to the page: it follows the card. Only the card the focus was on, and
   // only when nothing else took the focus (a blur, the person's own move, forgets it).
   const cardList = useRef<HTMLDivElement>(null);
+  useCardMoves(cardList);
   const focused = useRef<HTMLElement | null>(null);
   const onFocus = (event: FocusEvent<HTMLDivElement>) => {
     focused.current = event.target.matches(CARD) ? event.target : null;
@@ -129,6 +149,15 @@ export function Sidenav({
     focused.current = again ?? null;
     again?.focus();
   });
+
+  // What every group's cards share: the review marks, the workspace shown, the one just started.
+  const cards = {
+    marks,
+    picked: route?.page === 'workspace' ? route.branch : null,
+    flashed,
+    onPick: (branch: string) => shell?.navigate({ page: 'workspace', branch }),
+    onRespond: (branch: string) => respondTo(branch, (route) => shell?.navigate(route)),
+  };
 
   /** The arrows move between the cards; Enter opens one (it is a button). */
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -264,7 +293,27 @@ export function Sidenav({
         </h2>
         {/* Why they are kept where they are (Symbiote's cache), or a folder left from before (V25). */}
         {list?.note && <p className="hint workspaces-note">{list.note}</p>}
-        {!list && <p className="hint sidenav-hint">Listing workspaces…</p>}
+        {/* Before the first read: cards' outlines, shown after 150 ms so a fast read draws none. */}
+        {!list && (
+          <div className="workspace-skeleton" aria-busy="true" aria-label="Listing workspaces">
+            {[0, 1, 2].map((n) => (
+              <div key={n} className="skeleton-card">
+                <span />
+                <span />
+                <span />
+              </div>
+            ))}
+          </div>
+        )}
+        {/* What was read stays; that it is not new is said (V48). */}
+        {failing && (
+          <p className="hint workspaces-stale" role="status">
+            {readAt
+              ? `Not updated since ${new Date(readAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+              : 'Not read'}
+            : Symbiote does not answer. Trying again.
+          </p>
+        )}
         {empty && (
           <p className="hint workspaces-empty">
             No workspaces yet.
@@ -281,6 +330,15 @@ export function Sidenav({
           onFocus={onFocus}
           onBlur={onBlur}
         >
+          {groups.waiting.length > 0 && (
+            <WorkspaceGroupSection
+              group="waiting"
+              title="Waiting for you"
+              Icon={WaitingIcon}
+              rows={groups.waiting}
+              {...cards}
+            />
+          )}
           {queued.length > 0 && (
             <section className="workspace-group merging" aria-label="Merging">
               <h3 title="Merging">
@@ -300,32 +358,20 @@ export function Sidenav({
               </ul>
             </section>
           )}
-          {GROUPS.map(([key, title, Icon]) =>
-            groups[key].length === 0 ? null : (
-              <section key={key} className={`workspace-group group-${key}`} aria-label={title}>
-                {/* Its title names it in the rail, where only the icon shows. */}
-                <h3 title={title}>
-                  <Icon />
-                  <span className="sidenav-label">{title}</span>{' '}
-                  <span className="branches-count">{groups[key].length}</span>
-                </h3>
-                <ul className="workspace-list">
-                  {groups[key].map((row) => (
-                    <WorkspaceCard
-                      key={row.workspace.branch}
-                      row={row}
-                      mark={marks.get(row.workspace.branch)}
-                      picked={route?.page === 'workspace' && route.branch === row.workspace.branch}
-                      flashed={row.workspace.branch === flashed}
-                      onPick={() =>
-                        shell?.navigate({ page: 'workspace', branch: row.workspace.branch })
-                      }
-                    />
-                  ))}
-                </ul>
-              </section>
-            ),
-          )}
+          {GROUPS.map(([key, title, Icon]) => {
+            const making = key === 'working' ? starts : [];
+            return groups[key].length + making.length === 0 ? null : (
+              <WorkspaceGroupSection
+                key={key}
+                group={key}
+                title={title}
+                Icon={Icon}
+                rows={groups[key]}
+                starts={making}
+                {...cards}
+              />
+            );
+          })}
         </div>
       </section>
     </aside>
@@ -397,6 +443,84 @@ export function DrawerStrip({ open, onToggle }: { open: boolean; onToggle: () =>
   );
 }
 
+/** A group of workspaces (V44): its icon in its state's colour, its name, how many, its cards. */
+function WorkspaceGroupSection({
+  group,
+  title,
+  Icon,
+  rows,
+  starts = [],
+  marks,
+  picked,
+  flashed,
+  onPick,
+  onRespond,
+}: {
+  group: WorkspaceGroup;
+  title: string;
+  Icon: () => ReactNode;
+  rows: WorkspaceRow[];
+  /** Workspaces being made (V48): their cards after the group's. */
+  starts?: readonly StartUnderWay[];
+  marks: Map<string, ReviewMark>;
+  /** The workspace shown in the main area. */
+  picked: string | null;
+  flashed: string | null;
+  onPick: (branch: string) => void;
+  onRespond: (branch: string) => void;
+}) {
+  return (
+    <section className={`workspace-group group-${group}`} aria-label={title}>
+      {/* Its title names it in the rail, where only the icon shows. */}
+      <h3 title={title}>
+        <Icon />
+        <span className="sidenav-label">{title}</span>{' '}
+        <span className="branches-count">{rows.length + starts.length}</span>
+      </h3>
+      <ul className="workspace-list">
+        {rows.map((row) => (
+          <WorkspaceCard
+            key={row.workspace.branch}
+            row={row}
+            mark={marks.get(row.workspace.branch)}
+            picked={picked === row.workspace.branch}
+            flashed={row.workspace.branch === flashed}
+            onPick={() => onPick(row.workspace.branch)}
+            onRespond={() => onRespond(row.workspace.branch)}
+          />
+        ))}
+        {starts.map((start) => (
+          <StartingCard key={start.branch} start={start} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * A workspace being made (V48): its card while Symbiote makes its branch and worktree and starts
+ * its agent (~1 s); its own card takes its place once listed.
+ */
+function StartingCard({ start }: { start: StartUnderWay }) {
+  return (
+    <li className="workspace-row starting" data-branch={start.branch} aria-busy="true">
+      <div className="workspace-head">
+        <span className="state-dot tone-starting" aria-hidden="true" />
+        {/* Not a card's button (`.workspace-about`): the arrows and the focus skip it. */}
+        <span className="starting-name">{start.name}</span>
+      </div>
+      <div className="workspace-line">
+        <p className="workspace-state">
+          <strong>Starting</strong> · its worktree, then {start.agent ?? 'the branch'}
+        </p>
+      </div>
+      <div className="workspace-branch">
+        <span className="ref ref-branch">{start.branch}</span>
+      </div>
+    </li>
+  );
+}
+
 /** A workspace in the sidenav: what it is and what it needs; a click opens it. */
 function WorkspaceCard({
   row,
@@ -404,12 +528,15 @@ function WorkspaceCard({
   picked,
   flashed,
   onPick,
+  onRespond,
 }: {
   row: WorkspaceRow;
   mark: ReviewMark | undefined;
   picked: boolean;
   flashed: boolean;
   onPick: () => void;
+  /** A waiting agent's answer (V48): its workspace opened, its terminal focused. */
+  onRespond: () => void;
 }) {
   const item = useRef<HTMLLIElement>(null);
   const [flash, setFlash] = useState(false);
@@ -433,7 +560,7 @@ function WorkspaceCard({
       ref={item}
       className={`workspace-row${picked ? ' picked' : ''}${flash ? ' flash' : ''}`}
       data-branch={workspace.branch}
-      title={`${name} — ${row.next.text}`}
+      title={`${name} — ${row.next.doing ?? row.next.text}${row.next.blocked ? `: ${row.next.blocked}` : ''}`}
       onClick={onPick}
     >
       <div className="workspace-head">
@@ -450,12 +577,33 @@ function WorkspaceCard({
           {name}
         </button>
       </div>
-      <div className="workspace-line">
-        <WorkspaceState row={row} />
-        <time className="commit-date" dateTime={workspace.created}>
-          {relativeDate(workspace.created, Date.now())}
-        </time>
-      </div>
+      {row.next.group === 'waiting' ? (
+        // What it asks, and the way to answer it (V48): the card's own action, and how long.
+        <>
+          <p className="workspace-blocked" title={row.next.blocked ?? row.next.text}>
+            {row.next.blocked ?? row.next.text}
+          </p>
+          <div className="workspace-respond">
+            <button
+              type="button"
+              className="button secondary respond"
+              title={`Answer ${name}: its terminal, focused`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onRespond();
+              }}
+            >
+              Respond
+            </button>
+            <StateAge workspace={workspace} />
+          </div>
+        </>
+      ) : (
+        <div className="workspace-line">
+          <WorkspaceState row={row} />
+          <StateAge workspace={workspace} />
+        </div>
+      )}
       <div className="workspace-branch">
         <KindTag workspace={workspace} />
         <WorkspaceBranch row={row} mark={mark} />

@@ -15,6 +15,7 @@ import type {
   StartBranch,
   TerminalAvailability,
   ThreadEntry,
+  ToolActivity,
 } from '@symbiote/core';
 
 /** Each agent's name (V20a). */
@@ -288,8 +289,11 @@ export function startedNotice({ workspace, prompt }: WorkspaceStart): {
   return { text: `Started ${workspace.branch}: ${name} is working in ${where}.` };
 }
 
-/** What a workspace needs from the person (V18b): the workspaces view's groups. */
-export type WorkspaceGroup = 'needs-you' | 'working' | 'done';
+/**
+ * What a workspace needs from the person (V18b), the sidenav's groups: its agent waits for an
+ * answer, its work is to look at, its agent does not run, works, or it is merged (V48).
+ */
+export type WorkspaceGroup = 'waiting' | 'review' | 'stopped' | 'working' | 'done';
 
 /** A workspace's mark on its branch's badges and in the workspaces view. */
 export interface AgentChip {
@@ -303,6 +307,10 @@ export interface WorkspaceNext {
   /** What is next, in a few words: "Plan ready: read it and answer". */
   text: string;
   chip: AgentChip;
+  /** While it waits (V48): what it asks, from its recorded ask, else its last message. */
+  blocked?: string;
+  /** While it works and its tools are recorded (V48f): "Running pnpm test", "Thinking". */
+  doing?: string;
 }
 
 const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip => ({
@@ -314,63 +322,113 @@ const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip =
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
- * What a workspace needs next: merged, it is done; while its agent works, nothing; else what the
- * agent waits for, or — once it has commits — what its review says.
+ * What a workspace needs next: merged, it is done; while its agent works, nothing; while it waits,
+ * an answer; else — once it has commits, or its agent finished — what its review says; else its
+ * agent does not run.
  */
 export function workspaceNext(
   workspace: WorkspaceSummary,
   review?: BranchReviewSummary,
 ): WorkspaceNext {
-  const needs = (text: string, c: AgentChip['mark'], tone: AgentChip['tone']): WorkspaceNext => ({
-    group: 'needs-you',
-    text,
-    chip: chip(c, tone, text),
-  });
-  if (workspace.tip === null) return needs('Its branch is gone', '!', 'failed');
-  if (workspace.merged) return { group: 'done', text: 'Merged', chip: chip('✓', 'done', 'Merged') };
-  const { agent } = workspace;
+  const next = (
+    group: WorkspaceGroup,
+    text: string,
+    c: AgentChip['mark'],
+    tone: AgentChip['tone'],
+  ): WorkspaceNext => ({ group, text, chip: chip(c, tone, text) });
+  const stopped = (text: string, c: AgentChip['mark'], tone: AgentChip['tone']) =>
+    next('stopped', text, c, tone);
+  if (workspace.tip === null) return stopped('Its branch is gone', '!', 'failed');
+  if (workspace.merged) return next('done', 'Merged', '✓', 'done');
+  const { agent, activity } = workspace;
+  const waits = (text: string): WorkspaceNext => {
+    const blocked = blockedOn(workspace);
+    return { ...next('waiting', text, '?', 'waiting'), ...(blocked ? { blocked } : {}) };
+  };
   switch (agent.state) {
-    case 'working':
-      return { group: 'working', text: 'Working', chip: chip('⚙', 'working', 'Working') };
+    case 'working': {
+      const doing = activity?.doing;
+      const words = !doing ? undefined : 'thinking' in doing ? 'Thinking' : activityText(doing);
+      return { ...next('working', 'Working', '⚙', 'working'), ...(words ? { doing: words } : {}) };
+    }
     case 'needs-you':
-      if (agent.interrupted) return needs('Interrupted: waiting for you', '?', 'waiting');
-      return needs(`Waiting: ${agent.waitingFor ?? 'for you'}`, '?', 'waiting');
+      if (agent.interrupted) return waits('Interrupted: waiting for you');
+      return waits(`Waiting: ${agent.waitingFor ?? 'for you'}`);
     case 'plan-ready':
-      return needs('Plan ready: read it and answer', '?', 'waiting');
+      return waits('Plan ready: read it and answer');
     case 'failed': {
       const why = agent.error?.split('\n')[0];
-      return needs(why ? `Its agent failed: ${why}` : 'Its agent failed', '!', 'failed');
+      return stopped(why ? `Its agent failed: ${why}` : 'Its agent failed', '!', 'failed');
     }
     case 'not-started':
-      return needs(`Not started: ${(agent.error ?? '').split('\n')[0] ?? ''}`, '!', 'failed');
+      return stopped(`Not started: ${(agent.error ?? '').split('\n')[0] ?? ''}`, '!', 'failed');
     case 'no-agent':
-      return needs('No agent: give it the prompt', '!', 'failed');
+      return stopped('No agent: give it the prompt', '!', 'failed');
     case 'unknown':
-      return needs(`Its agent's state is unknown: ${agent.error ?? ''}`, '·', 'idle');
+      return stopped(`Its agent's state is unknown: ${agent.error ?? ''}`, '·', 'idle');
     default:
       break;
   }
   if (workspace.ahead === 0) {
-    const text =
-      agent.state === 'stopped'
-        ? 'Stopped'
-        : agent.state === 'not-running'
-          ? 'Not running'
-          : 'Finished without commits';
-    return needs(text, '·', 'idle');
+    // Finished without commits: its report is the work to look at (V48).
+    if (agent.state === 'done' || agent.state === 'ready') {
+      return next('review', 'Finished without commits', '●', 'ready');
+    }
+    return stopped(agent.state === 'stopped' ? 'Stopped' : 'Not running', '·', 'idle');
   }
   // Commits to look at: the review says what is next.
+  const toReview = (text: string) => next('review', text, '●', 'ready');
   const since = review?.refs.find((r) => r.name === workspace.branch)?.since ?? 0;
-  if (since > 0)
-    return needs(`${plural(since, 'commit')} since your review: review again`, '●', 'ready');
+  if (since > 0) return toReview(`${plural(since, 'commit')} since your review: review again`);
   const verdict = review?.verdict?.head === workspace.tip ? review.verdict : undefined;
-  if (verdict?.event === 'approve')
-    return needs('Approved: ask your agent to merge it', '●', 'ready');
+  if (verdict?.event === 'approve') return toReview('Approved: ask your agent to merge it');
   if (verdict?.event === 'request-changes') {
-    return needs('Changes requested: send them to the agent', '●', 'ready');
+    return toReview('Changes requested: send them to the agent');
   }
-  if (verdict?.event === 'comment') return needs('Commented: send it to the agent', '●', 'ready');
-  return needs(review ? 'Review in progress' : 'Ready for review', '●', 'ready');
+  if (verdict?.event === 'comment') return toReview('Commented: send it to the agent');
+  return toReview(review ? 'Review in progress' : 'Ready for review');
+}
+
+/**
+ * What a waiting agent asks (V48): its recorded ask in the thread's words, else what it said as it
+ * began to wait (Codex on its app server); none when nothing was recorded, or for a plan (its first
+ * line is mostly a heading: "Plan ready" says more).
+ */
+function blockedOn({ activity, agent, worktree }: WorkspaceSummary): string | undefined {
+  if (activity?.asks) return askedFor(activity.asks, worktree.path);
+  const said = activity?.report;
+  if (agent.state !== 'needs-you' || agent.interrupted || !said || !activity.since)
+    return undefined;
+  // A report from before the wait began is an earlier turn's, not what it asks now.
+  return Date.parse(said.at) >= Date.parse(activity.since) ? said.text : undefined;
+}
+
+/** Each tool's verb (V48f): Claude Code's tools by name, Codex's items by kind. */
+const TOOL_WORDS: Record<string, [verb: string, alone: string]> = {
+  Bash: ['Running', 'Running a command'],
+  command: ['Running', 'Running a command'],
+  Edit: ['Editing', 'Editing a file'],
+  MultiEdit: ['Editing', 'Editing a file'],
+  NotebookEdit: ['Editing', 'Editing a notebook'],
+  fileChange: ['Editing', 'Editing files'],
+  Write: ['Writing', 'Writing a file'],
+  Read: ['Reading', 'Reading a file'],
+  Grep: ['Searching for', 'Searching'],
+  Glob: ['Finding files:', 'Finding files'],
+  WebFetch: ['Fetching', 'Fetching a page'],
+  WebSearch: ['Searching the web:', 'Searching the web'],
+  webSearch: ['Searching the web:', 'Searching the web'],
+  Task: ['Running a subagent:', 'Running a subagent'],
+  Agent: ['Running a subagent:', 'Running a subagent'],
+  TodoWrite: ['Updating its to-do list', 'Updating its to-do list'],
+};
+
+/** A tool running, as the page says it (V48f): "Running pnpm test", "Editing src/auth.ts". */
+export function activityText({ tool, subject }: ToolActivity): string {
+  const words = TOOL_WORDS[tool];
+  if (!words) return `Using ${subject && tool === 'mcp' ? subject : tool}`;
+  const [verb, alone] = words;
+  return subject && verb !== alone ? `${verb} ${subject}` : alone;
 }
 
 export interface WorkspaceRow {
@@ -378,24 +436,37 @@ export interface WorkspaceRow {
   next: WorkspaceNext;
 }
 
+/** The sidenav's groups (V48), each in the order the workspaces were started. */
+export interface WorkspaceGroups {
+  waiting: WorkspaceRow[];
+  review: WorkspaceRow[];
+  stopped: WorkspaceRow[];
+  working: WorkspaceRow[];
+  done: WorkspaceRow[];
+}
+
 /** The workspaces view's groups, each in the order the workspaces were started. */
 export function workspaceGroups(
   workspaces: readonly WorkspaceSummary[],
   reviews: BranchReviewList | null,
-): { needsYou: WorkspaceRow[]; working: WorkspaceRow[]; done: WorkspaceRow[] } {
-  const groups = {
-    needsYou: [] as WorkspaceRow[],
-    working: [] as WorkspaceRow[],
-    done: [] as WorkspaceRow[],
-  };
+): WorkspaceGroups {
+  const groups: WorkspaceGroups = { waiting: [], review: [], stopped: [], working: [], done: [] };
   for (const workspace of workspaces) {
     const review = reviews?.reviews.find((r) => r.branch === workspace.branch);
     const next = workspaceNext(workspace, review);
-    const key = next.group === 'needs-you' ? 'needsYou' : next.group;
-    groups[key].push({ workspace, next });
+    groups[next.group].push({ workspace, next });
   }
   return groups;
 }
+
+/** Every row of the groups, the person's first (as History's badges and V23 order them). */
+export const allRows = (groups: WorkspaceGroups): WorkspaceRow[] => [
+  ...groups.waiting,
+  ...groups.review,
+  ...groups.stopped,
+  ...groups.working,
+  ...groups.done,
+];
 
 /** A workspace's name: its title (V24), else its brief's first line, else its branch. */
 export function workspaceName(workspace: WorkspaceSummary): string {
@@ -417,7 +488,7 @@ export function workspaceChips(
   remotes: readonly { name: string; branch: string }[],
 ): Map<string, AgentChip & { href: string }> {
   const chips = new Map<string, AgentChip & { href: string }>();
-  for (const { workspace, next } of Object.values(workspaceGroups(workspaces, reviews)).flat()) {
+  for (const { workspace, next } of allRows(workspaceGroups(workspaces, reviews))) {
     if (workspace.tip === null) continue;
     const value = {
       ...next.chip,
@@ -446,7 +517,7 @@ export function workspacesFirst(
   workspaces: readonly WorkspaceSummary[],
   reviews: BranchReviewList | null,
 ): FirstBranch[] {
-  const { needsYou, working } = workspaceGroups(workspaces, reviews);
+  const { waiting, review, stopped, working } = workspaceGroups(workspaces, reviews);
   const newest = (rows: WorkspaceRow[]) =>
     rows
       .filter(({ workspace }) => workspace.tip !== null)
@@ -455,7 +526,7 @@ export function workspacesFirst(
         at: workspace.lastAction ?? workspace.created,
       }))
       .sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || a.branch.localeCompare(b.branch));
-  return [...newest(needsYou), ...newest(working)];
+  return [...newest([...waiting, ...review, ...stopped]), ...newest(working)];
 }
 
 /** How long ago, in a few characters: `now`, `4m`, `2h`, `3d`. */
@@ -478,8 +549,11 @@ export interface ThreadItem {
 /** Tools whose permission is to change a file (`file_path` in their input). */
 const EDITS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 
-/** What an agent waits on, in words: a question and its options, or a permission. */
-function waitsFor(entry: Extract<ThreadEntry, { kind: 'asks' }>, worktree?: string): string {
+/**
+ * What an ask is for, in words (V48): a question and its options, or the permission to run a
+ * command, to edit a file (inside the worktree, by its path there) or to use a tool.
+ */
+export function askedFor(entry: Extract<ThreadEntry, { kind: 'asks' }>, worktree?: string): string {
   if (entry.questions) {
     const asked = entry.questions.map((q) =>
       q.options.length > 0 ? `${q.question} — ${q.options.join(' · ')}` : q.question,
@@ -493,14 +567,20 @@ function waitsFor(entry: Extract<ThreadEntry, { kind: 'asks' }>, worktree?: stri
     // Cut at 4 KB, or not JSON: only the tool is shown.
   }
   if (entry.tool === 'Bash' && typeof input.command === 'string') {
-    return `Waiting: permission to run ${input.command}`;
+    return `Permission to run ${input.command}`;
   }
   if (EDITS.has(entry.tool) && typeof input.file_path === 'string') {
     const path = input.file_path;
     const inside = worktree && [`${worktree}/`, `${worktree}\\`].find((p) => path.startsWith(p));
-    return `Waiting: permission to edit ${inside ? path.slice(inside.length) : path}`;
+    return `Permission to edit ${inside ? path.slice(inside.length) : path}`;
   }
-  return `Waiting: permission to use ${entry.tool}`;
+  return `Permission to use ${entry.tool}`;
+}
+
+/** What an agent waits on, in the thread's words: a question and its options, or a permission. */
+function waitsFor(entry: Extract<ThreadEntry, { kind: 'asks' }>, worktree?: string): string {
+  const asked = askedFor(entry, worktree);
+  return entry.questions ? asked : `Waiting: p${asked.slice(1)}`;
 }
 
 /**

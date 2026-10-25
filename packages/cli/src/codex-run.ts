@@ -1,16 +1,18 @@
 // Symbiote's runner for Codex (V20a, decision 129): started detached by `symbiote view` in a
 // workspace's worktree, it runs `codex exec --json …` and writes what Codex does into the
 // workspace's thread (`symbiote/threads/<branch>.jsonl`, V18c's entries) as it happens — Codex's
-// events carry no times, and it has no hooks Symbiote can register without the person's trust. It
+// events carry no times, and it has no hooks Symbiote can register without the person's trust —,
+// and what it runs and changes into its activity (`symbiote/activity/<branch>.jsonl`, V48f). It
 // outlives `symbiote view`, as Claude Code's background sessions do. Node's own modules only: it
 // starts with every run.
 //
-//   node codex-run.js <thread file> <startup|resume> <run> <codex> <args…, the prompt last>
+//   node codex-run.js <thread file> <activity file> <startup|resume> <run> <codex> <args…, the
+//   prompt last>
 import { spawn } from 'node:child_process';
 import { appendFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ThreadEntry } from '@symbiote/core';
+import type { ActivityEntry, ThreadEntry } from '@symbiote/core';
 
 /**
  * What a run is: the thread it writes, how it started, its ID (on each entry it writes), and
@@ -18,12 +20,50 @@ import type { ThreadEntry } from '@symbiote/core';
  */
 export interface CodexRun {
   thread: string;
+  /** Where what it runs and changes goes (V48f). */
+  activity?: string;
   source: 'startup' | 'resume';
   run: string;
   command: string;
   /** Codex's arguments; the last is what it was given (Symbiote's prompt, or the person's message).
    * */
   args: string[];
+}
+
+/** Longest subject kept of an item (V48f), as Claude Code's hooks keep theirs. */
+const SUBJECT = 160;
+
+/** Codex's items the activity keeps (V48f), by `exec --json`'s type, as the app server names them. */
+const TOOLS: Record<string, string> = {
+  command_execution: 'command',
+  file_change: 'fileChange',
+  mcp_tool_call: 'mcp',
+  web_search: 'webSearch',
+};
+
+/**
+ * What an item works on (V48f): a command's first line, the files changed (from `worktree` when
+ * inside it), an MCP server's tool, a search's query; cut at 160 characters.
+ */
+function subjectOf(item: Record<string, unknown>, worktree: string): string | undefined {
+  const words = (value: unknown) => (typeof value === 'string' ? value : '');
+  let subject = '';
+  if (item.type === 'command_execution') subject = words(item.command);
+  else if (item.type === 'file_change' && Array.isArray(item.changes)) {
+    subject = (item.changes as { path?: unknown }[])
+      .map((change) => words(change?.path))
+      .filter((path) => path !== '')
+      .map((path) => (path.startsWith(`${worktree}/`) ? path.slice(worktree.length + 1) : path))
+      .join(', ');
+  } else if (item.type === 'mcp_tool_call') {
+    subject = [words(item.server), words(item.tool)].filter((w) => w !== '').join('.');
+  } else if (item.type === 'web_search') subject = words(item.query);
+  const line =
+    subject
+      .split('\n')
+      .find((l) => l.trim() !== '')
+      ?.trim() ?? '';
+  return line === '' ? undefined : line.slice(0, SUBJECT);
 }
 
 /** How much of Codex's error output is kept for its last words. */
@@ -40,7 +80,11 @@ const STDIN_NOTE = /^Reading additional input from stdin\.\.\.$/;
  */
 export function runCodex(
   run: CodexRun,
-  { now = () => new Date().toISOString(), cwd }: { now?: () => string; cwd?: string } = {},
+  {
+    now = () => new Date().toISOString(),
+    cwd,
+    worktree = cwd ?? process.cwd(),
+  }: { now?: () => string; cwd?: string; worktree?: string } = {},
 ): { done: Promise<number>; stop: () => void } {
   let session = '';
   let message: string | null = null;
@@ -54,6 +98,35 @@ export function runCodex(
   const write = (entry: Record<string, unknown> & { kind: ThreadEntry['kind'] }) => {
     const line = `${JSON.stringify({ at: now(), session, run: run.run, ...entry })}\n`;
     written = written.then(() => appendFile(run.thread, line)).catch(() => undefined);
+  };
+  /** Items seen started: a completed one seen first (a file change) gets its start too. */
+  const started = new Set<string>();
+  /** A tool's start or end in the activity (V48f), in the order Codex's events came. */
+  const tool = (phase: 'start' | 'end', item: Record<string, unknown>) => {
+    const kind = typeof item.type === 'string' ? TOOLS[item.type] : undefined;
+    if (!run.activity || !kind || typeof item.id !== 'string') return;
+    if (phase === 'end' && !started.has(item.id)) tool('start', item);
+    started.add(item.id);
+    const subject = subjectOf(item, worktree);
+    const code = item.exit_code;
+    const failed =
+      phase === 'end' && (item.status === 'failed' || (typeof code === 'number' && code !== 0));
+    const entry: ActivityEntry = {
+      at: now(),
+      session,
+      run: run.run,
+      id: item.id,
+      tool: kind,
+      ...(subject ? { subject } : {}),
+      phase,
+      ...(failed ? { failed: true } : {}),
+    };
+    const file = run.activity;
+    const line = `${JSON.stringify(entry)}\n`;
+    written = written
+      .then(() => mkdir(dirname(file), { recursive: true }))
+      .then(() => appendFile(file, line))
+      .catch(() => undefined);
   };
 
   const event = (line: string) => {
@@ -69,7 +142,7 @@ export function runCodex(
       thread_id?: unknown;
       message?: unknown;
       error?: { message?: unknown };
-      item?: { type?: unknown; text?: unknown };
+      item?: { type?: unknown; text?: unknown } & Record<string, unknown>;
     };
     switch (v.type) {
       case 'thread.started':
@@ -82,10 +155,14 @@ export function runCodex(
         message = null;
         completed = false;
         return;
+      case 'item.started':
+        if (v.item) tool('start', v.item);
+        return;
       case 'item.completed':
         if (v.item?.type === 'agent_message' && typeof v.item.text === 'string') {
           message = v.item.text;
         }
+        if (v.item) tool('end', v.item);
         return;
       case 'turn.completed':
         completed = true;
@@ -162,15 +239,20 @@ export function runCodex(
   };
 }
 
-/** `node codex-run.js <thread> <source> <run> <codex> <args…>`: runs it, stopping on a signal. */
+/**
+ * `node codex-run.js <thread> <activity> <source> <run> <codex> <args…>`: runs it, stopping on a
+ * signal.
+ */
 function main(argv: string[]): void {
-  const [thread, source, run, command, ...args] = argv;
-  if (!thread || (source !== 'startup' && source !== 'resume') || !run || !command) {
-    process.stderr.write('usage: codex-run <thread file> <startup|resume> <run> <codex> <args…>\n');
+  const [thread, activity, source, run, command, ...args] = argv;
+  if (!thread || !activity || (source !== 'startup' && source !== 'resume') || !run || !command) {
+    process.stderr.write(
+      'usage: codex-run <thread file> <activity file> <startup|resume> <run> <codex> <args…>\n',
+    );
     process.exitCode = 2;
     return;
   }
-  const running = runCodex({ thread, source, run, command, args });
+  const running = runCodex({ thread, activity, source, run, command, args });
   for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP'] as const) {
     process.on(signal, () => running.stop());
   }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NeedsYouIcon } from '../ui/icons.js';
+import { WaitingIcon } from '../ui/icons.js';
 import { askedBy, askLeft } from './asks.js';
 import { answerAsk, useAsks } from './useAsks.js';
 
@@ -31,7 +31,7 @@ export function AskBar() {
   const more = asks.length - 1;
   return (
     <section className="ask-bar" aria-label={`${askedBy(ask)} asks`} aria-live="polite">
-      <NeedsYouIcon />
+      <WaitingIcon />
       <p className="ask-words">
         <span className="ask-who">{askedBy(ask)} asks:</span> {ask.words}
       </p>

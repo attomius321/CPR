@@ -1,0 +1,162 @@
+/* A workspace's Activity tab (V48c, ActivityTab.tsx): one line an event, its time, a mark in its
+   state's colour where it has one, what happened; a row with more opens in place. */
+
+.workspace-activity {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.activity {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 8px 16px 16px;
+  overflow: auto;
+  list-style: none;
+  interpolate-size: allow-keywords;
+}
+
+.activity-row {
+  display: grid;
+  grid-template-columns: 48px 7px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: var(--size-small);
+  line-height: 20px;
+}
+
+/* Added by a read after the tab opened: it fades in, the rows above stay where they are. */
+.activity-row.fresh {
+  animation: activity-in 200ms ease-out;
+}
+
+@keyframes activity-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.activity-time {
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.activity-mark {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--activity-tone, var(--faint));
+  transform: translateY(-1px);
+}
+
+.activity-row.kind-asks {
+  --activity-tone: var(--warning);
+}
+
+.activity-row.kind-edits {
+  --activity-tone: var(--modified);
+}
+
+.activity-row.kind-commit,
+.activity-row.kind-made {
+  --activity-tone: var(--added);
+}
+
+.activity-row.failed {
+  --activity-tone: var(--removed);
+}
+
+/* The agent's acts in the text's colour; the quiet ones (reads, starts, ends) muted. */
+.activity-text {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-row.kind-reads .activity-text,
+.activity-row.kind-start .activity-text,
+.activity-row.kind-end .activity-text,
+.activity-row.kind-made .activity-text {
+  color: var(--muted);
+}
+
+.activity-row.failed .activity-text {
+  color: var(--error);
+}
+
+details.activity-text {
+  white-space: normal;
+}
+
+/* A row that opens has the shared chevron before its text (controls.css); the others keep its
+   width, so every row's text starts at one place. */
+span.activity-text {
+  padding-left: 18px;
+}
+
+.activity-text summary {
+  min-width: 0;
+  border-radius: 4px;
+}
+
+.activity-text summary > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-text summary:hover {
+  background: var(--hover);
+}
+
+.activity-text summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* Opening and closing slide, where the browser can animate to its height. */
+.activity details::details-content {
+  height: 0;
+  overflow: clip;
+  transition:
+    height 150ms ease-out,
+    content-visibility 150ms allow-discrete;
+}
+
+.activity details[open]::details-content {
+  height: auto;
+}
+
+.activity-detail {
+  margin: 4px 0 6px 18px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.activity-note {
+  margin: 8px 0 0 58px;
+  font-size: var(--size-small);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-row.fresh {
+    animation: none;
+  }
+
+  .activity details::details-content {
+    transition: none;
+  }
+}

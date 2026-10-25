@@ -1,6 +1,6 @@
 import { existsSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // Codex on its app server (V27a): a workspace's thread started on the person's daemon (faked in
@@ -23,6 +23,8 @@ const POLL = { timeout: 12_000 };
 const BRANCH = 'feature/add-a-half-function';
 const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
 const panel = (page: Page) => page.getByRole('region', { name: `Workspace ${BRANCH}` });
+/** A card's dot: its tone says its agent works, whatever it runs (V48f). */
+const working = (row: Locator) => row.locator('.state-dot');
 const workspaceRow = (page: Page) => page.locator(`.workspace-row[data-branch="${BRANCH}"]`);
 const box = (page: Page) => panel(page).getByRole('textbox', { name: 'Reply to the agent' });
 const screen = (page: Page) => panel(page).locator('.agent-terminal .xterm-rows');
@@ -73,7 +75,7 @@ test('Codex on its app server, without terminals: its thread from there, a turn 
   await page.goto(`${symbiote.url}?branch=${encodeURIComponent(BRANCH)}`);
   const here = panel(page);
   await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
-  await expect(workspaceRow(page)).toContainText('Working', POLL);
+  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
   await here.getByRole('button', { name: 'More actions' }).click();
   const talk = here.getByRole('menuitem', { name: 'Talk' });
   await expect(talk).not.toHaveAttribute('title', /not recorded/);
@@ -93,7 +95,7 @@ test('Codex on its app server, without terminals: its thread from there, a turn 
   server.typed(id, 'Go ahead, from the terminal');
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(here.locator('.thread-you').last()).toHaveText(/Go ahead, from the terminal/, POLL);
-  await expect(workspaceRow(page)).toContainText('Working', POLL);
+  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
 
   // A message while it works joins its turn: sent at once, nothing stopped.
   await expect(here.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
@@ -106,7 +108,9 @@ test('Codex on its app server, without terminals: its thread from there, a turn 
 
   // It asks for an approval: "needs you", and what it said in the thread.
   server.ask(id, 'May I run pnpm install with the network?', 'pnpm install');
-  await expect(workspaceRow(page)).toContainText('Waiting: approval prompt', POLL);
+  // Its card says what it asked (V48); its heading, what it waits on.
+  await expect(workspaceRow(page)).toContainText('May I run pnpm install with the network?', POLL);
+  await expect(here.locator('.workspace-top')).toContainText('Waiting: approval prompt');
   await expect(here.locator('.thread-agent').last()).toContainText(
     'May I run pnpm install with the network?',
     POLL,
@@ -127,14 +131,14 @@ test('Codex on its app server: Stop interrupts its turn, Start again makes a new
   await page.goto(symbiote.url);
   await start(page);
   const here = panel(page);
-  await expect(workspaceRow(page)).toContainText('Working', POLL);
+  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
 
   await here.getByRole('button', { name: 'Stop the agent' }).click();
   await expect(workspaceRow(page)).toContainText('Stopped', POLL);
   expect(server.threads[0]?.turns.at(-1)?.status).toBe('interrupted');
 
   await here.getByRole('button', { name: 'Start the agent' }).click();
-  await expect(workspaceRow(page)).toContainText('Working', POLL);
+  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
   expect(server.threads).toHaveLength(2);
   server.fail(server.threads[1]!.id, 'unexpected status 401 Unauthorized');
   await expect(workspaceRow(page)).toContainText(
@@ -194,7 +198,7 @@ test("Codex's own terminal in its panel: the trust it asks for, a turn typed the
   await page.keyboard.type('Go ahead.');
   await page.keyboard.press('Enter');
   await expect(screen(page)).toContainText('sent: Go ahead.', POLL);
-  await expect(workspaceRow(page)).toContainText('Working', POLL);
+  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
 
   // The thread, read only, has it; leaving the terminal hangs it up, the thread goes on.
   await here.getByRole('tab', { name: 'Thread' }).click();

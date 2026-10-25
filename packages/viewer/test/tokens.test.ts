@@ -238,7 +238,7 @@ describe('colour is for state (V31, decision 214)', () => {
   // Colour is for state, and one accent (V42). Cyan is the moved kind and the states that share
   // its hue: an agent working, "since", the current lane (blue until V42, decision 281).
   const STATE_RULES =
-    /tone-moved|minimap-moved|since|review-new|working|merging|merge-tone-wait|lane-0/;
+    /tone-moved|minimap-moved|since|review-new|working|starting|merging|merge-tone-wait|lane-0/;
 
   it('uses --moved only for the moved kind and states', () => {
     const accent = rules

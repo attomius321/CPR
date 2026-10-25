@@ -14,6 +14,7 @@ import {
   type OpenedTerminal,
 } from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
+import { ActivityTab } from './ActivityTab.js';
 import { BriefTab } from './BriefTab.js';
 import { ChangesPanel } from './ChangesPanel.js';
 import { useChangesPanel } from './useChangesPanel.js';
@@ -24,10 +25,13 @@ import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { InTitleBar } from '../shell/TitleBar.js';
 import { MergeControl } from './MergeControl.js';
 import { ThreadTab, useThread } from './ThreadTab.js';
-import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from './WorkspaceFacts.js';
+import { KindTag, StateDot, StateFor, WorkspaceBranch, WorkspaceState } from './WorkspaceFacts.js';
+import { RESPOND_EVENT, respondTo } from './respond.js';
+import { WorkspaceStrip } from './WorkspaceStrip.js';
 import { postJson, serverWords } from '../ui/http.js';
 import { Resizer } from '../ui/Resizer.js';
 import {
+  allRows,
   workspaceGroups,
   workspaceHref,
   workspaceName,
@@ -50,8 +54,9 @@ import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorks
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
 
 /**
- * `&thread`, `&terminal`, `&brief` or `&shell=<n>`: the tab picked (V21; the brief since V29a, a
- * shell since V45); without one, the terminal where one can run, else the thread.
+ * `&thread`, `&terminal`, `&activity`, `&brief` or `&shell=<n>`: the tab picked (V21; the brief
+ * since V29a, a shell since V45, the activity since V48); without one, the terminal where one can
+ * run, else the thread.
  */
 const viewOfUrl = (): View | null => {
   const params = new URLSearchParams(window.location.search);
@@ -59,11 +64,13 @@ const viewOfUrl = (): View | null => {
     ? 'thread'
     : params.has('terminal')
       ? 'terminal'
-      : params.has('brief')
-        ? 'brief'
-        : shellOfUrl(window.location.search) !== null
-          ? 'shell'
-          : null;
+      : params.has('activity')
+        ? 'activity'
+        : params.has('brief')
+          ? 'brief'
+          : shellOfUrl(window.location.search) !== null
+            ? 'shell'
+            : null;
 };
 
 /** A workspace's shells (V45): its terminals' IDs, so read with the page's header. */
@@ -87,9 +94,7 @@ export function WorkspaceView({ branch }: { branch: string }) {
   const [send] = useState(sendOfUrl);
   const groups = useMemo(() => workspaceGroups(list?.workspaces ?? [], reviews), [list, reviews]);
   const marks = useMemo(() => reviewMarks(reviews).marks, [reviews]);
-  const row = [...groups.needsYou, ...groups.working, ...groups.done].find(
-    (r) => r.workspace.branch === branch,
-  );
+  const row = allRows(groups).find((r) => r.workspace.branch === branch);
   const notify = useCallback((notice: Notice | null) => shell?.notify(notice), [shell]);
   const onGone = useCallback(() => shell?.navigate({ page: 'history' }), [shell]);
   if (!list) return <p className="hint main-hint">Listing workspaces…</p>;
@@ -110,6 +115,7 @@ export function WorkspaceView({ branch }: { branch: string }) {
       key={branch}
       row={row}
       mark={marks.get(branch)}
+      waiting={groups.waiting.map((r) => r.workspace.branch).filter((b) => b !== branch)}
       version={list}
       terminal={list.terminal}
       fillVerdict={send === 'verdict'}
@@ -128,6 +134,7 @@ export function WorkspaceView({ branch }: { branch: string }) {
 function WorkspacePanel({
   row,
   mark,
+  waiting,
   version,
   terminal,
   fillVerdict,
@@ -136,6 +143,8 @@ function WorkspacePanel({
 }: {
   row: WorkspaceRow;
   mark: ReviewMark | undefined;
+  /** The other workspaces whose agent waits for the person (V48), in the sidenav's order. */
+  waiting: string[];
   /** The list as last read: the thread is read again with it. */
   version: unknown;
   /** Whether its agent's session can be shown in a terminal (V21). */
@@ -146,11 +155,14 @@ function WorkspacePanel({
   /** It was cleaned up: the main area shows something else. */
   onGone: () => void;
 }) {
+  const shell = useShell();
   const { workspace } = row;
   const { branch, agent } = workspace;
   const [thread, reloadThread] = useThread(branch, version);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Its stop asked, until the server answers (V48): the button says so.
+  const [stopping, setStopping] = useState(false);
   const [text, setText] = useState('');
   const [confirming, setConfirming] = useState<'send' | 'clean' | null>(null);
   const filled = useRef(false);
@@ -213,6 +225,30 @@ function WorkspacePanel({
     const href = workspaceHref(branch);
     window.history.replaceState(null, '', next === 'terminal' ? href : `${href}&${next}`);
   };
+  /**
+   * Takes the person's answer (V48): its terminal shown and focused where one runs, else the
+   * thread and its box. A terminal not open yet focuses itself as it opens.
+   */
+  const respond = () => {
+    if (terminals) {
+      if (view !== 'terminal') show('terminal');
+      opened?.focus();
+      return;
+    }
+    if (view !== 'thread') show('thread');
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLTextAreaElement>('.workspace .reply textarea')?.focus(),
+    );
+  };
+  const respondNow = useRef(respond);
+  respondNow.current = respond;
+  useEffect(() => {
+    const onRespond = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === branch) respondNow.current();
+    };
+    window.addEventListener(RESPOND_EVENT, onRespond);
+    return () => window.removeEventListener(RESPOND_EVENT, onRespond);
+  }, [branch]);
   const showShell = (number: number) => {
     setChosen('shell');
     setShellShown(number);
@@ -404,7 +440,12 @@ function WorkspacePanel({
       : []),
   ];
 
-  const views: AgentView[] = [...(terminals ? (['terminal'] as const) : []), 'thread', 'brief'];
+  const views: AgentView[] = [
+    ...(terminals ? (['terminal'] as const) : []),
+    'thread',
+    'activity',
+    'brief',
+  ];
 
   return (
     <section className="workspace" aria-label={`Workspace ${branch}`}>
@@ -441,12 +482,17 @@ function WorkspacePanel({
               type="button"
               className="button"
               disabled={busy}
-              onClick={() =>
+              onClick={() => {
+                setStopping(true);
                 // The head's state says Stopped: no word of its own beside the buttons (V37).
-                act(() => postJson('/api/workspaces/stop', { branch }).then(() => null))
-              }
+                act(() =>
+                  postJson('/api/workspaces/stop', { branch })
+                    .then(() => null)
+                    .finally(() => setStopping(false)),
+                );
+              }}
             >
-              Stop the agent
+              {stopping ? 'Stopping…' : 'Stop the agent'}
             </button>
           )}
           {restartable && workspace.worktree.exists && (
@@ -497,8 +543,18 @@ function WorkspacePanel({
             </button>
           )}
         </div>
-        <WorkspaceState row={row} />
+        <div className="workspace-state-line">
+          <WorkspaceState row={row} />
+          <StateFor workspace={workspace} />
+        </div>
       </header>
+      <WorkspaceStrip
+        row={row}
+        waiting={waiting}
+        onRespond={respond}
+        onThread={() => show('thread')}
+        onNext={(next) => respondTo(next, (route) => shell?.navigate(route))}
+      />
       {closing && (
         <p className="workspace-confirm">
           {closing.question}{' '}
@@ -547,6 +603,11 @@ function WorkspacePanel({
             onOpenShell={() => void openShell()}
           />
           <div className="workspace-body">
+            {view === 'activity' && (
+              <div className="workspace-activity">
+                <ActivityTab workspace={workspace} thread={thread} version={version} />
+              </div>
+            )}
             {view === 'brief' && (
               <BriefTab
                 text={workspace.brief}

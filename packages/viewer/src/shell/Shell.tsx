@@ -34,7 +34,14 @@ import { AskBar } from './AskBar.js';
 import { TitleBar, TitleBarSlotsProvider, type TitleBarSlots } from './TitleBar.js';
 import { WorkspaceView } from '../workspaces/Workspace.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
-import { startedNotice, workspaceName } from '../workspaces/workspaces.js';
+import { transitionNotice } from '../workspaces/transitions.js';
+import {
+  allRows,
+  startedNotice,
+  workspaceGroups,
+  workspaceName,
+  type WorkspaceRow,
+} from '../workspaces/workspaces.js';
 
 const FOLD_KEY = 'symbiote.viewer.sidenav';
 /** Under this width the sidenav is a drawer over the page (styles.css says the same). */
@@ -284,6 +291,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
         <StatusBar notice={notice} />
         <AskBar />
         <WindowTitle route={route} repo={repo} />
+        <TransitionNotices route={route} notify={notify} />
         {asking && (
           <ConfirmDialog
             question={asking.guard.question}
@@ -305,18 +313,51 @@ export function Shell({ repo }: { repo?: string | undefined }) {
 }
 
 /**
- * The window's title (N1a): the page, a workspace by its title, then the repository. Its own
- * component: a new read of the workspaces renders it alone, not the shell.
+ * The status bar's line when an agent moves on while the person looks elsewhere (V48): newly
+ * waiting, finished or failed, with a link to it; never a dialog. Its own component: a read of
+ * the workspaces renders it alone.
+ */
+function TransitionNotices({
+  route,
+  notify,
+}: {
+  route: Route;
+  notify: (notice: Notice | null) => void;
+}) {
+  const { list, reviews } = useWorkspaces();
+  const before = useRef<WorkspaceRow[] | null>(null);
+  // The workspace on screen, as of now: its own changes are in front of the person.
+  const shown = useRef<string | null>(null);
+  shown.current = route.page === 'workspace' ? route.branch : null;
+  useEffect(() => {
+    if (!list) return;
+    const after = allRows(workspaceGroups(list.workspaces, reviews));
+    const notice = transitionNotice(before.current, after, shown.current);
+    before.current = after;
+    if (notice) notify(notice);
+  }, [list, reviews, notify]);
+  return null;
+}
+
+/**
+ * The window's title (N1a): the page, a workspace by its title, then the repository; first, how
+ * many agents wait for the person (V48): "(2) History · repo — Symbiote", seen from the taskbar.
+ * Its own component: a new read of the workspaces renders it alone, not the shell.
  */
 function WindowTitle({ route, repo }: { route: Route; repo: string | undefined }) {
-  const { list } = useWorkspaces();
+  const { list, reviews } = useWorkspaces();
   const picked =
     route.page === 'workspace'
       ? list?.workspaces.find((workspace) => workspace.branch === route.branch)
       : undefined;
   const name = picked ? workspaceName(picked) : undefined;
+  const waiting = useMemo(
+    () => workspaceGroups(list?.workspaces ?? [], reviews).waiting.length,
+    [list, reviews],
+  );
   useEffect(() => {
-    document.title = routeTitle(route, repo, name);
-  }, [route, repo, name]);
+    const title = routeTitle(route, repo, name);
+    document.title = waiting > 0 ? `(${waiting}) ${title}` : title;
+  }, [route, repo, name, waiting]);
   return null;
 }

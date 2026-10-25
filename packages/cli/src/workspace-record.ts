@@ -73,6 +73,11 @@ export interface WorkspaceAgentRecord {
   error?: string;
   /** Started with Symbiote's hooks (V18c): its thread is recorded. */
   hooks?: boolean;
+  /**
+   * Started with its tools recorded (V48f): Claude Code's tools' hooks, or Symbiote's Codex runner
+   * writing its items, in `symbiote/activity/<branch>.jsonl`.
+   */
+  activity?: boolean;
 }
 
 /** Every workspace file's first key: where an agent that opens it finds its instructions. */
@@ -218,6 +223,7 @@ function asAgent(value: unknown): WorkspaceAgentRecord | null {
       : {}),
     ...(typeof v.error === 'string' ? { error: v.error } : {}),
     ...(v.hooks === true ? { hooks: true } : {}),
+    ...(v.activity === true ? { activity: true } : {}),
   };
 }
 

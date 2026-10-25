@@ -67,8 +67,11 @@ export const MergingIcon = () => (
   </Icon>
 );
 
-/** The sidenav's Needs you group (V44): the person's turn, after lucide's bell (ISC). */
-export const NeedsYouIcon = () => (
+/**
+ * The sidenav's Waiting for you group (V48; Needs you's in V44): an agent waits on the person, after
+ * lucide's bell (ISC).
+ */
+export const WaitingIcon = () => (
   <Icon>
     <path d="M6.85 14a1.33 1.33 0 0 0 2.3 0" />
     <path d="M2.17 10.22a.67.67 0 0 0 .5 1.11h10.66a.67.67 0 0 0 .5-1.11C12.94 9.3 12 8.33 12 5.33a4 4 0 0 0-8 0c0 3-.94 3.97-1.83 4.89" />
@@ -84,6 +87,22 @@ export const WorkingIcon = () => (
     <path d="M3.33 14.67h9.34M3.33 1.33h9.34" />
     <path d="M11.33 14.67v-2.78a1.33 1.33 0 0 0-.39-.94L8 8l-2.94 2.94a1.33 1.33 0 0 0-.39.94v2.79" />
     <path d="M4.67 1.33v2.78a1.33 1.33 0 0 0 .39.94L8 8l2.94-2.94a1.33 1.33 0 0 0 .39-.94V1.33" />
+  </Icon>
+);
+
+/** The sidenav's To review group (V48): work to look at, after lucide's eye (ISC). */
+export const ReviewIcon = () => (
+  <Icon>
+    <path d="M1.37 8.23a.67.67 0 0 1 0-.46 7.17 7.17 0 0 1 13.26 0 .67.67 0 0 1 0 .46 7.17 7.17 0 0 1-13.26 0" />
+    <circle cx="8" cy="8" r="2" />
+  </Icon>
+);
+
+/** The sidenav's Not running group (V48): stopped or failed, after lucide's circle-pause (ISC). */
+export const StoppedIcon = () => (
+  <Icon>
+    <circle cx="8" cy="8" r="6" />
+    <path d="M6.67 10V6M9.33 10V6" />
   </Icon>
 );
 

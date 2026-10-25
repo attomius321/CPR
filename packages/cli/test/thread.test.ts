@@ -12,8 +12,12 @@ import type { ThreadEntry } from '@symbiote/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import {
+  activityEntry,
+  activityPath,
   hookMain,
   lastAction,
+  readActivityEnd,
+  recordActivity,
   readThread,
   readThreadEnd,
   recordEvent,
@@ -266,6 +270,134 @@ describe('hookMain', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('activityEntry (V48f)', () => {
+  const W = '/work/app.worktrees/feature-x';
+  const tool = (event: string, name: string, toolInput: unknown, rest = {}) =>
+    activityEntry(
+      {
+        hook_event_name: event,
+        session_id: 's1',
+        cwd: W,
+        tool_name: name,
+        tool_input: toolInput,
+        tool_use_id: 'toolu_1',
+        ...rest,
+      },
+      AT,
+      W,
+    );
+  const head = { at: AT, session: 's1', id: 'toolu_1' };
+
+  it("a tool's start before it runs, its end after, a failure marked", () => {
+    expect(tool('PreToolUse', 'Bash', { command: 'pnpm test' })).toEqual({
+      ...head,
+      tool: 'Bash',
+      subject: 'pnpm test',
+      phase: 'start',
+    });
+    expect(tool('PostToolUse', 'Bash', { command: 'pnpm test' }, { tool_response: {} })).toEqual({
+      ...head,
+      tool: 'Bash',
+      subject: 'pnpm test',
+      phase: 'end',
+    });
+    expect(
+      tool('PostToolUseFailure', 'Bash', { command: 'pnpm test' }, { error: 'exit 1' }),
+    ).toEqual({ ...head, tool: 'Bash', subject: 'pnpm test', phase: 'end', failed: true });
+  });
+
+  it('keeps only what the tool works on: a first line, a path in the worktree, a pattern', () => {
+    const subject = (name: string, toolInput: unknown) =>
+      tool('PreToolUse', name, toolInput)?.subject;
+    expect(subject('Bash', { command: `\n  ${'x'.repeat(200)}\nsecond` })).toBe('x'.repeat(160));
+    expect(subject('Edit', { file_path: `${W}/src/auth.ts`, old_string: 'a' })).toBe('src/auth.ts');
+    expect(subject('Read', { file_path: '/etc/hosts' })).toBe('/etc/hosts');
+    expect(subject('Write', { file_path: `${W}/b.ts`, content: 'secret' })).toBe('b.ts');
+    expect(subject('MultiEdit', { file_path: `${W}/c.ts` })).toBe('c.ts');
+    expect(subject('NotebookEdit', { notebook_path: `${W}/n.ipynb` })).toBe('n.ipynb');
+    expect(subject('Grep', { pattern: 'parseToken', path: W })).toBe('parseToken');
+    expect(subject('Glob', { pattern: 'src/**/*.ts' })).toBe('src/**/*.ts');
+    expect(subject('WebFetch', { url: 'https://docs.rs', prompt: 'p' })).toBe('https://docs.rs');
+    expect(subject('WebSearch', { query: 'pino' })).toBe('pino');
+    expect(subject('Task', { description: 'Find callers', prompt: 'long' })).toBe('Find callers');
+    expect(subject('Agent', { description: 'Find callers' })).toBe('Find callers');
+    // Anything else: the tool alone.
+    expect(subject('mcp__symbiote__review', { branch: 'x' })).toBeUndefined();
+    expect(subject('TodoWrite', { todos: [] })).toBeUndefined();
+    expect(subject('Bash', 'not an object')).toBeUndefined();
+  });
+
+  it('nothing for another event, or without a session, a tool or its ID', () => {
+    expect(tool('Stop', 'Bash', {})).toBeNull();
+    expect(tool('PermissionRequest', 'Bash', {})).toBeNull();
+    expect(tool('PreToolUse', '', {})).toBeNull();
+    expect(tool('PreToolUse', 'Bash', {}, { tool_use_id: undefined })).toBeNull();
+    expect(tool('PreToolUse', 'Bash', {}, { session_id: 7 })).toBeNull();
+    expect(activityEntry(null, AT, W)).toBeNull();
+  });
+});
+
+describe('recordActivity, readActivityEnd and the hook in its activity mode (V48f)', () => {
+  const roots: string[] = [];
+  afterEach(() => {
+    for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+  });
+  function symbiote() {
+    const root = tempDir();
+    roots.push(root);
+    const folder = join(root, 'symbiote');
+    const worktree = join(root, 'app.worktrees', 'feature-x');
+    mkdirSync(worktree, { recursive: true });
+    const record = join(folder, 'workspaces', 'feature', 'x.json');
+    mkdirSync(dirname(record), { recursive: true });
+    writeFileSync(record, JSON.stringify({ branch: 'feature/x', base: 'a'.repeat(40), worktree }));
+    return { folder, worktree };
+  }
+  const pre = (worktree: string, id: string, command: string) => ({
+    hook_event_name: 'PreToolUse',
+    session_id: 's1',
+    cwd: worktree,
+    tool_name: 'Bash',
+    tool_input: { command },
+    tool_use_id: id,
+  });
+
+  it("appends each tool's line to its workspace's activity, never to its thread", async () => {
+    const { folder, worktree } = symbiote();
+    expect(await recordActivity(folder, pre(worktree, 'a', 'ls'), AT)).toBe(
+      activityPath(folder, 'feature/x'),
+    );
+    expect(activityPath(folder, 'feature/x')).toBe(join(folder, 'activity', 'feature', 'x.jsonl'));
+    await hookMain(JSON.stringify(pre(worktree, 'b', 'pnpm test')), folder, AT, 'activity');
+    // The thread's mode keeps no tool, and the activity's no message.
+    await hookMain(JSON.stringify(pre(worktree, 'c', 'rm')), folder, AT);
+    await hookMain(
+      JSON.stringify({ ...pre(worktree, 'd', ''), hook_event_name: 'Stop' }),
+      folder,
+      AT,
+      'activity',
+    );
+    expect((await readActivityEnd(folder, 'feature/x')).map((e) => e.id)).toEqual(['a', 'b']);
+    expect(existsSync(threadPath(folder, 'feature/x'))).toBe(false);
+    // Outside any workspace: nothing.
+    expect(await recordActivity(folder, pre(`${worktree}-2`, 'e', 'ls'), AT)).toBeNull();
+  });
+
+  it("reads the file's end only: a line cut there and broken lines are skipped", async () => {
+    const { folder, worktree } = symbiote();
+    for (let i = 0; i < 50; i++) await recordActivity(folder, pre(worktree, `t${i}`, 'ls'), AT);
+    const path = activityPath(folder, 'feature/x');
+    writeFileSync(path, `${readFileSync(path, 'utf8')}not json\n{"at":1}\n`);
+    const all = await readActivityEnd(folder, 'feature/x');
+    expect(all).toHaveLength(50);
+    const end = await readActivityEnd(folder, 'feature/x', 500);
+    expect(end.length).toBeGreaterThan(0);
+    expect(end.length).toBeLessThan(10);
+    expect(end.at(-1)?.id).toBe('t49');
+    expect(await readActivityEnd(folder, 'feature/none')).toEqual([]);
   });
 });
 

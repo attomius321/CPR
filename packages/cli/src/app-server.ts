@@ -184,6 +184,27 @@ export interface CodexTurn {
   /** Codex's final answer (`final`); else, in a turn read in full, its newest message. */
   report?: string;
   final?: true;
+  /**
+   * Read in full (V48f): what it ran, changed, searched or thought, in its order; absent in a
+   * `summary` read, which lists no such item.
+   */
+  items?: CodexItem[];
+}
+
+/** An item of a turn read in full (V48f), as Symbiote shows what Codex does. */
+export interface CodexItem {
+  id: string;
+  /** `command`, `fileChange`, `mcp`, `webSearch` or `reasoning`. */
+  kind: string;
+  /**
+   * What it works on, at most 160 characters: a command's first line, the files changed (by
+   * path, as Codex gives them), an MCP server's tool, a search's query.
+   */
+  subject?: string;
+  /** Codex's: `inProgress`, `completed`, `failed`, `declined`; absent for reasoning. */
+  status?: string;
+  /** Failed, declined, or a command that exited with another code than 0. */
+  failed?: true;
 }
 
 /** What Symbiote asks of Codex's app server (V27a); tests use a fake server. */
@@ -334,14 +355,63 @@ function modelsOf(
 }
 
 /** A turn's fields Symbiote uses, from what the server sent. */
-function turnOf(value: unknown): CodexTurn | null {
+/** Longest subject kept of an item (V48f), as Claude Code's hooks keep theirs. */
+const SUBJECT = 160;
+const short = (words: string | undefined) => words?.split('\n')[0]?.trim().slice(0, SUBJECT);
+
+/** An item Symbiote shows (V48f), from a turn read in full; null for messages and the rest. */
+function itemOf(item: Record<string, unknown>): CodexItem | null {
+  const id = text(item.id);
+  if (!id) return null;
+  const status = text(item.status);
+  const failed = status === 'failed' || status === 'declined';
+  const head = (kind: string, subject: string | undefined, bad = failed): CodexItem => ({
+    id,
+    kind,
+    ...(subject ? { subject } : {}),
+    ...(status ? { status } : {}),
+    ...(bad ? { failed: true as const } : {}),
+  });
+  switch (item.type) {
+    case 'commandExecution': {
+      const code = item.exitCode;
+      return head(
+        'command',
+        short(text(item.command)),
+        failed || (typeof code === 'number' && code !== 0),
+      );
+    }
+    case 'fileChange': {
+      const paths = (Array.isArray(item.changes) ? (item.changes as { path?: unknown }[]) : [])
+        .map((change) => text(change?.path))
+        .filter((path): path is string => path !== undefined);
+      return head('fileChange', short(paths.join(', ')));
+    }
+    case 'mcpToolCall': {
+      const server = text(item.server);
+      const tool = text(item.tool);
+      return head('mcp', short(server && tool ? `${server}.${tool}` : (tool ?? server)));
+    }
+    case 'webSearch':
+      return head('webSearch', short(text(item.query)));
+    case 'reasoning':
+      return { id, kind: 'reasoning' };
+    default:
+      return null;
+  }
+}
+
+function turnOf(value: unknown, full = false): CodexTurn | null {
   const v = (value ?? {}) as Record<string, unknown>;
   const id = text(v.id);
   if (!id) return null;
   const prompts: string[] = [];
+  const items: CodexItem[] = [];
   let final: string | undefined;
   let last: string | undefined;
   for (const item of Array.isArray(v.items) ? (v.items as Record<string, unknown>[]) : []) {
+    const shown = item ? itemOf(item) : null;
+    if (shown) items.push(shown);
     if (item?.type === 'userMessage' && Array.isArray(item.content)) {
       const words = (item.content as { type?: unknown; text?: unknown }[])
         .map((part) => (part?.type === 'text' && typeof part.text === 'string' ? part.text : ''))
@@ -367,6 +437,7 @@ function turnOf(value: unknown): CodexTurn | null {
     prompts,
     ...(report ? { report } : {}),
     ...(final ? { final: true as const } : {}),
+    ...(full ? { items } : {}),
   };
 }
 
@@ -600,7 +671,7 @@ export function codexServer(
           updatedAt: seconds(v.updatedAt) ?? 0,
           ...statusOf(v.status),
           turns: (listed.data ?? [])
-            .map(turnOf)
+            .map((turn) => turnOf(turn, items === 'full'))
             .filter((turn): turn is CodexTurn => turn !== null)
             .reverse(),
         };

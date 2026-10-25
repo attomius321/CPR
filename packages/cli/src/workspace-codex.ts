@@ -13,7 +13,14 @@ import {
 import { asksTrust, codexState, processAlive, serverState, type Codex } from './codex.js';
 import type { ReviewPlace } from './reviews.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
-import { appendThread, readThread, readThreadEnd, real, threadPath } from './thread.js';
+import {
+  activityPath,
+  appendThread,
+  readThread,
+  readThreadEnd,
+  real,
+  threadPath,
+} from './thread.js';
 import {
   startedAs,
   symbioteFolder,
@@ -91,13 +98,14 @@ export function workspaceCodex({
     const result = await agent.start({
       cwd: workspace.worktree,
       thread: threadPath(symbioteFolder(where), workspace.branch),
+      activity: activityPath(symbioteFolder(where), workspace.branch),
       run,
       writable,
       prompt,
       ...level,
     });
     return result.ok
-      ? { ...head, started, run, pid: result.pid }
+      ? { ...head, started, run, pid: result.pid, activity: true }
       : { ...head, error: result.error };
   }
 
@@ -210,6 +218,7 @@ export function workspaceCodex({
     const resumed = await agent.resume({
       cwd: workspace.worktree,
       thread: threadPath(symbioteFolder(where), workspace.branch),
+      activity: activityPath(symbioteFolder(where), workspace.branch),
       run,
       writable: await commitFolders(workspace.worktree, workspace.branch),
       sessionId: state.id,
@@ -218,7 +227,14 @@ export function workspaceCodex({
       ...level,
     });
     if (!resumed.ok) throw new WorkspaceRefused(resumed.error, 502);
-    workspace.agent = { kind: 'codex', ...level, started: startedAt, run, pid: resumed.pid };
+    workspace.agent = {
+      kind: 'codex',
+      ...level,
+      started: startedAt,
+      run,
+      pid: resumed.pid,
+      activity: true,
+    };
     await writeRecord(where, workspace);
     await firstEntry(where, workspace);
   }

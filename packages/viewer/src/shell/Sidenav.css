@@ -253,11 +253,57 @@ button.workspace-about {
   gap: 4px;
 }
 
+/* Positioned (V48): its cards' places are measured in it as they move (useCardMoves). */
 .sidenav-list {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow: auto;
   padding: 0 8px 12px;
+}
+
+/* Before the first read (V48): three cards' outlines, after 150 ms so a fast read draws none. */
+.workspace-skeleton {
+  padding: 12px 8px 0;
+  opacity: 0;
+  animation: skeleton-in 150ms ease-out 150ms forwards;
+}
+
+@keyframes skeleton-in {
+  to {
+    opacity: 1;
+  }
+}
+
+.skeleton-card {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+}
+
+.skeleton-card span {
+  height: 10px;
+  border-radius: 4px;
+  background: var(--raised);
+}
+
+.skeleton-card span:first-child {
+  width: 70%;
+}
+
+.skeleton-card span:nth-child(2) {
+  width: 90%;
+}
+
+.skeleton-card span:last-child {
+  width: 50%;
+}
+
+/* What was read stays, said to be old (V48). */
+.sidenav .workspaces-stale {
+  margin: 4px 16px;
+  color: var(--warning);
+  font-size: var(--size-small);
 }
 
 /* A group: its icon in its state's colour (V44), its name and how many. The icon stands over the
@@ -278,8 +324,69 @@ button.workspace-about {
   color: var(--group-tone, var(--faint));
 }
 
-.sidenav .group-needsYou {
+/* The person's move (V48): an agent waiting, and work to look at, in the warning's amber. */
+.sidenav .group-waiting,
+.sidenav .group-review {
   --group-tone: var(--warning);
+}
+
+/* Waiting for you (V48): first, in a band of its own amber; its cards say what they ask. */
+.sidenav .group-waiting {
+  margin: 8px 0 4px;
+  padding: 0 0 4px;
+  border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--warning) 7%, transparent);
+}
+
+.sidenav .group-waiting h3 {
+  margin: 7px 8px 2px 5px;
+  color: var(--text);
+}
+
+.sidenav .group-waiting .workspace-row {
+  margin: 0 3px;
+}
+
+.sidenav .group-waiting .workspace-row + .workspace-row {
+  margin-top: 2px;
+}
+
+/* What it asks: two lines at most, all of it in the title. */
+.sidenav .workspace-blocked {
+  display: -webkit-box;
+  margin: 2px 0 0 14px;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--size-small);
+  line-height: 17px;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Its answer, then how long it has waited. */
+.sidenav .workspace-respond {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 6px 0 4px 14px;
+}
+
+.sidenav .button.respond {
+  min-height: 24px;
+  padding: 0 10px;
+}
+
+.sidenav .workspace-respond .commit-date {
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.sidenav .group-stopped {
+  --group-tone: var(--muted);
 }
 
 .sidenav .group-working,
@@ -397,30 +504,144 @@ button.workspace-about {
   text-decoration: none;
 }
 
-/* A workspace's state (V29b): the colour of its group and its mark. */
+/* A workspace's state (V29b): the colour of its group and its mark; its shape (V48) tells the
+   states apart beyond their colour. */
 .state-dot {
+  position: relative;
   flex: none;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--dot, var(--faint));
+  transition:
+    background-color 150ms,
+    box-shadow 150ms;
 }
 
 .state-dot.tone-working {
   --dot: var(--moved);
 }
 
+/* Working (V48): a halo that swells and fades, slowly. Only its transform and opacity move: the
+   compositor draws it, nothing is laid out again. */
+.state-dot.tone-working::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--dot);
+  opacity: 0;
+  animation: state-pulse 2.4s ease-out infinite;
+}
+
+@keyframes state-pulse {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+/* Waiting (V48): a steady halo, seen without motion. */
 .state-dot.tone-waiting {
+  --dot: var(--warning);
+
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 32%, transparent);
+}
+
+/* Commits to review need the person as a question does: Needs you's amber, now To review's.
+   Green is Done's (as fix/needs-you-workspaces-fix draws it). */
+.state-dot.tone-ready {
   --dot: var(--warning);
 }
 
-.state-dot.tone-ready,
 .state-dot.tone-done {
   --dot: var(--added);
 }
 
 .state-dot.tone-failed {
   --dot: var(--removed);
+}
+
+/* Not running (V48): an empty ring. */
+.state-dot.tone-idle {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--dot, var(--faint));
+}
+
+/* Starting (V48): a ring turning while Symbiote makes its worktree and starts its agent. */
+.state-dot.tone-starting {
+  --dot: var(--moved);
+
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--dot) 30%, transparent);
+}
+
+.state-dot.tone-starting::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid transparent;
+  border-top-color: var(--dot);
+  border-radius: 50%;
+  animation: state-spin 0.9s linear infinite;
+}
+
+@keyframes state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Without motion, working keeps a still halo: its own shape, beside waiting's ring; starting, a
+   still arc. */
+@media (prefers-reduced-motion: reduce) {
+  .state-dot.tone-working::after {
+    animation: none;
+    opacity: 0.25;
+    transform: scale(2.2);
+  }
+
+  .state-dot.tone-starting::after,
+  .workspace-skeleton {
+    animation-duration: 1ms;
+  }
+
+  .state-dot.tone-starting::after {
+    animation-iteration-count: 1;
+  }
+}
+
+/* A card's button holds the focus: the whole card shows it (V48). */
+.sidenav .workspace-row:has(.workspace-about:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.sidenav .workspace-row .workspace-about:focus-visible {
+  outline: none;
+}
+
+.sidenav .workspace-row.starting {
+  cursor: default;
+}
+
+/* Its name as a card's is drawn, in a block so the card keeps a card's height; not a button. */
+.sidenav .starting-name {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--size-body);
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .merge-card .state-dot {
@@ -434,6 +655,8 @@ button.workspace-about {
   .sidenav.rail .page-count,
   .sidenav.rail .branches-count,
   .sidenav.rail .workspace-line,
+  .sidenav.rail .workspace-blocked,
+  .sidenav.rail .workspace-respond,
   .sidenav.rail .workspace-branch,
   .sidenav.rail .workspaces-empty,
   .sidenav.rail .workspaces-note,
@@ -476,6 +699,33 @@ button.workspace-about {
   .sidenav.rail .workspace-group h3 {
     justify-content: center;
     margin: 10px 4px 4px;
+  }
+
+  /* Folded, the band keeps its colour and its bell how many wait (V48). */
+  .sidenav.rail .group-waiting {
+    margin: 6px 0 2px;
+  }
+
+  .sidenav.rail .group-waiting h3 {
+    position: relative;
+    margin: 8px 4px 2px;
+  }
+
+  .sidenav.rail .group-waiting .branches-count {
+    display: block;
+    position: absolute;
+    top: -8px;
+    left: calc(50% + 4px);
+    min-width: 16px;
+    margin: 0;
+    padding: 0 4px;
+    background: var(--warning);
+    color: var(--bg);
+    line-height: 16px;
+  }
+
+  .sidenav.rail .group-waiting .workspace-row {
+    margin: 0 2px;
   }
 
   .sidenav.rail .workspace-row {
