@@ -3,7 +3,7 @@
 // fast-forward. No agent and no tokens; one merge at a time per repository.
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
   abortMerge,
@@ -58,10 +58,13 @@ import {
   mergerInstructions,
   mergerPrompt,
   parseAnswer,
+  type ConflictRegion,
   type MergerAgent,
+  type MergerAnswer,
   type MergerInput,
 } from './merge-agent.js';
 import { mergeLogs } from './merge-log.js';
+import { mergeQueue } from './merge-queue.js';
 import { runShell, type RunCheck } from './programs.js';
 import { PromptRefused, readPrompts, writeConfig } from './prompts.js';
 
@@ -196,6 +199,38 @@ function analyzedSymbols(repo: GitRepo, cacheDir: string): ChangedSymbols {
   };
 }
 
+/**
+ * Writes the merger agent's answer into the merge's worktree (V26c): in each conflicted file, each
+ * region's text in place of its markers, in the answer's order; the regions as the entry keeps
+ * them, each with its note.
+ */
+async function writeAnswer(
+  worktree: string,
+  perFile: { path: string; text: string; regions: ConflictRegion[] }[],
+  answer: Extract<MergerAnswer, { texts: string[] }>,
+): Promise<MergeRegion[]> {
+  const regions: MergeRegion[] = [];
+  let n = 0;
+  for (const file of perFile) {
+    const texts = file.regions.map((_, i) => answer.texts[n + i] ?? '');
+    file.regions.forEach((region, i) => {
+      const note = answer.notes[n + i];
+      regions.push({
+        path: file.path,
+        line: region.start + 1,
+        ours: region.ours,
+        base: region.base,
+        theirs: region.theirs,
+        text: texts[i] ?? '',
+        ...(note ? { note } : {}),
+      });
+    });
+    n += file.regions.length;
+    await writeFile(join(worktree, file.path), applyAnswer(file.text, file.regions, texts));
+  }
+  return regions;
+}
+
 /** What the server and `symbiote merge` need of the merger. */
 export interface Merger {
   list(): Promise<MergeList>;
@@ -259,51 +294,27 @@ export function merger(
   } = {},
 ): Merger {
   const stateDir = join(cacheDir, 'state', repo.id);
-  const queueFile = join(stateDir, 'merges.json');
-  const lockFile = join(stateDir, 'merges.lock');
+  const queue = mergeQueue(stateDir);
   const worktree = join(cacheDir, 'worktrees', repo.id, 'merge');
   // Each entry's log (V46a), beside the queue.
   const logs = mergeLogs(join(stateDir, 'merges'));
 
-  async function read(): Promise<MergeEntry[]> {
-    try {
-      const value = JSON.parse(await readFile(queueFile, 'utf8')) as { merges?: unknown };
-      return Array.isArray(value.merges) ? (value.merges as MergeEntry[]) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  /** One change to the queue file at a time in this process. */
-  let writing: Promise<unknown> = Promise.resolve();
-  function change<T>(task: (merges: MergeEntry[]) => T | Promise<T>): Promise<T> {
-    const next = writing.then(async () => {
-      const merges = await read();
-      const result = await task(merges);
-      await mkdir(stateDir, { recursive: true });
-      const temp = `${queueFile}.${process.pid}.tmp`;
-      await writeFile(temp, `${JSON.stringify({ merges }, null, 2)}\n`);
-      await rename(temp, queueFile);
-      return result;
-    });
-    writing = next.catch(() => undefined);
-    return next;
-  }
-
   /** Sets an entry's fields (`undefined` removes one); the entry as it now is. */
   function set(id: string, fields: Partial<MergeEntry>): Promise<MergeEntry> {
-    return change((merges) => {
-      const entry = merges.find((e) => e.id === id);
-      if (!entry) throw new MergeRefused(`no merge ${id}`, 404);
-      Object.assign(entry, fields, { updated: now().toISOString() });
-      for (const key of Object.keys(fields) as (keyof MergeEntry)[]) {
-        if (fields[key] === undefined) delete entry[key];
-      }
-      return { ...entry };
-    }).then((entry) => {
-      onChange?.(entry);
-      return entry;
-    });
+    return queue
+      .change((merges) => {
+        const entry = merges.find((e) => e.id === id);
+        if (!entry) throw new MergeRefused(`no merge ${id}`, 404);
+        Object.assign(entry, fields, { updated: now().toISOString() });
+        for (const key of Object.keys(fields) as (keyof MergeEntry)[]) {
+          if (fields[key] === undefined) delete entry[key];
+        }
+        return { ...entry };
+      })
+      .then((entry) => {
+        onChange?.(entry);
+        return entry;
+      });
   }
 
   /** The fields a merge leaves behind, cleared when it is merged again. */
@@ -355,7 +366,7 @@ export function merger(
     const { verdict, workspace } = await recordsOf(branch);
     const preselected = [workspace?.from, verdict?.into, await defaultBranch(repo, refs)];
     const into = preselected.find((name) => name && branches.includes(name)) ?? null;
-    const entry = (await read()).find((e) => e.branch === branch && e.state !== 'landed');
+    const entry = (await queue.read()).find((e) => e.branch === branch && e.state !== 'landed');
     const tip = refs.branches.find((b) => b.name === branch)?.sha;
     const approved = verdict?.event === 'approve' ? verdict.head : undefined;
     const blocked = !tip
@@ -634,25 +645,7 @@ export function merger(
       );
     }
     if ('error' in answer) return stop(`the merger agent's answer: ${answer.error}`);
-    const regions: MergeRegion[] = [];
-    let n = 0;
-    for (const file of perFile) {
-      const texts = file.regions.map((_, i) => answer.texts[n + i] ?? '');
-      file.regions.forEach((region, i) => {
-        const note = answer.notes[n + i];
-        regions.push({
-          path: file.path,
-          line: region.start + 1,
-          ours: region.ours,
-          base: region.base,
-          theirs: region.theirs,
-          text: texts[i] ?? '',
-          ...(note ? { note } : {}),
-        });
-      });
-      n += file.regions.length;
-      await writeFile(join(worktree, file.path), applyAnswer(file.text, file.regions, texts));
-    }
+    const regions = await writeAnswer(worktree, perFile, answer);
     let merged: string;
     try {
       merged = await commitResolution(worktree, conflicts, entry.title);
@@ -807,38 +800,12 @@ export function merger(
   /** States that hold a branch: a later merge into it waits until they are done. */
   const holding = new Set<MergeEntry['state']>(['merging', 'resolving', 'checking', 'ready']);
 
-  /** A pid lock: one Symbiote process merges in a repository; null when another holds it. */
-  async function lock(): Promise<(() => Promise<void>) | null> {
-    await mkdir(stateDir, { recursive: true });
-    try {
-      await writeFile(lockFile, `${process.pid}\n`, { flag: 'wx' });
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-      if (await lockedElsewhere()) return null;
-      await rm(lockFile, { force: true });
-      return lock();
-    }
-    return () => rm(lockFile, { force: true });
-  }
-
-  /** Whether a live process other than this one holds the lock. */
-  async function lockedElsewhere(): Promise<boolean> {
-    const pid = Number((await readFile(lockFile, 'utf8').catch(() => '')).trim());
-    if (!Number.isSafeInteger(pid) || pid <= 0 || pid === process.pid) return false;
-    try {
-      process.kill(pid, 0);
-      return true;
-    } catch (error) {
-      return (error as NodeJS.ErrnoException).code === 'EPERM';
-    }
-  }
-
   async function drain(): Promise<void> {
-    const release = await lock();
+    const release = await queue.lock();
     if (!release) return;
     try {
       // A process that stopped mid-merge left its entry merging or checking: merged again.
-      const kept = await change((merges) => {
+      const kept = await queue.change((merges) => {
         for (const e of merges) {
           if (!RUNNING.has(e.state)) continue;
           e.state = 'queued';
@@ -849,7 +816,7 @@ export function merger(
       // Logs of entries removed by another process, or while none ran.
       await logs.prune(kept);
       for (;;) {
-        const merges = await read();
+        const merges = await queue.read();
         const next = merges.find(
           (e, i) =>
             e.state === 'queued' &&
@@ -893,17 +860,17 @@ export function merger(
   }
 
   async function entryOf(id: string): Promise<MergeEntry> {
-    const entry = (await read()).find((e) => e.id === id);
+    const entry = (await queue.read()).find((e) => e.id === id);
     if (!entry) throw new MergeRefused(`no merge ${id}`, 404);
     return entry;
   }
 
   return {
     async list() {
-      const merges = await read();
+      const merges = await queue.read();
       // Queued by another process, or left by one that stopped: merged here.
       if (merges.some((e) => e.state === 'queued' || RUNNING.has(e.state))) kick();
-      const elsewhere = !running && existsSync(lockFile) && (await lockedElsewhere());
+      const elsewhere = !running && existsSync(queue.lockFile) && (await queue.lockedElsewhere());
       return { merges, ...(elsewhere ? { elsewhere: true as const } : {}) };
     },
 
@@ -934,7 +901,7 @@ export function merger(
         queued: at,
         updated: at,
       };
-      await change((merges) => void merges.push(entry));
+      await queue.change((merges) => void merges.push(entry));
       if (start) kick();
       return entry;
     },
@@ -1005,7 +972,7 @@ export function merger(
       if (RUNNING.has(entry.state)) {
         throw new MergeRefused(`${entry.branch} is ${entry.state}: wait for it`, 409);
       }
-      await change((merges) => {
+      await queue.change((merges) => {
         merges.splice(
           merges.findIndex((e) => e.id === id),
           1,
@@ -1016,7 +983,7 @@ export function merger(
     },
 
     async log(id, from = 0) {
-      if (!(await read()).some((e) => e.id === id)) return null;
+      if (!(await queue.read()).some((e) => e.id === id)) return null;
       return logs.read(id, from);
     },
 
@@ -1081,7 +1048,7 @@ export function merger(
     },
 
     async idle() {
-      await writing;
+      await queue.written();
       while (running) await running;
     },
   };
