@@ -2,9 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v56-skills-page-layout.md)
 
-**Status:** planned (2026-10-25), on branch `feature/skills-page-styling` (the workspace's); the
-plan confirmed by the person ("OK"), with two answers: the cards go, and the Monitor's head is
-fixed here.
+**Status:** ready for review (2026-10-25), on branch `feature/skills-page-styling` (the
+workspace's); the plan confirmed by the person ("OK"), with two answers: the cards go, and the
+Monitor's head is fixed here. "As built" and results at the end.
 
 **Problem** (asked: "I don't like skills page layout, maybe should be separated stiling from
 skills. and be rendered on full page width. The terminal is to small, do not keep everything in
@@ -119,3 +119,40 @@ order, the narrow layout (the list, then a page with All skills), the tokens, ev
 
 **Not in V56 (later)**: a list one can resize (the diff's sidebar's `Resizer`); a monospace
 editor for SKILL.md.
+
+## As built (V56)
+
+- **The checks' column has headings**: "Checks" and "Its other files" (`h3`, the list's caption
+  style), beside the text or under it; the text's size ("8 lines, about 23 tokens") moved to the
+  left of the line of actions, under the text.
+- **The checks' "?"** follows the last word ("refuse. ?"): in the 280 px column the line wraps,
+  and the flex line put the mark at the column's right edge.
+- **The notes under the head** (the Codex note, what Link did, an error) are a strip 16 px in, a
+  hairline under it, over the list and the pane.
+- **Fields**: the skill's text area and New skill's description had Settings' field rules through
+  `.settings-editor textarea`; they are listed by their own selectors in `ui/controls.css` (the
+  description keeps growing with its text, the skill's text does not).
+- **The Monitor's commit chip** was at the right edge too (0 px): 12 px now, as History's actions.
+- **The test at 1280**: there the checks are under the text, so the 80 px from the bottom is the
+  checks' column's, not the text's.
+
+**Results.** Measured as the problem was (Chromium, `serveWorkspaces`, sidenav 240 px, a skill of
+eight lines open; no Codex note):
+
+| Window | The list | The pane | Right of it | The head's title | Scribe's terminal | The skill's text area |
+|---|---|---|---|---|---|---|
+| 1280×720 | 0 px from the left | 800 px | 0 px | 16 px in | 98 × 33 (91 × 26) | 768 × 386 px, checks under it (710 × 201) |
+| 1440×900 | 0 | 960 | 0 | 16 | 118 × 43 (93 × 36) | 624 × 701, checks beside it (726 × 201) |
+| 1920×1080 | 0 | 1,440 | 0 | 16 | 178 × 53 (93 × 46) | 1,104 × 881 (726 × 201) |
+| 2560×1440 | 0 | 2,080 | 0 | 16 | 258 × 73 (93 × 66) | 1,744 × 1,241 (726 × 201) |
+| 390×844 | the list, then the pane | 390 | 0 | 16 | 47 × 35 (42 × 34) | 358 × 392 (332 × 201) |
+
+The Monitor's title 16 px in (0 before), its commit 12 px from the right (0). e2e: the three new
+tests red first (the list 16 px in at 1280, the terminal 89 px short of the right edge at 1440,
+the Monitor's title 0 px in), then green; the whole suite 264 of 264 on the first run. `pnpm
+check` 1,739 unit tests (the tokens' contrast, radii, sizes; the stylesheet's order). Screenshots,
+dark and light, at 1280×720, 1440×900, 1920×1080, 2560×1440 and 390×844: a skill, one with an
+error and three warnings, a draft with the delete confirm, New skill with a wrong name, Scribe's
+box and its terminal, the Codex note, the phone's list; History, Scout, Settings, the Monitor and
+Start at 1440. Letter gaps even at 3×.
+
