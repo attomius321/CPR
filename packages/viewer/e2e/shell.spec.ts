@@ -190,7 +190,9 @@ test('a card keeps the focus when its workspace moves to another group', async (
   );
   expect(branch).toMatch(/^feature\//);
   symbiote.report(branch as string, 'The plan');
-  await expect(group(page, 'Waiting for you').locator(`[data-branch="${branch}"]`)).toBeVisible(POLL);
+  await expect(group(page, 'Waiting for you').locator(`[data-branch="${branch}"]`)).toBeVisible(
+    POLL,
+  );
 
   // Drawn anew in its new group, it still has the focus: the arrows go on from it.
   await expect(card(page, branch as string).locator('.workspace-about')).toBeFocused();
