@@ -427,8 +427,10 @@ the page's place. Symbiote then:
    project's checks would see them; a name taken twice becomes `name (2).ext`;
 6. starts the agent you picked there in the background with the brief: Claude Code (`claude
    --bg`) or [Codex](#codex). With "Plan first and wait for my OK" (on by default), the agent
-   stops after its plan. Its first prompt names the documents' folder and each file, and says it
-   may read them there (the Documents prompt in [Settings](#agents-prompts)).
+   stops after its plan. Its first prompt says it is already in that worktree, on its branch, and
+   makes no other branch or worktree, even where the project's own workflow or the agent's tools
+   say new work gets one. It names the documents' folder and each file, and says it may read them
+   there (the Documents prompt in [Settings](#agents-prompts)).
 
 Prettier and ESLint read only the root's ignore files, so in your main checkout they check a
 `.json` or `.js` given as a document: add `symbiote/documents` to `.prettierignore` and ESLint's
@@ -946,7 +948,7 @@ read at each use, so a change applies to the next agent started.
 
 | Key | What | Placeholders |
 |---|---|---|
-| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace's start prompt for that kind | `{branch}`, `{start}`, `{brief}` (required), `{documents}`, `{plan}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{symbiote}` |
+| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace's start prompt for that kind | `{branch}`, `{worktree}`, `{start}`, `{brief}` (required), `{documents}`, `{plan}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{symbiote}` |
 | `plan.first`, `plan.direct` | What `{plan}` becomes, with Plan first and without | none |
 | `documents` | What `{documents}` becomes when files were given with the brief (else its line goes); added after a start prompt without `{documents}` | `{folder}` (required), `{files}` |
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The sentences of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`; `{reviewer}`, `{what}`; `{review}`, `{agents}` |
