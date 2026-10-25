@@ -92,15 +92,6 @@ export interface ScoutOpen {
 }
 
 /**
- * `POST /api/scout/switch` (V50, decision 384): the conversation goes on on another model, at
- * another level, its turns kept; null for each is the agent's own.
- */
-export interface ScoutSwitch {
-  model: string | null;
-  effort: string | null;
-}
-
-/**
  * `GET /api/scout/efforts`: the levels Scout can start at, and its models (V47); also Scribe's and
  * the merger's. Read only where they are shown: Codex's are on its app server, whose daemon a read
  * starts.

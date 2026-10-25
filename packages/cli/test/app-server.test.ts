@@ -352,43 +352,6 @@ describe('codexServer', () => {
     });
   });
 
-  it('forks a thread on another model and level, its turns kept, read-only as it was (V50, decision 384)', async () => {
-    const server = await serve();
-    const codex = codexServer(server.address);
-    const thread = await codex.start({
-      cwd: '/repo',
-      writable: [],
-      name: 'Scout',
-      readOnly: true,
-      prompt: 'Where is it?',
-    });
-    server.reply(thread, 'Here.');
-    const fork = await codex.fork({
-      thread,
-      name: 'Scout',
-      readOnly: true,
-      instructions: 'You are Scout.',
-      model: 'gpt-5.6-luna',
-      effort: 'high',
-      config: { mcp_servers: {} },
-    });
-    expect(fork).not.toBe(thread);
-    expect(server.calls.find((c) => c.method === 'thread/fork')?.params).toEqual({
-      threadId: thread,
-      sandbox: 'read-only',
-      approvalPolicy: 'never',
-      developerInstructions: 'You are Scout.',
-      model: 'gpt-5.6-luna',
-      config: { mcp_servers: {}, model_reasoning_effort: 'high' },
-    });
-    expect(server.thread(fork)).toMatchObject({
-      name: 'Scout',
-      sandbox: 'read-only',
-      turns: [{ status: 'completed' }],
-    });
-    expect(server.thread(thread)).toMatchObject({ archived: false });
-  });
-
   it('names the thread once its prompt is in it; a name refused does not fail the start', async () => {
     const path = socketPath();
     const server = await fakeAppServer(path, { refuse: ['thread/name/set'] });

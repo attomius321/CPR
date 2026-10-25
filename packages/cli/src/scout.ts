@@ -5,9 +5,9 @@
 // reviews, merges, the asked ones on the person's Confirm. Its record is `symbiote/scout.json`: the
 // session's ID, by which it is found (never by its folder, where the person's own sessions run too,
 // decision 239). Since V50 Scout's conversation starts with no question, its instructions its
-// system prompt and its terminal taking the first; a model or a level picked on its page moves it
-// to a copy, its turns kept. Scribe (V41, `scribe.ts`) is the same conversation with its own name,
-// tools, gate and prompt (`pageAgent`), no MCP server, and a request to start it.
+// system prompt and its terminal taking the first; since V52 a model or a level picked on its page
+// is the next conversation's. Scribe (V41, `scribe.ts`) is the same conversation with its own
+// name, tools, gate and prompt (`pageAgent`), no MCP server, and a request to start it.
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +29,6 @@ import {
   type ScoutOpen,
   type ScoutState,
   type ScoutStateName,
-  type ScoutSwitch,
   type ScoutTerminalRequest,
   type WorkspaceTerminalOpened,
 } from '@symbiote/core';
@@ -163,11 +162,6 @@ export interface Scout {
    * when it runs. Scout's only: Scribe starts with a request.
    */
   open(request: ScoutOpen): Promise<ScoutState>;
-  /**
-   * Moves the conversation to another model and level (V50, decision 384), its turns kept: a copy
-   * of Claude Code's session, a fork of Codex's thread; the original removed, archived.
-   */
-  switch(request: ScoutSwitch): Promise<ScoutState>;
   /** Ends the conversation: its session stopped and removed (Codex: archived), the record gone. */
   renew(): Promise<ScoutState>;
   /** Opens the conversation in a terminal (V21): `claude attach`, or Codex's TUI on its thread. */
@@ -652,13 +646,13 @@ export function pageAgent(
   }
 
   /**
-   * Starts Claude Code's session for a start or a move (`from`), and finds the one it made: the
-   * new background session named `name` in the checkout (decision 239).
+   * Starts Claude Code's session, and finds the one it made: the new background session named
+   * `name` in the checkout (decision 239).
    */
   async function claudeStart(
     where: ReviewPlace,
     agent: ClaudeCode,
-    request: { prompt?: string; from?: string; effort?: string; model?: string },
+    request: { prompt?: string; effort?: string; model?: string },
   ): Promise<AgentSession & { id: string }> {
     // Copied: what Claude Code lists after the start is told from what it listed before.
     const before = [...((await agent.sessions()) ?? [])];
@@ -859,96 +853,6 @@ export function pageAgent(
       // One that runs is kept: two pages opening Scout share it.
       const gone = record ? (await conversationOf(record)).state === 'gone' : false;
       if (!record || gone) await start(where, undefined, agent, effort, model);
-      return state();
-    },
-
-    async switch({ model, effort }) {
-      if (effort !== null && !isLevel(effort)) {
-        throw new ScoutRefused(effortWordProblem(effort), 400);
-      }
-      if (model !== null && !MODEL_ID.test(model)) {
-        throw new ScoutRefused(modelWordProblem(model), 400);
-      }
-      const where = await place();
-      const read = await readRecord(where);
-      if (!read) throw new ScoutRefused(`${name} has no conversation: open it first`, 409);
-      const now = (await conversationOf(read, where)).state;
-      // Read again: a turn seen just now took `fresh` out of it.
-      const record = (await readRecord(where)) ?? read;
-      if (now === 'gone') {
-        throw new ScoutRefused(`${name}'s session is gone: start a new conversation`, 409);
-      }
-      // A copy made mid-turn would cut it, or leave the original running (V50 spike).
-      if (now === 'working' || now === 'needs-you') {
-        throw new ScoutRefused(
-          `${name} is answering: change its model or level after its answer`,
-          409,
-        );
-      }
-      const agent = (await installed()).find((a) => a.kind === record.agent);
-      if (!agent) throw new ScoutRefused(`${AGENT_NAMES[record.agent]} is not installed`, 409);
-      await checkModel(agent, model);
-      const level = await levelFor(agent, effort, model);
-      const at = {
-        ...(level ? { effort: level } : {}),
-        ...(model ? { model } : {}),
-      };
-      if (agent.claude) {
-        const sessions = (await agent.claude.sessions()) ?? [];
-        const session = findScoutSession(record, sessions);
-        const from = record.sessionId ?? session?.sessionId;
-        if (!session?.id || !from) {
-          throw new ScoutRefused(`${name}'s session is gone: start a new conversation`, 409);
-        }
-        if (session.status !== undefined) {
-          const stopped = await agent.claude.stop(session.id);
-          if (!stopped.ok) throw new ScoutRefused(stopped.error, 409);
-        }
-        const copy = await claudeStart(where, agent.claude, { from, ...at });
-        const moved: ScoutRecord = {
-          about: spec.about,
-          agent: 'claude',
-          id: copy.id,
-          ...(copy.sessionId ? { sessionId: copy.sessionId } : {}),
-          ...at,
-          // The copy reads as a new session: whether anything was asked stays the record's.
-          ...(record.fresh ? { fresh: true as const } : {}),
-          started: record.started,
-        };
-        await put(where, recordPath(where), `${JSON.stringify(moved, null, 2)}\n`);
-        // Out of Claude Code's list; its transcript stays. A failure leaves it listed, stopped.
-        await agent.claude.remove(session.id);
-        return state();
-      }
-      const server = await serverOf(agent.codex ?? null);
-      // A fork keeps its original's model and level unless told: null is the agent's own, named.
-      const ownLevel = effort === null ? (await levelsOf(agent, model))?.default : undefined;
-      const ownModel = model === null ? (await modelsOf(agent))?.default : undefined;
-      const instructions = spec.instructions?.(root);
-      let thread: string;
-      try {
-        thread = await server.fork({
-          thread: record.thread ?? '',
-          name,
-          ...(instructions ? { instructions } : {}),
-          ...codexSandbox(),
-          ...(codexTools ? { config: codexTools } : {}),
-          ...(ownLevel ? { effort: ownLevel } : {}),
-          ...(ownModel ? { model: ownModel } : {}),
-          ...at,
-        });
-      } catch (error) {
-        throw new ScoutRefused(`Codex's app server: ${(error as Error).message}`, 502);
-      }
-      const moved: ScoutRecord = {
-        about: spec.about,
-        agent: 'codex',
-        thread,
-        ...at,
-        started: record.started,
-      };
-      await put(where, recordPath(where), `${JSON.stringify(moved, null, 2)}\n`);
-      await server.archive(record.thread ?? '').catch(() => undefined);
       return state();
     },
 

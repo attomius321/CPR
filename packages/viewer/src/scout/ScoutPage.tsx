@@ -15,11 +15,14 @@ import {
   folderName,
   toneOf,
 } from './Conversation.js';
-import { headChoices, scoutStateText } from './scout.js';
+import { headChoices, newConversation, scoutStateText } from './scout.js';
 
 const API = '/api/scout';
 
-/** What the head's choices are before a conversation runs (no terminal here): `''` the default. */
+/**
+ * The head's choices the person changed (V52): what New conversation starts on, and before a
+ * conversation what it starts on; absent, as the head shows them. `''` is the agent's own.
+ */
 interface Picked {
   agent?: AgentKind;
   model?: string;
@@ -29,10 +32,10 @@ interface Picked {
 /**
  * Scout (V35): an agent in the checkout; since MC1 it carries workspaces from a start to a merge
  * through Symbiote's tools, asking the person to confirm what changes a branch's fate. Since V50
- * the page is its terminal: opened with no question, which the terminal takes. Its head picks
- * the agent (a new conversation), the model and the level (the conversation moved to a copy on
- * them, decision 384), and starts a new conversation on the project's. Where no terminal runs,
- * the question box, the head's choices what its first question starts on.
+ * the page is its terminal: opened with no question, which the terminal takes. Its head shows the
+ * conversation's agent, model and level; a change there starts nothing (V52, decision 391): New
+ * conversation starts the next on what the head shows (392). Where no terminal runs, the question
+ * box, the head's choices what its first question starts on.
  */
 export function ScoutPage() {
   const { scout: read } = useWorkspaces();
@@ -40,10 +43,7 @@ export function ScoutPage() {
   const [error, setError] = useState<string | null>(null);
   // An open was asked for while there is no conversation: asked once, until one runs or Try again.
   const [opening, setOpening] = useState(false);
-  const [moving, setMoving] = useState(false);
   const [picked, setPicked] = useState<Picked>({});
-  // The model and level shown while the stepper is dragged and the conversation moves to them.
-  const [pending, setPending] = useState<{ model?: string; effort?: string } | null>(null);
   const [efforts, setEfforts] = useState<ScoutEfforts | null>(null);
   const [text, setText] = useState('');
 
@@ -52,18 +52,22 @@ export function ScoutPage() {
   const live = conversation !== null && conversation.state !== 'gone';
   const terminals = read?.terminal?.available === true;
   const none = read !== null && agents.length === 0;
-  const kind = conversation?.kind ?? picked.agent ?? agents[0]?.kind;
-  const answering = conversation?.state === 'working' || conversation?.state === 'needs-you';
+  const kind = picked.agent ?? conversation?.kind ?? agents[0]?.kind;
+  // Another agent picked: its choices are the project's, the conversation's being of its own.
+  const own = live && conversation.kind === kind ? conversation : null;
   const head = headChoices(
     efforts?.agents.find((a) => a.kind === kind),
-    live ? conversation : null,
-    {
-      model: picked.model ?? efforts?.model,
-      effort: picked.effort ?? efforts?.effort,
-    },
+    own,
+    { model: efforts?.model, effort: efforts?.effort },
+    picked,
   );
-  const model = pending?.model ?? head.model;
-  const effort = pending?.effort ?? head.effort;
+  const renewal = live && kind ? newConversation({ kind, ...head }, conversation) : null;
+  /** What a start is told: what the head shows (null: the agent's own), the lists it has. */
+  const shown = {
+    ...(kind ? { agent: kind } : {}),
+    ...(head.models.length > 0 ? { model: head.model || null } : {}),
+    ...(head.efforts.length > 0 ? { effort: head.effort || null } : {}),
+  };
 
   // The models and levels: read once there are agents, and again for each conversation, since
   // Settings may have changed the project's.
@@ -92,6 +96,11 @@ export function ScoutPage() {
     }
   }, [live]);
 
+  // A conversation runs: the head shows its own, which are the choices it started on.
+  useEffect(() => {
+    if (live) setPicked({});
+  }, [id, live]);
+
   /** Runs a write, then reads Scout's state again before the page goes on. */
   const act = (task: () => Promise<ScoutState>, after?: () => void) => {
     setBusy(true);
@@ -105,51 +114,18 @@ export function ScoutPage() {
         setError((e as Error).message);
         void reloadWorkspaces();
       })
-      .finally(() => {
-        setBusy(false);
-        setMoving(false);
-        setPending(null);
-      });
+      .finally(() => setBusy(false));
   };
 
-  // With terminals and no conversation, one is opened at once, with no question.
+  // With terminals and no conversation, one is opened at once, with no question: on the
+  // project's, or after New conversation (or a pick) on what the head shows.
   const open = read !== null && terminals && !none && !live && !busy && !opening && !error;
+  const anyPicked = Object.keys(picked).length > 0;
   useEffect(() => {
     if (!open) return;
     setOpening(true);
-    void act(() =>
-      postJson<ScoutState>(`${API}/open`, picked.agent ? { agent: picked.agent } : {}),
-    );
+    void act(() => postJson<ScoutState>(`${API}/open`, anyPicked ? shown : {}));
   }, [open]);
-
-  /** A model or a level picked: the conversation moves to it; before one, the next starts on it. */
-  const choose = (next: { model: string; effort: string }) => {
-    if (!live) {
-      setPending(null);
-      setPicked((was) => ({ ...was, model: next.model, effort: next.effort }));
-      return;
-    }
-    if (next.model === head.model && next.effort === head.effort) {
-      setPending(null);
-      return;
-    }
-    setPending(next);
-    setMoving(true);
-    void act(() =>
-      postJson<ScoutState>(`${API}/switch`, {
-        model: next.model || null,
-        effort: next.effort || null,
-      }),
-    );
-  };
-  /** The level a new model takes too stays; else its own. */
-  const onModel = (model: string) => {
-    const levels = efforts?.agents.find((a) => a.kind === kind);
-    const takes = levels
-      ? headChoices(levels, { model }, {}).efforts.some((c) => c.value === head.effort)
-      : false;
-    choose({ model, effort: takes ? head.effort : '' });
-  };
 
   const ask = (event?: FormEvent) => {
     event?.preventDefault();
@@ -171,8 +147,6 @@ export function ScoutPage() {
     ask();
   };
 
-  const locked = busy || answering;
-  const why = answering ? 'Scout is answering: change it after its answer' : undefined;
   return (
     <section className="scout-page" aria-labelledby="scout-title">
       <header className="scout-top">
@@ -187,9 +161,9 @@ export function ScoutPage() {
               verdict, a merge or a clean-up first.
             </p>
             <p>
-              Ask in its terminal. A model or an effort picked here moves this conversation to it,
-              what was said kept (a line you were typing is not); Settings sets the ones each new
-              conversation starts on.
+              Ask in its terminal. The agent, model and effort here are this conversation&apos;s;
+              one changed here starts nothing: New conversation starts the next on them. Settings
+              sets the ones Scout opens on when no conversation runs.
             </p>
           </Help>
         </span>
@@ -205,14 +179,12 @@ export function ScoutPage() {
             {agents.length > 1 && (
               <select
                 aria-label="Agent"
-                title="Another agent starts a new conversation"
+                title="The agent New conversation starts"
                 value={kind}
                 disabled={busy}
                 onChange={(event) => {
-                  const next = event.target.value as AgentKind;
-                  // A model and a level are one agent's: the other starts on the project's.
-                  setPicked({ agent: next });
-                  if (live) void act(() => postJson<ScoutState>(`${API}/new`, {}));
+                  // A model and a level are one agent's: the other's are the project's.
+                  setPicked({ agent: event.target.value as AgentKind });
                 }}
               >
                 {agents.map((a) => (
@@ -225,10 +197,13 @@ export function ScoutPage() {
             {head.models.length > 0 && (
               <select
                 aria-label="Model"
-                title={why ?? "This conversation's model"}
-                value={model}
-                disabled={locked}
-                onChange={(event) => onModel(event.target.value)}
+                title="The model New conversation starts on"
+                value={head.model}
+                disabled={busy}
+                onChange={(event) => {
+                  const model = event.target.value;
+                  setPicked((was) => ({ ...was, model }));
+                }}
               >
                 {head.models.map((m) => (
                   <option key={m.value} value={m.value}>
@@ -245,11 +220,10 @@ export function ScoutPage() {
                 <EffortStepper
                   label="Effort"
                   choices={head.efforts}
-                  value={effort}
-                  title={why}
-                  disabled={locked}
-                  onChange={(level) => setPending({ model, effort: level })}
-                  onCommit={(level) => choose({ model: head.model, effort: level })}
+                  value={head.effort}
+                  title="The effort New conversation starts at"
+                  disabled={busy}
+                  onChange={(effort) => setPicked((was) => ({ ...was, effort }))}
                 />
               </div>
             )}
@@ -265,12 +239,19 @@ export function ScoutPage() {
           {conversation && (
             <button
               type="button"
-              className="button secondary"
+              className={renewal?.differs ? 'button' : 'button secondary'}
               disabled={busy}
-              title="Ends this conversation (its session is stopped and removed) and starts another, on Settings' model and effort"
+              title={
+                renewal?.title ??
+                "Ends this conversation and starts another on the head's agent, model and effort"
+              }
               onClick={() => {
-                // The next on this agent, at the project's model and level (decision 385).
-                setPicked({ agent: conversation.kind });
+                // The next on what the head shows (decision 392), kept until it runs.
+                setPicked({
+                  ...(kind ? { agent: kind } : {}),
+                  ...(head.models.length > 0 ? { model: head.model } : {}),
+                  ...(head.efforts.length > 0 ? { effort: head.effort } : {}),
+                });
                 void act(() => postJson<ScoutState>(`${API}/new`, {}));
               }}
             >
@@ -301,7 +282,7 @@ export function ScoutPage() {
           <p className="scout-note">Scout needs Claude Code or Codex: neither is installed here.</p>
         </div>
       ) : live && terminals ? (
-        <ConversationTerminal key={conversation.id} api={API} quiet={moving} />
+        <ConversationTerminal key={conversation.id} api={API} />
       ) : terminals || read === null ? (
         <div className="scout-body">
           {!error && read !== null && <p className="scout-starting">Starting Scout…</p>}

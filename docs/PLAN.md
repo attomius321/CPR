@@ -156,6 +156,7 @@ hosted.
 | Fix | Scribe starts at the project's effort level (`scribe.effort`), set in Settings | ready for review | | [journal](journal/fix-scribe-effort-level.md) |
 | [MC1](plan/mc1-symbiote-mcp.md) | Symbiote's MCP: Scout as the person's assistant, from a workspace's start to its merge | ready for review | 358–365 | [journal](journal/mc1-symbiote-mcp.md) |
 | [V50](plan/v50-scout-terminal.md) | Scout is a terminal: opened with no question; the agent, model and effort in its head | ready for review | 383–385 | [journal](journal/v50-scout-terminal.md) |
+| [V52](plan/v52-scout-next-conversation.md) | Scout's head picks the next conversation: a choice starts nothing until New conversation | ready for review | 391–393 | [journal](journal/v52-scout-next-conversation.md) |
 
 ### The merger
 

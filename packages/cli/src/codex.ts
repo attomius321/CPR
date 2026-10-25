@@ -216,7 +216,6 @@ function lastingServer(
       return inner.address;
     },
     start: retried((server, request: Parameters<CodexServer['start']>[0]) => server.start(request)),
-    fork: retried((server, request: Parameters<CodexServer['fork']>[0]) => server.fork(request)),
     send: retried((server, request: Parameters<CodexServer['send']>[0]) => server.send(request)),
     load: retried((server, request: Parameters<CodexServer['load']>[0]) => server.load(request)),
     interrupt: retried((server, thread: string) => server.interrupt(thread)),

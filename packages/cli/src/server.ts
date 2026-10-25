@@ -42,7 +42,6 @@ import {
   parseReview,
   parseScoutAsk,
   parseScoutOpen,
-  parseScoutSwitch,
   parseScoutEffort,
   parseScoutTerminal,
   parseTerminalFile,
@@ -650,15 +649,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         oneAtATime(res, busy, () => agent.ask(request)),
       );
     }
-    // Scout's conversation with no question, and moved to another model or level (V50).
+    // Scout's conversation with no question (V50).
     if (url.pathname === `${api}/open`) {
       return written(req, res, parseScoutOpen, (request) =>
         oneAtATime(res, busy, () => agent.open(request)),
-      );
-    }
-    if (url.pathname === `${api}/switch`) {
-      return written(req, res, parseScoutSwitch, (request) =>
-        oneAtATime(res, busy, () => agent.switch(request)),
       );
     }
     if (url.pathname === `${api}/new`) {

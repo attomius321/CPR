@@ -656,8 +656,7 @@ export interface RunningWorkspaces extends Running {
  * a Pro subscription. As the real one did in the V18c spike, a session runs the hooks of the
  * `--settings` file it started with (`SessionStart`, `UserPromptSubmit`; `SessionEnd` when
  * stopped), `--bg --resume <session> "<text>"` continues a stopped session under its ID and
- * copies a live one (without its settings); with options, it copies the session on them (V50
- * spike). `rm` removes one. Its state lives in `dir`.
+ * copies a live one (without its settings), and `rm` removes one. Its state lives in `dir`.
  */
 /**
  * Claude Code's answer to `initialize` (V47), as 2.1.310 gave it: its own default first (Symbiote
@@ -760,15 +759,7 @@ if (args[0] === '--bg' && args[1] === '--resume') {
     process.stderr.write('No conversation found with session ID: ' + id + '\\n');
     process.exit(1);
   }
-  if (args.slice(3).some((arg) => arg.startsWith('--'))) {
-    // Options given: a copy on them, the conversation kept, as Claude Code 2.1.310 does (V50).
-    const prompt = promptOf(args.slice(3));
-    const settings = option('--settings');
-    const copy = started({ cwd: process.cwd(), name: option('--name'), from: session.id, ...(settings ? { settings } : {}), ...waiting(prompt) });
-    hooks(copy, { hook_event_name: 'SessionStart', source: 'resume' });
-    if (prompt !== undefined) hooks(copy, { hook_event_name: 'UserPromptSubmit', prompt });
-    process.stdout.write('note: background session ' + session.id + ' keeps its own saved options, so the flags you passed started a copy as ' + copy.id + '.\\n');
-  } else if (session.status) {
+  if (session.status) {
     // Running: a copy, which keeps none of the original's options.
     const copy = started({ cwd: process.cwd(), name: session.name });
     process.stdout.write('note: session ' + session.id + ' is already running in the background, so this started a copy as ' + copy.id + '.\\n');

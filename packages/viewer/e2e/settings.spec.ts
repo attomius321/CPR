@@ -458,7 +458,7 @@ test("Scout's model: Claude Code's own list, saved as scout.model when picked; t
   await expect.poll(scout).toEqual({ effort: 'xhigh' });
   await modelSelect(page).selectOption({ label: 'Opus 4.6' });
   await expect(part(page, 'Model').getByRole('status')).toHaveText(
-    "Saved. Scout's next conversation starts on Opus 4.6.",
+    'Saved. Scout starts on Opus 4.6 when it next opens with no conversation.',
   );
   await expect.poll(scout).toEqual({ effort: 'xhigh', model: 'claude-opus-4-6' });
   await expect(part(page, 'Model').locator('.settings-row-note')).toHaveText(

@@ -649,19 +649,21 @@ Confirm.
   question, and you type the first one there (nothing runs, and no token is spent, until you do).
   Its answers and your follow-ups are in that terminal. One conversation per repository is kept,
   and opened again when you come back; **New conversation** stops and removes its session (Claude
-  Code keeps its transcript: `claude --resume` opens it) and opens the next at once.
-- **Its head** holds its choices: **Agent** when both Claude Code and Codex are installed (the
-  other starts a new conversation), **Model** (the agent's own list) and **Effort** (a stepper on
-  the levels that model takes). Picking a model or a level moves the conversation to it, what was
-  said kept: Claude Code's session is resumed as a copy on them (the original stopped and removed),
-  Codex's thread forked (the original archived). A line you were typing in the terminal is not
-  kept. Neither moves while Scout answers.
+  Code keeps its transcript: `claude --resume` opens it) and opens the next at once, on what the
+  head shows.
+- **Its head** holds its choices: **Agent** when both Claude Code and Codex are installed,
+  **Model** (the agent's own list) and **Effort** (a stepper on the levels that model takes). They
+  show this conversation's. Changing one starts nothing and leaves this conversation as it is:
+  New conversation starts the next on them, and turns blue (the page's main action) while they
+  differ from this conversation's; its tooltip says what it ends and what it starts. With nothing
+  changed, the next starts on this one's choices.
 - **Its agent** is chosen as a workspace's: `agent.kind` in `symbiote/config.json`, else Claude
   Code, else Codex.
-- **Its model and effort** for a new conversation are the project's (`scout.model` and
-  `scout.effort` in `symbiote/config.json`, set in **Settings**, on Scout's page) when the agent
-  lists them, else `agent.model` for Claude Code, else the agent's own. What the head picks is that
-  conversation's; New conversation starts on the project's again.
+- **Its model and effort** when Scout opens with no conversation (the first time in a
+  repository, or after its session was removed outside Symbiote) are the project's (`scout.model`
+  and `scout.effort` in `symbiote/config.json`, set in **Settings**, on Scout's page) when the
+  agent lists them, else `agent.model` for Claude Code, else the agent's own. After that, the head
+  says what New conversation starts on.
 - **Its instructions** (`prompts.scout`) are its system prompt: appended to Claude Code's
   (`--append-system-prompt`), Codex's developer instructions.
 - **Claude Code** runs with `--tools Read,Grep,Glob,Bash --permission-mode dontAsk
