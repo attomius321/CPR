@@ -12,7 +12,6 @@ import {
 } from 'react';
 import type { MergeEntry } from '@symbiote/core';
 import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
-import { relativeDate } from '../history/commits.js';
 import {
   DoneIcon,
   KoiMark,
@@ -49,10 +48,12 @@ import { useShell } from './shell-context.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
   KindTag,
+  StateAge,
   StateDot,
   WorkspaceBranch,
   WorkspaceState,
 } from '../workspaces/WorkspaceFacts.js';
+import { respondTo } from '../workspaces/respond.js';
 import {
   workspaceGroups,
   workspaceName,
@@ -147,6 +148,7 @@ export function Sidenav({
     picked: route?.page === 'workspace' ? route.branch : null,
     flashed,
     onPick: (branch: string) => shell?.navigate({ page: 'workspace', branch }),
+    onRespond: (branch: string) => respondTo(branch, (route) => shell?.navigate(route)),
   };
 
   /** The arrows move between the cards; Enter opens one (it is a button). */
@@ -421,6 +423,7 @@ function WorkspaceGroupSection({
   picked,
   flashed,
   onPick,
+  onRespond,
 }: {
   group: WorkspaceGroup;
   title: string;
@@ -431,6 +434,7 @@ function WorkspaceGroupSection({
   picked: string | null;
   flashed: string | null;
   onPick: (branch: string) => void;
+  onRespond: (branch: string) => void;
 }) {
   return (
     <section className={`workspace-group group-${group}`} aria-label={title}>
@@ -449,6 +453,7 @@ function WorkspaceGroupSection({
             picked={picked === row.workspace.branch}
             flashed={row.workspace.branch === flashed}
             onPick={() => onPick(row.workspace.branch)}
+            onRespond={() => onRespond(row.workspace.branch)}
           />
         ))}
       </ul>
@@ -463,12 +468,15 @@ function WorkspaceCard({
   picked,
   flashed,
   onPick,
+  onRespond,
 }: {
   row: WorkspaceRow;
   mark: ReviewMark | undefined;
   picked: boolean;
   flashed: boolean;
   onPick: () => void;
+  /** A waiting agent's answer (V48): its workspace opened, its terminal focused. */
+  onRespond: () => void;
 }) {
   const item = useRef<HTMLLIElement>(null);
   const [flash, setFlash] = useState(false);
@@ -492,7 +500,7 @@ function WorkspaceCard({
       ref={item}
       className={`workspace-row${picked ? ' picked' : ''}${flash ? ' flash' : ''}`}
       data-branch={workspace.branch}
-      title={`${name} — ${row.next.text}`}
+      title={`${name} — ${row.next.doing ?? row.next.text}${row.next.blocked ? `: ${row.next.blocked}` : ''}`}
       onClick={onPick}
     >
       <div className="workspace-head">
@@ -509,12 +517,33 @@ function WorkspaceCard({
           {name}
         </button>
       </div>
-      <div className="workspace-line">
-        <WorkspaceState row={row} />
-        <time className="commit-date" dateTime={workspace.created}>
-          {relativeDate(workspace.created, Date.now())}
-        </time>
-      </div>
+      {row.next.group === 'waiting' ? (
+        // What it asks, and the way to answer it (V48): the card's own action, and how long.
+        <>
+          <p className="workspace-blocked" title={row.next.blocked ?? row.next.text}>
+            {row.next.blocked ?? row.next.text}
+          </p>
+          <div className="workspace-respond">
+            <button
+              type="button"
+              className="button secondary respond"
+              title={`Answer ${name}: its terminal, focused`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onRespond();
+              }}
+            >
+              Respond
+            </button>
+            <StateAge workspace={workspace} />
+          </div>
+        </>
+      ) : (
+        <div className="workspace-line">
+          <WorkspaceState row={row} />
+          <StateAge workspace={workspace} />
+        </div>
+      )}
       <div className="workspace-branch">
         <KindTag workspace={workspace} />
         <WorkspaceBranch row={row} mark={mark} />

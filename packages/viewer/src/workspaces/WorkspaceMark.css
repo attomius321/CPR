@@ -27,12 +27,10 @@ a.workspace-mark:hover {
   --workspace-tone: var(--moved);
 }
 
-.workspace-mark-waiting {
-  --workspace-tone: var(--warning);
-}
-
+/* As the sidenav's dot (V48): ready for review in the waiting's amber, green only once merged. */
+.workspace-mark-waiting,
 .workspace-mark-ready {
-  --workspace-tone: var(--added);
+  --workspace-tone: var(--warning);
 }
 
 .workspace-mark-failed {

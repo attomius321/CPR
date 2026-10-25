@@ -232,7 +232,8 @@ test('the workspaces view: what each workspace needs, as its agent goes on', asy
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   const row = workspaceRow(page, branch);
-  await expect(group(page, 'Working').locator(row)).toContainText('Working');
+  // Working: its tools recorded (V48f), none running yet.
+  await expect(group(page, 'Working').locator(row)).toContainText('Thinking');
 
   // The agent asks for a permission: it needs you, and the sidenav counts it.
   symbiote.session(branch, { state: 'blocked', waitingFor: 'permission prompt' });
@@ -258,6 +259,114 @@ test('the workspaces view: what each workspace needs, as its agent goes on', asy
   await expect(row).toContainText('1 commit');
   await expect(row).toContainText('1 file not committed yet');
   await expect(row).toContainText('Merges cleanly into main');
+});
+
+test('the agents that wait for you: first, what each asks, Respond, the count in the title, the next one (V48)', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  await startFrom(page, 'Pick a store');
+  const tests = 'feature/add-a-half-function';
+  const store = 'feature/pick-a-store';
+  const waiting = group(page, 'Waiting for you');
+  await expect(waiting).toHaveCount(0);
+
+  // It asks to run a command: in Waiting for you, saying what it asks, counted.
+  symbiote.hook(tests, {
+    hook_event_name: 'PermissionRequest',
+    tool_name: 'Bash',
+    tool_input: { command: 'pnpm test -- --run src/half' },
+  });
+  symbiote.session(tests, { state: 'blocked', waitingFor: 'permission prompt' });
+  await expect(waiting.locator(workspaceRow(page, tests))).toContainText(
+    'Permission to run pnpm test -- --run src/half',
+    POLL,
+  );
+  await expect(page.locator('.sidenav .page-count')).toHaveText('1');
+  await expect(page).toHaveTitle(/^\(1\) /);
+
+  // Respond: its workspace, on its terminal, focused.
+  await page.goto(`${symbiote.url}history`);
+  await waiting.locator(workspaceRow(page, tests)).getByRole('button', { name: 'Respond' }).click();
+  await expect(panel(page, tests)).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(terminal(page, tests).locator('.xterm-helper-textarea')).toBeFocused(POLL);
+  // Its heading's strip says it too, with Respond there.
+  const strip = panel(page, tests).getByRole('region', { name: 'Waiting for you' });
+  await expect(strip).toContainText('Permission to run pnpm test -- --run src/half');
+
+  // A second asks a question: two, the next one a click away.
+  symbiote.hook(store, {
+    hook_event_name: 'PreToolUse',
+    tool_name: 'AskUserQuestion',
+    tool_input: {
+      questions: [{ question: 'Which store?', options: [{ label: 'Redis' }, { label: 'SQLite' }] }],
+    },
+  });
+  symbiote.session(store, { state: 'blocked', waitingFor: 'question' });
+  await expect(page.locator('.sidenav .page-count')).toHaveText('2', POLL);
+  await expect(page).toHaveTitle(/^\(2\) /);
+  await strip.getByRole('button', { name: 'Next waiting (1)' }).click();
+  await expect(panel(page, store)).toBeVisible();
+  await expect(panel(page, store).getByRole('region', { name: 'Waiting for you' })).toContainText(
+    'Asks: Which store? — Redis · SQLite',
+  );
+
+  // Answered: it leaves the section by itself, no reload.
+  symbiote.session(tests, { state: 'working' });
+  await expect(waiting.locator(workspaceRow(page, tests))).toHaveCount(0, POLL);
+  await expect(group(page, 'Working').locator(workspaceRow(page, tests))).toBeVisible();
+  await expect(page.locator('.sidenav .page-count')).toHaveText('1');
+  await expect(page).toHaveTitle(/^\(1\) /);
+});
+
+test('a working agent says what it runs, from its tools, and since when; thinking between them (V48f)', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const row = workspaceRow(page, branch);
+  const tool = (event: string, id: string) =>
+    symbiote.hook(branch, {
+      hook_event_name: event,
+      tool_name: 'Bash',
+      tool_input: { command: 'pnpm test -- --run src/half' },
+      tool_use_id: id,
+    });
+  tool('PreToolUse', 't1');
+  await expect(row.locator('.workspace-state strong')).toHaveText(
+    'Running pnpm test -- --run src/half',
+    POLL,
+  );
+  // Since its prompt: under a minute, in its heading.
+  await expect(panel(page, branch).locator('.state-for')).toHaveText(/under a minute/);
+  tool('PostToolUse', 't1');
+  await expect(row.locator('.workspace-state strong')).toHaveText('Thinking', POLL);
+});
+
+test("a working agent's dot pulses, slowly; without motion it holds still (V48)", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const dot = workspaceRow(page, 'feature/add-a-half-function').locator('.state-dot');
+  const pulse = () =>
+    dot.evaluate((element) => {
+      const halo = getComputedStyle(element, '::after');
+      return [halo.animationName, halo.animationDuration, halo.opacity];
+    });
+  await expect.poll(pulse).toEqual(['state-pulse', '2.4s', expect.any(String)]);
+  // Without motion: a still halo, its own shape beside a waiting dot's ring.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(pulse).toEqual(['none', '0s', '0.25']);
 });
 
 test('a workspace and its branch lead to each other', async ({ page }) => {
@@ -376,7 +485,8 @@ test('stop the agent, start it again, copy its prompt, open its worktree', async
   await expect(row).toContainText('Stopped');
   expect(symbiote.stops()).toEqual(['fake0']);
   await row.getByRole('button', { name: 'Start the agent' }).click();
-  await expect(row).toContainText('Working');
+  // Working again, its tools recorded (V48f): none running yet.
+  await expect(row).toContainText('Thinking');
   expect(symbiote.calls()).toHaveLength(2);
 
   await more(page, branch, 'Copy the prompt');
@@ -466,7 +576,7 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
   // The newest is in view: the thread opens at its end, and follows it.
   await expect(here.locator('.thread-you')).toBeInViewport();
   await expect(box(page, branch)).toHaveValue('');
-  await expect(workspaceRow(page, branch)).toContainText('Working', POLL);
+  await expect(workspaceRow(page, branch).locator('.state-dot')).toHaveClass(/tone-working/, POLL);
 
   // What it waits on shows in the thread; Talk answers it.
   symbiote.hook(branch, {

@@ -240,20 +240,33 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
   await start(page, 'Add a half function');
   await start(page, 'Add clamp');
   await start(page, 'Add a double function');
+  await start(page, 'Add a triple function');
+  await start(page, 'Add zero');
   const rows = sidenav(page).locator('.workspace-row[data-branch]');
-  await expect(rows).toHaveCount(3, POLL);
+  await expect(rows).toHaveCount(5, POLL);
   const branches = await rows.evaluateAll((all) =>
     all.map((row) => (row as HTMLElement).dataset.branch ?? ''),
   );
-  const [waiting, merged] = branches.sort();
-  // One waits for the person; one is merged into main; the third works.
+  const [waiting, merged, toReview, , stopped] = branches.sort();
+  // One waits for the person; one is merged into main; one is to review and one stopped (V48);
+  // the fifth works.
   symbiote.report(waiting!, 'The plan');
   symbiote.commit(merged!, 'double.ts', 'export const double = (a: number) => a * 2;\n', 'Double');
   execFileSync('git', ['-C', symbiote.repo, 'merge', '-q', '--no-ff', '-m', 'Merge', merged!]);
+  symbiote.commit(
+    toReview!,
+    'triple.ts',
+    'export const triple = (a: number) => a * 3;\n',
+    'Triple',
+  );
+  symbiote.session(toReview!, { state: 'done' });
+  symbiote.session(stopped!, { state: 'stopped' });
 
   const tones = [
     ['Merging', '--moved'],
     ['Waiting for you', '--warning'],
+    ['To review', '--warning'],
+    ['Not running', '--muted'],
     ['Working', '--moved'],
     ['Done', '--added'],
   ] as const;
@@ -267,9 +280,9 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
     await expect(group(page, name).locator('.workspace-row .icon')).toHaveCount(0);
     await expect(group(page, name).locator('.workspace-row .state-dot')).toBeVisible();
   }
-  // Four drawings, none of them History's clock.
+  // Six drawings, none of them History's clock.
   drawings.add(await pages(page).getByRole('link', { name: 'History' }).locator('svg').innerHTML());
-  expect(drawings.size).toBe(5);
+  expect(drawings.size).toBe(7);
 
   // Folded to the rail: each icon stands for its group, named in its tooltip; the merge shows
   // only its dot, as a workspace does.

@@ -563,7 +563,7 @@ describe('workspaceNext', () => {
       ).toBe('Asks: Which store? — Redis · SQLite');
     });
 
-    it("else its last message while it waits (Codex), or its plan's first line", () => {
+    it('else its last message while it waits (Codex); a plan says only that it is ready', () => {
       const at = '2026-10-15T09:05:00.000Z';
       const report = { at, text: 'May I run it outside the sandbox?' };
       expect(
@@ -572,12 +572,13 @@ describe('workspaceNext', () => {
           activity: { since: at, report },
         }),
       ).toBe('May I run it outside the sandbox?');
+      // A plan's first line is mostly its heading: "Plan ready: read it and answer" says more.
       expect(
         blocked({
           agent: { state: 'plan-ready', kind: 'claude' },
-          activity: { since: at, report: { ...report, text: 'Plan: store sessions in SQLite' } },
+          activity: { since: at, report: { ...report, text: '# Plan' } },
         }),
-      ).toBe('Plan: store sessions in SQLite');
+      ).toBeUndefined();
       // A report from an earlier turn is not what it waits on now.
       expect(
         blocked({

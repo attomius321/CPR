@@ -34,7 +34,7 @@ import { AskBar } from './AskBar.js';
 import { TitleBar, TitleBarSlotsProvider, type TitleBarSlots } from './TitleBar.js';
 import { WorkspaceView } from '../workspaces/Workspace.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
-import { startedNotice, workspaceName } from '../workspaces/workspaces.js';
+import { startedNotice, workspaceGroups, workspaceName } from '../workspaces/workspaces.js';
 
 const FOLD_KEY = 'symbiote.viewer.sidenav';
 /** Under this width the sidenav is a drawer over the page (styles.css says the same). */
@@ -305,18 +305,24 @@ export function Shell({ repo }: { repo?: string | undefined }) {
 }
 
 /**
- * The window's title (N1a): the page, a workspace by its title, then the repository. Its own
- * component: a new read of the workspaces renders it alone, not the shell.
+ * The window's title (N1a): the page, a workspace by its title, then the repository; first, how
+ * many agents wait for the person (V48): "(2) History · repo — Symbiote", seen from the taskbar.
+ * Its own component: a new read of the workspaces renders it alone, not the shell.
  */
 function WindowTitle({ route, repo }: { route: Route; repo: string | undefined }) {
-  const { list } = useWorkspaces();
+  const { list, reviews } = useWorkspaces();
   const picked =
     route.page === 'workspace'
       ? list?.workspaces.find((workspace) => workspace.branch === route.branch)
       : undefined;
   const name = picked ? workspaceName(picked) : undefined;
+  const waiting = useMemo(
+    () => workspaceGroups(list?.workspaces ?? [], reviews).waiting.length,
+    [list, reviews],
+  );
   useEffect(() => {
-    document.title = routeTitle(route, repo, name);
-  }, [route, repo, name]);
+    const title = routeTitle(route, repo, name);
+    document.title = waiting > 0 ? `(${waiting}) ${title}` : title;
+  }, [route, repo, name, waiting]);
   return null;
 }

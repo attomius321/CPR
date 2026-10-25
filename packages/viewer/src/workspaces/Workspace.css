@@ -368,12 +368,28 @@
   color: var(--text);
 }
 
-.workspace-top .workspace-state {
+/* What is next and its facts, then how long the state has lasted (V48), kept whole. */
+.workspace-state-line {
   grid-area: state;
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  font-size: var(--size-small);
+}
+
+.workspace-top .workspace-state {
+  min-width: 0;
   margin: 0;
   overflow: hidden;
   font-size: var(--size-small);
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-top .state-for {
+  flex: none;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -386,11 +402,12 @@
   --state-tone: var(--moved);
 }
 
-.workspace-top.tone-waiting {
+/* As the sidenav's dot: ready for review in the waiting's amber, green only once merged. */
+.workspace-top.tone-waiting,
+.workspace-top.tone-ready {
   --state-tone: var(--warning);
 }
 
-.workspace-top.tone-ready,
 .workspace-top.tone-done {
   --state-tone: var(--added);
 }
@@ -416,6 +433,47 @@
 .workspace-actions .merge-control {
   margin: 0;
   font-size: var(--size-small);
+}
+
+/* The strip under the heading (V48): a waiting agent's question and its answer, or a failure
+   and where to read it, in its state's tint. */
+.workspace-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 7px 12px 7px 16px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--strip-tone) 8%, transparent);
+}
+
+.strip-waiting {
+  --strip-tone: var(--warning);
+}
+
+.strip-failed {
+  --strip-tone: var(--removed);
+}
+
+.workspace-strip > .icon {
+  flex: none;
+  color: var(--strip-tone);
+}
+
+.workspace-strip-text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-strip .button.secondary,
+.workspace-strip .button.ghost {
+  flex: none;
 }
 
 .workspace > .workspace-confirm {

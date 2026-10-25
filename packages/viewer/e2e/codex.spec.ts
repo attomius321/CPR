@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // Codex as a workspace's agent (V20a): picked in Start a workspace, run by Symbiote's runner (the
@@ -24,6 +24,8 @@ const BRANCH = 'feature/add-a-half-function';
 const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
 const panel = (page: Page, branch = BRANCH) =>
   page.getByRole('region', { name: `Workspace ${branch}` });
+/** A card's dot: its tone says its agent works, whatever it runs (V48f). */
+const working = (row: Locator) => row.locator('.state-dot');
 const workspaceRow = (page: Page, branch = BRANCH) =>
   page.locator(`.workspace-row[data-branch="${branch}"]`);
 const box = (page: Page) => panel(page).getByRole('textbox', { name: 'Reply to the agent' });
@@ -96,7 +98,7 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
   await page.goto(`${symbiote.url}?branch=${encodeURIComponent(BRANCH)}`);
   const here = panel(page);
   await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
-  await expect(workspaceRow(page)).toContainText('Working', POLL);
+  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
   await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveCount(0);
   // A shell in its worktree all the same (V45): shells need no agent's session.
   await expect(here.getByRole('button', { name: 'New shell' })).toBeEnabled();
@@ -134,7 +136,7 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
     cwd: folder,
   });
   await expect(here.locator('.thread-line')).toHaveText('Continued');
-  await expect(workspaceRow(page)).toContainText('Working', POLL);
+  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
 
   // It commits and reports: ready for review.
   symbiote.commit(BRANCH, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
@@ -150,7 +152,7 @@ test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean
   await page.goto(`${symbiote.url}`);
   await startWithCodex(page);
   const here = panel(page);
-  await expect(workspaceRow(page)).toContainText('Working', POLL);
+  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
   await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
 
   // Stop: the run ends (its process group), the thread says so.
@@ -159,7 +161,7 @@ test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean
 
   // Started again: a new run, which fails in Codex's words.
   await here.getByRole('button', { name: 'Start the agent' }).click();
-  await expect(workspaceRow(page)).toContainText('Working', POLL);
+  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
   expect(symbiote.codexCalls()).toHaveLength(2);
   symbiote.codexTurn(BRANCH, { fail: 'unexpected status 401 Unauthorized' });
   await expect(workspaceRow(page)).toContainText(

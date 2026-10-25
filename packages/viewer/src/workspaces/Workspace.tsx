@@ -24,7 +24,9 @@ import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { InTitleBar } from '../shell/TitleBar.js';
 import { MergeControl } from './MergeControl.js';
 import { ThreadTab, useThread } from './ThreadTab.js';
-import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from './WorkspaceFacts.js';
+import { KindTag, StateDot, StateFor, WorkspaceBranch, WorkspaceState } from './WorkspaceFacts.js';
+import { RESPOND_EVENT, respondTo } from './respond.js';
+import { WorkspaceStrip } from './WorkspaceStrip.js';
 import { postJson, serverWords } from '../ui/http.js';
 import { Resizer } from '../ui/Resizer.js';
 import {
@@ -109,6 +111,7 @@ export function WorkspaceView({ branch }: { branch: string }) {
       key={branch}
       row={row}
       mark={marks.get(branch)}
+      waiting={groups.waiting.map((r) => r.workspace.branch).filter((b) => b !== branch)}
       version={list}
       terminal={list.terminal}
       fillVerdict={send === 'verdict'}
@@ -127,6 +130,7 @@ export function WorkspaceView({ branch }: { branch: string }) {
 function WorkspacePanel({
   row,
   mark,
+  waiting,
   version,
   terminal,
   fillVerdict,
@@ -135,6 +139,8 @@ function WorkspacePanel({
 }: {
   row: WorkspaceRow;
   mark: ReviewMark | undefined;
+  /** The other workspaces whose agent waits for the person (V48), in the sidenav's order. */
+  waiting: string[];
   /** The list as last read: the thread is read again with it. */
   version: unknown;
   /** Whether its agent's session can be shown in a terminal (V21). */
@@ -145,6 +151,7 @@ function WorkspacePanel({
   /** It was cleaned up: the main area shows something else. */
   onGone: () => void;
 }) {
+  const shell = useShell();
   const { workspace } = row;
   const { branch, agent } = workspace;
   const [thread, reloadThread] = useThread(branch, version);
@@ -212,6 +219,30 @@ function WorkspacePanel({
     const href = workspaceHref(branch);
     window.history.replaceState(null, '', next === 'terminal' ? href : `${href}&${next}`);
   };
+  /**
+   * Takes the person's answer (V48): its terminal shown and focused where one runs, else the
+   * thread and its box. A terminal not open yet focuses itself as it opens.
+   */
+  const respond = () => {
+    if (terminals) {
+      if (view !== 'terminal') show('terminal');
+      opened?.focus();
+      return;
+    }
+    if (view !== 'thread') show('thread');
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLTextAreaElement>('.workspace .reply textarea')?.focus(),
+    );
+  };
+  const respondNow = useRef(respond);
+  respondNow.current = respond;
+  useEffect(() => {
+    const onRespond = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === branch) respondNow.current();
+    };
+    window.addEventListener(RESPOND_EVENT, onRespond);
+    return () => window.removeEventListener(RESPOND_EVENT, onRespond);
+  }, [branch]);
   const showShell = (number: number) => {
     setChosen('shell');
     setShellShown(number);
@@ -496,8 +527,18 @@ function WorkspacePanel({
             </button>
           )}
         </div>
-        <WorkspaceState row={row} />
+        <div className="workspace-state-line">
+          <WorkspaceState row={row} />
+          <StateFor workspace={workspace} />
+        </div>
       </header>
+      <WorkspaceStrip
+        row={row}
+        waiting={waiting}
+        onRespond={respond}
+        onThread={() => show('thread')}
+        onNext={(next) => respondTo(next, (route) => shell?.navigate(route))}
+      />
       {closing && (
         <p className="workspace-confirm">
           {closing.question}{' '}

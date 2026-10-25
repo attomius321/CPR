@@ -391,12 +391,14 @@ export function workspaceNext(
 
 /**
  * What a waiting agent asks (V48): its recorded ask in the thread's words, else what it said as it
- * began to wait (Codex on its app server) or its plan; none when nothing was recorded.
+ * began to wait (Codex on its app server); none when nothing was recorded, or for a plan (its first
+ * line is mostly a heading: "Plan ready" says more).
  */
 function blockedOn({ activity, agent, worktree }: WorkspaceSummary): string | undefined {
   if (activity?.asks) return askedFor(activity.asks, worktree.path);
   const said = activity?.report;
-  if (agent.interrupted || !said || !activity.since) return undefined;
+  if (agent.state !== 'needs-you' || agent.interrupted || !said || !activity.since)
+    return undefined;
   // A report from before the wait began is an earlier turn's, not what it asks now.
   return Date.parse(said.at) >= Date.parse(activity.since) ? said.text : undefined;
 }

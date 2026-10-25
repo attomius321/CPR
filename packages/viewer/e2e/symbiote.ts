@@ -1168,7 +1168,8 @@ export async function serveWorkspaces({
       hooks: Record<string, { matcher?: string; hooks: { command: string }[] }[]>;
     };
     for (const entry of settings.hooks[String(event.hook_event_name)] ?? []) {
-      if (entry.matcher && entry.matcher !== event.tool_name) continue;
+      // '*' is every tool (V48f), as Claude Code reads it.
+      if (entry.matcher && entry.matcher !== '*' && entry.matcher !== event.tool_name) continue;
       for (const hook of entry.hooks) execSync(hook.command, { input: JSON.stringify(event) });
     }
   };
