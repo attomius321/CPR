@@ -168,9 +168,12 @@ A view toggle in a toolbar (the diff's Focus, Context, Type references) reads be
 button: `aria-pressed`, 28 px, 8 px radius, `--muted` text; hover `--hover` and `--text`; pressed
 `--raised` and `--text`. That changes its role: update the specs' selectors in the same commit.
 
-A switch (an on/off setting): track 36 × 20 px, round, off `color-mix(in srgb, var(--muted) 30%,
-transparent)` with a 1 px `--edge` border (Symbiote's 3:1 for a control's edge), on `var(--text)`;
-thumb 14 px, `var(--bg)`, `--shadow-lift`, moved 16 px when on.
+A switch (an on/off setting; V49, `input[type='checkbox'][role='switch']` in `ui/controls.css`):
+the `<input type="checkbox">` with `role="switch"` (its label, the keyboard and `getByLabel` stay).
+Track 36 × 20 px, round, off `color-mix(in srgb, var(--muted) 30%, transparent)` with the
+checkbox's 1 px `--edge` border (Symbiote's 3:1 for a control's edge), on `--primary` as a checked
+checkbox; thumb 14 px, `--primary-text`, `--shadow-lift`, moved 16 px when on. Its words before it,
+the switch at the row's end.
 
 ## Stepper (one of a few ordered levels)
 
@@ -413,6 +416,16 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   `workspaces/terminal.ts`.
 - Empty state: a 28 px icon in `--faint`, a 14 px weight 500 line, 12 px `--muted` text, and the
   action that fills it (a primary or outline button).
+- A page that makes something (Start a workspace, V49): its form centred in the main area, never
+  pinned to the left with the rest of a wide window bare; the head strip full width, its title and
+  actions laid out in the form's width (`--start-side`). The parts as cards (14 px, `--panel`,
+  `--line`, `--shadow-lift`, 16 px padding; 12 on a phone): what is written in one, up to 760 px;
+  the settings beside it (380 px) as rows: the name in `--muted` weight 500 at the left in a
+  104 px column, the control at the right, a hairline between rows, a note under its control; a
+  control that wants the width (a stepper, a file list) under its name. Files are added in a
+  dashed drop area (`--field-line`) with the button in it. A tall window gives its room to what
+  is written most, and lowers the cards; it does not centre them (they would move as the form
+  grows).
 
 ## The graph
 

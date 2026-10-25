@@ -449,6 +449,7 @@ function StartForm({
             <label className="workspace-field">
               {heading(main)}
               <textarea
+                className="start-goal"
                 rows={7}
                 value={form.main}
                 placeholder={HINTS[main]}
@@ -487,7 +488,7 @@ function StartForm({
                     {heading(part)} <span className="field-optional">optional</span>
                   </span>
                   <textarea
-                    rows={3}
+                    rows={2}
                     value={form.more[part] ?? ''}
                     placeholder={HINTS[part]}
                     onChange={(event) =>
@@ -504,9 +505,10 @@ function StartForm({
             )}
           </div>
           <div className="start-run">
-            <label className="workspace-field">
-              Start from
+            <div className="workspace-field">
+              <label htmlFor="start-from">Start from</label>
               <select
+                id="start-from"
                 value={base.from ?? ''}
                 onChange={(event) => {
                   const name = event.target.value;
@@ -530,7 +532,7 @@ function StartForm({
                   </optgroup>
                 )}
               </select>
-            </label>
+            </div>
             <div className="workspace-field">
               <span className="field-label">
                 <label htmlFor="start-branch">Branch</label>
@@ -549,8 +551,10 @@ function StartForm({
                 aria-invalid={form.title.trim() !== '' && problem !== null}
                 onChange={(event) => edit({ ...form, branch: event.target.value })}
               />
+              {form.title.trim() !== '' && problem && (
+                <p className="error start-row-note">{problem}</p>
+              )}
             </div>
-            {form.title.trim() !== '' && problem && <p className="error">{problem}</p>}
             <StartAgent
               agents={options.agents}
               agent={agent}
@@ -563,12 +567,13 @@ function StartForm({
               onChoose={choose}
             />
             <label className="workspace-check">
+              Plan first and wait for my OK
               <input
                 type="checkbox"
+                role="switch"
                 checked={planFirst}
                 onChange={(event) => choose({ ...run, planFirst: event.target.checked })}
               />
-              Plan first and wait for my OK
             </label>
             <StartDocuments
               entries={documents}

@@ -1,13 +1,22 @@
 /* Start a workspace, a page of the shell's (V30a): a head strip, as a workspace's, then the brief
    and the run side by side where the main area has the room, the run under the brief where not.
-   The body scrolls under the head, which keeps Start in view. */
+   The body scrolls under the head, which keeps Start in view. Both centred in the main area, the
+   brief and the run as cards, the head's contents in the cards' width (V49). */
 .start-page {
+  /* The cards' width, the head's contents laid out in it. */
+  --start-width: 760px;
   position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   container: start / inline-size;
+}
+
+/* The space each side of the cards: the head's and the error's padding. */
+.start-top,
+.start-error {
+  --start-side: max(16px, calc((100% - var(--start-width)) / 2));
 }
 
 .start-top {
@@ -19,7 +28,7 @@
   row-gap: 2px;
   min-height: 44px;
   box-sizing: border-box;
-  padding: 7px 12px 7px 16px;
+  padding: 7px var(--start-side);
   border-bottom: 1px solid var(--line);
   background: var(--side);
 }
@@ -59,7 +68,8 @@
 }
 
 .start-error {
-  margin: 12px 16px 0;
+  margin: 12px 0 0;
+  padding: 0 var(--start-side);
   white-space: pre-wrap;
 }
 
@@ -70,51 +80,118 @@
   padding: 16px 16px 24px;
 }
 
+/* A tall main area: the cards lower, 40 % of the height over 900 px (240 at most), and the goal
+   taller (below). Not centred: the cards would move as More opens or files are added. */
+@media (min-height: 940px) {
+  .start-body {
+    padding-top: min(240px, calc((100vh - 900px) * 0.4));
+  }
+}
+
 .start-columns {
   display: grid;
   grid-template-columns: minmax(0, 760px);
-  column-gap: 32px;
-}
-
-/* One column: the run after the brief, a little apart. */
-.start-run {
-  margin-top: 8px;
+  justify-content: center;
+  gap: 16px 24px;
 }
 
 @container start (min-width: 1000px) {
-  .start-columns {
-    grid-template-columns: minmax(0, 760px) 300px;
+  .start-top,
+  .start-error {
+    --start-width: 1164px;
   }
 
-  /* Side by side, both columns start at the same height: the kinds, and the branch. */
-  .start-run,
-  .start-run > :first-child {
-    margin-top: 0;
+  .start-columns {
+    grid-template-columns: minmax(0, 760px) 380px;
+    align-items: start;
   }
 }
 
-/* The run's choices, each a field as the brief's are. */
+/* The cards (V49): the brief, and the run beside it or under it. */
+.start-brief,
+.start-run {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-lift);
+}
+
+.start-brief > :first-child {
+  margin-top: 0;
+}
+
+/* The run's choices as rows (V49): the name at the left in --muted, the control at the right, a
+   hairline between rows; a note under its control. Words (the warning about a key, what is made
+   without an agent) are a row of their own. Over `.workspace-field`'s and `.workspace-check`'s
+   margin. */
+.start-run > .workspace-field,
+.start-run > .workspace-check,
+.start-run > p {
+  margin: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.start-run > :first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.start-run > :last-child {
+  padding-bottom: 0;
+}
+
+.start-run > .workspace-field,
+.start-run > .workspace-check {
+  min-height: 32px;
+  color: var(--muted);
+}
+
+.start-run > .workspace-field {
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 4px;
+}
+
+/* The stepper wants the card's width (its six words overlap at a row's 220 px). */
+.start-run > .start-effort {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .start-run select {
   box-sizing: border-box;
   width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
   font-weight: normal;
 }
 
-.start-run .dialog-note {
-  margin: 4px 0 0;
+.start-run .workspace-field > .dialog-note,
+.start-row-note {
+  grid-column: -2;
+  margin: 0;
   font-size: var(--size-small);
-  /* Inside a field (the model's, V47) too, where the label's weight would carry. */
+  /* Inside a field, where the name's weight would carry. */
   font-weight: normal;
   overflow-wrap: anywhere;
 }
 
 .start-value {
+  color: var(--text);
   font-weight: normal;
 }
 
 @media (max-width: 480px) {
   .start-body {
     padding: 12px 16px 16px;
+  }
+
+  .start-brief,
+  .start-run {
+    padding: 12px;
   }
 }
 
@@ -222,7 +299,14 @@
   display: grid;
   gap: 4px;
   margin: 12px 0 0;
-  font-weight: 600;
+  font-weight: 500;
+}
+
+/* The goal: what is written most, taller where the main area is tall (V49). */
+@media (min-height: 1024px) {
+  .start-brief .start-goal {
+    min-height: calc(12lh + 18px);
+  }
 }
 
 .workspace-field textarea,
@@ -246,9 +330,12 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 30%, transparent);
 }
 
+/* Plan first: its words, and its switch at the row's end. */
 .workspace-check {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 12px;
   margin: 12px 0 0;
+  font-weight: 500;
 }

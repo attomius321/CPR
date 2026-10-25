@@ -215,5 +215,7 @@ merge commit.
 - 2026-10-25 [LG1 spike — Grafana, Loki and Alloy on this machine](journal/lg1-logs.md)
 - 2026-10-25 [LG1a — the lines: @symbiote/log, the CLI, the server, the app and the pages](journal/lg1-logs.md)
 - 2026-10-25 [LG1b — the viewer: Grafana, Loki and Alloy, and real crashes read back](journal/lg1-logs.md)
+- 2026-10-25 [V49 spike — the start page's empty space](journal/v49-start-page-look.md)
+- 2026-10-25 [V49 — the centred page, its cards and its rows](journal/v49-start-page-look.md)
 - 2026-10-25 [V50 spike — what a Scout with no question takes](journal/v50-scout-terminal.md)
 - 2026-10-25 [V50 — Scout is a terminal: opened with no question; the agent, model and effort in its head](journal/v50-scout-terminal.md)
