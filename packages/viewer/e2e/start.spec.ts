@@ -147,6 +147,68 @@ test('the brief and the run side by side; More open without a scroll at 1440 × 
   await expect(start(page).getByRole('button', { name: 'Start', exact: true })).toBeInViewport();
 });
 
+// V49: centred in the main area at any width, the head's contents over the cards; the run's choices
+// as rows, their names beside them; a tall window's room to the goal.
+test('centred in a wide main area, the head over the cards; the run as rows', async ({ page }) => {
+  const symbiote = await serve();
+  const brief = page.locator('.start-brief');
+  const run = page.locator('.start-run');
+  for (const [width, height] of [
+    [1920, 1080],
+    [2560, 1440],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto(`${symbiote.url}start`);
+    await expect(title(page)).toBeVisible();
+    const area = await page.locator('.start-body').boundingBox();
+    const b = await brief.boundingBox();
+    const r = await run.boundingBox();
+    if (!area || !b || !r) throw new Error('no box');
+    const left = b.x - area.x;
+    const right = area.x + area.width - (r.x + r.width);
+    expect(left).toBeGreaterThan(100);
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
+    // The head's contents in the cards' width: its title over the brief, Start over the run.
+    const heading = await start(page)
+      .getByRole('heading', { name: 'Start a workspace' })
+      .boundingBox();
+    const go = await start(page).getByRole('button', { name: 'Start', exact: true }).boundingBox();
+    expect(Math.abs((heading?.x ?? 0) - b.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs((go?.x ?? 0) + (go?.width ?? 0) - (r.x + r.width))).toBeLessThanOrEqual(1);
+  }
+  // A row: the name at the left, its control beside it on the same line.
+  const name = await run.getByText('Start from', { exact: true }).boundingBox();
+  const field = await from(page).boundingBox();
+  if (!name || !field) throw new Error('no box');
+  expect(field.x).toBeGreaterThan(name.x + name.width);
+  expect(Math.abs(field.y + field.height / 2 - (name.y + name.height / 2))).toBeLessThanOrEqual(4);
+
+  // The goal opens taller where the main area is tall.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const short = (await goal(page).boundingBox())?.height ?? 0;
+  await page.setViewportSize({ width: 1440, height: 1200 });
+  expect((await goal(page).boundingBox())?.height ?? 0).toBeGreaterThan(short + 80);
+});
+
+test('Plan first is a switch: on at first, Space turns it off, the draft keeps it', async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}start`);
+  const plan = start(page).getByRole('switch', { name: 'Plan first and wait for my OK' });
+  await expect(plan).toBeChecked();
+  await plan.focus();
+  // The draft is saved once typing pauses.
+  const saved = page.waitForResponse(
+    (r) => r.url().endsWith('/api/workspaces/draft') && r.request().method() === 'POST',
+  );
+  await page.keyboard.press('Space');
+  await expect(plan).not.toBeChecked();
+  await saved;
+  await page.reload();
+  await expect(plan).not.toBeChecked();
+});
+
 test("from a diff, the sidenav's Start and n load /start", async ({ page }) => {
   const diff = await serveFixture('callers');
   running.push(diff);

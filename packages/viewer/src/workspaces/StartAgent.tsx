@@ -56,9 +56,10 @@ export function StartAgent({
   return agent ? (
     <>
       {agents.length > 1 ? (
-        <label className="workspace-field">
-          Agent
+        <div className="workspace-field">
+          <label htmlFor="start-agent">Agent</label>
           <select
+            id="start-agent"
             value={agent.kind}
             title={agent.command}
             onChange={(event) => {
@@ -76,16 +77,17 @@ export function StartAgent({
               </option>
             ))}
           </select>
-        </label>
+          {agent.account && <p className="dialog-note start-account">{agent.account}</p>}
+        </div>
       ) : (
         <div className="workspace-field">
           Agent
           <span className="start-value" title={agent.command}>
             {AGENT_NAMES[agent.kind]}
           </span>
+          {agent.account && <p className="dialog-note start-account">{agent.account}</p>}
         </div>
       )}
-      {agent.account && <p className="dialog-note start-account">{agent.account}</p>}
       {models.length > 0 && (
         <div className="workspace-field">
           <span className="field-label">
@@ -115,7 +117,7 @@ export function StartAgent({
         </div>
       )}
       {efforts.length > 0 && (
-        <div className="workspace-field">
+        <div className="workspace-field start-effort">
           <span className="field-label">
             Effort
             <Help label="About the effort">
@@ -131,9 +133,10 @@ export function StartAgent({
         </div>
       )}
       {agent.kind === 'claude' ? (
-        <label className="workspace-field">
-          Permission
+        <div className="workspace-field">
+          <label htmlFor="start-permission">Permission</label>
           <select
+            id="start-permission"
             value={mode}
             onChange={(event) =>
               onChoose({ ...run, permissionMode: event.target.value as PermissionMode })
@@ -145,7 +148,7 @@ export function StartAgent({
               </option>
             ))}
           </select>
-        </label>
+        </div>
       ) : (
         <div className="workspace-field">
           <span className="field-label">

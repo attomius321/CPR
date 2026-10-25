@@ -398,8 +398,10 @@ each step.
 ## Workspaces and agents
 
 "Start a workspace" (n, the sidenav's +, or "Start a workspace here" in a commit's menu) is a page
-beside the sidenav, at `/start` (`/start?at=<commit>` from a commit): what the work is on the left,
-the branch, the agent and its options on the right. It asks what the work is in a few parts:
+beside the sidenav, at `/start` (`/start?at=<commit>` from a commit), centred: what the work is in
+one card, and beside it (under it in a narrow window) a card of the run's choices, one a row: where
+it starts, the branch, the agent and its options, Plan first, the documents. It asks what the work
+is in a few parts:
 
 | Kind | It asks for | Done when, filled in | Branch |
 |---|---|---|---|
