@@ -2,12 +2,13 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v55-done-workspace-cleanup.md)
 
-**Status:** in progress (2026-10-25), on branch `feature/done-workspace` (a workspace started in
-Symbiote, from `main` at `da991b5`). The person OK'd the plan with "1. Yes, as you planned 2. Yes,
+**Status:** ready for review (2026-10-25), on branch `feature/done-workspace` (a workspace started
+in Symbiote, from `main` at `da991b5`). The person OK'd the plan with "1. Yes, as you planned 2. Yes,
 if it is still merging, it should not be displayed. This should be forced from its view page 3.
 Yes. OK": the icon on hover and focus, the merge's action kept as Remove and offered on a card only
 once it landed (a merge not landed is removed from its own page, under ⋯), a trash icon. Planned
-as V54 with decisions from 397; `feature/tooltips-revamp` took both meanwhile.
+as V54 with decisions from 397; `feature/tooltips-revamp` took both meanwhile. Built as planned,
+with five changes; "As built" and results at the end.
 
 **Problem** (asked: "A done workspace or landed merge should be easier to be removed. Add icons on
 their cards so i can remove it from the Workspaces list. Also, in Merge view, and Workspace view,
@@ -113,3 +114,42 @@ and their keyboard order.
 
 **Not in V55 (later)**: one action that removes a landed merge and cleans up its workspace; "Clean
 up all done"; an undo.
+
+## As built (V55)
+
+- **Transparent at rest, not hidden**: the bin is `opacity: 0` until the card is hovered or has the
+  keyboard's focus. Hidden (`visibility`), it left the accessibility tree and the Tab order: the
+  first e2e found no "Clean up ‹name›" button at all.
+- **In the Tab order after the name**: the bin comes right after the card's head in the page, so
+  Tab goes from the name to the bin, then to the branch's link. Last in the card, Tab reached the
+  branch's link first.
+- **Shown by keyboard focus only** (`:has(:focus-visible)`, not `:focus-within`): a click on a
+  card focuses its name, and the bin would have stayed shown after the pointer left.
+- **A landed merge card keeps the bin's room** (32 px at its right, at rest too): its two lines
+  run under where the bin is drawn, and the hover wash is translucent, so nothing could cover the
+  text. A workspace card's chip and time give way instead, and its name keeps its width (an e2e
+  compares the name's box before and after the hover).
+- **Every Remove on a merge's page goes to History**, under **⋯** too (decision 406 is about the
+  page, not the button).
+- An older e2e (`Merge on an approved workspace`) picked a merged card by
+  `getByRole('button', { name: 'Add a half function' })`, which now also matched the bin ("Clean
+  up Add a half function"): made `exact`.
+
+**Results.** Tests first, red for the right reason (3 unit, 4 e2e), then green:
+`test/merges.test.ts` and `test/workspaces.test.ts` (which cards have the bin, a merge's buttons
+and **⋯**), `e2e/workspaces.spec.ts` (Clean up in a merged workspace's head; the done card's bin
+on hover and Tab, transparent at rest, the name's box unmoved, refused with a file not committed,
+none in the rail, the page shown kept or History when it was the one; a landed merge's head and
+card), `e2e/merges.spec.ts` (no bin on a merge not landed; Remove in a landed one's head, then
+History). `pnpm check`: format, lint and typecheck clean; 1,742 unit tests pass (a first run timed
+out two analysis tests under load, `core/graph.test.ts` and `plugin-qwik/mdx-routes.test.ts`,
+which pass alone and in the next whole run). `pnpm build`. `pnpm test:e2e`: 262 of 263; the one,
+V44's "no icon in a card", counted the bin, and passes with the bin left out. `look.spec.ts`' 64 px
+card failed once in a later run of six tests and passed in the whole suite, 3 of 3 alone and in the
+six again (a working card, which V55 does not change). Screenshots at 1440×900, 1×, both themes:
+the sidenav at rest, a done card hovered, its bin hovered and focused, a picked card hovered, a
+landed merge's card hovered, the rail; a merged and an unmerged workspace's head; a landed and a
+failed merge's head. The bin's glyph ends where the chip does; nothing else on the card moves. Not
+verified: a touch screen (the bin always shown there: `@media (hover: hover)` is false only
+there), the desktop app on WSLg.
+

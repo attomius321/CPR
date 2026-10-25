@@ -392,6 +392,10 @@ Approve away: the page says which commands passed and which failed, the log has 
 one side, a binary file or a submodule is given to no one: resolve it on the branch, review it
 again, then Retry. A target that moved before landing is merged again on its new tip.
 
+A landed merge has **Remove** as its page's button, and a bin on its card in the sidenav (shown on
+hover or keyboard focus): either takes it out of the queue with its log, and the target keeps the
+merge. A merge that has not landed is removed from its own page, under **⋯**.
+
 The queue is kept in Symbiote's cache. `symbiote merge <branch>` does the same from a terminal and prints
 each step.
 
@@ -487,7 +491,7 @@ its icon:
 - **Working** (an hourglass): which agent works, by its mark (Claude Code's spark or Codex's), and
   what it runs right now, when Symbiote records its tools ("Running pnpm test", "Editing
   src/auth.ts", "Thinking" between them), and for how long.
-- **Done** (a check): merged.
+- **Done** (a check): merged. A bin on the card, on hover, cleans it up.
 
 A dot tells each state by its shape as well as its colour: a working (or starting) agent's is a
 spinner, a waiting one's halo holds still, a stopped one is a ring (with reduced motion, nothing
@@ -501,7 +505,9 @@ actions:
 
 - **Review** its branch;
 - **Stop** or **Start** the agent;
-- under **⋯**: **Open in VS Code** (its worktree), **Copy the prompt**, **Clean up**, and **Talk**,
+- **Clean up**, once it is merged: the head's main button;
+- under **⋯**: **Open in VS Code** (its worktree), **Copy the prompt**, **Clean up…** (not merged),
+  and **Talk**,
   which copies `claude attach <id>` (Codex: `codex resume <thread> --remote <its app server> -C
   <worktree>`) for a terminal of your own (only when Symbiote cannot open the agent's terminal; its
   tooltip says why).
@@ -589,7 +595,8 @@ The terminal needs `node-pty`, an optional dependency: on Linux `pnpm install` c
 
 A workspace's branch carries its agent's mark in History, and each leads to the other.
 Once a workspace is merged, Clean up removes its agent's sessions, its worktree, its documents
-(their names stay in the record) and its branch. An
+(their names stay in the record) and its branch: from its head, or from the bin on its card in
+Done, which shows on hover or keyboard focus. An
 unmerged one is cleaned up only after you confirm, and keeps its branch. Neither happens while
 the worktree has files not committed.
 
