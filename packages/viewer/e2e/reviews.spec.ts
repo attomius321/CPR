@@ -359,7 +359,7 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   // Each file on its line, its folder beside it, and a button that opens it in VS Code.
   const check = page.locator('.merge-check');
   await expect(check.locator('.merge-check-head')).toHaveText(
-    'Conflicts with main in 1 file; the agent resolves them on agent first:',
+    'Conflicts with main in 1 file: Merge into gives them to the merger agent, and you review its resolution before it lands:',
   );
   await expect(check.locator('li')).toHaveText(['math.tssrc/']);
   await check.getByRole('button', { name: 'Open src/math.ts in VS Code' }).click();

@@ -1,6 +1,7 @@
 // Scout's gate (V35, decision 236): what Scout's Claude Code may run, decided by Symbiote before
 // Claude Code's own rules. Read, Grep and Glob pass to those rules; Bash runs only git's read
-// commands this module parses; every other tool is denied. Claude Code's allow rules cannot do this:
+// commands this module parses; Symbiote's own MCP tools pass (MC1: the asked ones wait for the
+// person in Symbiote); every other tool, and every other server's, is denied. Claude Code's allow rules cannot do this:
 // `Bash(git log *)` matches `git log --output=<file>`. The hook runs once per tool call in Claude
 // Code's process tree (`scout-hook.ts`), so this module uses nothing but plain TypeScript.
 
@@ -159,11 +160,23 @@ export function gateDecision(input: unknown): GateDecision {
         `grep at most: ${problem}. Read, Grep and Glob read files.`,
     };
   }
+  if (v.tool_name.startsWith('mcp__')) {
+    if (v.tool_name.startsWith(SYMBIOTE_TOOLS) && v.tool_name.length > SYMBIOTE_TOOLS.length) {
+      return { allow: true };
+    }
+    return {
+      allow: false,
+      reason: `Scout acts only through Symbiote's tools (${SYMBIOTE_TOOLS}…), not ${v.tool_name}.`,
+    };
+  }
   return {
     allow: false,
-    reason: `Scout is read-only: it reads files (Read, Grep, Glob) and git's history, and changes nothing (${v.tool_name}).`,
+    reason: `Scout changes no file: it reads files (Read, Grep, Glob) and git's history, and acts only through Symbiote's tools (${v.tool_name}).`,
   };
 }
+
+/** The MCP tools Scout's session is given (MC1): Symbiote's server's, and no other's. */
+const SYMBIOTE_TOOLS = 'mcp__symbiote__';
 
 /**
  * The hook's output: Claude Code's PreToolUse decision, or nothing to leave it to its rules; `who`

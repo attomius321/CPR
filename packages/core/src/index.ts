@@ -193,6 +193,7 @@ export {
   type ScoutStateName,
   type ScoutTerminalRequest,
 } from './scout.js';
+export type { McpAnswer, McpAsk, McpAsks, McpCaller, McpVia } from './mcp.js';
 export {
   AGENT_KINDS,
   EFFORT_LEVEL,
@@ -252,6 +253,7 @@ export {
   MERGE_STATES,
   type MergeAgentEvent,
   type MergeCheckRun,
+  type MergeConflict,
   type MergeEntry,
   type MergeList,
   type MergeLogLine,

@@ -382,6 +382,7 @@ export function branchReviews(
                   comments: verdict.comments.length,
                   ...(verdict.into ? { into: verdict.into } : {}),
                   merged: await mergedInto(refs, verdict),
+                  ...(verdict.via ? { via: verdict.via } : {}),
                 },
               }
             : {}),
@@ -511,6 +512,7 @@ export function branchReviews(
         head: info.head,
         ...(review.event === 'approve' && info.into ? { into: info.into } : {}),
         summary: review.body.trim(),
+        ...(review.via ? { via: review.via } : {}),
       };
       // The drafts are in the verdict now: the next round starts empty.
       const file = await update(info, (next) => {

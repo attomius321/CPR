@@ -168,6 +168,8 @@ export interface RunningAgent extends Running {
   shas: string[];
   /** Stops `symbiote view` and starts it again on the same repository (a new port): its URL. */
   restart(): Promise<string>;
+  /** Symbiote's cache for it (`SYMBIOTE_CACHE_DIR`): where its record for the MCP bridge is. */
+  cache: string;
 }
 
 /**
@@ -250,6 +252,7 @@ say({ type: 'result', subtype: 'success', result, is_error: false, usage: { inpu
       return running.url;
     },
     repo,
+    cache,
     mergerPrompts: () =>
       existsSync(prompts)
         ? readFileSync(prompts, 'utf8')
@@ -582,6 +585,8 @@ export interface FakeClaudeCall {
 
 export interface RunningWorkspaces extends Running {
   repo: string;
+  /** Symbiote's cache for it (`SYMBIOTE_CACHE_DIR`): where its record for the MCP bridge is. */
+  cache: string;
   /** `main`'s commits, oldest first: the fixture's base and head. */
   shas: string[];
   /** What the fake Claude Code started. */
@@ -1170,6 +1175,7 @@ export async function serveWorkspaces({
   return {
     url,
     repo,
+    cache,
     shas,
     folder,
     stops: () => lines('stops.txt'),

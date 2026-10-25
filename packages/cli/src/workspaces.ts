@@ -54,7 +54,7 @@ import {
 import { guessCheck, treeAt } from './check.js';
 import { readPrompts } from './prompts.js';
 import { codexState, serverEntries, serverLastAction, serverState, type Codex } from './codex.js';
-import type { OpenFolder } from './editor.js';
+import type { FolderAt, OpenFolder } from './editor.js';
 import {
   AGENT_NAMES,
   effortOnProblem,
@@ -268,7 +268,8 @@ export interface Workspaces {
   /**
    * Opens a file its changes list as a diff in the editor (V43), exactly what the row counts: one
    * of the branch's from the fork point to the tip, one not committed (`uncommitted`) from its
-   * worktree's HEAD to the worktree. `previousPath`: where a renamed file was.
+   * worktree's HEAD to the worktree; a new file alone, as it is. `previousPath`: where a renamed
+   * file was.
    */
   openDiff(
     branch: string,
@@ -454,6 +455,7 @@ export function workspaces(
           }
         : {}),
       ...(acted ? { lastAction: acted } : {}),
+      ...(workspace.via ? { via: workspace.via } : {}),
     };
   }
 
@@ -811,6 +813,7 @@ export function workspaces(
         created: now().toISOString(),
         ...(base.from ? { from: base.from } : {}),
         planFirst: request.planFirst,
+        ...(request.via ? { via: request.via } : {}),
         worktree: folder,
       };
       await prepareSymbioteFolder(where, { text: readPrompts(root).text.reviews });
@@ -971,10 +974,12 @@ export function workspaces(
       }
       if (!left && !right) throw new WorkspaceRefused(`${file.path} is in neither side`, 409);
       if (!openFolder) throw new WorkspaceRefused('no editor to open it in', 409);
-      const result = await openFolder(worktree ? workspace.worktree : repo.root, {
-        left: left ?? (await emptyFile(revisions, before)),
-        right: right ?? (await emptyFile(revisions, file.path)),
-      });
+      // A new file has nothing to compare with: it opens alone, as it is. A deleted one is shown
+      // against an empty side, which says it is gone.
+      const at: FolderAt = left
+        ? { left, right: right ?? (await emptyFile(revisions, file.path)) }
+        : { path: right as string };
+      const result = await openFolder(worktree ? workspace.worktree : repo.root, at);
       if (!result.opened) throw new WorkspaceRefused(result.message, 502);
     },
 

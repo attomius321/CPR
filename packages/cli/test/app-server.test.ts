@@ -376,6 +376,50 @@ describe('codexServer', () => {
     expect(server.thread(thread)).toMatchObject({ loaded: true, writableRoots: ROOTS });
   });
 
+  it('gives a thread a configuration of its own: at its start, at each message, and when loaded for its terminal (MC1)', async () => {
+    const server = await serve();
+    const codex = codexServer(server.address);
+    const config = {
+      mcp_servers: { symbiote: { command: '/usr/bin/node', args: ['/b.js'] } },
+    };
+    const thread = await codex.start({
+      cwd: '/repo',
+      writable: [],
+      name: 'Scout',
+      prompt: 'P',
+      readOnly: true,
+      config,
+    });
+    expect(server.calls.find((c) => c.method === 'thread/start')?.params).toEqual({
+      cwd: '/repo',
+      sandbox: 'read-only',
+      approvalPolicy: 'never',
+      config,
+    });
+    server.reply(thread, 'Done');
+    await codex.send({ thread, text: 'Again', config });
+    expect(server.calls.findLast((c) => c.method === 'thread/resume')?.params).toEqual({
+      threadId: thread,
+      excludeTurns: true,
+      config,
+    });
+    server.reply(thread, 'Done again');
+    const turns = server.calls.filter((c) => c.method === 'turn/start').length;
+    await codex.load({ thread, config });
+    expect(server.calls.findLast((c) => c.method === 'thread/resume')?.params).toEqual({
+      threadId: thread,
+      excludeTurns: true,
+      config,
+    });
+    // Loaded, not given a turn.
+    expect(server.calls.filter((c) => c.method === 'turn/start')).toHaveLength(turns);
+    // A workspace's start keeps its own configuration beside it.
+    await codex.start({ cwd: WORKTREE, writable: ROOTS, name: 'b', prompt: 'P', config });
+    expect(server.calls.findLast((c) => c.method === 'thread/start')?.params).toMatchObject({
+      config: { sandbox_workspace_write: { writable_roots: ROOTS }, ...config },
+    });
+  });
+
   it('interrupts the running turn and answers once it ended; nothing to interrupt otherwise', async () => {
     const server = await serve();
     const codex = codexServer(server.address);

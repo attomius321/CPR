@@ -4,6 +4,7 @@ import type { MergeAgentEvent } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   applyAnswer,
+  aroundOf,
   claudeMerger,
   codexMerger,
   conflictRegions,
@@ -58,6 +59,31 @@ describe('conflictRegions (V26c)', () => {
       { start: 0, end: 4, ours: ['a'], base: null, theirs: ['b'] },
     ]);
     expect(conflictRegions('<<<<<<< HEAD\na\n')).toEqual([]);
+  });
+});
+
+describe('aroundOf (fix/merge-viewer-on-conflict)', () => {
+  it("gives the 3 lines around a region; in the file, those up to another region's markers", () => {
+    const text = [
+      'a',
+      '<<<<<<< HEAD',
+      'x',
+      '=======',
+      'y',
+      '>>>>>>> b',
+      'c',
+      '<<<<<<< HEAD',
+      'p',
+      '=======',
+      'q',
+      '>>>>>>> b',
+      'd',
+      '',
+    ].join('\n');
+    const [first, second] = conflictRegions(text);
+    expect(aroundOf(text, second!)).toEqual({ before: ['y', '>>>>>>> b', 'c'], after: ['d'] });
+    expect(aroundOf(text, first!, { inFile: true })).toEqual({ before: ['a'], after: ['c'] });
+    expect(aroundOf(text, second!, { inFile: true })).toEqual({ before: ['c'], after: ['d'] });
   });
 });
 
@@ -191,6 +217,7 @@ describe('mergerPrompt (V26c)', () => {
         'tail',
         '```',
         '',
+        'The lines above <<<<<<< and below >>>>>>> stay in the file as they are: do not write them again.',
         'Answer for regions 1–2.',
         '',
       ].join('\n'),
@@ -209,6 +236,17 @@ describe('mergerPrompt (V26c)', () => {
     expect(prompt).toContain(
       'Your earlier answer was reviewed: Keep V2 before V3.\nIt was:\n```json\n{"regions":{"1":"## V3\\nthree\\n## V2\\ntwo","2":"x = 2"}}\n```',
     );
+  });
+
+  it("gives the person's answer to what it asked, not an earlier answer (fix/merge-viewer-on-conflict)", () => {
+    const prompt = mergerPrompt({
+      ...input,
+      again: { comments: 'V2 first.', previous: [], asked: 'Region 1: V2 or V3 first?' },
+    });
+    expect(prompt).toContain(
+      'You asked: Region 1: V2 or V3 first?\nThe person answered: V2 first.\n',
+    );
+    expect(prompt).not.toContain('Your earlier answer');
   });
 
   it('keeps the instructions short: at most 1K tokens (4 characters each)', () => {

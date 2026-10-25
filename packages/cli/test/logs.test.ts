@@ -54,6 +54,7 @@ describe('logProcess', () => {
     expect(logProcess('diff', true)).toBe('analysis');
     expect(logProcess('mr', false)).toBe('pr');
     expect(logProcess('merge', false)).toBe('merge');
+    expect(logProcess('mcp', false)).toBe('mcp');
     expect(logProcess(undefined, false)).toBe('cli');
     expect(logProcess('--version', false)).toBe('cli');
   });

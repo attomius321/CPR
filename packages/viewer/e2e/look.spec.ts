@@ -345,9 +345,9 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
   // Scout's: what it is and its keys, behind the "?" by its question.
   await page.goto(`${symbiote.url}scout`);
   await expect(page.getByRole('textbox', { name: 'Ask Scout' })).toBeVisible();
-  await expect(page.getByText('changes nothing')).toBeHidden();
+  await expect(page.getByText('changes no file')).toBeHidden();
   await page.getByRole('button', { name: 'About Scout' }).focus();
-  await expect(tip).toContainText('changes nothing');
+  await expect(tip).toContainText('changes no file');
   await inside(tip);
   await page.keyboard.press('Escape');
   await expect(tip).toBeHidden();

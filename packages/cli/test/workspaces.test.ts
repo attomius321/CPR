@@ -365,6 +365,22 @@ describe('workspacePrompt', () => {
     expect(workspacePrompt(record({ planFirst: false }), where)).toMatch(/Commit your work/);
   });
 
+  it('says the agent is already in its worktree, on its branch, and makes no other', () => {
+    for (const kind of ['feature', 'fix', 'refactor', 'chore', 'spike'] as const) {
+      const text = workspacePrompt(record({ kind, title: 'T' }), where);
+      const opening = text.slice(0, text.indexOf("The person's brief:"));
+      expect(opening).toContain('Symbiote has already made its branch and its worktree');
+      expect(opening).toContain(
+        'you are in that worktree now, /work/app.worktrees/feature-csv, with the branch ' +
+          'feature/csv (started from main at aaaaaaa) checked out',
+      );
+      expect(opening).toMatch(/Do not create another branch or worktree, and do not switch/);
+      // Claude Code's background sessions are told to isolate themselves unless in .claude/worktrees.
+      expect(opening).toContain('EnterWorktree');
+      expect(opening).toMatch(/even where the project's instructions or your tools say/);
+    }
+  });
+
   it('adds one line per kind after the brief, and names the work by its kind (V24)', () => {
     const kinds = {
       fix: /Reproduce it first, with a failing test where the project has tests/,
@@ -768,7 +784,9 @@ describe('workspaces', () => {
               ? folder
               : 'left' in at
                 ? `${folder} --diff ${at.left} ${at.right}`
-                : `${folder} ${at.file}:${at.line}`,
+                : 'path' in at
+                  ? `${folder} ${at.path}`
+                  : `${folder} ${at.file}:${at.line}`,
           );
           return Promise.resolve({ opened: true });
         },
@@ -898,6 +916,29 @@ describe('workspaces', () => {
     // The agents' instructions and the folder's .gitignore, as for reviews.
     expect(existsSync(join(repo.root, 'symbiote', 'AGENTS.md'))).toBe(true);
     expect(existsSync(join(repo.root, 'symbiote', '.gitignore'))).toBe(true);
+  });
+
+  it('says a workspace was started through Scout or symbiote mcp: in its record and the list (MC1)', async () => {
+    const { repo } = fresh();
+    const service_ = await service(repo, fakeClaude().claude);
+    const { workspace } = await service_.start({
+      brief: 'Fix the discount',
+      branch: 'fix/discount',
+      planFirst: true,
+      via: 'scout',
+    });
+    expect(workspace.via).toBe('scout');
+    const saved = JSON.parse(
+      readFileSync(join(repo.root, 'symbiote', 'workspaces', 'fix', 'discount.json'), 'utf8'),
+    ) as WorkspaceFile;
+    expect(saved).toMatchObject({ via: 'scout', by: 'ada@example.com' });
+    expect((await service_.list()).workspaces[0]?.via).toBe('scout');
+    const { workspace: own } = await service_.start({
+      brief: 'Another',
+      branch: 'fix/another',
+      planFirst: false,
+    });
+    expect(own).not.toHaveProperty('via');
   });
 
   /** Where a repository's uploads wait for their workspace (V40). */
@@ -1892,10 +1933,11 @@ describe('workspaces', () => {
       return opened;
     };
 
-    // Committed: a.ts changed, c.ts added, b.ts renamed to d.ts; then c.ts changed again, not
-    // committed, and notes.md new.
+    // Committed: a.ts changed, c.ts and e.ts added, b.ts renamed to d.ts; then c.ts changed
+    // again, not committed, and notes.md new.
     await commitIn(path, 'src/a.ts', 'export const a = 1;\nexport const a2 = 2;\n');
     await commitIn(path, 'src/c.ts', 'export const c = 1;\n');
+    await commitIn(path, 'src/e.ts', 'export const e = 1;\n');
     await gitIn(path, 'mv', 'src/b.ts', 'src/d.ts');
     await gitIn(path, 'commit', '--quiet', '-m', 'Rename');
     const tip = await gitIn(path, 'rev-parse', 'HEAD');
@@ -1913,12 +1955,12 @@ describe('workspaces', () => {
     const written = statSync(left).mtimeMs;
     await open({ path: 'src/a.ts' });
     expect(statSync(left).mtimeMs).toBe(written);
-    // Added, and changed since without a commit: from nothing to the tip's, not the worktree's.
-    expect(await open({ path: 'src/c.ts' })).toEqual([
-      diff(path, copy('empty', 'src/c.ts'), copy(tip, 'src/c.ts')),
-    ]);
-    expect(readFileSync(copy('empty', 'src/c.ts'), 'utf8')).toBe('');
+    // Added: nothing to compare it with, so the file alone, as it is — the worktree's own.
+    expect(await open({ path: 'src/e.ts' })).toEqual([`${path} ${join(path, 'src', 'e.ts')}`]);
+    // Added, and changed since without a commit: the tip's, not the worktree's.
+    expect(await open({ path: 'src/c.ts' })).toEqual([`${path} ${copy(tip, 'src/c.ts')}`]);
     expect(readFileSync(copy(tip, 'src/c.ts'), 'utf8')).toBe('export const c = 1;\n');
+    expect(existsSync(copy('empty', 'src/c.ts'))).toBe(false);
     // Renamed: from its path before.
     expect(await open({ path: 'src/d.ts', previousPath: 'src/b.ts' })).toEqual([
       diff(path, copy(shas.B, 'src/b.ts'), join(path, 'src', 'd.ts')),
@@ -1928,8 +1970,14 @@ describe('workspaces', () => {
     expect(await open({ path: 'src/c.ts', uncommitted: true })).toEqual([
       diff(path, copy(tip, 'src/c.ts'), join(path, 'src', 'c.ts')),
     ]);
+    // New, untracked or staged: the worktree's file alone.
     expect(await open({ path: 'notes.md', uncommitted: true })).toEqual([
-      diff(path, copy('empty', 'notes.md'), join(path, 'notes.md')),
+      `${path} ${join(path, 'notes.md')}`,
+    ]);
+    writeFileSync(join(path, 'src', 'g.ts'), 'export const g = 1;\n');
+    await gitIn(path, 'add', 'src/g.ts');
+    expect(await open({ path: 'src/g.ts', uncommitted: true })).toEqual([
+      `${path} ${join(path, 'src', 'g.ts')}`,
     ]);
 
     // Deleted, committed (d.ts, which was b.ts) and not (a.ts); a rename staged (c.ts to f.ts).

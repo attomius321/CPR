@@ -8,6 +8,7 @@ import {
   type Graph,
   type HistoryScope,
   type LocalReview,
+  type McpAnswer,
   type MergeRequest,
   type PermissionMode,
   type ScoutAsk,
@@ -454,6 +455,16 @@ export function parseLocalReview(
   };
 }
 
+/** `{ id, yes }` (MC1): the person's answer to an ask of Symbiote's MCP. */
+export function parseMcpAnswer(text: string): McpAnswer {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.id !== 'string' || value.id === '' || value.id.length > 100) {
+    throw new Error('id: an ask');
+  }
+  if (typeof value.yes !== 'boolean') throw new Error('yes: true or false');
+  return { id: value.id, yes: value.yes };
+}
+
 /** `{ ref }`: a branch or remote branch name. */
 export function parseRef(text: string): string {
   const ref = (JSON.parse(text) as { ref?: unknown } | null)?.ref;
@@ -502,4 +513,18 @@ export function parseReview(text: string, allowed: Record<Side, Set<string>>): R
       return { side: c.side, path: c.path, otherPath: c.otherPath, line: c.line, body: c.body };
     }),
   };
+}
+
+/** Repo-relative files per side that the graph refers to. */
+export function sourceFiles(graph: Graph): Record<Side, Set<string>> {
+  const files: Record<Side, Set<string>> = { base: new Set(), head: new Set() };
+  for (const node of graph.nodes) {
+    if (node.base) files.base.add(node.base.file);
+    if (node.head) files.head.add(node.head.file);
+  }
+  for (const file of graph.files) {
+    if (file.status !== 'added') files.base.add(file.previousPath ?? file.path);
+    if (file.status !== 'deleted') files.head.add(file.path);
+  }
+  return files;
 }

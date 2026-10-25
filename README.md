@@ -77,6 +77,7 @@ symbiote diff main     # the same, in the terminal
 | `symbiote pr [<number>]` | Reviews a GitHub pull request or a GitLab merge request (`symbiote mr` is the same command). In a CI job for one, the number comes from the job. |
 | `symbiote app install` | Adds [Symbiote's window](#symbiotes-window) to your desktop's apps, so it opens without a terminal; `symbiote app uninstall` removes it. Linux, WSL included. |
 | `symbiote merge <branch>` | Merges the commit your review of `branch` approved, as Merge does in the viewer ([Merging](#merging)): `--into <branch>` picks the target, `--land` lands a merge that waits for you. |
+| `symbiote mcp` | An MCP server on stdin and stdout with [Symbiote's tools](#symbiotes-tools-mcp) for an agent of yours, through the `symbiote view` running for the repository. |
 
 `symbiote diff` in a repository where one function was added, one removed and one changed:
 
@@ -323,7 +324,8 @@ text.
 ![Review tab: two comments on symbols, a summary, and Request changes picked, ready to finish](docs/images/viewer-review.png)
 
 Before you approve, the Review tab says whether the branch merges cleanly or which files conflict;
-on a conflict, the agent resolves it on its branch and you review that. The default branch
+on a conflict, **Merge into** gives them to the merger agent, and you review its resolution before
+it lands ([Merging](#merging)). The default branch
 (`main`) can be reviewed too, for its unpushed commits; an approval there says they may be pushed.
 
 A branch's badge shows how its review stands: `✓` approved, `✗` changes requested, `+2` for its
@@ -369,9 +371,22 @@ agent's own level, when the model takes it), which answers each
 conflicting region. Its log shows what it does: a summary of its thinking, each file it reads and
 its answer as it writes it. Symbiote writes the answers, commits the merge and runs the check.
 Nothing lands until you have reviewed the resolution: **Files** lists the conflicting files, each
-with what its resolution did ("Drops 3 lines from main", "Keeps every line of both sides"), the
-first that loses lines first, and a click shows a file's regions. **Approve** lands it,
-**Request changes** asks the agent again with your words. A check that failed does not take
+with what its resolution did, and a click shows a file's regions, numbered as the agent's prompt
+numbers them, each between the 3 lines above and below it (dim: they stay in the file):
+
+- Red: a side's change lost ("Drops 3 lines from main"), a line kept twice, or a line written again
+  from just around the region ("Repeats “## Unreleased” from just above it").
+- Amber: lines the agent wrote, and whether they keep the changes of the lines they replace
+  ("2 lines written by the agent, with the changes of the 3 they replace": prose wrapped again,
+  two doc comments made one). Those lines are listed under "Rewritten from main".
+- Green: "Keeps every line of both sides, nothing new".
+
+The first file shown is the first in red, else the first in amber. Lines are read in order, so
+the `});` that closes each side's test is that test's. A change is read by its words (and, in
+code, its symbols): a number both sides counted up (14 → 15, merged as 16) reads as dropped.
+**Approve** lands it, **Request changes** asks the agent again with your words. When the agent
+asks you instead, its question is on the page with the regions it asks about, the one it names
+marked, and **Answer** sends your answer back with its question. A check that failed does not take
 Approve away: the page says which commands passed and which failed, the log has the output, and
 **Check again** runs the check again on the same merge without asking the agent. A file deleted on
 one side, a binary file or a submodule is given to no one: resolve it on the branch, review it
@@ -429,8 +444,10 @@ the page's place. Symbiote then:
    project's checks would see them; a name taken twice becomes `name (2).ext`;
 6. starts the agent you picked there in the background with the brief: Claude Code (`claude
    --bg`) or [Codex](#codex). With "Plan first and wait for my OK" (on by default), the agent
-   stops after its plan. Its first prompt names the documents' folder and each file, and says it
-   may read them there (the Documents prompt in [Settings](#agents-prompts)).
+   stops after its plan. Its first prompt says it is already in that worktree, on its branch, and
+   makes no other branch or worktree, even where the project's own workflow or the agent's tools
+   say new work gets one. It names the documents' folder and each file, and says it may read them
+   there (the Documents prompt in [Settings](#agents-prompts)).
 
 Prettier and ESLint read only the root's ignore files, so in your main checkout they check a
 `.json` or `.js` given as a document: add `symbiote/documents` to `.prettierignore` and ESLint's
@@ -517,9 +534,10 @@ and the files they change with their lines (what Review will show), then the fil
 not committed. They are read again with the workspace list (every 5 s while the agent works). A
 click on a file opens its diff in VS Code, in the worktree's window: one of the branch's from where
 it left the default branch to its last commit, one not committed from the worktree's last commit to
-the file on disk; a new or deleted file against an empty side. When the file on disk is the last
-commit's, it is the right side, to edit there; the other sides are read-only copies in Symbiote's
-cache. `]` or the button beside ⋯ hides them, remembered in the browser.
+the file on disk; a deleted file against an empty side. A new file has nothing to compare with: it
+opens alone, as it is. When the file on disk is the last commit's, it is the one opened, to edit
+there; the other sides are read-only copies in Symbiote's cache. `]` or the button beside ⋯ hides
+them, remembered in the browser.
 
 The **Brief** tab is what the agent was asked (`&brief`), drawn from its Markdown, with the
 documents given with it and where they are. The **Thread** tab is the workspace's
@@ -589,11 +607,14 @@ the model goes on the thread's start, by `exec` with `-m` on every run.
 
 ## Scout
 
-**Scout** (a, or the sidenav's pages: `/scout`) is an agent to ask about the repository: where
-something is decided, why it works this way, what touches it. It runs in the checkout `symbiote
-view` runs in, as it is now (no branch, no worktree), and it is read-only: it reads and searches
-files and runs git's read commands, and never edits, commits, checks out or pushes. Work it finds
-goes through a workspace you start.
+**Scout** (a, or the sidenav's pages: `/scout`) is your assistant in the repository: ask it where
+something is decided, why it works this way, what touches it; and have it carry your workspaces
+from a start to a merge ("what waits for me?", "start a fix for X, plan first", "tell it OK",
+"review it", "approve and merge it", "clean it up"). It runs in the checkout `symbiote view` runs in,
+as it is now (no branch, no worktree). It reads and searches files and runs git's read commands,
+and never edits, commits, checks out or pushes: it acts only through
+[Symbiote's tools](#symbiotes-tools-mcp), and what changes a branch's fate waits for your
+Confirm.
 
 - **Ask:** the question box starts a conversation (Enter asks, Shift+Enter starts a new line). Its
   answer is in the agent's own terminal on the page, where you ask more. One conversation per
@@ -611,24 +632,71 @@ goes through a workspace you start.
   page's head names it ("with Claude Code on sonnet at low effort"), and the levels on the stepper
   are that model's.
 - **Claude Code** runs with `--tools Read,Grep,Glob,Bash --permission-mode dontAsk
-  --strict-mcp-config` and Symbiote's settings file, `symbiote/scout-settings.json`, whose
-  PreToolUse hook decides first: Read, Grep and Glob go on to Claude Code's own rules; Bash runs
-  only `git log`, `show`, `blame`, `diff`, `shortlog`, `grep`, `rev-parse`, `merge-base`,
-  `ls-files` and `ls-tree`, one command, with no option that writes a file or runs a program
-  (`--output`, `-O`, `--ext-diff`) and no shell operator but a pipe into `head`, `tail`, `wc` or
-  `grep`; every other command and tool is refused, and nothing asks. Claude Code's own permission
-  rules cannot do this: `Bash(git log *)` also matches `git log --output=<file>`.
+  --strict-mcp-config --mcp-config symbiote/scout-mcp.json` (Symbiote's server, and no other) and
+  Symbiote's settings file, `symbiote/scout-settings.json`, whose PreToolUse hook decides first:
+  Read, Grep and Glob go on to Claude Code's own rules; Symbiote's tools (`mcp__symbiote__…`) run;
+  Bash runs only `git log`, `show`, `blame`, `diff`, `shortlog`, `grep`, `rev-parse`,
+  `merge-base`, `ls-files` and `ls-tree`, one command, with no option that writes a file or runs a
+  program (`--output`, `-O`, `--ext-diff`) and no shell operator but a pipe into `head`, `tail`,
+  `wc` or `grep`; every other command, tool and MCP server is refused, and Claude Code asks
+  nothing: Symbiote does. Claude Code's own permission rules cannot do this: `Bash(git log *)`
+  also matches `git log --output=<file>`.
 - **Codex** runs on its app server (Codex 0.163 and later), in its `read-only` sandbox with approvals
-  `never`: what the sandbox refuses fails, nobody is asked. Its terminal is Codex's own, joined to
-  the thread; the first time in a folder, Codex asks whether you trust it. Without the app server,
-  Scout says so.
-- **The sidenav** marks Scout while it answers, and when it answered while you were on another page,
-  until you open it.
+  `never`: what the sandbox refuses fails, nobody is asked. Symbiote's server is given to Scout's
+  thread alone, in its own configuration (with `default_tools_approval_mode = "approve"` for that
+  server: Codex refuses every MCP call under approvals `never` otherwise), at its start, with each
+  message and before its terminal joins it; nothing is added to your `config.toml`, so a
+  workspace's Codex has none. MCP servers in your `config.toml` reach Scout's thread too (Codex has
+  no strict mode). Its terminal is Codex's own, joined to the thread; the first time in a folder,
+  Codex asks whether you trust it. Without the app server, Scout says so.
+- **Waiting** (`wait`, when you ask Scout to watch): Claude Code waits for nothing in tokens; Codex
+  checks the running call about every 30 s, measured at about 43K input tokens a minute (95 %
+  cached).
+- **The sidenav** marks Scout while it answers, when it answered while you were on another page
+  (until you open it), and while it waits for your Confirm.
 - Scout's session is found by the ID Symbiote recorded in `symbiote/scout.json` when it started it,
   never by its folder: your own sessions in the checkout are left alone. Its prompt is
   `prompts.scout` ([Agents' prompts](#agents-prompts)).
 - Without terminals (no `node-pty`, or `SYMBIOTE_TERMINAL=off`), the box continues the conversation
   and its answers are read in a terminal of yours (`claude attach <id>`, which the page names).
+
+## Symbiote's tools (MCP)
+
+`symbiote view` answers the [Model Context Protocol](https://modelcontextprotocol.io) at
+`/api/mcp` with Symbiote's own services, the ones the pages use. Scout has them; so does an agent
+of yours through `symbiote mcp`, a stdio bridge that finds the `symbiote view` running for the
+repository by a record it keeps in Symbiote's cache while it runs (`views/<hash>.json`), read on
+every call: a restarted `symbiote view` on another port is found by the next one. Without one
+running, a call says so.
+
+| Tool | What it does | |
+|---|---|---|
+| `overview` | What needs you: workspaces whose plan or work is ready or that wait, merges that wait; the checkout, the queue | |
+| `workspaces`, `workspace`, `thread` | The workspaces; one with its brief, commits, files and merge check; its agent's thread | |
+| `start_options`, `start_workspace` | What a start takes here; a start (a kind, title, brief parts, branch, plan first, agent, level, model, a branch to start from) | asks |
+| `reply`, `stop_agent`, `restart_agent` | A message to a workspace's agent; stop it; start it again | the last asks |
+| `clean_workspace` | Its sessions, worktree and, once merged, branch | asks |
+| `review` | A branch's change as Symbiote's graph: symbols by kind, every finding in the detector's words, the most-used changed symbols, the review page | |
+| `finish_review` | A verdict at the reviewed tip: approve, request changes or comment, with comments on symbols or lines | asks |
+| `merges`, `merge_log` | The queue, a branch's targets; an entry's log | |
+| `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge` | As Merge into and the merge page's buttons | ask |
+| `usage`, `code_map` | Your subscriptions' windows of use; where the code is, by folder | |
+| `wait` | Waits until a workspace's agent or a merge changes state, 10 minutes at most | |
+
+**Asks.** A tool marked *asks* waits for you: a bar on every page of Symbiote says who asks
+(Scout, or an agent through `symbiote mcp` and its folder) and what it will do, with **Decline**
+and **Confirm**. Nothing is done before Confirm; Decline, or no answer in 10 minutes, tells the
+agent nothing was done. It is checked before it asks: you are asked only what can be done. What
+an agent made through the tools says so: `via: "scout"` (or `"mcp"`) on a verdict in
+`symbiote/reviews/` and on a workspace's record; History's mark reads "Approved through Scout", a
+workspace's Brief tab "Started through Scout". Never through the tools: checking out, Settings,
+terminals, Skills.
+
+**Your own agent:** `claude mcp add symbiote -- symbiote mcp`, or for Codex, in its
+`config.toml`, `[mcp_servers.symbiote]` with `command = "symbiote"` and `args = ["mcp"]`. Added to
+your global configuration, a workspace's agent has it too; its asks still wait for you. The asks
+guard against an agent's mistake or an instruction in another agent's report; they are not a
+lock against a program of yours, which can already write `symbiote/reviews/` itself.
 
 ## Skills
 
@@ -992,13 +1060,13 @@ read at each use, so a change applies to the next agent started.
 
 | Key | What | Placeholders |
 |---|---|---|
-| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace's start prompt for that kind | `{branch}`, `{start}`, `{brief}` (required), `{documents}`, `{plan}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{symbiote}` |
+| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace's start prompt for that kind | `{branch}`, `{worktree}`, `{start}`, `{brief}` (required), `{documents}`, `{plan}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{symbiote}` |
 | `plan.first`, `plan.direct` | What `{plan}` becomes, with Plan first and without | none |
 | `documents` | What `{documents}` becomes when files were given with the brief (else its line goes); added after a start prompt without `{documents}` | `{folder}` (required), `{files}` |
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The sentences of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`; `{reviewer}`, `{what}`; `{review}`, `{agents}` |
 | `reviews` | `symbiote/AGENTS.md`, how an agent acts on a review | none |
 | `merger` | The merger's instructions; Symbiote adds the answer format it reads | none |
-| `scout` | [Scout](#scout)'s first prompt; its tools stay read-only whatever it says | `{question}` (required) |
+| `scout` | [Scout](#scout)'s first prompt; its tools stay as they are whatever it says, and Symbiote asks you before what changes a branch | `{question}` (required) |
 | `scribe` | [Scribe](#scribe)'s first prompt; it writes only in `.claude/skills/` whatever it says | `{request}` (required), `{skills}`, `{checkout}` |
 
 A value Symbiote cannot use (not text, a start prompt without `{brief}`, Scout's without

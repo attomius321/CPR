@@ -550,7 +550,7 @@ function WorkspacePanel({
             {view === 'brief' && (
               <BriefTab
                 text={workspace.brief}
-                started={startedWith(workspace.agent)}
+                started={startedWith(workspace.agent, workspace.via)}
                 documents={workspace.documents}
               />
             )}

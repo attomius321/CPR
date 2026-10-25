@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { Readable, Writable } from 'node:stream';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import {
   analyzeGit,
@@ -75,6 +76,7 @@ import { readClaudeProfile, readClaudeUsage, readCodexUsage, usageService } from
 import { codex, findCodex, type Codex } from './codex.js';
 import { workspaces, readWorkspaceConfig } from './workspaces.js';
 import { claudeCode, claudeModelsFile, findClaude, type ClaudeCode } from './claude-code.js';
+import { removeViewRecord, runBridge, viewFile, writeViewRecord } from './mcp-bridge.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -96,6 +98,8 @@ export interface CliContext {
   env: Readonly<Record<string, string | undefined>>;
   /** Told each phase of an analysis as it starts: set when `symbiote view` runs this CLI. */
   onPhase?: (phase: AnalysisPhase) => void;
+  /** The process's own input and output, where `symbiote mcp` speaks MCP (MC1). */
+  stdio?: { input: Readable; output: Writable };
   /** Symbiote's logs (LG1); without it, nothing is written. */
   log?: Log;
 }
@@ -103,13 +107,12 @@ export interface CliContext {
 /**
  * The program's name in its lines (LG1): its command, `pr` for `mr`, and `analysis` for a
  * `symbiote diff` that `symbiote view` started (it has an IPC channel back); `cli` for the rest.
+ * Nothing is ever written on stdout, where `symbiote mcp` speaks MCP.
  */
 export function logProcess(command: string | undefined, fromView: boolean): string {
   if (command === 'diff') return fromView ? 'analysis' : 'diff';
   if (command === 'mr') return 'pr';
-  if (command === 'view' || command === 'pr' || command === 'merge' || command === 'app') {
-    return command;
-  }
+  if (['view', 'pr', 'merge', 'app', 'mcp'].includes(command ?? '')) return command ?? '';
   return 'cli';
 }
 
@@ -131,6 +134,7 @@ export const processContext = (): CliContext => ({
     return openAppWindow(app, url, title, process.env);
   },
   env: process.env,
+  stdio: { input: process.stdin, output: process.stdout },
   // Started by `symbiote view` with an IPC channel: phases go back to it.
   ...(process.send ? { onPhase: (phase) => process.send?.({ phase } satisfies PhaseMessage) } : {}),
   waitForExit: () =>
@@ -175,6 +179,8 @@ Commands:
   pr [<number>]        Review a GitHub pull request or GitLab merge request (alias: mr);
                        in a CI job, the job's own
   merge <branch>       Merge a branch's approved commit, check it, and land it
+  mcp                  Symbiote's tools for an agent of yours (MCP on stdin and stdout):
+                       workspaces, reviews and merges, through the symbiote view running
   app install          Add Symbiote's window to your desktop's apps (app uninstall: remove it)
 
 Options:
@@ -274,6 +280,21 @@ Options:
   -h, --help           Show this help
 `;
 
+const MCP_HELP = `Usage: symbiote mcp
+
+An MCP server on stdin and stdout for an agent of yours, with Symbiote's tools for this
+repository: what needs you, the workspaces and their agents' threads, a branch's review as
+Symbiote's graph, the merge queue. It hands each call to the symbiote view running for the
+repository; without one, it says so. Starting a workspace or its agent again, a verdict,
+every merge action and a clean-up wait for your Confirm in Symbiote, 10 minutes at most.
+
+  claude mcp add symbiote -- symbiote mcp
+  Codex: [mcp_servers.symbiote] command = "symbiote", args = ["mcp"] in its config.toml
+
+Options:
+  -h, --help           Show this help
+`;
+
 const MERGE_HELP = `Usage: symbiote merge <branch> [options]
 
 Merges the commit your Symbiote review of <branch> approved into a target branch, as Merge
@@ -291,6 +312,7 @@ Options:
   --land               Land the branch's merge that waits for it
   --approve            Approve the merger agent's resolution of a conflict: it lands
   --again <words>      Ask the merger agent again, with what to change in its resolution
+                       or your answer to what it asked
   -h, --help           Show this help
 `;
 
@@ -315,6 +337,7 @@ export async function run(
     if (command === 'view') return await view(rest, ctx);
     if (command === 'pr' || command === 'mr') return await pr(rest, ctx);
     if (command === 'merge') return await merge(rest, ctx);
+    if (command === 'mcp') return await mcpCommand(rest, ctx);
     if (command === 'app') return appCommand(rest, ctx);
   } catch (error) {
     if (error instanceof UsageError) {
@@ -746,6 +769,15 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     open: vsCodeOpener(repo, ctx.env),
     intro: introOf(ctx),
     log,
+    version,
+  });
+  // Where Symbiote's MCP bridge finds this server (MC1): Scout's, and `symbiote mcp`'s.
+  const viewRecord = viewFile(cacheDir, repo.commonDir);
+  await writeViewRecord(viewRecord, {
+    url: server.url,
+    pid: process.pid,
+    root: repo.root,
+    started: new Date().toISOString(),
   });
 
   let url = server.url;
@@ -772,7 +804,11 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   ctx.stdout(`Symbiote viewer: ${url}  (Ctrl+C to stop)\n`);
   for (const warning of first?.analysis.warnings ?? []) ctx.stderr(`warning: ${warning}\n`);
 
-  await showUntilExit(url, basename(repo.root), values, ctx);
+  try {
+    await showUntilExit(url, basename(repo.root), values, ctx);
+  } finally {
+    await removeViewRecord(viewRecord, process.pid);
+  }
   diffs.close();
   await server.close();
   log.log.info({ repo: repo.root }, 'view stopped');
@@ -794,6 +830,27 @@ function mergeStates(log: Logger): (entry: MergeEntry) => void {
     if (entry.state === 'failed') log.warn(fields, 'merge failed');
     else log.info(fields, `merge ${entry.state}`);
   };
+}
+
+/** `symbiote mcp` (MC1): the bridge to the `symbiote view` of the repository it runs in. */
+async function mcpCommand(argv: string[], ctx: CliContext): Promise<number> {
+  const { values } = parse(
+    { args: argv, options: { help: { type: 'boolean', short: 'h', default: false } } },
+    MCP_HELP,
+  );
+  if (values.help) {
+    ctx.stdout(MCP_HELP);
+    return 0;
+  }
+  if (!ctx.stdio) throw new UsageError('it speaks on stdin and stdout, and has neither', MCP_HELP);
+  const repo = await openRepo(ctx.cwd);
+  await runBridge({
+    view: viewFile(defaultCacheDir(ctx.env), repo.commonDir),
+    input: ctx.stdio.input,
+    output: ctx.stdio.output,
+    folder: ctx.cwd,
+  });
+  return 0;
 }
 
 /** A merge's state as `symbiote merge` prints it, one line each. */
@@ -824,6 +881,18 @@ function mergeLine(entry: MergeEntry): string {
             `  ${r.path}:${r.line}${r.note ? ` — ${r.note}` : ''}\n${r.text.replace(/^/gm, '    | ')}`,
         );
         return `needs you: review the resolution (${by}${tokens})${checked}\n${lines.join('\n')}\n  then --approve, or --again "<what to change>"`;
+      }
+      // What the agent asked about, each region numbered as its prompt numbered it.
+      const asked = entry.resolution?.needsYou ? (entry.resolution.asked ?? []) : [];
+      if (asked.length > 0) {
+        const sides = asked.map((r, i) =>
+          [
+            `  Region ${i + 1} · ${r.path}:${r.line}`,
+            ...r.ours.map((line) => `    ${entry.into} | ${line}`),
+            ...r.theirs.map((line) => `    ${entry.branch} | ${line}`),
+          ].join('\n'),
+        );
+        return `needs you: ${entry.message ?? ''}\n${sides.join('\n')}\n  then --again "<your answer>"`;
       }
       return `needs you: ${entry.message ?? ''}${entry.conflicts ? `\n  ${entry.conflicts.join('\n  ')}` : ''}`;
     }

@@ -166,6 +166,7 @@ export function workspacePrompt(
   const filled = fillPrompt(template, {
     documents,
     branch: workspace.branch,
+    worktree: workspace.worktree,
     start: workspace.from
       ? `${workspace.from} at ${workspace.base.slice(0, 7)}`
       : `the commit ${workspace.base.slice(0, 7)}`,

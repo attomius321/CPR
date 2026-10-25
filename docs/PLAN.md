@@ -127,6 +127,13 @@ hosted.
 | [V43](plan/v43-changed-file-diff.md) | A changed file opens as its diff | ✅ | 285–288 | [journal](journal/v43-changed-file-diff.md) |
 | [V45](plan/v45-workspace-terminals.md) | More terminals in a workspace: shells in its worktree | ready for review | 294–298 | [journal](journal/v45-workspace-terminals.md) |
 | [V47](plan/v47-agent-model.md) | A model for a workspace's agent, from the agent's own list; Scout's, Scribe's and the merger's in Settings | ready for review | 336–343 | [journal](journal/v47-agent-model.md) |
+| [V43](plan/v43-changed-file-diff.md) | A changed file opens as its diff | ✅ | 285–288 | [journal](journal/v43-changed-file-diff.md) |
+| [V45](plan/v45-workspace-terminals.md) | More terminals in a workspace: shells in its worktree | ready for review | 294–298 | [journal](journal/v45-workspace-terminals.md) |
+| [V47](plan/v47-agent-model.md) | A model for a workspace's agent, from the agent's own list; Scout's, Scribe's and the merger's in Settings | ready for review | 336–343 | [journal](journal/v47-agent-model.md) |
+| Fix | a new file in a workspace's changes opens in VS Code as it is, not as a diff | ready for review | | [journal](journal/fix-workspaces-new-files.md) |
+| Fix | a workspace's agent is told its worktree and branch are ready, and to make no other | ready for review | | [journal](journal/fix-initial-workspace-bug.md) |
+
+### Agents
 
 ### Agents
 
@@ -146,6 +153,7 @@ hosted.
 | Fix | Attach images beside a workspace's terminal: no drop reaches the window on WSL | ready for review | | [journal](journal/fix-drop-file-in-workspace.md) |
 | Fix | one Settings page per prebuilt agent (Merger, Scout, Scribe), under Prebuilt agents | ready for review | | [journal](journal/fix-scout-merger-scribe-settings.md) |
 | Fix | Scribe starts at the project's effort level (`scribe.effort`), set in Settings | ready for review | | [journal](journal/fix-scribe-effort-level.md) |
+| [MC1](plan/mc1-symbiote-mcp.md) | Symbiote's MCP: Scout as the person's assistant, from a workspace's start to its merge | ready for review | 358–365 | [journal](journal/mc1-symbiote-mcp.md) |
 
 ### The merger
 
@@ -157,6 +165,7 @@ hosted.
 | Chore | the merge page remake, built | ✅ | | [journal](journal/chore-lost-feature.md) |
 | Fix | a resolution's failed check is said, not taken for a wrong one; Check again | ✅ | | [journal](journal/fix-merger.md) |
 | [V46](plan/v46-merger-logs.md) | Merger logs: steps, the check's output and the agent's thinking live; a resolution's files; the merger's effort | ready for review | 313–319 | [journal](journal/v46-merger-logs.md) |
+| Fix | the merge page on a conflict: red for what is lost or doubled, amber for what the agent wrote; a question answered there | ready for review | | [journal](journal/fix-merge-viewer-on-conflict.md) |
 
 ### Shell and look
 
