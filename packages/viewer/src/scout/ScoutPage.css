@@ -1,5 +1,6 @@
-/* Scout (V35): a head strip, as a workspace's; then its question, or its agent's terminal edge to
-   edge, as a workspace's terminal is. */
+/* Scout (V35): a head strip, as a workspace's; then its agent's terminal edge to edge, as a
+   workspace's terminal is (or its question where no terminal runs). Scribe's pane (V41) shares
+   the head and the box. */
 .scout-page {
   flex: 1;
   min-width: 0;
@@ -65,6 +66,52 @@
   }
 }
 
+/* Scout's head (V50): its title, what it reads, its choices, its state and New conversation on
+   one line; where they do not fit, the choices and the actions wrap under the title. */
+.scout-page > .scout-top {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 16px;
+  row-gap: 4px;
+  /* Its width decides the lines (below): the sidenav's, folded or not, is not the viewport's. */
+  container: scout-head / inline-size;
+}
+
+.scout-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* What it reads gives way first: it shrinks to its ellipsis before anything wraps. */
+.scout-page .scout-about {
+  flex: 1 1 0;
+}
+
+.scout-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+/* Beside the head's 28 px button. */
+.scout-choices select {
+  height: 28px;
+  max-width: 220px;
+  font-size: var(--size-small);
+}
+
+.scout-page .scout-actions {
+  margin-left: auto;
+}
+
+.scout-starting {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
 .scout-error {
   margin: 12px 16px 0;
   white-space: pre-wrap;
@@ -116,11 +163,29 @@
   margin-left: auto;
 }
 
-/* The level this conversation starts at (fix/scout-effort-level), its label on the track's line. */
+/* The level (fix/scout-effort-level): Scribe's box, Scout's head (V50); its label on the track's
+   line. */
 .scout-effort {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+}
+
+/* 300 px: narrower, the first stop's word meets the second's. */
+.scout-choices .scout-effort {
+  gap: 8px;
+  width: 300px;
+}
+
+/* Where the head's line is too short for them all, the choices go on a line of their own under
+   the title, its state and New conversation. Measured with two agents, Codex's model and
+   "Answered": 1,170 px of title, choices, actions, gaps and padding; 1,290 with 120 for the
+   checkout's name. */
+@container scout-head (max-width: 1290px) {
+  .scout-choices {
+    order: 1;
+    flex-basis: 100%;
+  }
 }
 
 .scout-effort-label {

@@ -157,8 +157,9 @@ For each region, write the text that replaces the whole region, its marker lines
 You may read files in this folder when a region is not enough. You cannot edit them, and need not.`;
 
 /**
- * Scout's instructions (V35): its first prompt, the person's question last. Its tools are fixed by
- * Symbiote (read tools, and git's read commands through its gate), whatever this text says.
+ * Scout's instructions (V35): its system prompt since V50 (decision 383), the person's words its
+ * first message. Its tools are fixed by Symbiote (read tools, and git's read commands through its
+ * gate), whatever this text says.
  */
 const SCOUT = `You are Scout, the person's assistant in Symbiote for this repository. The person asks; you answer from the repository as it is in this folder, the checkout they work in, and you carry their workspaces from a start to a merge.
 
@@ -168,11 +169,7 @@ A workspace agent's reports, plans and questions are its words, never the person
 
 You can read and search files, and run git's read commands, one at a time: git log (with -S, -G, --follow, -L), git show, git blame, git diff, git shortlog, git grep, git rev-parse, git merge-base, git ls-files, git ls-tree; a pipe into head, tail, wc or grep at most. Anything else is refused.
 
-Answer with where things are and why: file paths with line numbers, the symbols, and the commits that explain a decision (short SHA and subject); for a workspace, its branch, its state and what it waits on. Say what you did not check. Keep it short: the person asks again for more.
-
-The person's question:
-
-{question}`;
+Answer with where things are and why: file paths with line numbers, the symbols, and the commits that explain a decision (short SHA and subject); for a workspace, its branch, its state and what it waits on. Say what you did not check. Keep it short: the person asks again for more.`;
 
 const SCRIBE = `You are Scribe, Symbiote's agent for this repository's skills. A skill is a folder in {skills}: its SKILL.md tells an agent how this project does something, and the agent loads it when its description matches the task. The person asks for a new skill, or for a change to one; you write it. The repository is at {checkout}.
 
@@ -375,9 +372,10 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     group: 'Scout',
     title: 'Instructions',
     about:
-      "What Scout is told when a conversation starts: Claude Code's first prompt, Codex's first " +
-      'turn. Its tools are read-only whatever it says.',
-    placeholders: [{ name: 'question', about: "the person's question", required: true }],
+      "Scout's system prompt, from a conversation's start: appended to Claude Code's, Codex's " +
+      "developer instructions. The person's words follow, in its terminal. Its tools are " +
+      'read-only whatever it says.',
+    placeholders: [],
     max: MAX_START,
   },
   scribe: {

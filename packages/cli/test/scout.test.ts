@@ -74,7 +74,8 @@ function fakeClaude(root: string) {
     },
   ];
   let next = 9;
-  const startPageAgent = vi.fn<ClaudeCode['startPageAgent']>(({ cwd, name }) => {
+  // Without a prompt, Claude Code 2.1.310's session waits for its first one (V50 spike).
+  const startPageAgent = vi.fn<ClaudeCode['startPageAgent']>(({ cwd, name, prompt }) => {
     listed.push({
       cwd,
       kind: 'background',
@@ -82,8 +83,9 @@ function fakeClaude(root: string) {
       id: `s${next}`,
       sessionId: `session-${next}`,
       name,
-      state: 'working',
-      status: 'busy',
+      ...(prompt === undefined
+        ? { state: 'blocked', status: 'idle' }
+        : { state: 'working', status: 'busy' }),
     });
     next += 1;
     return Promise.resolve({ ok: true });
@@ -277,6 +279,51 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
     expect(calls[1]).not.toContain('--mcp-config');
   });
 
+  it("starts with no question, its instructions as Claude Code's appended system prompt (V50)", async () => {
+    const calls: string[][] = [];
+    const run: Run = (_command, args) => {
+      calls.push(args);
+      return Promise.resolve({ code: 0, stdout: '', stderr: '' });
+    };
+    const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
+    const request = { cwd: '/repo', name: 'Scout', settings: '/s', ...READ_ONLY };
+    await claude.startPageAgent({ ...request, instructions: 'You are Scout.', effort: 'low' });
+    // Nothing after it: no prompt, so the session waits for its first one.
+    expect(calls[0]?.slice(-4)).toEqual([
+      '--effort',
+      'low',
+      '--append-system-prompt',
+      'You are Scout.',
+    ]);
+    await claude.startPageAgent({ ...request, instructions: 'You are Scout.', prompt: 'Q' });
+    expect(calls[1]?.slice(-3)).toEqual(['--append-system-prompt', 'You are Scout.', 'Q']);
+  });
+
+  it('continues a session as a copy on the options given, its conversation kept (V50, decision 384)', async () => {
+    const calls: string[][] = [];
+    const run: Run = (_command, args) => {
+      calls.push(args);
+      return Promise.resolve({ code: 0, stdout: '', stderr: '' });
+    };
+    const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
+    await claude.startPageAgent({
+      cwd: '/repo',
+      name: 'Scout',
+      settings: '/s',
+      ...READ_ONLY,
+      from: 'session-9',
+      model: 'sonnet',
+      instructions: 'You are Scout.',
+    });
+    expect(calls[0]?.slice(0, 5)).toEqual(['--bg', '--resume', 'session-9', '--name', 'Scout']);
+    expect(calls[0]?.slice(-4)).toEqual([
+      '--model',
+      'sonnet',
+      '--append-system-prompt',
+      'You are Scout.',
+    ]);
+  });
+
   it("says Claude Code's words when it does not start", async () => {
     const run: Run = () =>
       Promise.resolve({ code: 1, stdout: '', stderr: 'Workspace not trusted. Run `claude`…\n' });
@@ -353,6 +400,8 @@ describe("finding Scout's session (decision 239)", () => {
     expect(read({ state: 'working', status: 'busy' })).toBe('working');
     expect(read({ status: 'busy' })).toBe('working');
     expect(read({ state: 'done', status: 'idle' })).toBe('answered');
+    // A finished plan, a turn ended on a refused tool, a session asked nothing yet (V50 spike):
+    // only Scout's record tells the last ('ready', V50).
     expect(read({ state: 'blocked', status: 'idle' })).toBe('answered');
     // Esc: no hook, `working` and idle (V21).
     expect(read({ state: 'working', status: 'idle' })).toBe('interrupted');
@@ -397,9 +446,9 @@ describe('scout (V35)', () => {
     expect(startPageAgent).toHaveBeenCalledTimes(1);
     const request = startPageAgent.mock.calls[0]?.[0];
     expect(request).toMatchObject({ cwd: repo.root, name: 'Scout', settings, ...READ_ONLY });
-    expect(request?.prompt).toBe(
-      DEFAULT_PROMPTS.scout.replace('{question}', "Where is the merger's prompt defined?"),
-    );
+    // Its instructions are its system prompt (V50, decision 383); the question its first message.
+    expect(request?.instructions).toBe(DEFAULT_PROMPTS.scout);
+    expect(request?.prompt).toBe("Where is the merger's prompt defined?");
     expect(readFileSync(settings, 'utf8')).toBe(
       scoutSettings({ node: '/usr/bin/node', gate: GATE }),
     );
@@ -544,10 +593,21 @@ describe('scout (V35)', () => {
     mkdirSync(join(repo.root, 'symbiote'), { recursive: true });
     writeFileSync(
       join(repo.root, 'symbiote', 'config.json'),
-      '{ "prompts": { "scout": "Answer briefly. {question}" } }\n',
+      '{ "prompts": { "scout": "Answer briefly." } }\n',
     );
     await s.ask({ text: 'Where is X?' });
-    expect(startPageAgent.mock.calls[0]?.[0].prompt).toBe('Answer briefly. Where is X?');
+    expect(startPageAgent.mock.calls[0]?.[0]).toMatchObject({
+      instructions: 'Answer briefly.',
+      prompt: 'Where is X?',
+    });
+    // A project's text from before V50 still holding {question}: filled with nothing.
+    await s.renew();
+    writeFileSync(
+      join(repo.root, 'symbiote', 'config.json'),
+      '{ "prompts": { "scout": "Answer briefly.\\n\\nThe question:\\n\\n{question}" } }\n',
+    );
+    await s.open({});
+    expect(startPageAgent.mock.calls[1]?.[0].instructions).toBe('Answer briefly.\n\nThe question:');
     await expect((await service(fresh())).ask({ text: 'Q' })).rejects.toThrow(
       /Scout needs Claude Code or Codex/,
     );
@@ -584,6 +644,274 @@ describe('scout (V35)', () => {
     // Without its app server, Codex has no terminal: Scout says so.
     const without = await service(repo, { codex: fakeCodex(null).codex });
     await expect(without.ask({ text: 'Q' })).rejects.toThrow(/app server/);
+  });
+});
+
+describe('Scout is a terminal (V50)', () => {
+  const LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
+  const MODELS: AgentModel[] = [
+    { id: 'opus', name: 'Opus 5.5', efforts: { levels: LEVELS } },
+    { id: 'sonnet', name: 'Sonnet 5.5', efforts: { levels: LEVELS } },
+    { id: 'claude-haiku-4-5-20251001', name: 'Haiku 4.5' },
+  ];
+  /** Claude Code with its levels and its models. */
+  const listing = (repo: TestRepo) => {
+    const fake = fakeClaude(repo.root);
+    fake.claude.efforts = () => Promise.resolve(LEVELS);
+    fake.claude.models = () => Promise.resolve(structuredClone(MODELS));
+    return fake;
+  };
+  const files = (repo: TestRepo) => ({
+    settings: join(repo.root, 'symbiote', 'scout-settings.json'),
+    mcpConfig: join(repo.root, 'symbiote', 'scout-mcp.json'),
+  });
+
+  it("opens a conversation with no question: Claude Code waits for its first, Scout's instructions its system prompt", async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    const { terminals } = fakeTerminals();
+    const s = await service(repo, { claude, terminals });
+    // Whether a terminal runs, before any conversation: the page shows its terminal or its box.
+    expect((await s.state()).terminal).toEqual({ available: true });
+    const state = await s.open({});
+    expect(startPageAgent).toHaveBeenCalledTimes(1);
+    const request = startPageAgent.mock.calls[0]?.[0];
+    expect(request).toMatchObject({
+      cwd: repo.root,
+      name: 'Scout',
+      ...READ_ONLY,
+      ...files(repo),
+      instructions: DEFAULT_PROMPTS.scout,
+    });
+    expect(request).not.toHaveProperty('prompt');
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({
+      agent: 'claude',
+      id: 's9',
+      sessionId: 'session-9',
+      started: NOW.toISOString(),
+    });
+    expect(state.conversation).toEqual({
+      kind: 'claude',
+      started: NOW.toISOString(),
+      state: 'ready',
+      id: 's9',
+    });
+    // Opened again: the one there is, nothing started.
+    expect((await s.open({})).conversation).toMatchObject({ id: 's9' });
+    expect(startPageAgent).toHaveBeenCalledTimes(1);
+    // Removed outside Symbiote: the next open starts another.
+    await claude.remove('s9');
+    expect((await s.open({})).conversation).toMatchObject({ id: 's10', state: 'ready' });
+    expect(repo.git('status', '--porcelain')).toBe('');
+  });
+
+  it('is ready until a turn is seen: Claude Code reads a turn ended on a refused tool as it reads a new session', async () => {
+    const repo = fresh();
+    const { claude, set } = fakeClaude(repo.root);
+    const s = await service(repo, { claude });
+    await s.open({});
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({ fresh: true });
+    // Stopped and woken by its terminal with no turn: still asked nothing.
+    set('s9', { state: 'stopped' });
+    expect((await s.state()).conversation).toMatchObject({ state: 'stopped' });
+    set('s9', { state: 'blocked', status: 'idle' });
+    expect((await s.state()).conversation).toMatchObject({ state: 'ready' });
+    // The first question typed in its terminal: seen working, the record says so from then on.
+    set('s9', { state: 'working', status: 'busy' });
+    expect((await s.state()).conversation).toMatchObject({ state: 'working' });
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).not.toHaveProperty('fresh');
+    set('s9', { state: 'blocked', status: 'idle' });
+    expect((await s.state()).conversation).toMatchObject({ state: 'answered' });
+    // A short turn missed between two reads: done is a turn too.
+    await s.renew();
+    await s.open({});
+    set('s10', { state: 'done', status: 'idle' });
+    expect((await s.state()).conversation).toMatchObject({ state: 'answered' });
+    set('s10', { state: 'blocked', status: 'idle' });
+    expect((await s.state()).conversation).toMatchObject({ state: 'answered' });
+    // A question asked from the box starts no fresh conversation.
+    await s.renew();
+    await s.ask({ text: 'Q' });
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).not.toHaveProperty('fresh');
+  });
+
+  it("keeps a conversation's freshness through a move: a copy reads as a new session does", async () => {
+    const repo = fresh();
+    const { claude, set } = listing(repo);
+    const s = await service(repo, { claude });
+    await s.open({});
+    // Moved before any question: still ready.
+    expect((await s.switch({ model: 'sonnet', effort: null })).conversation).toMatchObject({
+      state: 'ready',
+    });
+    set('s10', { state: 'working', status: 'busy' });
+    await s.state();
+    set('s10', { state: 'done', status: 'idle' });
+    // Moved after a turn: its copy, idle and asked nothing, is a conversation that answered.
+    const moved = await s.switch({ model: 'opus', effort: null });
+    expect(moved.conversation).toMatchObject({ id: 's11', state: 'answered' });
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).not.toHaveProperty('fresh');
+  });
+
+  it("opens on the model and at the level asked, else the project's; refuses what the agent does not list", async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = listing(repo);
+    const s = await service(repo, { claude });
+    repo.write({
+      'symbiote/config.json': '{ "scout": { "model": "sonnet", "effort": "medium" } }\n',
+    });
+    expect((await s.open({})).conversation).toMatchObject({ model: 'sonnet', effort: 'medium' });
+    expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ model: 'sonnet', effort: 'medium' });
+    await s.renew();
+    expect((await s.open({ model: 'opus', effort: 'high' })).conversation).toMatchObject({
+      model: 'opus',
+      effort: 'high',
+    });
+    await s.renew();
+    // Null: the agent's own, whatever the project says.
+    const own = await s.open({ model: null, effort: null });
+    expect(own.conversation).not.toHaveProperty('model');
+    expect(own.conversation).not.toHaveProperty('effort');
+    expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('model');
+    expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('effort');
+    await s.renew();
+    await expect(s.open({ model: 'gpt-6-luna' })).rejects.toMatchObject({
+      status: 400,
+      message: 'Claude Code lists no model gpt-6-luna: pick one it lists',
+    });
+    // The level is checked on the model asked for.
+    await expect(
+      s.open({ model: 'claude-haiku-4-5-20251001', effort: 'high' }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: 'Haiku 4.5 takes no effort level: start it at its default',
+    });
+    await expect(s.open({ agent: 'codex' })).rejects.toThrow('Codex is not installed');
+    expect(existsSync(record(repo))).toBe(false);
+  });
+
+  it('moves the conversation to another model and level: a copy of its session, the original removed (decision 384)', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent, stop, remove, set, listed } = listing(repo);
+    const s = await service(repo, { claude });
+    await s.open({});
+    set('s9', { state: 'done', status: 'idle' });
+    const state = await s.switch({ model: 'sonnet', effort: 'low' });
+    // Stopped first: Claude Code copies a running session and leaves it running (V50 spike).
+    expect(stop).toHaveBeenCalledWith('s9');
+    const copy = startPageAgent.mock.lastCall?.[0];
+    expect(copy).toMatchObject({
+      cwd: repo.root,
+      name: 'Scout',
+      ...READ_ONLY,
+      ...files(repo),
+      instructions: DEFAULT_PROMPTS.scout,
+      from: 'session-9',
+      model: 'sonnet',
+      effort: 'low',
+    });
+    expect(copy).not.toHaveProperty('prompt');
+    expect(remove).toHaveBeenCalledWith('s9');
+    expect(listed.map((x) => x.id)).not.toContain('s9');
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({
+      id: 's10',
+      sessionId: 'session-10',
+      model: 'sonnet',
+      effort: 'low',
+      started: NOW.toISOString(),
+    });
+    expect(state.conversation).toMatchObject({ id: 's10', model: 'sonnet', effort: 'low' });
+    // Back to the agent's own: no flag.
+    const back = await s.switch({ model: null, effort: null });
+    expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ from: 'session-10' });
+    expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('model');
+    expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('effort');
+    expect(back.conversation).toMatchObject({ id: 's11' });
+    expect(back.conversation).not.toHaveProperty('model');
+    expect(back.conversation).not.toHaveProperty('effort');
+  });
+
+  it('refuses a move while Scout answers or asks, without a conversation, or to a level the model lacks', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent, set } = listing(repo);
+    const s = await service(repo, { claude });
+    await expect(s.switch({ model: 'sonnet', effort: null })).rejects.toMatchObject({
+      status: 409,
+      message: 'Scout has no conversation: open it first',
+    });
+    await s.open({});
+    set('s9', { state: 'working', status: 'busy' });
+    const answering = {
+      status: 409,
+      message: 'Scout is answering: change its model or level after its answer',
+    };
+    await expect(s.switch({ model: 'sonnet', effort: null })).rejects.toMatchObject(answering);
+    set('s9', { state: 'blocked', status: 'waiting', waitingFor: 'permission prompt' });
+    await expect(s.switch({ model: 'sonnet', effort: null })).rejects.toMatchObject(answering);
+    set('s9', { state: 'done', status: 'idle' });
+    await expect(
+      s.switch({ model: 'claude-haiku-4-5-20251001', effort: 'high' }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: 'Haiku 4.5 takes no effort level: start it at its default',
+    });
+    expect(startPageAgent).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({ id: 's9' });
+  });
+
+  it("opens Codex's thread with no turn, Scout's instructions its developer instructions; a move forks it", async () => {
+    const repo = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    codex.efforts = () => Promise.resolve({ levels: ['low', 'medium', 'high'], default: 'medium' });
+    const s = await service(repo, { codex });
+    const state = await s.open({ effort: 'low' });
+    expect(server.calls.find((c) => c.method === 'thread/start')?.params).toMatchObject({
+      cwd: repo.root,
+      sandbox: 'read-only',
+      approvalPolicy: 'never',
+      developerInstructions: DEFAULT_PROMPTS.scout,
+      config: { model_reasoning_effort: 'low' },
+    });
+    expect(server.calls.some((c) => c.method === 'turn/start')).toBe(false);
+    expect(state.conversation).toMatchObject({
+      kind: 'codex',
+      state: 'ready',
+      id: 'thread-1',
+      effort: 'low',
+    });
+    const moved = await s.switch({ model: null, effort: 'high' });
+    expect(server.calls.find((c) => c.method === 'thread/fork')?.params).toMatchObject({
+      threadId: 'thread-1',
+      sandbox: 'read-only',
+      approvalPolicy: 'never',
+      developerInstructions: DEFAULT_PROMPTS.scout,
+      config: { model_reasoning_effort: 'high' },
+    });
+    expect(server.thread('thread-1')).toMatchObject({ archived: true });
+    expect(moved.conversation).toMatchObject({ kind: 'codex', id: 'thread-2', effort: 'high' });
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({
+      agent: 'codex',
+      thread: 'thread-2',
+      effort: 'high',
+    });
+  });
+
+  it('leaves Scribe as it was: it starts with a request', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    const s = scribe(await openRepo(repo.root), cache, {
+      claude: () => Promise.resolve(claude),
+      now: () => NOW,
+      gate: '/opt/symbiote/dist/scribe-hook.js',
+      node: '/usr/bin/node',
+    });
+    await expect(s.open({})).rejects.toMatchObject({
+      status: 409,
+      message: 'Scribe starts with what you ask it',
+    });
+    await s.ask({ text: 'A skill' });
+    expect(startPageAgent.mock.calls[0]?.[0]).not.toHaveProperty('instructions');
   });
 });
 
@@ -837,6 +1165,25 @@ describe("Scout's and Scribe's model (V47)", () => {
     expect(startPageAgent).not.toHaveBeenCalled();
   });
 
+  it('starts a question on the model asked where no terminal runs (V50); refused for one that runs', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent, set } = listing(repo);
+    const s = await service(repo, { claude });
+    repo.write({ 'symbiote/config.json': '{ "scout": { "model": "sonnet" } }\n' });
+    const state = await s.ask({ text: 'Q', model: 'opus', effort: 'max' });
+    expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ model: 'opus', effort: 'max' });
+    expect(state.conversation).toMatchObject({ model: 'opus', effort: 'max' });
+    set('s9', { state: 'done', status: 'idle' });
+    await expect(s.ask({ text: 'And?', model: 'sonnet' })).rejects.toMatchObject({
+      status: 409,
+      message: 'this conversation started on its model: change it in its terminal',
+    });
+    await s.renew();
+    expect((await s.ask({ text: 'Q', model: null })).conversation).not.toHaveProperty('model');
+    await s.renew();
+    await expect(s.ask({ text: 'Q', model: '--yolo' })).rejects.toMatchObject({ status: 400 });
+  });
+
   it("saves the project's model in its config, one its default agent lists; null removes it", async () => {
     const repo = fresh();
     const { claude } = listing(repo);
@@ -1082,6 +1429,7 @@ describe("Scout with Symbiote's tools (MC1, decisions 358, 365)", () => {
       cwd: repo.root,
       sandbox: 'read-only',
       approvalPolicy: 'never',
+      developerInstructions: DEFAULT_PROMPTS.scout,
       config,
     });
     server.reply('thread-1', 'Nothing.');

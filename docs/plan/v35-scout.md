@@ -168,6 +168,13 @@ sets `scout.effort` (Scout's group, Effort). The levels are read apart from `/ap
 its daemon. The start page's Effort select is the same stepper: a range input with a stop for
 the agent's own level, then each level it lists.
 
+**After V35: the page is Scout's terminal** ([V50](v50-scout-terminal.md)). Asked: "Scout should
+always be a terminal when going to that page, with options in header to change the model, new
+conversation". The page opens a conversation with no question (`POST /api/scout/open`),
+`prompts.scout` is its system prompt, and its head moves the conversation to another model or
+level (`POST /api/scout/switch`, a copy of the session). The question box stays where no terminal
+runs.
+
 ## As built (V35)
 
 - **The gate reads commands as git does.** git takes a long option's unique beginning and bundled

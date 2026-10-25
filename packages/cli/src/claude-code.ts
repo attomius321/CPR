@@ -304,12 +304,21 @@ export interface ClaudeCode {
    * Starts a page's agent as a background session in `cwd`: Scout (V35, decision 236), read tools
    * and Bash, nothing asked (`dontAsk`); Scribe (V41, decision 275), Write and Edit too, in
    * `default`, where Claude Code asks before a write into `.claude`. Every tool through the gate in
-   * `settings`, no MCP server. A wake keeps all of it (V35 spike). Its words when it does not start.
+   * `settings`, no MCP server. A wake keeps all of it (V35 spike). Without a prompt the session
+   * waits for its first, typed in its terminal (V50). Its words when it does not start.
    */
   startPageAgent(request: {
     cwd: string;
     name: string;
-    prompt: string;
+    /** Its first message; absent, none: it waits, and no turn runs (V50 spike). */
+    prompt?: string;
+    /** Its instructions (V50, decision 383): appended to the system prompt, kept by a wake. */
+    instructions?: string;
+    /**
+     * The session whose conversation it continues (`--resume`, V50, decision 384): Claude Code
+     * starts a copy of it with these options, under a new ID; the original stays listed.
+     */
+    from?: string;
     settings: string;
     tools: readonly string[];
     permissionMode: 'dontAsk' | 'default';
@@ -458,6 +467,7 @@ export function claudeCode(
     async startPageAgent(request) {
       const args = [
         '--bg',
+        ...(request.from ? ['--resume', request.from] : []),
         '--name',
         request.name,
         '--tools',
@@ -470,7 +480,8 @@ export function claudeCode(
         request.settings,
         ...choose(request.model, model),
         ...(request.effort ? ['--effort', request.effort] : []),
-        request.prompt,
+        ...(request.instructions ? ['--append-system-prompt', request.instructions] : []),
+        ...(request.prompt === undefined ? [] : [request.prompt]),
       ];
       const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
       sessions = null;

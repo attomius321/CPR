@@ -219,7 +219,8 @@ test('on a phone, the list first; a prompt or an agent takes the page, and comes
   await entry(page, 'Scout').click();
   await expect(list(page)).toBeHidden();
   await expect(part(page, 'Effort').getByRole('slider', { name: 'Effort' })).toBeVisible();
-  await expect(text(page, 'Instructions')).toHaveValue(/\{question\}/);
+  // Its system prompt since V50: the person asks in its terminal.
+  await expect(text(page, 'Instructions')).toHaveValue(/^You are Scout/);
   // Nothing wider than the screen.
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await editor(page).getByRole('button', { name: 'All settings' }).click();
@@ -266,19 +267,19 @@ test("Scout's page: its Model, Effort and Instructions; the effort a stepper of 
   await expect.poll(scout).toEqual({ effort: 'medium' });
   await reread;
   // So the Instructions saved after, on the same page, are not refused as changed since.
-  await text(page, 'Instructions').fill('Answer briefly. {question}');
+  await text(page, 'Instructions').fill('Answer briefly.');
   await save(page).click();
   await expect(part(page, 'Instructions').getByRole('status')).toContainText('Saved.');
-  expect(prompts()).toEqual({ scout: 'Answer briefly. {question}' });
+  expect(prompts()).toEqual({ scout: 'Answer briefly.' });
   await expect(agents(page).getByRole('button', { name: 'Scout' })).toContainText('changed');
   // Its address opens it, as saved.
   await page.reload();
   await expect(effort).toHaveAttribute('aria-valuetext', 'medium');
-  await expect(text(page, 'Instructions')).toHaveValue('Answer briefly. {question}');
+  await expect(text(page, 'Instructions')).toHaveValue('Answer briefly.');
   // The agent's own default: the key goes, the rest stays.
   await effort.press('Home');
   await expect.poll(scout).toBeUndefined();
-  expect(prompts()).toEqual({ scout: 'Answer briefly. {question}' });
+  expect(prompts()).toEqual({ scout: 'Answer briefly.' });
 });
 
 // The merger's effort (V46d): `merge.effort`, the level each merger agent's run is asked at, on
@@ -386,17 +387,13 @@ test("Scout's model: Claude Code's own list, saved as scout.model when picked; t
   await expect(part(page, 'Effort').getByRole('alert')).toHaveText(
     'scout.effort is xhigh, which Claude Code does not list: Scout starts it at its default.',
   );
-  // The next conversation starts on it, and its head says so.
+  // The next conversation starts on it, opened with the page (V50), and its head says so.
   await page.goto(`${symbiote.url}scout`);
   const scoutPage = page.getByRole('region', { name: 'Scout' });
-  await scoutPage.getByRole('textbox', { name: 'Ask Scout' }).fill('Where is it?');
-  await scoutPage.getByRole('textbox', { name: 'Ask Scout' }).press('Enter');
   await expect
     .poll(() => symbiote.calls().find((call) => call.args.includes('Scout'))?.args ?? [])
     .toEqual(expect.arrayContaining(['--model', 'claude-opus-4-6']));
-  await expect(scoutPage.locator('.scout-about')).toContainText(
-    'with Claude Code on claude-opus-4-6',
-  );
+  await expect(scoutPage.getByRole('combobox', { name: 'Model' })).toHaveValue('claude-opus-4-6');
   // Back to the default: the key goes.
   await page.goto(`${symbiote.url}settings?prompt=scout`);
   await expect(modelSelect(page)).toHaveValue('claude-opus-4-6');

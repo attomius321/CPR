@@ -264,7 +264,11 @@ test("fields and buttons take the page's font and spacing on every page", async 
   expect(await unlike()).toEqual([]);
 
   await page.getByRole('link', { name: 'Scout' }).click();
-  await expect(page.getByRole('textbox', { name: 'Ask Scout' })).toBeVisible();
+  // Its terminal (V50), drawn by xterm.js: its own look, not the page's.
+  await expect(page.locator('.scout-page .agent-terminal .xterm-rows')).toContainText(
+    'Fake Claude Code',
+    POLL,
+  );
   expect(await unlike()).toEqual([]);
 
   const [base, head] = symbiote.shas;
@@ -342,9 +346,9 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
   await page.mouse.move(700, 600);
   await expect(tip).toBeHidden();
 
-  // Scout's: what it is and its keys, behind the "?" by its question.
+  // Scout's: what it is, behind the "?" by its title.
   await page.goto(`${symbiote.url}scout`);
-  await expect(page.getByRole('textbox', { name: 'Ask Scout' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Scout' })).toBeVisible();
   await expect(page.getByText('changes no file')).toBeHidden();
   await page.getByRole('button', { name: 'About Scout' }).focus();
   await expect(tip).toContainText('changes no file');

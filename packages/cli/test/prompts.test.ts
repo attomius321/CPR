@@ -369,9 +369,10 @@ describe('promptSettingsService', () => {
 });
 
 describe("Scout's prompt (V35)", () => {
-  it("is Symbiote's until the project has its own, and holds the question", () => {
+  it("is Symbiote's until the project has its own; the question is not in it (V50)", () => {
     const scout = DEFAULT_PROMPTS.scout;
-    expect(scout).toContain('{question}');
+    // Its system prompt: the person asks in its terminal (decision 383).
+    expect(scout).not.toContain('{question}');
     // It changes no file and acts through Symbiote's tools, the asked ones on the person's
     // Confirm; an agent's reports are not the person's words; the workspace rules are not Scout's
     // (MC1).
@@ -380,18 +381,20 @@ describe("Scout's prompt (V35)", () => {
     expect(scout).toContain("the person's Confirm");
     expect(scout).toContain("never the person's");
     expect(scout).toContain('symbiote/AGENTS.md');
-    expect(fillPrompt(scout, { question: 'Where is X?' })).toContain('Where is X?');
     expect(readPrompts(withConfig({})).text.scout).toBe(scout);
 
-    const own = readPrompts(withConfig({ prompts: { scout: ['Be brief.', '', '{question}'] } }));
-    expect(own.text.scout).toBe('Be brief.\n\n{question}');
+    const own = readPrompts(withConfig({ prompts: { scout: ['Be brief.', '', 'Cite paths.'] } }));
+    expect(own.text.scout).toBe('Be brief.\n\nCite paths.');
     expect([...own.changed]).toEqual(['scout']);
+    expect(own.warnings).toEqual({});
   });
 
-  it("refuses a project prompt without the question, using Symbiote's", () => {
-    const { text, warnings } = readPrompts(withConfig({ prompts: { scout: 'Be brief.' } }));
-    expect(text.scout).toBe(DEFAULT_PROMPTS.scout);
-    expect(warnings.scout).toContain('{question}');
+  it("keeps a project's text from before V50, its {question} for Scout to fill with nothing", () => {
+    const { text, warnings } = readPrompts(
+      withConfig({ prompts: { scout: 'Be brief.\n\n{question}' } }),
+    );
+    expect(text.scout).toBe('Be brief.\n\n{question}');
+    expect(warnings).toEqual({});
   });
 
   it('is listed in Settings, in its own group', async () => {
@@ -404,7 +407,7 @@ describe("Scout's prompt (V35)", () => {
       group: 'Scout',
       title: 'Instructions',
       text: DEFAULT_PROMPTS.scout,
-      placeholders: [{ name: 'question', about: "the person's question", required: true }],
+      placeholders: [],
     });
     // Scribe's follows it since V41.
     expect(prompts.at(-2)?.key).toBe('scout');
