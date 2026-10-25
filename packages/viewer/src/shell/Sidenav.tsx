@@ -20,12 +20,14 @@ import {
   MenuIcon,
   MergingIcon,
   MonitorIcon,
-  NeedsYouIcon,
   PlusIcon,
+  ReviewIcon,
   ScoutIcon,
   SettingsIcon,
   SidenavIcon,
   SkillsIcon,
+  StoppedIcon,
+  WaitingIcon,
   WorkingIcon,
 } from '../ui/icons.js';
 import { mergeState } from '../workspaces/merges.js';
@@ -51,12 +53,21 @@ import {
   WorkspaceBranch,
   WorkspaceState,
 } from '../workspaces/WorkspaceFacts.js';
-import { workspaceGroups, workspaceName, type WorkspaceRow } from '../workspaces/workspaces.js';
+import {
+  workspaceGroups,
+  workspaceName,
+  type WorkspaceGroup,
+  type WorkspaceRow,
+} from '../workspaces/workspaces.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 
-/** The workspaces' groups, each with its icon (V44): only the group has one, a card its dot. */
+/**
+ * The workspaces' groups after the merges, each with its icon (V44): only the group has one, a
+ * card its dot. Waiting for you comes first, above the merges (V48).
+ */
 const GROUPS = [
-  ['needsYou', 'Needs you', NeedsYouIcon],
+  ['review', 'To review', ReviewIcon],
+  ['stopped', 'Not running', StoppedIcon],
   ['working', 'Working', WorkingIcon],
   ['done', 'Done', DoneIcon],
 ] as const;
@@ -87,7 +98,7 @@ export function Sidenav({
   const marks = useMemo(() => reviewMarks(reviews).marks, [reviews]);
   const route = shell?.route;
   const queued = merges?.merges ?? [];
-  const needs = groups.needsYou.length;
+  const needs = groups.waiting.length;
   const empty = list !== null && list.workspaces.length === 0 && queued.length === 0;
   // Scout's mark (V35): working while it answers; answered when it did while you were elsewhere.
   const scoutState = scout?.conversation?.state;
@@ -129,6 +140,14 @@ export function Sidenav({
     focused.current = again ?? null;
     again?.focus();
   });
+
+  // What every group's cards share: the review marks, the workspace shown, the one just started.
+  const cards = {
+    marks,
+    picked: route?.page === 'workspace' ? route.branch : null,
+    flashed,
+    onPick: (branch: string) => shell?.navigate({ page: 'workspace', branch }),
+  };
 
   /** The arrows move between the cards; Enter opens one (it is a button). */
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -281,6 +300,15 @@ export function Sidenav({
           onFocus={onFocus}
           onBlur={onBlur}
         >
+          {groups.waiting.length > 0 && (
+            <WorkspaceGroupSection
+              group="waiting"
+              title="Waiting for you"
+              Icon={WaitingIcon}
+              rows={groups.waiting}
+              {...cards}
+            />
+          )}
           {queued.length > 0 && (
             <section className="workspace-group merging" aria-label="Merging">
               <h3 title="Merging">
@@ -302,28 +330,14 @@ export function Sidenav({
           )}
           {GROUPS.map(([key, title, Icon]) =>
             groups[key].length === 0 ? null : (
-              <section key={key} className={`workspace-group group-${key}`} aria-label={title}>
-                {/* Its title names it in the rail, where only the icon shows. */}
-                <h3 title={title}>
-                  <Icon />
-                  <span className="sidenav-label">{title}</span>{' '}
-                  <span className="branches-count">{groups[key].length}</span>
-                </h3>
-                <ul className="workspace-list">
-                  {groups[key].map((row) => (
-                    <WorkspaceCard
-                      key={row.workspace.branch}
-                      row={row}
-                      mark={marks.get(row.workspace.branch)}
-                      picked={route?.page === 'workspace' && route.branch === row.workspace.branch}
-                      flashed={row.workspace.branch === flashed}
-                      onPick={() =>
-                        shell?.navigate({ page: 'workspace', branch: row.workspace.branch })
-                      }
-                    />
-                  ))}
-                </ul>
-              </section>
+              <WorkspaceGroupSection
+                key={key}
+                group={key}
+                title={title}
+                Icon={Icon}
+                rows={groups[key]}
+                {...cards}
+              />
             ),
           )}
         </div>
@@ -394,6 +408,51 @@ export function DrawerStrip({ open, onToggle }: { open: boolean; onToggle: () =>
       </header>
       {open && <div className="shell-scrim" aria-hidden="true" onClick={onToggle} />}
     </>
+  );
+}
+
+/** A group of workspaces (V44): its icon in its state's colour, its name, how many, its cards. */
+function WorkspaceGroupSection({
+  group,
+  title,
+  Icon,
+  rows,
+  marks,
+  picked,
+  flashed,
+  onPick,
+}: {
+  group: WorkspaceGroup;
+  title: string;
+  Icon: () => ReactNode;
+  rows: WorkspaceRow[];
+  marks: Map<string, ReviewMark>;
+  /** The workspace shown in the main area. */
+  picked: string | null;
+  flashed: string | null;
+  onPick: (branch: string) => void;
+}) {
+  return (
+    <section className={`workspace-group group-${group}`} aria-label={title}>
+      {/* Its title names it in the rail, where only the icon shows. */}
+      <h3 title={title}>
+        <Icon />
+        <span className="sidenav-label">{title}</span>{' '}
+        <span className="branches-count">{rows.length}</span>
+      </h3>
+      <ul className="workspace-list">
+        {rows.map((row) => (
+          <WorkspaceCard
+            key={row.workspace.branch}
+            row={row}
+            mark={marks.get(row.workspace.branch)}
+            picked={picked === row.workspace.branch}
+            flashed={row.workspace.branch === flashed}
+            onPick={() => onPick(row.workspace.branch)}
+          />
+        ))}
+      </ul>
+    </section>
   );
 }
 

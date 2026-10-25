@@ -28,6 +28,7 @@ import { KindTag, StateDot, WorkspaceBranch, WorkspaceState } from './WorkspaceF
 import { postJson, serverWords } from '../ui/http.js';
 import { Resizer } from '../ui/Resizer.js';
 import {
+  allRows,
   workspaceGroups,
   workspaceHref,
   workspaceName,
@@ -87,9 +88,7 @@ export function WorkspaceView({ branch }: { branch: string }) {
   const [send] = useState(sendOfUrl);
   const groups = useMemo(() => workspaceGroups(list?.workspaces ?? [], reviews), [list, reviews]);
   const marks = useMemo(() => reviewMarks(reviews).marks, [reviews]);
-  const row = [...groups.needsYou, ...groups.working, ...groups.done].find(
-    (r) => r.workspace.branch === branch,
-  );
+  const row = allRows(groups).find((r) => r.workspace.branch === branch);
   const notify = useCallback((notice: Notice | null) => shell?.notify(notice), [shell]);
   const onGone = useCallback(() => shell?.navigate({ page: 'history' }), [shell]);
   if (!list) return <p className="hint main-hint">Listing workspaces…</p>;

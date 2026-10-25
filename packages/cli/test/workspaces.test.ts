@@ -2355,6 +2355,61 @@ describe('workspaces', () => {
     });
   });
 
+  it('lists what each agent did and since when, from its thread: its turn, its ask, its report (V48)', async () => {
+    const { repo } = fresh();
+    const { claude, listed } = fakeClaude();
+    const s = await service(repo, claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { recordEvent } = await import('../src/thread.js');
+    const symbiote = join(repo.root, 'symbiote');
+    const cwd = workspace.worktree.path;
+    const event = (input: Record<string, unknown>, at: string) =>
+      recordEvent(symbiote, { session_id: 'session-1', cwd, ...input }, at);
+    const activity = async () => (await s.list()).workspaces[0]?.activity;
+    // Working since its prompt.
+    await event(
+      { hook_event_name: 'UserPromptSubmit', prompt: 'Start' },
+      '2026-10-15T09:00:00.000Z',
+    );
+    expect(await activity()).toEqual({ since: '2026-10-15T09:00:00.000Z' });
+    // It asks to run a command: since then, and the ask.
+    await event(
+      {
+        hook_event_name: 'PermissionRequest',
+        tool_name: 'Bash',
+        tool_input: { command: 'pnpm test' },
+      },
+      '2026-10-15T09:02:00.000Z',
+    );
+    Object.assign(listed[0] as AgentSession, {
+      state: 'blocked',
+      status: 'waiting',
+      waitingFor: 'permission prompt',
+    });
+    expect(await activity()).toEqual({
+      since: '2026-10-15T09:02:00.000Z',
+      asks: {
+        at: '2026-10-15T09:02:00.000Z',
+        session: 'session-1',
+        kind: 'asks',
+        tool: 'Bash',
+        input: '{"command":"pnpm test"}',
+      },
+    });
+    // Its plan: since its report, the report's first line.
+    await event(
+      { hook_event_name: 'Stop', last_assistant_message: '# The plan\n\n1. Tests' },
+      '2026-10-15T09:05:00.000Z',
+    );
+    Object.assign(listed[0] as AgentSession, { state: 'blocked', status: 'idle' });
+    delete (listed[0] as AgentSession).waitingFor;
+    expect((await s.list()).workspaces[0]?.agent.state).toBe('plan-ready');
+    expect(await activity()).toEqual({
+      since: '2026-10-15T09:05:00.000Z',
+      report: { at: '2026-10-15T09:05:00.000Z', text: '# The plan' },
+    });
+  });
+
   it('lists no last action for a workspace whose agent was never found (V23)', async () => {
     const { repo } = fresh();
     const s = await service(repo, null);
@@ -2751,12 +2806,20 @@ describe('workspaces', () => {
     const [waiting] = (await s.list()).workspaces;
     expect(waiting?.agent).toEqual({ state: 'needs-you', ...head, waitingFor: 'approval prompt' });
     expect(waiting?.lastAction).toBe(NOW.toISOString());
+    // What it said as it began to wait, and since when (V48).
+    expect(waiting?.activity).toMatchObject({
+      since: NOW.toISOString(),
+      report: { text: 'May I run pnpm install with the network?' },
+    });
     expect((await s.thread('feature/csv')).entries.at(-1)).toMatchObject({
       kind: 'report',
       text: 'May I run pnpm install with the network?',
     });
     server.reply(id, '1. Plan');
     expect((await s.list()).workspaces[0]?.agent).toEqual({ state: 'plan-ready', ...head });
+    expect((await s.list()).workspaces[0]?.activity).toMatchObject({
+      report: { text: '1. Plan' },
+    });
     // The person types in Codex's own terminal (`codex resume --remote`): Symbiote sees it.
     server.typed(id, 'Go ahead, from the terminal');
     await new Promise((resolve) => setTimeout(resolve, 30));
@@ -2764,6 +2827,13 @@ describe('workspaces', () => {
     expect((await s.thread('feature/csv')).entries.at(-1)).toMatchObject({
       kind: 'prompt',
       text: 'Go ahead, from the terminal',
+    });
+    // What it runs, from its running turn read in full (V48f); thinking with nothing running.
+    expect((await s.list()).workspaces[0]?.activity?.doing).toEqual({ thinking: true });
+    server.command(id, 'cargo test');
+    expect((await s.list()).workspaces[0]?.activity?.doing).toEqual({
+      tool: 'command',
+      subject: 'cargo test',
     });
   });
 

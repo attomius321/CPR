@@ -30,6 +30,7 @@ import {
   type AgentOption,
   type BranchMerge,
   type CheckGuess,
+  type WorkspaceActivity,
   type WorkspaceAgentState,
   type WorkspaceChanges,
   type WorkspaceDocument,
@@ -71,6 +72,8 @@ import {
   type AgentSession,
   type ClaudeCode,
 } from './claude-code.js';
+import type { CodexThread } from './app-server.js';
+import { activityOf, serverActivity } from './workspace-activity.js';
 import { MAX_BRIEF, workKinds } from './workspace-brief.js';
 import { onServer, workspaceCodex } from './workspace-codex.js';
 import {
@@ -407,6 +410,7 @@ export function workspaces(
     const changed = exists ? await uncommittedFiles(workspace.worktree).catch(() => null) : null;
     let agent: WorkspaceAgentState;
     let acted: string | undefined;
+    let activity: WorkspaceActivity | undefined;
     if (onServer(workspace)) {
       // Its last two turns: the one that runs, and the answer before it.
       const { read, address } = await viaCodex.readServer(workspace, {
@@ -416,6 +420,9 @@ export function workspaces(
       agent = serverState(workspace, read, ahead, address);
       acted =
         (read instanceof Error ? undefined : serverLastAction(read)) ?? workspace.agent?.started;
+      if (!(read instanceof Error)) {
+        activity = serverActivity(await runningTurn(workspace, read), agent, workspace.worktree);
+      }
     } else {
       const thread = workspace.agent
         ? await readThreadEnd(symbioteFolder(where), workspace.branch)
@@ -429,6 +436,7 @@ export function workspaces(
         workspace.agent?.kind === 'codex'
           ? codexState(workspace, thread, await viaCodex.alive(workspace), ahead)
           : agentState(workspace, sessions, ahead, real, ended);
+      activity = activityOf(thread, agent);
     }
     if (workspace.agent?.effort) agent = { ...agent, effort: workspace.agent.effort };
     if (workspace.agent?.model) agent = { ...agent, model: workspace.agent.model };
@@ -456,7 +464,21 @@ export function workspaces(
         : {}),
       ...(acted ? { lastAction: acted } : {}),
       ...(workspace.via ? { via: workspace.via } : {}),
+      ...(activity ? { activity } : {}),
     };
+  }
+
+  /**
+   * A thread whose turn runs (V48): its last turn read again in full — what it runs and what it
+   * said as it began to wait are items a `summary` read leaves out; as read, when not active or
+   * when the second read fails.
+   */
+  async function runningTurn(workspace: WorkspaceFile, read: CodexThread): Promise<CodexThread> {
+    const last = read.turns.at(-1);
+    if (read.status !== 'active' || !last) return read;
+    const { read: full } = await viaCodex.readServer(workspace, { turns: 1, items: 'full' });
+    const turn = full instanceof Error ? undefined : full.turns.at(-1);
+    return turn?.id === last.id ? { ...read, turns: [...read.turns.slice(0, -1), turn] } : read;
   }
 
   /**

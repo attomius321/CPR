@@ -278,8 +278,14 @@ button.workspace-about {
   color: var(--group-tone, var(--faint));
 }
 
-.sidenav .group-needsYou {
+/* The person's move (V48): an agent waiting, and work to look at, in the warning's amber. */
+.sidenav .group-waiting,
+.sidenav .group-review {
   --group-tone: var(--warning);
+}
+
+.sidenav .group-stopped {
+  --group-tone: var(--muted);
 }
 
 .sidenav .group-working,

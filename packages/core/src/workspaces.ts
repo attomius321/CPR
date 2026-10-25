@@ -139,6 +139,62 @@ export interface WorkspaceSummary {
   lastAction?: string;
   /** Started through Symbiote's tools (MC1): by Scout, or through `symbiote mcp`. */
   via?: McpVia;
+  /** What its agent did last and since when (V48); absent when nothing was recorded. */
+  activity?: WorkspaceActivity;
+}
+
+/** A tool an agent runs (V48f), and what it works on. */
+export interface ToolActivity {
+  /**
+   * The tool: Claude Code's name (`Bash`, `Edit`, `mcp__…`), or Codex's kind of item (`command`,
+   * `fileChange`, `mcp`, `webSearch`).
+   */
+  tool: string;
+  /**
+   * What it works on, at most 160 characters: a command's first line, a path inside the worktree,
+   * a search's pattern, a URL, a subagent's description; absent for anything else.
+   */
+  subject?: string;
+}
+
+/**
+ * One line of `symbiote/activity/<branch>.jsonl` (V48f): a tool call's start or end, as Claude
+ * Code's hooks or Symbiote's Codex runner saw it, or as Codex's app server lists its items.
+ */
+export interface ActivityEntry extends ToolActivity {
+  /** When it was seen; for Codex's app server, whose items carry no time, its turn's start. */
+  at: string;
+  session: string;
+  /** The Symbiote run of Codex it belongs to (V20a). */
+  run?: string;
+  /** The call's ID: Claude Code's `tool_use_id`, Codex's item ID. A start and its end share it. */
+  id: string;
+  phase: 'start' | 'end';
+  /** It ended in failure: Claude Code's `PostToolUseFailure`, a command's non-zero exit. */
+  failed?: true;
+  /** Codex's app server: no time of its own, only its place in its turn. */
+  untimed?: true;
+}
+
+/**
+ * What a workspace's agent did last, and since when (V48), from its thread, its recorded tools
+ * (V48f) or Codex's app server: only what was recorded, never a guess.
+ */
+export interface WorkspaceActivity {
+  /**
+   * When its current state began: its turn's prompt while it works, its ask while it waits, its
+   * last report once it finished, its end once it stopped. Absent when not recorded.
+   */
+  since?: string;
+  /** While it waits: what this turn asked (a question, or a permission and its tool's input). */
+  asks?: Extract<ThreadEntry, { kind: 'asks' }>;
+  /** Its newest report: when, and its first line, at most 200 characters. */
+  report?: { at: string; text: string };
+  /**
+   * While it works and its tools are recorded (V48f): the newest tool started this turn and not
+   * ended, or none running (`thinking`).
+   */
+  doing?: ToolActivity | { thinking: true };
 }
 
 export interface WorkspaceList {

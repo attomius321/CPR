@@ -236,7 +236,7 @@ test('the workspaces view: what each workspace needs, as its agent goes on', asy
 
   // The agent asks for a permission: it needs you, and the sidenav counts it.
   symbiote.session(branch, { state: 'blocked', waitingFor: 'permission prompt' });
-  await expect(group(page, 'Needs you').locator(row)).toContainText(
+  await expect(group(page, 'Waiting for you').locator(row)).toContainText(
     'Waiting: permission prompt',
     POLL,
   );
@@ -244,7 +244,7 @@ test('the workspaces view: what each workspace needs, as its agent goes on', asy
 
   // Esc in its session: no hook fires and Claude Code still says `working`, but it waits.
   symbiote.interrupt(branch);
-  await expect(group(page, 'Needs you').locator(row)).toContainText(
+  await expect(group(page, 'Waiting for you').locator(row)).toContainText(
     'Interrupted: waiting for you',
     POLL,
   );

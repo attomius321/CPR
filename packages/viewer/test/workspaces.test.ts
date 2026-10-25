@@ -16,6 +16,7 @@ import {
   modelChoices,
   readRun,
   startedWith,
+  activityText,
   workspaceChips,
   workspaceGroups,
   workspaceName,
@@ -424,47 +425,62 @@ describe('workspaceNext', () => {
     expect(next({})).toEqual({ group: 'working', text: 'Working', mark: '⚙' });
     expect(
       next({ agent: { state: 'needs-you', kind: 'claude', waitingFor: 'permission prompt' } }),
-    ).toEqual({ group: 'needs-you', text: 'Waiting: permission prompt', mark: '?' });
+    ).toEqual({ group: 'waiting', text: 'Waiting: permission prompt', mark: '?' });
     expect(next({ agent: { state: 'needs-you', kind: 'claude', interrupted: true } })).toEqual({
-      group: 'needs-you',
+      group: 'waiting',
       text: 'Interrupted: waiting for you',
       mark: '?',
     });
     expect(next({ agent: { state: 'plan-ready', kind: 'claude' } })).toEqual({
-      group: 'needs-you',
+      group: 'waiting',
       text: 'Plan ready: read it and answer',
       mark: '?',
     });
     expect(next({ agent: { state: 'failed', kind: 'claude' } })).toEqual({
-      group: 'needs-you',
+      group: 'stopped',
       text: 'Its agent failed',
       mark: '!',
     });
     // Codex's words, when the run said why (V20a).
     expect(
       next({ agent: { state: 'failed', kind: 'codex', error: 'unexpected status 401\nmore' } }),
-    ).toEqual({ group: 'needs-you', text: 'Its agent failed: unexpected status 401', mark: '!' });
+    ).toEqual({ group: 'stopped', text: 'Its agent failed: unexpected status 401', mark: '!' });
     expect(
       next({
         agent: { state: 'not-started', kind: 'claude', error: 'Workspace not trusted.\nMore' },
       }),
-    ).toEqual({ group: 'needs-you', text: 'Not started: Workspace not trusted.', mark: '!' });
+    ).toEqual({ group: 'stopped', text: 'Not started: Workspace not trusted.', mark: '!' });
     expect(next({ agent: { state: 'no-agent' } })).toEqual({
-      group: 'needs-you',
+      group: 'stopped',
       text: 'No agent: give it the prompt',
       mark: '!',
     });
-    expect(next({ agent: { state: 'done', kind: 'claude' }, planFirst: false })).toEqual({
-      group: 'needs-you',
-      text: 'Finished without commits',
+    expect(next({ agent: { state: 'unknown', kind: 'claude', error: 'no list' } })).toEqual({
+      group: 'stopped',
+      text: "Its agent's state is unknown: no list",
       mark: '·',
     });
-    expect(next({ agent: { state: 'stopped', kind: 'claude' } }).text).toBe('Stopped');
+    // V48: finished without commits is work to look at, not a stop.
+    expect(next({ agent: { state: 'done', kind: 'claude' }, planFirst: false })).toEqual({
+      group: 'review',
+      text: 'Finished without commits',
+      mark: '●',
+    });
+    expect(next({ agent: { state: 'stopped', kind: 'claude' } })).toEqual({
+      group: 'stopped',
+      text: 'Stopped',
+      mark: '·',
+    });
+    expect(next({ agent: { state: 'not-running', kind: 'claude' } })).toEqual({
+      group: 'stopped',
+      text: 'Not running',
+      mark: '·',
+    });
   });
 
   it('once it has commits, by its review', () => {
     const done = { agent: { state: 'ready' as const, kind: 'claude' as const }, ahead: 3 };
-    expect(next(done)).toEqual({ group: 'needs-you', text: 'Ready for review', mark: '●' });
+    expect(next(done)).toEqual({ group: 'review', text: 'Ready for review', mark: '●' });
     expect(next(done, { verdict: verdict('request-changes') }).text).toBe(
       'Changes requested: send them to the agent',
     );
@@ -481,6 +497,8 @@ describe('workspaceNext', () => {
       }).text,
     ).toBe('2 commits since your review: review again');
     expect(next(done, {}).text).toBe('Review in progress');
+    // Stopped with commits: they are to review.
+    expect(next({ ...done, agent: { state: 'stopped', kind: 'claude' } }).group).toBe('review');
     // Still working: its review waits.
     expect(next({ ahead: 3 }, { verdict: verdict('request-changes') }).group).toBe('working');
   });
@@ -492,10 +510,139 @@ describe('workspaceNext', () => {
       mark: '✓',
     });
     expect(next({ tip: null, agent: { state: 'not-running', kind: 'claude' } })).toEqual({
-      group: 'needs-you',
+      group: 'stopped',
       text: 'Its branch is gone',
       mark: '!',
     });
+  });
+
+  // V48: what a waiting agent asks, from the list's activity, in the thread's words.
+  describe('blocked', () => {
+    const blocked = (f: Partial<WorkspaceSummary>) => workspaceNext(summary(f)).blocked;
+    const asks = (tool: string, input: unknown): WorkspaceSummary['activity'] => ({
+      since: '2026-10-15T09:05:00.000Z',
+      asks: {
+        at: '2026-10-15T09:05:00.000Z',
+        session: 's1',
+        kind: 'asks',
+        tool,
+        input: JSON.stringify(input),
+      },
+    });
+    const waiting = { state: 'needs-you' as const, kind: 'claude' as const };
+
+    it('says the permission it waits for: a command, a file in its worktree, a tool', () => {
+      expect(
+        blocked({ agent: waiting, activity: asks('Bash', { command: 'pnpm test -- --run' }) }),
+      ).toBe('Permission to run pnpm test -- --run');
+      expect(
+        blocked({
+          agent: waiting,
+          activity: asks('Edit', { file_path: '/work/app.worktrees/feature-csv/src/a.ts' }),
+        }),
+      ).toBe('Permission to edit src/a.ts');
+      expect(blocked({ agent: waiting, activity: asks('WebFetch', { url: 'x' }) })).toBe(
+        'Permission to use WebFetch',
+      );
+    });
+
+    it('says the question it asks, with its options', () => {
+      expect(
+        blocked({
+          agent: waiting,
+          activity: {
+            asks: {
+              at: '2026-10-15T09:05:00.000Z',
+              session: 's1',
+              kind: 'asks',
+              tool: 'AskUserQuestion',
+              questions: [{ question: 'Which store?', options: ['Redis', 'SQLite'] }],
+            },
+          },
+        }),
+      ).toBe('Asks: Which store? — Redis · SQLite');
+    });
+
+    it("else its last message while it waits (Codex), or its plan's first line", () => {
+      const at = '2026-10-15T09:05:00.000Z';
+      const report = { at, text: 'May I run it outside the sandbox?' };
+      expect(
+        blocked({
+          agent: { state: 'needs-you', kind: 'codex', waitingFor: 'approval prompt' },
+          activity: { since: at, report },
+        }),
+      ).toBe('May I run it outside the sandbox?');
+      expect(
+        blocked({
+          agent: { state: 'plan-ready', kind: 'claude' },
+          activity: { since: at, report: { ...report, text: 'Plan: store sessions in SQLite' } },
+        }),
+      ).toBe('Plan: store sessions in SQLite');
+      // A report from an earlier turn is not what it waits on now.
+      expect(
+        blocked({
+          agent: { state: 'needs-you', kind: 'claude', waitingFor: 'permission prompt' },
+          activity: { since: '2026-10-15T09:20:00.000Z', report },
+        }),
+      ).toBeUndefined();
+      expect(blocked({ agent: waiting, activity: { report } })).toBeUndefined();
+    });
+
+    it('nothing when nothing was recorded, or when it does not wait', () => {
+      expect(blocked({ agent: { ...waiting, interrupted: true } })).toBeUndefined();
+      expect(blocked({ agent: waiting })).toBeUndefined();
+      expect(
+        blocked({ agent: { state: 'working', kind: 'claude' }, activity: asks('Bash', {}) }),
+      ).toBeUndefined();
+    });
+  });
+
+  // V48f: what a working agent does, from its recorded tools.
+  describe('doing', () => {
+    const doing = (activity: WorkspaceSummary['activity'], state = 'working' as const) =>
+      workspaceNext(summary({ agent: { state, kind: 'claude' }, activity })).doing;
+    const since = '2026-10-15T09:05:00.000Z';
+
+    it('says the tool running, in words, with what it works on', () => {
+      expect(doing({ doing: { tool: 'Bash', subject: 'pnpm test' } })).toBe('Running pnpm test');
+      expect(doing({ doing: { tool: 'Edit', subject: 'src/auth.ts' } })).toBe(
+        'Editing src/auth.ts',
+      );
+      expect(doing({ doing: { thinking: true } })).toBe('Thinking');
+    });
+
+    it('nothing while it does not work, or without recorded tools', () => {
+      expect(doing({ doing: { thinking: true } }, 'needs-you' as 'working')).toBeUndefined();
+      expect(doing({ since })).toBeUndefined();
+      expect(doing(undefined)).toBeUndefined();
+    });
+  });
+});
+
+describe('activityText (V48f)', () => {
+  it("says each agent's tools as the page shows them", () => {
+    const say = (tool: string, subject?: string) =>
+      activityText(subject === undefined ? { tool } : { tool, subject });
+    expect(say('Bash', 'pnpm test')).toBe('Running pnpm test');
+    expect(say('Bash')).toBe('Running a command');
+    expect(say('Edit', 'src/a.ts')).toBe('Editing src/a.ts');
+    expect(say('MultiEdit', 'src/a.ts')).toBe('Editing src/a.ts');
+    expect(say('NotebookEdit', 'n.ipynb')).toBe('Editing n.ipynb');
+    expect(say('Write', 'src/b.ts')).toBe('Writing src/b.ts');
+    expect(say('Read', 'src/c.ts')).toBe('Reading src/c.ts');
+    expect(say('Grep', 'parseToken')).toBe('Searching for parseToken');
+    expect(say('Glob', 'src/**/*.ts')).toBe('Finding files: src/**/*.ts');
+    expect(say('WebFetch', 'https://docs.rs')).toBe('Fetching https://docs.rs');
+    expect(say('WebSearch', 'pino async')).toBe('Searching the web: pino async');
+    expect(say('Task', 'find callers')).toBe('Running a subagent: find callers');
+    expect(say('Agent', 'find callers')).toBe('Running a subagent: find callers');
+    expect(say('TodoWrite')).toBe('Updating its to-do list');
+    expect(say('mcp__symbiote__review')).toBe('Using mcp__symbiote__review');
+    // Codex's items (V48f): the runner's and the app server's.
+    expect(say('command', 'cargo test')).toBe('Running cargo test');
+    expect(say('fileChange', 'src/lib.rs')).toBe('Editing src/lib.rs');
+    expect(say('webSearch', 'rust tokio')).toBe('Searching the web: rust tokio');
+    expect(say('mcp', 'github.search')).toBe('Using github.search');
   });
 });
 
@@ -507,6 +654,8 @@ describe('workspaceGroups', () => {
         summary({ branch: 'feature/b', agent: { state: 'plan-ready', kind: 'claude' } }),
         summary({ branch: 'feature/c', ahead: 1, merged: true }),
         summary({ branch: 'feature/d', ahead: 2, agent: { state: 'ready', kind: 'claude' } }),
+        summary({ branch: 'feature/e', agent: { state: 'failed', kind: 'codex' } }),
+        summary({ branch: 'feature/f', agent: { state: 'needs-you', kind: 'codex' } }),
       ],
       {
         defaultBranch: 'main',
@@ -515,12 +664,17 @@ describe('workspaceGroups', () => {
         reviews: [review({ branch: 'feature/d', refs: [], verdict: verdict('request-changes') })],
       },
     );
-    expect(groups.needsYou.map((r) => [r.workspace.branch, r.next.text])).toEqual([
+    const named = (rows: { workspace: WorkspaceSummary }[]) => rows.map((r) => r.workspace.branch);
+    expect(groups.waiting.map((r) => [r.workspace.branch, r.next.text])).toEqual([
       ['feature/b', 'Plan ready: read it and answer'],
+      ['feature/f', 'Waiting: for you'],
+    ]);
+    expect(groups.review.map((r) => [r.workspace.branch, r.next.text])).toEqual([
       ['feature/d', 'Changes requested: send them to the agent'],
     ]);
-    expect(groups.working.map((r) => r.workspace.branch)).toEqual(['feature/a']);
-    expect(groups.done.map((r) => r.workspace.branch)).toEqual(['feature/c']);
+    expect(named(groups.stopped)).toEqual(['feature/e']);
+    expect(named(groups.working)).toEqual(['feature/a']);
+    expect(named(groups.done)).toEqual(['feature/c']);
   });
 });
 

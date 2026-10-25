@@ -5,6 +5,7 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import type {
+  ActivityEntry,
   AgentEfforts,
   AgentModels,
   AgentStateName,
@@ -16,6 +17,7 @@ import {
   codexServer,
   type CodexServer,
   type CodexThread,
+  type CodexTurn,
 } from './app-server.js';
 import { localHost, onPath } from './editor.js';
 import { runProgram, type Run } from './programs.js';
@@ -447,6 +449,42 @@ export function serverEntries(
     }
   }
   return entries;
+}
+
+/**
+ * A turn's items read in full as activity lines (V48f): each item's start, and its end once Codex
+ * says it ended — an item with no status (reasoning, a web search) ended unless it is the last of
+ * a running turn. Items carry no time: each line is at its turn's start, `untimed`, in the turn's order.
+ * Paths inside `worktree` are said from it.
+ */
+export function serverTools(turn: CodexTurn, session: string, worktree: string): ActivityEntry[] {
+  const at = isoOf(turn.startedAt ?? 0);
+  const inside = (subject: string) =>
+    subject
+      .split(', ')
+      .map((path) => (path.startsWith(`${worktree}/`) ? path.slice(worktree.length + 1) : path))
+      .join(', ');
+  const items = turn.items ?? [];
+  return items.flatMap((item, index) => {
+    const line = {
+      at,
+      session,
+      untimed: true as const,
+      id: item.id,
+      tool: item.kind,
+      ...(item.subject
+        ? { subject: item.kind === 'fileChange' ? inside(item.subject) : item.subject }
+        : {}),
+    };
+    // Reasoning and a web search have no status: running while they are a running turn's last.
+    const running =
+      item.status === undefined
+        ? turn.status === 'inProgress' && index === items.length - 1
+        : item.status === 'inProgress';
+    const start: ActivityEntry = { ...line, phase: 'start' };
+    if (running) return [start];
+    return [start, { ...line, phase: 'end', ...(item.failed ? { failed: true as const } : {}) }];
+  });
 }
 
 /**
