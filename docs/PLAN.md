@@ -132,6 +132,7 @@ hosted.
 | [V47](plan/v47-agent-model.md) | A model for a workspace's agent, from the agent's own list; Scout's, Scribe's and the merger's in Settings | ready for review | 336–343 | [journal](journal/v47-agent-model.md) |
 | Fix | a new file in a workspace's changes opens in VS Code as it is, not as a diff | ready for review | | [journal](journal/fix-workspaces-new-files.md) |
 | Fix | a workspace's agent is told its worktree and branch are ready, and to make no other | ready for review | | [journal](journal/fix-initial-workspace-bug.md) |
+| [V48](plan/v48-workspace-activity.md) | Workspaces that show what their agents are doing, and which wait for you | planned | 367–374 | [journal](journal/v48-workspace-activity.md) |
 
 ### Agents
 
