@@ -631,6 +631,12 @@ button.workspace-about {
   cursor: default;
 }
 
+/* Its name laid out as a card's button is, so the card keeps a card's height. */
+.sidenav .workspace-row.starting .workspace-about {
+  display: block;
+  line-height: 18px;
+}
+
 .merge-card .state-dot {
   --dot: var(--merge-tone);
 }

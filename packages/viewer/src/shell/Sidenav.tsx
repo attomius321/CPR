@@ -295,7 +295,7 @@ export function Sidenav({
         {list?.note && <p className="hint workspaces-note">{list.note}</p>}
         {/* Before the first read: cards' outlines, shown after 150 ms so a fast read draws none. */}
         {!list && (
-          <div className="workspace-skeleton" role="status" aria-label="Listing workspaces">
+          <div className="workspace-skeleton" aria-busy="true" aria-label="Listing workspaces">
             {[0, 1, 2].map((n) => (
               <div key={n} className="skeleton-card">
                 <span />

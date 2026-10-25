@@ -476,7 +476,7 @@ test('while a workspace is made, its card says it starts; its own card takes its
     await route.continue();
   });
   await page.goto(`${symbiote.url}`);
-  await expect(page.getByRole('status', { name: 'Listing workspaces' })).toBeVisible();
+  await expect(page.locator('.sidenav .workspace-skeleton')).toBeVisible();
   await expect(page.getByText('No workspaces yet')).toBeVisible(POLL);
   held = false;
   // The start held: its card, starting.
@@ -490,6 +490,8 @@ test('while a workspace is made, its card says it starts; its own card takes its
   const starting = page.locator('.sidenav .workspace-row.starting');
   await expect(starting).toContainText('Starting · its worktree, then Claude Code');
   await expect(starting.locator('.state-dot')).toHaveClass(/tone-starting/);
+  // A card's height, as every card's (look.spec.ts).
+  expect((await starting.boundingBox())?.height ?? 0).toBeLessThanOrEqual(64);
   await expect(starting).toHaveCount(0, POLL);
   await expect(workspaceRow(page, 'feature/add-a-half-function')).toBeVisible();
 });
@@ -1228,7 +1230,7 @@ test("a workspace's shells: each its own, kept across tabs and a reload, closed 
   const here = panel(page, branch);
   await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
   // The agent's tabs as they were, the shells after them.
-  await expect(here.getByRole('tab')).toHaveText(['Terminal', 'Thread', 'Brief']);
+  await expect(here.getByRole('tab')).toHaveText(['Terminal', 'Thread', 'Activity', 'Brief']);
   await here.getByRole('button', { name: 'New shell' }).click();
   await expect(shellTab(page, branch, 1)).toHaveAttribute('aria-selected', 'true');
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function&shell=1`);
@@ -1248,6 +1250,7 @@ test("a workspace's shells: each its own, kept across tabs and a reload, closed 
   await expect(here.getByRole('tab')).toHaveText([
     'Terminal',
     'Thread',
+    'Activity',
     'Brief',
     'Shell 1',
     'Shell 2',
@@ -1316,7 +1319,7 @@ test('without terminals, the panel keeps Talk in its menu, and no Terminal tab',
   await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const here = panel(page, 'feature/add-a-half-function');
-  await expect(here.getByRole('tab')).toHaveText(['Thread', 'Brief']);
+  await expect(here.getByRole('tab')).toHaveText(['Thread', 'Activity', 'Brief']);
   // No shells either (V45).
   await expect(here.getByRole('button', { name: 'New shell' })).toHaveCount(0);
   await here.getByRole('button', { name: 'More actions' }).click();
