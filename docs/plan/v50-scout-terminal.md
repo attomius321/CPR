@@ -181,7 +181,8 @@ in the head (Claude Code does not list a session's model).
 `app-server.test.ts` (2), `prompts.test.ts` (3 changed), viewer `scout.test.ts` (3), and
 `e2e/scout.spec.ts`, 7 of 8 failing on the page before V50 (no terminal, no Model; the eighth,
 without agents, says the same on both). `pnpm check`: 121 files, 1,690 unit tests. E2E 245 of 245
-(the Scout, look, settings, skills, shell and MCP specs 48 of 48 after the last change).
+(the Scout, look, settings, skills, shell and MCP specs 48 of 48 after the last change); 247 of
+247 with `main` merged in (V49's specs).
 Screenshots at 1,600, 1,440, 1,100 and 390 px, dark and light, one and two agents, ready and
 answering, and the box without terminals: nothing wider than the window.
 

@@ -53,7 +53,7 @@ stays where no terminal runs. Scribe is unchanged.
 
 **Verification**: tests first, red for the right reason (`scout.test.ts` 12 new, `app-server.test.ts`
 2, `prompts.test.ts` 3 changed, viewer `scout.test.ts` 3; `e2e/scout.spec.ts` 7 of 8 failing on the
-page before V50). `pnpm check` 1,690 unit tests; e2e 245 of 245. Screenshots at 1,600, 1,440, 1,100
+page before V50). `pnpm check` 1,690 unit tests; e2e 245 of 245, and 247 of 247 with `main` (V49) merged in. Screenshots at 1,600, 1,440, 1,100
 and 390 px, dark and light: no overflow. The real run through the page (plan's results): the
 terminal 1.4 s after opening, the first answer in 20.9 s (`prompts.ts:147`), Sonnet in 4.2 s with
 the first question remembered, the gate refusing `ls` in the copy, New conversation in 2.8 s,
