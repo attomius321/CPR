@@ -22,6 +22,13 @@
   transform: rotate(90deg);
 }
 
+/* An agent's mark (V53): filled in its vendor's colours, 14 px as in a dense row. */
+.agent-mark {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
 /* The koi S (V42): an image, its tile's corners transparent. */
 .koi-mark {
   flex: none;

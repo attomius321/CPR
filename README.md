@@ -484,15 +484,17 @@ its icon:
 - **To review** (an eye): finished work — a branch to review, changes to send back, an approval to
   merge, or a report without commits.
 - **Not running** (a paused circle): failed (in red, with its words), stopped, or not started.
-- **Working** (an hourglass): what the agent runs right now, when Symbiote records its tools
-  ("Running pnpm test", "Editing src/auth.ts", "Thinking" between them), and for how long.
+- **Working** (an hourglass): which agent works, by its mark (Claude Code's spark or Codex's), and
+  what it runs right now, when Symbiote records its tools ("Running pnpm test", "Editing
+  src/auth.ts", "Thinking" between them), and for how long.
 - **Done** (a check): merged.
 
-A dot tells each state by its shape as well as its colour: a working agent's halo swells slowly, a
-waiting one's holds still, a stopped one is a ring (with reduced motion, nothing moves). Folded to
-a rail, the icons stand for the groups and the bell carries the count; + starts one (n). Each card
-shows the workspace's title (a fix, refactor, chore or spike marked so), what is next, its commits,
-files not committed yet, whether it merges cleanly, how long its state has lasted, and its branch.
+A dot tells each state by its shape as well as its colour: a working (or starting) agent's is a
+spinner, a waiting one's halo holds still, a stopped one is a ring (with reduced motion, nothing
+moves). Folded to a rail, the icons stand for the groups and the bell carries the count; + starts
+one (n). Each card shows the workspace's title and its kind (feature, fix, refactor, chore or
+spike) in a chip, what is next, its commits, files not committed yet, whether it merges cleanly,
+how long its state has lasted, and its branch.
 When an agent starts waiting, finishes or fails while you are on another page, the status bar says
 so once, with **Open**. A click opens it beside the sidenav (`/?branch=<branch>`), with these
 actions:

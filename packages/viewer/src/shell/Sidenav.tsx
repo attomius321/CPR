@@ -576,6 +576,7 @@ function WorkspaceCard({
         >
           {name}
         </button>
+        <KindTag workspace={workspace} />
       </div>
       {row.next.group === 'waiting' ? (
         // What it asks, and the way to answer it (V48): the card's own action, and how long.
@@ -605,7 +606,6 @@ function WorkspaceCard({
         </div>
       )}
       <div className="workspace-branch">
-        <KindTag workspace={workspace} />
         <WorkspaceBranch row={row} mark={mark} />
       </div>
     </li>

@@ -379,7 +379,9 @@ button.workspace-about {
   padding: 0 10px;
 }
 
+/* Its own width, not History's column: it ends where the line does, under the kind (V53). */
 .sidenav .workspace-respond .commit-date {
+  width: auto;
   color: var(--muted);
   font-size: var(--size-caption);
   font-variant-numeric: tabular-nums;
@@ -412,7 +414,7 @@ button.workspace-about {
   font-variant-numeric: tabular-nums;
 }
 
-/* A card, at most 64 px: the dot and the title; the state and its age; the kind and the branch. */
+/* A card, at most 64 px: the dot, the title and the kind; the state and its age; the branch. */
 .sidenav .workspace-row {
   padding: 5px 8px;
   border: 1px solid transparent;
@@ -480,9 +482,10 @@ button.workspace-about {
   font-variant-numeric: tabular-nums;
 }
 
-.sidenav .workspace-branch .kind-tag {
+/* Its kind (V53): at the end of the name's line, over its time: the kinds make a column. */
+.sidenav .workspace-head .kind-tag {
+  flex: none;
   margin: 0;
-  line-height: 14px;
 }
 
 /* The branch as git names it: plain, not History's badge; in the text's font (V31). */
@@ -518,32 +521,31 @@ button.workspace-about {
     box-shadow 150ms;
 }
 
-.state-dot.tone-working {
+/* Working and starting (V53): a spinner, lucide's Loader2 as a ring with one side clear, a turn a
+   second. 11 px drawn around the dot's place, past its 7 px box: every state keeps the box, so a
+   card does not move as its state changes. Only its transform moves: the compositor turns it,
+   nothing is laid out again. */
+.state-dot.tone-working,
+.state-dot.tone-starting {
   --dot: var(--moved);
+
+  background: transparent;
 }
 
-/* Working (V48): a halo that swells and fades, slowly. Only its transform and opacity move: the
-   compositor draws it, nothing is laid out again. */
-.state-dot.tone-working::after {
+.state-dot.tone-working::after,
+.state-dot.tone-starting::after {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: -2px;
+  border: 2px solid var(--dot);
+  border-right-color: transparent;
   border-radius: 50%;
-  background: var(--dot);
-  opacity: 0;
-  animation: state-pulse 2.4s ease-out infinite;
+  animation: state-spin 1s linear infinite;
 }
 
-@keyframes state-pulse {
-  0% {
-    opacity: 0.55;
-    transform: scale(1);
-  }
-
-  70%,
-  100% {
-    opacity: 0;
-    transform: scale(2.6);
+@keyframes state-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -574,46 +576,17 @@ button.workspace-about {
   box-shadow: inset 0 0 0 1.5px var(--dot, var(--faint));
 }
 
-/* Starting (V48): a ring turning while Symbiote makes its worktree and starts its agent. */
-.state-dot.tone-starting {
-  --dot: var(--moved);
-
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--dot) 30%, transparent);
-}
-
-.state-dot.tone-starting::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 1.5px solid transparent;
-  border-top-color: var(--dot);
-  border-radius: 50%;
-  animation: state-spin 0.9s linear infinite;
-}
-
-@keyframes state-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Without motion, working keeps a still halo: its own shape, beside waiting's ring; starting, a
-   still arc. */
+/* Without motion, the spinner holds still: an arc, its own shape beside waiting's halo and stopped's
+   ring; its gap at the top right, as Loader2's, not a "C" beside the name. */
 @media (prefers-reduced-motion: reduce) {
-  .state-dot.tone-working::after {
+  .state-dot.tone-working::after,
+  .state-dot.tone-starting::after {
     animation: none;
-    opacity: 0.25;
-    transform: scale(2.2);
+    transform: rotate(-45deg);
   }
 
-  .state-dot.tone-starting::after,
   .workspace-skeleton {
     animation-duration: 1ms;
-  }
-
-  .state-dot.tone-starting::after {
-    animation-iteration-count: 1;
   }
 }
 
@@ -661,7 +634,8 @@ button.workspace-about {
   .sidenav.rail .workspaces-empty,
   .sidenav.rail .workspaces-note,
   .sidenav.rail .sidenav-hint,
-  .sidenav.rail .workspace-state {
+  .sidenav.rail .workspace-state,
+  .sidenav.rail .workspace-head .kind-tag {
     display: none;
   }
 

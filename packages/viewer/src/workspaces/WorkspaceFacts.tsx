@@ -6,8 +6,9 @@ import type { BranchMerge, WorkspaceSummary } from '@symbiote/core';
 import type { ReviewMark } from '../history/branchReviews.js';
 import { relativeDate } from '../history/commits.js';
 import { HISTORY_PAGE } from '../shell/pages.js';
+import { ClaudeMark, CodexMark } from '../ui/icons.js';
 import { longAge, useNow } from './clock.js';
-import { shortAge, type WorkspaceRow } from './workspaces.js';
+import { AGENT_NAMES, shortAge, type WorkspaceRow } from './workspaces.js';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -39,12 +40,14 @@ function mergeText(merge: BranchMerge | null): string | null {
 }
 
 /**
- * What is next for a workspace — what its agent runs while it works (V48f) — then its facts:
- * commits, files not committed, the merge check.
+ * What is next for a workspace — what its agent runs while it works (V48f), after the agent's mark
+ * (V53) — then its facts: commits, files not committed, the merge check.
  */
 export function WorkspaceState({ row: { workspace, next } }: { row: WorkspaceRow }) {
   const merge = useMergeCheck(workspace);
   const said = next.doing ?? next.text;
+  // Only while it works is the line the agent's action; the rest is Symbiote's to say.
+  const agent = next.group === 'working' ? (workspace.agent.kind ?? 'claude') : null;
   const facts = [
     workspace.ahead > 0 ? plural(workspace.ahead, 'commit') : 'no commits yet',
     workspace.worktree.changed
@@ -55,7 +58,8 @@ export function WorkspaceState({ row: { workspace, next } }: { row: WorkspaceRow
   ].filter((fact): fact is string => fact !== null);
   const text = [said, ...facts].join(' · ');
   return (
-    <p className="workspace-state" title={text}>
+    <p className="workspace-state" title={agent ? `${AGENT_NAMES[agent]}: ${text}` : text}>
+      {agent === 'codex' ? <CodexMark /> : agent && <ClaudeMark />}
       <strong>{said}</strong>
       {facts.map((fact) => (
         <span key={fact}> · {fact}</span>
@@ -64,9 +68,9 @@ export function WorkspaceState({ row: { workspace, next } }: { row: WorkspaceRow
   );
 }
 
-/** A workspace's kind before its name (V24c): none for a Feature, the common case. */
+/** A workspace's kind (V24c), in a chip for every kind (V53); none recorded before V24. */
 export function KindTag({ workspace }: { workspace: WorkspaceSummary }) {
-  if (!workspace.kind || workspace.kind === 'feature') return null;
+  if (!workspace.kind) return null;
   return <span className="kind-tag">{workspace.kind}</span>;
 }
 
