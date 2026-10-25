@@ -1,7 +1,6 @@
 // Symbiote's merger (V26a, decisions 142–146, 149): an approved commit merged with `--no-ff` in a
 // worktree of Symbiote's own, the project's check run on the merge, and the target branch moved by
 // fast-forward. No agent and no tokens; one merge at a time per repository.
-import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
@@ -65,6 +64,7 @@ import {
   type MergerInput,
 } from './merge-agent.js';
 import { mergeLogs } from './merge-log.js';
+import { runShell, type RunCheck } from './programs.js';
 import { PromptRefused, readPrompts, writeConfig } from './prompts.js';
 
 /**
@@ -130,54 +130,11 @@ export class MergeRefused extends Error {
   }
 }
 
-/**
- * Runs one check command in `cwd` through the shell: its exit code and what it wrote, and what it
- * writes as it comes (`onOutput`, V46a).
- */
-export type RunCheck = (
-  command: string,
-  cwd: string,
-  onOutput?: (chunk: string) => void,
-) => Promise<{ code: number | null; output: string }>;
-
 /** States in which a merge runs: never removed, merged again after a stop. */
 const RUNNING = new Set<MergeEntry['state']>(['merging', 'resolving', 'checking']);
 
-/** A check may take long (this repository's check, build and e2e: about 2.5 min). */
-const CHECK_TIMEOUT_MS = 60 * 60_000;
-
 /** Lines of a check's output kept with its entry. */
 const OUTPUT_LINES = 60;
-
-/** The shell's run of a command, its output and errors together, as a terminal shows them. */
-export const runShell: RunCheck = (command, cwd, onOutput) =>
-  new Promise((done) => {
-    let output = '';
-    const child = spawn(command, {
-      cwd,
-      shell: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true,
-    });
-    const timer = setTimeout(() => child.kill(), CHECK_TIMEOUT_MS);
-    const keep = (chunk: string) => {
-      onOutput?.(chunk);
-      output += chunk;
-      // Only the end is kept: a check can write megabytes.
-      if (output.length > 1_000_000) output = output.slice(-200_000);
-    };
-    child.stdout.setEncoding('utf8').on('data', keep);
-    child.stderr.setEncoding('utf8').on('data', keep);
-    child.on('error', (error) => {
-      clearTimeout(timer);
-      onOutput?.(`${error.message}\n`);
-      done({ code: null, output: `${output}${error.message}\n` });
-    });
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      done({ code, output });
-    });
-  });
 
 const short = (sha: string) => sha.slice(0, 7);
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;

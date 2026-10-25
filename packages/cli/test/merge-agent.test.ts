@@ -10,8 +10,8 @@ import {
   MERGER_INSTRUCTIONS,
   mergerPrompt,
   parseAnswer,
-  type RunWithInput,
 } from '../src/merge-agent.js';
+import type { RunWithInput } from '../src/programs.js';
 
 /** A file as git leaves it with `merge.conflictStyle=diff3`: two regions. */
 const CONFLICTED = [

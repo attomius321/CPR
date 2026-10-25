@@ -41,7 +41,6 @@ import {
   parseSessions,
   readWorkspace,
   readWorkspaceConfig,
-  runProgram,
   serializeWorkspace,
   startBranches,
   workKinds,
@@ -49,9 +48,8 @@ import {
   type AgentSession,
   type ClaudeCode,
   type WorkspaceFile,
-  type Run,
 } from '../src/workspaces.js';
-import type { RunWithInput } from '../src/merge-agent.js';
+import { runProgram, type Run, type RunWithInput } from '../src/programs.js';
 import { reviewPlace } from '../src/reviews.js';
 import { DEFAULT_PROMPTS } from '../src/prompts.js';
 import { shellOf, type Terminals } from '../src/terminal.js';

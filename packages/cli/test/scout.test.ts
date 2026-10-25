@@ -17,7 +17,8 @@ import {
 } from '../src/scout.js';
 import { scribe } from '../src/scribe.js';
 import type { Terminals } from '../src/terminal.js';
-import { claudeCode, type AgentSession, type ClaudeCode, type Run } from '../src/workspaces.js';
+import { claudeCode, type AgentSession, type ClaudeCode } from '../src/workspaces.js';
+import type { Run } from '../src/programs.js';
 import { fakeAppServer, type FakeAppServer } from './fake-app-server.js';
 
 const repos: TestRepo[] = [];

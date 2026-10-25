@@ -8,7 +8,7 @@ import { mkdir, open, readdir, readFile, rename, writeFile } from 'node:fs/promi
 import { dirname, join } from 'node:path';
 import type { UsageReport, UsageSubscription, UsageWindow } from '@symbiote/core';
 import type { Codex } from './codex.js';
-import { runProgram, type Run } from './workspaces.js';
+import { runProgram, type Run } from './programs.js';
 
 type Env = Readonly<Record<string, string | undefined>>;
 
