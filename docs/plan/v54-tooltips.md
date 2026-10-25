@@ -131,3 +131,33 @@ and the graph, workspaces, the other pages), Help and the terminal hint, the doc
 
 **Not in V54 (later)**: tips on touch (a long press); a tip's own arrow; the Monitor's hover
 readout (a panel, not a tip).
+
+## As built (V54)
+
+- **Escape is the page's too**: the plan said Escape would hide the tip and stop there, as Help's
+  does. A hover tip is shown without asking; holding back the page's Escape (leave compare mode,
+  close a dialog) while the pointer rests on a button would make the key look broken. It hides the
+  tip and goes on.
+- **A tip with keys always shows**: "Start" beside the Start button says nothing, "Start Ctrl
+  Enter" does. Words the element shows whole (by `innerText`, so the folded rail's hidden names
+  do not count) are skipped only when the tip has no keys.
+- **Long elements take their tip by the pointer**: a resize handle as high as the window, a row,
+  a frame's band (over 240 px along the tip's side) placed it far from the pointer at their
+  middle; the tip goes by the pointer's place instead (`byPointer`).
+- **Class names are global**: the tip's `code` modifier met the diff's `.code` rule, which painted
+  a symbol's tip the page's black, text and ground alike (seen in the screenshots, not in the
+  tests). The modifiers are `tooltip-code`, `tooltip-cut`, `tooltip-warm`; the e2e spec checks a
+  symbol's tip is drawn in `--tip-bg`.
+- **The folded rail's links lost their names** with their `title` (their words are hidden there):
+  the pages' links and the brand carry an `aria-label`. Found by a screenshot script that asked
+  for the Scout link by role in the rail.
+- **Spread titles**: five elements took a `title` by a spread (`{...(note ? { title: note } :
+  {})}`) or by a menu action's `title`; the guard reads spreads too.
+- **React Flow**: its `Controls` set `title` on each button, so the zoom and fit buttons are
+  `ControlButton`s of ours in its drawings, named "Zoom in", "Zoom out", "Fit the view" (its
+  "Zoom In", "Zoom Out", "Fit View" before); its minimap's `<title>` is dropped with its label
+  (`ariaLabel=""`), a picture with no name.
+- **Briefs**: a workspace's brief was its link's and its heading's `title` in full; its tip is
+  `briefTip`: the first line as the head, then one paragraph of at most 240 characters, without
+  Markdown's marks.
+- **A finding's badge** said "2 error"; it says "2 errors" (and "1 info").

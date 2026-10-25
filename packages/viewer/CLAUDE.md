@@ -24,7 +24,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 | `history/` | History: rows, lanes, branches, checkout, the row menu, branch reviews |
 | `workspaces/` | A workspace, its agent's terminal, its changes, merges, Start a workspace |
 | `shell/` | The shell: sidenav, title bar, status bar and usage, pages, theme, the desktop window |
-| `ui/` | Shared: the tokens and controls' CSS, `Help`, `Resizer`, icons, menus, Markdown, HTTP |
+| `ui/` | Shared: the tokens and controls' CSS, `Help`, `Tooltips`, `Resizer`, icons, menus, Markdown, HTTP |
 | `scout/`, `settings/` | Scout, Settings; `scout/Conversation.tsx` is a page agent's conversation, Scout's page and Scribe's pane (V41) |
 | `skills/` | Skills (V41): the checkout's skills, their checks (`skills.ts`, pure), Scribe's pane |
 | `monitor/` | The Monitor (RM1, RM2): the folder tree, concentration and heat (`codemap.ts`), the treemap layout (`treemap.ts`), both pure; the picture `TreemapView.tsx` |
@@ -88,6 +88,11 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   `styles.css` say why). Class names are global: check a new one is not taken
   (`grep -rn '^\.name' src --include='*.css'`; the sidebar's review bar is `.progress`). Shared
   controls are in `src/ui/controls.css`.
+- Tooltips (V54): never a `title` (the window system draws it: square, its own font, no theme);
+  an element gets `{...tip(text, { keys, side, tone, code })}` (`src/ui/tip.ts`) and the one
+  `Tooltips` (`src/ui/Tooltip.tsx`, mounted in `main.tsx`) draws it: one listener on the window,
+  never one per element. `test/tooltips.test.ts` fails on a `title` or an SVG `<title>`; a third
+  party's (React Flow's `Controls`) is replaced (`diff/Canvas.tsx`). Explanation stays `Help`.
 - Colours are tokens on `:root` (dark) and `:root[data-theme='light']` in `src/ui/base.css`,
   contrast tested by `test/tokens.test.ts` (which reads every `.css` under `src/`);
   `src/shell/theme.ts` and `index.html`'s inline script set the theme. Text sizes are the

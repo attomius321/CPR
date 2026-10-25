@@ -384,10 +384,18 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
 
 - Popover (arbitrary content: a form, a picker, the "?" help): `--panel`, 1 px `--line`, 10 px
   radius, 14 px padding, `--shadow-floating`.
-- Tooltip (names an icon-only control; never teaches or warns): inverted, `background: var(--text);
-  color: var(--bg)`, 8 px radius, 6 × 12 px padding, 13 px text, shown after 400 ms, above with a
-  4 px gap; a keycap may trail. Until Symbiote has one, `title` is acceptable.
-- Help (V37, `Help.tsx`): the one way to explain. A 24 px ghost icon button (`HelpIcon`, lucide's
+- Tooltip (V54, `ui/Tooltip.tsx`; names, never teaches or warns): **never a `title`** (the window
+  system draws it: square, its own font, no theme; `test/tooltips.test.ts` fails on one). Give the
+  element `{...tip(text, { keys, side, tone, code })}` (`ui/tip.ts`); one `Tooltips` on the page
+  draws it. Inverted: `--tip-bg` (`#e3e8f2` dark, `#0b1220` light), `--tip-text`, 8 px radius,
+  6 × 12 px padding, 13 px, the head in 500 and its other lines (`\n`) in `--tip-muted`; keys as
+  caps trailing the head (`Alt+←` → `Alt` `←`); a state's dot (`tone`: ok, bad, warn, info) in the
+  other theme's state colours. Shown after 400 ms, at once along a toolbar; above, 6 px off,
+  flipped when it does not fit; `side: 'right'` beside the sidenav, `'bottom'` under the title bar.
+  Its form follows its context: a page or action with its key, a cut text's whole text (only when
+  cut, from its first letter, in its font), a state with its dot, a date written out (`longDate`),
+  an id or path in mono (`code`). Class names are global: its modifiers are `tooltip-…`.
+- Help (V37, `Help.tsx`; V54: in the menus' glass, 11 px, 12 × 14 px): the one way to explain. A 24 px ghost icon button (`HelpIcon`, lucide's
   circle-help) beside what it explains — a title, a field's name, a submit button. Hover (300 ms)
   or focus shows the tip, a click keeps it until a click elsewhere or Escape (which the page then
   does not get). The tip is a popover (`.help-tip`: `--panel`, `--line`, 10 px radius, 10 × 12 px
