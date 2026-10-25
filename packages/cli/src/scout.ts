@@ -134,6 +134,11 @@ interface ScoutRecord {
   effort?: string;
   /** The model it started on (V47): the project's; absent: its default. */
   model?: string;
+  /**
+   * Opened with no question (V50), and no turn seen since: Claude Code reads such a session as it
+   * reads one whose turn ended on a refused tool, `blocked` and idle. Gone at the first turn seen.
+   */
+  fresh?: true;
   started: string;
 }
 
@@ -243,8 +248,6 @@ export function scoutState(session: AgentSession | undefined): ScoutStateName {
   if (state === 'working') {
     return status === 'idle' ? 'interrupted' : status === undefined ? 'stopped' : 'working';
   }
-  // Started with no prompt, it waits for its first (V50 spike: `blocked`, nothing named).
-  if (state === 'blocked' && status === 'idle' && !waitingFor) return 'ready';
   return waitingFor ? 'needs-you' : 'answered';
 }
 
@@ -369,6 +372,7 @@ export function pageAgent(
     const level = {
       ...(isLevel(v.effort) ? { effort: v.effort } : {}),
       ...(typeof v.model === 'string' && MODEL_ID.test(v.model) ? { model: v.model } : {}),
+      ...(v.fresh === true ? { fresh: true as const } : {}),
     };
     if (v.agent === 'claude' && text(v.id)) {
       const sessionId = text(v.sessionId);
@@ -583,7 +587,18 @@ export function pageAgent(
     return server;
   }
 
-  async function conversationOf(record: ScoutRecord): Promise<ScoutConversation> {
+  /** The record written again without `fresh`: a turn was seen (V50). */
+  async function asked(where: ReviewPlace, record: ScoutRecord): Promise<void> {
+    const rest: ScoutRecord = { ...record };
+    delete rest.fresh;
+    await put(where, recordPath(where), `${JSON.stringify(rest, null, 2)}\n`).catch(() => {});
+  }
+
+  /** What the conversation is doing; `where` given, a fresh one seen at a turn is recorded so. */
+  async function conversationOf(
+    record: ScoutRecord,
+    where?: ReviewPlace,
+  ): Promise<ScoutConversation> {
     const head = {
       kind: record.agent,
       started: record.started,
@@ -597,7 +612,14 @@ export function pageAgent(
       const sessions = await agent.sessions();
       if (!sessions) return unknown('Claude Code could not list its sessions');
       const session = findScoutSession(record, sessions);
-      return { ...head, state: scoutState(session), ...(session ? { id: record.id } : {}) };
+      let state = scoutState(session);
+      if (record.fresh && session) {
+        // Asked nothing yet: `blocked` and idle as Claude Code starts it with no prompt (V50).
+        const waits = session.state === 'blocked' && session.status === 'idle';
+        if (waits && !session.waitingFor) state = 'ready';
+        else if (where && !['stopped', 'failed'].includes(state)) await asked(where, record);
+      }
+      return { ...head, state, ...(session ? { id: record.id } : {}) };
     }
     const thread = record.thread ?? '';
     try {
@@ -625,7 +647,7 @@ export function pageAgent(
       command: commandOf(a),
     }));
     const terminal = await terminals?.available();
-    const conversation = record ? await conversationOf(record) : null;
+    const conversation = record ? await conversationOf(record, where) : null;
     return { checkout: root, agents, conversation, ...(terminal ? { terminal } : {}) };
   }
 
@@ -705,6 +727,7 @@ export function pageAgent(
         id: session.id,
         ...(session.sessionId ? { sessionId: session.sessionId } : {}),
         ...at,
+        ...(text === undefined ? { fresh: true as const } : {}),
         started,
       };
       await put(where, recordPath(where), `${JSON.stringify(record, null, 2)}\n`);
@@ -847,9 +870,11 @@ export function pageAgent(
         throw new ScoutRefused(modelWordProblem(model), 400);
       }
       const where = await place();
-      const record = await readRecord(where);
-      if (!record) throw new ScoutRefused(`${name} has no conversation: open it first`, 409);
-      const now = (await conversationOf(record)).state;
+      const read = await readRecord(where);
+      if (!read) throw new ScoutRefused(`${name} has no conversation: open it first`, 409);
+      const now = (await conversationOf(read, where)).state;
+      // Read again: a turn seen just now took `fresh` out of it.
+      const record = (await readRecord(where)) ?? read;
       if (now === 'gone') {
         throw new ScoutRefused(`${name}'s session is gone: start a new conversation`, 409);
       }
@@ -886,6 +911,8 @@ export function pageAgent(
           id: copy.id,
           ...(copy.sessionId ? { sessionId: copy.sessionId } : {}),
           ...at,
+          // The copy reads as a new session: whether anything was asked stays the record's.
+          ...(record.fresh ? { fresh: true as const } : {}),
           started: record.started,
         };
         await put(where, recordPath(where), `${JSON.stringify(moved, null, 2)}\n`);

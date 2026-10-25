@@ -400,8 +400,9 @@ describe("finding Scout's session (decision 239)", () => {
     expect(read({ state: 'working', status: 'busy' })).toBe('working');
     expect(read({ status: 'busy' })).toBe('working');
     expect(read({ state: 'done', status: 'idle' })).toBe('answered');
-    // Started with no prompt, waiting for its first (V50 spike).
-    expect(read({ state: 'blocked', status: 'idle' })).toBe('ready');
+    // A finished plan, a turn ended on a refused tool, a session asked nothing yet (V50 spike):
+    // only Scout's record tells the last ('ready', V50).
+    expect(read({ state: 'blocked', status: 'idle' })).toBe('answered');
     // Esc: no hook, `working` and idle (V21).
     expect(read({ state: 'working', status: 'idle' })).toBe('interrupted');
     expect(read({ state: 'blocked', status: 'waiting', waitingFor: 'permission prompt' })).toBe(
@@ -702,6 +703,54 @@ describe('Scout is a terminal (V50)', () => {
     await claude.remove('s9');
     expect((await s.open({})).conversation).toMatchObject({ id: 's10', state: 'ready' });
     expect(repo.git('status', '--porcelain')).toBe('');
+  });
+
+  it('is ready until a turn is seen: Claude Code reads a turn ended on a refused tool as it reads a new session', async () => {
+    const repo = fresh();
+    const { claude, set } = fakeClaude(repo.root);
+    const s = await service(repo, { claude });
+    await s.open({});
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({ fresh: true });
+    // Stopped and woken by its terminal with no turn: still asked nothing.
+    set('s9', { state: 'stopped' });
+    expect((await s.state()).conversation).toMatchObject({ state: 'stopped' });
+    set('s9', { state: 'blocked', status: 'idle' });
+    expect((await s.state()).conversation).toMatchObject({ state: 'ready' });
+    // The first question typed in its terminal: seen working, the record says so from then on.
+    set('s9', { state: 'working', status: 'busy' });
+    expect((await s.state()).conversation).toMatchObject({ state: 'working' });
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).not.toHaveProperty('fresh');
+    set('s9', { state: 'blocked', status: 'idle' });
+    expect((await s.state()).conversation).toMatchObject({ state: 'answered' });
+    // A short turn missed between two reads: done is a turn too.
+    await s.renew();
+    await s.open({});
+    set('s10', { state: 'done', status: 'idle' });
+    expect((await s.state()).conversation).toMatchObject({ state: 'answered' });
+    set('s10', { state: 'blocked', status: 'idle' });
+    expect((await s.state()).conversation).toMatchObject({ state: 'answered' });
+    // A question asked from the box starts no fresh conversation.
+    await s.renew();
+    await s.ask({ text: 'Q' });
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).not.toHaveProperty('fresh');
+  });
+
+  it("keeps a conversation's freshness through a move: a copy reads as a new session does", async () => {
+    const repo = fresh();
+    const { claude, set } = listing(repo);
+    const s = await service(repo, { claude });
+    await s.open({});
+    // Moved before any question: still ready.
+    expect((await s.switch({ model: 'sonnet', effort: null })).conversation).toMatchObject({
+      state: 'ready',
+    });
+    set('s10', { state: 'working', status: 'busy' });
+    await s.state();
+    set('s10', { state: 'done', status: 'idle' });
+    // Moved after a turn: its copy, idle and asked nothing, is a conversation that answered.
+    const moved = await s.switch({ model: 'opus', effort: null });
+    expect(moved.conversation).toMatchObject({ id: 's11', state: 'answered' });
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).not.toHaveProperty('fresh');
   });
 
   it("opens on the model and at the level asked, else the project's; refuses what the agent does not list", async () => {

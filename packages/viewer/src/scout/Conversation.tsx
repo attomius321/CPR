@@ -39,14 +39,17 @@ export const attachCommand = (conversation: ScoutConversation) =>
     ? `claude attach ${conversation.id ?? ''}`
     : `codex resume ${conversation.id ?? ''}`;
 
-/** A page's agent as its conversation shows it: Scout's page (V35), Scribe's pane (V41). */
+/**
+ * A page's agent as its conversation shows it: Scribe's pane (V41), Scout's page until V50 (now
+ * `ScoutPage.tsx`, which shares its head, its terminal and its words).
+ */
 export interface ConversationAgent {
   name: string;
   /** Its API: `/api/scout`, `/api/scribe`. */
   api: string;
   /** Its state, read with the workspaces. */
   state: ScoutState | null;
-  /** The root's class (`scout-page`: the shell's `a` looks for its box) and its heading's level. */
+  /** The root's class (`scribe-pane`) and its heading's level. */
   className: string;
   heading: 'h1' | 'h2';
   /** What it does where, before the checkout's name: "Read-only in", "Writes skills in". */

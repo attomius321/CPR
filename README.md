@@ -295,7 +295,7 @@ command on the machine where `symbiote` runs, so WSL, Remote SSH and containers 
 | x | Compare mode | |
 | n | Start a workspace | |
 | h, s | History, Settings | |
-| a | [Scout](#scout); on Scout, its question box or its terminal | |
+| a | [Scout](#scout); on Scout, its terminal (or its question box) | |
 | i | [Skills](#skills) | |
 | m | [Monitor](#monitor); on it, Backspace goes up a folder, Escape too when no file is picked | |
 | w | The workspaces in the sidenav: ↑ and ↓ move, Enter opens | |
@@ -616,21 +616,25 @@ and never edits, commits, checks out or pushes: it acts only through
 [Symbiote's tools](#symbiotes-tools-mcp), and what changes a branch's fate waits for your
 Confirm.
 
-- **Ask:** the question box starts a conversation (Enter asks, Shift+Enter starts a new line). Its
-  answer is in the agent's own terminal on the page, where you ask more. One conversation per
-  repository is kept, and opened again when you come back; **New conversation** stops and removes
-  its session (Claude Code keeps its transcript: `claude --resume` opens it) and starts over.
+- **Ask:** the page is Scout's terminal. Opened with no conversation, it starts one with no
+  question, and you type the first one there (nothing runs, and no token is spent, until you do).
+  Its answers and your follow-ups are in that terminal. One conversation per repository is kept,
+  and opened again when you come back; **New conversation** stops and removes its session (Claude
+  Code keeps its transcript: `claude --resume` opens it) and opens the next at once.
+- **Its head** holds its choices: **Agent** when both Claude Code and Codex are installed (the
+  other starts a new conversation), **Model** (the agent's own list) and **Effort** (a stepper on
+  the levels that model takes). Picking a model or a level moves the conversation to it, what was
+  said kept: Claude Code's session is resumed as a copy on them (the original stopped and removed),
+  Codex's thread forked (the original archived). A line you were typing in the terminal is not
+  kept. Neither moves while Scout answers.
 - **Its agent** is chosen as a workspace's: `agent.kind` in `symbiote/config.json`, else Claude
-  Code, else Codex; the box offers the other when both are installed.
-- **Its effort** is the level a conversation starts at, on a stepper under the question: the
-  project's (`scout.effort` in `symbiote/config.json`, set in **Settings**, on Scout's page) when
-  the agent lists it, else the agent's own default. Move it before the first question for that
-  conversation only; the page's head names it ("with Claude Code at low effort"). The session keeps
-  it through follow-ups; `/effort` in its terminal changes it.
-- **Its model** is the project's (`scout.model`, set on the same page of **Settings**) when the
-  conversation's agent lists it, else `agent.model` for Claude Code, else the agent's own; the
-  page's head names it ("with Claude Code on sonnet at low effort"), and the levels on the stepper
-  are that model's.
+  Code, else Codex.
+- **Its model and effort** for a new conversation are the project's (`scout.model` and
+  `scout.effort` in `symbiote/config.json`, set in **Settings**, on Scout's page) when the agent
+  lists them, else `agent.model` for Claude Code, else the agent's own. What the head picks is that
+  conversation's; New conversation starts on the project's again.
+- **Its instructions** (`prompts.scout`) are its system prompt: appended to Claude Code's
+  (`--append-system-prompt`), Codex's developer instructions.
 - **Claude Code** runs with `--tools Read,Grep,Glob,Bash --permission-mode dontAsk
   --strict-mcp-config --mcp-config symbiote/scout-mcp.json` (Symbiote's server, and no other) and
   Symbiote's settings file, `symbiote/scout-settings.json`, whose PreToolUse hook decides first:
@@ -657,8 +661,9 @@ Confirm.
 - Scout's session is found by the ID Symbiote recorded in `symbiote/scout.json` when it started it,
   never by its folder: your own sessions in the checkout are left alone. Its prompt is
   `prompts.scout` ([Agents' prompts](#agents-prompts)).
-- Without terminals (no `node-pty`, or `SYMBIOTE_TERMINAL=off`), the box continues the conversation
-  and its answers are read in a terminal of yours (`claude attach <id>`, which the page names).
+- Without terminals (no `node-pty`, or `SYMBIOTE_TERMINAL=off`), a question box starts the
+  conversation on the head's choices (Enter asks, Shift+Enter starts a new line) and continues it;
+  its answers are read in a terminal of yours (`claude attach <id>`, which the page names).
 
 ## Symbiote's tools (MCP)
 
@@ -1066,11 +1071,11 @@ read at each use, so a change applies to the next agent started.
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The sentences of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`; `{reviewer}`, `{what}`; `{review}`, `{agents}` |
 | `reviews` | `symbiote/AGENTS.md`, how an agent acts on a review | none |
 | `merger` | The merger's instructions; Symbiote adds the answer format it reads | none |
-| `scout` | [Scout](#scout)'s first prompt; its tools stay as they are whatever it says, and Symbiote asks you before what changes a branch | `{question}` (required) |
+| `scout` | [Scout](#scout)'s system prompt; its tools stay as they are whatever it says, and Symbiote asks you before what changes a branch. A `{question}` left from before V50 becomes nothing | none |
 | `scribe` | [Scribe](#scribe)'s first prompt; it writes only in `.claude/skills/` whatever it says | `{request}` (required), `{skills}`, `{checkout}` |
 
-A value Symbiote cannot use (not text, a start prompt without `{brief}`, Scout's without
-`{question}`, Documents without `{folder}`, Scribe's without `{request}`, or too long: 8,000 characters for a start prompt,
+A value Symbiote cannot use (not text, a start prompt without `{brief}`, Documents without
+`{folder}`, Scribe's without `{request}`, or too long: 8,000 characters for a start prompt,
 Scout's or Scribe's, 1,000 for a sentence,
 20,000 otherwise) is ignored, and Symbiote's
 text is used.
