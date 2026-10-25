@@ -10,7 +10,7 @@ import type { RunCheck } from '../src/programs.js';
 import { MERGER_INSTRUCTIONS, type MergerAgent } from '../src/merge-agent.js';
 import { MERGER_ANSWER } from '../src/prompts.js';
 import { AGENTS, serializeReview } from '../src/reviews.js';
-import { serializeWorkspace, type WorkspaceFile } from '../src/workspaces.js';
+import { serializeWorkspace, type WorkspaceFile } from '../src/workspace-record.js';
 
 const NOW = new Date('2026-10-19T12:00:00.000Z');
 const EMAIL = 'ada@example.com';

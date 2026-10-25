@@ -14,7 +14,8 @@ import {
   writePrompt,
 } from '../src/prompts.js';
 import { agentsFile, AGENTS, verdictText } from '../src/reviews.js';
-import { workspacePrompt, type WorkspaceFile } from '../src/workspaces.js';
+import type { WorkspaceFile } from '../src/workspace-record.js';
+import { workspacePrompt } from '../src/workspace-start.js';
 
 /** What `main` at eadc0ce gave, recorded from its build before V28 (`fixtures/`). */
 const BEFORE = JSON.parse(

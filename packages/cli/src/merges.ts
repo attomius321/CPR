@@ -44,7 +44,7 @@ import {
 import { guessCheck, treeAt } from './check.js';
 import { CONFIG_FILES } from './plugins.js';
 import { readReview, reviewPath, reviewPlace } from './reviews.js';
-import { readWorkspace, workspacePath, type WorkspaceFile } from './workspaces.js';
+import { readWorkspace, workspacePath, type WorkspaceFile } from './workspace-record.js';
 import {
   effortOnProblem,
   effortWordProblem,

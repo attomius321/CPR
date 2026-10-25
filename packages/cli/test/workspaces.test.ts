@@ -24,23 +24,22 @@ import {
 } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
+import { MAX_DOCUMENT_BYTES, workspaces, readWorkspaceConfig } from '../src/workspaces.js';
 import {
-  briefOf,
-  documentName,
-  MAX_DOCUMENT_BYTES,
   workspaceBase,
-  workspacePath,
   workspacePrompt,
-  workspaces,
+  startBranches,
+  worktreeFolder,
+} from '../src/workspace-start.js';
+import {
+  documentName,
+  workspacePath,
   WorkspaceRefused,
   readWorkspace,
-  readWorkspaceConfig,
   serializeWorkspace,
-  startBranches,
-  workKinds,
-  worktreeFolder,
   type WorkspaceFile,
-} from '../src/workspaces.js';
+} from '../src/workspace-record.js';
+import { briefOf, workKinds } from '../src/workspace-brief.js';
 import {
   agentState,
   claudeCode,

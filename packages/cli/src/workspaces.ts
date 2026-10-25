@@ -11,17 +11,7 @@ import {
   stat,
   writeFile,
 } from 'node:fs/promises';
-import {
-  basename,
-  dirname,
-  extname,
-  isAbsolute,
-  join,
-  posix,
-  relative,
-  resolve,
-  sep,
-} from 'node:path';
+import { basename, dirname, extname, isAbsolute, join, posix, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   addWorktree,
@@ -56,8 +46,6 @@ import {
   type AgentModels,
   type AgentOption,
   type BranchMerge,
-  type BriefPart,
-  type BriefParts,
   type CheckGuess,
   type WorkspaceAgentState,
   type WorkspaceChanges,
@@ -78,14 +66,11 @@ import {
   type ThreadEntry,
   type GitRepo,
   type PermissionMode,
-  type PromptKey,
   type RefList,
-  type StartBranch,
   type WorkKind,
-  type WorkKindSpec,
 } from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
-import { DEFAULT_PROMPTS, fillPrompt, readPrompts } from './prompts.js';
+import { readPrompts } from './prompts.js';
 import {
   AppServerStartFailed,
   AppServerUnreachable,
@@ -101,7 +86,7 @@ import {
   serverState,
   type Codex,
 } from './codex.js';
-import { type FolderAt } from './editor.js';
+import type { OpenFolder } from './editor.js';
 import {
   effortOnProblem,
   effortWordProblem,
@@ -117,6 +102,26 @@ import {
   type AgentSession,
   type ClaudeCode,
 } from './claude-code.js';
+import { MAX_BRIEF, workKinds } from './workspace-brief.js';
+import {
+  documentName,
+  readWorkspace,
+  serializeWorkspace,
+  startedAs,
+  workspacePath,
+  WorkspaceRefused,
+  type StartedAs,
+  type WorkspaceAgentRecord,
+  type WorkspaceFile,
+} from './workspace-record.js';
+import {
+  newestTip,
+  startBranches,
+  workOf,
+  workspaceBase,
+  workspacePrompt,
+  worktreeFolder,
+} from './workspace-start.js';
 import { shellOf, TerminalRefused, type Terminals } from './terminal.js';
 import { CONFIG_FILES } from './plugins.js';
 import {
@@ -124,7 +129,6 @@ import {
   readReview,
   reviewPath,
   reviewPlace,
-  sortKeys,
   verdictText,
   type ReviewPlace,
 } from './reviews.js';
@@ -139,72 +143,6 @@ import {
   workspacesFolder,
 } from './thread.js';
 
-/** A workspace on disk: `symbiote/workspaces/<branch>.json` (V18; `symbiote/features/` before V25),
- * one per branch. */
-export interface WorkspaceFile {
-  /** The agent started for it; null when none was found. */
-  agent: WorkspaceAgentRecord | null;
-  /** The commit the branch started at (full SHA). */
-  base: string;
-  branch: string;
-  brief: string;
-  /** Who started it (`user.email`). */
-  by?: string;
-  created: string;
-  /** The branch `base` was the tip of; absent when a row was picked. */
-  from?: string;
-  /** When it was cleaned up (V18c): no longer listed. */
-  finished?: string;
-  /**
-   * The files the person gave with the brief (V40), by name, in `symbiote/documents/<branch>/`;
-   * removed at Clean up, their names kept here.
-   */
-  documents?: string[];
-  /** What it is for, its name, and the parts `brief` was made of (V24); absent before V24. */
-  kind?: WorkKind;
-  parts?: BriefParts;
-  planFirst: boolean;
-  title?: string;
-  /** The workspace's worktree folder. */
-  worktree: string;
-}
-
-export interface WorkspaceAgentRecord {
-  kind: AgentKind;
-  /** Claude Code's permission mode. */
-  permissionMode?: PermissionMode;
-  /** The effort level it was started at (V30b), given again when it starts again; its own if
-   * absent. */
-  effort?: string;
-  /** The model it was started on (V47), given again when it starts again; its default if absent. */
-  model?: string;
-  /** When it last started: for Codex, its last run (V20a). */
-  started?: string;
-  /** Codex: its last run's ID, on the thread entries it wrote, and its runner's process (V20a). */
-  run?: string;
-  pid?: number;
-  /**
-   * Codex on its app server (V27a): its thread there, read from the server (no runner, no run);
-   * `threads`, those it had before (started again), archived at Clean up.
-   */
-  thread?: string;
-  threads?: string[];
-  /** Why the last start failed, in the agent's words. */
-  error?: string;
-  /** Started with Symbiote's hooks (V18c): its thread is recorded. */
-  hooks?: boolean;
-}
-
-/** Every workspace file's first key: where an agent that opens it finds its instructions. */
-export const WORKSPACE_ABOUT =
-  'A workspace started in Symbiote. Agents: read symbiote/AGENTS.md before acting on it.';
-
-/** Longest brief: it goes on the agent's command line (Windows takes 32,767 characters). */
-export const MAX_BRIEF = 20_000;
-
-/** Longest title: a workspace's name in lists and the start of its branch's (V24). */
-export const MAX_TITLE = 200;
-
 /** Most files given with a brief (V40), the most one may weigh (V36's image limit), and all. */
 export const MAX_DOCUMENTS = 20;
 export const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
@@ -213,24 +151,6 @@ export const MAX_DOCUMENTS_BYTES = 100 * 1024 * 1024;
 const UPLOADS_KEPT_MS = 7 * 24 * 3600 * 1000;
 /** The names Symbiote gives the uploads it keeps: only those are ever removed. */
 const UPLOAD = /^[0-9a-f]{32}$/;
-/** Longest name a document is given, its extension kept. */
-const MAX_DOCUMENT_NAME = 120;
-
-/**
- * A file's name as Symbiote keeps it beside a workspace's record (V40): the last part of a path;
- * control characters and those Windows refuses as dashes; no leading or trailing dots and spaces
- * (no hidden file, no `.gitignore`); at most 120 characters, the extension kept; `document` when
- * nothing is left.
- */
-export function documentName(name: string): string {
-  const last = name.split(/[\\/]/).pop() ?? '';
-  // eslint-disable-next-line no-control-regex
-  const safe = last.replace(/[\u0000-\u001f\u007f:*?"<>|]/g, '-').replace(/^[.\s]+|[.\s]+$/g, '');
-  if (safe === '') return 'document';
-  if (safe.length <= MAX_DOCUMENT_NAME) return safe;
-  const ext = extname(safe).length <= 20 ? extname(safe) : '';
-  return `${safe.slice(0, MAX_DOCUMENT_NAME - ext.length)}${ext}`;
-}
 
 /** `name`, or `name (2).ext`, `name (3).ext`… : the first not in `taken`, which then holds it. */
 function freeName(name: string, taken: Set<string>): string {
@@ -242,349 +162,7 @@ function freeName(name: string, taken: Set<string>): string {
   return free;
 }
 
-/** Each part's heading in the brief, in the brief's order (V24). */
-const HEADINGS: Record<BriefPart, string> = {
-  goal: 'Goal',
-  happens: 'What happens',
-  restructure: 'What to restructure',
-  change: 'What to change',
-  question: 'Question',
-  reproduce: 'How to reproduce',
-  known: 'What is known',
-  where: 'Where to look',
-  outOfScope: 'Out of scope',
-  notes: 'Notes',
-  doneWhen: 'Done when',
-};
-const ORDER = Object.keys(HEADINGS) as BriefPart[];
-
-/**
- * The kinds of work (V24, decision 122): the one part each needs, its others, and Done when's
- * text until the person changes it. What each kind's agent is told is its start prompt (V28).
- */
-const KINDS: Record<
-  WorkKind,
-  { name: string; required: BriefPart; optional: BriefPart[]; doneWhen?: string }
-> = {
-  feature: { name: 'Feature', required: 'goal', optional: ['where', 'outOfScope', 'notes'] },
-  fix: {
-    name: 'Fix',
-    required: 'happens',
-    optional: ['reproduce', 'where', 'notes'],
-    doneWhen: 'A test that fails today passes, and {checks pass}.',
-  },
-  refactor: {
-    name: 'Refactor',
-    required: 'restructure',
-    optional: ['where', 'outOfScope', 'notes'],
-    doneWhen:
-      'Behaviour is unchanged: existing tests pass without changing what they assert, and ' +
-      '{checks pass}.',
-  },
-  chore: {
-    name: 'Chore',
-    required: 'change',
-    optional: ['where', 'outOfScope', 'notes'],
-    doneWhen: 'Nothing else changes, and {checks pass}.',
-  },
-  spike: {
-    name: 'Spike',
-    required: 'question',
-    optional: ['known', 'where', 'notes'],
-    doneWhen: 'A written answer: what was tried, what was measured, and a recommendation.',
-  },
-};
-
-/** A kind's parts in the brief's order, Done when last. */
-const partsOf = (kind: WorkKind): BriefPart[] => {
-  const { required, optional } = KINDS[kind];
-  return ORDER.filter(
-    (part) => part === required || part === 'doneWhen' || optional.includes(part),
-  );
-};
-
-/** The kinds as the start page offers them. */
-export function workKinds(): WorkKindSpec[] {
-  return WORK_KINDS.map((kind) => {
-    const { name, required, doneWhen } = KINDS[kind];
-    return {
-      kind,
-      name,
-      parts: partsOf(kind).map((part) => ({
-        part,
-        heading: HEADINGS[part],
-        ...(part === required ? { required: true as const } : {}),
-      })),
-      ...(doneWhen ? { doneWhen } : {}),
-    };
-  });
-}
-
-/** A part's text as written, without the blank lines and spaces around it. */
-const written = (text: string | undefined) => (text ?? '').replace(/^\s*\n/, '').trimEnd();
-
-/**
- * The brief Symbiote gives the agent (V24, decisions 123–124): `# <Kind>: <title>`, then each part
- * with text under its heading in the brief's order, Done when last; the person's text as written.
- */
-export function briefOf(kind: WorkKind, title: string, parts: BriefParts): string {
-  const sections = [`# ${KINDS[kind].name}: ${title.trim()}`];
-  for (const part of partsOf(kind)) {
-    const text = written(parts[part]);
-    if (text.trim() !== '') sections.push(`## ${HEADINGS[part]}\n${text}`);
-  }
-  return `${sections.join('\n\n')}\n`;
-}
-
 const FULL_SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-
-/** A request the server answers with `status` and the message. */
-export class WorkspaceRefused extends Error {
-  override name = 'FeatureRefused';
-  constructor(
-    message: string,
-    readonly status: 400 | 404 | 409 | 413 | 502,
-  ) {
-    super(message);
-  }
-}
-
-/** A workspace's file: the branch's slashes as folders. */
-export function workspacePath(dir: string, branch: string): string {
-  const parts = branch.split('/');
-  if (parts.some((p) => p === '' || p === '.' || p === '..')) {
-    throw new WorkspaceRefused(`not a branch name: ${branch}`, 400);
-  }
-  const last = parts.pop() as string;
-  return join(dir, ...parts, `${last}.json`);
-}
-
-/** Sorted keys, two-space indent, a final newline; `about` first. */
-export function serializeWorkspace(workspace: WorkspaceFile): string {
-  return `${JSON.stringify(sortKeys({ ...workspace, about: WORKSPACE_ABOUT }), null, 2)}\n`;
-}
-
-/** A workspace file, or null when it is missing or not one. */
-export async function readWorkspace(path: string): Promise<WorkspaceFile | null> {
-  let value: unknown;
-  try {
-    value = JSON.parse(await readFile(path, 'utf8'));
-  } catch {
-    return null;
-  }
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const v = value as Partial<Record<keyof WorkspaceFile, unknown>>;
-  const text = (x: unknown) => (typeof x === 'string' ? x : '');
-  if (!text(v.branch) || !text(v.base) || !text(v.worktree)) return null;
-  return {
-    agent: asAgent(v.agent),
-    base: text(v.base),
-    branch: text(v.branch),
-    brief: text(v.brief),
-    ...(text(v.by) ? { by: text(v.by) } : {}),
-    created: text(v.created),
-    ...documentsRead(v.documents),
-    ...(text(v.from) ? { from: text(v.from) } : {}),
-    ...(text(v.finished) ? { finished: text(v.finished) } : {}),
-    ...kindOf(v.kind),
-    ...partsRead(v.parts),
-    planFirst: v.planFirst === true,
-    ...(text(v.title) ? { title: text(v.title) } : {}),
-    worktree: text(v.worktree),
-  };
-}
-
-/** The documents' names that are names Symbiote would give (V40); none when there are none. */
-function documentsRead(value: unknown): { documents?: string[] } {
-  if (!Array.isArray(value)) return {};
-  const names = value.filter(
-    (name): name is string =>
-      typeof name === 'string' && name !== '' && documentName(name) === name,
-  );
-  return names.length > 0 ? { documents: names } : {};
-}
-
-function kindOf(value: unknown): { kind?: WorkKind } {
-  const kind = WORK_KINDS.find((k) => k === value);
-  return kind ? { kind } : {};
-}
-
-/** The parts Symbiote knows, each with text. */
-function partsRead(value: unknown): { parts?: BriefParts } {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-  const v = value as Record<string, unknown>;
-  const parts: BriefParts = {};
-  for (const part of ORDER) {
-    const text = v[part];
-    if (typeof text === 'string' && text.trim() !== '') parts[part] = text;
-  }
-  return Object.keys(parts).length > 0 ? { parts } : {};
-}
-
-/** How an agent was started (V30b, V47): its level and its model, each absent for its own. */
-type StartedAs = Pick<WorkspaceAgentRecord, 'effort' | 'model'>;
-
-/** `how` with only the fields it has: what a start passes and a record keeps. */
-const startedAs = ({ effort, model }: StartedAs): StartedAs => ({
-  ...(effort ? { effort } : {}),
-  ...(model ? { model } : {}),
-});
-
-function asAgent(value: unknown): WorkspaceAgentRecord | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const v = value as Partial<Record<keyof WorkspaceAgentRecord, unknown>>;
-  const kind = AGENT_KINDS.find((k) => k === v.kind);
-  if (!kind) return null;
-  const mode = PERMISSION_MODES.find((m) => m === v.permissionMode) ?? 'default';
-  return {
-    kind,
-    ...(kind === 'claude' ? { permissionMode: mode } : {}),
-    ...(typeof v.effort === 'string' && EFFORT_LEVEL.test(v.effort) ? { effort: v.effort } : {}),
-    ...(typeof v.model === 'string' && MODEL_ID.test(v.model) ? { model: v.model } : {}),
-    ...(typeof v.started === 'string' ? { started: v.started } : {}),
-    ...(typeof v.run === 'string' && v.run !== '' ? { run: v.run } : {}),
-    ...(typeof v.pid === 'number' && Number.isInteger(v.pid) && v.pid > 0 ? { pid: v.pid } : {}),
-    ...(kind === 'codex' && typeof v.thread === 'string' && v.thread !== ''
-      ? { thread: v.thread }
-      : {}),
-    ...(kind === 'codex' && Array.isArray(v.threads)
-      ? (() => {
-          const threads = (v.threads as unknown[]).filter(
-            (t): t is string => typeof t === 'string' && t !== '',
-          );
-          return threads.length > 0 ? { threads } : {};
-        })()
-      : {}),
-    ...(typeof v.error === 'string' ? { error: v.error } : {}),
-    ...(v.hooks === true ? { hooks: true } : {}),
-  };
-}
-
-/**
- * Where a workspace's worktree goes: beside the checkout, `../<checkout>.worktrees/<branch>`, the
- * branch's slashes as dashes; `pattern` (`workspaces.worktrees` in `symbiote/config.json`, relative
- * to the checkout, `{repo}` for its folder name) moves the folder that holds them.
- */
-export function worktreeFolder(main: string, branch: string, pattern?: string): string {
-  const name = basename(main);
-  const holder = pattern
-    ? resolve(main, pattern.replaceAll('{repo}', name))
-    : join(dirname(main), `${name}.worktrees`);
-  return join(holder, branch.replaceAll('/', '-'));
-}
-
-/**
- * Where a workspace starts by default: the default branch's newest tip — of the local branch and
- * the remotes', the one that holds the others; the local one when they diverged.
- */
-export async function workspaceBase(
-  repo: GitRepo,
-  refs: RefList,
-): Promise<{ from: string; sha: string } | null> {
-  const name = await defaultBranch(repo, refs);
-  if (!name) return null;
-  const sha = await newestTip(repo, refs, name);
-  return sha ? { from: name, sha } : null;
-}
-
-/**
- * The branches a workspace can start from (V33, decision 230): every name of a local branch or a
- * remote's, the default first, then the local ones, then those only on a remote, each at its
- * newest tip.
- */
-export async function startBranches(repo: GitRepo, refs: RefList): Promise<StartBranch[]> {
-  const first = await defaultBranch(repo, refs);
-  const local = new Set(refs.branches.map((b) => b.name));
-  const byName = (a: string, b: string) =>
-    Number(b === first) - Number(a === first) || compare(a, b);
-  const names = [
-    ...[...local].sort(byName),
-    ...[...new Set(refs.remotes.map((r) => r.branch))].filter((n) => !local.has(n)).sort(byName),
-  ];
-  const branches: StartBranch[] = [];
-  for (const name of names) {
-    const sha = await newestTip(repo, refs, name);
-    if (sha) branches.push({ name, sha, ...(local.has(name) ? {} : { remote: true as const }) });
-  }
-  return branches;
-}
-
-/** Code-point order, as git lists refs. */
-function compare(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
-/**
- * A branch name's newest tip (decision 231): of the local branch and the remotes' (origin's
- * first), the one that holds the others; the local one when they diverged. Git is asked only
- * where the tips differ.
- */
-async function newestTip(repo: GitRepo, refs: RefList, name: string): Promise<string | null> {
-  const local = refs.branches.find((b) => b.name === name)?.sha;
-  const remotes = refs.remotes
-    .filter((r) => r.branch === name)
-    .sort((a, b) => Number(b.remote === 'origin') - Number(a.remote === 'origin'))
-    .map((r) => r.sha);
-  const tips = [...new Set([...(local ? [local] : []), ...remotes])];
-  for (const tip of tips) {
-    let holdsAll = true;
-    for (const other of tips) {
-      if (other !== tip && !(await isAncestor(repo, other, tip))) holdsAll = false;
-    }
-    if (holdsAll) return tip;
-  }
-  return local ?? tips[0] ?? null;
-}
-
-/**
- * What the agent is told: its kind's start prompt (V28; Symbiote's unless the project has its own),
- * filled with the brief, its branch and worktree, where its record and reviews are. A record
- * from before V24 is a feature.
- */
-export function workspacePrompt(
-  workspace: WorkspaceFile,
-  where: {
-    record: string;
-    reviews: string;
-    agents: string;
-    into: string | null;
-    /** Where its documents are (V40). */
-    documents?: string;
-  },
-  prompts: Readonly<Record<PromptKey, string>> = DEFAULT_PROMPTS,
-): string {
-  const kind = workspace.kind ?? 'feature';
-  const files = workspace.documents ?? [];
-  // The files the person gave (V40): `{documents}`, else after a prompt that leaves it out. With
-  // none, the line holding `{documents}` goes with the blank line after it.
-  const documents =
-    files.length > 0 && where.documents
-      ? fillPrompt(prompts.documents, {
-          folder: where.documents,
-          files: files.map((name) => `- ${name}`).join('\n'),
-        }).trimEnd()
-      : '';
-  const start = prompts[`start.${kind}`];
-  const template = documents ? start : start.replace(/^\{documents\}(?:\n\n?|$)/m, '');
-  const filled = fillPrompt(template, {
-    documents,
-    branch: workspace.branch,
-    start: workspace.from
-      ? `${workspace.from} at ${workspace.base.slice(0, 7)}`
-      : `the commit ${workspace.base.slice(0, 7)}`,
-    brief: workspace.brief.trim(),
-    plan: prompts[workspace.planFirst ? 'plan.first' : 'plan.direct'],
-    // Decision 171: since V26 the person picks the target at Merge into ▾.
-    into: where.into ?? 'the branch the person picks',
-    record: where.record,
-    reviews: where.reviews,
-    agents: where.agents,
-    symbiote: dirname(where.agents),
-  });
-  const text =
-    documents && !template.includes('{documents}') ? `${filled.trimEnd()}\n\n${documents}` : filled;
-  return `${text.trimEnd()}\n`;
-}
 
 /** What `symbiote/config.json` says of workspaces and their agent; anything unknown is ignored. */
 export interface WorkspaceConfig {
@@ -672,57 +250,6 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
   return config;
 }
 
-/**
- * A start request's brief, checked: made from its kind, title and parts (V24), empty parts left
- * out; or, from a request made before V24, its brief as given.
- */
-function workOf(
-  request: WorkspaceRequest,
-): Pick<WorkspaceFile, 'brief' | 'kind' | 'title' | 'parts'> {
-  const { kind, title, parts } = request;
-  if (kind === undefined && title === undefined && parts === undefined) {
-    const brief = request.brief ?? '';
-    if (brief.trim() === '') {
-      throw new WorkspaceRefused('a workspace needs a brief: what to build', 400);
-    }
-    if (brief.length > MAX_BRIEF) {
-      throw new WorkspaceRefused('a brief is at most 20,000 characters', 400);
-    }
-    return { brief };
-  }
-  if (request.brief !== undefined) {
-    throw new WorkspaceRefused('a workspace takes a brief or a kind of work, not both', 400);
-  }
-  if (!WORK_KINDS.includes(kind as WorkKind)) {
-    throw new WorkspaceRefused(`unknown kind: ${String(kind)}`, 400);
-  }
-  const of = kind as WorkKind;
-  const name = (title ?? '').trim();
-  if (name === '') throw new WorkspaceRefused('a workspace needs a title', 400);
-  if (/[\r\n]/.test(name)) throw new WorkspaceRefused('a title is one line', 400);
-  if (name.length > MAX_TITLE) {
-    throw new WorkspaceRefused(`a title is at most ${MAX_TITLE} characters`, 400);
-  }
-  const own = partsOf(of);
-  const kept: BriefParts = {};
-  for (const [part, text] of Object.entries(parts ?? {})) {
-    if (!own.includes(part as BriefPart)) {
-      const heading = Object.hasOwn(HEADINGS, part) ? HEADINGS[part as BriefPart] : part;
-      throw new WorkspaceRefused(`a ${of} has no "${heading}"`, 400);
-    }
-    if (typeof text === 'string' && text.trim() !== '') kept[part as BriefPart] = text;
-  }
-  const required = KINDS[of].required;
-  if (!kept[required]) {
-    throw new WorkspaceRefused(`a ${of} needs "${HEADINGS[required]}"`, 400);
-  }
-  const brief = briefOf(of, name, kept);
-  if (brief.length > MAX_BRIEF) {
-    throw new WorkspaceRefused('a brief is at most 20,000 characters, its parts together', 400);
-  }
-  return { brief, kind: of, title: name, parts: kept };
-}
-
 /** An agent found for a workspace: Claude Code or Codex (V20a). */
 type FoundAgent = { kind: 'claude'; claude: ClaudeCode } | { kind: 'codex'; codex: Codex };
 
@@ -805,15 +332,6 @@ export interface Workspaces {
 export const MAX_SHELLS = 8;
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-
-/**
- * Opens a folder in the editor, or a file in it at a line (V29d) and column (V38); why not when it
- * cannot.
- */
-export type OpenFolder = (
-  folder: string,
-  at?: FolderAt,
-) => Promise<{ opened: true } | { opened: false; message: string }>;
 
 /** How many commits, and files, a workspace's changes list (V29d). */
 const MAX_LISTED_COMMITS = 100;

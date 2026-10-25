@@ -15,7 +15,7 @@ import {
 } from '@symbiote/core';
 import { localHost, onPath } from './editor.js';
 import { runProgram, runWithInput, type Run, type RunWithInput } from './programs.js';
-import type { WorkspaceFile } from './workspaces.js';
+import type { WorkspaceFile } from './workspace-record.js';
 
 /** A Claude Code session, as `claude agents --json --all` lists it. */
 export interface AgentSession {

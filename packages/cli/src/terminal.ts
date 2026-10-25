@@ -9,7 +9,7 @@ import { mkdir, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os';
 import { join, posix, win32 } from 'node:path';
 import { defaultCacheDir } from '@symbiote/core';
-import type { OpenFolder } from './workspaces.js';
+import type { OpenFolder } from './editor.js';
 
 /** A pseudo-terminal's process, as node-pty gives one; tests pass a fake. */
 export interface Pty {
