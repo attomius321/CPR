@@ -1,9 +1,11 @@
-// Scout (V35): a read-only agent in the checkout `symbiote view` runs in, one conversation per
-// repository, asked from its page. Claude Code runs with read tools and Bash through Symbiote's gate
-// (`scout-gate.ts`, decision 236); Codex in its read-only sandbox on its app server. Its record is
-// `symbiote/scout.json`: the session's ID, by which it is found (never by its folder, where the
-// person's own sessions run too, decision 239). Scribe (V41, `scribe.ts`) is the same conversation
-// with its own name, tools, gate and prompt (`pageAgent`).
+// Scout (V35): an agent in the checkout `symbiote view` runs in, one conversation per repository,
+// asked from its page. It changes no file: Claude Code runs with read tools and Bash through
+// Symbiote's gate (`scout-gate.ts`, decision 236); Codex in its read-only sandbox on its app server.
+// Since MC1 both have Symbiote's MCP server (`mcp-bridge.ts`), its only way to act: workspaces,
+// reviews, merges, the asked ones on the person's Confirm. Its record is `symbiote/scout.json`: the
+// session's ID, by which it is found (never by its folder, where the person's own sessions run too,
+// decision 239). Scribe (V41, `scribe.ts`) is the same conversation with its own name, tools, gate
+// and prompt (`pageAgent`), and no MCP server.
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +37,7 @@ import { TerminalRefused, type Terminals } from './terminal.js';
 import { real } from './thread.js';
 import { readWorkspaceConfig } from './workspaces.js';
 import { shellWord, type AgentSession, type ClaudeCode } from './claude-code.js';
+import { viewFile } from './mcp-bridge.js';
 import {
   AGENT_NAMES,
   effortOnProblem,
@@ -83,7 +86,12 @@ export interface PageAgentSpec {
   effort: { read(root: string): string | undefined; key: readonly string[] };
   /** The project's model in its config (`scout.model`, `scribe.model`, V47), and where it is set. */
   model: { read(root: string): string | undefined; key: readonly string[] };
+  /** Symbiote's MCP server for it (MC1): Claude Code's file in `symbiote/`; absent, none. */
+  mcp?: { file: string };
 }
+
+/** How long Codex waits on one of Symbiote's tools (MC1): longer than an ask or a `wait`. */
+const TOOL_TIMEOUT_SEC = 660;
 
 /** Scout's: read-only in the checkout, `prompts.scout`, `scout.effort`. */
 const SCOUT: PageAgentSpec = {
@@ -98,6 +106,7 @@ const SCOUT: PageAgentSpec = {
   codex: (root) => ({ cwd: root, writes: false }),
   effort: { read: (root) => readWorkspaceConfig(root).scoutEffort, key: ['scout', 'effort'] },
   model: { read: (root) => readWorkspaceConfig(root).scoutModel, key: ['scout', 'model'] },
+  mcp: { file: 'scout-mcp.json' },
 };
 
 /** `symbiote/scout.json`, or a page agent's record. */
@@ -237,13 +246,22 @@ export interface PageAgentOptions {
   /** Its gate (`dist/scout-hook.js`, `dist/scribe-hook.js`) and the Node that runs it. */
   gate?: string;
   node?: string;
+  /** Symbiote's MCP bridge (`dist/mcp-stdio.js`, MC1), for an agent whose spec has `mcp`. */
+  bridge?: string;
   terminals?: Terminals;
+}
+
+/** Scout's MCP servers' file for Claude Code (MC1): Symbiote's, through its bridge. */
+export function scoutMcpConfig(server: { command: string; args: readonly string[] }): string {
+  const symbiote = { type: 'stdio', command: server.command, args: server.args };
+  return `${JSON.stringify({ mcpServers: { symbiote } }, null, 2)}\n`;
 }
 
 /** Scout in `repo`'s checkout, its record beside the reviews (`symbiote/`, else Symbiote's cache). */
 export function scout(repo: GitRepo, cacheDir: string, options: PageAgentOptions): Scout {
   return pageAgent(SCOUT, repo, cacheDir, {
     gate: fileURLToPath(new URL('./scout-hook.js', import.meta.url)),
+    bridge: fileURLToPath(new URL('./mcp-stdio.js', import.meta.url)),
     ...options,
   });
 }
@@ -284,10 +302,31 @@ export function pageAgent(
     root = repo.root,
     gate = '',
     node = process.execPath,
+    bridge,
     terminals,
   }: PageAgentOptions,
 ): Scout {
   const { name } = spec;
+  // Symbiote's MCP server (MC1): its bridge, told it is Scout's and where `symbiote view` is.
+  const symbioteServer =
+    spec.mcp && bridge
+      ? {
+          command: node,
+          args: [bridge, '--as', 'scout', '--view', viewFile(cacheDir, repo.commonDir)],
+        }
+      : undefined;
+  const codexTools = symbioteServer
+    ? {
+        mcp_servers: {
+          symbiote: {
+            ...symbioteServer,
+            // Symbiote asks the person itself (decision 361); Codex's approvals stay `never`.
+            default_tools_approval_mode: 'approve',
+            tool_timeout_sec: TOOL_TIMEOUT_SEC,
+          },
+        },
+      }
+    : undefined;
   const codexAt = spec.codex(root);
   const place = () => reviewPlace(repo, cacheDir);
   const folder = (where: ReviewPlace) => dirname(where.dir);
@@ -344,6 +383,18 @@ export function pageAgent(
       process.platform,
       spec.claudeSettings,
     );
+    if ((await readFile(path, 'utf8').catch(() => null)) !== text) await put(where, path, text);
+    return path;
+  }
+
+  /**
+   * Its MCP servers' file for Claude Code (MC1), written as the settings file is, before a start
+   * and each wake; its path, or undefined for an agent without Symbiote's server.
+   */
+  async function mcpFile(where: ReviewPlace): Promise<string | undefined> {
+    if (!spec.mcp || !symbioteServer) return undefined;
+    const path = join(folder(where), spec.mcp.file);
+    const text = scoutMcpConfig(symbioteServer);
     if ((await readFile(path, 'utf8').catch(() => null)) !== text) await put(where, path, text);
     return path;
   }
@@ -560,11 +611,13 @@ export function pageAgent(
       // Copied: what Claude Code lists after the start is told from what it listed before.
       const before = [...((await agent.claude.sessions()) ?? [])];
       const settings = await settingsFile(where);
+      const mcpConfig = await mcpFile(where);
       const result = await agent.claude.startPageAgent({
         cwd: root,
         name,
         prompt,
         settings,
+        ...(mcpConfig ? { mcpConfig } : {}),
         tools: spec.tools,
         permissionMode: spec.permissionMode,
         ...at,
@@ -608,6 +661,7 @@ export function pageAgent(
         name,
         prompt,
         ...(codexAt.writes ? { confined: true as const } : { readOnly: true as const }),
+        ...(codexTools ? { config: codexTools } : {}),
         ...at,
       });
     } catch (error) {
@@ -620,9 +674,15 @@ export function pageAgent(
   }
 
   /** Continues the conversation with `text`: where no terminal runs, the page's box does (V18c). */
-  async function reply(record: ScoutRecord, text: string): Promise<void> {
+  async function reply(where: ReviewPlace, record: ScoutRecord, text: string): Promise<void> {
     if (record.agent === 'codex') {
-      await (await serverOf(await codex())).send({ thread: record.thread ?? '', text });
+      await (
+        await serverOf(await codex())
+      ).send({
+        thread: record.thread ?? '',
+        text,
+        ...(codexTools ? { config: codexTools } : {}),
+      });
       return;
     }
     const agent = await claude();
@@ -644,6 +704,9 @@ export function pageAgent(
       const stopped = await agent.stop(session.id);
       if (!stopped.ok) throw new ScoutRefused(stopped.error, 409);
     }
+    // The session wakes reading its files again.
+    await settingsFile(where);
+    await mcpFile(where);
     const resumed = await agent.resume({ sessionId, cwd: root, text });
     if (!resumed.ok) throw new ScoutRefused(resumed.error, 502);
   }
@@ -681,7 +744,7 @@ export function pageAgent(
           'this conversation started at its level: change it in its terminal',
           409,
         );
-      } else await reply(record, text);
+      } else await reply(where, record, text);
       return state();
     },
 
@@ -779,6 +842,7 @@ export function pageAgent(
         if (!agent) throw new ScoutRefused('Claude Code is not installed', 409);
         // A session that wakes reads its settings file again, and does not start without it.
         await settingsFile(where);
+        await mcpFile(where);
         // `attach` to an ID Claude Code does not know exits 0, saying "No job matching…".
         const session = findScoutSession(record, (await agent.sessions()) ?? []);
         if (!session?.id) {
@@ -788,11 +852,13 @@ export function pageAgent(
         args = ['attach', session.id];
       } else {
         const agent = await codex();
-        const server = await serverOf(agent);
+        const app = await serverOf(agent);
+        // Loaded with Symbiote's MCP server first: the terminal joins the thread as it is (MC1).
+        if (codexTools) await app.load({ thread: record.thread ?? '', config: codexTools });
         command = agent?.command ?? 'codex';
-        args = ['resume', record.thread ?? '', '--remote', server.address, '-C', codexAt.cwd];
+        args = ['resume', record.thread ?? '', '--remote', app.address, '-C', codexAt.cwd];
         // Codex asks to trust a folder first (V27b, decision 160): said, never answered here.
-        asks = await server.trust(codexAt.cwd).then(
+        asks = await app.trust(codexAt.cwd).then(
           (entries) => asksTrust(entries, [codexAt.cwd, real(codexAt.cwd)]),
           () => false,
         );

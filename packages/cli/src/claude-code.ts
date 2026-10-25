@@ -313,6 +313,8 @@ export interface ClaudeCode {
     settings: string;
     tools: readonly string[];
     permissionMode: 'dontAsk' | 'default';
+    /** Its MCP servers' file (`--mcp-config`, MC1): Scout's, Symbiote's; none otherwise. */
+    mcpConfig?: string;
     /** Its effort level (`--effort`), kept as a workspace's is. */
     effort?: string;
     /** Its model (V47, `--model`), over the project's. */
@@ -463,6 +465,7 @@ export function claudeCode(
         '--permission-mode',
         request.permissionMode,
         '--strict-mcp-config',
+        ...(request.mcpConfig ? ['--mcp-config', request.mcpConfig] : []),
         '--settings',
         request.settings,
         ...choose(request.model, model),

@@ -209,6 +209,8 @@ export interface CodexServer {
     model?: string;
     readOnly?: true;
     confined?: true;
+    /** The thread's own configuration (MC1: Scout's, Symbiote's MCP server), beside Symbiote's. */
+    config?: Record<string, unknown>;
   }): Promise<string>;
   /**
    * The effort levels of the model a thread in `cwd` would use (V30b): the configured model's
@@ -226,7 +228,17 @@ export interface CodexServer {
    * Gives a thread a message: a new turn, or joined to the one that runs (`turn/steer`).
    * A thread the server does not hold (it restarted) is resumed first, with its own options.
    */
-  send(request: { thread: string; text: string }): Promise<'started' | 'steered'>;
+  send(request: {
+    thread: string;
+    text: string;
+    /** Given again with the resume (MC1): a thread the server does not hold gets it back. */
+    config?: Record<string, unknown>;
+  }): Promise<'started' | 'steered'>;
+  /**
+   * Loads a thread with `config` and no turn (MC1): before Codex's terminal joins it, so the
+   * thread has Symbiote's MCP server whatever the server held.
+   */
+  load(request: { thread: string; config: Record<string, unknown> }): Promise<void>;
   /**
    * Interrupts the turn that runs, once it ended (2 s at most), then the commands the thread's
    * turns left running (Codex's background terminals, decision 159); whether a turn ran. Where
@@ -437,21 +449,22 @@ export function codexServer(
 
   return {
     address,
-    start: ({ cwd, writable, name, prompt, effort, model, readOnly, confined }) =>
+    start: ({ cwd, writable, name, prompt, effort, model, readOnly, confined, config }) =>
       using(async (connection) => {
         const on = model ? { model } : {};
+        const own = config ? { config } : {};
         const started = await connection.request<{ thread?: { id?: unknown } }>(
           'thread/start',
           readOnly
-            ? { cwd, ...on, sandbox: 'read-only', approvalPolicy: 'never' }
+            ? { cwd, ...on, sandbox: 'read-only', approvalPolicy: 'never', ...own }
             : confined
-              ? { cwd, ...on, sandbox: 'workspace-write', approvalPolicy: 'never' }
+              ? { cwd, ...on, sandbox: 'workspace-write', approvalPolicy: 'never', ...own }
               : {
                   cwd,
                   ...on,
                   sandbox: 'workspace-write',
                   approvalPolicy: 'on-request',
-                  config: { sandbox_workspace_write: { writable_roots: writable } },
+                  config: { sandbox_workspace_write: { writable_roots: writable }, ...config },
                 },
         );
         const thread = text(started.thread?.id);
@@ -474,7 +487,7 @@ export function codexServer(
           .catch(() => undefined);
         return thread;
       }),
-    send: ({ thread, text: words }) =>
+    send: ({ thread, text: words, config }) =>
       using(async (connection) => {
         // Joining the thread: one the server does not hold is loaded with its own options (the
         // server keeps them), and this connection hears when the message is in.
@@ -483,6 +496,7 @@ export function codexServer(
           {
             threadId: thread,
             excludeTurns: true,
+            ...(config ? { config } : {}),
           },
         );
         const sent = messageIn(connection, thread);
@@ -501,6 +515,10 @@ export function codexServer(
         } else await connection.request('turn/start', { threadId: thread, input: input(words) });
         await sent;
         return how;
+      }),
+    load: ({ thread, config }) =>
+      using(async (connection) => {
+        await connection.request('thread/resume', { threadId: thread, excludeTurns: true, config });
       }),
     async interrupt(thread) {
       const interrupted = await using(async (connection) => {

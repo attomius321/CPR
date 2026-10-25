@@ -1,0 +1,53 @@
+/* An agent's ask through Symbiote's MCP (MC1, AskBar.tsx): a bar in the shell's `asks` row, between
+   its top and the page, so it covers nothing of the page while it waits; tinted as what waits for
+   the person. */
+
+.ask-bar {
+  grid-area: asks;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 36px;
+  padding: 4px 12px 4px 16px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--warning) 8%, var(--side));
+  font-size: var(--size-small);
+}
+
+.ask-bar > .icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--warning);
+}
+
+.ask-words {
+  flex: 1 1 320px;
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.ask-who {
+  font-weight: 600;
+}
+
+.ask-left,
+.ask-more {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ask-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.ask-error {
+  flex-basis: 100%;
+  margin: 0;
+}

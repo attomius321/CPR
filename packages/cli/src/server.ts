@@ -15,6 +15,7 @@ import {
   type WorkspaceRequest,
   type Graph,
   type HistoryRefs,
+  type McpCaller,
   type RefList,
   type RepoStatus,
 } from '@symbiote/core';
@@ -30,6 +31,7 @@ import {
   parseLocalReview,
   parseMergeChanges,
   parseMergeId,
+  parseMcpAnswer,
   parseMergeRequest,
   parseModelChange,
   parseOpen,
@@ -48,6 +50,7 @@ import {
   parseWorkspaceRequest,
   parseWorkspaceTerminal,
   SHA,
+  sourceFiles,
   terminalSize,
   type Side,
 } from './server-requests.js';
@@ -65,6 +68,9 @@ import { ReviewRefused, type BranchReviews } from './reviews.js';
 import { imageKind, MAX_IMAGE_BYTES, type Terminals } from './terminal.js';
 import { ScoutRefused, type Scout } from './scout.js';
 import { MAX_SKILL, parseSkillChange, SkillRefused, type SkillsService } from './skills.js';
+import { McpRefused, symbioteMcp, type SymbioteMcp } from './mcp.js';
+
+export { sourceFiles } from './server-requests.js';
 
 /** Posts reviews to the change request being viewed (`symbiote pr` only). */
 export interface ReviewTarget {
@@ -136,6 +142,8 @@ export interface ViewServerOptions {
   open?: (request: OpenRequest, worktree?: string) => Promise<OpenResult>;
   /** Enables `/api/intro` (V39): whether a person saw the first-time intro, for every page. */
   intro?: IntroRecord;
+  /** Symbiote's version, as its MCP introduces itself (MC1). */
+  version?: string;
 }
 
 /** A graph served with its sources, review state and reviews. */
@@ -226,10 +234,21 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   const opened = new Map<string, { info: BranchReviewInfo; pair: Pair }>();
   const reviewSites = new WeakMap<Graph, Map<string, Site>>();
   let hosts: Set<string> = new Set();
+  let address = '';
   let checkingOut = false;
-  let startingWorkspace = false;
-  /** Writes that must not overlap (V18c: two messages at once would make two sessions). */
+  /**
+   * Writes that must not overlap (V18c: two messages at once would make two sessions; one start at
+   * a time), from the pages and from Symbiote's MCP alike.
+   */
   const busy = new Set<string>();
+  /** Symbiote's MCP (MC1): its tools over the repository's services; the asks it holds. */
+  const mcp: SymbioteMcp | undefined = repository
+    ? symbioteMcp(repository, {
+        ...(options.version ? { version: options.version } : {}),
+        url: () => address,
+        exclusive,
+      })
+    : undefined;
   /** Terminals' output streams (V21), ended when the server closes. */
   const streams = new Set<ServerResponse>();
   const server = createServer((req, res) => {
@@ -287,6 +306,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/checkout') return checkoutTarget(req, res, repository);
     if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
     if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
+    if (mcp && url.pathname.startsWith('/api/mcp')) return mcpRoute(req, res, url, mcp);
     const { workspaces, scout, scribe, skills, monitor, settings, usage, merges } = repository;
     if (workspaces) {
       // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves
@@ -356,6 +376,76 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       return terminalApi(req, res, repository.terminals, id, action);
     }
     return serveSite(req, res, url, url.pathname, root);
+  }
+
+  /**
+   * `/api/mcp` (MC1): one JSON-RPC message of an agent's, answered when its tool is done — an asked
+   * one once the person answered —, and dropped when the agent hangs up; `/api/mcp/asks`, what waits
+   * for the person; `/api/mcp/answer { id, yes }`, their answer from a page.
+   */
+  async function mcpRoute(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    mcp: SymbioteMcp,
+  ): Promise<void> {
+    if (url.pathname === '/api/mcp/asks') return read(req, res, () => Promise.resolve(mcp.asks()));
+    if (url.pathname === '/api/mcp/answer') {
+      return written(req, res, parseMcpAnswer, async (answer) => {
+        try {
+          json(res, 200, await mcp.answer(answer));
+        } catch (error) {
+          if (!(error instanceof McpRefused)) throw error;
+          json(res, error.status, { error: error.message });
+        }
+      });
+    }
+    if (url.pathname !== '/api/mcp') return send(res, 404, 'not found');
+    if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+    if (!writable(req)) return send(res, 403, 'forbidden');
+    let message: unknown;
+    try {
+      message = JSON.parse(await readBody(req, MAX_BODY_BYTES));
+    } catch {
+      return json(res, 400, {
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32700, message: 'not JSON' },
+      });
+    }
+    const hungUp = new AbortController();
+    res.on('close', () => {
+      if (!res.writableEnded) hungUp.abort();
+    });
+    const answer = await mcp.handle(message, callerOf(req), hungUp.signal);
+    if (hungUp.signal.aborted) return;
+    if (answer) return json(res, 200, answer);
+    // A notification has no answer; a call ended without one, by the server closing.
+    const call = !!message && typeof message === 'object' && 'id' in message;
+    if (call) return send(res, 503, 'Symbiote is closing');
+    res.writeHead(202, { 'cache-control': 'no-store' });
+    res.end();
+  }
+
+  /** Who calls Symbiote's MCP, as its bridge says (MC1): Scout, or an agent through `symbiote mcp`. */
+  function callerOf(req: IncomingMessage): McpCaller {
+    if (req.headers['x-symbiote-caller'] === 'scout') return { via: 'scout' };
+    const header = (name: string) => {
+      const value = req.headers[name];
+      return typeof value === 'string' && value !== '' ? value : undefined;
+    };
+    const client = header('x-symbiote-client')?.slice(0, 200);
+    let folder: string | undefined;
+    try {
+      folder = header('x-symbiote-folder') && decodeURIComponent(header('x-symbiote-folder') ?? '');
+    } catch {
+      folder = undefined;
+    }
+    return {
+      via: 'mcp',
+      ...(client ? { client } : {}),
+      ...(folder ? { folder: folder.slice(0, 1000) } : {}),
+    };
   }
 
   /** `/api/workspaces…` (V18): the list and a start, each workspace's reads and writes. */
@@ -1110,6 +1200,17 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
   }
 
+  /** `oneAtATime` for Symbiote's MCP (MC1): its refusal is an `McpRefused`. */
+  async function exclusive<T>(words: string, task: () => Promise<T>): Promise<T> {
+    if (busy.has(words)) throw new McpRefused(words, 409);
+    busy.add(words);
+    try {
+      return await task();
+    } finally {
+      busy.delete(words);
+    }
+  }
+
   /** A read about one workspace: `GET ?branch=`. */
   async function ofBranch(
     req: IncomingMessage,
@@ -1140,15 +1241,9 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
   }
 
-  /** One start at a time (a worktree and an agent each). */
-  async function startingOne(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
-    if (startingWorkspace) return json(res, 409, { error: 'a workspace is being started' });
-    startingWorkspace = true;
-    try {
-      return await answer(res, task);
-    } finally {
-      startingWorkspace = false;
-    }
+  /** One start at a time (a worktree and an agent each), from a page or Symbiote's MCP. */
+  function startingOne(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
+    return oneAtATime(res, 'a workspace is being started', task);
   }
 
   /** Starts analyzing two commits; answers where the diff will be. */
@@ -1376,9 +1471,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   });
   const { port } = server.address() as AddressInfo;
   hosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
+  address = `http://127.0.0.1:${port}/`;
   return {
-    url: `http://127.0.0.1:${port}/`,
+    url: address,
     close: () => {
+      // A held call or wait would keep its connection, and the server, open.
+      mcp?.close();
       // Open streams would keep the server from closing: the terminals end them.
       repository?.terminals?.closeAll();
       for (const stream of streams) stream.end();
@@ -1404,20 +1502,6 @@ function send(
 ): void {
   res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' });
   res.end(body);
-}
-
-/** Repo-relative files per side that the graph refers to. */
-export function sourceFiles(graph: Graph): Record<Side, Set<string>> {
-  const files: Record<Side, Set<string>> = { base: new Set(), head: new Set() };
-  for (const node of graph.nodes) {
-    if (node.base) files.base.add(node.base.file);
-    if (node.head) files.head.add(node.head.file);
-  }
-  for (const file of graph.files) {
-    if (file.status !== 'added') files.base.add(file.previousPath ?? file.path);
-    if (file.status !== 'deleted') files.head.add(file.path);
-  }
-  return files;
 }
 
 function readBody(req: IncomingMessage, limit: number): Promise<string> {

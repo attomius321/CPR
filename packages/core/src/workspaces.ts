@@ -2,6 +2,7 @@
 // viewer reads. Types only; the CLI keeps the records and starts the agents.
 import type { VerdictEvent } from './git/branches.js';
 import type { FileChangeStatus } from './git/changed-files.js';
+import type { McpVia } from './mcp.js';
 
 /** How a workspace's agent is doing, as the commits page shows it. */
 export type AgentStateName =
@@ -136,6 +137,8 @@ export interface WorkspaceSummary {
    * started; absent when no agent was found.
    */
   lastAction?: string;
+  /** Started through Symbiote's tools (MC1): by Scout, or through `symbiote mcp`. */
+  via?: McpVia;
 }
 
 export interface WorkspaceList {
@@ -359,6 +362,8 @@ export interface WorkspaceRequest {
   model?: string;
   /** Files to give the agent with the brief (V40), each kept by `POST /api/workspaces/documents`. */
   documents?: { id: string; name: string }[];
+  /** Started through Symbiote's tools (MC1, decision 362): by Scout, or through `symbiote mcp`. */
+  via?: McpVia;
 }
 
 /** A file kept for a workspace about to start (V40): its ID, the name it will have, its size. */

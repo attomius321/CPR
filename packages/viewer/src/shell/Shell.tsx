@@ -30,6 +30,7 @@ import {
 } from './shell-context.js';
 import { DrawerStrip, Sidenav, useSidenavWidth } from './Sidenav.js';
 import { StatusBar } from './StatusBar.js';
+import { AskBar } from './AskBar.js';
 import { TitleBar, TitleBarSlotsProvider, type TitleBarSlots } from './TitleBar.js';
 import { WorkspaceView } from '../workspaces/Workspace.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
@@ -281,6 +282,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
           </main>
         </TitleBarSlotsProvider>
         <StatusBar notice={notice} />
+        <AskBar />
         <WindowTitle route={route} repo={repo} />
         {asking && (
           <ConfirmDialog

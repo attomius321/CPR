@@ -212,6 +212,7 @@ function lastingServer(
     },
     start: retried((server, request: Parameters<CodexServer['start']>[0]) => server.start(request)),
     send: retried((server, request: Parameters<CodexServer['send']>[0]) => server.send(request)),
+    load: retried((server, request: Parameters<CodexServer['load']>[0]) => server.load(request)),
     interrupt: retried((server, thread: string) => server.interrupt(thread)),
     trust: retried((server, cwd: string) => server.trust(cwd)),
     read: retried((server, thread: string, view: Parameters<CodexServer['read']>[1]) =>

@@ -10,6 +10,7 @@ import {
   WORK_KINDS,
   type AgentKind,
   type BriefParts,
+  type McpVia,
   type PermissionMode,
   type WorkKind,
 } from '@symbiote/core';
@@ -42,6 +43,8 @@ export interface WorkspaceFile {
   parts?: BriefParts;
   planFirst: boolean;
   title?: string;
+  /** Started through Symbiote's tools (MC1, decision 362): by Scout, or through `symbiote mcp`. */
+  via?: McpVia;
   /** The workspace's worktree folder. */
   worktree: string;
 }
@@ -147,6 +150,7 @@ export async function readWorkspace(path: string): Promise<WorkspaceFile | null>
     ...partsRead(v.parts),
     planFirst: v.planFirst === true,
     ...(text(v.title) ? { title: text(v.title) } : {}),
+    ...(v.via === 'scout' || v.via === 'mcp' ? { via: v.via } : {}),
     worktree: text(v.worktree),
   };
 }

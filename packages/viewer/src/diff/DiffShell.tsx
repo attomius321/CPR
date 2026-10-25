@@ -4,6 +4,7 @@ import { ShellContext, type Notice, type Shell } from '../shell/shell-context.js
 import { DrawerStrip, Sidenav, useSidenavWidth } from '../shell/Sidenav.js';
 import { desktop } from '../shell/desktop.js';
 import { StatusBar } from '../shell/StatusBar.js';
+import { AskBar } from '../shell/AskBar.js';
 import { TitleBar } from '../shell/TitleBar.js';
 
 const FOLD_KEY = 'symbiote.viewer.sidenav.diff';
@@ -111,6 +112,7 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
         {sidenav.handle}
         <div className="shell-main">{children}</div>
         <StatusBar notice={notice} />
+        <AskBar />
       </div>
     </ShellContext.Provider>
   );

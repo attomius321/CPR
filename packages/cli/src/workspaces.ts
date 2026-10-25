@@ -455,6 +455,7 @@ export function workspaces(
           }
         : {}),
       ...(acted ? { lastAction: acted } : {}),
+      ...(workspace.via ? { via: workspace.via } : {}),
     };
   }
 
@@ -812,6 +813,7 @@ export function workspaces(
         created: now().toISOString(),
         ...(base.from ? { from: base.from } : {}),
         planFirst: request.planFirst,
+        ...(request.via ? { via: request.via } : {}),
         worktree: folder,
       };
       await prepareSymbioteFolder(where, { text: readPrompts(root).text.reviews });

@@ -147,6 +147,7 @@ hosted.
 | Fix | Attach images beside a workspace's terminal: no drop reaches the window on WSL | ready for review | | [journal](journal/fix-drop-file-in-workspace.md) |
 | Fix | one Settings page per prebuilt agent (Merger, Scout, Scribe), under Prebuilt agents | ready for review | | [journal](journal/fix-scout-merger-scribe-settings.md) |
 | Fix | Scribe starts at the project's effort level (`scribe.effort`), set in Settings | ready for review | | [journal](journal/fix-scribe-effort-level.md) |
+| [MC1](plan/mc1-symbiote-mcp.md) | Symbiote's MCP: Scout as the person's assistant, from a workspace's start to its merge | ready for review | 358–365 | [journal](journal/mc1-symbiote-mcp.md) |
 
 ### The merger
 

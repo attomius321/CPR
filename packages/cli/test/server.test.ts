@@ -2703,3 +2703,143 @@ describe('sourceFiles', () => {
     expect([...files.head].sort()).toEqual(['src/app.ts', 'src/math.ts']);
   });
 });
+
+describe("symbiote view: Symbiote's MCP (MC1)", () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const queued: { branch: string; into: string }[] = [];
+  const entry: MergeEntry = {
+    id: 'm1',
+    branch: 'feature/csv',
+    head: C,
+    into: 'main',
+    title: 'Merge feature/csv: CSV',
+    state: 'queued',
+    queued: '2026-10-19T12:00:00.000Z',
+    updated: '2026-10-19T12:00:00.000Z',
+  };
+  const merges = {
+    list: () => Promise.resolve({ merges: [] }),
+    targets: () => Promise.resolve({ branches: ['main'], into: 'main', head: C }),
+    enqueue: (request: { branch: string; into: string }) => {
+      queued.push(request);
+      return Promise.resolve(entry);
+    },
+  } as unknown as Merger;
+  let server: ViewServer;
+
+  beforeAll(async () => {
+    mkdirSync(join(viewer, 'assets'));
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        merges,
+      },
+    });
+  });
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+  const get = (path: string) => fetch(new URL(path, server.url));
+  const post = (
+    path: string,
+    body: unknown,
+    headers: Record<string, string> = {},
+    signal?: AbortSignal,
+  ) =>
+    fetch(new URL(path, server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      body: typeof body === 'string' ? body : JSON.stringify(body),
+      ...(signal ? { signal } : {}),
+    });
+  const asks = async () =>
+    ((await (await get('/api/mcp/asks')).json()) as { asks: { id: string; by: unknown }[] }).asks;
+
+  it('answers a JSON-RPC message, and a notification with 202 and nothing', async () => {
+    const answer = await post('/api/mcp', { jsonrpc: '2.0', id: 1, method: 'ping' });
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual({ jsonrpc: '2.0', id: 1, result: {} });
+    const note = await post('/api/mcp', { jsonrpc: '2.0', method: 'notifications/initialized' });
+    expect(note.status).toBe(202);
+    expect(await note.text()).toBe('');
+    const wrong = await post('/api/mcp', '{not json');
+    expect(wrong.status).toBe(400);
+    expect(await wrong.json()).toMatchObject({ id: null, error: { code: -32700 } });
+  });
+
+  it('takes writes only, as the page sends them', async () => {
+    expect((await get('/api/mcp')).status).toBe(405);
+    const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
+    expect((await post('/api/mcp', ping, { 'x-symbiote': '' })).status).toBe(403);
+    expect((await post('/api/mcp', ping, { origin: 'http://evil.example' })).status).toBe(403);
+    expect(
+      (await post('/api/mcp/answer', { id: 'x', yes: true }, { 'x-symbiote': '' })).status,
+    ).toBe(403);
+    expect((await get('/api/mcp/answer')).status).toBe(405);
+    expect((await post('/api/mcp/answer', { id: 'x' })).status).toBe(400);
+    expect((await post('/api/mcp/answer', { id: 'x', yes: true })).status).toBe(404);
+  });
+
+  it("holds an asked call until the person's answer on the page", async () => {
+    const call = post(
+      '/api/mcp',
+      {
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'queue_merge', arguments: { branch: 'feature/csv' } },
+      },
+      { 'x-symbiote-caller': 'scout' },
+    );
+    await expect.poll(async () => (await asks()).length).toBe(1);
+    const [ask] = await asks();
+    expect(ask).toMatchObject({ tool: 'queue_merge', by: { via: 'scout' } });
+    expect(queued).toEqual([]);
+    const answered = await post('/api/mcp/answer', { id: ask?.id, yes: true });
+    expect(answered.status).toBe(200);
+    expect(await answered.json()).toEqual({ asks: [] });
+    const result = (await (await call).json()) as { result: { isError?: boolean } };
+    expect(result.result.isError).toBeUndefined();
+    expect(queued).toEqual([{ branch: 'feature/csv', into: 'main' }]);
+  });
+
+  it('says who asks through symbiote mcp; drops the ask when its caller hangs up', async () => {
+    const controller = new AbortController();
+    const call = post(
+      '/api/mcp',
+      {
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: { name: 'queue_merge', arguments: { branch: 'feature/csv' } },
+      },
+      { 'x-symbiote-client': 'claude-code', 'x-symbiote-folder': encodeURIComponent('/home/p/x') },
+      controller.signal,
+    );
+    await expect.poll(async () => (await asks()).length).toBe(1);
+    expect((await asks())[0]?.by).toEqual({
+      via: 'mcp',
+      client: 'claude-code',
+      folder: '/home/p/x',
+    });
+    controller.abort();
+    await expect(call).rejects.toThrow();
+    await expect.poll(async () => (await asks()).length).toBe(0);
+    expect(queued).toHaveLength(1);
+  });
+});

@@ -41,6 +41,8 @@ import {
 } from './pages.js';
 import { Resizer } from '../ui/Resizer.js';
 import { nextScoutMark, type ScoutMark } from '../scout/scout.js';
+import { asksBy } from './asks.js';
+import { useAsks } from './useAsks.js';
 import { useShell } from './shell-context.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
@@ -94,6 +96,8 @@ export function Sidenav({
   useEffect(() => {
     setScoutMark((shown) => nextScoutMark(shown, scoutState, onScout));
   }, [scoutState, onScout]);
+  // It waits for the person (MC1): an ask of its own on the page, or a dialog in its terminal.
+  const scoutWaits = asksBy(useAsks(), 'scout') || scoutState === 'needs-you';
   // Scribe's, on Skills (V41): as Scout's.
   const scribeState = scribe?.conversation?.state;
   const onSkills = route?.page === 'skills';
@@ -175,20 +179,24 @@ export function Sidenav({
         <a
           href={SCOUT_PAGE}
           title={
-            scoutMark === 'working'
-              ? 'Scout: answering (a)'
-              : scoutMark === 'answered'
-                ? 'Scout: answered while you were away (a)'
-                : 'Scout: ask about the repository, read-only (a)'
+            scoutWaits
+              ? 'Scout: waits for you (a)'
+              : scoutMark === 'working'
+                ? 'Scout: working (a)'
+                : scoutMark === 'answered'
+                  ? 'Scout: answered while you were away (a)'
+                  : 'Scout: ask about the repository, or have it carry a workspace (a)'
           }
           aria-current={route?.page === 'scout' ? 'page' : undefined}
-          data-state={scoutMark ?? undefined}
+          data-state={scoutWaits ? 'waiting' : (scoutMark ?? undefined)}
         >
           <ScoutIcon />
           <span className="sidenav-label">Scout</span>
-          {scoutMark && (
+          {(scoutWaits || scoutMark) && (
             <span
-              className={`state-dot ${scoutMark === 'working' ? 'tone-working' : 'tone-done'}`}
+              className={`state-dot ${
+                scoutWaits ? 'tone-waiting' : scoutMark === 'working' ? 'tone-working' : 'tone-done'
+              }`}
               aria-hidden="true"
             />
           )}

@@ -126,11 +126,25 @@ describe('gateDecision (V35)', () => {
     expect(gateDecision(input('Bash', {}))).toMatchObject({ allow: false });
   });
 
-  it('denies every other tool: Scout changes nothing', () => {
-    for (const tool of ['Edit', 'Write', 'NotebookEdit', 'WebFetch', 'Agent', 'mcp__x__y']) {
+  it('denies every other tool: Scout changes no file', () => {
+    for (const tool of ['Edit', 'Write', 'NotebookEdit', 'WebFetch', 'Agent']) {
       const decision = gateDecision(input(tool, {}));
       expect(decision).toMatchObject({ allow: false });
-      expect(decision && !decision.allow && decision.reason).toMatch(/Scout is read-only/);
+      expect(decision && !decision.allow && decision.reason).toMatch(/Scout changes no file/);
+    }
+  });
+
+  it("lets Symbiote's own tools through; every other server's is denied (MC1)", () => {
+    expect(gateDecision(input('mcp__symbiote__overview', {}))).toEqual({ allow: true });
+    expect(gateDecision(input('mcp__symbiote__queue_merge', { branch: 'fix/a' }))).toEqual({
+      allow: true,
+    });
+    for (const tool of ['mcp__x__y', 'mcp__github__create_pull_request', 'mcp__symbiote']) {
+      const decision = gateDecision(input(tool, {}));
+      expect(decision).toMatchObject({ allow: false });
+      expect(decision && !decision.allow && decision.reason).toMatch(
+        /Scout acts only through Symbiote's tools/,
+      );
     }
   });
 

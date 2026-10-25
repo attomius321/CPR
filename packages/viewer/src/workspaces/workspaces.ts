@@ -6,6 +6,7 @@ import type {
   AgentOption,
   BranchReviewList,
   BranchReviewSummary,
+  McpVia,
   WorkspaceAgentState,
   WorkspaceStart,
   WorkspaceSummary,
@@ -202,12 +203,16 @@ export function readRun(
  * How a workspace's agent was started (V30b), for its Brief tab: the agent, its model (V47) and
  * its level. Said as a start, since its session may have changed them since (decisions 211, 341).
  */
-export function startedWith(agent: WorkspaceAgentState): string | null {
+export function startedWith(agent: WorkspaceAgentState, via?: McpVia): string | null {
   if (!agent.kind) return null;
   const model = agent.model ? ` on ${agent.model}` : '';
   const level = agent.effort ? `${agent.effort} effort` : 'its default effort';
-  return `Started with ${AGENT_NAMES[agent.kind]}${model} at ${level}.`;
+  const through = via ? ` through ${VIA_NAMES[via]}` : '';
+  return `Started${through} with ${AGENT_NAMES[agent.kind]}${model} at ${level}.`;
 }
+
+/** What a workspace or a verdict was made through (MC1). */
+export const VIA_NAMES: Record<McpVia, string> = { scout: 'Scout', mcp: 'symbiote mcp' };
 
 /** Longest name proposed after the prefix. */
 const MAX_NAME = 40;
