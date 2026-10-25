@@ -4,6 +4,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import {
   defaultBranch,
   isAncestor,
+  isCommit,
   WORK_KINDS,
   type BriefPart,
   type BriefParts,
@@ -29,6 +30,44 @@ export function worktreeFolder(main: string, branch: string, pattern?: string): 
     ? resolve(main, pattern.replaceAll('{repo}', name))
     : join(dirname(main), `${name}.worktrees`);
   return join(holder, branch.replaceAll('/', '-'));
+}
+
+/** A full SHA: 40 hex digits, or 64 in a SHA-256 repository. */
+export const FULL_SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+
+/**
+ * Where a start request starts (V33): the newest tip of the branch it names (`from`), the commit
+ * it names (`base`, a full SHA), else the default branch's newest tip; refused when there is none.
+ */
+export async function startPoint(
+  repo: GitRepo,
+  refs: RefList,
+  request: Pick<WorkspaceRequest, 'base' | 'from'>,
+): Promise<{ from?: string; sha: string }> {
+  let base: { from?: string; sha: string };
+  if (request.base !== undefined && request.from !== undefined) {
+    throw new WorkspaceRefused('start from a branch or a commit, not both', 400);
+  }
+  if (request.from !== undefined) {
+    const sha = typeof request.from === 'string' ? await newestTip(repo, refs, request.from) : null;
+    if (!sha) throw new WorkspaceRefused(`no branch ${String(request.from)}`, 400);
+    base = { from: request.from, sha };
+  } else if (request.base !== undefined) {
+    if (!FULL_SHA.test(request.base)) {
+      throw new WorkspaceRefused(`the base must be a full SHA: ${request.base}`, 400);
+    }
+    if (!(await isCommit(repo, request.base))) {
+      throw new WorkspaceRefused(`not a commit: ${request.base}`, 400);
+    }
+    base = { sha: request.base };
+  } else {
+    const found = await workspaceBase(repo, refs);
+    if (!found) {
+      throw new WorkspaceRefused('no default branch to start from: pick a commit', 400);
+    }
+    base = found;
+  }
+  return base;
 }
 
 /**
@@ -77,11 +116,7 @@ function compare(a: string, b: string): number {
  * first), the one that holds the others; the local one when they diverged. Git is asked only
  * where the tips differ.
  */
-export async function newestTip(
-  repo: GitRepo,
-  refs: RefList,
-  name: string,
-): Promise<string | null> {
+async function newestTip(repo: GitRepo, refs: RefList, name: string): Promise<string | null> {
   const local = refs.branches.find((b) => b.name === name)?.sha;
   const remotes = refs.remotes
     .filter((r) => r.branch === name)

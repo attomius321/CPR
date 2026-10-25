@@ -1,5 +1,4 @@
-import { randomUUID } from 'node:crypto';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, posix, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +7,6 @@ import {
   AGENT_KINDS,
   branchNameProblem,
   checkMerge,
-  commitFolders,
   commitsBetween,
   defaultBranch,
   deleteMergedBranch,
@@ -55,21 +53,7 @@ import {
 } from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
 import { readPrompts } from './prompts.js';
-import {
-  AppServerStartFailed,
-  AppServerUnreachable,
-  type CodexServer,
-  type CodexThread,
-} from './app-server.js';
-import {
-  asksTrust,
-  codexState,
-  processAlive,
-  serverEntries,
-  serverLastAction,
-  serverState,
-  type Codex,
-} from './codex.js';
+import { codexState, serverEntries, serverLastAction, serverState, type Codex } from './codex.js';
 import type { OpenFolder } from './editor.js';
 import {
   effortOnProblem,
@@ -87,6 +71,7 @@ import {
   type ClaudeCode,
 } from './claude-code.js';
 import { MAX_BRIEF, workKinds } from './workspace-brief.js';
+import { onServer, workspaceCodex } from './workspace-codex.js';
 import {
   emptyFile,
   isFile,
@@ -105,20 +90,21 @@ import {
   uploadsOf,
 } from './workspace-documents.js';
 import {
-  readWorkspace,
-  serializeWorkspace,
+  readRecord,
+  readRecords,
   startedAs,
   workspacePath,
   symbioteFolder,
   workspacesDir,
   WorkspaceRefused,
+  writeRecord,
   type StartedAs,
-  type WorkspaceAgentRecord,
   type WorkspaceFile,
 } from './workspace-record.js';
 import {
-  newestTip,
+  FULL_SHA,
   startBranches,
+  startPoint,
   workOf,
   workspaceBase,
   workspacePrompt,
@@ -135,17 +121,14 @@ import {
   type ReviewPlace,
 } from './reviews.js';
 import {
-  appendThread,
   lastAction,
   readThread,
   readThreadEnd,
   THREAD_LIMIT,
-  threadPath,
+  real,
   turnEnded,
   workspacesFolder,
 } from './thread.js';
-
-const FULL_SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 
 /** What `symbiote/config.json` says of workspaces and their agent; anything unknown is ignored. */
 export interface WorkspaceConfig {
@@ -239,6 +222,20 @@ type FoundAgent = { kind: 'claude'; claude: ClaudeCode } | { kind: 'codex'; code
 /** Each agent's name, as messages say it. */
 const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
 
+/** The levels `agent` takes (V30b); null when Symbiote cannot read them. */
+async function effortsOf(agent: FoundAgent): Promise<AgentEfforts | null> {
+  if (agent.kind === 'codex') return agent.codex.efforts();
+  const levels = await agent.claude.efforts();
+  return levels ? { levels } : null;
+}
+
+/** The models `agent` lists (V47); null when Symbiote cannot read them. */
+async function modelsOf(agent: FoundAgent): Promise<AgentModels | null> {
+  if (agent.kind === 'codex') return agent.codex.models();
+  const models = await agent.claude.models();
+  return models ? { models } : null;
+}
+
 /** What the server needs of workspaces. */
 export interface Workspaces {
   options(): Promise<WorkspaceOptions>;
@@ -314,6 +311,9 @@ export interface Workspaces {
 /** Most shells a workspace has open at once (V45): 9 MB each, measured. */
 export const MAX_SHELLS = 8;
 
+/** Turns a thread panel reads from the server: about 200 entries' worth. */
+const PANEL_TURNS = 50;
+
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Workspaces of `repo`, kept beside its reviews (`symbiote/workspaces/`, else Symbiote's cache).
@@ -358,13 +358,7 @@ export function workspaces(
     return { ...where, note: where.note ? `${where.note} ${left}` : left };
   };
   const config = () => readWorkspaceConfig(root);
-  const real = (path: string) => {
-    try {
-      return realpathSync(path);
-    } catch {
-      return path;
-    }
-  };
+  const viaCodex = workspaceCodex({ codex, now, env });
 
   /** `workspaces.worktrees` is relative to the checkout that holds `symbiote/`. */
   const mainRoot = (where: ReviewPlace) =>
@@ -389,31 +383,6 @@ export function workspaces(
       await rename(temp, path);
     }
     return path;
-  }
-
-  async function save(where: ReviewPlace, workspace: WorkspaceFile): Promise<void> {
-    const path = workspacePath(workspacesDir(where), workspace.branch);
-    await mkdir(dirname(path), { recursive: true });
-    const temp = `${path}.${process.pid}.tmp`;
-    await writeFile(temp, serializeWorkspace(workspace));
-    await rename(temp, path);
-  }
-
-  async function records(where: ReviewPlace): Promise<WorkspaceFile[]> {
-    const dir = workspacesDir(where);
-    const files = await readdir(dir, { recursive: true }).catch(() => [] as string[]);
-    const list: WorkspaceFile[] = [];
-    for (const file of files) {
-      if (!file.endsWith('.json')) continue;
-      const workspace = await readWorkspace(join(dir, file));
-      // The file must be the branch's: a copied or renamed file is not that workspace.
-      if (workspace && relative(dir, workspacePath(dir, workspace.branch)) === file) {
-        list.push(workspace);
-      }
-    }
-    return list.sort(
-      (a, b) => a.created.localeCompare(b.created) || a.branch.localeCompare(b.branch),
-    );
   }
 
   async function summary(
@@ -441,7 +410,10 @@ export function workspaces(
     let acted: string | undefined;
     if (onServer(workspace)) {
       // Its last two turns: the one that runs, and the answer before it.
-      const { read, address } = await readServer(workspace, { turns: 2, items: 'summary' });
+      const { read, address } = await viaCodex.readServer(workspace, {
+        turns: 2,
+        items: 'summary',
+      });
       agent = serverState(workspace, read, ahead, address);
       acted =
         (read instanceof Error ? undefined : serverLastAction(read)) ?? workspace.agent?.started;
@@ -456,7 +428,7 @@ export function workspaces(
       acted = workspace.agent ? (lastAction(thread) ?? workspace.agent.started) : undefined;
       agent =
         workspace.agent?.kind === 'codex'
-          ? codexState(workspace, thread, await codexAlive(workspace), ahead)
+          ? codexState(workspace, thread, await viaCodex.alive(workspace), ahead)
           : agentState(workspace, sessions, ahead, real, ended);
     }
     if (workspace.agent?.effort) agent = { ...agent, effort: workspace.agent.effort };
@@ -526,13 +498,6 @@ export function workspaces(
     );
   }
 
-  /** A workspace's record; 404 without one. */
-  async function recorded(where: ReviewPlace, branch: string): Promise<WorkspaceFile> {
-    const workspace = await readWorkspace(workspacePath(workspacesDir(where), branch));
-    if (!workspace) throw new WorkspaceRefused(`no workspace ${branch}`, 404);
-    return workspace;
-  }
-
   const draftFile = join(cacheDir, 'state', repo.id, 'start-draft.json');
 
   /** Each workspace's shells (V45), by branch: they live as long as `symbiote view`. */
@@ -596,20 +561,6 @@ export function workspaces(
     return null;
   }
 
-  /** The levels `agent` takes (V30b); null when Symbiote cannot read them. */
-  async function effortsOf(agent: FoundAgent): Promise<AgentEfforts | null> {
-    if (agent.kind === 'codex') return agent.codex.efforts();
-    const levels = await agent.claude.efforts();
-    return levels ? { levels } : null;
-  }
-
-  /** The models `agent` lists (V47); null when Symbiote cannot read them. */
-  async function modelsOf(agent: FoundAgent): Promise<AgentModels | null> {
-    if (agent.kind === 'codex') return agent.codex.models();
-    const models = await agent.claude.models();
-    return models ? { models } : null;
-  }
-
   /** A model asked for a start (V47), checked against what `agent` lists; undefined for none. */
   async function modelFor(agent: FoundAgent | null, model: unknown): Promise<string | undefined> {
     if (model === undefined) return undefined;
@@ -662,14 +613,14 @@ export function workspaces(
       workspace.agent = null;
     } else if (agent.kind === 'codex') {
       workspace.agent = {
-        ...(await launchCodex(where, workspace, agent.codex, prompt, level)),
+        ...(await viaCodex.launch(where, workspace, agent.codex, prompt, level)),
         ...level,
       };
-      await save(where, workspace);
-      await firstEntry(where, workspace);
+      await writeRecord(where, workspace);
+      await viaCodex.firstEntry(where, workspace);
     } else {
       // The session's first hooks run while `--bg` starts it: they look for this record.
-      await save(where, workspace);
+      await writeRecord(where, workspace);
       const result = await agent.claude.start({
         cwd: workspace.worktree,
         name: workspace.branch,
@@ -683,148 +634,8 @@ export function workspaces(
         ? { kind: 'claude', permissionMode, ...level, started: now().toISOString(), hooks: true }
         : { kind: 'claude', permissionMode, ...level, error: result.error };
     }
-    await save(where, workspace);
+    await writeRecord(where, workspace);
     return prompt;
-  }
-
-  /**
-   * Starts Codex on a workspace: a thread on its app server (V27a), else `codex exec` through
-   * Symbiote's runner, which records its thread (V20a); its sandbox may also write what a commit on
-   * the branch writes (decision 130). Threads it had on the server are kept, for Clean up.
-   */
-  async function launchCodex(
-    where: ReviewPlace,
-    workspace: WorkspaceFile,
-    agent: Codex,
-    prompt: string,
-    how: StartedAs,
-  ): Promise<WorkspaceAgentRecord> {
-    const level = startedAs(how);
-    const earlier = [
-      ...(workspace.agent?.threads ?? []),
-      ...(workspace.agent?.thread ? [workspace.agent.thread] : []),
-    ];
-    const head = { kind: 'codex' as const, ...(earlier.length > 0 ? { threads: earlier } : {}) };
-    // Not logged in, `exec` retries for about 25 s and fails with a 401 (V20a spike).
-    if ((await agent.account()) === 'not logged in') {
-      return { ...head, error: 'Codex is not logged in: run `codex login`, then start the agent.' };
-    }
-    const started = now().toISOString();
-    const writable = await commitFolders(workspace.worktree, workspace.branch);
-    const server = await agent.server();
-    if (server) {
-      try {
-        const thread = await server.start({
-          cwd: workspace.worktree,
-          writable,
-          name: workspace.branch,
-          prompt,
-          ...level,
-        });
-        return { ...head, started, thread };
-      } catch (error) {
-        // A server that cannot be reached: `exec`, as without one. One that answered: its words,
-        // and the thread it made, if it did, kept for Clean up.
-        if (!(error instanceof AppServerUnreachable)) {
-          const made = error instanceof AppServerStartFailed ? [error.thread] : [];
-          const threads = [...earlier, ...made];
-          return {
-            kind: 'codex',
-            ...(threads.length > 0 ? { threads } : {}),
-            error: `Codex's app server: ${(error as Error).message}`,
-          };
-        }
-      }
-    }
-    const run = randomUUID();
-    const result = await agent.start({
-      cwd: workspace.worktree,
-      thread: threadPath(symbioteFolder(where), workspace.branch),
-      run,
-      writable,
-      prompt,
-      ...level,
-    });
-    return result.ok
-      ? { ...head, started, run, pid: result.pid }
-      : { ...head, error: result.error };
-  }
-
-  /** Whether a Codex workspace runs on the app server (V27a), not through Symbiote's runner. */
-  const onServer = (workspace: WorkspaceFile) =>
-    workspace.agent?.kind === 'codex' && workspace.agent.thread !== undefined;
-
-  /** Codex's app server, when Codex is installed and has one. */
-  async function serverOf(): Promise<CodexServer | null> {
-    const agent = await codex();
-    return agent ? agent.server() : null;
-  }
-
-  /** A server workspace's thread, or why it cannot be read; and the server's address. */
-  async function readServer(
-    workspace: WorkspaceFile,
-    view: Parameters<CodexServer['read']>[1],
-  ): Promise<{ read: CodexThread | Error; address: string | null }> {
-    const thread = workspace.agent?.thread ?? '';
-    const agent = await codex();
-    const server = agent ? await agent.server() : null;
-    if (!server) {
-      const why = agent
-        ? 'none runs, and `codex app-server daemon start` started none'
-        : 'Codex is not installed';
-      return { read: new Error(why), address: null };
-    }
-    try {
-      return { read: await server.read(thread, view), address: server.address };
-    } catch (error) {
-      return { read: error as Error, address: server.address };
-    }
-  }
-
-  /** Turns a thread panel reads from the server: about 200 entries' worth. */
-  const PANEL_TURNS = 50;
-
-  /**
-   * Waits for a Codex run's first thread entry, 3 s at most, unless its runner is gone: a start or
-   * a reply then answers with its thread's ID and the message in its thread, as Claude Code's
-   * hooks have them before `--bg` returns (measured with a real Codex: 5.3 s to the page's next
-   * read without it; its thread starts 150 ms after the run, V20a spike).
-   */
-  async function firstEntry(where: ReviewPlace, workspace: WorkspaceFile): Promise<void> {
-    const run = workspace.agent?.run;
-    if (!run) return;
-    for (let waited = 0; waited < 3_000; waited += 50) {
-      const entries = await readThreadEnd(symbioteFolder(where), workspace.branch);
-      if (entries.some((e) => e.run === run) || !(await codexAlive(workspace))) return;
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-  }
-
-  /** Whether a Codex workspace's last run still runs (its runner's process). */
-  async function codexAlive(workspace: WorkspaceFile): Promise<boolean> {
-    const pid = workspace.agent?.pid;
-    if (!pid) return false;
-    return (await codex())?.alive(pid) ?? processAlive(pid);
-  }
-
-  /** Stops a Codex workspace's run; ends it in the thread when its runner could not. */
-  async function stopCodex(
-    where: ReviewPlace,
-    workspace: WorkspaceFile,
-    agent: Codex,
-  ): Promise<void> {
-    if (workspace.agent?.pid) await agent.stop(workspace.agent.pid);
-    const run = workspace.agent?.run;
-    const entries = await readThreadEnd(symbioteFolder(where), workspace.branch);
-    if (entries.some((e) => e.run === run && e.kind === 'end')) return;
-    const session = entries.findLast((e) => e.kind === 'start')?.session ?? '';
-    await appendThread(symbioteFolder(where), workspace.branch, {
-      at: now().toISOString(),
-      session,
-      ...(run ? { run } : {}),
-      kind: 'end',
-      reason: 'stopped',
-    });
   }
 
   async function started(where: ReviewPlace, workspace: WorkspaceFile, prompt: string) {
@@ -847,144 +658,6 @@ export function workspaces(
       );
     }
     return agent;
-  }
-
-  /**
-   * A message to Codex (V20a): its thread continued with the text (`exec resume`), its sandbox as
-   * at the start; a run that lives is stopped first, only when asked (it loses its turn).
-   */
-  async function replyCodex(
-    where: ReviewPlace,
-    workspace: WorkspaceFile,
-    text: string,
-    stop: boolean,
-  ): Promise<WorkspaceReplied> {
-    const agent = await codex();
-    if (!agent) {
-      throw new WorkspaceRefused(
-        'No agent to talk to: install Codex (codex on PATH), or set SYMBIOTE_CODEX',
-        409,
-      );
-    }
-    if (!existsSync(workspace.worktree)) {
-      throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
-    }
-    if (onServer(workspace)) return replyServer(where, workspace, text, stop);
-    const thread = await readThreadEnd(symbioteFolder(where), workspace.branch);
-    const state = codexState(workspace, thread, await codexAlive(workspace), 0);
-    if (!state.id) {
-      throw new WorkspaceRefused(
-        'its agent has no session to continue: start the agent again',
-        409,
-      );
-    }
-    if (state.state === 'working') {
-      if (!stop) throw new WorkspaceRefused('its agent is working: sending stops its turn', 409);
-      await stopCodex(where, workspace, agent);
-    }
-    const run = randomUUID();
-    const startedAt = now().toISOString();
-    const level = startedAs(workspace.agent ?? {});
-    const resumed = await agent.resume({
-      cwd: workspace.worktree,
-      thread: threadPath(symbioteFolder(where), workspace.branch),
-      run,
-      writable: await commitFolders(workspace.worktree, workspace.branch),
-      sessionId: state.id,
-      text,
-      // Given again: `exec resume` keeps none of the start's options (V30 spike).
-      ...level,
-    });
-    if (!resumed.ok) throw new WorkspaceRefused(resumed.error, 502);
-    workspace.agent = { kind: 'codex', ...level, started: startedAt, run, pid: resumed.pid };
-    await save(where, workspace);
-    await firstEntry(where, workspace);
-    const refs = await listRefs(repo);
-    return { workspace: await summary(where, workspace, refs, await trunkOf(refs), []) };
-  }
-
-  /**
-   * A message to Codex on its app server (V27a): a new turn, or joined to the one that runs (no
-   * stop, no lost turn); a turn that waits on the person is interrupted first, only when asked.
-   */
-  async function replyServer(
-    where: ReviewPlace,
-    workspace: WorkspaceFile,
-    text: string,
-    stop: boolean,
-  ): Promise<WorkspaceReplied> {
-    const thread = workspace.agent?.thread ?? '';
-    const server = await serverOf();
-    const { read } = await readServer(workspace, { turns: 1, items: 'summary' });
-    if (!server || read instanceof Error) {
-      throw new WorkspaceRefused(`Codex's app server: ${(read as Error).message}`, 502);
-    }
-    const state = serverState(workspace, read, 0, server.address);
-    if (state.state === 'needs-you' && !stop) {
-      const what = state.waitingFor ?? 'you';
-      throw new WorkspaceRefused(
-        `its agent is waiting on ${/^[aeiou]/.test(what) ? 'an' : 'a'} ${what}: sending stops its turn`,
-        409,
-      );
-    }
-    try {
-      if (state.state === 'needs-you') await server.interrupt(thread);
-      await server.send({ thread, text });
-    } catch (error) {
-      throw new WorkspaceRefused(`Codex's app server: ${(error as Error).message}`, 502);
-    }
-    const refs = await listRefs(repo);
-    return { workspace: await summary(where, workspace, refs, await trunkOf(refs), []) };
-  }
-
-  /**
-   * Codex's own terminal on a workspace's thread (V27b): its TUI joined to the app server, in the
-   * worktree. Codex asks to trust each worktree the first time and saves the answer in the
-   * person's configuration: said when it will ask (decision 160), never answered by Symbiote.
-   */
-  async function codexTerminal(
-    workspace: WorkspaceFile,
-    terminals: Terminals,
-    cols: number,
-    rows: number,
-  ): Promise<WorkspaceTerminalOpened> {
-    const agent = await codex();
-    const server = agent ? await agent.server() : null;
-    if (!agent || !server) {
-      throw new WorkspaceRefused(
-        agent ? "Codex's app server cannot be started" : 'Codex is not installed',
-        409,
-      );
-    }
-    if (!existsSync(workspace.worktree)) {
-      throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
-    }
-    const asks = await server.trust(workspace.worktree).then(
-      (entries) => asksTrust(entries, [workspace.worktree, real(workspace.worktree)]),
-      // Unknown: nothing said rather than something wrong.
-      () => false,
-    );
-    try {
-      const id = await terminals.open({
-        command: agent.command,
-        args: [
-          'resume',
-          workspace.agent?.thread ?? '',
-          '--remote',
-          server.address,
-          '-C',
-          workspace.worktree,
-        ],
-        cwd: workspace.worktree,
-        cols,
-        rows,
-        env,
-      });
-      return { id, ...(asks ? { trusted: false as const } : {}) };
-    } catch (error) {
-      if (error instanceof TerminalRefused) throw new WorkspaceRefused(error.message, 409);
-      throw error;
-    }
   }
 
   /** Whether a workspace's commits are all in the default branch. */
@@ -1066,7 +739,7 @@ export function workspaces(
 
     async list() {
       const where = await place();
-      const list = (await records(where)).filter((f) => !f.finished);
+      const list = (await readRecords(where)).filter((f) => !f.finished);
       const head = { place: where.place, ...(where.note ? { note: where.note } : {}) };
       if (list.length === 0) return { workspaces: [], ...head };
       // Agents may wake from agent view or `claude attach`: their settings file must be there.
@@ -1113,30 +786,7 @@ export function workspaces(
           refs.remotes.some((r) => r.branch === request.branch);
         throw new WorkspaceRefused(problem, taken ? 409 : 400);
       }
-      let base: { from?: string; sha: string };
-      if (request.base !== undefined && request.from !== undefined) {
-        throw new WorkspaceRefused('start from a branch or a commit, not both', 400);
-      }
-      if (request.from !== undefined) {
-        const sha =
-          typeof request.from === 'string' ? await newestTip(repo, refs, request.from) : null;
-        if (!sha) throw new WorkspaceRefused(`no branch ${String(request.from)}`, 400);
-        base = { from: request.from, sha };
-      } else if (request.base !== undefined) {
-        if (!FULL_SHA.test(request.base)) {
-          throw new WorkspaceRefused(`the base must be a full SHA: ${request.base}`, 400);
-        }
-        if (!(await isCommit(repo, request.base))) {
-          throw new WorkspaceRefused(`not a commit: ${request.base}`, 400);
-        }
-        base = { sha: request.base };
-      } else {
-        const found = await workspaceBase(repo, refs);
-        if (!found) {
-          throw new WorkspaceRefused('no default branch to start from: pick a commit', 400);
-        }
-        base = found;
-      }
+      const base = await startPoint(repo, refs, request);
       const where = await place();
       const folder = worktreeFolder(mainRoot(where), request.branch, config().worktrees);
       if (existsSync(folder)) throw new WorkspaceRefused(`${folder} exists`, 409);
@@ -1174,7 +824,7 @@ export function workspaces(
 
     async startAgent(branch) {
       const where = await place();
-      const workspace = await recorded(where, branch);
+      const workspace = await readRecord(where, branch);
       // The agent it was started with; a workspace made without one gets the default.
       const kind = workspace.agent?.kind;
       const agent = kind ? await found(kind) : await defaultAgent();
@@ -1197,7 +847,7 @@ export function workspaces(
 
     async prompt(branch) {
       const where = await place();
-      return promptOf(where, await recorded(where, branch));
+      return promptOf(where, await readRecord(where, branch));
     },
 
     async draft() {
@@ -1237,10 +887,10 @@ export function workspaces(
 
     async stopAgent(branch) {
       const where = await place();
-      const workspace = await recorded(where, branch);
+      const workspace = await readRecord(where, branch);
       if (onServer(workspace)) {
-        const server = await serverOf();
-        const { read } = await readServer(workspace, { turns: 1, items: 'summary' });
+        const server = await viaCodex.serverOf();
+        const { read } = await viaCodex.readServer(workspace, { turns: 1, items: 'summary' });
         const live = serverState(workspace, read, 0, null).state;
         if (!server || !['working', 'needs-you'].includes(live)) {
           throw new WorkspaceRefused('its agent is not running', 409);
@@ -1255,11 +905,11 @@ export function workspaces(
       if (workspace.agent?.kind === 'codex') {
         const agent = await codex();
         const thread = await readThreadEnd(symbioteFolder(where), branch);
-        const live = codexState(workspace, thread, await codexAlive(workspace), 0);
+        const live = codexState(workspace, thread, await viaCodex.alive(workspace), 0);
         if (!agent || live.state !== 'working') {
           throw new WorkspaceRefused('its agent is not running', 409);
         }
-        await stopCodex(where, workspace, agent);
+        await viaCodex.stopRun(where, workspace, agent);
         return started(where, workspace, await promptOf(where, workspace));
       }
       const agent = workspace.agent ? await claude() : null;
@@ -1274,7 +924,7 @@ export function workspaces(
     },
 
     async openWorktree(branch) {
-      const workspace = await recorded(await place(), branch);
+      const workspace = await readRecord(await place(), branch);
       if (!existsSync(workspace.worktree)) {
         throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
       }
@@ -1284,7 +934,7 @@ export function workspaces(
     },
 
     async openDiff(branch, file) {
-      const workspace = await recorded(await place(), branch);
+      const workspace = await readRecord(await place(), branch);
       const before = file.previousPath ?? file.path;
       for (const path of [file.path, before]) {
         const normal = posix.normalize(path);
@@ -1331,7 +981,7 @@ export function workspaces(
     },
 
     async changes(branch) {
-      const workspace = await recorded(await place(), branch);
+      const workspace = await readRecord(await place(), branch);
       const refs = await listRefs(repo);
       const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha ?? null;
       const uncommitted = existsSync(workspace.worktree)
@@ -1356,7 +1006,7 @@ export function workspaces(
     },
 
     async merge(branch) {
-      const workspace = await recorded(await place(), branch);
+      const workspace = await readRecord(await place(), branch);
       const refs = await listRefs(repo);
       const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha;
       if (!tip) throw new WorkspaceRefused(`its branch ${workspace.branch} is gone`, 409);
@@ -1377,11 +1027,14 @@ export function workspaces(
 
     async thread(branch) {
       const where = await place();
-      const workspace = await recorded(where, branch);
+      const workspace = await readRecord(where, branch);
       let entries: ThreadEntry[];
       if (onServer(workspace)) {
         // From the server (decision 155); none when it cannot be read: the state says why.
-        const { read } = await readServer(workspace, { turns: PANEL_TURNS, items: 'full' });
+        const { read } = await viaCodex.readServer(workspace, {
+          turns: PANEL_TURNS,
+          items: 'full',
+        });
         entries =
           read instanceof Error
             ? []
@@ -1420,7 +1073,7 @@ export function workspaces(
 
     async terminal({ branch, cols, rows }) {
       const where = await place();
-      const workspace = await recorded(where, branch);
+      const workspace = await readRecord(where, branch);
       if (workspace.agent?.kind === 'codex' && !onServer(workspace)) {
         throw new WorkspaceRefused(
           'Codex has no terminal in Symbiote without its app server: Talk copies `codex resume`, to run in yours',
@@ -1430,7 +1083,7 @@ export function workspaces(
       if (!terminals) throw new WorkspaceRefused('no terminals here', 409);
       const can = await terminals.available();
       if (!can.available) throw new WorkspaceRefused(can.reason, 409);
-      if (onServer(workspace)) return codexTerminal(workspace, terminals, cols, rows);
+      if (onServer(workspace)) return viaCodex.terminal(workspace, terminals, cols, rows);
       const agent = await agentOf(workspace);
       if (!existsSync(workspace.worktree)) {
         throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
@@ -1459,7 +1112,7 @@ export function workspaces(
     },
 
     async shell({ branch, cols, rows }) {
-      const workspace = await recorded(await place(), branch);
+      const workspace = await readRecord(await place(), branch);
       if (!terminals) throw new WorkspaceRefused('no terminals here', 409);
       const can = await terminals.available();
       if (!can.available) throw new WorkspaceRefused(can.reason, 409);
@@ -1499,7 +1152,7 @@ export function workspaces(
     },
 
     async shells(branch) {
-      await recorded(await place(), branch);
+      await readRecord(await place(), branch);
       return {
         shells: openShells(branch).map(({ id, number }) => {
           const running = terminals?.running(id);
@@ -1514,9 +1167,12 @@ export function workspaces(
         throw new WorkspaceRefused('a message is at most 20,000 characters', 400);
       }
       const where = await place();
-      const workspace = await recorded(where, branch);
-      if (workspace.agent?.kind === 'codex')
-        return replyCodex(where, workspace, text, stop === true);
+      const workspace = await readRecord(where, branch);
+      if (workspace.agent?.kind === 'codex') {
+        await viaCodex.reply(where, workspace, text, stop === true);
+        const refs = await listRefs(repo);
+        return { workspace: await summary(where, workspace, refs, await trunkOf(refs), []) };
+      }
       const agent = await agentOf(workspace);
       if (!existsSync(workspace.worktree)) {
         throw new WorkspaceRefused(`its worktree is gone: ${workspace.worktree}`, 409);
@@ -1559,7 +1215,7 @@ export function workspaces(
 
     async clean({ branch, unmerged }) {
       const where = await place();
-      const workspace = await recorded(where, branch);
+      const workspace = await readRecord(where, branch);
       const merged = await isMerged(workspace, await listRefs(repo));
       if (!merged && !unmerged) {
         throw new WorkspaceRefused(
@@ -1578,29 +1234,7 @@ export function workspaces(
       const agent = workspace.agent?.kind === 'claude' ? await claude() : null;
       const codexAgent = workspace.agent?.kind === 'codex' ? await codex() : null;
       if (codexAgent) {
-        if (await codexAlive(workspace)) await stopCodex(where, workspace, codexAgent);
-        const { thread: current, threads: earlier = [] } = workspace.agent ?? {};
-        if (current || earlier.length > 0) {
-          // On the app server (V27a): its turn stopped, its threads archived there, else by
-          // `codex archive` (the server unreachable).
-          const server = await codexAgent.server();
-          if (server && current) await server.interrupt(current).catch(() => false);
-          for (const each of current ? [...earlier, current] : earlier) {
-            const archived = server
-              ? await server.archive(each).then(
-                  () => true,
-                  () => false,
-                )
-              : false;
-            if (!archived) await codexAgent.archive(each).catch(() => undefined);
-          }
-        }
-        // Out of Codex's lists, not deleted (decision 134): an archived one fails the same way.
-        const entries = await readThread(symbioteFolder(where), workspace.branch, Infinity);
-        const threads = new Set(entries.filter((e) => e.kind === 'start').map((e) => e.session));
-        for (const thread of threads) {
-          if (thread !== '') await codexAgent.archive(thread).catch(() => undefined);
-        }
+        await viaCodex.archive(where, workspace, codexAgent);
       }
       if (agent) {
         const folder = real(workspace.worktree);
@@ -1624,7 +1258,7 @@ export function workspaces(
       // Its documents go with its worktree; the record keeps their names (V40).
       if (workspace.documents) await removeDocuments(where, workspace.branch);
       workspace.finished = now().toISOString();
-      await save(where, workspace);
+      await writeRecord(where, workspace);
       return { finished: workspace.finished };
     },
   };

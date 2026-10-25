@@ -1,7 +1,7 @@
 // A workspace's record on disk (V18): `symbiote/workspaces/<branch>.json`, how it is written and
 // read back, and the refusal every workspace request answers with.
-import { readFile } from 'node:fs/promises';
-import { dirname, extname, join } from 'node:path';
+import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { dirname, extname, join, relative } from 'node:path';
 import {
   AGENT_KINDS,
   EFFORT_LEVEL,
@@ -222,3 +222,37 @@ export const symbioteFolder = (where: ReviewPlace) => dirname(where.dir);
 
 /** Where the records are: `workspaces/` beside the reviews. */
 export const workspacesDir = (where: ReviewPlace) => join(symbioteFolder(where), 'workspaces');
+
+/** Writes a workspace's record: to a file of its own, then renamed. */
+export async function writeRecord(where: ReviewPlace, workspace: WorkspaceFile): Promise<void> {
+  const path = workspacePath(workspacesDir(where), workspace.branch);
+  await mkdir(dirname(path), { recursive: true });
+  const temp = `${path}.${process.pid}.tmp`;
+  await writeFile(temp, serializeWorkspace(workspace));
+  await rename(temp, path);
+}
+
+/** Every workspace's record in `where`, oldest first; a file not its branch's is left out. */
+export async function readRecords(where: ReviewPlace): Promise<WorkspaceFile[]> {
+  const dir = workspacesDir(where);
+  const files = await readdir(dir, { recursive: true }).catch(() => [] as string[]);
+  const list: WorkspaceFile[] = [];
+  for (const file of files) {
+    if (!file.endsWith('.json')) continue;
+    const workspace = await readWorkspace(join(dir, file));
+    // The file must be the branch's: a copied or renamed file is not that workspace.
+    if (workspace && relative(dir, workspacePath(dir, workspace.branch)) === file) {
+      list.push(workspace);
+    }
+  }
+  return list.sort(
+    (a, b) => a.created.localeCompare(b.created) || a.branch.localeCompare(b.branch),
+  );
+}
+
+/** A workspace's record; 404 without one. */
+export async function readRecord(where: ReviewPlace, branch: string): Promise<WorkspaceFile> {
+  const workspace = await readWorkspace(workspacePath(workspacesDir(where), branch));
+  if (!workspace) throw new WorkspaceRefused(`no workspace ${branch}`, 404);
+  return workspace;
+}
