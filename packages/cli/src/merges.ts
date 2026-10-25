@@ -418,20 +418,28 @@ export function merger(
     return { commands: [guess.command], source: guess.source };
   }
 
-  /** Merges, checks and, when the check passed, lands one entry. */
+  /**
+   * Merges, checks and, when the check passed, lands one entry, always on `into`'s tip as it is
+   * now: a merge checked again whose target moved since is merged again.
+   */
   async function mergeOne(entry: MergeEntry): Promise<void> {
-    const { id } = entry;
-    if (entry.recheck && entry.merge && entry.base) {
+    const { id, merge, base } = entry;
+    const tip = tipOf(await listRefs(repo), entry.into);
+    const recheck = entry.recheck && merge && base ? { merge, base } : null;
+    if (recheck && tip?.sha === recheck.base) {
       // The same merge checked again: another merge may have used the worktree since.
-      await resetMergeWorktree(repo, worktree, entry.merge);
+      await resetMergeWorktree(repo, worktree, recheck.merge);
       await set(id, { recheck: undefined, check: undefined });
-      await checkMerge(id, entry.base, entry.merge, true);
+      await checkMerge(id, recheck.base, recheck.merge, true);
       return;
     }
     const log = logs.of(id);
     log.step('merge', `Merge ${entry.branch} into ${entry.into}`);
-    const refs = await listRefs(repo);
-    const tip = tipOf(refs, entry.into);
+    if (recheck && tip) {
+      log.out(
+        `${entry.into} moved since the merge (now ${short(tip.sha)}): merging again on its tip\n`,
+      );
+    }
     if (!tip) {
       log.out(`No branch ${entry.into}\n`);
       log.end(false);
@@ -820,8 +828,19 @@ export function merger(
     return result.ok ? { ok: true, remote } : { ok: false, remote, error: result.error };
   }
 
-  /** States that hold a branch: a later merge into it waits until they are done. */
-  const holding = new Set<MergeEntry['state']>(['merging', 'resolving', 'checking', 'ready']);
+  /**
+   * States that hold a branch: a later merge into it waits until they land or are removed. A
+   * failure or a resolution waiting for the person may still land (Retry, Approve) and move the
+   * branch; a merge started meanwhile would be made and checked on a tip about to move.
+   */
+  const holding = new Set<MergeEntry['state']>([
+    'merging',
+    'resolving',
+    'checking',
+    'ready',
+    'needs-you',
+    'failed',
+  ]);
 
   async function drain(): Promise<void> {
     const release = await queue.lock();

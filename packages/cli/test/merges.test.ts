@@ -458,6 +458,60 @@ describe('merging, checking and landing (V26a)', () => {
     expect(next).toMatchObject({ state: 'ready', base: landed?.merge });
   });
 
+  it('holds the next merge into a branch while a failed one waits for the person; Retry lands both in order (fix/merger-queue-wrong-behaviour)', async () => {
+    const { repo, shas } = setup();
+    repo.git('switch', '--quiet', '-c', 'second', shas.A);
+    repo.write({ 'src/s.ts': 'export const s = 1;\n' });
+    const S = repo.commit('S');
+    repo.git('switch', '--quiet', 'main');
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    review(repo, 'second', { head: S, into: 'main' });
+    config(repo, { checks: 'ok' });
+    let failing = true;
+    const runCheck: RunCheck = () =>
+      Promise.resolve(failing ? { code: 1, output: '1 failed\n' } : { code: 0, output: 'ok\n' });
+    const m = await make(repo, runCheck);
+    const first = await m.enqueue({ branch: 'topic', into: 'main' }, { start: false });
+    await m.enqueue({ branch: 'second', into: 'main' });
+    await m.idle();
+    expect((await m.list()).merges.map((e) => e.state)).toEqual(['failed', 'queued']);
+    expect(repo.git('rev-parse', 'main')).toBe(shas.M);
+
+    failing = false;
+    await m.retry(first.id);
+    await m.idle();
+    const [landed, next] = (await m.list()).merges;
+    expect(landed?.state).toBe('landed');
+    expect(next).toMatchObject({ state: 'landed', base: landed?.merge });
+    expect(repo.git('rev-parse', 'main')).toBe(next?.merge);
+  });
+
+  it('starts the next merge on the target once the failed one before it is removed (fix/merger-queue-wrong-behaviour)', async () => {
+    const { repo, shas } = setup();
+    repo.git('switch', '--quiet', '-c', 'second', shas.A);
+    repo.write({ 'src/s.ts': 'export const s = 1;\n' });
+    const S = repo.commit('S');
+    repo.git('switch', '--quiet', 'main');
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    review(repo, 'second', { head: S, into: 'main' });
+    config(repo, { checks: 'ok' });
+    let failing = true;
+    const runCheck: RunCheck = () =>
+      Promise.resolve(failing ? { code: 1, output: '1 failed\n' } : { code: 0, output: 'ok\n' });
+    const m = await make(repo, runCheck);
+    const first = await m.enqueue({ branch: 'topic', into: 'main' }, { start: false });
+    await m.enqueue({ branch: 'second', into: 'main' });
+    await m.idle();
+    expect((await m.list()).merges.map((e) => e.state)).toEqual(['failed', 'queued']);
+
+    failing = false;
+    await m.remove(first.id);
+    await m.idle();
+    const [next] = (await m.list()).merges;
+    expect(next).toMatchObject({ branch: 'second', state: 'landed', base: shas.M });
+    expect(repo.git('rev-parse', 'main')).toBe(next?.merge);
+  });
+
   it('retries a failed merge and removes an entry', async () => {
     const { repo, shas } = setup();
     review(repo, 'topic', { head: shas.T, into: 'main' });
@@ -806,6 +860,67 @@ describe('the merger agent (V26c)', () => {
     expect(ran.map((r) => r.command)).toEqual(['ok', 'flaky', 'ok', 'flaky']);
     expect(ran.slice(2).every((r) => r.head === before?.merge)).toBe(true);
     expect(repo.git('rev-parse', 'main')).toBe(shas.M2);
+  });
+
+  it('holds the next merge into a branch while a resolution waits for review; it starts on the resolution once landed (fix/merger-queue-wrong-behaviour)', async () => {
+    const { repo, shas } = conflicting();
+    repo.git('switch', '--quiet', '-c', 'second', shas.A);
+    repo.write({ 'src/s.ts': 'export const s = 1;\n' });
+    const S = repo.commit('S');
+    repo.git('switch', '--quiet', 'main');
+    review(repo, 'second', { head: S, into: 'main' });
+    config(repo, { checks: 'ok' });
+    const m = await make(repo, fakeChecks().run, { mergerAgent: fakeAgent(BOTH).find });
+    const first = await m.enqueue({ branch: 'topic', into: 'main' }, { start: false });
+    await m.enqueue({ branch: 'second', into: 'main' });
+    await m.idle();
+    expect((await m.list()).merges.map((e) => e.state)).toEqual(['needs-you', 'queued']);
+    expect(repo.git('rev-parse', 'main')).toBe(shas.M2);
+
+    expect(await m.approve(first.id)).toMatchObject({ state: 'landed' });
+    await m.idle();
+    const [landed, next] = (await m.list()).merges;
+    expect(next).toMatchObject({ state: 'landed', base: landed?.merge });
+    expect(repo.git('rev-parse', 'main')).toBe(next?.merge);
+  });
+
+  it('merges again on the tip when the target moved before Check again: no check of a merge on an old tip (fix/merger-queue-wrong-behaviour)', async () => {
+    const { repo, shas } = conflicting();
+    config(repo, { checks: ['ok', 'flaky'] });
+    // `flaky` fails its first run only.
+    let flaky = 0;
+    const runCheck: RunCheck = (command) => {
+      const failed = command === 'flaky' && ++flaky === 1;
+      return Promise.resolve({ code: failed ? 1 : 0, output: failed ? '1 failed\n' : 'ok\n' });
+    };
+    const agent = fakeAgent(BOTH);
+    const m = await make(repo, runCheck, { mergerAgent: agent.find });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    expect((await m.list()).merges[0]).toMatchObject({
+      state: 'needs-you',
+      base: shas.M2,
+      check: { ok: false },
+    });
+    repo.write({ 'src/n.ts': 'export const n = 1;\n' });
+    const N = repo.commit('N');
+
+    await m.recheck(id);
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry).toMatchObject({ state: 'needs-you', base: N, check: { ok: true } });
+    expect(entry?.recheck).toBeUndefined();
+    expect(parents(repo, entry?.merge ?? '')).toEqual([N, shas.T2]);
+    expect(agent.asked).toHaveLength(2);
+    expect(repo.git('rev-parse', 'main')).toBe(N);
+    const log = shortLog(await logOf(m, id));
+    const from = log.indexOf('run Check again');
+    expect(log.slice(from, from + 4)).toEqual([
+      'run Check again',
+      'step merge Merge topic into main',
+      `out main moved since the merge (now ${N.slice(0, 7)}): merging again on its tip`,
+      `out Symbiote's merge worktree at main (${N.slice(0, 7)})`,
+    ]);
   });
 
   it('runs the check again only for a resolution whose check failed', async () => {
