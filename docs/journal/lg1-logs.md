@@ -50,3 +50,33 @@ compared from Docker Hub and GitHub on 2026-10-25, nothing pulled or run yet.
   file need no mapping from `30`/`50` and epoch milliseconds.
 - **A death without a word**: a process killed or out of memory runs no handler, so its parent
   has to record how it ended (the server for an analysis child, the app for its server).
+
+## LG1 spike — Grafana, Loki and Alloy on this machine (2026-10-25, branch `feature/logging-system`)
+
+`ops/logs/` (Loki 3.7.9, Alloy 1.21.2, Grafana 13.2.4) run as a Compose project of its own on
+random ports, reading a folder in WSL's home with lines of today and of 13 days ago, an error with
+a stack and a line that is not JSON. Docker Desktop 29, Compose 2.40.3, WSL2.
+
+**Learned**:
+- **Size on disk**: the images unpack to 1.94 GB (Grafana), 945 MB (Alloy) and 47 MB (Loki), 2.9
+  GB in all, against 755 MB downloaded.
+- **At rest**: Alloy 40 MiB, Loki 89 MiB, Grafana 289 MiB (418 MiB), each under 1 % CPU. Loki is
+  ready 32 s after `up`.
+- **Fast enough to watch a crash**: a line appended is in Loki 1.34 s later (three runs alike); a
+  new day's file 5.3 s later (Alloy looks for new files every 5 s). A folder in WSL mounted into
+  Docker Desktop is followed with no setting.
+- **The trap: old lines are taken but not found.** Loki took the 13-day-old lines (no discard;
+  `reject_old_samples_max_age` raised to 30 days) but no query returned them: a query over 3 h ago
+  does not ask the ingester's memory, only the store, which has them after a flush, 30 min of
+  quiet by default. `query_ingesters_within: 0`, in the YAML or as the flag, did not change it on
+  3.7.9 (the effective `/config` does not even list it). `POST /flush` made them appear at once;
+  `ingester.chunk_idle_period: 1m` makes it so on its own: the old lines showed 66 s after `up`.
+  So a viewer started after a crash, or after days stopped, shows the files it missed within
+  about a minute and a half.
+- **A stack reads as lines**: `| json | line_format "{{.process}} · {{.msg}}\n{{.err_stack}}"`
+  turns the escaped `\n` of `err.stack` into real lines. A line that is not JSON is kept as text,
+  `detected_level=unknown`.
+- **Grafana 13 signs in anonymously only as a viewer** ("auth.anonymous.org_role is deprecated,
+  only viewer role is supported"). A viewer has `datasources:explore`, `datasources:query` and
+  `dashboards:read`: enough to read. Logs Drilldown (`grafana-lokiexplore-app` 3.0.0) comes
+  installed.
