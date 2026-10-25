@@ -93,6 +93,18 @@
   --dialog-bg: rgb(15 22 38 / 96%);
   --dialog-shadow: 0 24px 72px rgb(1 4 10 / 60%), inset 0 1px 0 rgb(170 195 240 / 8%);
   --overlay: rgb(2 5 12 / 62%);
+  /* A tooltip (V54, decision 398): the style's inverted tip, the terminal's link hint's light
+     (V38). Its state dots in the light theme's colours: the dark theme's are 2:1 on it. */
+  --tip-bg: #e3e8f2;
+  --tip-text: #05080f;
+  --tip-muted: #4b5672;
+  --tip-key: #d1d6e0;
+  --tip-key-text: #3a4560;
+  --tip-ok: #587c0c;
+  --tip-bad: #ad0707;
+  --tip-warn: #9a6700;
+  --tip-info: #0a7d8c;
+  --tip-shadow: 0 8px 24px rgb(1 4 10 / 55%);
   /* A select's chevron (lucide's, ISC) in the muted colour: a data URI cannot read a token. */
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa5be' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   /* A diff's lines: a ground for the line, a stronger one for its numbers. */
@@ -153,6 +165,16 @@
   --dialog-bg: rgb(255 255 255 / 96%);
   --dialog-shadow: 0 20px 60px rgb(11 18 32 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
   --overlay: rgb(11 18 32 / 45%);
+  --tip-bg: #0b1220;
+  --tip-text: #ffffff;
+  --tip-muted: #a3aec4;
+  --tip-key: #29303d;
+  --tip-key-text: #c9d1e2;
+  --tip-ok: #81b88b;
+  --tip-bad: #ff6568;
+  --tip-warn: #eab308;
+  --tip-info: #3fc5d6;
+  --tip-shadow: 0 8px 20px rgb(11 18 32 / 22%);
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2356627a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
   --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
@@ -212,6 +234,16 @@
     --dialog-bg: rgb(255 255 255 / 96%);
     --dialog-shadow: 0 20px 60px rgb(11 18 32 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
     --overlay: rgb(11 18 32 / 45%);
+    --tip-bg: #0b1220;
+    --tip-text: #ffffff;
+    --tip-muted: #a3aec4;
+    --tip-key: #29303d;
+    --tip-key-text: #c9d1e2;
+    --tip-ok: #81b88b;
+    --tip-bad: #ff6568;
+    --tip-warn: #eab308;
+    --tip-info: #3fc5d6;
+    --tip-shadow: 0 8px 20px rgb(11 18 32 / 22%);
     --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2356627a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
     --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);

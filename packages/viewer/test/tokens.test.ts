@@ -111,6 +111,8 @@ describe('the tokens (V29b)', () => {
     expect(dark.get('--text')).toBe('#eaeef7');
     expect(dark.get('--muted')).toBe('#9aa5be');
     expect(dark.get('--line')).toBe('#232d43');
+    // V54: the terminal's link hint's light, now every tip's in the dark theme.
+    expect(dark.get('--tip-bg')).toBe('#e3e8f2');
     // V31's step from the content to the chrome.
     expect(contrast(dark.get('--bg')!, dark.get('--side')!)).toBeGreaterThanOrEqual(1.1);
   });
@@ -123,6 +125,7 @@ describe('the tokens (V29b)', () => {
       '--raised': '#e9eef7',
     });
     expect(light.get('--text')).toBe('#0b1220');
+    expect(light.get('--tip-bg')).toBe('#0b1220');
   });
 
   // V42 (decisions 279–281): primary and secondary from the koi's blue light; the moved kind and
@@ -219,6 +222,17 @@ describe('the tokens (V29b)', () => {
         expect(under(theme, ['--text'], HEAT, 4.5)).toEqual([]);
         const apart = HEAT.map((t) => contrast(theme.get(t)!, theme.get('--raised')!));
         expect(apart).toEqual([...apart].sort((a, b) => a - b));
+      });
+
+      // V54 (decision 398): the style's inverted tip, light in the dark theme and navy in the
+      // light one; its state dots in the other theme's colours, which keep 3:1 on it.
+      it('draws tooltips inverted: words and keys at 4.5:1, state dots at 3:1', () => {
+        expect(contrast(theme.get('--tip-bg')!, theme.get('--bg')!)).toBeGreaterThan(10);
+        expect(under(theme, ['--tip-text', '--tip-muted'], ['--tip-bg'], 4.5)).toEqual([]);
+        expect(under(theme, ['--tip-key-text'], ['--tip-key'], 4.5)).toEqual([]);
+        expect(
+          under(theme, ['--tip-ok', '--tip-bad', '--tip-warn', '--tip-info'], ['--tip-bg'], 3),
+        ).toEqual([]);
       });
 
       it('separates regions with lines that show', () => {

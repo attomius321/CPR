@@ -1,0 +1,118 @@
+/* A tooltip (V54, decision 397): what an element names with `tip()`, drawn by `Tooltips` on the
+   page's body. The style's inverted tip (decision 398): light in the dark theme, navy in the
+   light one; 8 px, 13 px, a head in weight 500, its other lines muted, keys as caps after it. */
+.tooltip {
+  position: fixed;
+  z-index: 1000;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 16px));
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--tip-bg);
+  box-shadow: var(--tip-shadow);
+  color: var(--tip-text);
+  font-family: var(--sans);
+  font-size: var(--size-small);
+  font-weight: 500;
+  line-height: 18px;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  animation: tooltip-in 120ms ease-out;
+}
+
+/* Along a toolbar, the next tip without a fade: it reads as the same tip moving. */
+.tooltip.warm {
+  animation: none;
+}
+
+/* A cut text's whole text, in its own font (set by `Tooltips`), and code: wider, not bold. */
+.tooltip.cut,
+.tooltip.code {
+  max-width: min(480px, calc(100vw - 16px));
+  font-weight: normal;
+}
+
+.tooltip.code {
+  font-family: var(--mono);
+}
+
+.tooltip-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tooltip-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tooltip-line {
+  color: var(--tip-muted);
+  font-weight: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltip-keys {
+  display: inline-flex;
+  flex: none;
+  gap: 3px;
+  margin-left: 4px;
+}
+
+.tooltip kbd {
+  min-width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--tip-key);
+  box-shadow: none;
+  color: var(--tip-key-text);
+  font-family: var(--sans);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  line-height: 18px;
+}
+
+/* A state's dot (decision 400), in the other theme's state colours: 3:1 on the tip. */
+.tooltip-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tip-dot, var(--tip-muted));
+}
+
+.tooltip-dot[data-tone='ok'] {
+  --tip-dot: var(--tip-ok);
+}
+
+.tooltip-dot[data-tone='bad'] {
+  --tip-dot: var(--tip-bad);
+}
+
+.tooltip-dot[data-tone='warn'] {
+  --tip-dot: var(--tip-warn);
+}
+
+.tooltip-dot[data-tone='info'] {
+  --tip-dot: var(--tip-info);
+}
+
+/* Faded in only: it measures its own box to stay in the window. */
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip {
+    animation: none;
+  }
+}
