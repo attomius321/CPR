@@ -8,7 +8,7 @@ import { answerAsk, useAsks } from './useAsks.js';
  * start of a workspace, a verdict, a merge, a clean-up; a bar over every page, the oldest first.
  * Confirm does it, Decline does not, and after 10 minutes the agent is told nothing was done.
  */
-export function Asks() {
+export function AskBar() {
   const asks = useAsks();
   const [now, setNow] = useState(Date.now);
   const [answering, setAnswering] = useState<string | null>(null);

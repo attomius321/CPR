@@ -1,4 +1,4 @@
-/* An agent's ask through Symbiote's MCP (MC1, Asks.tsx): a bar in the shell's `asks` row, between
+/* An agent's ask through Symbiote's MCP (MC1, AskBar.tsx): a bar in the shell's `asks` row, between
    its top and the page, so it covers nothing of the page while it waits; tinted as what waits for
    the person. */
 
