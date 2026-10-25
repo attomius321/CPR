@@ -1,7 +1,8 @@
 import { SCHEMA_VERSION } from '@symbiote/core';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
+import { PassThrough } from 'node:stream';
 import { createBranchedRepo, tempDir } from '../../core/test/helpers/git-repo.js';
 import type { AppWindow } from '../src/app.js';
 import { run } from '../src/main.js';
@@ -202,6 +203,47 @@ describe('symbiote diff', () => {
         'root',
       ]);
       expect(page?.commits.at(-1)?.subject).toBe('root');
+    } finally {
+      delete process.env.SYMBIOTE_VIEWER_DIR;
+      rmSync(viewer, { recursive: true, force: true });
+    }
+  });
+
+  it("leaves its address for Symbiote's MCP bridge while it runs; symbiote mcp reaches it (MC1)", async () => {
+    const viewer = tempDir();
+    writeFileSync(join(viewer, 'index.html'), '');
+    process.env.SYMBIOTE_VIEWER_DIR = viewer;
+    try {
+      let url = '';
+      let record: unknown;
+      let answer = '';
+      let code: number | undefined;
+      const result = await symbiote(['view', '--no-open'], repo.root, async (stdout) => {
+        url = /Symbiote viewer: (\S+)/.exec(stdout())?.[1] ?? '';
+        const [file = ''] = readdirSync(join(cacheDir, 'views'));
+        record = JSON.parse(readFileSync(join(cacheDir, 'views', file), 'utf8'));
+        const input = new PassThrough();
+        const output = new PassThrough();
+        output.on('data', (chunk: Buffer) => (answer += chunk.toString()));
+        const bridged = run(['mcp'], {
+          cwd: repo.root,
+          stdout: () => undefined,
+          stderr: () => undefined,
+          openUrl: () => undefined,
+          waitForExit: () => Promise.resolve(),
+          env: process.env,
+          stdio: { input, output },
+        });
+        input.end(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' })}\n`);
+        code = await bridged;
+      });
+      expect(result.code).toBe(0);
+      expect(record).toMatchObject({ url, pid: process.pid, root: expect.any(String) as unknown });
+      expect(code).toBe(0);
+      const tools = (JSON.parse(answer) as { result: { tools: { name: string }[] } }).result.tools;
+      expect(tools.map((t) => t.name)).toContain('overview');
+      // Gone once it stopped: a bridge then says Symbiote is not running.
+      expect(readdirSync(join(cacheDir, 'views'))).toEqual([]);
     } finally {
       delete process.env.SYMBIOTE_VIEWER_DIR;
       rmSync(viewer, { recursive: true, force: true });

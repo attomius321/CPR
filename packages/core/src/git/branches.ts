@@ -1,6 +1,7 @@
 import { git, GitError } from './exec.js';
 import { listRefs, type RefList } from './refs.js';
 import type { GitRepo } from './repo.js';
+import type { McpVia } from '../mcp.js';
 
 /** A ref of a reviewed branch (the local branch or a remote's) and the commits since review. */
 export interface BranchReviewRef {
@@ -39,6 +40,8 @@ export interface Verdict {
    * */
   into?: string;
   summary: string;
+  /** Recorded through Symbiote's tools (MC1, decision 362): by Scout, or through `symbiote mcp`. */
+  via?: McpVia;
 }
 
 /** `POST ./api/review` on a branch review: the verdict, and the drafts as comments. */
@@ -46,6 +49,8 @@ export interface LocalReview {
   event: VerdictEvent;
   body: string;
   comments: (Omit<VerdictComment, 'code'> & { otherPath?: string })[];
+  /** Finished through Symbiote's tools (MC1), on the person's Confirm. */
+  via?: McpVia;
 }
 
 /** What finishing answers: the verdict, and its text for a chat. */
