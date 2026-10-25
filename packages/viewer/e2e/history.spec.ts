@@ -48,7 +48,8 @@ test('cuts a line longer than 100 rows into arrows; a click goes to the other en
   await page.goto(`${symbiote.url}history`);
   const old = page.locator(subject('Old idea'));
   await expect(old.locator('.arrow')).toHaveCount(1);
-  await expect(old.locator('.arrow title')).toHaveText(
+  await expect(old.locator('.arrow')).toHaveAttribute(
+    'data-tip',
     'Its parent is 441 rows below: click to go there',
   );
   await old.locator('.arrow').click();
