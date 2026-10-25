@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { spinner } from './spinner.js';
 import { serveAgentBranch, type RunningAgent } from './symbiote.js';
 
 // Symbiote's merger agent (V26c): a conflict answered region by region by a fake Claude Code,
@@ -222,6 +223,32 @@ test('the log: each step and what it writes, while it runs (V46a)', async ({ pag
   // A step scrolls the log to its heading; the merge's own stays where it is.
   await steps.getByRole('button', { name: /^Merge: passed/ }).click();
   await expect(log).toContainText('── Merge agent into main');
+});
+
+test("a merge at work spins on its card, as a working agent's dot; still once it is your turn (fix/merging-status)", async ({
+  page,
+}) => {
+  // The check waits for a file the test makes: until then the merge is at work.
+  const flag = join(mkdtempSync(join(tmpdir(), 'symbiote-e2e-flag-')), 'go');
+  const { card } = await resolvedConflict(
+    page,
+    ['while [ ! -f "$E2E_FLAG" ]; do sleep 0.1; done'],
+    { E2E_FLAG: flag },
+  );
+  const dot = card.locator('.state-dot');
+  await expect(card.locator('.workspace-state')).toHaveText(/^Checking: /);
+  await expect
+    .poll(() => spinner(dot))
+    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
+  // Without motion, the comet holds still: its words say it works.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect.poll(() => spinner(dot)).toEqual({ animation: 'none 0s', across: 11, comet: true });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+
+  writeFileSync(flag, '');
+  // Checked: the resolution is the person's to review, a still dot in its colour.
+  await expect(card).toHaveClass(/merge-tone-you/);
+  await expect.poll(() => spinner(dot)).toMatchObject({ animation: 'none 0s', comet: false });
 });
 
 test("the merger agent's thinking and the files it reads, while it works (V46b)", async ({

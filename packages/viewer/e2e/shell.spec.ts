@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
+import { spinner } from './spinner.js';
 import { serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // The shell (V29a): no Workspaces page; a sidenav with the pages and, under them, the workspaces;
@@ -280,6 +281,15 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
     await expect(group(page, name).locator('.workspace-row .icon')).toHaveCount(0);
     await expect(group(page, name).locator('.workspace-row .state-dot')).toBeVisible();
   }
+  // The merges first, above Waiting for you, whatever waits (fix/merging-status); one at work spins
+  // as a working agent's dot does.
+  await expect(sidenav(page).locator('.workspace-group h3 .sidenav-label')).toHaveText(
+    tones.map(([name]) => name),
+  );
+  const merging = group(page, 'Merging').locator('.state-dot');
+  await expect
+    .poll(() => spinner(merging))
+    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
   // Six drawings, none of them History's clock.
   drawings.add(await pages(page).getByRole('link', { name: 'History' }).locator('svg').innerHTML());
   expect(drawings.size).toBe(7);
@@ -295,6 +305,9 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
     await expect(heading).toHaveAttribute('title', name);
   }
   await expect(group(page, 'Merging').locator('.workspace-state')).toBeHidden();
+  await expect
+    .poll(() => spinner(merging))
+    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
 });
 
 test('the terminal fills the main area, down to the status bar', async ({ page }) => {

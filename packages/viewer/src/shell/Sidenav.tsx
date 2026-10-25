@@ -66,7 +66,7 @@ import { loadWidths, saveWidth } from '../ui/widths.js';
 
 /**
  * The workspaces' groups after the merges, each with its icon (V44): only the group has one, a
- * card its dot. Waiting for you comes first, above the merges (V48).
+ * card its dot. The merges come first, then Waiting for you (V48; fix/merging-status).
  */
 const GROUPS = [
   ['review', 'To review', ReviewIcon],
@@ -330,15 +330,6 @@ export function Sidenav({
           onFocus={onFocus}
           onBlur={onBlur}
         >
-          {groups.waiting.length > 0 && (
-            <WorkspaceGroupSection
-              group="waiting"
-              title="Waiting for you"
-              Icon={WaitingIcon}
-              rows={groups.waiting}
-              {...cards}
-            />
-          )}
           {queued.length > 0 && (
             <section className="workspace-group merging" aria-label="Merging">
               <h3 title="Merging">
@@ -357,6 +348,15 @@ export function Sidenav({
                 ))}
               </ul>
             </section>
+          )}
+          {groups.waiting.length > 0 && (
+            <WorkspaceGroupSection
+              group="waiting"
+              title="Waiting for you"
+              Icon={WaitingIcon}
+              rows={groups.waiting}
+              {...cards}
+            />
           )}
           {GROUPS.map(([key, title, Icon]) => {
             const making = key === 'working' ? starts : [];
