@@ -225,7 +225,7 @@ test('goes back up: the Back button, Escape once nothing is picked, and Backspac
 
   await page.goto(`${symbiote.url}monitor?path=app%2Fui`);
   const back = page.getByRole('button', { name: 'Back to app' });
-  await expect(back).toHaveAttribute('title', 'Back to app (Backspace)');
+  await expect(back).toHaveAttribute('data-tip', 'Back to app');
   await back.click();
   await expect(page).toHaveURL(/\/monitor\?path=app$/);
   await expect(page.getByRole('button', { name: 'Back to All files' })).toBeEnabled();

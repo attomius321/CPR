@@ -1,11 +1,12 @@
 import { memo, useEffect, useMemo, useReducer, type RefObject } from 'react';
 import type { HistoryRefs, HistoryScope } from '@symbiote/core';
 import { branchTree, type PanelEntry } from './branches.js';
-import type { ReviewMark } from './branchReviews.js';
-import { relativeDate } from './commits.js';
+import { reviewTip, type ReviewMark } from './branchReviews.js';
+import { longDate, relativeDate } from './commits.js';
 import { WorkspaceMark } from '../workspaces/WorkspaceMark.js';
 import { shortAge, type AgentChip, type FirstBranch } from '../workspaces/workspaces.js';
 import { ChevronIcon } from '../ui/icons.js';
+import { tip } from '../ui/tip.js';
 
 type BranchEntry = Extract<PanelEntry, { kind: 'branch' }>;
 
@@ -39,7 +40,7 @@ function Age({ at }: { at: string }) {
   return (
     <span
       className="branches-age"
-      title={`Last agent action ${relativeDate(at, now)} · ${new Date(at).toLocaleString()}`}
+      {...tip(`Last agent action ${relativeDate(at, now)}\n${longDate(at)}`)}
     >
       {shortAge(at, now)}
     </span>
@@ -189,7 +190,7 @@ function Entry({
       type="button"
       className={`branches-branch${entry.current ? ' current' : ''}${unlisted ? ' unlisted' : ''}`}
       style={indent}
-      title={unlisted ? `${entry.name}: its commits are not in this clone's history` : entry.name}
+      {...tip(unlisted ? `${entry.name}\nIts commits are not in this clone's history` : entry.name)}
       aria-disabled={unlisted || undefined}
       onClick={() => !unlisted && onGo(entry)}
     >
@@ -200,12 +201,15 @@ function Entry({
       )}
       <span className="branches-name">{entry.label}</span>
       {mark && (
-        <span className={`ref-review ref-review-${mark.tone}`} title={mark.title}>
+        <span className={`ref-review ref-review-${mark.tone}`} {...reviewTip(mark)}>
           {mark.mark}
         </span>
       )}
       {track && (
-        <span className={entry.gone ? 'branches-track gone' : 'branches-track'} title={track.title}>
+        <span
+          className={entry.gone ? 'branches-track gone' : 'branches-track'}
+          {...tip(track.title, { tone: entry.gone ? 'bad' : undefined })}
+        >
           {track.text}
         </span>
       )}

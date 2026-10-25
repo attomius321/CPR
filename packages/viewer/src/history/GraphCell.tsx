@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import type { LaneRow } from './lanes.js';
+import { tip } from '../ui/tip.js';
 
 /** Every row of the commits page is this tall, so rows can be placed by number. */
 export const ROW_HEIGHT = 28;
@@ -112,12 +113,12 @@ function Arrow({
   return (
     <g
       className={`arrow ${className}`}
+      {...tip(title)}
       onClick={(event) => {
         event.stopPropagation();
         onClick?.();
       }}
     >
-      <title>{title}</title>
       <path className="arrow-hit" d={d} />
       <path d={d} />
     </g>

@@ -1,5 +1,6 @@
 /* Help behind a "?" (V37): a ghost icon button beside what it explains, its tip a popover drawn on
-   the page's body (Help.tsx places it, fixed, kept inside the window). */
+   the page's body (Help.tsx places it, fixed, kept inside the window). Since V54 (decision 401) in
+   the floating surfaces' glass, as the menus: it explains, where a tooltip names. */
 .help-button {
   width: 24px;
   height: 24px;
@@ -15,21 +16,33 @@
 .help-tip {
   position: fixed;
   z-index: 60;
+  isolation: isolate;
   box-sizing: border-box;
   width: max-content;
-  max-width: min(340px, calc(100vw - 16px));
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel);
-  box-shadow: var(--shadow-floating);
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 12px 14px;
+  border: 1px solid var(--menu-line);
+  border-radius: 11px;
+  box-shadow: var(--menu-shadow);
   color: var(--text);
   font-size: var(--size-small);
   font-weight: normal;
-  line-height: 1.5;
+  line-height: 1.55;
   text-align: left;
   white-space: normal;
   animation: float-in 150ms ease-out;
+}
+
+/* The glass is a layer behind the words: a backdrop-filter on the tip would make it a containing
+   block (V31c's trap). */
+.help-tip::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--menu-bg);
+  backdrop-filter: blur(40px);
 }
 
 .help-tip[hidden] {
@@ -52,7 +65,13 @@
   margin-top: 8px;
 }
 
+/* Code as a quiet chip (the style's metadata chip). */
 .help-tip code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--raised);
+  font-family: var(--mono);
+  font-size: var(--size-caption);
   overflow-wrap: anywhere;
 }
 

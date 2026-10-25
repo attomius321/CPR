@@ -598,7 +598,10 @@ test('a workspace and its branch lead to each other', async ({ page }) => {
   const mark = page.locator('.commit .ref', { hasText: branch }).locator('.workspace-mark');
   // Claude Code's sessions are read at most every 2 s: the page's next look sees it.
   await expect(mark).toHaveText('●', POLL);
-  await expect(mark).toHaveAttribute('title', /Workspace: Add a half function — Ready for review/);
+  await expect(mark).toHaveAttribute(
+    'data-tip',
+    /Workspace: Add a half function — Ready for review/,
+  );
   await mark.click();
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);
   await expect(workspaceRow(page, branch)).toBeInViewport();
@@ -657,14 +660,14 @@ test("the branches panel: workspaces that need you first, their agent's last act
   // Local first, then the remote's `main`.
   const names = branches.locator('.branches-branch .branches-name');
   const entry = (branch: string) =>
-    branches.locator('li.has-workspace', { has: page.getByTitle(branch, { exact: true }) });
+    branches.locator('li.has-workspace', { has: page.locator(`[data-tip="${branch}"]`) });
 
   // Both agents work: the one started last on top, then the checked-out branch.
   await expect(names).toHaveText([totals, half, 'main', 'main']);
   await expect(entry(half).locator('.branches-age')).toHaveText('now');
   await expect(entry(half).locator('.branches-age')).toHaveAttribute(
-    'title',
-    /^Last agent action (just now|1 minute ago) · /,
+    'data-tip',
+    /^Last agent action (just now|1 minute ago)\n/,
   );
 
   // The first one's plan is ready: it needs you, so it goes above the one at work.
@@ -962,7 +965,10 @@ test("a done card's icon cleans it up from the sidenav: on hover or focus, witho
   await expect(card).toContainText('Merged', POLL);
   await expect(workspaceRow(page, other)).toContainText('Ready for review', POLL);
   const icon = card.getByRole('button', { name: 'Clean up Add a half function' });
-  await expect(icon).toHaveAttribute('title', /remove its sessions, its worktree and its merged/);
+  await expect(icon).toHaveAttribute(
+    'data-tip',
+    /Remove its sessions, its worktree and its merged/,
+  );
   // Only a done card has it.
   await expect(workspaceRow(page, other).getByRole('button', { name: /^Clean up/ })).toHaveCount(0);
 
@@ -1057,7 +1063,7 @@ test("the agent's session in a terminal in its panel: keys, the thread, hang-up,
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);
   await expect(box(page, branch)).toBeHidden();
   await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
-    'title',
+    'data-tip',
     /← in an empty prompt lists all your agents/,
   );
 
@@ -1326,7 +1332,7 @@ test('paths and web addresses the agent prints open with Ctrl+click: files of it
 
   // A file of its worktree: underlined, with a hint; a plain click is the terminal's.
   const math = await hover('src/math.ts:3');
-  await expect(hint).toHaveText(/^Open in VS Code\s*Ctrl\+click$/);
+  await expect(hint).toHaveText(/^Open in VS Code\s*Ctrl\s*click$/);
   await page.mouse.click(math.at.x, math.at.y);
   await ctrlClick(math.at);
   await expect
@@ -1355,7 +1361,7 @@ test('paths and web addresses the agent prints open with Ctrl+click: files of it
   // A web address, in a new tab, without the sentence's full stop.
   const web = await textAt(rows, 'example.com/pr/1');
   await page.mouse.move(web.x, web.y);
-  await expect(hint).toHaveText(/^Open https:\/\/example\.com\/pr\/1\s*Ctrl\+click$/);
+  await expect(hint).toHaveText(/^Open https:\/\/example\.com\/pr\/1\s*Ctrl\s*click$/);
   const tab = context.waitForEvent('page');
   await ctrlClick(web);
   expect((await tab).url()).toBe('https://example.com/pr/1');
@@ -1471,8 +1477,8 @@ test("a workspace's shells: each its own, kept across tabs and a reload, closed 
   }
   await expect(here.getByRole('button', { name: 'New shell' })).toBeDisabled();
   await expect(here.getByRole('button', { name: 'New shell' })).toHaveAttribute(
-    'title',
-    '8 shells are open: close one first',
+    'data-tip',
+    '8 shells are open\nClose one first',
   );
   // Narrower, the strip scrolls: the picked tab and + stay in sight.
   await page.setViewportSize({ width: 900, height: 900 });
@@ -1494,7 +1500,7 @@ test('without terminals, the panel keeps Talk in its menu, and no Terminal tab',
   await expect(here.getByRole('button', { name: 'New shell' })).toHaveCount(0);
   await here.getByRole('button', { name: 'More actions' }).click();
   await expect(here.getByRole('menuitem', { name: 'Talk' })).toHaveAttribute(
-    'title',
+    'data-tip',
     /SYMBIOTE_TERMINAL=off/,
   );
 });
@@ -1907,7 +1913,7 @@ test('Merge on an approved workspace: Symbiote merges it in its own worktree, La
   // workspace shown stays.
   await card.hover();
   const icon = card.getByRole('button', { name: `Remove the merge of ${branch}` });
-  await expect(icon).toHaveAttribute('title', /Remove it from the queue/);
+  await expect(icon).toHaveAttribute('data-tip', /Remove it from the queue/);
   await icon.click();
   await expect(merging).toHaveCount(0, POLL);
   await expect(here).toBeVisible();

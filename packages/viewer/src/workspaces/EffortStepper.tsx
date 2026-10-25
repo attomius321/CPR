@@ -1,5 +1,6 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { stopOf, stopWord, type EffortChoice } from './effort.js';
+import { tip } from '../ui/tip.js';
 
 /**
  * An agent's effort level as a stepper (fix/scout-effort-level): a track with a stop for each
@@ -63,7 +64,7 @@ export function EffortStepper({
         value={at}
         aria-label={label}
         aria-valuetext={choices[at]?.label}
-        title={title}
+        {...tip(title)}
         disabled={disabled}
         onChange={(event) => onChange(choices[Number(event.target.value)]?.value ?? '')}
       />
@@ -74,7 +75,7 @@ export function EffortStepper({
             key={choice.value}
             className={stop === at ? 'at' : undefined}
             style={{ '--stop': stop } as CSSProperties}
-            title={choice.label}
+            {...tip(choice.label)}
             onClick={disabled ? undefined : () => pick(stop)}
           >
             {stopWord(choice)}

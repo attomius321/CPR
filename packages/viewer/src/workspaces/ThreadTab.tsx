@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import type { WorkspaceThread } from '@symbiote/core';
 import { markdownNodes, useMarkdown } from '../ui/markdown.js';
 import { threadItems } from './workspaces.js';
+import { tip } from '../ui/tip.js';
 
 /**
  * A workspace's thread (V18c), read when it is picked and with every read of the list (on focus,
@@ -64,7 +65,7 @@ export function ThreadTab({
             const key = `${i}:${item.at}`;
             if (item.who === 'line' || item.who === 'waits') {
               return (
-                <li key={key} className={`thread-${item.who}`} title={timeOf(item.at)}>
+                <li key={key} className={`thread-${item.who}`} {...tip(timeOf(item.at))}>
                   {item.text}
                 </li>
               );

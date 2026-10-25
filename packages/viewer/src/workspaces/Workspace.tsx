@@ -36,6 +36,7 @@ import {
   workspaceGroups,
   workspaceHref,
   workspaceName,
+  briefTip,
   replyMode,
   asksBeforeOpening,
   opensTerminal,
@@ -50,6 +51,7 @@ import { useShell, type Notice } from '../shell/shell-context.js';
 import { verdictLine } from './terminal.js';
 import { closeQuestion, shellAfter, shellOfUrl, withShell } from './shells.js';
 import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
+import { tip } from '../ui/tip.js';
 
 /** `?send=verdict`: from the Review tab, the box filled with the review's verdict (V18c). */
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
@@ -450,7 +452,7 @@ function WorkspacePanel({
       <header className={`workspace-top tone-${row.next.chip.tone}`}>
         <div className="workspace-title">
           <StateDot row={row} />
-          <h1 className="workspace-about" title={workspace.brief}>
+          <h1 className="workspace-about" {...tip(briefTip(workspace.brief))}>
             <KindTag workspace={workspace} />
             {workspaceName(workspace)}
           </h1>
@@ -469,7 +471,7 @@ function WorkspacePanel({
             <button
               type="button"
               className="link"
-              title="Types its first line and where the review is; Enter sends it"
+              {...tip('Types its first line and where the review is\nEnter sends it')}
               onClick={() => void typeVerdict(opened, verdict.text)}
             >
               Send the verdict
@@ -517,7 +519,7 @@ function WorkspacePanel({
               className="icon-button changes-toggle"
               aria-label="Changes"
               aria-pressed={changesShown}
-              title={`${changesShown ? 'Hide' : 'Show'} the branch's changes (])`}
+              {...tip(`${changesShown ? 'Hide' : 'Show'} the branch's changes`, { keys: ']' })}
               onClick={toggleChanges}
             >
               <ChangesIcon />
@@ -545,7 +547,7 @@ function WorkspacePanel({
               type="button"
               className="button primary"
               disabled={busy}
-              title="Remove its sessions, its worktree and its merged branch"
+              {...tip('Remove its sessions, its worktree and its merged branch')}
               onClick={() => clean(false)}
             >
               Clean up

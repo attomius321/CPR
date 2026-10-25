@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MoreIcon } from './icons.js';
+import { tip } from './tip.js';
 
 /** An entry of the "⋯" menu. */
 export interface MenuAction {
@@ -35,7 +36,7 @@ export function MoreActions({ actions }: { actions: MenuAction[] }) {
         type="button"
         className="icon-button"
         aria-label="More actions"
-        title="More actions"
+        {...tip('More actions')}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
@@ -50,7 +51,7 @@ export function MoreActions({ actions }: { actions: MenuAction[] }) {
               type="button"
               role="menuitem"
               disabled={action.disabled}
-              {...(action.title ? { title: action.title } : {})}
+              {...tip(action.title, { side: 'right' })}
               onClick={() => {
                 setOpen(false);
                 action.onSelect();

@@ -66,6 +66,7 @@ import {
   type WorkspaceRow,
 } from '../workspaces/workspaces.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
+import { tip } from '../ui/tip.js';
 
 /**
  * The workspaces' groups after the merges, each with its icon (V44): only the group has one, a
@@ -155,6 +156,7 @@ export function Sidenav({
 
   // What every group's cards share: the review marks, the workspace shown, the one just started.
   const cards = {
+    folded,
     marks,
     picked: route?.page === 'workspace' ? route.branch : null,
     flashed,
@@ -180,7 +182,9 @@ export function Sidenav({
         <a
           className="sidenav-brand"
           href={HISTORY_PAGE}
-          title={repo ? `Symbiote · ${repo}` : 'Symbiote'}
+          // Named in the rail too, where its words are hidden (a `title` named it before V54).
+          aria-label={repo ? `Symbiote · ${repo}` : 'Symbiote'}
+          {...tip(repo ? `Symbiote · ${repo}` : 'Symbiote', { side: 'right' })}
         >
           <KoiMark />
           <span className="sidenav-label">
@@ -191,7 +195,7 @@ export function Sidenav({
           type="button"
           className="icon-button sidenav-fold"
           aria-label={folded ? 'Open the sidenav' : 'Fold the sidenav'}
-          title={folded ? 'Open the sidenav ([)' : 'Fold the sidenav ([)'}
+          {...tip(folded ? 'Open the sidenav' : 'Fold the sidenav', { keys: '[', side: 'right' })}
           aria-expanded={!folded}
           onClick={onFold}
         >
@@ -201,7 +205,8 @@ export function Sidenav({
       <nav className="sidenav-pages" aria-label="Pages">
         <a
           href={HISTORY_PAGE}
-          title="History: every branch's commits (h)"
+          aria-label="History"
+          {...tip("History\nEvery branch's commits", { keys: 'h', side: 'right' })}
           aria-current={route?.page === 'history' ? 'page' : undefined}
         >
           <HistoryIcon />
@@ -210,15 +215,27 @@ export function Sidenav({
         </a>
         <a
           href={SCOUT_PAGE}
-          title={
+          aria-label="Scout"
+          {...tip(
             scoutWaits
-              ? 'Scout: waits for you (a)'
+              ? 'Scout\nWaits for you'
               : scoutMark === 'working'
-                ? 'Scout: working (a)'
+                ? 'Scout\nWorking'
                 : scoutMark === 'answered'
-                  ? 'Scout: answered while you were away (a)'
-                  : 'Scout: ask about the repository, or have it carry a workspace (a)'
-          }
+                  ? 'Scout\nAnswered while you were away'
+                  : 'Scout\nAsk about the repository, or have it carry a workspace',
+            {
+              keys: 'a',
+              side: 'right',
+              tone: scoutWaits
+                ? 'warn'
+                : scoutMark === 'working'
+                  ? 'info'
+                  : scoutMark === 'answered'
+                    ? 'ok'
+                    : undefined,
+            },
+          )}
           aria-current={route?.page === 'scout' ? 'page' : undefined}
           data-state={scoutWaits ? 'waiting' : (scoutMark ?? undefined)}
         >
@@ -236,13 +253,20 @@ export function Sidenav({
         </a>
         <a
           href={SKILLS_PAGE}
-          title={
+          aria-label="Skills"
+          {...tip(
             scribeMark === 'working'
-              ? 'Skills: Scribe is writing (i)'
+              ? 'Skills\nScribe is writing'
               : scribeMark === 'answered'
-                ? 'Skills: Scribe answered while you were away (i)'
-                : 'Skills: what agents load to work in this repository (i)'
-          }
+                ? 'Skills\nScribe answered while you were away'
+                : 'Skills\nWhat agents load to work in this repository',
+            {
+              keys: 'i',
+              side: 'right',
+              tone:
+                scribeMark === 'working' ? 'info' : scribeMark === 'answered' ? 'ok' : undefined,
+            },
+          )}
           aria-current={route?.page === 'skills' ? 'page' : undefined}
           data-state={scribeMark ?? undefined}
         >
@@ -258,7 +282,8 @@ export function Sidenav({
         </a>
         <a
           href={MONITOR_PAGE}
-          title="Monitor: where this checkout's code is (m)"
+          aria-label="Monitor"
+          {...tip("Monitor\nWhere this checkout's code is", { keys: 'm', side: 'right' })}
           aria-current={route?.page === 'monitor' ? 'page' : undefined}
         >
           <MonitorIcon />
@@ -267,7 +292,8 @@ export function Sidenav({
         </a>
         <a
           href={SETTINGS_PAGE}
-          title="Settings: every agent's prompts (s)"
+          aria-label="Settings"
+          {...tip("Settings\nEvery agent's prompts", { keys: 's', side: 'right' })}
           aria-current={route?.page === 'settings' ? 'page' : undefined}
         >
           <SettingsIcon />
@@ -279,7 +305,10 @@ export function Sidenav({
         <h2 className="sidenav-heading">
           <span className="sidenav-label">Workspaces</span>
           {needs > 0 && (
-            <span className="page-count" title={`${needs} need${needs === 1 ? 's' : ''} you`}>
+            <span
+              className="page-count"
+              {...tip(`${needs} need${needs === 1 ? 's' : ''} you`, { tone: 'warn' })}
+            >
               {needs}
             </span>
           )}
@@ -288,7 +317,7 @@ export function Sidenav({
             className="icon-button"
             href={START_PAGE}
             aria-label="Start a workspace"
-            title="Start a workspace: a branch, its worktree and an agent (n)"
+            {...tip('Start a workspace\nA branch, its worktree and an agent', { keys: 'n' })}
             aria-current={route?.page === 'start' ? 'page' : undefined}
           >
             <PlusIcon />
@@ -335,7 +364,7 @@ export function Sidenav({
         >
           {queued.length > 0 && (
             <section className="workspace-group merging" aria-label="Merging">
-              <h3 title="Merging">
+              <h3 {...tip('Merging', { side: 'right' })}>
                 <MergingIcon />
                 <span className="sidenav-label">Merging</span>{' '}
                 <span className="branches-count">{queued.length}</span>
@@ -345,6 +374,7 @@ export function Sidenav({
                   <MergeCard
                     key={entry.id}
                     entry={entry}
+                    folded={folded}
                     picked={route?.page === 'merge' && route.branch === entry.branch}
                     onPick={() => shell?.navigate({ page: 'merge', branch: entry.branch })}
                   />
@@ -453,6 +483,7 @@ function WorkspaceGroupSection({
   Icon,
   rows,
   starts = [],
+  folded,
   marks,
   picked,
   flashed,
@@ -465,6 +496,8 @@ function WorkspaceGroupSection({
   rows: WorkspaceRow[];
   /** Workspaces being made (V48): their cards after the group's. */
   starts?: readonly StartUnderWay[];
+  /** The sidenav folded to its rail: a card is its dot, its tip says the rest. */
+  folded: boolean;
   marks: Map<string, ReviewMark>;
   /** The workspace shown in the main area. */
   picked: string | null;
@@ -474,8 +507,8 @@ function WorkspaceGroupSection({
 }) {
   return (
     <section className={`workspace-group group-${group}`} aria-label={title}>
-      {/* Its title names it in the rail, where only the icon shows. */}
-      <h3 title={title}>
+      {/* Its tip names it in the rail, where only the icon shows. */}
+      <h3 {...tip(title, { side: 'right' })}>
         <Icon />
         <span className="sidenav-label">{title}</span>{' '}
         <span className="branches-count">{rows.length + starts.length}</span>
@@ -486,6 +519,7 @@ function WorkspaceGroupSection({
             key={row.workspace.branch}
             row={row}
             mark={marks.get(row.workspace.branch)}
+            folded={folded}
             picked={picked === row.workspace.branch}
             flashed={row.workspace.branch === flashed}
             onPick={() => onPick(row.workspace.branch)}
@@ -528,6 +562,7 @@ function StartingCard({ start }: { start: StartUnderWay }) {
 function WorkspaceCard({
   row,
   mark,
+  folded,
   picked,
   flashed,
   onPick,
@@ -535,6 +570,7 @@ function WorkspaceCard({
 }: {
   row: WorkspaceRow;
   mark: ReviewMark | undefined;
+  folded: boolean;
   picked: boolean;
   flashed: boolean;
   onPick: () => void;
@@ -564,7 +600,12 @@ function WorkspaceCard({
       ref={item}
       className={`workspace-row${picked ? ' picked' : ''}${flash ? ' flash' : ''}${cleanable ? ' removable' : ''}`}
       data-branch={workspace.branch}
-      title={`${name} — ${row.next.doing ?? row.next.text}${row.next.blocked ? `: ${row.next.blocked}` : ''}`}
+      {...(folded
+        ? tip(
+            `${name}\n${row.next.doing ?? row.next.text}${row.next.blocked ? `: ${row.next.blocked}` : ''}`,
+            { side: 'right' },
+          )
+        : {})}
       onClick={onPick}
     >
       <div className="workspace-head">
@@ -586,7 +627,7 @@ function WorkspaceCard({
       {cleanable && (
         <CardRemove
           label={`Clean up ${name}`}
-          title="Clean up: remove its sessions, its worktree and its merged branch"
+          title={'Clean up\nRemove its sessions, its worktree and its merged branch'}
           shown={picked}
           run={() => cleanUp(workspace.branch)}
         />
@@ -594,14 +635,14 @@ function WorkspaceCard({
       {row.next.group === 'waiting' ? (
         // What it asks, and the way to answer it (V48): the card's own action, and how long.
         <>
-          <p className="workspace-blocked" title={row.next.blocked ?? row.next.text}>
+          <p className="workspace-blocked" {...tip(row.next.blocked ?? row.next.text)}>
             {row.next.blocked ?? row.next.text}
           </p>
           <div className="workspace-respond">
             <button
               type="button"
               className="button secondary respond"
-              title={`Answer ${name}: its terminal, focused`}
+              {...tip(`Answer ${name}\nIts terminal, focused`)}
               onClick={(event) => {
                 event.stopPropagation();
                 onRespond();
@@ -628,10 +669,12 @@ function WorkspaceCard({
 /** A merge in Symbiote's queue: the branch, where it goes, its state; a click opens it. */
 function MergeCard({
   entry,
+  folded,
   picked,
   onPick,
 }: {
   entry: MergeEntry;
+  folded: boolean;
   picked: boolean;
   onPick: () => void;
 }) {
@@ -641,7 +684,7 @@ function MergeCard({
     <li
       className={`workspace-row merge-card merge-tone-${tone}${picked ? ' picked' : ''}${removable ? ' removable' : ''}`}
       data-merge={entry.branch}
-      title={`${entry.branch} → ${entry.into}: ${text}`}
+      {...(folded ? tip(`${entry.branch} → ${entry.into}\n${text}`, { side: 'right' }) : {})}
       onClick={onPick}
     >
       <div className="workspace-head">
@@ -658,7 +701,7 @@ function MergeCard({
       {removable && (
         <CardRemove
           label={`Remove the merge of ${entry.branch}`}
-          title={`Remove it from the queue, with its log: ${entry.into} keeps the merge`}
+          title={`Remove it from the queue\nWith its log: ${entry.into} keeps the merge`}
           shown={picked}
           run={() => removeMerge(entry)}
         />
@@ -692,7 +735,7 @@ function CardRemove({
       type="button"
       className="icon-button card-remove"
       aria-label={label}
-      title={title}
+      {...tip(title)}
       disabled={busy}
       onClick={(event) => {
         event.stopPropagation();

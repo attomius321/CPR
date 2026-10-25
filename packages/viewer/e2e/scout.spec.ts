@@ -49,7 +49,7 @@ test("opens as Scout's terminal, from the sidenav and by its key: started in the
   // The person's own session in the checkout, started before (V35: never taken for Scout's).
   symbiote.addSession({ cwd: symbiote.repo, kind: 'interactive', name: 'mine', status: 'idle' });
   await page.goto(`${symbiote.url}history`);
-  await expect(scoutLink(page)).toHaveAttribute('title', /\(a\)/);
+  await expect(scoutLink(page)).toHaveAttribute('data-tip-keys', 'a');
   // Nothing is started before Scout is opened.
   expect(scoutCalls()).toEqual([]);
   await scoutLink(page).click();
@@ -167,7 +167,7 @@ test('the sidenav says Scout works, then that it answered while you were away', 
   await expect(scoutLink(page)).toHaveAttribute('data-state', 'working', POLL);
   symbiote.setSession('fake0', { state: 'done', status: 'idle', answer: 'Because…' });
   await expect(scoutLink(page)).toHaveAttribute('data-state', 'answered', POLL);
-  await expect(scoutLink(page)).toHaveAttribute('title', /answered/);
+  await expect(scoutLink(page)).toHaveAttribute('data-tip', /Answered/);
   await scoutLink(page).click();
   await expect(scoutLink(page)).not.toHaveAttribute('data-state', /.+/);
 });
@@ -222,7 +222,7 @@ test('a model and an effort picked in its head start nothing: New conversation s
   await expect(model(page)).toHaveValue('sonnet');
   // New conversation is the one to start them, and says so.
   await expect(renew(page)).not.toHaveClass(/secondary/);
-  await expect(renew(page)).toHaveAttribute('title', /starts another on Sonnet 5\.5 at high/);
+  await expect(renew(page)).toHaveAttribute('data-tip', /starts another on Sonnet 5\.5 at high/);
   expect(scoutCalls()).toHaveLength(1);
   expect(symbiote.stops()).toEqual([]);
   expect(symbiote.removed()).toEqual([]);
@@ -316,7 +316,7 @@ test('another agent picked in its head starts nothing: New conversation starts i
 
   await agent.selectOption('codex');
   await expect(renew(page)).not.toHaveClass(/secondary/);
-  await expect(renew(page)).toHaveAttribute('title', /starts another with Codex/);
+  await expect(renew(page)).toHaveAttribute('data-tip', /starts another with Codex/);
   // Codex's models in the head; Claude Code's conversation in the terminal, as it was.
   await expect(model(page).locator('option').first()).toHaveText(/^Codex's default/);
   expect(threads()).toEqual([]);

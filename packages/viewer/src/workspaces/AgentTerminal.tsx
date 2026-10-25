@@ -23,6 +23,7 @@ import {
   type LinkTarget,
 } from './terminal.js';
 import { holdReads } from './useWorkspaces.js';
+import { tip } from '../ui/tip.js';
 
 const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
 /** Where ⌘V pastes and Ctrl+V stays the agent's (V36). */
@@ -449,7 +450,11 @@ export function AgentTerminal({
           style={{ top: hint.top, left: hint.left, right: hint.right }}
         >
           <span>{hint.what}</span>
-          <kbd>{hint.keys}</kbd>
+          <span className="terminal-link-hint-keys">
+            {hint.keys.split('+').map((key) => (
+              <kbd key={key}>{key}</kbd>
+            ))}
+          </span>
         </p>
       )}
     </div>
@@ -469,7 +474,7 @@ export function AttachImages({ into }: { into: OpenedTerminal }) {
         type="button"
         className="icon-button"
         aria-label="Attach images"
-        title="Attach images to the message: PNG, JPEG, GIF or WebP"
+        {...tip('Attach images to the message\nPNG, JPEG, GIF or WebP')}
         onClick={() => input.current?.click()}
       >
         <ImageIcon />

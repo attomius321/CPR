@@ -191,6 +191,7 @@ hosted.
 | [V49](plan/v49-start-page-look.md) | Start a workspace: a centred page in two cards | ready for review | 378–382 | [journal](journal/v49-start-page-look.md) |
 | [V51](plan/v51-settings-look.md) | Settings and Skills: centred, in cards | ready for review | 386–390 | [journal](journal/v51-settings-look.md) |
 | [V56](plan/v56-skills-page-layout.md) | Skills: the page's own, the whole main area | ready for review | 407–410 | [journal](journal/v56-skills-page-layout.md) |
+| [V54](plan/v54-tooltips.md) | Tooltips drawn by Symbiote, one form per context | ready for review | 397–402 | [journal](journal/v54-tooltips.md) |
 
 ### Native window
 

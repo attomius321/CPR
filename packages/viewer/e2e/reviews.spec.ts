@@ -286,7 +286,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await page.getByRole('link', { name: 'Back to History' }).click();
   const approved = row(page, 'Agent: square returns early').locator('.ref-review').first();
   await expect(approved).toHaveText('✓');
-  await expect(approved).toHaveAttribute('title', 'Approved');
+  await expect(approved).toHaveAttribute('data-tip', 'Approved');
   // A filled chip in the verdict's colour, not a glyph in the badge's text colour.
   await expect(approved).toHaveClass(/ref-review-approved/);
   const look = await approved.evaluate((el) => {
@@ -339,7 +339,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await page.goto(`${symbiote.url}history`);
   await expect(
     row(page, 'Agent: square returns early').locator('.ref-review').first(),
-  ).toHaveAttribute('title', 'Approved · merged into main');
+  ).toHaveAttribute('data-tip', 'Approved · merged into main');
 });
 
 test('says a branch will conflict with main; resolved on the branch, only its commit is new (V17)', async ({

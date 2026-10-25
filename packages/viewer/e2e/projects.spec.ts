@@ -50,7 +50,7 @@ test('draws each project as a frame around its files', async ({ page }) => {
   // Inside its frame a file's path starts at the project's folder; the full path is its title.
   const label = node(page, 'group:file:apps/admin/src/page.ts').locator('.file-label');
   await expect(label).toHaveText('src/page.ts');
-  await expect(label).toHaveAttribute('title', 'apps/admin/src/page.ts');
+  await expect(label).toHaveAttribute('data-tip', 'apps/admin/src/page.ts');
 
   // Both apps' calls to the library cross a boundary, and the legend says what that looks like.
   await expect(page.locator('.react-flow__edge.edge-cross')).toHaveCount(2);
@@ -117,7 +117,7 @@ test('lists the changes by project, with progress and paths from the project', a
   const ui = group(page, '@acme/ui');
   await expect(ui.locator('.list-project-progress')).toHaveText('0/1');
   await expect(ui.locator('.list-file-name')).toHaveText('src/index.ts');
-  await expect(ui.locator('.list-file-name')).toHaveAttribute('title', 'libs/ui/src/index.ts');
+  await expect(ui.locator('.list-file-name')).toHaveAttribute('data-tip', 'libs/ui/src/index.ts');
   await ui.getByLabel('Mark button reviewed').check();
   await expect(ui.locator('.list-project-progress')).toHaveText('1/1');
 

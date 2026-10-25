@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { MenuChoice } from './checkout.js';
+import { tip } from '../ui/tip.js';
 
 /** A ref's name, drawn as the row's badges draw it (V14). */
 export function RefBadge({ target, className }: { target: MenuChoice['ref']; className?: string }) {
   return (
     <span
       className={`ref ref-${target.kind}${className ? ` ${className}` : ''}`}
-      title={target.name}
+      {...tip(target.name)}
     >
       {target.name}
     </span>

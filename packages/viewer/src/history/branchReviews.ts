@@ -1,6 +1,7 @@
 import type { BranchReviewList, BranchReviewSummary, Commit, RefList } from '@symbiote/core';
 import type { MenuChoice } from './checkout.js';
 import { VIA_NAMES as VIA } from '../workspaces/workspaces.js';
+import { tip, type TipAttributes, type TipTone } from '../ui/tip.js';
 
 /** One entry of a row's "Review" submenu (V15). */
 export interface ReviewChoice extends MenuChoice {
@@ -91,6 +92,17 @@ export interface ReviewMark {
   title: string;
   tone: 'since' | 'approved' | 'changes' | 'progress';
 }
+
+const REVIEW_TONES: Record<ReviewMark['tone'], TipTone | undefined> = {
+  since: 'info',
+  approved: 'ok',
+  changes: 'bad',
+  progress: undefined,
+};
+
+/** A review mark's tooltip (V54): what it means, after a dot of its colour. */
+export const reviewTip = (mark: ReviewMark): TipAttributes =>
+  tip(mark.title, { tone: REVIEW_TONES[mark.tone] });
 
 /**
  * What the commits page shows of reviews: each reviewed branch's mark by ref name — "+2" commits

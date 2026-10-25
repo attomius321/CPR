@@ -11,6 +11,7 @@ import {
 } from './changes.js';
 import { postJson, serverWords } from '../ui/http.js';
 import { shortAge } from './workspaces.js';
+import { tip } from '../ui/tip.js';
 
 /**
  * A workspace's changes (V29d), read when it is picked and with every read of the list (on focus,
@@ -63,7 +64,7 @@ function FileRow({
       type="button"
       className="changes-file"
       aria-label={`Open the changes to ${file.path} in VS Code`}
-      title={fileTitle(file)}
+      {...tip(fileTitle(file))}
       onClick={() => onOpen(file)}
     >
       <span className={`changes-status status-${file.status}`}>{statusLetter(file.status)}</span>
@@ -153,7 +154,7 @@ export function ChangesPanel({
             ) : (
               <ol className="changes-list">
                 {changes.commits.listed.map((commit) => (
-                  <li key={commit.sha} className="changes-commit" title={commitTitle(commit)}>
+                  <li key={commit.sha} className="changes-commit" {...tip(commitTitle(commit))}>
                     <span className="changes-sha">{commit.sha.slice(0, 7)}</span>
                     <span className="changes-subject">{commit.subject}</span>
                     <time className="changes-age" dateTime={commit.date}>

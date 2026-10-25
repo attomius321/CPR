@@ -114,7 +114,7 @@ test("Scout reviews a branch, approves it and queues its merge, each on the pers
     `Scout asks: Approve agent at ${head.slice(0, 7)}: it is to be merged into main`,
   );
   await expect(ask(page).locator('.ask-left')).toHaveText('10 min left');
-  await expect(scoutLink(page)).toHaveAttribute('title', 'Scout: waits for you (a)');
+  await expect(scoutLink(page)).toHaveAttribute('data-tip', 'Scout\nWaits for you');
   await ask(page).getByRole('button', { name: 'Confirm' }).click();
   await expect(ask(page)).toHaveCount(0);
   const approved = await approving;
@@ -129,7 +129,7 @@ test("Scout reviews a branch, approves it and queues its merge, each on the pers
     has: page.locator('.commit-subject', { hasText: 'Agent: add cube' }),
   });
   await expect(tip.locator('.ref-review').first()).toHaveAttribute(
-    'title',
+    'data-tip',
     'Approved through Scout',
   );
 
@@ -176,7 +176,7 @@ test("an agent of the person's starts a workspace through symbiote mcp, on their
     `e2e-agent in ${folder} asks: Start fix/discount, "The discount", with Claude Code, plan first`,
   );
   // Not Scout's: its mark stays.
-  await expect(scoutLink(page)).not.toHaveAttribute('title', 'Scout: waits for you (a)');
+  await expect(scoutLink(page)).not.toHaveAttribute('data-tip', 'Scout\nWaits for you');
   await ask(page).getByRole('button', { name: 'Confirm' }).click();
   expect((await starting).value).toMatchObject({ workspace: { branch: 'fix/discount' } });
   await page.goto(`${running.url}?branch=fix%2Fdiscount&brief`);

@@ -295,7 +295,7 @@ test("Effort for Codex on its app server: its model's levels and its default; th
     'xhigh',
     'max',
   ]);
-  await expect(stops(effort(page)).first()).toHaveAttribute('title', "Codex's default (medium)");
+  await expect(stops(effort(page)).first()).toHaveAttribute('data-tip', "Codex's default (medium)");
   await effort(page).press('Home');
   await expect(effort(page)).toHaveAttribute('aria-valuetext', "Codex's default (medium)");
   await effort(page).press('ArrowRight');
@@ -547,7 +547,7 @@ test('Documents: chosen, dropped and pasted files go beside the record, and the 
   await expect(rows.nth(4)).toContainText('movie.mp4Larger than 20 MB.');
   await expect(startButton).toBeDisabled();
   await expect(startButton).toHaveAttribute(
-    'title',
+    'data-tip',
     'movie.mp4 was not added: remove it to start.',
   );
   await documents.getByRole('button', { name: 'Remove movie.mp4' }).click();

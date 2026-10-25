@@ -69,10 +69,10 @@ test("the status bar shows each subscription's windows, what a hover says, and n
   expect(await filledWith(claude.locator('.usage-window.tone-ok'), '--added')).toBe(true);
   expect(await filledWith(claude.locator('.usage-window.tone-high'), '--warning')).toBe(true);
   await expect(claude).toHaveAttribute(
-    'title',
+    'data-tip',
     /^Claude Pro\n5h: 59 % used, resets in 3 h \d+ min\n/,
   );
-  await expect(claude).toHaveAttribute('title', /\nRead just now$/);
+  await expect(claude).toHaveAttribute('data-tip', /\nRead just now$/);
 
   // The token went to the usage endpoint only, and never to the page.
   expect(symbiote.usageRequests()).toEqual(['Bearer e2e-access-token']);
@@ -175,7 +175,7 @@ test("started while Claude's endpoint refuses: the last read Symbiote kept, its 
   await expect(claude).toHaveText('ClaudePro5h40%wk19%12 minutes ago', POLL);
   await expect(claude).toHaveClass(/\bcached\b/);
   await expect(claude).toHaveAttribute(
-    'title',
+    'data-tip',
     /\nRead 12 minutes ago, not since: Claude's usage asked to wait \(429\)$/,
   );
   expect(symbiote.usageRequests()).toHaveLength(1);

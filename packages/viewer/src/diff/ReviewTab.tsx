@@ -19,6 +19,7 @@ import { OpenIcon } from './OpenIcon.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { MergeControl } from '../workspaces/MergeControl.js';
 import { Help } from '../ui/Help.js';
+import { tip } from '../ui/tip.js';
 
 export interface ReviewProps {
   forge: 'github' | 'gitlab' | 'local';
@@ -250,13 +251,13 @@ function MergeCheck({ canOpen }: { canOpen: boolean }) {
         {merge.conflicts.map((path) => {
           const slash = path.lastIndexOf('/') + 1;
           return (
-            <li key={path} title={path}>
+            <li key={path} {...tip(path, { code: true })}>
               {canOpen && (
                 <button
                   type="button"
                   className="merge-open"
                   aria-label={`Open ${path} in VS Code`}
-                  title={`Open ${path} in VS Code`}
+                  {...tip(`Open ${path} in VS Code`)}
                   onClick={() => open(path)}
                 >
                   <OpenIcon />

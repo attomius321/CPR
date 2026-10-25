@@ -21,6 +21,7 @@ import {
 } from '../ui/icons.js';
 import { HISTORY_PAGE } from './pages.js';
 import { useTheme } from './theme.js';
+import { tip } from '../ui/tip.js';
 
 /** Where a page puts its tabs (`page`) and its panel's toggle (`end`) in the title bar. */
 export interface TitleBarSlots {
@@ -98,7 +99,7 @@ export function WindowButtons() {
         type="button"
         className="icon-button"
         aria-label="Minimize"
-        title="Minimize"
+        {...tip('Minimize', { side: 'bottom' })}
         onClick={() => ask('minimize')}
       >
         <MinimizeIcon />
@@ -107,7 +108,7 @@ export function WindowButtons() {
         type="button"
         className="icon-button"
         aria-label={maximized ? 'Restore' : 'Maximize'}
-        title={maximized ? 'Restore' : 'Maximize'}
+        {...tip(maximized ? 'Restore' : 'Maximize', { side: 'bottom' })}
         onClick={() => ask(maximized ? 'restore' : 'maximize')}
       >
         {maximized ? <RestoreIcon /> : <MaximizeIcon />}
@@ -116,7 +117,7 @@ export function WindowButtons() {
         type="button"
         className="icon-button window-close"
         aria-label="Close"
-        title="Close"
+        {...tip('Close', { side: 'bottom' })}
         onClick={() => ask('close')}
       >
         <CloseIcon />
@@ -155,7 +156,7 @@ export function TitleBar({
         <a
           className="titlebar-brand"
           href={HISTORY_PAGE}
-          title={repo ? `Symbiote · ${repo}` : 'Symbiote'}
+          {...tip(repo ? `Symbiote · ${repo}` : 'Symbiote', { side: 'bottom' })}
         >
           <KoiMark />
           <span className="titlebar-name">
@@ -166,7 +167,7 @@ export function TitleBar({
           type="button"
           className="icon-button"
           aria-label={folded ? 'Open the sidenav' : 'Fold the sidenav'}
-          title={folded ? 'Open the sidenav ([)' : 'Fold the sidenav ([)'}
+          {...tip(folded ? 'Open the sidenav' : 'Fold the sidenav', { keys: '[', side: 'bottom' })}
           aria-expanded={!folded}
           onClick={onFold}
         >
@@ -176,7 +177,7 @@ export function TitleBar({
           type="button"
           className="icon-button"
           aria-label="Back"
-          title="Back (Alt+←)"
+          {...tip('Back', { keys: 'Alt+←', side: 'bottom' })}
           disabled={!moves.back}
           onClick={() => window.history.back()}
         >
@@ -186,7 +187,7 @@ export function TitleBar({
           type="button"
           className="icon-button"
           aria-label="Forward"
-          title="Forward (Alt+→)"
+          {...tip('Forward', { keys: 'Alt+→', side: 'bottom' })}
           disabled={!moves.forward}
           onClick={() => window.history.forward()}
         >

@@ -22,6 +22,7 @@ import {
 import { OpenIcon } from './OpenIcon.js';
 import { pathInProject, projectOf } from '../graph/projects.js';
 import { CloseIcon } from '../ui/icons.js';
+import { tip } from '../ui/tip.js';
 
 const sources = new Map<string, Promise<string>>();
 
@@ -170,7 +171,9 @@ export function DetailPanel({
                 id="open-in-editor"
                 type="button"
                 className="open-editor"
-                title={`Open line ${openTarget.line} of ${openTarget.side} in VS Code (o)`}
+                {...tip(`Open line ${openTarget.line} of ${openTarget.side} in VS Code`, {
+                  keys: 'o',
+                })}
                 onClick={() => open(openTarget)}
               >
                 <OpenIcon />
@@ -352,7 +355,7 @@ function LineNumber({
     <button
       type="button"
       className="ln ln-open"
-      title={`Open line ${line} of ${side} in VS Code`}
+      {...tip(`Open line ${line} of ${side} in VS Code`)}
       onClick={(event) => {
         event.stopPropagation();
         onOpen(row, side);
@@ -509,7 +512,7 @@ function FileLine({
   // Packages and dynamic calls are in no project.
   const project = projects && groupOf(node).file ? projectOf(file, projects) : undefined;
   return (
-    <div className="panel-file" {...(project ? { title: file } : {})}>
+    <div className="panel-file" {...(project ? tip(file, { code: true }) : {})}>
       {project ? (
         <>
           <span className="panel-project">{project.name}</span> › {pathInProject(file, project)}

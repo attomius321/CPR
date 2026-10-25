@@ -305,7 +305,7 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
     const heading = group(page, name).locator('h3');
     await expect(heading.locator('> svg.icon')).toBeVisible();
     await expect(heading.locator('.sidenav-label')).toBeHidden();
-    await expect(heading).toHaveAttribute('title', name);
+    await expect(heading).toHaveAttribute('data-tip', name);
   }
   await expect(group(page, 'Merging').locator('.workspace-state')).toBeHidden();
   await expect

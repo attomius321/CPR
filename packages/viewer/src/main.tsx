@@ -9,6 +9,7 @@ import './styles.css';
 import { App } from './diff/App.js';
 import { askIntro, startIntro } from './intro/intro.js';
 import { reportPageErrors } from './ui/report.js';
+import { Tooltips } from './ui/Tooltip.js';
 
 // The page's errors go to Symbiote's logs (LG1), from its first script on; a `?graph=` page (a
 // graph file, the measure scripts) has no server to tell.
@@ -46,6 +47,7 @@ void Promise.all([
   ).render(
     <StrictMode>
       <App />
+      <Tooltips />
     </StrictMode>,
   );
 });

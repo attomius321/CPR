@@ -342,6 +342,21 @@ export function relativeDate(iso: string, now: number): string {
   return 'just now';
 }
 
+/**
+ * A date written out with its day and time (V54): a tooltip's "Sun, 25 Oct 2026, 17:02", in the
+ * person's locale unless one is asked (the tests').
+ */
+export function longDate(iso: string, locale?: string): string {
+  return new Date(iso).toLocaleString(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 /** What a diff page's `api/graph` said: the graph, or how its analysis is going. */
 export type Loaded =
   | { kind: 'graph'; graph: Graph }

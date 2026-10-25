@@ -1,5 +1,6 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import type { SummaryData } from './flow.js';
+import { tip } from '../ui/tip.js';
 
 /** Many unchanged neighbours of one changed symbol, as one node; a click shows or hides them. */
 export function SummaryNode({ data }: NodeProps<Node<SummaryData, 'summary'>>) {
@@ -14,7 +15,7 @@ export function SummaryNode({ data }: NodeProps<Node<SummaryData, 'summary'>>) {
   return (
     <div
       className={`summary-node${expanded ? ' expanded' : ''}`}
-      title={`${expanded ? 'Hide' : 'Show'} these ${what} in ${where}`}
+      {...tip(`${expanded ? 'Hide' : 'Show'} these ${what} in ${where}`)}
     >
       <Handle type="target" position={Position.Left} />
       <div className="summary-count">{what}</div>

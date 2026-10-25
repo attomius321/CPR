@@ -16,6 +16,7 @@ import {
   skillOfUrl,
   skillSize,
 } from './skills.js';
+import { tip } from '../ui/tip.js';
 
 const API = '/api/skills';
 /** The form for a new skill, and Scribe's conversation, in the list's place of a skill's path. */
@@ -311,7 +312,7 @@ export function SkillsPage() {
                   <button
                     type="button"
                     aria-current={open === SCRIBE ? 'true' : undefined}
-                    title={scribe?.conversation ? scoutStateText(scribe.conversation) : undefined}
+                    {...tip(scribe?.conversation ? scoutStateText(scribe.conversation) : undefined)}
                     onClick={() => show(SCRIBE)}
                   >
                     <span className="skills-name">Scribe</span>
@@ -565,7 +566,7 @@ function SkillEditor({
         <button
           type="button"
           className="button ghost"
-          title="Ask Scribe to change this skill"
+          {...tip('Ask Scribe to change this skill')}
           onClick={onImprove}
         >
           Improve with Scribe

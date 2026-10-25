@@ -232,3 +232,5 @@ merge commit.
 - 2026-10-25 [V55 — the cards' bin, the heads' Clean up and Remove](journal/v55-done-workspace-cleanup.md)
 - 2026-10-25 [V56 spike — Skills' width, Scribe's terminal](journal/v56-skills-page-layout.md)
 - 2026-10-25 [V56 — Skills' own rules over the whole main area; Scribe's terminal edge to edge; the Monitor's head](journal/v56-skills-page-layout.md)
+- 2026-10-25 [V54 spike — what the viewer's tooltips are](journal/v54-tooltips.md)
+- 2026-10-25 [V54 — tooltips drawn by Symbiote](journal/v54-tooltips.md)

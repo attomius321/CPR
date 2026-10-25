@@ -3,6 +3,7 @@ import type { WorkspaceOptions } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
 import { CloseIcon, FileIcon, ImageIcon, PlusIcon } from '../ui/icons.js';
 import { documentSize, isImageName, type DocumentEntry } from './documents.js';
+import { tip } from '../ui/tip.js';
 
 /**
  * The start page's Documents (V40): the files given with the brief, each listed with its size
@@ -50,7 +51,7 @@ export function StartDocuments({
           {entries.map((entry) => (
             <li key={entry.key} className={entry.state === 'failed' ? 'failed' : undefined}>
               {isImageName(entry.name) ? <ImageIcon /> : <FileIcon />}
-              <span className="start-document-name" title={entry.name}>
+              <span className="start-document-name" {...tip(entry.name)}>
                 {entry.name}
               </span>
               <span className="start-document-state">
@@ -64,7 +65,7 @@ export function StartDocuments({
                 type="button"
                 className="start-document-remove"
                 aria-label={`Remove ${entry.name}`}
-                title="Remove"
+                {...tip('Remove')}
                 onClick={() => onRemove(entry.key)}
               >
                 <CloseIcon />

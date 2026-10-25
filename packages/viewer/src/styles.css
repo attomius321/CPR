@@ -10,6 +10,7 @@
 @import './ui/Resizer.css';
 @import './ui/icons.css';
 @import './ui/Help.css';
+@import './ui/Tooltip.css';
 @import './ui/MoreActions.css';
 @import './graph/SymbolNode.css';
 @import './graph/SummaryNode.css';

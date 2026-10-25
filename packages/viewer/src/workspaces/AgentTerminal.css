@@ -51,8 +51,8 @@
 }
 
 /* A link in the agent's terminal under the pointer (V38): what it opens and its keys, above its
-   row (below the first rows). The style's tooltip, in the terminal's own colours: the screen is
-   black in both themes. The link keeps the pointer. */
+   row (below the first rows). The tooltip's shape (V54, Tooltip.css), in the dark theme's tip
+   colours in both themes: the screen is black in both. The link keeps the pointer. */
 .terminal-link-hint {
   position: absolute;
   z-index: 1;
@@ -64,9 +64,11 @@
   padding: 6px 12px;
   border-radius: 8px;
   background: #e3e8f2;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 55%);
   color: #05080f;
   font-size: var(--size-small);
+  font-weight: 500;
+  line-height: 18px;
   pointer-events: none;
   transform: translateY(-100%);
 }
@@ -75,17 +77,28 @@
   transform: none;
 }
 
-.terminal-link-hint > span {
+.terminal-link-hint > span:first-child {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.terminal-link-hint > kbd {
+.terminal-link-hint-keys {
+  display: inline-flex;
   flex: none;
-  border-color: rgb(5 8 15 / 20%);
-  background: none;
+  gap: 3px;
+}
+
+.terminal-link-hint kbd {
+  min-width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 4px;
+  background: #d1d6e0;
   box-shadow: none;
   color: #3a4560;
+  line-height: 18px;
 }

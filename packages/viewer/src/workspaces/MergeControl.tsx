@@ -3,6 +3,7 @@ import type { MergeEntry, MergeTargets } from '@symbiote/core';
 import { getJson, postJson } from '../ui/http.js';
 import { mergeState } from './merges.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
+import { tip } from '../ui/tip.js';
 
 /**
  * Merge into ▾ (V26a, decision 149): offered when the branch's last verdict approves and its tip
@@ -54,7 +55,9 @@ export function MergeControl({ branch }: { branch: string }) {
         type="button"
         className="button"
         disabled={busy}
-        title={`Merge the approved commit ${targets.head.slice(0, 7)} into ${target} in Symbiote's own worktree, check it, and land it`}
+        {...tip(
+          `Merge ${targets.head.slice(0, 7)} into ${target}\nThe approved commit, in Symbiote's own worktree: checked, then landed`,
+        )}
         onClick={merge}
       >
         Merge into

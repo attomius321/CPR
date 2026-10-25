@@ -11,6 +11,7 @@ import {
   type modelChoices,
   type RunChoices,
 } from './workspaces.js';
+import { tip } from '../ui/tip.js';
 
 /** The run's choices at `level`, or at the agent's own level without one. */
 function atLevel(run: RunChoices, level: string | undefined): RunChoices {
@@ -61,7 +62,7 @@ export function StartAgent({
           <select
             id="start-agent"
             value={agent.kind}
-            title={agent.command}
+            {...tip(agent.command, { code: true })}
             onChange={(event) => {
               const kind = event.target.value as AgentKind;
               const next = agents.find((a) => a.kind === kind);
@@ -82,7 +83,7 @@ export function StartAgent({
       ) : (
         <div className="workspace-field">
           Agent
-          <span className="start-value" title={agent.command}>
+          <span className="start-value" {...tip(agent.command, { code: true })}>
             {AGENT_NAMES[agent.kind]}
           </span>
           {agent.account && <p className="dialog-note start-account">{agent.account}</p>}
