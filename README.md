@@ -269,11 +269,16 @@ The sidenav also opens these pages. Each has a key.
   what an agent would refuse, such as a missing name or description. *Scribe*, an agent on the
   same page, writes a new skill or improves one. Scribe only writes in `.claude/skills/` and
   never commits.
+  Your *skill library* is a folder of skills kept outside the repository, a plain folder or one
+  in a git repository. Set it once in Settings, and every repository's Skills page lists its
+  skills too: you edit and add them there, and Scribe writes them. If Settings says so, the page
+  also commits and pushes the library's changes.
 - **Monitor** (`m`): how the code is spread across folders and files, to spot the files that have
   grown too large. A map shows each file sized by its lines of code, and marks the long ones.
 - **Settings** (`s`): the prompts Symbiote gives its agents, such as a workspace agent's first
-  prompt; the model and effort of the merger, Scout and Scribe; and **Appearance** (dark, light
-  or your system's).
+  prompt; the model and effort of the merger, Scout and Scribe; the **Skill library** (its folder,
+  or a repository to clone, and who commits its changes); and **Appearance** (dark, light or your
+  system's).
 
 The status bar at the bottom shows how much of your Claude and Codex subscription limits you have
 used.
@@ -312,7 +317,11 @@ Outside the repository, Symbiote writes:
 
 - the workspaces' worktrees, next to your checkout, in `../<repo>.worktrees/`;
 - its cache, `~/.cache/symbiote` on Linux, with the worktrees it compares and merges in, the
-  list of merges, drafts, pasted images and its logs.
+  list of merges, drafts, pasted images and its logs;
+- its settings for this machine, `~/.config/symbiote` on Linux: the skill library's folder, and
+  whether the intro was seen;
+- the skill library's skills, when you save, add or delete one, or Scribe writes one. Symbiote
+  commits and pushes the library only if Settings says so, and only its folder.
 
 Symbiote itself sends three things over the network:
 
