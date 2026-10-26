@@ -244,3 +244,4 @@ merge commit.
 - 2026-10-26 [V59 spike — how a waiting Scout looks today](journal/v59-scout-waiting-mark.md)
 - 2026-10-26 [V59 — Scout's and Scribe's links, whole, an amber band while they wait](journal/v59-scout-waiting-mark.md)
 - 2026-10-26 [V59 — the merge check's flake in changes.spec.ts](journal/v59-scout-waiting-mark.md)
+- 2026-10-26 [Fix — Scout's head on one line: Effort and its stepper centred with the selects](journal/fix-scout-not-aligned.md)

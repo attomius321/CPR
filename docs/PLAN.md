@@ -162,6 +162,7 @@ hosted.
 | [V50](plan/v50-scout-terminal.md) | Scout is a terminal: opened with no question; the agent, model and effort in its head | ready for review | 383–385 | [journal](journal/v50-scout-terminal.md) |
 | [V52](plan/v52-scout-next-conversation.md) | Scout's head picks the next conversation: a choice starts nothing until New conversation | ready for review | 391–393 | [journal](journal/v52-scout-next-conversation.md) |
 | [V58](plan/v58-hermes-agent.md) | Hermes as a workspace's agent, in its terminal | ready for review | 415–421 | [journal](journal/v58-hermes-agent.md) |
+| Fix | Scout's head on one line: Effort and its stepper centred with the selects | ready for review | | [journal](journal/fix-scout-not-aligned.md) |
 
 ### The merger
 
