@@ -1,6 +1,6 @@
 ---
 name: symbiote-style
-description: Symbiote's style — the koi's colours (deep-water chrome lifted above the darkest content, one koi-blue accent, colour otherwise for state), Geist, 8 px controls, lucide-style icons. Gives the tokens (dark and light, contrast checked), plain-CSS recipes for every control, the patterns that make a screen look dated, the traps met applying it, and how to verify a restyle. Use when restyling the viewer, adding or changing any UI in packages/viewer (its CSS, a page, a control, the graph's nodes), when a screen "looks old", or when the user mentions the style, the theme, the look or styling.
+description: Symbiote's style — the person's mockup (V61) — near-black neutrals (chrome a step above the darkest content, panels as cards on the page's ground), one violet accent from the S, colour otherwise for state, Geist at 15 px, 8 px controls, line tabs, lucide-style icons. Gives the tokens (dark and light, contrast checked), plain-CSS recipes for every control, the patterns that make a screen look dated, the traps met applying it, and how to verify a restyle. Use when restyling the viewer, adding or changing any UI in packages/viewer (its CSS, a page, a control, the graph's nodes), when a screen "looks old", or when the user mentions the style, the theme, the look or styling.
 ---
 
 # Symbiote's style
@@ -11,8 +11,9 @@ The stylesheet is in parts beside what they draw (`history/HistoryPage.css` besi
 `HistoryPage.tsx`), listed in cascade order by `styles.css`. V29b gave Symbiote its colours, font and
 density; V31 the rest: lifted chrome, neutral selection, drawn controls, one radius scale; V37
 quiet fields, no tracking, a hover apart from the selection, and help behind a "?"; V42 the koi's
-colours, sampled from the intro: the water for the chrome, the white koi for the text, their blue
-light for the primary and one accent.
+colours. V61 the person's mockup (`docs/plan/v61-complete-revamp.md`): near-black neutrals in
+place of the koi's navy, the violet of the new S for the primary and the accent (dark words on
+the primary), every page's panels as cards on its ground, line tabs, and type a pixel bigger.
 
 - Tokens, dark and light, with their contrast: [tokens.md](tokens.md)
 - Plain-CSS recipes for each control: [components.md](components.md)
@@ -22,25 +23,29 @@ light for the primary and one accent.
 
 ## The style in six rules
 
-1. **Quiet, in the koi's colours.** The koi's deep water carries the chrome: navy-tinted
-   neutrals, not greys. Colour is for state — diff kinds, findings' severity, an agent's status,
-   git lanes — and for one accent, the koi's blue light, in named roles (rule 3). Reach for
-   muted/raised/line before a colour.
-2. **The content is darkest; the chrome is lifted.** Canvas `#05080f`, the intro tile's abyss (the
-   graph, History's rows; the terminal is `#02040a`); sidenav, panels, toolbars and the status bar
-   `#0f1626`; chips and the segmented track `#1c2539`. Never one black for everything.
-3. **The accent marks what a person acts with.** The primary action (`--primary`, the koi's blue,
-   white text), focus, what is checked, the current page, the selection (a 16 % wash of
-   `--accent`), the selected node, a link under the pointer. Never a state: moved and info are cyan
-   (V42), and a guard in `tokens.test.ts` keeps `--accent` to its roles. The hover stays a wash of
-   the text.
-4. **Hierarchy by weight and opacity, not by colour or size.** 14 px for rows and nav, 13 px
-   secondary, 12 px captions, nothing smaller but uppercase labels (the `--size-*` scale, V32);
-   weight 500 for labels and buttons, 600 for headings; idle nav text in `--muted`, its icon in
-   `--faint`.
-5. **Soft geometry.** Controls and rows 8 px radius, dialogs 10 px, menus 11 px, cards 14 px,
-   badges round. Lines are hairlines. Three elevations only: hairline, a slight lift
-   (`0 1px 2px`), floating.
+1. **Quiet, near black (V61).** Neutral near-blacks with a breath of blue, not V42's navy.
+   Colour is for state — diff kinds, findings' severity, an agent's status, git lanes — and for
+   one accent, the S's violet, in named roles (rule 3). Reach for muted/raised/line before a
+   colour.
+2. **The content is darkest; the chrome is lifted; panels are cards.** Canvas and page ground
+   `#090b0e` (the graph, History's rows, a thread; the terminal `#050608`); sidenav, status bar
+   and the cards' chrome (a tab strip, the changes panel) `#0d1015`; chips, counts and raised
+   squares `#171a21`. A page's head sits on the ground; its panels are cards under it, 8 px from
+   each other and from the edges, 10 px radius, a `--line` hairline. Never one black for
+   everything.
+3. **The accent marks what a person acts with.** The primary action (`--primary`, `#7c68fc`,
+   dark words on it: white is 4.01:1), focus, what is checked, the current page, the selection (a
+   16 % wash of `--accent`), the open workspace's kind, the selected node, a link under the
+   pointer, the picked tab's line (`--primary`). Never a state: moved and info are cyan (V42),
+   and a guard in `tokens.test.ts` keeps `--accent` to its roles. The hover stays a wash of the
+   text.
+4. **Hierarchy by weight and opacity, not by colour or size.** 15 px for rows and nav, 14 px
+   secondary, 13 px captions, nothing smaller but uppercase labels (the `--size-*` scale, V32,
+   V61; the graph keeps V32's 14/13/12); weight 500 for labels and buttons, 600 for headings and
+   a card's name; idle nav text and icons in `--muted`.
+5. **Soft geometry.** Controls and rows 8 px radius, panels and dialogs 10 px, menus 11 px, cards
+   of a form 14 px, badges round. Lines are hairlines. Three elevations only: hairline, a slight
+   lift (`0 1px 2px`), floating.
 6. **Recede and frame.** Symbiote hosts a graph, diffs and a terminal: its own UI frames them. Show the
    frequent actions; put the rare ones in a menu. Explanation goes behind a "?" (`Help.tsx`, a
    tooltip on hover or focus); states, warnings and errors stay on the page.
@@ -53,8 +58,10 @@ look); a new look must keep them.
 - **Fonts**: `'Geist Variable', monospace` and `'Geist Mono Variable', monospace`, nothing else
   (V29a/V29b: a family name the system lacks cost 283–900 ms on Linux). No system font stack.
   Prefer an icon to a new symbol glyph.
-- **Type** (V32): every font size from the `--size-*` scale on `:root`, never a px value (the same
-  test). V29b's 13 px body with 10–11 px captions was too small to read; do not go back under 12 px.
+- **Type** (V32, V61): every font size from the `--size-*` scale on `:root`, never a px value (the
+  same test). V29b's 13 px body was too small to read, and V32's 14 still too small for the
+  person's eyes: 15 px body, nothing under 13 px. The graph re-declares V32's scale on
+  `.react-flow` (decision 438): node widths are estimated from characters.
 - **Contrast** (`packages/viewer/test/tokens.test.ts`): text, muted and the accent ≥ 4.5:1 on the
   four backgrounds; white on the primary and its hover ≥ 4.5:1; states, `--faint`, `--focus` ≥
   3:1; `--edge` ≥ 3:1 (a field on hover, a checkbox); region lines ≥ 1.2:1. The tested tokens are `#rrggbb`; translucent values go in other tokens.
@@ -84,14 +91,15 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
 |---|---|
 | One black for every surface (page and sidenav 1.04:1 apart) | Canvas `#05080f`, chrome `#0f1626` (1.11:1) |
 | Blue for everything: picks, links, selected nodes, checkboxes, states (before V31) | One accent in named roles (V42), states in their own colours; links in the text colour, the accent and an underline on hover |
-| Neutral greys with no colour of Symbiote's own (V31–V41) | The koi's palette (V42): navy-tinted chrome, the koi's blue for the primary and the accent |
+| Neutral greys with no colour of Symbiote's own (V31–V41) | V42 the koi's palette; V61 the mockup's near blacks and the S's violet |
+| Panels flush against each other, a hairline between, heads in a lifted strip (V31–V60) | Cards on the page's ground, 8 px gutters, the head on the ground (V61) |
 | Native checkboxes and selects | Drawn controls; the `<input>` and `<select>` stay |
 | A 2–4 px coloured left border on a row | A neutral row; the state as a dot, an icon or a tinted badge |
 | Bordered chips, mono text for names | Quiet chips: `--raised`, muted text, 4 px radius, no border; names in sans |
 | A filled saturated pill (HEAD's) | A success tint: a 12 % fill and a 30 % edge, the state colour as text |
-| Underlined tabs with a heavy rule (the diff's sidebar until V42) | A segmented control, or line tabs in the text colour |
+| Underlined tabs with a heavy full-width rule (the diff's sidebar until V42) | The mockup's line tabs (V61, decision 441): the picked one in `--text` on a lifted ground (`--tab-picked`), a 3 px `--primary` line under it; a segmented control for a mode (Files / Graph, a theme) |
 | Letters as buttons and hints | lucide-style icons; key caps on hover or in the tooltip |
-| A grey, disabled-looking main action | The primary: the koi's blue `#3c6fd6`, white text, its top edge lit (`--primary-shine`) |
+| A grey, disabled-looking main action | The primary: the S's violet `#7c68fc`, dark words (`--primary-text`), its top edge lit (`--primary-shine`) |
 | Radii of seven sizes | The scale: 4, 8, 10, 11, 14 px and round |
 | Uneven gaps between letters ("n o commits") at 1× (V37) | `letter-spacing: 0`; controls `inherit` |
 | A 3:1 edge on every field, a 2 px outline over it on focus, a resize grip (V37) | `--field-line` at rest, `--edge` on hover, `--focus` and a 3 px `--ring`; textareas `field-sizing: content` |
@@ -117,13 +125,21 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
   the sidenav).
 - **Colours pinned in e2e**: `look.spec.ts` (page and chrome) and `app.spec.ts` (the window's
   title-bar buttons take `--side`). A token change updates them, nothing else should. Outside the
-  viewer's tokens, kept by hand (tokens.md, *Outside the tokens*): the terminal's theme, the app's
-  window and title bar (`frame.ts` and its test), the app's start page (`start.css`).
-- **A lighter primary on hover loses its text** (V42): every blue lighter than `#3c6fd6` takes white
-  under 4.5:1. The hover is a step darker (`--primary-hover`); a ghost button resets the primary's
-  lit edge (`box-shadow: none`), or a white line shows on its top.
-- **The koi S does not read under 24 px** (V39, V42): the mark is an image (`ui/koi-mark.png`, the
-  app's icon cropped to its tile, 48 px) at 24 px, 20 in the title bar; never 16.
+  viewer's tokens, kept by hand (tokens.md, *Outside the tokens*): the terminal's theme and the
+  merge log, the app's window and title bar (`frame.ts` and its test), the app's start page
+  (`start.css`).
+- **The primary's hover follows its words** (V42, V61): with white words (V42's blue) any lighter
+  blue fell under 4.5:1, so the hover was darker; with V61's dark words on the violet, the hover
+  is a step lighter (`#8a78fd`, 5.77:1). A ghost button resets the primary's lit edge
+  (`box-shadow: none`), or a white line shows on its top.
+- **The mark is an image** (V61, `SymbioteMark`, `ui/mark.png`): the person's S cut round by
+  `scripts/desktop/icon.mjs` from `scripts/desktop/logo.png`, 64 px for 32 on screen, 20 in the
+  title bar, a `--line` ring; never 16 (V39: the koi S did not read there). Rerun the script after
+  changing the logo: it writes the app's icon and the favicon too.
+- **A border on React Flow's container moves its origin** a pixel from its box: the canvas's card
+  edge is an `outline` with `outline-offset: -1px` (V61).
+- **A card's handle is its gutter**: a `Resizer` between two cards takes `margin: 0` (8 px wide,
+  the gutter), not its usual `-4px` straddling a shared border.
 - **Restyling `.link`** reaches every link-styled button: Settings' placeholders are insert
   buttons, drawn as code chips, not links.
 - **A node's border is part of its content box**: the symbol's 3 px side bar became a 1 px edge

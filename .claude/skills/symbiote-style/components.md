@@ -69,7 +69,7 @@ outline (standalone toolbar actions), ghost (icon buttons, row triggers, Cancel)
 .btn:disabled { opacity: 0.5; pointer-events: none; }
 
 .btn-primary { background: var(--primary); box-shadow: var(--primary-shine); color: var(--primary-text); }
-.btn-primary:hover { background: var(--primary-hover); }   /* darker: a lighter blue loses white's 4.5:1 */
+.btn-primary:hover { background: var(--primary-hover); }   /* dark: lighter, its dark words gain (V61) */
 
 .btn-secondary { background: var(--raised); }
 .btn-secondary:hover { background: color-mix(in srgb, var(--raised) 80%, transparent); }
@@ -82,7 +82,7 @@ outline (standalone toolbar actions), ghost (icon buttons, row triggers, Cancel)
 
 .btn-danger { background: color-mix(in srgb, var(--error) 60%, transparent); color: #fff; } /* dark; light: var(--error) */
 
-.btn-sm { height: 28px; padding: 0 10px; gap: 4px; font-size: var(--size-small); }   /* in a 36 px toolbar */
+.btn-sm { height: 28px; padding: 0 10px; gap: 4px; font-size: var(--size-small); }   /* in a sidenav card */
 .btn-xs { height: 24px; padding: 0 8px; gap: 4px; font-size: var(--size-small); }    /* in a 28 px row */
 .btn-icon { width: 28px; height: 28px; padding: 0; }                     /* 24 px in rows */
 ```
@@ -221,14 +221,14 @@ One recipe for every list: the sidenav, the change list, branches, findings, men
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 28px;          /* 32 px for the sidenav's pages */
+  min-height: 28px;          /* 36 px for the sidenav's pages (V61) */
   padding: 0 8px;
   border-radius: 8px;
   color: var(--muted);
   font-weight: 500;          /* nav; list rows 400 */
   transition: background-color 150ms, color 150ms;
 }
-.row .icon { color: var(--faint); stroke-width: 1.75; }          /* on lucide's 24-unit icons */
+.row .icon { color: var(--muted); stroke-width: 1.75; }          /* on lucide's 24-unit icons; 18 px in the sidenav */
 .row:hover { background: var(--hover); color: var(--text); }
 .row[aria-current='page'],
 .row.selected { background: var(--selected); color: var(--text); }
@@ -246,9 +246,10 @@ One recipe for every list: the sidenav, the change list, branches, findings, men
 - Numbers, counts, keycaps and times align right in `font-variant-numeric: tabular-nums`.
 - Names in sans; mono only for what is literal: SHAs, code, a path shown as code.
 
-Section header (sidenav "Workspaces", a group "In progress 17"): 32 px, 13 px weight 600 in
-`--muted`, a count after it; its actions (add, filter) as 24 px ghost icon buttons on the right.
-A group of workspaces (V44) starts with its icon, 14 px in its state's colour (`--group-tone`),
+Section header (sidenav "Workspaces"): 15 px weight 600 in `--text`, a count after it; its action
+(add) a 28 px raised square (`--raised`, a `--line` edge) on the right (V61). A group's header
+("To review 1"): 15 px weight 500 in `--muted`, a round count.
+A group of workspaces (V44) starts with its icon, 16 px in its state's colour (`--group-tone`),
 the icon over the cards' dots and the name over their names; folded, the icon alone, its name in
 `title`. Only the group has an icon: a card keeps its dot. V53: a working or starting dot is a
 spinner, and a merge's at work (fix/merging-status): a comet, a 2 px ring whose tail fades in to a
@@ -257,11 +258,13 @@ working card's line starts with its agent's mark, 14 px, in its vendor's colours
 non-state colour is on a card, the person's choice); every card's kind is a neutral `.chip` at the
 end of its name's line, over its time.
 
-Workspace card: 10 px radius, 8 × 10 px padding; hover `--hover` and current `--selected`, as
-every row (V37: a hover of `--raised` at 40 % vanished in light, and a border and shadow made the
-current card a box). First line: status dot and name (14 px, 500). Second:
-branch in 13 px `--muted` sans, a repository chip. Third, when there is one: the agent's last line
-in 13 px `--muted`, its time right-aligned in 12 px `--faint`.
+Workspace card: 10 px radius, 6 × 8 px padding, at most 72 px; hover `--hover` and current
+`--selected`, as every row (V37: a hover of `--raised` at 40 % vanished in light, and a border and
+shadow made the current card a box). First line: status dot, name (15 px, 600) and its kind chip,
+the open one's in the accent (V61). Second: the state in 14 px `--muted`, its time right-aligned.
+Third: the branch in 14 px `--muted` sans. Waiting for you (V48, V61): the group an amber card
+(14 px radius, a 30 % `--warning` edge, a 5 % wash), each workspace a card inside it (a 4 % wash
+of the text), what it asks on two lines at most, Respond the primary at 28 px.
 
 ## Chips, badges, counts, keycaps
 
@@ -322,7 +325,24 @@ kbd {
 
 ## Tabs
 
-Segmented (two to four views of one thing: Changes / Findings, Dark / Light / System):
+Line tabs (V61, decision 441, the person's mockup): a workspace's views, the diff sidebar's Changes
+/ Findings. A strip on the card's chrome, its bottom hairline in `--line`; tabs 40 px, 15 px
+weight 500 in `--muted`, 8 px top corners; the picked one in `--text` on `--tab-picked` with a
+3 px `--primary` line along its bottom, inset 8–10 px; a hairline divider before "+".
+
+```css
+.tabs { display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--line); background: var(--side); }
+.tabs > button { height: 40px; padding: 0 12px; border: 0; border-radius: 8px 8px 0 0; background: none; color: var(--muted); }
+.tabs > button:hover { background: var(--hover); color: var(--text); }
+.tabs > button[aria-selected='true'] { position: relative; background: var(--tab-picked); color: var(--text); }
+.tabs > button[aria-selected='true']::after {
+  content: ''; position: absolute; right: 8px; bottom: 0; left: 8px; height: 3px;
+  border-radius: 4px 4px 0 0; background: var(--primary);
+}
+```
+
+Segmented (a mode, two to four of one thing: Files / Graph, All branches / This branch, Dark /
+Light / System):
 
 ```css
 .segmented { display: inline-flex; height: 32px; padding: 3px; border-radius: 10px; background: var(--raised); }
@@ -342,9 +362,6 @@ Segmented (two to four views of one thing: Changes / Findings, Dark / Light / Sy
   color: var(--text);
 }
 ```
-
-Line tabs (a page's sections): no track, `--muted` labels, the active one in `--text` with a 2 px
-underline in `--text` (not blue) 5 px below; the strip's own bottom hairline in `--line`.
 
 ## Menus, popovers, tooltips, dialogs
 
@@ -414,19 +431,29 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
 
 ## Shell
 
-- Sidenav: `--side`, 240 px, `--line` on its right. From the top: the brand row (36 px, as the
-  toolbars), the pages as 32 px rows, a section header per group, the workspace cards, a footer
-  of 24 px ghost icon buttons above a hairline.
-- Toolbar or page head: 36 px, `--side`, `--line` below; the page's title in 16 px weight 600;
-  actions on the right as 28 px ghost or outline buttons with icons; view toggles grouped.
+- Sidenav: `--side`, 264 px (V61), `--line` on its right. From the top: the brand row (52 px: the
+  round mark at 32 px, "Symbiote" at 17 px 600, the repository in `--muted`, the fold a 32 px
+  raised square), the pages as 36 px rows with 18 px icons, the section header, the groups and
+  their cards.
+- Page head (V61): 52 px on the page's ground (`--bg`), no line under it; the page's title in
+  17 px weight 600; actions on the right as 32 px buttons or 28 px icon buttons. History's
+  toolbar is the rows card's strip (`--side`, a hairline under it), as a workspace's tabs.
+- Panels as cards (V61): under the head, each panel a card (`--line` hairline, 10 px radius,
+  `overflow: hidden`), 8 px from each other and from the main area's edges; the content's card on
+  `--bg`, a side panel's on `--side`. A `Resizer` between two cards is the gutter (`margin: 0`).
+  A strip that asks something of the person (a workspace waiting, failed) is a card of its own in
+  its tone: a 30 % edge, an 8 % wash, the primary at its right.
 - Status bar: 24 px, `--side`, `--line` above, 13 px; each segment a button (2 × 4 px padding, 4 px
   radius, hover `color-mix(in srgb, var(--raised) 70%, transparent)`). Usage bars: 4 px high,
   round, track `--raised`, fill `--added` under 80 %, `--warning` from 80 % or when the vendor
   warns, `--removed` at 100 % or a reached limit (V29c's tones: the person wants the colours, not
   grey).
-- Brand: the koi S (`KoiMark`, `ui/koi-mark.png`) at 24 px before the name; 20 px in the title bar.
-- Terminal: `#02040a` (the koi's deepest water) edge to edge, dark in both themes; its theme in
-  `workspaces/terminal.ts`.
+- Brand: the person's S (`SymbioteMark`, `ui/mark.png`, cut round by `scripts/desktop/icon.mjs`)
+  at 32 px before the name, a `--line` ring; 20 px in the title bar.
+- Terminal: `#050608` (a step under the canvas) to its card's edges, dark in both themes; its
+  theme in `workspaces/terminal.ts`.
+- Composer under a thread ("To answer, open its terminal"): a field's frame (`--line`, 10 px,
+  `--side`), its icon in a 28 px `--raised` tile, the words in `--muted`.
 - Empty state: a 28 px icon in `--faint`, a 14 px weight 500 line, 12 px `--muted` text, and the
   action that fills it (a primary or outline button).
 - A page that makes something (Start a workspace, V49): its form centred in the main area, never
