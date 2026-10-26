@@ -98,7 +98,7 @@ change, only n and [ work.
 
 | Key | What it does |
 |---|---|
-| n | Start a workspace |
+| n | Open **Start a workspace** |
 | h, s | History, Settings |
 | a | Scout |
 | i | Skills |

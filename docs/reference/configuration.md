@@ -123,8 +123,10 @@ interfaces/
 !apps/web/interfaces/public.ts
 ```
 
-Symbiote reads the file from the checkout where it runs, not from the commits it compares. So a
-change applies at once, even before you commit it. The **Monitor** sets the same files aside.
+Unlike in git, a `!` line can bring back a file inside a folder that an earlier line skips, as the
+last line above does. Symbiote reads the file from the checkout where it runs, not from the
+commits it compares. So a change applies at once, even before you commit it. The **Monitor** sets
+the same files aside.
 
 ## Environment variables
 
@@ -151,8 +153,9 @@ lists them.
 
 ## Logs
 
-Every Symbiote process writes its log lines into one folder, `logs` in the cache folder:
-`~/.cache/symbiote/logs/` on Linux, unless you set `SYMBIOTE_CACHE_DIR` or `SYMBIOTE_LOG_DIR`.
+Every Symbiote process writes its log lines into one folder: `logs` in the cache folder (see
+`SYMBIOTE_CACHE_DIR` above), or `SYMBIOTE_LOG_DIR`. On Linux, that is `~/.cache/symbiote/logs/`
+by default.
 There is one file a day, with one JSON object a line, and Symbiote keeps 14 days. A log line never
 holds a prompt, a file's contents, what a terminal shows, or a token.
 

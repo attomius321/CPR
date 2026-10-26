@@ -2,9 +2,9 @@
 
 Symbiote runs coding agents on your machine and keeps you in charge of what they ship. Each task
 gets a *workspace*: a branch, a folder and an agent of its own, Claude Code or Codex. You read the
-agent's plan, answer its questions, review its branch and approve it. When you click **Merge
-into**, Symbiote merges the commit you approved, and lands it once your project's check (its
-tests, for example) passes on the merge.
+agent's plan, answer its questions, review its branch and approve it. When you ask, Symbiote
+merges the commit you approved. Once your project's check (its tests, for example) passes on the
+merge, Symbiote moves your branch to it.
 
 ![A workspace in Symbiote: the sidenav lists the workspaces by what they need from you, and the open workspace shows its agent's plan in the agent's terminal](docs/images/workspace.png)
 
@@ -67,9 +67,9 @@ Two limits apply to the window:
 ## Quick start: your first workspace
 
 This walks one task from start to merge. You need a git repository of your own, and Claude Code
-or Codex. Claude Code starts only in a repository you have trusted, and its workspaces count as
-part of it. If you have never run `claude` in this repository, run it there once and accept its
-trust prompt. Codex needs no such step.
+or Codex. Claude Code starts only in a repository you have trusted. Trusting the repository also
+covers its workspaces' worktrees. If you have never run `claude` in this repository, run it there
+once and accept its trust prompt. Codex needs no such step.
 
 1. In the repository, run `symbiote view`. Symbiote opens on **History**, the repository's
    commits and branches. The list on the left is the *sidenav*: its pages, then your workspaces.
@@ -110,8 +110,8 @@ question and names its branch with its own prefix:
 | Chore | What should change, and why now? | `chore/` |
 | Spike | What is the question, and what will the answer decide? | `spike/` |
 
-A spike answers its question in a written report and commits nothing unless you ask, so it
-usually has nothing to merge.
+A spike answers its question in a written report, which you read in its **Thread** tab. It
+commits nothing unless you ask, so it usually has nothing to merge.
 
 Every kind also takes a title, an optional **Done when** (how you will know it works), and more
 notes under **More**. If Symbiote finds your project's check, such as `npm run test`, `cargo
@@ -220,8 +220,8 @@ page. The target is the branch the workspace started from, unless you pick anoth
 3. lands the merge if the check passes: it moves the target branch forward to the merge commit.
 
 If the target branch is checked out in your own checkout, landing updates your files too. If that
-would overwrite changes you have not committed, git refuses, nothing changes, and the merge waits
-for you to click **Land** again.
+would overwrite changes you have not committed, git refuses and nothing changes. The merge then
+waits until you click **Land**.
 
 Symbiote does not push unless you set `merge.push` to `true` in `symbiote/config.json`. Merges
 run one at a time, in the order you asked for them. Click one under **Merging** to see its steps
@@ -231,8 +231,8 @@ for you to click **Land**.
 
 If the branch conflicts with the target, Symbiote gives the conflict to the *merger*, an agent
 that proposes a resolution for each conflicting part. Nothing lands until you review it. The
-merge page shows each resolved part, marks in red the lines a side's change lost, and marks in
-amber the lines the merger wrote itself.
+merge page shows each resolved part. It marks in red the lines where either branch's change was
+lost, and in amber the lines the merger wrote itself.
 
 **Approve** lands the resolution, and **Request changes** asks the merger again with your words.
 If the resolution's check failed, **Check again** runs the check again without asking the merger.
@@ -241,10 +241,10 @@ If the resolution's check failed, **Check again** runs the check again without a
 
 ### Clean up
 
-When a workspace is merged, it moves to **Done**. **Clean up** removes the agent's sessions, the
-worktree, the documents and the branch. To remove a workspace that was not merged, use **Clean
-up…** under **⋯**. Symbiote asks first and keeps the branch. Symbiote cleans up no workspace whose
-worktree has changes that are not committed.
+When a workspace is merged, it moves to **Done**. **Clean up** stops and removes the agent's
+sessions, and removes the worktree, the documents and the branch. To remove a workspace that was
+not merged, use **Clean up…** under **⋯**. Symbiote asks first and keeps the branch. Symbiote does
+not clean up a workspace while its worktree has changes that are not committed.
 
 ## The other pages
 
@@ -255,15 +255,16 @@ The sidenav also opens these pages. Each has a key.
   two commits.
 - **Scout** (`a`): an agent you can ask about the repository: where something is decided, why it
   works this way, or what waits for you. Scout can also act on your workspaces for you: start one,
-  answer an agent, review or merge a branch. Scout never edits files. A start, a verdict, a merge
-  and a clean-up each wait until you click **Confirm**.
+  answer an agent, review or merge a branch. Scout never edits files. It can send a message to an
+  agent without asking you, but a start, a verdict, a merge and a clean-up each wait until you
+  click **Confirm**.
 - **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of
   task (`.claude/skills/<name>/SKILL.md`). Read and edit them here. As you type, the page flags
   what an agent would refuse, such as a missing name or description. *Scribe*, an agent on the
   same page, writes a new skill or improves one. Scribe only writes in `.claude/skills/` and
   never commits.
-- **Monitor** (`m`): where the code is, to spot the files that have grown too large. A map shows
-  each file sized by its lines of code, and marks the long ones.
+- **Monitor** (`m`): how the code is spread across folders and files, to spot the files that have
+  grown too large. A map shows each file sized by its lines of code, and marks the long ones.
 - **Settings** (`s`): the prompts Symbiote gives its agents, such as a workspace agent's first
   prompt; the model and effort of the merger, Scout and Scribe; and **Appearance** (dark, light
   or your system's).
@@ -298,8 +299,8 @@ It also writes `symbiote/AGENTS.md`, which tells any agent how to act on a revie
 are yours to commit and share: `config.json` holds your settings, and `merge.md` your rules for
 the merger.
 
-Two of your own actions write elsewhere in the repository. Saving a skill writes in
-`.claude/skills/`, and landing a merge updates the branch you have checked out.
+Two more things write elsewhere in the repository: saving a skill writes in `.claude/skills/`, and
+landing a merge updates the branch you have checked out.
 
 Outside the repository, Symbiote writes:
 

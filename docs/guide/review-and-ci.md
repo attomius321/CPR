@@ -13,7 +13,7 @@ Pick the way that matches what you want to review:
 - **Your branch against another**: run `symbiote view main` in the repository. To print the same
   comparison in the terminal, run `symbiote diff main`.
 - **Any branch**: on **History**, select one of the branch's commits, press `r`, and pick the
-  branch. Symbiote compares the branch's newest commit with the commit where the branch left the
+  branch (a commit can be on several). Symbiote compares the branch's newest commit with the commit where the branch left the
   default branch.
 - **Two commits**: on **History**, press `x`, click two commits, then click **Compare**. The older
   commit is the base.
@@ -103,7 +103,7 @@ To review a branch, open it with **Review** on its workspace, or with `r` on **H
 
 Symbiote writes the review to `symbiote/reviews/<branch>/<your git email>.json`, in the
 repository. Symbiote's `symbiote/.gitignore` keeps reviews out of git. To commit and share them,
-edit or delete that file: Symbiote leaves a `.gitignore` you changed as it is. To give a review
+edit `symbiote/.gitignore` or delete it. Symbiote leaves a `.gitignore` you changed as it is. To give a review
 to an agent that has no workspace, click **Copy for the agent** and paste the text into its chat.
 `symbiote/AGENTS.md` tells any agent how to act on a review.
 
@@ -113,7 +113,8 @@ only what is new or changed since is left to look at. Your marks stay on the sym
 not change.
 
 You can also review the default branch. Symbiote then shows its commits that are not pushed yet.
-An approval tells an agent that it may push them. Symbiote does not push them itself.
+An approval there writes, for whichever agent reads the review, that the commits may be pushed.
+Symbiote does not push them itself.
 
 ## Review a pull or merge request
 
@@ -184,10 +185,14 @@ jobs:
 | `working-directory` | `.` | Where the repository is checked out. |
 | `setup-node` | `true` | Installs Node 22 first. Set it to `false` if the job already has Node 22.12 or newer. |
 
+`fetch-depth: 0` fetches the whole history, which Symbiote needs to find where the pull request
+left its target branch. With the default `fail-on: error`, warnings such as
+`exported-api-changed` are posted but do not fail the job.
+
 The action writes the summary to the run's page. Its output `graph` is the path of the graph
 JSON, which you can upload as an artifact. A pull request from a fork gets a read-only token, so
-run it without posting: this repository's own [workflow](../../.github/workflows/symbiote.yml)
-shows how.
+review it without posting: set `post-findings` to an empty string for such pull requests.
+Symbiote's own [workflow](../../.github/workflows/symbiote.yml) does that.
 
 ### GitLab CI
 
@@ -208,7 +213,7 @@ To change the job, override these variables in your own `symbiote:` job:
 |---|---|---|
 | `SYMBIOTE_POST_FINDINGS` | `warning` | Posts new findings at or above this level. It needs `GITLAB_TOKEN`. Empty: posts nothing. |
 | `SYMBIOTE_FAIL_ON` | `error` | Fails the job on a finding at or above this level. Empty: never fails. |
-| `SYMBIOTE_PLUGINS` | none | Framework plugins, separated by commas. |
+| `SYMBIOTE_PLUGINS` | none | Framework plugins, separated by commas, besides those in `symbiote/config.json`. |
 | `SYMBIOTE_VERSION` | `main` | The branch or tag of Symbiote to run. |
 
 ## Framework plugins
@@ -231,7 +236,7 @@ warning is not a finding, so `--fail-on` does not count it.
 With `angular`, Symbiote reads templates as code:
 
 - A method removed while its template still calls it is an error at the template's line.
-- A method used only by a template, a lifecycle hook or a host listener is not reported as unused.
+- A method used only by a template, a lifecycle hook or a host listener gets no `orphan-added`.
 - A component removed while a template still places it, an input renamed while still bound, or
   an output removed while still listened to is reported.
 - With dependencies installed, templates also see Angular's and its libraries' components,
@@ -239,8 +244,8 @@ With `angular`, Symbiote reads templates as code:
 
 With `qwik`, Symbiote reads Qwik 1 and 2 by Qwik's own file rules:
 
-- What Qwik's router calls by name, such as `onGet`, `head`, `routeLoader$` and `routeAction$`, is
-  not reported as unused.
+- What Qwik's router calls by name, such as `onGet`, `head`, `routeLoader$` and `routeAction$`,
+  gets no `orphan-added`.
 - A `component$`'s props are its signature. A required prop added or removed is a warning that
   names the JSX that was not updated.
 - `.mdx` routes are read as templates: a component removed while a page still renders it is an
