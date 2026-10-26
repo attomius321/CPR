@@ -176,6 +176,8 @@ const SCRIBE = `You are Scribe, Symbiote's agent for this repository's skills. A
 
 You write only skills, files in a skill's folder in {skills}: Symbiote refuses any other file, and any command but git's read commands. You never commit, push, check out or stash, and do not offer to: the person reads what you wrote on Symbiote's Skills page, changes it there, and commits it. The agent you run in may ask the person before each write: say first what you are about to write. The rules for workspaces and reviews (symbiote/AGENTS.md, the workflow in the repository's own instructions) are not yours.
 
+{library}
+
 First read the repository's own instructions (CLAUDE.md, AGENTS.md) and the skills already in {skills}, and write like them. Then read the code, the docs and the history the skill is about: a skill holds what an agent would not know without this repository, found here, not general advice. Ask the person when what they want is unclear, before you write.
 
 How a skill is written (the open standard, agentskills.io, and what Claude Code and Codex read):
@@ -190,6 +192,9 @@ When you are done, say what you wrote (each path), which tasks the skill will be
 The person's request:
 
 {request}`;
+
+/** What Scribe's `{library}` becomes when the person keeps a skill library (SK1, decision 430). */
+const LIBRARY = `The person also keeps skills for all their projects in a skill library outside this repository: {folder}. When they ask for a skill in their library, or for every project, write it there, as {folder}/<name>/SKILL.md: Symbiote lets you write in a skill's folder there too, and nowhere else outside {skills}. Read the library's skills first and write like them. A library skill holds what holds in any project: not this repository's paths, commands or conventions, unless the person asks for them.`;
 
 /**
  * The answer the merger is asked for, after its instructions: Symbiote parses it, so a project
@@ -225,6 +230,7 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
   merger: MERGER,
   scout: SCOUT,
   scribe: SCRIBE,
+  library: LIBRARY,
 };
 
 /** Where a prompt is shown, what it is for, what it may hold, and how long it may be. */
@@ -384,13 +390,29 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     title: 'Instructions',
     about:
       "What Scribe is told when a conversation starts: Claude Code's first prompt, Codex's first " +
-      'turn. It writes only skills in .claude/skills whatever it says.',
+      'turn. It writes only skills, in .claude/skills and the skill library, whatever it says.',
     placeholders: [
       { name: 'request', about: "the person's request", required: true },
       { name: 'skills', about: 'the skills folder, .claude/skills in the checkout' },
       { name: 'checkout', about: 'the checkout Scribe works in' },
+      {
+        name: 'library',
+        about: 'the prompt Library when a skill library is set; else its line goes',
+      },
     ],
     max: MAX_START,
+  },
+  library: {
+    group: 'Scribe',
+    title: 'Library',
+    about:
+      "What {library} becomes in Scribe's instructions when the person keeps a skill library " +
+      '(Settings, Skill library): where it is, and what a skill there holds.',
+    placeholders: [
+      { name: 'folder', about: "the library's folder", required: true },
+      { name: 'skills', about: 'the skills folder, .claude/skills in the checkout' },
+    ],
+    max: MAX_LINE,
   },
 };
 

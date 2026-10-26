@@ -65,6 +65,7 @@ import { findingsReview, planFindings, postedMarkers } from './post-findings.js'
 import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ChangeFiles, type ReviewTarget } from './server.js';
 import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
+import { libraryService, type LibraryService } from './library.js';
 import { terminals as agentTerminals } from './terminal.js';
 import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
@@ -603,6 +604,12 @@ async function serve(
   return 0;
 }
 
+/** The skill library (SK1), kept in Symbiote's config folder for every repository here. */
+function libraryOf(ctx: CliContext): LibraryService {
+  const folder = symbioteConfigDir(ctx.env, process.platform, homedir());
+  return libraryService(join(folder, 'library.json'), { home: homedir() });
+}
+
 /** The first-time intro's record (V39), in Symbiote's config folder; `SYMBIOTE_INTRO=off`: none. */
 /** A change's files from the repository's git (V60): their lines and one file's diff. */
 function changeFiles(repo: GitRepo): ChangeFiles {
@@ -704,6 +711,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   // One Codex for workspaces and usage: one connection to its app server.
   const codexOf = codexFinder(repo.root, ctx.env);
   const hermesOf = hermesFinder(repo.root, ctx.env);
+  // The skill library (SK1): the Skills page's and Scribe's.
+  const library = libraryOf(ctx);
   // One Claude Code for workspaces, Scout (V35) and Scribe (V41): one read of its sessions every 2 s.
   const claudeOf = agentFinder(repo.root, ctx.env, cacheDir);
   const server = await startViewServer({
@@ -757,7 +766,10 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         env: ctx.env,
         terminals,
       }),
-      skills: skillsService(repo, { codexInstalled: async () => (await codexOf()) !== null }),
+      skills: skillsService(repo, {
+        codexInstalled: async () => (await codexOf()) !== null,
+        library,
+      }),
       // The Monitor page (RM1): where the checked-out commit's code is.
       monitor: codeMaps(repo.root),
       scribe: scribe(repo, cacheDir, {
@@ -765,6 +777,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         codex: codexOf,
         env: ctx.env,
         terminals,
+        library,
       }),
       // Each subscription's windows (V29c): agents Symbiote can start, signed in to a plan.
       usage: usageService(

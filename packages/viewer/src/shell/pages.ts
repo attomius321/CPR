@@ -13,7 +13,11 @@ export type Route =
   | { page: 'skills' }
   /** Where the checkout's code is (RM1), at `/monitor`; the folder in view in `?path=`. */
   | { page: 'monitor'; path?: string }
-  | { page: 'settings' }
+  /**
+   * Settings; `prompt`, an entry to open (SK1: the Skill library), which the page reads from its
+   * address (`?prompt=`) as Skills reads `?skill=`: the route read back is Settings alone.
+   */
+  | { page: 'settings'; prompt?: string }
   /** A workspace, at `/?branch=<branch>`: the address Symbiote has given out since V25. */
   | { page: 'workspace'; branch: string }
   /** A merge in Symbiote's queue (V26), at `/?merge=<branch>`. */
@@ -107,7 +111,9 @@ export function hrefOf(route: Route): string {
     case 'monitor':
       return route.path ? `${MONITOR_PAGE}?path=${encodeURIComponent(route.path)}` : MONITOR_PAGE;
     case 'settings':
-      return SETTINGS_PAGE;
+      return route.prompt
+        ? `${SETTINGS_PAGE}?prompt=${encodeURIComponent(route.prompt)}`
+        : SETTINGS_PAGE;
     case 'workspace':
       return `/?branch=${encodeURIComponent(route.branch)}`;
     case 'merge':

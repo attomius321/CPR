@@ -64,6 +64,12 @@ describe('hrefOf', () => {
   it('gives each route its address, the one routeOf reads', () => {
     expect(hrefOf({ page: 'history' })).toBe('/history');
     expect(hrefOf({ page: 'settings' })).toBe('/settings');
+    // An entry of Settings (SK1's Skill library): the page reads it from the address, as Skills
+    // reads ?skill=; the shell's route is Settings.
+    expect(hrefOf({ page: 'settings', prompt: 'skill-library' })).toBe(
+      '/settings?prompt=skill-library',
+    );
+    expect(routeOf('/settings', '?prompt=skill-library')).toEqual({ route: { page: 'settings' } });
     expect(hrefOf({ page: 'workspace', branch: 'feature/x' })).toBe('/?branch=feature%2Fx');
     expect(hrefOf({ page: 'merge', branch: 'fix/y' })).toBe('/?merge=fix%2Fy');
     expect(hrefOf({ page: 'start' })).toBe('/start');

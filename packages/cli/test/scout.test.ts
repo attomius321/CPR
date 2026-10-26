@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { codexServer } from '../src/app-server.js';
 import type { Codex } from '../src/codex.js';
-import { DEFAULT_PROMPTS, fillPrompt } from '../src/prompts.js';
+import { DEFAULT_PROMPTS } from '../src/prompts.js';
 import {
   findScoutSession,
   newScoutSession,
@@ -15,7 +15,8 @@ import {
   scoutSettings,
   scoutState,
 } from '../src/scout.js';
-import { scribe } from '../src/scribe.js';
+import { libraryService, type LibraryService } from '../src/library.js';
+import { scribe, scribePrompt } from '../src/scribe.js';
 import { viewFile } from '../src/mcp-bridge.js';
 import type { Terminals } from '../src/terminal.js';
 import { claudeCode, type AgentSession, type ClaudeCode } from '../src/claude-code.js';
@@ -258,6 +259,26 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
     await claude.startPageAgent(request);
     expect(calls[0]?.slice(-3)).toEqual(['--effort', 'low', 'Q']);
     expect(calls[1]).not.toContain('--effort');
+  });
+
+  it('gives a folder outside the checkout with --add-dir, before its settings (SK1)', async () => {
+    const calls: string[][] = [];
+    const run: Run = (_command, args) => {
+      calls.push(args);
+      return Promise.resolve({ code: 0, stdout: '', stderr: '' });
+    };
+    const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
+    const request = { cwd: '/repo', name: 'Scribe', prompt: 'Q', settings: '/s', ...READ_ONLY };
+    await claude.startPageAgent({ ...request, addDirs: ['/home/a/skills'] });
+    const at = calls[0]?.indexOf('--add-dir') ?? -1;
+    expect(calls[0]?.slice(at, at + 4)).toEqual([
+      '--add-dir',
+      '/home/a/skills',
+      '--settings',
+      '/s',
+    ]);
+    await claude.startPageAgent(request);
+    expect(calls[1]).not.toContain('--add-dir');
   });
 
   it("gives Symbiote's MCP server, and no other, when asked (MC1)", async () => {
@@ -1118,7 +1139,13 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
       claude = null,
       codex = null,
       terminals,
-    }: { claude?: ClaudeCode | null; codex?: Codex | null; terminals?: Terminals } = {},
+      library,
+    }: {
+      claude?: ClaudeCode | null;
+      codex?: Codex | null;
+      terminals?: Terminals;
+      library?: LibraryService;
+    } = {},
   ) =>
     scribe(await openRepo(repo.root), cache, {
       claude: () => Promise.resolve(claude),
@@ -1128,7 +1155,17 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
       gate: SCRIBE_GATE,
       node: '/usr/bin/node',
       ...(terminals ? { terminals } : {}),
+      ...(library ? { library } : {}),
     });
+  /** A skill library (SK1) in a folder of the test's own, or at `folder`. */
+  const libraryAt = async (folder?: string) => {
+    const config = tempDir();
+    const at = folder ?? join(config, 'library');
+    mkdirSync(at, { recursive: true });
+    const service = libraryService(join(config, 'library.json'), { home: config });
+    await service.set({ action: 'library', folder: at, commits: 'none' });
+    return { folder: at, service };
+  };
   const scribeRecord = (repo: TestRepo) => join(repo.root, 'symbiote', 'scribe.json');
 
   it('starts Claude Code in the checkout with Write and Edit, its gate given the skills folder, asking', async () => {
@@ -1148,13 +1185,16 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
       // Claude Code asks the person before each write into .claude (decision 275).
       permissionMode: 'default',
     });
+    // Without a skill library (SK1), the text it had before.
     expect(request?.prompt).toBe(
-      fillPrompt(DEFAULT_PROMPTS.scribe, {
+      scribePrompt(DEFAULT_PROMPTS, {
         request: 'A skill for adding a prompt to Settings',
         skills,
         checkout: repo.root,
       }),
     );
+    expect(request?.prompt).not.toMatch(/library|\{\w+\}/);
+    expect(request).not.toHaveProperty('addDirs');
     // Its gate, given the folder; and its writes in the checkout, not in a worktree of Claude
     // Code's own: a background session refuses an edit outside one unless told so (V41).
     expect(JSON.parse(readFileSync(settings, 'utf8'))).toEqual({
@@ -1210,6 +1250,70 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
       args: ['resume', 'thread-1', '--remote', server.address, '-C', skills],
       cwd: skills,
     });
+  });
+
+  it('gives Claude Code the library: --add-dir, and its gate both folders (SK1)', async () => {
+    const repo = fresh();
+    const library = await libraryAt();
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    const s = await scribeService(repo, { claude, library: library.service });
+    await s.ask({ text: 'A skill for deploys, in my library' });
+    const skills = join(repo.root, '.claude', 'skills');
+    const request = startPageAgent.mock.calls[0]?.[0];
+    expect(request?.addDirs).toEqual([library.folder]);
+    expect(request?.prompt).toBe(
+      scribePrompt(DEFAULT_PROMPTS, {
+        request: 'A skill for deploys, in my library',
+        skills,
+        checkout: repo.root,
+        library: library.folder,
+      }),
+    );
+    expect(request?.prompt).toContain(`${library.folder}/<name>/SKILL.md`);
+    const settings = join(repo.root, 'symbiote', 'scribe-settings.json');
+    expect(
+      (
+        JSON.parse(readFileSync(settings, 'utf8')) as {
+          hooks: { PreToolUse: { hooks: { command: string }[] }[] };
+        }
+      ).hooks.PreToolUse[0]?.hooks[0]?.command,
+    ).toBe(`'/usr/bin/node' '${SCRIBE_GATE}' '${skills}' '${library.folder}'`);
+  });
+
+  it('gives Codex the library as a folder it may write too (SK1)', async () => {
+    const repo = fresh();
+    const library = await libraryAt();
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    const s = await scribeService(repo, { codex, library: library.service });
+    await s.ask({ text: 'A skill for releases' });
+    const start = server.calls.find((c) => c.method === 'thread/start');
+    expect(start?.params).toEqual({
+      cwd: join(repo.root, '.claude', 'skills'),
+      sandbox: 'workspace-write',
+      approvalPolicy: 'never',
+      config: { sandbox_workspace_write: { writable_roots: [library.folder] } },
+    });
+  });
+
+  it('leaves out a library that is not there, or is the checkout’s own skills', async () => {
+    const repo = fresh();
+    const gone = await libraryAt();
+    rmSync(gone.folder, { recursive: true });
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    await (await scribeService(repo, { claude, library: gone.service })).ask({ text: 'A' });
+    expect(startPageAgent.mock.calls[0]?.[0]).not.toHaveProperty('addDirs');
+    expect(startPageAgent.mock.calls[0]?.[0]?.prompt).not.toContain(gone.folder);
+
+    const own = await libraryAt(join(repo.root, '.claude', 'skills'));
+    const second = fresh();
+    const other = fakeClaude(second.root);
+    await (
+      await scribeService(repo, { claude: other.claude, library: own.service })
+    ).ask({
+      text: 'B',
+    });
+    expect(other.startPageAgent.mock.calls[0]?.[0]).not.toHaveProperty('addDirs');
   });
 
   it('speaks of itself', async () => {

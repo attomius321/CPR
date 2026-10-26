@@ -461,6 +461,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           MAX_SKILL * 6 + 4096,
         );
       }
+      // What is at a folder the skill library may be set to (SK1), as Settings shows it.
+      if (url.pathname === '/api/skills/library') {
+        if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+        const folder = url.searchParams.get('folder');
+        if (!folder) return send(res, 400, 'folder: the folder to look at');
+        return answer(res, () => skills.probe(folder));
+      }
     }
     if (monitor) {
       // The Monitor page (RM1), a page of the shell's.

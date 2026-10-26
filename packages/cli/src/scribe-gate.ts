@@ -1,8 +1,8 @@
 // Scribe's gate (V41, decision 275): what Scribe's Claude Code may do, decided by Symbiote before
 // Claude Code's own rules. Read, Grep and Glob pass to those rules; Bash runs only git's read
 // commands, as Scout's (`gitReadProblem`); Write and Edit only for a file in a skill's folder of
-// the checkout's skills, by its real path, and then Claude Code's own rule for `.claude` asks the
-// person; every other tool is denied. Like Scout's gate, it runs once per tool call in Claude
+// the checkout's skills, or of the skill library's (SK1, decision 430), by its real path, and then
+// Claude Code's own rules ask the person; every other tool is denied. Like Scout's gate, it runs once per tool call in Claude
 // Code's process tree (`scribe-hook.ts`), so it uses nothing but Node's modules.
 import { realpathSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
@@ -28,24 +28,32 @@ function realTarget(path: string): string {
   }
 }
 
+/** The folders of skills given: one, or the checkout's then the library's. */
+const listOf = (skills: string | readonly string[]): readonly string[] =>
+  typeof skills === 'string' ? [skills] : skills;
+
 /**
  * Why Scribe may not write `path`, or null when it may: an absolute path, without `..`, whose real
- * path is in a skill's folder of `skills` (`<skills>/<name>/…`).
+ * path is in a skill's folder of one of `skills` (`<skills>/<name>/…`).
  */
-export function writeProblem(path: unknown, skills: string): string | null {
+export function writeProblem(path: unknown, skills: string | readonly string[]): string | null {
   if (typeof path !== 'string' || path === '') return 'no file given';
   if (!isAbsolute(path)) return `${path} is not an absolute path`;
   if (path.split(/[\\/]/).includes('..')) return `${path} holds "..": give the file's own path`;
-  const inside = relative(realTarget(skills), realTarget(path));
-  if (inside === '' || inside.startsWith('..') || isAbsolute(inside)) {
-    return `${path} is outside ${skills}`;
+  const folders = listOf(skills);
+  const target = realTarget(path);
+  for (const folder of folders) {
+    const inside = relative(realTarget(folder), target);
+    if (inside === '' || inside.startsWith('..') || isAbsolute(inside)) continue;
+    if (!inside.includes(sep)) return `${path} is not in a skill's folder (${folder}/<name>/…)`;
+    return null;
   }
-  if (!inside.includes(sep)) return `${path} is not in a skill's folder (${skills}/<name>/…)`;
-  return null;
+  return `${path} is outside ${folders.join(' and ')}`;
 }
 
 /** The gate's decision on one tool call (Claude Code's PreToolUse input); null: its own rules. */
-export function scribeDecision(input: unknown, skills: string): GateDecision {
+export function scribeDecision(input: unknown, skills: string | readonly string[]): GateDecision {
+  const where = listOf(skills).join(' or ');
   if (!input || typeof input !== 'object') return null;
   const v = input as { hook_event_name?: unknown; tool_name?: unknown; tool_input?: unknown };
   if (v.hook_event_name !== 'PreToolUse' || typeof v.tool_name !== 'string') return null;
@@ -69,11 +77,11 @@ export function scribeDecision(input: unknown, skills: string): GateDecision {
     if (problem === null) return null;
     return {
       allow: false,
-      reason: `Scribe writes only skills, files in a skill's folder in ${skills}: ${problem}.`,
+      reason: `Scribe writes only skills, files in a skill's folder in ${where}: ${problem}.`,
     };
   }
   return {
     allow: false,
-    reason: `Scribe reads files (Read, Grep, Glob) and git's history, and writes skills in ${skills} (Write, Edit); nothing else (${v.tool_name}).`,
+    reason: `Scribe reads files (Read, Grep, Glob) and git's history, and writes skills in ${where} (Write, Edit); nothing else (${v.tool_name}).`,
   };
 }

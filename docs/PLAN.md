@@ -164,6 +164,7 @@ hosted.
 | [V52](plan/v52-scout-next-conversation.md) | Scout's head picks the next conversation: a choice starts nothing until New conversation | ready for review | 391–393 | [journal](journal/v52-scout-next-conversation.md) |
 | [V58](plan/v58-hermes-agent.md) | Hermes as a workspace's agent, in its terminal | ready for review | 415–421 | [journal](journal/v58-hermes-agent.md) |
 | Fix | Scout's head on one line: Effort and its stepper centred with the selects | ready for review | | [journal](journal/fix-scout-not-aligned.md) |
+| [SK1](plan/sk1-skill-library.md) | A skill library: a folder or repository of skills outside the project, on the Skills page and for Scribe; commits as set | ready for review | 426–430 | [journal](journal/sk1-skill-library.md) |
 
 ### The merger
 

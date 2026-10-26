@@ -2074,8 +2074,13 @@ describe('symbiote view: skills (V41)', () => {
     codex: { installed: false, link: 'none', canLink: true },
   };
   const asked: SkillChange[] = [];
+  const probed: string[] = [];
   const skills: SkillsService = {
     state: () => Promise.resolve(answer),
+    probe: (folder) => {
+      probed.push(folder);
+      return Promise.resolve({ folder: '/home/a/skills', kind: 'missing', skills: 0 });
+    },
     change: (change) => {
       asked.push(change);
       return change.action === 'delete'
@@ -2138,6 +2143,18 @@ describe('symbiote view: skills (V41)', () => {
       { action: 'new', name: 'a', description: 'Does a.' },
       { action: 'delete', path: '.claude/skills/a/SKILL.md', version: 'v0' },
     ]);
+  });
+
+  it('says what is at a folder the library may be set to (SK1)', async () => {
+    const probe = (query: string) => fetch(new URL(`/api/skills/library${query}`, server.url));
+    const read = await probe(`?folder=${encodeURIComponent('~/skills')}`);
+    expect(read.status).toBe(200);
+    expect(await read.json()).toEqual({ folder: '/home/a/skills', kind: 'missing', skills: 0 });
+    expect(probed).toEqual(['~/skills']);
+    expect((await probe('')).status).toBe(400);
+    expect(
+      (await fetch(new URL('/api/skills/library?folder=x', server.url), { method: 'POST' })).status,
+    ).toBe(405);
   });
 });
 

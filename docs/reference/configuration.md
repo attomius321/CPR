@@ -91,7 +91,8 @@ and leaves any other brace as text:
 | `reviews` | The text of `symbiote/AGENTS.md`, which tells agents how to act on a review | none |
 | `merger` | The merger's instructions | none |
 | `scout` | Scout's instructions | none |
-| `scribe` | Scribe's first prompt | `{request}` (required), `{skills}`, `{checkout}` |
+| `scribe` | Scribe's first prompt | `{request}` (required), `{skills}`, `{checkout}`, `{library}` |
+| `library` | What `{library}` becomes in Scribe's prompt when a [skill library](#the-skill-library) is set. Without a library, the line that holds `{library}` is left out | `{folder}` (required), `{skills}` |
 
 Settings lists what each placeholder stands for. Symbiote ignores a prompt it cannot use, uses its
 own text instead, and marks the prompt "not used" in Settings. A prompt cannot be used in three
@@ -103,8 +104,36 @@ cases:
   1,000 for `plan.*`, `documents` and `verdict.*`, and 20,000 for `reviews` and `merger`.
 
 Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, Scout cannot edit
-files, Scribe writes only in `.claude/skills/`, and Scout's starts, verdicts, merges and clean-ups
+files, Scribe writes only in `.claude/skills/` and the skill library, and Scout's starts, verdicts, merges and clean-ups
 still wait for your **Confirm**.
+
+## The skill library
+
+The skill library is one folder of skills kept outside the repository: each skill is a folder
+with its `SKILL.md`, as in `.claude/skills/`. It can be a plain folder, or a folder in a git
+repository, such as the `skills/` folder of a repository you share. Set it in **Settings**, under
+**This machine**, **Skill library**. Every repository you open on this machine shows the same
+library on its Skills page, and Scribe can write there too.
+
+Symbiote keeps this setting in its own settings folder, not in the project: `library.json` in
+`~/.config/symbiote` on Linux (`$XDG_CONFIG_HOME/symbiote` when set), `~/Library/Application
+Support/symbiote` on macOS and `%APPDATA%\symbiote` on Windows.
+
+```json
+{ "folder": "/home/you/projects/skillbar/skills", "commits": "push" }
+```
+
+| Key | What it does |
+|---|---|
+| `folder` | The library's folder, a full path. With **Clone a repository**, Symbiote clones the repository into the folder you give, and the library is its `skills/` folder when it has one. |
+| `commits` | Who commits the library's changes: `none` (the default) leaves git to you; `commit` lets the Skills page commit them, with your message; `push` commits, then pushes, and lets the page pull, fast-forward only. |
+
+A commit takes only the library's folder: anything else you staged in that repository stays
+staged. A push goes to the branch's upstream, else to `origin`. Symbiote never forces a push,
+switches a branch or rebases. A clone, a push or a pull never waits for a password: it fails
+after two minutes, or at once if git would ask for one.
+
+No agent reads the library from its folder: it is where you keep and write skills.
 
 ## Files Symbiote skips, `.symbioteignore`
 

@@ -20,7 +20,9 @@ export type PromptKey =
   /** Scout's instructions, its first prompt with the question (V35). */
   | 'scout'
   /** Scribe's instructions, its first prompt with the person's request (V41). */
-  | 'scribe';
+  | 'scribe'
+  /** What Scribe's `{library}` becomes when a skill library is set (SK1). */
+  | 'library';
 
 /** Every prompt, in the Settings page's order. */
 export const PROMPT_KEYS: readonly PromptKey[] = [
@@ -40,6 +42,7 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'merger',
   'scout',
   'scribe',
+  'library',
 ];
 
 /** A name a prompt may hold as `{name}`, replaced by what it stands for when it is used. */

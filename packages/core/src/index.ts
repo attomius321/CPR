@@ -182,7 +182,17 @@ export {
   type PromptSetting,
   type PromptSettings,
 } from './prompts.js';
-export { type Skill, type SkillChange, type SkillFolder, type SkillsState } from './skills.js';
+export {
+  type LibraryChange,
+  type LibraryCommits,
+  type LibraryGit,
+  type LibraryProbe,
+  type LibraryState,
+  type Skill,
+  type SkillChange,
+  type SkillFolder,
+  type SkillsState,
+} from './skills.js';
 export {
   type ScoutAgent,
   type ScoutAsk,

@@ -107,3 +107,32 @@ describe('scribeDecision (V41)', () => {
     });
   });
 });
+
+describe('the skill library (SK1, decision 430)', () => {
+  it('lets a write in a skill’s folder of either through, and refuses the library’s root or beside it', () => {
+    const library = join(root, 'library');
+    mkdirSync(library);
+    const both = [skills, library];
+    expect(writeProblem(join(library, 'deploy', 'SKILL.md'), both)).toBeNull();
+    expect(writeProblem(join(library, 'deploy', 'scripts', 'run.sh'), both)).toBeNull();
+    expect(writeProblem(join(skills, 'review', 'SKILL.md'), both)).toBeNull();
+    expect(writeProblem(join(library, 'README.md'), both)).toBe(
+      `${join(library, 'README.md')} is not in a skill's folder (${library}/<name>/…)`,
+    );
+    expect(writeProblem(join(root, 'README.md'), both)).toBe(
+      `${join(root, 'README.md')} is outside ${skills} and ${library}`,
+    );
+  });
+
+  it('names both folders when it denies a write', () => {
+    const library = join(root, 'library');
+    const file = join(root, 'README.md');
+    expect(scribeDecision(input('Write', { file_path: file }), [skills, library])).toEqual({
+      allow: false,
+      reason: `Scribe writes only skills, files in a skill's folder in ${skills} or ${library}: ${file} is outside ${skills} and ${library}.`,
+    });
+    const other = scribeDecision(input('NotebookEdit', {}), [skills, library]);
+    expect(other).toMatchObject({ allow: false });
+    expect((other as { reason: string }).reason).toContain(`${skills} or ${library}`);
+  });
+});

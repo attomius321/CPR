@@ -2,23 +2,32 @@
 // `.agents/skills/<name>/SKILL.md`, Codex's (decision 271), as the Skills page lists, saves, adds
 // and deletes them; and `.agents/skills` made a link to `.claude/skills`, so Codex reads Claude
 // Code's (decision 272). Written in place, as Settings writes `symbiote/config.json`: the person
-// commits them. Nothing outside the two folders is written.
+// commits them. Nothing outside the two folders is written, but in the skill library (SK1,
+// `library.ts`): its skills are listed after the checkout's, named `library/<name>/SKILL.md`
+// (decision 429), and changed there in the same way.
 import { createHash } from 'node:crypto';
 import { lstatSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { mkdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { dirname, join, sep } from 'node:path';
 import {
   fileGitState,
+  openRepo,
   type AgentKind,
+  type FileGitState,
   type GitRepo,
+  type LibraryProbe,
+  type LibraryState,
   type Skill,
   type SkillChange,
   type SkillFolder,
   type SkillsState,
 } from '@symbiote/core';
+import type { LibraryService } from './library.js';
 
 export const CLAUDE_SKILLS = '.claude/skills';
 export const CODEX_SKILLS = '.agents/skills';
+/** How a change names the library's skills: `library/<name>/SKILL.md` (decision 429). */
+export const LIBRARY = 'library';
 
 /** The longest `SKILL.md` the page edits; a longer one is listed by name only. */
 export const MAX_SKILL = 256 * 1024;
@@ -46,6 +55,8 @@ export interface SkillsService {
   state(): Promise<SkillsState>;
   /** Makes a change, and answers the skills as they are after it. */
   change(change: SkillChange): Promise<SkillsState>;
+  /** What is at a folder the library may be set to (SK1). */
+  probe(folder: string): Promise<LibraryProbe>;
 }
 
 /** What is wrong with a skill's name, as the standard has it; null when nothing is. */
@@ -158,18 +169,31 @@ function codexLink(root: string): 'linked' | 'folder' | 'none' {
   return real(path) === real(join(root, CLAUDE_SKILLS)) ? 'linked' : 'folder';
 }
 
-/** The checkout's skills, for the Skills page; Codex's install found by `codexInstalled`. */
+/**
+ * The checkout's skills, for the Skills page; Codex's install found by `codexInstalled`; the
+ * library's after them when one is set (`library`, SK1).
+ */
 export function skillsService(
   repo: GitRepo,
   {
     codexInstalled,
     platform = process.platform,
-  }: { codexInstalled: () => Promise<boolean>; platform?: NodeJS.Platform },
+    library,
+  }: {
+    codexInstalled: () => Promise<boolean>;
+    platform?: NodeJS.Platform;
+    library?: LibraryService;
+  },
 ): SkillsService {
   const root = repo.root;
 
-  async function list(folder: SkillFolder, agents: AgentKind[]): Promise<Skill[]> {
-    const dir = join(root, folder);
+  /** The skills in `dir`, named `<folder>/<name>/SKILL.md`, their git state from `gitOf`. */
+  async function list(
+    dir: string,
+    folder: SkillFolder,
+    agents: AgentKind[],
+    gitOf: (name: string) => Promise<FileGitState>,
+  ): Promise<Skill[]> {
     let names: string[];
     try {
       names = readdirSync(dir).sort();
@@ -198,23 +222,54 @@ export function skillsService(
         version: versionOf(text ?? `${size}`),
         files,
         ...(more ? { moreFiles: true as const } : {}),
-        git: await fileGitState(repo, path),
+        git: await gitOf(name),
         agents,
       });
     }
     return skills;
   }
 
+  /** The checkout's skills in `folder`, their git state the checkout's. */
+  const checkoutSkills = (folder: SkillFolder & `.${string}`, agents: AgentKind[]) =>
+    list(join(root, folder), folder, agents, (name) =>
+      fileGitState(repo, `${folder}/${name}/SKILL.md`),
+    );
+
+  /** The library and its skills: none when it is not there, or is the checkout's own folder. */
+  async function libraryOf(): Promise<{ state: LibraryState; skills: Skill[] } | null> {
+    const state = await library?.state();
+    if (!state) return null;
+    const own = [CLAUDE_SKILLS, CODEX_SKILLS].find(
+      (folder) => existsAt(join(root, folder)) && real(join(root, folder)) === real(state.folder),
+    ) as (typeof CLAUDE_SKILLS | typeof CODEX_SKILLS) | undefined;
+    if (own) return { state: { ...state, checkout: own }, skills: [] };
+    if (!state.exists) return { state, skills: [] };
+    const held = state.git;
+    const gitRepo = held ? await openRepo(held.root) : null;
+    const skills = await list(state.folder, LIBRARY, [], (name) =>
+      gitRepo && held
+        ? fileGitState(gitRepo, `${held.path ? `${held.path}/` : ''}${name}/SKILL.md`)
+        : Promise.resolve('none'),
+    );
+    return { state, skills };
+  }
+
   async function state(): Promise<SkillsState> {
     const link = codexLink(root);
+    const own = await libraryOf();
     const skills = [
-      ...(await list(CLAUDE_SKILLS, link === 'linked' ? ['claude', 'codex'] : ['claude'])),
-      ...(link === 'folder' ? await list(CODEX_SKILLS, ['codex']) : []),
+      ...(await checkoutSkills(
+        CLAUDE_SKILLS,
+        link === 'linked' ? ['claude', 'codex'] : ['claude'],
+      )),
+      ...(link === 'folder' ? await checkoutSkills(CODEX_SKILLS, ['codex']) : []),
+      ...(own?.skills ?? []),
     ];
     const windows = platform === 'win32';
     return {
       checkout: root,
       skills,
+      ...(own ? { library: own.state } : {}),
       codex: {
         installed: await codexInstalled(),
         link,
@@ -227,12 +282,22 @@ export function skillsService(
     };
   }
 
+  /** The library's folder, refused (409) without one. */
+  function libraryFolder(): string {
+    const folder = library?.setting()?.folder;
+    if (!folder) throw new SkillRefused('No skill library is set: set one in Settings', 409);
+    return folder;
+  }
+
   /**
-   * The skill a change names: `<folder>/<name>/SKILL.md` in one of the two folders, its folder's
-   * real path inside the folder's (a link out is the person's to change where it is).
+   * The skill a change names: `<folder>/<name>/SKILL.md` in one of the two folders, or
+   * `library/<name>/SKILL.md` in the library's; its folder's real path inside the folder's (a link
+   * out is the person's to change where it is).
    */
   function skillAt(path: string): { dir: string; file: string } {
-    const match = /^(\.claude\/skills|\.agents\/skills)\/([^/\\\0]+)\/SKILL\.md$/.exec(path);
+    const match = /^(\.claude\/skills|\.agents\/skills|library)\/([^/\\\0]+)\/SKILL\.md$/.exec(
+      path,
+    );
     const folder = match?.[1];
     const name = match?.[2];
     if (!folder || !name || name === '.' || name === '..') {
@@ -241,10 +306,12 @@ export function skillsService(
         400,
       );
     }
-    const dir = join(root, folder, name);
-    if (!within(real(dir), real(join(root, folder)))) {
+    const base = folder === LIBRARY ? libraryFolder() : join(root, folder);
+    const shown = folder === LIBRARY ? base : folder;
+    const dir = join(base, name);
+    if (!within(real(dir), real(base))) {
       throw new SkillRefused(
-        `${folder}/${name} is a link out of ${folder}: change it where it is`,
+        `${shown}/${name} is a link out of ${shown}: change it where it is`,
         400,
       );
     }
@@ -288,9 +355,11 @@ export function skillsService(
         if (RESERVED.has(change.name)) {
           throw new SkillRefused(`${change.name} is a folder Claude Code keeps for itself`, 400);
         }
-        const dir = join(root, CLAUDE_SKILLS, change.name);
+        const base = change.where === LIBRARY ? libraryFolder() : join(root, CLAUDE_SKILLS);
+        const dir = join(base, change.name);
         if (existsAt(dir)) {
-          throw new SkillRefused(`${CLAUDE_SKILLS}/${change.name} is there already`, 409);
+          const shown = change.where === LIBRARY ? base : CLAUDE_SKILLS;
+          throw new SkillRefused(`${shown}/${change.name} is there already`, 409);
         }
         const description = change.description.trim();
         await put(
@@ -320,13 +389,30 @@ export function skillsService(
         await symlink('../.claude/skills', join(root, CODEX_SKILLS));
         return;
       }
+      case 'library':
+        return needLibrary().set(change);
+      case 'forget':
+        return needLibrary().forget();
+      case 'commit':
+        return needLibrary().commit(change.message);
+      case 'push':
+        return needLibrary().push();
+      case 'pull':
+        return needLibrary().pull();
     }
+  }
+
+  /** The library's service; a server without one refuses its changes. */
+  function needLibrary(): LibraryService {
+    if (!library) throw new SkillRefused('This server keeps no skill library', 409);
+    return library;
   }
 
   // One change at a time: each reads what it changes.
   let changing: Promise<unknown> = Promise.resolve();
   return {
     state,
+    probe: (folder) => needLibrary().probe(folder),
     async change(change) {
       const next = changing.then(() => apply(change));
       changing = next.catch(() => undefined);
@@ -345,6 +431,8 @@ function existsAt(path: string): boolean {
   }
 }
 
+const COMMITS = ['none', 'commit', 'push'] as const;
+
 /** `POST /api/skills`'s body, checked: throws with what is wrong. */
 export function parseSkillChange(body: string): SkillChange {
   const value = JSON.parse(body) as unknown;
@@ -362,12 +450,17 @@ export function parseSkillChange(body: string): SkillChange {
         text: text('text', 'its new text'),
         version: text('version', 'as it was read'),
       };
-    case 'new':
+    case 'new': {
+      if (v.where !== undefined && v.where !== LIBRARY) {
+        throw new Error('where: library, or none for the checkout');
+      }
       return {
         action: 'new',
         name: text('name', "the skill's name"),
         description: text('description', 'what it does and when to use it'),
+        ...(v.where === LIBRARY ? { where: LIBRARY } : {}),
       };
+    }
     case 'delete':
       return {
         action: 'delete',
@@ -376,7 +469,28 @@ export function parseSkillChange(body: string): SkillChange {
       };
     case 'link':
       return { action: 'link' };
+    case 'library': {
+      const commits = COMMITS.find((c) => c === v.commits);
+      if (!commits) throw new Error('commits: none, commit or push');
+      if (v.url !== undefined && typeof v.url !== 'string') throw new Error('url: a git URL');
+      if (v.create !== undefined && typeof v.create !== 'boolean') {
+        throw new Error('create: true to make the folder');
+      }
+      return {
+        action: 'library',
+        folder: text('folder', "the library's folder"),
+        ...(typeof v.url === 'string' ? { url: v.url } : {}),
+        ...(v.create === true ? { create: true } : {}),
+        commits,
+      };
+    }
+    case 'forget':
+    case 'push':
+    case 'pull':
+      return { action: v.action };
+    case 'commit':
+      return { action: 'commit', message: text('message', "the commit's message") };
     default:
-      throw new Error('action: save, new, delete or link');
+      throw new Error('action: save, new, delete, link, library, forget, commit, push or pull');
   }
 }
