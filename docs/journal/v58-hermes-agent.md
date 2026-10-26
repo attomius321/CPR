@@ -79,11 +79,12 @@ Scout, Scribe and the merger kept to Claude Code and Codex.
 
 **Verification**: tests first, red for the right reasons (the module 18, the service 9, Scout 1
 changed, the panel's helpers 2 new and 2 changed, Stop 1 changed). `pnpm check`: 1,799 unit tests
-(1,770 on `main`). e2e: 276 of 276 in the last full run (274 on `main`, 2 new in `hermes.spec.ts`); the first
-full run 275, `scout.spec.ts` failing once (below). The real Hermes through `symbiote view`'s API in a throwaway
-repository (plan, results): options with its 8 levels 285–307 ms, start 327 ms, Stop 594 ms and
-stopped, `--resume` 292–296 ms, Clean up 19–24 ms; both runs' sessions deleted from the person's
-store. Screenshots light and dark at 1440 and 900 px. No analysis code changed: no regression sets.
+(1,770 on `main`). e2e: 276 of 276 in the last full run (274 on `main`, 2 new in
+`hermes.spec.ts`); the first full run 275, `scout.spec.ts` failing once (below). The real Hermes
+through `symbiote view`'s API in a throwaway repository (plan, results): options with its 8 levels
+285–307 ms, start 327 ms, Stop 594 ms and stopped, `--resume` 292–296 ms, Clean up 19–24 ms; both
+runs' sessions deleted from the person's store. Screenshots light and dark at 1440 and 900 px. No
+analysis code changed: no regression sets.
 
 Found, not fixed (not this branch's): `scout.spec.ts` "another agent picked in its head starts
 nothing" reads Scout's record as soon as Codex's `thread/start` is seen, before Symbiote writes it:
