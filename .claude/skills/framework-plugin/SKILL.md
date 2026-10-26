@@ -49,7 +49,8 @@ throwing plugin is disabled with a warning instead of failing the run.
 - [ ] Per project, not per repo: a monorepo can hold several apps and versions (W1); find the
       nearest package.json / config per file
 - [ ] CLI hint: add the framework to FRAMEWORKS in packages/cli/src/plugins.ts, with a test
-- [ ] README plugin paragraph; plan file with "As built" and its index row; journal entry
+- [ ] Plugin paragraph in docs/guide/review-and-ci.md; plan file with "As built" and its index
+      row; journal entry
 - [ ] regression-check: the plugin's real-repo set with --no-plugins vs with it (every finding
       gone must be a framework use; inspect every new one); time +5 % at most
 - [ ] Viewer: an e2e spec if the plugin adds symbol kinds or files (packages/viewer/e2e/qwik.spec.ts)
