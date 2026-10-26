@@ -13,8 +13,8 @@ Pick the way that matches what you want to review:
 - **Your branch against another**: run `symbiote view main` in the repository. To print the same
   comparison in the terminal, run `symbiote diff main`.
 - **Any branch**: on **History**, select one of the branch's commits, press `r`, and pick the
-  branch (a commit can be on several). Symbiote compares the branch's newest commit with the commit where the branch left the
-  default branch.
+  branch (a commit can be on several). Symbiote compares the branch's newest commit with the
+  commit where the branch left the default branch.
 - **Two commits**: on **History**, press `x`, click two commits, then click **Compare**. The older
   commit is the base.
 - **A pull request or a merge request**: run `symbiote pr <number>`. See
@@ -103,8 +103,9 @@ To review a branch, open it with **Review** on its workspace, or with `r` on **H
 
 Symbiote writes the review to `symbiote/reviews/<branch>/<your git email>.json`, in the
 repository. Symbiote's `symbiote/.gitignore` keeps reviews out of git. To commit and share them,
-edit `symbiote/.gitignore` or delete it. Symbiote leaves a `.gitignore` you changed as it is. To give a review
-to an agent that has no workspace, click **Copy for the agent** and paste the text into its chat.
+edit `symbiote/.gitignore` or delete it. Symbiote leaves a `.gitignore` you changed as it is. To
+give a review to an agent that has no workspace, click **Copy for the agent** and paste the text
+into its chat.
 `symbiote/AGENTS.md` tells any agent how to act on a review.
 
 On **History**, each branch you reviewed carries a badge: `✓` approved, `✗` changes requested,
