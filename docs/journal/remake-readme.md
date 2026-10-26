@@ -107,3 +107,9 @@ commits are written by hand. Both merges ran Symbiote's real merge and check (`n
 Not verified: an install with an empty pnpm store; macOS; Symbiote's window (Electron); Codex;
 `symbiote pr`, the GitHub Action and the GitLab template; the logs app (Docker); a workspace
 with a real Claude Code session.
+
+Found, left for the person: the clone URL (`attomius321/Symbiote.git`), the Action's `uses:`,
+the GitLab template's two URLs and the graph schema's `$id` name a GitHub repository that does
+not exist. The repository is `attomius321/CPR`, and private (`git ls-remote` over SSH: Symbiote
+"Repository not found", CPR answers; over HTTPS without credentials, both ask for a user). The
+old README had the same URLs. Renaming the repository on GitHub would make them right.
