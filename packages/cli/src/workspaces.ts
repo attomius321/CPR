@@ -84,6 +84,8 @@ import type { CodexThread } from './app-server.js';
 import { activityOf, serverActivity } from './workspace-activity.js';
 import { MAX_BRIEF, workKinds } from './workspace-brief.js';
 import { onServer, workspaceCodex } from './workspace-codex.js';
+import { hermesEntries, hermesTools, type Hermes, type HermesSession } from './hermes.js';
+import { workspaceHermes } from './workspace-hermes.js';
 import {
   emptyFile,
   isFile,
@@ -229,19 +231,24 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
   return config;
 }
 
-/** An agent found for a workspace: Claude Code or Codex (V20a). */
-type FoundAgent = { kind: 'claude'; claude: ClaudeCode } | { kind: 'codex'; codex: Codex };
+/** An agent found for a workspace: Claude Code, Codex (V20a) or Hermes (V58). */
+type FoundAgent =
+  | { kind: 'claude'; claude: ClaudeCode }
+  | { kind: 'codex'; codex: Codex }
+  | { kind: 'hermes'; hermes: Hermes };
 
 /** The levels `agent` takes (V30b); null when Symbiote cannot read them. */
 async function effortsOf(agent: FoundAgent): Promise<AgentEfforts | null> {
   if (agent.kind === 'codex') return agent.codex.efforts();
+  if (agent.kind === 'hermes') return agent.hermes.efforts();
   const levels = await agent.claude.efforts();
   return levels ? { levels } : null;
 }
 
-/** The models `agent` lists (V47); null when Symbiote cannot read them. */
+/** The models `agent` lists (V47); null when Symbiote cannot read them (Hermes lists none). */
 async function modelsOf(agent: FoundAgent): Promise<AgentModels | null> {
   if (agent.kind === 'codex') return agent.codex.models();
+  if (agent.kind === 'hermes') return null;
   const models = await agent.claude.models();
   return models ? { models } : null;
 }
@@ -301,7 +308,8 @@ export interface Workspaces {
   /**
    * Opens its agent's newest session in a terminal (V21): `claude attach <id>` in its worktree,
    * where a stopped session continues, with no turn; for Codex on its app server, `codex resume
-   * <thread> --remote <address> -C <worktree>` (V27b). The terminal's ID.
+   * <thread> --remote <address> -C <worktree>` (V27b); for Hermes, the terminal it runs in, else
+   * its session continued (`hermes --resume`, V58). The terminal's ID.
    */
   terminal(request: WorkspaceTerminalRequest): Promise<WorkspaceTerminalOpened>;
   /**
@@ -338,6 +346,7 @@ export function workspaces(
   {
     claude,
     codex = () => Promise.resolve(null),
+    hermes = () => Promise.resolve(null),
     now = () => new Date(),
     env = process.env,
     root = repo.root,
@@ -350,6 +359,8 @@ export function workspaces(
     claude: () => Promise<ClaudeCode | null>;
     /** Finds Codex (V20a), the same way; none by default. */
     codex?: () => Promise<Codex | null>;
+    /** Finds Hermes (V58), the same way; none by default. */
+    hermes?: () => Promise<Hermes | null>;
     now?: () => Date;
     env?: Readonly<Record<string, string | undefined>>;
     /** Where `symbiote/config.json` is read. */
@@ -373,6 +384,7 @@ export function workspaces(
   };
   const config = () => readWorkspaceConfig(root);
   const viaCodex = workspaceCodex({ codex, now, env });
+  const viaHermes = workspaceHermes({ hermes, terminals, env, now });
 
   /** `workspaces.worktrees` is relative to the checkout that holds `symbiote/`. */
   const mainRoot = (where: ReviewPlace) =>
@@ -405,6 +417,8 @@ export function workspaces(
     refs: RefList,
     trunk: string[],
     sessions: AgentSession[] | null,
+    /** A Hermes workspace's session, read already (the list reads them all at once, V58). */
+    hermesRead?: HermesSession | null | Error,
   ): Promise<WorkspaceSummary> {
     const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha ?? null;
     let ahead = 0;
@@ -435,6 +449,16 @@ export function workspaces(
       if (!(read instanceof Error)) {
         activity = serverActivity(await runningTurn(workspace, read), agent, workspace.worktree);
       }
+    } else if (workspace.agent?.kind === 'hermes') {
+      // From its session (decision 416): its messages, and its tools while it works.
+      const read = hermesRead === undefined ? await viaHermes.read(workspace) : hermesRead;
+      agent = viaHermes.state(workspace, read, ahead);
+      const session = read instanceof Error ? null : read;
+      const entries = session ? hermesEntries(session) : [];
+      acted = lastAction(entries) ?? workspace.agent.started;
+      const tools =
+        session && agent.state === 'working' ? hermesTools(session, workspace.worktree) : null;
+      activity = activityOf(entries, agent, tools);
     } else {
       const thread = workspace.agent
         ? await readThreadEnd(symbioteFolder(where), workspace.branch)
@@ -585,15 +609,22 @@ export function workspaces(
       const agent = await claude();
       return agent ? { kind, claude: agent } : null;
     }
+    if (kind === 'hermes') {
+      const agent = await hermes();
+      return agent ? { kind, hermes: agent } : null;
+    }
     const agent = await codex();
     return agent ? { kind, codex: agent } : null;
   }
 
-  /** The agent a workspace gets unless one is picked: `agent.kind`, else Claude Code, else Codex.
-   * */
+  /**
+   * The agent a workspace gets unless one is picked: `agent.kind`, else Claude Code, else Codex,
+   * else Hermes (decision 421) — Hermes only where it can run, in Symbiote's terminals.
+   */
   async function defaultAgent(): Promise<FoundAgent | null> {
     const first = config().agent;
     for (const kind of first ? [first, ...AGENT_KINDS.filter((k) => k !== first)] : AGENT_KINDS) {
+      if (kind === 'hermes' && !(await viaHermes.available())) continue;
       const agent = await found(kind);
       if (agent) return agent;
     }
@@ -657,6 +688,11 @@ export function workspaces(
       };
       await writeRecord(where, workspace);
       await viaCodex.firstEntry(where, workspace);
+    } else if (agent.kind === 'hermes') {
+      workspace.agent = {
+        ...(await viaHermes.launch(workspace, agent.hermes, prompt, level)),
+        ...level,
+      };
     } else {
       // The session's first hooks run while `--bg` starts it: they look for this record.
       await writeRecord(where, workspace);
@@ -717,7 +753,13 @@ export function workspaces(
 
   return {
     async options() {
-      const [refs, claudeCode, codexAgent] = await Promise.all([listRefs(repo), claude(), codex()]);
+      const [refs, claudeCode, codexAgent, hermesAgent] = await Promise.all([
+        listRefs(repo),
+        claude(),
+        codex(),
+        // Hermes runs in Symbiote's terminals (decision 415): offered only where they run.
+        viaHermes.available().then((can) => (can ? hermes() : null)),
+      ]);
       const where = await place();
       const {
         branchPrefixes,
@@ -764,7 +806,15 @@ export function workspaces(
             : {}),
         });
       }
-      // The default first: `agent.kind`, else Claude Code, else Codex (decision 132).
+      if (hermesAgent) {
+        const efforts = await effortsOf({ kind: 'hermes', hermes: hermesAgent });
+        agents.push({
+          kind: 'hermes',
+          command: hermesAgent.command,
+          ...(efforts ? { efforts } : {}),
+        });
+      }
+      // The default first: `agent.kind`, else Claude Code, else Codex, else Hermes (decision 132).
       agents.sort((a, b) => Number(b.kind === first) - Number(a.kind === first));
       return {
         base: await workspaceBase(repo, refs),
@@ -794,9 +844,19 @@ export function workspaces(
       const trunk = await trunkOf(refs);
       const agent = list.some((f) => f.agent?.kind === 'claude') ? await claude() : null;
       const sessions = agent ? await agent.sessions() : null;
+      // Hermes's sessions read at once: each read is a Hermes process, 0.3 s (V58 spike).
+      const hermesReads = new Map(
+        await Promise.all(
+          list
+            .filter((w) => w.agent?.kind === 'hermes')
+            .map(async (w) => [w.branch, await viaHermes.read(w)] as const),
+        ),
+      );
       const summaries: WorkspaceSummary[] = [];
       for (const workspace of list) {
-        summaries.push(await summary(where, workspace, refs, trunk, sessions));
+        summaries.push(
+          await summary(where, workspace, refs, trunk, sessions, hermesReads.get(workspace.branch)),
+        );
       }
       const terminal = await terminals?.available();
       return { workspaces: summaries, ...head, ...(terminal ? { terminal } : {}) };
@@ -818,6 +878,12 @@ export function workspaces(
       if (agent?.kind === 'codex' && request.permissionMode !== undefined) {
         throw new WorkspaceRefused(
           "a permission mode is Claude Code's: Codex runs in its sandbox",
+          400,
+        );
+      }
+      if (agent?.kind === 'hermes' && request.permissionMode !== undefined) {
+        throw new WorkspaceRefused(
+          "a permission mode is Claude Code's: Hermes asks for approvals in its terminal",
           400,
         );
       }
@@ -879,7 +945,7 @@ export function workspaces(
         throw new WorkspaceRefused(
           kind
             ? `No agent to start: ${AGENT_NAMES[kind]} is not installed`
-            : 'No agent to start: install Claude Code (claude on PATH, or SYMBIOTE_CLAUDE) or Codex (codex on PATH, or SYMBIOTE_CODEX)',
+            : 'No agent to start: install Claude Code (claude on PATH, or SYMBIOTE_CLAUDE), Codex (codex on PATH, or SYMBIOTE_CODEX) or Hermes (hermes on PATH, or SYMBIOTE_HERMES)',
           409,
         );
       }
@@ -947,6 +1013,14 @@ export function workspaces(
         } catch (error) {
           throw new WorkspaceRefused(`Codex's app server: ${(error as Error).message}`, 502);
         }
+        return started(where, workspace, await promptOf(where, workspace));
+      }
+      if (workspace.agent?.kind === 'hermes') {
+        const live = viaHermes.state(workspace, await viaHermes.read(workspace), 0);
+        if (!viaHermes.running(branch) || !['working', 'needs-you'].includes(live.state)) {
+          throw new WorkspaceRefused('its agent is not running', 409);
+        }
+        viaHermes.stop(branch);
         return started(where, workspace, await promptOf(where, workspace));
       }
       if (workspace.agent?.kind === 'codex') {
@@ -1079,7 +1153,13 @@ export function workspaces(
       const workspace = await readRecord(where, branch);
       let entries: ThreadEntry[];
       let tools: ActivityEntry[] | null = null;
-      if (onServer(workspace)) {
+      if (workspace.agent?.kind === 'hermes') {
+        // From its session (decision 416); none when it cannot be read: the state says why.
+        const read = await viaHermes.read(workspace);
+        const session = read instanceof Error ? null : read;
+        entries = session ? hermesEntries(session).slice(-THREAD_LIMIT) : [];
+        tools = session ? hermesTools(session, workspace.worktree) : null;
+      } else if (onServer(workspace)) {
         // From the server (decision 155); none when it cannot be read: the state says why.
         const { read } = await viaCodex.readServer(workspace, {
           turns: PANEL_TURNS,
@@ -1106,8 +1186,11 @@ export function workspaces(
       return {
         entries,
         // Claude Code's hooks record it (V18c); Symbiote's runner records Codex's (V20a), or
-        // Codex's app server keeps it (V27a).
-        recorded: workspace.agent?.hooks === true || workspace.agent?.kind === 'codex',
+        // Codex's app server keeps it (V27a); Hermes's own store keeps its (V58).
+        recorded:
+          workspace.agent?.hooks === true ||
+          workspace.agent?.kind === 'codex' ||
+          workspace.agent?.kind === 'hermes',
         ...(tools ? { tools } : {}),
         ...(review && verdict
           ? {
@@ -1140,6 +1223,7 @@ export function workspaces(
           409,
         );
       }
+      if (workspace.agent?.kind === 'hermes') return viaHermes.terminal(workspace, cols, rows);
       if (!terminals) throw new WorkspaceRefused('no terminals here', 409);
       const can = await terminals.available();
       if (!can.available) throw new WorkspaceRefused(can.reason, 409);
@@ -1228,6 +1312,14 @@ export function workspaces(
       }
       const where = await place();
       const workspace = await readRecord(where, branch);
+      if (workspace.agent?.kind === 'hermes') {
+        // Its terminal is its only input (decision 419): a second Hermes on the session would
+        // race the first.
+        throw new WorkspaceRefused(
+          'Hermes takes messages in its terminal: open it and type there',
+          409,
+        );
+      }
       if (workspace.agent?.kind === 'codex') {
         await viaCodex.reply(where, workspace, text, stop === true);
         const refs = await listRefs(repo);
@@ -1305,7 +1397,9 @@ export function workspaces(
           if (!removed.ok) throw new WorkspaceRefused(removed.error, 409);
         }
       }
-      // Its shells run in the worktree that goes (V45).
+      // Hermes and its shells run in the worktree that goes (V45, V58); Hermes's sessions stay its
+      // own (decision 420).
+      if (workspace.agent?.kind === 'hermes') viaHermes.forget(branch);
       for (const shell of openShells(branch)) terminals?.close(shell.id);
       shellsByBranch.delete(branch);
       try {

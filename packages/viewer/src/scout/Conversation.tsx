@@ -10,7 +10,11 @@ import { readWorkspacesAgain, reloadWorkspaces } from '../workspaces/useWorkspac
 import { effortChoices } from '../workspaces/workspaces.js';
 import { tip } from '../ui/tip.js';
 
-export const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
+export const AGENT_NAMES: Record<AgentKind, string> = {
+  claude: 'Claude Code',
+  codex: 'Codex',
+  hermes: 'Hermes',
+};
 
 /** The last part of a folder's path: the checkout's name. */
 export const folderName = (path: string) => path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;

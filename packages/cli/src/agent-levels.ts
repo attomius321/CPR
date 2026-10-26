@@ -3,7 +3,11 @@
 import type { AgentEfforts, AgentKind, AgentModel } from '@symbiote/core';
 
 /** Each agent's name, as messages say it. */
-export const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
+export const AGENT_NAMES: Record<AgentKind, string> = {
+  claude: 'Claude Code',
+  codex: 'Codex',
+  hermes: 'Hermes',
+};
 
 /** Why `effort` is not an effort level at all: a word, never an option or a sentence (V30b). */
 export const effortWordProblem = (effort: unknown): string =>

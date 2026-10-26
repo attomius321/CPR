@@ -6,7 +6,7 @@ import type { BranchMerge, WorkspaceSummary } from '@symbiote/core';
 import { reviewTip, type ReviewMark } from '../history/branchReviews.js';
 import { relativeDate } from '../history/commits.js';
 import { HISTORY_PAGE } from '../shell/pages.js';
-import { ClaudeMark, CodexMark } from '../ui/icons.js';
+import { ClaudeMark, CodexMark, HermesMark } from '../ui/icons.js';
 import { longAge, useNow } from './clock.js';
 import { AGENT_NAMES, shortAge, type WorkspaceRow } from './workspaces.js';
 import { tip } from '../ui/tip.js';
@@ -60,7 +60,13 @@ export function WorkspaceState({ row: { workspace, next } }: { row: WorkspaceRow
   const text = [said, ...facts].join(' · ');
   return (
     <p className="workspace-state" {...tip(agent ? `${AGENT_NAMES[agent]}\n${text}` : text)}>
-      {agent === 'codex' ? <CodexMark /> : agent && <ClaudeMark />}
+      {agent === 'codex' ? (
+        <CodexMark />
+      ) : agent === 'hermes' ? (
+        <HermesMark />
+      ) : (
+        agent && <ClaudeMark />
+      )}
       <strong>{said}</strong>
       {facts.map((fact) => (
         <span key={fact}> · {fact}</span>

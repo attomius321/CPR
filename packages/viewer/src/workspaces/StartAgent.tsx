@@ -1,5 +1,6 @@
 // The agent on the start page (V20a, V30b, V47): which one, its account, the model and the level
-// its session starts on, and Claude Code's permission mode or Codex's sandbox.
+// its session starts on, and Claude Code's permission mode, Codex's sandbox or where Hermes asks
+// (V58).
 import type { AgentKind, AgentOption, PermissionMode } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
 import { EffortStepper } from './EffortStepper.js';
@@ -150,6 +151,19 @@ export function StartAgent({
             ))}
           </select>
         </div>
+      ) : agent.kind === 'hermes' ? (
+        <div className="workspace-field">
+          <span className="field-label">
+            Approvals
+            <Help label="About Hermes's approvals">
+              Hermes runs in a terminal in Symbiote, in its worktree, with your Hermes configuration
+              (its model, provider and tools). It asks there before a dangerous command; Symbiote
+              does not answer for you, and its card says Working while it waits. It stops when
+              Symbiote quits; its terminal then continues the session.
+            </Help>
+          </span>
+          <span className="start-value">In its terminal</span>
+        </div>
       ) : (
         <div className="workspace-field">
           <span className="field-label">
@@ -167,8 +181,9 @@ export function StartAgent({
   ) : (
     <p className="dialog-note">
       No agent found (Claude Code: <code>claude</code> on PATH, or <code>SYMBIOTE_CLAUDE</code>;
-      Codex: <code>codex</code> on PATH, or <code>SYMBIOTE_CODEX</code>): the branch and its
-      worktree are made, and you get the prompt to give an agent.
+      Codex: <code>codex</code> on PATH, or <code>SYMBIOTE_CODEX</code>; Hermes: <code>hermes</code>{' '}
+      on PATH, or <code>SYMBIOTE_HERMES</code>, where terminals run): the branch and its worktree
+      are made, and you get the prompt to give an agent.
     </p>
   );
 }

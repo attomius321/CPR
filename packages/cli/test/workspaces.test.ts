@@ -56,6 +56,7 @@ import { reviewPlace } from '../src/reviews.js';
 import { DEFAULT_PROMPTS } from '../src/prompts.js';
 import { shellOf, type Terminals } from '../src/terminal.js';
 import type { Codex } from '../src/codex.js';
+import type { Hermes, HermesMessage, HermesSession } from '../src/hermes.js';
 import { codexServer } from '../src/app-server.js';
 import { fakeAppServer, type FakeAppServer } from './fake-app-server.js';
 
@@ -769,11 +770,13 @@ describe('workspaces', () => {
     hook = HOOK,
     terminals?: Terminals,
     codexAgent: Codex | null = null,
+    hermesAgent: Hermes | null = null,
   ) =>
     openRepo(repo.root).then((git) =>
       workspaces(git, cache, {
         claude: () => Promise.resolve(claude),
         codex: () => Promise.resolve(codexAgent),
+        hermes: () => Promise.resolve(hermesAgent),
         now: () => NOW,
         env: { PATH: '/usr/bin' },
         hook,
@@ -3231,6 +3234,286 @@ describe('workspaces', () => {
     const { workspace } = await s.start({ brief: 'Do it', branch: 'feature/x', planFirst: true });
     expect(workspace.agent).toMatchObject({ state: 'not-started', kind: 'codex' });
     expect(server.calls).toEqual([]);
+  });
+  /** A fake Hermes (V58): the sessions its CLI would list and export, by folder and ID. */
+  function fakeHermes() {
+    const stored: HermesSession[] = [];
+    const sessions = vi.fn<Hermes['sessions']>((folder) =>
+      Promise.resolve(
+        // Hermes matches the folder by substring, its newest activity first.
+        stored
+          .filter((session) => session.cwd?.includes(folder))
+          .sort((a, b) => b.startedAt - a.startedAt)
+          .map((session) => session.id),
+      ),
+    );
+    const read = vi.fn<Hermes['read']>((id) =>
+      Promise.resolve(structuredClone(stored.find((session) => session.id === id) ?? null)),
+    );
+    const hermes: Hermes = {
+      command: '/usr/bin/hermes',
+      efforts: () => Promise.resolve({ levels: ['none', 'low', 'medium', 'high'] }),
+      sessions,
+      read,
+    };
+    /** Hermes stores a session in `cwd`, `after` seconds after NOW, with `messages`. */
+    const store = (cwd: string, after: number, ...messages: HermesMessage[]): HermesSession => {
+      const session: HermesSession = {
+        id: `20261015_0900${String(stored.length).padStart(2, '0')}_6ffcdc`,
+        cwd,
+        startedAt: NOW.getTime() / 1000 + after,
+        messages,
+      };
+      stored.push(session);
+      return session;
+    };
+    return { hermes, stored, store, sessions, read };
+  }
+  const at = (after: number) => NOW.getTime() / 1000 + after;
+  const asked = (content: string, after = 1): HermesMessage => ({
+    role: 'user',
+    content,
+    at: at(after),
+  });
+  const answered = (content: string, after = 5): HermesMessage => ({
+    role: 'assistant',
+    content,
+    at: at(after),
+    finish: 'stop',
+  });
+
+  it('asks Hermes nothing for a repository with no Hermes workspace (V58)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const { hermes, sessions, read } = fakeHermes();
+    const s = await service(repo, claude, HOOK, fakeTerminals().terminals, null, hermes);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    expect((await s.list()).workspaces.map((f) => f.agent.kind)).toEqual(['claude']);
+    expect(sessions).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it('offers Hermes where terminals run, with its levels and no models; last unless agent.kind names it (V58)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const { hermes } = fakeHermes();
+    const { terminals } = fakeTerminals();
+    const both = await (await service(repo, claude, HOOK, terminals, null, hermes)).options();
+    expect(both.agents.map((a) => a.kind)).toEqual(['claude', 'hermes']);
+    expect(both.agents[1]).toEqual({
+      kind: 'hermes',
+      command: '/usr/bin/hermes',
+      efforts: { levels: ['none', 'low', 'medium', 'high'] },
+    });
+    // Hermes runs in Symbiote's terminal: without one it is not offered, nor the default.
+    const none = fakeTerminals('node-pty is not installed').terminals;
+    const off = await service(repo, null, HOOK, none, null, hermes);
+    expect((await off.options()).agents).toEqual([]);
+    const made = await off.start({ brief: 'One', branch: 'feature/none', planFirst: true });
+    expect(made.workspace.agent).toEqual({ state: 'no-agent' });
+    writeFileSync(
+      join(repo.root, 'symbiote', 'config.json'),
+      '{ "agent": { "kind": "hermes" } }\n',
+    );
+    const first = await (await service(repo, claude, HOOK, terminals, null, hermes)).options();
+    expect(first.agents.map((a) => a.kind)).toEqual(['hermes', 'claude']);
+  });
+
+  it('starts Hermes in a kept terminal in its worktree, the prompt its first turn, at the level picked (V58)', async () => {
+    const { repo } = fresh();
+    const { hermes, store } = fakeHermes();
+    const { terminals, opening } = fakeTerminals();
+    const s = await service(repo, null, HOOK, terminals, null, hermes);
+    const { workspace, prompt } = await s.start({
+      brief: 'Add a CSV export',
+      branch: 'feature/csv',
+      planFirst: true,
+      agent: 'hermes',
+      effort: 'high',
+    });
+    const folder = worktreeFolder(repo.root, 'feature/csv');
+    expect(opening).toEqual([
+      {
+        command: '/usr/bin/hermes',
+        args: ['chat', `--query=${prompt}`, '--reasoning', 'high'],
+        cwd: folder,
+        cols: 120,
+        rows: 40,
+        env: { PATH: '/usr/bin' },
+        kept: true,
+      },
+    ]);
+    // Before Hermes stored its session: working, no session to name.
+    expect(workspace.agent).toEqual({ state: 'working', kind: 'hermes', effort: 'high' });
+    const file = join(repo.root, 'symbiote', 'workspaces', 'feature', 'csv.json');
+    expect((JSON.parse(readFileSync(file, 'utf8')) as WorkspaceFile).agent).toEqual({
+      kind: 'hermes',
+      effort: 'high',
+      started: NOW.toISOString(),
+    });
+
+    // Its session stored: working on its prompt, then plan ready once it answered.
+    const session = store(realpathSync(folder), 1, asked(prompt));
+    const row = async () => (await s.list()).workspaces.find((w) => w.branch === 'feature/csv');
+    expect((await row())?.agent).toEqual({
+      state: 'working',
+      kind: 'hermes',
+      id: session.id,
+      effort: 'high',
+    });
+    session.messages.push(answered('The plan: a CSV writer, then its test.'));
+    const listed = await row();
+    expect(listed?.agent).toEqual({
+      state: 'plan-ready',
+      kind: 'hermes',
+      id: session.id,
+      effort: 'high',
+    });
+    expect(listed?.lastAction).toBe(new Date(at(5) * 1000).toISOString());
+    const thread = await s.thread('feature/csv');
+    expect(thread.recorded).toBe(true);
+    expect(thread.entries.map((e) => e.kind)).toEqual(['start', 'prompt', 'report']);
+  });
+
+  it("reads a session in its worktree only, and not one from before the agent's start (V58)", async () => {
+    const { repo } = fresh();
+    const { hermes, store } = fakeHermes();
+    const { terminals } = fakeTerminals();
+    const s = await service(repo, null, HOOK, terminals, null, hermes);
+    await s.start({ brief: 'Do it', branch: 'feature/csv', planFirst: true, agent: 'hermes' });
+    const folder = worktreeFolder(repo.root, 'feature/csv');
+    // Another worktree whose path holds this one's, and an earlier session here.
+    store(`${folder}-2`, 2, asked('Other work'), answered('Other answer'));
+    store(folder, -60, asked('An earlier start'), answered('An earlier answer'));
+    const row = async () => (await s.list()).workspaces.find((w) => w.branch === 'feature/csv');
+    expect((await row())?.agent).toEqual({ state: 'working', kind: 'hermes' });
+    const mine = store(folder, 1, asked('Do it'));
+    expect((await row())?.agent).toEqual({ state: 'working', kind: 'hermes', id: mine.id });
+  });
+
+  it('stops Hermes by hanging up its terminal; its terminal then continues the session, asked with --resume (V58)', async () => {
+    const { repo } = fresh();
+    const { hermes, store } = fakeHermes();
+    const { terminals, opening, closed, programs } = fakeTerminals();
+    const s = await service(repo, null, HOOK, terminals, null, hermes);
+    await s.start({
+      brief: 'Do it',
+      branch: 'feature/csv',
+      planFirst: true,
+      agent: 'hermes',
+      effort: 'low',
+    });
+    const folder = worktreeFolder(repo.root, 'feature/csv');
+    // Running: the terminal is the one Hermes runs in, fitted to the page; nothing new opens.
+    expect(await s.terminal({ branch: 'feature/csv', cols: 100, rows: 30 })).toEqual({
+      id: 't1',
+      kept: true,
+    });
+    expect(opening).toHaveLength(1);
+    const session = store(folder, 1, asked('Do it'));
+    const { workspace } = await s.stopAgent('feature/csv');
+    expect(closed).toEqual(['t1']);
+    expect(workspace.agent).toEqual({
+      state: 'stopped',
+      kind: 'hermes',
+      id: session.id,
+      effort: 'low',
+    });
+    await expect(s.stopAgent('feature/csv')).rejects.toMatchObject({ status: 409 });
+    // Not running: its terminal continues the session, at the level it was started at.
+    expect(await s.terminal({ branch: 'feature/csv', cols: 100, rows: 30 })).toEqual({
+      id: 't2',
+      kept: true,
+    });
+    expect(opening[1]).toEqual({
+      command: '/usr/bin/hermes',
+      args: ['--resume', session.id, '--reasoning', 'low'],
+      cwd: folder,
+      cols: 100,
+      rows: 30,
+      env: { PATH: '/usr/bin' },
+      kept: true,
+    });
+    // A finished turn reads finished whether Hermes runs or not.
+    session.messages.push(answered('Done.'));
+    programs.delete('t2');
+    const listed = (await s.list()).workspaces[0];
+    expect(listed?.agent.state).toBe('plan-ready');
+  });
+
+  it('says when Hermes ended before its first message, or has no session to open (V58)', async () => {
+    const { repo } = fresh();
+    const { hermes } = fakeHermes();
+    const { terminals, programs } = fakeTerminals();
+    const s = await service(repo, null, HOOK, terminals, null, hermes);
+    await s.start({ brief: 'Do it', branch: 'feature/csv', planFirst: true, agent: 'hermes' });
+    // It exits (no provider set up, a crash): its terminal is gone, and nothing was stored.
+    programs.delete('t1');
+    const [row] = (await s.list()).workspaces;
+    expect(row?.agent).toEqual({
+      state: 'failed',
+      kind: 'hermes',
+      error:
+        'Hermes ended before its first message: start the agent again to see why in its terminal',
+    });
+    await expect(s.terminal({ branch: 'feature/csv', cols: 80, rows: 24 })).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(/no session/) as string,
+    });
+    // A `symbiote view` started since knows of no Hermes it ran: not running.
+    const again = await service(repo, null, HOOK, terminals, null, hermes);
+    expect((await again.list()).workspaces[0]?.agent).toEqual({
+      state: 'not-running',
+      kind: 'hermes',
+    });
+  });
+
+  it('starts Hermes again: the earlier one hung up, a new session with the prompt (V58)', async () => {
+    const { repo } = fresh();
+    const { hermes, store } = fakeHermes();
+    const { terminals, opening, closed } = fakeTerminals();
+    const s = await service(repo, null, HOOK, terminals, null, hermes);
+    await s.start({ brief: 'Do it', branch: 'feature/csv', planFirst: true, agent: 'hermes' });
+    store(worktreeFolder(repo.root, 'feature/csv'), -60, asked('Do it'), answered('Plan'));
+    const { workspace } = await s.startAgent('feature/csv');
+    expect(closed).toEqual(['t1']);
+    expect(opening[1]?.args[0]).toBe('chat');
+    expect(workspace.agent).toEqual({ state: 'working', kind: 'hermes' });
+  });
+
+  it('refuses a message from the box, a permission mode and a model for Hermes (V58)', async () => {
+    const { repo } = fresh();
+    const { hermes } = fakeHermes();
+    const s = await service(repo, null, HOOK, fakeTerminals().terminals, null, hermes);
+    const request = {
+      brief: 'Do it',
+      branch: 'feature/csv',
+      planFirst: true,
+      agent: 'hermes' as const,
+    };
+    await expect(s.start({ ...request, permissionMode: 'auto' })).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringMatching(/Claude Code's/) as string,
+    });
+    await expect(s.start({ ...request, model: 'qwen' })).rejects.toMatchObject({ status: 400 });
+    await expect(s.start({ ...request, effort: 'ultra' })).rejects.toMatchObject({ status: 400 });
+    await s.start(request);
+    await expect(s.reply({ branch: 'feature/csv', text: 'Go' })).rejects.toMatchObject({
+      status: 409,
+      message: expect.stringMatching(/in its terminal/) as string,
+    });
+  });
+
+  it('cleans up: its terminal hung up with the shells, its sessions left in Hermes (V58)', async () => {
+    const { repo } = fresh();
+    const { hermes, store, stored } = fakeHermes();
+    const { terminals, closed } = fakeTerminals();
+    const s = await service(repo, null, HOOK, terminals, null, hermes);
+    await s.start({ brief: 'Do it', branch: 'feature/csv', planFirst: true, agent: 'hermes' });
+    store(worktreeFolder(repo.root, 'feature/csv'), 1, asked('Do it'), answered('Plan'));
+    await s.clean({ branch: 'feature/csv', unmerged: true });
+    expect(closed).toEqual(['t1']);
+    expect(stored).toHaveLength(1);
   });
 });
 

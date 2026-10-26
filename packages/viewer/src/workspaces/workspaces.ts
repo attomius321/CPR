@@ -18,8 +18,12 @@ import type {
   ToolActivity,
 } from '@symbiote/core';
 
-/** Each agent's name (V20a). */
-export const AGENT_NAMES: Record<AgentKind, string> = { claude: 'Claude Code', codex: 'Codex' };
+/** Each agent's name (V20a, V58). */
+export const AGENT_NAMES: Record<AgentKind, string> = {
+  claude: 'Claude Code',
+  codex: 'Codex',
+  hermes: 'Hermes',
+};
 
 /** A path as one word of a POSIX shell's command line, quoted only when it needs it. */
 const shellWord = (path: string) =>
@@ -28,38 +32,45 @@ const shellWord = (path: string) =>
 /**
  * The command that continues a workspace's agent session in a terminal (Talk): `claude attach
  * <id>`, or `codex resume <thread> -C <worktree>` (V20a, decision 133) — joined to its app
- * server with `--remote` (V27a), where its turns reach the thread; null without a session.
+ * server with `--remote` (V27a), where its turns reach the thread —, or `hermes --resume
+ * <session>`, which goes back to the session's folder (V58); null without a session.
  */
 export function talkCommand(agent: WorkspaceAgentState, worktree: string): string | null {
   if (!agent.id || !agent.kind) return null;
   if (agent.kind === 'claude') return `claude attach ${agent.id}`;
+  if (agent.kind === 'hermes') return `hermes --resume ${agent.id}`;
   const remote = agent.remote ? ` --remote ${shellWord(agent.remote)}` : '';
   return `codex resume ${agent.id}${remote} -C ${shellWord(worktree)}`;
 }
 
 /**
  * Whether a workspace's panel opens its agent's terminal, where terminals can run: Claude Code's
- * session (V21), or Codex's thread on its app server (V27b). Codex through Symbiote's runner (V20a)
- * has none: its turns there would not reach the thread.
+ * session (V21), Codex's thread on its app server (V27b), or the Hermes that runs there or its
+ * session (V58) — Hermes working before its session is stored has no ID yet. Codex through
+ * Symbiote's runner (V20a) has none: its turns there would not reach the thread.
  */
 export function opensTerminal(
   agent: WorkspaceAgentState,
   terminal: TerminalAvailability | undefined,
 ): boolean {
-  if (terminal?.available !== true || agent.id === undefined) return false;
+  if (terminal?.available !== true) return false;
+  if (agent.kind === 'hermes') return agent.id !== undefined || agent.state === 'working';
+  if (agent.id === undefined) return false;
   return agent.kind === 'claude' || (agent.kind === 'codex' && agent.remote !== undefined);
 }
 
 /**
- * Whether opening the terminal asks first: `claude attach` restarts a stopped session (V21);
- * joining a stopped Codex thread starts nothing.
+ * Whether opening the terminal asks first: `claude attach` restarts a stopped session (V21), and
+ * so does a Hermes started again on its stopped session (V58); joining a stopped Codex thread
+ * starts nothing.
  */
 export function asksBeforeOpening(agent: WorkspaceAgentState): boolean {
-  return agent.kind === 'claude' && agent.state === 'stopped';
+  return (agent.kind === 'claude' || agent.kind === 'hermes') && agent.state === 'stopped';
 }
 
 /** The line under an agent's terminal: its way to its other sessions, or to its keys. */
 export function terminalHint(agent: WorkspaceAgentState): string {
+  if (agent.kind === 'hermes') return "/help in its prompt lists Hermes's commands";
   return agent.kind === 'codex'
     ? "? in an empty prompt lists Codex's keys"
     : '← in an empty prompt lists all your agents';
