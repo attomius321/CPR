@@ -22,6 +22,7 @@ import { ReplyForm } from './ReplyForm.js';
 import { WorkspaceTabs, type AgentView, type View } from './WorkspaceTabs.js';
 import { ChangesIcon } from '../ui/icons.js';
 import { cleanUp } from './cleanup.js';
+import { useRemoving, workspaceKey } from './removing.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { InTitleBar } from '../shell/TitleBar.js';
 import { MergeControl } from './MergeControl.js';
@@ -163,7 +164,10 @@ function WorkspacePanel({
   const { branch, agent } = workspace;
   const [thread, reloadThread] = useThread(branch, version);
   const [said, setSaid] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [acting, setActing] = useState(false);
+  // Being cleaned up (V57), from here or from its card: its actions wait, as its card does.
+  const cleaning = useRemoving(workspaceKey(branch));
+  const busy = acting || cleaning;
   // Its stop asked, until the server answers (V48): the button says so.
   const [stopping, setStopping] = useState(false);
   const [text, setText] = useState('');
@@ -333,12 +337,12 @@ function WorkspacePanel({
 
   /** Runs an action, says how it went in the panel; the list (and thread) are read again. */
   const act = (task: () => Promise<string | null>) => {
-    setBusy(true);
+    setActing(true);
     task()
       .then((words) => setSaid(words))
       .catch((e: unknown) => setSaid(`${(e as Error).message}`))
       .finally(() => {
-        setBusy(false);
+        setActing(false);
         void reloadWorkspaces();
         reloadThread();
       });
@@ -375,14 +379,15 @@ function WorkspacePanel({
     );
   };
 
+  /** Not through `act`: `cleanUp` marks it while it runs, and reads the list again (V57). */
   const clean = (unmerged: boolean) => {
     setConfirming(null);
-    act(() =>
-      cleanUp(branch, unmerged).then((notice) => {
+    cleanUp(branch, unmerged).then(
+      (notice) => {
         onNotice(notice);
         onGone();
-        return null;
-      }),
+      },
+      (e: unknown) => setSaid((e as Error).message),
     );
   };
 
@@ -550,7 +555,7 @@ function WorkspacePanel({
               {...tip('Remove its sessions, its worktree and its merged branch')}
               onClick={() => clean(false)}
             >
-              Clean up
+              {cleaning ? 'Cleaning up…' : 'Clean up'}
             </button>
           )}
         </div>

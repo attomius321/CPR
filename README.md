@@ -396,7 +396,8 @@ again, then Retry. A target that moved before landing is merged again on its new
 
 A landed merge has **Remove** as its page's button, and a bin on its card in the sidenav (shown on
 hover or keyboard focus): either takes it out of the queue with its log, and the target keeps the
-merge. A merge that has not landed is removed from its own page, under **⋯**.
+merge. Until it is gone its card is greyed out and says "Removing it from the queue". A merge that
+has not landed is removed from its own page, under **⋯**.
 
 The queue is kept in Symbiote's cache. `symbiote merge <branch>` does the same from a terminal and prints
 each step.
@@ -600,7 +601,9 @@ Once a workspace is merged, Clean up removes its agent's sessions, its worktree,
 (their names stay in the record) and its branch: from its head, or from the bin on its card in
 Done, which shows on hover or keyboard focus. An
 unmerged one is cleaned up only after you confirm, and keeps its branch. Neither happens while
-the worktree has files not committed.
+the worktree has files not committed. While a clean-up runs (a second or two), its card is greyed
+out and says "Cleaning up"; it opens nothing until it is gone, and comes back as it was if the
+clean-up is refused.
 
 ### Codex
 

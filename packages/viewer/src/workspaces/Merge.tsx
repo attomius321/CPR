@@ -99,7 +99,10 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
       .catch((e: unknown) => setError((e as Error).message))
       .finally(() => setBusy(false));
   };
-  /** Removed, the merge's page gives way to History (V55), the status bar saying so. */
+  /**
+   * Removed, the merge's page gives way to History (V55), the status bar saying so; `removeMerge`
+   * reads the list again (V57).
+   */
   const remove = () => {
     setBusy(true);
     setError(null);
@@ -107,7 +110,6 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
       .then((notice) => {
         shell?.notify(notice);
         shell?.navigate({ page: 'history' });
-        return reloadWorkspaces();
       })
       .catch((e: unknown) => setError((e as Error).message))
       .finally(() => setBusy(false));

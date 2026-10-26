@@ -521,11 +521,12 @@ button.workspace-about {
     box-shadow 150ms;
 }
 
-/* Working and starting (V53), and a merge at work — queued, merging, resolving, checking
-   (fix/merging-status): a spinner, a comet — a 2 px ring whose tail fades in to a round head — a
-   turn a second, the head leading. 11 px drawn around the dot's place, past its 7 px box: every
-   state keeps the box, so a card does not move as its state changes. Only its transform moves:
-   the compositor turns it, nothing is laid out again. */
+/* Working and starting (V53), a merge at work — queued, merging, resolving, checking
+   (fix/merging-status) —, and a card being cleaned up or removed (V57): a spinner, a comet — a
+   2 px ring whose tail fades in to a round head — a turn a second, the head leading. 11 px drawn
+   around the dot's place, past its 7 px box: every state keeps the box, so a card does not move as
+   its state changes. Only its transform moves: the compositor turns it, nothing is laid out
+   again. */
 .state-dot.tone-working,
 .state-dot.tone-starting {
   --dot: var(--moved);
@@ -533,12 +534,14 @@ button.workspace-about {
 
 .state-dot.tone-working,
 .state-dot.tone-starting,
+.state-dot.tone-cleaning,
 .state-dot.merge-tone-wait {
   background: transparent;
 }
 
 .state-dot.tone-working::after,
 .state-dot.tone-starting::after,
+.state-dot.tone-cleaning::after,
 .state-dot.merge-tone-wait::after {
   content: '';
   position: absolute;
@@ -595,6 +598,7 @@ button.workspace-about {
 @media (prefers-reduced-motion: reduce) {
   .state-dot.tone-working::after,
   .state-dot.tone-starting::after,
+  .state-dot.tone-cleaning::after,
   .state-dot.merge-tone-wait::after {
     animation: none;
     transform: rotate(45deg);
@@ -650,11 +654,6 @@ button.workspace-about {
   height: 24px;
 }
 
-.sidenav .card-remove:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
 /* A merge card has no chip or time there: its lines keep the bin's room. */
 .sidenav .merge-card.removable {
   padding-right: 32px;
@@ -677,6 +676,26 @@ button.workspace-about {
   .sidenav .removable:not(:hover, :has(:focus-visible)) .workspace-line .commit-date {
     visibility: visible;
   }
+}
+
+/* A card being cleaned up or its merge removed (V57), until the list drops it: disabled. Its words
+   at half, as a disabled button's (the name 4.7:1 dark, 3.5:1 light); not its line, which says
+   what happens, nor its dot, a grey comet: Symbiote at work on a card that goes. No hover. */
+.sidenav .workspace-row.removing {
+  cursor: default;
+}
+
+.sidenav .workspace-row.removing:not(.picked):hover {
+  background: transparent;
+}
+
+.sidenav .removing .workspace-head > :not(.state-dot),
+.sidenav .removing .workspace-branch {
+  opacity: 0.5;
+}
+
+.sidenav .state-dot.tone-cleaning {
+  --dot: var(--faint);
 }
 
 /* Folded (wide windows only): a rail of icons and each workspace's mark. */

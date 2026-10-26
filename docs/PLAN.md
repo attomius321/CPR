@@ -136,6 +136,7 @@ hosted.
 | [V53](plan/v53-workspaces-view.md) | A working agent's spinner, its mark before what it does, every workspace's kind | ready for review | 394–396 | [journal](journal/v53-workspaces-view.md) |
 | Fix | a merge at work spins; the spinner a comet; Merging first in the sidenav | ready for review | | [journal](journal/fix-merging-status.md) |
 | [V55](plan/v55-done-workspace-cleanup.md) | A done workspace or a landed merge, removed from its card and its head | ready for review | 403–406 | [journal](journal/v55-done-workspace-cleanup.md) |
+| [V57](plan/v57-cleaning-up-card.md) | A card being cleaned up (or its merge removed): disabled, saying so, until it goes | ready for review | 411–414 | [journal](journal/v57-cleaning-up-card.md) |
 
 ### Agents
 

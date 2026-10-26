@@ -28,7 +28,7 @@ import {
   type Notice,
   type Shell as ShellApi,
 } from './shell-context.js';
-import { DrawerStrip, Sidenav, useSidenavWidth } from './Sidenav.js';
+import { CARD_NAMES, DrawerStrip, Sidenav, useSidenavWidth } from './Sidenav.js';
 import { StatusBar } from './StatusBar.js';
 import { AskBar } from './AskBar.js';
 import { TitleBar, TitleBarSlotsProvider, type TitleBarSlots } from './TitleBar.js';
@@ -224,7 +224,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
         else startWorkspace();
       } else if (event.key === '[') fold();
       else if (event.key === 'w') {
-        const card = document.querySelector<HTMLElement>('.sidenav .workspace-about');
+        const card = document.querySelector<HTMLElement>(`.sidenav ${CARD_NAMES}`);
         if (!card) return;
         if (window.matchMedia(NARROW).matches) setDrawer(true);
         requestAnimationFrame(() => card.focus());
