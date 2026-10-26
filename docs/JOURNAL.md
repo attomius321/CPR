@@ -240,3 +240,4 @@ merge commit.
 - 2026-10-25 [V57 — a card disabled while it is cleaned up or removed](journal/v57-cleaning-up-card.md)
 - 2026-10-26 [README remade around workspaces; commands, configuration and review pages](journal/remake-readme.md)
 - 2026-10-26 [V58 spike — Hermes in a pseudo-terminal, and what its store says](journal/v58-hermes-agent.md)
+- 2026-10-26 [V58 — Hermes as a workspace's agent, in its terminal](journal/v58-hermes-agent.md)

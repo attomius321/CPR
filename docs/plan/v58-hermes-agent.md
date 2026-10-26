@@ -2,9 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v58-hermes-agent.md)
 
-**Status:** planned (2026-10-26), on branch `feature/hermes-support` (a workspace started in
-Symbiote, from `main` at `3c83dc6`); the person asked to build it with the plan's recommendations
-once written ("After the plan, execute with your recomandations").
+**Status:** ready for review (2026-10-26), on branch `feature/hermes-support` (a workspace started
+in Symbiote, from `main` at `3c83dc6`); the person asked to build it with the plan's
+recommendations once written ("After the plan, execute with your recomandations"). Built as
+planned, with Stop recorded after the real run; "As built" and results at the end.
 
 **Problem** (asked: "I need support for Hermes agent inside agent terminals"). A workspace's agent
 is Claude Code (V18, its session in the panel's terminal since V21) or Codex (V20a, its TUI there
@@ -180,3 +181,72 @@ spec, then the real run if the model server is up, screenshots and docs. One bra
 **Not in V58 (later)**: Scout, Scribe and the merger on Hermes; a model picked for Hermes (no list
 to read); "needs you" for its approvals; Hermes outliving `symbiote view`; its usage in the status
 bar; Hermes's skills on the Skills page.
+
+## As built (V58)
+
+- **`--query=<prompt>`, not `-q <prompt>`**: one argument whatever the prompt starts with. Checked
+  against Hermes 0.21.3 in a terminal: a prompt starting with `-` was its first message, and
+  `--reasoning low` was in the session's configuration (`reasoning_config.effort: low`).
+- **Stop is recorded** (`agent.stopped` in the record, decision 418 as built). The real run showed
+  a hang-up is not silent: Hermes closes the turn it was in with a message of its own ("Your
+  request was not processed. Send it again…") within 0.3 s, and Stop read "Plan ready". Now a
+  Hermes Symbiote stopped reads stopped until it runs again (its terminal continues it, which
+  clears the field) or a message was given since; kept in the record, a restarted `symbiote view`
+  knows it too.
+- **A failed turn reads finished, its words the report.** Hermes marks no failure: of the 16
+  assistant messages without a `finish_reason` in the person's store, some are failures ("Your
+  request was not processed", "This turn did not complete"), some interrupts ("Operation
+  interrupted."), some ordinary answers. A finished state with Hermes's own words is what can be
+  said without guessing (precise beats complete).
+- **Finding its session**: `hermes sessions list --workspace` matches the folder as a substring, so
+  each candidate is read and its folder compared (real paths); a session that began more than 5 s
+  before the agent's start is an earlier start's. Its ID is then kept per branch: one export per
+  read. In the real run the session appeared 4 s after the start (Symbiote's long prompt; the
+  spike's one line, 0.5 s), so the panel opens on a working Hermes with no session ID yet.
+- **Hidden messages are left out** (`display_kind: hidden`, empty ones Hermes adds itself), as
+  Hermes's own interface leaves them out.
+- **Its tools as the page words them**: `terminal` as Codex's `command`, `read_file`, `write_file`
+  and `patch` as Claude Code's Read, Write and Edit (paths from the worktree), `search_files` as
+  Grep, `web_search` as WebSearch, `web_extract` and `browser_navigate` as WebFetch,
+  `delegate_task` as Task; any other tool by its own name, without a subject.
+- **Scout and the merger fixed before they could misread Hermes**: both treated any kind but
+  Claude Code as Codex, so `agent.kind: hermes` listed Codex a second time under Hermes's name on
+  Scout's page (its test red before). Scout's and Scribe's agents are now named (`PAGE_AGENTS`);
+  the merger's lookups skip Hermes.
+- **Its mark** is a caduceus drawn in `icons.tsx`, in its CLI's default golds (`#ffd700` to
+  `#b8860b`): Hermes's own mark is the ☤ glyph, and a glyph is a font lookup (V29b).
+- **The e2e harness pins `SYMBIOTE_HERMES`** to a missing program for every spec, as it pins
+  Claude Code's and Codex's: `hermes` is on this machine's PATH, and every start page would have
+  offered it. The fake Hermes keeps its sessions in `hermes-sessions/` beside its script (the first
+  version put both at `hermes`, and its `sessions list` failed: the page said "Hermes could not read
+  its session", the error path working as planned).
+
+**Results.** Tests first, red before for the right reasons: the Hermes module 18 (no module), the
+service 9 (Hermes unknown; the guard "Hermes is asked nothing without a Hermes workspace" passed as
+written), Scout's agents 1 changed (Codex listed as Hermes), the panel's helpers 2 new and 2
+changed; then Stop read as stopped, 1 changed (red: "plan-ready"). Unit: 1,799 (1,770 on `main`).
+e2e: 2 new (written after the panel, with a fake Hermes in a real pseudo-terminal), 276 of 276 in the last full run (274 on `main`);
+in the first, 275, the one failure `scout.spec.ts` racing its own record (journal).
+
+A real Hermes (0.21.3, the person's configuration; its model server was not running, so no turn
+was answered) through `symbiote view`'s API, in a throwaway repository:
+
+| Step | Measured |
+|---|---|
+| Options | 285–307 ms; Hermes offered alone (no Claude Code or Codex given), its 8 levels read from `hermes chat --help` |
+| Start (`--reasoning low`) | 327–332 ms; working at once |
+| Its session found | 4 s after the start; that read 622 ms (list and export), then 285–361 ms a list read (one export) |
+| Its thread | its start and Symbiote's prompt, 291–315 ms |
+| Stop | 594 ms, stopped (before the fix: plan ready, Hermes's closing message read as an answer) |
+| Its terminal again | `--resume` in 292–296 ms; then finished, Hermes's words as the report |
+| Clean up | 19–24 ms |
+
+Both runs' sessions were deleted from the person's Hermes store, and no Hermes was left running.
+Screenshots of the start page (three agents, Hermes picked) at 1440 and 900 px and of a Hermes
+workspace (terminal, thread, activity) at 1440 and 900 px, light and dark: no page errors; the
+mark reads on both themes. At 900 px the panel's head puts its state's tail under the attach
+button, for Claude Code alike (on `main`, not this branch's).
+
+Not verified: a turn a model answers (tool calls in the Activity tab, a final answer, an approval
+prompt and what Stop does to a command it runs); Hermes's TUI interface (the person's is the
+classic one; `-q` reaches it through `HERMES_TUI_QUERY`, read in its source); macOS and Windows.

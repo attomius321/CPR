@@ -26,7 +26,7 @@ the merger, Scout and Scribe, and leaves the rest of the file as it is.
 | `plugins` | none | Framework plugins every analysis uses, by name or path. |
 | `workspaces.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, for each kind of work. Give only the kinds you change. |
 | `workspaces.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout. `{repo}` is the checkout's folder name. |
-| `agent.kind` | `claude` | The agent offered first, if it is installed: `claude` or `codex`. |
+| `agent.kind` | `claude` | The agent offered first, if it is installed: `claude`, `codex` or `hermes`. Scout, Scribe and the merger skip `hermes`. |
 | `agent.permissionMode` | `default` | The permission mode offered first for Claude Code: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's own | The model Claude Code starts on. Codex uses its own configuration's model. |
 | `scout.model`, `scribe.model` | `agent.model`, else the agent's own | The model each Scout or Scribe conversation starts on, if the agent offers it. |
@@ -134,8 +134,9 @@ the same files aside.
 |---|---|
 | `SYMBIOTE_CLAUDE` | The Claude Code program to start. Default: `claude` on your `PATH`. |
 | `SYMBIOTE_CODEX` | The Codex program to start. Default: `codex` on your `PATH`. |
+| `SYMBIOTE_HERMES` | The Hermes program to start. Default: `hermes` on your `PATH`. |
 | `SYMBIOTE_CODE` | The editor command that **Open in VS Code** runs, such as `cursor`. Default: VS Code's `code`. |
-| `SYMBIOTE_TERMINAL` | `off`: no agent terminals. A workspace shows its thread and a reply box instead. |
+| `SYMBIOTE_TERMINAL` | `off`: no agent terminals. A workspace shows its thread and a reply box instead, and Hermes is not offered. |
 | `SYMBIOTE_USAGE` | `off`: Symbiote does not read your subscriptions' usage, and the status bar shows none. |
 | `SYMBIOTE_INTRO` | `off`: no intro the first time Symbiote opens. |
 | `SYMBIOTE_APP` | `off`: always open the browser, never Symbiote's window. |
