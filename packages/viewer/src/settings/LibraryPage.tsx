@@ -9,7 +9,7 @@ import type {
 import { Help } from '../ui/Help.js';
 import { getJson, postJson } from '../ui/http.js';
 import { probeText } from '../skills/library.js';
-import { BackToList } from './BackToList.js';
+import { SettingsCard } from './SettingsCard.js';
 
 const API = '/api/skills';
 /** How long typing rests before Symbiote looks at the folder typed. */
@@ -138,10 +138,13 @@ export function LibraryPage({ onBack }: { onBack: () => void }) {
 
   const note = COMMITS.find((c) => c.commits === commits)?.note;
   return (
-    <section className="settings-editor library-settings" aria-label="Skill library">
-      <BackToList onBack={onBack} />
-      <h2>Skill library</h2>
-      <p className="settings-row-note library-about">
+    <SettingsCard
+      label="Skill library"
+      title="Skill library"
+      className="library-settings"
+      onBack={onBack}
+    >
+      <p className="settings-about library-about">
         One folder of skills outside this repository, for every repository you open on this machine:
         the Skills page lists them beside the checkout&apos;s, and Scribe writes them.{' '}
         <Help label="About the skill library">
@@ -153,7 +156,7 @@ export function LibraryPage({ onBack }: { onBack: () => void }) {
       {library === undefined ? (
         <p className="hint">Reading the library…</p>
       ) : (
-        <div className="settings-card settings-rows">
+        <div className="settings-rows">
           <section className="settings-part" aria-label="Source">
             <h3 id="library-source">Source</h3>
             <span className="scopes" role="group" aria-labelledby="library-source">
@@ -249,6 +252,6 @@ export function LibraryPage({ onBack }: { onBack: () => void }) {
           {save === 'create' ? 'Make the folder and save' : clone ? 'Clone and save' : 'Save'}
         </button>
       </div>
-    </section>
+    </SettingsCard>
   );
 }

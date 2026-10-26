@@ -14,7 +14,6 @@ import { getJson, postJson } from '../ui/http.js';
 import { useShell } from '../shell/shell-context.js';
 import { setTheme, useTheme, type Theme } from '../shell/theme.js';
 import { startIntro } from '../intro/intro.js';
-import { BackToList } from './BackToList.js';
 import { LibraryPage } from './LibraryPage.js';
 import {
   draftProblem,
@@ -35,6 +34,8 @@ import {
   modelChoices,
 } from '../workspaces/workspaces.js';
 import { tip } from '../ui/tip.js';
+import { ResetIcon, SettingsIcon } from '../ui/icons.js';
+import { SettingsCard } from './SettingsCard.js';
 
 const API = '/api/settings/prompts';
 
@@ -211,6 +212,12 @@ export function SettingsPage() {
   }, [load]);
 
   const groups = useMemo(() => (settings ? promptGroups(settings.prompts) : []), [settings]);
+  // The list scrolls on its own when it is taller than its card (V62): the entry open, from the
+  // address or the last group's, is scrolled to; one clicked is in view already.
+  const list = useRef<HTMLElement>(null);
+  useEffect(() => {
+    list.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [open, groups]);
   const edited = useMemo(
     () => settings?.prompts.filter((p) => isEdited(p, drafts[p.key])).map((p) => p.key) ?? [],
     [settings, drafts],
@@ -279,6 +286,7 @@ export function SettingsPage() {
       draft={drafts[prompt.key]}
       busy={busy}
       notice={notice?.key === prompt.key ? notice : null}
+      note={settings ? gitNote(settings) : null}
       onDraft={(text) => setDrafts((all) => ({ ...all, [prompt.key]: text }))}
       onDiscard={() => setDrafts((all) => without(all, prompt.key))}
       onSave={(text) => void save(prompt, text)}
@@ -289,12 +297,21 @@ export function SettingsPage() {
   const current = groups.flatMap((g) => g.entries).find((e) => e.key === open);
   return (
     <div className="settings">
+      {/* The person's mockup (V62): the page's icon, its title and a line under it. */}
       <div className="commits-title settings-bar">
-        <h1>Settings</h1>
-        <Help label="About Settings">
-          What Symbiote tells each agent · Symbiote&apos;s text until you change it · saved in{' '}
-          {settings?.file ?? 'symbiote/config.json'}, for everyone once committed
-        </Help>
+        <span className="page-icon" aria-hidden="true">
+          <SettingsIcon />
+        </span>
+        <div className="settings-title">
+          <div className="settings-name-line">
+            <h1>Settings</h1>
+            <Help label="About Settings">
+              What Symbiote tells each agent · Symbiote&apos;s text until you change it · saved in{' '}
+              {settings?.file ?? 'symbiote/config.json'}, for everyone once committed
+            </Help>
+          </div>
+          <p>Configure Symbiote to match your workflow and preferences.</p>
+        </div>
       </div>
       {error && (
         <p className="commits-error error" role="alert">
@@ -306,12 +323,11 @@ export function SettingsPage() {
           {settings.warning}
         </p>
       )}
-      {settings && <p className="settings-git">{gitNote(settings)}</p>}
       {!settings && !error ? (
         <p className="hint">Reading the prompts…</p>
       ) : (
         <div className={`settings-body${picked ? ' picked' : ''}`}>
-          <nav className="settings-list" aria-label="Settings">
+          <nav ref={list} className="settings-list" aria-label="Settings">
             {groups.map(({ group, entries }) => (
               <section key={group} aria-label={group}>
                 <h2>{group}</h2>
@@ -389,9 +405,10 @@ export function SettingsPage() {
 }
 
 /**
- * A prebuilt agent's page (fix/scout-merger-scribe-settings): its Model and its Effort, rows of
- * one card (V51), then its prompts (`children`), a card each. The agent's models and levels are
- * read once for both: a model saved answers with its own levels, and the Effort follows it.
+ * A prebuilt agent's page (fix/scout-merger-scribe-settings): its Model and its Effort as rows
+ * (V51), then its prompts (`children`), a section each, in one card (V62). The agent's models and
+ * levels are read once for both: a model saved answers with its own levels, and the Effort follows
+ * it.
  */
 function AgentPage({
   name,
@@ -433,9 +450,7 @@ function AgentPage({
   // Its agent: Scout's and Scribe's default (Scout's box may pick another), the merger's.
   const agent = read?.agents[0];
   return (
-    <section className="settings-editor" aria-label={name}>
-      <BackToList onBack={onBack} />
-      <h2>{name}</h2>
+    <SettingsCard label={name} title={name} onBack={onBack}>
       {error && (
         <p className="settings-warning" role="alert">
           {error}
@@ -446,7 +461,7 @@ function AgentPage({
           {settings.who} needs Claude Code or Codex: neither is installed here.
         </p>
       )}
-      <div className="settings-card settings-rows">
+      <div className="settings-rows">
         <AgentModel settings={settings} read={read} onSaved={saved} />
         <AgentEffort
           // Drawn again on another model: its levels, and the level kept on them, are that model's.
@@ -457,7 +472,7 @@ function AgentPage({
         />
       </div>
       {children}
-    </section>
+    </SettingsCard>
   );
 }
 
@@ -651,10 +666,8 @@ const THEMES: { theme: Theme; label: string }[] = [
 function AppearancePage({ onBack }: { onBack: () => void }) {
   const theme = useTheme();
   return (
-    <section className="settings-editor" aria-label="Appearance">
-      <BackToList onBack={onBack} />
-      <h2>Appearance</h2>
-      <div className="settings-card settings-rows">
+    <SettingsCard label="Appearance" title="Appearance" onBack={onBack}>
+      <div className="settings-rows">
         <section className="settings-part" aria-label="Theme">
           <h3 id="settings-theme">Theme</h3>
           <span className="scopes" role="group" aria-labelledby="settings-theme">
@@ -684,13 +697,15 @@ function AppearancePage({ onBack }: { onBack: () => void }) {
           <p className="settings-row-note">The first-time intro again; nothing is recorded.</p>
         </section>
       </div>
-    </section>
+    </SettingsCard>
   );
 }
 
 /**
- * One prompt: its text to change, its placeholders, Save and Reset. Its own page, its heading over
- * a card, or a part of its agent's (`part`), a card under its title alone (V51).
+ * One prompt: its text to change, its placeholders, Save and Reset. A page of its own, its name,
+ * chip and Reset in the card's head; or a section of its agent's page (`part`), those on its first
+ * line (V62, the person's mockup). What it is and what its placeholders are is said under their
+ * headings.
  */
 function PromptEditor({
   prompt,
@@ -698,6 +713,7 @@ function PromptEditor({
   draft,
   busy,
   notice,
+  note,
   onDraft,
   onDiscard,
   onSave,
@@ -709,6 +725,8 @@ function PromptEditor({
   draft: string | undefined;
   busy: boolean;
   notice: Notice | null;
+  /** Where a save goes and whether it is shared (`gitNote`), beside Save until one says more. */
+  note: string | null;
   onDraft: (text: string) => void;
   onDiscard: () => void;
   /** The text to save; null for Symbiote's. */
@@ -742,23 +760,44 @@ function PromptEditor({
     });
   };
 
-  const Heading = part ? 'h3' : 'h2';
-  const heading = (
-    <Heading>
-      {part ? prompt.title : `${prompt.group}: ${prompt.title}`}
-      <span className={`settings-state${prompt.changed ? ' changed' : ''}`}>
-        {prompt.changed ? "The project's" : "Symbiote's"}
-      </span>
-      <Help label={`About ${prompt.group}: ${prompt.title}`}>
-        <p>{prompt.about}</p>
-        {prompt.placeholders.length > 0 && (
-          <p>
-            Its placeholders are filled in when it is used; click one to insert it at the cursor.
-          </p>
-        )}
-      </Help>
-    </Heading>
+  const chip = (
+    <span className={`settings-state${prompt.changed ? ' changed' : ''}`}>
+      {prompt.changed ? "The project's" : "Symbiote's"}
+    </span>
   );
+  const reset =
+    prompt.changed &&
+    (resetting ? (
+      <span className="workspace-confirm">
+        The project&apos;s text leaves {`prompts.${prompt.key}`}.{' '}
+        <button
+          type="button"
+          className="button"
+          disabled={busy}
+          onClick={() => {
+            setResetting(false);
+            onSave(null);
+          }}
+        >
+          Reset
+        </button>{' '}
+        <button type="button" className="button ghost" onClick={() => setResetting(false)}>
+          Keep it
+        </button>
+      </span>
+    ) : (
+      <button
+        type="button"
+        className="button secondary"
+        disabled={busy}
+        onClick={() => setResetting(true)}
+      >
+        <ResetIcon /> Reset to default
+      </button>
+    ));
+  // On its own page the prompt's text is a section under "Prompt"; on its agent's, the section is
+  // the prompt's own, and its placeholders' heading one level down.
+  const Sub = part ? 'h4' : 'h3';
   const body = (
     <>
       {prompt.warning && (
@@ -766,32 +805,41 @@ function PromptEditor({
           {prompt.warning}
         </p>
       )}
-      <textarea
-        ref={area}
-        aria-label={`${prompt.title} prompt`}
-        value={text}
-        spellCheck={false}
-        rows={4}
-        onChange={(event) => onDraft(event.target.value)}
-        onKeyDown={(event) => {
-          const saving =
-            (event.key === 's' && (event.ctrlKey || event.metaKey)) ||
-            (event.key === 'Enter' && (event.ctrlKey || event.metaKey));
-          if (!saving) return;
-          event.preventDefault();
-          if (canSave) onSave(text);
-        }}
-      />
-      <p className={`settings-size${problem ? ' error' : ''}`}>{problem ?? sizeOf(prompt, text)}</p>
-      {prompt.fixed && (
-        <div className="settings-fixed">
-          <p>Symbiote adds this after it, as the answer it reads; it cannot be changed:</p>
-          <pre>{prompt.fixed}</pre>
-        </div>
-      )}
+      <div className="settings-section">
+        {!part && <h3>Prompt</h3>}
+        <p className="settings-about">{prompt.about}</p>
+        <textarea
+          ref={area}
+          aria-label={`${prompt.title} prompt`}
+          value={text}
+          spellCheck={false}
+          rows={4}
+          onChange={(event) => onDraft(event.target.value)}
+          onKeyDown={(event) => {
+            const saving =
+              (event.key === 's' && (event.ctrlKey || event.metaKey)) ||
+              (event.key === 'Enter' && (event.ctrlKey || event.metaKey));
+            if (!saving) return;
+            event.preventDefault();
+            if (canSave) onSave(text);
+          }}
+        />
+        <p className={`settings-size${problem ? ' error' : ''}`}>
+          {problem ?? sizeOf(prompt, text)}
+        </p>
+        {prompt.fixed && (
+          <div className="settings-fixed">
+            <p>Symbiote adds this after it, as the answer it reads; it cannot be changed:</p>
+            <pre>{prompt.fixed}</pre>
+          </div>
+        )}
+      </div>
       {prompt.placeholders.length > 0 ? (
-        <div className="settings-placeholders">
-          <p>Placeholders</p>
+        <div className="settings-section settings-placeholders">
+          <Sub>Placeholders</Sub>
+          <p className="settings-about">
+            Each is filled in when the prompt is used; click one to insert it at the cursor.
+          </p>
           <ul>
             {prompt.placeholders.map((p) => (
               <li key={p.name}>
@@ -802,18 +850,22 @@ function PromptEditor({
                   onClick={() => insert(p.name)}
                 >
                   {`{${p.name}}`}
-                </button>{' '}
-                {p.about}
-                {p.required && <strong> (required)</strong>}
+                </button>
+                <span>
+                  {p.about}
+                  {p.required && <strong> (required)</strong>}
+                </span>
               </li>
             ))}
           </ul>
         </div>
       ) : (
-        <p className="settings-placeholders">No placeholders: the agent is given it as written.</p>
+        <p className="settings-section settings-about">
+          No placeholders: the agent is given it as written.
+        </p>
       )}
       <div className="settings-actions">
-        {notice && (
+        {notice ? (
           <span className={`settings-notice${notice.error ? ' error' : ''}`} role="status">
             {notice.text}
             {notice.stale && (
@@ -825,41 +877,14 @@ function PromptEditor({
               </>
             )}
           </span>
+        ) : (
+          note && <span className="settings-git">{note}</span>
         )}
         {edited && (
-          <button type="button" className="button ghost" disabled={busy} onClick={onDiscard}>
-            Discard changes
+          <button type="button" className="button secondary" disabled={busy} onClick={onDiscard}>
+            Cancel
           </button>
         )}
-        {prompt.changed &&
-          (resetting ? (
-            <span className="workspace-confirm">
-              The project&apos;s text leaves {`prompts.${prompt.key}`}.{' '}
-              <button
-                type="button"
-                className="button"
-                disabled={busy}
-                onClick={() => {
-                  setResetting(false);
-                  onSave(null);
-                }}
-              >
-                Reset
-              </button>{' '}
-              <button type="button" className="button ghost" onClick={() => setResetting(false)}>
-                Keep it
-              </button>
-            </span>
-          ) : (
-            <button
-              type="button"
-              className="button ghost"
-              disabled={busy}
-              onClick={() => setResetting(true)}
-            >
-              Reset to Symbiote&apos;s
-            </button>
-          ))}
         <button
           type="button"
           className="button"
@@ -867,7 +892,7 @@ function PromptEditor({
           {...tip("Save it in the project's config", { keys: 'Ctrl+S' })}
           onClick={() => onSave(text)}
         >
-          Save
+          Save changes
         </button>
       </div>
       {prompt.changed && (
@@ -879,15 +904,29 @@ function PromptEditor({
     </>
   );
   return part ? (
-    <section className="settings-part settings-card" aria-label={prompt.title}>
-      {heading}
+    <section className="settings-part settings-prompt" aria-label={prompt.title}>
+      <div className="settings-part-head">
+        <h3>
+          {prompt.title}
+          {chip}
+        </h3>
+        {reset}
+      </div>
       {body}
     </section>
   ) : (
-    <section className="settings-editor" aria-label={`${prompt.group}: ${prompt.title}`}>
-      <BackToList onBack={onBack} />
-      {heading}
-      <div className="settings-card">{body}</div>
-    </section>
+    <SettingsCard
+      label={`${prompt.group}: ${prompt.title}`}
+      title={
+        <>
+          {`${prompt.group}: ${prompt.title}`}
+          {chip}
+        </>
+      }
+      actions={reset}
+      onBack={onBack}
+    >
+      {body}
+    </SettingsCard>
   );
 }

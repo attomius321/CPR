@@ -240,6 +240,14 @@ export const TrashIcon = () => (
   </Icon>
 );
 
+/** A prompt back to Symbiote's text, in Settings (V62): an arrow turning back, lucide's rotate-ccw (ISC). */
+export const ResetIcon = () => (
+  <Icon>
+    <path d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.5 1.83L2 5.33" />
+    <path d="M2 2v3.33h3.33" />
+  </Icon>
+);
+
 /** The window's own buttons, where Symbiote draws them (N1d). */
 export const MinimizeIcon = () => (
   <Icon>
