@@ -187,7 +187,7 @@ and in its spec's rerun (48 of 48).
 
 | Run (throwaway checkout and library, real agents) | What happened |
 |---|---|
-| Codex's Scribe (0.163, its default model, low): "a short skill named reading-logs" in the library, then a line in the library repository's README | The skill written in the library's folder in 22 s (28 lines, its description 117 characters); the README write declined by Codex itself, from its instructions, without a try |
+| Codex's Scribe (its app server 0.164, the default model, low): "a short skill named reading-logs" in the library, then a line in the library repository's README | The skill written in the library's folder in 22 s (28 lines, its description 117 characters); the README write declined by Codex itself, from its instructions, without a try |
 | Codex's Scribe, asked to run the two writes as commands | `printf … >> <library repo>/README.md`: exit 1, "Read-only file system"; `printf … > <library>/reading-logs/probe.txt`: exit 0. Its sandbox writes the library's folder and nothing beside it |
 | Claude Code's Scribe | Not run: Claude Code refuses a folder it was never trusted in ("Workspace not trusted"), and its trust prompt is the person's to accept |
 | Scribe's gate, built, run with the command Symbiote wrote in the checkout's `scribe-settings.json` | A Write in `<library>/tailing-logs/SKILL.md` and in `.claude/skills/x/SKILL.md`: no answer (Claude Code's own rules ask the person); the library repository's README and the checkout's README: denied, naming both folders |
