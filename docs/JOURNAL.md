@@ -254,3 +254,4 @@ merge commit.
 - 2026-10-26 [V61 spike — the mockup's colours against today's](journal/v61-complete-revamp.md)
 - 2026-10-26 [V61 — the mockup's black theme on every page, the new S, bigger text](journal/v61-complete-revamp.md)
 - 2026-10-26 [V62 spike — Settings beside the mockup](journal/v62-settings-layout.md)
+- 2026-10-27 [V62 — Settings as the person's mockup](journal/v62-settings-layout.md)

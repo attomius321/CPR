@@ -2,9 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v62-settings-layout.md)
 
-**Status:** planned (2026-10-26), on branch `feature/layout-settings` (the workspace's); the plan
-confirmed by the person, with three answers: the prompt stays in Geist (not the mockup's mono),
-the head's line is the mockup's, Cancel and Reset show only when they apply (as today).
+**Status:** ready for review (2026-10-27), on branch `feature/layout-settings` (the workspace's);
+the plan confirmed by the person, with three answers: the prompt stays in Geist (not the mockup's
+mono), the head's line is the mockup's, Cancel and Reset show only when they apply (as today).
+"As built" and results at the end.
 
 **Problem** (asked: "This is how settings should look like. Make it like this. without the icons
 of each setting category.", with the mockup `Dark Symbiote Settings Workspace.png`, 1701×925).
@@ -134,3 +135,42 @@ narrow layout (the list, then a page with All settings), the prompt's font, the 
 
 **Not in V62 (later)**: the mockup's mono for the prompt (the person kept Geist, as V37 chose); an
 icon per category (the brief).
+
+## As built (V62)
+
+- **The list is scrolled to the open entry**: at 1440×900 the list is 78 px taller than its card
+  (53 at 1700×925; its 18 entries in five groups need ~850 px at the mockup's own spacing), so an
+  entry opened from its address (Appearance, Skill library) was below the fold. The open entry is
+  scrolled into view (`block: 'nearest'`), 16 px clear of the card's edge (`scroll-padding`); a
+  test opens `?prompt=appearance` at 1440×900.
+- **The entries' words in line with their group's heading**, their wash 12 px out, as the mockup
+  draws its icons; the test of the fix that put them 12 px in (fix/scout-merger-scribe-settings)
+  now asserts this.
+- **Cancel is the secondary button** (an outlined dark one, as the mockup draws it), not the
+  ghost the style gives Cancel elsewhere; Reset to default the same, with its icon.
+- **The git note beside every Save**: on Scribe's page, whose two prompts each have a Save, it is
+  said twice.
+- **The page's icon is the sidenav's Settings icon** (its rays), not the mockup's cog: the
+  page's icon matches its entry in the sidenav. `.page-icon` joins the accent's roles in
+  `tokens.test.ts` (the current page).
+- **Text sizes kept**: the placeholders' words at 15 px (body) as before; the lines under the
+  headings at 14 (secondary), the chips at 13 (caption).
+- **One component for every page**: `settings/SettingsCard.tsx` (the card, its head, its body),
+  used by a prompt, a prebuilt agent, Appearance and the Skill library (`LibraryPage.tsx`).
+  `.settings-card` is gone.
+
+**Results.** Measured as the problem (Chromium, `serveWorkspaces`, Feature open):
+
+| Window | The list | The page | Ground left and right | Characters a line |
+|---|---|---|---|---|
+| 1440×900 | 280 px, a card | 832, one card | 24 / 24 | 91 (85) |
+| 1700×925 (the mockup's) | 280 | 1,092 | 24 / 24 | 123 (85) |
+| 1920×1080 | 280 | 1,104 | 128 / 128 | 124 (85) |
+| 2560×1440 | 280 | 1,104 | 448 / 448 | 124 (85) |
+
+Both cards end 24 px over the main area's bottom at every size. `pnpm check` 1,881 of 1,881;
+`pnpm build`; `pnpm test:e2e` 288 of 288 (`settings.spec.ts` 12 of 12, red on `main` first: the
+list 240 px, no "Save changes", "Cancel" or section headings). Letter-spacing 0 on every element
+of the page; the head and the chips read at 3×. Screenshots dark and light at 1280×720, 1440×900,
+1700×925, 1920×1080, 2560×1440 and 390×844: a prompt, a draft, a changed prompt and Reset's
+confirmation, Scout, Scribe, the merger, Skill library, Appearance.
