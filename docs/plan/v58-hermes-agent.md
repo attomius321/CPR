@@ -225,8 +225,9 @@ bar; Hermes's skills on the Skills page.
 service 9 (Hermes unknown; the guard "Hermes is asked nothing without a Hermes workspace" passed as
 written), Scout's agents 1 changed (Codex listed as Hermes), the panel's helpers 2 new and 2
 changed; then Stop read as stopped, 1 changed (red: "plan-ready"). Unit: 1,799 (1,770 on `main`).
-e2e: 2 new (written after the panel, with a fake Hermes in a real pseudo-terminal), 276 of 276 in the last full run (274 on `main`);
-in the first, 275, the one failure `scout.spec.ts` racing its own record (journal).
+e2e: 2 new (written after the panel, with a fake Hermes in a real pseudo-terminal); 276 of 276 in
+the last full run (274 on `main`); in the first, 275, the one failure `scout.spec.ts` racing its
+own record (journal).
 
 A real Hermes (0.21.3, the person's configuration; its model server was not running, so no turn
 was answered) through `symbiote view`'s API, in a throwaway repository:
