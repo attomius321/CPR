@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import koiMark from './koi-mark.png';
+import mark from './mark.png';
 import { tip } from './tip.js';
 
 /**
@@ -154,6 +154,13 @@ export const PlusIcon = () => (
   </Icon>
 );
 
+/** A terminal (V61): where one answers a workspace's agent; after lucide's (ISC). */
+export const TerminalIcon = () => (
+  <Icon>
+    <path d="M3 11.5 6.5 8 3 4.5M8 12h5" />
+  </Icon>
+);
+
 /** The sidenav's edge: folds it to a rail, or opens it. */
 export const SidenavIcon = () => (
   <Icon>
@@ -199,11 +206,12 @@ export const ForwardIcon = () => (
 );
 
 /**
- * Symbiote's mark (V42, decision 282): the koi S, the app's icon cropped to its tile, at 48 px for
- * 24 px on screen. It reads as an S from 24 px; V39 kept a glyph because it does not at 16.
+ * Symbiote's mark (V61): the person's S, cut round from `scripts/desktop/logo.png` by
+ * `scripts/desktop/icon.mjs`, at 64 px for 32 on screen (20 in the title bar). Never 16: V39's
+ * koi S did not read there.
  */
-export const KoiMark = () => (
-  <img className="koi-mark" src={koiMark} alt="" width={24} height={24} draggable={false} />
+export const SymbioteMark = () => (
+  <img className="symbiote-mark" src={mark} alt="" width={32} height={32} draggable={false} />
 );
 
 /** Open or folded (a folder, a project, More): down when open, right when folded. */

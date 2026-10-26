@@ -17,7 +17,7 @@ test.afterEach(() => {
 });
 
 const POLL = { timeout: 12_000 };
-const DARK = 'rgb(5, 8, 15)';
+const DARK = 'rgb(9, 11, 14)';
 const LIGHT = 'rgb(255, 255, 255)';
 const background = (page: Page) =>
   page.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -122,12 +122,12 @@ test('the chrome is lifted above the content: the sidenav and the status bar', a
       .first()
       .evaluate((e) => getComputedStyle(e).backgroundColor);
   expect(await background(page)).toBe(DARK);
-  expect(await colour('.sidenav')).toBe('rgb(15, 22, 38)');
-  expect(await colour('.statusbar')).toBe('rgb(15, 22, 38)');
-  // The current page is a wash of the accent, the koi's blue light (V42).
+  expect(await colour('.sidenav')).toBe('rgb(13, 16, 21)');
+  expect(await colour('.statusbar')).toBe('rgb(13, 16, 21)');
+  // The current page is a wash of the accent, the new S's violet (V61).
   const current = page.getByRole('link', { name: 'History' });
   expect(await current.evaluate((e) => getComputedStyle(e).backgroundColor)).toMatch(
-    /^(rgba?\(122, 158, 232|color\(srgb 0\.478)/,
+    /^(rgba?\(152, 134, 255|color\(srgb 0\.596)/,
   );
 });
 
@@ -167,9 +167,12 @@ test("History in Symbiote's style: names in the text's font, HEAD a tint, menus 
   await page.keyboard.press('Escape');
 });
 
-// V32: text one can read. Every text shown, on every page: 12 px at least, 11 px for uppercase
-// labels and one-glyph marks; 14 px for the body and the terminal.
-test('no text under 12 px on any page; the body and the terminal at 14 px', async ({ page }) => {
+// V32: text one can read. V61: a pixel more, still too small for the person's eyes. Every text
+// shown, on every page: 13 px at least, 12 px for uppercase labels and one-glyph marks; 15 px for
+// the body and the terminal. The graph keeps V32's (decision 438): 12 and 11 px there.
+test('no text under 13 px on any page but the graph; the body and the terminal at 15 px', async ({
+  page,
+}) => {
   symbiote = await serveWorkspaces();
   const small = () =>
     page.evaluate(() => {
@@ -185,14 +188,15 @@ test('no text under 12 px on any page; the body and the terminal at 14 px', asyn
         const style = getComputedStyle(element);
         const size = Number.parseFloat(style.fontSize);
         const mark = style.textTransform === 'uppercase' || [...text].length === 1;
-        if (size < (mark ? 11 : 12)) under.push(`${element.className}: "${text}" ${size}px`);
+        const least = (mark ? 12 : 13) - (element.closest('.react-flow') ? 1 : 0);
+        if (size < least) under.push(`${element.className}: "${text}" ${size}px`);
       }
       return under;
     });
 
   await page.goto(`${symbiote.url}history`);
   await expect(page.locator('.commit').first()).toBeVisible(POLL);
-  expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('14px');
+  expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('15px');
   expect(await small()).toEqual([]);
   await page.locator('.commit.head').click({ button: 'right', position: { x: 120, y: 10 } });
   await expect(page.getByRole('menu')).toBeVisible();
@@ -214,7 +218,7 @@ test('no text under 12 px on any page; the body and the terminal at 14 px', asyn
   await expect(here.locator('.xterm-rows')).toContainText(/\[\d+x\d+\]/, POLL);
   expect(
     await here.locator('.xterm-rows').evaluate((rows) => getComputedStyle(rows).fontSize),
-  ).toBe('14px');
+  ).toBe('15px');
   expect(await small()).toEqual([]);
   await here.getByRole('tab', { name: 'Brief' }).click();
   expect(await small()).toEqual([]);
@@ -309,7 +313,7 @@ test('text fields: a quiet edge, a stronger one on hover, a ring on focus, one h
   await expect(title).toBeVisible();
   const style = (field: typeof title, property: string) =>
     field.evaluate((e, p) => getComputedStyle(e).getPropertyValue(p), property);
-  const EDGE = 'rgb(95, 108, 140)';
+  const EDGE = 'rgb(92, 99, 115)';
   await page.mouse.move(0, 0);
   expect(await style(goal, 'border-top-color')).not.toBe(EDGE);
   await goal.hover();
@@ -381,7 +385,8 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
   await inside(tip);
 });
 
-test('a card in the sidenav is at most 64 px high', async ({ page }) => {
+// 72 px since V61's bigger type (64 before): its name at 15 px, its lines at 14.
+test('a card in the sidenav is at most 72 px high', async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}history`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
@@ -391,7 +396,7 @@ test('a card in the sidenav is at most 64 px high', async ({ page }) => {
   await form.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
   const card = page.locator('.sidenav .workspace-row').first();
   await expect(card).toContainText('feature/add-a-half-function', POLL);
-  expect((await card.boundingBox())?.height ?? 0).toBeLessThanOrEqual(64);
+  expect((await card.boundingBox())?.height ?? 0).toBeLessThanOrEqual(72);
 });
 
 // V37: Terminal, Thread and Brief are flat buttons on the chrome's strip, the picked one a wash of

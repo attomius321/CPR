@@ -298,7 +298,8 @@ test('Scout waiting for you: its whole link an amber band saying "Waits", folded
   await historyLink(page).click();
   await expect.poll(async () => (await looks(link)).background, POLL).toBe('rgba(0, 0, 0, 0)');
   expect((await looks(link)).ring).toBe('none');
-  expect((await looks(link)).icon).toBe(await token(page, '--faint'));
+  // An idle page's icon in the muted words' colour since V61 (the mockup; `--faint` before).
+  expect((await looks(link)).icon).toBe(await token(page, '--muted'));
 });
 
 test("a path Scout prints opens in VS Code, in the checkout's window (V38)", async ({ page }) => {
@@ -427,7 +428,8 @@ test("its head's choices, Effort, state and New conversation share one centre, o
     expect(Math.abs(state.centre - button.centre)).toBeLessThanOrEqual(1);
     if (width === 1920) {
       expect(Math.abs(button.centre - agent.centre)).toBeLessThanOrEqual(1);
-      expect((await head.boundingBox())?.height).toBe(44);
+      // 52 px since V61: every page's head as the mockup's (44 before, decision 213).
+      expect((await head.boundingBox())?.height).toBe(52);
     } else {
       expect(agent.top).toBeGreaterThan(button.bottom);
     }

@@ -5,6 +5,7 @@
   position: relative;
   min-height: 0;
   display: flex;
+  padding: 0 8px 8px;
 }
 
 /* The page switch in the bar (V60): Files and Graph, a segmented control as History's scopes. */
@@ -46,6 +47,9 @@
   flex: 1 0 240px;
   min-width: 0;
   overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
 }
 
 /* The file's path and what changed in it, over its diff while it scrolls. */

@@ -99,22 +99,22 @@ describe('the tokens (V29b)', () => {
   });
 
   // V31: Symbiote's style (the symbiote-style skill's tokens.md): the content darkest, the chrome
-  // lifted. V42: in the koi's colours, sampled from the intro: the canvas its abyss, the chrome
-  // its deep water, the text the white koi's pearl and silver.
-  it('are the koi’s in the dark theme: the water, a step lighter for the chrome', () => {
+  // lifted. V61: the person's mockup, near-black neutrals in place of V42's navy water.
+  it('are the mockup’s near blacks in the dark theme, a step lighter for the chrome', () => {
     expect(Object.fromEntries(BACKGROUNDS.map((t) => [t, dark.get(t)]))).toEqual({
-      '--bg': '#05080f',
-      '--side': '#0f1626',
-      '--panel': '#0f1626',
-      '--raised': '#1c2539',
+      '--bg': '#090b0e',
+      '--side': '#0d1015',
+      '--panel': '#0d1015',
+      '--raised': '#171a21',
     });
-    expect(dark.get('--text')).toBe('#eaeef7');
-    expect(dark.get('--muted')).toBe('#9aa5be');
-    expect(dark.get('--line')).toBe('#232d43');
+    expect(dark.get('--text')).toBe('#edf0f5');
+    expect(dark.get('--muted')).toBe('#a2abbc');
+    expect(dark.get('--line')).toBe('#1f232c');
     // V54: the terminal's link hint's light, now every tip's in the dark theme.
-    expect(dark.get('--tip-bg')).toBe('#e3e8f2');
-    // V31's step from the content to the chrome.
-    expect(contrast(dark.get('--bg')!, dark.get('--side')!)).toBeGreaterThanOrEqual(1.1);
+    expect(dark.get('--tip-bg')).toBe('#e6e9ef');
+    // The mockup's step from the content to the chrome: smaller than V31's 1.1, the cards' hairline
+    // carries the edge.
+    expect(contrast(dark.get('--bg')!, dark.get('--side')!)).toBeGreaterThanOrEqual(1.03);
   });
 
   it('are the koi’s in the light theme: a white page, cool chrome, navy text', () => {
@@ -128,9 +128,10 @@ describe('the tokens (V29b)', () => {
     expect(light.get('--tip-bg')).toBe('#0b1220');
   });
 
-  // V42 (decisions 279–281): primary and secondary from the koi's blue light; the moved kind and
-  // info leave blue to them, for cyan.
-  it('take the koi’s blue for the primary and the accent, and cyan for moved and info', () => {
+  // V42 (decision 281): the moved kind and info in cyan. V61 (decisions 437, 440): the mockup's
+  // violet for the primary and the accent in both themes; dark text on the dark theme's primary,
+  // where white is 4.01:1.
+  it('take the mockup’s violet for the primary and the accent, and cyan for moved and info', () => {
     const pick = (theme: Map<string, string>) =>
       Object.fromEntries(
         ['--primary', '--primary-text', '--accent', '--focus', '--moved', '--info'].map((t) => [
@@ -139,18 +140,18 @@ describe('the tokens (V29b)', () => {
         ]),
       );
     expect(pick(dark)).toEqual({
-      '--primary': '#3c6fd6',
-      '--primary-text': '#ffffff',
-      '--accent': '#7a9ee8',
-      '--focus': '#7a9ee8',
+      '--primary': '#7c68fc',
+      '--primary-text': '#0b0a1a',
+      '--accent': '#9886ff',
+      '--focus': '#9886ff',
       '--moved': '#3fc5d6',
       '--info': '#3fc5d6',
     });
     expect(pick(light)).toEqual({
-      '--primary': '#2f62cc',
+      '--primary': '#5b3fd9',
       '--primary-text': '#ffffff',
-      '--accent': '#2f62cc',
-      '--focus': '#2f62cc',
+      '--accent': '#5b3fd9',
+      '--focus': '#5b3fd9',
       '--moved': '#0a7d8c',
       '--info': '#0a7d8c',
     });
@@ -198,7 +199,7 @@ describe('the tokens (V29b)', () => {
         expect(close).toEqual([]);
       });
 
-      it('writes white on the primary at 4.5:1 at least, under the pointer too', () => {
+      it('writes its text on the primary at 4.5:1 at least, under the pointer too', () => {
         expect(under(theme, ['--primary-text'], ['--primary', '--primary-hover'], 4.5)).toEqual([]);
       });
 
@@ -312,10 +313,28 @@ describe('the geometry is the style’s (V31c)', () => {
 });
 
 describe('the type scale (V32)', () => {
-  // V29b's dense 13 px body, with 10–11 px captions, was too small to read: one step up, and
-  // nothing under 12 px but uppercase labels and one-glyph marks; titles stay at 16 px.
-  it('is one step above V29b’s, 14 px for the body', () => {
+  // V29b's dense 13 px body, with 10–11 px captions, was too small to read: one step up (V32).
+  // V61: still too small for the person's eyes, another pixel each; nothing under 13 px but
+  // uppercase labels and one-glyph marks.
+  it('is two steps above V29b’s, 15 px for the body', () => {
     expect(Object.fromEntries([...base].filter(([name]) => name.startsWith('--size-')))).toEqual({
+      '--size-caps': '12px',
+      '--size-caption': '13px',
+      '--size-small': '14px',
+      '--size-body': '15px',
+      '--size-title': '17px',
+    });
+  });
+
+  // V61 (decision 438): the graph keeps V32's sizes. A node's width is estimated from its
+  // characters (flow.ts's nodeWidth, 9.4 px a character at 13 px), so a bigger font would cut its
+  // labels or move every layout; the graph zooms instead.
+  it("keeps V32's sizes on the graph", () => {
+    const blocks = [...css.matchAll(/(?:^|\n)\.react-flow \{([^}]*)\}/g)];
+    const scale = blocks.flatMap((block) =>
+      [...block[1]!.matchAll(/(--size-[\w-]+):\s*([^;]+);/g)].map((m) => [m[1]!, m[2]!.trim()]),
+    );
+    expect(Object.fromEntries(scale)).toEqual({
       '--size-caps': '11px',
       '--size-caption': '12px',
       '--size-small': '13px',

@@ -251,3 +251,5 @@ merge commit.
 - 2026-10-26 [SK1 — a skill library on the Skills page and for Scribe](journal/sk1-skill-library.md)
 - 2026-10-26 [LG2 spike — what the dashboard shows of two days of real lines](journal/lg2-dashboard.md)
 - 2026-10-26 [LG2 — the tests' lines out, the dashboard in sections](journal/lg2-dashboard.md)
+- 2026-10-26 [V61 spike — the mockup's colours against today's](journal/v61-complete-revamp.md)
+- 2026-10-26 [V61 — the mockup's black theme on every page, the new S, bigger text](journal/v61-complete-revamp.md)

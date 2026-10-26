@@ -130,7 +130,7 @@ select option {
   padding: 0 6px;
   font-size: var(--size-caption);
   font-weight: 500;
-  line-height: 18px;
+  line-height: 20px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -169,7 +169,7 @@ select option {
   border-radius: 9999px;
   background: color-mix(in srgb, var(--badge) 10%, transparent);
   color: var(--badge);
-  line-height: 16px;
+  line-height: 18px;
 }
 
 .badge-error {
@@ -254,7 +254,7 @@ input[type='radio']:focus-visible {
 }
 
 /* A switch (V49): an on/off setting, the checkbox drawn as a track and its thumb; on, the
-   checkbox's blue. */
+   checkbox's primary. */
 input[type='checkbox'][role='switch'] {
   place-content: center start;
   width: 36px;
@@ -294,15 +294,15 @@ input[type='checkbox'][role='switch']:checked::after {
   color: var(--muted);
 }
 
-/* Buttons (V29b): 28 px; the main action in the primary colour (V31: the koi's blue since V42, its
-   top edge lit), the others outlined. */
+/* Buttons (V29b): 32 px since V61's bigger type; the main action in the primary colour (V31: the
+   mockup's violet since V61, dark words on it, its top edge lit), the others outlined. */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 28px;
-  padding: 0 12px;
+  min-height: 32px;
+  padding: 0 14px;
   border: 1px solid transparent;
   border-radius: 8px;
   background: var(--primary);
@@ -395,7 +395,7 @@ kbd {
   background: color-mix(in srgb, var(--raised) 70%, transparent);
   box-shadow: var(--shadow-lift);
   color: var(--muted);
-  font: 500 var(--size-caption)/16px var(--sans);
+  font: 500 var(--size-caption)/18px var(--sans);
   text-align: center;
 }
 
@@ -414,8 +414,8 @@ kbd {
 }
 
 .scope {
-  height: 22px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 12px;
   border: 1px solid transparent;
   border-radius: 8px;
   background: none;

@@ -14,7 +14,7 @@ import type { MergeEntry } from '@symbiote/core';
 import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import {
   DoneIcon,
-  KoiMark,
+  SymbioteMark,
   HistoryIcon,
   MenuIcon,
   MergingIcon,
@@ -218,7 +218,7 @@ export function Sidenav({
           aria-label={repo ? `Symbiote · ${repo}` : 'Symbiote'}
           {...tip(repo ? `Symbiote · ${repo}` : 'Symbiote', { side: 'right' })}
         >
-          <KoiMark />
+          <SymbioteMark />
           <span className="sidenav-label">
             Symbiote{repo && <span className="sidenav-repo"> · {repo}</span>}
           </span>
@@ -687,7 +687,7 @@ function WorkspaceCard({
           <div className="workspace-respond">
             <button
               type="button"
-              className="button secondary respond"
+              className="button respond"
               {...tip(`Answer ${name}\nIts terminal, focused`)}
               onClick={(event) => {
                 event.stopPropagation();

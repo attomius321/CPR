@@ -1,8 +1,9 @@
 /* ---- the shell (V29a): the sidenav, the main area, the status bar --------------------- */
 
 .shell {
-  /* As wide as the person dragged it (V34, `--sidenav-open`), the main area keeping 480 px. */
-  --sidenav-width: min(var(--sidenav-open, 240px), max(180px, calc(100vw - 480px)));
+  /* As wide as the person dragged it (V34, `--sidenav-open`), the main area keeping 480 px; 264 px
+     at first since V61's bigger type (the mockup's width; 240 before). */
+  --sidenav-width: min(var(--sidenav-open, 264px), max(180px, calc(100vw - 480px)));
   display: grid;
   grid-template-columns: var(--sidenav-width) minmax(0, 1fr);
   /* `asks` (MC1): an agent's ask over the page, empty and 0 high without one. */

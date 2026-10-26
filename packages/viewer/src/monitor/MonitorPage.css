@@ -62,8 +62,7 @@
 .monitor-head {
   display: grid;
   gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--line);
+  padding: 4px 16px 12px;
 }
 
 /* The kinds and the colour, in one row; the colour at its end. */
@@ -212,6 +211,12 @@
   flex: 1;
   display: flex;
   min-height: 0;
+  padding: 0 8px 8px;
+}
+
+/* The list's handle is the gutter before its card (V61). */
+.monitor-body > .resizer {
+  margin: 0;
 }
 
 /* The treemap: tiles placed by `layoutTreemap`, a 1 px gap of the canvas between them. */
@@ -368,7 +373,9 @@
   width: min(var(--monitor-width, 360px), calc(100% - 320px));
   min-width: 260px;
   min-height: 0;
-  border-left: 1px solid var(--line);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   background: var(--side);
 }
 

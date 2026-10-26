@@ -6,15 +6,15 @@
   height: 100%;
 }
 
-/* A diff's toolbar: one strip, as History's and a workspace's heads; chrome, lifted (V31). */
+/* A diff's toolbar: one strip, as a workspace's head; on the page's ground since V61, its panels
+   cards under it (the person's mockup). */
 .bar {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 44px;
-  padding: 6px 16px;
-  background: var(--side);
-  border-bottom: 1px solid var(--line);
+  min-height: 52px;
+  padding: 8px 16px;
+  background: var(--bg);
   flex-wrap: wrap;
   font-size: var(--size-small);
 }
@@ -56,11 +56,23 @@
   position: relative;
   min-height: 0;
   display: flex;
+  padding: 0 8px;
+}
+
+/* A handle is the gutter between two cards (V61). */
+.canvas > .resizer,
+.files-main > .resizer {
+  margin: 0;
 }
 
 .canvas > .react-flow {
   /* What the panels leave, never under 240px (MIN_CANVAS in Resizer.tsx). */
   flex: 1 0 240px;
+  /* A card (V61): its edge an outline inside it, not a border, which would move React Flow's
+     origin a pixel from its box. */
+  border-radius: 10px;
+  outline: 1px solid var(--line);
+  outline-offset: -1px;
 }
 
 /* Before the first layout arrives (V8e): where the canvas will be. */
@@ -101,9 +113,8 @@
 .legend {
   display: flex;
   gap: 14px;
-  padding: 5px 16px;
-  background: var(--side);
-  border-top: 1px solid var(--line);
+  padding: 6px 16px;
+  background: var(--bg);
   color: var(--muted);
   font-size: var(--size-caption);
   flex-wrap: wrap;

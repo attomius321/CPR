@@ -6,8 +6,9 @@
   min-width: min(320px, 45vw);
   overflow: auto;
   padding: 0 16px 24px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   background: var(--side);
-  border-left: 1px solid var(--line);
 }
 
 .panel-head {

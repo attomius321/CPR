@@ -23,8 +23,8 @@ describe('the window frame (N1d)', () => {
   it("on Windows: the system's buttons over the title bar, in the style's colours", () => {
     expect(frameOptions('win32', false)).toEqual({
       titleBarStyle: 'hidden',
-      backgroundColor: '#05080f',
-      titleBarOverlay: { color: '#0f1626', symbolColor: '#eaeef7', height: 38 },
+      backgroundColor: '#090b0e',
+      titleBarOverlay: { color: '#0d1015', symbolColor: '#edf0f5', height: 38 },
     });
     expect(frameOptions('win32', true)).toEqual({
       titleBarStyle: 'hidden',
@@ -36,7 +36,7 @@ describe('the window frame (N1d)', () => {
   it("on macOS: its own buttons at the left, on the page's background", () => {
     expect(frameOptions('darwin', false)).toEqual({
       titleBarStyle: 'hidden',
-      backgroundColor: '#05080f',
+      backgroundColor: '#090b0e',
       trafficLightPosition: { x: 14, y: 12 },
     });
   });

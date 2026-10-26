@@ -423,13 +423,13 @@ test('every card says its kind in a chip at the end of its name’s line, Featur
   );
   expect(tag!.x).toBeGreaterThan(name!.x + name!.width);
   expect(Math.abs(tag!.x + tag!.width - (time!.x + time!.width))).toBeLessThanOrEqual(1);
-  // The style's metadata chip: raised, no edge.
+  // The style's metadata chip: raised, no edge; 22 px for its 13 px words (V61).
   expect(
     await chip.evaluate((element) => {
       const style = getComputedStyle(element);
       return [style.borderTopWidth, style.height];
     }),
-  ).toEqual(['0px', '18px']);
+  ).toEqual(['0px', '22px']);
   // The heading: its kind before its name, as before.
   await expect(
     panel(page, 'feature/add-a-half-function').locator('.workspace-title h1 .kind-tag'),
@@ -566,7 +566,7 @@ test('while a workspace is made, its card says it starts; its own card takes its
     .poll(() => spinner(starting.locator('.state-dot')))
     .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
   // A card's height, as every card's (look.spec.ts).
-  expect((await starting.boundingBox())?.height ?? 0).toBeLessThanOrEqual(64);
+  expect((await starting.boundingBox())?.height ?? 0).toBeLessThanOrEqual(72);
   await expect(starting).toHaveCount(0, POLL);
   await expect(workspaceRow(page, 'feature/add-a-half-function')).toBeVisible();
 });
@@ -1112,7 +1112,7 @@ test('a card being cleaned up is disabled until it goes: it says so, opens nothi
   await page.waitForTimeout(200);
   await expect(card).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await expect(card).toHaveCSS('cursor', 'default');
-  expect((await card.boundingBox())?.height ?? 0).toBeLessThanOrEqual(64);
+  expect((await card.boundingBox())?.height ?? 0).toBeLessThanOrEqual(72);
   const box = (await card.locator('.workspace-state').boundingBox())!;
   await page.mouse.click(box.x + 20, box.y + box.height / 2);
   await expect(panel(page, triple)).toBeVisible();

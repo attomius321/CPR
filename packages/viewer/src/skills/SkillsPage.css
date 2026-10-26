@@ -1,8 +1,8 @@
 /* ---- skills: the checkout's skills (V41) --------------------------------------------- */
 
 /* The page's own rules since V56 (decision 407), not Settings': the whole main area (decision
-   408), its head strip as History's, then the list at its left edge and the open pane to its right
-   and bottom edges. No cards: the pane is the frame. */
+   408), its head on the page's ground, then the list and the open pane, two cards 8 px apart and
+   from the main area's edges (V61, the person's mockup). */
 .skills {
   flex: 1;
   min-width: 0;
@@ -47,6 +47,8 @@
   min-height: 0;
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
+  gap: 8px;
+  padding: 0 8px 8px;
 }
 
 /* The list: a column with its own scroll, its groups' headings in line with the head's title. */
@@ -54,7 +56,9 @@
   min-height: 0;
   overflow: auto;
   padding: 12px 12px 16px 16px;
-  border-right: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--side);
 }
 
 .skills-list section h2 {
@@ -137,6 +141,9 @@
   min-width: 0;
   min-height: 0;
   overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
 }
 
 .skills-editor,
@@ -215,7 +222,8 @@
   gap: 16px;
 }
 
-@container skills-pane (min-width: 880px) {
+/* From 860 px (880 before V61): the cards' gutters left the pane 878 px at 1440. */
+@container skills-pane (min-width: 860px) {
   .skills-work {
     grid-template-columns: minmax(0, 1fr) 280px;
     grid-template-rows: minmax(0, 1fr);

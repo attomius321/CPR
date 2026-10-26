@@ -22,11 +22,14 @@
   contain: inline-size;
 }
 
-/* The branches panel beside the rows (V10b); over them under 900 px. */
+/* The branches panel beside the rows (V10b); over them under 900 px. Two cards on the page's
+   ground since V61 (the person's mockup), 8 px apart and from its edges. */
 .commits-body {
   flex: 1;
   display: flex;
+  gap: 8px;
   min-height: 0;
+  padding: 8px;
   position: relative;
 }
 
@@ -36,9 +39,13 @@
   overflow: auto;
   /* Rows are placed from the list's offset in this box. */
   position: relative;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
 }
 
-/* History's toolbar (V29b): a strip at the top of the rows, as a workspace's head. */
+/* History's toolbar (V29b): a strip at the top of the rows, the card's chrome as a workspace's
+   tabs (V61). Settings, Skills and the Monitor take it as their head, on the page's ground. */
 .commits-title {
   position: sticky;
   top: 0;
@@ -47,13 +54,21 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 12px;
-  min-height: 44px;
+  min-height: 48px;
   margin: 0;
   padding: 8px 12px 8px 16px;
   border-bottom: 1px solid var(--line);
   background: var(--side);
   font-size: var(--size-body);
   font-weight: normal;
+}
+
+.settings-bar,
+.skills-bar,
+.monitor-bar {
+  min-height: 52px;
+  border-bottom: 0;
+  background: var(--bg);
 }
 
 /* The keys and the actions wrap as one: the keys fill the space before the actions, wrapping
@@ -136,7 +151,7 @@
   margin-left: auto;
   align-items: center;
   gap: 6px;
-  height: 28px;
+  height: 32px;
   padding: 0 6px 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;

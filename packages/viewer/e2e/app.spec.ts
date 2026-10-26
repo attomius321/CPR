@@ -432,7 +432,7 @@ test.describe('the title bar', () => {
     // The text's colour, Symbiote's style since V31, in the koi's colours since V42.
     await expect.poll(colour).toBe('rgb(11, 18, 32)');
     await page.getByRole('button', { name: 'Dark', exact: true }).click();
-    await expect.poll(colour).toBe('rgb(234, 238, 247)');
+    await expect.poll(colour).toBe('rgb(237, 240, 245)');
     // The overlay is the system's buttons' on Windows: none on Linux.
     expect(await app.evaluate(() => (globalThis as { overlay?: unknown[] }).overlay?.length)).toBe(
       0,
@@ -447,7 +447,7 @@ test.describe('the title bar', () => {
     await expect(html).toHaveAttribute('data-window', 'normal');
     // The page carries the window's background and corners; around it, the window is clear.
     expect(await style(page, 'html', 'background-color')).toBe('rgba(0, 0, 0, 0)');
-    expect(await style(page, '#root', 'background-color')).toBe('rgb(5, 8, 15)');
+    expect(await style(page, '#root', 'background-color')).toBe('rgb(9, 11, 14)');
     expect(await style(page, '#root', 'border-radius')).toBe('10px');
 
     const bar = page.locator('.titlebar');
